@@ -6,6 +6,7 @@ from typing import Any
 
 from app.connectors.action_catalog.models import ActionSpec, VendorCatalogSpec
 from app.connectors.action_catalog.vendor_definitions import VENDOR_DEFINITIONS
+from app.connectors.action_catalog.extensions import merge_catalog_extensions
 
 
 def _implemented_tools() -> set[str]:
@@ -16,7 +17,8 @@ def _implemented_tools() -> set[str]:
 
 @lru_cache(maxsize=1)
 def get_vendor_catalog() -> dict[str, VendorCatalogSpec]:
-    return {spec.vendor: spec for spec in VENDOR_DEFINITIONS}
+    base = {spec.vendor: spec for spec in VENDOR_DEFINITIONS}
+    return merge_catalog_extensions(base)
 
 
 def list_catalog_vendors() -> list[str]:
@@ -93,3 +95,18 @@ def all_catalog_action_specs() -> list[ActionSpec]:
     for vendor_spec in get_vendor_catalog().values():
         specs.extend(vendor_spec.all_actions())
     return specs
+
+
+def get_action_spec(action_key: str) -> ActionSpec | None:
+    """Lookup a catalog ActionSpec by canonical tool key."""
+    key = action_key.strip().lower()
+    if "." not in key:
+        return None
+    vendor = key.split(".", 1)[0]
+    spec = get_vendor_spec(vendor)
+    if not spec:
+        return None
+    for action in spec.all_actions():
+        if action.id.lower() == key:
+            return action
+    return None

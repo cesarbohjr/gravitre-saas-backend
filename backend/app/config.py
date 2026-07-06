@@ -276,6 +276,9 @@ class Settings(BaseSettings):
     disable_ai: bool = False
     # Optional Tavily API key for assistant search_web tool (STA-148).
     tavily_api_key: str = ""
+    # Browser agent for connector API gaps (read-only fetch + optional Playwright interact).
+    browser_agent_enabled: bool = True
+    browser_agent_interact_enabled: bool = False
     # Assistant context window + summarization (STA-146).
     assistant_context_window_tokens: int = 128_000
     assistant_context_summarize_threshold: float = 0.8

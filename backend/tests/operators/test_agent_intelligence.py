@@ -67,21 +67,31 @@ def intelligence() -> AgentIntelligence:
     intel = AgentIntelligence(settings=settings, react_engine=react, rag_service=rag, unified_retrieval=unified)
     intel.tool_registry = MagicMock()
     intel.tool_registry.list_connected_integrations.return_value = ["hubspot"]
+    intel.tool_registry.enrich_connected_integrations = AsyncMock(
+        side_effect=lambda _client, _org_id, connected: connected
+    )
+    intel.tool_registry.get_available_tools = AsyncMock(
+        return_value=[{"type": "function", "function": {"name": "hubspot_update_deal"}}]
+    )
     intel.tool_registry.get_tools_for_agent.return_value = [
         {"type": "function", "function": {"name": "hubspot_update_deal"}},
     ]
     return intel
 
 
-def test_get_agent_tools_delegates_to_registry(agent_row: dict, intelligence: AgentIntelligence):
-    intelligence.tool_registry.get_tools_for_agent = MagicMock(
+@pytest.mark.asyncio
+async def test_get_agent_tools_delegates_to_registry(agent_row: dict, intelligence: AgentIntelligence):
+    intelligence.tool_registry.enrich_connected_integrations = AsyncMock(return_value=["hubspot"])
+    intelligence.tool_registry.get_available_tools = AsyncMock(
         return_value=[{"type": "function", "function": {"name": "hubspot_search_contacts"}}]
     )
-    tools = intelligence.get_agent_tools(agent_row, ["hubspot"])
-    intelligence.tool_registry.get_tools_for_agent.assert_called_once_with(
-        ["hubspot", "slack"],
+    tools = await intelligence.get_agent_tools(
+        agent_row,
         ["hubspot"],
+        org_id="org-1",
+        client=MagicMock(),
     )
+    intelligence.tool_registry.get_available_tools.assert_awaited_once()
     assert tools[0]["function"]["name"] == "hubspot_search_contacts"
 
 
@@ -423,27 +433,29 @@ async def test_streaming_emits_text_events_when_react_returns_answer_only(intell
     orchestrator.get_context_for_prompt = AsyncMock(return_value="")
 
     events: list[object] = []
-    with patch("app.operators.agent_intelligence.get_company_intelligence_orchestrator", return_value=orchestrator):
-        with patch("app.operators.agent_intelligence.build_entity_context_section", AsyncMock(return_value="")):
-            with patch("app.operators.agent_intelligence.get_org_context_service") as org_service:
-                org_service.return_value.get_context_bundle.return_value = (
-                    {"orgName": "Acme", "connectedIntegrations": ["hubspot"]},
-                    "Org block",
-                )
-                with patch(
-                    "app.operators.agent_intelligence.maybe_summarize_history",
-                    AsyncMock(return_value=SimpleNamespace(messages=[], summary=None, summary_updated=False)),
-                ):
-                    with patch_agent_streaming_dialogue_pipeline():
-                        async for event in intelligence.execute_task_streaming(
-                            org_id="org-1",
-                            user_id="user-1",
-                            query="Say smoke-ok in one word.",
-                            mode="standard",
-                            requested_tools=["agent_status"],
-                            client=client,
-                        ):
-                            events.append(event)
+    with patch("app.services.mcp_client_service.get_mcp_client_service") as mcp_svc:
+        mcp_svc.return_value.get_enabled_tools_for_org = AsyncMock(return_value=[])
+        with patch("app.operators.agent_intelligence.get_company_intelligence_orchestrator", return_value=orchestrator):
+            with patch("app.operators.agent_intelligence.build_entity_context_section", AsyncMock(return_value="")):
+                with patch("app.operators.agent_intelligence.get_org_context_service") as org_service:
+                    org_service.return_value.get_context_bundle.return_value = (
+                        {"orgName": "Acme", "connectedIntegrations": ["hubspot"]},
+                        "Org block",
+                    )
+                    with patch(
+                        "app.operators.agent_intelligence.maybe_summarize_history",
+                        AsyncMock(return_value=SimpleNamespace(messages=[], summary=None, summary_updated=False)),
+                    ):
+                        with patch_agent_streaming_dialogue_pipeline():
+                            async for event in intelligence.execute_task_streaming(
+                                org_id="org-1",
+                                user_id="user-1",
+                                query="Say smoke-ok in one word.",
+                                mode="standard",
+                                requested_tools=["agent_status"],
+                                client=client,
+                            ):
+                                events.append(event)
 
     sse_types = [event.sse_type for event in events if isinstance(event, AssistantStreamEvent)]
     assert "text-start" in sse_types

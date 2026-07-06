@@ -192,7 +192,7 @@ export function AiWorkspace({
     return initialConversationId || readStoredConversationId()
   })
   const [conversationTitle, setConversationTitle] = useState("Gravitre AI")
-  const [chatMode, setChatMode] = useState<"standard" | "deep">("standard")
+  const [chatMode, setChatMode] = useState<"standard" | "deep">("deep")
   const [selectedDepartment, setSelectedDepartment] = useState(() =>
     typeof window === "undefined" ? "all" : getQuickDepartment(),
   )
@@ -513,6 +513,10 @@ export function AiWorkspace({
   const resolveEngine = useCallback(
     async (prompt: string, selectedMode: ModeId): Promise<AiEngine> => {
       if (isConversationalOperatorPrompt(prompt)) {
+        return "chat"
+      }
+      // Unified surface: one chat thread handles answer, search, and connector execution.
+      if (selectedMode === "auto" || selectedMode === "chat") {
         return "chat"
       }
       if (selectedMode !== "auto") return selectedMode
@@ -1182,6 +1186,11 @@ export function AiWorkspace({
               <button
                 type="button"
                 onClick={() => setChatMode((current) => (current === "deep" ? "standard" : "deep"))}
+                title={
+                  chatMode === "deep"
+                    ? "Agent mode — full connector tool surface with ReAct"
+                    : "Fast mode — lighter reasoning, fewer tool iterations"
+                }
                 className={cn(
                   "h-8 rounded-md border px-2 text-[10px] font-medium uppercase tracking-wide",
                   chatMode === "deep"
@@ -1189,9 +1198,9 @@ export function AiWorkspace({
                     : "border-border text-muted-foreground",
                 )}
               >
-                {chatMode === "deep" ? "Deep" : "Standard"}
+                {chatMode === "deep" ? "Agent" : "Fast"}
               </button>
-              {user && (mode === "chat" || !showLanding) ? (
+              {user ? (
                 <PersonaSelector
                   value={preferredPersona}
                   onChange={handlePersonaChange}
@@ -1207,21 +1216,30 @@ export function AiWorkspace({
             </div>
           </div>
           <div className="flex items-center gap-1.5 overflow-x-auto border-t border-border/60 px-4 py-2 md:px-6">
-            {AI_MODES.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => setMode(m.id)}
-                className={cn(
-                  "shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide transition-colors",
-                  mode === m.id
-                    ? cn("ring-1", m.ring, "text-foreground")
-                    : "border-border text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {m.label}
-              </button>
-            ))}
+            {AI_MODES.length > 1
+              ? AI_MODES.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setMode(m.id)}
+                    className={cn(
+                      "shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide transition-colors",
+                      mode === m.id
+                        ? cn("ring-1", m.ring, "text-foreground")
+                        : "border-border text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {m.label}
+                  </button>
+                ))
+              : (
+                <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {activeMode.badge}
+                </span>
+              )}
+            <span className="hidden text-[10px] text-muted-foreground sm:inline">
+              · Connector writes require approval
+            </span>
             <div className="ml-auto shrink-0 pl-2">
               <Select
                 value={selectedDepartment}

@@ -22,8 +22,14 @@ from app.operators.assistant_mode_config import (
     normalize_mode,
     registry_to_assistant_tool_id,
     resolve_assistant_tool_names,
+    resolve_effective_intelligence_mode,
     resolve_registry_permitted_tools,
     expand_registry_with_connected_integrations,
+)
+from app.services.connector_chat_routing import (
+    run_connector_fallback_turn,
+    should_attempt_connector_fallback,
+    should_run_connector_preflight,
 )
 from app.operators.assistant_sse import (
     format_react_tool_output,
@@ -430,16 +436,23 @@ class AgentIntelligence:
         self.unified_retrieval = unified_retrieval or get_unified_retrieval_service()
         self.tool_registry = get_tool_registry()
 
-    def get_agent_tools(
+    async def get_agent_tools(
         self,
         agent: dict[str, Any],
         connected_integrations: list[str],
         *,
         permitted_tools: list[str] | None = None,
+        org_id: str | None = None,
+        client: Any | None = None,
     ) -> list[dict[str, Any]]:
-        """OpenAI-format tools permitted for the agent and connected for the org (STA-160)."""
+        """OpenAI-format tools permitted for the agent — native connectors + org MCP tools."""
         allowed = resolve_permitted_tools(agent, permitted_tools)
-        return self.tool_registry.get_tools_for_agent(allowed, connected_integrations)
+        connected = list(connected_integrations)
+        if org_id and client is not None:
+            connected = await self.tool_registry.enrich_connected_integrations(client, org_id, connected)
+        if org_id:
+            return await self.tool_registry.get_available_tools(org_id, allowed, connected)
+        return self.tool_registry.get_tools_for_agent(allowed, connected)
 
     @staticmethod
     def _extract_source_document_ids(rag_sources: list[dict[str, Any]]) -> list[str]:
@@ -576,6 +589,7 @@ class AgentIntelligence:
         persona_modifier: str | None = None,
         sentiment_adaptation: str | None = None,
         task_state_section: str | None = None,
+        has_mcp_tools: bool = False,
     ) -> str:
         """Shared system prompt builder for execute_task() and execute_task_streaming()."""
         org_dict = org_context if isinstance(org_context, dict) else None
@@ -661,6 +675,14 @@ class AgentIntelligence:
                     ),
                 ]
             )
+        from app.services.api_gap_service import gap_recovery_prompt_section
+
+        gap_section = gap_recovery_prompt_section(
+            connected_integrations=list(connected_integrations or []),
+            has_mcp_tools=has_mcp_tools,
+        )
+        if gap_section:
+            sections.extend(["", gap_section])
         sections.extend(["", RESEARCH_POLICY.strip(), "", RULES_SECTION.strip()])
         return "\n".join(section for section in sections if section is not None)
 
@@ -909,10 +931,12 @@ class AgentIntelligence:
         )
         persona = get_agent_persona(agent)
         model = select_model_for_agent(agent, client, org_id, task_text, parameters=params)
-        available_tools = self.get_agent_tools(
+        available_tools = await self.get_agent_tools(
             agent,
             list(connected),
             permitted_tools=resolved_plan.permitted_tools,
+            org_id=org_id,
+            client=client,
         )
         tools_available = len(available_tools)
 
@@ -1009,9 +1033,19 @@ class AgentIntelligence:
             client = get_supabase_client(active_settings)
 
         task_text = query.strip()
-        tool_names = resolve_assistant_tool_names(mode, requested_tools)
+        connected_early = self.tool_registry.list_connected_integrations(
+            client, org_id, environment_name=environment_name
+        )
+        from app.services.mcp_client_service import get_mcp_client_service
+
+        mcp_tools_early = await get_mcp_client_service(active_settings).get_enabled_tools_for_org(org_id)
+        mode_key = resolve_effective_intelligence_mode(
+            mode,
+            connected_early,
+            has_mcp_tools=bool(mcp_tools_early),
+        )
+        tool_names = resolve_assistant_tool_names(mode_key, requested_tools)
         permitted_registry = resolve_registry_permitted_tools(tool_names)
-        mode_key = normalize_mode(mode)
         max_iterations = int(MODE_CONFIG[mode_key]["max_iterations"])
         message_id = str(uuid.uuid4())
         engine_settings = await load_intelligence_engine_settings(org_id, active_settings, client=client)
@@ -1174,112 +1208,110 @@ class AgentIntelligence:
             )
             return
 
-        connected_early = self.tool_registry.list_connected_integrations(
-            client, org_id, environment_name=environment_name
-        )
-        from app.services.chat_orchestration_service import get_chat_orchestration_service
+        if should_run_connector_preflight(task_state):
+            from app.services.chat_orchestration_service import get_chat_orchestration_service
 
-        orchestration_turn = await get_chat_orchestration_service(active_settings).process_turn(
-            org_id=org_id,
-            user_id=user_id,
-            conversation_id=conversation_id or "",
-            message=task_text,
-            classification=pipeline_classification,
-            task_state=task_state,
-            connected_integrations=connected_early,
-            client=client,
-            environment_name=environment_name,
-        )
-        if orchestration_turn and orchestration_turn.get("stop_pipeline"):
-            task_state = orchestration_turn.get("task_state") or task_state
-            response_text = str(orchestration_turn.get("message") or "")
-            dialogue_mode = str(orchestration_turn.get("dialogue_mode") or "answer")
-            text_id, start_event = sse_text_start()
-            yield start_event
-            yield sse_text_delta(text_id, response_text)
-            yield sse_text_end(text_id)
-            yield sse_intelligence_metadata(
-                message_id=message_id,
-                confidence={"score": classification_confidence, "needs_clarification": False},
-                answer_explanation="Multi-step connector orchestration",
-                conflicts=None,
-                refined_query=None,
-                validation=None,
-                dialogue_mode=dialogue_mode,
-                persona_key=str(persona.get("persona_key") or ""),
-                proactive_suggestions=[],
+            orchestration_turn = await get_chat_orchestration_service(active_settings).process_turn(
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id or "",
+                message=task_text,
+                classification=pipeline_classification,
                 task_state=task_state,
-                execution_result=orchestration_turn.get("execution_result"),
-                pending_task=orchestration_turn.get("pending_task"),
+                connected_integrations=connected_early,
+                client=client,
+                environment_name=environment_name,
             )
-            yield AssistantStreamComplete(
-                full_content=response_text,
-                tool_results=[],
-                react_result=None,
-                model="chat_orchestration",
-                message_id=message_id,
-                confidence={"score": classification_confidence, "needs_clarification": False},
-                answer_explanation="Multi-step connector orchestration",
-                dialogue_mode=dialogue_mode,
-                persona_key=str(persona.get("persona_key") or ""),
-                proactive_suggestions=[],
-                task_state=task_state,
-                execution_result=orchestration_turn.get("execution_result"),
-                pending_task=orchestration_turn.get("pending_task"),
-            )
-            return
+            if orchestration_turn and orchestration_turn.get("stop_pipeline"):
+                task_state = orchestration_turn.get("task_state") or task_state
+                response_text = str(orchestration_turn.get("message") or "")
+                dialogue_mode = str(orchestration_turn.get("dialogue_mode") or "answer")
+                text_id, start_event = sse_text_start()
+                yield start_event
+                yield sse_text_delta(text_id, response_text)
+                yield sse_text_end(text_id)
+                yield sse_intelligence_metadata(
+                    message_id=message_id,
+                    confidence={"score": classification_confidence, "needs_clarification": False},
+                    answer_explanation="Multi-step connector orchestration",
+                    conflicts=None,
+                    refined_query=None,
+                    validation=None,
+                    dialogue_mode=dialogue_mode,
+                    persona_key=str(persona.get("persona_key") or ""),
+                    proactive_suggestions=[],
+                    task_state=task_state,
+                    execution_result=orchestration_turn.get("execution_result"),
+                    pending_task=orchestration_turn.get("pending_task"),
+                )
+                yield AssistantStreamComplete(
+                    full_content=response_text,
+                    tool_results=[],
+                    react_result=None,
+                    model="chat_orchestration",
+                    message_id=message_id,
+                    confidence={"score": classification_confidence, "needs_clarification": False},
+                    answer_explanation="Multi-step connector orchestration",
+                    dialogue_mode=dialogue_mode,
+                    persona_key=str(persona.get("persona_key") or ""),
+                    proactive_suggestions=[],
+                    task_state=task_state,
+                    execution_result=orchestration_turn.get("execution_result"),
+                    pending_task=orchestration_turn.get("pending_task"),
+                )
+                return
 
-        from app.services.chat_connector_execution_service import get_chat_connector_execution_service
+            from app.services.chat_connector_execution_service import get_chat_connector_execution_service
 
-        connector_turn = await get_chat_connector_execution_service(active_settings).process_turn(
-            org_id=org_id,
-            user_id=user_id,
-            conversation_id=conversation_id or "",
-            message=task_text,
-            classification=pipeline_classification,
-            task_state=task_state,
-            connected_integrations=connected_early,
-            client=client,
-            environment_name=environment_name,
-        )
-        if connector_turn and connector_turn.get("stop_pipeline"):
-            task_state = connector_turn.get("task_state") or task_state
-            response_text = str(connector_turn.get("message") or "")
-            dialogue_mode = str(connector_turn.get("dialogue_mode") or "answer")
-            text_id, start_event = sse_text_start()
-            yield start_event
-            yield sse_text_delta(text_id, response_text)
-            yield sse_text_end(text_id)
-            yield sse_intelligence_metadata(
-                message_id=message_id,
-                confidence={"score": classification_confidence, "needs_clarification": False},
-                answer_explanation="Governed connector execution",
-                conflicts=None,
-                refined_query=None,
-                validation=None,
-                dialogue_mode=dialogue_mode,
-                persona_key=str(persona.get("persona_key") or ""),
-                proactive_suggestions=[],
+            connector_turn = await get_chat_connector_execution_service(active_settings).process_turn(
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id or "",
+                message=task_text,
+                classification=pipeline_classification,
                 task_state=task_state,
-                execution_result=connector_turn.get("execution_result"),
-                pending_task=connector_turn.get("pending_task"),
+                connected_integrations=connected_early,
+                client=client,
+                environment_name=environment_name,
             )
-            yield AssistantStreamComplete(
-                full_content=response_text,
-                tool_results=[],
-                react_result=None,
-                model="chat_connector",
-                message_id=message_id,
-                confidence={"score": classification_confidence, "needs_clarification": False},
-                answer_explanation="Governed connector execution",
-                dialogue_mode=dialogue_mode,
-                persona_key=str(persona.get("persona_key") or ""),
-                proactive_suggestions=[],
-                task_state=task_state,
-                execution_result=connector_turn.get("execution_result"),
-                pending_task=connector_turn.get("pending_task"),
-            )
-            return
+            if connector_turn and connector_turn.get("stop_pipeline"):
+                task_state = connector_turn.get("task_state") or task_state
+                response_text = str(connector_turn.get("message") or "")
+                dialogue_mode = str(connector_turn.get("dialogue_mode") or "answer")
+                text_id, start_event = sse_text_start()
+                yield start_event
+                yield sse_text_delta(text_id, response_text)
+                yield sse_text_end(text_id)
+                yield sse_intelligence_metadata(
+                    message_id=message_id,
+                    confidence={"score": classification_confidence, "needs_clarification": False},
+                    answer_explanation="Governed connector execution",
+                    conflicts=None,
+                    refined_query=None,
+                    validation=None,
+                    dialogue_mode=dialogue_mode,
+                    persona_key=str(persona.get("persona_key") or ""),
+                    proactive_suggestions=[],
+                    task_state=task_state,
+                    execution_result=connector_turn.get("execution_result"),
+                    pending_task=connector_turn.get("pending_task"),
+                )
+                yield AssistantStreamComplete(
+                    full_content=response_text,
+                    tool_results=[],
+                    react_result=None,
+                    model="chat_connector",
+                    message_id=message_id,
+                    confidence={"score": classification_confidence, "needs_clarification": False},
+                    answer_explanation="Governed connector execution",
+                    dialogue_mode=dialogue_mode,
+                    persona_key=str(persona.get("persona_key") or ""),
+                    proactive_suggestions=[],
+                    task_state=task_state,
+                    execution_result=connector_turn.get("execution_result"),
+                    pending_task=connector_turn.get("pending_task"),
+                )
+                return
 
         refined_query = task_text
         if mode_key != "fast":
@@ -1311,6 +1343,7 @@ class AgentIntelligence:
         retrieval = turn_ctx.retrieval
         org_context = retrieval.org_context
         connected_list = list(turn_ctx.connected_integrations)
+        connected_list = await self.tool_registry.enrich_connected_integrations(client, org_id, connected_list)
         if permitted_registry and "platform" not in {str(c).lower() for c in connected_list}:
             connected_list.append("platform")
         permitted_registry = expand_registry_with_connected_integrations(permitted_registry, connected_list)
@@ -1426,6 +1459,7 @@ class AgentIntelligence:
             persona_modifier=combined_persona_modifier,
             sentiment_adaptation=str(sentiment.get("recommended_adaptation") or "none"),
             task_state_section=task_state_section or None,
+            has_mcp_tools=bool(mcp_tools_early),
         )
 
         prepared_context = await maybe_summarize_history(
@@ -1532,7 +1566,9 @@ class AgentIntelligence:
             model_selection_meta,
             router_enrichments,
         )
-        available_tools = self.get_agent_tools(agent, connected_list, permitted_tools=permitted_registry)
+        available_tools = await self.get_agent_tools(
+            agent, connected_list, permitted_tools=permitted_registry, org_id=org_id, client=client
+        )
         ctx = ToolContext(
             settings=active_settings,
             client=client,
@@ -1594,6 +1630,63 @@ class AgentIntelligence:
                 yield sse_text_delta(text_id, event.content)
             elif event.kind == "done":
                 react_result = event.react_result
+
+        if should_attempt_connector_fallback(
+            task_state=task_state,
+            react_result=react_result,
+            message=task_text,
+            connected_integrations=connected_list,
+        ):
+            fallback_turn = await run_connector_fallback_turn(
+                settings=active_settings,
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id or "",
+                message=task_text,
+                classification=pipeline_classification,
+                task_state=task_state,
+                connected_integrations=connected_list,
+                client=client,
+                environment_name=environment_name,
+            )
+            if fallback_turn:
+                task_state = fallback_turn.get("task_state") or task_state
+                response_text = str(fallback_turn.get("message") or "")
+                dialogue_mode = str(fallback_turn.get("dialogue_mode") or "answer")
+                text_id, start_event = sse_text_start()
+                yield start_event
+                yield sse_text_delta(text_id, response_text)
+                yield sse_text_end(text_id)
+                yield sse_intelligence_metadata(
+                    message_id=message_id,
+                    confidence={"score": classification_confidence, "needs_clarification": False},
+                    answer_explanation="Connector fallback after ReAct",
+                    conflicts=None,
+                    refined_query=None,
+                    validation=None,
+                    dialogue_mode=dialogue_mode,
+                    persona_key=str(persona.get("persona_key") or ""),
+                    proactive_suggestions=[],
+                    task_state=task_state,
+                    execution_result=fallback_turn.get("execution_result"),
+                    pending_task=fallback_turn.get("pending_task"),
+                )
+                yield AssistantStreamComplete(
+                    full_content=response_text,
+                    tool_results=[],
+                    react_result=None,
+                    model="chat_connector_fallback",
+                    message_id=message_id,
+                    confidence={"score": classification_confidence, "needs_clarification": False},
+                    answer_explanation="Connector fallback after ReAct",
+                    dialogue_mode=dialogue_mode,
+                    persona_key=str(persona.get("persona_key") or ""),
+                    proactive_suggestions=[],
+                    task_state=task_state,
+                    execution_result=fallback_turn.get("execution_result"),
+                    pending_task=fallback_turn.get("pending_task"),
+                )
+                return
 
         generation_ms = int((time.monotonic() - generation_started) * 1000)
         asyncio.create_task(

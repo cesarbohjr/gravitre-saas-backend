@@ -1,12 +1,6 @@
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react"
-import {
-  Sparkle as Sparkles,
-  RocketLaunch,
-  ChatCircle,
-  MagnifyingGlass,
-} from "@phosphor-icons/react"
+import { Sparkle as Sparkles } from "@phosphor-icons/react"
 import type { AiEngine } from "@/lib/ai-surface-handoff"
-
 export type ModeId = "auto" | AiEngine
 
 export type ModeMeta = {
@@ -22,47 +16,20 @@ export type ModeMeta = {
 export const AI_MODES: ModeMeta[] = [
   {
     id: "auto",
-    label: "Auto",
-    badge: "Routes intent",
+    label: "Unified",
+    badge: "Answer · Search · Execute",
     icon: Sparkles,
-    blurb: "Describe what you need — Gravitre picks the right engine.",
+    blurb: "One conversation — Gravitre answers, searches your stack, and runs connector actions with approval where needed.",
     accent: "text-foreground",
     ring: "border-foreground/30 bg-foreground/5 ring-foreground/15",
-  },
-  {
-    id: "execute",
-    label: "Execute",
-    badge: "Execute",
-    icon: RocketLaunch,
-    blurb: "Delegate tracked work — tasks, execution plans, and async jobs.",
-    accent: "text-emerald-500",
-    ring: "border-emerald-500/40 bg-emerald-500/5 ring-emerald-500/20",
-  },
-  {
-    id: "chat",
-    label: "Chat",
-    badge: "Chat",
-    icon: ChatCircle,
-    blurb: "Ask questions, brainstorm, and get platform help in a thread.",
-    accent: "text-blue-500",
-    ring: "border-blue-500/40 bg-blue-500/5 ring-blue-500/20",
-  },
-  {
-    id: "find",
-    label: "Search",
-    badge: "Search",
-    icon: MagnifyingGlass,
-    blurb: "Locate a workflow, run, agent, connector, or document.",
-    accent: "text-amber-500",
-    ring: "border-amber-500/40 bg-amber-500/5 ring-amber-500/20",
   },
 ]
 
 export const AI_EXAMPLE_PROMPTS: Array<{ text: string; hint: AiEngine }> = [
-  { text: "Investigate why the nightly Salesforce sync failed and fix it", hint: "execute" },
-  { text: "What changed in our workflow success rate this week?", hint: "chat" },
-  { text: "Find failed runs from the last 24 hours", hint: "find" },
-  { text: "Draft an onboarding workflow for new support agents", hint: "execute" },
+  { text: "Search HubSpot for high-intent leads and draft a follow-up in Slack for approval", hint: "chat" },
+  { text: "Find failed workflow runs from the last 24 hours", hint: "chat" },
+  { text: "Summarize our pipeline health and flag stale deals", hint: "chat" },
+  { text: "Create a task in Asana for Sarah to review the landing page by Friday", hint: "chat" },
 ]
 
 export function getModeMeta(id: ModeId): ModeMeta {

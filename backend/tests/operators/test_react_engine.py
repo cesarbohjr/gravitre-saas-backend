@@ -33,16 +33,9 @@ def engine() -> ReActEngine:
     settings = SimpleNamespace(disable_ai=False, ai_pii_redaction_enabled=False)
     registry = MagicMock()
     registry.list_connected_integrations.return_value = ["hubspot"]
-    registry.get_tools_for_agent.return_value = [
-        {
-            "type": "function",
-            "function": {
-                "name": "hubspot_search_contacts",
-                "description": "search",
-                "parameters": {"type": "object", "properties": {"query": {"type": "string"}}},
-            },
-        }
-    ]
+    registry.get_available_tools = AsyncMock(
+        return_value=[{"type": "function", "function": {"name": "hubspot_search_contacts"}}]
+    )
     react = ReActEngine(settings=settings, registry=registry)
     react.router = MagicMock()
     react.router._openai = AsyncMock()
@@ -65,7 +58,7 @@ def test_default_max_iterations_is_ten():
 
 @pytest.mark.asyncio
 async def test_run_no_tools_available_uses_reasoning_only(engine: ReActEngine, tool_ctx: ToolContext):
-    engine.registry.get_tools_for_agent.return_value = []
+    engine.registry.get_available_tools = AsyncMock(return_value=[])
     engine.router._openai.chat.completions.create = AsyncMock(
         return_value=SimpleNamespace(choices=[_choice("Planned weekly invoice monitoring steps.")])
     )

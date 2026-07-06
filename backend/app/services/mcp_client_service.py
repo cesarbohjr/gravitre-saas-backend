@@ -137,6 +137,24 @@ class MCPClientService:
             else:
                 inserted = client.table("mcp_tools").insert(row).execute()
                 upserted.append(inserted.data[0] if inserted.data else row)
+        server_name = str(server.get("server_name") or server_id)
+        from app.services.mcp_catalog_sync import sync_mcp_server_to_catalog
+
+        sync_mcp_server_to_catalog(
+            server_name=server_name,
+            server_id=server_id,
+            tools=upserted,
+        )
+        from app.connectors.action_catalog.extensions import register_action_schemas
+
+        mcp_schemas: dict[str, dict] = {}
+        for row in upserted:
+            schema = row.get("input_schema") if isinstance(row.get("input_schema"), dict) else {}
+            if schema:
+                openai_name = mcp_openai_tool_name(server_name, str(row.get("tool_name") or ""))
+                mcp_schemas[openai_name] = schema
+        if mcp_schemas:
+            register_action_schemas(mcp_schemas)
         return upserted
 
     async def execute_tool(

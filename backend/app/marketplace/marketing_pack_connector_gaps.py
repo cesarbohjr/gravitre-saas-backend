@@ -86,12 +86,12 @@ MARKETING_PACK_CONNECTOR_GAPS: tuple[MarketingPackConnectorGap, ...] = (
     ),
     MarketingPackConnectorGap(
         key="engagebay",
-        display_name="Engagebay",
-        vendor=None,
-        audit_state="missing",
+        display_name="EngageBay",
+        vendor="engagebay",
+        audit_state="partial",
         complexity="medium",
         blocks_pack="depends",
-        notes="Not present in vendor catalog or OAuth registry.",
+        notes="OAuth + v1/v2/v3 catalog actions; SMB marketing automation alternative to HubSpot.",
         pack_workflow_use="SMB marketing automation alternative to HubSpot",
     ),
     MarketingPackConnectorGap(

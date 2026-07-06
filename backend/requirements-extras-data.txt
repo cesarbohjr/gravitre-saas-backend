@@ -1,2 +1,4 @@
 # Optional data connectors excluded from default pip-audit (Windows build deps for pyarrow).
 snowflake-connector-python>=4.4.0,<5.0
+# Browser agent UI automation (optional — read-only path uses httpx only).
+playwright>=1.49.0,<2.0

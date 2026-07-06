@@ -259,7 +259,7 @@ class ReActEngine:
         )
         audit_id = audit_resource_id or ctx.task_id or ctx.agent_id or ctx.actor_id
 
-        tools = self.registry.get_tools_for_agent(allowed, connected)
+        tools = await self.registry.get_available_tools(ctx.org_id, allowed, connected)
         if not tools:
             result = await self._run_reasoning_only(
                 ctx=ctx,

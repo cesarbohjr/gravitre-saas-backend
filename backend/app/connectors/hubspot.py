@@ -464,3 +464,92 @@ def create_ticket(access_token: str, properties: dict[str, Any]) -> dict[str, An
         access_token,
         json_body={"properties": {str(k): str(v) for k, v in properties.items()}},
     )
+
+
+def search_deals(
+    access_token: str,
+    *,
+    filter_groups: list[dict[str, Any]] | None = None,
+    properties: list[str] | None = None,
+    limit: int = 10,
+) -> dict[str, Any]:
+    if not filter_groups:
+        raise HubSpotAPIError("filter_groups is required for deal search")
+    lim = min(max(int(limit), 1), 100)
+    props = properties or ["dealname", "dealstage", "amount", "closedate", "pipeline"]
+    return _request(
+        "POST",
+        "/crm/v3/objects/deals/search",
+        access_token,
+        json_body={"filterGroups": filter_groups, "properties": props, "limit": lim},
+    )
+
+
+def list_deals(
+    access_token: str,
+    *,
+    properties: list[str] | None = None,
+    limit: int = 10,
+) -> dict[str, Any]:
+    lim = min(max(int(limit), 1), 100)
+    props = properties or ["dealname", "dealstage", "amount", "closedate", "pipeline"]
+    return _request(
+        "GET",
+        "/crm/v3/objects/deals",
+        access_token,
+        params={"limit": lim, "properties": ",".join(props)},
+    )
+
+
+def get_company(
+    access_token: str,
+    *,
+    company_id: str | None = None,
+    domain: str | None = None,
+    properties: list[str] | None = None,
+) -> dict[str, Any]:
+    props = properties or ["name", "domain", "city", "industry", "phone"]
+    if company_id:
+        return _request(
+            "GET",
+            f"/crm/v3/objects/companies/{company_id}",
+            access_token,
+            params={"properties": ",".join(props)},
+        )
+    if domain:
+        search = search_companies(
+            access_token,
+            filter_groups=[
+                {
+                    "filters": [
+                        {"propertyName": "domain", "operator": "EQ", "value": domain.strip()},
+                    ]
+                }
+            ],
+            properties=props,
+            limit=1,
+        )
+        results = search.get("results") or []
+        if not results:
+            raise HubSpotAPIError("No company found for domain", status_code=404)
+        return results[0]
+    raise HubSpotAPIError("company_id or domain is required")
+
+
+def search_tickets(
+    access_token: str,
+    *,
+    filter_groups: list[dict[str, Any]] | None = None,
+    properties: list[str] | None = None,
+    limit: int = 10,
+) -> dict[str, Any]:
+    if not filter_groups:
+        raise HubSpotAPIError("filter_groups is required for ticket search")
+    lim = min(max(int(limit), 1), 100)
+    props = properties or ["subject", "content", "hs_pipeline_stage", "hs_ticket_priority"]
+    return _request(
+        "POST",
+        "/crm/v3/objects/tickets/search",
+        access_token,
+        json_body={"filterGroups": filter_groups, "properties": props, "limit": lim},
+    )
