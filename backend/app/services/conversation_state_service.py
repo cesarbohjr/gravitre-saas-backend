@@ -1,7 +1,6 @@
 """Structured multi-turn task state within a conversation thread."""
 from __future__ import annotations
 
-import asyncio
 from copy import deepcopy
 from typing import Any
 
@@ -22,6 +21,7 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     "preferred_tone": None,
     "unresolved_tasks": [],
     "suppressed_suggestions": [],
+    "pending_task": None,
 }
 
 
@@ -120,10 +120,10 @@ class ConversationStateService:
         conversation_id: str,
         org_id: str,
         updates: dict[str, Any],
+        *,
+        client: Any | None = None,
     ) -> None:
-        asyncio.create_task(
-            self._persist_state(conversation_id, org_id, updates)
-        )
+        await self._persist_state(conversation_id, org_id, updates, client=client)
 
     async def remember_clarification(
         self,

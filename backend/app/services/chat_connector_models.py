@@ -13,7 +13,7 @@ INTEGRATION_ALIASES: dict[str, tuple[str, ...]] = {
     "jira": ("jira", "atlassian ticket"),
     "confluence": ("confluence", "wiki page", "wiki"),
     "monday": ("monday", "monday.com", "monday board"),
-    "google_drive": ("google drive", "drive", "gdrive"),
+    "google_drive": ("google drive", "drive", "gdrive", "google sheet"),
     "google_sheets": ("google sheets", "spreadsheet", "sheet"),
     "google_docs": ("google docs", "google doc", "document"),
     "google_calendar": ("google calendar", "calendar event", "calendar"),

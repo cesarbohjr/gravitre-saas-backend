@@ -21,6 +21,7 @@ from app.services.chat_action_mapper import get_chat_action_mapper
 from app.services.chat_connector_models import INTEGRATION_ALIASES, ConnectorActionPlan
 from app.services.tool_registry import get_tool_registry
 from app.services.tool_service import list_registered_actions
+from app.services.tool_types import ToolContext
 from app.connectors.connector_availability_service import (
     find_integration_availability,
     format_connector_blocking_message,

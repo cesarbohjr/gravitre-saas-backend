@@ -27,6 +27,10 @@ SEARCH_FOR = re.compile(
     r"(?:search|find|lookup|list|query|show|pull)\s+(?:for\s+)?(.+?)(?:\s+in\s+\w+|\s*$)",
     re.I,
 )
+FROM_ENTITY = re.compile(
+    r"\bfrom\s+([A-Za-z0-9][\w\s.&'-]{1,80}?)(?:\s+in\b|[?.!,]|$)",
+    re.I,
+)
 OBJECT_ALIASES: dict[str, tuple[str, ...]] = {
     "contacts": ("contact", "contacts", "person", "people", "prospect"),
     "deals": ("deal", "deals", "pipeline", "opportunity", "opportunities", "stale deal", "stale deals"),
@@ -176,6 +180,33 @@ class ChatActionMapper:
             score += 8.0
         if "task" in text and "item" in suffix:
             score += 8.0
+        if entry.connector_id == "slack" and "post_message" in entry.registry_key:
+            if re.search(r"\b(post|send|notify)\b", text) and "slack" in text:
+                score += 20.0
+            if "approval" in text:
+                score += 6.0
+        if entry.connector_id == "slack" and "conversations.create" in entry.action_key:
+            if re.search(r"\b(post|send|message|summary)\b", text) and not re.search(
+                r"\b(create|new)\s+(?:a\s+)?channel\b",
+                text,
+                re.I,
+            ):
+                score -= 18.0
+        if entry.connector_id in {"google_drive", "google_sheets"} and "files.list" in entry.action_key:
+            if "sheet" in text and READ_VERBS.search(text):
+                score += 28.0
+        if entry.connector_id == "google_sheets" and "values.get" in entry.action_key:
+            if "find" in text or "search" in text or "summarize" in text:
+                score -= 24.0
+        if entry.connector_id == "google_sheets" and "values.batch_get" in entry.action_key:
+            if "find" in text or "summarize" in text:
+                score -= 24.0
+        if entry.connector_id == "google_sheets" and "spreadsheets.get" in entry.action_key:
+            if "find" in text or "search" in text:
+                score -= 14.0
+        if entry.connector_id == "asana" and "tasks.create" in entry.action_key:
+            if re.search(r"\bcreate\s+(?:a\s+)?task\b", text, re.I):
+                score += 16.0
         return score
 
     def _extract_args(self, message: str, entry: ConnectorActionMatrixEntry) -> dict[str, Any] | None:
@@ -190,6 +221,10 @@ class ChatActionMapper:
                 args["query"] = query[:200]
             if "limit" not in args:
                 args["limit"] = 10
+            if entry.connector_id == "google_drive" and "files.list" in entry.action_key:
+                if "sheet" in text.lower():
+                    args["query"] = "mimeType='application/vnd.google-apps.spreadsheet'"
+                    return args
             if suffix.endswith(".search") or "search" in suffix or "list" in suffix:
                 if not args.get("query") and len(text.split()) <= 12:
                     args["query"] = text[:200]
@@ -211,21 +246,59 @@ class ChatActionMapper:
             message_text = quoted[-1] if quoted else None
             if not message_text:
                 post_match = re.search(
-                    r"(?:post|send|notify|message)\s+(?:to\s+)?(?:#[\w-]+|<#[^>]+>|@\w+|\w[\w-]*)\s*[:\-]?\s*(.+)$",
+                    r"(?:post|send|notify|message)\s+(?:this\s+)?(.+?)(?:\s+to\s+slack|\s+for\s+approval|$)",
                     text,
                     re.I,
                 )
                 if post_match:
-                    message_text = post_match.group(1).strip()
-            if channel and message_text:
-                return {"channel": channel.group(0).lstrip("#").replace("<", "").replace(">", ""), "message": message_text}
+                    message_text = post_match.group(1).strip(" .")
+                    if message_text.lower() == "summary" and "this summary" in text.lower():
+                        message_text = "this summary"
+            if not message_text and "summary" in text.lower():
+                message_text = "Summary pending approval."
+            channel_token = channel.group(0) if channel else None
+            if not channel_token and re.search(r"\bto\s+slack\b", text, re.I):
+                channel_token = "general"
+            if channel_token and message_text:
+                clean = channel_token.lstrip("#").replace("<", "").replace(">", "")
+                if clean.startswith("#"):
+                    clean = clean[1:]
+                return {"channel": clean, "message": message_text, "text": message_text}
             return None
+
+        if entry.connector_id == "asana" and "tasks.create" in entry.action_key:
+            name = quoted[0] if quoted else None
+            if not name:
+                task_match = re.search(
+                    r"\bcreate\s+(?:a\s+)?task\s+(?:in\s+asana\s+)?(?:for\s+)?(.+?)(?:[?.!]|$)",
+                    text,
+                    re.I,
+                )
+                if task_match:
+                    name = task_match.group(1).strip()
+            if name:
+                return {"name": name[:200]}
+            return None
+
+        if "hubspot" in entry.connector_id and "deals.create" in entry.action_key:
+            deal_name = quoted[0] if quoted else None
+            if not deal_name:
+                named = re.search(r"\bdeal\s+(?:called|named)\s+[\"']?([^\"'.]+)", text, re.I)
+                if named:
+                    deal_name = named.group(1).strip()
+            if not deal_name:
+                deal_name = "New deal from chat"
+            return {"properties": {"dealname": deal_name[:200]}}
 
         if entry.connector_id == "monday" and "items.create" in entry.action_key:
             board_match = re.search(r"\bboard\s+(\w[\w-]*)", text, re.I)
             name = quoted[0] if quoted else None
             if not name:
-                create_match = re.search(r"\b(?:create|add)\s+(?:a\s+)?(?:task|item)\s+(?:called\s+)?(.+)$", text, re.I)
+                create_match = re.search(
+                    r"\b(?:create|add)\s+(?:a\s+)?(?:task|item)\s+(?:called\s+)?(.+)$",
+                    text,
+                    re.I,
+                )
                 if create_match:
                     name = create_match.group(1).strip().strip('"\'')
             if name:
@@ -272,10 +345,21 @@ class ChatActionMapper:
 
     @staticmethod
     def _search_query(message: str) -> str | None:
+        from_match = FROM_ENTITY.search(message.strip())
+        if from_match:
+            return from_match.group(1).strip(" .\"'")
         match = SEARCH_FOR.search(message.strip())
-        if match:
-            return match.group(1).strip(" .\"'")
-        return None
+        if not match:
+            return None
+        raw = match.group(1).strip(" .\"'")
+        cleaned = re.sub(
+            r"\b(hubspot|salesforce|slack|asana|contacts?|companies|deals?|tickets?|for)\b",
+            "",
+            raw,
+            flags=re.I,
+        )
+        cleaned = re.sub(r"\s+", " ", cleaned).strip(" .\"'-")
+        return cleaned[:200] if cleaned else raw[:200]
 
     @staticmethod
     def _mentioned_integrations(message: str, connected_integrations: list[str]) -> list[str]:

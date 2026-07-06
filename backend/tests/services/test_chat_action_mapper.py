@@ -26,12 +26,54 @@ def test_maps_slack_notify():
 
 def test_maps_hubspot_search():
     match = get_chat_action_mapper().match_segment(
-        "Search HubSpot for contacts at Acme",
+        "Search HubSpot for contacts from Acme.",
         connected_integrations=["hubspot"],
     )
     assert match is not None
     assert "search" in match.entry.registry_key
     assert match.entry.kind == "read"
+    assert "Acme" in str(match.args.get("query", ""))
+
+
+def test_maps_asana_task_create():
+    match = get_chat_action_mapper().match_segment(
+        "Create a task in Asana for reviewing the Q3 campaign.",
+        connected_integrations=["asana"],
+    )
+    assert match is not None
+    assert match.entry.registry_key == "asana.tasks.create"
+    assert "Q3" in str(match.args.get("name", ""))
+
+
+def test_maps_slack_post_for_approval():
+    match = get_chat_action_mapper().match_segment(
+        "Post this summary to Slack for approval.",
+        connected_integrations=["slack"],
+    )
+    assert match is not None
+    assert match.entry.registry_key == "slack.post_message"
+    assert match.args.get("channel")
+    assert match.args.get("message")
+
+
+def test_maps_google_sheet_find():
+    match = get_chat_action_mapper().match_segment(
+        "Find a Google Sheet and summarize the rows.",
+        connected_integrations=["google_drive"],
+    )
+    assert match is not None
+    assert "files.list" in match.entry.action_key
+    assert "spreadsheet" in str(match.args.get("query", ""))
+
+
+def test_maps_hubspot_deal_create():
+    match = get_chat_action_mapper().match_segment(
+        "Create a HubSpot deal and ask for approval before saving.",
+        connected_integrations=["hubspot"],
+    )
+    assert match is not None
+    assert match.entry.registry_key == "hubspot.deals.create"
+    assert match.args.get("properties", {}).get("dealname")
 
 
 def test_gmail_send_requires_args():
