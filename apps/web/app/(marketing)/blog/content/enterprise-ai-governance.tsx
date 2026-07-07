@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import type { BlogPost } from "../types"
 import { SITE_URL } from "../types"
+import { GRAVITRE_BLOG_AUTHOR } from "../authors"
 
 function Cite({ children }: { children: ReactNode }) {
   return <em className="text-zinc-700">{children}</em>
@@ -14,11 +15,7 @@ export const enterpriseAiGovernancePost: BlogPost = {
   excerpt:
     "Most organizations have adopted AI. Fewer than 30% have a plan for governing it. That gap is where the real risk lives — not in AI making a mistake, but in deploying it without knowing what it was doing.",
   category: "Engineering",
-  author: {
-    name: "Marcus Rodriguez",
-    role: "CTO, Gravitre",
-    sameAs: [`${SITE_URL}/about`],
-  },
+  author: GRAVITRE_BLOG_AUTHOR,
   datePublished: "2026-03-08",
   dateModified: "2026-07-05",
   displayDate: "March 8, 2026",

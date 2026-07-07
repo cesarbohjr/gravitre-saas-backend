@@ -34,6 +34,7 @@ import { MARKETING_INTEGRATION_APPS } from "@/lib/connectors"
 import { TestimonialsCarouselFull, SocialProofBanner } from "@/components/marketing/testimonials"
 import { IntelligenceEngineSection } from "@/components/marketing/intelligence-engine-section"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
+import { SHOW_MARKETING_TESTIMONIALS } from "@/lib/marketing-flags"
 
 // Bento card component - Light theme
 function BentoCard({ 
@@ -1614,7 +1615,7 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {SHOW_MARKETING_TESTIMONIALS ? (
       <section className="relative py-32 border-t border-zinc-200 bg-zinc-50">
         <div className="mx-auto max-w-7xl px-6">
           <motion.div
@@ -1637,6 +1638,7 @@ export default function FeaturesPage() {
           </div>
         </div>
       </section>
+      ) : null}
 
       {/* Social Proof Stats */}
       <SocialProofBanner />

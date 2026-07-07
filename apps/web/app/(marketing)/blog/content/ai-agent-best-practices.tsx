@@ -1,5 +1,5 @@
 import type { BlogPost } from "../types"
-import { SITE_URL } from "../types"
+import { GRAVITRE_BLOG_AUTHOR } from "../authors"
 
 export const aiAgentBestPracticesPost: BlogPost = {
   slug: "ai-agent-best-practices",
@@ -9,11 +9,7 @@ export const aiAgentBestPracticesPost: BlogPost = {
   excerpt:
     "Reliable agents are boring on purpose — clear scope, verified connectors, observable runs, and humans where judgment matters.",
   category: "Engineering",
-  author: {
-    name: "David Kim",
-    role: "VP Engineering, Gravitre",
-    sameAs: [`${SITE_URL}/about`],
-  },
+  author: GRAVITRE_BLOG_AUTHOR,
   datePublished: "2026-02-20",
   dateModified: "2026-02-20",
   displayDate: "February 20, 2026",

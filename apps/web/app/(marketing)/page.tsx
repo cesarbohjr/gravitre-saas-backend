@@ -9,6 +9,7 @@ import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
 import { ProductShowcase, HowItWorks, TestimonialsCarousel, AnimatedStats } from "@/components/marketing/product-showcase"
 import { IntelligenceEngineSection } from "@/components/marketing/intelligence-engine-section"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
+import { SHOW_MARKETING_TESTIMONIALS } from "@/lib/marketing-flags"
 
 // Interactive particle field
 function seededUnit(seed: number) {
@@ -795,7 +796,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Testimonials Section */}
+      {SHOW_MARKETING_TESTIMONIALS ? (
       <section className="relative py-32 border-t border-zinc-200 bg-zinc-50">
         <div className="mx-auto max-w-7xl px-6">
           <motion.div
@@ -837,6 +838,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      ) : null}
 
       {/* CTA Section */}
       <section className="relative py-32 bg-zinc-50">

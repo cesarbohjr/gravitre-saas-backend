@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import type { BlogPost } from "../types"
-import { SITE_URL } from "../types"
+import { GRAVITRE_BLOG_AUTHOR } from "../authors"
 
 function Cite({ children }: { children: ReactNode }) {
   return <em className="text-zinc-700">{children}</em>
@@ -14,11 +14,7 @@ export const securityFirstPost: BlogPost = {
   excerpt:
     "AI automation only scales when security is built in, not bolted on. Here is how we design for least privilege, verified execution, and auditability from day one.",
   category: "Security",
-  author: {
-    name: "Alex Kim",
-    role: "Head of Security, Gravitre",
-    sameAs: [`${SITE_URL}/about`],
-  },
+  author: GRAVITRE_BLOG_AUTHOR,
   datePublished: "2026-03-28",
   dateModified: "2026-03-28",
   displayDate: "March 28, 2026",

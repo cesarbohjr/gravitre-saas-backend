@@ -1,17 +1,15 @@
 import type { ReactNode } from "react"
+import { GRAVITRE_BLOG_AUTHOR } from "./authors"
 import { securityFirstPost } from "./content/security-first"
 import { workflowTemplatesPost } from "./content/workflow-templates"
 import { enterpriseAiGovernancePost } from "./content/enterprise-ai-governance"
 import { aiAgentBestPracticesPost } from "./content/ai-agent-best-practices"
-import { SITE_URL, type BlogAuthor, type BlogFAQ, type BlogPost } from "./types"
+import { SITE_URL, type BlogFAQ, type BlogPost } from "./types"
 
+export { GRAVITRE_BLOG_AUTHOR } from "./authors"
 export { SITE_URL, type BlogAuthor, type BlogFAQ, type BlogPost } from "./types"
 
-const cesar: BlogAuthor = {
-  name: "Cesar Bohorquez Jr",
-  role: "CEO & Founder, Gravitre",
-  sameAs: [SITE_URL, `${SITE_URL}/about`],
-}
+const cesar = GRAVITRE_BLOG_AUTHOR
 
 /**
  * Shared link styling for inline citations. Citations matter for GEO: generative

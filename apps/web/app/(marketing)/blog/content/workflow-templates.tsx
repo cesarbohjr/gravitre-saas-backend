@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import type { BlogPost } from "../types"
-import { SITE_URL } from "../types"
+import { GRAVITRE_BLOG_AUTHOR } from "../authors"
 
 function TemplateEntry({
   title,
@@ -25,11 +25,7 @@ export const workflowTemplatesPost: BlogPost = {
   excerpt:
     "Most workflow automation projects fail before they ship — not because the technology is wrong, but because the starting point is wrong. Gravitre's template library fixes that.",
   category: "Product",
-  author: {
-    name: "Priya Patel",
-    role: "VP Design, Gravitre",
-    sameAs: [`${SITE_URL}/about`],
-  },
+  author: GRAVITRE_BLOG_AUTHOR,
   datePublished: "2026-03-21",
   dateModified: "2026-07-05",
   displayDate: "March 21, 2026",

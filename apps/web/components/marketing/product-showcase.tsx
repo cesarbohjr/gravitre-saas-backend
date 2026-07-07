@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import { SHOW_MARKETING_TESTIMONIALS } from "@/lib/marketing-flags"
 import { 
   Bot, 
   Users, 
@@ -556,6 +557,8 @@ interface Testimonial {
 }
 
 export function TestimonialsCarousel({ testimonials }: { testimonials: Testimonial[] }) {
+  if (!SHOW_MARKETING_TESTIMONIALS) return null
+
   const [activeIndex, setActiveIndex] = useState(0)
 
   useEffect(() => {

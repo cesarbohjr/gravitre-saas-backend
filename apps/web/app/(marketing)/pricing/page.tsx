@@ -5,6 +5,7 @@ import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import { Check, ArrowRight, HelpCircle, Zap, Play, Mail, FileText, Send, ChevronRight, Users, Crown, Smartphone, Monitor, Building2, Rocket, Info, Shield, Cpu, Sparkles, X, Blocks, Star, Clock, BadgeCheck, RefreshCcw, Minus } from "lucide-react"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
+import { SHOW_MARKETING_TESTIMONIALS } from "@/lib/marketing-flags"
 import { PLAN_CATALOG, type PlanCode } from "@/lib/plans"
 import {
   Tooltip,
@@ -914,7 +915,7 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* Testimonials Section */}
+      {SHOW_MARKETING_TESTIMONIALS ? (
       <section className="relative py-24 border-t border-zinc-200 bg-white">
         <div className="mx-auto max-w-7xl px-6">
           <motion.div
@@ -998,6 +999,7 @@ export default function PricingPage() {
           </motion.div>
         </div>
       </section>
+      ) : null}
 
       {/* Comparison Table */}
       <section className="relative py-24 border-t border-zinc-200 bg-zinc-50 overflow-hidden">
