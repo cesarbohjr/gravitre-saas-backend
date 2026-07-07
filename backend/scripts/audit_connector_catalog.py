@@ -28,6 +28,9 @@ def main() -> int:
     print(f"  execute exposed: {summary['executeExposed']}")
     print(f"  schema missing: {summary['schemaMissing']}")
     print(f"  no tests: {summary['noTests']}")
+    registry = summary.get("registryViolations") or {}
+    print(f"  registry errors: {registry.get('errors', 0)}")
+    print(f"  registry warnings: {registry.get('warnings', 0)}")
     print(f"Wrote {csv_path}")
     print(f"Wrote {json_path}")
     return 0

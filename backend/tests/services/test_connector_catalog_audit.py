@@ -24,6 +24,9 @@ def test_audit_summary_counts():
     assert summary["implemented"] >= 500
     assert summary["chatExposed"] == summary["implemented"]
     assert summary["schemaMissing"] == 0
+    registry = summary["registryViolations"]
+    assert registry["errors"] == 0
+    assert "warnings" in registry
 
 
 def test_hubspot_actions_fully_wired():

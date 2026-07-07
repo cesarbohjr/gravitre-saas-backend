@@ -26,6 +26,7 @@ from app.services.connector_execution_matrix import (
     PRIORITY_CONNECTORS,
     build_connector_execution_matrix,
 )
+from app.services.connector_registry_verification import registry_violation_summary
 from app.services.tool_service import list_registered_actions
 
 SchemaStatus = Literal["override", "extension", "explicit", "inferred", "missing"]
@@ -238,6 +239,7 @@ def audit_summary(rows: list[CatalogAuditRow] | None = None) -> dict[str, Any]:
         if row.risk_level == "high":
             bucket["high_risk"] += 1
 
+    registry = registry_violation_summary()
     return {
         "totalActions": total,
         "implemented": sum(1 for r in data if r.implementation_status != "not_implemented"),
@@ -247,6 +249,7 @@ def audit_summary(rows: list[CatalogAuditRow] | None = None) -> dict[str, Any]:
         "scopeUnregistered": sum(1 for r in data if not r.scope_registered and r.implementation_status != "not_implemented"),
         "noTests": sum(1 for r in data if r.test_status == "none"),
         "multiStepReady": sum(1 for r in data if r.multi_step_plans),
+        "registryViolations": registry,
         "byVendor": by_vendor,
     }
 

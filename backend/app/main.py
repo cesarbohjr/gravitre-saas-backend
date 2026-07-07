@@ -163,6 +163,26 @@ async def lifespan(app: FastAPI):
     from app.core.logging import setup_logging
 
     setup_logging(os.environ.get("LOG_LEVEL"))
+    from app.services.connector_registry_verification import (
+        assert_registry_contract,
+        registry_violation_summary,
+    )
+
+    registry_summary = registry_violation_summary()
+    if registry_summary["errors"]:
+        logger.error(
+            "Connector registry contract failed: %s errors (%s)",
+            registry_summary["errors"],
+            registry_summary.get("byCode"),
+        )
+        if os.environ.get("CONNECTOR_REGISTRY_STRICT", "").strip().lower() in {"1", "true", "yes"}:
+            assert_registry_contract()
+    elif registry_summary["warnings"]:
+        logger.warning(
+            "Connector registry contract warnings: %s (%s)",
+            registry_summary["warnings"],
+            registry_summary.get("byCode"),
+        )
     # Background loops: hourly usage-sync (idempotent Stripe metering) + the
     # durable async agent-job worker. Both are gated by env flags.
     from app.billing.usage_scheduler import start_usage_sync_scheduler, stop_usage_sync_scheduler
