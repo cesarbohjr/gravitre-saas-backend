@@ -113,6 +113,24 @@ FIELD_VALIDATORS["salesforce_task_subject"] = _validator_salesforce_task_subject
 FIELD_VALIDATORS["asana_task_update"] = _validator_asana_task_update
 
 
+def _validator_object_payload(args: dict[str, Any], field: WorkflowFieldSpec) -> bool:
+    for key in field.arg_keys:
+        if _dict_has_content(args.get(key)):
+            return True
+    return False
+
+
+def _validator_tags_payload(args: dict[str, Any], field: WorkflowFieldSpec) -> bool:
+    tags = args.get("tags")
+    if isinstance(tags, list) and tags:
+        return True
+    return bool(str(tags or "").strip())
+
+
+FIELD_VALIDATORS["object_payload"] = _validator_object_payload
+FIELD_VALIDATORS["tags_payload"] = _validator_tags_payload
+
+
 def _field_present(args: dict[str, Any], field: WorkflowFieldSpec) -> bool:
     if field.validator:
         validator = FIELD_VALIDATORS.get(field.validator)
