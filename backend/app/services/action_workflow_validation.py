@@ -48,6 +48,71 @@ def _validator_hubspot_contact_identity(args: dict[str, Any], field: WorkflowFie
 FIELD_VALIDATORS["hubspot_contact_identity"] = _validator_hubspot_contact_identity
 
 
+def _dict_has_content(value: object) -> bool:
+    return isinstance(value, dict) and any(str(item or "").strip() for item in value.values())
+
+
+def _validator_hubspot_deal_create(args: dict[str, Any], field: WorkflowFieldSpec) -> bool:
+    if str(args.get("dealname") or "").strip():
+        return True
+    return _dict_has_content(args.get("properties"))
+
+
+def _validator_hubspot_properties_payload(args: dict[str, Any], field: WorkflowFieldSpec) -> bool:
+    return _dict_has_content(args.get("properties"))
+
+
+def _validator_jira_issue_ref(args: dict[str, Any], field: WorkflowFieldSpec) -> bool:
+    return any(str(args.get(key) or "").strip() for key in ("issue_key", "issue_id"))
+
+
+def _validator_jira_update_payload(args: dict[str, Any], field: WorkflowFieldSpec) -> bool:
+    if _dict_has_content(args.get("fields")):
+        return True
+    return any(str(args.get(key) or "").strip() for key in ("summary", "description"))
+
+
+def _validator_named_or_payload(args: dict[str, Any], field: WorkflowFieldSpec) -> bool:
+    for key in field.arg_keys:
+        value = args.get(key)
+        if isinstance(value, dict):
+            if _dict_has_content(value):
+                return True
+        elif str(value or "").strip():
+            return True
+    return False
+
+
+def _validator_zendesk_ticket_body(args: dict[str, Any], field: WorkflowFieldSpec) -> bool:
+    return any(str(args.get(key) or "").strip() for key in ("comment", "body", "description"))
+
+
+def _validator_salesforce_task_subject(args: dict[str, Any], field: WorkflowFieldSpec) -> bool:
+    fields = args.get("fields")
+    if isinstance(fields, dict):
+        subject = fields.get("Subject") or fields.get("subject")
+        if str(subject or "").strip():
+            return True
+    return str(args.get("subject") or "").strip()
+
+
+def _validator_asana_task_update(args: dict[str, Any], field: WorkflowFieldSpec) -> bool:
+    for key in ("name", "due_on", "assignee", "assignee_hint", "notes"):
+        if str(args.get(key) or "").strip():
+            return True
+    return _dict_has_content(args.get("payload"))
+
+
+FIELD_VALIDATORS["hubspot_deal_create"] = _validator_hubspot_deal_create
+FIELD_VALIDATORS["hubspot_properties_payload"] = _validator_hubspot_properties_payload
+FIELD_VALIDATORS["jira_issue_ref"] = _validator_jira_issue_ref
+FIELD_VALIDATORS["jira_update_payload"] = _validator_jira_update_payload
+FIELD_VALIDATORS["named_or_payload"] = _validator_named_or_payload
+FIELD_VALIDATORS["zendesk_ticket_body"] = _validator_zendesk_ticket_body
+FIELD_VALIDATORS["salesforce_task_subject"] = _validator_salesforce_task_subject
+FIELD_VALIDATORS["asana_task_update"] = _validator_asana_task_update
+
+
 def _field_present(args: dict[str, Any], field: WorkflowFieldSpec) -> bool:
     if field.validator:
         validator = FIELD_VALIDATORS.get(field.validator)

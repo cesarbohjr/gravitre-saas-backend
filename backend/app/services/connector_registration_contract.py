@@ -45,6 +45,7 @@ CONNECTOR_GOVERNANCE_PYTEST_TARGETS: tuple[str, ...] = (
     "tests/services/test_connector_session_state.py",
     "tests/services/test_chat_connector_execution.py",
     "tests/services/test_chat_orchestration.py",
+    "tests/services/test_workflow_schemas_batch_25.py",
     "tests/smoke/test_connector_action_smoke.py",
 )
 
