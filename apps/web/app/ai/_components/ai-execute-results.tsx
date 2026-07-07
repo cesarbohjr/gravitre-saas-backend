@@ -100,7 +100,7 @@ export function AiExecuteResults({
   if (isProcessing && !plan && column === "main") {
     return (
       <div className="flex items-center gap-3 rounded-xl border border-border bg-card/60 p-4 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+        <Loader2 className="h-4 w-4 animate-spin text-primary" />
         Analyzing and building an execution plan…
       </div>
     )
@@ -114,7 +114,7 @@ export function AiExecuteResults({
     stats: (
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card/50 px-3 py-2">
         {job?.result ? <ExecutionModeBadge source={job.result} showMeta /> : null}
-        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600">
+        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
           {toolCount > 0
             ? `Tools executed · ${toolCount} tool call${toolCount === 1 ? "" : "s"}`
             : isProcessing

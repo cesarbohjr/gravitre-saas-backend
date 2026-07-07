@@ -35,8 +35,8 @@ export const AI_MODES: ModeMeta[] = [
     badge: "Execute",
     icon: RocketLaunch,
     blurb: "Delegate tracked work — tasks, execution plans, and async jobs.",
-    accent: "text-emerald-500",
-    ring: "border-emerald-500/40 bg-emerald-500/5 ring-emerald-500/20",
+    accent: "text-primary",
+    ring: "border-primary/40 bg-primary/5 ring-primary/20",
   },
   {
     id: "chat",
@@ -44,8 +44,8 @@ export const AI_MODES: ModeMeta[] = [
     badge: "Chat",
     icon: ChatCircle,
     blurb: "Ask questions, brainstorm, and get platform help in a thread.",
-    accent: "text-blue-500",
-    ring: "border-blue-500/40 bg-blue-500/5 ring-blue-500/20",
+    accent: "text-primary",
+    ring: "border-primary/40 bg-primary/5 ring-primary/20",
   },
   {
     id: "find",
@@ -53,8 +53,8 @@ export const AI_MODES: ModeMeta[] = [
     badge: "Search",
     icon: MagnifyingGlass,
     blurb: "Locate a workflow, run, agent, connector, or document.",
-    accent: "text-amber-500",
-    ring: "border-amber-500/40 bg-amber-500/5 ring-amber-500/20",
+    accent: "text-primary",
+    ring: "border-primary/40 bg-primary/5 ring-primary/20",
   },
 ]
 

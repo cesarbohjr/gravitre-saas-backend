@@ -26,7 +26,6 @@ import { cn } from "@/lib/utils"
 import { useAuth, getAccessToken } from "@/lib/auth-context"
 import { ensureSelectedOrg, buildChatOrgPayload } from "@/lib/org-context"
 import { getEnvironmentHeader } from "@/lib/environment-context"
-import { getEnvironmentHeader } from "@/lib/environment-context"
 import { parseChatError } from "@/lib/chat-errors"
 import { polishAssistantText } from "@/lib/plain-english"
 import { conversationMessageToUI } from "@/lib/chat-messages"
@@ -1003,7 +1002,7 @@ export function AiWorkspace({
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="border-b border-border bg-card/40">
+        <div className="border-b border-border bg-card/80 backdrop-blur">
           <div className="flex min-h-14 items-center justify-between gap-3 px-4 md:px-6">
             <div className="flex min-w-0 items-center gap-3">
               <Button
@@ -1065,7 +1064,7 @@ export function AiWorkspace({
           </div>
         ) : null}
 
-        <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8">
+        <div className="ai-chat-canvas flex-1 overflow-y-auto px-4 py-6 md:px-8">
           <div className="mx-auto max-w-3xl space-y-6">
             {showLanding ? (
               <AiLanding
@@ -1100,8 +1099,8 @@ export function AiWorkspace({
                   className={cn("flex gap-3", isUser ? "justify-end" : "justify-start")}
                 >
                   {!isUser ? (
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500">
-                      <Sparkles className="h-4 w-4 text-white" />
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary">
+                      <Sparkles className="h-4 w-4 text-primary-foreground" />
                     </div>
                   ) : null}
                   <div
@@ -1154,7 +1153,7 @@ export function AiWorkspace({
 
             {!showLanding && !conversationLoading && showWaitingForReply ? (
               <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
                 Gravitre is thinking…
               </div>
             ) : null}
@@ -1246,11 +1245,8 @@ export function AiWorkspace({
             >
               <div
                 className={cn(
-                  "flex items-end gap-2 rounded-2xl border bg-card p-2 shadow-sm focus-within:ring-2",
-                  activeMode.id === "execute" && "focus-within:border-emerald-500/50 focus-within:ring-emerald-500/20",
-                  activeMode.id === "chat" && "focus-within:border-blue-500/50 focus-within:ring-blue-500/20",
-                  activeMode.id === "find" && "focus-within:border-amber-500/50 focus-within:ring-amber-500/20",
-                  activeMode.id === "auto" && "focus-within:border-foreground/30 focus-within:ring-foreground/15",
+                  "flex items-end gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm",
+                  "focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20",
                 )}
               >
                 <textarea

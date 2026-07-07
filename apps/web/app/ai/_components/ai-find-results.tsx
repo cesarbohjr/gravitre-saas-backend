@@ -19,13 +19,13 @@ import type { SearchResult } from "@/types/api"
 function statusBadgeClass(status: string): string {
   const normalized = status.toLowerCase()
   if (normalized.includes("fail") || normalized.includes("error")) {
-    return "bg-red-500/10 text-red-500"
+    return "bg-destructive/10 text-destructive"
   }
   if (normalized.includes("run") || normalized.includes("progress")) {
-    return "bg-blue-500/10 text-blue-500"
+    return "bg-info/10 text-info"
   }
   if (normalized.includes("success") || normalized.includes("complete")) {
-    return "bg-emerald-500/10 text-emerald-500"
+    return "bg-success/10 text-success"
   }
   return "bg-muted text-muted-foreground"
 }
@@ -78,14 +78,14 @@ function SearchResultCard({ result }: { result: SearchResult }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-foreground group-hover:text-blue-500">
+            <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary">
               {result.title}
             </p>
             {secondaryLine ? (
               <p className="mt-0.5 truncate text-xs text-muted-foreground">{secondaryLine}</p>
             ) : null}
             {result.highlight && result.highlight !== secondaryLine ? (
-              <p className="mt-1 line-clamp-1 text-xs text-emerald-500/90">{result.highlight}</p>
+              <p className="mt-1 line-clamp-1 text-xs text-primary/90">{result.highlight}</p>
             ) : null}
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1">
@@ -121,7 +121,7 @@ export function AiFindResults({
   if (isSearching) {
     return (
       <div className="flex items-center gap-3 rounded-xl border border-border bg-card/60 p-4 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
+        <Loader2 className="h-4 w-4 animate-spin text-primary" />
         Searching your workspace…
       </div>
     )

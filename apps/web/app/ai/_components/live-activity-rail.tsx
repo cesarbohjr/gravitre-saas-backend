@@ -37,9 +37,9 @@ function isRunning(status: RunStatus): boolean {
 }
 
 function statusTone(status: RunStatus): string {
-  if (status === "completed") return "text-emerald-500"
-  if (status === "failed" || status === "rejected") return "text-rose-500"
-  if (isRunning(status)) return "text-blue-500"
+  if (status === "completed") return "text-success"
+  if (status === "failed" || status === "rejected") return "text-destructive"
+  if (isRunning(status)) return "text-info"
   return "text-muted-foreground"
 }
 
@@ -122,8 +122,8 @@ export function LiveActivityRail({
         <div className="border-t border-border/70 pt-4">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/70" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success/70" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
           </span>
           <h2 className="text-sm font-semibold text-foreground">Live activity</h2>
         </div>
@@ -136,8 +136,8 @@ export function LiveActivityRail({
               className={cn(
                 "text-2xl font-semibold tabular-nums",
                 systemsUnavailable
-                  ? "text-amber-600 dark:text-amber-400"
-                  : "text-emerald-600 dark:text-emerald-400",
+                  ? "text-warning"
+                  : "text-success",
               )}
             >
               {systemsDisplay}
@@ -155,7 +155,7 @@ export function LiveActivityRail({
             ) : null}
           </div>
           <div className="rounded-xl border border-border/70 bg-background p-3">
-            <p className="text-2xl font-semibold tabular-nums text-blue-600 dark:text-blue-400">{active.length}</p>
+            <p className="text-2xl font-semibold tabular-nums text-info">{active.length}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">Active runs</p>
           </div>
         </div>
@@ -169,15 +169,15 @@ export function LiveActivityRail({
                 <li key={run.id}>
                   <Link
                     href={`/runs/${run.id}`}
-                    className="block rounded-xl border border-border/70 bg-background p-3 transition-colors hover:border-blue-500/40 hover:bg-blue-500/5"
+                    className="block rounded-xl border border-border/70 bg-background p-3 transition-colors hover:border-info/40 hover:bg-info/5"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate text-sm font-medium text-foreground">{runName(run)}</span>
                       <span className="text-[11px] text-muted-foreground">{relativeTime(run.started_at ?? run.created_at)}</span>
                     </div>
                     <div className="mt-1.5 flex items-center gap-1.5">
-                      <Loader2 className="h-3 w-3 animate-spin text-blue-500" aria-hidden />
-                      <span className="text-xs capitalize text-blue-500">{run.status}</span>
+                      <Loader2 className="h-3 w-3 animate-spin text-info" aria-hidden />
+                      <span className="text-xs capitalize text-info">{run.status}</span>
                     </div>
                   </Link>
                 </li>
@@ -240,7 +240,7 @@ export function LiveActivityRail({
 
         <Link
           href="/runs"
-          className="mt-auto inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+          className="mt-auto inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
         >
           <Activity className="h-3.5 w-3.5" aria-hidden />
           View all runs

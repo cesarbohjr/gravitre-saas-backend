@@ -14,8 +14,8 @@
   --card-foreground: oklch(0.18 0.02 160);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.18 0.02 160);
-  /* Primary: Gravitre brand purple */
-  --primary: oklch(0.55 0.21 300);
+  /* Primary: Gravitre brand emerald green */
+  --primary: oklch(0.55 0.14 162);
   --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.96 0.006 160);
   --secondary-foreground: oklch(0.18 0.02 160);
@@ -28,13 +28,13 @@
   --destructive-foreground: oklch(0.99 0 0);
   --border: oklch(0.91 0.01 160);
   --input: oklch(0.96 0.006 160);
-  --ring: oklch(0.55 0.21 300);
+  --ring: oklch(0.55 0.14 162);
   /* Status colors */
   --success: oklch(0.55 0.18 145);
   --warning: oklch(0.65 0.18 75);
   --info: oklch(0.55 0.2 250);
-  /* Chart colors - purple primary, blue secondary */
-  --chart-1: oklch(0.55 0.21 300);
+  /* Chart colors - emerald primary, blue secondary */
+  --chart-1: oklch(0.6 0.14 162);
   --chart-2: oklch(0.55 0.2 250);
   --chart-3: oklch(0.65 0.18 75);
   --chart-4: oklch(0.55 0.18 320);
@@ -52,15 +52,15 @@
   --workflow-decision-mid: var(--primary);
   --workflow-line-dim: var(--muted-foreground);
   --radius: 0.5rem;
-  /* Sidebar: subtle cool surface with brand-purple accents */
+  /* Sidebar: subtle cool surface with brand-emerald accents */
   --sidebar: oklch(0.97 0.008 160);
   --sidebar-foreground: oklch(0.18 0.02 160);
-  --sidebar-primary: oklch(0.55 0.21 300);
+  --sidebar-primary: oklch(0.55 0.14 162);
   --sidebar-primary-foreground: oklch(0.99 0 0);
   --sidebar-accent: oklch(0.94 0.02 250);
   --sidebar-accent-foreground: oklch(0.40 0.12 250);
   --sidebar-border: oklch(0.91 0.008 250);
-  --sidebar-ring: oklch(0.55 0.21 300);
+  --sidebar-ring: oklch(0.55 0.14 162);
 }
 
 .dark {
@@ -72,9 +72,9 @@
   --card-foreground: oklch(0.95 0 0);
   --popover: oklch(0.11 0.01 250);
   --popover-foreground: oklch(0.95 0 0);
-  /* Primary: Gravitre brand purple */
-  --primary: oklch(0.7 0.19 300);
-  --primary-foreground: oklch(0.98 0 0);
+  /* Primary: Gravitre brand emerald green */
+  --primary: oklch(0.72 0.14 162);
+  --primary-foreground: oklch(0.14 0.02 162);
   --secondary: oklch(0.15 0.01 250);
   --secondary-foreground: oklch(0.95 0 0);
   --muted: oklch(0.15 0.01 250);
@@ -85,13 +85,13 @@
   --destructive-foreground: oklch(0.95 0 0);
   --border: oklch(0.20 0.01 250);
   --input: oklch(0.15 0.01 250);
-  --ring: oklch(0.7 0.19 300);
+  --ring: oklch(0.72 0.14 162);
   /* Status colors */
   --success: oklch(0.65 0.18 145);
   --warning: oklch(0.75 0.15 75);
   /* Info: Electric blue (primary accent) */
   --info: oklch(0.65 0.2 250);
-  --chart-1: oklch(0.7 0.19 300);
+  --chart-1: oklch(0.72 0.14 162);
   --chart-2: oklch(0.65 0.18 145);
   --chart-3: oklch(0.75 0.15 75);
   --chart-4: oklch(0.55 0.15 200);
@@ -110,12 +110,12 @@
   /* Sidebar: Even deeper */
   --sidebar: oklch(0.06 0.01 250);
   --sidebar-foreground: oklch(0.95 0 0);
-  --sidebar-primary: oklch(0.7 0.19 300);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-primary: oklch(0.72 0.14 162);
+  --sidebar-primary-foreground: oklch(0.14 0.02 162);
   --sidebar-accent: oklch(0.12 0.01 250);
   --sidebar-accent-foreground: oklch(0.95 0 0);
   --sidebar-border: oklch(0.16 0.01 250);
-  --sidebar-ring: oklch(0.7 0.19 300);
+  --sidebar-ring: oklch(0.72 0.14 162);
 }
 
 @theme inline {
@@ -290,6 +290,19 @@
   
   .animate-gradient {
     animation: gradient 6s ease infinite;
+  }
+
+  /* Subtle branded chat canvas: dot-grid + soft brand radial tints.
+     Keyed to theme tokens so it adapts to light/dark and never hurts
+     text contrast (very low alpha). Used behind the /ai thread. */
+  .ai-chat-canvas {
+    background-color: var(--background);
+    background-image:
+      radial-gradient(circle at 15% -5%, color-mix(in oklch, var(--primary) 8%, transparent), transparent 42%),
+      radial-gradient(circle at 100% 105%, color-mix(in oklch, var(--info) 6%, transparent), transparent 46%),
+      radial-gradient(color-mix(in oklch, var(--foreground) 5%, transparent) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 22px 22px;
+    background-attachment: fixed, fixed, local;
   }
 }
 

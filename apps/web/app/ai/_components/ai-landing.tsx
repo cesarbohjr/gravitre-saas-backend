@@ -57,7 +57,7 @@ export function AiLanding({
     <div className="relative z-10 mx-auto flex min-h-full w-full max-w-3xl flex-col px-4 py-10 md:px-6 md:py-16">
       <div className="text-center">
         <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-xs font-medium text-muted-foreground">
-          <Lightning className="h-3.5 w-3.5 text-emerald-500" weight="fill" aria-hidden />
+          <Lightning className="h-3.5 w-3.5 text-primary" weight="fill" aria-hidden />
           One surface, three modes
         </div>
         <h1 className="text-balance text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
@@ -72,12 +72,8 @@ export function AiLanding({
       <div className="mt-8">
         <div
           className={cn(
-            "rounded-2xl border bg-card p-2 shadow-sm transition-all focus-within:ring-2",
-            activeMode.id === "auto" && "focus-within:border-foreground/30 focus-within:ring-foreground/15",
-            activeMode.id === "execute" && "focus-within:border-emerald-500/50 focus-within:ring-emerald-500/20",
-            activeMode.id === "chat" && "focus-within:border-blue-500/50 focus-within:ring-blue-500/20",
-            activeMode.id === "find" && "focus-within:border-amber-500/50 focus-within:ring-amber-500/20",
-            "border-border",
+            "rounded-2xl border border-border bg-card p-2 shadow-sm transition-all",
+            "focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20",
           )}
         >
           <textarea
@@ -130,7 +126,7 @@ export function AiLanding({
               exit={{ opacity: 0 }}
               className="mt-3 flex items-center justify-center gap-2 text-sm text-muted-foreground"
             >
-              <Sparkles className="h-4 w-4 animate-pulse text-emerald-500" weight="fill" aria-hidden />
+              <Sparkles className="h-4 w-4 animate-pulse text-primary" weight="fill" aria-hidden />
               {routedMode ? (
                 <span>
                   Routing to <span className={cn("font-medium", routedMode.accent)}>{routedMode.badge}</span>…
