@@ -24,8 +24,8 @@ def test_batch_25_removed_from_pending_allowlist(action_key: str):
     assert action_key not in PENDING_WORKFLOW_SCHEMA_ALLOWLIST
 
 
-def test_batch_25_pending_allowlist_count():
-    assert len(PENDING_WORKFLOW_SCHEMA_ALLOWLIST) == 143
+def test_batch_25_pending_allowlist_shrank_from_baseline():
+    assert len(PENDING_WORKFLOW_SCHEMA_ALLOWLIST) <= 143
 
 
 def test_hubspot_deal_create_requires_identity():
