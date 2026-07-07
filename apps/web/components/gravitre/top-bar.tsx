@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
+import Image from "next/image"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { Button } from "@/components/ui/button"
 import { GlobalCommandBar } from "./global-command-bar"
@@ -44,6 +45,26 @@ import {
 interface TopBarProps {
   title?: string
   onMenuClick?: () => void
+}
+
+function OrgBrandMark({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[#0d3b36] ring-1 ring-emerald-500/15",
+        className,
+      )}
+    >
+      <Image
+        src="/images/gravitre-icon-white.png"
+        alt=""
+        width={12}
+        height={12}
+        className="h-3 w-3 object-contain"
+        aria-hidden
+      />
+    </div>
+  )
 }
 
 export function TopBar({ title, onMenuClick }: TopBarProps) {
@@ -132,7 +153,7 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
             className="h-8 w-8"
             onClick={onMenuClick}
           >
-            <Icon name="rows" size="lg" />
+            <Icon name="menu" size="lg" />
             <span className="sr-only">Toggle navigation</span>
           </Button>
 
@@ -144,9 +165,7 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
                 size="sm"
                 className="h-8 gap-2 px-2 text-xs font-medium hover:bg-accent"
               >
-                <div className="flex h-5 w-5 items-center justify-center rounded bg-foreground">
-                  <Icon name="company" size="xs" className="text-background" />
-                </div>
+                <OrgBrandMark />
                 <span className="hidden sm:inline">{org}</span>
                 <Icon name="caretDown" size="xs" className="text-muted-foreground" />
               </Button>
@@ -156,18 +175,14 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
                 onClick={() => handleOrgChange(DEFAULT_DEMO_ORG_ID, "Acme Corp")}
                 className="gap-2"
               >
-                <div className="flex h-5 w-5 items-center justify-center rounded bg-foreground">
-                  <Icon name="company" size="xs" className="text-background" />
-                </div>
+                <OrgBrandMark />
                 Acme Corp
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => handleOrgChange(SECONDARY_DEMO_ORG_ID, "Gravitre Labs")}
                 className="gap-2"
               >
-                <div className="flex h-5 w-5 items-center justify-center rounded bg-foreground">
-                  <Icon name="company" size="xs" className="text-background" />
-                </div>
+                <OrgBrandMark />
                 Gravitre Labs
               </DropdownMenuItem>
               <DropdownMenuSeparator />
