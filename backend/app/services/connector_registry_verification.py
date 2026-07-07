@@ -10,7 +10,7 @@ from app.connectors.action_catalog.tool_aliases import (
     catalog_tool_is_implemented,
     resolve_registry_action,
 )
-from app.services.connector_action_workflows import LIST_CAPABILITY_CHECKS
+from app.services.connector_capability_analysis import LIST_CAPABILITY_CHECKS
 from app.services.connector_execution_matrix import PRIORITY_CONNECTORS, build_connector_execution_matrix
 from app.services.tool_service import list_registered_actions
 
