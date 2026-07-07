@@ -16,14 +16,7 @@ import {
   type ChatPendingTask,
 } from "@/components/gravitre/assistant/chat-execution-panel"
 import { type ToolInvocation } from "@/components/gravitre/assistant/tool-chip"
-
-function messageText(message: UIMessage): string {
-  const parts = (message.parts ?? []) as Array<{ type?: string; text?: string }>
-  return parts
-    .filter((part) => part.type === "text" && typeof part.text === "string")
-    .map((part) => part.text as string)
-    .join("")
-}
+import { uiMessageText } from "@/lib/chat-messages"
 
 function extractToolInvocations(message: UIMessage): ToolInvocation[] {
   const invocations: ToolInvocation[] = []
@@ -107,7 +100,7 @@ export function ChatTranscript({
     <div className="mx-auto flex w-full max-w-[920px] flex-col gap-6 px-1 py-2">
       {messages.map((message) => {
         const isUser = message.role === "user"
-        const text = messageText(message)
+        const text = uiMessageText(message)
         if (isUser && !text.trim()) return null
         if (!isUser && !text.trim()) return null
         const toolInvocations = !isUser ? extractToolInvocations(message) : []

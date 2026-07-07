@@ -35,7 +35,8 @@ import { parseChatError } from "@/lib/chat-errors"
 import dynamic from "next/dynamic"
 import { polishAssistantText } from "@/lib/plain-english"
 import { endChatPerf, startChatPerf } from "@/lib/chat-performance"
-import { buildConversationTranscript } from "@/lib/conversation-transcript"
+import { buildConversationTranscript, mergeTranscriptWithLiveMessages } from "@/lib/conversation-transcript"
+import { uiMessageText } from "@/lib/chat-messages"
 import {
   serializeInlineTurn,
   splitConversationMessages,
@@ -131,11 +132,7 @@ type AiWorkspaceProps = {
 }
 
 function normalizeChatText(message: UIMessage): string {
-  const parts = (message.parts ?? []) as Array<{ type?: string; text?: string }>
-  return parts
-    .filter((part) => part.type === "text" && typeof part.text === "string")
-    .map((part) => part.text as string)
-    .join("")
+  return uiMessageText(message)
 }
 
 export function AiWorkspace({
@@ -208,6 +205,10 @@ export function AiWorkspace({
   const activeConversationIdRef = useRef<string | null>(activeConversationId)
   const submitLockRef = useRef(false)
   const pendingConversationRef = useRef<Promise<string | null> | null>(null)
+  const pendingConversationIdsRef = useRef<Set<string>>(new Set())
+  const messagesLoadGenerationRef = useRef(0)
+  const chatStatusRef = useRef<"ready" | "submitted" | "streaming" | "error">("ready")
+  const sessionBusyRef = useRef(false)
   const operatorSessionRef = useRef<string | null>(null)
   const activeExecuteTurnRef = useRef<string | null>(null)
   const initialPromptSentRef = useRef(false)
@@ -269,6 +270,10 @@ export function AiWorkspace({
     onFinish: ({ messages: finishedMessages }) => {
       submitLockRef.current = false
       setSessionBusy(false)
+      const conversationId = activeConversationIdRef.current
+      if (conversationId && finishedMessages.length > 0) {
+        writeCachedConversationMessages(conversationId, finishedMessages)
+      }
       void persistChatTurn(finishedMessages)
       void mutateConversations()
     },
@@ -471,9 +476,27 @@ export function AiWorkspace({
   }, [])
 
   useEffect(() => {
+    chatStatusRef.current = status
+  }, [status])
+
+  useEffect(() => {
+    sessionBusyRef.current = sessionBusy
+  }, [sessionBusy])
+
+  useEffect(() => {
+    if (!activeConversationId) return
+    if (!conversations.some((conversation) => conversation.id === activeConversationId)) return
+    pendingConversationIdsRef.current.delete(activeConversationId)
+  }, [activeConversationId, conversations])
+
+  useEffect(() => {
     if (!orgReady || !activeConversationId || conversationsLoading) return
     if (conversations.length === 0) return
     if (conversations.some((conversation) => conversation.id === activeConversationId)) return
+    if (pendingConversationRef.current) return
+    if (pendingConversationIdsRef.current.has(activeConversationId)) return
+    if (sessionBusyRef.current) return
+    if (chatStatusRef.current === "submitted" || chatStatusRef.current === "streaming") return
     writeStoredConversationId(null)
     setActiveConversationId(null)
     activeConversationIdRef.current = null
@@ -515,9 +538,23 @@ export function AiWorkspace({
           .create({ title: title.slice(0, 80) })
           .then((created) => {
             activeConversationIdRef.current = created.id
+            pendingConversationIdsRef.current.add(created.id)
             setActiveConversationId(created.id)
             setConversationTitle(created.title || title.slice(0, 80))
             writeStoredConversationId(created.id)
+            void mutateConversations(
+              (current) => {
+                if (!current) return current
+                if (current.conversations.some((conversation) => conversation.id === created.id)) {
+                  return current
+                }
+                return {
+                  ...current,
+                  conversations: [created, ...current.conversations],
+                }
+              },
+              { revalidate: false },
+            )
             void mutateConversations()
             return created.id
           })
@@ -529,6 +566,27 @@ export function AiWorkspace({
       return pendingConversationRef.current
     },
     [mutateConversations],
+  )
+
+  const applyConversationMessages = useCallback(
+    (id: string, generation: number, nextMessages: UIMessage[], options?: { allowEmpty?: boolean }) => {
+      if (messagesLoadGenerationRef.current !== generation) return
+      if (activeConversationIdRef.current !== id) return
+
+      setMessages((live) => {
+        const chatBusy =
+          chatStatusRef.current === "submitted" || chatStatusRef.current === "streaming"
+        if (chatBusy || sessionBusyRef.current) {
+          return mergeTranscriptWithLiveMessages(nextMessages, live)
+        }
+        if (live.length > 0 && nextMessages.length === 0 && !options?.allowEmpty) {
+          return live
+        }
+        if (live.length === 0) return nextMessages
+        return mergeTranscriptWithLiveMessages(nextMessages, live)
+      })
+    },
+    [setMessages],
   )
 
   const persistInlineTurn = useCallback(
@@ -626,6 +684,9 @@ export function AiWorkspace({
         return
       }
 
+      const generation = messagesLoadGenerationRef.current + 1
+      messagesLoadGenerationRef.current = generation
+
       if (!options?.silent) {
         setMessagesHydrated(false)
         startChatPerf("conversation_load", id)
@@ -646,7 +707,9 @@ export function AiWorkspace({
         setInlineTurns([])
       }
       if ((cached?.length || cachedTurns?.length) && !options?.silent) {
-        if (cached?.length && activeConversationIdRef.current === id) setMessages(cached)
+        if (cached?.length && activeConversationIdRef.current === id) {
+          applyConversationMessages(id, generation, cached)
+        }
         if (cachedTurns?.length && activeConversationIdRef.current === id) setInlineTurns(cachedTurns)
       }
 
@@ -656,6 +719,7 @@ export function AiWorkspace({
           conversationMeta ? Promise.resolve(conversationMeta) : conversationsApi.get(id).catch(() => null),
         ])
         if (activeConversationIdRef.current !== id) return
+        if (messagesLoadGenerationRef.current !== generation) return
 
         if (fetchedConversation) {
           conversationMeta = fetchedConversation
@@ -670,7 +734,7 @@ export function AiWorkspace({
           const uiMessages = buildConversationTranscript(stored, {
             conversationTitle: conversationMeta?.title ?? conversationTitle,
           })
-          setMessages(uiMessages)
+          applyConversationMessages(id, generation, uiMessages)
           for (let i = 1; i < stored.length; i += 1) {
             const prev = stored[i - 1]
             const current = stored[i]
@@ -689,22 +753,23 @@ export function AiWorkspace({
           messagesLoadResolvedRef.current = { conversationId: id, resolved: true }
         } else if (!options?.preferApi) {
           if (cached?.length || cachedTurns?.length) {
-            if (cached?.length) setMessages(cached)
+            if (cached?.length) applyConversationMessages(id, generation, cached)
             if (cachedTurns?.length) setInlineTurns(cachedTurns)
             setThreadRestoreStale(false)
             messagesLoadResolvedRef.current = { conversationId: id, resolved: true }
           } else {
-            setMessages([])
+            applyConversationMessages(id, generation, [], { allowEmpty: true })
             setInlineTurns([])
           }
         } else if (!cached?.length && !cachedTurns?.length) {
-          setMessages([])
+          applyConversationMessages(id, generation, [], { allowEmpty: true })
           setInlineTurns([])
         }
       } catch (error) {
         if (activeConversationIdRef.current !== id) return
+        if (messagesLoadGenerationRef.current !== generation) return
         if (cached?.length || cachedTurns?.length) {
-          if (cached?.length) setMessages(cached)
+          if (cached?.length) applyConversationMessages(id, generation, cached)
           if (cachedTurns?.length) setInlineTurns(cachedTurns)
           setThreadRestoreStale(false)
           messagesLoadResolvedRef.current = { conversationId: id, resolved: true }
@@ -712,7 +777,7 @@ export function AiWorkspace({
           writeStoredConversationId(null)
           setActiveConversationId(null)
           activeConversationIdRef.current = null
-          setMessages([])
+          applyConversationMessages(id, generation, [], { allowEmpty: true })
           setInlineTurns([])
           setConversationTitle("Chat")
           setThreadRestoreStale(false)
@@ -756,7 +821,7 @@ export function AiWorkspace({
         }
       }
     },
-    [conversations, setMessages],
+    [applyConversationMessages, conversationTitle, conversations],
   )
 
   const runChat = useCallback(
@@ -960,6 +1025,8 @@ export function AiWorkspace({
       stop()
       setThreadRestoreStale(false)
       setMessagesHydrated(false)
+      messagesLoadGenerationRef.current += 1
+      const generation = messagesLoadGenerationRef.current
       messagesLoadResolvedRef.current = null
       persistedTurnIdsRef.current = new Set()
       persistedChatPairIdsRef.current = new Set()
@@ -973,9 +1040,9 @@ export function AiWorkspace({
       const cached = readCachedConversationMessages(id)
       const cachedTurns = readCachedInlineTurns<InlineTurn>(id)
       if (cached?.length) {
-        setMessages(cached)
+        applyConversationMessages(id, generation, cached)
       } else {
-        setMessages([])
+        applyConversationMessages(id, generation, [], { allowEmpty: true })
       }
       setInlineTurns(cachedTurns ?? [])
 
@@ -984,16 +1051,18 @@ export function AiWorkspace({
 
       await loadConversationMessages(id, { force: true })
     },
-    [conversations, inlineTurns.length, loadConversationMessages, messages.length, messagesHydrated, resetExecuteJob, setMessages, stop],
+    [applyConversationMessages, conversations, inlineTurns.length, loadConversationMessages, messages.length, messagesHydrated, resetExecuteJob, stop],
   )
 
   const handleNewConversation = useCallback(() => {
+    messagesLoadGenerationRef.current += 1
     if (activeConversationId) clearCachedConversationMessages(activeConversationId)
     setMessages([])
     setInlineTurns([])
     setActiveConversationId(null)
     activeConversationIdRef.current = null
     pendingConversationRef.current = null
+    pendingConversationIdsRef.current = new Set()
     operatorSessionRef.current = null
     messagesLoadResolvedRef.current = null
     loadingMessagesForRef.current = null

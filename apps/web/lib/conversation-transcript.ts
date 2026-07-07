@@ -1,6 +1,6 @@
 import type { UIMessage } from "ai"
 import type { ConversationMessage } from "@/types/api"
-import { conversationMessageToUI } from "@/lib/chat-messages"
+import { conversationMessageToUI, uiMessageText } from "@/lib/chat-messages"
 import { splitConversationMessages } from "@/lib/ai-inline-turn-persistence"
 
 function stableMessageId(message: ConversationMessage, index: number): string {
@@ -87,10 +87,5 @@ export function mergeTranscriptWithLiveMessages(
 }
 
 function normalizeUiText(message: UIMessage): string {
-  const parts = (message.parts ?? []) as Array<{ type?: string; text?: string }>
-  return parts
-    .filter((part) => part.type === "text" && typeof part.text === "string")
-    .map((part) => part.text as string)
-    .join("")
-    .trim()
+  return uiMessageText(message).trim()
 }
