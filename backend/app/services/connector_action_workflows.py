@@ -91,19 +91,34 @@ def format_write_approval_message(plan: ConnectorActionPlan) -> str:
     return "\n".join(lines)
 
 
+def _arg_present(args: dict[str, Any], key: str) -> bool:
+    return bool(str(args.get(key) or "").strip())
+
+
 def _approval_details(plan: ConnectorActionPlan) -> dict[str, str]:
     args = dict(plan.args or {})
     details: dict[str, str] = {}
+    inferred = set(plan.inferred_fields or ())
+    sources = dict(plan.inference_sources or {})
+
+    def _display(arg_key: str, label: str, value: str) -> None:
+        if arg_key in inferred:
+            source = sources.get(arg_key, "context")
+            details[label] = f"{value} (inferred from {source} — confirm or edit)"
+        else:
+            details[label] = value
+
     if plan.invoke_action == "asana.tasks.create":
         name = str(args.get("name") or "").strip()
         if name:
-            details["Task"] = name
+            _display("name", "Task", name)
         assignee = str(args.get("assignee_hint") or args.get("assignee") or "").strip()
         if assignee:
             details["Assignee"] = assignee
         project = str(args.get("project") or args.get("project_id") or "").strip()
         if project:
-            details["Project"] = project
+            project_key = "project" if _arg_present(args, "project") else "project_id"
+            _display(project_key, "Project", project)
         due_on = str(args.get("due_on") or "").strip()
         if due_on:
             details["Due"] = due_on

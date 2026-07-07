@@ -551,10 +551,13 @@ class ChatConnectorExecutionService:
             "requires_approval": plan.requires_approval,
             "approval_reason": plan.approval_reason,
             "destructive": plan.destructive,
+            "inferred_fields": list(plan.inferred_fields),
+            "inference_sources": dict(plan.inference_sources),
         }
 
     @staticmethod
     def plan_from_dict(payload: dict[str, Any]) -> ConnectorActionPlan:
+        inferred = payload.get("inferred_fields") or []
         return ConnectorActionPlan(
             tool_name=str(payload.get("tool_name") or ""),
             invoke_action=str(payload.get("invoke_action") or ""),
@@ -565,6 +568,8 @@ class ChatConnectorExecutionService:
             requires_approval=bool(payload.get("requires_approval")),
             approval_reason=payload.get("approval_reason"),
             destructive=bool(payload.get("destructive")),
+            inferred_fields=tuple(str(item) for item in inferred),
+            inference_sources=dict(payload.get("inference_sources") or {}),
         )
 
     async def process_turn(
@@ -662,6 +667,21 @@ class ChatConnectorExecutionService:
             resolve_assignee_disambiguation,
             validate_connector_plan,
         )
+        from app.services.connector_parameter_inference import (
+            ParameterInferenceContext,
+            infer_missing_parameters,
+        )
+
+        inference_context = ParameterInferenceContext(
+            message=message,
+            conversation_history=list((task_state or {}).get("recent_user_messages") or []),
+            task_state=task_state,
+            client=client,
+            org_id=org_id,
+            settings=self.settings,
+            environment_name=environment_name,
+        )
+        plan = infer_missing_parameters(plan, inference_context)
 
         clarification = validate_connector_plan(plan, message)
         if clarification:

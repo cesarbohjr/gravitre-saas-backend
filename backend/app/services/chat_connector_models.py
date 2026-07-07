@@ -56,3 +56,5 @@ class ConnectorActionPlan:
     requires_approval: bool = False
     approval_reason: str | None = None
     destructive: bool = False
+    inferred_fields: tuple[str, ...] = ()
+    inference_sources: dict[str, str] = field(default_factory=dict)
