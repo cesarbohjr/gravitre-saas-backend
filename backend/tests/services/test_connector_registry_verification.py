@@ -6,8 +6,8 @@ import pytest
 from app.connectors.action_catalog.registry import get_action_spec
 from app.connectors.action_catalog.tool_aliases import catalog_tool_is_implemented
 from app.services.connector_execution_matrix import get_matrix_entry
+from app.services.connector_registration_contract import assert_registration_contract
 from app.services.connector_registry_verification import (
-    REGISTERED_WITHOUT_CATALOG_ALLOWLIST,
     assert_registry_contract,
     registry_violation_summary,
     verify_connector_registry,
@@ -17,6 +17,7 @@ from app.services.tool_service import list_registered_actions
 
 def test_registry_contract_has_no_errors():
     assert_registry_contract()
+    assert_registration_contract()
 
 
 def test_registry_violation_summary_shape():
@@ -42,15 +43,8 @@ def test_apollo_lists_create_fully_wired():
     assert entry.chat_executable is True
 
 
-def test_allowlisted_orphans_do_not_produce_new_warnings():
-    violations = verify_connector_registry()
-    orphan_warnings = [
-        v
-        for v in violations
-        if v.code == "registered_missing_catalog"
-        and v.action_key not in REGISTERED_WITHOUT_CATALOG_ALLOWLIST
-    ]
-    assert orphan_warnings == []
+def test_allowlisted_orphans_tracked_by_registration_contract():
+    assert_registration_contract()
 
 
 def test_declared_capability_unimplemented_would_fail_for_missing_handler(monkeypatch: pytest.MonkeyPatch):

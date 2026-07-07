@@ -163,12 +163,23 @@ async def lifespan(app: FastAPI):
     from app.core.logging import setup_logging
 
     setup_logging(os.environ.get("LOG_LEVEL"))
+    from app.services.connector_registration_contract import (
+        assert_registration_contract,
+        registration_contract_summary,
+    )
     from app.services.connector_registry_verification import (
         assert_registry_contract,
         registry_violation_summary,
     )
 
     registry_summary = registry_violation_summary()
+    contract_summary = registration_contract_summary()
+    logger.info(
+        "Connector registration contract: orphans=%s api_import_exceptions=%s pending_schema=%s",
+        contract_summary["orphanHandlersRemaining"],
+        contract_summary["apiImportExceptionsRemaining"],
+        contract_summary["pendingWorkflowSchemaRemaining"],
+    )
     if registry_summary["errors"]:
         logger.error(
             "Connector registry contract failed: %s errors (%s)",
@@ -177,6 +188,7 @@ async def lifespan(app: FastAPI):
         )
         if os.environ.get("CONNECTOR_REGISTRY_STRICT", "").strip().lower() in {"1", "true", "yes"}:
             assert_registry_contract()
+            assert_registration_contract()
     elif registry_summary["warnings"]:
         logger.warning(
             "Connector registry contract warnings: %s (%s)",

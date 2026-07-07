@@ -4,6 +4,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+from app.services.connector_allowlists import API_IMPORT_EXCEPTION_ALLOWLIST
 from app.services.connector_registry_verification import RegistryViolation
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -17,20 +18,8 @@ _ALLOWED_RELATIVE_FILES: frozenset[str] = frozenset(
     }
 )
 
-# Documented exceptions — shrink over time by routing through *_tools.py instead.
-_API_IMPORT_ALLOWLIST: frozenset[str] = frozenset(
-    {
-        # Read-only governance helpers (disambiguation / parameter inference).
-        "app/services/connector_action_workflows.py",
-        "app/services/connector_parameter_inference.py",
-        # Connector setup and health probes.
-        "app/routers/connectors.py",
-        "app/connectors/connection_health.py",
-        # Cross-domain legacy callers pending tool-layer migration.
-        "app/services/outcome_attribution_service.py",
-        "app/services/post_publish_marketing_metrics_service.py",
-    }
-)
+# Documented exceptions — shrink via registration contract after routing through *_tools.py.
+_API_IMPORT_ALLOWLIST = API_IMPORT_EXCEPTION_ALLOWLIST
 
 
 def _relative_app_path(path: Path) -> str:
