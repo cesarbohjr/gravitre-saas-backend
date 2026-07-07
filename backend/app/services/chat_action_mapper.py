@@ -5,7 +5,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from app.services.chat_connector_models import INTEGRATION_ALIASES, ConnectorActionPlan
+from app.services.chat_connector_models import INTEGRATION_ALIASES, ConnectorActionPlan, LIST_CREATE_INTENT
+from app.services.connector_action_workflows import extract_asana_assignee_only
 from app.services.connector_execution_matrix import (
     ConnectorActionMatrixEntry,
     chat_executable_entries,
@@ -29,6 +30,10 @@ SEARCH_FOR = re.compile(
 )
 FROM_ENTITY = re.compile(
     r"\bfrom\s+([A-Za-z0-9][\w\s.&'-]{1,80}?)(?:\s+in\b|[?.!,]|$)",
+    re.I,
+)
+RELATIVE_DUE = re.compile(
+    r"\bby\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today)\b",
     re.I,
 )
 OBJECT_ALIASES: dict[str, tuple[str, ...]] = {
@@ -211,6 +216,16 @@ class ChatActionMapper:
                 score += 20.0
             if re.search(r"\bcreate\s+(?:follow[- ]?up\s+)?tasks?\b", text, re.I):
                 score += 14.0
+        if entry.connector_id == "apollo" and LIST_CREATE_INTENT.search(text):
+            if "list" in entry.action_key or "lists" in entry.registry_key:
+                score += 24.0
+            elif "search" in entry.action_key:
+                score -= 28.0
+            else:
+                score -= 12.0
+        if entry.connector_id == "apollo" and re.search(r"\b(search|find|check)\b", text, re.I):
+            if "search" in entry.action_key:
+                score += 14.0
         if entry.connector_id == "asana" and "tasks.update" in entry.action_key:
             if re.search(r"\bcreate\s+(?:an?\s+)?(?:asana\s+)?tasks?\b", text, re.I) and not re.search(
                 r"\btask\s*#?\s*\w+",
@@ -295,39 +310,9 @@ class ChatActionMapper:
             return None
 
         if entry.connector_id == "asana" and "tasks.create" in entry.action_key:
-            name = quoted[0] if quoted else None
-            if not name:
-                task_match = re.search(
-                    r"\bcreate\s+(?:a\s+)?task\s+(?:in\s+asana\s+)?(?:for\s+)?(.+?)(?:[?.!]|$)",
-                    text,
-                    re.I,
-                )
-                if task_match:
-                    name = task_match.group(1).strip()
-            if not name:
-                asana_task_match = re.search(
-                    r"\bcreate\s+an\s+asana\s+task\s+(?:for\s+)?(.+?)(?:[?.!]|$)",
-                    text,
-                    re.I,
-                )
-                if asana_task_match:
-                    name = asana_task_match.group(1).strip()
-            if not name:
-                follow_up_match = re.search(
-                    r"\bcreate\s+(?:follow[- ]?up\s+)?tasks?\s+(?:in\s+asana\s+)?(?:for\s+)?(.+?)(?:[?.!]|$)",
-                    text,
-                    re.I,
-                )
-                if follow_up_match:
-                    name = follow_up_match.group(1).strip()
-            if not name and re.search(
-                r"\bcreate\s+(?:follow[- ]?up\s+)?tasks?\s+in\s+asana\b",
-                text,
-                re.I,
-            ):
-                name = "Follow-up tasks"
-            if name:
-                return {"name": name[:200]}
+            payload = self._extract_asana_task_args(text, quoted)
+            if payload:
+                return payload
             return None
 
         if "hubspot" in entry.connector_id and "deals.create" in entry.action_key:
@@ -396,6 +381,102 @@ class ChatActionMapper:
         if WRITE_VERBS.search(text):
             return {"payload": {"intent_text": text[:500]}}
         return None
+
+    @staticmethod
+    def _parse_relative_due(text: str) -> str | None:
+        from datetime import date, timedelta
+
+        match = RELATIVE_DUE.search(text)
+        if not match:
+            return None
+        token = match.group(1).lower()
+        if token == "today":
+            return date.today().isoformat()
+        if token == "tomorrow":
+            return (date.today() + timedelta(days=1)).isoformat()
+        weekdays = {
+            "monday": 0,
+            "tuesday": 1,
+            "wednesday": 2,
+            "thursday": 3,
+            "friday": 4,
+            "saturday": 5,
+            "sunday": 6,
+        }
+        target = weekdays.get(token)
+        if target is None:
+            return None
+        today = date.today()
+        delta = (target - today.weekday()) % 7
+        if delta == 0:
+            delta = 7
+        return (today + timedelta(days=delta)).isoformat()
+
+    def _extract_asana_task_args(self, text: str, quoted: list[str]) -> dict[str, Any] | None:
+        assignee_only = extract_asana_assignee_only(text)
+        if assignee_only:
+            return assignee_only
+
+        name = quoted[0] if quoted else None
+        payload: dict[str, Any] = {}
+
+        for_person = re.search(
+            r"\bcreate\s+(?:a\s+)?task\s+(?:in\s+asana\s+)?for\s+(\w+)\s+to\s+(.+?)(?:[?.!]|$)",
+            text,
+            re.I,
+        )
+        if for_person:
+            payload["assignee_hint"] = for_person.group(1).strip()
+            name = for_person.group(2).strip()
+            due_fragment = RELATIVE_DUE.search(for_person.group(2) or "")
+            if due_fragment:
+                name = RELATIVE_DUE.sub("", name).strip(" .,")
+                due_on = self._parse_relative_due(for_person.group(2))
+                if due_on:
+                    payload["due_on"] = due_on
+
+        if not name:
+            task_match = re.search(
+                r"\bcreate\s+(?:a\s+)?task\s+(?:in\s+asana\s+)?(?:for\s+)?(.+?)(?:[?.!]|$)",
+                text,
+                re.I,
+            )
+            if task_match:
+                name = task_match.group(1).strip()
+        if not name:
+            asana_task_match = re.search(
+                r"\bcreate\s+an\s+asana\s+task\s+(?:for\s+)?(.+?)(?:[?.!]|$)",
+                text,
+                re.I,
+            )
+            if asana_task_match:
+                name = asana_task_match.group(1).strip()
+        if not name:
+            follow_up_match = re.search(
+                r"\bcreate\s+(?:follow[- ]?up\s+)?tasks?\s+(?:in\s+asana\s+)?(?:for\s+)?(.+?)(?:[?.!]|$)",
+                text,
+                re.I,
+            )
+            if follow_up_match:
+                name = follow_up_match.group(1).strip()
+        if not name and re.search(
+            r"\bcreate\s+(?:follow[- ]?up\s+)?tasks?\s+in\s+asana\b",
+            text,
+            re.I,
+        ):
+            name = "Follow-up tasks"
+
+        if not name:
+            return None
+
+        if RELATIVE_DUE.search(name):
+            due_on = self._parse_relative_due(name)
+            if due_on:
+                payload["due_on"] = due_on
+            name = RELATIVE_DUE.sub("", name).strip(" .,")
+
+        payload["name"] = name[:200]
+        return payload
 
     @staticmethod
     def _search_query(message: str) -> str | None:

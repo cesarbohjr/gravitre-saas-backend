@@ -55,6 +55,7 @@ PRIORITY_CONNECTORS: frozenset[str] = frozenset(
         "quickbooks",
         "stripe",
         "pagerduty",
+        "apollo",
     }
 )
 

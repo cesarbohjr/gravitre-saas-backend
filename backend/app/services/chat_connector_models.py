@@ -1,8 +1,14 @@
 """Shared models and aliases for chat connector execution."""
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any
+
+LIST_CREATE_INTENT = re.compile(
+    r"\b(create|new|add|make)\s+(?:a\s+)?(?:contact\s+)?(?:list|group|segment)\b",
+    re.I,
+)
 
 INTEGRATION_ALIASES: dict[str, tuple[str, ...]] = {
     "hubspot": ("hubspot", "crm"),
@@ -29,6 +35,7 @@ INTEGRATION_ALIASES: dict[str, tuple[str, ...]] = {
     "pagerduty": ("pagerduty", "on-call", "oncall"),
     "quickbooks": ("quickbooks", "qbo"),
     "asana": ("asana",),
+    "apollo": ("apollo", "apollo.io"),
     "notion": ("notion",),
     "odoo": ("odoo",),
     "netsuite": ("netsuite",),

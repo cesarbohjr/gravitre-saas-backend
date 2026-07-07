@@ -97,8 +97,8 @@ async def test_write_action_returns_confirm(connector_service):
 
     assert result is not None
     assert result["dialogue_mode"] == "confirm"
+    assert "Approve?" in result["message"]
     assert result["pending_task"]["type"] == "connector_action"
-    assert "yes" in result["message"].lower()
 
 
 @pytest.mark.asyncio
@@ -217,6 +217,69 @@ async def test_confirmation_executes_write_action(connector_service):
     assert result is not None
     assert result["execution_result"]["success"] is True
     mock_execute.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_asana_not_connected_returns_operator_blocker(connector_service):
+    with patch.object(
+        connector_service,
+        "_live_connected_integrations",
+        return_value=["apollo"],
+    ), patch(
+        "app.services.chat_connector_execution_service.find_integration_availability",
+        return_value=None,
+    ), patch.object(
+        connector_service,
+        "plan_action",
+        return_value=None,
+    ):
+        result = await connector_service.process_turn(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            message="Create a task in Asana for Sarah to review the landing page by Friday",
+            classification={"intent": "workflow_execution", "risk_level": "medium"},
+            task_state={},
+            connected_integrations=["apollo"],
+            client=MagicMock(),
+        )
+
+    assert result is not None
+    assert result["stop_pipeline"] is True
+    assert "**Intent:**" in result["message"]
+    assert "Asana" in result["message"]
+    assert "Connect Asana" in result["message"] or "Missing connector" in result["message"]
+
+
+@pytest.mark.asyncio
+async def test_apollo_list_create_reports_missing_action(connector_service):
+    with patch.object(
+        connector_service,
+        "_live_connected_integrations",
+        return_value=["apollo"],
+    ), patch(
+        "app.services.chat_connector_execution_service.find_integration_availability",
+        return_value={"execution_available": True, "blocking_reason": None},
+    ), patch.object(
+        connector_service,
+        "plan_action",
+        return_value=None,
+    ):
+        result = await connector_service.process_turn(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            message="Create a contact list in Apollo for MSP prospects",
+            classification={"intent": "workflow_execution", "risk_level": "medium"},
+            task_state={},
+            connected_integrations=["apollo"],
+            client=MagicMock(),
+        )
+
+    assert result is not None
+    assert result["stop_pipeline"] is True
+    assert "apollo.lists.create" in result["message"]
+    assert "Capability check" in result["message"]
 
 
 @pytest.mark.asyncio

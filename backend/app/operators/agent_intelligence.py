@@ -1208,7 +1208,7 @@ class AgentIntelligence:
             )
             return
 
-        if should_run_connector_preflight(task_state):
+        if should_run_connector_preflight(task_state, message=task_text):
             from app.services.chat_orchestration_service import get_chat_orchestration_service
 
             orchestration_turn = await get_chat_orchestration_service(active_settings).process_turn(
