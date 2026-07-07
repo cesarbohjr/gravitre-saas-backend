@@ -151,6 +151,40 @@ Not without connected integrations and approvals where configured. Each run show
 
 **ACTIVITY → Approvals** and in run detail when a step requires human confirmation.
 
+## Data storage and AI {#data-storage-and-ai}
+
+### Does Gravitre store customer data?
+
+Gravitre does **not** require you to migrate business systems into a separate data lake. Your CRM, files, and apps stay where they are; Gravitre connects with OAuth or API credentials.
+
+Gravitre **does** store operational data needed for AI: **conversation history**, **knowledge-base chunks and embeddings**, **workflow run records**, and **audit logs** in your org-scoped database until you delete them.
+
+See [Data storage and LLM transmission](/docs/concepts/data-storage-and-llm).
+
+### Is data cached? For how long?
+
+Yes — retrieval results (about **5 minutes**), query embeddings (up to **7 days**), org context snapshots (**60 seconds**), and similar performance caches. Caches are not the system of record.
+
+### Are prompts and chat history stored?
+
+**Yes.** Chat threads persist user prompts and assistant replies until you delete the conversation from history.
+
+### Are embeddings stored?
+
+**Yes** — in Postgres (pgvector) for knowledge search and agent memory. Vectors stay in your database and are **not** sent to chat models.
+
+### What is sent to the LLM provider?
+
+Only what is needed for that request: instructions, your question (PII-redacted by default), recent dialogue, **retrieved text passages** (not full documents), connector tool results for that step, and org metadata — not bulk exports or embedding vectors.
+
+### Can admins disable specific models?
+
+Yes — deployment-wide AI kill switch plus per-org **model allowlist/blocklist** via the model policy API. See [Data storage and LLM transmission](/docs/concepts/data-storage-and-llm#can-admins-disable-specific-models).
+
+### Can data be redacted before it goes to an external model?
+
+User and retrieved content is **PII-redacted by default** before provider calls (regex-based). System prompts are not redacted. Review connector scopes for tool-returned fields.
+
 ## Plans and billing
 
 ### What plan includes Meson?

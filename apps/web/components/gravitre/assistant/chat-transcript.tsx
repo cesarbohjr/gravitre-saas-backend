@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { Loader2 } from "lucide-react"
+import { useMemo } from "react"
 import type { UIMessage } from "ai"
 import { cn } from "@/lib/utils"
 import { polishAssistantText } from "@/lib/plain-english"
@@ -17,6 +18,8 @@ import {
 } from "@/components/gravitre/assistant/chat-execution-panel"
 import { type ToolInvocation } from "@/components/gravitre/assistant/tool-chip"
 import { uiMessageText } from "@/lib/chat-messages"
+import { useAuth } from "@/lib/auth-context"
+import { useUserProfile } from "@/lib/user-profile-context"
 
 function extractToolInvocations(message: UIMessage): ToolInvocation[] {
   const invocations: ToolInvocation[] = []
@@ -45,23 +48,61 @@ function extractToolInvocations(message: UIMessage): ToolInvocation[] {
 
 function GravitreAvatar() {
   return (
-    <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#0d3b36] ring-2 ring-emerald-500/15 shadow-sm">
+    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#0d3b36] ring-2 ring-emerald-500/15 shadow-sm">
       <Image
         src="/images/gravitre-icon-white.png"
         alt="Gravitre"
-        width={18}
-        height={18}
-        className="h-[18px] w-[18px] object-contain"
+        width={24}
+        height={24}
+        className="h-6 w-6 object-contain"
       />
     </div>
   )
 }
 
-function UserAvatar({ label }: { label: string }) {
-  const initial = label.trim().charAt(0).toUpperCase() || "Y"
+function useChatUserAvatar() {
+  const { user } = useAuth()
+  const { profile, getInitials } = useUserProfile()
+
+  return useMemo(() => {
+    const authName =
+      (user?.user_metadata?.full_name as string | undefined) ||
+      (user?.user_metadata?.name as string | undefined) ||
+      user?.email?.split("@")[0] ||
+      "You"
+
+    const profileSynced = Boolean(user?.email && profile.email === user.email)
+    const initials = profileSynced && getInitials().trim()
+      ? getInitials()
+      : (() => {
+          const clean = authName.trim()
+          if (!clean) return "U"
+          const parts = clean.split(/\s+/).filter(Boolean)
+          if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+          return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+        })()
+
+    const image =
+      (profileSynced ? profile.avatarImage : null) ||
+      (user?.user_metadata?.avatar_url as string | undefined) ||
+      (user?.user_metadata?.picture as string | undefined) ||
+      null
+
+    return { image, initials, name: authName }
+  }, [user, profile, getInitials])
+}
+
+function ChatUserAvatar() {
+  const { image, initials } = useChatUserAvatar()
+
   return (
-    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xs font-semibold text-white shadow-sm ring-2 ring-emerald-500/20">
-      {initial}
+    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-emerald-600 text-sm font-semibold text-white shadow-sm ring-2 ring-emerald-500/20">
+      {image ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={image} alt="" className="h-full w-full object-cover" />
+      ) : (
+        initials
+      )}
     </div>
   )
 }
@@ -114,7 +155,7 @@ export function ChatTranscript({
             transition={{ duration: 0.22 }}
             className={cn("flex gap-3", isUser ? "flex-row-reverse" : "flex-row")}
           >
-            {isUser ? <UserAvatar label={text} /> : <GravitreAvatar />}
+            {isUser ? <ChatUserAvatar /> : <GravitreAvatar />}
 
             <div className={cn("flex min-w-0 max-w-[min(760px,88%)] flex-col", isUser ? "items-end" : "items-start")}>
               <p className="mb-1.5 px-1 text-[11px] font-medium text-muted-foreground">

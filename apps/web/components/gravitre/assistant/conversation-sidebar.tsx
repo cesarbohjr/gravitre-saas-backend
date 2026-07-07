@@ -511,7 +511,7 @@ export function ConversationSidebar({
                             exit={reduced ? { opacity: 0 } : { opacity: 0, x: -12, height: 0 }}
                             transition={{ type: "spring", stiffness: 420, damping: 34 }}
                             className={cn(
-                              "relative group flex items-center gap-2.5 rounded-lg px-2.5 py-2 cursor-pointer transition-colors",
+                              "relative group flex items-center gap-2 rounded-lg px-2.5 py-2 cursor-pointer transition-colors min-w-0",
                               isActive && !selectionMode
                                 ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"
                                 : isSelected
@@ -549,7 +549,7 @@ export function ConversationSidebar({
                               />
                             )}
 
-                            <div className="flex-1 min-w-0">
+                            <div className="min-w-0 flex-1 overflow-hidden pr-1">
                               {isRenaming ? (
                                 <Input
                                   value={renameValue}
@@ -570,20 +570,22 @@ export function ConversationSidebar({
                                   }}
                                 />
                               ) : (
-                                <>
+                                <div className="flex min-w-0 items-center gap-2">
                                   <p
+                                    title={conv.title || "New conversation"}
                                     className={cn(
-                                      "text-sm truncate leading-tight",
-                                      isActive && !selectionMode ? "font-medium text-emerald-700 dark:text-emerald-300" : "text-sidebar-foreground",
+                                      "min-w-0 flex-1 truncate text-sm leading-snug",
+                                      isActive && !selectionMode
+                                        ? "font-medium text-emerald-700 dark:text-emerald-300"
+                                        : "text-sidebar-foreground",
                                     )}
                                   >
                                     {conv.title || "New conversation"}
                                   </p>
-                                  {conv.preview && conv.preview !== conv.title ? (
-                                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{conv.preview}</p>
-                                  ) : null}
-                                  <p className="mt-0.5 text-[10px] text-muted-foreground">{formatRelativeTime(conv.updated_at)}</p>
-                                </>
+                                  <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                                    {formatRelativeTime(conv.updated_at)}
+                                  </span>
+                                </div>
                               )}
                             </div>
 

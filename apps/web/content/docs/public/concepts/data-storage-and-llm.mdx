@@ -1,0 +1,103 @@
+---
+title: Data storage and LLM transmission
+description: What Gravitre stores, caches, and sends to AI model providers — for security and procurement reviews.
+audience: public
+depth: high
+tier: all
+status: published
+category: Security
+readTime: 7 min
+prev:
+  title: Security overview
+  href: /docs/concepts/security
+next:
+  title: Marketplace
+  href: /docs/concepts/marketplace
+---
+
+## How to describe Gravitre to buyers
+
+Gravitre does **not** require customers to migrate or centralize business data into a separate data platform. Information stays in your existing systems (CRM, drive, ERP, etc.) and is accessed through **authorized connectors**.
+
+Gravitre **does** store operational data needed for AI features — conversation history, knowledge-base indexes, embeddings, workflow records, and audit logs — in your **org-scoped** database until you delete them or your retention policy applies.
+
+For each AI request, Gravitre sends the selected model provider only what is required for that turn: instructions, your question, recent dialogue, **retrieved text passages**, connector tool results for that step, and org metadata — **not** full documents, embedding vectors, or bulk exports.
+
+<Callout title="Avoid this claim">
+Do not say "Gravitre doesn't store customer data." Security reviewers will ask where chat history and knowledge indexing live. The accurate answer is **qualified storage for AI operations**, with connector-first access to systems of record.
+</Callout>
+
+## Is data cached?
+
+**Yes.** Gravitre caches retrieval results, query embeddings, org context snapshots, and some assistant responses to improve latency.
+
+| Cache type | Typical duration |
+|------------|----------------|
+| Search / retrieval results | 5 minutes |
+| Query embeddings | Up to 7 days |
+| Org context snapshot | 60 seconds |
+| Tier-0 cached answers | 1 hour |
+
+Caches are performance layers, not the system of record. When Redis is enabled, treat it as **ephemeral sensitive storage**.
+
+## Are prompts stored?
+
+**Yes** — Chat and assistant threads persist user prompts and assistant replies in your org database until you delete the conversation.
+
+Billing telemetry (`model_calls`) records token usage and cost — **not** full prompt or response text.
+
+## Are embeddings stored?
+
+**Yes** — in **Supabase Postgres (pgvector)** for knowledge search and agent memory. Default embedding model: OpenAI `text-embedding-3-small` (1536 dimensions).
+
+Embedding **vectors stay in your database**. They are **not** sent to chat models at inference time.
+
+## Are workflow outputs stored?
+
+**Yes** — workflow runs store step inputs/outputs (JSON snapshots on the legacy workflow path; lighter metadata on the newer runs API). This supports audit, replay, and debugging.
+
+## Are conversation histories stored?
+
+**Yes** — until deleted via Chat history or the conversations API. Active model context uses recent turns plus an optional rolling summary when threads grow long.
+
+Enterprise admins can configure dialogue retention settings via API; automated chat purge jobs should be confirmed with your contract / deployment.
+
+## What exactly is sent to the model?
+
+| Sent to the LLM | Not sent to the LLM |
+|-----------------|---------------------|
+| System instructions and safety rules | Full source documents |
+| Your question (PII-redacted by default) | Embedding vectors |
+| Recent chat turns | Bulk CRM/ERP exports |
+| **Retrieved passage text** (chunk excerpts) | OAuth tokens or API keys |
+| Source titles / scores / metadata | Entire connector datasets |
+| Connector tool results for the current step | Internal infrastructure secrets |
+| Org status metadata (integrations health, counts) | |
+
+**Chunking:** Ingest splits documents into ~1,000-character segments. At question time, only the best-matching passages (typically truncated further to 500–1,200 characters each) are included in the prompt.
+
+## Can admins disable specific models?
+
+**Yes.**
+
+- Deployment-wide: disable all AI (`DISABLE_AI`).
+- Per org: **model allowlist / blocklist** via Settings API (`/api/settings/model-policy`) — restrict providers (OpenAI, Anthropic, Gemini) and/or model names.
+- Rate limits and hard budgets provide additional spend controls.
+
+See [Security overview](/docs/concepts/security) and [Enterprise](/docs/guides/how-to/enterprise) for residency and SIEM options.
+
+## Can data be redacted before leaving the environment?
+
+**Partially — by default, yes for user and retrieved content.**
+
+Before external LLM calls, Gravitre applies best-effort PII redaction (email, phone, SSN patterns, credit card patterns) when `AI_PII_REDACTION_ENABLED` is on (default). User content is wrapped in untrusted-input fences for prompt-injection hardening.
+
+System instructions are not redacted. Tool observation payloads in agent loops may contain connector fields as returned by the vendor API — review connector scopes and approvals accordingly.
+
+## Related pages
+
+- [Security overview](/docs/concepts/security)
+- [Authentication](/docs/concepts/authentication)
+- [Enterprise controls](/docs/guides/how-to/enterprise)
+- [History and audit](/docs/guides/how-to/history)
+- [FAQ — Data storage and AI](/docs/faq#data-storage-and-ai)
