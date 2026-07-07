@@ -29,9 +29,9 @@ def test_tool_executors_may_import_api_clients():
     assert _is_allowed_importer("app/services/tool_service.py")
 
 
-def test_governance_modules_are_allowlisted_pending_tool_migration():
-    assert "app/services/connector_action_workflows.py" in API_IMPORT_EXCEPTION_ALLOWLIST
-    assert "app/services/connector_parameter_inference.py" in API_IMPORT_EXCEPTION_ALLOWLIST
+def test_governance_modules_route_through_tool_layer():
+    assert "app/services/connector_action_workflows.py" not in API_IMPORT_EXCEPTION_ALLOWLIST
+    assert "app/services/connector_parameter_inference.py" not in API_IMPORT_EXCEPTION_ALLOWLIST
 
 
 def test_non_execution_import_is_detected(tmp_path: Path):
@@ -47,7 +47,7 @@ def test_non_execution_import_is_detected(tmp_path: Path):
 
 
 def test_allowlist_size_tracked_by_registration_contract():
-    assert len(API_IMPORT_EXCEPTION_ALLOWLIST) == 6
+    assert len(API_IMPORT_EXCEPTION_ALLOWLIST) == 4
 
 
 def test_ast_extracts_import_from_statements():

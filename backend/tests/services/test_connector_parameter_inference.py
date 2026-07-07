@@ -46,11 +46,8 @@ def test_low_confidence_project_inference_falls_through_to_clarification():
         settings=MagicMock(),
     )
     with patch(
-        "app.connectors.asana_api.list_projects",
-        return_value={"projects": [{"name": "Website"}, {"name": "Marketing"}]},
-    ), patch(
-        "app.connectors.asana_api.ensure_asana_session",
-        return_value=("conn-1", "token"),
+        "app.services.asana_tools.fetch_single_asana_project_name",
+        return_value=None,
     ):
         enriched = infer_missing_parameters(plan, context)
 

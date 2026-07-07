@@ -244,6 +244,60 @@ def _exec_asana_tasks_search(ctx: ToolContext, params: dict[str, Any]) -> Normal
     return NormalizedResult(success=True, action="asana.tasks.search", connector_id=cid, data=data)
 
 
+def fetch_asana_users_for_disambiguation(
+    client: Any,
+    org_id: str,
+    settings: Any,
+    *,
+    environment_name: str,
+    connector_id: str | None = None,
+) -> list[dict[str, Any]] | None:
+    """Read-only user list for assignee disambiguation (governance layer)."""
+    try:
+        _cid, token = ensure_asana_session(
+            client,
+            org_id,
+            connector_id,
+            settings,
+            environment_name=environment_name,
+        )
+        payload = list_users(token)
+    except AsanaAPIError:
+        return None
+    users = payload.get("users") if isinstance(payload, dict) else payload
+    return users if isinstance(users, list) else None
+
+
+def fetch_single_asana_project_name(
+    client: Any,
+    org_id: str,
+    settings: Any,
+    *,
+    environment_name: str,
+    connector_id: str | None = None,
+) -> str | None:
+    """Return the sole project name when the workspace has exactly one project."""
+    try:
+        _cid, token = ensure_asana_session(
+            client,
+            org_id,
+            connector_id,
+            settings,
+            environment_name=environment_name,
+        )
+        payload = list_projects(token)
+    except AsanaAPIError:
+        return None
+    projects = payload.get("projects") if isinstance(payload, dict) else payload
+    if not isinstance(projects, list) or len(projects) != 1:
+        return None
+    project = projects[0]
+    if not isinstance(project, dict):
+        return None
+    name = str(project.get("name") or "").strip()
+    return name[:120] if name else None
+
+
 _register("asana.tasks.get", _exec_asana_tasks_get)
 _register("asana.projects.list", _exec_asana_projects_list)
 _register("asana.users.list", _exec_asana_users_list)

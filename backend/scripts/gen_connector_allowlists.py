@@ -3,26 +3,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-ORPHANS = (
-    "fhir.appointments.search",
-    "fhir.patients.get",
-    "fhir.patients.search",
-    "fhir.prior_auth.checklist",
-    "jira.users.search",
-    "quickbooks.accounts.list",
-    "quickbooks.bills.get",
-    "quickbooks.customers.get",
-    "quickbooks.payments.list",
-    "quickbooks.vendors.get",
-    "quickbooks.vendors.list",
-    "salesforce.accounts.create",
-    "webhook.post",
-    "zendesk.tickets.close",
-)
+ORPHANS: tuple[str, ...] = ()
 
-API_IMPORTS = (
-    "app/services/connector_action_workflows.py",
-    "app/services/connector_parameter_inference.py",
+API_IMPORTS: tuple[str, ...] = (
     "app/routers/connectors.py",
     "app/connectors/connection_health.py",
     "app/services/outcome_attribution_service.py",

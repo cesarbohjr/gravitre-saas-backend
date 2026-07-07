@@ -65,9 +65,9 @@ def test_registration_contract_summary_shape():
 
 
 def test_allowlist_sizes_are_explicit_backlog():
-    assert len(ORPHAN_HANDLER_ALLOWLIST) == 14
-    assert len(API_IMPORT_EXCEPTION_ALLOWLIST) == 6
-    assert len(PENDING_WORKFLOW_SCHEMA_ALLOWLIST) == 166
+    assert len(ORPHAN_HANDLER_ALLOWLIST) == 0
+    assert len(API_IMPORT_EXCEPTION_ALLOWLIST) == 4
+    assert len(PENDING_WORKFLOW_SCHEMA_ALLOWLIST) == 170
 
 
 def test_connector_governance_pytest_targets_cover_core_suites():

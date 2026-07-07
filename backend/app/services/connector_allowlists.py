@@ -3,27 +3,11 @@ from __future__ import annotations
 
 ORPHAN_HANDLER_ALLOWLIST: frozenset[str] = frozenset(
     {
-        "fhir.appointments.search",
-        "fhir.patients.get",
-        "fhir.patients.search",
-        "fhir.prior_auth.checklist",
-        "jira.users.search",
-        "quickbooks.accounts.list",
-        "quickbooks.bills.get",
-        "quickbooks.customers.get",
-        "quickbooks.payments.list",
-        "quickbooks.vendors.get",
-        "quickbooks.vendors.list",
-        "salesforce.accounts.create",
-        "webhook.post",
-        "zendesk.tickets.close",
     }
 )
 
 API_IMPORT_EXCEPTION_ALLOWLIST: frozenset[str] = frozenset(
     {
-        "app/services/connector_action_workflows.py",
-        "app/services/connector_parameter_inference.py",
         "app/routers/connectors.py",
         "app/connectors/connection_health.py",
         "app/services/outcome_attribution_service.py",
@@ -67,6 +51,7 @@ PENDING_WORKFLOW_SCHEMA_ALLOWLIST: frozenset[str] = frozenset(
         "email.send",
         "engagebay.contacts.create",
         "engagebay.contacts.update",
+        "fhir.prior_auth.checklist",
         "figma.comments.create",
         "figma.dev_resources.create",
         "freshdesk.notes.create",
@@ -166,6 +151,7 @@ PENDING_WORKFLOW_SCHEMA_ALLOWLIST: frozenset[str] = frozenset(
         "real_estate.handoff.brief",
         "real_estate.listing.publish",
         "real_estate.mls.note",
+        "salesforce.accounts.create",
         "salesforce.leads.create",
         "salesforce.leads.update",
         "salesforce.opportunities.create",
@@ -189,6 +175,7 @@ PENDING_WORKFLOW_SCHEMA_ALLOWLIST: frozenset[str] = frozenset(
         "stripe.refunds.create",
         "twilio.calls.create",
         "twilio.messages.create",
+        "webhook.post",
         "workday.jobs.update",
         "workday.timeoff.request",
         "xero.contacts.create",
@@ -197,6 +184,7 @@ PENDING_WORKFLOW_SCHEMA_ALLOWLIST: frozenset[str] = frozenset(
         "zapier.hooks.trigger",
         "zapier.zaps.enable",
         "zendesk.tickets.add_tags",
+        "zendesk.tickets.close",
         "zendesk.tickets.create",
         "zendesk.tickets.update",
     }

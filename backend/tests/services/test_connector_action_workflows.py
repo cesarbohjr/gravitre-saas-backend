@@ -204,16 +204,11 @@ async def test_ambiguous_assignee_returns_disambiguation():
         "plan_action",
         return_value=plan,
     ), patch.object(service, "_verify_plan_executable", return_value=None), patch(
-        "app.connectors.asana_api.ensure_asana_session",
-        return_value=("conn-1", "token"),
-    ), patch(
-        "app.connectors.asana_api.list_users",
-        return_value={
-            "users": [
-                {"gid": "1", "name": "Sarah Lee"},
-                {"gid": "2", "name": "Sarah Chen"},
-            ]
-        },
+        "app.services.asana_tools.fetch_asana_users_for_disambiguation",
+        return_value=[
+            {"gid": "1", "name": "Sarah Lee"},
+            {"gid": "2", "name": "Sarah Chen"},
+        ],
     ):
         result = await service.process_turn(
             org_id="org-1",
