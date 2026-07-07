@@ -1,13 +1,13 @@
 {
   "summary": {
-    "totalActions": 581,
-    "implemented": 581,
-    "chatExposed": 581,
-    "executeExposed": 581,
+    "totalActions": 590,
+    "implemented": 590,
+    "chatExposed": 590,
+    "executeExposed": 590,
     "schemaMissing": 0,
     "scopeUnregistered": 0,
     "noTests": 238,
-    "multiStepReady": 581,
+    "multiStepReady": 590,
     "byVendor": {
       "salesforce": {
         "total": 11,
@@ -127,13 +127,22 @@
         "high_risk": 2
       },
       "apollo": {
-        "total": 11,
-        "implemented": 11,
-        "chat": 11,
-        "execute": 11,
+        "total": 13,
+        "implemented": 13,
+        "chat": 13,
+        "execute": 13,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 5
+        "high_risk": 6
+      },
+      "clay": {
+        "total": 7,
+        "implemented": 7,
+        "chat": 7,
+        "execute": 7,
+        "missing_schema": 0,
+        "no_tests": 0,
+        "high_risk": 2
       },
       "engagebay": {
         "total": 6,
@@ -2975,6 +2984,24 @@
     },
     {
       "vendor": "apollo",
+      "action_id": "apollo.lists.list",
+      "inputSchemaStatus": "override",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "apollo:labels:read",
+        "apollo:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "apollo",
       "action_id": "apollo.contacts.create",
       "inputSchemaStatus": "inferred",
       "implementationStatus": "requires_approval",
@@ -2982,6 +3009,24 @@
       "executeExposure": true,
       "oauthScopes": [
         "apollo:contacts:write",
+        "apollo:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "apollo",
+      "action_id": "apollo.lists.create",
+      "inputSchemaStatus": "override",
+      "implementationStatus": "requires_approval",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "apollo:labels:write",
         "apollo:*"
       ],
       "scopeRegistered": true,
@@ -3113,6 +3158,132 @@
       "scopeRegistered": true,
       "riskLevel": "high",
       "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "clay",
+      "action_id": "clay.tables.list",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "clay:tables:read",
+        "clay:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "clay",
+      "action_id": "clay.people.enrich",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "clay:people:read",
+        "clay:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "clay",
+      "action_id": "clay.companies.enrich",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "clay:companies:read",
+        "clay:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "clay",
+      "action_id": "clay.workflows.output.get",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "clay:workflows:read",
+        "clay:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "clay",
+      "action_id": "clay.leads.push",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "requires_approval",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "clay:leads:write",
+        "clay:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "clay",
+      "action_id": "clay.enrichments.request",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "requires_approval",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "clay:enrichments:write",
+        "clay:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "clay",
+      "action_id": "clay.crm.sync",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "clay:crm:write",
+        "clay:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "medium",
+      "approvalRequired": false,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -4267,7 +4438,7 @@
       "approvalRequired": false,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "mock"
+      "testStatus": "live"
     },
     {
       "vendor": "slack",

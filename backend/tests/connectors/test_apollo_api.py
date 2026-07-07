@@ -3,7 +3,14 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from app.connectors.apollo_api import ApolloAPIError, resolve_apollo_api_key, search_people, verify_apollo_api_key
+from app.connectors.apollo_api import (
+    ApolloAPIError,
+    create_label,
+    list_labels,
+    resolve_apollo_api_key,
+    search_people,
+    verify_apollo_api_key,
+)
 
 
 def test_search_people_uses_x_api_key_header():
@@ -31,3 +38,26 @@ def test_resolve_apollo_api_key(mock_get, mock_secret):
     cid, key = resolve_apollo_api_key(MagicMock(), "org", "c1", settings)
     assert cid == "c1"
     assert key == "token"
+
+
+def test_create_label_posts_name_and_modality():
+    with patch("app.connectors.apollo_api.httpx.Client") as client_cls:
+        response = MagicMock(status_code=200, text='{"label":{"id":"l1","name":"MSP Prospects"}}')
+        response.json.return_value = {"label": {"id": "l1", "name": "MSP Prospects"}}
+        client_cls.return_value.__enter__.return_value.request.return_value = response
+        out = create_label({"Authorization": "Bearer token"}, name="MSP Prospects", modality="contacts")
+    assert out["label"]["name"] == "MSP Prospects"
+    call = client_cls.return_value.__enter__.return_value.request.call_args
+    assert call[0][0] == "POST"
+    assert call[0][1].endswith("/labels")
+    assert call[1]["json"] == {"name": "MSP Prospects", "modality": "contacts"}
+
+
+def test_list_labels_gets_labels():
+    with patch("app.connectors.apollo_api.httpx.Client") as client_cls:
+        response = MagicMock(status_code=200, text='{"labels":[]}')
+        response.json.return_value = {"labels": []}
+        client_cls.return_value.__enter__.return_value.request.return_value = response
+        out = list_labels({"Authorization": "Bearer token"})
+    assert out == {"labels": []}
+    assert client_cls.return_value.__enter__.return_value.request.call_args[0][0] == "GET"

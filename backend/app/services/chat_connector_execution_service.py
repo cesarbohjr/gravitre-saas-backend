@@ -18,7 +18,7 @@ from app.services.entity_link_service import build_entity_url
 from app.services.notification_service import create_user_notification
 from app.services.risk_approval_evaluator import get_risk_approval_evaluator
 from app.services.chat_action_mapper import get_chat_action_mapper
-from app.services.chat_connector_models import INTEGRATION_ALIASES, ConnectorActionPlan
+from app.services.chat_connector_models import INTEGRATION_ALIASES, ConnectorActionPlan, LIST_CREATE_INTENT
 from app.services.tool_registry import get_tool_registry
 from app.services.tool_service import list_registered_actions
 from app.services.tool_types import ToolContext
@@ -33,7 +33,7 @@ logger = get_logger(__name__)
 CONNECTOR_MENTION = re.compile(
     r"\b(hubspot|salesforce|slack|zendesk|github|jira|stripe|pagerduty|quickbooks|crm|"
     r"monday|gmail|drive|calendar|figma|canva|intercom|clickup|pipedrive|confluence|teams|"
-    r"google|microsoft|notion|asana|odoo|netsuite|workday)\b",
+    r"google|microsoft|notion|asana|apollo|odoo|netsuite|workday)\b",
     re.I,
 )
 ACTION_VERB = re.compile(
@@ -100,6 +100,10 @@ class ChatConnectorExecutionService:
 
     @staticmethod
     def _detect_integration(message: str) -> str | None:
+        lowered = message.lower()
+        for integration, aliases in INTEGRATION_ALIASES.items():
+            if any(alias in lowered for alias in aliases):
+                return integration
         match = CONNECTOR_MENTION.search(message)
         if not match:
             return None
@@ -107,6 +111,220 @@ class ChatConnectorExecutionService:
         if token == "crm":
             return "hubspot"
         return token
+
+    @staticmethod
+    def _infer_intent_summary(message: str) -> str:
+        text = message.strip()
+        if LIST_CREATE_INTENT.search(text):
+            list_match = re.search(
+                r"\b(?:list|group|segment)\s+(?:named|called)?\s*[\"']?([^\"'.]+)",
+                text,
+                re.I,
+            )
+            label = list_match.group(1).strip() if list_match else "contact list"
+            return f"Create contact list ({label[:80]})"
+        task_match = re.search(
+            r"\bcreate\s+(?:a\s+)?task\s+(?:in\s+asana\s+)?(?:for\s+)?(.+?)(?:[?.!]|$)",
+            text,
+            re.I,
+        )
+        if task_match and "asana" in text.lower():
+            return "Create Asana task"
+        return text[:120]
+
+    @staticmethod
+    def _list_chat_actions(integration: str) -> list[str]:
+        from app.services.connector_execution_matrix import build_connector_execution_matrix
+
+        actions: list[str] = []
+        for entry in build_connector_execution_matrix():
+            if entry.connector_id != integration or not entry.chat_executable:
+                continue
+            actions.append(f"{entry.action_key} — {entry.display_name}")
+        return actions[:12]
+
+    def _build_unresolved_turn(
+        self,
+        *,
+        message: str,
+        integration: str | None,
+        connected_integrations: list[str],
+        client: Any,
+        org_id: str,
+        environment_name: str,
+        task_state: dict[str, Any],
+    ) -> dict[str, Any]:
+        from app.services.connector_action_workflows import format_capability_fallback_message
+        from app.services.execution_envelope import (
+            build_not_executable,
+            format_not_executable_message,
+            format_operator_response,
+        )
+
+        intent = self._infer_intent_summary(message)
+        connected = {c.lower() for c in connected_integrations}
+
+        if integration:
+            availability = find_integration_availability(
+                client,
+                org_id,
+                integration,
+                self.settings,
+                environment_name=environment_name,
+                force_live=True,
+            )
+            vendor_label = integration.replace("_", " ").title()
+            if availability is None or not availability.get("execution_available"):
+                blocking = format_connector_blocking_message(integration, availability)
+                planned = self._planned_details_from_message(message, integration)
+                message_text = format_operator_response(
+                    intent=intent,
+                    status="blocked — connector not ready",
+                    missing_connector=vendor_label,
+                    planned=planned or None,
+                    next_step=f"Connect {vendor_label} at /connectors, then retry this request.",
+                    result=blocking,
+                )
+                payload = build_not_executable(
+                    "missing_connector",
+                    next_step=f"Connect {vendor_label} at /connectors, then retry.",
+                    metadata={
+                        "operator_format": True,
+                        "intent": intent,
+                        "status": "blocked — connector not ready",
+                        "missing_connector": vendor_label,
+                        "planned": planned,
+                        "next_step": f"Connect {vendor_label} at /connectors, then retry.",
+                        "result": blocking,
+                    },
+                )
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": "answer",
+                    "message": message_text,
+                    "not_executable": payload,
+                    "task_state": task_state,
+                }
+
+            if integration in connected and LIST_CREATE_INTENT.search(message):
+                available = self._list_chat_actions(integration)
+                missing_action = f"{integration}.lists.create"
+                planned = self._planned_details_from_message(message, integration)
+                message_text = format_capability_fallback_message(
+                    integration=integration,
+                    intent=intent,
+                    missing_action=missing_action,
+                    available_actions=available,
+                    planned=planned or None,
+                )
+                payload = build_not_executable(
+                    "unsupported_action",
+                    next_step=(
+                        f"The {vendor_label} connector has no list/group creation action yet. "
+                        f"Recommended implementation: `{missing_action}`."
+                    ),
+                    metadata={
+                        "operator_format": True,
+                        "intent": intent,
+                        "status": "blocked — action not in catalog",
+                        "missing_action": missing_action,
+                        "available_actions": available,
+                        "planned": planned,
+                    },
+                )
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": "answer",
+                    "message": message_text,
+                    "not_executable": payload,
+                    "task_state": task_state,
+                }
+
+            available = self._list_chat_actions(integration)
+            message_text = format_operator_response(
+                intent=intent,
+                status="blocked — no matching catalog action",
+                available_actions=available,
+                next_step="Name the integration action explicitly (e.g. search Apollo companies).",
+            )
+            payload = build_not_executable(
+                "not_implemented",
+                next_step="Name the integration action explicitly (e.g. search Apollo companies).",
+                metadata={
+                    "operator_format": True,
+                    "intent": intent,
+                    "status": "blocked — no matching catalog action",
+                    "available_actions": available,
+                    "next_step": "Name the integration action explicitly (e.g. search Apollo companies).",
+                },
+            )
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "answer",
+                "message": message_text,
+                "not_executable": payload,
+                "task_state": task_state,
+            }
+
+        if not connected_integrations:
+            payload = build_not_executable(
+                "missing_connector",
+                next_step="Connect an integration under Connectors, then retry.",
+                metadata={
+                    "operator_format": True,
+                    "intent": intent,
+                    "status": "blocked — no connected integrations",
+                    "next_step": "Connect an integration under Connectors, then retry.",
+                },
+            )
+        else:
+            mentioned = get_chat_action_mapper()._mentioned_integrations(message, connected_integrations)
+            available = self._list_chat_actions(mentioned[0]) if mentioned else []
+            payload = build_not_executable(
+                "not_implemented",
+                next_step="Name the integration and action explicitly (e.g. search HubSpot contacts).",
+                metadata={
+                    "operator_format": True,
+                    "intent": intent,
+                    "status": "blocked — no matching catalog action",
+                    "available_actions": available,
+                    "next_step": "Name the integration and action explicitly (e.g. search HubSpot contacts).",
+                },
+            )
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "answer",
+            "message": format_not_executable_message(payload),
+            "not_executable": payload,
+            "task_state": task_state,
+        }
+
+    @staticmethod
+    def _planned_details_from_message(message: str, integration: str) -> dict[str, str]:
+        text = message.strip()
+        planned: dict[str, str] = {}
+        if integration == "asana":
+            for_person = re.search(
+                r"\bfor\s+(\w+)\s+to\s+(.+?)(?:\s+by\s+(\w+))?(?:[?.!]|$)",
+                text,
+                re.I,
+            )
+            if for_person:
+                planned["Assignee"] = for_person.group(1).strip()
+                planned["Task"] = for_person.group(2).strip()
+                if for_person.group(3):
+                    planned["Due"] = for_person.group(3).strip()
+        if LIST_CREATE_INTENT.search(text):
+            list_match = re.search(
+                r"\b(?:list|group)\s+(?:for|named|called)?\s*[\"']?([^\"'.]+)",
+                text,
+                re.I,
+            )
+            if list_match:
+                planned["List name"] = list_match.group(1).strip()[:80]
+            elif "msp" in text.lower():
+                planned["List name"] = "MSP Prospects"
+        return planned
 
     def _verify_plan_executable(
         self,
@@ -333,10 +551,13 @@ class ChatConnectorExecutionService:
             "requires_approval": plan.requires_approval,
             "approval_reason": plan.approval_reason,
             "destructive": plan.destructive,
+            "inferred_fields": list(plan.inferred_fields),
+            "inference_sources": dict(plan.inference_sources),
         }
 
     @staticmethod
     def plan_from_dict(payload: dict[str, Any]) -> ConnectorActionPlan:
+        inferred = payload.get("inferred_fields") or []
         return ConnectorActionPlan(
             tool_name=str(payload.get("tool_name") or ""),
             invoke_action=str(payload.get("invoke_action") or ""),
@@ -347,6 +568,8 @@ class ChatConnectorExecutionService:
             requires_approval=bool(payload.get("requires_approval")),
             approval_reason=payload.get("approval_reason"),
             destructive=bool(payload.get("destructive")),
+            inferred_fields=tuple(str(item) for item in inferred),
+            inference_sources=dict(payload.get("inference_sources") or {}),
         )
 
     async def process_turn(
@@ -391,38 +614,38 @@ class ChatConnectorExecutionService:
                         if integration == "hubspot" and "contact" in message.lower()
                         else None,
                     )
-                    if availability is not None:
+                    if availability is not None and not availability.get("execution_available"):
+                        from app.services.execution_envelope import format_operator_response
+
+                        intent = self._infer_intent_summary(message)
+                        blocking = format_connector_blocking_message(
+                            integration,
+                            availability,
+                            action_key="hubspot.contacts.search"
+                            if integration == "hubspot" and "contact" in message.lower()
+                            else None,
+                        )
                         return {
                             "stop_pipeline": True,
                             "dialogue_mode": "answer",
-                            "message": format_connector_blocking_message(
-                                integration,
-                                availability,
-                                action_key="hubspot.contacts.search"
-                                if integration == "hubspot" and "contact" in message.lower()
-                                else None,
+                            "message": format_operator_response(
+                                intent=intent,
+                                status="blocked — connector not ready",
+                                missing_connector=integration.replace("_", " ").title(),
+                                result=blocking,
+                                next_step=blocking,
                             ),
                             "task_state": task_state,
                         }
-                from app.services.execution_envelope import build_not_executable, format_not_executable_message
-
-                if not connected_integrations:
-                    payload = build_not_executable(
-                        "missing_connector",
-                        next_step="Connect an integration under Connectors, then retry.",
-                    )
-                else:
-                    payload = build_not_executable(
-                        "not_implemented",
-                        next_step="Try naming the integration and action explicitly (e.g. list HubSpot deals).",
-                    )
-                return {
-                    "stop_pipeline": True,
-                    "dialogue_mode": "answer",
-                    "message": format_not_executable_message(payload),
-                    "not_executable": payload,
-                    "task_state": task_state,
-                }
+                return self._build_unresolved_turn(
+                    message=message,
+                    integration=integration,
+                    connected_integrations=connected_integrations,
+                    client=client,
+                    org_id=org_id,
+                    environment_name=environment_name,
+                    task_state=task_state,
+                )
             return None
 
         blocked = self._verify_plan_executable(
@@ -438,6 +661,56 @@ class ChatConnectorExecutionService:
                 "message": blocked,
                 "task_state": task_state,
             }
+
+        from app.services.connector_action_workflows import (
+            format_write_approval_message,
+            resolve_assignee_disambiguation,
+            validate_connector_plan,
+        )
+        from app.services.connector_parameter_inference import (
+            ParameterInferenceContext,
+            infer_missing_parameters,
+        )
+
+        inference_context = ParameterInferenceContext(
+            message=message,
+            conversation_history=list((task_state or {}).get("recent_user_messages") or []),
+            task_state=task_state,
+            client=client,
+            org_id=org_id,
+            settings=self.settings,
+            environment_name=environment_name,
+        )
+        plan = infer_missing_parameters(plan, inference_context)
+
+        clarification = validate_connector_plan(plan, message)
+        if clarification:
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": clarification.dialogue_mode,
+                "message": clarification.message,
+                "task_state": task_state,
+                "workflow_status": clarification.status,
+            }
+
+        assignee_check = await resolve_assignee_disambiguation(
+            client=client,
+            org_id=org_id,
+            plan=plan,
+            settings=self.settings,
+            environment_name=environment_name,
+        )
+        if assignee_check:
+            if assignee_check.updated_plan is not None:
+                plan = assignee_check.updated_plan
+            elif assignee_check.candidates:
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": assignee_check.dialogue_mode,
+                    "message": assignee_check.message,
+                    "task_state": task_state,
+                    "workflow_status": assignee_check.status,
+                }
 
         risk = await self._evaluate_risk(org_id, user_id, plan, classification)
         plan = replace(
@@ -515,15 +788,10 @@ class ChatConnectorExecutionService:
             },
         )
         refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
-        reason = plan.approval_reason or "This action changes data in a connected system."
         return {
             "stop_pipeline": True,
             "dialogue_mode": "confirm",
-            "message": (
-                f"I'll run **{plan.label}** ({plan.invoke_action}).\n\n"
-                f"{reason}\n\n"
-                "Reply **yes** to proceed, or tell me what to change."
-            ),
+            "message": format_write_approval_message(plan),
             "task_state": refreshed,
             "pending_task": {"type": "connector_action", "params": pending_params},
         }

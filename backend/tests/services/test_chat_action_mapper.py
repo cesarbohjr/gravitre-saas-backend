@@ -63,6 +63,47 @@ def test_maps_asana_follow_up_tasks_in_asana():
     assert match.entry.registry_key == "asana.tasks.create"
 
 
+def test_maps_asana_task_for_person_with_due_date():
+    match = get_chat_action_mapper().match_segment(
+        "Create a task in Asana for Sarah to review the landing page by Friday",
+        connected_integrations=["asana"],
+    )
+    assert match is not None
+    assert match.entry.registry_key == "asana.tasks.create"
+    assert match.args.get("name") == "review the landing page"
+    assert match.args.get("assignee_hint") == "Sarah"
+    assert match.args.get("due_on")
+
+
+def test_maps_asana_task_assignee_only_without_invented_title():
+    match = get_chat_action_mapper().match_segment(
+        "Create an Asana task for Sarah",
+        connected_integrations=["asana"],
+    )
+    assert match is not None
+    assert match.args.get("assignee_hint") == "Sarah"
+    assert "name" not in match.args or not match.args.get("name")
+
+
+def test_apollo_list_intent_is_connector_intent():
+    from app.services.chat_connector_execution_service import ChatConnectorExecutionService
+
+    assert ChatConnectorExecutionService.is_connector_intent(
+        "Create a group in Apollo for MSPs",
+        {},
+    )
+
+
+def test_maps_apollo_list_create():
+    match = get_chat_action_mapper().match_segment(
+        "Create a contact list in Apollo for MSP prospects",
+        connected_integrations=["apollo"],
+    )
+    assert match is not None
+    assert match.entry.action_key == "apollo.lists.create"
+    assert match.args.get("name") == "MSP prospects"
+
+
 def test_maps_hubspot_deal_stage_update():
     match = get_chat_action_mapper().match_segment(
         "Update those deal stages in HubSpot after approval.",

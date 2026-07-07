@@ -17,3 +17,21 @@ def test_format_not_executable_message():
     text = format_not_executable_message(payload)
     assert "approval" in text.lower()
     assert "Confirm" in text
+
+
+def test_format_operator_envelope_message():
+    payload = build_not_executable(
+        "missing_connector",
+        next_step="Connect Asana at /connectors, then retry.",
+        metadata={
+            "operator_format": True,
+            "intent": "Create Asana task",
+            "status": "blocked — connector not ready",
+            "missing_connector": "Asana",
+            "planned": {"Task": "Review the landing page", "Assignee": "Sarah"},
+        },
+    )
+    text = format_not_executable_message(payload)
+    assert "**Intent:** Create Asana task" in text
+    assert "**Missing connector:** Asana" in text
+    assert "Sarah" in text

@@ -13,12 +13,23 @@ from app.services.connector_chat_routing import (
 )
 
 
-def test_preflight_only_for_pending_connector_tasks():
+def test_preflight_for_pending_connector_tasks():
     assert should_run_connector_preflight(None) is False
     assert should_run_connector_preflight({}) is False
     assert should_run_connector_preflight({"pending_task": {"type": "connector_action"}}) is True
     assert should_run_connector_preflight({"pending_task": {"type": "connector_orchestration"}}) is True
     assert should_run_connector_preflight({"pending_task": {"type": "general"}}) is False
+
+
+def test_preflight_for_fresh_connector_intent():
+    assert (
+        should_run_connector_preflight(
+            {},
+            message="Create a task in Asana for Sarah to review the landing page by Friday",
+        )
+        is True
+    )
+    assert should_run_connector_preflight({}, message="hello there") is False
 
 
 def test_react_invoked_connector_tools_ignores_assistant_tools():
@@ -47,15 +58,15 @@ def test_fallback_skipped_when_react_already_called_connector():
     )
 
 
-def test_fallback_skipped_without_connected_integrations():
+def test_fallback_runs_without_connected_integrations_for_connector_intent():
     assert (
         should_attempt_connector_fallback(
             task_state={},
             react_result=None,
-            message="search hubspot contacts",
+            message="Create a task in Asana for Sarah to review the landing page by Friday",
             connected_integrations=[],
         )
-        is False
+        is True
     )
 
 

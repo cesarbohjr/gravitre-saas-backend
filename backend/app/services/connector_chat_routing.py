@@ -40,9 +40,20 @@ def react_invoked_connector_tools(react_result: Any | None) -> bool:
     return False
 
 
-def should_run_connector_preflight(task_state: dict[str, Any] | None) -> bool:
-    """Run NL mapper / orchestration only when continuing an in-flight connector flow."""
-    return has_pending_connector_task(task_state)
+def should_run_connector_preflight(
+    task_state: dict[str, Any] | None,
+    *,
+    message: str = "",
+) -> bool:
+    """Run governed connector resolution before ReAct for in-flight or fresh connector intents."""
+    if has_pending_connector_task(task_state):
+        return True
+    text = message.strip()
+    if not text:
+        return False
+    from app.services.chat_connector_execution_service import ChatConnectorExecutionService
+
+    return ChatConnectorExecutionService.is_connector_intent(text, task_state or {})
 
 
 async def run_connector_fallback_turn(
@@ -107,8 +118,6 @@ def should_attempt_connector_fallback(
 ) -> bool:
     """After ReAct, try phrase mapper when the model did not invoke connector tools."""
     if has_pending_connector_task(task_state):
-        return False
-    if not connected_integrations:
         return False
     if react_invoked_connector_tools(react_result):
         return False
