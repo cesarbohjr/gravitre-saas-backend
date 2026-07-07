@@ -59,6 +59,7 @@ export { LottieAnimation } from "./lottie-animation"
 
 // Avatar Components
 export { AgentAvatar, UserAvatar, ChatMessage } from "./chat-avatars"
+export { UserAccountAvatar } from "./user-account-avatar"
 export { IntegrationsGrid } from "./platform-logos"
 
 // Marketing Components

@@ -24,6 +24,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { MesonToolbarTrigger } from "@/components/gravitre/meson-toolbar-popup"
 import { cn } from "@/lib/utils"
 import { Icon } from "@/lib/icons"
+import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 import { useViewMode } from "@/lib/view-mode-context"
 import { useAuth } from "@/lib/auth-context"
 import {
@@ -274,11 +275,9 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
           {/* User Avatar */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-accent group relative">
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-accent group relative p-0">
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full opacity-0 group-hover:opacity-50 blur transition-opacity duration-300" />
-                <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-xs font-medium text-white ring-2 ring-background">
-                  {userInitials}
-                </div>
+                <UserAccountAvatar useCurrentUser size="sm" className="relative ring-2 ring-background" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] sm:w-72 max-w-72 p-0 overflow-hidden">
@@ -288,9 +287,7 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
                 <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
                 <div className="relative flex items-center gap-3">
                   <div className="relative">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-base font-semibold text-white">
-                      {userInitials}
-                    </div>
+                    <UserAccountAvatar useCurrentUser size="xl" />
                     <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-background" />
                   </div>
                   <div className="flex flex-col">

@@ -28,6 +28,7 @@ import { useAuth } from "@/lib/auth-context"
 import { organizationsApi } from "@/lib/api"
 import { Icon } from "@/lib/icons"
 import { EmptyState } from "@/components/gravitre/empty-state"
+import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 import { Building2 } from "lucide-react"
 import { toast } from "sonner"
 import type { Organization, User } from "@/types/api"
@@ -473,9 +474,17 @@ export default function ManageOrganizationsPage() {
               )}
               {members.map((member) => (
                 <div key={member.id} className="flex items-center justify-between rounded-lg border p-3">
-                  <div>
-                    <p className="text-sm font-medium">{member.full_name || member.email || member.id}</p>
-                    <p className="text-xs text-muted-foreground">{member.email ?? member.id}</p>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <UserAccountAvatar
+                      name={member.full_name}
+                      email={member.email}
+                      avatarUrl={member.avatar_url}
+                      size="sm"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{member.full_name || member.email || member.id}</p>
+                      <p className="truncate text-xs text-muted-foreground">{member.email ?? member.id}</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">{member.role}</Badge>

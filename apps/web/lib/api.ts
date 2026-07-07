@@ -365,6 +365,7 @@ export const authApi = {
     if (!response.ok) throw new Error("Upload failed")
     return response.json() as Promise<{ avatar_url: string }>
   },
+  removeAvatar: () => deleteRequest<{ avatar_url: null }>(apiUrl("/api/auth/avatar")),
 }
 
 // ============ Operators ============

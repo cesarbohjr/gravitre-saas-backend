@@ -50,6 +50,7 @@ import { settingsApi, ssoApi } from "@/lib/api"
 import type { ApiKey, BillingUsageResponse, LiteSeatDepartment, MesonAddon, SSOConfiguration, SSOProviderType, User } from "@/types/api"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 
 interface SettingSection {
   id: string
@@ -848,14 +849,12 @@ function TeamSettings({
               <tr key={member.id ?? member.email} className="border-b border-border last:border-0">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
-                      {(member.full_name ?? member.email ?? "U")
-                        .split(" ")
-                        .map((s) => s[0])
-                        .join("")
-                        .toUpperCase()
-                        .slice(0, 2)}
-                    </div>
+                    <UserAccountAvatar
+                      name={member.full_name}
+                      email={member.email}
+                      avatarUrl={member.avatar_url}
+                      size="sm"
+                    />
                     <div>
                       <p className="text-sm font-medium text-foreground">{member.full_name ?? member.email}</p>
                       <p className="text-xs text-muted-foreground">{member.email}</p>

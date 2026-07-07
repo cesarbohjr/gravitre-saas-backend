@@ -326,6 +326,21 @@ async def revoke_all_sessions(
     return {"ok": True}
 
 
+@router.delete("/avatar")
+async def delete_avatar(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        client.table("users").update({"avatar_url": None}).eq(
+            "auth_user_id", current_user["user_id"]
+        ).execute()
+    except Exception:
+        pass
+    return {"avatar_url": None}
+
+
 @router.post("/avatar")
 async def upload_avatar(
     avatar: UploadFile = File(...),

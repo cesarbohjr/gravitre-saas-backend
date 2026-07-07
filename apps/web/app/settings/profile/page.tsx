@@ -27,12 +27,13 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
-import Image from "next/image"
 import { useUserProfile } from "@/lib/user-profile-context"
 import { useAuth } from "@/lib/auth-context"
 import { authApi } from "@/lib/api"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { toast } from "sonner"
+import { mutate as globalMutate } from "swr"
+import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 
 interface AuthSession {
   id: string
@@ -106,18 +107,27 @@ export default function ProfilePage() {
       try {
         const response = await authApi.uploadAvatar(file)
         setContextAvatarImage(response.avatar_url)
-        toast.success("Avatar updated")
+        await globalMutate("account-profile-me")
+        toast.success("Profile photo updated")
         setShowAvatarModal(false)
       } catch (err) {
         console.error("[v0] Avatar upload failed:", err)
-        toast.error("Failed to upload avatar")
+        toast.error("Failed to upload profile photo")
       }
     }
   }
 
-  const handleRemoveAvatar = () => {
-    setContextAvatarImage(null)
-    setShowAvatarModal(false)
+  const handleRemoveAvatar = async () => {
+    try {
+      await authApi.removeAvatar()
+      setContextAvatarImage(null)
+      await globalMutate("account-profile-me")
+      toast.success("Profile photo removed")
+      setShowAvatarModal(false)
+    } catch (err) {
+      console.error("[v0] Avatar remove failed:", err)
+      toast.error("Failed to remove profile photo")
+    }
   }
 
   const handleChangePassword = async () => {
@@ -232,18 +242,9 @@ export default function ProfilePage() {
                   <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full opacity-0 group-hover:opacity-75 blur transition-all duration-500" />
                   <button 
                     onClick={() => setShowAvatarModal(true)}
-                    className="relative flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-slate-800 to-slate-900 text-2xl font-semibold text-white ring-4 ring-background overflow-hidden cursor-pointer"
+                    className="relative flex h-24 w-24 items-center justify-center rounded-full ring-4 ring-background overflow-hidden cursor-pointer"
                   >
-                    {profile.avatarImage ? (
-                      <Image 
-                        src={profile.avatarImage} 
-                        alt="Profile" 
-                        fill 
-                        className="object-cover"
-                      />
-                    ) : (
-                      <span>{getInitials()}</span>
-                    )}
+                    <UserAccountAvatar useCurrentUser className="h-24 w-24 text-2xl" fallbackClassName="text-2xl" />
                     {/* Hover overlay */}
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <Camera className="h-6 w-6 text-white" />
@@ -274,20 +275,13 @@ export default function ProfilePage() {
                         </button>
                       </div>
 
+                      <p className="mb-6 text-center text-xs text-muted-foreground">
+                        Your photo appears in Chat, the header menu, and team member lists.
+                      </p>
+
                       {/* Current avatar preview */}
                       <div className="flex justify-center mb-6">
-                        <div className="relative h-28 w-28 rounded-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center text-3xl font-semibold text-white overflow-hidden ring-4 ring-border">
-                          {profile.avatarImage ? (
-                            <Image 
-                              src={profile.avatarImage} 
-                              alt="Profile" 
-                              fill 
-                              className="object-cover"
-                            />
-                          ) : (
-                            <span>{getInitials()}</span>
-                          )}
-                        </div>
+                        <UserAccountAvatar useCurrentUser className="h-28 w-28 text-3xl" fallbackClassName="text-3xl" />
                       </div>
 
                       {/* Upload options */}
@@ -307,7 +301,7 @@ export default function ProfilePage() {
 
                         {profile.avatarImage && (
                           <button
-                            onClick={handleRemoveAvatar}
+                            onClick={() => void handleRemoveAvatar()}
                             className="w-full flex items-center gap-3 p-4 rounded-xl border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 transition-colors text-left"
                           >
                             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/10">

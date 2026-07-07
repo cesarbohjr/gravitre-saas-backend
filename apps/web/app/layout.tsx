@@ -12,6 +12,7 @@ import { OrgSyncBootstrap } from '@/components/gravitre/org-sync-bootstrap'
 import { EnterpriseBrandingProvider } from '@/lib/enterprise-branding-context'
 import { EntitlementsProvider } from '@/lib/entitlements-context'
 import { UserProfileProvider } from '@/lib/user-profile-context'
+import { AccountProfileSync } from '@/components/gravitre/account-profile-sync'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -76,6 +77,7 @@ export default function RootLayout({
             <EnterpriseBrandingProvider>
               <EntitlementsProvider>
                 <UserProfileProvider>
+                  <AccountProfileSync />
                   <NotificationProvider>
                     <OnboardingProvider>
                       <ViewModeProvider>

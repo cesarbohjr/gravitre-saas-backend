@@ -31,16 +31,20 @@ export async function GET(request: NextRequest) {
     }
 
     const userIds = Array.from(new Set((members ?? []).map((member) => member.user_id).filter(Boolean)))
-    let usersById: Record<string, { email?: string | null; full_name?: string | null }> = {}
+    let usersById: Record<string, { email?: string | null; full_name?: string | null; avatar_url?: string | null }> = {}
     if (userIds.length > 0) {
       const { data: users } = await supabase
         .from("users")
-        .select("id, email, full_name")
+        .select("id, email, full_name, avatar_url")
         .in("id", userIds)
       usersById = Object.fromEntries(
         (users ?? []).map((user) => [
           user.id,
-          { email: user.email ?? null, full_name: user.full_name ?? null },
+          {
+            email: user.email ?? null,
+            full_name: user.full_name ?? null,
+            avatar_url: user.avatar_url ?? null,
+          },
         ])
       )
     }
@@ -52,13 +56,15 @@ export async function GET(request: NextRequest) {
         ...base,
         email: user.email ?? null,
         name: user.full_name ?? null,
+        full_name: user.full_name ?? null,
+        avatar_url: user.avatar_url ?? null,
       }
     })
 
     if (team.length === 0) {
       const { data: orgUsers } = await supabase
         .from("users")
-        .select("id, email, full_name, role, created_at")
+        .select("id, email, full_name, avatar_url, role, created_at")
         .eq("org_id", orgId)
         .order("created_at", { ascending: false })
         .limit(20)
@@ -71,6 +77,8 @@ export async function GET(request: NextRequest) {
         createdAt: user.created_at ?? null,
         email: user.email ?? null,
         name: user.full_name ?? null,
+        full_name: user.full_name ?? null,
+        avatar_url: user.avatar_url ?? null,
       }))
     }
 
