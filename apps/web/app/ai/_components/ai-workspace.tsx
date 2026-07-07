@@ -151,7 +151,7 @@ export function AiWorkspace({
   const [input, setInput] = useState("")
   const [routing, setRouting] = useState(false)
   const [routedTo, setRoutedTo] = useState<AiEngine | null>(null)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activityRailOpen, setActivityRailOpen] = useState(false)
   const [inlineTurns, setInlineTurns] = useState<InlineTurn[]>([])
   const [layoutBlockOrder, setLayoutBlockOrder] = useState<ResultBlockId[]>(DEFAULT_RESULT_BLOCK_ORDER)
@@ -166,7 +166,7 @@ export function AiWorkspace({
     if (typeof window === "undefined") return null
     return initialConversationId || readStoredConversationId()
   })
-  const [conversationTitle, setConversationTitle] = useState("Gravitre AI")
+  const [conversationTitle, setConversationTitle] = useState("Chat")
   const [chatMode, setChatMode] = useState<"standard" | "deep">("standard")
   const [selectedDepartment, setSelectedDepartment] = useState(() =>
     typeof window === "undefined" ? "all" : getQuickDepartment(),
@@ -478,7 +478,7 @@ export function AiWorkspace({
     setActiveConversationId(null)
     activeConversationIdRef.current = null
     setMessages([])
-    setConversationTitle("Gravitre AI")
+    setConversationTitle("Chat")
     setThreadRestoreStale(false)
     setMessagesHydrated(false)
   }, [orgReady, activeConversationId, conversations, conversationsLoading, setMessages])
@@ -714,12 +714,12 @@ export function AiWorkspace({
           activeConversationIdRef.current = null
           setMessages([])
           setInlineTurns([])
-          setConversationTitle("Gravitre AI")
+          setConversationTitle("Chat")
           setThreadRestoreStale(false)
           messagesLoadResolvedRef.current = { conversationId: id, resolved: true }
         } else if (!cached?.length && !cachedTurns?.length) {
           if (error instanceof ApiError && (error.status === 502 || error.status === 503)) {
-            toast.error("Gravitre AI is reconnecting", {
+            toast.error("Chat is reconnecting", {
               description: "The backend is unavailable. Try again in a moment or start a new conversation.",
             })
           } else if (error instanceof ApiError && error.status === 403) {
@@ -892,7 +892,7 @@ export function AiWorkspace({
       const prompt = rawPrompt.trim()
       if (!prompt || routing || submitLockRef.current) return
       if (!user) {
-        toast.error("Sign in to use Gravitre AI")
+        toast.error("Sign in to use Chat")
         return
       }
 
@@ -1001,7 +1001,7 @@ export function AiWorkspace({
     persistedChatPairIdsRef.current = new Set()
     writeStoredConversationId(null)
     resetExecuteJob()
-    setConversationTitle("Gravitre AI")
+    setConversationTitle("Chat")
     setConversationLoading(false)
     setThreadRestoreStale(false)
     setMessagesHydrated(true)

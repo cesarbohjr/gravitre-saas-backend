@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { authenticatedMetadata } from "@/lib/authenticated-metadata"
 
 export const metadata: Metadata = authenticatedMetadata(
-  "Gravitre AI | Gravitre",
+  "Chat | Gravitre",
   "Unified AI surface for execute, chat, and search.",
   { canonical: "/ai" },
 )

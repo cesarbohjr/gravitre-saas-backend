@@ -73,8 +73,16 @@ function daysLeft(isoDate: string): number {
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
 }
 
+const NAV_EXPANDED_STORAGE_KEY = "gravitre-nav-expanded"
+
+function readNavExpandedPreference(): boolean {
+  if (typeof window === "undefined") return false
+  return localStorage.getItem(NAV_EXPANDED_STORAGE_KEY) === "true"
+}
+
 export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [navExpanded, setNavExpanded] = useState(false)
   const [goalWizardOpen, setGoalWizardOpen] = useState(false)
   const [trialBannerDismissed, setTrialBannerDismissed] = useState(
     () =>
@@ -96,6 +104,30 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
   const { effectiveHidePoweredBy } = useEnterpriseBranding()
 
   useGlobalWorkShortcuts()
+
+  useEffect(() => {
+    setNavExpanded(readNavExpandedPreference())
+  }, [])
+
+  const handleMenuClick = () => {
+    if (typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches) {
+      setNavExpanded((prev) => {
+        const next = !prev
+        localStorage.setItem(NAV_EXPANDED_STORAGE_KEY, String(next))
+        return next
+      })
+      return
+    }
+    setSidebarOpen(true)
+  }
+
+  const handleToggleNavExpanded = () => {
+    setNavExpanded((prev) => {
+      const next = !prev
+      localStorage.setItem(NAV_EXPANDED_STORAGE_KEY, String(next))
+      return next
+    })
+  }
 
   // Fetch billing status — refresh on focus so web/mobile stay aligned after expiry.
   const { data: billingStatusData, isLoading: billingLoading, error: billingError } = useSWR<BillingStatus>(
@@ -290,9 +322,14 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
   return (
     <MesonToolbarProvider>
     <div className="flex h-screen overflow-hidden bg-background">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          navExpanded={navExpanded}
+          onToggleNavExpanded={handleToggleNavExpanded}
+        />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <TopBar title={title} onMenuClick={() => setSidebarOpen(true)} />
+          <TopBar title={title} onMenuClick={handleMenuClick} />
 
           {showTrialExpiredBanner && (
             <TrialExpiredBanner

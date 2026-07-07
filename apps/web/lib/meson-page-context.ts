@@ -13,6 +13,14 @@ export function resolveMesonPageFromPath(pathname: string): ResolvedMesonPage {
     return { page: "ai-chat" }
   }
 
+  if (path === APP_ROUTES.home || path === "/home" || path === "/welcome") {
+    return { page: "home" }
+  }
+
+  if (path === APP_ROUTES.multiAgentRun || path.startsWith("/multi-agent-run")) {
+    return { page: "multi-agent-run" }
+  }
+
   const modelDetail = path.match(/^\/models\/([^/]+)$/)
   if (modelDetail && modelDetail[1] !== "new") {
     return { page: "model-detail", entityId: modelDetail[1] }
@@ -23,15 +31,29 @@ export function resolveMesonPageFromPath(pathname: string): ResolvedMesonPage {
   }
 
   const agentDetail = path.match(/^\/agents\/([^/]+)$/)
-  if (agentDetail && !["new", "create"].includes(agentDetail[1] ?? "")) {
+  if (agentDetail && !["new", "create", "swarm"].includes(agentDetail[1] ?? "")) {
     return { page: "agent-detail", entityId: agentDetail[1] }
   }
 
-  if (path.startsWith("/connectors")) return { page: "connectors" }
+  const workflowDetail = path.match(/^\/workflows\/([^/]+)/)
+  if (workflowDetail && !["new", "failure-predictions"].includes(workflowDetail[1] ?? "")) {
+    return { page: "workflow-detail", entityId: workflowDetail[1] }
+  }
+
+  if (path.startsWith("/workflows/failure-predictions")) {
+    return { page: "failure-alerts" }
+  }
+
   if (path.startsWith("/workflows")) return { page: "workflows" }
+  if (path.startsWith("/connectors")) return { page: "connectors" }
   if (path.startsWith("/agents")) return { page: "agents" }
   if (path.startsWith("/training")) return { page: "training" }
   if (path.startsWith("/intelligence")) return { page: "intelligence" }
+  if (path.startsWith("/marketplace")) return { page: "marketplace" }
+  if (path.startsWith("/runs")) return { page: "runs" }
+  if (path.startsWith("/metrics")) return { page: "metrics" }
+  if (path.startsWith("/assignments")) return { page: "assignments" }
+  if (path.startsWith("/goals")) return { page: "goals" }
 
   return { page: "general" }
 }
@@ -55,12 +77,29 @@ export function routeMesonSuggestion(
 
   const go = (href: string) => navigate(href)
 
+  if (id.includes("multi-agent") || id.includes("swarm") || label.includes("multi-agent")) {
+    go(APP_ROUTES.multiAgentRun)
+    return
+  }
+  if (id.includes("marketplace") || label.includes("marketplace") || label.includes("asset pack")) {
+    go(APP_ROUTES.marketplace)
+    return
+  }
   if (id.includes("connector") || label.includes("connector")) {
     go("/connectors")
     return
   }
   if (id.includes("workflow") || label.includes("workflow")) {
+    const workflowDetail = path.match(/^\/workflows\/([^/]+)/)
+    if (workflowDetail && !["new", "failure-predictions"].includes(workflowDetail[1] ?? "")) {
+      go(`/workflows/${workflowDetail[1]}/builder`)
+      return
+    }
     go("/workflows")
+    return
+  }
+  if (id.includes("failure") || id.includes("alert") || label.includes("failure")) {
+    go("/workflows/failure-predictions")
     return
   }
   if (id.includes("training") || label.includes("training") || id.includes("dataset") || label.includes("dataset")) {
@@ -69,7 +108,7 @@ export function routeMesonSuggestion(
   }
   if (id.includes("agent") || label.includes("agent")) {
     const agentDetail = path.match(/^\/agents\/([^/]+)/)
-    if (agentDetail && !["new", "create"].includes(agentDetail[1] ?? "")) {
+    if (agentDetail && !["new", "create", "swarm"].includes(agentDetail[1] ?? "")) {
       if (id.includes("knowledge") || label.includes("knowledge")) {
         go(`/agents/${agentDetail[1]}/knowledge`)
         return
@@ -97,6 +136,14 @@ export function routeMesonSuggestion(
   }
   if (id.includes("model") || label.includes("model") || path.startsWith("/models")) {
     go("/models")
+    return
+  }
+  if (id.includes("learning") || label.includes("learning") || path.startsWith("/intelligence")) {
+    go(APP_ROUTES.learning)
+    return
+  }
+  if (id.includes("chat") || label.includes("delegate") || label.includes("summarize")) {
+    go(APP_ROUTES.gravitreAi)
     return
   }
   if (path.startsWith("/connectors")) {

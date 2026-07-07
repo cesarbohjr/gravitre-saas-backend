@@ -175,6 +175,7 @@ export function MesonToolbarPopup() {
           </div>
           <div className="max-h-[min(50vh,360px)] overflow-y-auto p-3">
             <MesonPagePanel
+              key={`${mesonPage.page}:${mesonPage.entityId ?? ""}`}
               page={mesonPage.page}
               entityId={mesonPage.entityId}
               compact

@@ -83,7 +83,7 @@ const adminNavigation: NavGroup[] = [
         hint: "Finish setup and see progress",
       },
       { name: "Home", href: APP_ROUTES.home, icon: "home" },
-      { name: "Gravitre AI", href: APP_ROUTES.gravitreAi, icon: "ai", badge: "AI", hint: "Auto-route execute, chat, and find" },
+      { name: "Chat", href: APP_ROUTES.gravitreAi, icon: "chat", hint: "Auto-route execute, chat, and find" },
       { name: "Agents", href: APP_ROUTES.agents, icon: "team" },
       { name: "Multi-Agent Run", href: APP_ROUTES.multiAgentRun, icon: "network" },
       { name: "Assignments", href: "/assignments", icon: "clipboardList" },
@@ -174,9 +174,12 @@ const liteNavigation: NavGroup[] = [
 interface SidebarProps {
   isOpen?: boolean
   onClose?: () => void
+  /** Desktop/tablet: show icon rail (false) vs full labels (true). */
+  navExpanded?: boolean
+  onToggleNavExpanded?: () => void
 }
 
-export function Sidebar({ isOpen, onClose }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpanded }: SidebarProps) {
   const pathname = usePathname()
   const [collapsedSections, setCollapsedSections] = useState<string[]>([])
   const { isLite } = useViewMode()
@@ -237,19 +240,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           // Mobile: slide-out drawer
           "w-64",
           isOpen ? "translate-x-0" : "-translate-x-full",
-          // Tablet: compact icon rail (64px)
-          "md:static md:z-auto md:translate-x-0 md:w-16",
-          // Desktop: full width sidebar
-          "xl:w-60"
+          // Tablet+: pinned rail; width follows user expand preference
+          "md:static md:z-auto md:translate-x-0",
+          navExpanded ? "md:w-60" : "md:w-16",
         )}
       >
         {/* Logo */}
-        <div className="flex h-16 xl:h-20 items-center justify-between border-b border-sidebar-border px-3 xl:px-4">
-          <Link href="/" className="flex items-center" onClick={onClose}>
+        <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-3 md:px-2">
+          <Link href="/" className="flex min-w-0 flex-1 items-center" onClick={onClose}>
             {effectiveLogoUrl ? (
               <>
-                {/* Custom white-label logo - icon size on tablet rail */}
-                <div className="hidden md:flex xl:hidden h-16 w-16 items-center justify-center">
+                <div className={cn("hidden md:flex items-center justify-center h-16 w-16", navExpanded && "md:hidden")}>
                   <img
                     src={effectiveLogoUrl || "/placeholder.svg"}
                     alt="Workspace logo"
@@ -257,7 +258,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     crossOrigin="anonymous"
                   />
                 </div>
-                <div className="md:hidden xl:block">
+                <div className={cn(navExpanded ? "md:block" : "md:hidden")}>
                   <img
                     src={effectiveLogoUrl || "/placeholder.svg"}
                     alt="Workspace logo"
@@ -269,8 +270,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               </>
             ) : (
               <>
-                {/* Icon only - tablet collapsed mode */}
-                <div className="hidden md:flex xl:hidden h-16 w-16 items-center justify-center">
+                <div className={cn("hidden md:flex h-16 w-16 items-center justify-center", navExpanded && "md:hidden")}>
                   <img
                     src="/images/gravitre-icon-black.png"
                     alt="Gravitre"
@@ -279,27 +279,37 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   <img
                     src="/images/gravitre-icon-white.png"
                     alt="Gravitre"
-                    className="h-16 w-16 object-contain hidden dark:block"
+                    className="h-16 w-16 hidden object-contain dark:block"
                   />
                 </div>
-                {/* Full logo on mobile drawer and desktop */}
-                <div className="md:hidden xl:block">
+                <div className={cn(navExpanded ? "md:block" : "md:hidden")}>
                   <img
                     src="/images/gravitre-logo-black.png"
                     alt="Gravitre"
                     className="dark:hidden"
-                    style={{ height: '40px', width: 'auto' }}
+                    style={{ height: "40px", width: "auto" }}
                   />
                   <img
                     src="/images/gravitre-logo-white.png"
                     alt="Gravitre"
                     className="hidden dark:block"
-                    style={{ height: '40px', width: 'auto' }}
+                    style={{ height: "40px", width: "auto" }}
                   />
                 </div>
               </>
             )}
           </Link>
+          {onToggleNavExpanded ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden h-8 w-8 shrink-0 md:inline-flex hover:bg-sidebar-accent"
+              onClick={onToggleNavExpanded}
+              aria-label={navExpanded ? "Collapse navigation" : "Expand navigation"}
+            >
+              <Icon name={navExpanded ? "caretLeft" : "caretRight"} size="sm" />
+            </Button>
+          ) : null}
           <Button
             variant="ghost"
             size="icon"
@@ -324,25 +334,27 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   <div className="mx-2 mb-2 mt-1.5 h-px bg-border/40" />
                 )}
 
-                {/* Section Header - Hidden on tablet icon rail */}
+                {/* Section Header — labels when nav expanded (desktop) or mobile drawer */}
                 <button
                   onClick={() => toggleSection(group.group)}
-                  className="hidden xl:flex w-full items-center justify-between px-2 py-1 group rounded-md hover:bg-sidebar-accent/30 transition-colors"
+                  className={cn(
+                    "hidden w-full items-center justify-between px-2 py-1 group rounded-md hover:bg-sidebar-accent/30 transition-colors",
+                    navExpanded ? "md:flex" : "md:hidden",
+                  )}
                 >
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 group-hover:text-muted-foreground/70 transition-colors">
                     {group.group}
                   </span>
-                  <Icon 
-                    name="caretDown" 
+                  <Icon
+                    name="caretDown"
                     size="xs"
                     className={cn(
                       "text-muted-foreground/30 transition-transform duration-200",
-                      isCollapsed && "-rotate-90"
+                      isCollapsed && "-rotate-90",
                     )}
                   />
                 </button>
-                {/* Mobile drawer shows header */}
-                <div className="xl:hidden md:hidden flex w-full items-center justify-between px-2 py-1">
+                <div className="flex w-full items-center justify-between px-2 py-1 md:hidden">
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
                     {group.group}
                   </span>
@@ -352,11 +364,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <div
                   className={cn(
                     "overflow-hidden transition-all duration-200",
-                    // Desktop: collapsible
-                    "xl:block",
-                    isCollapsed ? "xl:max-h-0 xl:opacity-0" : "xl:max-h-96 xl:opacity-100",
-                    // Tablet/Mobile: always visible
-                    "md:block"
+                    isCollapsed && navExpanded ? "md:max-h-0 md:opacity-0" : "md:max-h-96 md:opacity-100",
                   )}
                 >
                   <ul className="mt-0.5 space-y-px md:space-y-1 xl:space-y-px">
@@ -370,21 +378,21 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                                 href={item.href}
                                 onClick={onClose}
                                 className={cn(
-                                  "group relative flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-all duration-150",
-                                  // Tablet: center icon, no text
-                                  "md:justify-center md:px-0 md:py-2.5",
-                                  // Desktop: full layout
-                                  "xl:justify-start xl:px-2.5 xl:py-1.5",
-                                  // Mobile drawer: full layout
-                                  "px-2.5 py-1.5",
+                                  "group relative flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-all duration-150 px-2.5 py-1.5",
+                                  navExpanded
+                                    ? "md:justify-start md:px-2.5 md:py-1.5"
+                                    : "md:justify-center md:px-0 md:py-2.5",
                                   isActive
                                     ? cn(
                                         colors.activeBg,
                                         "text-foreground",
-                                        "xl:border-l-2 xl:-ml-px xl:pl-[9px]",
-                                        colors.activeBorder
+                                        navExpanded && "md:border-l-2 md:-ml-px md:pl-[9px]",
+                                        colors.activeBorder,
                                       )
-                                    : "text-muted-foreground/70 hover:text-foreground hover:bg-sidebar-accent/50 xl:border-l-2 xl:border-l-transparent xl:-ml-px xl:pl-[9px]"
+                                    : cn(
+                                        "text-muted-foreground/70 hover:text-foreground hover:bg-sidebar-accent/50",
+                                        navExpanded && "md:border-l-2 md:border-l-transparent md:-ml-px md:pl-[9px]",
+                                      ),
                                 )}
                               >
                                 <Icon
@@ -392,25 +400,36 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                                   size="md"
                                   emphasis={item.emphasis && isActive}
                                   className={cn(
-                                    "shrink-0 transition-colors md:h-5 md:w-5 xl:h-4 xl:w-4",
-                                    isActive ? colors.activeIcon : "text-muted-foreground/40 group-hover:text-muted-foreground/70"
+                                    "shrink-0 transition-colors md:h-5 md:w-5",
+                                    navExpanded && "md:h-4 md:w-4",
+                                    isActive ? colors.activeIcon : "text-muted-foreground/40 group-hover:text-muted-foreground/70",
                                   )}
                                 />
-                                {/* Hide text on tablet, show on desktop and mobile drawer */}
-                                <span className="flex-1 truncate md:hidden xl:block">{item.name}</span>
+                                <span className={cn("flex-1 truncate", navExpanded ? "md:inline" : "md:hidden")}>
+                                  {item.name}
+                                </span>
                                 {item.badge && (
-                                  <span className={cn(
-                                    "rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide md:hidden xl:inline",
-                                    isActive
-                                      ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20"
-                                      : "bg-muted/60 text-muted-foreground/70"
-                                  )}>
+                                  <span
+                                    className={cn(
+                                      "rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
+                                      navExpanded ? "md:inline" : "md:hidden",
+                                      isActive
+                                        ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20"
+                                        : "bg-muted/60 text-muted-foreground/70",
+                                    )}
+                                  >
                                     {item.badge}
                                   </span>
                                 )}
                               </Link>
                             </TooltipTrigger>
-                            <TooltipContent side="right" className="max-w-xs text-xs md:block xl:hidden hidden">
+                            <TooltipContent
+                              side="right"
+                              className={cn(
+                                "max-w-xs text-xs hidden md:block",
+                                navExpanded && "md:hidden",
+                              )}
+                            >
                               <p className="font-medium">{item.name}</p>
                               {item.hint ? (
                                 <p className="mt-0.5 text-muted-foreground">{item.hint}</p>
@@ -428,20 +447,25 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-sidebar-border px-2 xl:px-3 py-2.5">
-          <div className="flex items-center justify-between md:justify-center xl:justify-between">
+        <div className="border-t border-sidebar-border px-2 py-2.5 md:px-2">
+          <div className={cn("flex items-center justify-between", navExpanded ? "md:justify-between" : "md:justify-center")}>
             <div className="flex items-center gap-2">
               <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-sm">
                 <Icon name="shield" size="xs" className="text-white" />
               </div>
-              <div className="flex flex-col md:hidden xl:flex">
+              <div className={cn("flex flex-col", navExpanded ? "md:flex" : "md:hidden")}>
                 <span className="text-[11px] font-medium text-foreground">Gravitre</span>
                 <span className="text-[9px] text-muted-foreground/60">v1.2.0</span>
               </div>
             </div>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)] cursor-help md:hidden xl:flex" />
+                <div
+                  className={cn(
+                    "flex h-2 w-2 cursor-help rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]",
+                    navExpanded ? "md:flex" : "md:hidden",
+                  )}
+                />
               </TooltipTrigger>
               <TooltipContent side="top" className="text-xs">
                 All systems operational

@@ -33,7 +33,7 @@ export const ROLE_QUICK_ACTIONS: Record<WelcomeRoleId, RoleQuickAction[]> = {
   ],
   support: [
     { label: "Pending approvals", href: APP_ROUTES.approvals },
-    { label: "Gravitre AI", href: APP_ROUTES.gravitreAi },
+    { label: "Chat", href: APP_ROUTES.gravitreAi },
   ],
   engineering: [
     { label: "Workflow runs", href: "/runs" },

@@ -67,11 +67,11 @@ function MesonLogo({ compact }: { compact?: boolean }) {
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-xl bg-primary shadow-sm shadow-primary/25",
+        "flex shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-sm shadow-violet-500/25",
         compact ? "h-8 w-8" : "h-9 w-9",
       )}
     >
-      <Blocks className={cn("text-primary-foreground", compact ? "h-3.5 w-3.5" : "h-4 w-4")} />
+      <Blocks className={cn("text-white", compact ? "h-3.5 w-3.5" : "h-4 w-4")} />
     </div>
   )
 }
@@ -105,7 +105,7 @@ function MesonBannerBody({
           className="min-h-[4.5rem]"
         >
           <div className="flex items-start gap-2.5">
-            <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+            <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 dark:text-violet-400">
               <Lightbulb className="h-3.5 w-3.5" />
             </div>
             <div className="min-w-0 flex-1">
@@ -113,7 +113,7 @@ function MesonBannerBody({
                 <button
                   type="button"
                   onClick={() => onSuggestionClick(suggestion)}
-                  className="text-left text-sm font-medium leading-snug text-foreground hover:text-primary"
+                  className="text-left text-sm font-medium leading-snug text-foreground hover:text-violet-600 dark:hover:text-violet-400"
                 >
                   {suggestion.label}
                 </button>
@@ -126,7 +126,7 @@ function MesonBannerBody({
                 </p>
               ) : null}
               {extraSuggestions > 0 ? (
-                <p className="mt-1.5 text-[10px] font-medium text-primary/80">
+                <p className="mt-1.5 text-[10px] font-medium text-violet-600/80 dark:text-violet-400/80">
                   +{extraSuggestions} more suggestion{extraSuggestions === 1 ? "" : "s"}
                 </p>
               ) : null}
@@ -145,7 +145,7 @@ function MesonBannerBody({
           className="min-h-[4.5rem]"
         >
           <div className="flex items-start gap-2.5">
-            <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+            <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 dark:text-violet-400">
               <TrendingUp className="h-3.5 w-3.5" />
             </div>
             <div className="min-w-0 flex-1">
@@ -154,7 +154,7 @@ function MesonBannerBody({
                 {insight.summary}
               </p>
               {extraInsights > 0 ? (
-                <p className="mt-1.5 text-[10px] font-medium text-primary/80">
+                <p className="mt-1.5 text-[10px] font-medium text-violet-600/80 dark:text-violet-400/80">
                   +{extraInsights} more insight{extraInsights === 1 ? "" : "s"}
                 </p>
               ) : null}
@@ -212,7 +212,7 @@ export function MesonPagePanel({
 
   useEffect(() => {
     setActiveSlide(hasSuggestions ? "suggestions" : "insights")
-  }, [hasSuggestions, hasInsights])
+  }, [page, entityId, hasSuggestions, hasInsights])
 
   useEffect(() => {
     if (!shouldAlternate) return
@@ -236,13 +236,13 @@ export function MesonPagePanel({
     <div className={cn(className)}>
       <div
         className={cn(
-          "relative overflow-hidden rounded-xl border border-primary/25 bg-primary/[0.06] shadow-sm shadow-primary/10",
+          "relative overflow-hidden rounded-xl border border-violet-500/25 bg-gradient-to-br from-violet-500/8 via-card/60 to-purple-500/5 shadow-sm shadow-violet-500/10",
           compact ? "p-3.5" : "p-4",
         )}
       >
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/10 blur-2xl"
+          className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-violet-500/10 blur-2xl"
         />
 
         <div className="relative flex items-start gap-3">
@@ -251,12 +251,12 @@ export function MesonPagePanel({
             <div className="mb-2 flex items-center gap-2">
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-foreground">Meson</p>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
                   {slideLabel}
                 </p>
               </div>
               {advisorBrief?.confidence != null ? (
-                <span className="shrink-0 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                <span className="shrink-0 rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400">
                   {Math.round(advisorBrief.confidence * 100)}%
                 </span>
               ) : null}
@@ -264,9 +264,9 @@ export function MesonPagePanel({
 
             {showInitialLoad ? (
               <div className="space-y-2">
-                <Skeleton className="h-4 w-3/4 bg-primary/10" />
-                <Skeleton className="h-3 w-full bg-primary/10" />
-                <Skeleton className="h-3 w-5/6 bg-primary/10" />
+                <Skeleton className="h-4 w-3/4 bg-violet-500/10" />
+                <Skeleton className="h-3 w-full bg-violet-500/10" />
+                <Skeleton className="h-3 w-5/6 bg-violet-500/10" />
               </div>
             ) : showEmpty ? (
               <p className="text-xs leading-relaxed text-muted-foreground">
@@ -299,7 +299,7 @@ export function MesonPagePanel({
                 onClick={() => setActiveSlide(slide)}
                 className={cn(
                   "h-1.5 rounded-full transition-all",
-                  activeSlide === slide ? "w-4 bg-primary" : "w-1.5 bg-primary/30 hover:bg-primary/50",
+                  activeSlide === slide ? "w-4 bg-violet-500" : "w-1.5 bg-violet-500/30 hover:bg-violet-500/50",
                 )}
               />
             ))}
@@ -307,7 +307,7 @@ export function MesonPagePanel({
         ) : null}
 
         {showBackgroundRefresh ? (
-          <div className="relative mt-2 flex items-center gap-1.5 text-[10px] text-primary/70">
+          <div className="relative mt-2 flex items-center gap-1.5 text-[10px] text-violet-600/70 dark:text-violet-400/70">
             <Loader2 className="h-3 w-3 animate-spin" />
             Refreshing…
           </div>
@@ -317,7 +317,7 @@ export function MesonPagePanel({
       {!compact ? (
         <p className="mt-2 text-[10px] text-muted-foreground">
           Advisory only — review before acting.{" "}
-          <Link href={APP_ROUTES.intelligence} className="text-primary underline-offset-4 hover:underline">
+          <Link href={APP_ROUTES.intelligence} className="text-violet-600 underline-offset-4 hover:underline dark:text-violet-400">
             {SURFACE_COPY.insights.title}
           </Link>
         </p>

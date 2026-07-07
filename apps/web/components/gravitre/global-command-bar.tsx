@@ -28,9 +28,9 @@ const navigationItems: CommandItem[] = [
   {
     id: "nav-ai",
     type: "navigation",
-    title: "Gravitre AI",
+    title: "Chat",
     subtitle: "Unified execute, chat, and find",
-    icon: "ai",
+    icon: "chat",
     href: APP_ROUTES.gravitreAi,
     keywords: ["ai", "execute", "task", "delegate", "chat", "find"],
   },
@@ -407,8 +407,8 @@ export function GlobalCommandBar() {
                     animate={{ opacity: [0.6, 1, 0.6] }}
                     transition={{ duration: 2, repeat: Infinity }}
                   >
-                    <Icon name="ai" size="xs" className="text-info" emphasis />
-                    <span className="font-semibold text-info/80">Gravitre AI</span>
+                    <Icon name="chat" size="xs" className="text-info" emphasis />
+                    <span className="font-semibold text-info/80">Chat</span>
                     <span>ready</span>
                   </motion.span>
                 </div>

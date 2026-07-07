@@ -156,7 +156,7 @@ export const SURFACE_COPY = {
       description: "Predicted workflow failures from connector auth, rate limits, scopes, and run history.",
     },
     ai: {
-      title: "Gravitre AI",
+      title: "Chat",
       description: "Execute work, chat with context, or search records — routed to the right engine.",
     },
     connectors: {

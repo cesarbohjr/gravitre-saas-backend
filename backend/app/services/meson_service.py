@@ -839,6 +839,30 @@ class MesonService:
             return self._page_context_model_detail(client, org_id, entity_id=entity_id)
         if normalized in {"agent-detail", "agent-detail-page"}:
             return self._page_context_agent_detail(client, org_id, entity_id=entity_id)
+        if normalized == "connectors":
+            return self._page_context_connectors(client, org_id, environment_name=environment_name)
+        if normalized in {"workflows", "workflow-detail", "workflow-detail-page"}:
+            return self._page_context_workflows(
+                client, org_id, entity_id=entity_id, environment_name=environment_name
+            )
+        if normalized == "agents":
+            return self._page_context_agents_list(client, org_id, environment_name=environment_name)
+        if normalized == "training":
+            return self._page_context_training(client, org_id)
+        if normalized == "intelligence":
+            return self._page_context_intelligence(client, org_id, environment_name=environment_name)
+        if normalized in {"multi-agent-run", "multi-agent", "swarm"}:
+            return self._page_context_multi_agent(client, org_id, environment_name=environment_name)
+        if normalized == "marketplace":
+            return self._page_context_marketplace(client, org_id)
+        if normalized == "runs":
+            return self._page_context_runs(client, org_id, environment_name=environment_name)
+        if normalized in {"failure-alerts", "failure-predictions"}:
+            return self._page_context_failure_alerts(client, org_id)
+        if normalized == "home":
+            return self._page_context_home(client, org_id, environment_name=environment_name)
+        if normalized == "metrics":
+            return self._page_context_metrics(client, org_id, environment_name=environment_name)
         base = self.get_proactive_insights(client, org_id, environment_name=environment_name)
         return MesonPageContextResponse(
             insights=base.insights[:5],
@@ -928,6 +952,638 @@ class MesonService:
             insights=insights[:5],
             suggestions=suggestions[:4],
             source="ai-chat",
+        )
+
+    def _page_context_connectors(
+        self,
+        client: Any,
+        org_id: str,
+        *,
+        environment_name: str,
+    ) -> MesonPageContextResponse:
+        insights: list[MesonInsight] = []
+        suggestions: list[MesonSuggestion] = []
+        try:
+            connectors = list_connectors(client, org_id, environment_name=environment_name)
+            auth_issues = [c for c in connectors if resolve_connector_auth_status(c).needs_reauth]
+            healthy = len(connectors) - len(auth_issues)
+            if auth_issues:
+                names = ", ".join(
+                    str(c.get("name") or c.get("type") or "connector") for c in auth_issues[:3]
+                )
+                insights.append(
+                    MesonInsight(
+                        id="connectors-auth",
+                        title="Connectors need authentication",
+                        summary=f"{len(auth_issues)} integration(s) require re-auth ({names}).",
+                        category="operations",
+                    )
+                )
+                suggestions.append(
+                    MesonSuggestion(
+                        id="fix-connectors",
+                        nodeType="navigate",
+                        label="Fix connector authentication",
+                        reason="Restore OAuth tokens before workflows can read or write data.",
+                        confidence=0.9,
+                    )
+                )
+            elif not connectors:
+                suggestions.append(
+                    MesonSuggestion(
+                        id="add-connector",
+                        nodeType="navigate",
+                        label="Connect your first tool",
+                        reason="Link CRM, messaging, or dev systems so agents can act on live data.",
+                        confidence=0.85,
+                    )
+                )
+            else:
+                insights.append(
+                    MesonInsight(
+                        id="connectors-healthy",
+                        title=f"{healthy} connector(s) active",
+                        summary="Run periodic health checks to catch scope or token drift early.",
+                        category="operations",
+                    )
+                )
+                suggestions.append(
+                    MesonSuggestion(
+                        id="test-connectors",
+                        nodeType="navigate",
+                        label="Run connector health checks",
+                        reason="Validate OAuth scopes and API reachability across your stack.",
+                        confidence=0.78,
+                    )
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meson connectors page context: %s", exc)
+        if not insights:
+            insights.append(
+                MesonInsight(
+                    id="connectors-monitor",
+                    title="Meson is watching integrations",
+                    summary="Connect tools to unlock workflow automation and agent tool calls.",
+                    category="operations",
+                )
+            )
+        return MesonPageContextResponse(
+            insights=insights[:5],
+            suggestions=suggestions[:4],
+            source="connectors",
+        )
+
+    def _page_context_workflows(
+        self,
+        client: Any,
+        org_id: str,
+        *,
+        entity_id: str | None,
+        environment_name: str,
+    ) -> MesonPageContextResponse:
+        insights: list[MesonInsight] = []
+        suggestions: list[MesonSuggestion] = []
+        if entity_id:
+            opt = self.get_workflow_optimizations(
+                client, org_id, entity_id, environment_name=environment_name
+            )
+            insights.extend(opt.insights[:3])
+            suggestions.append(
+                MesonSuggestion(
+                    id="open-builder",
+                    nodeType="navigate",
+                    label="Open workflow builder",
+                    reason="Review steps, simulate runs, and apply Meson optimization hints.",
+                    confidence=0.82,
+                )
+            )
+        try:
+            workflows = (
+                client.table("workflow_defs")
+                .select("id, status, name")
+                .eq("org_id", org_id)
+                .limit(100)
+                .execute()
+            )
+            rows = workflows.data or []
+            draft_count = sum(1 for w in rows if str(w.get("status") or "") == "draft")
+            if draft_count:
+                insights.insert(
+                    0,
+                    MesonInsight(
+                        id="draft-workflows",
+                        title="Draft workflows awaiting publish",
+                        summary=f"{draft_count} workflow(s) are still in draft — validate before production.",
+                        category="workflow",
+                    ),
+                )
+                suggestions.append(
+                    MesonSuggestion(
+                        id="publish-workflows",
+                        nodeType="navigate",
+                        label="Review draft workflows",
+                        reason="Publish validated flows so schedules and agents can execute them.",
+                        confidence=0.8,
+                    )
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meson workflows page context: %s", exc)
+        open_alerts = list_failure_alerts(client, org_id, status="open", limit=3)
+        if open_alerts:
+            insights.append(
+                MesonInsight(
+                    id="failure-alerts",
+                    title="Failure predictions open",
+                    summary=f"{len(open_alerts)} alert(s) may affect upcoming runs — review risk signals.",
+                    category="risk",
+                )
+            )
+            suggestions.append(
+                MesonSuggestion(
+                    id="review-failure-alerts",
+                    nodeType="navigate",
+                    label="Review failure alerts",
+                    reason="Inspect predicted failures before the next scheduled execution.",
+                    confidence=0.86,
+                )
+            )
+        if not suggestions:
+            suggestions.append(
+                MesonSuggestion(
+                    id="simulate-workflow",
+                    nodeType="navigate",
+                    label="Dry-run a workflow",
+                    reason="Simulate steps with live connector checks before enabling schedules.",
+                    confidence=0.74,
+                )
+            )
+        if not insights:
+            insights.append(
+                MesonInsight(
+                    id="workflows-ready",
+                    title="Build repeatable automations",
+                    summary="Combine connectors, approvals, and agent steps into governed workflows.",
+                    category="workflow",
+                )
+            )
+        return MesonPageContextResponse(
+            insights=insights[:5],
+            suggestions=suggestions[:4],
+            source="workflows",
+        )
+
+    def _page_context_agents_list(
+        self,
+        client: Any,
+        org_id: str,
+        *,
+        environment_name: str,
+    ) -> MesonPageContextResponse:
+        insights: list[MesonInsight] = []
+        suggestions: list[MesonSuggestion] = []
+        try:
+            resp = (
+                client.table("agents")
+                .select("id, name, status, stats")
+                .eq("org_id", org_id)
+                .limit(50)
+                .execute()
+            )
+            agents = resp.data or []
+            if not agents:
+                suggestions.append(
+                    MesonSuggestion(
+                        id="create-agent",
+                        nodeType="navigate",
+                        label="Create your first agent",
+                        reason="Define role, tools, and knowledge before delegating work.",
+                        confidence=0.88,
+                    )
+                )
+            else:
+                low_success = []
+                for agent in agents:
+                    stats = agent.get("stats") if isinstance(agent.get("stats"), dict) else {}
+                    rate = stats.get("successRate") or stats.get("success_rate")
+                    if rate is not None and float(rate) < 70:
+                        low_success.append(str(agent.get("name") or "Agent"))
+                if low_success:
+                    insights.append(
+                        MesonInsight(
+                            id="agents-low-success",
+                            title="Agents below success target",
+                            summary=f"Review knowledge and tools for: {', '.join(low_success[:3])}.",
+                            category="agents",
+                        )
+                    )
+                suggestions.append(
+                    MesonSuggestion(
+                        id="multi-agent-run",
+                        nodeType="navigate",
+                        label="Run parallel agents on one objective",
+                        reason="Fan out subtasks and merge council recommendations.",
+                        confidence=0.76,
+                    )
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meson agents list page context: %s", exc)
+        if not insights:
+            insights.append(
+                MesonInsight(
+                    id="agents-team",
+                    title="Your AI team",
+                    summary="Assign agents to workflows, chat, and marketplace role packs.",
+                    category="agents",
+                )
+            )
+        return MesonPageContextResponse(
+            insights=insights[:5],
+            suggestions=suggestions[:4],
+            source="agents",
+        )
+
+    def _page_context_training(
+        self,
+        client: Any,
+        org_id: str,
+    ) -> MesonPageContextResponse:
+        insights: list[MesonInsight] = []
+        suggestions: list[MesonSuggestion] = []
+        try:
+            resp = (
+                client.table("trained_models")
+                .select("id, status")
+                .eq("org_id", org_id)
+                .limit(100)
+                .execute()
+            )
+            rows = resp.data or []
+            training = sum(1 for r in rows if str(r.get("status") or "") in {"training", "pending"})
+            if training:
+                insights.append(
+                    MesonInsight(
+                        id="training-jobs",
+                        title="Training jobs in flight",
+                        summary=f"{training} model job(s) running — outcomes feed Learning signals.",
+                        category="learning",
+                    )
+                )
+            elif not rows:
+                suggestions.append(
+                    MesonSuggestion(
+                        id="add-training-data",
+                        nodeType="navigate",
+                        label="Add training examples",
+                        reason="Capture approved agent responses to improve future behavior.",
+                        confidence=0.84,
+                    )
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meson training page context: %s", exc)
+        suggestions.append(
+            MesonSuggestion(
+                id="review-learning",
+                nodeType="navigate",
+                label="Review Learning signals",
+                reason="See which queries and outcomes are ready to promote to Training.",
+                confidence=0.77,
+            )
+        )
+        if not insights:
+            insights.append(
+                MesonInsight(
+                    id="training-loop",
+                    title="Shape agent behavior",
+                    summary="Examples and fine-tunes change how agents respond on your org data.",
+                    category="learning",
+                )
+            )
+        return MesonPageContextResponse(
+            insights=insights[:5],
+            suggestions=suggestions[:4],
+            source="training",
+        )
+
+    def _page_context_intelligence(
+        self,
+        client: Any,
+        org_id: str,
+        *,
+        environment_name: str,
+    ) -> MesonPageContextResponse:
+        base = self.get_proactive_insights(client, org_id, environment_name=environment_name)
+        insights = list(base.insights[:4])
+        suggestions = [
+            MesonSuggestion(
+                id="open-learning",
+                nodeType="navigate",
+                label="Inspect Learning trends",
+                reason="Verify confidence scores before promoting memories or models.",
+                confidence=0.8,
+            ),
+            MesonSuggestion(
+                id="review-reports",
+                nodeType="navigate",
+                label="Open intelligence reports",
+                reason="ROI and department scorecards show measured business impact.",
+                confidence=0.75,
+            ),
+        ]
+        if not insights:
+            insights.append(
+                MesonInsight(
+                    id="intelligence-warming",
+                    title="Insights are warming up",
+                    summary="Run workflows and connect tools to populate trust and maturity signals.",
+                    category="learning",
+                )
+            )
+        return MesonPageContextResponse(
+            insights=insights[:5],
+            suggestions=suggestions[:4],
+            source="intelligence",
+        )
+
+    def _page_context_multi_agent(
+        self,
+        client: Any,
+        org_id: str,
+        *,
+        environment_name: str,
+    ) -> MesonPageContextResponse:
+        insights: list[MesonInsight] = []
+        suggestions: list[MesonSuggestion] = []
+        try:
+            resp = (
+                client.table("agent_swarm_runs")
+                .select("id, status")
+                .eq("org_id", org_id)
+                .order("created_at", desc=True)
+                .limit(20)
+                .execute()
+            )
+            runs = resp.data or []
+            active = sum(
+                1 for r in runs if str(r.get("status") or "") in {"pending", "running", "aggregating"}
+            )
+            if active:
+                insights.append(
+                    MesonInsight(
+                        id="swarm-active",
+                        title=f"{active} multi-agent run(s) in progress",
+                        summary="Monitor subtasks until the council merges a final recommendation.",
+                        category="agents",
+                    )
+                )
+            elif not runs:
+                suggestions.append(
+                    MesonSuggestion(
+                        id="start-swarm",
+                        nodeType="navigate",
+                        label="Start your first multi-agent run",
+                        reason="Split one objective across parallel agents, then merge results.",
+                        confidence=0.86,
+                    )
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meson multi-agent page context: %s", exc)
+        suggestions.append(
+            MesonSuggestion(
+                id="configure-agents",
+                nodeType="navigate",
+                label="Configure parent agents",
+                reason="Specialized agents produce better parallel subtask outputs.",
+                confidence=0.78,
+            )
+        )
+        if not insights:
+            insights.append(
+                MesonInsight(
+                    id="swarm-overview",
+                    title="Parallel agent coordination",
+                    summary="One objective, many agents, one merged recommendation.",
+                    category="agents",
+                )
+            )
+        return MesonPageContextResponse(
+            insights=insights[:5],
+            suggestions=suggestions[:4],
+            source="multi-agent-run",
+        )
+
+    def _page_context_marketplace(
+        self,
+        client: Any,
+        org_id: str,
+    ) -> MesonPageContextResponse:
+        insights = [
+            MesonInsight(
+                id="marketplace-discover",
+                title="Extend your stack from Marketplace",
+                summary="Install agent packs, workflows, and connector bundles vetted for your org.",
+                category="marketplace",
+            )
+        ]
+        suggestions = [
+            MesonSuggestion(
+                id="browse-assets",
+                nodeType="navigate",
+                label="Browse unified assets",
+                reason="Filter by department, connector coverage, and install readiness.",
+                confidence=0.8,
+            ),
+            MesonSuggestion(
+                id="installed-assets",
+                nodeType="navigate",
+                label="Review installed assets",
+                reason="Confirm entitlements and rollback paths after each install.",
+                confidence=0.72,
+            ),
+        ]
+        return MesonPageContextResponse(
+            insights=insights[:5],
+            suggestions=suggestions[:4],
+            source="marketplace",
+        )
+
+    def _page_context_runs(
+        self,
+        client: Any,
+        org_id: str,
+        *,
+        environment_name: str,
+    ) -> MesonPageContextResponse:
+        insights: list[MesonInsight] = []
+        suggestions: list[MesonSuggestion] = []
+        try:
+            resp = (
+                client.table("workflow_runs")
+                .select("id, status")
+                .eq("org_id", org_id)
+                .eq("environment", environment_name)
+                .order("created_at", desc=True)
+                .limit(30)
+                .execute()
+            )
+            rows = resp.data or []
+            failed = [r for r in rows if str(r.get("status") or "") in {"failed", "error"}]
+            running = [r for r in rows if str(r.get("status") or "") in {"running", "pending", "approved"}]
+            if failed:
+                insights.append(
+                    MesonInsight(
+                        id="recent-failures",
+                        title="Recent failed runs",
+                        summary=f"{len(failed)} failure(s) in the last {len(rows)} runs — inspect step logs.",
+                        category="reliability",
+                    )
+                )
+                suggestions.append(
+                    MesonSuggestion(
+                        id="investigate-failures",
+                        nodeType="navigate",
+                        label="Open latest failed run",
+                        reason="Retry steps or adjust connector scopes before re-running.",
+                        confidence=0.85,
+                    )
+                )
+            if running:
+                insights.insert(
+                    0,
+                    MesonInsight(
+                        id="runs-active",
+                        title=f"{len(running)} run(s) in progress",
+                        summary="Pause or cancel from run detail if execution needs review.",
+                        category="activity",
+                    ),
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meson runs page context: %s", exc)
+        if not suggestions:
+            suggestions.append(
+                MesonSuggestion(
+                    id="summarize-runs",
+                    nodeType="navigate",
+                    label="Ask Chat to summarize runs",
+                    reason="Get a plain-English recap of recent execution outcomes.",
+                    confidence=0.7,
+                )
+            )
+        if not insights:
+            insights.append(
+                MesonInsight(
+                    id="runs-empty",
+                    title="Execution timeline",
+                    summary="Workflow and agent runs appear here with status, duration, and audit trail.",
+                    category="activity",
+                )
+            )
+        return MesonPageContextResponse(
+            insights=insights[:5],
+            suggestions=suggestions[:4],
+            source="runs",
+        )
+
+    def _page_context_failure_alerts(
+        self,
+        client: Any,
+        org_id: str,
+    ) -> MesonPageContextResponse:
+        open_alerts = list_failure_alerts(client, org_id, status="open", limit=10)
+        insights: list[MesonInsight] = []
+        suggestions: list[MesonSuggestion] = []
+        if open_alerts:
+            insights.append(
+                MesonInsight(
+                    id="open-alerts",
+                    title=f"{len(open_alerts)} open failure prediction(s)",
+                    summary="Review connector auth, rate limits, and historical failures before the next run.",
+                    category="risk",
+                )
+            )
+            suggestions.append(
+                MesonSuggestion(
+                    id="triage-alerts",
+                    nodeType="navigate",
+                    label="Triage highest-risk alerts",
+                    reason="Resolve or snooze predictions tied to production workflows.",
+                    confidence=0.88,
+                )
+            )
+        else:
+            insights.append(
+                MesonInsight(
+                    id="alerts-clear",
+                    title="No open failure alerts",
+                    summary="Predictive scans will surface new risks when run history shifts.",
+                    category="risk",
+                )
+            )
+        suggestions.append(
+            MesonSuggestion(
+                id="scan-workflows",
+                nodeType="navigate",
+                label="Scan workflows for risk",
+                reason="Run failure prediction across active workflow definitions.",
+                confidence=0.76,
+            )
+        )
+        return MesonPageContextResponse(
+            insights=insights[:5],
+            suggestions=suggestions[:4],
+            source="failure-alerts",
+        )
+
+    def _page_context_home(
+        self,
+        client: Any,
+        org_id: str,
+        *,
+        environment_name: str,
+    ) -> MesonPageContextResponse:
+        base = self.get_proactive_insights(client, org_id, environment_name=environment_name)
+        suggestions = [
+            MesonSuggestion(
+                id="open-chat",
+                nodeType="navigate",
+                label="Open Chat to delegate work",
+                reason="Route execute, search, and Q&A from one surface.",
+                confidence=0.82,
+            ),
+            MesonSuggestion(
+                id="check-connectors-home",
+                nodeType="navigate",
+                label="Verify connector health",
+                reason="Healthy integrations unblock workflows and agent tool calls.",
+                confidence=0.78,
+            ),
+        ]
+        return MesonPageContextResponse(
+            insights=base.insights[:4],
+            suggestions=suggestions[:4],
+            source="home",
+        )
+
+    def _page_context_metrics(
+        self,
+        client: Any,
+        org_id: str,
+        *,
+        environment_name: str,
+    ) -> MesonPageContextResponse:
+        base = self.get_proactive_insights(client, org_id, environment_name=environment_name)
+        suggestions = [
+            MesonSuggestion(
+                id="metrics-anomalies",
+                nodeType="navigate",
+                label="Investigate throughput dips",
+                reason="Correlate run volume changes with connector or workflow edits.",
+                confidence=0.74,
+            ),
+        ]
+        return MesonPageContextResponse(
+            insights=base.insights[:4],
+            suggestions=suggestions[:4],
+            source="metrics",
         )
 
     def _page_context_model_registry(
