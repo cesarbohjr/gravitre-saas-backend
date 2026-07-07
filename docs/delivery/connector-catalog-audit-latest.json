@@ -8,6 +8,13 @@
     "scopeUnregistered": 0,
     "noTests": 238,
     "multiStepReady": 590,
+    "registryViolations": {
+      "totalViolations": 0,
+      "errors": 0,
+      "warnings": 0,
+      "byCode": {},
+      "violations": []
+    },
     "byVendor": {
       "salesforce": {
         "total": 11,
