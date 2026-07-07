@@ -159,22 +159,15 @@ async def _resolve_asana_assignee(
     settings: Any,
     environment_name: str,
 ) -> WorkflowCheck | None:
-    from app.connectors.asana_api import AsanaAPIError, ensure_asana_session, list_users
+    from app.services.asana_tools import fetch_asana_users_for_disambiguation
 
-    try:
-        _cid, token = ensure_asana_session(
-            client,
-            org_id,
-            None,
-            settings,
-            environment_name=environment_name,
-        )
-        payload = list_users(token)
-    except AsanaAPIError:
-        return None
-
-    users = payload.get("users") if isinstance(payload, dict) else payload
-    if not isinstance(users, list):
+    users = fetch_asana_users_for_disambiguation(
+        client,
+        org_id,
+        settings,
+        environment_name=environment_name,
+    )
+    if users is None:
         return None
 
     matches: list[tuple[str, str]] = []

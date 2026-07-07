@@ -5,6 +5,8 @@ from app.connectors.action_catalog.builder import action, build_vendor
 from app.connectors.action_catalog.action_workflow_schema import (
     APOLLO_LISTS_CREATE_SCHEMA,
     ASANA_TASKS_CREATE_SCHEMA,
+    HUBSPOT_CONTACTS_CREATE_SCHEMA,
+    SLACK_POST_MESSAGE_SCHEMA,
 )
 
 VENDOR_DEFINITIONS: tuple = (
@@ -24,6 +26,7 @@ VENDOR_DEFINITIONS: tuple = (
         v2=(
             action("salesforce", "leads.create", "Create lead", tier="v2", kind="write", scope_suffix="leads:write", destructive=True),
             action("salesforce", "leads.update", "Update lead", tier="v2", kind="write", scope_suffix="leads:write", destructive=True),
+            action("salesforce", "accounts.create", "Create account", tier="v2", kind="write", scope_suffix="accounts:write", destructive=True),
             action("salesforce", "opportunities.create", "Create opportunity", tier="v2", kind="write", scope_suffix="opportunities:write", destructive=True),
             action("salesforce", "tasks.create", "Create task", tier="v2", kind="write", scope_suffix="tasks:write", destructive=True),
         ),
@@ -52,7 +55,16 @@ VENDOR_DEFINITIONS: tuple = (
             action("hubspot", "pipelines.list", "List deal pipelines", tier="v1", kind="read", scope_suffix="pipelines:read", idempotent=True),
         ),
         v2=(
-            action("hubspot", "contacts.create", "Create contact", tier="v2", kind="write", scope_suffix="contacts:write", destructive=True),
+            action(
+                "hubspot",
+                "contacts.create",
+                "Create contact",
+                tier="v2",
+                kind="write",
+                scope_suffix="contacts:write",
+                destructive=True,
+                workflow_schema=HUBSPOT_CONTACTS_CREATE_SCHEMA,
+            ),
             action("hubspot", "contacts.update", "Update contact", tier="v2", kind="write", scope_suffix="contacts:write", destructive=True),
             action("hubspot", "contacts.delete", "Delete contact", tier="v2", kind="write", scope_suffix="contacts:write", destructive=True, requires_approval=True),
             action("hubspot", "deals.create", "Create deal", tier="v2", kind="write", scope_suffix="deals:write", destructive=True),
@@ -436,6 +448,10 @@ VENDOR_DEFINITIONS: tuple = (
             action("quickbooks", "invoices.list", "List invoices", tier="v1", kind="read", scope_suffix="invoices:read", idempotent=True),
             action("quickbooks", "invoices.get", "Get invoice", tier="v1", kind="read", scope_suffix="invoices:read", idempotent=True),
             action("quickbooks", "customers.list", "List customers", tier="v1", kind="read", scope_suffix="customers:read", idempotent=True),
+            action("quickbooks", "customers.get", "Get customer", tier="v1", kind="read", scope_suffix="customers:read", idempotent=True),
+            action("quickbooks", "vendors.list", "List vendors", tier="v1", kind="read", scope_suffix="vendors:read", idempotent=True),
+            action("quickbooks", "accounts.list", "List accounts", tier="v1", kind="read", scope_suffix="accounts:read", idempotent=True),
+            action("quickbooks", "payments.list", "List payments", tier="v1", kind="read", scope_suffix="payments:read", idempotent=True),
             action("quickbooks", "companyinfo.get", "Get company info", tier="v1", kind="read", scope_suffix="company:read", idempotent=True),
         ),
         v2=(
@@ -446,6 +462,8 @@ VENDOR_DEFINITIONS: tuple = (
         v3=(
             action("quickbooks", "customers.search", "Search customers", tier="v3", kind="advanced", scope_suffix="customers:read"),
             action("quickbooks", "bills.list", "List bills", tier="v3", kind="advanced", scope_suffix="bills:read"),
+            action("quickbooks", "bills.get", "Get bill", tier="v3", kind="advanced", scope_suffix="bills:read", idempotent=True),
+            action("quickbooks", "vendors.get", "Get vendor", tier="v3", kind="advanced", scope_suffix="vendors:read", idempotent=True),
             action("quickbooks", "journalentries.create", "Create journal entry", tier="v3", kind="advanced", scope_suffix="write"),
         ),
     ),
@@ -570,7 +588,16 @@ VENDOR_DEFINITIONS: tuple = (
             action("slack", "users.list", "List workspace users", tier="v1", kind="read", scope_suffix="users:read", idempotent=True),
         ),
         v2=(
-            action("slack", "post_message", "Post message", tier="v2", kind="write", scope_suffix="messages:write", destructive=True),
+            action(
+                "slack",
+                "post_message",
+                "Post message",
+                tier="v2",
+                kind="write",
+                scope_suffix="messages:write",
+                destructive=True,
+                workflow_schema=SLACK_POST_MESSAGE_SCHEMA,
+            ),
             action("slack", "conversations.create", "Create channel", tier="v2", kind="write", scope_suffix="channels:write", destructive=True),
             action("slack", "chat.update", "Update message", tier="v2", kind="write", scope_suffix="messages:write", destructive=True),
         ),
@@ -880,6 +907,7 @@ VENDOR_DEFINITIONS: tuple = (
             action("jira", "issues.get", "Get issue", tier="v1", kind="read", scope_suffix="issues:read", idempotent=True),
             action("jira", "issues.search", "Search issues", tier="v1", kind="read", scope_suffix="issues:read", idempotent=True),
             action("jira", "projects.list", "List projects", tier="v1", kind="read", scope_suffix="projects:read", idempotent=True),
+            action("jira", "users.search", "Search users", tier="v1", kind="read", scope_suffix="users:read", idempotent=True),
         ),
         v2=(
             action("jira", "issues.create", "Create issue", tier="v2", kind="write", scope_suffix="issues:write", destructive=True),
@@ -1115,6 +1143,7 @@ VENDOR_DEFINITIONS: tuple = (
         v2=(
             action("zendesk", "tickets.create", "Create ticket", tier="v2", kind="write", scope_suffix="tickets:write", destructive=True),
             action("zendesk", "tickets.update", "Update ticket", tier="v2", kind="write", scope_suffix="tickets:write", destructive=True),
+            action("zendesk", "tickets.close", "Close ticket", tier="v2", kind="write", scope_suffix="tickets:write", destructive=True),
             action("zendesk", "tickets.add_tags", "Add ticket tags", tier="v2", kind="write", scope_suffix="tickets:write", destructive=True),
         ),
         v3=(
@@ -1533,6 +1562,58 @@ VENDOR_DEFINITIONS: tuple = (
             action("figma", "comments.delete", "Delete comment", tier="v4", kind="advanced", scope_suffix="comments:write", destructive=True, requires_approval=True),
             action("figma", "files.versions.list", "List file versions", tier="v4", kind="advanced", scope_suffix="files:read", idempotent=True),
             action("figma", "users.me", "Get current user", tier="v4", kind="advanced", scope_suffix="users:read", idempotent=True),
+        ),
+    ),
+    build_vendor(
+        "fhir",
+        "FHIR",
+        "Healthcare",
+        "https://www.hl7.org/fhir/",
+        shipped=True,
+        department="healthcare",
+        v1=(
+            action("fhir", "patients.get", "Get patient", tier="v1", kind="read", scope_suffix="patients:read", idempotent=True),
+            action("fhir", "patients.search", "Search patients", tier="v1", kind="read", scope_suffix="patients:read", idempotent=True),
+            action("fhir", "appointments.search", "Search appointments", tier="v1", kind="read", scope_suffix="appointments:read", idempotent=True),
+        ),
+        v2=(
+            action(
+                "fhir",
+                "prior_auth.checklist",
+                "Generate prior authorization checklist",
+                tier="v2",
+                kind="write",
+                scope_suffix="prior_auth:write",
+                destructive=True,
+            ),
+        ),
+        v3=(
+            action("fhir", "coverage.eligibility", "Check coverage eligibility", tier="v3", kind="advanced", scope_suffix="coverage:read"),
+        ),
+    ),
+    build_vendor(
+        "webhook",
+        "Webhook",
+        "Integration",
+        "https://docs.gravitre.ai/connectors/webhook",
+        shipped=True,
+        department="operations",
+        v1=(
+            action(
+                "webhook",
+                "connectors.get",
+                "Get webhook connector",
+                tier="v1",
+                kind="read",
+                scope_suffix="connectors:read",
+                idempotent=True,
+            ),
+        ),
+        v2=(
+            action("webhook", "post", "POST to webhook endpoint", tier="v2", kind="write", scope_suffix="post:write", destructive=True),
+        ),
+        v3=(
+            action("webhook", "post.replay", "Replay webhook delivery", tier="v3", kind="advanced", scope_suffix="post:write"),
         ),
     ),
 )

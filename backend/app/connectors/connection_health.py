@@ -40,7 +40,6 @@ from app.connectors.google_vendor_oauth import (
     normalize_google_vendor,
 )
 from app.connectors.odoo import odoo_connection_auth_status
-from app.connectors.apollo_api import apollo_connection_auth_status
 from app.connectors.oauth_provider_registry import (
     GENERIC_OAUTH_VENDORS,
     normalize_generic_vendor,
@@ -63,6 +62,8 @@ def resolve_connector_auth_status(
             client, org_id, connector_id, settings, environment_name=environment_name
         )
     if vendor == "apollo":
+        from app.services.apollo_tools import apollo_connection_auth_status
+
         return apollo_connection_auth_status(
             client, org_id, connector_id, settings, environment_name=environment_name
         )

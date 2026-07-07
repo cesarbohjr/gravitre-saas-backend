@@ -260,24 +260,15 @@ class OutcomeAttributionService:
                 return None
             return _parse_deal_amount(deal)
         if target_entity_type == ENTITY_SUBSCRIPTION:
-            from app.connectors.repository import get_connector_by_type
-            from app.connectors.stripe_api import get_subscription, resolve_stripe_credentials
+            from app.services.stripe_tools import fetch_subscription_state
 
             client = self._client()
-            conn = get_connector_by_type(client, org_id, "stripe", environment_name="default")
-            if not conn:
-                return None
             try:
-                api_key, stripe_account = resolve_stripe_credentials(
+                state = fetch_subscription_state(
                     client,
                     org_id,
-                    str(conn["id"]),
-                    self.settings,
-                )
-                payload = get_subscription(
-                    api_key,
                     target_entity_id,
-                    stripe_account=stripe_account,
+                    self.settings,
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
@@ -287,9 +278,8 @@ class OutcomeAttributionService:
                     exc,
                 )
                 return None
-            from app.connectors.stripe_api import subscription_state
-
-            state = subscription_state(payload)
+            if state is None:
+                return None
             if metric_name == METRIC_SUBSCRIPTION_STATUS:
                 return encode_subscription_status(str(state.get("status") or ""))
             if metric_name == METRIC_SUBSCRIPTION_MRR:

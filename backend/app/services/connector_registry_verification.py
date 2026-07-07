@@ -10,31 +10,15 @@ from app.connectors.action_catalog.tool_aliases import (
     catalog_tool_is_implemented,
     resolve_registry_action,
 )
+from app.services.connector_allowlists import ORPHAN_HANDLER_ALLOWLIST
 from app.services.connector_capability_analysis import LIST_CAPABILITY_CHECKS
 from app.services.connector_execution_matrix import PRIORITY_CONNECTORS, build_connector_execution_matrix
 from app.services.tool_service import list_registered_actions
 
 ViolationSeverity = Literal["error", "warning"]
 
-# Legacy invoke_tool handlers registered before catalog parity. Do not add new entries.
-REGISTERED_WITHOUT_CATALOG_ALLOWLIST: frozenset[str] = frozenset(
-    {
-        "fhir.appointments.search",
-        "fhir.patients.get",
-        "fhir.patients.search",
-        "fhir.prior_auth.checklist",
-        "jira.users.search",
-        "quickbooks.accounts.list",
-        "quickbooks.bills.get",
-        "quickbooks.customers.get",
-        "quickbooks.payments.list",
-        "quickbooks.vendors.get",
-        "quickbooks.vendors.list",
-        "salesforce.accounts.create",
-        "webhook.post",
-        "zendesk.tickets.close",
-    }
-)
+# Legacy invoke_tool handlers registered before catalog parity. Shrink via registration contract.
+REGISTERED_WITHOUT_CATALOG_ALLOWLIST = ORPHAN_HANDLER_ALLOWLIST
 
 _REGISTRY_PREFIX_TO_CATALOG_VENDOR = {
     alias_prefix: catalog_vendor

@@ -632,9 +632,9 @@ async def test_connector_route(
             return {"success": True, "message": "Salesforce connection is valid"}
         return {"success": False, "message": err or "Salesforce connection failed"}
     if vendor == "pipedrive":
-        from app.connectors.pipedrive_api import test_pipedrive_connection
+        from app.services.pipedrive_tools import verify_pipedrive_connection
 
-        ok, msg = test_pipedrive_connection(
+        ok, msg = verify_pipedrive_connection(
             client,
             org_id,
             str(connector_id),

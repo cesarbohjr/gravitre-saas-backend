@@ -137,25 +137,11 @@ def _context_texts(context: ParameterInferenceContext) -> list[str]:
 def _single_asana_project(context: ParameterInferenceContext) -> str | None:
     if not context.client or not context.org_id or not context.settings:
         return None
-    from app.connectors.asana_api import AsanaAPIError, ensure_asana_session, list_projects
+    from app.services.asana_tools import fetch_single_asana_project_name
 
-    try:
-        _cid, token = ensure_asana_session(
-            context.client,
-            context.org_id,
-            None,
-            context.settings,
-            environment_name=context.environment_name,
-        )
-        payload = list_projects(token)
-    except AsanaAPIError:
-        return None
-
-    projects = payload.get("projects") if isinstance(payload, dict) else payload
-    if not isinstance(projects, list) or len(projects) != 1:
-        return None
-    project = projects[0]
-    if not isinstance(project, dict):
-        return None
-    name = str(project.get("name") or "").strip()
-    return name[:120] if name else None
+    return fetch_single_asana_project_name(
+        context.client,
+        context.org_id,
+        context.settings,
+        environment_name=context.environment_name,
+    )
