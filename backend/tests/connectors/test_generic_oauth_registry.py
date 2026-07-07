@@ -24,7 +24,6 @@ INVALID_GENERIC_OAUTH = frozenset(
         "adp",
         "motion",
         "n8n",
-        "apollo",
         "absorb_lms",
         "snowflake",
         "odoo",
@@ -72,6 +71,22 @@ def test_generic_redirect_uri_uses_public_app_url():
     assert (
         generic_redirect_uri(settings, "mailchimp")
         == "https://gravitre.app/api/connectors/oauth/mailchimp/callback"
+    )
+
+
+def test_apollo_redirect_uri_uses_public_app_url():
+    settings = Settings(
+        supabase_url="https://x.supabase.co",
+        supabase_anon_key="a",
+        supabase_service_role_key="b",
+        supabase_jwt_secret="c",
+        api_public_url="https://api.gravitre.app",
+        public_app_url="https://gravitre.app",
+        NEXT_PUBLIC_APP_URL="https://gravitre.app",
+    )
+    assert (
+        generic_redirect_uri(settings, "apollo")
+        == "https://gravitre.app/api/connectors/oauth/apollo/callback"
     )
 
 

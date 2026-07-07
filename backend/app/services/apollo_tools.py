@@ -12,7 +12,7 @@ from app.connectors.apollo_api import (
     delete_contact,
     get_contact,
     remove_contacts_from_sequence,
-    resolve_apollo_api_key,
+    resolve_apollo_connector,
     search_organizations,
     search_people,
     subscribe_intent_signals,
@@ -70,12 +70,12 @@ def _handle_error(exc: ApolloAPIError) -> Exception:
     return ToolValidationError(str(exc))
 
 
-def _session(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str]:
+def _session(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, dict[str, str]]:
     if ctx.settings.disable_connectors:
         raise ToolValidationError("Connectors are disabled")
     connector_id = params.get("connector_id") or ctx.connector_id
     try:
-        cid, api_key = resolve_apollo_api_key(
+        cid, headers = resolve_apollo_connector(
             ctx.client,
             ctx.org_id,
             str(connector_id) if connector_id else None,
@@ -85,7 +85,7 @@ def _session(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str]:
     except ApolloAPIError as exc:
         raise _handle_error(exc) from exc
     enforce_rate_limit(ctx.client, ctx.org_id, "apollo", "apollo", cid)
-    return cid, api_key
+    return cid, headers
 
 
 def _search_params(params: dict[str, Any]) -> dict[str, Any]:
@@ -107,56 +107,56 @@ def _body_params(params: dict[str, Any]) -> dict[str, Any]:
 
 
 def _exec_people_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
-    cid, api_key = _session(ctx, params)
+    cid, headers = _session(ctx, params)
     try:
-        data = search_people(api_key, params=_search_params(params))
+        data = search_people(headers, params=_search_params(params))
     except ApolloAPIError as exc:
         raise _handle_error(exc) from exc
     return NormalizedResult(success=True, action="apollo.people.search", connector_id=cid, data=data)
 
 
 def _exec_organizations_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
-    cid, api_key = _session(ctx, params)
+    cid, headers = _session(ctx, params)
     try:
-        data = search_organizations(api_key, params=_search_params(params))
+        data = search_organizations(headers, params=_search_params(params))
     except ApolloAPIError as exc:
         raise _handle_error(exc) from exc
     return NormalizedResult(success=True, action="apollo.organizations.search", connector_id=cid, data=data)
 
 
 def _exec_contacts_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
-    cid, api_key = _session(ctx, params)
+    cid, headers = _session(ctx, params)
     contact_id = params.get("contact_id") or params.get("id")
     if not contact_id:
         raise ToolValidationError("apollo.contacts.get requires contact_id")
     try:
-        data = get_contact(api_key, str(contact_id))
+        data = get_contact(headers, str(contact_id))
     except ApolloAPIError as exc:
         raise _handle_error(exc) from exc
     return NormalizedResult(success=True, action="apollo.contacts.get", connector_id=cid, data=data)
 
 
 def _exec_contacts_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
-    cid, api_key = _session(ctx, params)
+    cid, headers = _session(ctx, params)
     body = _body_params(params)
     if not body:
         raise ToolValidationError("apollo.contacts.create requires contact fields")
     try:
-        data = create_contact(api_key, payload=body)
+        data = create_contact(headers, payload=body)
     except ApolloAPIError as exc:
         raise _handle_error(exc) from exc
     return NormalizedResult(success=True, action="apollo.contacts.create", connector_id=cid, data=data)
 
 
 def _exec_sequences_add(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
-    cid, api_key = _session(ctx, params)
+    cid, headers = _session(ctx, params)
     sequence_id = params.get("sequence_id") or params.get("campaign_id")
     contact_ids = params.get("contact_ids") or params.get("ids")
     if not sequence_id or not isinstance(contact_ids, list):
         raise ToolValidationError("apollo.sequences.add requires sequence_id and contact_ids[]")
     try:
         data = add_contacts_to_sequence(
-            api_key,
+            headers,
             sequence_id=str(sequence_id),
             contact_ids=[str(x) for x in contact_ids],
             email_account_id=str(params["email_account_id"]) if params.get("email_account_id") else None,
@@ -167,43 +167,43 @@ def _exec_sequences_add(ctx: ToolContext, params: dict[str, Any]) -> NormalizedR
 
 
 def _exec_enrichment_bulk(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
-    cid, api_key = _session(ctx, params)
+    cid, headers = _session(ctx, params)
     details = params.get("details")
     if not isinstance(details, list):
         raise ToolValidationError("apollo.enrichment.bulk requires details[]")
     try:
-        data = bulk_enrich_people(api_key, details=details)
+        data = bulk_enrich_people(headers, details=details)
     except ApolloAPIError as exc:
         raise _handle_error(exc) from exc
     return NormalizedResult(success=True, action="apollo.enrichment.bulk", connector_id=cid, data=data)
 
 
 def _exec_tasks_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
-    cid, api_key = _session(ctx, params)
+    cid, headers = _session(ctx, params)
     body = _body_params(params)
     if not body:
         raise ToolValidationError("apollo.tasks.create requires task fields")
     try:
-        data = create_task(api_key, payload=body)
+        data = create_task(headers, payload=body)
     except ApolloAPIError as exc:
         raise _handle_error(exc) from exc
     return NormalizedResult(success=True, action="apollo.tasks.create", connector_id=cid, data=data)
 
 
 def _exec_signals_subscribe(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
-    cid, api_key = _session(ctx, params)
+    cid, headers = _session(ctx, params)
     body = _body_params(params)
     if not body:
         raise ToolValidationError("apollo.signals.subscribe requires signal filters")
     try:
-        data = subscribe_intent_signals(api_key, payload=body)
+        data = subscribe_intent_signals(headers, payload=body)
     except ApolloAPIError as exc:
         raise _handle_error(exc) from exc
     return NormalizedResult(success=True, action="apollo.signals.subscribe", connector_id=cid, data=data)
 
 
 def _exec_contacts_update(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
-    cid, api_key = _session(ctx, params)
+    cid, headers = _session(ctx, params)
     contact_id = params.get("contact_id") or params.get("id")
     body = _body_params(params)
     if not contact_id:
@@ -211,26 +211,26 @@ def _exec_contacts_update(ctx: ToolContext, params: dict[str, Any]) -> Normalize
     if not body:
         raise ToolValidationError("apollo.contacts.update requires contact fields")
     try:
-        data = update_contact(api_key, str(contact_id), payload=body)
+        data = update_contact(headers, str(contact_id), payload=body)
     except ApolloAPIError as exc:
         raise _handle_error(exc) from exc
     return NormalizedResult(success=True, action="apollo.contacts.update", connector_id=cid, data=data)
 
 
 def _exec_contacts_delete(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
-    cid, api_key = _session(ctx, params)
+    cid, headers = _session(ctx, params)
     contact_id = params.get("contact_id") or params.get("id")
     if not contact_id:
         raise ToolValidationError("apollo.contacts.delete requires contact_id")
     try:
-        data = delete_contact(api_key, str(contact_id))
+        data = delete_contact(headers, str(contact_id))
     except ApolloAPIError as exc:
         raise _handle_error(exc) from exc
     return NormalizedResult(success=True, action="apollo.contacts.delete", connector_id=cid, data=data)
 
 
 def _exec_sequences_remove(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
-    cid, api_key = _session(ctx, params)
+    cid, headers = _session(ctx, params)
     sequence_id = params.get("sequence_id") or params.get("campaign_id")
     sequence_ids = params.get("sequence_ids") or params.get("campaign_ids")
     contact_ids = params.get("contact_ids") or params.get("ids")
@@ -241,7 +241,7 @@ def _exec_sequences_remove(ctx: ToolContext, params: dict[str, Any]) -> Normaliz
     mode = str(params.get("mode") or "remove")
     try:
         data = remove_contacts_from_sequence(
-            api_key,
+            headers,
             sequence_ids=[str(x) for x in sequence_ids],
             contact_ids=[str(x) for x in contact_ids],
             mode=mode,

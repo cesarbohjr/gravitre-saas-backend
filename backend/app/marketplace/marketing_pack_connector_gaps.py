@@ -31,7 +31,7 @@ MARKETING_PACK_CONNECTOR_GAPS: tuple[MarketingPackConnectorGap, ...] = (
         audit_state="partial",
         complexity="low",
         blocks_pack="no",
-        notes="API-key auth via apollo_api.py; action catalog + apollo_tools shipped.",
+        notes="OAuth partner flow via generic OAuth registry; legacy API key fallback; action catalog + apollo_tools shipped.",
         pack_workflow_use="Prospect enrichment and outbound sequencing",
     ),
     MarketingPackConnectorGap(

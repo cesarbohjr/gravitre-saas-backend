@@ -205,7 +205,7 @@ def _docs_url(vendor: str) -> str | None:
         "google_drive": "https://developers.google.com/drive/api",
         "google_docs": "https://developers.google.com/docs/api",
         "google_sheets": "https://developers.google.com/sheets/api",
-        "apollo": "https://docs.apollo.io/reference/authentication",
+        "apollo": "https://docs.apollo.io/docs/use-oauth-20-authorization-flow-to-access-apollo-user-information-partners",
     }
     return mapping.get(vendor)
 
@@ -863,8 +863,6 @@ async def create_connector_route(
             "database": str(cfg.get("database") or cfg.get("db") or "").strip(),
         }
         row["docs_url"] = "https://www.odoo.com/documentation/17.0/developer/reference/external_api.html"
-    if vendor == "apollo":
-        row["auth_type"] = "apiKey"
     connector_id: str
     try:
         r = client.table("connectors").insert(row).execute()

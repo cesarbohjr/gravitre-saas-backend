@@ -186,6 +186,15 @@ def _specs() -> dict[str, OAuthProviderSpec]:
             requires_subdomain=True,
             notes="Tools prefer OAuth token; API token fallback supported",
         ),
+        OAuthProviderSpec(
+            vendor="apollo",
+            authorize_url="https://app.apollo.io/#/oauth/authorize",
+            token_url="https://app.apollo.io/api/v1/oauth/token",
+            notes=(
+                "Apollo partner OAuth — register at Settings → Integrations → API → OAuth registration. "
+                "Scopes are configured in the Apollo app; omit scope param to use registered defaults."
+            ),
+        ),
     ]
     return {spec.vendor: spec for spec in entries}
 

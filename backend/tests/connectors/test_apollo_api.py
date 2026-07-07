@@ -11,7 +11,7 @@ def test_search_people_uses_x_api_key_header():
         response = MagicMock(status_code=200, text='{"people":[]}')
         response.json.return_value = {"people": []}
         client_cls.return_value.__enter__.return_value.request.return_value = response
-        out = search_people("secret-key", params={"per_page": 1})
+        out = search_people({"X-Api-Key": "secret-key"}, params={"per_page": 1})
     assert out == {"people": []}
     headers = client_cls.return_value.__enter__.return_value.request.call_args[1]["headers"]
     assert headers["X-Api-Key"] == "secret-key"

@@ -85,6 +85,7 @@ export const SHIPPED_OAUTH_CONNECTOR_TYPES = [
   "Zendesk",
   "Canva",
   "Figma",
+  "Apollo",
 ] as const
 
 /** Generic OAuth providers that require PKCE (RFC 7636). Salesforce uses backend PKCE too. */
@@ -126,6 +127,7 @@ export const OAUTH_VENDOR_KEYS = new Set([
   "github",
   "canva",
   "figma",
+  "apollo",
 ])
 
 /** OAuth + optional PAT/API-token fallback at connect time. */
@@ -139,7 +141,6 @@ export const APIKEY_VENDOR_KEYS = new Set([
   "mixpanel",
   "semrush",
   "stackadapt",
-  "apollo",
   "sendgrid",
   "twilio",
   "n8n",
@@ -239,7 +240,7 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "StackAdapt", vendorKey: "stackadapt", description: "Programmatic advertising", authType: "apiKey", credentialModel: "api_key", category: "CRM / Marketing" },
   // Sales / Prospecting
   { type: "LinkedIn", vendorKey: "linkedin", description: "Prospect enrichment for Sales Agent", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", shipped: true },
-  { type: "Apollo", vendorKey: "apollo", description: "Sales intelligence and outreach", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", shipped: true },
+  { type: "Apollo", vendorKey: "apollo", description: "Sales intelligence and outreach", authType: "oauth", credentialModel: "oauth2", category: "Sales / Prospecting", shipped: true, oauthReady: true },
   // Payments / Finance
   { type: "Stripe", vendorKey: "stripe", description: "Payment processing", authType: "apiKey", credentialModel: "api_key", category: "Payments / Finance", shipped: true },
   { type: "QuickBooks", vendorKey: "quickbooks", description: "Accounting software", authType: "oauth", credentialModel: "oauth2", category: "Payments / Finance", shipped: true },

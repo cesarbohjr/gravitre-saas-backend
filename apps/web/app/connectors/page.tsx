@@ -1320,6 +1320,24 @@ function AddConnectorModal({
                           />
                         </div>
                       )}
+                      {selectedType === "Apollo" && (
+                        <div className="rounded-lg border border-border bg-secondary/40 p-3 space-y-2">
+                          <p className="text-xs text-muted-foreground">
+                            Sign in with Apollo to authorize Gravitre. Your Apollo admin must approve OAuth
+                            integrations for your workspace. Scopes are configured in your Apollo OAuth app
+                            registration.
+                          </p>
+                          <a
+                            href="https://docs.apollo.io/docs/use-oauth-20-authorization-flow-to-access-apollo-user-information-partners"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                          >
+                            Apollo OAuth partner guide
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </div>
+                      )}
                       {selectedType === "GitHub" && (
                         <>
                           <div>
@@ -1683,24 +1701,6 @@ function AddConnectorModal({
                   </>
                 )}
 
-                {selectedType === "Apollo" && (
-                  <div className="rounded-lg border border-border bg-secondary/40 p-3 space-y-2">
-                    <p className="text-xs text-muted-foreground">
-                      Paste your Apollo API key from Settings → Integrations → API. Search, contacts, and sequences
-                      work with a standard key; delete and sequence-removal actions (v4) require a master API key.
-                    </p>
-                    <a
-                      href="https://docs.apollo.io/reference/authentication"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
-                    >
-                      Apollo API documentation
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
-                )}
-
                 <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground flex items-center gap-2">
                       <Key className="h-4 w-4 text-amber-400" />
@@ -1710,20 +1710,14 @@ function AddConnectorModal({
                           ? "Personal access token"
                           : selectedType === "Odoo"
                             ? "API key"
-                            : selectedType === "Apollo"
-                              ? "Apollo API key"
-                              : "API Key"}
+                            : "API Key"}
                     </label>
                     <div className="relative">
                       <Input
                         type={showApiKey ? "text" : "password"}
                         value={apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
-                        placeholder={
-                          selectedType === "Apollo"
-                            ? "Paste your Apollo API key"
-                            : "Enter your API key or token"
-                        }
+                        placeholder="Enter your API key or token"
                         className="bg-secondary pr-10"
                       />
                       <button

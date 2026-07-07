@@ -26,10 +26,10 @@ def test_apollo_tools_registered():
 
 
 @patch("app.services.apollo_tools.enforce_rate_limit")
-@patch("app.services.apollo_tools.resolve_apollo_api_key")
+@patch("app.services.apollo_tools.resolve_apollo_connector")
 @patch("app.services.apollo_tools.search_people")
 def test_apollo_people_search(mock_search, mock_session, _rate):
-    mock_session.return_value = ("conn-apollo", "key")
+    mock_session.return_value = ("conn-apollo", {"Authorization": "Bearer token"})
     mock_search.return_value = {"people": [], "pagination": {"page": 1}}
     result = APOLLO_TOOL_EXECUTORS["apollo.people.search"](_ctx(), {"person_titles": ["CEO"]})
     assert result.success
@@ -37,10 +37,10 @@ def test_apollo_people_search(mock_search, mock_session, _rate):
 
 
 @patch("app.services.apollo_tools.enforce_rate_limit")
-@patch("app.services.apollo_tools.resolve_apollo_api_key")
+@patch("app.services.apollo_tools.resolve_apollo_connector")
 @patch("app.services.apollo_tools.create_contact")
 def test_apollo_contacts_create(mock_create, mock_session, _rate):
-    mock_session.return_value = ("conn-apollo", "key")
+    mock_session.return_value = ("conn-apollo", {"Authorization": "Bearer token"})
     mock_create.return_value = {"contact": {"id": "c1"}}
     result = APOLLO_TOOL_EXECUTORS["apollo.contacts.create"](
         _ctx(), {"first_name": "Ada", "last_name": "Lovelace", "email": "ada@example.com"}
@@ -49,11 +49,11 @@ def test_apollo_contacts_create(mock_create, mock_session, _rate):
 
 
 @patch("app.services.apollo_tools.enforce_rate_limit")
-@patch("app.services.apollo_tools.resolve_apollo_api_key")
+@patch("app.services.apollo_tools.resolve_apollo_connector")
 @patch("app.services.apollo_tools.delete_contact")
 def test_apollo_contacts_delete(mock_delete, mock_session, _rate):
-    mock_session.return_value = ("conn-apollo", "key")
+    mock_session.return_value = ("conn-apollo", {"Authorization": "Bearer token"})
     mock_delete.return_value = {"success": True}
     result = APOLLO_TOOL_EXECUTORS["apollo.contacts.delete"](_ctx(), {"contact_id": "c1"})
     assert result.success
-    mock_delete.assert_called_once_with("key", "c1")
+    mock_delete.assert_called_once_with({"Authorization": "Bearer token"}, "c1")

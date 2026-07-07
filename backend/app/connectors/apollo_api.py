@@ -1,4 +1,4 @@
-"""Apollo.io REST API client (API key auth)."""
+"""Apollo.io REST API client (OAuth partner flow + legacy API key fallback)."""
 from __future__ import annotations
 
 from typing import Any
@@ -6,6 +6,12 @@ from typing import Any
 import httpx
 
 from app.config import Settings
+from app.connectors.generic_oauth import (
+    ensure_generic_session,
+    generic_connection_auth_status,
+    generic_oauth_configured,
+)
+from app.connectors.hubspot_oauth import load_oauth_tokens
 from app.connectors.repository import get_connector, get_connector_by_type, get_decrypted_secret
 
 APOLLO_API_BASE = "https://api.apollo.io/api/v1"
@@ -19,14 +25,27 @@ class ApolloAPIError(Exception):
         self.details = details
 
 
-def resolve_apollo_api_key(
+def _connector_auth_type(client: Any, org_id: str, connector_id: str) -> str:
+    row = (
+        client.table("connectors")
+        .select("config")
+        .eq("org_id", org_id)
+        .eq("id", connector_id)
+        .limit(1)
+        .execute()
+    )
+    config = dict((row.data or [{}])[0].get("config") or {})
+    return str(config.get("auth_type") or "").strip().lower()
+
+
+def resolve_apollo_connector(
     client: Any,
     org_id: str,
     connector_id: str | None,
     settings: Settings,
     *,
     environment_name: str | None = None,
-) -> tuple[str, str]:
+) -> tuple[str, dict[str, Any]]:
     conn = None
     if connector_id:
         conn = get_connector(client, org_id, connector_id, environment_name=environment_name)
@@ -35,16 +54,53 @@ def resolve_apollo_api_key(
     if not conn:
         raise ApolloAPIError("No active Apollo connector found", status_code=404)
     cid = str(conn["id"])
+
+    oauth_tokens = load_oauth_tokens(client, cid, settings)
+    if oauth_tokens and oauth_tokens.get("access_token"):
+        access, err = ensure_generic_session(
+            client,
+            org_id,
+            cid,
+            settings,
+            vendor="apollo",
+            environment_name=environment_name,
+        )
+        if access:
+            return cid, {"Authorization": f"Bearer {access}"}
+        if err and _connector_auth_type(client, org_id, cid) == "oauth":
+            raise ApolloAPIError(err, status_code=401)
+
     api_key = get_decrypted_secret(client, cid, "api_token", settings) or get_decrypted_secret(
         client, cid, "api_key", settings
     )
-    if not api_key:
-        raise ApolloAPIError("Apollo API key not configured", status_code=401)
-    return cid, api_key.strip()
+    if api_key:
+        return cid, {"X-Api-Key": api_key.strip()}
+
+    raise ApolloAPIError("Apollo OAuth or API key not configured", status_code=401)
+
+
+def resolve_apollo_api_key(
+    client: Any,
+    org_id: str,
+    connector_id: str | None,
+    settings: Settings,
+    *,
+    environment_name: str | None = None,
+) -> tuple[str, str]:
+    """Legacy helper — returns API key when present, otherwise OAuth bearer token string."""
+    cid, headers = resolve_apollo_connector(
+        client, org_id, connector_id, settings, environment_name=environment_name
+    )
+    if "X-Api-Key" in headers:
+        return cid, str(headers["X-Api-Key"])
+    auth = str(headers.get("Authorization") or "")
+    if auth.lower().startswith("bearer "):
+        return cid, auth[7:].strip()
+    raise ApolloAPIError("Apollo credentials not configured", status_code=401)
 
 
 def _request(
-    api_key: str,
+    auth_headers: dict[str, str],
     method: str,
     path: str,
     *,
@@ -53,7 +109,7 @@ def _request(
 ) -> Any:
     url = f"{APOLLO_API_BASE}{path}"
     headers = {
-        "X-Api-Key": api_key,
+        **auth_headers,
         "Accept": "application/json",
         "Content-Type": "application/json",
         "Cache-Control": "no-cache",
@@ -76,11 +132,17 @@ def _request(
     return response.json()
 
 
-def verify_apollo_api_key(api_key: str) -> bool:
-    """Lightweight health probe using people search with page size 1."""
+def verify_apollo_credentials(auth_headers: dict[str, str]) -> bool:
+    """Lightweight health probe for OAuth bearer or API key."""
     try:
-        _request(api_key, "POST", "/mixed_people/api_search", params={"per_page": 1})
-        return True
+        if "Authorization" in auth_headers:
+            _request(auth_headers, "GET", "/users/api_profile")
+            return True
+        api_key = auth_headers.get("X-Api-Key")
+        if api_key:
+            _request({"X-Api-Key": api_key}, "POST", "/mixed_people/api_search", params={"per_page": 1})
+            return True
+        return False
     except ApolloAPIError as exc:
         if exc.status_code in {401, 403}:
             return False
@@ -95,39 +157,69 @@ def apollo_connection_auth_status(
     *,
     environment_name: str | None = None,
 ) -> str:
+    if generic_oauth_configured(settings, "apollo", environment_name):
+        tokens = load_oauth_tokens(client, connector_id, settings)
+        if tokens and tokens.get("access_token"):
+            return generic_connection_auth_status(
+                client,
+                org_id,
+                connector_id,
+                settings,
+                vendor="apollo",
+                environment_name=environment_name,
+            )
+        if _connector_auth_type(client, org_id, connector_id) == "oauth":
+            return generic_connection_auth_status(
+                client,
+                org_id,
+                connector_id,
+                settings,
+                vendor="apollo",
+                environment_name=environment_name,
+            )
+
     try:
-        _cid, api_key = resolve_apollo_api_key(
+        cid, headers = resolve_apollo_connector(
             client, org_id, connector_id, settings, environment_name=environment_name
         )
-        return "connected" if verify_apollo_api_key(api_key) else "auth_expired"
+        _ = cid
+        return "connected" if verify_apollo_credentials(headers) else "auth_expired"
     except ApolloAPIError as exc:
         if exc.status_code in {401, 403, 404}:
             return "auth_expired" if exc.status_code != 404 else "misconfigured"
         return "misconfigured"
 
 
-def search_people(api_key: str, *, params: dict[str, Any] | None = None) -> dict[str, Any]:
-    return _request(api_key, "POST", "/mixed_people/api_search", params=params or {})
+def search_people(
+    auth_headers: dict[str, str],
+    *,
+    params: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    return _request(auth_headers, "POST", "/mixed_people/api_search", params=params or {})
 
 
-def search_organizations(api_key: str, *, params: dict[str, Any] | None = None) -> dict[str, Any]:
-    return _request(api_key, "POST", "/mixed_companies/search", params=params or {})
+def search_organizations(
+    auth_headers: dict[str, str],
+    *,
+    params: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    return _request(auth_headers, "POST", "/mixed_companies/search", params=params or {})
 
 
-def get_contact(api_key: str, contact_id: str) -> dict[str, Any]:
+def get_contact(auth_headers: dict[str, str], contact_id: str) -> dict[str, Any]:
     if not contact_id:
         raise ApolloAPIError("contact_id is required")
-    return _request(api_key, "GET", f"/contacts/{contact_id}")
+    return _request(auth_headers, "GET", f"/contacts/{contact_id}")
 
 
-def create_contact(api_key: str, *, payload: dict[str, Any]) -> dict[str, Any]:
+def create_contact(auth_headers: dict[str, str], *, payload: dict[str, Any]) -> dict[str, Any]:
     if not payload:
         raise ApolloAPIError("contact payload is required")
-    return _request(api_key, "POST", "/contacts", json_body=payload)
+    return _request(auth_headers, "POST", "/contacts", json_body=payload)
 
 
 def add_contacts_to_sequence(
-    api_key: str,
+    auth_headers: dict[str, str],
     *,
     sequence_id: str,
     contact_ids: list[str],
@@ -138,43 +230,43 @@ def add_contacts_to_sequence(
     body: dict[str, Any] = {"contact_ids": contact_ids}
     if email_account_id:
         body["email_account_id"] = email_account_id
-    return _request(api_key, "POST", f"/emailer_campaigns/{sequence_id}/add_contact_ids", json_body=body)
+    return _request(auth_headers, "POST", f"/emailer_campaigns/{sequence_id}/add_contact_ids", json_body=body)
 
 
-def bulk_enrich_people(api_key: str, *, details: list[dict[str, Any]]) -> dict[str, Any]:
+def bulk_enrich_people(auth_headers: dict[str, str], *, details: list[dict[str, Any]]) -> dict[str, Any]:
     if not details:
         raise ApolloAPIError("details[] is required")
-    return _request(api_key, "POST", "/people/bulk_match", json_body={"details": details})
+    return _request(auth_headers, "POST", "/people/bulk_match", json_body={"details": details})
 
 
-def create_task(api_key: str, *, payload: dict[str, Any]) -> dict[str, Any]:
+def create_task(auth_headers: dict[str, str], *, payload: dict[str, Any]) -> dict[str, Any]:
     if not payload:
         raise ApolloAPIError("task payload is required")
-    return _request(api_key, "POST", "/tasks", json_body=payload)
+    return _request(auth_headers, "POST", "/tasks", json_body=payload)
 
 
-def subscribe_intent_signals(api_key: str, *, payload: dict[str, Any]) -> dict[str, Any]:
+def subscribe_intent_signals(auth_headers: dict[str, str], *, payload: dict[str, Any]) -> dict[str, Any]:
     if not payload:
         raise ApolloAPIError("signal subscription payload is required")
-    return _request(api_key, "POST", "/intent_signals/search", json_body=payload)
+    return _request(auth_headers, "POST", "/intent_signals/search", json_body=payload)
 
 
-def update_contact(api_key: str, contact_id: str, *, payload: dict[str, Any]) -> dict[str, Any]:
+def update_contact(auth_headers: dict[str, str], contact_id: str, *, payload: dict[str, Any]) -> dict[str, Any]:
     if not contact_id:
         raise ApolloAPIError("contact_id is required")
     if not payload:
         raise ApolloAPIError("contact payload is required")
-    return _request(api_key, "PATCH", f"/contacts/{contact_id}", json_body=payload)
+    return _request(auth_headers, "PATCH", f"/contacts/{contact_id}", json_body=payload)
 
 
-def delete_contact(api_key: str, contact_id: str) -> dict[str, Any]:
+def delete_contact(auth_headers: dict[str, str], contact_id: str) -> dict[str, Any]:
     if not contact_id:
         raise ApolloAPIError("contact_id is required")
-    return _request(api_key, "DELETE", f"/contacts/{contact_id}")
+    return _request(auth_headers, "DELETE", f"/contacts/{contact_id}")
 
 
 def remove_contacts_from_sequence(
-    api_key: str,
+    auth_headers: dict[str, str],
     *,
     sequence_ids: list[str],
     contact_ids: list[str],
@@ -189,4 +281,9 @@ def remove_contacts_from_sequence(
         "contact_ids[]": contact_ids,
         "mode": mode,
     }
-    return _request(api_key, "POST", "/emailer_campaigns/remove_or_stop_contact_ids", params=params)
+    return _request(auth_headers, "POST", "/emailer_campaigns/remove_or_stop_contact_ids", params=params)
+
+
+def verify_apollo_api_key(api_key: str) -> bool:
+    """Legacy API-key probe."""
+    return verify_apollo_credentials({"X-Api-Key": api_key})

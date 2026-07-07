@@ -182,6 +182,9 @@ class Settings(BaseSettings):
     # Generic OAuth — Microsoft 365 / Graph (multitenant via /common/)
     microsoft365_client_id: str = ""
     microsoft365_client_secret: str = ""
+    # Generic OAuth — Apollo (partner OAuth)
+    apollo_client_id: str = ""
+    apollo_client_secret: str = ""
     # PagerDuty OAuth (STA-37)
     pagerduty_client_id: str = ""
     pagerduty_client_secret: str = ""
