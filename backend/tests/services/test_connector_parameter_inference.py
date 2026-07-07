@@ -77,4 +77,4 @@ def test_inferred_fields_show_in_approval_message():
         inference_sources={"project": "your last message"},
     )
     message = format_write_approval_message(plan)
-    assert "Website (inferred from your last message — confirm or edit)" in message
+    assert "Website (inferred from your last message)" in message

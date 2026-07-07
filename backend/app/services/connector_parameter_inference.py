@@ -5,7 +5,17 @@ import re
 from dataclasses import dataclass, field, replace
 from typing import Any
 
-from app.services.chat_connector_models import ConnectorActionPlan
+from app.services.connector_session_state import (
+    ConnectorSessionState,
+    bind_plan_from_session,
+    compress_session_for_context,
+    connector_session_patch,
+    inference_confidence_for_source,
+    load_connector_session,
+    record_entity_from_execution,
+    record_step_output,
+    build_session_summary,
+)
 
 PROJECT_IN_MESSAGE = re.compile(
     r"\bin\s+(?:the\s+)?([\"']?[\w-]{1,80}[\"']?)\s+project\b",
@@ -23,6 +33,7 @@ class ParameterInferenceContext:
     message: str
     conversation_history: list[str] = field(default_factory=list)
     task_state: dict[str, Any] = field(default_factory=dict)
+    connector_session: ConnectorSessionState | None = None
     client: Any = None
     org_id: str = ""
     settings: Any = None
@@ -34,6 +45,8 @@ def infer_missing_parameters(
     context: ParameterInferenceContext,
 ) -> ConnectorActionPlan:
     """Fill confidently inferrable args before validation; never infer sensitive fields."""
+    session = context.connector_session or load_connector_session(context.task_state)
+    plan = bind_plan_from_session(plan, session)
     if plan.invoke_action == "asana.tasks.create":
         return _infer_asana_task_create(plan, context)
     return plan
@@ -110,7 +123,10 @@ def _infer_task_title(context: ParameterInferenceContext) -> tuple[str | None, s
 def _context_texts(context: ParameterInferenceContext) -> list[str]:
     texts = [context.message.strip()]
     texts.extend(str(item).strip() for item in context.conversation_history if str(item).strip())
-    resolved = (context.task_state or {}).get("resolved_entities") or {}
+    session = context.connector_session or load_connector_session(context.task_state)
+    if session.session_summary.strip():
+        texts.append(session.session_summary.strip())
+    resolved = session.resolved_entities or (context.task_state or {}).get("resolved_entities") or {}
     if isinstance(resolved, dict):
         for value in resolved.values():
             if isinstance(value, str) and value.strip():

@@ -48,6 +48,7 @@ class ExecutionResult:
     external_url: str | None = None
     notification_type: str = "task_completed"
     task_label: str = ""
+    structured: dict[str, Any] | None = None
 
 
 class ConversationalExecutionService:

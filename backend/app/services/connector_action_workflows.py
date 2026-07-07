@@ -15,6 +15,7 @@ from app.services.connector_capability_analysis import (
     resolve_missing_action,
 )
 from app.services.execution_envelope import format_operator_response
+from app.services.connector_session_state import inference_confidence_for_source
 
 # Backward-compatible alias for registry verification and tests.
 analyze_list_capability_gaps = analyze_capability_gaps
@@ -59,7 +60,13 @@ def _approval_details(plan: ConnectorActionPlan) -> dict[str, str]:
     def _display(arg_key: str, label: str, value: str) -> None:
         if arg_key in inferred:
             source = sources.get(arg_key, "context")
-            details[label] = f"{value} (inferred from {source} — confirm or edit)"
+            confidence = inference_confidence_for_source(source)
+            if confidence == "high":
+                details[label] = f"{value} (inferred from {source})"
+            else:
+                details[label] = (
+                    f"{value} (inferred from {source} — confidence: {confidence}; confirm or edit)"
+                )
         else:
             details[label] = value
 
