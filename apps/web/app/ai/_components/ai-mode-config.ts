@@ -20,8 +20,8 @@ export const AI_MODES: ModeMeta[] = [
     badge: "Answer · Search · Execute",
     icon: Sparkles,
     blurb: "One conversation — Gravitre answers, searches your stack, and runs connector actions with approval where needed.",
-    accent: "text-foreground",
-    ring: "border-foreground/30 bg-foreground/5 ring-foreground/15",
+    accent: "text-emerald-600 dark:text-emerald-300",
+    ring: "border-emerald-500/30 bg-emerald-500/10 ring-emerald-500/20",
   },
 ]
 

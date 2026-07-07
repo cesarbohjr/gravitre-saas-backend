@@ -1234,8 +1234,8 @@ export function AiWorkspace({
         onRetry={() => void mutateConversations()}
       />
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#f4f8f7] dark:bg-[#0a1211]">
-        <div className="shrink-0 border-b border-border/70 bg-white/80 backdrop-blur dark:bg-card/70">
+      <div className="ai-surface-shell flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="shrink-0 border-b border-emerald-500/15 bg-card/80 backdrop-blur-md">
           <div className="flex min-h-12 items-center gap-2 overflow-x-auto px-3 py-2 md:px-4">
             <Button
               variant="ghost"
@@ -1248,7 +1248,9 @@ export function AiWorkspace({
             </Button>
 
             <div className="min-w-0 shrink">
-              <p className="truncate text-sm font-semibold text-foreground">{conversationTitle}</p>
+              <p className="truncate text-sm font-semibold text-foreground">
+                {conversationTitle}
+              </p>
             </div>
 
             <div className="hidden h-4 w-px shrink-0 bg-border sm:block" />
@@ -1312,8 +1314,8 @@ export function AiWorkspace({
                 className={cn(
                   "h-7 rounded-md border px-2 text-[10px] font-medium uppercase tracking-wide",
                   chatMode === "deep"
-                    ? "border-blue-500/40 bg-blue-500/10 text-blue-600"
-                    : "border-border text-muted-foreground",
+                    ? "border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                    : "border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300",
                 )}
               >
                 {chatMode === "deep" ? "Agent" : "Fast"}
@@ -1341,7 +1343,7 @@ export function AiWorkspace({
                 aria-label={activityRailOpen ? "Hide activity panel" : "Show activity panel"}
                 onClick={() => setActivityRailOpen((open) => !open)}
               >
-                <PanelRight className={cn("h-4 w-4", activityRailOpen && "text-emerald-600")} />
+                <PanelRight className={cn("h-4 w-4", activityRailOpen && "text-emerald-600 dark:text-emerald-400")} />
               </Button>
             </div>
           </div>
@@ -1418,7 +1420,7 @@ export function AiWorkspace({
               ? inlineTurns.map((turn) => (
               <div key={turn.id} className="space-y-4">
                 <div className="flex justify-end">
-                  <div className="max-w-[min(720px,92%)] rounded-2xl bg-primary px-4 py-3.5 text-sm leading-relaxed text-primary-foreground">
+                  <div className="max-w-[min(720px,92%)] rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-500 px-4 py-3.5 text-sm leading-relaxed text-primary-foreground shadow-sm dark:from-emerald-500 dark:to-emerald-400">
                     <p className="whitespace-pre-wrap">{turn.prompt}</p>
                     <p className="mt-1 text-[10px] uppercase tracking-wide opacity-70">
                       {getModeMeta(turn.engine).badge}
@@ -1485,7 +1487,7 @@ export function AiWorkspace({
         </div>
 
         {showComposer ? (
-        <div className="shrink-0 border-t border-border/70 bg-white/95 px-3 py-2 backdrop-blur dark:bg-card/95 md:px-5">
+        <div className="shrink-0 border-t border-emerald-500/10 bg-card/90 px-3 py-2 backdrop-blur-md md:px-5">
           <div className="mx-auto w-full max-w-[920px]">
             {!showLanding && messages.length === 0 && inlineTurns.length === 0 && !isChatBusy ? (
               <div className="mb-3 flex flex-wrap justify-center gap-2">
@@ -1494,7 +1496,7 @@ export function AiWorkspace({
                     key={example.text}
                     type="button"
                     onClick={() => void submitPrompt(example.text)}
-                    className="rounded-full border border-border/80 bg-card/80 px-3 py-1.5 text-center text-xs text-muted-foreground transition-colors hover:border-emerald-500/30 hover:text-foreground"
+                    className="rounded-full border border-border/70 bg-card/80 px-3 py-1.5 text-center text-xs text-muted-foreground transition-all hover:border-emerald-500/30 hover:bg-emerald-500/5 hover:text-foreground"
                   >
                     {example.text}
                   </button>
@@ -1509,8 +1511,8 @@ export function AiWorkspace({
             >
               <div
                 className={cn(
-                  "flex min-h-[72px] flex-col justify-center gap-1.5 rounded-[1.25rem] border border-border/70 bg-white p-2.5 shadow-sm focus-within:ring-2 dark:bg-card",
-                  "focus-within:border-primary/50 focus-within:ring-primary/20",
+                  "flex min-h-[72px] flex-col justify-center gap-1.5 rounded-[1.25rem] border border-emerald-500/15 bg-background/90 p-2.5 shadow-sm backdrop-blur-sm focus-within:ring-2 dark:bg-card/90",
+                  "focus-within:border-emerald-500/35 focus-within:ring-emerald-500/20",
                 )}
               >
                 <textarea
@@ -1538,7 +1540,7 @@ export function AiWorkspace({
                   <button
                     type="submit"
                     disabled={!input.trim() || routing || isChatBusy}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground disabled:opacity-40"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-500 text-primary-foreground shadow-sm transition-all hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-40 dark:from-emerald-500 dark:to-emerald-400"
                     aria-label="Send"
                   >
                     <ArrowUp className="h-4 w-4" />
