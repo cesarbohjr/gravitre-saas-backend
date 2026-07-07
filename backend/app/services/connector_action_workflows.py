@@ -5,6 +5,7 @@ import re
 from dataclasses import dataclass, field, replace
 from typing import Any
 
+from app.services.action_workflow_validation import WorkflowCheck
 from app.services.chat_connector_models import ConnectorActionPlan, LIST_CREATE_INTENT
 from app.services.execution_envelope import format_operator_response
 
@@ -18,62 +19,15 @@ LIST_CAPABILITY_CHECKS: dict[str, tuple[str, ...]] = {
 }
 
 
-@dataclass(frozen=True)
-class WorkflowCheck:
-    status: str
-    message: str
-    missing: tuple[str, ...] = ()
-    known: dict[str, str] = field(default_factory=dict)
-    candidates: tuple[str, ...] = ()
-    dialogue_mode: str = "answer"
-    updated_plan: ConnectorActionPlan | None = None
-
-
 def validate_connector_plan(plan: ConnectorActionPlan, message: str) -> WorkflowCheck | None:
     """Return clarification when required parameters are missing — never invent values."""
-    if plan.invoke_action == "asana.tasks.create":
-        return _validate_asana_task_create(plan, message)
-    return None
+    from app.connectors.action_catalog.action_workflow_schema import get_workflow_schema
+    from app.services.action_workflow_validation import validate_plan_against_schema
 
-
-def _validate_asana_task_create(plan: ConnectorActionPlan, message: str) -> WorkflowCheck | None:
-    args = dict(plan.args or {})
-    assignee_hint = str(args.get("assignee_hint") or "").strip()
-    name = str(args.get("name") or "").strip()
-    project = str(args.get("project") or args.get("project_id") or "").strip()
-    due_on = str(args.get("due_on") or "").strip()
-
-    missing: list[str] = []
-    known: dict[str, str] = {"Task type": "Asana task"}
-
-    if assignee_hint:
-        known["Assignee"] = assignee_hint
-    if name and name.lower() != assignee_hint.lower():
-        known["Task"] = name
-    else:
-        missing.append("task title")
-    if not project:
-        missing.append("project")
-    if not due_on:
-        missing.append("due date")
-
-    if not missing:
+    schema = get_workflow_schema(plan.invoke_action)
+    if not schema:
         return None
-
-    return WorkflowCheck(
-        status="needs clarification",
-        missing=tuple(missing),
-        known=known,
-        dialogue_mode="clarify",
-        message=format_operator_response(
-            intent="Create Asana task",
-            status="needs clarification",
-            matched_action=plan.invoke_action,
-            planned=known,
-            missing_parameters=missing,
-            next_step="Reply with the missing details (task title, project, and due date).",
-        ),
-    )
+    return validate_plan_against_schema(plan, schema)
 
 
 def format_write_approval_message(plan: ConnectorActionPlan) -> str:

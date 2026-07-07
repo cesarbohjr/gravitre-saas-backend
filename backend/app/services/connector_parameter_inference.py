@@ -17,9 +17,6 @@ TASK_PHRASE = re.compile(
     re.I,
 )
 
-# Sensitive write fields are never inferred — clarification/disambiguation handles them.
-NON_INFERABLE_ARGS = frozenset({"due_on", "assignee", "assignee_hint"})
-
 
 @dataclass
 class ParameterInferenceContext:

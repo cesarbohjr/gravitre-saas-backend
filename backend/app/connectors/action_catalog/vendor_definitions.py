@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from app.connectors.action_catalog.builder import action, build_vendor
+from app.connectors.action_catalog.action_workflow_schema import ASANA_TASKS_CREATE_SCHEMA
 
 VENDOR_DEFINITIONS: tuple = (
     build_vendor(
@@ -912,7 +913,16 @@ VENDOR_DEFINITIONS: tuple = (
             action("asana", "users.list", "List users", tier="v1", kind="read", scope_suffix="users:read", idempotent=True),
         ),
         v2=(
-            action("asana", "tasks.create", "Create task", tier="v2", kind="write", scope_suffix="tasks:write", destructive=True),
+            action(
+                "asana",
+                "tasks.create",
+                "Create task",
+                tier="v2",
+                kind="write",
+                scope_suffix="tasks:write",
+                destructive=True,
+                workflow_schema=ASANA_TASKS_CREATE_SCHEMA,
+            ),
             action("asana", "tasks.update", "Update task", tier="v2", kind="write", scope_suffix="tasks:write", destructive=True),
             action("asana", "stories.create", "Add comment", tier="v2", kind="write", scope_suffix="stories:write", destructive=True),
         ),

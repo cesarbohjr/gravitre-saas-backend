@@ -11,6 +11,27 @@ ActionKind = Literal["read", "write", "advanced"]
 
 
 @dataclass(frozen=True)
+class WorkflowFieldSpec:
+    """Chat workflow validation field for connector actions."""
+
+    label: str
+    arg_keys: tuple[str, ...]
+    sensitive: bool = False
+    inferrable: bool = True
+    validator: str | None = None
+
+
+@dataclass(frozen=True)
+class ActionWorkflowSchema:
+    """Declarative required/optional fields for chat plan validation."""
+
+    intent_label: str
+    known_defaults: tuple[tuple[str, str], ...] = ()
+    required_fields: tuple[WorkflowFieldSpec, ...] = ()
+    optional_fields: tuple[WorkflowFieldSpec, ...] = ()
+
+
+@dataclass(frozen=True)
 class ActionSpec:
     """Declarative connector tool action mapped to invoke_tool keys."""
 
@@ -25,6 +46,7 @@ class ActionSpec:
     destructive: bool = False
     requires_approval: bool = False
     input_schema: dict[str, Any] | None = None
+    workflow_schema: ActionWorkflowSchema | None = None
 
     @property
     def tool(self) -> str:

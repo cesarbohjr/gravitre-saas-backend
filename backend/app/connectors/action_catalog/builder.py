@@ -5,8 +5,10 @@ from app.connectors.action_catalog.models import (
     ActionKind,
     ActionSpec,
     ActionTier,
+    ActionWorkflowSchema,
     DemoWorkflowSpec,
     VendorCatalogSpec,
+    WorkflowFieldSpec,
     WorkflowStepSpec,
 )
 
@@ -29,6 +31,7 @@ def action(
     destructive: bool = False,
     requires_approval: bool = False,
     input_schema: dict | None = None,
+    workflow_schema: ActionWorkflowSchema | None = None,
 ) -> ActionSpec:
     desc = description or f"{name} via {vendor} API"
     return ActionSpec(
@@ -43,6 +46,7 @@ def action(
         destructive=destructive,
         requires_approval=requires_approval,
         input_schema=input_schema,
+        workflow_schema=workflow_schema,
     )
 
 
