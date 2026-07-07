@@ -207,31 +207,67 @@ class ChatConnectorExecutionService:
                 }
 
             if integration in connected and LIST_CREATE_INTENT.search(message):
+                from app.services.connector_capability_analysis import (
+                    analyze_capability_gaps,
+                    resolve_missing_action,
+                )
+
                 available = self._list_chat_actions(integration)
-                missing_action = f"{integration}.lists.create"
+                gaps = analyze_capability_gaps(integration, available)
                 planned = self._planned_details_from_message(message, integration)
-                message_text = format_capability_fallback_message(
-                    integration=integration,
-                    intent=intent,
-                    missing_action=missing_action,
-                    available_actions=available,
-                    planned=planned or None,
-                )
-                payload = build_not_executable(
-                    "unsupported_action",
-                    next_step=(
-                        f"The {vendor_label} connector has no list/group creation action yet. "
-                        f"Recommended implementation: `{missing_action}`."
-                    ),
-                    metadata={
-                        "operator_format": True,
-                        "intent": intent,
-                        "status": "blocked — action not in catalog",
-                        "missing_action": missing_action,
-                        "available_actions": available,
-                        "planned": planned,
-                    },
-                )
+                if gaps.get("create_list"):
+                    list_action = resolve_missing_action(integration, "create_list")
+                    message_text = format_operator_response(
+                        intent=intent,
+                        status="blocked — action not matched",
+                        matched_action=list_action,
+                        planned=planned or None,
+                        available_actions=available,
+                        next_step=(
+                            f"List creation is available via `{list_action}`. "
+                            "Retry with an explicit list name, e.g. "
+                            f"\"Create an {vendor_label} list named MSP prospects\"."
+                        ),
+                    )
+                    payload = build_not_executable(
+                        "not_implemented",
+                        next_step=(
+                            f"List creation is available via `{list_action}`. "
+                            "Retry with an explicit list name."
+                        ),
+                        metadata={
+                            "operator_format": True,
+                            "intent": intent,
+                            "status": "blocked — action not matched",
+                            "matched_action": list_action,
+                            "available_actions": available,
+                            "planned": planned,
+                        },
+                    )
+                else:
+                    missing_action = resolve_missing_action(integration, "create_list")
+                    message_text = format_capability_fallback_message(
+                        integration=integration,
+                        intent=intent,
+                        missing_action=missing_action,
+                        available_actions=available,
+                        planned=planned or None,
+                    )
+                    payload = build_not_executable(
+                        "unsupported_action",
+                        next_step=(
+                            f"The {vendor_label} connector has no list/group creation action yet. "
+                            f"Recommended implementation: `{missing_action}`."
+                        ),
+                        metadata={
+                            "operator_format": True,
+                            "intent": intent,
+                            "status": "blocked — action not in catalog",
+                            "missing_action": missing_action,
+                            "available_actions": available,
+                            "planned": planned,
+                        },
+                    )
                 return {
                     "stop_pipeline": True,
                     "dialogue_mode": "answer",

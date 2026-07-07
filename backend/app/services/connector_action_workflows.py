@@ -2,21 +2,22 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field, replace
+from dataclasses import replace
 from typing import Any
 
 from app.services.action_workflow_validation import WorkflowCheck
 from app.services.chat_connector_models import ConnectorActionPlan, LIST_CREATE_INTENT
+from app.services.connector_capability_analysis import (
+    LIST_CAPABILITY_CHECKS,
+    analyze_capability_gaps,
+    build_capability_summary,
+    capability_check_lines,
+    resolve_missing_action,
+)
 from app.services.execution_envelope import format_operator_response
 
-LIST_CAPABILITY_CHECKS: dict[str, tuple[str, ...]] = {
-    "create_list": ("lists.create", "list.create", "contact_lists.create"),
-    "add_to_list": ("lists.add", "lists.members.add", "sequences.add"),
-    "saved_search": ("saved_searches.create", "segments.create", "lists.create"),
-    "search_people": ("people.search", "contacts.search"),
-    "search_companies": ("organizations.search", "companies.search"),
-    "create_contact": ("contacts.create",),
-}
+# Backward-compatible alias for registry verification and tests.
+analyze_list_capability_gaps = analyze_capability_gaps
 
 
 def validate_connector_plan(plan: ConnectorActionPlan, message: str) -> WorkflowCheck | None:
@@ -87,51 +88,33 @@ def _approval_details(plan: ConnectorActionPlan) -> dict[str, str]:
     return details
 
 
-def analyze_list_capability_gaps(
-    integration: str,
-    available_actions: list[str],
-) -> dict[str, bool]:
-    """Map related capabilities for list/group intents against catalog actions."""
-    joined = " ".join(available_actions).lower()
-    result: dict[str, bool] = {}
-    for capability, patterns in LIST_CAPABILITY_CHECKS.items():
-        result[capability] = any(pattern in joined for pattern in patterns)
-    if integration == "apollo":
-        result["add_to_list"] = "sequences.add" in joined or "lists.add" in joined
-    return result
-
-
 def format_capability_fallback_message(
     *,
     integration: str,
     intent: str,
-    missing_action: str,
-    available_actions: list[str],
+    missing_action: str | None = None,
+    available_actions: list[str] | None = None,
     planned: dict[str, str] | None = None,
+    capability: str = "create_list",
 ) -> str:
-    gaps = analyze_list_capability_gaps(integration, available_actions)
-    vendor = integration.replace("_", " ").title()
-    summary = (
-        f"I can search {vendor} people/companies"
-        if gaps.get("search_people") or gaps.get("search_companies")
-        else f"The {vendor} connector is connected"
+    gaps = analyze_capability_gaps(integration, available_actions)
+    vendor_label = integration.replace("_", " ").title()
+    resolved_missing = missing_action or resolve_missing_action(integration, capability)
+    summary = build_capability_summary(
+        integration=integration,
+        vendor_label=vendor_label,
+        gaps=gaps,
+        focus_capability=capability,
     )
-    if not gaps.get("create_list"):
-        summary += f", but I cannot create {vendor} lists yet."
-
-    capability_lines = [
-        f"- Can create list? {'yes' if gaps.get('create_list') else 'no'}",
-        f"- Can add contacts to existing list/sequence? {'yes' if gaps.get('add_to_list') else 'no'}",
-        f"- Can create saved search? {'yes' if gaps.get('saved_search') else 'no'}",
-    ]
+    check_lines = capability_check_lines(gaps, vendor=integration)
     return format_operator_response(
         intent=intent,
         status="blocked — action not in catalog",
-        missing_action=missing_action,
+        missing_action=resolved_missing,
         planned=planned or None,
-        result="\n".join([summary, "", "**Capability check:**", *capability_lines]),
-        available_actions=available_actions,
-        next_step=f"Missing action: `{missing_action}`. Use available search/contact actions above.",
+        result="\n".join([summary, "", "**Capability check:**", *check_lines]) if check_lines else summary,
+        available_actions=available_actions or [],
+        next_step=f"Missing action: `{resolved_missing}`. Use available actions above.",
     )
 
 
