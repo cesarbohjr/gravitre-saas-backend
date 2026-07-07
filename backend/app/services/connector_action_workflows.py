@@ -97,10 +97,7 @@ def analyze_list_capability_gaps(
     for capability, patterns in LIST_CAPABILITY_CHECKS.items():
         result[capability] = any(pattern in joined for pattern in patterns)
     if integration == "apollo":
-        # Apollo has no native list create; sequences.add is the closest add-to-collection action.
-        result["create_list"] = False
-        result["add_to_list"] = "sequences.add" in joined
-        result["saved_search"] = False
+        result["add_to_list"] = "sequences.add" in joined or "lists.add" in joined
     return result
 
 

@@ -252,18 +252,35 @@ async def test_asana_not_connected_returns_operator_blocker(connector_service):
 
 
 @pytest.mark.asyncio
-async def test_apollo_list_create_reports_missing_action(connector_service):
+async def test_apollo_list_create_plans_action(connector_service):
+    plan = ConnectorActionPlan(
+        tool_name="apollo_lists_create",
+        invoke_action="apollo.lists.create",
+        integration="apollo",
+        kind="write",
+        label="Create Apollo contact list",
+        args={"name": "MSP Prospects", "modality": "contacts"},
+        requires_approval=True,
+    )
     with patch.object(
         connector_service,
         "_live_connected_integrations",
         return_value=["apollo"],
-    ), patch(
-        "app.services.chat_connector_execution_service.find_integration_availability",
-        return_value={"execution_available": True, "blocking_reason": None},
     ), patch.object(
         connector_service,
         "plan_action",
+        return_value=plan,
+    ), patch.object(
+        connector_service,
+        "_verify_plan_executable",
         return_value=None,
+    ), patch.object(
+        connector_service,
+        "_evaluate_risk",
+        AsyncMock(return_value={"requires_approval": True}),
+    ), patch(
+        "app.services.connector_action_workflows.resolve_assignee_disambiguation",
+        AsyncMock(return_value=None),
     ):
         result = await connector_service.process_turn(
             org_id="org-1",
@@ -277,9 +294,8 @@ async def test_apollo_list_create_reports_missing_action(connector_service):
         )
 
     assert result is not None
-    assert result["stop_pipeline"] is True
-    assert "apollo.lists.create" in result["message"]
-    assert "Capability check" in result["message"]
+    assert result["dialogue_mode"] == "confirm"
+    assert "MSP Prospects" in result["message"] or "Approve?" in result["message"]
 
 
 @pytest.mark.asyncio

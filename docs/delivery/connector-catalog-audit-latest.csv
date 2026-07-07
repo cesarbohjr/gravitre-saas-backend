@@ -132,7 +132,9 @@ linkedin,linkedin.batch.enrich,inferred,executable,True,True,linkedin:prospects:
 apollo,apollo.people.search,override,executable,True,True,apollo:people:read|apollo:*,True,low,False,True,True,live
 apollo,apollo.organizations.search,inferred,executable,True,True,apollo:organizations:read|apollo:*,True,low,False,True,True,live
 apollo,apollo.contacts.get,inferred,executable,True,True,apollo:contacts:read|apollo:*,True,low,False,True,True,live
+apollo,apollo.lists.list,override,executable,True,True,apollo:labels:read|apollo:*,True,low,False,True,True,live
 apollo,apollo.contacts.create,inferred,requires_approval,True,True,apollo:contacts:write|apollo:*,True,high,True,True,True,live
+apollo,apollo.lists.create,override,requires_approval,True,True,apollo:labels:write|apollo:*,True,high,True,True,True,live
 apollo,apollo.sequences.add,inferred,requires_approval,True,True,apollo:sequences:write|apollo:*,True,high,True,True,True,live
 apollo,apollo.enrichment.bulk,inferred,executable,True,True,apollo:enrichment:write|apollo:*,True,medium,False,True,True,live
 apollo,apollo.tasks.create,inferred,executable,True,True,apollo:tasks:write|apollo:*,True,medium,False,True,True,live
@@ -140,6 +142,13 @@ apollo,apollo.signals.subscribe,inferred,executable,True,True,apollo:signals:rea
 apollo,apollo.contacts.update,inferred,requires_approval,True,True,apollo:contacts:write|apollo:*,True,high,True,True,True,live
 apollo,apollo.contacts.delete,inferred,requires_approval,True,True,apollo:contacts:write|apollo:*,True,high,True,True,True,live
 apollo,apollo.sequences.remove,inferred,requires_approval,True,True,apollo:sequences:write|apollo:*,True,high,True,True,True,live
+clay,clay.tables.list,inferred,executable,True,True,clay:tables:read|clay:*,True,low,False,True,True,live
+clay,clay.people.enrich,inferred,executable,True,True,clay:people:read|clay:*,True,low,False,True,True,live
+clay,clay.companies.enrich,inferred,executable,True,True,clay:companies:read|clay:*,True,low,False,True,True,live
+clay,clay.workflows.output.get,inferred,executable,True,True,clay:workflows:read|clay:*,True,low,False,True,True,live
+clay,clay.leads.push,inferred,requires_approval,True,True,clay:leads:write|clay:*,True,high,True,True,True,live
+clay,clay.enrichments.request,inferred,requires_approval,True,True,clay:enrichments:write|clay:*,True,high,True,True,True,live
+clay,clay.crm.sync,inferred,executable,True,True,clay:crm:write|clay:*,True,medium,False,True,True,live
 engagebay,engagebay.contacts.search,override,executable,True,True,engagebay:contacts:read|engagebay:*,True,low,False,True,True,none
 engagebay,engagebay.contacts.get,override,executable,True,True,engagebay:contacts:read|engagebay:*,True,low,False,True,True,none
 engagebay,engagebay.deals.list,override,executable,True,True,engagebay:deals:read|engagebay:*,True,low,False,True,True,none
@@ -203,7 +212,7 @@ plaid,plaid.public_token.exchange,inferred,requires_approval,True,True,plaid:lin
 plaid,plaid.transactions.sync,inferred,executable,True,True,plaid:transactions:read|plaid:*,True,medium,False,True,True,none
 plaid,plaid.identity.get,inferred,executable,True,True,plaid:identity:read|plaid:*,True,medium,False,True,True,none
 plaid,plaid.investments.holdings,inferred,executable,True,True,plaid:investments:read|plaid:*,True,medium,False,True,True,none
-slack,slack.conversations.list,override,executable,True,True,slack:channels:read|slack:*,True,low,False,True,True,mock
+slack,slack.conversations.list,override,executable,True,True,slack:channels:read|slack:*,True,low,False,True,True,live
 slack,slack.conversations.history,inferred,executable,True,True,slack:messages:read|slack:*,True,low,False,True,True,mock
 slack,slack.users.list,inferred,executable,True,True,slack:users:read|slack:*,True,low,False,True,True,mock
 slack,slack.post_message,override,requires_approval,True,True,slack:messages:write|slack:*,True,high,True,True,True,live

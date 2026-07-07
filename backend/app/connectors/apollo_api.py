@@ -218,6 +218,32 @@ def create_contact(auth_headers: dict[str, str], *, payload: dict[str, Any]) -> 
     return _request(auth_headers, "POST", "/contacts", json_body=payload)
 
 
+def list_labels(auth_headers: dict[str, str]) -> dict[str, Any]:
+    """List Apollo labels (contact/account lists)."""
+    return _request(auth_headers, "GET", "/labels")
+
+
+def create_label(
+    auth_headers: dict[str, str],
+    *,
+    name: str,
+    modality: str = "contacts",
+) -> dict[str, Any]:
+    """Create an Apollo label (contact list). Uses POST /labels."""
+    label_name = str(name or "").strip()
+    if not label_name:
+        raise ApolloAPIError("label name is required")
+    normalized_modality = str(modality or "contacts").strip().lower()
+    if normalized_modality not in {"contacts", "accounts"}:
+        raise ApolloAPIError("modality must be contacts or accounts")
+    return _request(
+        auth_headers,
+        "POST",
+        "/labels",
+        json_body={"name": label_name, "modality": normalized_modality},
+    )
+
+
 def add_contacts_to_sequence(
     auth_headers: dict[str, str],
     *,

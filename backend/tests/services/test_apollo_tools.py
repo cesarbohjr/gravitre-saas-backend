@@ -57,3 +57,17 @@ def test_apollo_contacts_delete(mock_delete, mock_session, _rate):
     result = APOLLO_TOOL_EXECUTORS["apollo.contacts.delete"](_ctx(), {"contact_id": "c1"})
     assert result.success
     mock_delete.assert_called_once_with({"Authorization": "Bearer token"}, "c1")
+
+
+@patch("app.services.apollo_tools.enforce_rate_limit")
+@patch("app.services.apollo_tools.resolve_apollo_connector")
+@patch("app.services.apollo_tools.create_label")
+def test_apollo_lists_create(mock_create_label, mock_session, _rate):
+    mock_session.return_value = ("conn-apollo", {"Authorization": "Bearer token"})
+    mock_create_label.return_value = {"label": {"id": "l1", "name": "MSP Prospects"}}
+    result = APOLLO_TOOL_EXECUTORS["apollo.lists.create"](
+        _ctx(), {"name": "MSP Prospects", "modality": "contacts"}
+    )
+    assert result.success
+    assert result.action == "apollo.lists.create"
+    mock_create_label.assert_called_once()

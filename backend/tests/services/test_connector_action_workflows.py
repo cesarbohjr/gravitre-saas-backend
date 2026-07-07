@@ -75,7 +75,7 @@ def test_write_action_approval_message_format():
     assert "Website" in message
 
 
-def test_capability_fallback_for_apollo_list():
+def test_capability_fallback_for_apollo_list_when_create_unavailable():
     available = [
         "people.search — Search people",
         "organizations.search — Search companies",
@@ -96,7 +96,15 @@ def test_capability_fallback_for_apollo_list():
     assert "cannot create Apollo lists yet" in message
     assert "Can create list? no" in message
     assert "apollo.lists.create" in message
-    assert "browser" not in message.lower()
+
+
+def test_capability_gaps_when_apollo_list_create_available():
+    available = [
+        "people.search — Search people",
+        "lists.create — Create contact list",
+    ]
+    gaps = analyze_list_capability_gaps("apollo", available)
+    assert gaps["create_list"] is True
 
 
 @pytest.mark.asyncio

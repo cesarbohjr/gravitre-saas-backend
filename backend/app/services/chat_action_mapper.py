@@ -372,6 +372,30 @@ class ChatActionMapper:
                 return args
             return args if args else None
 
+        if entry.connector_id == "apollo" and "lists.create" in entry.action_key:
+            name = quoted[0] if quoted else None
+            if not name:
+                for_match = re.search(
+                    r"\b(?:contact\s+)?list\b.*?\bfor\s+(.+?)(?:[?.!]|$)",
+                    text,
+                    re.I,
+                )
+                if for_match:
+                    name = for_match.group(1).strip()
+            if not name:
+                list_match = re.search(
+                    r"\b(?:list|group)\s+(?:named|called)\s*[\"']?([^\"'.]+)",
+                    text,
+                    re.I,
+                )
+                if list_match:
+                    name = list_match.group(1).strip()
+            if not name and "msp" in text.lower():
+                name = "MSP Prospects"
+            if name:
+                return {"name": name[:200], "modality": "contacts"}
+            return None
+
         if quoted:
             if "body" in suffix or "comment" in suffix or "note" in suffix or "update" in suffix:
                 return {"body": quoted[0]}

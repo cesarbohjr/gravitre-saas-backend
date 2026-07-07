@@ -8,9 +8,11 @@ from app.connectors.apollo_api import (
     add_contacts_to_sequence,
     bulk_enrich_people,
     create_contact,
+    create_label,
     create_task,
     delete_contact,
     get_contact,
+    list_labels,
     remove_contacts_from_sequence,
     resolve_apollo_connector,
     search_organizations,
@@ -58,6 +60,8 @@ _RESERVED = frozenset(
         "sequence_ids",
         "sequenceIds",
         "mode",
+        "name",
+        "modality",
     }
 )
 
@@ -134,6 +138,30 @@ def _exec_contacts_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedRe
     except ApolloAPIError as exc:
         raise _handle_error(exc) from exc
     return NormalizedResult(success=True, action="apollo.contacts.get", connector_id=cid, data=data)
+
+
+def _exec_lists_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, headers = _session(ctx, params)
+    try:
+        data = list_labels(headers)
+    except ApolloAPIError as exc:
+        raise _handle_error(exc) from exc
+    return NormalizedResult(success=True, action="apollo.lists.list", connector_id=cid, data=data)
+
+
+def _exec_lists_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, headers = _session(ctx, params)
+    name = params.get("name") or params.get("list_name")
+    if not name and isinstance(params.get("payload"), dict):
+        name = params["payload"].get("name")
+    if not name:
+        raise ToolValidationError("apollo.lists.create requires name")
+    modality = params.get("modality") or "contacts"
+    try:
+        data = create_label(headers, name=str(name), modality=str(modality))
+    except ApolloAPIError as exc:
+        raise _handle_error(exc) from exc
+    return NormalizedResult(success=True, action="apollo.lists.create", connector_id=cid, data=data)
 
 
 def _exec_contacts_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
@@ -255,7 +283,9 @@ APOLLO_TOOL_EXECUTORS: dict[str, Any] = {
     "apollo.people.search": _exec_people_search,
     "apollo.organizations.search": _exec_organizations_search,
     "apollo.contacts.get": _exec_contacts_get,
+    "apollo.lists.list": _exec_lists_list,
     "apollo.contacts.create": _exec_contacts_create,
+    "apollo.lists.create": _exec_lists_create,
     "apollo.sequences.add": _exec_sequences_add,
     "apollo.enrichment.bulk": _exec_enrichment_bulk,
     "apollo.tasks.create": _exec_tasks_create,

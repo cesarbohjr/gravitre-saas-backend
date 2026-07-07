@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 from app.connectors.action_catalog.builder import action, build_vendor
-from app.connectors.action_catalog.action_workflow_schema import ASANA_TASKS_CREATE_SCHEMA
+from app.connectors.action_catalog.action_workflow_schema import (
+    APOLLO_LISTS_CREATE_SCHEMA,
+    ASANA_TASKS_CREATE_SCHEMA,
+)
 
 VENDOR_DEFINITIONS: tuple = (
     build_vendor(
@@ -331,9 +334,20 @@ VENDOR_DEFINITIONS: tuple = (
             action("apollo", "people.search", "Search people", tier="v1", kind="read", scope_suffix="people:read", idempotent=True),
             action("apollo", "organizations.search", "Search companies", tier="v1", kind="read", scope_suffix="organizations:read", idempotent=True),
             action("apollo", "contacts.get", "Get contact", tier="v1", kind="read", scope_suffix="contacts:read", idempotent=True),
+            action("apollo", "lists.list", "List contact lists", tier="v1", kind="read", scope_suffix="labels:read", idempotent=True),
         ),
         v2=(
             action("apollo", "contacts.create", "Create contact", tier="v2", kind="write", scope_suffix="contacts:write", destructive=True),
+            action(
+                "apollo",
+                "lists.create",
+                "Create contact list",
+                tier="v2",
+                kind="write",
+                scope_suffix="labels:write",
+                destructive=True,
+                workflow_schema=APOLLO_LISTS_CREATE_SCHEMA,
+            ),
             action("apollo", "sequences.add", "Add to sequence", tier="v2", kind="write", scope_suffix="sequences:write", destructive=True),
         ),
         v3=(

@@ -30,6 +30,12 @@ ASANA_TASKS_CREATE_SCHEMA = ActionWorkflowSchema(
     ),
 )
 
+APOLLO_LISTS_CREATE_SCHEMA = ActionWorkflowSchema(
+    intent_label="Create Apollo contact list",
+    required_fields=(WorkflowFieldSpec("list name", ("name", "list_name")),),
+    optional_fields=(WorkflowFieldSpec("Modality", ("modality",)),),
+)
+
 _TEST_SCHEMA_REGISTRY: dict[str, ActionWorkflowSchema] = {}
 
 

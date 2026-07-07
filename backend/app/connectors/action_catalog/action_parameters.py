@@ -274,6 +274,25 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
         },
         "required": [],
     },
+    "apollo.lists.list": {
+        "type": "object",
+        "properties": {"connector_id": _CONNECTOR_ID},
+        "required": [],
+    },
+    "apollo.lists.create": {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "description": "Contact list name (Apollo label)."},
+            "list_name": {"type": "string", "description": "Alias for name."},
+            "modality": {
+                "type": "string",
+                "enum": ["contacts", "accounts"],
+                "default": "contacts",
+            },
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": ["name"],
+    },
     "engagebay.contacts.search": {
         "type": "object",
         "properties": {
