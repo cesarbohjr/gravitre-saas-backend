@@ -23,8 +23,6 @@ import { cn } from "@/lib/utils"
 import { useAuth, getAccessToken } from "@/lib/auth-context"
 import { ensureSelectedOrg, buildChatOrgPayload } from "@/lib/org-context"
 import { getEnvironmentHeader } from "@/lib/environment-context"
-<<<<<<< HEAD
-=======
 import {
   DEPARTMENT_OPTIONS,
   getDepartmentHeader,
@@ -33,7 +31,6 @@ import {
   setSelectedDepartmentInStorage,
 } from "@/lib/department-context"
 import { resolveOperatorActiveContext } from "@/lib/operator-context"
->>>>>>> origin/main
 import { parseChatError } from "@/lib/chat-errors"
 import dynamic from "next/dynamic"
 import { polishAssistantText } from "@/lib/plain-english"
@@ -1237,27 +1234,6 @@ export function AiWorkspace({
         onRetry={() => void mutateConversations()}
       />
 
-<<<<<<< HEAD
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="border-b border-border bg-card/80 backdrop-blur">
-          <div className="flex min-h-14 items-center justify-between gap-3 px-4 md:px-6">
-            <div className="flex min-w-0 items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSidebarOpen((open) => !open)}
-                className="h-8 w-8 shrink-0 text-muted-foreground"
-                aria-label={sidebarOpen ? "Hide history" : "Show history"}
-              >
-                {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
-              </Button>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-foreground">{conversationTitle}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {activeMode.badge} · results stay on this page
-                </p>
-              </div>
-=======
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#f4f8f7] dark:bg-[#0a1211]">
         <div className="shrink-0 border-b border-border/70 bg-white/80 backdrop-blur dark:bg-card/70">
           <div className="flex min-h-12 items-center gap-2 overflow-x-auto px-3 py-2 md:px-4">
@@ -1273,7 +1249,6 @@ export function AiWorkspace({
 
             <div className="min-w-0 shrink">
               <p className="truncate text-sm font-semibold text-foreground">{conversationTitle}</p>
->>>>>>> origin/main
             </div>
 
             <div className="hidden h-4 w-px shrink-0 bg-border sm:block" />
@@ -1379,14 +1354,9 @@ export function AiWorkspace({
           </div>
         ) : null}
 
-<<<<<<< HEAD
-        <div className="ai-chat-canvas flex-1 overflow-y-auto px-4 py-6 md:px-8">
-          <div className="mx-auto max-w-3xl space-y-6">
-=======
         <div className="flex min-h-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 md:px-5 md:py-4">
+        <div className="ai-chat-canvas min-h-0 flex-1 overflow-y-auto px-3 py-3 md:px-5 md:py-4">
           <div className="mx-auto w-full">
->>>>>>> origin/main
             {showLanding ? (
               <AiLanding
                 mode={mode}
@@ -1411,61 +1381,6 @@ export function AiWorkspace({
               </div>
             ) : null}
 
-<<<<<<< HEAD
-            {!showLanding && (!conversationLoading || sessionBusy || isChatBusy)
-              ? messages.map((message) => {
-              const text = normalizeChatText(message)
-              const isUser = message.role === "user"
-              const displayText = isUser ? text : polishAssistantText(text)
-              const lastAssistantId = [...messages].reverse().find((row) => row.role === "assistant")?.id
-              return (
-                <motion.div
-                  key={message.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={cn("flex gap-3", isUser ? "justify-end" : "justify-start")}
-                >
-                  {!isUser ? (
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary">
-                      <Sparkles className="h-4 w-4 text-primary-foreground" />
-                    </div>
-                  ) : null}
-                  <div
-                    className={cn(
-                      "max-w-[85%] rounded-2xl px-4 py-3 text-sm",
-                      isUser
-                        ? "bg-primary text-primary-foreground"
-                        : "border border-border bg-card text-foreground",
-                    )}
-                  >
-                    {isUser ? (
-                      <p className="whitespace-pre-wrap">{text}</p>
-                    ) : (
-                      <div className="prose prose-sm dark:prose-invert max-w-none">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText || "…"}</ReactMarkdown>
-                        {!isUser && message.id === lastAssistantId ? (
-                          <>
-                            <ChatExecutionPanel
-                              dialogueMode={dialogueMode}
-                              executionResult={executionResult}
-                              pendingTask={pendingTask}
-                              confirming={confirmExecuting}
-                              onConfirm={() => void handleConfirmExecution()}
-                            />
-                            <ExplainabilityPanel
-                              explanation={explainability}
-                              contextExplanation={contextExplanation}
-                            />
-                          </>
-                        ) : null}
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              )
-            })
-              : null}
-=======
             {!showLanding ? (
               <ChatTranscript
                 messages={messages}
@@ -1479,7 +1394,6 @@ export function AiWorkspace({
                 onConfirmExecution={() => void handleConfirmExecution()}
               />
             ) : null}
->>>>>>> origin/main
 
             {!showLanding && !conversationLoading && threadRestoreStale ? (
               <div className="rounded-xl border border-dashed border-amber-500/30 bg-amber-500/5 px-4 py-8 text-center text-sm text-muted-foreground">
@@ -1493,16 +1407,6 @@ export function AiWorkspace({
               </div>
             ) : null}
 
-<<<<<<< HEAD
-            {!showLanding && !conversationLoading && showWaitingForReply ? (
-              <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                Gravitre is thinking…
-              </div>
-            ) : null}
-
-=======
->>>>>>> origin/main
             {!showLanding && !conversationLoading && showEmptyThreadHint ? (
               <div className="rounded-xl border border-dashed border-border bg-card/40 px-4 py-8 text-center text-sm text-muted-foreground">
                 <p className="font-medium text-foreground">This conversation is empty</p>
@@ -1605,16 +1509,8 @@ export function AiWorkspace({
             >
               <div
                 className={cn(
-<<<<<<< HEAD
-                  "flex items-end gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm",
-                  "focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20",
-=======
                   "flex min-h-[72px] flex-col justify-center gap-1.5 rounded-[1.25rem] border border-border/70 bg-white p-2.5 shadow-sm focus-within:ring-2 dark:bg-card",
-                  activeMode.id === "execute" && "focus-within:border-emerald-500/50 focus-within:ring-emerald-500/20",
-                  activeMode.id === "chat" && "focus-within:border-blue-500/50 focus-within:ring-blue-500/20",
-                  activeMode.id === "find" && "focus-within:border-amber-500/50 focus-within:ring-amber-500/20",
-                  activeMode.id === "auto" && "focus-within:border-foreground/30 focus-within:ring-foreground/15",
->>>>>>> origin/main
+                  "focus-within:border-primary/50 focus-within:ring-primary/20",
                 )}
               >
                 <textarea

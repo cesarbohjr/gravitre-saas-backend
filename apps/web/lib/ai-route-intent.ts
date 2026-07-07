@@ -106,11 +106,7 @@ function scoreChat(text: string): number {
   return Math.max(0, score)
 }
 
-<<<<<<< HEAD
-/* Fast, dependency-free routing used when the model call is unavailable. */
-=======
 // Fast, dependency-free routing used when the model call is unavailable.
->>>>>>> origin/main
 
 const CONNECTOR_INTEGRATIONS =
   /\b(hubspot|salesforce|slack|zendesk|github|stripe|jira|quickbooks|pipedrive|intercom|notion|asana|teams|gmail|google|microsoft|monday|clickup|figma|canva|pagerduty|linkedin|netsuite|workday|marketo|odoo|confluence|crm)\b/

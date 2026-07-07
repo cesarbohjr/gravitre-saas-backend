@@ -23,36 +23,6 @@ export const AI_MODES: ModeMeta[] = [
     accent: "text-foreground",
     ring: "border-foreground/30 bg-foreground/5 ring-foreground/15",
   },
-<<<<<<< HEAD
-  {
-    id: "execute",
-    label: "Execute",
-    badge: "Execute",
-    icon: RocketLaunch,
-    blurb: "Delegate tracked work — tasks, execution plans, and async jobs.",
-    accent: "text-primary",
-    ring: "border-primary/40 bg-primary/5 ring-primary/20",
-  },
-  {
-    id: "chat",
-    label: "Chat",
-    badge: "Chat",
-    icon: ChatCircle,
-    blurb: "Ask questions, brainstorm, and get platform help in a thread.",
-    accent: "text-primary",
-    ring: "border-primary/40 bg-primary/5 ring-primary/20",
-  },
-  {
-    id: "find",
-    label: "Search",
-    badge: "Search",
-    icon: MagnifyingGlass,
-    blurb: "Locate a workflow, run, agent, connector, or document.",
-    accent: "text-primary",
-    ring: "border-primary/40 bg-primary/5 ring-primary/20",
-  },
-=======
->>>>>>> origin/main
 ]
 
 export const AI_EXAMPLE_PROMPTS: Array<{ text: string; hint: AiEngine }> = [

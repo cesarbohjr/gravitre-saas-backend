@@ -317,13 +317,8 @@ export function MesonPagePanel({
       {!compact ? (
         <p className="mt-2 text-[10px] text-muted-foreground">
           Advisory only — review before acting.{" "}
-<<<<<<< HEAD
-          <Link href="/intelligence" className="text-primary underline-offset-4 hover:underline">
-            Intelligence Center
-=======
-          <Link href={APP_ROUTES.intelligence} className="text-violet-600 underline-offset-4 hover:underline dark:text-violet-300">
+          <Link href={APP_ROUTES.intelligence} className="text-primary underline-offset-4 hover:underline">
             {SURFACE_COPY.insights.title}
->>>>>>> origin/main
           </Link>
         </p>
       ) : null}
