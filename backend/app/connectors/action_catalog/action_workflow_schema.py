@@ -36,6 +36,29 @@ APOLLO_LISTS_CREATE_SCHEMA = ActionWorkflowSchema(
     optional_fields=(WorkflowFieldSpec("Modality", ("modality",)),),
 )
 
+HUBSPOT_CONTACTS_CREATE_SCHEMA = ActionWorkflowSchema(
+    intent_label="Create HubSpot contact",
+    required_fields=(
+        WorkflowFieldSpec(
+            "email or contact name",
+            ("email", "firstname", "properties"),
+            validator="hubspot_contact_identity",
+        ),
+    ),
+    optional_fields=(
+        WorkflowFieldSpec("First name", ("firstname",)),
+        WorkflowFieldSpec("Last name", ("lastname",)),
+    ),
+)
+
+SLACK_POST_MESSAGE_SCHEMA = ActionWorkflowSchema(
+    intent_label="Post Slack message",
+    required_fields=(
+        WorkflowFieldSpec("channel", ("channel",)),
+        WorkflowFieldSpec("message", ("text", "message")),
+    ),
+)
+
 _TEST_SCHEMA_REGISTRY: dict[str, ActionWorkflowSchema] = {}
 
 

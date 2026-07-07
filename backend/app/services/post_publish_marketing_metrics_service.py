@@ -355,17 +355,14 @@ async def fetch_marketing_metric_value(
         return 0.0
 
     if target_entity_type == ENTITY_CANVA_EXPORT:
-        from app.connectors.canva_api import CanvaAPIError, ensure_canva_session, get_export
+        from app.services.canva_tools import fetch_canva_export
 
-        try:
-            cid, token = ensure_canva_session(client, org_id, None, active_settings)
-            payload = get_export(token, target_entity_id)
-        except CanvaAPIError as exc:
+        payload = fetch_canva_export(client, org_id, target_entity_id, active_settings)
+        if payload is None:
             logger.warning(
-                "marketing_metric_fetch_failed org=%s export=%s error=%s",
+                "marketing_metric_fetch_failed org=%s export=%s error=canva_export_unavailable",
                 org_id,
                 target_entity_id,
-                exc,
             )
             return None
         export = payload.get("export") if isinstance(payload.get("export"), dict) else payload

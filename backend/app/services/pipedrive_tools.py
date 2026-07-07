@@ -14,6 +14,7 @@ from app.connectors.pipedrive_api import (
     list_organizations,
     list_pipelines,
     search_persons,
+    test_pipedrive_connection,
     update_deal,
     update_person,
 )
@@ -232,3 +233,21 @@ PIPEDRIVE_TOOL_EXECUTORS = {
     "pipedrive.deals.update": _exec_pipedrive_deals_update,
     "pipedrive.deals.update_stage": _exec_pipedrive_deals_update_stage,
 }
+
+
+def verify_pipedrive_connection(
+    client: Any,
+    org_id: str,
+    connector_id: str,
+    settings: Any,
+    *,
+    environment_name: str | None = None,
+) -> tuple[bool, str]:
+    """Connection probe for connectors router (routes through tool layer)."""
+    return test_pipedrive_connection(
+        client,
+        org_id,
+        connector_id,
+        settings,
+        environment_name=environment_name,
+    )

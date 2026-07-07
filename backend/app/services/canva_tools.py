@@ -267,3 +267,25 @@ _register("canva.batch.exports", _exec_canva_batch_exports)
 _register("canva.exports.get", _exec_canva_exports_get)
 _register("canva.brand.templates.get", _exec_canva_brand_templates_get)
 _register("canva.designs.delete", _exec_canva_designs_delete)
+
+
+def fetch_canva_export(
+    client: Any,
+    org_id: str,
+    export_id: str,
+    settings: Any,
+    *,
+    environment_name: str | None = None,
+) -> dict[str, Any] | None:
+    """Read export status for marketing metrics (routes through tool layer)."""
+    try:
+        _cid, token = ensure_canva_session(
+            client,
+            org_id,
+            None,
+            settings,
+            environment_name=environment_name,
+        )
+        return get_export(token, export_id)
+    except CanvaAPIError:
+        return None

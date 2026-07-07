@@ -6,6 +6,7 @@ from typing import Any
 from app.connectors.apollo_api import (
     ApolloAPIError,
     add_contacts_to_sequence,
+    apollo_connection_auth_status,
     bulk_enrich_people,
     create_contact,
     create_label,

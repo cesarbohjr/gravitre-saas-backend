@@ -4,8 +4,6 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-import pytest
-
 from app.services.connector_allowlists import API_IMPORT_EXCEPTION_ALLOWLIST
 from app.services.connector_api_import_boundaries import (
     _extract_api_imports,
@@ -29,9 +27,8 @@ def test_tool_executors_may_import_api_clients():
     assert _is_allowed_importer("app/services/tool_service.py")
 
 
-def test_governance_modules_route_through_tool_layer():
-    assert "app/services/connector_action_workflows.py" not in API_IMPORT_EXCEPTION_ALLOWLIST
-    assert "app/services/connector_parameter_inference.py" not in API_IMPORT_EXCEPTION_ALLOWLIST
+def test_no_api_import_exceptions_remain():
+    assert len(API_IMPORT_EXCEPTION_ALLOWLIST) == 0
 
 
 def test_non_execution_import_is_detected(tmp_path: Path):
@@ -46,13 +43,8 @@ def test_non_execution_import_is_detected(tmp_path: Path):
     assert _is_allowed_importer("app/services/rogue_service.py") is False
 
 
-def test_allowlist_size_tracked_by_registration_contract():
-    assert len(API_IMPORT_EXCEPTION_ALLOWLIST) == 4
-
-
 def test_ast_extracts_import_from_statements():
     source = "import app.connectors.stripe_api as stripe_api\n"
-    path = Path("sample.py")
     tree = ast.parse(source)
     modules: list[str] = []
     for node in ast.walk(tree):

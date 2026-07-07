@@ -5,12 +5,7 @@ from pathlib import Path
 
 ORPHANS: tuple[str, ...] = ()
 
-API_IMPORTS: tuple[str, ...] = (
-    "app/routers/connectors.py",
-    "app/connectors/connection_health.py",
-    "app/services/outcome_attribution_service.py",
-    "app/services/post_publish_marketing_metrics_service.py",
-)
+API_IMPORTS: tuple[str, ...] = ()
 
 
 def _render_frozenset(name: str, entries: tuple[str, ...]) -> list[str]:

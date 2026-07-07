@@ -52,7 +52,10 @@ def test_step1_registration_contract_enforcement():
 
 
 def test_migrated_workflow_schema_gaps_empty_until_step3():
-    assert collect_migrated_workflow_schema_gaps() == frozenset()
+    gaps = collect_migrated_workflow_schema_gaps()
+    assert gaps == frozenset()
+    assert "hubspot.contacts.create" not in PENDING_WORKFLOW_SCHEMA_ALLOWLIST
+    assert "slack.post_message" not in PENDING_WORKFLOW_SCHEMA_ALLOWLIST
 
 
 def test_registration_contract_summary_shape():
@@ -66,8 +69,8 @@ def test_registration_contract_summary_shape():
 
 def test_allowlist_sizes_are_explicit_backlog():
     assert len(ORPHAN_HANDLER_ALLOWLIST) == 0
-    assert len(API_IMPORT_EXCEPTION_ALLOWLIST) == 4
-    assert len(PENDING_WORKFLOW_SCHEMA_ALLOWLIST) == 170
+    assert len(API_IMPORT_EXCEPTION_ALLOWLIST) == 0
+    assert len(PENDING_WORKFLOW_SCHEMA_ALLOWLIST) == 168
 
 
 def test_connector_governance_pytest_targets_cover_core_suites():

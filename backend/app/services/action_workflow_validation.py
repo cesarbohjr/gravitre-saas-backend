@@ -34,6 +34,20 @@ def _validator_asana_task_title(args: dict[str, Any], field: WorkflowFieldSpec) 
 FIELD_VALIDATORS["asana_task_title"] = _validator_asana_task_title
 
 
+def _validator_hubspot_contact_identity(args: dict[str, Any], field: WorkflowFieldSpec) -> bool:
+    if str(args.get("email") or "").strip():
+        return True
+    if str(args.get("firstname") or "").strip() or str(args.get("lastname") or "").strip():
+        return True
+    properties = args.get("properties")
+    if isinstance(properties, dict):
+        return any(str(value or "").strip() for value in properties.values())
+    return False
+
+
+FIELD_VALIDATORS["hubspot_contact_identity"] = _validator_hubspot_contact_identity
+
+
 def _field_present(args: dict[str, Any], field: WorkflowFieldSpec) -> bool:
     if field.validator:
         validator = FIELD_VALIDATORS.get(field.validator)

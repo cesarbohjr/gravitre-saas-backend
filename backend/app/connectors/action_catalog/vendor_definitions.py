@@ -5,6 +5,8 @@ from app.connectors.action_catalog.builder import action, build_vendor
 from app.connectors.action_catalog.action_workflow_schema import (
     APOLLO_LISTS_CREATE_SCHEMA,
     ASANA_TASKS_CREATE_SCHEMA,
+    HUBSPOT_CONTACTS_CREATE_SCHEMA,
+    SLACK_POST_MESSAGE_SCHEMA,
 )
 
 VENDOR_DEFINITIONS: tuple = (
@@ -53,7 +55,16 @@ VENDOR_DEFINITIONS: tuple = (
             action("hubspot", "pipelines.list", "List deal pipelines", tier="v1", kind="read", scope_suffix="pipelines:read", idempotent=True),
         ),
         v2=(
-            action("hubspot", "contacts.create", "Create contact", tier="v2", kind="write", scope_suffix="contacts:write", destructive=True),
+            action(
+                "hubspot",
+                "contacts.create",
+                "Create contact",
+                tier="v2",
+                kind="write",
+                scope_suffix="contacts:write",
+                destructive=True,
+                workflow_schema=HUBSPOT_CONTACTS_CREATE_SCHEMA,
+            ),
             action("hubspot", "contacts.update", "Update contact", tier="v2", kind="write", scope_suffix="contacts:write", destructive=True),
             action("hubspot", "contacts.delete", "Delete contact", tier="v2", kind="write", scope_suffix="contacts:write", destructive=True, requires_approval=True),
             action("hubspot", "deals.create", "Create deal", tier="v2", kind="write", scope_suffix="deals:write", destructive=True),
@@ -577,7 +588,16 @@ VENDOR_DEFINITIONS: tuple = (
             action("slack", "users.list", "List workspace users", tier="v1", kind="read", scope_suffix="users:read", idempotent=True),
         ),
         v2=(
-            action("slack", "post_message", "Post message", tier="v2", kind="write", scope_suffix="messages:write", destructive=True),
+            action(
+                "slack",
+                "post_message",
+                "Post message",
+                tier="v2",
+                kind="write",
+                scope_suffix="messages:write",
+                destructive=True,
+                workflow_schema=SLACK_POST_MESSAGE_SCHEMA,
+            ),
             action("slack", "conversations.create", "Create channel", tier="v2", kind="write", scope_suffix="channels:write", destructive=True),
             action("slack", "chat.update", "Update message", tier="v2", kind="write", scope_suffix="messages:write", destructive=True),
         ),

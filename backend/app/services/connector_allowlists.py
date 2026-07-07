@@ -8,10 +8,6 @@ ORPHAN_HANDLER_ALLOWLIST: frozenset[str] = frozenset(
 
 API_IMPORT_EXCEPTION_ALLOWLIST: frozenset[str] = frozenset(
     {
-        "app/routers/connectors.py",
-        "app/connectors/connection_health.py",
-        "app/services/outcome_attribution_service.py",
-        "app/services/post_publish_marketing_metrics_service.py",
     }
 )
 
@@ -84,7 +80,6 @@ PENDING_WORKFLOW_SCHEMA_ALLOWLIST: frozenset[str] = frozenset(
         "gusto.payrolls.run",
         "hootsuite.messages.schedule",
         "hootsuite.messages.update",
-        "hubspot.contacts.create",
         "hubspot.contacts.delete",
         "hubspot.contacts.update",
         "hubspot.deals.create",
@@ -165,7 +160,6 @@ PENDING_WORKFLOW_SCHEMA_ALLOWLIST: frozenset[str] = frozenset(
         "sendgrid.mail.send",
         "slack.chat.update",
         "slack.conversations.create",
-        "slack.post_message",
         "snowflake.query.insert",
         "snowflake.stages.put",
         "stackadapt.campaigns.create",
