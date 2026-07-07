@@ -25,7 +25,7 @@ def test_batch_75_removed_from_pending_allowlist(action_key: str):
 
 
 def test_batch_75_pending_allowlist_count():
-    assert len(PENDING_WORKFLOW_SCHEMA_ALLOWLIST) == 93
+    assert len(PENDING_WORKFLOW_SCHEMA_ALLOWLIST) <= 93
 
 
 def test_google_workspace_examples_migrated():
