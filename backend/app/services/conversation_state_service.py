@@ -22,6 +22,8 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     "unresolved_tasks": [],
     "suppressed_suggestions": [],
     "pending_task": None,
+    "connector_session": {},
+    "resolved_entities": {},
 }
 
 
@@ -103,6 +105,16 @@ class ConversationStateService:
                 elif key == "suppressed_suggestions" and isinstance(value, list):
                     existing = list(merged.get("suppressed_suggestions") or [])
                     merged["suppressed_suggestions"] = list(dict.fromkeys(existing + value))
+                elif key == "connector_session" and isinstance(value, dict):
+                    merged["connector_session"] = {
+                        **(merged.get("connector_session") or {}),
+                        **value,
+                    }
+                elif key == "resolved_entities" and isinstance(value, dict):
+                    merged["resolved_entities"] = {
+                        **(merged.get("resolved_entities") or {}),
+                        **value,
+                    }
                 else:
                     merged[key] = value
             self._client(client).table("conversations").update(

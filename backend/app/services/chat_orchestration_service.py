@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from app.config import Settings, get_settings
@@ -21,6 +21,15 @@ from app.services.conversational_execution_service import (
     ExecutionResult,
 )
 from app.services.notification_service import create_user_notification
+from app.services.connector_session_state import (
+    bind_plan_from_session,
+    build_session_summary,
+    connector_session_patch,
+    load_connector_session,
+    record_entity_from_execution,
+    record_step_output,
+    sync_legacy_resolved_entities,
+)
 
 logger = get_logger(__name__)
 
@@ -515,9 +524,11 @@ class ChatOrchestrationService:
             {
                 "step_id": step.step_id,
                 "label": step.label,
+                "invoke_action": step.plan.invoke_action if step.plan else "",
                 "success": result.success,
                 "summary": result.body,
                 "url": result.external_url or result.url,
+                "structured": dict(result.structured or {}),
             }
         )
         completed = list(task_state.get("completed_steps") or [])
@@ -532,6 +543,12 @@ class ChatOrchestrationService:
         )
         params["step_results"] = step_results
         params["current_step_index"] = idx + 1
+        session_updates = self._orchestration_session_updates(
+            task_state,
+            step,
+            result,
+            completed_steps=completed,
+        )
         await self._state.update_task_state(
             conversation_id,
             org_id,
@@ -543,6 +560,7 @@ class ChatOrchestrationService:
                     "status": "running",
                     "params": params,
                 },
+                **session_updates,
             },
         )
         refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
@@ -649,9 +667,11 @@ class ChatOrchestrationService:
                 {
                     "step_id": step.step_id,
                     "label": step.label,
+                    "invoke_action": step.plan.invoke_action if step.plan else "",
                     "success": True,
                     "summary": result.body,
                     "url": result.external_url or result.url,
+                    "structured": dict(result.structured or {}),
                 }
             )
             params["step_results"] = step_results
@@ -844,28 +864,88 @@ class ChatOrchestrationService:
         plan: ConnectorActionPlan,
         prior_results: list[dict[str, Any]],
     ) -> ConnectorActionPlan:
-        if not prior_results:
-            return plan
-        if plan.integration != "slack" or plan.invoke_action != "slack.post_message":
-            return plan
+        session = load_connector_session({})
+        for row in prior_results:
+            if not isinstance(row, dict):
+                continue
+            step_id = str(row.get("step_id") or row.get("stepId") or "").strip()
+            if not step_id:
+                continue
+            session = record_step_output(
+                session,
+                step_id=step_id,
+                invoke_action=str(row.get("invoke_action") or row.get("invokeAction") or plan.invoke_action),
+                label=str(row.get("label") or step_id),
+                success=bool(row.get("success")),
+                summary=str(row.get("summary") or ""),
+                url=row.get("url"),
+                structured=dict(row.get("structured") or {}),
+            )
+        enriched = bind_plan_from_session(plan, session)
+        if enriched.integration != "slack" or enriched.invoke_action != "slack.post_message":
+            return enriched
         summaries = [str(row.get("summary") or "") for row in prior_results if row.get("summary")]
         if not summaries:
-            return plan
-        args = dict(plan.args)
+            return enriched
+        args = dict(enriched.args)
         prefix = "Orchestration summary:\n" + "\n".join(f"- {line}" for line in summaries[-3:])
         existing = str(args.get("message") or "").strip()
         args["message"] = f"{existing}\n\n{prefix}".strip() if existing else prefix
         return ConnectorActionPlan(
-            tool_name=plan.tool_name,
-            invoke_action=plan.invoke_action,
-            integration=plan.integration,
-            kind=plan.kind,
-            label=plan.label,
+            tool_name=enriched.tool_name,
+            invoke_action=enriched.invoke_action,
+            integration=enriched.integration,
+            kind=enriched.kind,
+            label=enriched.label,
             args=args,
-            requires_approval=plan.requires_approval,
-            approval_reason=plan.approval_reason,
-            destructive=plan.destructive,
+            requires_approval=enriched.requires_approval,
+            approval_reason=enriched.approval_reason,
+            destructive=enriched.destructive,
+            inferred_fields=enriched.inferred_fields,
+            inference_sources=enriched.inference_sources,
         )
+
+    @staticmethod
+    def _orchestration_session_updates(
+        task_state: dict[str, Any],
+        step: OrchestrationStep,
+        result: ExecutionResult,
+        *,
+        completed_steps: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        session = load_connector_session(task_state)
+        invoke_action = step.plan.invoke_action if step.plan else ""
+        session = record_step_output(
+            session,
+            step_id=step.step_id,
+            invoke_action=invoke_action,
+            label=step.label,
+            success=result.success,
+            summary=result.body,
+            url=result.external_url or result.url,
+            structured=dict(result.structured or {}),
+        )
+        if result.success and step.plan:
+            session = record_entity_from_execution(
+                session,
+                integration=step.plan.integration,
+                invoke_action=step.plan.invoke_action,
+                entity_id=result.entity_id or None,
+                structured=dict(result.structured or {}),
+                label=step.label,
+            )
+        session = replace(
+            session,
+            session_summary=build_session_summary(
+                completed_steps=completed_steps,
+                step_outputs=session.step_outputs,
+                active_entities=session.active_entities,
+            ),
+        )
+        return {
+            **connector_session_patch(session),
+            "resolved_entities": sync_legacy_resolved_entities(session),
+        }
 
 
 _chat_orchestration_service: ChatOrchestrationService | None = None

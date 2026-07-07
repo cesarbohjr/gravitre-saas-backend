@@ -27,6 +27,14 @@ from app.connectors.connector_availability_service import (
     format_connector_blocking_message,
     get_connector_availability_service,
 )
+from app.services.connector_session_state import (
+    build_session_summary,
+    connector_session_patch,
+    load_connector_session,
+    record_entity_from_execution,
+    record_step_output,
+    sync_legacy_resolved_entities,
+)
 
 logger = get_logger(__name__)
 
@@ -712,6 +720,7 @@ class ChatConnectorExecutionService:
             message=message,
             conversation_history=list((task_state or {}).get("recent_user_messages") or []),
             task_state=task_state,
+            connector_session=load_connector_session(task_state),
             client=client,
             org_id=org_id,
             settings=self.settings,
@@ -821,6 +830,7 @@ class ChatConnectorExecutionService:
                     "status": "awaiting_confirm",
                     "params": pending_params,
                 },
+                **self._session_updates_for_pending(task_state, plan),
             },
         )
         refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
@@ -943,6 +953,7 @@ class ChatConnectorExecutionService:
             external_url=external_url,
             notification_type="task_completed",
             task_label=plan.label,
+            structured=result_data,
         )
 
         create_user_notification(
@@ -957,6 +968,7 @@ class ChatConnectorExecutionService:
             entity_id=result.entity_id or None,
         )
 
+        prior_state = await self._state.get_task_state(conversation_id, org_id, client=client)
         await self._state.update_task_state(
             conversation_id,
             org_id,
@@ -983,6 +995,12 @@ class ChatConnectorExecutionService:
                         "url": external_url or result.url,
                     }
                 ],
+                **self._session_updates_after_execution(
+                    prior_state,
+                    plan,
+                    result,
+                    result_data,
+                ),
             },
         )
         await self._record_outcomes(org_id, user_id, plan, result, observation, classification)
@@ -1251,6 +1269,82 @@ class ChatConnectorExecutionService:
             if url:
                 return str(url)
         return None
+
+    @staticmethod
+    def _session_updates_for_pending(
+        task_state: dict[str, Any],
+        plan: ConnectorActionPlan,
+    ) -> dict[str, Any]:
+        session = load_connector_session(task_state)
+        session = replace(
+            session,
+            pending_approval={
+                "invokeAction": plan.invoke_action,
+                "integration": plan.integration,
+                "label": plan.label,
+                "args": dict(plan.args or {}),
+                "status": "awaiting_confirm",
+            },
+            session_summary=build_session_summary(
+                completed_steps=list(task_state.get("completed_steps") or []),
+                step_outputs=session.step_outputs,
+                active_entities=session.active_entities,
+            ),
+        )
+        return {
+            **connector_session_patch(session),
+            "resolved_entities": sync_legacy_resolved_entities(session),
+        }
+
+    @staticmethod
+    def _session_updates_after_execution(
+        task_state: dict[str, Any],
+        plan: ConnectorActionPlan,
+        result: ExecutionResult,
+        structured: dict[str, Any],
+    ) -> dict[str, Any]:
+        session = load_connector_session(task_state)
+        step_id = f"connector_{plan.invoke_action}"
+        session = record_step_output(
+            session,
+            step_id=step_id,
+            invoke_action=plan.invoke_action,
+            label=plan.label,
+            success=result.success,
+            summary=result.body,
+            url=result.external_url or result.url,
+            structured=structured,
+        )
+        if result.success:
+            session = record_entity_from_execution(
+                session,
+                integration=plan.integration,
+                invoke_action=plan.invoke_action,
+                entity_id=result.entity_id or None,
+                structured=structured,
+                label=plan.label,
+            )
+        completed = list(task_state.get("completed_steps") or [])
+        completed.append(
+            {
+                "step_id": step_id,
+                "label": plan.label,
+                "url": result.external_url or result.url,
+            }
+        )
+        session = replace(
+            session,
+            pending_approval=None,
+            session_summary=build_session_summary(
+                completed_steps=completed,
+                step_outputs=session.step_outputs,
+                active_entities=session.active_entities,
+            ),
+        )
+        return {
+            **connector_session_patch(session),
+            "resolved_entities": sync_legacy_resolved_entities(session),
+        }
 
     @staticmethod
     def _summarize_result(
