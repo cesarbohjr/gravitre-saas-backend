@@ -1,6 +1,6 @@
 """BE-30: Integration registry API. Admin-only. Never return secrets."""
 from datetime import datetime, timezone
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -141,6 +141,7 @@ ALLOWED_CONNECTOR_VENDORS = frozenset(
         "canva",
         "figma",
         "apollo",
+        "clay",
         "fhir",
         "clio",
         "pipedrive",
@@ -206,6 +207,7 @@ def _docs_url(vendor: str) -> str | None:
         "google_docs": "https://developers.google.com/docs/api",
         "google_sheets": "https://developers.google.com/sheets/api",
         "apollo": "https://docs.apollo.io/docs/use-oauth-20-authorization-flow-to-access-apollo-user-information-partners",
+        "clay": "https://university.clay.com/docs/using-clay-as-an-api",
     }
     return mapping.get(vendor)
 
@@ -863,6 +865,28 @@ async def create_connector_route(
             "database": str(cfg.get("database") or cfg.get("db") or "").strip(),
         }
         row["docs_url"] = "https://www.odoo.com/documentation/17.0/developer/reference/external_api.html"
+    if vendor == "clay":
+        cfg = dict(body.config or {})
+        webhook = str(body.webhook_url or cfg.get("webhook_url") or cfg.get("webhookUrl") or "").strip()
+        row["description"] = body.description or "Clay enrichment and data workflows"
+        clay_config: dict[str, Any] = {
+            **cfg,
+            "auth_type": "api_key",
+            "webhook_url": webhook,
+            "table_name": str(cfg.get("table_name") or cfg.get("tableName") or "").strip(),
+            "workspace_id": str(cfg.get("workspace_id") or cfg.get("workspaceId") or "").strip(),
+        }
+        if isinstance(cfg.get("tables"), list):
+            clay_config["tables"] = cfg["tables"]
+        crm_target = str(cfg.get("crm_sync_target") or cfg.get("crmSyncTarget") or "").strip()
+        crm_connector_id = str(cfg.get("crm_connector_id") or cfg.get("crmConnectorId") or "").strip()
+        if crm_target:
+            clay_config["crm_sync_target"] = crm_target
+        if crm_connector_id:
+            clay_config["crm_connector_id"] = crm_connector_id
+        row["config"] = clay_config
+        if webhook:
+            row["webhook_url"] = webhook
     connector_id: str
     try:
         r = client.table("connectors").insert(row).execute()

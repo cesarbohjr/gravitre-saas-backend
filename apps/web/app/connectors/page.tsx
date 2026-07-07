@@ -814,6 +814,8 @@ function AddConnectorModal({
   const [odooUrl, setOdooUrl] = useState("")
   const [odooUsername, setOdooUsername] = useState("")
   const [odooDatabase, setOdooDatabase] = useState("")
+  const [clayWebhookUrl, setClayWebhookUrl] = useState("")
+  const [clayTableName, setClayTableName] = useState("")
 
   const catalogConnectors = useMemo<CatalogConnector[]>(() => {
     const partnerEntries: CatalogConnector[] = publishedConnectors.map((entry) => ({
@@ -936,6 +938,9 @@ function AddConnectorModal({
     if (selectedType === "Odoo") {
       return Boolean(odooUrl && odooUsername && apiKey)
     }
+    if (selectedType === "Clay") {
+      return Boolean(apiKey && clayWebhookUrl.trim())
+    }
     return Boolean(apiKey)
   }
 
@@ -978,6 +983,14 @@ function AddConnectorModal({
           ...(odooDatabase.trim() ? { database: odooDatabase.trim() } : {}),
         }
         payload.secrets = { username: odooUsername.trim() }
+        payload.api_key = apiKey.trim()
+        ;(payload as { apiKey?: string }).apiKey = apiKey.trim()
+      } else if (selectedType === "Clay") {
+        payload.config = {
+          webhook_url: clayWebhookUrl.trim(),
+          ...(clayTableName.trim() ? { table_name: clayTableName.trim() } : {}),
+        }
+        payload.webhook_url = clayWebhookUrl.trim()
         payload.api_key = apiKey.trim()
         ;(payload as { apiKey?: string }).apiKey = apiKey.trim()
       } else if (apiKey) {
@@ -1028,6 +1041,8 @@ function AddConnectorModal({
     setOdooUrl("")
     setOdooUsername("")
     setOdooDatabase("")
+    setClayWebhookUrl("")
+    setClayTableName("")
     onClose()
   }
 
@@ -1701,6 +1716,48 @@ function AddConnectorModal({
                   </>
                 )}
 
+                {selectedType === "Clay" && (
+                  <>
+                    <div className="rounded-lg border border-border bg-secondary/40 p-3 space-y-2">
+                      <p className="text-xs text-muted-foreground">
+                        Clay uses API keys for Enterprise lookups and table webhooks for pushing leads into enrichment
+                        workflows. Copy your API key from Clay Settings → API and your table webhook from the table’s
+                        webhook source column.
+                      </p>
+                      <a
+                        href="https://university.clay.com/docs/using-clay-as-an-api"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                      >
+                        Clay API guide
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Table webhook URL</label>
+                      <Input
+                        value={clayWebhookUrl}
+                        onChange={(e) => setClayWebhookUrl(e.target.value)}
+                        placeholder="https://app.clay.com/api/v1/webhooks/..."
+                        className="bg-secondary"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Used to push leads and enrichment requests into your Clay table
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Table name (optional)</label>
+                      <Input
+                        value={clayTableName}
+                        onChange={(e) => setClayTableName(e.target.value)}
+                        placeholder="Lead enrichment"
+                        className="bg-secondary"
+                      />
+                    </div>
+                  </>
+                )}
+
                 <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground flex items-center gap-2">
                       <Key className="h-4 w-4 text-amber-400" />
@@ -1710,14 +1767,20 @@ function AddConnectorModal({
                           ? "Personal access token"
                           : selectedType === "Odoo"
                             ? "API key"
-                            : "API Key"}
+                            : selectedType === "Clay"
+                              ? "Clay API key"
+                              : "API Key"}
                     </label>
                     <div className="relative">
                       <Input
                         type={showApiKey ? "text" : "password"}
                         value={apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
-                        placeholder="Enter your API key or token"
+                        placeholder={
+                          selectedType === "Clay"
+                            ? "Paste your Clay API key from Settings → API"
+                            : "Enter your API key or token"
+                        }
                         className="bg-secondary pr-10"
                       />
                       <button

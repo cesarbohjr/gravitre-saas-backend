@@ -149,6 +149,7 @@ export const APIKEY_VENDOR_KEYS = new Set([
   "zendesk",
   "bamboohr",
   "greenhouse",
+  "clay",
   "odoo",
   "absorb_lms",
   "gorgias",
@@ -218,6 +219,7 @@ const VENDOR_LABELS: Record<string, string> = {
   greenhouse: "Greenhouse",
   absorb_lms: "Absorb LMS",
   apollo: "Apollo",
+  clay: "Clay",
   odoo: "Odoo",
   canva: "Canva",
   figma: "Figma",
@@ -241,6 +243,7 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   // Sales / Prospecting
   { type: "LinkedIn", vendorKey: "linkedin", description: "Prospect enrichment for Sales Agent", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", shipped: true },
   { type: "Apollo", vendorKey: "apollo", description: "Sales intelligence and outreach", authType: "oauth", credentialModel: "oauth2", category: "Sales / Prospecting", shipped: true, oauthReady: true },
+  { type: "Clay", vendorKey: "clay", description: "Data enrichment, tables, and workflow automation", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", shipped: true },
   // Payments / Finance
   { type: "Stripe", vendorKey: "stripe", description: "Payment processing", authType: "apiKey", credentialModel: "api_key", category: "Payments / Finance", shipped: true },
   { type: "QuickBooks", vendorKey: "quickbooks", description: "Accounting software", authType: "oauth", credentialModel: "oauth2", category: "Payments / Finance", shipped: true },
@@ -360,6 +363,7 @@ export const MARKETING_INTEGRATION_APPS = [
   "Segment",
   "LinkedIn",
   "Apollo",
+  "Clay",
   "Google Analytics",
   "Gmail",
   "Notion",
@@ -406,6 +410,7 @@ export function connectorVendorKey(type: string): string {
   if (key === "constantcontact") return "constant_contact"
   if (key === "absorblms") return "absorb_lms"
   if (key === "apolloio" || key === "apolloai") return "apollo"
+  if (key === "claycom") return "clay"
   return key
 }
 

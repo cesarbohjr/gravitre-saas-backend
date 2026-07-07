@@ -347,6 +347,27 @@ VENDOR_DEFINITIONS: tuple = (
         ),
     ),
     build_vendor(
+        "clay",
+        "Clay",
+        "Sales / Prospecting",
+        "https://university.clay.com/docs/using-clay-as-an-api",
+        shipped=True,
+        department="sales",
+        v1=(
+            action("clay", "tables.list", "List configured Clay tables", tier="v1", kind="read", scope_suffix="tables:read", idempotent=True),
+            action("clay", "people.enrich", "Enrich person (Enterprise API)", tier="v1", kind="read", scope_suffix="people:read", idempotent=True),
+            action("clay", "companies.enrich", "Enrich company (Enterprise API)", tier="v1", kind="read", scope_suffix="companies:read", idempotent=True),
+            action("clay", "workflows.output.get", "Get workflow output destinations", tier="v1", kind="read", scope_suffix="workflows:read", idempotent=True),
+        ),
+        v2=(
+            action("clay", "leads.push", "Push leads into Clay table webhook", tier="v2", kind="write", scope_suffix="leads:write", destructive=True),
+            action("clay", "enrichments.request", "Request table enrichment run", tier="v2", kind="write", scope_suffix="enrichments:write", destructive=True),
+        ),
+        v3=(
+            action("clay", "crm.sync", "Sync enriched records to HubSpot or Salesforce", tier="v3", kind="advanced", scope_suffix="crm:write"),
+        ),
+    ),
+    build_vendor(
         "engagebay",
         "EngageBay",
         "CRM / Marketing",
