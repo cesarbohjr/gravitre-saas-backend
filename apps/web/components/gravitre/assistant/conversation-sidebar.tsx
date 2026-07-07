@@ -273,12 +273,15 @@ export function ConversationSidebar({
 
       <aside
         className={cn(
-          "fixed md:static inset-y-0 left-0 z-50 w-72 flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-300",
-          isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0 md:w-0 md:border-0 md:overflow-hidden",
+          "fixed md:static inset-y-0 left-0 z-40 flex h-full w-72 min-w-0 flex-col isolate border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width,transform,opacity,border-color] duration-300 ease-in-out",
+          isOpen
+            ? "translate-x-0 opacity-100"
+            : "-translate-x-full opacity-100 md:translate-x-0 md:w-0 md:min-w-0 md:max-w-0 md:border-0 md:opacity-0 md:pointer-events-none md:overflow-hidden",
         )}
+        aria-hidden={!isOpen}
       >
         {/* Header */}
-        <div className="flex h-14 items-center justify-between gap-2 border-b border-sidebar-border bg-sidebar px-3">
+        <div className="relative z-10 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-sidebar-border bg-sidebar px-3">
           {selectionMode ? (
             <TooltipProvider delayDuration={300}>
               <div className="flex items-center gap-1 flex-1">
@@ -335,7 +338,7 @@ export function ConversationSidebar({
             </TooltipProvider>
           ) : (
             <TooltipProvider delayDuration={300}>
-              <span className="pl-1 text-sm font-semibold text-sidebar-foreground">History</span>
+              <span className="pl-1 text-sm font-semibold text-emerald-700 dark:text-emerald-300">History</span>
               <div className="flex items-center gap-0.5">
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -522,11 +525,7 @@ export function ConversationSidebar({
                             onContextMenu={(e) => e.preventDefault()}
                           >
                             {isActive && !selectionMode && (
-                              <motion.span
-                                layoutId="conversation-active-rail"
-                                className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-emerald-500"
-                                transition={{ type: "spring", stiffness: 500, damping: 40 }}
-                              />
+                              <span className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-emerald-500" />
                             )}
 
                             {/* Leading: checkbox in selection mode, chat glyph otherwise */}

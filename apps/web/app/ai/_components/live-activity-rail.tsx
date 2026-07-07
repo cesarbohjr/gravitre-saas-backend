@@ -115,7 +115,7 @@ export function LiveActivityRail({
       : "Systems healthy"
 
   return (
-    <aside className="hidden w-80 shrink-0 border-l border-emerald-500/10 bg-gradient-to-b from-card/50 via-card/30 to-emerald-500/5 xl:block xl:max-h-full xl:overflow-y-auto">
+    <div className="flex h-full max-h-full w-80 flex-col overflow-y-auto">
       <div className="flex flex-col gap-6 p-5">
         <MesonPagePanel page="ai-chat" compact advisorBrief={advisorBrief} />
 
@@ -246,6 +246,6 @@ export function LiveActivityRail({
           View all runs
         </Link>
       </div>
-    </aside>
+    </div>
   )
 }

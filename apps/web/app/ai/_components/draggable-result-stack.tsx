@@ -52,8 +52,8 @@ export function DraggableResultStack({
   const [peerDropActive, setPeerDropActive] = useState(false)
   const enabledSet = new Set(enabledBlocks ?? order)
   const visibleOrder = order.filter((blockId) => enabledSet.has(blockId))
-  const peerColumn: LayoutColumn = column === "main" ? "rail" : "main"
-  const peerLabel = column === "main" ? "Move to right panel" : "Move to center page"
+  const peerColumn: LayoutColumn = "rail"
+  const peerLabel = "Move to right panel"
 
   const moveBlock = useCallback(
     (from: ResultBlockId, to: ResultBlockId) => {

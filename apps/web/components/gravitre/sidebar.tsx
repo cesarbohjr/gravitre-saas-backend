@@ -230,73 +230,60 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
     onClose?.()
   }, [pathname, onClose])
 
+  // Do not wrap primary nav Links in Radix Tooltip — it regresses mobile taps and desktop clicks.
   const renderNavItem = useCallback(
-    (item: NavItem, isActive: boolean, colors: (typeof sectionColors)[keyof typeof sectionColors]) => {
-      const link = (
-        <Link
-          href={item.href}
-          onClick={onClose}
+    (item: NavItem, isActive: boolean, colors: (typeof sectionColors)[keyof typeof sectionColors]) => (
+      <Link
+        href={item.href}
+        onClick={onClose}
+        title={showNavTooltip ? item.name : undefined}
+        aria-label={showNavTooltip ? item.name : undefined}
+        className={cn(
+          "group relative flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-all duration-150 px-2.5 py-1.5",
+          navExpanded
+            ? "md:justify-start md:px-2.5 md:py-1.5"
+            : "md:justify-center md:px-0 md:py-2.5",
+          isActive
+            ? cn(
+                colors.activeBg,
+                "text-foreground",
+                navExpanded && "md:border-l-2 md:-ml-px md:pl-[9px]",
+                colors.activeBorder,
+              )
+            : cn(
+                "text-muted-foreground/70 hover:text-foreground hover:bg-sidebar-accent/50",
+                navExpanded && "md:border-l-2 md:border-l-transparent md:-ml-px md:pl-[9px]",
+              ),
+        )}
+      >
+        <Icon
+          name={item.icon}
+          size="md"
+          emphasis={item.emphasis && isActive}
           className={cn(
-            "group relative flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-all duration-150 px-2.5 py-1.5",
-            navExpanded
-              ? "md:justify-start md:px-2.5 md:py-1.5"
-              : "md:justify-center md:px-0 md:py-2.5",
-            isActive
-              ? cn(
-                  colors.activeBg,
-                  "text-foreground",
-                  navExpanded && "md:border-l-2 md:-ml-px md:pl-[9px]",
-                  colors.activeBorder,
-                )
-              : cn(
-                  "text-muted-foreground/70 hover:text-foreground hover:bg-sidebar-accent/50",
-                  navExpanded && "md:border-l-2 md:border-l-transparent md:-ml-px md:pl-[9px]",
-                ),
+            "shrink-0 transition-colors md:h-5 md:w-5",
+            navExpanded && "md:h-4 md:w-4",
+            isActive ? colors.activeIcon : "text-muted-foreground/40 group-hover:text-muted-foreground/70",
           )}
-        >
-          <Icon
-            name={item.icon}
-            size="md"
-            emphasis={item.emphasis && isActive}
+        />
+        <span className={cn("flex-1 truncate", navExpanded ? "md:inline" : "md:hidden")}>
+          {item.name}
+        </span>
+        {item.badge && (
+          <span
             className={cn(
-              "shrink-0 transition-colors md:h-5 md:w-5",
-              navExpanded && "md:h-4 md:w-4",
-              isActive ? colors.activeIcon : "text-muted-foreground/40 group-hover:text-muted-foreground/70",
+              "rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
+              navExpanded ? "md:inline" : "md:hidden",
+              isActive
+                ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20"
+                : "bg-muted/60 text-muted-foreground/70",
             )}
-          />
-          <span className={cn("flex-1 truncate", navExpanded ? "md:inline" : "md:hidden")}>
-            {item.name}
+          >
+            {item.badge}
           </span>
-          {item.badge && (
-            <span
-              className={cn(
-                "rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
-                navExpanded ? "md:inline" : "md:hidden",
-                isActive
-                  ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20"
-                  : "bg-muted/60 text-muted-foreground/70",
-              )}
-            >
-              {item.badge}
-            </span>
-          )}
-        </Link>
-      )
-
-      if (!showNavTooltip) {
-        return link
-      }
-
-      return (
-        <Tooltip>
-          <TooltipTrigger asChild>{link}</TooltipTrigger>
-          <TooltipContent side="right" className="max-w-xs text-xs">
-            <p className="font-medium">{item.name}</p>
-            {item.hint ? <p className="mt-0.5 text-muted-foreground">{item.hint}</p> : null}
-          </TooltipContent>
-        </Tooltip>
-      )
-    },
+        )}
+      </Link>
+    ),
     [navExpanded, onClose, showNavTooltip],
   )
 
@@ -327,7 +314,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
           <Link href="/" className="flex min-w-0 flex-1 items-center" onClick={onClose}>
             {effectiveLogoUrl ? (
               <>
-                <div className={cn("hidden md:flex items-center justify-center h-16 w-16", navExpanded && "md:hidden")}>
+                <div className={cn("hidden md:flex items-center justify-center h-10 w-10", navExpanded && "md:hidden")}>
                   <img
                     src={effectiveLogoUrl || "/placeholder.svg"}
                     alt="Workspace logo"
@@ -347,16 +334,16 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
               </>
             ) : (
               <>
-                <div className={cn("hidden md:flex h-16 w-16 items-center justify-center", navExpanded && "md:hidden")}>
+                <div className={cn("hidden md:flex h-10 w-10 items-center justify-center", navExpanded && "md:hidden")}>
                   <img
                     src="/images/gravitre-icon-black.png"
                     alt="Gravitre"
-                    className="h-16 w-16 object-contain dark:hidden"
+                    className="h-10 w-10 object-contain dark:hidden"
                   />
                   <img
                     src="/images/gravitre-icon-white.png"
                     alt="Gravitre"
-                    className="h-16 w-16 hidden object-contain dark:block"
+                    className="hidden h-10 w-10 object-contain dark:block"
                   />
                 </div>
                 <div className={cn(navExpanded ? "md:block" : "md:hidden")}>
