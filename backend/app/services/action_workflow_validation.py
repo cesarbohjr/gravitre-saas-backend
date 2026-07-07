@@ -127,8 +127,28 @@ def _validator_tags_payload(args: dict[str, Any], field: WorkflowFieldSpec) -> b
     return bool(str(tags or "").strip())
 
 
+def _validator_list_payload(args: dict[str, Any], field: WorkflowFieldSpec) -> bool:
+    for key in field.arg_keys:
+        value = args.get(key)
+        if isinstance(value, list) and value:
+            return True
+    return False
+
+
+def _validator_list_or_object_payload(args: dict[str, Any], field: WorkflowFieldSpec) -> bool:
+    for key in field.arg_keys:
+        value = args.get(key)
+        if isinstance(value, list) and value:
+            return True
+        if _dict_has_content(value):
+            return True
+    return False
+
+
 FIELD_VALIDATORS["object_payload"] = _validator_object_payload
 FIELD_VALIDATORS["tags_payload"] = _validator_tags_payload
+FIELD_VALIDATORS["list_payload"] = _validator_list_payload
+FIELD_VALIDATORS["list_or_object_payload"] = _validator_list_or_object_payload
 
 
 def _field_present(args: dict[str, Any], field: WorkflowFieldSpec) -> bool:
