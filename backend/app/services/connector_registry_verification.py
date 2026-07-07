@@ -210,6 +210,10 @@ def verify_connector_registry() -> list[RegistryViolation]:
                 )
             )
 
+    from app.services.connector_api_import_boundaries import verify_api_import_boundaries
+
+    violations.extend(verify_api_import_boundaries())
+
     return violations
 
 
