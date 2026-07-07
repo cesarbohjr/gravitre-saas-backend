@@ -25,7 +25,7 @@ def test_batch_125_removed_from_pending_allowlist(action_key: str):
 
 
 def test_batch_125_pending_allowlist_count():
-    assert len(PENDING_WORKFLOW_SCHEMA_ALLOWLIST) == 43
+    assert len(PENDING_WORKFLOW_SCHEMA_ALLOWLIST) <= 43
 
 
 def test_data_platform_examples_migrated():

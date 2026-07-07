@@ -95,6 +95,14 @@ def get_workflow_schema(action_key: str) -> ActionWorkflowSchema | None:
 
     if key in WORKFLOW_SCHEMAS_BATCH_125:
         return WORKFLOW_SCHEMAS_BATCH_125[key]
+    from app.connectors.action_catalog.workflow_schemas_batch_150 import WORKFLOW_SCHEMAS_BATCH_150
+
+    if key in WORKFLOW_SCHEMAS_BATCH_150:
+        return WORKFLOW_SCHEMAS_BATCH_150[key]
+    from app.connectors.action_catalog.workflow_schemas_batch_175 import WORKFLOW_SCHEMAS_BATCH_175
+
+    if key in WORKFLOW_SCHEMAS_BATCH_175:
+        return WORKFLOW_SCHEMAS_BATCH_175[key]
     from app.connectors.action_catalog.registry import get_action_spec
 
     spec = get_action_spec(key)
