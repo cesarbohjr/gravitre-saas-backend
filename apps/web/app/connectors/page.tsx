@@ -2027,10 +2027,10 @@ function ConnectorsPageContent() {
           description: "Your Google account has multiple analytics properties.",
         })
       } else {
-        toast.success("Connector connected", {
+        toast.success("Connection successful", {
           description: provider
-            ? `${formatVendorLabel(provider)} OAuth completed`
-            : "OAuth authentication successful",
+            ? `${formatVendorLabel(provider)} is now connected`
+            : "OAuth authentication completed",
         })
       }
     } else if (oauth === "error") {

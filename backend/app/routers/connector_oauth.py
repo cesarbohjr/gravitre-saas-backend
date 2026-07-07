@@ -15,6 +15,7 @@ import httpx
 from app.auth.dependencies import get_environment_context, require_admin
 from app.billing.service import ADVANCED_CONNECTORS, get_plan_for_org, require_feature
 from app.config import Settings, get_settings
+from app.public_urls import PRODUCTION_APP_URL, normalize_public_url
 from app.connectors.hubspot_oauth import (
     complete_hubspot_oauth_connection,
     hubspot_authorize_url,
@@ -243,7 +244,7 @@ def _oauth_state_secret(settings: Settings) -> str:
 
 
 def _frontend_redirect(settings: Settings, path: str, params: dict[str, str]) -> str:
-    base = (settings.public_app_url or "http://localhost:3000").rstrip("/")
+    base = normalize_public_url(settings.public_app_url, fallback=PRODUCTION_APP_URL).rstrip("/")
     safe_path = path if path.startswith("/") else f"/{path}"
     query = urlencode(params)
     return f"{base}{safe_path}?{query}" if query else f"{base}{safe_path}"

@@ -35,4 +35,5 @@ HubSpot can send events to Gravitre inbound webhook routes. Configure URLs in Hu
 List connectors: `GET /api/connectors`  
 Manual sync: `POST /api/connectors/{id}/sync`
 
-OAuth callback path on your API host: `/api/connectors/oauth/hubspot/callback`
+OAuth callback path on your app domain: `/api/connectors/oauth/hubspot/callback`  
+(also register `/api/auth/callback/hubspot` if your HubSpot app uses that path)
