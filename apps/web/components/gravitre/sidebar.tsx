@@ -4,13 +4,14 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect, useCallback } from "react"
 import { Icon, type IconName } from "@/lib/icons"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { useViewMode } from "@/lib/view-mode-context"
 import useSWR from "swr"
 import { useOnboardingProgress } from "@/hooks/use-onboarding-progress"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { useEnterpriseBranding } from "@/lib/enterprise-branding-context"
 import { useAuth } from "@/lib/auth-context"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
@@ -181,6 +182,8 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpanded }: SidebarProps) {
   const pathname = usePathname()
+  const isMobile = useIsMobile()
+  const showNavTooltip = !isMobile && !navExpanded
   const [collapsedSections, setCollapsedSections] = useState<string[]>([])
   const { isLite } = useViewMode()
   const { effectiveLogoUrl } = useEnterpriseBranding()
@@ -223,6 +226,80 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
     )
   }
 
+  useEffect(() => {
+    onClose?.()
+  }, [pathname, onClose])
+
+  const renderNavItem = useCallback(
+    (item: NavItem, isActive: boolean, colors: (typeof sectionColors)[keyof typeof sectionColors]) => {
+      const link = (
+        <Link
+          href={item.href}
+          onClick={onClose}
+          className={cn(
+            "group relative flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-all duration-150 px-2.5 py-1.5",
+            navExpanded
+              ? "md:justify-start md:px-2.5 md:py-1.5"
+              : "md:justify-center md:px-0 md:py-2.5",
+            isActive
+              ? cn(
+                  colors.activeBg,
+                  "text-foreground",
+                  navExpanded && "md:border-l-2 md:-ml-px md:pl-[9px]",
+                  colors.activeBorder,
+                )
+              : cn(
+                  "text-muted-foreground/70 hover:text-foreground hover:bg-sidebar-accent/50",
+                  navExpanded && "md:border-l-2 md:border-l-transparent md:-ml-px md:pl-[9px]",
+                ),
+          )}
+        >
+          <Icon
+            name={item.icon}
+            size="md"
+            emphasis={item.emphasis && isActive}
+            className={cn(
+              "shrink-0 transition-colors md:h-5 md:w-5",
+              navExpanded && "md:h-4 md:w-4",
+              isActive ? colors.activeIcon : "text-muted-foreground/40 group-hover:text-muted-foreground/70",
+            )}
+          />
+          <span className={cn("flex-1 truncate", navExpanded ? "md:inline" : "md:hidden")}>
+            {item.name}
+          </span>
+          {item.badge && (
+            <span
+              className={cn(
+                "rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
+                navExpanded ? "md:inline" : "md:hidden",
+                isActive
+                  ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20"
+                  : "bg-muted/60 text-muted-foreground/70",
+              )}
+            >
+              {item.badge}
+            </span>
+          )}
+        </Link>
+      )
+
+      if (!showNavTooltip) {
+        return link
+      }
+
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>{link}</TooltipTrigger>
+          <TooltipContent side="right" className="max-w-xs text-xs">
+            <p className="font-medium">{item.name}</p>
+            {item.hint ? <p className="mt-0.5 text-muted-foreground">{item.hint}</p> : null}
+          </TooltipContent>
+        </Tooltip>
+      )
+    },
+    [navExpanded, onClose, showNavTooltip],
+  )
+
   return (
     <TooltipProvider delayDuration={300}>
       {/* Mobile Overlay - Only show on mobile since sidebar is visible on tablet+ */}
@@ -239,7 +316,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
           "fixed inset-y-0 left-0 z-50 flex h-full flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300 ease-in-out",
           // Mobile: slide-out drawer
           "w-64",
-          isOpen ? "translate-x-0" : "-translate-x-full",
+          isOpen ? "translate-x-0" : "-translate-x-full max-md:invisible max-md:pointer-events-none",
           // Tablet+: pinned rail; width follows user expand preference
           "md:static md:z-auto md:translate-x-0",
           navExpanded ? "md:w-60" : "md:w-16",
@@ -372,70 +449,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
                       const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
                       return (
                         <li key={item.name}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Link
-                                href={item.href}
-                                onClick={onClose}
-                                className={cn(
-                                  "group relative flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-all duration-150 px-2.5 py-1.5",
-                                  navExpanded
-                                    ? "md:justify-start md:px-2.5 md:py-1.5"
-                                    : "md:justify-center md:px-0 md:py-2.5",
-                                  isActive
-                                    ? cn(
-                                        colors.activeBg,
-                                        "text-foreground",
-                                        navExpanded && "md:border-l-2 md:-ml-px md:pl-[9px]",
-                                        colors.activeBorder,
-                                      )
-                                    : cn(
-                                        "text-muted-foreground/70 hover:text-foreground hover:bg-sidebar-accent/50",
-                                        navExpanded && "md:border-l-2 md:border-l-transparent md:-ml-px md:pl-[9px]",
-                                      ),
-                                )}
-                              >
-                                <Icon
-                                  name={item.icon}
-                                  size="md"
-                                  emphasis={item.emphasis && isActive}
-                                  className={cn(
-                                    "shrink-0 transition-colors md:h-5 md:w-5",
-                                    navExpanded && "md:h-4 md:w-4",
-                                    isActive ? colors.activeIcon : "text-muted-foreground/40 group-hover:text-muted-foreground/70",
-                                  )}
-                                />
-                                <span className={cn("flex-1 truncate", navExpanded ? "md:inline" : "md:hidden")}>
-                                  {item.name}
-                                </span>
-                                {item.badge && (
-                                  <span
-                                    className={cn(
-                                      "rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
-                                      navExpanded ? "md:inline" : "md:hidden",
-                                      isActive
-                                        ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20"
-                                        : "bg-muted/60 text-muted-foreground/70",
-                                    )}
-                                  >
-                                    {item.badge}
-                                  </span>
-                                )}
-                              </Link>
-                            </TooltipTrigger>
-                            <TooltipContent
-                              side="right"
-                              className={cn(
-                                "max-w-xs text-xs hidden md:block",
-                                navExpanded && "md:hidden",
-                              )}
-                            >
-                              <p className="font-medium">{item.name}</p>
-                              {item.hint ? (
-                                <p className="mt-0.5 text-muted-foreground">{item.hint}</p>
-                              ) : null}
-                            </TooltipContent>
-                          </Tooltip>
+                          {renderNavItem(item, isActive, colors)}
                         </li>
                       )
                     })}

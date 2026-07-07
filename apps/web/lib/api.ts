@@ -2033,6 +2033,20 @@ export const settingsApi = {
   getOrg: () => fetcher<{ organization: Record<string, unknown> }>(apiUrl("/api/settings/organization")),
   updateOrg: (data: Record<string, unknown>) =>
     patchJson<{ organization: Record<string, unknown> }>(apiUrl("/api/settings/organization"), data),
+  uploadOrgLogo: async (file: File) => {
+    const formData = new FormData()
+    formData.append("logo", file)
+    const response = await apiFetch(apiUrl("/api/settings/organization/logo"), {
+      method: "POST",
+      body: formData,
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(extractErrorMessage(error) || "Logo upload failed")
+    }
+    return response.json() as Promise<{ logoUrl?: string; organization?: Record<string, unknown> }>
+  },
+  removeOrgLogo: () => deleteRequest(apiUrl("/api/settings/organization/logo")),
   
   // Team
   listTeamMembers: () => fetcher<{ team: User[] }>(apiUrl("/api/settings/team")),

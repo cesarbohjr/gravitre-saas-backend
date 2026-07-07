@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, startTransition } from "react"
+import { useState, useEffect, startTransition, useCallback } from "react"
 import useSWR, { mutate } from "swr"
 import Link from "next/link"
 import { Sidebar } from "./sidebar"
@@ -128,6 +128,8 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
       return next
     })
   }
+
+  const closeSidebar = useCallback(() => setSidebarOpen(false), [])
 
   // Fetch billing status — refresh on focus so web/mobile stay aligned after expiry.
   const { data: billingStatusData, isLoading: billingLoading, error: billingError } = useSWR<BillingStatus>(
@@ -324,7 +326,7 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
     <div className="flex h-screen overflow-hidden bg-background">
         <Sidebar
           isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
+          onClose={closeSidebar}
           navExpanded={navExpanded}
           onToggleNavExpanded={handleToggleNavExpanded}
         />
