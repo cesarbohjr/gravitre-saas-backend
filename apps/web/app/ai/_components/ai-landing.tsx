@@ -54,7 +54,7 @@ export function AiLanding({
   }
 
   return (
-    <div className="relative z-10 mx-auto flex min-h-full w-full max-w-3xl flex-col px-4 py-10 md:px-6 md:py-16">
+    <div className="relative z-10 mx-auto flex w-full max-w-[920px] flex-col px-2 py-6 md:px-4">
       <div className="text-center">
         <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-xs font-medium text-muted-foreground">
           <Lightning className="h-3.5 w-3.5 text-primary" weight="fill" aria-hidden />
@@ -90,15 +90,11 @@ export function AiLanding({
                   ? "Describe the work to delegate — Gravitre will plan and run it…"
                   : activeMode.id === "chat"
                     ? "Ask a question or start a conversation…"
-                    : "Describe what you need — Gravitre will route it to the right engine…"
+                    : "Ask, delegate, or search — results appear here…"
             }
-            className="w-full resize-none bg-transparent px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground/70 disabled:opacity-60"
+            className="w-full min-h-[88px] resize-none bg-transparent px-3 py-4 text-center text-sm text-foreground outline-none placeholder:text-muted-foreground/70"
           />
-          <div className="flex items-center justify-between gap-3 px-2 pb-1">
-            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <ModeIconBadge modeId={activeMode.id} className="h-3.5 w-3.5" />
-              <span className="truncate">{activeMode.blurb}</span>
-            </p>
+          <div className="flex items-center justify-end gap-3 px-2 pb-1">
             <button
               type="button"
               onClick={onSubmit}

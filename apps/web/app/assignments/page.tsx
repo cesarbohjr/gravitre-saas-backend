@@ -26,6 +26,7 @@ import { NewAssignmentModal } from "@/components/gravitre/assignments/new-assign
 import { useWorkPageShortcut } from "@/hooks/use-work-page-shortcut"
 import { useMotionPrefs, entranceContainer, reducedEntranceContainer, entranceItem, reducedEntranceItem } from "@/lib/animations"
 import { useAuth } from "@/lib/auth-context"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { 
   Megaphone, 
   TrendingUp, 
@@ -593,7 +594,7 @@ export default function AssignmentsPage() {
   const showListSkeleton = Boolean(user) && assignmentsLoading && !fetchedAssignments
 
   return (
-    <AppShell title="Assignments">
+    <AppShell title={SURFACE_COPY.pages.assignments.title}>
       <div className="flex flex-col min-h-full">
         {/* Header */}
         <div className="relative overflow-hidden border-b border-border">
@@ -614,10 +615,10 @@ export default function AssignmentsPage() {
                 </motion.div>
                 <div>
                   <div className="flex items-center gap-2 sm:gap-3">
-                    <h1 className="text-lg sm:text-2xl font-bold text-foreground">Work Assignments</h1>
+                    <h1 className="text-lg sm:text-2xl font-bold text-foreground">{SURFACE_COPY.pages.assignments.title}</h1>
                     <ActivityPulse />
                   </div>
-                  <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Monitor and manage tasks assigned to your AI team</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">{SURFACE_COPY.pages.assignments.description}</p>
                 </div>
               </div>
               

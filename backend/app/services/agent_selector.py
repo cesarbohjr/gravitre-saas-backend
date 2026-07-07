@@ -10,6 +10,8 @@ from app.operators.agent_prompts import (
     infer_task_persona_key,
 )
 from app.workflows.repository import get_supabase_client
+from app.services.domain_routing_policy import apply_agent_selection_policy
+from app.services.learning_strategy_keys import parse_segment_key
 
 SWARM_ELIGIBLE_TASKS = frozenset(
     {
@@ -41,7 +43,7 @@ class AgentSelector:
         required = list(persona_meta.get("preferred_connectors") or persona.preferred_tools)
         available = await self._get_connected(org_id)
         missing = [connector for connector in required if connector not in available]
-        return {
+        result = {
             "persona_key": persona_key,
             "persona": {
                 "key": persona.key,
@@ -54,6 +56,27 @@ class AgentSelector:
             "missing_connectors": missing,
             "requires_swarm": requires_action and task_type in SWARM_ELIGIBLE_TASKS,
         }
+        routed = apply_agent_selection_policy(result, classification)
+        from app.services.meta_learning_service import get_meta_learning_service
+
+        meta = get_meta_learning_service(self.settings)
+        if meta.is_enabled():
+            segment_key = parse_segment_key(classification)
+            candidates = [
+                meta.build_agent_strategy_key(key)
+                for key in AGENT_PERSONAS.keys()
+                if key != "DEFAULT"
+            ]
+            guidance = await meta.get_selection_guidance(
+                org_id,
+                segment_key,
+                "agent",
+                candidates,
+                default_key=meta.build_agent_strategy_key(str(routed.get("persona_key") or persona_key)),
+                classification=classification,
+            )
+            routed = meta.apply_agent_soft_prior(routed, guidance)
+        return routed
 
     async def _get_connected(self, org_id: str) -> set[str]:
         client = get_supabase_client(self.settings)

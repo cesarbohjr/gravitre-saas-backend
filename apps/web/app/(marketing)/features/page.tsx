@@ -32,6 +32,9 @@ import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { VendorLogo } from "@/components/gravitre/vendor-logo"
 import { MARKETING_INTEGRATION_APPS } from "@/lib/connectors"
 import { TestimonialsCarouselFull, SocialProofBanner } from "@/components/marketing/testimonials"
+import { IntelligenceEngineSection } from "@/components/marketing/intelligence-engine-section"
+import { MARKETING_COPY } from "@/lib/marketing-copy"
+import { SHOW_MARKETING_TESTIMONIALS } from "@/lib/marketing-flags"
 
 // Bento card component - Light theme
 function BentoCard({ 
@@ -413,7 +416,7 @@ function AIOperatorScreen() {
             <div className="h-3 w-3 rounded-full bg-amber-400" />
             <div className="h-3 w-3 rounded-full bg-emerald-400" />
           </div>
-          <span className="text-xs font-medium text-zinc-500 ml-2">AI Operator</span>
+          <span className="text-xs font-medium text-zinc-500 ml-2">Gravitre AI</span>
         </div>
         <div className="flex items-center gap-1">
           <motion.div
@@ -653,7 +656,7 @@ export default function FeaturesPage() {
               >
                 <Sparkles className="h-4 w-4 text-emerald-600" />
               </motion.div>
-              <span className="text-sm font-medium text-emerald-700">Powerful capabilities</span>
+              <span className="text-sm font-medium text-emerald-700">{MARKETING_COPY.featuresHero.badge}</span>
             </motion.div>
             
             {/* Staggered headline */}
@@ -665,7 +668,7 @@ export default function FeaturesPage() {
                 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight"
               >
                 <span className="text-zinc-900">
-                  Everything you need
+                  {MARKETING_COPY.featuresHero.headline[0]}
                 </span>
               </motion.h1>
             </div>
@@ -676,7 +679,7 @@ export default function FeaturesPage() {
                 transition={{ delay: 0.3, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
                 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent"
               >
-                to work with AI
+                {MARKETING_COPY.featuresHero.headline[1]}
               </motion.h1>
             </div>
             
@@ -686,7 +689,7 @@ export default function FeaturesPage() {
               transition={{ delay: 0.5 }}
               className="mt-6 text-lg text-zinc-600 max-w-2xl mx-auto"
             >
-              A simple platform to set up, manage, and keep your AI team running smoothly.
+              {MARKETING_COPY.featuresHero.subtitle}
             </motion.p>
             
             {/* Feature pills */}
@@ -696,7 +699,7 @@ export default function FeaturesPage() {
               transition={{ delay: 0.7 }}
               className="mt-10 flex flex-wrap items-center justify-center gap-3"
             >
-              {["AI Assistant", "Smart Agents", "Workflows", "Integrations", "Analytics"].map((feature, i) => (
+              {MARKETING_COPY.featuresHero.pills.map((feature, i) => (
                 <motion.span
                   key={feature}
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -712,6 +715,8 @@ export default function FeaturesPage() {
         </div>
       </section>
 
+      <IntelligenceEngineSection variant="compact" />
+
       {/* How Gravitre Works - Architecture Diagram */}
       <section className="relative pb-32">
         <div className="mx-auto max-w-7xl px-6">
@@ -724,7 +729,7 @@ export default function FeaturesPage() {
           >
             <h2 className="text-3xl font-bold text-zinc-900 mb-4">How Gravitre works</h2>
             <p className="text-zinc-600 max-w-2xl mx-auto">
-              A unified platform that connects your team, AI agents, and tools
+              Your team → Gravitre AI → agents → connected tools — with GIBE learning from every verified run.
             </p>
           </motion.div>
 
@@ -788,7 +793,7 @@ export default function FeaturesPage() {
                   <div className="w-0.5 h-8 bg-gradient-to-b from-zinc-300 to-emerald-400" />
                 </motion.div>
 
-                {/* AI Operator (Central Hub) */}
+                {/* Gravitre AI (Central Hub) */}
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   whileInView={{ opacity: 1, scale: 1 }}
@@ -810,8 +815,8 @@ export default function FeaturesPage() {
                   
                   <div className="relative h-32 w-32 lg:h-40 lg:w-40 rounded-3xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex flex-col items-center justify-center shadow-xl shadow-emerald-500/20">
                     <Sparkles className="h-12 w-12 text-white mb-2" />
-                    <span className="text-sm font-bold text-white">AI Operator</span>
-                    <span className="text-[10px] text-emerald-100">Command Center</span>
+                    <span className="text-sm font-bold text-white">Gravitre AI</span>
+                    <span className="text-[10px] text-emerald-100">Intelligence + execution</span>
                   </div>
                 </motion.div>
 
@@ -1025,7 +1030,7 @@ export default function FeaturesPage() {
           </motion.div>
 
           <div className="space-y-32">
-            {/* Feature 1: AI Operator */}
+            {/* Feature 1: Gravitre AI */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1035,7 +1040,7 @@ export default function FeaturesPage() {
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 mb-4">
                   <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
-                  <span className="text-xs font-medium text-emerald-700">AI Operator</span>
+                  <span className="text-xs font-medium text-emerald-700">Gravitre AI</span>
                 </div>
                 <h3 className="text-3xl font-bold text-zinc-900 mb-4">Natural language command center</h3>
                 <p className="text-zinc-600 mb-6 leading-relaxed text-lg">
@@ -1064,7 +1069,7 @@ export default function FeaturesPage() {
                       <div className="h-3 w-3 rounded-full bg-emerald-400" />
                     </div>
                     <div className="flex-1 flex justify-center">
-                      <div className="px-3 py-1 rounded-md bg-zinc-100 text-[10px] text-zinc-500">AI Operator</div>
+                      <div className="px-3 py-1 rounded-md bg-zinc-100 text-[10px] text-zinc-500">Gravitre AI</div>
                     </div>
                   </div>
                   {/* Chat interface */}
@@ -1436,19 +1441,12 @@ export default function FeaturesPage() {
                   <Blocks className="h-3.5 w-3.5 text-violet-600" />
                   <span className="text-xs font-medium text-violet-700">Meson</span>
                 </div>
-                <h3 className="text-3xl font-bold text-zinc-900 mb-4">AI that completes work, not just suggestions</h3>
+                <h3 className="text-3xl font-bold text-zinc-900 mb-4">{MARKETING_COPY.meson.title}</h3>
                 <p className="text-zinc-600 mb-6 leading-relaxed text-lg">
-                  Meson uses advanced ML to understand your intent and build complete, working systems. 
-                  Describe what you need once - Meson creates agents, training data, and workflows that 
-                  actually execute tasks, not just recommend next steps.
+                  {MARKETING_COPY.meson.description}
                 </p>
                 <ul className="space-y-3">
-                  {[
-                    'One prompt creates agents, training & workflows',
-                    'ML-powered intent understanding',
-                    'Executes real actions across your systems',
-                    'Ships configured workflows for review before production'
-                  ].map((item) => (
+                  {MARKETING_COPY.meson.bullets.map((item) => (
                     <li key={item} className="flex items-center gap-3 text-sm text-zinc-600">
                       <div className="h-5 w-5 rounded-full bg-violet-100 flex items-center justify-center">
                         <Check className="h-3 w-3 text-violet-600" />
@@ -1569,10 +1567,10 @@ export default function FeaturesPage() {
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {[
               { icon: MessageSquare, title: "Natural Language", description: "Control everything with simple commands" },
-              { icon: Eye, title: "Full Visibility", description: "See reasoning steps and data flows" },
-              { icon: Bell, title: "Smart Alerts", description: "Proactive notifications when needed" },
-              { icon: Clock, title: "Timely insights", description: "See analysis results when each run completes" },
-              { icon: Database, title: "100+ Integrations", description: "Link tools when integrations are connected" },
+              { icon: Eye, title: "Routing traces", description: "See how Gravitre picked an answer — stages, not hidden reasoning" },
+              { icon: Bell, title: "Failure predictions", description: "Alerts before workflows fail on auth, scopes, or rate limits" },
+              { icon: Clock, title: "Predictive ops", description: "SLA, capacity, and deal-risk models with honest readiness gates" },
+              { icon: Database, title: "100+ integrations", description: "Live Configured → Executable checks on every connector" },
               { icon: GitBranch, title: "Version Control", description: "Track and rollback changes" },
               { icon: Lock, title: "SSO & SAML", description: "Enterprise authentication" },
               { icon: BarChart3, title: "Analytics", description: "Deep insights into performance" },
@@ -1617,7 +1615,7 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {SHOW_MARKETING_TESTIMONIALS ? (
       <section className="relative py-32 border-t border-zinc-200 bg-zinc-50">
         <div className="mx-auto max-w-7xl px-6">
           <motion.div
@@ -1631,7 +1629,7 @@ export default function FeaturesPage() {
               What our customers say
             </h2>
             <p className="mt-4 text-zinc-600">
-              Join thousands of teams who have transformed their operations with Gravitre
+              Join teams running AI operations with verified learning, not guesswork
             </p>
           </motion.div>
 
@@ -1640,6 +1638,7 @@ export default function FeaturesPage() {
           </div>
         </div>
       </section>
+      ) : null}
 
       {/* Social Proof Stats */}
       <SocialProofBanner />

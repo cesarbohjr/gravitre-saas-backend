@@ -21,7 +21,7 @@ from app.services.tool_connector_selector import ToolConnectorSelector
 
 
 def test_orchestration_registry_has_22_components():
-    assert len(ORCHESTRATION_REGISTRY) == 22
+    assert len(ORCHESTRATION_REGISTRY) == 26
 
 
 @pytest.mark.asyncio

@@ -38,6 +38,16 @@ def register_partner_connector(
         ACTION_REQUIRED_SCOPES[action_key] = scopes
 
     _PARTNER_MANIFESTS[manifest.vendor] = manifest
+
+    from app.connectors.action_catalog.extensions import register_action_schemas
+
+    partner_schemas: dict[str, dict] = {}
+    for action in manifest.actions:
+        if action.input_schema:
+            partner_schemas[f"{manifest.vendor}.{action.id}"] = action.input_schema
+    if partner_schemas:
+        register_action_schemas(partner_schemas)
+
     logger.info(
         "registered partner connector vendor=%s version=%s actions=%s",
         manifest.vendor,

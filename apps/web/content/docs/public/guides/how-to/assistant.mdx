@@ -1,5 +1,5 @@
 ---
-title: Use Workspace Chat
+title: Use Gravitre AI (Chat mode)
 description: Multi-turn org-aware chat, intelligence modes, conversation history, and connector tools.
 audience: public
 depth: mid
@@ -8,21 +8,24 @@ status: published
 category: How-to Guides
 readTime: 16 min
 prev:
-  title: Use Command Center
+  title: Use Gravitre AI (Execute mode)
   href: /docs/guides/how-to/ai-operator
 next:
   title: Universal Search
   href: /docs/guides/how-to/search
 ---
 
-Open **WORK → Workspace Chat** (`/assistant`) for multi-turn conversational help across agents, workflows, connectors, and org data. This is not the Command Center — it does not delegate tracked operator tasks.
+Open **Gravitre AI** in **Chat mode** (`/ai?mode=chat`) for multi-turn conversational help across agents, workflows, connectors, and org data. Legacy `/assistant` redirects here.
+
+Chat mode does **not** delegate tracked operator jobs — use **Execute mode** (`/ai?mode=execute`) for action plans and async jobs.
 
 ## Start a conversation
 
-1. Type a question in the composer at the bottom
-2. Press **Send** or `Enter` (use `Shift+Enter` for a new line)
-3. Watch the reply stream in — tool activity appears as chips above the message
-4. Use **Stop** to cancel an in-flight generation
+1. Sidebar → **Gravitre AI** (`/ai`) → select **Chat**, or open `/ai?mode=chat`
+2. Type a question in the composer at the bottom
+3. Press **Send** or `Enter` (use `Shift+Enter` for a new line)
+4. Watch the reply stream in — tool activity appears as chips above the message
+5. Use **Stop** to cancel an in-flight generation
 
 Welcome quick actions suggest starter questions about **Agents**, **Workflows**, and **Connectors**.
 
@@ -35,26 +38,26 @@ Welcome quick actions suggest starter questions about **Agents**, **Workflows**,
 | **Reasoning** | Multi-step analysis, tradeoffs, planning |
 | **Agent** | Tool use against connected integrations when configured |
 
-Modes change how deeply the Assistant thinks before responding — not every mode invokes connector actions.
+Modes change how deeply Gravitre thinks before responding — not every mode invokes connector actions. GIBE may rank retrieval and surface confidence when org learning data is available.
 
 ## Choose a model
 
 Open the model selector next to the mode control:
 
-- **Auto (recommended)** — platform routing
+- **Auto (recommended)** — platform routing (may include GIBE rankers when trained)
 - **Featured models** — GPT-5.5, Claude Sonnet, Gemini Pro
 - **Provider lists** — additional OpenAI, Anthropic, and Google models
 
 Model availability depends on your org configuration and provider keys.
 
-## When to prefer Workspace Chat over Command Center
+## When to use each Gravitre AI mode
 
 | Situation | Use |
 |-----------|-----|
-| Quick factual lookup in dialogue | **Workspace Chat** |
-| Multi-step assigned job with tracked plan | **Command Center** |
-| Find a workflow by name | **Universal Search** first, then Workspace Chat |
-| Execute connector writes | **Command Center** or **Workflows** with Approvals |
+| Quick factual lookup in dialogue | **Chat** (`/ai?mode=chat`) |
+| Multi-step assigned job with tracked plan | **Execute** (`/ai?mode=execute`) |
+| Find a workflow by name | **Find** (`/ai?mode=find`) or **Universal Search** (`/search`) first |
+| Execute connector writes | **Execute** or **Workflows** with Approvals |
 
 ## Conversation sidebar
 
@@ -62,31 +65,28 @@ Model availability depends on your org configuration and provider keys.
 - **Past conversations** — resume prior threads; titles generate from first message
 - Collapse the sidebar on smaller screens with the panel toggle
 
-Messages persist locally up to a capped count; server-side **conversations** API stores durable history when enabled for your org.
+Messages persist locally up to a capped count; server-side **conversations** API stores durable history when enabled for your org. Chat turns feed **GIBE** learning when your plan includes Learning admin.
 
 ## Org context
 
-The **org context** pill shows what scope the Assistant uses (org name, environment hints). Click to review before asking sensitive questions.
+The **org context** pill shows what scope Gravitre AI uses (org name, environment hints). Click to review before asking sensitive questions.
 
 ## Connector actions in chat
 
-When integrations are connected, the Assistant may show:
+When integrations are connected, Gravitre AI may show:
 
 - **Tool chips** — named tools invoked (read-only vs write)
 - **Connector action cards** — proposed actions requiring confirmation
 - **Pending auth** prompts — link to connect a missing Connector
+- **Readiness badges** — Configured → Executable status before writes
 
 <Callout title="Strict execution policy">
-Connector actions run only when integrations are linked and approved. The UI labels what was verified per turn — do not assume silent writes occurred.
+Connector actions run only when integrations are linked and executable. The UI labels what was verified per turn — do not assume silent writes occurred.
 </Callout>
 
 ## Daily briefing
 
-On load, the Assistant may show a **daily briefing** with bullets (errors, successes, warnings) linking to relevant pages. Dismiss or follow links to triage.
-
-## Keyboard shortcuts
-
-Work-page shortcuts may focus the composer — see in-app hint (`Cmd/Ctrl+K` patterns vary by page).
+On load, Gravitre AI may show a **daily briefing** with bullets (errors, successes, warnings) linking to relevant pages. Dismiss or follow links to triage.
 
 ## API
 
@@ -109,6 +109,7 @@ Browser clients use session auth; server integrations use API keys. See [OpenAPI
 
 ## Related
 
-- [Workspace Chat overview](/docs/concepts/assistant)
-- [Use Command Center](/docs/guides/how-to/ai-operator)
+- [Gravitre AI overview](/docs/concepts/assistant)
+- [Use Gravitre AI (Execute mode)](/docs/guides/how-to/ai-operator)
+- [GIBE — Learning](/docs/guides/how-to/org-learning)
 - [Connect integrations](/docs/guides/how-to/connectors)

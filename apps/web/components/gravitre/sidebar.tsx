@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { useMemo, useState } from "react"
 import { Icon, type IconName } from "@/lib/icons"
 import { APP_ROUTES } from "@/lib/app-routes"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { useViewMode } from "@/lib/view-mode-context"
 import useSWR from "swr"
 import { useOnboardingProgress } from "@/hooks/use-onboarding-progress"
@@ -95,8 +96,8 @@ const adminNavigation: NavGroup[] = [
       { name: "Marketplace", href: APP_ROUTES.marketplace, icon: "package", emphasis: true },
       { name: "Workflows", href: APP_ROUTES.workflows, icon: "waypoints" },
       { name: "Failure Alerts", href: "/workflows/failure-predictions", icon: "shieldAlert" },
-      { name: "Agent Training", href: APP_ROUTES.training, icon: "brain" },
-      { name: "Model Registry", href: APP_ROUTES.models, icon: "cpu" },
+      { name: SURFACE_COPY.training.title, href: APP_ROUTES.training, icon: "brain" },
+      { name: SURFACE_COPY.models.title, href: APP_ROUTES.models, icon: "cpu" },
       { name: "Connectors", href: APP_ROUTES.connectors, icon: "blocks" },
       { name: "Sources", href: "/sources", icon: "database" },
     ],
@@ -114,23 +115,23 @@ const adminNavigation: NavGroup[] = [
     items: [
       { name: "Metrics", href: "/metrics", icon: "layoutDashboard" },
       {
-        name: "Intelligence Center",
+        name: SURFACE_COPY.insights.title,
         href: APP_ROUTES.intelligence,
         icon: "sparkles",
         badge: "Explain",
-        hint: "Trust, outcomes, and why Gravitre recommended this",
+        hint: "Observed outcomes, confidence, and recommendations",
       },
-      { name: "Agent Profiles", href: APP_ROUTES.intelligenceAgents, icon: "team" },
-      { name: "Model Intelligence", href: APP_ROUTES.intelligenceModels, icon: "cpu" },
-      { name: "Memory Explorer", href: APP_ROUTES.intelligenceMemory, icon: "database" },
-      { name: "Executive Reports", href: APP_ROUTES.intelligenceReports, icon: "chartLine" },
+      { name: SURFACE_COPY.hubLinks.agents.title, href: APP_ROUTES.intelligenceAgents, icon: "team" },
+      { name: SURFACE_COPY.builtInModels.title, href: APP_ROUTES.builtInModels, icon: "cpu" },
+      { name: SURFACE_COPY.hubLinks.memory.title, href: APP_ROUTES.intelligenceMemory, icon: "database" },
+      { name: SURFACE_COPY.hubLinks.reports.title, href: APP_ROUTES.intelligenceReports, icon: "chartLine" },
       {
-        name: "Revenue Risk Radar",
+        name: "Revenue risk",
         href: APP_ROUTES.revenueRisk,
         icon: "shieldAlert",
         hint: "Pipeline and revenue signals needing review",
       },
-      { name: "Org Learning", href: APP_ROUTES.orgLearning, icon: "atom", hint: "Admin telemetry and learning loop" },
+      { name: SURFACE_COPY.learning.title, href: APP_ROUTES.learning, icon: "atom", hint: "Query, memory, and search learning" },
       { name: "History", href: "/audit", icon: "history" },
     ],
   },

@@ -42,14 +42,43 @@ class ExplainabilityEngine:
                     }
                 )
 
-        return {
+        envelope = {
             "summary": summary,
             "evidence": evidence,
             "confidence_note": self._confidence_note(score, missing),
             "missing_context": missing,
             "advisory_only": True,
             "response_type": response_type,
+            "domain_metadata": self._domain_metadata(classification),
+            "retrieval_metadata": self._retrieval_metadata(classification, context_profile),
         }
+        return await self._maybe_enrich_with_visibility(
+            org_id,
+            envelope,
+            classification=classification,
+            context_profile=context_profile,
+        )
+
+    async def _maybe_enrich_with_visibility(
+        self,
+        org_id: str,
+        envelope: dict[str, Any],
+        *,
+        classification: dict[str, Any] | None = None,
+        context_profile: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        from app.config import get_settings
+        from app.services.intelligence_visibility_service import get_intelligence_visibility_service
+
+        visibility = get_intelligence_visibility_service(get_settings())
+        if not visibility.is_enabled():
+            return envelope
+        return await visibility.enrich_legacy_explainability(
+            org_id,
+            envelope,
+            classification=classification,
+            context=context_profile,
+        )
 
     def format_user_facing(self, envelope: dict[str, Any] | None) -> str:
         if not envelope:
@@ -76,6 +105,39 @@ class ExplainabilityEngine:
         if missing:
             return f"{base} Gaps: {', '.join(missing)}."
         return base
+
+    @staticmethod
+    def _domain_metadata(classification: dict[str, Any] | None) -> dict[str, Any] | None:
+        domain = (classification or {}).get("domain")
+        if not domain:
+            return None
+        return {
+            "industry": domain.get("industry"),
+            "department": domain.get("department"),
+            "subdomain": domain.get("subdomain"),
+            "confidence": domain.get("confidence"),
+            "profile_id": domain.get("profile_id"),
+            "routing_active": domain.get("routing_active"),
+            "source": domain.get("source"),
+        }
+
+
+    @staticmethod
+    def _retrieval_metadata(
+        classification: dict[str, Any] | None,
+        context_profile: dict[str, Any] | None,
+    ) -> dict[str, Any] | None:
+        effectiveness = (classification or {}).get("retrieval_effectiveness")
+        if not effectiveness and context_profile:
+            effectiveness = context_profile.get("retrieval_effectiveness")
+        if not effectiveness:
+            return None
+        return {
+            "retrieval_policy": effectiveness.get("retrieval_policy"),
+            "retrieval_score": effectiveness.get("retrieval_score"),
+            "assignment_ids_used": effectiveness.get("assignment_ids_used"),
+            "top_sources": (effectiveness.get("top_sources") or [])[:5],
+        }
 
 
 _engine: ExplainabilityEngine | None = None

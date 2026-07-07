@@ -22,6 +22,7 @@ import { AppBreadcrumbs } from "./app-breadcrumbs"
 import type { OnboardingProgress } from "@/types/api"
 import { TrialExpiredBanner } from "@/components/billing/trial-expired-banner"
 import { UpgradeModal } from "@/components/billing/upgrade-modal"
+import { MesonToolbarPopup, MesonToolbarProvider } from "@/components/gravitre/meson-toolbar-popup"
 import {
   PLAN_REQUIRED_EVENT,
   readStoredPlanRequired,
@@ -90,6 +91,7 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
   const [planRequired, setPlanRequired] = useState<PlanRequiredDetail | null>(null)
   const router = useRouter()
   const pathname = usePathname()
+  const isImmersiveChat = pathname === "/ai" || pathname.startsWith("/ai/")
   const { user, loading } = useAuth()
   const { effectiveHidePoweredBy } = useEnterpriseBranding()
 
@@ -286,6 +288,7 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
   }
 
   return (
+    <MesonToolbarProvider>
     <div className="flex h-screen overflow-hidden bg-background">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex flex-1 flex-col overflow-hidden">
@@ -356,8 +359,7 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
                 <div>
                   <p className="font-medium">Welcome to Gravitre!</p>
                   <p className="text-muted-foreground">
-                    We&apos;ve set up a sample AI team to show you what&apos;s possible.
-                    These are demo agents — connect your real tools to activate them.
+                    We&apos;ve set up a starter AI team from your role pack. Connect your tools to activate live execution.
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -376,15 +378,22 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
             </div>
           )}
 
-          <main className="flex-1 overflow-y-auto">
-            <div className="px-4 pt-3 md:px-6">
-              <AppBreadcrumbs entityLabel={title} entityVendor={breadcrumbVendor} />
-            </div>
+          <main
+            className={cn(
+              "flex min-h-0 flex-1 flex-col",
+              isImmersiveChat ? "overflow-hidden pb-0" : "overflow-y-auto pb-20",
+            )}
+          >
+            {!isImmersiveChat ? (
+              <div className="px-4 pt-3 md:px-6">
+                <AppBreadcrumbs entityLabel={title} entityVendor={breadcrumbVendor} />
+              </div>
+            ) : null}
             {children}
           </main>
 
-          {/* White-label footer - hidden when org sets hidePoweredBy */}
-          {!effectiveHidePoweredBy && (
+          {/* White-label footer - hidden when org sets hidePoweredBy or on immersive chat */}
+          {!effectiveHidePoweredBy && !isImmersiveChat && (
             <footer className="border-t border-border px-4 py-2 text-center">
               <span className="text-[11px] text-muted-foreground/60">
                 Powered by{" "}
@@ -417,6 +426,8 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
         onOpenChange={setUpgradeModalOpen}
         subscriptionStatus={planRequired?.subscription_status ?? billingStatusData?.billingState}
       />
+      <MesonToolbarPopup />
     </div>
+    </MesonToolbarProvider>
   )
 }

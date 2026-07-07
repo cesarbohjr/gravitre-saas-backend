@@ -188,6 +188,51 @@ async def get_strategy_performance(
     }
 
 
+@router.get("/adaptive-learning")
+async def get_adaptive_learning_summary(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from app.services.adaptive_learning_service import get_adaptive_learning_service
+
+    return await get_adaptive_learning_service(settings).get_admin_summary(org_id)
+
+
+@router.get("/meta-learning")
+async def get_meta_learning_summary(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from app.services.meta_learning_service import get_meta_learning_service
+
+    return await get_meta_learning_service(settings).get_meta_learning_summary(org_id)
+
+
+@router.get("/knowledge-freshness")
+async def get_knowledge_freshness_summary(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from app.services.knowledge_freshness_service import get_knowledge_freshness_service
+
+    return await get_knowledge_freshness_service(settings).load_admin_summary(org_id)
+
+
+@router.get("/domain-optimization")
+async def get_domain_optimization_summary(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+    refresh: bool = Query(default=False, description="Re-evaluate advisory recommendations"),
+) -> dict[str, Any]:
+    from app.services.domain_optimization_engine import get_domain_optimization_engine
+
+    return await get_domain_optimization_engine(settings).get_admin_summary(org_id, refresh=refresh)
+
+
 @router.get("/predictive-ops/domain/{domain}")
 async def get_predictive_ops_domain(
     domain: str,
@@ -258,7 +303,7 @@ async def get_learning_live_dashboard(
         for name, info in readiness.get("by_model", {}).items()
         if info.get("status") == "ready"
     ]
-    return {
+    dashboard = {
         "training_readiness": readiness,
         "ready_model_count": len(ready_models),
         "ready_models": ready_models,
@@ -270,6 +315,20 @@ async def get_learning_live_dashboard(
         "long_horizon": long_horizon,
         "scope_note": "Live dashboard: tabular bandit v3 (cluster-segment UCB + v2 fallback) + memory conflict surfacing are complete. Neural RL, world models, and federated learning remain gated.",
     }
+    if getattr(settings, "domain_adaptive_learning_enabled", False):
+        from app.services.adaptive_learning_service import get_adaptive_learning_service
+        from app.services.meta_learning_service import get_meta_learning_service
+        from app.services.knowledge_freshness_service import get_knowledge_freshness_service
+        from app.services.domain_optimization_engine import get_domain_optimization_engine
+
+        dashboard["adaptive_learning"] = await get_adaptive_learning_service(settings).get_admin_summary(org_id)
+        dashboard["meta_learning"] = await get_meta_learning_service(settings).get_meta_learning_summary(org_id)
+        dashboard["knowledge_freshness"] = await get_knowledge_freshness_service(settings).load_admin_summary(
+            org_id,
+            client=client,
+        )
+        dashboard["domain_optimization"] = await get_domain_optimization_engine(settings).get_admin_summary(org_id)
+    return dashboard
 
 
 @router.get("/simulations")
@@ -293,7 +352,7 @@ async def get_trust_summary(
     trust = get_ai_trust_layer()
     low = sum(1 for c in confidences if trust.confidence_band(c) in {"low", "insufficient"})
     advisory = sum(1 for r in events if r.get("outcome_event") == "recommendation_created")
-    return {
+    payload = {
         "avg_confidence": round(sum(confidences) / len(confidences), 4) if confidences else None,
         "low_confidence_rate": round(low / len(confidences), 4) if confidences else None,
         "missing_context_rate": None,
@@ -301,6 +360,25 @@ async def get_trust_summary(
         "sources_cited_rate": None,
         "period_days": period_days,
     }
+    if getattr(settings, "domain_adaptive_learning_enabled", False):
+        from app.services.knowledge_freshness_service import get_knowledge_freshness_service
+        from app.services.domain_optimization_engine import get_domain_optimization_engine
+
+        freshness = await get_knowledge_freshness_service(settings).load_admin_summary(org_id)
+        optimization = await get_domain_optimization_engine(settings).get_admin_summary(org_id)
+        _, warnings, freshness_envelope = trust.build_knowledge_freshness_envelope(
+            {"freshness_trust_warnings": freshness.get("recommended_actions", [])}
+        )
+        payload["trust_metadata"] = trust.build_optimization_trust_metadata(
+            freshness_envelope={
+                **freshness_envelope,
+                "stale_source_count": len(freshness.get("stale_sources") or []),
+                "inaccessible_source_count": len(freshness.get("inaccessible_sources") or []),
+            },
+            optimization_summary=optimization,
+        )
+        payload["stale_source_warnings"] = warnings
+    return payload
 
 
 @router.get("/training-readiness")
@@ -516,3 +594,26 @@ async def get_consensus_history_admin(
         "avg_confidence": round(sum(confidences) / len(confidences), 4) if confidences else 0.0,
         "advisory_only": True,
     }
+
+
+@router.post("/ml-upgrades/run")
+async def run_ml_upgrades(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from app.services.ml_upgrade_service import get_ml_upgrade_service
+
+    return await get_ml_upgrade_service(settings).run_all_upgrades(org_id)
+
+
+@router.get("/process-conformance")
+async def get_process_conformance_admin(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from app.services.process_mining_service import get_process_mining_service
+
+    report = await get_process_mining_service(settings).check_process_conformance(org_id)
+    return {"status": "ok", "report": report, "advisory_only": True}

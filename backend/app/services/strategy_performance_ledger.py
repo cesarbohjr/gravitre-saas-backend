@@ -24,6 +24,8 @@ MIN_SAMPLES_FOR_PREFERENCE = 20
 MIN_WIN_RATE_DELTA = 0.05
 MIN_SAMPLES_FOR_UCB = 5
 
+PROVIDER_STRATEGY_KEYS = ("provider:openai", "provider:anthropic", "provider:google")
+
 
 def _ucb_score(wins: int, losses: int, total_trials: int) -> float:
     decided = wins + losses

@@ -4,12 +4,17 @@ import useSWR from "swr"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
+import { PageHeader } from "@/components/gravitre/page-header"
 import { agentsApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
 import { getSelectedOrgFromStorage } from "@/lib/org-context"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { Robot } from "@phosphor-icons/react"
 import { Card } from "@/components/ui/card"
 import { useAuth } from "@/lib/auth-context"
+
+const copy = SURFACE_COPY.hubLinks.agents
+const pageCopy = SURFACE_COPY.pages.agents
 
 export default function IntelligenceAgentsPage() {
   const { user } = useAuth()
@@ -17,12 +22,12 @@ export default function IntelligenceAgentsPage() {
   const { data, error, isLoading, mutate } = useSWR(
     user && orgId ? ["intelligence/agents", orgId] : null,
     () => agentsApi.list(),
-    { revalidateOnFocus: false }
+    { revalidateOnFocus: false },
   )
 
   if (!user) {
     return (
-      <AppShell title="Agent Intelligence Profiles">
+      <AppShell title={copy.title}>
         <EmptyState title="Sign in required" description="Log in to view agent profiles." />
       </AppShell>
     )
@@ -31,7 +36,7 @@ export default function IntelligenceAgentsPage() {
   if (error) {
     const message = error instanceof ApiError ? error.message : "Failed to load agents."
     return (
-      <AppShell title="Agent Intelligence Profiles">
+      <AppShell title={copy.title}>
         <ErrorState title="Unable to load agents" description={message} onRetry={() => mutate()} />
       </AppShell>
     )
@@ -40,18 +45,17 @@ export default function IntelligenceAgentsPage() {
   const agents = data?.agents ?? []
 
   return (
-    <AppShell title="Agent Intelligence Profiles">
+    <AppShell title={copy.title}>
       <div className="space-y-6 p-4 md:p-6">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">Select an agent to view its intelligence profile.</p>
-        </div>
+        <PageHeader title={copy.title} description={copy.summary} />
+        <p className="text-sm text-muted-foreground">{pageCopy.profileListHint}</p>
 
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading agents...</p>
+          <p className="text-sm text-muted-foreground">Loading agents…</p>
         ) : agents.length === 0 ? (
           <EmptyState
-            title="No agents found"
-            description="Create an agent to view its intelligence profile."
+            title="No agents yet"
+            description={pageCopy.profileEmpty}
             iconSlot={<Robot className="h-10 w-10 text-muted-foreground/40" weight="duotone" aria-hidden />}
           />
         ) : (

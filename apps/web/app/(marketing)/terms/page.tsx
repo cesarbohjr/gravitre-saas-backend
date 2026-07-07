@@ -7,14 +7,14 @@ const sections = [
     title: "1. Acceptance of Terms",
     content: `By accessing or using Gravitre's services, you agree to be bound by these Terms of Service and all applicable laws and regulations. If you do not agree with any of these terms, you are prohibited from using or accessing our services.
 
-These terms apply to all visitors, users, and others who access or use our platform, including our AI Operator, workflow automation tools, and related services.`,
+These terms apply to all visitors, users, and others who access or use our platform, including Gravitre AI, GIBE (Gravitre Intelligent Business Engine), workflow automation tools, and related services.`,
   },
   {
     title: "2. Description of Services",
     content: `Gravitre provides an AI-powered operations platform that enables businesses to automate workflows, deploy AI agents, and orchestrate complex business processes.
 
 Our services include:
-- AI Operator for natural language task automation
+- Gravitre AI for natural language task automation, powered by GIBE org learning
 - Workflow builder and automation tools
 - Agent management and orchestration
 - Data source connectors and integrations

@@ -24,15 +24,29 @@ class ActionSpec:
     idempotent: bool = False
     destructive: bool = False
     requires_approval: bool = False
+    input_schema: dict[str, Any] | None = None
 
     @property
     def tool(self) -> str:
         return self.id
 
     def to_dict(self, *, vendor: str, implemented: bool) -> dict[str, Any]:
-        return {
+        from app.connectors.action_catalog.action_parameters import resolve_action_schema
+
+        tool_key = self.id if "." in self.id and self.id.split(".", 1)[0] == vendor else (
+            self.id if self.id.startswith(f"{vendor}.") else f"{vendor}.{self.id}"
+        )
+        suffix = tool_key.split(".", 1)[-1] if "." in tool_key else tool_key
+        schema = resolve_action_schema(
+            tool_key,
+            kind=self.kind,
+            suffix=suffix,
+            description=self.description,
+            explicit_schema=self.input_schema,
+        )
+        payload: dict[str, Any] = {
             "id": self.id.split(".", 1)[-1] if self.id.startswith(f"{vendor}.") else self.id,
-            "tool": self.id if "." in self.id and self.id.split(".", 1)[0] == vendor else f"{vendor}.{self.id}",
+            "tool": tool_key,
             "name": self.name,
             "description": self.description,
             "tier": self.tier,
@@ -43,7 +57,9 @@ class ActionSpec:
             "destructive": self.destructive,
             "requiresApproval": self.requires_approval,
             "implemented": implemented,
+            "inputSchema": schema,
         }
+        return payload
 
 
 @dataclass(frozen=True)

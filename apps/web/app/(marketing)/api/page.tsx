@@ -60,8 +60,14 @@ const endpoints = [
   },
   {
     method: "GET",
+    path: "/api/admin/intelligence/snapshot",
+    description: "Org learning snapshot — query volume, clusters, and knowledge gaps",
+    badge: "Intelligence",
+  },
+  {
+    method: "GET",
     path: "/api/connectors",
-    description: "List all connected integrations (Salesforce, HubSpot, etc.)",
+    description: "List connectors with live Configured → Executable availability",
     badge: null,
   },
   {
@@ -202,8 +208,8 @@ export default function APIPage() {
             </h1>
             
             <p className="mt-6 text-lg text-zinc-600 max-w-2xl mx-auto">
-              Programmatically execute AI agents, trigger workflows, and integrate Gravitre 
-              into your applications with our RESTful API.
+              Execute workflows, query intelligence endpoints, and wire Gravitre into your stack —
+              with the same connector health and approval gates as the product UI.
             </p>
             
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">

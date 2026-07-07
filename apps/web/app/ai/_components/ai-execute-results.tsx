@@ -21,6 +21,11 @@ import {
   type ActionPlanStep,
   type InlineExecutePlan,
 } from "@/lib/ai-inline-execute"
+import {
+  executePlanApproval,
+  executeSuggestedAction,
+  runAutoFix,
+} from "@/lib/execute-action-service"
 import { toast } from "sonner"
 
 function EmptyPanel({ title, body }: { title: string; body: string }) {
@@ -44,6 +49,7 @@ type AiExecuteResultsProps = {
   job: AgentJob | null
   isProcessing: boolean
   error: string | null
+  sourcePrompt?: string
   blockOrder?: ResultBlockId[]
   enabledBlocks?: ResultBlockId[]
   onReorderBlocks?: (next: ResultBlockId[]) => void
@@ -58,6 +64,7 @@ export function AiExecuteResults({
   job,
   isProcessing,
   error,
+  sourcePrompt,
   blockOrder,
   enabledBlocks,
   onReorderBlocks,
@@ -75,6 +82,7 @@ export function AiExecuteResults({
     (blockId) => resolveBlockColumn(blockId, blockColumns ?? {}) === column,
   )
   const [executingAction, setExecutingAction] = useState<string | null>(null)
+  const [planExecuting, setPlanExecuting] = useState(false)
 
   const findings = plan?.findings ?? []
   const analysisSections = filterSections(findings, ["summary", "root-cause", "reasoning", "evidence"])
@@ -88,6 +96,20 @@ export function AiExecuteResults({
 
   const toolCount = job?.result?.tool_call_count ?? job?.result?.toolCallCount ?? 0
   const toolsAvailable = job?.result?.tools_available ?? job?.result?.toolsAvailable ?? 0
+
+  const handleActionResult = (result: { message: string; url?: string }) => {
+    toast.success(result.message)
+    if (result.url) {
+      toast.message("Open result", {
+        action: {
+          label: "View",
+          onClick: () => {
+            window.location.href = result.url || "/assignments"
+          },
+        },
+      })
+    }
+  }
 
   if (error && column === "main") {
     return (
@@ -134,7 +156,17 @@ export function AiExecuteResults({
         lastUpdated="Just now"
         sections={analysisSections as Parameters<typeof MesonInsightsPanel>[0]["sections"]}
         isGenerating={isProcessing}
-        onTryAutoFix={() => toast.info("Auto-fix staged for review")}
+        onTryAutoFix={async () => {
+          setExecutingAction("auto-fix")
+          try {
+            const result = await runAutoFix({ job, sourcePrompt })
+            handleActionResult(result)
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Auto-fix failed")
+          } finally {
+            setExecutingAction(null)
+          }
+        }}
         onViewDocumentation={() => window.open("https://docs.gravitre.app", "_blank", "noopener,noreferrer")}
         onContactSupport={() =>
           window.open("mailto:support@gravitre.app?subject=Gravitre%20AI%20help", "_self")
@@ -181,13 +213,37 @@ export function AiExecuteResults({
         <SuggestedActions
           actions={suggestedActions}
           isExecuting={executingAction}
-          onExecute={(actionId) => {
+          onExecute={async (actionId) => {
+            const action = suggestedActions.find((item) => item.id === actionId)
+            if (!action) return
             setExecutingAction(actionId)
-            toast.success("Action submitted for review")
-            window.setTimeout(() => setExecutingAction(null), 1200)
+            try {
+              const result = await executeSuggestedAction({ action, job, sourcePrompt })
+              handleActionResult(result)
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : "Action failed")
+            } finally {
+              setExecutingAction(null)
+            }
           }}
-          onSchedule={() => toast.info("Action scheduled for review")}
-          onDismiss={() => toast.success("Action dismissed")}
+          onSchedule={async () => {
+            const action = suggestedActions.find((item) => item.type === "scheduled") ?? suggestedActions[0]
+            if (!action) return
+            setExecutingAction(action.id)
+            try {
+              const result = await executeSuggestedAction({
+                action: { ...action, type: "scheduled" },
+                job,
+                sourcePrompt,
+              })
+              handleActionResult(result)
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : "Schedule failed")
+            } finally {
+              setExecutingAction(null)
+            }
+          }}
+          onDismiss={() => toast.message("Action dismissed")}
         />
       ) : (
         <EmptyPanel
@@ -247,8 +303,27 @@ export function AiExecuteResults({
             </div>
           ))}
           <div className="flex items-center justify-end border-t border-border pt-4">
-            <Button size="sm" className="h-9" onClick={() => toast.info("Execution requires approval")}>
-              <Play className="mr-2 h-3.5 w-3.5" />
+            <Button
+              size="sm"
+              className="h-9"
+              disabled={planExecuting || isProcessing}
+              onClick={async () => {
+                setPlanExecuting(true)
+                try {
+                  const result = await executePlanApproval({ job, sourcePrompt })
+                  handleActionResult(result)
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Execution failed")
+                } finally {
+                  setPlanExecuting(false)
+                }
+              }}
+            >
+              {planExecuting ? (
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Play className="mr-2 h-3.5 w-3.5" />
+              )}
               Approve & Execute
             </Button>
           </div>

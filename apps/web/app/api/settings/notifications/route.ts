@@ -55,6 +55,12 @@ export async function PATCH(request: NextRequest) {
     if (!orgId) {
       return NextResponse.json({ error: "Organization context required" }, { status: 403 })
     }
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     await ensureDemoDataForOrg(supabase, orgId)
 
     const body = await request.json().catch(() => ({}))
@@ -90,6 +96,22 @@ export async function PATCH(request: NextRequest) {
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
+
+    const emailPrefs = {
+      email_run_completed: nextNotifications.emailEnabled,
+      email_run_failed: nextNotifications.emailEnabled,
+      email_assignment_completed: nextNotifications.emailEnabled,
+      email_trial_ending: nextNotifications.emailEnabled,
+      email_payment_failed: nextNotifications.emailEnabled,
+    }
+    await supabase.from("notification_preferences").upsert(
+      {
+        org_id: orgId,
+        user_id: user.id,
+        preferences: emailPrefs,
+      },
+      { onConflict: "org_id,user_id" },
+    )
 
     return NextResponse.json({ notifications: nextNotifications ?? defaultNotifications() })
   } catch (error) {

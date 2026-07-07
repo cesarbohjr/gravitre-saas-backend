@@ -10,6 +10,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+from app.config import get_settings
 from app.connectors.repository import list_connectors
 from app.core.logging import get_logger
 from app.services.tool_service import invoke_tool, list_registered_actions
@@ -23,11 +24,13 @@ from app.connectors.constants import is_connector_usable
 
 
 def _hubspot_search_from_query(args: dict[str, Any]) -> dict[str, Any]:
-    """Map a simple text query to HubSpot filter_groups."""
+    """Map a simple text query to HubSpot filter_groups, or list recent contacts."""
+    limit = int(args.get("limit") or 10)
+    if args.get("list_all") or args.get("listAll"):
+        return {"list_all": True, "limit": limit}
     query = str(args.get("query") or "").strip()
     if not query:
-        raise ValueError("query is required")
-    limit = int(args.get("limit") or 10)
+        return {"list_all": True, "limit": limit}
     return {
         "filter_groups": [
             {
@@ -38,7 +41,25 @@ def _hubspot_search_from_query(args: dict[str, Any]) -> dict[str, Any]:
                         "value": query,
                     }
                 ]
-            }
+            },
+            {
+                "filters": [
+                    {
+                        "propertyName": "firstname",
+                        "operator": "CONTAINS_TOKEN",
+                        "value": query,
+                    }
+                ]
+            },
+            {
+                "filters": [
+                    {
+                        "propertyName": "lastname",
+                        "operator": "CONTAINS_TOKEN",
+                        "value": query,
+                    }
+                ]
+            },
         ],
         "limit": limit,
     }
@@ -504,6 +525,50 @@ def _build_agent_tool_specs() -> dict[str, AgentToolSpec]:
             always_available=True,
         ),
         AgentToolSpec(
+            name="browser_agent_read",
+            description=(
+                "Read and extract text from a public web page when no native connector API exists. "
+                "Use for API gaps — provide the authenticated session URL the user shares."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "HTTPS URL to read."},
+                    "selector": {
+                        "type": "string",
+                        "description": "Optional CSS selector hint (read-only mode returns full page text).",
+                    },
+                },
+                "required": ["url"],
+            },
+            invoke_action="browser_agent.read",
+            integration="browser",
+            always_available=True,
+        ),
+        AgentToolSpec(
+            name="browser_agent_interact",
+            description=(
+                "Perform approved UI automation (click/fill) when connector APIs cannot complete the task. "
+                "Requires human approval — returns pending_approval without approval_id."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string"},
+                    "approval_id": {"type": "string", "description": "Approved action id from Approvals queue."},
+                    "actions": {
+                        "type": "array",
+                        "description": "Steps: {type: click|fill|wait, selector, value?, ms?}",
+                        "items": {"type": "object"},
+                    },
+                },
+                "required": ["url", "actions"],
+            },
+            invoke_action="browser_agent.interact",
+            integration="browser",
+            always_available=True,
+        ),
+        AgentToolSpec(
             name="assistant_agent_status",
             description="List agents and their current status for this organization.",
             parameters={"type": "object", "properties": {"agentId": {"type": "string"}}},
@@ -657,17 +722,41 @@ class ToolRegistry:
         client: Any,
         org_id: str,
         environment_name: str = "production",
+        *,
+        force_live: bool = True,
+        action_key: str | None = None,
     ) -> list[str]:
-        """Return connector types with an active connection for the org."""
-        types: set[str] = set()
-        for row in list_connectors(client, org_id, environment_name=environment_name):
-            status = str(row.get("status") or "").lower()
-            if not is_connector_usable(status):
-                continue
-            ctype = str(row.get("type") or "").strip().lower()
-            if ctype:
-                types.add(ctype)
-        return sorted(types)
+        """Return connector types with an active, executable connection for the org."""
+        from app.connectors.connector_availability_service import list_executable_integrations
+
+        return list_executable_integrations(
+            client,
+            org_id,
+            get_settings(),
+            environment_name=environment_name,
+            force_live=force_live,
+            action_key=action_key,
+        )
+
+    async def enrich_connected_integrations(
+        self,
+        client: Any,
+        org_id: str,
+        connected_integrations: list[str],
+    ) -> list[str]:
+        """Append synthetic integrations for MCP and browser gap recovery."""
+        enriched = list(connected_integrations)
+        seen = {str(c).strip().lower() for c in enriched}
+        from app.services.mcp_client_service import get_mcp_client_service
+
+        mcp_tools = await get_mcp_client_service().get_enabled_tools_for_org(org_id)
+        if mcp_tools and "mcp" not in seen:
+            enriched.append("mcp")
+            seen.add("mcp")
+        settings = get_settings()
+        if getattr(settings, "browser_agent_enabled", True) and "browser" not in seen:
+            enriched.append("browser")
+        return enriched
 
     def _permitted(self, spec: AgentToolSpec, permitted_tools: list[str]) -> bool:
         if spec.always_available:
@@ -825,6 +914,62 @@ class ToolRegistry:
             return await self._execute_mcp_tool(ctx, tool_name, args or {})
         if not spec:
             return {"success": False, "error": f"Unknown tool: {tool_name}", "tool": tool_name}
+
+        if spec.always_available and tool_name == "browser_agent_read":
+            from app.services.browser_agent_service import BrowserAgentError, browser_agent_read
+
+            url = str((args or {}).get("url") or "").strip()
+            if not url:
+                return {"success": False, "tool": tool_name, "error": "Missing required 'url' argument"}
+            if not getattr(ctx.settings, "browser_agent_enabled", True):
+                return {
+                    "success": False,
+                    "tool": tool_name,
+                    "error": "Browser agent is disabled (BROWSER_AGENT_ENABLED=false).",
+                }
+            try:
+                payload = await browser_agent_read(
+                    url,
+                    settings=ctx.settings,
+                    selector=str((args or {}).get("selector") or "") or None,
+                )
+            except BrowserAgentError as exc:
+                return {"success": False, "tool": tool_name, "error": str(exc), "error_code": exc.code}
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("browser_agent_read_failed url=%s", url[:120])
+                return {"success": False, "tool": tool_name, "error": str(exc)}
+            return {"success": True, "tool": tool_name, "result": payload}
+
+        if spec.always_available and tool_name == "browser_agent_interact":
+            from app.services.browser_agent_service import BrowserAgentError, browser_agent_interact
+
+            url = str((args or {}).get("url") or "").strip()
+            actions = (args or {}).get("actions")
+            if not url:
+                return {"success": False, "tool": tool_name, "error": "Missing required 'url' argument"}
+            if not isinstance(actions, list) or not actions:
+                return {"success": False, "tool": tool_name, "error": "Missing required 'actions' array"}
+            approval_id = str((args or {}).get("approval_id") or (args or {}).get("approvalId") or "") or None
+            try:
+                payload = await browser_agent_interact(
+                    url,
+                    actions=actions,
+                    settings=ctx.settings,
+                    approval_id=approval_id,
+                )
+            except BrowserAgentError as exc:
+                return {"success": False, "tool": tool_name, "error": str(exc), "error_code": exc.code}
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("browser_agent_interact_failed url=%s", url[:120])
+                return {"success": False, "tool": tool_name, "error": str(exc)}
+            if payload.get("pending_approval"):
+                return {
+                    "success": False,
+                    "tool": tool_name,
+                    "pending_approval": True,
+                    "message": payload.get("message"),
+                }
+            return {"success": True, "tool": tool_name, "result": payload}
 
         if spec.always_available and tool_name == "web_search":
             from app.services.web_research import TavilyNotConfiguredError, search_web

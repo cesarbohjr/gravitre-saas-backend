@@ -43,11 +43,15 @@ from app.connectors.hubspot import (
     delete_deal,
     delete_note,
     enroll_contact_in_sequence,
+    get_company,
     get_contact,
     get_deal,
     list_deal_pipelines,
+    list_deals,
     search_companies,
     search_contacts,
+    search_deals,
+    search_tickets,
     update_contact,
     update_deal,
     update_deal_stage,
@@ -417,23 +421,43 @@ def _exec_hubspot_contacts_delete(ctx: ToolContext, params: dict[str, Any]) -> N
 
 def _exec_hubspot_contacts_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token = _hubspot_connector_and_token(ctx, params)
+    limit = int(params.get("limit") or 10)
+    list_all = bool(params.get("list_all") or params.get("listAll"))
     filter_groups = params.get("filter_groups") or params.get("filterGroups")
-    if not isinstance(filter_groups, list) or not filter_groups:
-        raise ToolValidationError("hubspot.contacts.search requires filter_groups array")
     try:
-        data = search_contacts(
-            token,
-            filter_groups=filter_groups,
-            properties=params.get("properties"),
-            limit=int(params.get("limit") or 10),
-        )
+        if list_all:
+            from app.connectors.hubspot import list_contacts
+
+            data = list_contacts(token, properties=params.get("properties"), limit=limit)
+        else:
+            if not isinstance(filter_groups, list) or not filter_groups:
+                raise ToolValidationError("hubspot.contacts.search requires filter_groups array")
+            data = search_contacts(
+                token,
+                filter_groups=filter_groups,
+                properties=params.get("properties"),
+                limit=limit,
+            )
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
+    contacts = data.get("results") or []
+    normalized = [
+        {
+            "id": row.get("id"),
+            "properties": row.get("properties") or {},
+        }
+        for row in contacts
+        if isinstance(row, dict)
+    ]
     return NormalizedResult(
         success=True,
         action="hubspot.contacts.search",
         connector_id=cid,
-        data={"search": data},
+        data={
+            "contacts": normalized,
+            "total": data.get("total", len(normalized)),
+            "search": data,
+        },
     )
 
 
@@ -608,6 +632,52 @@ def _exec_hubspot_tickets_create(ctx: ToolContext, params: dict[str, Any]) -> No
         connector_id=cid,
         data={"ticket": data},
     )
+
+
+def _exec_hubspot_deals_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    filter_groups = params.get("filter_groups")
+    if not isinstance(filter_groups, list) or not filter_groups:
+        raise ToolValidationError("hubspot.deals.search requires filter_groups array")
+    try:
+        data = search_deals(token, filter_groups=filter_groups, limit=int(params.get("limit") or 25))
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    return NormalizedResult(success=True, action="hubspot.deals.search", connector_id=cid, data=data)
+
+
+def _exec_hubspot_deals_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    try:
+        data = list_deals(token, limit=int(params.get("limit") or 25))
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    return NormalizedResult(success=True, action="hubspot.deals.list", connector_id=cid, data=data)
+
+
+def _exec_hubspot_companies_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    try:
+        data = get_company(
+            token,
+            company_id=params.get("company_id"),
+            domain=params.get("domain"),
+        )
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    return NormalizedResult(success=True, action="hubspot.companies.get", connector_id=cid, data={"company": data})
+
+
+def _exec_hubspot_tickets_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    filter_groups = params.get("filter_groups")
+    if not isinstance(filter_groups, list) or not filter_groups:
+        raise ToolValidationError("hubspot.tickets.search requires filter_groups array")
+    try:
+        data = search_tickets(token, filter_groups=filter_groups, limit=int(params.get("limit") or 25))
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    return NormalizedResult(success=True, action="hubspot.tickets.search", connector_id=cid, data=data)
 
 
 def _salesforce_connector_and_session(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str, str]:
@@ -3072,6 +3142,10 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "hubspot.companies.search": _exec_hubspot_companies_search,
     "hubspot.pipelines.list": _exec_hubspot_pipelines_list,
     "hubspot.tickets.create": _exec_hubspot_tickets_create,
+    "hubspot.deals.search": _exec_hubspot_deals_search,
+    "hubspot.deals.list": _exec_hubspot_deals_list,
+    "hubspot.companies.get": _exec_hubspot_companies_get,
+    "hubspot.tickets.search": _exec_hubspot_tickets_search,
     "salesforce.leads.get": _exec_salesforce_leads_get,
     "salesforce.leads.update": _exec_salesforce_leads_update,
     "salesforce.accounts.get": _exec_salesforce_accounts_get,
@@ -3187,6 +3261,7 @@ from app.services.canva_tools import CANVA_TOOL_EXECUTORS
 from app.services.figma_tools import FIGMA_TOOL_EXECUTORS
 from app.services.microsoft365_teams_tools import MICROSOFT365_TEAMS_SHAREPOINT_TOOLS
 from app.services.apollo_tools import APOLLO_TOOL_EXECUTORS
+from app.services.engagebay_tools import ENGAGEBAY_TOOL_EXECUTORS
 from app.services.pipedrive_tools import PIPEDRIVE_TOOL_EXECUTORS
 
 _TOOL_REGISTRY.update(NETSUITE_TOOL_EXECUTORS)
@@ -3210,6 +3285,7 @@ _TOOL_REGISTRY.update(CANVA_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(FIGMA_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(MICROSOFT365_TEAMS_SHAREPOINT_TOOLS)
 _TOOL_REGISTRY.update(APOLLO_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(ENGAGEBAY_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(PIPEDRIVE_TOOL_EXECUTORS)
 
 from app.services.priority_connector_tools import PRIORITY_CONNECTOR_TOOLS

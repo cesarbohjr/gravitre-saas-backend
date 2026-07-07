@@ -1,0 +1,13 @@
+profile_id: marketing
+department: marketing
+label: Marketing
+kpis: [mql_volume, conversion_rate, cac, pipeline_influenced]
+terminology: [campaign, audience, funnel, attribution, creative]
+connector_preferences: [hubspot, google_analytics, slack]
+retrieval_preferences: [campaign_briefs, brand_guidelines, performance_reports]
+memory_priorities: [campaign_results, audience_insights, content_performance]
+workflow_priorities: [campaign_launch, lead_routing, content_approval]
+risk_tolerance: medium
+recommendation_types: [campaign_optimization, audience_targeting, content_suggestions]
+success_metrics: [lead_quality, engagement_rate, pipeline_contribution]
+learning_signals: [campaign_performance, content_effectiveness, lead_quality, conversion_patterns]

@@ -116,11 +116,23 @@ class OutcomeLearningService:
         after_value: float | None = None,
         measured_at: str | None = None,
         strategy_key: str | None = None,
+        domain_context: dict[str, Any] | None = None,
+        retrieval_effectiveness: dict[str, Any] | None = None,
     ) -> None:
         self._validate_event(outcome_event)
         metadata: dict[str, Any] = {}
         if strategy_key:
             metadata["strategy_key"] = strategy_key
+        if domain_context:
+            metadata["domain"] = {
+                "industry": domain_context.get("industry_key") or domain_context.get("industry"),
+                "department": domain_context.get("department_key") or domain_context.get("department"),
+                "subdomain": domain_context.get("subdomain_key") or domain_context.get("subdomain"),
+                "confidence": domain_context.get("confidence"),
+                "profile_id": domain_context.get("profile_id"),
+            }
+        if retrieval_effectiveness:
+            metadata["retrieval_effectiveness"] = retrieval_effectiveness
         payload = {
             "id": str(uuid4()),
             "org_id": org_id,
@@ -380,6 +392,16 @@ class OutcomeLearningService:
             "by_department": by_department,
             "recent_events": rows[:20],
             "insufficient_data_rate": round(insufficient / total, 4),
+            "period_days": period_days,
+        }
+
+    async def get_domain_optimization_metrics(self, org_id: str, *, period_days: int = 30) -> dict[str, Any]:
+        summary = await self.load_admin_outcomes_summary(org_id, period_days=period_days)
+        return {
+            "total_events": summary.get("summary", {}).get("total_events", 0),
+            "insufficient_data_rate": summary.get("insufficient_data_rate"),
+            "by_event_type": summary.get("by_event_type") or {},
+            "by_department": summary.get("by_department") or {},
             "period_days": period_days,
         }
 

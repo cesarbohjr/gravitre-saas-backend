@@ -44,6 +44,10 @@ class AssignmentDecisionRequest(BaseModel):
     comment: str | None = None
 
 
+class AssignmentDeliverableUpdateRequest(BaseModel):
+    content: str = Field(..., min_length=1)
+
+
 def _public(job: dict[str, Any]) -> dict[str, Any]:
     return {
         "jobId": job.get("id"),
@@ -250,3 +254,48 @@ async def reject_job_endpoint(
             detail="Job not found or not awaiting approval",
         )
     return _public(job)
+
+
+@router.patch("/{job_id}/deliverable")
+async def update_deliverable_endpoint(
+    job_id: str,
+    body: AssignmentDeliverableUpdateRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    job = jobs.update_job_deliverable(
+        _client(settings),
+        org_id,
+        job_id,
+        content=body.content,
+    )
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    return _public(job)
+
+
+@router.post("/{job_id}/push")
+async def push_deliverable_endpoint(
+    job_id: str,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    try:
+        payload = jobs.push_job_deliverable(
+            _client(settings),
+            org_id,
+            job_id,
+            user_id=current_user.get("user_id"),
+            settings=settings,
+            environment_name=environment,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return payload

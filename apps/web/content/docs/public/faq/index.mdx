@@ -1,6 +1,6 @@
 ---
 title: Frequently asked questions
-description: Common questions about Gravitre features, billing, and integrations.
+description: Common questions about GIBE, Gravitre AI, billing, and integrations.
 audience: public
 depth: high
 tier: all
@@ -16,15 +16,46 @@ prev:
 
 ### Where do I start after sign-up?
 
-Follow the [Quickstart](/docs/getting-started/quickstart), then connect one [Connector](/docs/guides/how-to/connectors) and run a [workflow](/docs/guides/how-to/workflows) or [Command Center](/docs/guides/how-to/ai-operator) task.
+Follow the [Quickstart](/docs/getting-started/quickstart), then connect one [Connector](/docs/guides/how-to/connectors) and run a [workflow](/docs/guides/how-to/workflows) or [Gravitre AI (Execute mode)](/docs/guides/how-to/ai-operator) task.
 
-### What happened to Agent Swarm and Model Registry?
+### What happened to Agent Swarm, Command Center, and Model Registry?
 
-They were renamed in the product UI to **Multi-Agent Run** and **AI Models**. Canonical routes are `/multi-agent-run` and `/models` (legacy `/agents/swarm` and `/operator` redirect permanently).
+| Old name | New name | Canonical route |
+|----------|----------|-----------------|
+| Agent Swarm | **Multi-Agent Run** | `/multi-agent-run` |
+| Command Center / AI Operator | **Gravitre AI (Execute)** | `/ai?mode=execute` |
+| Workspace Chat | **Gravitre AI (Chat)** | `/ai?mode=chat` |
+| Org Learning / Intelligence admin | **Learning (GIBE)** | `/intelligence/learning` |
+| AI Models registry | **Models** | `/models` |
+| Intelligence models catalog | **Built-in models** | `/models/built-in` |
+
+Legacy `/agents/swarm`, `/operator`, `/command-center`, `/assistant`, and `/admin/intelligence` redirect permanently.
 
 ### Should I use Runs or Tasks?
 
 Use **Runs** for workflow execution history. The **Tasks** page is legacy assignment UI — prefer Runs for automation audit trails.
+
+## GIBE (Gravitre Intelligent Business Engine)
+
+### What is GIBE?
+
+**GIBE** is Gravitre's org-scoped learning engine — query clusters, memory promotion, built-in ML models, retrieval rankers, and predictive ops. It learns only from verified signals in your org and shows **TRAINED** / **data gate** status honestly.
+
+See [GIBE — Learning](/docs/guides/how-to/org-learning).
+
+### Where do I see GIBE in the app?
+
+| Surface | Route |
+|---------|-------|
+| **Insights** | `/intelligence` |
+| **Learning** (GIBE admin) | `/intelligence/learning` |
+| **Built-in models** | `/models/built-in` |
+| **Training** | `/training` |
+| **Models** (production registry) | `/models` |
+
+### Does GIBE auto-change my workflows?
+
+No. GIBE recommendations, failure predictions, and memory promotions stay **advisory** until you review and apply them.
 
 ## Marketplace
 
@@ -54,31 +85,27 @@ Open **ACTIVITY → Schedules** for the org calendar, or a single workflow's **S
 
 ### Where do I fine-tune an agent?
 
-Use the **Training Hub** (`/training`) for datasets, jobs, and custom instructions. See [Use the Training Hub](/docs/guides/how-to/training).
+Use **Training** (`/training`) for datasets, jobs, and custom instructions. See [Use Training](/docs/guides/how-to/training).
 
-### What is AI Models vs Training Hub?
+### What is Models vs Training?
 
-**Training Hub** is for agent-focused fine-tunes and instructions. **AI Models** is the full production registry with deploy and predict APIs — requires **Command** plan. See [AI Models overview](/docs/concepts/ai-models).
+**Training** is for agent-focused fine-tunes and instructions. **Models** is the full production registry with deploy and predict APIs — requires **Command** plan. **Built-in models** (`/models/built-in`) is the GIBE ML catalog. See [Models overview](/docs/concepts/ai-models).
 
-## AI surfaces (Command Center, Workspace Chat, Universal Search)
+## Gravitre AI modes
 
-Gravitre ships **three separate AI surfaces** in the WORK section — not one master chat. Each route has a different job:
+Gravitre AI is one surface (`/ai`) with three modes:
 
-| Surface | Route | Use when |
-|---------|-------|----------|
-| **Command Center** | `/command-center` | You want Gravitre to do tracked work with plans and async jobs |
-| **Workspace Chat** | `/assistant` | You want multi-turn Q&A, briefings, and exploratory help |
-| **Universal Search** | `/search` | You want to find a record and jump to it (links, not chat replies) |
+| Mode | Route | Use when |
+|------|-------|----------|
+| **Execute** | `/ai?mode=execute` | Tracked work with plans and async jobs |
+| **Chat** | `/ai?mode=chat` | Multi-turn Q&A, briefings, exploratory help |
+| **Find** | `/ai?mode=find` or `/search` | Locate records and jump to them (links, not chat) |
 
 Legacy `/chat` URLs redirect to `/search`.
 
-### What's the difference between Command Center, Workspace Chat, and Universal Search?
+### What's the difference between Execute, Chat, and Find?
 
-See the table above. In short: **execute** vs **converse** vs **find**. Full guides: [Command Center](/docs/guides/how-to/ai-operator), [Workspace Chat](/docs/guides/how-to/assistant), [Universal Search](/docs/guides/how-to/search).
-
-### Where is Universal Search in the app?
-
-Sidebar **WORK → Universal Search** opens `/search`. It is unified lookup across runs, workflows, agents, connectors, and documents — **not** a chat assistant.
+In short: **execute** vs **converse** vs **find**. Full guides: [Execute mode](/docs/guides/how-to/ai-operator), [Chat mode](/docs/guides/how-to/assistant), [Universal Search](/docs/guides/how-to/search).
 
 ## Assignments and Goals
 
@@ -98,7 +125,7 @@ Generate a plan on a goal, review connectors and approvals, then create or expor
 
 ### What are failure alerts?
 
-**Failure predictions** (`/workflows/failure-predictions`) flag workflows at elevated failure risk. See [Failure alerts](/docs/guides/how-to/failure-alerts).
+**Failure predictions** (`/workflows/failure-predictions`) flag workflows at elevated failure risk — powered by GIBE when enough run history exists. See [Failure alerts](/docs/guides/how-to/failure-alerts).
 
 ## Lite and Enterprise
 
@@ -118,7 +145,7 @@ A reduced console at `/lite` for Lite seat users. Allocate seats under **Setting
 
 ### Will Gravitre always execute actions I describe?
 
-Not without connected integrations and approvals where configured. Each run shows what was analyzed vs executed.
+Not without connected integrations and approvals where configured. Each run shows what was analyzed vs executed. Connectors must reach **Executable** status.
 
 ### Where do approvals appear?
 
@@ -129,6 +156,10 @@ Not without connected integrations and approvals where configured. Each run show
 ### What plan includes Meson?
 
 **Control** and above. See [Build with Meson](/docs/guides/how-to/meson).
+
+### What plan includes GIBE Learning admin?
+
+**Control** and above. **Built-in models** and deeper predictive ops scale on **Command**.
 
 ### What plan includes Multi-Agent Run?
 
@@ -156,11 +187,11 @@ Production-ready vendors listed on [Connect integrations](/docs/guides/how-to/co
 
 ### Where is Partner Connections?
 
-**Settings → Federation** (`/settings/federation`) in the app; docs call this **Partner Connections**. Requires **Control** plan and admin role. Covers partnerships, cross-org handoffs, read-only connector grants, and delegated tasks. See [overview](/docs/concepts/partner-connections) and [guide](/docs/guides/how-to/partner-connections).
+**Settings → Federation** (`/settings/federation`) in the app; docs call this **Partner Connections**. Requires **Control** plan and admin role. See [overview](/docs/concepts/partner-connections) and [guide](/docs/guides/how-to/partner-connections).
 
 ### Can partners write to my CRM via connector grants?
 
-No — federated **connector grants** allow **read-only** actions only (list, get, search patterns). Writes stay inside each org's own connectors and approval policy. Grants expire (max 7 days) and are revocable.
+No — federated **connector grants** allow **read-only** actions only. Writes stay inside each org's own connectors and approval policy.
 
 ## Support
 

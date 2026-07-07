@@ -20,7 +20,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { ExecutionModeBadge } from "@/components/intelligence/execution-mode-badge"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
-import { approveAssignment, fetchAssignmentJob, rejectAssignment } from "@/lib/demo-assignments"
+import { approveAssignment, fetchAssignmentJob, pushAssignmentDeliverable, rejectAssignment, updateAssignmentDeliverable } from "@/lib/demo-assignments"
 import type { AgentJob } from "@/hooks/use-async-job"
 import { toast } from "sonner"
 import {
@@ -300,11 +300,12 @@ function DeliverableCard({
 }
 
 // Preview Panel
-function PreviewPanel({ deliverable, isApproved, onApprove, onPush, jobError }: { 
+function PreviewPanel({ deliverable, isApproved, onApprove, onPush, onEdit, jobError }: { 
   deliverable: Deliverable | null; 
   isApproved: boolean;
   onApprove: () => void;
   onPush: () => void;
+  onEdit: () => void;
   jobError?: string | null;
 }) {
   if (jobError) {
@@ -405,7 +406,7 @@ function PreviewPanel({ deliverable, isApproved, onApprove, onPush, jobError }: 
                 <Icon name="check" size="sm" />
                 Approve
               </Button>
-              <Button variant="outline" className="gap-2">
+              <Button variant="outline" className="gap-2" onClick={onEdit}>
                 <Icon name="edit" size="sm" />
                 Edit
               </Button>
@@ -642,6 +643,10 @@ export default function AssignmentDetailPage({
   const [approvedItems, setApprovedItems] = useState<string[]>([])
   const [approvalDismissedManual, setApprovalDismissedManual] = useState(false)
   const [isDecisionPending, setIsDecisionPending] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editDraft, setEditDraft] = useState("")
+  const [isSavingEdit, setIsSavingEdit] = useState(false)
+  const [isPushing, setIsPushing] = useState(false)
   const approvalDismissed = approvalFromUrl ? false : approvalDismissedManual
 
   const { data: job, error: loadError, isLoading, mutate } = useSWR(
@@ -767,6 +772,50 @@ export default function AssignmentDetailPage({
       throw err
     } finally {
       setIsDecisionPending(false)
+    }
+  }
+
+  const handleEditDeliverable = () => {
+    setEditDraft(selectedItem?.preview || reportContent)
+    setEditOpen(true)
+  }
+
+  const handleSaveEdit = async () => {
+    const trimmed = editDraft.trim()
+    if (!trimmed) {
+      toast.error("Deliverable content cannot be empty")
+      return
+    }
+    setIsSavingEdit(true)
+    try {
+      const updated = await updateAssignmentDeliverable(id, trimmed)
+      await mutate(updated as AgentJob, { revalidate: true })
+      setEditOpen(false)
+      toast.success("Deliverable updated")
+    } catch (err) {
+      toast.error("Failed to save edits", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      })
+    } finally {
+      setIsSavingEdit(false)
+    }
+  }
+
+  const handlePushDeliverable = async () => {
+    setIsPushing(true)
+    try {
+      const result = await pushAssignmentDeliverable(id)
+      toast.success(
+        result.destination
+          ? `Pushed to ${result.destination}`
+          : "Deliverable pushed to destination",
+      )
+    } catch (err) {
+      toast.error("Push failed", {
+        description: err instanceof Error ? err.message : "Configure a destination on this assignment.",
+      })
+    } finally {
+      setIsPushing(false)
     }
   }
 
@@ -931,11 +980,35 @@ export default function AssignmentDetailPage({
             deliverable={selectedItem || null}
             isApproved={selectedItem ? approvedItems.includes(selectedItem.id) : false}
             onApprove={() => selectedItem && handleApprove(selectedItem.id)}
-            onPush={() => toast.info("Push to destination is not configured for this assignment yet.")}
+            onPush={handlePushDeliverable}
+            onEdit={handleEditDeliverable}
             jobError={jobError}
           />
         </div>
       </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit deliverable</DialogTitle>
+            <DialogDescription>Update the content before approval or push.</DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={editDraft}
+            onChange={(e) => setEditDraft(e.target.value)}
+            rows={12}
+            className="font-mono text-sm"
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={isSavingEdit}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={isSavingEdit || isPushing}>
+              {isSavingEdit ? "Saving…" : "Save changes"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   )
 }

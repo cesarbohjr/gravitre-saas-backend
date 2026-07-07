@@ -16,7 +16,7 @@ interface Feature {
 const features: Feature[] = [
   {
     id: "operator",
-    title: "AI Operator",
+    title: "Gravitre AI",
     description: "Natural language interface to execute complex tasks across your entire tech stack.",
     icon: Bot,
     color: "emerald",
@@ -108,7 +108,7 @@ function AppScreen({ featureId }: { featureId: string }) {
               <AgentAvatar agent="operator" size="xs" showPulse />
               <div className="max-w-[75%]">
                 <div className="flex items-center gap-1.5 mb-1">
-                  <span className="text-[9px] text-emerald-400">AI Operator</span>
+                  <span className="text-[9px] text-emerald-400">Gravitre AI</span>
                   <span className="text-[8px] text-zinc-600">2m ago</span>
                 </div>
                 <div className="bg-zinc-800 text-zinc-200 text-[10px] px-2.5 py-1.5 rounded-xl rounded-bl-sm">

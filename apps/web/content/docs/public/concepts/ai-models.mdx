@@ -1,6 +1,6 @@
 ---
-title: AI Models
-description: Org-scoped model registry for training, validation, deployment, and inference (Command plan).
+title: Models
+description: Org-scoped model registry, GIBE built-in ML catalog, training, validation, deployment, and inference (Command plan).
 audience: public
 depth: high
 tier: command
@@ -8,14 +8,14 @@ status: published
 category: Core Concepts
 readTime: 5 min
 prev:
-  title: Training Hub
+  title: Training
   href: /docs/concepts/training
 next:
-  title: Workspace Chat
+  title: Gravitre AI (Chat mode)
   href: /docs/concepts/assistant
 ---
 
-**AI Models** (`/models`) is the control plane for production machine learning in your organization — separate from the lighter **Training Hub** fine-tune flow.
+**Models** (`/models`) is the control plane for production machine learning in your organization — separate from the lighter **Training** fine-tune flow. **GIBE** (Gravitre Intelligent Business Engine) supplies the built-in ML catalog at **Built-in models** (`/models/built-in`): org-scoped rankers, predictors, and evaluators trained on verified signals in your org.
 
 Requires **Command** plan or above for API access.
 
@@ -30,6 +30,7 @@ The registry organizes work into layers:
 | **Forecasting** | Demand and revenue projections |
 | **Anomaly detection** | Ops and billing outliers |
 | **MLOps** | Deployment pipelines tied to workflows |
+| **GIBE built-in** | Pre-trained org models — browse at `/models/built-in` |
 
 Templates suggest model type, task, and base model for each layer.
 
@@ -39,19 +40,20 @@ Templates suggest model type, task, and base model for each layer.
 Draft → Training / validating → Ready → Deployed → (archived)
 ```
 
-Deployed models expose **predict** endpoints for workflows and services. Training may pull from connected **Sources** when configured.
+Deployed models expose **predict** endpoints for workflows and services. Training may pull from connected **Sources** when configured. GIBE built-in models update as your org accumulates verified run and chat signals.
 
-## AI Models vs Training Hub
+## Models vs Training
 
-| | **Training Hub** | **AI Models** |
-|---|------------------|---------------|
-| **Focus** | Agent fine-tunes, instructions, quick jobs | Full registry, deploy, inference |
+| | **Training** | **Models** |
+|---|--------------|------------|
+| **Focus** | Agent fine-tunes, instructions, quick jobs | Full registry, GIBE built-in catalog, deploy, inference |
 | **Audience** | Builders improving agents | ML ops / advanced teams |
 | **Plan** | Standard paid tiers | **Command+** |
 
-Many teams start in Training Hub and promote stable models into AI Models for production deployment.
+Many teams start in **Training** and promote stable models into **Models** for production deployment. GIBE built-in models are available without a custom training job once your org meets signal thresholds.
 
 ## Next steps
 
-- [Manage AI Models](/docs/guides/how-to/ai-models)
+- [Manage Models](/docs/guides/how-to/ai-models)
+- [GIBE — Learning](/docs/guides/how-to/org-learning) for org memory and built-in model evaluation
 - [Connect Sources](/docs/guides/how-to/sources) for training data

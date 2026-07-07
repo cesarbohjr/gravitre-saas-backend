@@ -21,6 +21,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { MesonToolbarTrigger } from "@/components/gravitre/meson-toolbar-popup"
 import { cn } from "@/lib/utils"
 import { Icon } from "@/lib/icons"
 import { useViewMode } from "@/lib/view-mode-context"
@@ -264,6 +265,8 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
 
           {/* Theme Toggle */}
           <ThemeToggle />
+
+          <MesonToolbarTrigger />
 
           {/* Notifications */}
           <NotificationCenter />

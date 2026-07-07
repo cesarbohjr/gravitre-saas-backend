@@ -61,6 +61,7 @@ TIER_FEATURES: dict[TierName, dict[str, bool]] = {
         "api_full_access": False,
         "priority_support_email": False,
         "priority_support_dedicated": False,
+        "cross_department_agents": False,
     },
     "node": {
         "custom_webhooks": False,
@@ -68,6 +69,7 @@ TIER_FEATURES: dict[TierName, dict[str, bool]] = {
         "api_full_access": False,
         "priority_support_email": False,
         "priority_support_dedicated": False,
+        "cross_department_agents": False,
     },
     "control": {
         "custom_webhooks": True,
@@ -75,6 +77,7 @@ TIER_FEATURES: dict[TierName, dict[str, bool]] = {
         "api_full_access": True,
         "priority_support_email": True,
         "priority_support_dedicated": False,
+        "cross_department_agents": False,
     },
     "command": {
         "custom_webhooks": True,
@@ -82,6 +85,7 @@ TIER_FEATURES: dict[TierName, dict[str, bool]] = {
         "api_full_access": True,
         "priority_support_email": True,
         "priority_support_dedicated": True,
+        "cross_department_agents": True,
     },
 }
 

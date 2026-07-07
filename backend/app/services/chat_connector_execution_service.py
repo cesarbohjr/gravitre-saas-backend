@@ -22,6 +22,11 @@ from app.services.chat_connector_models import INTEGRATION_ALIASES, ConnectorAct
 from app.services.tool_registry import get_tool_registry
 from app.services.tool_service import list_registered_actions
 from app.services.tool_types import ToolContext
+from app.connectors.connector_availability_service import (
+    find_integration_availability,
+    format_connector_blocking_message,
+    get_connector_availability_service,
+)
 
 logger = get_logger(__name__)
 
@@ -43,6 +48,10 @@ DEAL_ID = re.compile(r"\b(?:deal\s*#?\s*)(\d+)\b", re.I)
 GITHUB_REPO = re.compile(r"\b([\w.-]+/[\w.-]+)\b")
 SEARCH_FOR = re.compile(
     r"(?:search|find|lookup|list|query|show)\s+(?:for\s+)?(.+?)(?:\s+in\s+\w+|\s*$)",
+    re.I,
+)
+HUBSPOT_LIST_CONTACTS = re.compile(
+    r"\b(?:any|all|some|recent)\b.*\bcontacts?\b|\b(?:see|show|list|get|do you see|do you have)\b.*\bcontacts?\b",
     re.I,
 )
 
@@ -71,6 +80,58 @@ class ChatConnectorExecutionService:
         self.settings = settings or get_settings()
         self._state = get_conversation_state_service(self.settings)
         self._registry = get_tool_registry()
+        self._availability = get_connector_availability_service(self.settings)
+
+    def _live_connected_integrations(
+        self,
+        client: Any,
+        org_id: str,
+        *,
+        environment_name: str = "production",
+        action_key: str | None = None,
+    ) -> list[str]:
+        return self._registry.list_connected_integrations(
+            client,
+            org_id,
+            environment_name,
+            force_live=True,
+            action_key=action_key,
+        )
+
+    @staticmethod
+    def _detect_integration(message: str) -> str | None:
+        match = CONNECTOR_MENTION.search(message)
+        if not match:
+            return None
+        token = match.group(1).lower()
+        if token == "crm":
+            return "hubspot"
+        return token
+
+    def _verify_plan_executable(
+        self,
+        client: Any,
+        org_id: str,
+        plan: ConnectorActionPlan,
+        *,
+        environment_name: str = "production",
+    ) -> str | None:
+        availability = find_integration_availability(
+            client,
+            org_id,
+            plan.integration,
+            self.settings,
+            environment_name=environment_name,
+            force_live=True,
+            action_key=plan.invoke_action,
+        )
+        if availability and availability.get("execution_available"):
+            return None
+        return format_connector_blocking_message(
+            plan.integration,
+            availability,
+            action_key=plan.invoke_action,
+        )
 
     def _prefer_static_tool_name(self, registry_key: str, integration: str) -> str | None:
         """Prefer curated static ToolRegistry names when they map to the same invoke action."""
@@ -205,13 +266,19 @@ class ChatConnectorExecutionService:
         if ("hubspot" in lowered or "crm" in lowered) and "hubspot" in connected:
             spec = self._registry.get_spec("hubspot_search_contacts")
             if spec and "hubspot.contacts.search" in set(list_registered_actions()):
+                if HUBSPOT_LIST_CONTACTS.search(text):
+                    args = {"list_all": True, "limit": 10}
+                    label = "List HubSpot contacts"
+                else:
+                    args = {"query": query, "limit": 10}
+                    label = f"Search HubSpot for “{query[:60]}”"
                 return ConnectorActionPlan(
                     tool_name="hubspot_search_contacts",
                     invoke_action="hubspot.contacts.search",
                     integration="hubspot",
                     kind="read",
-                    label=f"Search HubSpot for “{query[:60]}”",
-                    args={"query": query, "limit": 10},
+                    label=label,
+                    args=args,
                 )
         if "salesforce" in lowered and "salesforce" in connected:
             args = self._extract_args(text, self._registry.get_spec("salesforce_query"))
@@ -298,6 +365,12 @@ class ChatConnectorExecutionService:
         if not self.is_connector_intent(message, task_state):
             return None
 
+        connected_integrations = self._live_connected_integrations(
+            client,
+            org_id,
+            environment_name=environment_name,
+        )
+
         plan = self.plan_action(
             message,
             connected_integrations=connected_integrations,
@@ -305,6 +378,32 @@ class ChatConnectorExecutionService:
         )
         if not plan:
             if self.is_connector_intent(message, task_state):
+                integration = self._detect_integration(message)
+                if integration:
+                    availability = find_integration_availability(
+                        client,
+                        org_id,
+                        integration,
+                        self.settings,
+                        environment_name=environment_name,
+                        force_live=True,
+                        action_key="hubspot.contacts.search"
+                        if integration == "hubspot" and "contact" in message.lower()
+                        else None,
+                    )
+                    if availability is not None:
+                        return {
+                            "stop_pipeline": True,
+                            "dialogue_mode": "answer",
+                            "message": format_connector_blocking_message(
+                                integration,
+                                availability,
+                                action_key="hubspot.contacts.search"
+                                if integration == "hubspot" and "contact" in message.lower()
+                                else None,
+                            ),
+                            "task_state": task_state,
+                        }
                 from app.services.execution_envelope import build_not_executable, format_not_executable_message
 
                 if not connected_integrations:
@@ -325,6 +424,20 @@ class ChatConnectorExecutionService:
                     "task_state": task_state,
                 }
             return None
+
+        blocked = self._verify_plan_executable(
+            client,
+            org_id,
+            plan,
+            environment_name=environment_name,
+        )
+        if blocked:
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "answer",
+                "message": blocked,
+                "task_state": task_state,
+            }
 
         risk = await self._evaluate_risk(org_id, user_id, plan, classification)
         plan = replace(
@@ -656,6 +769,8 @@ class ChatConnectorExecutionService:
         quoted = [m.group(1).strip() for m in QUOTED.finditer(message)]
         try:
             if name == "hubspot_search_contacts":
+                if HUBSPOT_LIST_CONTACTS.search(message):
+                    return {"list_all": True, "limit": 10}
                 query = self._search_query(message) or (quoted[0] if quoted else None)
                 if not query:
                     return None
@@ -840,8 +955,24 @@ class ChatConnectorExecutionService:
         observation: dict[str, Any],
     ) -> str:
         if plan.kind == "read":
-            if "contacts" in result_data:
-                count = len(result_data.get("contacts") or [])
+            contacts = result_data.get("contacts")
+            if contacts is None and isinstance(result_data.get("search"), dict):
+                raw = result_data["search"].get("results") or []
+                contacts = raw if isinstance(raw, list) else None
+            if contacts is not None:
+                count = len(contacts)
+                if count == 0:
+                    return "No HubSpot contacts matched that request."
+                sample = contacts[0]
+                if isinstance(sample, dict):
+                    props = sample.get("properties") or sample
+                    name_bits = [
+                        str(props.get("firstname") or "").strip(),
+                        str(props.get("lastname") or "").strip(),
+                    ]
+                    name = " ".join(bit for bit in name_bits if bit) or str(props.get("email") or "contact")
+                    if count == 1:
+                        return f"Found 1 HubSpot contact: {name}."
                 return f"Found {count} HubSpot contact(s)."
             if "records" in result_data:
                 count = len(result_data.get("records") or [])

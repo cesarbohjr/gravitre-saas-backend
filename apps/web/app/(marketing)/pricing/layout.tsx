@@ -1,10 +1,11 @@
 import { marketingMetadata } from "@/lib/seo"
+import { MARKETING_COPY } from "@/lib/marketing-copy"
 
 export const metadata = marketingMetadata({
   title: "Pricing",
   description:
-    "Simple, transparent pricing for teams of every size. Start free and scale to enterprise with governance, federation, and usage-based plans.",
-  ogDescription: "Simple, transparent pricing for teams of every size. Start free and scale to enterprise.",
+    "Plans with GIBE included — connector executability, Insights, Learning, built-in ML, and governed execution. Start free, scale to Command.",
+  ogDescription: MARKETING_COPY.pricing.subhead,
 })
 
 export default function PricingLayout({ children }: { children: React.ReactNode }) {

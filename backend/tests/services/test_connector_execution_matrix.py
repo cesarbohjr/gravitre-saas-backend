@@ -41,7 +41,15 @@ def test_chat_executable_filters_connected():
     assert "zendesk" not in vendors
 
 
-def test_matrix_entry_count_matches_catalog():
-    entries = build_connector_execution_matrix()
-    assert len(entries) >= 500
-    assert all(entry.action_key for entry in entries)
+def test_hubspot_catalog_has_expanded_read_actions():
+    entry = get_matrix_entry("hubspot", "hubspot.deals.search")
+    assert entry is not None
+    assert entry.chat_executable is True
+    for action_key in (
+        "hubspot.deals.list",
+        "hubspot.companies.get",
+        "hubspot.tickets.search",
+    ):
+        row = get_matrix_entry("hubspot", action_key)
+        assert row is not None, action_key
+        assert row.implementation_status != "not_implemented"

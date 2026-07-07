@@ -36,6 +36,7 @@ MULTI_STEP_HINT = re.compile(
     r"\b(then|and then|after that|followed by|next,|also notify|and notify)\b",
     re.I,
 )
+GOOGLE_WORKSPACE_FAMILY = frozenset({"google_drive", "google_sheets", "google_docs"})
 
 
 @dataclass(frozen=True)
@@ -276,6 +277,7 @@ class ChatOrchestrationService:
             step = await self._plan_segment(
                 step_id=f"step_{idx}",
                 segment=segment,
+                goal=message,
                 connected_integrations=connected_integrations,
                 org_id=org_id,
                 user_id=user_id,
@@ -289,14 +291,16 @@ class ChatOrchestrationService:
         *,
         step_id: str,
         segment: str,
+        goal: str = "",
         connected_integrations: list[str],
         org_id: str,
         user_id: str,
         classification: dict[str, Any],
     ) -> OrchestrationStep:
+        connected = {c.lower() for c in connected_integrations}
         mentioned = self._mentioned_integrations(segment, connected_integrations)
         for integration in mentioned:
-            if integration not in {c.lower() for c in connected_integrations}:
+            if not self._integration_is_connected(integration, connected):
                 return OrchestrationStep(
                     step_id=step_id,
                     segment=segment,
@@ -307,14 +311,15 @@ class ChatOrchestrationService:
                     skip_reason=f"Connect {integration.replace('_', ' ').title()} in Gravitre to run this action.",
                 )
 
+        planning_text = self._segment_planning_text(segment, connected_integrations, goal=goal)
         plan = self._connector.plan_action(
-            segment,
+            planning_text,
             connected_integrations=connected_integrations,
             task_state={},
         )
         if not plan:
             plan = self._connector.plan_fallback_segment(
-                segment,
+                planning_text,
                 connected_integrations=connected_integrations,
             )
         if not plan:
@@ -764,6 +769,35 @@ class ChatOrchestrationService:
         approval = "approval required" if step.requires_approval else "auto-run"
         kind = step.kind or "action"
         return f"{index}. **{step.label}** ({kind}, {approval})"
+
+    @staticmethod
+    def _integration_is_connected(integration: str, connected: set[str]) -> bool:
+        key = integration.lower()
+        if key in connected:
+            return True
+        if key in GOOGLE_WORKSPACE_FAMILY and connected & GOOGLE_WORKSPACE_FAMILY:
+            return True
+        return False
+
+    @staticmethod
+    def _segment_planning_text(
+        segment: str,
+        connected_integrations: list[str],
+        *,
+        goal: str = "",
+    ) -> str:
+        text = segment.strip()
+        if ChatOrchestrationService._mentioned_integrations(text, connected_integrations):
+            return text
+        connected = [c.lower() for c in connected_integrations]
+        if len(connected) == 1:
+            alias = INTEGRATION_ALIASES.get(connected[0], (connected[0],))[0]
+            return f"{text} in {alias}"
+        goal_vendors = ChatOrchestrationService._mentioned_integrations(goal, connected_integrations)
+        if len(goal_vendors) == 1:
+            alias = INTEGRATION_ALIASES.get(goal_vendors[0], (goal_vendors[0],))[0]
+            return f"{text} in {alias}"
+        return text
 
     @staticmethod
     def _split_segments(message: str) -> list[str]:

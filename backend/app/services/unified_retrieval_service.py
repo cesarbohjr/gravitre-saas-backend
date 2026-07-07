@@ -33,6 +33,9 @@ class UnifiedRetrievalBundle(BaseModel):
     memory_section: str = ""
     sources: list[dict[str, Any]] = Field(default_factory=list)
     metrics: dict[str, Any] = Field(default_factory=dict)
+    graph_context: dict[str, Any] = Field(default_factory=dict)
+    retrieval_plan: dict[str, Any] = Field(default_factory=dict)
+    retrieval_effectiveness: dict[str, Any] = Field(default_factory=dict)
 
 
 class UnifiedRetrievalService:
@@ -60,6 +63,41 @@ class UnifiedRetrievalService:
         params = parameters or {}
         agent = agent or {}
         agent_id = str(agent.get("id") or "")
+        classification = params.get("classification") if isinstance(params.get("classification"), dict) else {}
+        assignments = params.get("knowledge_assignments") or []
+        strict_mode = bool(params.get("strict_assignment_mode"))
+
+        from app.services.domain_retrieval_policy import build_retrieval_plan, should_fetch_graph
+        from app.services.learning_strategy_keys import parse_segment_key
+        from app.services.adaptive_learning_service import get_adaptive_learning_service
+
+        retrieval_plan = build_retrieval_plan(
+            classification,
+            assignments,
+            settings=self.settings,
+            strict_assignment_mode=strict_mode,
+        )
+        if getattr(self.settings, "domain_adaptive_learning_enabled", False) or await get_adaptive_learning_service(
+            self.settings
+        ).is_enabled_for_org(org_id):
+            segment_key = parse_segment_key(classification)
+            retrieval_plan = await get_adaptive_learning_service(self.settings).apply_to_retrieval_plan(
+                retrieval_plan,
+                org_id,
+                segment_key,
+                assignments,
+                client=client,
+            )
+            from app.services.meta_learning_service import get_meta_learning_service
+
+            meta = get_meta_learning_service(self.settings)
+            if await meta.is_enabled_for_org(org_id):
+                retrieval_plan = await meta.apply_to_retrieval_plan(
+                    retrieval_plan,
+                    org_id,
+                    segment_key,
+                    default_retrieval_key=f"retrieval:{retrieval_plan.policy_version if retrieval_plan.active else 'legacy'}",
+                )
 
         org_context: dict[str, Any] = {}
         if active_scopes.org_context:
@@ -121,12 +159,38 @@ class UnifiedRetrievalService:
                     )
 
                     assignment_svc = get_agent_knowledge_assignment_service()
-                    rag_sources, missing = assignment_svc.filter_rag_sources(rag_sources, assignments)
+                    rag_sources, missing = assignment_svc.filter_rag_sources(
+                        rag_sources,
+                        assignments,
+                        plan=retrieval_plan,
+                    )
                     metrics = dict(metrics or {})
                     metrics["assignment_scoped"] = True
-                    metrics["assignment_match_count"] = len(rag_sources)
+                    metrics["assignment_match_count"] = len(
+                        [row for row in rag_sources if row.get("match_tier") != "unassigned"]
+                    )
                     if missing:
                         metrics["missing_assignments"] = missing
+                elif retrieval_plan.active:
+                    from app.services.domain_retrieval_policy import apply_source_score
+                    from app.services.retrieval_provenance import build_from_rag_row
+
+                    boosted = []
+                    for source in rag_sources:
+                        updated = dict(source)
+                        tier = "unassigned"
+                        updated["match_tier"] = tier
+                        updated["score"] = apply_source_score(
+                            float(updated.get("score") or 0.0),
+                            updated,
+                            retrieval_plan,
+                            match_tier=tier,
+                        )
+                        updated["provenance"] = build_from_rag_row(updated, plan=retrieval_plan, match_tier=tier)
+                        boosted.append(updated)
+                    rag_sources = sorted(boosted, key=lambda row: float(row.get("score") or 0.0), reverse=True)
+                metrics = dict(metrics or {})
+                metrics["retrieval_policy"] = retrieval_plan.policy_version if retrieval_plan.active else "legacy"
                 if rag_sources:
                     rag_section = (
                         "<knowledge_base>\n"
@@ -153,7 +217,77 @@ class UnifiedRetrievalService:
         for key in ("memories", "patterns", "facts"):
             for row in memory_context.get(key) or []:
                 if isinstance(row, dict):
-                    sources.append({"kind": "memory", "category": key, **row})
+                    from app.services.retrieval_provenance import build_from_memory_row
+
+                    enriched = dict(row)
+                    enriched["provenance"] = build_from_memory_row(enriched, plan=retrieval_plan)
+                    sources.append({"kind": "memory", "category": key, **enriched})
+
+        graph_context: dict[str, Any] = {}
+        if should_fetch_graph(classification, retrieval_plan):
+            try:
+                from app.services.knowledge_graph_service import get_knowledge_graph_service
+                from app.services.retrieval_provenance import build_from_graph_context
+
+                graph_context = await get_knowledge_graph_service().answer_business_question(org_id, query)
+                if isinstance(graph_context, dict) and graph_context:
+                    graph_context["provenance"] = build_from_graph_context(graph_context, plan=retrieval_plan)
+                    sources.append({"kind": "graph", **graph_context})
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("unified_retrieval_graph_skipped org_id=%s error=%s", org_id, exc)
+
+        hybrid_fused = False
+        if active_scopes.knowledge:
+            try:
+                from app.services.hybrid_memory_service import get_hybrid_memory_service
+
+                hybrid_bundle = await get_hybrid_memory_service(self.settings).query_all_memory(
+                    org_id,
+                    agent_id or None,
+                    query,
+                    top_k=int(params.get("rag_top_k") or self.settings.rag_top_k or 8),
+                )
+                hybrid_rows = get_hybrid_memory_service(self.settings).flatten_to_ranked_candidates(hybrid_bundle)
+                if hybrid_rows:
+                    rag_sources = get_hybrid_memory_service(self.settings).fuse_with_rag_sources(
+                        rag_sources,
+                        hybrid_rows,
+                        top_k=int(params.get("rag_top_k") or self.settings.rag_top_k or 8),
+                    )
+                    for row in hybrid_rows[:5]:
+                        sources.append({"kind": row.get("kind") or "hybrid_memory", **row})
+                    metrics = dict(metrics or {})
+                    metrics["hybrid_memory_fusion"] = True
+                    metrics["hybrid_memory_candidates"] = len(hybrid_rows)
+                    hybrid_fused = True
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("unified_retrieval_hybrid_fusion_skipped org_id=%s error=%s", org_id, exc)
+
+        if hybrid_fused and rag_sources:
+            rag_section = (
+                "<knowledge_base>\n"
+                + json.dumps(
+                    [
+                        {
+                            "source": source.get("source"),
+                            "content": source.get("content", "")[:1200],
+                            "score": source.get("score"),
+                            "kind": source.get("kind"),
+                        }
+                        for source in rag_sources
+                    ],
+                    default=str,
+                )[:12000]
+                + "\n</knowledge_base>\n"
+            )
+
+        from app.services.retrieval_provenance import summarize_retrieval_effectiveness
+
+        retrieval_effectiveness = summarize_retrieval_effectiveness(
+            sources,
+            plan=retrieval_plan,
+            classification=classification,
+        )
 
         return UnifiedRetrievalBundle(
             rag_sources=rag_sources,
@@ -163,6 +297,9 @@ class UnifiedRetrievalService:
             memory_section=memory_section,
             sources=sources,
             metrics=metrics,
+            graph_context=graph_context,
+            retrieval_plan=retrieval_plan.to_params(),
+            retrieval_effectiveness=retrieval_effectiveness,
         )
 
     async def retrieve_knowledge_rows(

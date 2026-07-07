@@ -59,32 +59,34 @@ export function buildQueuedAssignment(input: CreateAssignmentInput, id?: string)
 export async function createAssignment(
   input: CreateAssignmentInput,
 ): Promise<{ id: string; assignment: DemoAssignment }> {
-  let assignment = buildQueuedAssignment(input)
+  const response = await apiFetch("/api/assignments", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      task: input.task.trim(),
+      agent_id: input.agentId,
+      context: {
+        priority: input.priority,
+        due_date: input.dueDate || undefined,
+      },
+    }),
+  })
 
-  try {
-    const response = await apiFetch("/api/assignments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        task: input.task.trim(),
-        agent_id: input.agentId,
-        context: {
-          priority: input.priority,
-          due_date: input.dueDate || undefined,
-        },
-      }),
-    })
-
-    if (response.ok) {
-      const job = (await response.json()) as AgentJob
-      if (job?.jobId) {
-        assignment = buildQueuedAssignment(input, job.jobId)
-      }
-    }
-  } catch {
-    // Demo/offline fallback keeps the optimistic queued row.
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}))
+    const message =
+      payload && typeof payload === "object" && "detail" in payload
+        ? String((payload as { detail?: unknown }).detail ?? "")
+        : `Assignment failed (${response.status})`
+    throw new Error(message || "Assignment could not be created.")
   }
 
+  const job = (await response.json()) as AgentJob
+  if (!job?.jobId) {
+    throw new Error("Assignment was accepted but no job id was returned.")
+  }
+
+  const assignment = buildQueuedAssignment(input, job.jobId)
   registerDemoAssignment(assignment)
   return { id: assignment.id, assignment }
 }

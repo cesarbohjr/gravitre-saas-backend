@@ -85,7 +85,24 @@ MODE_CONFIG: dict[str, dict[str, Any]] = {
 
 def normalize_mode(mode: str | None) -> str:
     value = (mode or "standard").strip().lower()
+    if value == "deep":
+        return "agent"
     return value if value in MODE_CONFIG else "standard"
+
+
+def resolve_effective_intelligence_mode(
+    mode: str | None,
+    connected_integrations: list[str] | None = None,
+    *,
+    has_mcp_tools: bool = False,
+) -> str:
+    """Upgrade to agent mode when connectors or MCP tools are live — full tool surface for Claude-like UX."""
+    normalized = normalize_mode(mode)
+    connected = [str(c).strip().lower() for c in (connected_integrations or []) if str(c).strip()]
+    connected = [c for c in connected if c not in {"platform", "webhook", "email"}]
+    if (connected or has_mcp_tools) and normalized in {"fast", "standard", "reasoning"}:
+        return "agent"
+    return normalized
 
 
 def normalize_assistant_tool_id(tool_id: str) -> str:

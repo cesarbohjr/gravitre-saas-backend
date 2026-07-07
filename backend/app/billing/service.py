@@ -211,6 +211,26 @@ def resolve_org_id_from_checkout_metadata(client: Client, metadata: dict | None)
     return None
 
 
+def resolve_org_id_from_stripe_customer(client: Client, customer_id: str | None) -> str | None:
+    """Resolve org_id from a Stripe customer id stored on billing/subscription rows."""
+    normalized = str(customer_id or "").strip()
+    if not normalized:
+        return None
+    for table in ("org_billing", "subscriptions"):
+        rows = (
+            client.table(table)
+            .select("org_id")
+            .eq("stripe_customer_id", normalized)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if rows and rows[0].get("org_id"):
+            return str(rows[0]["org_id"])
+    return None
+
+
 def get_org_billing(client: Client, org_id: str) -> dict | None:
     row = (
         client.table("org_billing")

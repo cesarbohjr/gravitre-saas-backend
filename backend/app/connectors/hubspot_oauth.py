@@ -375,6 +375,7 @@ def hubspot_connection_auth_status(
     settings: Settings,
     *,
     environment_name: str | None = None,
+    validate_remote: bool = False,
 ) -> str:
     """connected | pending_auth | auth_expired | misconfigured"""
     env = environment_name or _connector_environment(client, org_id, connector_id)
@@ -391,7 +392,7 @@ def hubspot_connection_auth_status(
         connector_id,
         settings,
         environment_name=env,
-        validate_remote=False,
+        validate_remote=validate_remote,
     )
     if err:
         return "auth_expired"

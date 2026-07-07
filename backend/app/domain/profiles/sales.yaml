@@ -1,0 +1,13 @@
+profile_id: sales
+department: sales
+label: Sales
+kpis: [pipeline_coverage, win_rate, forecast_accuracy, quota_attainment]
+terminology: [pipeline, deal, prospect, crm, forecast, commit]
+connector_preferences: [hubspot, salesforce, slack]
+retrieval_preferences: [playbooks, battlecards, crm_records]
+memory_priorities: [deal_history, win_loss_notes, objection_handling]
+workflow_priorities: [lead_qualification, deal_review, forecast_submission]
+risk_tolerance: medium
+recommendation_types: [next_best_action, deal_coaching, pipeline_health]
+success_metrics: [deal_progression, forecast_accuracy, win_loss_patterns]
+learning_signals: [deal_progression, forecast_accuracy, win_loss_patterns]

@@ -1,5 +1,5 @@
 ---
-title: Use Command Center
+title: Use Gravitre AI (Execute mode)
 description: Delegate tracked work in natural language — action plans, async jobs, and human approval for sensitive steps.
 audience: public
 depth: mid
@@ -11,34 +11,36 @@ prev:
   title: Quickstart
   href: /docs/getting-started/quickstart
 next:
-  title: Use Workspace Chat
+  title: Use Gravitre AI (Chat mode)
   href: /docs/guides/how-to/assistant
 ---
 
-The **Command Center** (`/command-center`) is Gravitre's work console for **assigned, monitored execution**. Describe an outcome; Gravitre builds an action plan, surfaces context from Runs and Connectors, and tracks async jobs with explicit verification labels. It is not a free-form chat thread.
+**Gravitre AI** (`/ai`) is the unified AI surface. **Execute mode** (`/ai?mode=execute`) is for **assigned, monitored work**: describe an outcome; Gravitre builds an action plan, surfaces context from Runs and Connectors, and tracks async jobs with explicit verification labels. It is not a free-form chat thread.
 
-## Open Command Center
+Legacy routes `/command-center` and `/operator` redirect to Gravitre AI.
 
-Sidebar → **WORK → Command Center** (`/command-center`).
+## Open Execute mode
+
+Sidebar → **Gravitre AI** (`/ai`), then select **Execute** mode — or open `/ai?mode=execute` directly.
 
 The page shows:
 
 - **Command input** — your instruction and optional context attachment
 - **Environment badge** — staging vs production scope
-- **Execution mode** — how aggressively the Operator may invoke tools
-- **Model selector** — Auto or explicit LLM routing
+- **Execution mode** — how aggressively Gravitre may invoke tools
+- **Model selector** — Auto or explicit LLM routing (including GIBE-backed routing when configured)
 - **Timeline** — findings, plan steps, and job status
 - **Suggested actions** — one-click follow-ups with confidence and approval badges
 
-## Command Center vs Workspace Chat vs Universal Search
+## Gravitre AI modes compared
 
-| | **Command Center** | **Workspace Chat** | **Universal Search** |
-|---|---------------------|--------------------|----------------------|
-| **Goal** | Execute a plan with tracked jobs | Answer questions in chat | Find records with deep links |
+| | **Execute** | **Chat** | **Find / Search** |
+|---|-------------|----------|-------------------|
+| **Goal** | Run a plan with tracked jobs | Answer questions in dialogue | Locate records with deep links |
 | **Output** | Action plan + Run linkage | Conversational reply | Grouped search results |
-| **Route** | `/command-center` | `/assistant` | `/search` |
+| **Route** | `/ai?mode=execute` | `/ai?mode=chat` | `/ai?mode=find` or `/search` |
 
-Use Command Center when you want durable work with a visible plan. Use Workspace Chat for exploration and Q&A. Use Universal Search when you know what you are looking for and need a link — not a chat reply.
+Use **Execute** when you want durable work with a visible plan. Use **Chat** for exploration and Q&A. Use **Find** when you know what you are looking for and need a link — not a chat reply.
 
 ## Typical flow
 
@@ -57,7 +59,7 @@ Pin context so the plan is grounded in real org data:
 | **Connector** | Fix sync errors or credential issues |
 | **Source** | Query or ingest related knowledge |
 
-Context packs load via `/api/operator/context/{type}/{id}` and appear as chips in the Operator UI.
+Context packs load via `/api/operator/context/{type}/{id}` and appear as chips in the Gravitre AI UI.
 
 ### Step 2 — Write a strong instruction
 
@@ -78,71 +80,28 @@ Propose fixes but do not change workflows automatically.
 The plan lists numbered steps with status (pending, current, completed). Check:
 
 - **Required Connectors** — connect missing integrations before approving execution
-- **Approval required** badges — writes and high-risk steps
-- **Guardrail status** — pass, warn, or fail on suggested actions
+- **Approval badges** — steps that write to external systems may require human sign-off
+- **Confidence labels** — GIBE-backed suggestions show confidence when available
 
-### Step 4 — Execute and monitor
+### Step 4 — Approve and monitor
 
-Start the job from suggested actions or the plan panel. Long jobs stream status updates. You can **pause**, **retry**, or **cancel** from the Operator timeline when supported.
+Approve gated steps in-line or from **Approvals** (`/approvals`). Monitor job progress in the timeline; open linked **Runs** for step-level detail.
 
-### Step 5 — Verify results
+### Step 5 — Read the verification summary
 
-Every Operator job should answer:
+The summary distinguishes what was **analyzed**, **proposed**, and **executed**. Skipped steps usually mean a missing Connector, failed health check, or pending approval.
 
-- What was **analyzed** (read-only context)?
-- What **executed** (connector writes, workflow triggers)?
-- What was **skipped** (missing Connector, rejected approval)?
+## Connector availability
 
-Open the linked **Run** for step-level logs.
+Before execution, Gravitre checks connector readiness: **Configured → Authenticated → Healthy → Executable**. The same checks appear on the **Connectors** page and in **Chat** mode tool chips.
 
-## Suggested actions and trust badges
+## What GIBE contributes
 
-Suggested actions show:
-
-- **Confidence score** — model certainty (advisory, not a guarantee)
-- **Guardrail status** — policy checks on the proposed action
-- **Token estimate** — rough cost signal
-- **Approval required** — must confirm before external writes
-
-Reject or edit actions that fail guardrails or lack required Connectors.
-
-## Sessions and history
-
-Operator sessions group related commands. Use session history to:
-
-- Resume work on the same workflow or run
-- Compare plans across attempts
-- Create **Assignments** from follow-up items (`ListTodo` actions in UI)
-
-## Example prompts by scenario
-
-**RevOps**
-
-```text
-Summarize open HubSpot deals closing this month. Flag deals with no activity in 14 days.
-```
-
-**Support**
-
-```text
-List Zendesk tickets tagged escalation opened today. Draft a handoff note — do not update tickets.
-```
-
-**Engineering**
-
-```text
-Show GitHub PRs waiting on review in repo acme/api. Suggest reviewers based on CODEOWNERS.
-```
-
-**Finance**
-
-```text
-Pull last week's QuickBooks expenses over $500 and export a CSV summary for approval.
-```
+Execute-mode plans can incorporate GIBE signals — failure predictions, retrieval quality, and org memories — with confidence scores shown in the UI. Recommendations stay advisory until you approve.
 
 ## API
 
-Context packs:
+Context and action-plan endpoints (stable paths):
 
 ```bash
 curl -s "https://gravitre.app/api/operator/context/run/RUN_ID" \
@@ -150,43 +109,18 @@ curl -s "https://gravitre.app/api/operator/context/run/RUN_ID" \
 
 curl -s "https://gravitre.app/api/operator/context/workflow/WORKFLOW_ID" \
   -H "Authorization: Bearer YOUR_API_KEY"
-```
 
-Generate an action plan:
-
-```bash
 curl -s -X POST "https://gravitre.app/api/operator/action-plan" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{
-    "operatorGoal": "Summarize failed runs today",
-    "primaryContext": {"type": "run", "id": "RUN_UUID"},
-    "relatedContexts": []
-  }'
+  -d '{"instruction": "Summarize failed runs today", "environmentId": "ENV_ID"}'
 ```
 
-List org prompt shortcuts:
-
-```bash
-curl -s "https://gravitre.app/api/operator/prompts" \
-  -H "Authorization: Bearer YOUR_API_KEY"
-```
-
-Agent jobs initiated from the UI use the async job APIs documented under `/api/agents` in [OpenAPI](/docs/api/openapi.json). All Operator routes require org context and respect the active **Environment**.
-
-## Common issues
-
-| Issue | Resolution |
-|-------|------------|
-| Empty plan | Add primary context or narrow the goal |
-| Steps skipped | Connect required Connector in active environment |
-| Approval loop | Clear **Approvals** queue or reject stale items |
-| Staging vs prod mismatch | Switch environment badge before executing |
+See [OpenAPI](/docs/api/openapi.json) for schemas.
 
 ## Related
 
-- [Use Workspace Chat](/docs/guides/how-to/assistant)
-- [Universal Search](/docs/guides/how-to/search)
-- [Manage approvals](/docs/guides/how-to/approvals)
+- [Use Gravitre AI (Chat mode)](/docs/guides/how-to/assistant)
+- [GIBE — Learning & built-in ML](/docs/guides/how-to/org-learning)
 - [Connect integrations](/docs/guides/how-to/connectors)
 - [Monitor Runs](/docs/guides/how-to/runs)

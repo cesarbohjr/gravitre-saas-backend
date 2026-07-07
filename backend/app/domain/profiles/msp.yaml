@@ -1,0 +1,13 @@
+profile_id: msp
+department: msp
+label: MSP
+kpis: [ticket_volume, mttr, patch_compliance, device_health, margin_per_client]
+terminology: [rmm, endpoint, noc, psa, mdr, patch, managed service]
+connector_preferences: [connectwise, datto, slack, zendesk]
+retrieval_preferences: [runbooks, client_sops, rmm_policies, security_baselines]
+memory_priorities: [client_environment, alert_patterns, patch_history]
+workflow_priorities: [alert_triage, patch_deployment, client_onboarding]
+risk_tolerance: low
+recommendation_types: [alert_response, patch_plan, client_health]
+success_metrics: [resolution_time, patch_compliance, client_retention]
+learning_signals: [alert_resolution, patch_outcomes, client_satisfaction]

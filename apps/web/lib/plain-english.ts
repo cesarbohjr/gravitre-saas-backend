@@ -97,6 +97,25 @@ export function polishAssistantText(text: string): string {
     .replace(/\bat\s+\/([a-z][a-z0-9-]*)\b/gi, (_, path: string) =>
       ` on the ${path.replace(/-/g, " ")} page`,
     )
+    .replace(
+      /Pipeline health cannot be fully assessed yet because/gi,
+      "I can't give a full pipeline health read yet because",
+    )
+    .replace(/cannot be fully assessed yet because/gi, "isn't fully available yet because")
+    .replace(/\bI am unable to\b/gi, "I can't")
+    .replace(/\bI apologize\b/gi, "Heads up")
+    .replace(/\bPlease note that\b/gi, "")
+    .replace(/\bAt this time,?\s*/gi, "")
+    .replace(/\bIt appears that\b/gi, "")
+    .replace(/\bIn order to\b/gi, "To")
+    .replace(/\bIt is recommended that you\b/gi, "I'd")
+    .replace(/\bYou should consider\b/gi, "Consider")
+    .replace(/\bBased on the available data,?\s*/gi, "")
+    .replace(/\bAs an AI language model,?\s*/gi, "")
+    .replace(/\bRecommended next steps:\s*/gi, "Next steps:\n")
+    .replace(/\bSource:\s*connector status\b/gi, "")
+    .replace(/\bWorkflow health:\s*/gi, "Workflows: ")
+    .replace(/\bConnector status:\s*/gi, "Connections: ")
     .replace(/\n{3,}/g, "\n\n")
     .trim()
 }

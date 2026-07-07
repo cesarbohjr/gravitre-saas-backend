@@ -3,10 +3,14 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Annotated, Any
 
+import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from supabase import create_client
 
-from app.billing.service import resolve_org_id_from_checkout_metadata
+from app.billing.service import (
+    resolve_org_id_from_checkout_metadata,
+    resolve_org_id_from_stripe_customer,
+)
 from app.billing.stripe import verify_webhook
 from app.billing.webhook_idempotency import (
     claim_webhook_event,
@@ -58,7 +62,25 @@ def _plan_from_price(settings: Settings, price_id: str | None) -> str:
     return _normalize_tier(plan)
 
 
-def _write_event(client, org_id: str | None, event_type: str, payload: dict[str, Any], status_value: str = "success") -> None:
+def _stripe_event_dict(event: Any) -> dict[str, Any]:
+    if hasattr(event, "to_dict"):
+        return event.to_dict()
+    if isinstance(event, dict):
+        return event
+    return dict(event)
+
+
+def _resolve_org_id(client, data: dict[str, Any], metadata: dict[str, Any]) -> str | None:
+    org_id = str(metadata.get("org_id") or "").strip() or None
+    if org_id:
+        return org_id
+    org_id = resolve_org_id_from_checkout_metadata(client, metadata)
+    if org_id:
+        return org_id
+    return resolve_org_id_from_stripe_customer(client, data.get("customer"))
+
+
+def _write_event(client, org_id: str | None, event_type: str, payload: Any, status_value: str = "success") -> None:
     if not org_id:
         return
     client.table("billing_events").insert(
@@ -67,7 +89,7 @@ def _write_event(client, org_id: str | None, event_type: str, payload: dict[str,
             "action": event_type,
             "event_type": event_type,
             "status": status_value,
-            "payload": payload,
+            "payload": _stripe_event_dict(payload),
         }
     ).execute()
 
@@ -101,10 +123,9 @@ def _process_stripe_event(
     data: dict[str, Any],
     metadata: dict[str, Any],
     org_id: str | None,
-    event: dict[str, Any],
+    event: Any,
 ) -> None:
-    if not org_id:
-        org_id = resolve_org_id_from_checkout_metadata(client, metadata)
+    org_id = org_id or _resolve_org_id(client, data, metadata)
 
     if event_type == "checkout.session.completed":
         from app.marketplace.entitlements import fulfill_entitlement_from_checkout
@@ -194,6 +215,11 @@ def _process_stripe_event(
                 {"status": "past_due", "updated_at": datetime.now(timezone.utc).isoformat()}
             ).eq("org_id", org_id).execute()
 
+    if event_type == "account.updated":
+        from app.services.marketplace_billing_service import handle_connect_account_updated
+
+        handle_connect_account_updated(client, settings, data if isinstance(data, dict) else {})
+
     _write_event(client, org_id, event_type, event)
 
 
@@ -210,7 +236,14 @@ async def stripe_webhook(
 
     payload_bytes = await request.body()
     signature = request.headers.get("stripe-signature")
-    event = verify_webhook(settings, payload_bytes, signature)
+    try:
+        event = verify_webhook(settings, payload_bytes, signature)
+    except stripe.error.SignatureVerificationError as exc:
+        logger.warning("Stripe webhook signature verification failed: %s", exc)
+        raise HTTPException(status_code=400, detail="Invalid Stripe webhook signature") from exc
+    except ValueError as exc:
+        logger.warning("Stripe webhook payload invalid: %s", exc)
+        raise HTTPException(status_code=400, detail="Invalid Stripe webhook payload") from exc
 
     stripe_event_id = str(getattr(event, "id", None) or event.get("id") or "")
     event_type = str(getattr(event, "type", None) or event.get("type") or "")
@@ -235,6 +268,7 @@ async def stripe_webhook(
         _process_stripe_event(client, settings, event_type, data, metadata, org_id, event)
     except Exception:
         release_webhook_event_claim(client, stripe_event_id)
+        logger.exception("Stripe webhook processing failed for event %s (%s)", stripe_event_id, event_type)
         raise
 
     return {"received": True}

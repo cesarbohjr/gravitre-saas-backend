@@ -395,7 +395,7 @@ async def load_admin_intelligence_snapshot(
     )
     failed_recent = [q for q in queries if q.get("is_failed_search")]
     normalized_count = distinct_normalized_count(queries)
-    return {
+    snapshot = {
         "queryVolume": {
             "totalLogged": len(queries),
             "distinctNormalized": normalized_count,
@@ -407,3 +407,13 @@ async def load_admin_intelligence_snapshot(
         "knowledgeGaps": gaps,
         "entityRelationships": relationships,
     }
+    if getattr(settings, "domain_adaptive_learning_enabled", False):
+        from app.services.knowledge_freshness_service import get_knowledge_freshness_service
+        from app.services.domain_optimization_engine import get_domain_optimization_engine
+
+        snapshot["knowledgeFreshness"] = await get_knowledge_freshness_service(settings).load_admin_summary(
+            org_id,
+            client=db,
+        )
+        snapshot["domainOptimization"] = await get_domain_optimization_engine(settings).get_admin_summary(org_id)
+    return snapshot

@@ -649,6 +649,27 @@ def _department_packs() -> list[CatalogAsset]:
     return [marketing_pack, msp_pack, revops_pack, cs_pack, hr_pack]
 
 
+def _intelligence_packs() -> list[CatalogAsset]:
+    from app.marketplace.intelligence_packs.catalog import intelligence_pack_to_marketplace_asset, list_intelligence_pack_specs
+
+    assets: list[CatalogAsset] = []
+    for spec in list_intelligence_pack_specs():
+        payload = intelligence_pack_to_marketplace_asset(spec)
+        assets.append(
+            CatalogAsset(
+                slug=payload["slug"],
+                title=payload["title"],
+                description=payload["description"],
+                asset_type="intelligence_pack",
+                category="intelligence_pack",
+                department=payload["department"],
+                tags=payload["tags"],
+                config=payload["config"],
+            )
+        )
+    return assets
+
+
 def list_catalog_assets() -> list[CatalogAsset]:
     """Return the full Gravitre starter library in dependency order (children before packs)."""
     from app.marketplace.seed_catalog_expansion import expansion_catalog_assets
@@ -657,6 +678,7 @@ def list_catalog_assets() -> list[CatalogAsset]:
         _ai_agents()
         + _workflows()
         + _knowledge_packs()
+        + _intelligence_packs()
         + expansion_catalog_assets()
         + _department_packs()
     )

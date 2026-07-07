@@ -176,21 +176,32 @@ class OrgContextService:
             return None
 
         def load_integrations() -> tuple[list[dict[str, Any]], list[str]]:
+            from app.connectors.connector_availability_service import list_connector_availability
+
             integrations: list[dict[str, Any]] = []
-            connected_types: list[str] = []
-            for conn in list_connectors(client, org_id, environment_name=environment_name):
-                ctype = str(conn.get("type") or "").strip()
-                status = str(conn.get("status") or "").lower()
+            availability_rows = list_connector_availability(
+                client,
+                org_id,
+                self.settings,
+                environment_name=environment_name,
+                force_live=True,
+            )
+            for item in availability_rows:
+                ctype = str(item.get("vendor") or "").strip()
                 if limits["integrations"] and len(integrations) < limits["integrations"]:
                     integrations.append(
                         {
-                            "id": str(conn.get("id") or ""),
+                            "id": str(item.get("connector_id") or ""),
                             "type": ctype or "custom",
-                            "status": status or "unknown",
+                            "status": str(item.get("display_status") or item.get("health_status") or "unknown"),
+                            "executionAvailable": bool(item.get("execution_available")),
                         }
                     )
-                if is_connector_usable(status) and ctype:
-                    connected_types.append(ctype)
+            connected_types = [
+                str(item.get("vendor") or "").strip().lower()
+                for item in availability_rows
+                if item.get("execution_available") and item.get("vendor")
+            ]
             return integrations, connected_types
 
         def load_agents() -> list[dict[str, Any]]:

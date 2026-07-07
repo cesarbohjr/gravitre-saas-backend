@@ -13,7 +13,8 @@ from app.services.learning_strategy_keys import (
     parse_segment_key,
 )
 from app.services.model_router import ModelRouter
-from app.services.strategy_performance_ledger import get_strategy_performance_ledger
+from app.services.strategy_performance_ledger import get_strategy_performance_ledger, PROVIDER_STRATEGY_KEYS
+from app.services.domain_routing_policy import apply_model_selection_policy
 
 ML_TASK_MAP: dict[str, str] = {
     "data_analysis": "workflow_anomaly_detector",
@@ -47,7 +48,7 @@ class ModelSelector:
         if ml_candidate and ml_candidate in GRAVITRE_ML_CATALOG:
             catalog_meta = GRAVITRE_ML_CATALOG[ml_candidate]
             if catalog_meta["status"] == ModelStatus.PLANNED:
-                return await self._llm_selection_with_ledger(
+                selection = await self._llm_selection_with_ledger(
                     org_id,
                     task_type,
                     classification,
@@ -55,8 +56,9 @@ class ModelSelector:
                     fallback_segment_key=fallback_segment_key,
                     reason=f"{ml_candidate} is PLANNED",
                 )
+                return apply_model_selection_policy(selection, classification)
             if catalog_meta["status"] == ModelStatus.DISABLED:
-                return await self._llm_selection_with_ledger(
+                selection = await self._llm_selection_with_ledger(
                     org_id,
                     task_type,
                     classification,
@@ -64,6 +66,7 @@ class ModelSelector:
                     fallback_segment_key=fallback_segment_key,
                     reason=f"{ml_candidate} is DISABLED",
                 )
+                return apply_model_selection_policy(selection, classification)
             try:
                 deployed = await self._list_deployed_ml_models(org_id)
                 if deployed:
@@ -77,7 +80,7 @@ class ModelSelector:
                     ml_candidate = preferred
                 if await self._org_has_deployed_model(org_id, ml_candidate):
                     org_status = await get_org_model_status(org_id, ml_candidate, settings=self.settings)
-                    return {
+                    selection = {
                         "primary_model": "ml_internal",
                         "ml_model_name": ml_candidate,
                         "llm_tier": "fast",
@@ -86,15 +89,17 @@ class ModelSelector:
                         "catalog_status": org_status.get("catalog_status"),
                         "segment_key": segment_key,
                     }
+                    return apply_model_selection_policy(selection, classification)
             except Exception:  # noqa: BLE001
                 pass
-        return await self._llm_selection_with_ledger(
+        selection = await self._llm_selection_with_ledger(
             org_id,
             task_type,
             classification,
             segment_key,
             fallback_segment_key=fallback_segment_key,
         )
+        return apply_model_selection_policy(selection, classification)
 
     async def _list_deployed_ml_models(self, org_id: str) -> list[str]:
         deployed: list[str] = []
@@ -157,7 +162,34 @@ class ModelSelector:
                 base["llm_tier"] = tier
                 if pref.get("reason") == "ledger_win_rate":
                     base["reason"] = f"Ledger preferred LLM tier {tier} for {task_type}"
+        provider_keys = list(PROVIDER_STRATEGY_KEYS)
+        default_provider = str(getattr(self.settings, "preferred_ai_provider", "openai") or "openai")
+        provider_pref = await get_strategy_performance_ledger(self.settings).choose_preferred_strategy(
+            org_id,
+            f"provider:{default_provider}",
+            provider_keys,
+            segment_key=segment_key,
+            fallback_segment_key=fallback_segment_key,
+        )
+        provider_selected = str(provider_pref.get("selected_key") or f"provider:{default_provider}")
+        if provider_selected.startswith("provider:"):
+            base["preferred_provider"] = provider_selected.split(":", 1)[1]
+            if provider_pref.get("reason") == "ledger_win_rate":
+                base["provider_reason"] = f"Ledger preferred provider {base['preferred_provider']}"
         base["segment_key"] = segment_key
+        from app.services.meta_learning_service import get_meta_learning_service
+
+        meta = get_meta_learning_service(self.settings)
+        if meta.is_enabled():
+            guidance = await meta.get_selection_guidance(
+                org_id,
+                segment_key,
+                "model",
+                candidate_keys,
+                default_key=selected,
+                classification=classification,
+            )
+            base = meta.apply_model_soft_prior(base, guidance, ledger_reason=str(pref.get("reason") or ""))
         return base
 
     async def _org_has_deployed_model(self, org_id: str, catalog_name: str) -> bool:

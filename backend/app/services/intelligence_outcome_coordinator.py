@@ -102,21 +102,29 @@ class IntelligenceOutcomeCoordinator:
                     "agent_id": agent_id,
                     "strategy_key": strategy_key,
                     "segment_key": segment_key,
+                    "domain": classification.get("domain"),
+                    "retrieval_effectiveness": response.get("retrieval_effectiveness")
+                    or classification.get("retrieval_effectiveness"),
                 },
             )
 
             from app.services.outcome_learning_service import get_outcome_learning_service
 
             learning = get_outcome_learning_service(self.settings)
+            domain = classification.get("domain") or {}
             if message_id:
                 learning.record_recommendation_outcome_async(
                     org_id=org_id,
                     recommendation_id=message_id,
                     outcome_event="recommendation_created",
+                    department=domain.get("department_key") or classification.get("department"),
                     task_type=classification.get("intent"),
                     confidence_score=response.get("confidence"),
                     model_name=(response.get("model_selection") or {}).get("ml_model_name"),
                     strategy_key=strategy_key,
+                    domain_context=domain,
+                    retrieval_effectiveness=response.get("retrieval_effectiveness")
+                    or classification.get("retrieval_effectiveness"),
                 )
 
             if response.get("consensus_used"):
@@ -133,6 +141,75 @@ class IntelligenceOutcomeCoordinator:
                         "minority_opinion_count": len(response.get("minority_opinions") or []),
                     },
                 )
+
+            from app.services.adaptive_learning_service import get_adaptive_learning_service
+
+            adaptive = get_adaptive_learning_service(self.settings)
+            if adaptive.is_enabled():
+                await adaptive.ingest_response_outcome(
+                    org_id,
+                    segment_key=str(segment_key),
+                    classification=classification,
+                    response=response,
+                    metadata={
+                        "retrieval_effectiveness": response.get("retrieval_effectiveness")
+                        or classification.get("retrieval_effectiveness"),
+                        "strategy_key": strategy_key,
+                    },
+                )
+
+            from app.services.meta_learning_service import get_meta_learning_service
+
+            meta = get_meta_learning_service(self.settings)
+            if meta.is_enabled():
+                polarity = "positive" if float((response.get("confidence") or 0)) >= 0.65 else "neutral"
+                retrieval = response.get("retrieval_effectiveness") or classification.get("retrieval_effectiveness") or {}
+                if isinstance(retrieval, dict):
+                    score = retrieval.get("retrieval_score")
+                    if score is not None:
+                        polarity = "positive" if float(score) >= 0.75 else "negative" if float(score) <= 0.35 else polarity
+                model_selection = response.get("model_selection") or {}
+                if model_selection.get("primary_model") == "ml_internal" and model_selection.get("ml_model_name"):
+                    model_key = f"model:{model_selection['ml_model_name']}"
+                else:
+                    model_key = f"llm:{model_selection.get('llm_tier') or 'standard'}"
+                await meta.record_strategy_outcome(
+                    org_id,
+                    str(segment_key),
+                    "model",
+                    model_key,
+                    polarity,
+                    metadata={"strategy_key": strategy_key},
+                )
+                agent_selection = response.get("agent_selection") or {}
+                persona_key = agent_selection.get("persona_key") or (agent_selection.get("persona") or {}).get("key")
+                if persona_key:
+                    await meta.record_strategy_outcome(
+                        org_id,
+                        str(segment_key),
+                        "agent",
+                        meta.build_agent_strategy_key(str(persona_key)),
+                        polarity,
+                        metadata={"strategy_key": strategy_key},
+                    )
+                if strategy_key:
+                    await meta.record_strategy_outcome(
+                        org_id,
+                        str(segment_key),
+                        "retrieval",
+                        meta.build_retrieval_strategy_key(str(strategy_key)),
+                        polarity,
+                        metadata={"retrieval_effectiveness": retrieval},
+                    )
+                connectors = (agent_selection.get("persona") or {}).get("preferred_connectors") or []
+                if connectors:
+                    await meta.record_strategy_outcome(
+                        org_id,
+                        str(segment_key),
+                        "connector_combo",
+                        meta.build_connector_combo_key(list(connectors)),
+                        polarity,
+                    )
         except Exception as exc:  # noqa: BLE001
             logger.debug("intelligence_outcome_coordinator_skipped org_id=%s error=%s", org_id, exc)
 

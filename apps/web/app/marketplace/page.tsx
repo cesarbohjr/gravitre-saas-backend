@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { GridPattern } from "@/components/gravitre/premium-effects"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { ROI_PAGE_TITLE } from "@/lib/marketplace-outcome-labels"
 import { cn } from "@/lib/utils"
 import {
@@ -388,11 +389,10 @@ function MarketplaceHome() {
               <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10">
                 <Package className="h-5 w-5 text-primary" aria-hidden />
               </span>
-              Marketplace
+              {SURFACE_COPY.pages.marketplace.title}
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground text-pretty md:text-base">
-              Stand up an entire department in one click — pre-built agents, knowledge sources, and
-              workflows with a guided connector checklist. Install an outcome, not just an app.
+              {SURFACE_COPY.pages.marketplace.description}
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
               <Button asChild>

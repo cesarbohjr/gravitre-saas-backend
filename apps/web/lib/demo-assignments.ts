@@ -28,6 +28,9 @@ export interface DemoAssignment {
   qualityChecks?: Array<{ label: string; status: "pass" | "warn" }>
 }
 
+/** Production assignment shape (legacy name retained for compatibility). */
+export type AssignmentRecord = DemoAssignment
+
 const runtimeDemoAssignments = new Map<string, DemoAssignment>()
 
 export function registerDemoAssignment(assignment: DemoAssignment): void {
@@ -101,6 +104,26 @@ export async function rejectAssignment(id: string, reason: string): Promise<Agen
   })
   if (response.ok) {
     return response.json() as Promise<AgentJob>
+  }
+  throw new Error(await parseApiError(response))
+}
+
+export async function updateAssignmentDeliverable(id: string, content: string): Promise<AgentJob> {
+  const response = await apiFetch(`/api/assignments/${id}/deliverable`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  })
+  if (response.ok) {
+    return response.json() as Promise<AgentJob>
+  }
+  throw new Error(await parseApiError(response))
+}
+
+export async function pushAssignmentDeliverable(id: string): Promise<{ ok: boolean; destination?: string }> {
+  const response = await apiFetch(`/api/assignments/${id}/push`, { method: "POST" })
+  if (response.ok) {
+    return response.json() as Promise<{ ok: boolean; destination?: string }>
   }
   throw new Error(await parseApiError(response))
 }

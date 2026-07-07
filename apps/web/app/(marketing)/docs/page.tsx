@@ -2,7 +2,9 @@ import Link from "next/link"
 import {
   Activity,
   ArrowRight,
+  BarChart3,
   Bot,
+  Brain,
   Code,
   Database,
   MessageSquare,
@@ -17,9 +19,29 @@ import type { Metadata } from "next"
 import { getDocsNavSections, getPublishedPublicDocs, getDocsSearchIndex } from "@/lib/docs/load-docs"
 import { DocsSearch } from "@/components/docs/docs-search"
 import { categoryIcon, categoryDescription, categoryLanding } from "@/components/docs/category-meta"
+import { MARKETING_COPY } from "@/lib/marketing-copy"
 
-const title = "Documentation | Gravitre"
-const description = "Guides, concepts, API reference, and integration setup for Gravitre."
+const DOC_ICON_MAP = {
+  Zap,
+  Brain,
+  Bot,
+  Database,
+  Workflow,
+  Activity,
+  BarChart3,
+  Code,
+  MessageSquare,
+  Terminal,
+  Package,
+} as const
+
+const quickLinks = MARKETING_COPY.docs.quickLinks.map((link) => ({
+  ...link,
+  icon: DOC_ICON_MAP[link.iconKey as keyof typeof DOC_ICON_MAP] ?? Zap,
+}))
+
+const title = `${MARKETING_COPY.docs.title} | Gravitre`
+const description = MARKETING_COPY.docs.description
 
 export const metadata: Metadata = {
   title,
@@ -37,73 +59,15 @@ export const metadata: Metadata = {
   },
 }
 
-const quickLinks = [
-  {
-    icon: Zap,
-    title: "Quickstart",
-    description: "Account, Connector, and first Run in ~10 minutes",
-    href: "/docs/getting-started/quickstart",
-  },
-  {
-    icon: Bot,
-    title: "Command Center",
-    description: "Delegate tracked work — plans, async jobs, and approvals",
-    href: "/docs/guides/how-to/ai-operator",
-  },
-  {
-    icon: MessageSquare,
-    title: "Workspace Chat",
-    description: "Multi-turn org-aware chat, modes, and daily briefings",
-    href: "/docs/guides/how-to/assistant",
-  },
-  {
-    icon: Terminal,
-    title: "Universal Search",
-    description: "Find runs, workflows, and agents — links, not chat",
-    href: "/docs/guides/how-to/search",
-  },
-  {
-    icon: Workflow,
-    title: "Workflows",
-    description: "Triggers, versions, dry-run, and schedules",
-    href: "/docs/guides/how-to/workflows",
-  },
-  {
-    icon: Database,
-    title: "Connectors",
-    description: "OAuth, sync, health, and vendor setup guides",
-    href: "/docs/guides/how-to/connectors",
-  },
-  {
-    icon: Activity,
-    title: "Runs",
-    description: "Filter, debug, retry, and approve executions",
-    href: "/docs/guides/how-to/runs",
-  },
-  {
-    icon: Package,
-    title: "Marketplace",
-    description: "Install agents, workflows, and department packs",
-    href: "/docs/guides/how-to/marketplace",
-  },
-  {
-    icon: Code,
-    title: "API quickstart",
-    description: "REST at gravitre.app/api — keys, runs, webhooks",
-    href: "/docs/api/quickstart",
-  },
-]
-
 const FEATURED_GUIDE_SLUGS = [
-  "guides/how-to/ai-operator",
-  "guides/how-to/workflows",
-  "guides/how-to/connectors",
-  "guides/how-to/runs",
+  "guides/how-to/org-learning",
   "guides/how-to/assistant",
-  "guides/how-to/marketplace",
-  "guides/how-to/approvals",
-  "guides/how-to/enterprise",
-  "guides/how-to/settings",
+  "guides/how-to/connectors",
+  "guides/how-to/workflows",
+  "guides/how-to/failure-alerts",
+  "guides/how-to/runs",
+  "guides/how-to/metrics",
+  "guides/how-to/training",
 ]
 
 export default function DocsPage() {
@@ -125,7 +89,7 @@ export default function DocsPage() {
             Documentation
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-zinc-600">
-            Guides, concepts, API reference, and integration setup for Gravitre.
+            {MARKETING_COPY.docs.description}
           </p>
           <div className="mx-auto mt-8 max-w-xl">
             <DocsSearch index={searchIndex} placeholder="Search guides, concepts, and API reference…" />
@@ -138,10 +102,10 @@ export default function DocsPage() {
               Start here
             </Link>
             <Link
-              href="/docs/concepts/introduction"
+              href="/docs/guides/how-to/org-learning"
               className="rounded-full border border-zinc-200 px-5 py-2.5 text-zinc-700 transition-colors hover:border-emerald-300 hover:text-emerald-700"
             >
-              Core concepts
+              GIBE (Learning)
             </Link>
             <Link
               href="/docs/api/swagger"

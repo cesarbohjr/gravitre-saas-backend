@@ -26,6 +26,7 @@ import {
 } from "@/components/workflows/failure-prediction-alerts"
 import { workflowsApi } from "@/lib/api"
 import { cn } from "@/lib/utils"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { AlertTriangle, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react"
 
 type StatusFilter = "open" | "dismissed" | "all"
@@ -91,8 +92,8 @@ export default function WorkflowFailurePredictionsPage() {
     <AppShell>
       <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-6 md:py-8">
         <PageHeader
-          title="Workflow failure predictions"
-          description="Pre-failure alerts from connector auth expiry, rate limits, missing scopes, and run history."
+          title={SURFACE_COPY.pages.failureAlerts.title}
+          description={SURFACE_COPY.pages.failureAlerts.description}
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" size="sm" disabled={scanning} onClick={() => void scanAll()}>

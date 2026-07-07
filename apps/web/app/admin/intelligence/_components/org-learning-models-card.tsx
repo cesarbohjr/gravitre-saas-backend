@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { mlAdminApi, type MlAdminTrainResult, type MlAdminOrgModelStatus } from "@/lib/api"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { ApiError } from "@/lib/fetcher"
 import {
   ORG_LEARNING_MODEL_IDS,
@@ -136,7 +137,7 @@ export function OrgLearningModelsCard({ enabled }: { enabled: boolean }) {
             </div>
             <CardDescription>
               Retrain automatic intelligence models from this org&apos;s usage data. These are separate
-              from Agent Training (fine-tunes) and Model Registry (production deploy).
+              from {SURFACE_COPY.training.title} (fine-tunes) and {SURFACE_COPY.models.title} (production deploy).
             </CardDescription>
           </div>
           <Button

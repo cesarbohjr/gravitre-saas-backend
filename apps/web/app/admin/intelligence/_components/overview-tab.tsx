@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils"
 import { BanditStatusCard } from "./bandit-status-card"
 import { MemoryConflictsCard } from "./memory-conflicts-card"
 import { formatTime, readNumber } from "./shared"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 
 type Row = Record<string, unknown>
 
@@ -98,7 +99,12 @@ export function OverviewTab({
           <CardContent className="pt-6">
             <EmptyState
               title="Still learning your organization"
-              description={`Gravitre needs a bit more usage before it can surface real patterns. ${learningProgress.queryRows} of ${learningProgress.queryRowsNeeded} queries logged, ${learningProgress.workflowRows} of ${learningProgress.workflowRowsNeeded} workflow runs observed.`}
+              description={`Gravitre needs a bit more usage before it can surface real patterns. ${SURFACE_COPY.learningAdmin.learningProgressHint(
+                learningProgress.queryRows,
+                learningProgress.queryRowsNeeded,
+                learningProgress.workflowRows,
+                learningProgress.workflowRowsNeeded,
+              )}`}
               iconSlot={
                 <Brain className="h-6 w-6 text-emerald-500" weight="duotone" aria-hidden />
               }
@@ -124,7 +130,7 @@ export function OverviewTab({
         />
         <StatTile
           icon={Warning}
-          label="Failed searches"
+          label={SURFACE_COPY.learningAdmin.failedSearchesTitle}
           value={isLoading ? "…" : (volume?.failedSearchCount ?? 0)}
           tone="amber"
           emphasize
@@ -136,7 +142,7 @@ export function OverviewTab({
         <CardHeader>
           <div className="flex items-center gap-2">
             <Warning className="h-5 w-5 text-amber-500" weight="duotone" aria-hidden />
-            <CardTitle>Knowledge gaps</CardTitle>
+            <CardTitle>{SURFACE_COPY.learningAdmin.knowledgeGapsTitle}</CardTitle>
           </div>
           <CardDescription>Clustered failed-search themes with suggested documentation.</CardDescription>
         </CardHeader>
@@ -175,7 +181,7 @@ export function OverviewTab({
         <CardHeader>
           <div className="flex items-center gap-2">
             <Stack className="h-5 w-5 text-emerald-600 dark:text-emerald-400" weight="duotone" aria-hidden />
-            <CardTitle>Query clusters</CardTitle>
+            <CardTitle>{SURFACE_COPY.learningAdmin.queryClustersTitle}</CardTitle>
           </div>
           <CardDescription>Recurring query themes from normalized history (requires sufficient volume).</CardDescription>
         </CardHeader>

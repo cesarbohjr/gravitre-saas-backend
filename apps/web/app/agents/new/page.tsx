@@ -32,7 +32,7 @@ import { AgentReferenceFoldersEditor } from "@/components/agents/agent-reference
 import { formatReferenceFolderBreadcrumb } from "@/lib/agent-reference-folders"
 import type { AgentReferenceFolder } from "@/types/api"
 import { agentsApi } from "@/lib/api"
-import { inferAgentDepartment } from "@/lib/agent-display"
+import { inferAgentDepartment, type AgentDepartment } from "@/lib/agent-display"
 import { mutate as globalMutate } from "swr"
 import { toast } from "sonner"
 
@@ -89,6 +89,15 @@ function getAgentIcon(agentName: string): LucideIcon {
   return agentIconMap[agentName] || Bot
 }
 
+const DEPARTMENT_OPTIONS: AgentDepartment[] = [
+  "Marketing",
+  "Sales",
+  "Finance",
+  "Support",
+  "HR",
+  "Operations",
+]
+
 export default function NewAgentPage() {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
@@ -97,6 +106,7 @@ export default function NewAgentPage() {
   // Form state
   const [agentPurpose, setAgentPurpose] = useState("")
   const [agentName, setAgentName] = useState("")
+  const [selectedDepartment, setSelectedDepartment] = useState<AgentDepartment>("Operations")
   const [agentModel, setAgentModel] = useState("auto")
   const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([])
   const [selectedSystems, setSelectedSystems] = useState<string[]>([])
@@ -149,7 +159,7 @@ export default function NewAgentPage() {
 
       const trimmedName = agentName.trim()
       const trimmedPurpose = agentPurpose.trim()
-      const department = inferAgentDepartment(trimmedName, trimmedPurpose, trimmedName)
+      const department = selectedDepartment || inferAgentDepartment(trimmedName, trimmedPurpose, trimmedName)
 
       const created = await agentsApi.create({
         name: trimmedName,
@@ -251,6 +261,24 @@ export default function NewAgentPage() {
                       onChange={(e) => setAgentName(e.target.value)}
                       className="mt-1.5 w-full rounded-md border border-border bg-secondary px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                     />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-foreground">Department</label>
+                    <select
+                      value={selectedDepartment}
+                      onChange={(e) => setSelectedDepartment(e.target.value as AgentDepartment)}
+                      className="mt-1.5 w-full rounded-md border border-border bg-secondary px-4 py-2.5 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    >
+                      {DEPARTMENT_OPTIONS.map((dept) => (
+                        <option key={dept} value={dept}>
+                          {dept}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      Organize agents by team — used in filters, Meson, and reporting.
+                    </p>
                   </div>
 
                   <div>

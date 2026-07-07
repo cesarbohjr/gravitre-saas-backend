@@ -1,9 +1,10 @@
 import type { Metadata } from "next"
 import { authenticatedMetadata } from "@/lib/authenticated-metadata"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 
 export const metadata: Metadata = authenticatedMetadata(
-  "Agent Training | Gravitre",
-  "Train and fine-tune agent behavior.",
+  `${SURFACE_COPY.training.title} | Gravitre`,
+  SURFACE_COPY.training.description,
   { canonical: "/training" },
 )
 

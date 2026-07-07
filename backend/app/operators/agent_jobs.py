@@ -354,9 +354,89 @@ def reject_job(
     return upd.data[0] if upd.data else None
 
 
-# ---------------------------------------------------------------------------
-# Operator job handler (governed AI call + result + usage)
-# ---------------------------------------------------------------------------
+def update_job_deliverable(
+    client: Any,
+    org_id: str,
+    job_id: str,
+    *,
+    content: str,
+) -> dict[str, Any] | None:
+    job = get_job(client, org_id, job_id)
+    if not job:
+        return None
+    trimmed = content.strip()
+    if not trimmed:
+        return None
+    result = _job_result(job)
+    result["report_content"] = trimmed
+    result["reportContent"] = trimmed
+    handoff = result.get("handoff")
+    if isinstance(handoff, dict):
+        handoff["report"] = trimmed
+    upd = (
+        client.table("agent_jobs")
+        .update({"result": result, "updated_at": _now()})
+        .eq("id", job_id)
+        .eq("org_id", org_id)
+        .execute()
+    )
+    return upd.data[0] if upd.data else None
+
+
+def push_job_deliverable(
+    client: Any,
+    org_id: str,
+    job_id: str,
+    *,
+    user_id: str | None,
+    settings: Any,
+    environment_name: str = "production",
+) -> dict[str, Any]:
+    job = get_job(client, org_id, job_id)
+    if not job:
+        raise ValueError("Job not found")
+    result = _job_result(job)
+    content = str(
+        result.get("report_content")
+        or result.get("reportContent")
+        or result.get("final_recommendation")
+        or ""
+    ).strip()
+    if not content:
+        raise ValueError("No deliverable content to push")
+    destination = str(result.get("destination") or result.get("push_destination") or "").strip().lower()
+    if not destination:
+        raise ValueError("No push destination configured on this assignment")
+
+    from app.services.tool_service import invoke_tool
+    from app.services.tool_types import ToolContext
+
+    ctx = ToolContext(
+        org_id=org_id,
+        actor_id=user_id or "system",
+        settings=settings,
+        environment_name=environment_name,
+    )
+    if "slack" in destination:
+        channel = str(result.get("slack_channel") or result.get("channel") or "general").lstrip("#")
+        invoke_tool(
+            ctx,
+            "slack.post_message",
+            {"channel": channel, "message": content[:3000]},
+        )
+    elif "hubspot" in destination or "crm" in destination:
+        invoke_tool(
+            ctx,
+            "hubspot.notes.create",
+            {"body": content[:2000], "contact_id": result.get("contact_id")},
+        )
+    else:
+        raise ValueError(f"Destination '{destination}' is not supported for push yet")
+
+    result["pushed_at"] = _now()
+    result["push_status"] = "sent"
+    client.table("agent_jobs").update({"result": result, "updated_at": _now()}).eq("id", job_id).eq("org_id", org_id).execute()
+    return {"ok": True, "destination": destination, "pushed_at": result["pushed_at"]}
 
 def _assert_job_runnable(client: Any, org_id: str, job_id: str) -> None:
     from app.services.agent_interrupt_service import AgentExecutionInterrupted, enforce_interrupt
@@ -629,6 +709,20 @@ async def _notify_operator_job_finished(
         entity_type="agent_job",
         entity_id=str(job.get("id") or ""),
     )
+    try:
+        from app.services.notification_email_service import send_assignment_completion_email
+
+        send_assignment_completion_email(
+            client,
+            settings,
+            org_id=org_id,
+            user_id=user_id,
+            job_id=str(job.get("id") or ""),
+            task_title=task[:120] or "Assignment",
+            requires_approval=bool(result.get("requires_approval")),
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("assignment completion email skipped job_id=%s error=%s", job.get("id"), str(exc))
 
 
 from app.services.swarm_coordinator_service import run_swarm_subtask_job

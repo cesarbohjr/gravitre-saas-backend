@@ -9,8 +9,10 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 from supabase import create_client
 
-from app.auth.dependencies import get_current_user, get_org_context
+from app.auth.dependencies import get_current_user, get_department_context, get_org_context
 from app.config import Settings, get_settings
+from app.workflows.execute import execute_workflow_steps
+from app.workers.workflow_dispatch import try_enqueue_workflow_run_sync
 
 router = APIRouter(prefix="/api/lite", tags=["lite"])
 
@@ -218,10 +220,49 @@ async def get_lite_home(
     }
 
 
+def _filter_workflows_for_department(rows: list[dict[str, Any]], department: str | None) -> list[dict[str, Any]]:
+    if not department:
+        return rows
+    needle = department.strip().lower()
+    filtered: list[dict[str, Any]] = []
+    for row in rows:
+        definition = row.get("definition") if isinstance(row.get("definition"), dict) else {}
+        meta = definition.get("metadata") if isinstance(definition.get("metadata"), dict) else {}
+        dept = str(meta.get("department") or definition.get("department") or "").lower()
+        name = str(row.get("name") or "").lower()
+        if dept == needle or needle in name:
+            filtered.append(row)
+    return filtered if filtered else rows[:12]
+
+
+def _user_department_name(
+    client,
+    org_id: str,
+    user_id: str,
+    requested_department: str | None,
+) -> str | None:
+    if requested_department:
+        return requested_department
+    member_resp = (
+        client.table("department_members")
+        .select("department_id, departments(name, org_id)")
+        .eq("user_id", user_id)
+        .execute()
+    )
+    for row in member_resp.data or []:
+        dept = row.get("departments") or {}
+        if str(dept.get("org_id")) == org_id:
+            name = str(dept.get("name") or "").strip()
+            if name:
+                return name
+    return None
+
+
 @router.get("/workflows")
 async def get_lite_workflows(
-    _user: Annotated[dict, Depends(get_current_user)],
+    current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
+    department_name: Annotated[str | None, Depends(get_department_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
@@ -239,6 +280,9 @@ async def get_lite_workflows(
         return {"workflows": []}
     if response.error:
         raise HTTPException(status_code=500, detail=str(response.error))
+    rows = list(response.data or [])
+    scope = _user_department_name(client, org_id, str(current_user.get("user_id") or ""), department_name)
+    rows = _filter_workflows_for_department(rows, scope)
     return {
         "workflows": [
             {
@@ -246,8 +290,9 @@ async def get_lite_workflows(
                 "name": row.get("name") or "Workflow",
                 "description": row.get("description"),
                 "required_inputs": _extract_required_inputs(row.get("definition")),
+                "department": scope,
             }
-            for row in (response.data or [])
+            for row in rows
         ]
     }
 
@@ -307,7 +352,44 @@ async def assign_lite_work(
         raise HTTPException(status_code=500, detail=str(insert_resp.error))
     if not insert_resp.data:
         raise HTTPException(status_code=500, detail="Failed to create task")
-    return {"task_id": str(insert_resp.data[0].get("id"))}
+    run_id = str(insert_resp.data[0].get("id"))
+    wf_name = wf_resp.data[0].get("name") or "Workflow"
+    queued = try_enqueue_workflow_run_sync(
+        settings,
+        client,
+        org_id=org_id,
+        workflow_id=workflow_id,
+        run_id=run_id,
+    )
+    if not queued:
+        parameters = insert_payload.get("parameters") or {}
+        execute_workflow_steps(
+            settings=settings,
+            org_id=org_id,
+            user_id=_user["user_id"],
+            run_id=run_id,
+            definition=definition,
+            parameters=parameters,
+            client=client,
+            environment_name="production",
+        )
+    try:
+        from app.services.notification_service import create_user_notification
+
+        create_user_notification(
+            client,
+            org_id=org_id,
+            user_id=_user["user_id"],
+            notification_type="run_started",
+            title="Task assigned",
+            body=f"“{wf_name}” is running — you will be notified when it completes.",
+            url=f"/lite/tasks?task={run_id}",
+            entity_type="workflow_run",
+            entity_id=run_id,
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    return {"task_id": run_id, "queued": queued, "status": "running"}
 
 
 @router.get("/tasks")

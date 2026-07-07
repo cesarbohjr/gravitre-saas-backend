@@ -22,6 +22,7 @@ import { approvalsApi, runsApi } from "@/lib/api"
 import { interruptRequestedDescription, interruptRequestedMessage } from "@/lib/agent-interrupts"
 import type { Run as ApiRun, RunStatus } from "@/types/api"
 import { toast } from "sonner"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { 
   Search, 
   RefreshCw, 
@@ -417,14 +418,14 @@ export default function RunsPage() {
   })
 
   return (
-    <AppShell title="Runs">
+    <AppShell title={SURFACE_COPY.pages.runs.title}>
       <div className="flex flex-col h-full">
         {/* Header - fixed */}
         <div className="flex-shrink-0 px-4 md:px-6 pt-4 md:pt-6 pb-4 border-b border-border bg-gradient-to-b from-background to-background/80">
           <div className="flex items-center justify-between mb-4 md:mb-6">
             <div>
-              <h1 className="text-lg md:text-xl font-semibold text-foreground">Execution Timeline</h1>
-              <p className="text-xs md:text-sm text-muted-foreground mt-1">Real-time workflow monitoring</p>
+              <h1 className="text-lg md:text-xl font-semibold text-foreground">{SURFACE_COPY.pages.runs.headline}</h1>
+              <p className="text-xs md:text-sm text-muted-foreground mt-1">{SURFACE_COPY.pages.runs.description}</p>
             </div>
             <Button 
               variant="outline" 

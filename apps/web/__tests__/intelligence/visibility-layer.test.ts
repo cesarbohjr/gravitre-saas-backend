@@ -4,6 +4,28 @@ import {
   confidenceBandClass,
   plainDecisionReasoning,
 } from "@/lib/intelligence/helpers"
+import {
+  healthLabelText,
+  learningLevelLabel,
+  scoreLabelText,
+} from "@/lib/intelligence/visibility-helpers"
+
+describe("Wave E visibility helpers", () => {
+  it("health labels map to executive-friendly text", () => {
+    expect(healthLabelText("healthy")).toBe("Healthy")
+    expect(healthLabelText("needs_attention")).toBe("Needs attention")
+    expect(healthLabelText("insufficient_data")).toBe("Insufficient data")
+  })
+
+  it("learning level labels never expose internal reasoning", () => {
+    expect(learningLevelLabel("high")).toBe("High confidence")
+    expect(learningLevelLabel("insufficient_data")).toBe("Insufficient data")
+  })
+
+  it("executive score labels stay honest about insufficient data", () => {
+    expect(scoreLabelText("insufficient_data")).toBe("Insufficient data")
+  })
+})
 
 describe("Intelligence helpers", () => {
   it("Confidence badge renders correct color per band", () => {

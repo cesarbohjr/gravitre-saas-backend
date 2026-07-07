@@ -1,0 +1,13 @@
+profile_id: finance
+department: finance
+label: Finance
+kpis: [variance_to_budget, dso, gross_margin, cash_runway]
+terminology: [budget, forecast, reconciliation, accrual, variance]
+connector_preferences: [stripe, quickbooks, slack]
+retrieval_preferences: [financial_statements, budget_models, audit_trails]
+memory_priorities: [forecast_history, variance_explanations, close_checklists]
+workflow_priorities: [monthly_close, budget_approval, invoice_processing]
+risk_tolerance: low
+recommendation_types: [variance_analysis, forecast_adjustment, compliance_check]
+success_metrics: [forecast_accuracy, close_timeliness, audit_readiness]
+learning_signals: [forecast_accuracy, variance_patterns, approval_outcomes]

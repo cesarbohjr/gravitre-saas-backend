@@ -12,6 +12,55 @@ from __future__ import annotations
 from typing import Any
 
 AI_ARCHITECTURE_REGISTRY: dict[str, dict[str, Any]] = {
+    "continuous_feedback_loops": {
+        "status": "live",
+        "service": "LearningFeedbackLoop",
+        "module": "app.services.learning_feedback_loop",
+        "backed_by": "OutcomeTracker → memory promotion, retrieval learning, signal aggregation",
+        "risk_level": "low",
+        "advisory_only": False,
+    },
+    "meta_learning": {
+        "status": "partial",
+        "service": "MetaLearningService",
+        "module": "app.services.meta_learning_service",
+        "note": "Org-local strategy-family soft priors per domain segment. Gated by domain_adaptive_learning_enabled.",
+        "risk_level": "low",
+        "advisory_only": True,
+    },
+    "causal_inference": {
+        "status": "partial",
+        "service": "CausalImpactAnalyzer",
+        "module": "app.ml.causal_analysis",
+        "note": "Pre/post mean comparison PLANNED in catalog. Live fallback: correlational_causal_context v8 with explicit non-causal disclosure.",
+        "risk_level": "medium",
+        "advisory_only": True,
+    },
+    "external_knowledge_bases": {
+        "status": "partial",
+        "service": "ExternalKnowledgeService",
+        "module": "app.services.external_knowledge_service",
+        "new_capability": "Wikipedia + PubMed (healthcare/life-sciences) + industry provider registry",
+        "note": "Industry DB connectors (Clio, FHIR, SEC EDGAR) remain org-connector scoped.",
+        "risk_level": "low",
+        "advisory_only": True,
+    },
+    "reinforcement_learning": {
+        "status": "partial",
+        "service": "StrategyPerformanceLedger",
+        "module": "app.services.strategy_performance_ledger",
+        "note": "Tabular bandit v3 live (cluster-segment UCB). Neural RL gated by GRAVITRE_NEURAL_RL_SIGNOFF.",
+        "risk_level": "medium",
+        "advisory_only": True,
+    },
+    "multimodal_capabilities": {
+        "status": "partial",
+        "service": "MultimodalRouter",
+        "module": "app.ml.multimodal_models",
+        "note": "Image/vision via model_router tier. Audio/video pipeline PLANNED.",
+        "risk_level": "low",
+        "advisory_only": False,
+    },
     "enterprise_knowledge_graph": {
         "status": "live",
         "service": "KnowledgeGraphService",
@@ -122,6 +171,7 @@ AI_ARCHITECTURE_REGISTRY: dict[str, dict[str, Any]] = {
         "status": "live",
         "service": "HybridMemoryService",
         "module": "app.services.hybrid_memory_service",
+        "note": "RRF fusion with UnifiedRetrieval RAG sources plus graph/episodic/glossary memory.",
         "risk_level": "low",
         "advisory_only": False,
     },

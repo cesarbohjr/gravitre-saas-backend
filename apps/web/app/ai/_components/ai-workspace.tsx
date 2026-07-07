@@ -10,15 +10,12 @@ import {
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, type UIMessage } from "ai"
 import useSWR from "swr"
-import ReactMarkdown from "react-markdown"
-import remarkGfm from "remark-gfm"
-import { motion } from "framer-motion"
 import {
   ArrowUp,
   Loader2,
   PanelLeft,
   PanelLeftClose,
-  Sparkles,
+  PanelRight,
   Square,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -26,16 +23,42 @@ import { cn } from "@/lib/utils"
 import { useAuth, getAccessToken } from "@/lib/auth-context"
 import { ensureSelectedOrg, buildChatOrgPayload } from "@/lib/org-context"
 import { getEnvironmentHeader } from "@/lib/environment-context"
+<<<<<<< HEAD
+=======
+import {
+  DEPARTMENT_OPTIONS,
+  getDepartmentHeader,
+  getQuickDepartment,
+  isCrossDepartmentPrompt,
+  setSelectedDepartmentInStorage,
+} from "@/lib/department-context"
+import { resolveOperatorActiveContext } from "@/lib/operator-context"
+>>>>>>> origin/main
 import { parseChatError } from "@/lib/chat-errors"
+import dynamic from "next/dynamic"
 import { polishAssistantText } from "@/lib/plain-english"
-import { conversationMessageToUI } from "@/lib/chat-messages"
+import { endChatPerf, startChatPerf } from "@/lib/chat-performance"
+import { buildConversationTranscript } from "@/lib/conversation-transcript"
+import {
+  serializeInlineTurn,
+  splitConversationMessages,
+  type PersistedInlineTurn,
+} from "@/lib/ai-inline-turn-persistence"
 import { conversationsApi, searchApi, assistantApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
 import type { AiEngine } from "@/lib/ai-surface-handoff"
 import type { SearchResult } from "@/types/api"
+import { ChatTranscript } from "@/components/gravitre/assistant/chat-transcript"
 import { ConversationSidebar } from "@/components/gravitre/assistant/conversation-sidebar"
 import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
 import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { usePreferredPersona } from "@/hooks/use-preferred-persona"
 import { useAsyncJob, type AgentJob } from "@/hooks/use-async-job"
 import {
@@ -54,13 +77,24 @@ import { AiExecuteResults } from "./ai-execute-results"
 import { AiFindResults } from "./ai-find-results"
 import { AiLanding } from "./ai-landing"
 import { AiLayoutPanelPicker } from "./ai-layout-panel-picker"
-import { AI_MODES, getModeMeta, type ModeId } from "./ai-mode-config"
+import { AI_EXAMPLE_PROMPTS, AI_MODES, getModeMeta, type ModeId } from "./ai-mode-config"
 import {
-  ChatExecutionPanel,
   type ChatExecutionResult,
   type ChatPendingTask,
 } from "@/components/gravitre/assistant/chat-execution-panel"
 import { useNotifications } from "@/components/gravitre/notification-center"
+import {
+  clearCachedConversationMessages,
+  readCachedConversationMessages,
+  readCachedInlineTurns,
+  readStoredConversationId,
+  writeCachedConversationMessages,
+  writeCachedInlineTurns,
+  writeStoredConversationId,
+} from "@/lib/ai-conversation-storage"
+import type { AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief-panel"
+import { PlanProgressIndicator } from "@/components/gravitre/assistant/plan-progress-indicator"
+import type { BusinessSignal } from "@/components/gravitre/assistant/business-signals-banner"
 import {
   DEFAULT_RESULT_BLOCK_ORDER,
   type LayoutColumn,
@@ -74,23 +108,11 @@ import {
   persistLayoutEnabled,
   persistLayoutOrder,
 } from "./ai-layout-storage"
-import { LiveActivityRail } from "./live-activity-rail"
-import {
-  BusinessSignalsBanner,
-  type BusinessSignal,
-} from "@/components/gravitre/assistant/business-signals-banner"
-import type { AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief-panel"
-import { ExplainabilityPanel } from "@/components/gravitre/assistant/explainability-panel"
-import { PlanProgressIndicator } from "@/components/gravitre/assistant/plan-progress-indicator"
-import {
-  clearCachedConversationMessages,
-  readCachedConversationMessages,
-  readCachedInlineTurns,
-  readStoredConversationId,
-  writeCachedConversationMessages,
-  writeCachedInlineTurns,
-  writeStoredConversationId,
-} from "@/lib/ai-conversation-storage"
+
+const LiveActivityRail = dynamic(
+  () => import("./live-activity-rail").then((module) => ({ default: module.LiveActivityRail })),
+  { ssr: false, loading: () => null },
+)
 
 type InlineTurn = {
   id: string
@@ -133,6 +155,7 @@ export function AiWorkspace({
   const [routing, setRouting] = useState(false)
   const [routedTo, setRoutedTo] = useState<AiEngine | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [activityRailOpen, setActivityRailOpen] = useState(false)
   const [inlineTurns, setInlineTurns] = useState<InlineTurn[]>([])
   const [layoutBlockOrder, setLayoutBlockOrder] = useState<ResultBlockId[]>(DEFAULT_RESULT_BLOCK_ORDER)
   const [layoutEnabledBlocks, setLayoutEnabledBlocks] = useState<ResultBlockId[]>([])
@@ -141,12 +164,17 @@ export function AiWorkspace({
   const [sessionBusy, setSessionBusy] = useState(false)
   const [orgReady, setOrgReady] = useState(false)
   const [threadRestoreStale, setThreadRestoreStale] = useState(false)
+  const [messagesHydrated, setMessagesHydrated] = useState(false)
   const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null
     return initialConversationId || readStoredConversationId()
   })
   const [conversationTitle, setConversationTitle] = useState("Gravitre AI")
-  const [chatMode] = useState<"standard" | "deep">("standard")
+  const [chatMode, setChatMode] = useState<"standard" | "deep">("standard")
+  const [selectedDepartment, setSelectedDepartment] = useState(() =>
+    typeof window === "undefined" ? "all" : getQuickDepartment(),
+  )
+  const operatorContextRef = useRef<string | null>(null)
   const [dialogueMode, setDialogueMode] = useState<string | null>(null)
   const [pendingTask, setPendingTask] = useState<ChatPendingTask | null>(null)
   const [executionResult, setExecutionResult] = useState<ChatExecutionResult | null>(null)
@@ -187,6 +215,12 @@ export function AiWorkspace({
   const activeExecuteTurnRef = useRef<string | null>(null)
   const initialPromptSentRef = useRef(false)
   const initialConversationHandledRef = useRef(false)
+  const crossDepartmentRef = useRef(false)
+  const loadingMessagesForRef = useRef<string | null>(null)
+  const messagesLoadResolvedRef = useRef<{ conversationId: string; resolved: boolean } | null>(null)
+  const chatFirstTokenMarkedRef = useRef(false)
+  const persistedTurnIdsRef = useRef<Set<string>>(new Set())
+  const persistedChatPairIdsRef = useRef<Set<string>>(new Set())
 
   const activeMode = useMemo(() => getModeMeta(mode), [mode])
 
@@ -213,6 +247,7 @@ export function AiWorkspace({
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
             ...(orgId ? { "x-org-id": orgId } : {}),
             "x-environment": getEnvironmentHeader(),
+            ...(getDepartmentHeader() ? { "x-department": getDepartmentHeader()! } : {}),
           }
         },
         body: () => ({
@@ -220,9 +255,11 @@ export function AiWorkspace({
           mode: chatMode,
           conversation_id: activeConversationIdRef.current,
           preferred_persona: preferredPersonaRef.current,
+          department: selectedDepartment === "all" ? undefined : selectedDepartment,
+          cross_department: crossDepartmentRef.current,
         }),
       }),
-    [chatMode, preferredPersonaRef],
+    [chatMode, selectedDepartment],
   )
 
   const { messages, sendMessage, status, setMessages, stop } = useChat({
@@ -232,9 +269,10 @@ export function AiWorkspace({
       setSessionBusy(false)
       toast.error(parseChatError(error instanceof Error ? error : new Error(String(error))))
     },
-    onFinish: () => {
+    onFinish: ({ messages: finishedMessages }) => {
       submitLockRef.current = false
       setSessionBusy(false)
+      void persistChatTurn(finishedMessages)
       void mutateConversations()
     },
     onData: (dataPart) => {
@@ -429,7 +467,15 @@ export function AiWorkspace({
   }, [user])
 
   useEffect(() => {
+    startChatPerf("page_load")
+    return () => {
+      endChatPerf("page_load")
+    }
+  }, [])
+
+  useEffect(() => {
     if (!orgReady || !activeConversationId || conversationsLoading) return
+    if (conversations.length === 0) return
     if (conversations.some((conversation) => conversation.id === activeConversationId)) return
     writeStoredConversationId(null)
     setActiveConversationId(null)
@@ -437,6 +483,7 @@ export function AiWorkspace({
     setMessages([])
     setConversationTitle("Gravitre AI")
     setThreadRestoreStale(false)
+    setMessagesHydrated(false)
   }, [orgReady, activeConversationId, conversations, conversationsLoading, setMessages])
 
   useEffect(() => {
@@ -449,37 +496,18 @@ export function AiWorkspace({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, inlineTurns, status, conversationLoading])
 
-  const classifyIntent = useCallback(async (prompt: string): Promise<AiEngine> => {
-    const res = await fetch("/api/ai/route-intent", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ prompt }),
-    })
-    if (!res.ok) throw new Error(`route-intent ${res.status}`)
-    const data = (await res.json()) as { mode: AiEngine }
-    return data.mode
-  }, [])
-
   const resolveEngine = useCallback(
     async (prompt: string, selectedMode: ModeId): Promise<AiEngine> => {
       if (isConversationalOperatorPrompt(prompt)) {
         return "chat"
       }
-      if (selectedMode !== "auto") return selectedMode
-      setRouting(true)
-      setRoutedTo(null)
-      try {
-        const engine = await classifyIntent(prompt)
-        setRoutedTo(engine)
-        return engine
-      } catch {
+      // Unified surface: one chat thread handles answer, search, and connector execution.
+      if (selectedMode === "auto" || selectedMode === "chat") {
         return "chat"
-      } finally {
-        setRouting(false)
-        setRoutedTo(null)
       }
+      return selectedMode
     },
-    [classifyIntent],
+    [],
   )
 
   const ensureConversation = useCallback(
@@ -506,8 +534,91 @@ export function AiWorkspace({
     [mutateConversations],
   )
 
+  const persistInlineTurn = useCallback(
+    async (turn: InlineTurn) => {
+      if (turn.status !== "completed" && turn.status !== "failed") return
+      if (persistedTurnIdsRef.current.has(turn.id)) return
+      const conversationId = activeConversationIdRef.current
+      if (!conversationId) return
+
+      const payload: PersistedInlineTurn = {
+        id: turn.id,
+        prompt: turn.prompt,
+        engine: turn.engine,
+        status: turn.status,
+        executePlan: turn.executePlan ?? null,
+        executeError: turn.executeError ?? null,
+        findResults: turn.findResults,
+        findSuggestions: turn.findSuggestions,
+        findError: turn.findError ?? null,
+      }
+
+      try {
+        const rows = serializeInlineTurn(payload)
+        await conversationsApi.appendMessages(
+          conversationId,
+          rows.map((row) => ({
+            role: row.role,
+            content: row.content,
+            tool_calls: row.tool_calls as unknown[] | undefined,
+          })),
+        )
+        persistedTurnIdsRef.current.add(turn.id)
+        void mutateConversations()
+      } catch {
+        // Best-effort persistence — session cache still holds the turn.
+      }
+    },
+    [mutateConversations],
+  )
+
+  const persistChatTurn = useCallback(
+    async (finishedMessages: UIMessage[]) => {
+      if (finishedMessages.length < 2) return
+      const last = finishedMessages[finishedMessages.length - 1]
+      const prev = finishedMessages[finishedMessages.length - 2]
+      if (last.role !== "assistant" || prev.role !== "user") return
+
+      const pairKey = `${prev.id}:${last.id}`
+      if (persistedChatPairIdsRef.current.has(pairKey)) return
+
+      const conversationId = activeConversationIdRef.current
+      if (!conversationId) return
+
+      const userText = normalizeChatText(prev).trim()
+      const assistantText = polishAssistantText(normalizeChatText(last)).trim()
+      if (!userText || !assistantText) return
+
+      try {
+        const { messages: stored } = await conversationsApi.getMessages(conversationId)
+        const trailingAssistant = stored.length > 0 && stored[stored.length - 1]?.role === "assistant"
+        const trailingUser = stored.length > 1 && stored[stored.length - 2]?.role === "user"
+        if (
+          trailingAssistant &&
+          trailingUser &&
+          stored[stored.length - 2]?.content.trim() === userText
+        ) {
+          persistedChatPairIdsRef.current.add(pairKey)
+          return
+        }
+
+        await conversationsApi.appendMessages(conversationId, [
+          { role: "user", content: userText },
+          { role: "assistant", content: assistantText },
+        ])
+        persistedChatPairIdsRef.current.add(pairKey)
+        void mutateConversations()
+      } catch {
+        // Backend persist is primary; this is a best-effort client backup.
+      }
+    },
+    [mutateConversations],
+  )
+
   const loadConversationMessages = useCallback(
-    async (id: string, options?: { preferApi?: boolean; silent?: boolean }) => {
+    async (id: string, options?: { preferApi?: boolean; silent?: boolean; force?: boolean }) => {
+      if (loadingMessagesForRef.current === id && !options?.force) return
+
       const orgId = await ensureSelectedOrg(true)
       if (!orgId) {
         if (!options?.silent) {
@@ -518,57 +629,98 @@ export function AiWorkspace({
         return
       }
 
-      const cached = readCachedConversationMessages(id)
-      const showBlockingLoader = !options?.silent && !cached?.length
-      let fetchedCount = cached?.length ?? 0
+      if (!options?.silent) {
+        setMessagesHydrated(false)
+        startChatPerf("conversation_load", id)
+      }
 
+      const cached = readCachedConversationMessages(id)
+      const cachedTurns = readCachedInlineTurns<InlineTurn>(id)
+      const showBlockingLoader = !options?.silent && !cached?.length && !cachedTurns?.length
+      let fetchedCount = cached?.length ?? 0
+      let conversationMeta = conversations.find((conversation) => conversation.id === id) ?? null
+
+      loadingMessagesForRef.current = id
       if (showBlockingLoader) {
         setConversationLoading(true)
         setThreadRestoreStale(false)
       }
-      if (!options?.silent && !cached?.length) {
+      if (!options?.silent && !cached?.length && !cachedTurns?.length) {
         setInlineTurns([])
       }
-      if (cached?.length && !options?.silent) {
-        setMessages(cached)
+      if ((cached?.length || cachedTurns?.length) && !options?.silent) {
+        if (cached?.length && activeConversationIdRef.current === id) setMessages(cached)
+        if (cachedTurns?.length && activeConversationIdRef.current === id) setInlineTurns(cachedTurns)
       }
 
       try {
-        const { messages: stored } = await conversationsApi.getMessages(id)
-        fetchedCount = stored.length
-        if (stored.length > 0) {
-          const uiMessages = stored.map(conversationMessageToUI)
-          setMessages(uiMessages)
-          writeCachedConversationMessages(id, uiMessages)
-          setThreadRestoreStale(false)
-        } else if (!options?.preferApi) {
-          if (cached?.length) {
-            setMessages(cached)
-            setThreadRestoreStale(false)
-          } else {
-            setMessages([])
-          }
-        } else if (!cached?.length) {
-          setMessages([])
+        const [messagesResponse, fetchedConversation] = await Promise.all([
+          conversationsApi.getMessages(id),
+          conversationMeta ? Promise.resolve(conversationMeta) : conversationsApi.get(id).catch(() => null),
+        ])
+        if (activeConversationIdRef.current !== id) return
+
+        if (fetchedConversation) {
+          conversationMeta = fetchedConversation
+          if (fetchedConversation.title) setConversationTitle(fetchedConversation.title)
         }
 
-        const selected = conversations.find((conversation) => conversation.id === id)
-        if (selected?.title) setConversationTitle(selected.title)
+        const { messages: stored } = messagesResponse
+        fetchedCount = stored.length
+        const { inlineTurns: restoredTurns } = splitConversationMessages(stored)
 
-        const cachedTurns = readCachedInlineTurns<InlineTurn>(id)
-        if (cachedTurns?.length) setInlineTurns(cachedTurns)
-      } catch (error) {
-        if (cached?.length) {
-          setMessages(cached)
+        if (stored.length > 0) {
+          const uiMessages = buildConversationTranscript(stored, {
+            conversationTitle: conversationMeta?.title ?? conversationTitle,
+          })
+          setMessages(uiMessages)
+          for (let i = 1; i < stored.length; i += 1) {
+            const prev = stored[i - 1]
+            const current = stored[i]
+            if (prev.role === "user" && current.role === "assistant") {
+              persistedChatPairIdsRef.current.add(`${prev.id}:${current.id}`)
+            }
+          }
+          if (restoredTurns.length > 0) {
+            setInlineTurns(restoredTurns as InlineTurn[])
+            writeCachedInlineTurns(id, restoredTurns)
+          } else if (cachedTurns?.length) {
+            setInlineTurns(cachedTurns)
+          }
+          writeCachedConversationMessages(id, uiMessages)
           setThreadRestoreStale(false)
+          messagesLoadResolvedRef.current = { conversationId: id, resolved: true }
+        } else if (!options?.preferApi) {
+          if (cached?.length || cachedTurns?.length) {
+            if (cached?.length) setMessages(cached)
+            if (cachedTurns?.length) setInlineTurns(cachedTurns)
+            setThreadRestoreStale(false)
+            messagesLoadResolvedRef.current = { conversationId: id, resolved: true }
+          } else {
+            setMessages([])
+            setInlineTurns([])
+          }
+        } else if (!cached?.length && !cachedTurns?.length) {
+          setMessages([])
+          setInlineTurns([])
+        }
+      } catch (error) {
+        if (activeConversationIdRef.current !== id) return
+        if (cached?.length || cachedTurns?.length) {
+          if (cached?.length) setMessages(cached)
+          if (cachedTurns?.length) setInlineTurns(cachedTurns)
+          setThreadRestoreStale(false)
+          messagesLoadResolvedRef.current = { conversationId: id, resolved: true }
         } else if (error instanceof ApiError && error.status === 404) {
           writeStoredConversationId(null)
           setActiveConversationId(null)
           activeConversationIdRef.current = null
           setMessages([])
+          setInlineTurns([])
           setConversationTitle("Gravitre AI")
           setThreadRestoreStale(false)
-        } else if (!cached?.length) {
+          messagesLoadResolvedRef.current = { conversationId: id, resolved: true }
+        } else if (!cached?.length && !cachedTurns?.length) {
           if (error instanceof ApiError && (error.status === 502 || error.status === 503)) {
             toast.error("Gravitre AI is reconnecting", {
               description: "The backend is unavailable. Try again in a moment or start a new conversation.",
@@ -582,12 +734,28 @@ export function AiWorkspace({
           }
         }
       } finally {
+        if (loadingMessagesForRef.current === id) {
+          loadingMessagesForRef.current = null
+        }
         if (showBlockingLoader) {
           setConversationLoading(false)
         }
-        if (fetchedCount === 0 && !cached?.length) {
-          const selected = conversations.find((conversation) => conversation.id === id)
-          setThreadRestoreStale((selected?.message_count ?? 0) > 0)
+        if (!options?.silent) {
+          endChatPerf("conversation_load", id)
+          if (activeConversationIdRef.current === id) {
+            setMessagesHydrated(true)
+          }
+        }
+        if (
+          activeConversationIdRef.current === id &&
+          fetchedCount === 0 &&
+          !cached?.length &&
+          !cachedTurns?.length &&
+          !messagesLoadResolvedRef.current?.resolved
+        ) {
+          const stale = (conversationMeta?.message_count ?? 0) > 0
+          setThreadRestoreStale(stale)
+          messagesLoadResolvedRef.current = { conversationId: id, resolved: true }
         }
       }
     },
@@ -598,6 +766,9 @@ export function AiWorkspace({
     async (prompt: string) => {
       submitLockRef.current = true
       setSessionBusy(true)
+      chatFirstTokenMarkedRef.current = false
+      startChatPerf("total_response")
+      startChatPerf("first_token")
       await ensureConversation(prompt)
       sendMessage({ text: prompt })
     },
@@ -613,14 +784,31 @@ export function AiWorkspace({
 
       try {
         resetExecuteJob()
-        await submitJob(prompt, buildOperatorJobPayload(operatorSessionRef.current, prompt))
+        if (!operatorContextRef.current) {
+          operatorContextRef.current = await resolveOperatorActiveContext()
+        }
+        await submitJob(
+          prompt,
+          buildOperatorJobPayload(
+            operatorSessionRef.current,
+            prompt,
+            operatorContextRef.current,
+          ),
+        )
       } catch (err) {
         if (isBackendUnavailableError(err)) {
           try {
             const sessionId = operatorSessionRef.current ?? (await createOperatorSession(prompt))
             if (sessionId) operatorSessionRef.current = sessionId
             if (!sessionId) throw new Error("Could not create operator session")
-            const plan = await runSyncOperatorTask(sessionId, prompt)
+            if (!operatorContextRef.current) {
+              operatorContextRef.current = await resolveOperatorActiveContext()
+            }
+            const plan = await runSyncOperatorTask(
+              sessionId,
+              prompt,
+              operatorContextRef.current ?? undefined,
+            )
             setInlineTurns((prev) =>
               prev.map((turn) =>
                 turn.id === turnId
@@ -713,6 +901,7 @@ export function AiWorkspace({
 
       setSessionBusy(true)
       await ensureSelectedOrg()
+      crossDepartmentRef.current = isCrossDepartmentPrompt(prompt)
       await ensureConversation(prompt)
       const engine = await resolveEngine(prompt, mode)
       setInput("")
@@ -750,7 +939,11 @@ export function AiWorkspace({
 
   const handleSelectConversation = useCallback(
     async (id: string) => {
-      if (id === activeConversationIdRef.current && messages.length > 0) {
+      if (
+        id === activeConversationIdRef.current &&
+        messagesHydrated &&
+        (messages.length > 0 || inlineTurns.length > 0)
+      ) {
         setSidebarOpen(false)
         return
       }
@@ -769,6 +962,10 @@ export function AiWorkspace({
       setSidebarOpen(false)
       stop()
       setThreadRestoreStale(false)
+      setMessagesHydrated(false)
+      messagesLoadResolvedRef.current = null
+      persistedTurnIdsRef.current = new Set()
+      persistedChatPairIdsRef.current = new Set()
 
       setActiveConversationId(id)
       activeConversationIdRef.current = id
@@ -777,19 +974,20 @@ export function AiWorkspace({
       resetExecuteJob()
 
       const cached = readCachedConversationMessages(id)
+      const cachedTurns = readCachedInlineTurns<InlineTurn>(id)
       if (cached?.length) {
         setMessages(cached)
       } else {
         setMessages([])
       }
-      setInlineTurns(readCachedInlineTurns<InlineTurn>(id) ?? [])
+      setInlineTurns(cachedTurns ?? [])
 
       const selected = conversations.find((conversation) => conversation.id === id)
       if (selected?.title) setConversationTitle(selected.title)
 
-      await loadConversationMessages(id)
+      await loadConversationMessages(id, { force: true })
     },
-    [conversations, loadConversationMessages, messages.length, resetExecuteJob, setMessages, stop],
+    [conversations, inlineTurns.length, loadConversationMessages, messages.length, messagesHydrated, resetExecuteJob, setMessages, stop],
   )
 
   const handleNewConversation = useCallback(() => {
@@ -800,11 +998,16 @@ export function AiWorkspace({
     activeConversationIdRef.current = null
     pendingConversationRef.current = null
     operatorSessionRef.current = null
+    messagesLoadResolvedRef.current = null
+    loadingMessagesForRef.current = null
+    persistedTurnIdsRef.current = new Set()
+    persistedChatPairIdsRef.current = new Set()
     writeStoredConversationId(null)
     resetExecuteJob()
     setConversationTitle("Gravitre AI")
     setConversationLoading(false)
     setThreadRestoreStale(false)
+    setMessagesHydrated(true)
     setSessionBusy(false)
     submitLockRef.current = false
     inputRef.current?.focus()
@@ -858,6 +1061,22 @@ export function AiWorkspace({
   const activeConversationHasStoredMessages = (activeConversation?.message_count ?? 0) > 0
 
   useEffect(() => {
+    if (status !== "streaming") return
+    const last = messages[messages.length - 1]
+    if (!last || last.role !== "assistant") return
+    const text = normalizeChatText(last).trim()
+    if (!text || chatFirstTokenMarkedRef.current) return
+    chatFirstTokenMarkedRef.current = true
+    endChatPerf("first_token")
+  }, [status, messages])
+
+  useEffect(() => {
+    if (status !== "ready" || !chatFirstTokenMarkedRef.current) return
+    endChatPerf("total_response")
+    chatFirstTokenMarkedRef.current = false
+  }, [status])
+
+  useEffect(() => {
     if (!initialConversationId || initialConversationHandledRef.current || !user || !orgReady) return
     if (
       conversations.length > 0 &&
@@ -870,7 +1089,14 @@ export function AiWorkspace({
   }, [initialConversationId, user, orgReady, conversations, handleSelectConversation])
 
   useEffect(() => {
-    if (!orgReady || !user || !activeConversationId || messages.length > 0 || sessionBusy || isChatBusy || conversationLoading) {
+    if (!orgReady || !user || !activeConversationId || sessionBusy || isChatBusy || conversationLoading) {
+      return
+    }
+    if (messages.length > 0 || inlineTurns.length > 0) return
+    if (
+      messagesLoadResolvedRef.current?.conversationId === activeConversationId &&
+      messagesLoadResolvedRef.current.resolved
+    ) {
       return
     }
     void loadConversationMessages(activeConversationId)
@@ -879,11 +1105,20 @@ export function AiWorkspace({
     user,
     activeConversationId,
     messages.length,
+    inlineTurns.length,
     sessionBusy,
     isChatBusy,
     conversationLoading,
     loadConversationMessages,
   ])
+
+  useEffect(() => {
+    for (const turn of inlineTurns) {
+      if (turn.status === "completed" || turn.status === "failed") {
+        void persistInlineTurn(turn)
+      }
+    }
+  }, [inlineTurns, persistInlineTurn])
 
   useEffect(() => {
     if (!activeConversationId || messages.length === 0) return
@@ -957,6 +1192,7 @@ export function AiWorkspace({
 
   const showEmptyThreadHint =
     !showLanding &&
+    messagesHydrated &&
     !conversationLoading &&
     activeConversationId &&
     messages.length === 0 &&
@@ -971,8 +1207,8 @@ export function AiWorkspace({
     !showLanding &&
     !conversationLoading &&
     (sessionBusy || isChatBusy) &&
-    messages.length === 0 &&
-    inlineTurns.length === 0
+    messages.length > 0 &&
+    messages[messages.length - 1]?.role === "user"
 
   const showComposer = !showLanding || Boolean(activeConversationId)
 
@@ -984,7 +1220,7 @@ export function AiWorkspace({
   }
 
   return (
-    <div className="flex h-full min-h-0">
+    <div className="flex h-full min-h-0 flex-1">
       <ConversationSidebar
         conversations={conversations}
         activeConversationId={activeConversationId}
@@ -1001,6 +1237,7 @@ export function AiWorkspace({
         onRetry={() => void mutateConversations()}
       />
 
+<<<<<<< HEAD
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="border-b border-border bg-card/80 backdrop-blur">
           <div className="flex min-h-14 items-center justify-between gap-3 px-4 md:px-6">
@@ -1020,52 +1257,136 @@ export function AiWorkspace({
                   {activeMode.badge} · results stay on this page
                 </p>
               </div>
+=======
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#f4f8f7] dark:bg-[#0a1211]">
+        <div className="shrink-0 border-b border-border/70 bg-white/80 backdrop-blur dark:bg-card/70">
+          <div className="flex min-h-12 items-center gap-2 overflow-x-auto px-3 py-2 md:px-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarOpen((open) => !open)}
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              aria-label={sidebarOpen ? "Hide history" : "Show history"}
+            >
+              {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
+            </Button>
+
+            <div className="min-w-0 shrink">
+              <p className="truncate text-sm font-semibold text-foreground">{conversationTitle}</p>
+>>>>>>> origin/main
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {user && (mode === "chat" || !showLanding) ? (
+
+            <div className="hidden h-4 w-px shrink-0 bg-border sm:block" />
+
+            <div className="flex shrink-0 items-center gap-1">
+              {AI_MODES.length > 1
+                ? AI_MODES.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setMode(m.id)}
+                      className={cn(
+                        "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide transition-colors",
+                        mode === m.id
+                          ? cn("ring-1", m.ring, "text-foreground")
+                          : "border-border text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {m.label}
+                    </button>
+                  ))
+                : (
+                  <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {activeMode.badge}
+                  </span>
+                )}
+            </div>
+
+            <div className="ml-auto flex shrink-0 items-center gap-1.5">
+              <Select
+                value={selectedDepartment}
+                onValueChange={(value) => {
+                  setSelectedDepartment(value)
+                  setSelectedDepartmentInStorage(value)
+                }}
+              >
+                <SelectTrigger
+                  size="sm"
+                  className="hidden h-7 w-[128px] border-border bg-background text-[11px] sm:flex"
+                  aria-label="Department context"
+                >
+                  <SelectValue placeholder="Department" />
+                </SelectTrigger>
+                <SelectContent align="end" className="z-[60]">
+                  {DEPARTMENT_OPTIONS.map((option) => (
+                    <SelectItem key={option.id} value={option.id}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <button
+                type="button"
+                onClick={() => setChatMode((current) => (current === "deep" ? "standard" : "deep"))}
+                title={
+                  chatMode === "deep"
+                    ? "Agent mode — full connector tool surface with ReAct"
+                    : "Fast mode — lighter reasoning, fewer tool iterations"
+                }
+                className={cn(
+                  "h-7 rounded-md border px-2 text-[10px] font-medium uppercase tracking-wide",
+                  chatMode === "deep"
+                    ? "border-blue-500/40 bg-blue-500/10 text-blue-600"
+                    : "border-border text-muted-foreground",
+                )}
+              >
+                {chatMode === "deep" ? "Agent" : "Fast"}
+              </button>
+
+              {user ? (
                 <PersonaSelector
                   value={preferredPersona}
                   onChange={handlePersonaChange}
                   disabled={!user}
                 />
               ) : null}
+
               {!showLanding ? (
                 <AiLayoutPanelPicker
                   enabledBlocks={layoutEnabledBlocks}
                   onToggleBlock={handleToggleLayoutBlock}
                 />
               ) : null}
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 overflow-x-auto border-t border-border/60 px-4 py-2 md:px-6">
-            {AI_MODES.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => setMode(m.id)}
-                className={cn(
-                  "shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide transition-colors",
-                  mode === m.id
-                    ? cn("ring-1", m.ring, "text-foreground")
-                    : "border-border text-muted-foreground hover:text-foreground",
-                )}
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 text-muted-foreground"
+                aria-label={activityRailOpen ? "Hide activity panel" : "Show activity panel"}
+                onClick={() => setActivityRailOpen((open) => !open)}
               >
-                {m.label}
-              </button>
-            ))}
+                <PanelRight className={cn("h-4 w-4", activityRailOpen && "text-emerald-600")} />
+              </Button>
+            </div>
           </div>
         </div>
 
-        <BusinessSignalsBanner signals={activeBusinessSignals} />
         {dialogueMode === "guide" ? <PlanProgressIndicator taskState={taskState} /> : null}
         {executionGate && (executionGate.requires_approval || executionGate.can_proceed === false) ? (
-          <div className="border-b border-amber-200/60 bg-amber-50/50 px-4 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200 md:px-6">
+          <div className="shrink-0 border-b border-amber-200/60 bg-amber-50/50 px-4 py-1.5 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
             {executionGate.reason ?? "Execution requires review before proceeding."}
           </div>
         ) : null}
 
+<<<<<<< HEAD
         <div className="ai-chat-canvas flex-1 overflow-y-auto px-4 py-6 md:px-8">
           <div className="mx-auto max-w-3xl space-y-6">
+=======
+        <div className="flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 md:px-5 md:py-4">
+          <div className="mx-auto w-full">
+>>>>>>> origin/main
             {showLanding ? (
               <AiLanding
                 mode={mode}
@@ -1079,12 +1400,18 @@ export function AiWorkspace({
             ) : null}
 
             {conversationLoading && !sessionBusy && !isChatBusy ? (
-              <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading conversation…
+              <div className="space-y-4 py-4">
+                <div className="flex justify-end">
+                  <div className="h-12 w-[min(420px,72%)] animate-pulse rounded-2xl bg-primary/20" />
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="h-8 w-8 shrink-0 animate-pulse rounded-full bg-muted" />
+                  <div className="h-24 w-[min(560px,88%)] animate-pulse rounded-2xl bg-muted/60" />
+                </div>
               </div>
             ) : null}
 
+<<<<<<< HEAD
             {!showLanding && (!conversationLoading || sessionBusy || isChatBusy)
               ? messages.map((message) => {
               const text = normalizeChatText(message)
@@ -1138,6 +1465,21 @@ export function AiWorkspace({
               )
             })
               : null}
+=======
+            {!showLanding ? (
+              <ChatTranscript
+                messages={messages}
+                showWaiting={showWaitingForReply && !conversationLoading}
+                explainability={explainability}
+                contextExplanation={contextExplanation}
+                dialogueMode={dialogueMode}
+                executionResult={executionResult}
+                pendingTask={pendingTask}
+                confirmExecuting={confirmExecuting}
+                onConfirmExecution={() => void handleConfirmExecution()}
+              />
+            ) : null}
+>>>>>>> origin/main
 
             {!showLanding && !conversationLoading && threadRestoreStale ? (
               <div className="rounded-xl border border-dashed border-amber-500/30 bg-amber-500/5 px-4 py-8 text-center text-sm text-muted-foreground">
@@ -1151,6 +1493,7 @@ export function AiWorkspace({
               </div>
             ) : null}
 
+<<<<<<< HEAD
             {!showLanding && !conversationLoading && showWaitingForReply ? (
               <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin text-primary" />
@@ -1158,6 +1501,8 @@ export function AiWorkspace({
               </div>
             ) : null}
 
+=======
+>>>>>>> origin/main
             {!showLanding && !conversationLoading && showEmptyThreadHint ? (
               <div className="rounded-xl border border-dashed border-border bg-card/40 px-4 py-8 text-center text-sm text-muted-foreground">
                 <p className="font-medium text-foreground">This conversation is empty</p>
@@ -1169,7 +1514,7 @@ export function AiWorkspace({
               ? inlineTurns.map((turn) => (
               <div key={turn.id} className="space-y-4">
                 <div className="flex justify-end">
-                  <div className="max-w-[85%] rounded-2xl bg-primary px-4 py-3 text-sm text-primary-foreground">
+                  <div className="max-w-[min(720px,92%)] rounded-2xl bg-primary px-4 py-3.5 text-sm leading-relaxed text-primary-foreground">
                     <p className="whitespace-pre-wrap">{turn.prompt}</p>
                     <p className="mt-1 text-[10px] uppercase tracking-wide opacity-70">
                       {getModeMeta(turn.engine).badge}
@@ -1183,6 +1528,7 @@ export function AiWorkspace({
                     job={turn.executeJob ?? null}
                     isProcessing={turn.status === "running" && executeWorking}
                     error={turn.executeError ?? (turn.status === "running" ? executeHookError : null)}
+                    sourcePrompt={turn.prompt}
                     blockOrder={layoutBlockOrder}
                     enabledBlocks={layoutEnabledBlocks}
                     onReorderBlocks={handleReorderLayoutBlocks}
@@ -1235,8 +1581,22 @@ export function AiWorkspace({
         </div>
 
         {showComposer ? (
-        <div className="border-t border-border bg-background/95 px-4 py-4 backdrop-blur md:px-8">
-          <div className="mx-auto max-w-3xl">
+        <div className="shrink-0 border-t border-border/70 bg-white/95 px-3 py-2 backdrop-blur dark:bg-card/95 md:px-5">
+          <div className="mx-auto w-full max-w-[920px]">
+            {!showLanding && messages.length === 0 && inlineTurns.length === 0 && !isChatBusy ? (
+              <div className="mb-3 flex flex-wrap justify-center gap-2">
+                {AI_EXAMPLE_PROMPTS.slice(0, 4).map((example) => (
+                  <button
+                    key={example.text}
+                    type="button"
+                    onClick={() => void submitPrompt(example.text)}
+                    className="rounded-full border border-border/80 bg-card/80 px-3 py-1.5 text-center text-xs text-muted-foreground transition-colors hover:border-emerald-500/30 hover:text-foreground"
+                  >
+                    {example.text}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             <form
               onSubmit={(event) => {
                 event.preventDefault()
@@ -1245,8 +1605,16 @@ export function AiWorkspace({
             >
               <div
                 className={cn(
+<<<<<<< HEAD
                   "flex items-end gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm",
                   "focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20",
+=======
+                  "flex min-h-[72px] flex-col justify-center gap-1.5 rounded-[1.25rem] border border-border/70 bg-white p-2.5 shadow-sm focus-within:ring-2 dark:bg-card",
+                  activeMode.id === "execute" && "focus-within:border-emerald-500/50 focus-within:ring-emerald-500/20",
+                  activeMode.id === "chat" && "focus-within:border-blue-500/50 focus-within:ring-blue-500/20",
+                  activeMode.id === "find" && "focus-within:border-amber-500/50 focus-within:ring-amber-500/20",
+                  activeMode.id === "auto" && "focus-within:border-foreground/30 focus-within:ring-foreground/15",
+>>>>>>> origin/main
                 )}
               >
                 <textarea
@@ -1256,16 +1624,15 @@ export function AiWorkspace({
                   onKeyDown={onKeyDown}
                   rows={1}
                   disabled={routing}
-                  placeholder="Ask, delegate, or search — results appear here…"
-                  className="max-h-[200px] min-h-[24px] flex-1 resize-none bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/70"
-                  style={{ height: "24px" }}
+                  placeholder="Ask, delegate, or search…"
+                  className="max-h-[160px] min-h-[44px] flex-1 resize-none bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground/70"
                   onInput={(event) => {
                     const target = event.target as HTMLTextAreaElement
-                    target.style.height = "24px"
-                    target.style.height = `${Math.min(target.scrollHeight, 200)}px`
+                    target.style.height = "44px"
+                    target.style.height = `${Math.min(Math.max(target.scrollHeight, 44), 160)}px`
                   }}
                 />
-                <div className="flex shrink-0 items-center gap-2 pb-0.5">
+                <div className="flex shrink-0 items-center justify-end gap-2 px-1">
                   {isChatBusy ? (
                     <Button variant="outline" size="sm" className="h-8" onClick={() => stop()}>
                       <Square className="mr-1 h-3 w-3" />
@@ -1282,13 +1649,14 @@ export function AiWorkspace({
                   </button>
                 </div>
               </div>
-              <p className="mt-2 px-1 text-xs text-muted-foreground">{activeMode.blurb}</p>
             </form>
           </div>
         </div>
         ) : null}
+        </div>
       </div>
 
+      {activityRailOpen ? (
       <LiveActivityRail
         advisorBrief={advisorBrief}
         layoutPlan={latestExecuteTurn?.executePlan ?? null}
@@ -1301,6 +1669,7 @@ export function AiWorkspace({
         onReorderLayoutBlocks={handleReorderLayoutBlocks}
         onMoveLayoutBlockToColumn={handleMoveLayoutBlockToColumn}
       />
+      ) : null}
     </div>
   )
 }

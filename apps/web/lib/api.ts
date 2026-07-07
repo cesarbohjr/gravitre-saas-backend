@@ -1306,6 +1306,8 @@ export const conversationsApi = {
   delete: (id: string) => deleteRequest(apiUrl(`/api/conversations/${id}`)),
   bulkDelete: (ids: string[]) => postNoContent(apiUrl("/api/conversations/bulk-delete"), { ids }),
   getMessages: (id: string) => fetcher<{ messages: ConversationMessage[] }>(apiUrl(`/api/conversations/${id}/messages`)),
+  appendMessages: (id: string, messages: Array<{ role: "user" | "assistant"; content: string; tool_calls?: unknown[] }>) =>
+    postJson<{ messages: ConversationMessage[] }>(apiUrl(`/api/conversations/${id}/messages`), { messages }),
 }
 
 export const assistantApi = {
@@ -1807,6 +1809,32 @@ export const intelligenceApi = {
       sampleCount: number
     }>(apiUrl(`/api/admin/intelligence/performance${suffix}`))
   },
+  visibilityExplainability: () =>
+    fetcher<Record<string, unknown>>(apiUrl("/api/intelligence/visibility/explainability")),
+  visibilityTrustHealth: () =>
+    fetcher<import("@/lib/intelligence/visibility-types").VisibilityTrustHealth>(
+      apiUrl("/api/intelligence/visibility/trust-health"),
+    ),
+  visibilityMaturity: () =>
+    fetcher<{ status?: string; org_id?: string; maturity?: import("@/lib/intelligence/visibility-types").IntelligenceMaturityView }>(
+      apiUrl("/api/intelligence/visibility/maturity"),
+    ),
+  visibilityLearningHealth: () =>
+    fetcher<Record<string, unknown>>(apiUrl("/api/intelligence/visibility/learning-health")),
+  visibilityDomainHealth: () =>
+    fetcher<import("@/lib/intelligence/visibility-types").VisibilityDomainHealth>(
+      apiUrl("/api/intelligence/visibility/domain-health"),
+    ),
+  visibilityKnowledgeHealth: () =>
+    fetcher<Record<string, unknown>>(apiUrl("/api/intelligence/visibility/knowledge-health")),
+  visibilityExecutive: () =>
+    fetcher<import("@/lib/intelligence/visibility-types").ExecutiveIntelligenceSummary>(
+      apiUrl("/api/intelligence/visibility/executive"),
+    ),
+  visibilityAgent: (agentId: string) =>
+    fetcher<import("@/lib/intelligence/visibility-types").AgentVisibilityProfile>(
+      apiUrl(`/api/intelligence/visibility/agents/${encodeURIComponent(agentId)}`),
+    ),
 }
 
 export const architectureAdminApi = {
@@ -2048,6 +2076,24 @@ export const settingsApi = {
       throw new Error(error.detail || `Request failed: ${response.status}`)
     }
   },
+  addDepartmentMember: (data: { department_id: string; user_email: string; role?: string }) =>
+    postJson<{ member: Record<string, unknown> }>(apiUrl("/api/settings/lite-seats/members"), data),
+  removeDepartmentMember: async (departmentId: string, userId: string) => {
+    const response = await apiFetch(
+      apiUrl(
+        `/api/settings/lite-seats/members?departmentId=${encodeURIComponent(departmentId)}&userId=${encodeURIComponent(userId)}`,
+      ),
+      { method: "DELETE" },
+    )
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.detail || `Request failed: ${response.status}`)
+    }
+  },
+  getLiteMembership: () =>
+    fetcher<{ is_lite: boolean; is_admin: boolean; department: { id: string; name: string } | null }>(
+      apiUrl("/api/settings/lite-membership"),
+    ),
 
   // Meson addons
   getMesonAddons: () => fetcher<MesonAddonsResponse>(apiUrl("/api/settings/meson-addons")),

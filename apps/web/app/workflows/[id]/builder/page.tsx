@@ -1096,18 +1096,28 @@ function LibraryItem({
   description,
   icon: Icon,
   vendor,
+  nodeType,
   onAdd,
 }: {
   name: string
   description?: string
   icon?: typeof Bot
   vendor?: string
+  nodeType: NodeType
   onAdd: () => void
 }) {
   return (
     <button
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData(
+          "application/gravitre-node",
+          JSON.stringify({ type: nodeType, name, description }),
+        )
+        e.dataTransfer.effectAllowed = "copy"
+      }}
       onClick={onAdd}
-      className="w-full flex items-center gap-2.5 p-2 rounded-md hover:bg-secondary/50 transition-colors text-left group"
+      className="w-full flex items-center gap-2.5 p-2 rounded-md hover:bg-secondary/50 transition-colors text-left group cursor-grab active:cursor-grabbing"
     >
 {vendor ? (
   <ConnectorIcon vendor={vendor} size="sm" showStatusIndicator={false} />
@@ -3170,6 +3180,33 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     setSelectedNodeId(newNode.id)
   }, [])
 
+  const handleCanvasDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    const raw = e.dataTransfer.getData("application/gravitre-node")
+    if (!raw) return
+    try {
+      const payload = JSON.parse(raw) as { type: NodeType; name: string; description?: string }
+      const rect = canvasRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const newNode: WorkflowNode = {
+        id: `node-${Date.now()}`,
+        type: payload.type,
+        name: payload.name,
+        description: payload.description,
+        config: {},
+        position: {
+          x: Math.max(40, e.clientX - rect.left - 80),
+          y: Math.max(40, e.clientY - rect.top - 40),
+        },
+        connections: [],
+      }
+      setNodes((prev) => [...prev, newNode])
+      setSelectedNodeId(newNode.id)
+    } catch {
+      // ignore malformed drag payloads
+    }
+  }, [])
+
   const applyMesonSuggestion = useCallback(
     (suggestion: MesonSuggestion) => {
       const maxX = nodes.length ? Math.max(...nodes.map((n) => n.position.x)) : 200
@@ -4114,6 +4151,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                       name={agent.name}
                       description={agent.description}
                       icon={Bot}
+                      nodeType="agent"
                       onAdd={() => addNode("agent", agent.name, agent.description)}
                     />
                   ))}
@@ -4134,6 +4172,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                       key={conn.id}
                       name={conn.name}
                       vendor={conn.vendor}
+                      nodeType="connector"
                       onAdd={() => addNode("connector", conn.name)}
                     />
                   ))}
@@ -4148,6 +4187,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                       name={src.name}
                       description={src.type}
                       icon={Database}
+                      nodeType="source"
                       onAdd={() => addNode("source", src.name, src.type)}
                     />
                   ))}
@@ -4162,6 +4202,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                       name={tool.name}
                       description={tool.description}
                       icon={Zap}
+                      nodeType="tool"
                       onAdd={() => addNode("tool", tool.name, tool.description)}
                     />
                   ))}
@@ -4182,6 +4223,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                     name="Evaluate Lead Quality"
                     description="Score and route leads"
                     icon={Target}
+                    nodeType="decision"
                     onAdd={() => {
                       const newNode: WorkflowNode = {
                         id: `node-${Date.now()}`,
@@ -4210,6 +4252,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                     name="Choose Next Action"
                     description="AI selects best action"
                     icon={Brain}
+                    nodeType="decision"
                     onAdd={() => {
                       const newNode: WorkflowNode = {
                         id: `node-${Date.now()}`,
@@ -4237,6 +4280,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                     name="Route Customer Request"
                     description="Direct to right team"
                     icon={GitBranch}
+                    nodeType="decision"
                     onAdd={() => {
                       const newNode: WorkflowNode = {
                         id: `node-${Date.now()}`,
@@ -4265,6 +4309,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                     name="Select Best Channel"
                     description="Choose communication channel"
                     icon={Gauge}
+                    nodeType="decision"
                     onAdd={() => {
                       const newNode: WorkflowNode = {
                         id: `node-${Date.now()}`,
@@ -4419,6 +4464,13 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               isDraggingConnection && "cursor-crosshair"
             )}
             onClick={handleCanvasClick}
+            onDragOver={(e) => {
+              if (e.dataTransfer.types.includes("application/gravitre-node")) {
+                e.preventDefault()
+                e.dataTransfer.dropEffect = "copy"
+              }
+            }}
+            onDrop={handleCanvasDrop}
             onMouseMove={handleConnectionDragMove}
             onMouseUp={handleConnectionDragEnd}
             onMouseLeave={handleConnectionDragEnd}

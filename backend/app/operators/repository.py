@@ -77,7 +77,31 @@ def create_operator(
     r = client.table("operators").insert(row).execute()
     if not r.data:
         raise RuntimeError("operators insert returned no row")
-    return dict(r.data[0])
+    operator = dict(r.data[0])
+    mirror_operator_to_legacy_agents(client, org_id, operator)
+    return operator
+
+
+def mirror_operator_to_legacy_agents(client: Client, org_id: str, operator: dict) -> None:
+    """Keep legacy agents table in sync for pages that still read from it."""
+    config = operator.get("config") if isinstance(operator.get("config"), dict) else {}
+    row: dict = {
+        "id": operator["id"],
+        "org_id": org_id,
+        "name": operator.get("name") or "Agent",
+        "description": operator.get("description"),
+        "role": operator.get("role") or operator.get("name") or "Agent",
+        "status": operator.get("status") or "active",
+        "capabilities": operator.get("capabilities") or [],
+        "config": config,
+    }
+    department = config.get("department")
+    if department:
+        row["department"] = department
+    try:
+        client.table("agents").upsert(row, on_conflict="id").execute()
+    except Exception:
+        pass
 
 
 def update_operator(

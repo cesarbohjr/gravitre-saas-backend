@@ -18,15 +18,19 @@ import { EvaluationTab } from "./_components/evaluation-tab"
 import { OutcomesTab } from "./_components/outcomes-tab"
 import { EngineTab } from "./_components/engine-tab"
 import { PerformanceTab } from "./_components/performance-tab"
+import { LearningTrendsTab } from "./_components/learning-trends-tab"
 import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
 import { PageHeader } from "@/components/gravitre/page-header"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { Brain } from "lucide-react"
 
-type TabKey = "overview" | "memory" | "relationships" | "evaluation" | "outcomes" | "engine" | "performance"
+type TabKey = "overview" | "memory" | "relationships" | "evaluation" | "outcomes" | "learning" | "engine" | "performance"
 
 export default function AdminIntelligencePage() {
   const { user } = useAuth()
   const [tab, setTab] = useState<TabKey>("overview")
+  const copy = SURFACE_COPY.learning
+  const tabs = SURFACE_COPY.adminTabs
 
   const { data, error, isLoading, isValidating, mutate } = useSWR(
     user ? ["admin/intelligence/snapshot"] : null,
@@ -36,29 +40,29 @@ export default function AdminIntelligencePage() {
 
   if (!user) {
     return (
-      <AppShell title="Org Learning">
-        <EmptyState title="Sign in required" description="Log in to view org learning." />
+      <AppShell title={copy.title}>
+        <EmptyState title="Sign in required" description="Log in to view learning signals." />
       </AppShell>
     )
   }
 
   if (error) {
-    const message = error instanceof ApiError ? error.message : "Failed to load intelligence data."
+    const message = error instanceof ApiError ? error.message : "Failed to load learning data."
     return (
-      <AppShell title="Org Learning">
-        <ErrorState title="Unable to load org learning" description={message} onRetry={() => mutate()} />
+      <AppShell title={copy.title}>
+        <ErrorState title="Unable to load learning" description={message} onRetry={() => mutate()} />
       </AppShell>
     )
   }
 
   return (
-    <AppShell title="Org Learning">
+    <AppShell title={copy.title}>
       <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
         <LearningSurfacesCallout current="org-learning" />
 
         <PageHeader
-          title="Org Learning"
-          description="Monitor automatic learning from usage — query patterns, memory promotion, search quality, and outcome-linked signals."
+          title={copy.title}
+          description={copy.description}
           icon={Brain}
           iconColor="from-violet-500/20 to-emerald-500/20 ring-violet-500/20"
           className="rounded-2xl border border-border/70 bg-card/40 p-0 sm:p-0"
@@ -73,25 +77,28 @@ export default function AdminIntelligencePage() {
         <Tabs value={tab} onValueChange={(value) => setTab(value as TabKey)} className="space-y-6">
           <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 rounded-xl border border-border/70 bg-secondary/30 p-1">
             <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              Overview
+              {tabs.overview}
             </TabsTrigger>
             <TabsTrigger value="memory" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              Memory promotion
+              {tabs.memory}
             </TabsTrigger>
             <TabsTrigger value="relationships" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              Relationships
+              {tabs.relationships}
             </TabsTrigger>
             <TabsTrigger value="evaluation" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              Evaluation
+              {tabs.evaluation}
             </TabsTrigger>
             <TabsTrigger value="outcomes" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              Outcomes
+              {tabs.outcomes}
+            </TabsTrigger>
+            <TabsTrigger value="learning" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              {tabs.learning}
             </TabsTrigger>
             <TabsTrigger value="engine" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              Engine
+              {tabs.engine}
             </TabsTrigger>
             <TabsTrigger value="performance" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              Performance
+              {tabs.performance}
             </TabsTrigger>
           </TabsList>
 
@@ -114,6 +121,10 @@ export default function AdminIntelligencePage() {
 
           <TabsContent value="outcomes" className="mt-0">
             <OutcomesTab enabled={tab === "outcomes"} />
+          </TabsContent>
+
+          <TabsContent value="learning" className="mt-0">
+            <LearningTrendsTab enabled={tab === "learning"} />
           </TabsContent>
 
           <TabsContent value="engine" className="mt-0">

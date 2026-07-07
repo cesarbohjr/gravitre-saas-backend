@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/sheet"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { APP_ROUTES } from "@/lib/app-routes"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import {
   Tooltip,
   TooltipContent,
@@ -1064,7 +1065,7 @@ export default function AgentsPage() {
   }, [activeCount])
 
   return (
-  <AppShell title="Agents">
+  <AppShell title={SURFACE_COPY.pages.agents.title}>
     <div className="relative flex flex-col lg:flex-row h-full overflow-hidden">
       {/* Premium ambient background */}
       <div className="absolute inset-0 pointer-events-none z-0">
@@ -1089,8 +1090,8 @@ export default function AgentsPage() {
   <div className="relative z-10 flex-1 flex flex-col lg:border-r border-border/50 backdrop-blur-sm">
           {/* Header */}
           <PageHeader
-            title="AI Team"
-            description="Your intelligent workforce"
+            title={SURFACE_COPY.pages.agents.rosterTitle}
+            description={SURFACE_COPY.pages.agents.description}
             icon={Brain}
             iconColor="from-violet-500/20 to-purple-500/20"
             actions={

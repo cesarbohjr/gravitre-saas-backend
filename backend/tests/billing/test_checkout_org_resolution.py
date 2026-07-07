@@ -55,3 +55,26 @@ def test_resolve_org_id_returns_none_when_unresolved():
     client = _client_with_tables({})
     org_id = resolve_org_id_from_checkout_metadata(client, {"signup_flow": "public_checkout"})
     assert org_id is None
+
+
+def test_resolve_org_id_from_stripe_customer_org_billing():
+    from app.billing.service import resolve_org_id_from_stripe_customer
+
+    client = _client_with_tables(
+        {"org_billing": [{"org_id": ORG_ID}]},
+    )
+    org_id = resolve_org_id_from_stripe_customer(client, "cus_live_123")
+    assert org_id == ORG_ID
+
+
+def test_resolve_org_id_from_stripe_customer_subscriptions_fallback():
+    from app.billing.service import resolve_org_id_from_stripe_customer
+
+    client = _client_with_tables(
+        {
+            "org_billing": [],
+            "subscriptions": [{"org_id": ORG_ID}],
+        },
+    )
+    org_id = resolve_org_id_from_stripe_customer(client, "cus_live_456")
+    assert org_id == ORG_ID

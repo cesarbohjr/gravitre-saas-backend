@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { intelligenceApi } from "@/lib/api"
 import { Gauge, WarningCircle } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 
 function severityVariant(severity: string): "destructive" | "secondary" | "outline" {
   if (severity === "high") return "destructive"
@@ -64,9 +65,9 @@ export function BusinessImpactCard() {
               <Gauge className="h-5 w-5 text-emerald-600 dark:text-emerald-400" weight="duotone" aria-hidden />
             </span>
             <div>
-              <h3 className="text-base font-semibold text-foreground">Business Impact Score</h3>
+              <h3 className="text-base font-semibold text-foreground">{SURFACE_COPY.learningAdmin.businessImpactTitle}</h3>
               <p className="mt-0.5 text-xs text-muted-foreground text-pretty">
-                Composite over pending optimization suggestions and outcome-linked learning.
+                {SURFACE_COPY.learningAdmin.businessImpactHint}
               </p>
             </div>
           </div>
@@ -114,7 +115,7 @@ export function BusinessImpactCard() {
             </span>
             <div>
               <section id="revenue-risk" className="scroll-mt-24">
-                <h3 className="text-base font-semibold text-foreground">Revenue Risk Radar</h3>
+                <h3 className="text-base font-semibold text-foreground">{SURFACE_COPY.learningAdmin.revenueRiskTitle}</h3>
                 <p className="mt-0.5 text-xs text-muted-foreground text-pretty">
                   Pending business signals from optimization suggestions and outcome summaries.
                 </p>

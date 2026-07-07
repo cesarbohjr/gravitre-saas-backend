@@ -30,7 +30,6 @@ from app.billing.stripe import (
     create_subscription_for_payment_element,
     plan_code_for_price,
     price_id_for_plan,
-    verify_webhook,
 )
 from app.config import Settings, get_settings
 from app.core.errors import error_detail
@@ -171,10 +170,34 @@ def _normalize_subscription(row: dict | None, org_id: str) -> dict:
     }
 
 
-def _map_usage_for_billing_status(usage_payload: dict) -> dict:
+def _weekly_workflow_totals(client, org_id: str, period_start_iso: str) -> list[int]:
+    usage_rows = (
+        client.table("usage_records")
+        .select("metric_type, quantity, recorded_at")
+        .eq("org_id", org_id)
+        .gte("recorded_at", period_start_iso)
+        .execute()
+    )
+    buckets: dict[int, int] = {0: 0, 1: 0, 2: 0, 3: 0}
+    start = datetime.fromisoformat(period_start_iso.replace("Z", "+00:00"))
+    for row in usage_rows.data or []:
+        if str(row.get("metric_type") or "") != "workflow_runs":
+            continue
+        recorded = str(row.get("recorded_at") or period_start_iso)
+        try:
+            ts = datetime.fromisoformat(recorded.replace("Z", "+00:00"))
+        except ValueError:
+            ts = start
+        week_index = min(3, max(0, int((ts - start).days // 7)))
+        buckets[week_index] = buckets.get(week_index, 0) + int(row.get("quantity") or 0)
+    return [buckets[i] for i in range(4)]
+
+
+def _map_usage_for_billing_status(usage_payload: dict, *, weekly_totals: list[int] | None = None) -> dict:
     period_start = str(usage_payload.get("period_start") or datetime.now(timezone.utc).isoformat())
     tier = usage_payload.get("tier")
     totals = usage_payload.get("totals") or {}
+    plan = usage_payload.get("plan") or {}
     return {
         "period_start": period_start,
         "tier": tier,
@@ -185,6 +208,9 @@ def _map_usage_for_billing_status(usage_payload: dict) -> dict:
             "ai_tokens": int(totals.get("ai_tokens") or 0),
         },
         "included_outputs": usage_payload.get("included_outputs"),
+        "workflow_runs_included": int(plan.get("workflow_runs_included") or usage_payload.get("included_outputs") or 0),
+        "ai_credits_included": int(plan.get("ai_credits_included") or 0),
+        "weekly_totals": weekly_totals or [],
         "overage_outputs": int(usage_payload.get("overage_outputs") or 0),
         "overage_cost_usd": float(usage_payload.get("overage_cost_usd") or 0),
     }
@@ -338,13 +364,17 @@ async def billing_overview(
         subscription_row = (insert_resp.data or [None])[0]
     subscription = _normalize_subscription(subscription_row, org_id)
     usage = _usage_from_records(client, org_id, subscription.get("tier"))
+    plan = get_plan_for_org(client, org_id)
+    usage["plan"] = plan
+    period_start = str(usage.get("period_start") or datetime.now(timezone.utc).isoformat())
+    weekly_totals = _weekly_workflow_totals(client, org_id, period_start)
     invoices, payment_methods = _fetch_invoices_and_payment_methods(
         settings=settings,
         customer_id=(subscription_row or {}).get("stripe_customer_id"),
     )
     return {
         "subscription": subscription,
-        "usage": _map_usage_for_billing_status(usage),
+        "usage": _map_usage_for_billing_status(usage, weekly_totals=weekly_totals),
         "invoices": invoices,
         "payment_methods": payment_methods,
     }
@@ -839,100 +869,7 @@ async def handle_webhook(
     request: Request,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    payload = await request.body()
-    signature = request.headers.get("stripe-signature")
-    if not settings.stripe_webhook_secret:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=error_detail("Stripe webhook not configured", "INVALID_CONFIG"),
-        )
-    event = verify_webhook(settings, payload, signature)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    event_type = event["type"]
-    data = event["data"]["object"]
-    metadata = data.get("metadata") or {} if isinstance(data, dict) else {}
-    org_id = metadata.get("org_id") if isinstance(metadata, dict) else None
-    if not org_id and isinstance(metadata, dict):
-        org_id = _resolve_org_id_from_checkout_metadata(client, metadata)
-    if event_type == "checkout.session.completed":
-        subscription_id = data.get("subscription")
-        customer_id = data.get("customer")
-        plan_code = (metadata.get("plan_code") or DEFAULT_PLAN_CODE).strip().lower() if isinstance(metadata, dict) else DEFAULT_PLAN_CODE
-        if org_id:
-            client.table("org_billing").upsert(
-                {
-                    "org_id": org_id,
-                    "stripe_customer_id": customer_id,
-                    "stripe_subscription_id": subscription_id,
-                    "plan_code": plan_code,
-                    "billing_status": "active",
-                },
-                on_conflict="org_id",
-            ).execute()
-        if org_id:
-            write_audit_event(
-                client,
-                org_id=org_id,
-                actor_id="stripe",
-                action="billing.subscription.created",
-                resource_type="org_billing",
-                resource_id=str(org_id),
-                metadata={"subscription_id": subscription_id},
-            )
-    if event_type in {"customer.subscription.updated", "customer.subscription.created"}:
-        subscription_id = data.get("id")
-        customer_id = data.get("customer")
-        current_period_end = data.get("current_period_end")
-        status_value = data.get("status") or "active"
-        price_id = None
-        items = data.get("items", {}).get("data", [])
-        if items:
-            price_id = items[0].get("price", {}).get("id")
-        plan_code = plan_code_for_price(settings, price_id)
-        update_row = {
-            "org_id": org_id,
-            "stripe_customer_id": customer_id,
-            "stripe_subscription_id": subscription_id,
-            "stripe_price_id": price_id,
-            "plan_code": plan_code,
-            "billing_status": status_value,
-            "current_period_end": datetime.fromtimestamp(current_period_end, tz=timezone.utc).isoformat()
-            if current_period_end
-            else None,
-            "cancel_at_period_end": bool(data.get("cancel_at_period_end")),
-        }
-        client.table("org_billing").upsert(update_row).execute()
-        if org_id:
-            write_audit_event(
-                client,
-                org_id=org_id,
-                actor_id="stripe",
-                action="billing.subscription.updated",
-                resource_type="org_billing",
-                resource_id=str(org_id),
-                metadata={"subscription_id": subscription_id, "status": status_value},
-            )
-    if event_type == "customer.subscription.deleted":
-        subscription_id = data.get("id")
-        client.table("org_billing").update(
-            {"stripe_subscription_id": None, "billing_status": "cancelled"}
-        ).eq("stripe_subscription_id", subscription_id).execute()
-        if org_id:
-            write_audit_event(
-                client,
-                org_id=org_id,
-                actor_id="stripe",
-                action="billing.subscription.cancelled",
-                resource_type="org_billing",
-                resource_id=str(org_id),
-                metadata={"subscription_id": subscription_id},
-            )
-    if event_type == "account.updated":
-        from app.services.marketplace_billing_service import handle_connect_account_updated
+    """Legacy Stripe webhook URL (/api/billing/webhook) — canonical handler lives in webhooks.stripe."""
+    from app.routers.webhooks.stripe import stripe_webhook
 
-        handle_connect_account_updated(client, settings, data if isinstance(data, dict) else {})
-
-    client.table("billing_events").insert(
-        {"org_id": org_id, "event_type": event_type, "payload": event}
-    ).execute()
-    return {"received": True}
+    return await stripe_webhook(request, settings)

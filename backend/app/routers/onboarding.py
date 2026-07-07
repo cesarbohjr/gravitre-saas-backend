@@ -10,6 +10,7 @@ from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
+from app.connectors.constants import ACTIVE_CONNECTOR_STATUSES
 from app.services.org_seed_service import seed_org_if_needed
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
@@ -77,6 +78,7 @@ class CompleteStepRequest(BaseModel):
 class WelcomeCompleteRequest(BaseModel):
     role: str = Field(..., min_length=1)
     skipped_optional: bool = False
+    connected_tool: bool = False
 
 
 def _is_missing_table_error(error: Exception | None) -> bool:
@@ -85,11 +87,29 @@ def _is_missing_table_error(error: Exception | None) -> bool:
     return "does not exist" in str(error).lower()
 
 
-def _build_progress(onboarding_state: dict | None) -> dict:
+def _org_has_connected_connector(client, org_id: str) -> bool:
+    try:
+        response = (
+            client.table("connectors")
+            .select("id")
+            .eq("org_id", org_id)
+            .in_("status", list(ACTIVE_CONNECTOR_STATUSES))
+            .is_("deleted_at", "null")
+            .limit(1)
+            .execute()
+        )
+        return bool(response.data)
+    except Exception:
+        return False
+
+
+def _build_progress(onboarding_state: dict | None, *, org_id: str | None = None, client=None) -> dict:
     state = onboarding_state or {}
     completed_keys = set(state.get("completed_steps") or [])
     if {"role", "ready", "success"}.intersection(completed_keys):
         completed_keys.add("welcome")
+    if org_id and client and "connect" in completed_keys and not _org_has_connected_connector(client, org_id):
+        completed_keys.discard("connect")
     skipped = bool(state.get("skipped") or False)
     completed_at = state.get("completed_at")
 
@@ -153,7 +173,7 @@ async def get_progress(
     onboarding_state = org_settings.get("onboarding")
     if onboarding_state is not None and not isinstance(onboarding_state, dict):
         onboarding_state = {}
-    return _build_progress(onboarding_state)
+    return _build_progress(onboarding_state, org_id=org_id, client=client)
 
 
 @router.post("/welcome-complete")
@@ -177,8 +197,8 @@ async def complete_welcome(
     legacy_welcome_keys = {"role", "ready", "success"}
     if legacy_welcome_keys.intersection(completed_steps):
         completed_steps.add("welcome")
-    completed_steps.update({"welcome", "role", "ready", "path"})
-    if not body.skipped_optional:
+    completed_steps.update({"welcome", "role", "ready"})
+    if body.connected_tool or _org_has_connected_connector(client, org_id):
         completed_steps.add("connect")
     onboarding_state["completed_steps"] = [
         step["key"] for step in STEP_DEFINITIONS if step["key"] in completed_steps
@@ -214,7 +234,7 @@ async def complete_welcome(
         except Exception:  # noqa: BLE001
             pass
 
-    return _build_progress(onboarding_state)
+    return _build_progress(onboarding_state, org_id=org_id, client=client)
 
 
 @router.post("/complete-step")
@@ -231,6 +251,11 @@ async def complete_step(
         raise HTTPException(status_code=400, detail="Invalid onboarding step key")
 
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    if step_key == "connect" and not _org_has_connected_connector(client, org_id):
+        raise HTTPException(
+            status_code=400,
+            detail="Connect at least one integration before marking this step complete.",
+        )
     org_settings = _load_org_settings(client, org_id)
     onboarding_state = org_settings.get("onboarding")
     if not isinstance(onboarding_state, dict):
@@ -255,7 +280,7 @@ async def complete_step(
 
     org_settings["onboarding"] = onboarding_state
     _save_org_settings(client, org_id, org_settings)
-    return _build_progress(onboarding_state)
+    return _build_progress(onboarding_state, org_id=org_id, client=client)
 
 
 @router.post("/skip")
@@ -317,4 +342,4 @@ async def reset_onboarding(
     }
     org_settings["onboarding"] = onboarding_state
     _save_org_settings(client, org_id, org_settings)
-    return _build_progress(onboarding_state)
+    return _build_progress(onboarding_state, org_id=org_id, client=client)

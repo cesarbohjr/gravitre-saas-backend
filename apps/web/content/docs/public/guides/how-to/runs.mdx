@@ -8,7 +8,7 @@ status: published
 category: How-to Guides
 readTime: 16 min
 prev:
-  title: Manage AI Models
+  title: Manage Models
   href: /docs/guides/how-to/ai-models
 next:
   title: Manage schedules
@@ -83,7 +83,7 @@ Recommended triage order:
 3. Check Connector status for that step's integration
 4. Confirm **active workflow version** matches what you expect
 5. Compare with last **succeeded** run for the same workflow
-6. Attach run to **Command Center** context for a proposed fix plan
+6. Attach run to **Gravitre AI (Execute mode)** context for a proposed fix plan
 
 Common failure causes:
 
@@ -108,7 +108,7 @@ Not every workflow defines rollback/compensation steps — availability depends 
 
 ## Operator and Search integration
 
-- **Command Center** — attach run context: `/api/operator/context/run/{id}`
+- **Gravitre AI (Execute mode)** — attach run context: `/api/operator/context/run/{id}`
 - **Universal Search** — find runs by natural language (`/search`)
 - **Metrics** — aggregate failure rates over time
 

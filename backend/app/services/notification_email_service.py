@@ -19,6 +19,9 @@ logger = logging.getLogger(__name__)
 EMAIL_PREF_KEYS: dict[str, str] = {
     "run_completed": "email_run_completed",
     "run_failed": "email_run_failed",
+    "assignment_completed": "email_assignment_completed",
+    "trial_ending": "email_trial_ending",
+    "payment_failed": "email_payment_failed",
 }
 
 GRAVITRE_PRIMARY = "#0091FF"
@@ -576,3 +579,118 @@ def send_swarm_completion_email(
             brand.brand_name,
         )
     return sent
+
+
+def _simple_completion_email(
+    brand: EmailBrandContext,
+    *,
+    subject_prefix: str,
+    headline: str,
+    summary: str,
+    view_url: str,
+    cta_label: str,
+) -> tuple[str, str]:
+    subject = f"{brand.brand_name} · {subject_prefix}"
+    html_body = f"""<!DOCTYPE html>
+<html lang="en"><body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f8fafc;color:#0f172a;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;">
+    <tr><td style="padding:24px;background:linear-gradient(135deg,{brand.primary_color},{brand.accent_color});color:#fff;border-radius:16px 16px 0 0;">
+      <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;opacity:0.9;">{html.escape(brand.brand_name)}</div>
+      <h1 style="margin:8px 0 0;font-size:22px;">{html.escape(headline)}</h1>
+    </td></tr>
+    <tr><td style="padding:24px;">
+      <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#334155;">{html.escape(summary)}</p>
+      <a href="{html.escape(view_url)}" style="display:inline-block;background:{brand.primary_color};color:#fff;text-decoration:none;padding:12px 18px;border-radius:999px;font-weight:600;">{html.escape(cta_label)}</a>
+    </td></tr>
+  </table>
+</body></html>"""
+    return subject, html_body
+
+
+def send_workflow_completion_email(
+    client: Any,
+    settings: Settings,
+    *,
+    org_id: str,
+    user_id: str,
+    run_id: str,
+    workflow_name: str,
+    final_status: str,
+) -> bool:
+    if not settings.notification_email_enabled:
+        return False
+    pref_type = "run_completed" if final_status == "completed" else "run_failed"
+    if not email_notifications_enabled(client, org_id, user_id, pref_type):
+        return False
+    to_addr = resolve_user_email(client, org_id, user_id)
+    if not to_addr:
+        return False
+    brand = load_org_email_branding(client, org_id, settings)
+    view_url = f"{brand.app_base_url}/runs/{run_id}"
+    if final_status == "completed":
+        summary = f"Workflow “{workflow_name}” finished successfully."
+        headline = "Workflow completed"
+        prefix = "Workflow complete"
+    else:
+        summary = f"Workflow “{workflow_name}” failed. Review the run for step-level errors."
+        headline = "Workflow failed"
+        prefix = "Workflow failed"
+    subject, html_body = _simple_completion_email(
+        brand,
+        subject_prefix=prefix,
+        headline=headline,
+        summary=summary,
+        view_url=view_url,
+        cta_label="View run details",
+    )
+    return _send_email(
+        settings,
+        to_addr=to_addr,
+        subject=subject,
+        html_body=html_body,
+        client=client,
+        org_id=org_id,
+    )
+
+
+def send_assignment_completion_email(
+    client: Any,
+    settings: Settings,
+    *,
+    org_id: str,
+    user_id: str,
+    job_id: str,
+    task_title: str,
+    requires_approval: bool,
+) -> bool:
+    if not settings.notification_email_enabled:
+        return False
+    if not email_notifications_enabled(client, org_id, user_id, "assignment_completed"):
+        return False
+    to_addr = resolve_user_email(client, org_id, user_id)
+    if not to_addr:
+        return False
+    brand = load_org_email_branding(client, org_id, settings)
+    view_url = f"{brand.app_base_url}/assignments/{job_id}"
+    if requires_approval:
+        summary = f"Assignment “{task_title}” is ready for your review and approval."
+        headline = "Assignment needs approval"
+    else:
+        summary = f"Assignment “{task_title}” completed successfully."
+        headline = "Assignment completed"
+    subject, html_body = _simple_completion_email(
+        brand,
+        subject_prefix="Assignment update",
+        headline=headline,
+        summary=summary,
+        view_url=view_url,
+        cta_label="Open assignment",
+    )
+    return _send_email(
+        settings,
+        to_addr=to_addr,
+        subject=subject,
+        html_body=html_body,
+        client=client,
+        org_id=org_id,
+    )

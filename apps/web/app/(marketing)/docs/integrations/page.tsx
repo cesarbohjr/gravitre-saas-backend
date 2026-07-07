@@ -4,11 +4,11 @@ import { ArrowLeft, Mail, Plug } from "lucide-react"
 
 import { getPublishedPublicDocs } from "@/lib/docs/load-docs"
 import { PlanBadge } from "@/components/docs/plan-badge"
+import { MARKETING_COPY } from "@/lib/marketing-copy"
 
 export const metadata: Metadata = {
   title: "Integrations · Gravitre Docs",
-  description:
-    "Connect Gravitre to the tools your team already uses — CRMs, ticketing, accounting, and more.",
+  description: MARKETING_COPY.docs.integrationsIntro,
 }
 
 /** Map of doc slug (under integrations/) -> self-hosted brand logo. */
@@ -47,8 +47,7 @@ export default function IntegrationsIndexPage() {
             <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">Integrations</h1>
           </div>
           <p className="mt-4 max-w-2xl text-lg text-zinc-600">
-            Connect Gravitre to the tools your team already uses. Each integration uses OAuth or API
-            keys, syncs securely, and exposes actions to workflows and agents.
+            {MARKETING_COPY.docs.integrationsIntro}
           </p>
         </div>
       </section>

@@ -339,7 +339,7 @@ class MesonService:
             {
                 "name": cfg.agent.strip(),
                 "description": cfg.agent_description or plan.intent,
-                "status": "inactive",
+                "status": "active",
                 "role": cfg.agent_role or persona_role,
                 "capabilities": plan.output_types or ["tasks"],
                 "config": {

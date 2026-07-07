@@ -7,6 +7,9 @@ import { ArrowRight, Bot, Workflow, Shield, Zap, Users, BarChart3, Sparkles, Pla
 import { AppShowcase } from "@/components/gravitre/app-showcase"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
 import { ProductShowcase, HowItWorks, TestimonialsCarousel, AnimatedStats } from "@/components/marketing/product-showcase"
+import { IntelligenceEngineSection } from "@/components/marketing/intelligence-engine-section"
+import { MARKETING_COPY } from "@/lib/marketing-copy"
+import { SHOW_MARKETING_TESTIMONIALS } from "@/lib/marketing-flags"
 
 // Interactive particle field
 function seededUnit(seed: number) {
@@ -451,7 +454,7 @@ export default function HomePage() {
                 animate={{ scale: [1, 1.3, 1], opacity: [1, 0.7, 1] }}
                 transition={{ duration: 1.5, repeat: Infinity }}
               />
-              <span className="text-sm font-medium text-emerald-700">AI-powered automation platform</span>
+              <span className="text-sm font-medium text-emerald-700">{MARKETING_COPY.hero.badge}</span>
               <ChevronRight strokeWidth={1.5} className="h-4 w-4 text-emerald-500" />
             </motion.div>
             
@@ -464,7 +467,7 @@ export default function HomePage() {
                 className="text-5xl sm:text-7xl lg:text-8xl font-bold tracking-tight"
               >
                 <span className="text-zinc-900">
-                  Your AI team,
+                  {MARKETING_COPY.hero.headline[0]}
                 </span>
               </motion.h1>
             </div>
@@ -476,7 +479,7 @@ export default function HomePage() {
                 className="text-5xl sm:text-7xl lg:text-8xl font-bold tracking-tight"
               >
                 <span className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 bg-clip-text text-transparent">
-                  managed simply
+                  {MARKETING_COPY.hero.headline[1]}
                 </span>
               </motion.h1>
             </div>
@@ -488,8 +491,7 @@ export default function HomePage() {
               transition={{ delay: 0.8 }}
               className="mt-8 text-lg sm:text-xl text-zinc-600 max-w-2xl mx-auto leading-relaxed"
             >
-              Put AI to work across your business. Automate repetitive tasks, 
-              keep everything secure, and get more done with less effort.
+              {MARKETING_COPY.hero.subhead}
             </motion.p>
             
             {/* CTAs with hover effects */}
@@ -586,10 +588,14 @@ export default function HomePage() {
       <section className="relative py-32 bg-white">
         <div className="mx-auto max-w-7xl px-6">
           <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
-            <AnimatedStat value="24/7" label="Always-on agents" />
-            <AnimatedStat value="100" suffix="%" label="Human-in-the-loop approval" />
-            <AnimatedStat value="50" suffix="+" label="App integrations" />
-            <AnimatedStat value="50" suffix="ms" label="Average response time" />
+            {MARKETING_COPY.stats.map((stat) => (
+              <AnimatedStat
+                key={stat.label}
+                value={stat.value}
+                label={stat.label}
+                suffix={"suffix" in stat ? stat.suffix : ""}
+              />
+            ))}
           </div>
         </div>
       </section>
@@ -606,51 +612,32 @@ export default function HomePage() {
             className="mx-auto max-w-2xl text-center mb-20"
           >
             <h2 className="text-4xl sm:text-5xl font-bold tracking-tight text-zinc-900">
-              Everything you need to work with AI
+              Built for operators, not chatbots
             </h2>
             <p className="mt-4 text-lg text-zinc-600">
-              A simple platform to set up, manage, and control your AI assistants.
+              Connect, learn, execute, and measure — with approval gates and evidence at every step.
             </p>
           </motion.div>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              {
-                icon: Bot,
-                title: "AI Assistant",
-                description: "Talk to your AI team in plain English. Ask questions, start tasks, and get answers instantly."
-              },
-              {
-                icon: Users,
-                title: "Smart Agents",
-                description: "Pre-built AI helpers for marketing, sales, finance, and operations. Each one knows its job and stays safe."
-              },
-              {
-                icon: Workflow,
-                title: "Easy Automations",
-                description: "Build powerful automations by dragging and dropping. Connect your apps, data, and approval steps."
-              },
-              {
-                icon: Shield,
-                title: "Built-in Safety",
-                description: "Get approval before big changes, keep a full history, and control who can do what. Stay safe and in control."
-              },
-              {
-                icon: Zap,
-                title: "See It Happen Live",
-                description: "Watch your automations run in real-time. Pause, fix issues, and undo changes with confidence."
-              },
-              {
-                icon: BarChart3,
-                title: "Clear Insights",
-                description: "See what's working, find problems fast, and make your AI work better with simple reports."
-              },
-            ].map((feature, i) => (
-              <FeatureCard key={feature.title} {...feature} index={i} />
-            ))}
+            {MARKETING_COPY.homeFeatures.map((feature, i) => {
+              const icons = [Bot, Users, Workflow, Shield, Zap, BarChart3]
+              const Icon = icons[i] ?? Bot
+              return (
+                <FeatureCard
+                  key={feature.title}
+                  icon={Icon}
+                  title={feature.title}
+                  description={feature.description}
+                  index={i}
+                />
+              )
+            })}
           </div>
         </div>
       </section>
+
+      <IntelligenceEngineSection />
 
       {/* Integrations Section - With real logos */}
       <section className="relative py-32 border-t border-zinc-200 bg-white">
@@ -692,7 +679,7 @@ export default function HomePage() {
               Powerful features, simple interface
             </h2>
             <p className="mt-4 text-lg text-zinc-600">
-              Explore how Gravitre transforms the way your team works with AI.
+              See agents, workflows, runs, and learning surfaces in one interface.
             </p>
           </motion.div>
 
@@ -709,89 +696,68 @@ export default function HomePage() {
             viewport={{ once: true }}
             className="mx-auto max-w-2xl text-center mb-20"
           >
-            <span className="text-sm font-semibold text-emerald-600 tracking-wide uppercase">How it works</span>
+            <span className="text-sm font-semibold text-emerald-600 tracking-wide uppercase">{MARKETING_COPY.howItWorks.eyebrow}</span>
             <h2 className="mt-4 text-4xl sm:text-5xl font-bold tracking-tight text-zinc-900">
-              AI automation for customer success
+              {MARKETING_COPY.howItWorks.title}
             </h2>
             <p className="mt-4 text-lg text-zinc-600">
-              With Gravitre, your team can effortlessly automate workflows, manage AI agents, and take meaningful actions through seamless AI-driven automation.
+              {MARKETING_COPY.howItWorks.subtitle}
             </p>
           </motion.div>
 
           <HowItWorks steps={[
             {
-              number: "01",
-              title: "Connect & configure your agents",
-              description: "Train agents on your business data, configure the actions they can take, then deploy them across your organization.",
+              number: MARKETING_COPY.howItWorks.steps[0].number,
+              title: MARKETING_COPY.howItWorks.steps[0].title,
+              description: MARKETING_COPY.howItWorks.steps[0].description,
               visual: (
                 <div className="bg-zinc-900 rounded-xl p-6 shadow-2xl border border-zinc-800">
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {[
-                      { name: "Data Analyst", status: "Ready", color: "emerald" },
-                      { name: "Content Writer", status: "Training...", color: "blue" },
-                      { name: "Research Agent", status: "Ready", color: "purple" },
-                    ].map((agent, i) => (
+                      { label: "HubSpot", status: "Executable", ok: true },
+                      { label: "Salesforce", status: "Auth required", ok: false },
+                      { label: "Slack", status: "Healthy", ok: true },
+                    ].map((row, i) => (
                       <motion.div
-                        key={agent.name}
+                        key={row.label}
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: i * 0.1 }}
                         className="flex items-center justify-between p-4 rounded-lg border border-zinc-800 bg-zinc-800/50"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                            agent.color === 'emerald' ? 'bg-emerald-500/10' :
-                            agent.color === 'blue' ? 'bg-blue-500/10' : 'bg-purple-500/10'
-                          }`}>
-                            <Bot className={`h-5 w-5 ${
-                              agent.color === 'emerald' ? 'text-emerald-400' :
-                              agent.color === 'blue' ? 'text-blue-400' : 'text-purple-400'
-                            }`} />
-                          </div>
-                          <span className="text-sm text-zinc-200">{agent.name}</span>
-                        </div>
+                        <span className="text-sm text-zinc-200">{row.label}</span>
                         <span className={`text-xs px-2 py-1 rounded-full ${
-                          agent.status === 'Ready' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'
-                        }`}>{agent.status}</span>
+                          row.ok ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"
+                        }`}>{row.status}</span>
                       </motion.div>
                     ))}
                   </div>
                 </div>
-              )
+              ),
             },
             {
-              number: "02",
-              title: "Agents solve your problems",
-              description: "Agents answer questions and, when integrations are connected, can gather data and take actions through your linked systems. Each run shows what was analyzed and what was executed.",
+              number: MARKETING_COPY.howItWorks.steps[1].number,
+              title: MARKETING_COPY.howItWorks.steps[1].title,
+              description: MARKETING_COPY.howItWorks.steps[1].description,
               visual: (
                 <div className="bg-zinc-900 rounded-xl p-6 shadow-2xl border border-zinc-800">
-                  <div className="space-y-3">
-                    <div className="flex gap-3">
-                      <div className="h-8 w-8 rounded-full bg-zinc-700 flex items-center justify-center text-xs text-zinc-300">JD</div>
-                      <div className="flex-1 rounded-xl bg-zinc-800 p-3 text-sm text-zinc-300">
-                        Analyze last month&apos;s sales performance
-                      </div>
+                  <div className="space-y-3 text-sm">
+                    <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 p-3">
+                      <p className="text-zinc-400 text-xs">Query clusters</p>
+                      <p className="text-zinc-200 mt-1">47 distinct themes · 3 knowledge gaps detected</p>
                     </div>
-                    <div className="flex gap-3 justify-end">
-                      <div className="flex-1 rounded-xl bg-emerald-600 p-3 text-sm text-white">
-                        <div className="flex items-center gap-2 mb-1 text-emerald-200">
-                          <Sparkles strokeWidth={1.5} className="h-3 w-3" />
-                          <span className="text-[10px]">via Data Analyst</span>
-                        </div>
-                        Sales increased 23% with enterprise deals leading growth...
-                      </div>
-            <div className="h-8 w-8 rounded-full bg-emerald-500 flex items-center justify-center">
-              <Sparkles strokeWidth={1.5} className="h-4 w-4 text-white" />
-                      </div>
+                    <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 p-3">
+                      <p className="text-zinc-400 text-xs">Retrieval ranker</p>
+                      <p className="text-zinc-200 mt-1">TRAINED · memory confidence 84%</p>
                     </div>
                   </div>
                 </div>
-              )
+              ),
             },
             {
-              number: "03",
-              title: "Build powerful workflows",
-              description: "Create automated workflows that connect triggers, conditions, and actions without writing code.",
+              number: MARKETING_COPY.howItWorks.steps[2].number,
+              title: MARKETING_COPY.howItWorks.steps[2].title,
+              description: MARKETING_COPY.howItWorks.steps[2].description,
               visual: (
                 <div className="bg-zinc-900 rounded-xl p-6 shadow-2xl border border-zinc-800">
                   <div className="flex items-center justify-center gap-2">
@@ -799,7 +765,7 @@ export default function HomePage() {
                       { icon: Zap, color: "emerald" },
                       { icon: Bot, color: "blue" },
                       { icon: Users, color: "purple" },
-                      { icon: BarChart3, color: "amber" },
+                      { icon: Shield, color: "amber" },
                     ].map((node, i) => (
                       <motion.div
                         key={i}
@@ -809,14 +775,14 @@ export default function HomePage() {
                         className="flex items-center"
                       >
                         <div className={`h-12 w-12 rounded-xl flex items-center justify-center border ${
-                          node.color === 'emerald' ? 'border-emerald-500/30 bg-emerald-500/10' :
-                          node.color === 'blue' ? 'border-blue-500/30 bg-blue-500/10' :
-                          node.color === 'purple' ? 'border-purple-500/30 bg-purple-500/10' : 'border-amber-500/30 bg-amber-500/10'
+                          node.color === "emerald" ? "border-emerald-500/30 bg-emerald-500/10" :
+                          node.color === "blue" ? "border-blue-500/30 bg-blue-500/10" :
+                          node.color === "purple" ? "border-purple-500/30 bg-purple-500/10" : "border-amber-500/30 bg-amber-500/10"
                         }`}>
                           <node.icon className={`h-5 w-5 ${
-                            node.color === 'emerald' ? 'text-emerald-400' :
-                            node.color === 'blue' ? 'text-blue-400' :
-                            node.color === 'purple' ? 'text-purple-400' : 'text-amber-400'
+                            node.color === "emerald" ? "text-emerald-400" :
+                            node.color === "blue" ? "text-blue-400" :
+                            node.color === "purple" ? "text-purple-400" : "text-amber-400"
                           }`} />
                         </div>
                         {i < 3 && <div className="w-6 h-0.5 bg-zinc-700" />}
@@ -824,45 +790,13 @@ export default function HomePage() {
                     ))}
                   </div>
                 </div>
-              )
-            },
-            {
-              number: "04",
-              title: "Review analytics & insights",
-              description: "Monitor performance, track success rates, and get actionable insights to optimize your AI operations.",
-              visual: (
-                <div className="bg-zinc-900 rounded-xl p-6 shadow-2xl border border-zinc-800">
-                  <div className="grid grid-cols-3 gap-3 mb-4">
-                    {[
-                      { label: "Tasks", value: "12,847" },
-                      { label: "Success", value: "98.5%" },
-                      { label: "Avg Time", value: "2.3s" },
-                    ].map((stat) => (
-                      <div key={stat.label} className="p-3 rounded-lg bg-zinc-800/50 text-center">
-                        <div className="text-lg font-bold text-zinc-200">{stat.value}</div>
-                        <div className="text-[10px] text-zinc-500">{stat.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="h-20 flex items-end justify-around gap-1">
-                    {[65, 45, 80, 55, 90, 70, 85].map((h, i) => (
-                      <motion.div
-                        key={i}
-                        className="flex-1 bg-gradient-to-t from-emerald-600 to-emerald-500 rounded-t-sm"
-                        initial={{ height: 0 }}
-                        animate={{ height: `${h}%` }}
-                        transition={{ delay: i * 0.1 }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )
+              ),
             },
           ]} />
         </div>
       </section>
 
-      {/* Testimonials Section */}
+      {SHOW_MARKETING_TESTIMONIALS ? (
       <section className="relative py-32 border-t border-zinc-200 bg-zinc-50">
         <div className="mx-auto max-w-7xl px-6">
           <motion.div
@@ -904,6 +838,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      ) : null}
 
       {/* CTA Section */}
       <section className="relative py-32 bg-zinc-50">
@@ -918,10 +853,10 @@ export default function HomePage() {
             className="mx-auto max-w-3xl text-center"
           >
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-zinc-900">
-              Ready to transform your operations?
+              {MARKETING_COPY.cta.title}
             </h2>
             <p className="mt-6 text-lg text-zinc-600">
-              Join hundreds of teams already using Gravitre to automate their workflows.
+              {MARKETING_COPY.cta.subtitle}
             </p>
             <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link

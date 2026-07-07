@@ -1,5 +1,6 @@
 import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import { getEnvironmentHeader } from "@/lib/environment-context"
+import { getDepartmentHeader } from "@/lib/department-context"
 import { getAccessToken } from "@/lib/auth-context"
 import { clearAuthTransition } from "@/lib/auth-transition"
 import { emitPlanRequired, type PlanRequiredDetail } from "@/lib/billing-plan-required"
@@ -45,6 +46,10 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
     }
     if (!headers.has("x-environment")) {
       headers.set("x-environment", getEnvironmentHeader())
+    }
+    const department = getDepartmentHeader()
+    if (department && !headers.has("x-department")) {
+      headers.set("x-department", department)
     }
   }
 

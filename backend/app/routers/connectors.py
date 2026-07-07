@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
 
@@ -217,26 +217,45 @@ def _connector_response_item(
     settings: Settings,
     client,
     org_id: str,
+    force_live: bool = False,
 ) -> dict:
+    from app.connectors.connector_availability_service import evaluate_connector_availability
+
     connector_id = str(row["id"])
-    api_key = masked_api_key_for_response(client, connector_id, row, settings)
     vendor = row.get("vendor") or row.get("type") or ""
-    env = row.get("environment") or environment_name
-    auth_status = resolve_connector_auth_status(
-        client, org_id, connector_id, vendor, settings, environment_name=env
+    availability = evaluate_connector_availability(
+        client,
+        org_id,
+        row,
+        settings,
+        environment_name=str(row.get("environment") or environment_name),
+        force_live=force_live,
     )
-    status_value = map_auth_status_to_connector_status(auth_status, row.get("status") or "healthy")
+    api_key = masked_api_key_for_response(client, connector_id, row, settings)
     return {
         "id": connector_id,
         "name": row.get("name") or "",
         "vendor": vendor,
         "description": row.get("description"),
-        "status": status_value,
-        "authStatus": auth_status,
+        "status": availability.get("health_status") or row.get("status") or "healthy",
+        "authStatus": availability.get("auth_status"),
+        "displayStatus": availability.get("display_status"),
         "environment": row.get("environment") or environment_name,
         "lastSync": row.get("last_sync_at"),
         "recordsSynced": row.get("records_synced") or 0,
         "syncFrequency": row.get("sync_frequency") or "1h",
+        "availability": {
+            "configured": availability.get("configured"),
+            "authenticated": availability.get("authenticated"),
+            "tokenValid": availability.get("token_valid"),
+            "scopesValid": availability.get("scopes_valid"),
+            "healthy": availability.get("display_status") in {"connected", "syncing"},
+            "executable": availability.get("execution_available"),
+            "blockingReason": availability.get("blocking_reason"),
+            "recoveryAction": availability.get("recovery_action"),
+            "lastCheckedAt": availability.get("last_checked_at"),
+            "sourceOfTruth": availability.get("source_of_truth"),
+        },
         "config": {
             "apiKey": api_key,
             "webhookUrl": row.get("webhook_url"),
@@ -440,6 +459,7 @@ async def list_connectors_route_alias(
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
+    live: bool = Query(default=False, description="Refresh OAuth token validity before responding"),
 ) -> dict:
     """List connectors (spec shape)."""
     if org_id is None:
@@ -464,6 +484,7 @@ async def list_connectors_route_alias(
             settings=settings,
             client=client,
             org_id=org_id,
+            force_live=live,
         )
         for row in list(q.data or [])
     ]

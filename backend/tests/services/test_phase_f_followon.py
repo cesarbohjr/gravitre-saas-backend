@@ -60,6 +60,35 @@ async def test_external_wikipedia_fetch(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_external_pubmed_fetch(monkeypatch):
+    from app.services import external_knowledge_service as svc
+
+    async def fake_pubmed(topic: str, **kwargs):
+        return [
+            {
+                "type": "external_pubmed",
+                "title": "Sample trial",
+                "summary": "Sample trial",
+                "source": "https://pubmed.ncbi.nlm.nih.gov/123/",
+                "provider": "pubmed",
+            }
+        ]
+
+    monkeypatch.setattr(svc, "fetch_pubmed_summaries", fake_pubmed)
+    rows = await svc.gather_external_knowledge("diabetes treatment", include_wikipedia=False)
+    assert len(rows) == 1
+    assert rows[0]["type"] == "external_pubmed"
+
+
+def test_infer_external_knowledge_domain():
+    from app.services.external_knowledge_service import infer_external_knowledge_domain
+
+    assert infer_external_knowledge_domain("What is Gravitre?") == "general"
+    assert infer_external_knowledge_domain("PubMed trials for oncology") == "healthcare"
+    assert infer_external_knowledge_domain("topic", explicit_domain="pharma") == "pharma"
+
+
+@pytest.mark.asyncio
 async def test_process_conformance_empty_inventory():
     from unittest.mock import AsyncMock, MagicMock, patch
 

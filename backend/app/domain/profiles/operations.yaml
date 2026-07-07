@@ -1,0 +1,13 @@
+profile_id: operations
+department: operations
+label: Operations
+kpis: [cycle_time, throughput, error_rate, cost_per_unit]
+terminology: [process, workflow, bottleneck, capacity, vendor]
+connector_preferences: [slack, notion, github]
+retrieval_preferences: [process_docs, sop, vendor_contracts]
+memory_priorities: [process_bottlenecks, vendor_performance, capacity_plans]
+workflow_priorities: [process_review, vendor_onboarding, incident_postmortem]
+risk_tolerance: medium
+recommendation_types: [process_optimization, capacity_plan, vendor_selection]
+success_metrics: [cycle_time_reduction, defect_rate, utilization]
+learning_signals: [workflow_execution, bottleneck_detection, efficiency_gains]

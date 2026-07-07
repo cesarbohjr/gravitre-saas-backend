@@ -29,8 +29,8 @@ Gravitre is delivered as a web application backed by a secure API. You interact 
 
 | Surface | Route | Role |
 |---------|-------|------|
-| Command Center | `/command-center` | Delegate tracked work with action plans and async jobs |
-| Workspace Chat | `/assistant` | Multi-turn chat, tools, and daily briefings |
+| Gravitre AI (Execute mode) | `/ai?mode=execute` | Delegate tracked work with action plans and async jobs |
+| Gravitre AI (Chat mode) | `/ai?mode=chat` | Multi-turn chat, tools, and daily briefings |
 | Universal Search | `/search` | Cross-entity lookup (legacy `/chat` redirects here) |
 | Workflows | `/workflows` | Visual automation builder |
 | Connectors | `/connectors` | SaaS integrations |
@@ -41,10 +41,26 @@ Gravitre is delivered as a web application backed by a secure API. You interact 
 | Enterprise | `/settings/enterprise` | Admin controls (Enterprise plan) |
 | Gravitre Lite | `/lite` | Simplified seat experience |
 
+Legacy `/command-center`, `/assistant`, and `/operator` redirect to `/ai` with the appropriate mode.
+
+## GIBE — Gravitre Intelligent Business Engine
+
+**GIBE** is the learning and ML layer behind Insights, recommendations, and built-in models:
+
+| Surface | Route | Role |
+|---------|-------|------|
+| **Insights** | `/intelligence` | Confidence scores, recommendations, routing traces |
+| **Learning** | `/intelligence/learning` | Query clusters, knowledge gaps, memory promotion, evaluation |
+| **Built-in models** | `/models/built-in` | GIBE ML catalog — TRAINED / data-gate status per org |
+| **Training** | `/training` | Agent fine-tunes and custom instructions |
+| **Models** | `/models` | Production registry — deploy and predict (Command plan) |
+
+GIBE learns only from **verified org signals** (chat queries, workflow runs, promoted memories). Predictions and promotions stay **advisory** until you act. See [GIBE — Learning](/docs/guides/how-to/org-learning).
+
 ## How work flows (conceptual)
 
 ```text
-You describe a goal (Command Center, Goal, or Workflow trigger)
+You describe a goal (Gravitre AI, Goal, or Workflow trigger)
     → Gravitre prepares a plan or loads a published version
     → Connected tools are invoked when configured and approved
     → Step results stream into Runs
@@ -75,8 +91,8 @@ All major product actions have REST counterparts:
 
 - Workflows and Runs — `/api/workflows`, `/api/runs`
 - Connectors — `/api/connectors`
-- Command Center — `/api/operator/*`
-- Assistant — `/api/assistant/*`
+- Gravitre AI (Execute mode) — `/api/operator/*`
+- Gravitre AI (Chat mode) — `/api/assistant/*`
 - Marketplace — `/api/marketplace/*`
 
 Published spec (redacted): [openapi.json](/docs/api/openapi.json) · [Swagger UI](/docs/api/swagger)

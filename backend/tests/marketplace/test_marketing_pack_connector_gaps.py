@@ -17,9 +17,17 @@ def test_audit_returns_all_eight_connectors():
 def test_documented_missing_connectors_still_missing():
     report = audit_marketing_pack_connectors()
     by_key = {row["key"]: row for row in report["connectors"]}
-    for key in ("dropbox", "adobe_creative_cloud", "engagebay"):
+    for key in ("dropbox", "adobe_creative_cloud"):
         assert by_key[key]["documentedState"] == "missing"
         assert by_key[key]["liveState"] == "missing"
+
+
+def test_engagebay_is_partial():
+    report = audit_marketing_pack_connectors()
+    engagebay = next(row for row in report["connectors"] if row["key"] == "engagebay")
+    assert engagebay["documentedState"] == "partial"
+    assert engagebay["liveState"] == "partial"
+    assert engagebay["catalogTools"] >= 6
 
 
 def test_linkedin_publish_is_partial_and_blocks_pack():

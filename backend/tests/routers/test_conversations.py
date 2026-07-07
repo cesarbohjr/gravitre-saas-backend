@@ -177,6 +177,59 @@ def test_list_messages_empty(monkeypatch):
     assert response.json() == {"messages": []}
 
 
+def test_append_conversation_messages(monkeypatch):
+    _authenticate()
+    owned = {
+        "id": "conv-1",
+        "org_id": "org-1",
+        "user_id": "user-1",
+        "title": "HubSpot contacts",
+        "preview": None,
+        "message_count": 0,
+        "created_at": "2026-06-04T12:00:00+00:00",
+        "updated_at": "2026-06-04T12:00:00+00:00",
+    }
+    conversations = _table_chain([owned])
+    messages = _table_chain(
+        [
+            {
+                "id": "msg-1",
+                "conversation_id": "conv-1",
+                "role": "user",
+                "content": "do you see any contacts in HubSpot?",
+                "tool_calls": None,
+                "created_at": "2026-06-04T12:01:00+00:00",
+            }
+        ]
+    )
+    supabase = MagicMock()
+
+    def _table(name: str):
+        if name == "conversations":
+            return conversations
+        return messages
+
+    supabase.table.side_effect = _table
+    monkeypatch.setattr(
+        "app.routers.conversations.create_client",
+        lambda *_args, **_kwargs: supabase,
+    )
+    response = client.post(
+        "/api/conversations/conv-1/messages",
+        json={
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "do you see any contacts in HubSpot?",
+                }
+            ]
+        },
+    )
+    assert response.status_code == 201
+    assert response.json()["messages"][0]["content"] == "do you see any contacts in HubSpot?"
+    conversations.update.assert_called_once()
+
+
 def test_create_conversation_deduplicates_same_day_title(monkeypatch):
     _authenticate()
     existing = {

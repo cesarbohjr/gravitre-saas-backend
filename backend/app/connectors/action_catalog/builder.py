@@ -28,6 +28,7 @@ def action(
     idempotent: bool = False,
     destructive: bool = False,
     requires_approval: bool = False,
+    input_schema: dict | None = None,
 ) -> ActionSpec:
     desc = description or f"{name} via {vendor} API"
     return ActionSpec(
@@ -41,6 +42,7 @@ def action(
         idempotent=idempotent,
         destructive=destructive,
         requires_approval=requires_approval,
+        input_schema=input_schema,
     )
 
 

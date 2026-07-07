@@ -43,15 +43,46 @@ class GenerativeAgentCoordinator:
         persona_key = infer_task_persona_key(
             f"{department or ''} {context.get('goal') or context.get('prompt') or task_type}"
         )
+        goal = str(context.get("goal") or context.get("prompt") or normalized)
+        draft = await self._generate_review_draft(normalized, goal, department)
         return {
             "status": "ok",
             "task_type": normalized,
             "persona": persona_key,
             "department": department,
             "context": context,
+            "draft": draft,
             "requiresHumanReview": True,
-            "message": "Generative scaffold returned for review; use ExecutionCore/handoff to execute.",
+            "approval_required": True,
+            "message": "Draft generated for human review before any write action.",
         }
+
+    async def _generate_review_draft(
+        self,
+        task_type: str,
+        goal: str,
+        department: str | None,
+    ) -> str:
+        try:
+            from app.services.model_router import ModelRouter, TaskType
+
+            router = ModelRouter(self.settings)
+            prompt = (
+                f"Create a concise {task_type.replace('_', ' ')} draft for review only. "
+                f"Department: {department or 'general'}. Goal: {goal}. "
+                "Do not claim anything was executed."
+            )
+            response = await router.complete(
+                TaskType.CONTENT_GENERATION,
+                prompt,
+                org_id=org_id,
+            )
+            text = str(getattr(response, "content", "") or "").strip()
+            if text:
+                return text[:4000]
+        except Exception:  # noqa: BLE001
+            pass
+        return f"Review-ready {task_type.replace('_', ' ')} outline for: {goal[:500]}"
 
 
 _generative_agent_coordinator: GenerativeAgentCoordinator | None = None

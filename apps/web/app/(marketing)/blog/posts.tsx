@@ -1,51 +1,15 @@
 import type { ReactNode } from "react"
+import { GRAVITRE_BLOG_AUTHOR } from "./authors"
+import { securityFirstPost } from "./content/security-first"
+import { workflowTemplatesPost } from "./content/workflow-templates"
+import { enterpriseAiGovernancePost } from "./content/enterprise-ai-governance"
+import { aiAgentBestPracticesPost } from "./content/ai-agent-best-practices"
+import { SITE_URL, type BlogFAQ, type BlogPost } from "./types"
 
-/** Canonical production origin used for metadata, canonical URLs, and JSON-LD. */
-export const SITE_URL = "https://gravitre.app"
+export { GRAVITRE_BLOG_AUTHOR } from "./authors"
+export { SITE_URL, type BlogAuthor, type BlogFAQ, type BlogPost } from "./types"
 
-export type BlogAuthor = {
-  name: string
-  role: string
-  /** Optional headshot. When omitted, the UI renders a brand monogram avatar. */
-  image?: string
-  /** Authoritative profile URLs for the Person schema `sameAs` (helps E-E-A-T / GEO). */
-  sameAs?: string[]
-}
-
-export type BlogFAQ = {
-  question: string
-  answer: string
-}
-
-export type BlogPost = {
-  slug: string
-  title: string
-  /** <=160 chars, written as a direct answer for AEO/meta description. */
-  description: string
-  excerpt: string
-  category: string
-  author: BlogAuthor
-  /** ISO 8601 for schema + <time>. */
-  datePublished: string
-  dateModified: string
-  /** Human-readable display date. */
-  displayDate: string
-  readTime: string
-  heroImage: string
-  heroAlt: string
-  keywords: string[]
-  /** Short, extractable summary points surfaced to answer engines and readers. */
-  takeaways: string[]
-  faqs: BlogFAQ[]
-  /** Rendered article body. */
-  Content: () => ReactNode
-}
-
-const cesar: BlogAuthor = {
-  name: "Cesar Bohorquez Jr",
-  role: "CEO & Founder, Gravitre",
-  sameAs: [SITE_URL, `${SITE_URL}/about`],
-}
+const cesar = GRAVITRE_BLOG_AUTHOR
 
 /**
  * Shared link styling for inline citations. Citations matter for GEO: generative
@@ -234,7 +198,36 @@ const aiWontTakeYourJob: BlogPost = {
   ),
 }
 
-export const blogPosts: BlogPost[] = [aiWontTakeYourJob]
+export const FEATURED_BLOG_SLUG = aiWontTakeYourJob.slug
+
+/** Placeholder entries removed from index — no published article yet. */
+export const BLOG_LISTING_EXCLUDED_SLUGS = new Set([
+  "case-study-acme-corp",
+  "series-b-announcement",
+])
+
+export const blogPosts: BlogPost[] = [
+  aiWontTakeYourJob,
+  securityFirstPost,
+  workflowTemplatesPost,
+  enterpriseAiGovernancePost,
+  aiAgentBestPracticesPost,
+]
+
+export function getFeaturedBlogPost(): BlogPost {
+  return aiWontTakeYourJob
+}
+
+export function getBlogListingPosts(): BlogPost[] {
+  return blogPosts.filter(
+    (post) => post.slug !== FEATURED_BLOG_SLUG && !BLOG_LISTING_EXCLUDED_SLUGS.has(post.slug),
+  )
+}
+
+export function getBlogCategories(): string[] {
+  const cats = new Set(blogPosts.map((p) => p.category))
+  return ["All", ...Array.from(cats).sort()]
+}
 
 export function getBlogPost(slug: string): BlogPost | undefined {
   return blogPosts.find((post) => post.slug === slug)

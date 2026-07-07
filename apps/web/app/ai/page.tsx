@@ -3,6 +3,7 @@
 import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { AiWorkspace } from "./_components/ai-workspace"
 import type { ModeId } from "./_components/ai-mode-config"
 
@@ -30,10 +31,12 @@ function AiPageContent() {
 
 export default function GravitreAiPage() {
   return (
-    <AppShell title="Gravitre AI">
-      <Suspense fallback={null}>
-        <AiPageContent />
-      </Suspense>
+    <AppShell title={SURFACE_COPY.pages.ai.title}>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <Suspense fallback={null}>
+          <AiPageContent />
+        </Suspense>
+      </div>
     </AppShell>
   )
 }

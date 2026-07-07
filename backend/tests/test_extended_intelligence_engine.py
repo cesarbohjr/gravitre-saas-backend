@@ -191,3 +191,13 @@ def test_organization_process_inventory_migration_present():
     text = migration.read_text(encoding="utf-8")
     assert "organization_process_inventory" in text
     assert "simulation" in text.lower()
+
+    conformance_migration = (
+        Path(__file__).resolve().parents[2]
+        / "supabase"
+        / "migrations"
+        / "20260705050000_process_inventory_conformance_columns.sql"
+    )
+    conformance_text = conformance_migration.read_text(encoding="utf-8")
+    assert "workflow_id" in conformance_text
+    assert "declared_steps" in conformance_text

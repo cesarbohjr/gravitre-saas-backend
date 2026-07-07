@@ -3,9 +3,9 @@ import { marketingMetadata } from "@/lib/seo"
 export const metadata = marketingMetadata({
   title: "Features",
   description:
-    "Explore Gravitre's features: agent orchestration, workflow automation, run monitoring, approvals, governance, federation, and a marketplace of role-ready AI agents.",
+    "GIBE (Gravitre Intelligent Business Engine): built-in ML, org learning, predictive ops, connector executability, agents, workflows, and MCP-native execution with approval gates.",
   ogDescription:
-    "Agent orchestration, workflow automation, run monitoring, approvals, governance, and a marketplace of role-ready AI agents.",
+    "An MCP server with a brain — memory, ML catalog, failure predictions, and governed execution.",
 })
 
 export default function FeaturesLayout({ children }: { children: React.ReactNode }) {

@@ -48,6 +48,8 @@ class AITrustLayer:
         routing_summary: str | None = None,
         simulation_summary: dict[str, Any] | None = None,
         action_safety_level: str | None = None,
+        stale_source_warnings: list[str] | None = None,
+        knowledge_freshness: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         band = self.confidence_band(confidence)
         base = {
@@ -76,8 +78,62 @@ class AITrustLayer:
             "routing_summary": routing_summary,
             "simulation_summary": simulation_summary,
             "action_safety_level": action_safety_level or "low",
+            "stale_source_warnings": stale_source_warnings or [],
+            "knowledge_freshness": knowledge_freshness or {},
         }
+        if stale_source_warnings:
+            base["risks"] = list(risks or []) + [
+                warning for warning in stale_source_warnings if warning not in (risks or [])
+            ]
         return base
+
+    def apply_freshness_to_confidence(
+        self,
+        confidence: float,
+        *,
+        stale_source_warnings: list[str] | None = None,
+        freshness_penalty: float = 0.0,
+    ) -> float:
+        penalty = float(freshness_penalty or 0.0)
+        if stale_source_warnings:
+            penalty = max(penalty, min(0.2, 0.04 * len(stale_source_warnings)))
+        return round(max(0.0, min(1.0, float(confidence) - penalty)), 4)
+
+    def build_knowledge_freshness_envelope(
+        self,
+        retrieval_plan: dict[str, Any] | None,
+    ) -> tuple[str | None, list[str], dict[str, Any]]:
+        plan = retrieval_plan or {}
+        warnings = list(plan.get("freshness_trust_warnings") or [])
+        stale_map = plan.get("assignment_stale_warnings") or {}
+        for warning in stale_map.values():
+            if warning and warning not in warnings:
+                warnings.append(str(warning))
+        label = plan.get("freshness_label") or plan.get("data_freshness")
+        envelope = {
+            "freshness_label": label,
+            "learning_confidence": plan.get("learning_confidence"),
+            "insufficient_data": bool(plan.get("insufficient_data")),
+            "stale_source_count": len(warnings),
+        }
+        return label, warnings, envelope
+
+    def build_optimization_trust_metadata(
+        self,
+        *,
+        freshness_envelope: dict[str, Any] | None = None,
+        optimization_summary: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        optimization = optimization_summary or {}
+        return {
+            "freshness": freshness_envelope or {},
+            "domain_optimization": {
+                "pending_recommendations": int(optimization.get("pending_count") or 0),
+                "advisory_only": True,
+                "auto_execution_enabled": False,
+                "insufficient_data_warnings": optimization.get("insufficient_data_warnings") or [],
+            },
+        }
 
     async def generate_answer_explanation(
         self,
@@ -133,6 +189,41 @@ class AITrustLayer:
             if simulation_summary.get("reversible") is False:
                 parts.append("This action is treated as irreversible.")
         return " ".join(parts)
+
+    def wrap_response_calibrated(
+        self,
+        org_id: str,
+        *,
+        answer: str,
+        sources: list[dict[str, Any]],
+        confidence: float,
+        reasoning_summary: str | None,
+        actions_taken: list[dict[str, Any]],
+        actions_pending_approval: list[dict[str, Any]],
+        advisory_only: bool,
+        surface: str = "assistant",
+        settings: Any | None = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        from app.config import get_settings
+        from app.services.confidence_calibrator import get_confidence_calibrator
+
+        active = settings or get_settings()
+        multiplier = get_confidence_calibrator(active).get_multiplier(org_id, surface)
+        adjusted = round(max(0.0, min(1.0, float(confidence) * multiplier)), 4)
+        envelope = self.wrap_response(
+            answer,
+            sources,
+            adjusted,
+            reasoning_summary,
+            actions_taken,
+            actions_pending_approval,
+            advisory_only,
+            **kwargs,
+        )
+        envelope["calibration_multiplier"] = multiplier
+        envelope["calibrated_confidence"] = adjusted
+        return envelope
 
 
 _ai_trust_layer: AITrustLayer | None = None

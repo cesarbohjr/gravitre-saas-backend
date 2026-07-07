@@ -24,7 +24,7 @@ The main Settings page uses in-page sections (desktop sidebar). Related routes o
 | Section (UI) | Route | Purpose |
 |--------------|-------|---------|
 | **Organization** | `/settings` → organization | Name, slug, primary domain, logo |
-| **AI Models** | `/settings` → ai-models | Workspace, Operator, and agent default models |
+| **Models** | `/settings` → ai-models | Workspace, Operator, and agent default models |
 | **Security** | `/settings` → security | SSO (SAML/OIDC), 2FA policy, IP allowlist |
 | **API Keys** | `/settings` → api-keys | Programmatic REST access |
 | **Notifications** | `/settings` → notifications | Email and Slack alert channels |
@@ -60,9 +60,9 @@ API routes enforce the same RBAC — a Member cannot create API keys even with a
 
 Connect a Salesforce sandbox in **staging** Environment; production OAuth lives separately under **Connectors** when you switch environment badge.
 
-## AI Models section vs AI Models product
+## Models section vs Models product
 
-**Settings → AI Models** sets **defaults** (workspace, Operator, new agents, fallback). The **AI Models** product area (`/models`, Command plan) is the production registry with deploy/predict — see [AI Models overview](/docs/concepts/ai-models).
+**Settings → Models** sets **defaults** (workspace, Operator, new agents, fallback). The **Models** product area (`/models`, Command plan) is the production registry with deploy/predict and GIBE built-in catalog at `/models/built-in` — see [Models overview](/docs/concepts/ai-models).
 
 Model **policy** (allowed providers/models) is also available via API:
 

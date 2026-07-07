@@ -879,7 +879,7 @@ export function ConnectorIcon({
   onClick,
   forceLight = true,
 }: ConnectorIconProps) {
-  const statusToken = connectorStatusTokens[status]
+  const statusToken = connectorStatusTokens[status] ?? connectorStatusTokens.disconnected
   const sizeToken = connectorIconSizes[size]
 
   const displayName = name || vendor || "Connector"

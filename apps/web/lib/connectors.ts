@@ -469,3 +469,36 @@ export const AVAILABLE_CONNECTORS = listAvailableConnectors().map((entry) => ({
   ...entry,
   category: entry.category,
 }))
+
+export type ConnectorDisplayStatus = "connected" | "disconnected" | "error" | "syncing"
+
+/** Normalize backend health/auth/display fields to UI status labels. */
+export function resolveConnectorDisplayStatus(
+  rawStatus: string,
+  authStatus?: string,
+  displayStatus?: string,
+): ConnectorDisplayStatus {
+  const normalizedDisplay = String(displayStatus ?? "").trim().toLowerCase()
+  if (normalizedDisplay === "connected" || normalizedDisplay === "syncing") {
+    return normalizedDisplay
+  }
+  if (normalizedDisplay === "error") return "error"
+  if (normalizedDisplay === "disconnected") return "disconnected"
+
+  const auth = String(authStatus ?? "").trim().toLowerCase()
+  if (auth === "connected") return "connected"
+  if (auth === "auth_expired" || auth === "misconfigured") return "error"
+  if (auth === "pending_auth" || auth === "pending_property") return "disconnected"
+
+  const raw = String(rawStatus ?? "disconnected").trim().toLowerCase()
+  if (raw === "connected" || raw === "syncing" || raw === "error" || raw === "disconnected") {
+    return raw
+  }
+  if (raw === "healthy" || raw === "active") return "connected"
+  if (raw === "pending_auth" || raw === "pending" || raw === "pending_property") {
+    return "disconnected"
+  }
+  if (raw === "error") return "error"
+  if (raw === "inactive") return "disconnected"
+  return "disconnected"
+}

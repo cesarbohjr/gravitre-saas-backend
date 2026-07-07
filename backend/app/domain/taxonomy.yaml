@@ -1,0 +1,239 @@
+# Gravitre domain intelligence taxonomy v1
+# Source of truth for hierarchical industry / department / subdomain classification.
+
+industries:
+  msp:
+    label: MSP
+    aliases: [msp, managed service provider, managed services, mssp]
+    keywords: [rmm, endpoint, patch management, noc, helpdesk ticket, managed it]
+  saas:
+    label: SaaS
+    aliases: [saas, b2b saas, software as a service, subscription software]
+    keywords: [mrr, arr, churn, product-led, plg, subscription]
+  healthcare:
+    label: Healthcare
+    aliases: [healthcare, health care, hospital, clinical]
+    keywords: [hipaa, patient, ehr, clinical, provider]
+  manufacturing:
+    label: Manufacturing
+    aliases: [manufacturing, factory, industrial]
+    keywords: [production line, oee, supply chain, plant floor]
+  professional_services:
+    label: Professional Services
+    aliases: [professional services, consulting, agency]
+    keywords: [billable hours, client engagement, statement of work, sow]
+  retail:
+    label: Retail
+    aliases: [retail, ecommerce, e-commerce]
+    keywords: [sku, inventory, storefront, point of sale, pos]
+  finance_industry:
+    label: Finance
+    aliases: [financial services, banking, fintech]
+    keywords: [portfolio, underwriting, compliance audit, trading desk]
+  insurance:
+    label: Insurance
+    aliases: [insurance, carrier, underwriter]
+    keywords: [policy, claim, premium, actuarial]
+  education:
+    label: Education
+    aliases: [education, edtech, university, k-12]
+    keywords: [student, curriculum, enrollment, lms]
+  government:
+    label: Government
+    aliases: [government, public sector, federal, municipal]
+    keywords: [procurement, public record, grant, compliance review]
+
+departments:
+  marketing:
+    label: Marketing
+    keywords: [marketing, campaign, brand, audience, demand gen]
+    subdomains:
+      content_marketing:
+        label: Content Marketing
+        keywords: [content, blog, ebook, whitepaper, editorial, copywriting]
+      seo:
+        label: SEO
+        keywords: [seo, search ranking, organic traffic, keyword, backlink]
+      paid_media:
+        label: Paid Media
+        keywords: [paid media, ppc, ad spend, google ads, meta ads, cpc]
+      demand_generation:
+        label: Demand Generation
+        keywords: [demand gen, lead gen, mql, funnel, webinar]
+      product_marketing:
+        label: Product Marketing
+        keywords: [product marketing, launch, positioning, messaging, gtm]
+      brand_marketing:
+        label: Brand Marketing
+        keywords: [brand awareness, brand voice, creative, rebranding]
+      marketing_operations:
+        label: Marketing Operations
+        keywords: [marketing ops, martech, attribution, lead routing]
+      analytics:
+        label: Analytics
+        keywords: [marketing analytics, attribution model, cohort, conversion rate]
+
+  sales:
+    label: Sales
+    keywords: [sales, pipeline, quota, crm, deal]
+    subdomains:
+      sdr:
+        label: SDR
+        keywords: [sdr, outbound prospecting, cold call, sequence]
+      bdr:
+        label: BDR
+        keywords: [bdr, business development, inbound lead]
+      enterprise_sales:
+        label: Enterprise Sales
+        keywords: [enterprise sales, strategic account, large deal, procurement]
+      channel_sales:
+        label: Channel Sales
+        keywords: [channel sales, partner, reseller, distributor]
+      revenue_operations:
+        label: Revenue Operations
+        keywords: [revops, revenue operations, sales ops, crm hygiene]
+      pipeline_management:
+        label: Pipeline Management
+        keywords: [pipeline management, stage conversion, forecast commit]
+      forecasting:
+        label: Forecasting
+        keywords: [sales forecast, commit, upside, quota attainment]
+
+  finance:
+    label: Finance
+    keywords: [finance, budget, invoice, revenue, accounting]
+    subdomains:
+      fp_and_a:
+        label: FP&A
+        keywords: [fp&a, financial planning, variance, budget forecast]
+      accounting:
+        label: Accounting
+        keywords: [accounting, ledger, reconciliation, close process]
+      billing:
+        label: Billing
+        keywords: [billing, invoicing, collections, dunning]
+      treasury:
+        label: Treasury
+        keywords: [treasury, cash flow, liquidity, working capital]
+      compliance:
+        label: Compliance
+        keywords: [sox, audit, compliance, controls]
+
+  hr:
+    label: HR
+    keywords: [hr, hiring, employee, payroll, people ops]
+    subdomains:
+      recruiting:
+        label: Recruiting
+        keywords: [recruiting, hiring, candidate, interview loop]
+      onboarding:
+        label: Onboarding
+        keywords: [employee onboarding, new hire, orientation]
+      compensation:
+        label: Compensation
+        keywords: [compensation, salary band, equity, benefits]
+      performance:
+        label: Performance
+        keywords: [performance review, okr, goal setting]
+      people_ops:
+        label: People Operations
+        keywords: [people ops, hr policy, headcount planning]
+
+  support:
+    label: Support
+    keywords: [support, ticket, customer, escalation, sla]
+    subdomains:
+      technical_support:
+        label: Technical Support
+        keywords: [technical support, troubleshooting, bug report, incident]
+      customer_success:
+        label: Customer Success
+        keywords: [customer success, csm, health score, adoption]
+      escalations:
+        label: Escalations
+        keywords: [escalation, severity, executive escalation]
+      onboarding:
+        label: Onboarding
+        keywords: [customer onboarding, implementation, kickoff]
+      renewals:
+        label: Renewals
+        keywords: [renewal, churn risk, contract renewal, expansion]
+
+  operations:
+    label: Operations
+    keywords: [operations, process, efficiency, bottleneck, workflow]
+    subdomains:
+      process_improvement:
+        label: Process Improvement
+        keywords: [process improvement, lean, kaizen, bottleneck]
+      vendor_management:
+        label: Vendor Management
+        keywords: [vendor, procurement, supplier]
+      capacity_planning:
+        label: Capacity Planning
+        keywords: [capacity planning, utilization, staffing plan]
+      business_operations:
+        label: Business Operations
+        keywords: [biz ops, operating cadence, cross-functional]
+
+  engineering:
+    label: Engineering
+    keywords: [engineering, deploy, api, code, incident, bug]
+    subdomains:
+      backend:
+        label: Backend
+        keywords: [backend, api, microservice, database]
+      frontend:
+        label: Frontend
+        keywords: [frontend, ui, react, component]
+      devops:
+        label: DevOps
+        keywords: [devops, ci/cd, kubernetes, deployment]
+      sre:
+        label: SRE
+        keywords: [sre, reliability, uptime, on-call, incident]
+      security_engineering:
+        label: Security Engineering
+        keywords: [security engineering, vulnerability, pen test]
+
+  msp:
+    label: MSP
+    keywords: [msp, managed service, rmm, endpoint management]
+    subdomains:
+      noc:
+        label: NOC
+        keywords: [noc, network operations, monitoring alert]
+      helpdesk:
+        label: Helpdesk
+        keywords: [helpdesk, service desk, end user support]
+      rmm:
+        label: RMM
+        keywords: [rmm, remote monitoring, patch deployment, agent install]
+      security_operations:
+        label: Security Operations
+        keywords: [security operations, soc, edr, mdr]
+      client_billing:
+        label: Client Billing
+        keywords: [msp billing, per device, contract renewal, psa]
+
+execution_types:
+  advisory:
+    keywords: [recommend, suggest, advise, what should, best practice]
+  analysis:
+    keywords: [analyze, report, forecast, compare, trend]
+  action:
+    keywords: [run, execute, trigger, send, update, create, deploy]
+  retrieval:
+    keywords: [lookup, find, search, show me, list]
+
+business_objectives:
+  grow_revenue:
+    keywords: [grow revenue, increase sales, upsell, expansion]
+  reduce_cost:
+    keywords: [reduce cost, save money, optimize spend]
+  improve_efficiency:
+    keywords: [improve efficiency, automate, streamline]
+  reduce_risk:
+    keywords: [reduce risk, compliance, audit, security]
+  improve_experience:
+    keywords: [customer experience, satisfaction, nps, csat]

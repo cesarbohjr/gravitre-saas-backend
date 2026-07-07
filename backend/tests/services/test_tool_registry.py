@@ -216,12 +216,8 @@ def test_singleton():
 
 def test_list_connected_integrations(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
-        "app.services.tool_registry.list_connectors",
-        lambda _client, _org, environment_name="default": [
-            {"type": "HubSpot", "status": "active"},
-            {"type": "slack", "status": "disconnected"},
-            {"type": "github", "status": "syncing"},
-        ],
+        "app.connectors.connector_availability_service.list_executable_integrations",
+        lambda *_args, **_kwargs: ["hubspot", "github"],
     )
     connected = ToolRegistry.list_connected_integrations(MagicMock(), "org-1")
-    assert connected == ["github", "hubspot"]
+    assert set(connected) == {"github", "hubspot"}

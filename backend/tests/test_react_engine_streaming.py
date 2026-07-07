@@ -38,7 +38,7 @@ def _model_response(*, content: str = "", tool_calls: list | None = None):
 @pytest.mark.asyncio
 async def test_execute_streaming_yields_same_tool_calls_as_execute():
     engine = ReActEngine(settings=_settings(), registry=MagicMock())
-    engine.registry.get_tools_for_agent = MagicMock(
+    engine.registry.get_available_tools = AsyncMock(
         return_value=[{"type": "function", "function": {"name": "web_search", "parameters": {}}}]
     )
     engine.registry.list_connected_integrations = MagicMock(return_value=["platform"])

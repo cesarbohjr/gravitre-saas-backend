@@ -132,3 +132,25 @@ async def test_stripe_webhook_handler_skips_duplicate(monkeypatch):
 
     result = await stripe_webhook_router.stripe_webhook(request, settings)
     assert result["status"] == "already_processed"
+
+
+@pytest.mark.asyncio
+async def test_billing_webhook_route_delegates_to_canonical_handler(monkeypatch):
+    from app.routers import billing as billing_router
+
+    called = {"value": False}
+
+    async def _fake_stripe_webhook(request, settings):
+        called["value"] = True
+        return {"received": True}
+
+    monkeypatch.setattr(
+        "app.routers.webhooks.stripe.stripe_webhook",
+        _fake_stripe_webhook,
+    )
+
+    request = MagicMock()
+    settings = MagicMock()
+    result = await billing_router.handle_webhook(request, settings)
+    assert called["value"] is True
+    assert result == {"received": True}

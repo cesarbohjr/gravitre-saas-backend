@@ -106,7 +106,11 @@ function scoreChat(text: string): number {
   return Math.max(0, score)
 }
 
+<<<<<<< HEAD
 /* Fast, dependency-free routing used when the model call is unavailable. */
+=======
+// Fast, dependency-free routing used when the model call is unavailable.
+>>>>>>> origin/main
 
 const CONNECTOR_INTEGRATIONS =
   /\b(hubspot|salesforce|slack|zendesk|github|stripe|jira|quickbooks|pipedrive|intercom|notion|asana|teams|gmail|google|microsoft|monday|clickup|figma|canva|pagerduty|linkedin|netsuite|workday|marketo|odoo|confluence|crm)\b/
@@ -118,6 +122,7 @@ const CONNECTOR_ACTION_VERBS =
 export function isConnectorChatPrompt(prompt: string): boolean {
   const text = prompt.toLowerCase().trim()
   if (!text) return false
+  if (OPERATIONAL_EXECUTE.test(text)) return false
   if (/\b(connector|integration)s?\b/.test(text) && /\b(what|which|any|connected|available|do we have|have we)\b/.test(text)) {
     return true
   }

@@ -123,6 +123,7 @@ class AgentCreateRequest(BaseModel):
     name: str
     description: str | None = None
     role: str | None = None
+    department: str | None = None
     capabilities: list[str] | None = None
     config: dict | None = None
     environment_id: str | None = Field(default=None, alias="environmentId")
@@ -1522,6 +1523,9 @@ async def create_agent_route(
     _validate_icon(body.icon)
     _validate_avatar_color(body.avatar_color)
     avatar_color = body.avatar_color or _default_avatar_color(body.role, "active")
+    config = dict(body.config or {})
+    if body.department:
+        config["department"] = body.department.strip()
     operator = create_operator(
         client,
         org_id,
@@ -1531,7 +1535,7 @@ async def create_agent_route(
             "status": "inactive",
             "role": body.role,
             "capabilities": body.capabilities or [],
-            "config": body.config or {},
+            "config": config,
             "allowed_environments": [environment],
             "environment_id": body.environment_id,
             "icon": body.icon,
@@ -2437,3 +2441,39 @@ async def get_session_execution(
         "currentStep": row.get("current_step"),
         "results": row.get("results") or [],
     }
+
+
+class OperatorExecuteActionRequest(BaseModel):
+    action_id: str | None = None
+    action_type: str = "immediate"
+    title: str = ""
+    description: str = ""
+    priority: str | None = None
+    source_job_id: str | None = None
+    source_prompt: str | None = None
+    job_result: dict | None = None
+
+
+@router.post("/execute-action")
+async def execute_operator_action_route(
+    body: OperatorExecuteActionRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    from app.services.operator_execute_action_service import execute_operator_action
+
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return execute_operator_action(
+            client=client,
+            org_id=org_id,
+            user_id=str(current_user.get("user_id") or ""),
+            environment=environment,
+            payload=body.model_dump(),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

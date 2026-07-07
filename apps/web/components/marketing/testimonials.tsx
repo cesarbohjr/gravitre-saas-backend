@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ChevronLeft, ChevronRight, Star, Quote } from "lucide-react"
+import { SHOW_MARKETING_TESTIMONIALS } from "@/lib/marketing-flags"
 
 interface Testimonial {
   quote: string
@@ -49,6 +50,7 @@ const defaultTestimonials: Testimonial[] = [
 
 // Horizontal scrolling testimonials - Chatbase style
 export function TestimonialsMarquee({ testimonials = defaultTestimonials }: { testimonials?: Testimonial[] }) {
+  if (!SHOW_MARKETING_TESTIMONIALS) return null
   // Double the testimonials for seamless loop
   const allTestimonials = [...testimonials, ...testimonials]
   
@@ -90,6 +92,7 @@ export function TestimonialsMarquee({ testimonials = defaultTestimonials }: { te
 
 // Featured testimonials grid with stats
 export function TestimonialsGrid({ testimonials = defaultTestimonials }: { testimonials?: Testimonial[] }) {
+  if (!SHOW_MARKETING_TESTIMONIALS) return null
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       {/* Large featured testimonial */}
@@ -225,6 +228,7 @@ export function LogoCloud() {
 
 // Full-width testimonials carousel with navigation
 export function TestimonialsCarouselFull({ testimonials = defaultTestimonials }: { testimonials?: Testimonial[] }) {
+  if (!SHOW_MARKETING_TESTIMONIALS) return null
   const [activeIndex, setActiveIndex] = useState(0)
   const [direction, setDirection] = useState(0)
 

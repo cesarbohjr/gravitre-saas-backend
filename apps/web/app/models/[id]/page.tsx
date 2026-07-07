@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { connectorsApi, mlModelsApi } from "@/lib/api"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { connectorVendorKey } from "@/lib/connectors"
 import { useAuth } from "@/lib/auth-context"
 import {
@@ -21,8 +22,6 @@ import {
 } from "@/lib/ml-registry-catalog"
 import { ArrowLeft, Brain, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { MesonPagePanel } from "@/components/gravitre/meson-page-panel"
-import type { MesonSuggestion } from "@/lib/api"
 
 const statusStyles: Record<string, string> = {
   draft: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
@@ -133,28 +132,14 @@ export default function ModelDetailPage({ params }: { params: Promise<{ id: stri
     setPredictResult(null)
   }
 
-  function handleMesonSuggestion(suggestion: MesonSuggestion) {
-    if (suggestion.id.includes("deploy") && canDeploy) {
-      void handleDeploy()
-      return
-    }
-    if (suggestion.id.includes("inference") && canDeploy) {
-      void handleRunInference()
-      return
-    }
-    if (suggestion.id.includes("dataset") || suggestion.id.includes("training")) {
-      window.location.href = "/training"
-    }
-  }
-
   return (
     <AppShell title={model?.name ?? "Model"}>
-      <div className="mx-auto flex max-w-7xl gap-6 p-4 sm:p-6">
-        <div className="min-w-0 flex-1 space-y-6">
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+        <div className="space-y-6">
         <Button variant="ghost" size="sm" className="-ml-2 h-8" asChild>
           <Link href="/models">
             <ArrowLeft className="mr-1 h-4 w-4" />
-            Model Registry
+            {SURFACE_COPY.models.title}
           </Link>
         </Button>
 
@@ -216,16 +201,6 @@ export default function ModelDetailPage({ params }: { params: Promise<{ id: stri
           </>
         ) : null}
         </div>
-
-        <aside className="hidden w-80 shrink-0 lg:block">
-          <div className="sticky top-6 rounded-xl border border-border/70 bg-card/40 p-4">
-            <MesonPagePanel
-              page="model-detail"
-              entityId={id}
-              onSuggestionClick={handleMesonSuggestion}
-            />
-          </div>
-        </aside>
       </div>
     </AppShell>
   )

@@ -34,6 +34,17 @@ class LiteSeatUpdateRequest(BaseModel):
     department_admin_id: str | None = None
 
 
+class DepartmentMemberAddRequest(BaseModel):
+    department_id: str
+    user_email: str = Field(..., min_length=3)
+    role: str = Field(default="viewer")
+
+
+class DepartmentMemberRemoveRequest(BaseModel):
+    department_id: str
+    user_id: str
+
+
 class MesonAddonUpdateRequest(BaseModel):
     code: str
     enabled: bool
@@ -283,6 +294,149 @@ async def delete_lite_seat_department_route(
         .delete()
         .eq("org_id", org_id)
         .eq("id", department_id)
+        .execute()
+    )
+    if deleted.error:
+        raise HTTPException(status_code=500, detail=str(deleted.error))
+    return {"success": True}
+
+
+def _resolve_org_user_id(client, org_id: str, email: str) -> str | None:
+    normalized = email.strip().lower()
+    members = (
+        client.table("org_members")
+        .select("user_id, users(email)")
+        .eq("org_id", org_id)
+        .execute()
+    )
+    if members.error:
+        return None
+    for row in members.data or []:
+        users = row.get("users") or {}
+        row_email = str(users.get("email") or "").strip().lower()
+        if row_email == normalized:
+            return str(row.get("user_id"))
+    profile = (
+        client.table("users")
+        .select("id, email")
+        .ilike("email", normalized)
+        .limit(1)
+        .execute()
+    )
+    if profile.data:
+        return str(profile.data[0].get("id"))
+    return None
+
+
+@router.get("/lite-membership")
+async def get_lite_membership_route(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    user_id = str(current_user.get("user_id") or "")
+    member_resp = (
+        client.table("department_members")
+        .select("id, department_id, role, departments(id, name, org_id)")
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if _is_missing_table_error(member_resp.error):
+        return {"is_lite": False, "is_admin": True, "department": None}
+    rows = [
+        row
+        for row in (member_resp.data or [])
+        if isinstance(row.get("departments"), dict)
+        and str((row.get("departments") or {}).get("org_id")) == org_id
+    ]
+    if not rows:
+        admin_resp = (
+            client.table("org_members")
+            .select("role")
+            .eq("org_id", org_id)
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        role = str((admin_resp.data or [{}])[0].get("role") or "member").lower()
+        is_admin = role in {"owner", "admin"}
+        return {"is_lite": False, "is_admin": is_admin, "department": None}
+    row = rows[0]
+    dept = row.get("departments") or {}
+    return {
+        "is_lite": True,
+        "is_admin": str(row.get("role") or "") == "admin",
+        "department": {
+            "id": str(dept.get("id") or row.get("department_id")),
+            "name": dept.get("name") or "Department",
+        },
+    }
+
+
+@router.post("/lite-seats/members")
+async def add_department_member_route(
+    body: DepartmentMemberAddRequest,
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _user, org_id = _admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    dept = (
+        client.table("departments")
+        .select("id, lite_seat_allocation")
+        .eq("org_id", org_id)
+        .eq("id", body.department_id)
+        .limit(1)
+        .execute()
+    )
+    if not dept.data:
+        raise HTTPException(status_code=404, detail="Department not found")
+    user_id = _resolve_org_user_id(client, org_id, body.user_email)
+    if not user_id:
+        raise HTTPException(status_code=404, detail="User not found in organization")
+    role = "admin" if body.role == "admin" else "viewer"
+    inserted = (
+        client.table("department_members")
+        .upsert(
+            {"department_id": body.department_id, "user_id": user_id, "role": role},
+            on_conflict="department_id,user_id",
+        )
+        .select("id, department_id, user_id, role")
+        .single()
+        .execute()
+    )
+    if inserted.error:
+        raise HTTPException(status_code=500, detail=str(inserted.error))
+    return {"member": inserted.data}
+
+
+@router.delete("/lite-seats/members")
+async def remove_department_member_route(
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    department_id: str = Query(..., alias="departmentId"),
+    user_id: str = Query(..., alias="userId"),
+) -> dict:
+    _user, org_id = _admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    dept = (
+        client.table("departments")
+        .select("id")
+        .eq("org_id", org_id)
+        .eq("id", department_id)
+        .limit(1)
+        .execute()
+    )
+    if not dept.data:
+        raise HTTPException(status_code=404, detail="Department not found")
+    deleted = (
+        client.table("department_members")
+        .delete()
+        .eq("department_id", department_id)
+        .eq("user_id", user_id)
         .execute()
     )
     if deleted.error:

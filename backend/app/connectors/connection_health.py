@@ -55,6 +55,7 @@ def resolve_connector_auth_status(
     settings: Settings,
     *,
     environment_name: str | None = None,
+    validate_remote: bool = False,
 ) -> str | None:
     """Return auth status for OAuth connectors, or None if not applicable."""
     if vendor == "odoo":
@@ -67,7 +68,12 @@ def resolve_connector_auth_status(
         )
     if normalize_hubspot_vendor(vendor) == "hubspot":
         return hubspot_connection_auth_status(
-            client, org_id, connector_id, settings, environment_name=environment_name
+            client,
+            org_id,
+            connector_id,
+            settings,
+            environment_name=environment_name,
+            validate_remote=validate_remote,
         )
     if normalize_salesforce_vendor(vendor) == "salesforce":
         return salesforce_connection_auth_status(
@@ -132,3 +138,32 @@ def map_auth_status_to_connector_status(auth_status: str | None, current_status:
     if auth_status in {"auth_expired", "misconfigured"}:
         return "error"
     return current_status
+
+
+def resolve_display_connector_status(raw_status: str, auth_status: str | None) -> str:
+    """Match connectors UI status labels (connected / error / disconnected / syncing)."""
+    auth = auth_status or ""
+    if auth == "connected":
+        return "connected"
+    if auth in {"auth_expired", "misconfigured"}:
+        return "error"
+    if auth in {"pending_auth", "pending_property"}:
+        return "disconnected"
+
+    normalized = str(raw_status or "disconnected").lower()
+    if normalized in {"connected", "syncing", "error", "disconnected"}:
+        return normalized
+    if normalized in {"healthy", "active"}:
+        return "connected"
+    if normalized in {"pending_auth", "pending"}:
+        return "disconnected"
+    if normalized == "error":
+        return "error"
+    if normalized == "inactive":
+        return "disconnected"
+    return "disconnected"
+
+
+def connector_is_connected_for_assistant(raw_status: str, auth_status: str | None) -> bool:
+    display = resolve_display_connector_status(raw_status, auth_status)
+    return display in {"connected", "syncing"}

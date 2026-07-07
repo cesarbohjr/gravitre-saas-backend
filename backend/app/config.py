@@ -78,6 +78,22 @@ class Settings(BaseSettings):
     rag_cross_encoder_enabled: bool = True
     rag_disable_cross_encoder: bool = False
     rag_cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    domain_retrieval_policy_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("DOMAIN_RETRIEVAL_POLICY_ENABLED", "domain_retrieval_policy_enabled"),
+    )
+    domain_adaptive_learning_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("DOMAIN_ADAPTIVE_LEARNING_ENABLED", "domain_adaptive_learning_enabled"),
+    )
+    audio_transcription_model: str = Field(
+        default="gpt-4o-mini-transcribe",
+        validation_alias=AliasChoices("AUDIO_TRANSCRIPTION_MODEL", "audio_transcription_model"),
+    )
+    intelligence_visibility_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("INTELLIGENCE_VISIBILITY_ENABLED", "intelligence_visibility_enabled"),
+    )
     rag_uploads_bucket: str = "rag-uploads"
     rag_store_raw_files: bool = True
     blob_read_write_token: str = ""
@@ -260,6 +276,9 @@ class Settings(BaseSettings):
     disable_ai: bool = False
     # Optional Tavily API key for assistant search_web tool (STA-148).
     tavily_api_key: str = ""
+    # Browser agent for connector API gaps (read-only fetch + optional Playwright interact).
+    browser_agent_enabled: bool = True
+    browser_agent_interact_enabled: bool = False
     # Assistant context window + summarization (STA-146).
     assistant_context_window_tokens: int = 128_000
     assistant_context_summarize_threshold: float = 0.8
@@ -335,6 +354,15 @@ class Settings(BaseSettings):
             # Leave api_public_url empty when unset/legacy so OAuth uses gravitre.app/api/* proxy.
             if is_legacy_platform_host(self.api_public_url):
                 self.api_public_url = ""
+        elif env in {"dev", "development", "local"}:
+            import os
+
+            if os.getenv("DOMAIN_RETRIEVAL_POLICY_ENABLED") is None:
+                self.domain_retrieval_policy_enabled = True
+            if os.getenv("DOMAIN_ADAPTIVE_LEARNING_ENABLED") is None:
+                self.domain_adaptive_learning_enabled = True
+            if os.getenv("INTELLIGENCE_VISIBILITY_ENABLED") is None:
+                self.intelligence_visibility_enabled = True
         return self
 
 
