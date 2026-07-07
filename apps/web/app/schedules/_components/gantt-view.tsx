@@ -153,8 +153,8 @@ export function GanttView({
               <div key={row.item.id} className="flex border-b border-border last:border-b-0">
                 <button
                   type="button"
-                  onClick={() => onSelect(row.segments[0].occurrence)}
-                  onDoubleClick={() => onOpen(row.segments[0].occurrence)}
+                  onClick={() => onOpen(row.segments[0].occurrence)}
+                  title="Click to reschedule or edit"
                   className={cn(
                     "flex shrink-0 items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-muted/50",
                     row.item.id === selectedId && "bg-muted",
@@ -207,9 +207,8 @@ export function GanttView({
                       <motion.button
                         key={`${row.item.id}-${segment.startOffset}`}
                         type="button"
-                        onClick={() => onSelect(segment.occurrence)}
-                        onDoubleClick={() => onOpen(segment.occurrence)}
-                        title={`${row.item.title} · ${rangeText} · ${segment.count} run${segment.count === 1 ? "" : "s"}`}
+                        onClick={() => onOpen(segment.occurrence)}
+                        title={`${row.item.title} · ${rangeText} · click to reschedule or edit`}
                         initial={reduceMotion ? false : { scaleX: 0, opacity: 0 }}
                         animate={{ scaleX: 1, opacity: 1 }}
                         transition={{

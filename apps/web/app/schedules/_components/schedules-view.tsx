@@ -47,7 +47,8 @@ import {
 import { CalendarView } from "./calendar-view"
 import { GanttView } from "./gantt-view"
 import { ListView } from "./list-view"
-import { ScheduleDetailSheet, moveScheduledItem } from "./detail-sheet"
+import { ScheduleItemDialog } from "./schedule-item-dialog"
+import { moveScheduledItem } from "@/lib/schedules/actions"
 import { scheduleMoveDescription } from "@/lib/schedules/actions"
 
 type ViewMode = "calendar" | "gantt" | "list"
@@ -88,8 +89,8 @@ export function SchedulesView({
   const [view, setView] = useState<ViewMode>("calendar")
   const [month, setMonth] = useState(() => startOfMonth(new Date()))
   const [activeKinds, setActiveKinds] = useState<Set<ScheduleKind>>(new Set(ALL_KINDS))
-  const [selected, setSelected] = useState<ScheduledItem | null>(null)
-  const [sheetOpen, setSheetOpen] = useState(false)
+  const [selectedOccurrence, setSelectedOccurrence] = useState<ScheduleOccurrence | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
   const [pendingMove, setPendingMove] = useState<{
     occurrence: ScheduleOccurrence
     targetDate: Date
@@ -132,13 +133,14 @@ export function SchedulesView({
   const monthEnd = endOfMonth(month)
 
   const handleSelect = (target: ScheduledItem | ScheduleOccurrence) => {
-    const item = "item" in target ? target.item : target
-    setSelected(item)
+    const occurrence = toOccurrence(target)
+    setSelectedOccurrence(occurrence)
   }
+
   const handleOpen = (target: ScheduledItem | ScheduleOccurrence) => {
-    const item = "item" in target ? target.item : target
-    setSelected(item)
-    setSheetOpen(true)
+    const occurrence = toOccurrence(target)
+    setSelectedOccurrence(occurrence)
+    setDialogOpen(true)
   }
 
   const confirmMove = async () => {
@@ -303,7 +305,7 @@ export function SchedulesView({
               <CalendarView
                 month={month}
                 occurrences={occurrences}
-                selectedId={selected?.id}
+                selectedId={selectedOccurrence?.item.id}
                 onSelect={handleSelect}
                 onOpen={handleOpen}
                 onMoveRequest={(occurrence, targetDate) =>
@@ -319,7 +321,7 @@ export function SchedulesView({
                   occurrences={occurrences.filter(
                     (o) => o.date >= monthStart && o.date <= monthEnd,
                   )}
-                  selectedId={selected?.id}
+                  selectedId={selectedOccurrence?.item.id}
                   onSelect={handleSelect}
                   onOpen={handleOpen}
                 />
@@ -330,7 +332,7 @@ export function SchedulesView({
             {view === "list" && (
               <ListView
                 items={filteredItems}
-                selectedId={selected?.id}
+                selectedId={selectedOccurrence?.item.id}
                 onSelect={handleSelect}
                 onOpen={handleOpen}
               />
@@ -340,13 +342,13 @@ export function SchedulesView({
       )}
 
       <p className="px-1 text-xs text-muted-foreground">
-        Tip: drag an item to another day to reschedule, click to highlight, double-click for details.
+        Tip: click an item to reschedule or edit, or drag it to another day for a quick move.
       </p>
 
-      <ScheduleDetailSheet
-        item={selected}
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
+      <ScheduleItemDialog
+        occurrence={selectedOccurrence}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
         onUpdated={onRefresh}
       />
 
@@ -376,6 +378,22 @@ export function SchedulesView({
       </AlertDialog>
     </div>
   )
+}
+
+function toOccurrence(target: ScheduledItem | ScheduleOccurrence): ScheduleOccurrence {
+  if ("item" in target) return target
+  const anchor =
+    target.nextRunAt ||
+    target.startedAt ||
+    target.completedAt ||
+    target.lastRunAt ||
+    new Date().toISOString()
+  return {
+    key: `${target.id}:${anchor}`,
+    item: target,
+    date: new Date(anchor),
+    projected: false,
+  }
 }
 
 function EmptyRange({ label }: { label: string }) {

@@ -29,11 +29,13 @@ import type { ScheduledItem } from "@/lib/schedules"
 import { describeCron } from "@/lib/schedules"
 import {
   cronForDateTime,
+  deleteScheduledItem,
   parseScheduledItemIds,
   scheduleDeleteDescription,
   scheduleDeleteLabel,
+  canDeleteScheduleItem,
 } from "@/lib/schedules/actions"
-import { workflowsApi, runsApi } from "@/lib/api"
+import { workflowsApi } from "@/lib/api"
 import { KindBadge, formatDateTime, statusLabel, statusVariant } from "./shared"
 
 export function ScheduleDetailSheet({
@@ -55,7 +57,7 @@ export function ScheduleDetailSheet({
 
   const ids = useMemo(() => (item ? parseScheduledItemIds(item) : {}), [item])
   const canEdit = Boolean(item && item.kind === "workflow" && item.workflowId && ids.scheduleId && !item.isSample)
-  const canDelete = Boolean(item && !item.isSample && (ids.scheduleId || ids.runId))
+  const canDelete = Boolean(item && canDeleteScheduleItem(item))
 
   const beginEdit = () => {
     if (!item?.cron) return
@@ -85,16 +87,14 @@ export function ScheduleDetailSheet({
     if (!item) return
     setIsDeleting(true)
     try {
-      if (item.kind === "workflow" && item.workflowId && ids.scheduleId) {
-        await workflowsApi.deleteSchedule(item.workflowId, ids.scheduleId)
-        toast.success("Workflow schedule deleted")
-      } else if (item.kind === "task" && ids.runId) {
-        await runsApi.cancel(ids.runId)
-        toast.success("Scheduled task cancelled")
-      } else {
-        toast.error("This item cannot be deleted from the calendar")
-        return
-      }
+      await deleteScheduledItem(item)
+      toast.success(
+        item.kind === "workflow"
+          ? "Workflow schedule deleted"
+          : item.kind === "task"
+            ? "Scheduled task cancelled"
+            : "Training job cancelled",
+      )
       setDeleteOpen(false)
       onOpenChange(false)
       onUpdated?.()
@@ -297,27 +297,4 @@ function TimingRow({
   )
 }
 
-export async function moveScheduledItem(
-  item: ScheduledItem,
-  targetDate: Date,
-): Promise<void> {
-  const ids = parseScheduledItemIds(item)
-  if (item.isSample) {
-    throw new Error("Sample schedules cannot be moved")
-  }
-  if (item.kind === "workflow" && item.workflowId && ids.scheduleId) {
-    await workflowsApi.updateSchedule(item.workflowId, ids.scheduleId, {
-      cron_expression: cronForDateTime(targetDate),
-      enabled: item.status !== "disabled",
-    })
-    return
-  }
-  if (item.kind === "task" && ids.runId) {
-    if (!["scheduled", "queued", "pending"].includes(item.status)) {
-      throw new Error("Only pending tasks can be moved")
-    }
-    await runsApi.cancel(ids.runId)
-    throw new Error("Create a new schedule from the workflow to run this task at the new time.")
-  }
-  throw new Error("This schedule type cannot be moved from the calendar")
-}
+export { moveScheduledItem } from "@/lib/schedules/actions"

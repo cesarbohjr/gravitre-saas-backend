@@ -41,9 +41,8 @@ export function ListView({
             >
               <button
                 type="button"
-                onClick={() => onSelect(item)}
-                onDoubleClick={() => onOpen(item)}
-                title="Double-click for details"
+                onClick={() => onOpen(item)}
+                title="Click to reschedule or edit"
                 className={cn(
                   "group grid w-full grid-cols-1 gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/50 md:grid-cols-[1.6fr_0.8fr_1fr_1fr_0.7fr] md:items-center md:gap-4",
                   selected && "bg-muted",

@@ -15,6 +15,7 @@ from app.services.goal_service import GoalService, get_goal_service
 from app.services.model_router import ModelRouter, TaskType, get_model_router
 from app.services.workflow_failure_prediction_service import list_failure_alerts
 from app.workflows.audit import write_audit_event
+from app.workflows.repository import list_org_workflow_schedules
 from app.workflows.constants import SCHEMA_VERSION
 
 logger = get_logger(__name__)
@@ -863,6 +864,10 @@ class MesonService:
             return self._page_context_home(client, org_id, environment_name=environment_name)
         if normalized == "metrics":
             return self._page_context_metrics(client, org_id, environment_name=environment_name)
+        if normalized in {"schedules", "schedule", "calendar"}:
+            return self._page_context_schedules(
+                client, org_id, entity_id=entity_id, environment_name=environment_name
+            )
         base = self.get_proactive_insights(client, org_id, environment_name=environment_name)
         return MesonPageContextResponse(
             insights=base.insights[:5],
@@ -1481,6 +1486,155 @@ class MesonService:
             insights=insights[:5],
             suggestions=suggestions[:4],
             source="runs",
+        )
+
+    def _page_context_schedules(
+        self,
+        client: Any,
+        org_id: str,
+        *,
+        entity_id: str | None,
+        environment_name: str,
+    ) -> MesonPageContextResponse:
+        insights: list[MesonInsight] = []
+        suggestions: list[MesonSuggestion] = []
+
+        try:
+            schedules = list_org_workflow_schedules(
+                client,
+                org_id,
+                environment_name=environment_name,
+                workflow_id=entity_id,
+            )
+            disabled = [
+                row
+                for row in schedules
+                if not bool(row.get("is_enabled", row.get("enabled", True)))
+            ]
+            if disabled:
+                insights.append(
+                    MesonInsight(
+                        id="schedules-disabled",
+                        title="Disabled workflow schedules",
+                        summary=f"{len(disabled)} recurring schedule(s) are paused — re-enable or delete them to avoid confusion.",
+                        category="operations",
+                    )
+                )
+                suggestions.append(
+                    MesonSuggestion(
+                        id="review-disabled-schedules",
+                        nodeType="navigate",
+                        label="Review paused schedules",
+                        reason="Clean up stale cron entries before the next production window.",
+                        confidence=0.82,
+                    )
+                )
+            elif schedules:
+                insights.append(
+                    MesonInsight(
+                        id="schedules-active",
+                        title=f"{len(schedules)} workflow schedule(s) active",
+                        summary="Drag items on the calendar or use the popup to reschedule, edit, or delete.",
+                        category="operations",
+                    )
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meson schedules workflow lookup: %s", exc)
+
+        try:
+            recent_runs = (
+                client.table("workflow_runs")
+                .select("status")
+                .eq("org_id", org_id)
+                .eq("environment", environment_name)
+                .order("created_at", desc=True)
+                .limit(50)
+                .execute()
+            )
+            statuses = [str(r.get("status") or "") for r in (recent_runs.data or [])]
+            if statuses:
+                success = sum(1 for s in statuses if s in {"completed", "success"})
+                rate = round(success / len(statuses) * 100)
+                if rate < 80:
+                    insights.insert(
+                        0,
+                        MesonInsight(
+                            id="schedule-run-success-rate",
+                            title="Run success rate below target",
+                            summary=f"Recent success rate is {rate}% — review failing steps and connector health before the next scheduled run.",
+                            category="reliability",
+                        ),
+                    )
+                    suggestions.append(
+                        MesonSuggestion(
+                            id="inspect-scheduled-failures",
+                            nodeType="navigate",
+                            label="Review recent failed runs",
+                            reason="Scheduled tasks may keep failing until root causes are fixed.",
+                            confidence=0.86,
+                        )
+                    )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meson schedules run lookup: %s", exc)
+
+        try:
+            queued_runs = (
+                client.table("workflow_runs")
+                .select("id", count="exact")
+                .eq("org_id", org_id)
+                .eq("environment", environment_name)
+                .in_("status", ["pending", "pending_approval", "approved", "queued"])
+                .limit(1)
+                .execute()
+            )
+            queued_count = int(getattr(queued_runs, "count", None) or len(queued_runs.data or []))
+            if queued_count:
+                insights.append(
+                    MesonInsight(
+                        id="schedules-queued-tasks",
+                        title=f"{queued_count} task run(s) queued",
+                        summary="Open a task from the calendar to reschedule or cancel before it starts.",
+                        category="activity",
+                    )
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meson schedules queued lookup: %s", exc)
+
+        if entity_id:
+            suggestions.append(
+                MesonSuggestion(
+                    id="workflow-schedule-create",
+                    nodeType="navigate",
+                    label="Add another schedule for this workflow",
+                    reason="Keep recurring automation aligned with business hours.",
+                    confidence=0.74,
+                )
+            )
+        else:
+            suggestions.append(
+                MesonSuggestion(
+                    id="filter-schedule-types",
+                    nodeType="navigate",
+                    label="Filter by task or training job",
+                    reason="Focus the calendar on the schedule types you are tuning today.",
+                    confidence=0.7,
+                )
+            )
+
+        if not insights:
+            insights.append(
+                MesonInsight(
+                    id="schedules-overview",
+                    title="Unified schedule calendar",
+                    summary="Workflow crons, task runs, and training jobs appear here — click any item to move, edit, or delete.",
+                    category="operations",
+                )
+            )
+
+        return MesonPageContextResponse(
+            insights=insights[:5],
+            suggestions=suggestions[:4],
+            source="schedules",
         )
 
     def _page_context_failure_alerts(

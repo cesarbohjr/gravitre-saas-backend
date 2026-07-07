@@ -115,9 +115,8 @@ export function CalendarView({
                         setDraggingKey(null)
                         setDropDayKey(null)
                       }}
-                      onClick={() => onSelect(occurrence)}
-                      onDoubleClick={() => onOpen(occurrence)}
-                      title={`${occurrence.item.title} · drag to another day or double-click for details`}
+                      onClick={() => onOpen(occurrence)}
+                      title={`${occurrence.item.title} · click to reschedule or edit`}
                       initial={reduceMotion ? false : { opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{

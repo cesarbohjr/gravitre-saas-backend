@@ -52,6 +52,13 @@ export function resolveMesonPageFromPath(pathname: string): ResolvedMesonPage {
   if (path.startsWith("/marketplace")) return { page: "marketplace" }
   if (path.startsWith("/runs")) return { page: "runs" }
   if (path.startsWith("/metrics")) return { page: "metrics" }
+  if (path === "/schedules" || path.startsWith("/schedules/")) {
+    return { page: "schedules" }
+  }
+  const workflowSchedules = path.match(/^\/workflows\/([^/]+)\/schedules$/)
+  if (workflowSchedules && workflowSchedules[1]) {
+    return { page: "schedules", entityId: workflowSchedules[1] }
+  }
   if (path.startsWith("/assignments")) return { page: "assignments" }
   if (path.startsWith("/goals")) return { page: "goals" }
 
@@ -156,5 +163,9 @@ export function routeMesonSuggestion(
   }
   if (id.includes("run") || label.includes("run")) {
     go("/runs")
+    return
+  }
+  if (id.includes("schedule") || label.includes("schedule") || path.startsWith("/schedules")) {
+    go("/schedules")
   }
 }
