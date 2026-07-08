@@ -1,0 +1,39 @@
+import { test, expect } from "@playwright/test"
+
+test.describe("ExecutionResult navigation buttons", () => {
+  test("View in Apollo opens external artifact URL (not connector settings)", async ({ page, context }) => {
+    await page.goto("/e2e/execution-result?scenario=apollo_external")
+    await expect(page.getByTestId("execution-result-harness")).toBeVisible()
+
+    const viewButton = page.getByRole("link", { name: "View in Apollo" })
+    await expect(viewButton).toBeVisible()
+    await expect(viewButton).toHaveAttribute("href", /app\.apollo\.io/)
+
+    const [popup] = await Promise.all([
+      context.waitForEvent("page"),
+      viewButton.click(),
+    ])
+    await popup.waitForLoadState("domcontentloaded")
+    expect(popup.url()).toContain("apollo.io")
+    await popup.close()
+  })
+
+  test("internal result_url navigates in-app via client routing", async ({ page }) => {
+    await page.goto("/e2e/execution-result?scenario=internal_doc")
+    const viewButton = page.getByRole("link", { name: "View in Gravitre" })
+    await expect(viewButton).toBeVisible()
+    await expect(viewButton).toHaveAttribute("href", "/docs/guides/how-to/agents")
+
+    const before = page.url()
+    await viewButton.click()
+    await page.waitForURL("**/docs/guides/how-to/agents")
+    expect(page.url()).not.toBe(before)
+    await expect(page.getByRole("main").last()).toContainText(/agent/i)
+  })
+
+  test("inline-only success does not show misleading View in Gravitre connector link", async ({ page }) => {
+    await page.goto("/e2e/execution-result?scenario=inline_only")
+    await expect(page.getByText('Created contact list "Inline summary only".')).toBeVisible()
+    await expect(page.getByRole("link", { name: /View in/i })).toHaveCount(0)
+  })
+})
