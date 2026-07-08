@@ -14,6 +14,12 @@ VERIFIED_OUTPUT_ACTIONS: frozenset[str] = frozenset(
     {
         "apollo.lists.create",
         "slack.post_message",
+        "hubspot.deals.create",
+        "hubspot.contacts.create",
+        "github.issues.create",
+        "zendesk.tickets.create",
+        "jira.issues.create",
+        "gmail.messages.send",
     }
 )
 

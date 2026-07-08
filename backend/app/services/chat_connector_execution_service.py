@@ -978,6 +978,7 @@ class ChatConnectorExecutionService:
                 "entity_type": result.entity_type,
                 "entity_id": result.entity_id or None,
                 "result_url": result.result_url,
+                "integration": result.integration,
             },
             channel_hints={"bell": True, "email": False},
         )
@@ -1283,6 +1284,17 @@ class ChatConnectorExecutionService:
             url = result_data["issue"].get("html_url")
             if url:
                 return str(url)
+        if integration == "zendesk" and isinstance(result_data.get("ticket"), dict):
+            ticket = result_data["ticket"]
+            url = ticket.get("url")
+            if isinstance(url, str) and url.startswith(("http://", "https://")):
+                return url
+        if integration == "jira" and isinstance(result_data.get("issue"), dict):
+            issue = result_data["issue"]
+            for key in ("self", "browseUrl"):
+                url = issue.get(key)
+                if isinstance(url, str) and url.startswith(("http://", "https://")):
+                    return url
         return None
 
     @staticmethod
@@ -1400,6 +1412,57 @@ class ChatConnectorExecutionService:
         if plan.invoke_action == "slack.post_message":
             channel = (result_data or {}).get("channel") or plan.args.get("channel")
             return f"Message posted to Slack #{channel}."
+        if plan.invoke_action == "hubspot.deals.create":
+            deal = result_data.get("deal") if isinstance(result_data.get("deal"), dict) else result_data
+            if isinstance(deal, dict):
+                props = deal.get("properties") if isinstance(deal.get("properties"), dict) else deal
+                name = str(props.get("dealname") or plan.args.get("dealname") or "deal").strip()
+                deal_id = deal.get("id") or props.get("hs_object_id")
+                if name and deal_id:
+                    return f'Created HubSpot deal "{name}" (id: {deal_id}).'
+                if name:
+                    return f'Created HubSpot deal "{name}".'
+        if plan.invoke_action == "hubspot.contacts.create":
+            contact = result_data.get("contact") if isinstance(result_data.get("contact"), dict) else result_data
+            if isinstance(contact, dict):
+                props = contact.get("properties") if isinstance(contact.get("properties"), dict) else contact
+                name_bits = [
+                    str(props.get("firstname") or "").strip(),
+                    str(props.get("lastname") or "").strip(),
+                ]
+                name = " ".join(bit for bit in name_bits if bit) or str(props.get("email") or "contact")
+                contact_id = contact.get("id") or props.get("hs_object_id")
+                if contact_id:
+                    return f'Created HubSpot contact {name} (id: {contact_id}).'
+                return f"Created HubSpot contact {name}."
+        if plan.invoke_action == "github.issues.create":
+            issue = result_data.get("issue")
+            if isinstance(issue, dict):
+                number = issue.get("number")
+                title = issue.get("title") or plan.args.get("title")
+                if number and title:
+                    return f'Created GitHub issue #{number}: "{title}".'
+                if number:
+                    return f"Created GitHub issue #{number}."
+        if plan.invoke_action == "zendesk.tickets.create":
+            ticket = result_data.get("ticket")
+            if isinstance(ticket, dict):
+                return (
+                    f'Created Zendesk ticket #{ticket.get("id", "")} — '
+                    f'{ticket.get("subject", "ticket")}.'
+                )
+        if plan.invoke_action == "jira.issues.create":
+            issue = result_data.get("issue") if isinstance(result_data.get("issue"), dict) else result_data
+            if isinstance(issue, dict):
+                key = issue.get("key")
+                fields = issue.get("fields") if isinstance(issue.get("fields"), dict) else {}
+                summary = fields.get("summary") or issue.get("summary") or plan.args.get("summary")
+                if key and summary:
+                    return f'Created Jira issue {key}: "{summary}".'
+                if key:
+                    return f"Created Jira issue {key}."
+        if plan.invoke_action == "gmail.messages.send":
+            return "Gmail message sent."
         if plan.integration == "apollo" and plan.invoke_action == "apollo.lists.create":
             label_data = result_data.get("label")
             if isinstance(label_data, dict):

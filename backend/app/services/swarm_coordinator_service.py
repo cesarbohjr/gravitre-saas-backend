@@ -12,11 +12,10 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from app.config import Settings, get_settings
+from app.config import Settings
 from app.services.council_service import DecisionMethod, coerce_council_agent_role, get_council_service
 from app.services.handoff_service import get_agent
-from app.services.notification_email_service import send_swarm_completion_email
-from app.services.notification_service import create_user_notification
+from app.services.notification_emitter import emit_notification
 from app.workflows.audit import write_audit_event
 
 logger = logging.getLogger(__name__)
@@ -524,29 +523,29 @@ async def aggregate_swarm_run(client: Any, org_id: str, swarm_run_id: str) -> di
         dissent_note = ""
         if dissent:
             dissent_note = f" {len(dissent)} alternate view(s) recorded."
-        create_user_notification(
+        emit_notification(
             client,
             org_id=org_id,
             user_id=created_by,
-            notification_type="run_completed",
+            event_type="run_completed",
             title="Multi-agent run complete",
             body=f"{recommendation[:480]}{confidence_note}{dissent_note}",
-            url=f"/agents/swarm?runId={swarm_run_id}",
-            entity_type="agent_swarm_run",
-            entity_id=swarm_run_id,
-        )
-        send_swarm_completion_email(
-            client,
-            get_settings(),
-            org_id=org_id,
-            user_id=created_by,
-            swarm_run_id=swarm_run_id,
-            objective=str(swarm.get("objective") or "Multi-agent run"),
-            final_recommendation=session.final_recommendation,
-            final_confidence=session.final_confidence,
-            decision_method=str(swarm.get("decision_method") or "majority_vote"),
-            subtasks=subtasks,
-            dissenting_opinions=session.dissenting_opinions,
+            entity_ref={
+                "entity_type": "agent_swarm_run",
+                "entity_id": swarm_run_id,
+                "result_url": f"/agents/swarm?runId={swarm_run_id}",
+            },
+            channel_hints={"bell": True, "email": True},
+            email_context={
+                "kind": "swarm_completion",
+                "swarm_run_id": swarm_run_id,
+                "objective": str(swarm.get("objective") or "Multi-agent run"),
+                "final_recommendation": session.final_recommendation,
+                "final_confidence": session.final_confidence,
+                "decision_method": str(swarm.get("decision_method") or "majority_vote"),
+                "subtasks": subtasks,
+                "dissenting_opinions": session.dissenting_opinions,
+            },
         )
     return _serialize_swarm(row, [_serialize_subtask(s) for s in subtasks])
 

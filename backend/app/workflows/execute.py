@@ -357,18 +357,21 @@ def execute_workflow_steps(
     if run_failed:
         emit_execute_failed(client, org_id, user_id, run_id, run_error_message)
         try:
-            from app.services.notification_service import create_user_notification
+            from app.services.notification_emitter import emit_notification
 
-            create_user_notification(
+            emit_notification(
                 client,
                 org_id=org_id,
                 user_id=user_id,
-                notification_type="run_failed",
+                event_type="run_failed",
                 title="Workflow run failed",
                 body=(run_error_message or "Review the run details for step-level errors.")[:2000],
-                url=f"/runs/{run_id}",
-                entity_type="workflow_run",
-                entity_id=run_id,
+                entity_ref={
+                    "entity_type": "workflow_run",
+                    "entity_id": run_id,
+                    "result_url": f"/runs/{run_id}",
+                },
+                channel_hints={"bell": True, "email": False},
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("run_failed notification skipped run_id=%s error=%s", run_id, exc)
@@ -394,18 +397,21 @@ def execute_workflow_steps(
     else:
         emit_execute_completed(client, org_id, user_id, run_id, final_status)
         try:
-            from app.services.notification_service import create_user_notification
+            from app.services.notification_emitter import emit_notification
 
-            create_user_notification(
+            emit_notification(
                 client,
                 org_id=org_id,
                 user_id=user_id,
-                notification_type="run_completed",
+                event_type="run_completed",
                 title="Workflow run completed",
                 body=f"Run finished with status {final_status}.",
-                url=f"/runs/{run_id}",
-                entity_type="workflow_run",
-                entity_id=run_id,
+                entity_ref={
+                    "entity_type": "workflow_run",
+                    "entity_id": run_id,
+                    "result_url": f"/runs/{run_id}",
+                },
+                channel_hints={"bell": True, "email": False},
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("run_completed notification skipped run_id=%s error=%s", run_id, exc)

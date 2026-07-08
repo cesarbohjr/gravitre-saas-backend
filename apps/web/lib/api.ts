@@ -79,6 +79,7 @@ import type {
   LiteSeatsResponse,
   MesonAddonsResponse,
   NotificationListResponse,
+  ActivityFeedResponse,
   OnboardingProgress,
   LiteTask,
   LiteDeliverable,
@@ -2190,6 +2191,17 @@ export const notificationsApi = {
     ),
   updatePreferences: (preferences: Record<string, { bell_enabled: boolean; email_enabled: boolean }>) =>
     patchJson<void>(apiUrl("/api/notifications/preferences"), preferences),
+  streamUrl: () => apiUrl("/api/notifications/stream"),
+}
+
+export const activityApi = {
+  recent: (filters?: { limit?: number; source?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.limit) params.set("limit", String(filters.limit))
+    if (filters?.source) params.set("source", filters.source)
+    const query = params.toString()
+    return fetcher<ActivityFeedResponse>(apiUrl(`/api/activity/recent${query ? `?${query}` : ""}`))
+  },
 }
 
 // ============ Onboarding ============

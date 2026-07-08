@@ -95,6 +95,70 @@ def _insert_notification_row(
     return None
 
 
+def _record_connector_activity(
+    client: Any,
+    *,
+    org_id: str,
+    user_id: str,
+    event_type: str,
+    title: str,
+    body: str,
+    entity_ref: dict[str, Any],
+    notification_id: str | None,
+) -> None:
+    entity_type = str(entity_ref.get("entity_type") or "").strip().lower()
+    if entity_type != "connector":
+        return
+    from app.services.activity_feed_service import record_activity_event
+
+    status = "failed" if event_type == "run_failed" else "completed"
+    metadata = dict(entity_ref.get("activity_metadata") or {})
+    if notification_id:
+        metadata["notification_id"] = notification_id
+    record_activity_event(
+        client,
+        org_id=org_id,
+        user_id=user_id,
+        source="connector_write",
+        event_type=event_type,
+        title=title,
+        body=body,
+        status=status,
+        entity_type=entity_type,
+        entity_id=str(entity_ref.get("entity_id") or "") or None,
+        url=entity_ref.get("result_url"),
+        integration=str(entity_ref.get("integration") or "") or None,
+        metadata=metadata,
+    )
+
+
+def _publish_live_notification(
+    *,
+    org_id: str,
+    user_id: str,
+    notification_id: str,
+    event_type: str,
+    title: str,
+    body: str,
+    entity_ref: dict[str, Any],
+) -> None:
+    from app.services.notification_live_bus import publish
+
+    publish(
+        org_id,
+        user_id,
+        {
+            "id": notification_id,
+            "type": event_type,
+            "title": title,
+            "body": body,
+            "entity_type": entity_ref.get("entity_type"),
+            "entity_id": entity_ref.get("entity_id"),
+            "url": entity_ref.get("result_url"),
+        },
+    )
+
+
 def emit_notification(
     client: Any,
     *,
@@ -105,13 +169,9 @@ def emit_notification(
     body: str,
     entity_ref: dict[str, Any] | None = None,
     channel_hints: dict[str, bool] | None = None,
+    email_context: dict[str, Any] | None = None,
 ) -> str | None:
-    """Persist a notification durably, then optionally trigger ephemeral channels.
-
-    Durable inbox write always happens first so offline users see the event on next fetch.
-    Bell push is client-driven today (SWR poll + optional SSE execution cards); there is no
-    websocket fanout yet. Email is best-effort and gated by channel_hints plus preferences.
-    """
+    """Persist a notification durably, then optionally trigger ephemeral channels."""
     if not org_id or not user_id:
         return None
 
@@ -145,6 +205,7 @@ def emit_notification(
             title=title,
             body=body,
             entity_ref=ref,
+            email_context=email_context,
         )
 
     if hints.get("bell", True) and not bell_allowed:
@@ -154,13 +215,27 @@ def emit_notification(
             canonical_type,
         )
 
-    # Live bell push requires an active session channel; until websocket fanout exists,
-    # connected clients pick up durable rows via /api/notifications polling.
-    if hints.get("bell", True) and bell_allowed and hints.get("require_live_session", False):
-        logger.debug(
-            "live bell push requested but no session fanout configured notification_id=%s",
-            notification_id,
+    if hints.get("bell", True) and bell_allowed:
+        _publish_live_notification(
+            org_id=org_id,
+            user_id=user_id,
+            notification_id=notification_id,
+            event_type=canonical_type,
+            title=title,
+            body=body,
+            entity_ref=ref,
         )
+
+    _record_connector_activity(
+        client,
+        org_id=org_id,
+        user_id=user_id,
+        event_type=canonical_type,
+        title=title,
+        body=body,
+        entity_ref=ref,
+        notification_id=notification_id,
+    )
 
     return notification_id
 
@@ -174,18 +249,65 @@ def _send_email_if_configured(
     title: str,
     body: str,
     entity_ref: dict[str, Any],
+    email_context: dict[str, Any] | None = None,
 ) -> None:
     try:
         from app.config import get_settings
-        from app.services.notification_email_service import email_notifications_enabled
+        from app.services.notification_email_service import (
+            email_notifications_enabled,
+            send_assignment_completion_email,
+            send_swarm_completion_email,
+            send_workflow_completion_email,
+        )
 
         settings = get_settings()
         if not settings.notification_email_enabled:
             return
         if not email_notifications_enabled(client, org_id, user_id, event_type):
             return
+
+        ctx = dict(email_context or {})
+        kind = str(ctx.get("kind") or "").strip()
+        if kind == "workflow_completion":
+            send_workflow_completion_email(
+                client,
+                settings,
+                org_id=org_id,
+                user_id=user_id,
+                run_id=str(ctx.get("run_id") or ""),
+                workflow_name=str(ctx.get("workflow_name") or "Workflow"),
+                final_status=str(ctx.get("final_status") or "completed"),
+            )
+            return
+        if kind == "swarm_completion":
+            send_swarm_completion_email(
+                client,
+                settings,
+                org_id=org_id,
+                user_id=user_id,
+                swarm_run_id=str(ctx.get("swarm_run_id") or ""),
+                objective=str(ctx.get("objective") or "Multi-agent run"),
+                final_recommendation=ctx.get("final_recommendation"),
+                final_confidence=ctx.get("final_confidence"),
+                decision_method=str(ctx.get("decision_method") or "majority_vote"),
+                subtasks=list(ctx.get("subtasks") or []),
+                dissenting_opinions=list(ctx.get("dissenting_opinions") or []),
+            )
+            return
+        if kind == "assignment_completion":
+            send_assignment_completion_email(
+                client,
+                settings,
+                org_id=org_id,
+                user_id=user_id,
+                job_id=str(ctx.get("job_id") or ""),
+                task_title=str(ctx.get("task_title") or title),
+                requires_approval=bool(ctx.get("requires_approval")),
+            )
+            return
+
         logger.info(
-            "email channel requested for event_type=%s user_id=%s (delivery wired in Step 5 prefs)",
+            "email channel requested without dispatch context event_type=%s user_id=%s",
             event_type,
             user_id,
         )

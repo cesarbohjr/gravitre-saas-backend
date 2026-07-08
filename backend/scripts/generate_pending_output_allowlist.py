@@ -2,8 +2,7 @@
 from __future__ import annotations
 
 from app.connectors.action_catalog.registry import all_catalog_action_specs
-
-VERIFIED_OUTPUT_ACTIONS = frozenset({"apollo.lists.create", "slack.post_message"})
+from app.services.connector_output_contract import VERIFIED_OUTPUT_ACTIONS
 
 keys = sorted(
     {

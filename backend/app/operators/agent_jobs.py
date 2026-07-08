@@ -687,7 +687,7 @@ async def _notify_operator_job_finished(
     if not user_id or not org_id:
         return
     from app.services.entity_link_service import build_entity_url
-    from app.services.notification_service import create_user_notification
+    from app.services.notification_emitter import emit_notification
 
     payload = job.get("payload") or {}
     session_id = str(payload.get("session_id") or payload.get("sessionId") or "").strip()
@@ -698,31 +698,26 @@ async def _notify_operator_job_finished(
     )
     task = str(payload.get("task") or job.get("kind") or "operator task").strip()
     notification_type = "task_completed" if job.get("status") == "completed" else "run_failed"
-    create_user_notification(
+    emit_notification(
         client,
         org_id=org_id,
         user_id=user_id,
-        notification_type=notification_type,
+        event_type=notification_type,
         title="Operator task completed" if notification_type == "task_completed" else "Operator task failed",
         body=f"Finished: {task[:160]}. Open Gravitre to review the result.",
-        url=url,
-        entity_type="agent_job",
-        entity_id=str(job.get("id") or ""),
+        entity_ref={
+            "entity_type": "agent_job",
+            "entity_id": str(job.get("id") or ""),
+            "result_url": url,
+        },
+        channel_hints={"bell": True, "email": True},
+        email_context={
+            "kind": "assignment_completion",
+            "job_id": str(job.get("id") or ""),
+            "task_title": task[:120] or "Assignment",
+            "requires_approval": bool(result.get("requires_approval")),
+        },
     )
-    try:
-        from app.services.notification_email_service import send_assignment_completion_email
-
-        send_assignment_completion_email(
-            client,
-            settings,
-            org_id=org_id,
-            user_id=user_id,
-            job_id=str(job.get("id") or ""),
-            task_title=task[:120] or "Assignment",
-            requires_approval=bool(result.get("requires_approval")),
-        )
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("assignment completion email skipped job_id=%s error=%s", job.get("id"), str(exc))
 
 
 from app.services.swarm_coordinator_service import run_swarm_subtask_job

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { notificationsApi } from "@/lib/api"
+import { apiFetch } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import type { Notification as ApiNotification, NotificationType } from "@/types/api"
 import { 
@@ -109,8 +110,97 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const { data, mutate } = useSWR(
     user ? ["notification-center", user.id] : null,
     () => notificationsApi.list({ limit: 50, offset: 0 }),
-    { refreshInterval: 15_000 }
+    { refreshInterval: 60_000 }
   )
+
+  useEffect(() => {
+    if (!user) return
+    const controller = new AbortController()
+    let cancelled = false
+
+    const handleSseChunk = (chunk: string) => {
+      const lines = chunk.split("\n")
+      let eventName = "message"
+      let dataLine = ""
+      for (const line of lines) {
+        if (line.startsWith("event:")) eventName = line.slice(6).trim()
+        if (line.startsWith("data:")) dataLine += line.slice(5).trim()
+      }
+      if (eventName !== "notification" || !dataLine) return
+      try {
+        const payload = JSON.parse(dataLine) as ApiNotification
+        void mutate(
+          (prev) => {
+            if (!prev) return prev
+            if (prev.notifications.some((row) => row.id === payload.id)) return prev
+            const row: ApiNotification = {
+              id: payload.id,
+              type: (payload.type as NotificationType) || "system",
+              title: payload.title || "Notification",
+              body: payload.body || "",
+              entity_type: payload.entity_type,
+              entity_id: payload.entity_id,
+              url: payload.url,
+              is_read: false,
+              is_archived: false,
+              created_at: new Date().toISOString(),
+            }
+            toast.success(row.title, {
+              description: row.body,
+              ...(row.url ? { action: { label: "View", onClick: () => window.open(row.url, "_self") } } : {}),
+            })
+            return {
+              notifications: [row, ...prev.notifications],
+              unread_count: prev.unread_count + 1,
+            }
+          },
+          { revalidate: false },
+        )
+      } catch {
+        // ignore malformed SSE payloads
+      }
+    }
+
+    async function connectStream() {
+      while (!cancelled) {
+        try {
+          const response = await apiFetch(notificationsApi.streamUrl(), {
+            headers: { Accept: "text/event-stream" },
+            signal: controller.signal,
+          })
+          if (!response.ok || !response.body) {
+            await new Promise((resolve) => setTimeout(resolve, 5000))
+            continue
+          }
+          const reader = response.body.getReader()
+          const decoder = new TextDecoder()
+          let buffer = ""
+          while (!cancelled) {
+            const { done, value } = await reader.read()
+            if (done) break
+            buffer += decoder.decode(value, { stream: true })
+            const parts = buffer.split("\n\n")
+            buffer = parts.pop() ?? ""
+            for (const part of parts) {
+              if (part.startsWith(":")) continue
+              handleSseChunk(part)
+            }
+          }
+        } catch {
+          if (cancelled || controller.signal.aborted) break
+        }
+        if (!cancelled) {
+          await new Promise((resolve) => setTimeout(resolve, 3000))
+        }
+      }
+    }
+
+    void connectStream()
+    return () => {
+      cancelled = true
+      controller.abort()
+    }
+  }, [user, mutate])
 
   const notifications = useMemo(
     () => (data?.notifications ?? []).map(mapApiNotification),

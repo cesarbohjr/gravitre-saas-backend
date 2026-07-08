@@ -47,6 +47,9 @@ def test_output_contract_summary_shape():
 def test_verified_actions_include_apollo_and_slack():
     assert "apollo.lists.create" in VERIFIED_OUTPUT_ACTIONS
     assert "slack.post_message" in VERIFIED_OUTPUT_ACTIONS
+    assert "github.issues.create" in VERIFIED_OUTPUT_ACTIONS
+    assert "hubspot.deals.create" in VERIFIED_OUTPUT_ACTIONS
+    assert len(VERIFIED_OUTPUT_ACTIONS) == 8
 
 
 def test_execution_result_verifiable_requires_body_or_result_url():

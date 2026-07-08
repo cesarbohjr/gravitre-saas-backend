@@ -160,45 +160,30 @@ def _finalize_run(
     if final_status == RUN_STATUS_FAILED:
         emit_execute_failed(ctx.client, ctx.org_id, ctx.user_id, ctx.run_id, run_error_message)
         try:
-            from app.services.notification_service import create_user_notification
+            from app.services.notification_emitter import emit_notification
 
-            create_user_notification(
+            emit_notification(
                 ctx.client,
                 org_id=ctx.org_id,
                 user_id=ctx.user_id,
-                notification_type="run_failed",
+                event_type="run_failed",
                 title="Workflow run failed",
                 body=(run_error_message or "Review the run details for step-level errors.")[:2000],
-                url=f"/runs/{ctx.run_id}",
-                entity_type="workflow_run",
-                entity_id=ctx.run_id,
+                entity_ref={
+                    "entity_type": "workflow_run",
+                    "entity_id": ctx.run_id,
+                    "result_url": f"/runs/{ctx.run_id}",
+                },
+                channel_hints={"bell": True, "email": False},
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("run_failed notification skipped run_id=%s error=%s", ctx.run_id, exc)
     elif final_status == RUN_STATUS_COMPLETED:
         emit_execute_completed(ctx.client, ctx.org_id, ctx.user_id, ctx.run_id, final_status)
+        wf_name = "Workflow"
         try:
-            from app.services.notification_service import create_user_notification
-
-            create_user_notification(
-                ctx.client,
-                org_id=ctx.org_id,
-                user_id=ctx.user_id,
-                notification_type="run_completed",
-                title="Workflow run completed",
-                body=f"Run finished with status {final_status}.",
-                url=f"/runs/{ctx.run_id}",
-                entity_type="workflow_run",
-                entity_id=ctx.run_id,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("run_completed notification skipped run_id=%s error=%s", ctx.run_id, exc)
-        try:
-            from app.services.notification_email_service import send_workflow_completion_email
-
             run_meta = get_run_with_steps(ctx.client, ctx.org_id, ctx.run_id, ctx.environment_name) or {}
             wf_id = str(run_meta.get("workflow_id") or "")
-            wf_name = "Workflow"
             if wf_id:
                 wf_row = (
                     ctx.client.table("workflow_defs")
@@ -210,17 +195,33 @@ def _finalize_run(
                 )
                 if wf_row.data:
                     wf_name = str(wf_row.data[0].get("name") or wf_name)
-            send_workflow_completion_email(
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("workflow name lookup skipped run_id=%s error=%s", ctx.run_id, exc)
+        try:
+            from app.services.notification_emitter import emit_notification
+
+            emit_notification(
                 ctx.client,
-                ctx.settings,
                 org_id=ctx.org_id,
                 user_id=ctx.user_id,
-                run_id=ctx.run_id,
-                workflow_name=wf_name,
-                final_status=final_status,
+                event_type="run_completed",
+                title="Workflow run completed",
+                body=f"Run finished with status {final_status}.",
+                entity_ref={
+                    "entity_type": "workflow_run",
+                    "entity_id": ctx.run_id,
+                    "result_url": f"/runs/{ctx.run_id}",
+                },
+                channel_hints={"bell": True, "email": True},
+                email_context={
+                    "kind": "workflow_completion",
+                    "run_id": ctx.run_id,
+                    "workflow_name": wf_name,
+                    "final_status": final_status,
+                },
             )
         except Exception as exc:  # noqa: BLE001
-            logger.warning("run_completed email skipped run_id=%s error=%s", ctx.run_id, exc)
+            logger.warning("run_completed notification skipped run_id=%s error=%s", ctx.run_id, exc)
         try:
             from app.marketplace.adoption import maybe_record_workflow_adoption
 
