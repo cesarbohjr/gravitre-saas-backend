@@ -15,6 +15,7 @@ import {
   Users,
   CreditCard
 } from "lucide-react"
+import { SUPPORT_CATEGORY_LINKS, SUPPORT_POPULAR_ARTICLES } from "@/lib/marketing-guide-links"
 
 const categories = [
   {
@@ -22,53 +23,46 @@ const categories = [
     title: "Getting Started",
     description: "Setup guides and quickstarts",
     articles: 12,
-    href: "/support/getting-started",
+    href: SUPPORT_CATEGORY_LINKS["Getting Started"],
   },
   {
     icon: Users,
     title: "Account & Billing",
     description: "Manage your subscription and team",
     articles: 8,
-    href: "/support/account",
+    href: SUPPORT_CATEGORY_LINKS["Account & Billing"],
   },
   {
     icon: Database,
     title: "Integrations",
     description: "Connect your tools and data",
     articles: 24,
-    href: "/support/integrations",
+    href: SUPPORT_CATEGORY_LINKS.Integrations,
   },
   {
     icon: Shield,
     title: "Security & Compliance",
     description: "Privacy, security, and compliance",
     articles: 10,
-    href: "/support/security",
+    href: SUPPORT_CATEGORY_LINKS["Security & Compliance"],
   },
   {
     icon: HelpCircle,
     title: "Troubleshooting",
     description: "Common issues and solutions",
     articles: 18,
-    href: "/support/troubleshooting",
+    href: SUPPORT_CATEGORY_LINKS.Troubleshooting,
   },
   {
     icon: CreditCard,
     title: "API & Developers",
     description: "Technical documentation",
     articles: 15,
-    href: "/support/api",
+    href: SUPPORT_CATEGORY_LINKS["API & Developers"],
   },
 ]
 
-const popularArticles = [
-  { title: "How to create your first agent", views: "12.4k" },
-  { title: "Connecting to Salesforce", views: "8.2k" },
-  { title: "Understanding workflow triggers", views: "7.1k" },
-  { title: "Managing team permissions", views: "5.8k" },
-  { title: "Troubleshooting sync errors", views: "5.2k" },
-  { title: "Setting up SSO/SAML", views: "4.9k" },
-]
+const popularArticles = SUPPORT_POPULAR_ARTICLES
 
 const faqs = [
   {
@@ -172,7 +166,7 @@ export default function SupportPage() {
             {popularArticles.map((article, i) => (
               <motion.a
                 key={article.title}
-                href={`/docs/guides/${article.title.toLowerCase().replace(/\s+/g, '-')}`}
+                href={article.href}
                 initial={{ opacity: 0, x: -10 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
