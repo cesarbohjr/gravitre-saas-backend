@@ -1,4 +1,4 @@
-/** Admin app sidebar items — keep in sync with apps/web/components/gravitre/sidebar.tsx */
+/** Admin app sidebar items — keep in sync with apps/web/components/gravitre/sidebar-nav-config.ts */
 export type AppNavItem = {
   name: string
   href: string
