@@ -52,7 +52,7 @@ async def test_confirmation_triggers_execute(execution_service):
         success=True,
         entity_type="agent",
         entity_id="agent-1",
-        url="/agents/agent-1",
+        result_url="/agents/agent-1",
         title="Sales Bot",
         body="Created agent",
         notification_type="agent_created",

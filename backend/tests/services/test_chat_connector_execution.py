@@ -107,7 +107,8 @@ async def test_read_action_executes_immediately(connector_service):
         success=True,
         entity_type="connector",
         entity_id="conn-1",
-        url="/connectors/conn-1",
+        connector_management_url="/connectors/conn-1",
+        integration="hubspot",
         title="Search HubSpot",
         body="Found 3 contacts.",
         task_label="Search HubSpot",
@@ -178,7 +179,8 @@ async def test_confirmation_executes_write_action(connector_service):
         success=True,
         entity_type="connector",
         entity_id="conn-1",
-        url="/connectors/conn-1",
+        connector_management_url="/connectors/conn-1",
+        integration="slack",
         title="Post to Slack #sales",
         body="Message posted.",
         task_label="Post to Slack #sales",
@@ -402,3 +404,65 @@ async def test_hubspot_unsupported_action_returns_precise_message(connector_serv
     assert result is not None
     assert "not executable" in result["message"].lower()
     assert result["stop_pipeline"] is True
+
+
+def test_summarize_apollo_list_create_includes_name_and_id(connector_service):
+    plan = ConnectorActionPlan(
+        tool_name="apollo_lists_create",
+        invoke_action="apollo.lists.create",
+        integration="apollo",
+        kind="write",
+        label="Create Apollo contact list",
+        args={"name": "MSP Prospects", "modality": "contacts"},
+        requires_approval=True,
+    )
+    summary = connector_service._summarize_result(
+        plan,
+        {"label": {"id": "list-123", "name": "MSP Prospects"}},
+        {"success": True},
+    )
+    assert 'MSP Prospects' in summary
+    assert "list-123" in summary
+
+
+@pytest.mark.asyncio
+async def test_execute_plan_apollo_list_create_has_no_result_url(connector_service):
+    plan = ConnectorActionPlan(
+        tool_name="apollo_lists_create",
+        invoke_action="apollo.lists.create",
+        integration="apollo",
+        kind="write",
+        label="Create Apollo contact list",
+        args={"name": "MSP Prospects", "modality": "contacts"},
+        requires_approval=True,
+    )
+    with patch.object(
+        connector_service,
+        "_registry",
+        MagicMock(
+            execute_tool=AsyncMock(
+                return_value={
+                    "success": True,
+                    "connector_id": "conn-apollo",
+                    "result": {"label": {"id": "list-123", "name": "MSP Prospects"}},
+                }
+            )
+        ),
+    ), patch.object(connector_service, "_record_outcomes", AsyncMock()), patch(
+        "app.services.chat_connector_execution_service.create_user_notification"
+    ):
+        result = await connector_service.execute_plan(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            plan=plan,
+            client=MagicMock(),
+            classification={},
+        )
+
+    assert result.success is True
+    assert result.result_url is None
+    assert result.connector_management_url == "/connectors/conn-apollo"
+    assert result.integration == "apollo"
+    assert "MSP Prospects" in result.body
+    assert "list-123" in result.body

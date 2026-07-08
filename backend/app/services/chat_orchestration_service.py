@@ -221,7 +221,7 @@ class ChatOrchestrationService:
                 success=False,
                 entity_type="conversation",
                 entity_id=conversation_id,
-                url="/ai",
+                result_url="/ai",
                 title="No orchestration",
                 body="No pending multi-step orchestration to execute.",
             )
@@ -251,20 +251,20 @@ class ChatOrchestrationService:
                 success=False,
                 entity_type="conversation",
                 entity_id=conversation_id,
-                url="/ai",
+                result_url="/ai",
                 title="Orchestration idle",
                 body="Nothing is waiting for approval right now.",
             )
         execution = (turn or {}).get("execution_result") if turn else None
         if isinstance(execution, dict) and execution.get("success"):
-            return ExecutionResult(**execution)
+            return ExecutionResult.from_dict(execution)
         if isinstance(execution, dict):
-            return ExecutionResult(**execution)
+            return ExecutionResult.from_dict(execution)
         return ExecutionResult(
             success=True,
             entity_type="orchestration",
             entity_id=conversation_id,
-            url="/ai",
+            result_url="/ai",
             title="Orchestration in progress",
             body=str((turn or {}).get("message") or "Continuing orchestration."),
             task_label="Multi-step orchestration",
@@ -527,7 +527,7 @@ class ChatOrchestrationService:
                 "invoke_action": step.plan.invoke_action if step.plan else "",
                 "success": result.success,
                 "summary": result.body,
-                "url": result.external_url or result.url,
+                "url": result.result_url,
                 "structured": dict(result.structured or {}),
             }
         )
@@ -536,7 +536,7 @@ class ChatOrchestrationService:
             {
                 "step_id": step.step_id,
                 "label": step.label,
-                "url": result.external_url or result.url,
+                "url": result.result_url,
                 "entity_type": result.entity_type,
                 "entity_id": result.entity_id,
             }
@@ -670,7 +670,7 @@ class ChatOrchestrationService:
                     "invoke_action": step.plan.invoke_action if step.plan else "",
                     "success": True,
                     "summary": result.body,
-                    "url": result.external_url or result.url,
+                    "url": result.result_url,
                     "structured": dict(result.structured or {}),
                 }
             )
@@ -695,13 +695,13 @@ class ChatOrchestrationService:
             mark = "✓" if row.get("success") else "○"
             lines.append(f"- {mark} {row.get('label')}: {row.get('summary')}")
         summary_body = "\n".join(lines) if lines else "Orchestration finished."
-        primary_url = next((str(r.get("url")) for r in reversed(step_results) if r.get("url")), "/ai")
+        primary_url = next((str(r.get("url")) for r in reversed(step_results) if r.get("url")), None)
 
         result = ExecutionResult(
             success=successes > 0,
             entity_type="orchestration",
             entity_id=conversation_id,
-            url=primary_url,
+            result_url=primary_url,
             title=f"Orchestration complete ({successes}/{len(step_results)} steps)",
             body=summary_body,
             notification_type="task_completed",
@@ -714,7 +714,7 @@ class ChatOrchestrationService:
             notification_type=result.notification_type,
             title=result.title,
             body=result.body[:500],
-            url=result.url,
+            url=result.result_url,
             entity_type=result.entity_type,
             entity_id=result.entity_id,
         )
@@ -736,8 +736,8 @@ class ChatOrchestrationService:
             "dialogue_mode": "answer",
             "message": (
                 f"**Orchestration complete** ({successes}/{len(step_results)} steps succeeded).\n\n"
-                f"{summary_body}\n\n"
-                f"[View results]({primary_url})"
+                f"{summary_body}"
+                + (f"\n\n[View results]({primary_url})" if primary_url else "")
             ),
             "execution_result": result.__dict__,
             "task_state": refreshed,
@@ -922,7 +922,7 @@ class ChatOrchestrationService:
             label=step.label,
             success=result.success,
             summary=result.body,
-            url=result.external_url or result.url,
+            url=result.result_url,
             structured=dict(result.structured or {}),
         )
         if result.success and step.plan:

@@ -1262,6 +1262,7 @@ async def execute_conversation_task(
         "execution_result": execution.__dict__,
         "task_state": task_state,
         "message": execution.body if not execution.success else (
-            f"Created {execution.title}. Open {execution.url} to review."
+            f"Created {execution.title}."
+            + (f" Open {execution.result_url} to review." if execution.result_url else "")
         ),
     }

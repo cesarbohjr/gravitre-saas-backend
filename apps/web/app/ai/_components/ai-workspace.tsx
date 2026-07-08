@@ -314,7 +314,7 @@ export function AiWorkspace({
             message:
               polishAssistantText(payload.executionResult.body || "") ||
               "Your request was executed in Gravitre.",
-            link: payload.executionResult.url,
+            link: payload.executionResult.result_url ?? undefined,
           })
         }
       }
@@ -374,7 +374,7 @@ export function AiWorkspace({
             type: "task_complete",
             title: result.execution_result.task_label || result.execution_result.title || "Task completed",
             message: result.execution_result.body || result.message,
-            link: result.execution_result.url,
+            link: result.execution_result.result_url ?? undefined,
           })
         }
       }

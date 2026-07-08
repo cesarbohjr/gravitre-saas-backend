@@ -1344,10 +1344,11 @@ export const assistantApi = {
         success?: boolean
         entity_type?: string
         entity_id?: string
-        url?: string
+        connector_management_url?: string | null
+        result_url?: string | null
+        integration?: string | null
         title?: string
         body?: string
-        external_url?: string | null
         task_label?: string
       }
       task_state?: Record<string, unknown>
