@@ -35,7 +35,7 @@ export default defineConfig({
       command: `${pythonCmd} -m uvicorn app.main:app --host 127.0.0.1 --port 8000`,
       cwd: "backend",
       url: `${backendURL}/health`,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === "1",
       timeout: 120_000,
       env: {
         ...e2eEnv,
@@ -47,7 +47,7 @@ export default defineConfig({
       command: "pnpm dev --port 3001",
       cwd: "apps/web",
       url: baseURL,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === "1",
       timeout: 180_000,
       env: {
         ...e2eEnv,

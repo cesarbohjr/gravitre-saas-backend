@@ -59,3 +59,114 @@ export async function clearTrialBannerDismiss(page: Page) {
     window.sessionStorage.removeItem("gravitre-plan-required")
   })
 }
+
+const NAV_EXPANDED_STORAGE_KEY = "gravitre-nav-expanded"
+const WELCOME_DISMISSED_STORAGE_KEY = "gravitre-welcome-dismissed"
+
+export async function skipOnboardingForOrg(page: Page, orgId: string) {
+  try {
+    await page.evaluate(async (selectedOrgId) => {
+      const apiFetch = window.__gravitreApiFetch
+      if (!apiFetch) {
+        throw new Error("Playwright E2E helper missing: window.__gravitreApiFetch")
+      }
+      const response = await apiFetch("/api/onboarding/skip", {
+        method: "POST",
+        headers: { "x-org-id": selectedOrgId },
+      })
+      if (!response.ok) {
+        const body = await response.text()
+        throw new Error(`Failed to skip onboarding (${response.status}): ${body}`)
+      }
+    }, orgId)
+  } catch {
+    // Fixtures seed skipped onboarding; ignore transient proxy/backend failures here.
+  }
+}
+
+export async function dismissOnboardingChecklistForOrg(page: Page) {
+  try {
+    await page.evaluate(async () => {
+    const apiFetch = window.__gravitreApiFetch
+    if (!apiFetch) {
+      throw new Error("Playwright E2E helper missing: window.__gravitreApiFetch")
+    }
+    const settingsResponse = await apiFetch("/api/settings")
+    if (!settingsResponse.ok) return
+    const payload = (await settingsResponse.json()) as { settings?: Record<string, unknown> }
+    const current = (payload.settings ?? {}) as Record<string, unknown>
+    const onboarding = (current.onboarding ?? {}) as Record<string, unknown>
+    if (onboarding.checklist_dismissed === true) return
+    const nextSettings = {
+      ...current,
+      onboarding: {
+        ...onboarding,
+        checklist_dismissed: true,
+      },
+    }
+    await apiFetch("/api/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ settings: nextSettings }),
+    })
+    })
+  } catch {
+    // Non-blocking — checklist overlay does not prevent sidebar navigation.
+  }
+}
+
+/** Wait until AppShell exits the auth/billing bootstrap spinner and sidebar is interactive. */
+export async function waitForAppShellReady(page: Page, timeout = 120_000) {
+  await page
+    .waitForResponse(
+      (response) =>
+        response.url().includes("/api/billing/status") && response.status() === 200,
+      { timeout },
+    )
+    .catch(() => undefined)
+
+  const bootSpinner = page.locator(
+    "div.flex.h-screen.items-center.justify-center .animate-spin",
+  )
+  if (await bootSpinner.count()) {
+    await bootSpinner.first().waitFor({ state: "hidden", timeout }).catch(() => undefined)
+  }
+
+  await page.locator("aside nav").waitFor({ state: "visible", timeout })
+}
+
+export async function prepareAdminAppSession(
+  page: Page,
+  user: BillingFixtureUser,
+  landingPath = "/home",
+) {
+  await loginWithPassword(page, user.email, user.password)
+  await setSelectedOrg(page, user.orgId)
+  await clearTrialBannerDismiss(page)
+  await page.evaluate(
+    ({ navKey, welcomeKey }) => {
+      window.localStorage.setItem(navKey, "true")
+      window.localStorage.setItem(welcomeKey, "true")
+    },
+    { navKey: NAV_EXPANDED_STORAGE_KEY, welcomeKey: WELCOME_DISMISSED_STORAGE_KEY },
+  )
+
+  await openProductPage(page, user.orgId, landingPath)
+  await skipOnboardingForOrg(page, user.orgId)
+  await dismissOnboardingChecklistForOrg(page)
+
+  const sidebar = page.locator("aside nav")
+  if (!(await sidebar.isVisible().catch(() => false))) {
+    await waitForAppShellReady(page, 60_000)
+  }
+
+  const upgradeDismiss = page.getByRole("button", { name: "Not now" })
+  if (await upgradeDismiss.isVisible().catch(() => false)) {
+    await upgradeDismiss.click()
+  }
+
+  const expandNav = page.getByRole("button", { name: "Expand navigation" })
+  if (await expandNav.isVisible().catch(() => false)) {
+    await expandNav.click()
+  }
+}

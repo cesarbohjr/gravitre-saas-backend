@@ -302,7 +302,7 @@ async def list_organizations(
 
     roles_by_org = {str(item["org_id"]): (item.get("role") or "member") for item in memberships.data}
     org_ids = list(roles_by_org.keys())
-    orgs = client.table("organizations").select("id, name, slug, logo_url, plan, created_at").in_("id", org_ids).execute()
+    orgs = client.table("organizations").select("id, name, slug, plan, created_at").in_("id", org_ids).execute()
     rows = [_normalize_org_row(row) for row in (orgs.data or [])]
     for row in rows:
         row["role"] = roles_by_org.get(row["id"], "member")

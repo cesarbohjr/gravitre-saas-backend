@@ -1,0 +1,579 @@
+{
+  "base_url": "http://localhost:3000",
+  "assertion_failures": [],
+  "metadata_failures": [],
+  "broken": [],
+  "empty": [],
+  "pages": {
+    "http://localhost:3000/support/getting-started": {
+      "status": 200,
+      "text_len": 6189,
+      "title": "Quickstart | Gravitre Docs",
+      "og_title": "Quickstart | Gravitre Docs"
+    },
+    "http://localhost:3000/guides/create-your-first-ai-agent": {
+      "status": 200,
+      "text_len": 2056,
+      "title": "Manage agents | Gravitre Docs",
+      "og_title": "Manage agents | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to-create-your-first-agent": {
+      "status": 200,
+      "text_len": 2056,
+      "title": "Manage agents | Gravitre Docs",
+      "og_title": "Manage agents | Gravitre Docs"
+    },
+    "http://localhost:3000/api": {
+      "status": 200,
+      "text_len": 3458,
+      "title": "API \u00b7 Gravitre",
+      "og_title": "API \u00b7 Gravitre"
+    },
+    "http://localhost:3000/support": {
+      "status": 200,
+      "text_len": 1988,
+      "title": "Support \u00b7 Gravitre",
+      "og_title": "Support \u00b7 Gravitre"
+    },
+    "http://localhost:3000/changelog": {
+      "status": 200,
+      "text_len": 3907,
+      "title": "Changelog \u00b7 Gravitre",
+      "og_title": "Changelog \u00b7 Gravitre"
+    },
+    "http://localhost:3000/": {
+      "status": 200,
+      "text_len": 4002,
+      "title": "Gravitre \u2014 Your AI Team, Managed Simply",
+      "og_title": "Gravitre \u2014 Your AI Team, Managed Simply"
+    },
+    "http://localhost:3000/features": {
+      "status": 200,
+      "text_len": 6447,
+      "title": "Features \u00b7 Gravitre",
+      "og_title": "Features \u00b7 Gravitre"
+    },
+    "http://localhost:3000/pricing": {
+      "status": 200,
+      "text_len": 5878,
+      "title": "Pricing \u00b7 Gravitre",
+      "og_title": "Pricing \u00b7 Gravitre"
+    },
+    "http://localhost:3000/docs": {
+      "status": 200,
+      "text_len": 2252,
+      "title": "Documentation | Gravitre \u00b7 Gravitre",
+      "og_title": "Documentation | Gravitre"
+    },
+    "http://localhost:3000/login": {
+      "status": 200,
+      "text_len": 329,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "http://localhost:3000/get-started": {
+      "status": 200,
+      "text_len": 756,
+      "title": "Get Started Free \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Get Started Free \u2014 Gravitre AI Operations Platform"
+    },
+    "http://localhost:3000/contact": {
+      "status": 200,
+      "text_len": 1029,
+      "title": "Contact \u00b7 Gravitre",
+      "og_title": "Contact \u00b7 Gravitre"
+    },
+    "http://localhost:3000/roadmap": {
+      "status": 200,
+      "text_len": 1883,
+      "title": "Gravitre \u2014 AI operations with GIBE \u00b7 Gravitre",
+      "og_title": "Gravitre \u2014 AI operations with GIBE"
+    },
+    "http://localhost:3000/about": {
+      "status": 200,
+      "text_len": 1533,
+      "title": "About \u00b7 Gravitre",
+      "og_title": "About \u00b7 Gravitre"
+    },
+    "http://localhost:3000/blog": {
+      "status": 200,
+      "text_len": 1951,
+      "title": "Blog \u00b7 Gravitre",
+      "og_title": "Blog \u00b7 Gravitre"
+    },
+    "http://localhost:3000/careers": {
+      "status": 200,
+      "text_len": 1929,
+      "title": "Gravitre \u2014 AI operations with GIBE \u00b7 Gravitre",
+      "og_title": "Gravitre \u2014 AI operations with GIBE"
+    },
+    "http://localhost:3000/guides": {
+      "status": 200,
+      "text_len": 3783,
+      "title": "Guides \u00b7 Gravitre",
+      "og_title": "Guides \u00b7 Gravitre"
+    },
+    "http://localhost:3000/privacy": {
+      "status": 200,
+      "text_len": 4544,
+      "title": "Gravitre \u2014 AI operations with GIBE \u00b7 Gravitre",
+      "og_title": "Gravitre \u2014 AI operations with GIBE"
+    },
+    "http://localhost:3000/terms": {
+      "status": 200,
+      "text_len": 6600,
+      "title": "Gravitre \u2014 AI operations with GIBE \u00b7 Gravitre",
+      "og_title": "Gravitre \u2014 AI operations with GIBE"
+    },
+    "http://localhost:3000/security": {
+      "status": 200,
+      "text_len": 2730,
+      "title": "Security \u00b7 Gravitre",
+      "og_title": "Security \u00b7 Gravitre"
+    },
+    "http://localhost:3000/docs/getting-started/quickstart": {
+      "status": 200,
+      "text_len": 6189,
+      "title": "Quickstart | Gravitre Docs",
+      "og_title": "Quickstart | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/org-learning": {
+      "status": 200,
+      "text_len": 4658,
+      "title": "GIBE \u2014 Learning &amp; built-in ML | Gravitre Docs",
+      "og_title": "GIBE \u2014 Learning &amp; built-in ML | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/api/swagger": {
+      "status": 200,
+      "text_len": 655,
+      "title": "API reference \u00b7 Gravitre Docs",
+      "og_title": "Documentation \u00b7 Gravitre"
+    },
+    "http://localhost:3000/docs/guides/how-to/ai-operator": {
+      "status": 200,
+      "text_len": 6163,
+      "title": "Use Gravitre AI (Execute mode) | Gravitre Docs",
+      "og_title": "Use Gravitre AI (Execute mode) | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/connectors": {
+      "status": 200,
+      "text_len": 6208,
+      "title": "Connect integrations | Gravitre Docs",
+      "og_title": "Connect integrations | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/workflows": {
+      "status": 200,
+      "text_len": 7267,
+      "title": "Build and run workflows | Gravitre Docs",
+      "og_title": "Build and run workflows | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/failure-alerts": {
+      "status": 200,
+      "text_len": 2666,
+      "title": "Failure alerts | Gravitre Docs",
+      "og_title": "Failure alerts | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/metrics": {
+      "status": 200,
+      "text_len": 2659,
+      "title": "View metrics | Gravitre Docs",
+      "og_title": "View metrics | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/api/quickstart": {
+      "status": 200,
+      "text_len": 4575,
+      "title": "API quickstart | Gravitre Docs",
+      "og_title": "API quickstart | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/assistant": {
+      "status": 200,
+      "text_len": 5392,
+      "title": "Use Gravitre AI (Chat mode) | Gravitre Docs",
+      "og_title": "Use Gravitre AI (Chat mode) | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/runs": {
+      "status": 200,
+      "text_len": 5402,
+      "title": "Monitor Runs | Gravitre Docs",
+      "og_title": "Monitor Runs | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/training": {
+      "status": 200,
+      "text_len": 4073,
+      "title": "Use Training | Gravitre Docs",
+      "og_title": "Use Training | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/api": {
+      "status": 200,
+      "text_len": 1651,
+      "title": "API overview | Gravitre Docs",
+      "og_title": "API overview | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/billing/plans-and-checkout": {
+      "status": 200,
+      "text_len": 1866,
+      "title": "Plans and checkout | Gravitre Docs",
+      "og_title": "Plans and checkout | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/concepts/ai-models": {
+      "status": 200,
+      "text_len": 2850,
+      "title": "Models | Gravitre Docs",
+      "og_title": "Models | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/concepts/data-storage-and-llm": {
+      "status": 200,
+      "text_len": 5749,
+      "title": "Data storage and LLM transmission | Gravitre Docs",
+      "og_title": "Data storage and LLM transmission | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/faq": {
+      "status": 200,
+      "text_len": 592,
+      "title": "FAQ | Gravitre Docs",
+      "og_title": "Documentation \u00b7 Gravitre"
+    },
+    "http://localhost:3000/docs/guides/how-to/agents": {
+      "status": 200,
+      "text_len": 2056,
+      "title": "Manage agents | Gravitre Docs",
+      "og_title": "Manage agents | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/integrations": {
+      "status": 200,
+      "text_len": 1454,
+      "title": "Integrations \u00b7 Gravitre Docs",
+      "og_title": "Documentation \u00b7 Gravitre"
+    },
+    "http://localhost:3000/blog/ai-wont-take-your-job-your-resistance-might": {
+      "status": 200,
+      "text_len": 9653,
+      "title": "AI Won&#x27;t Take Your Job. Your Resistance to It Might. | Gravitre Blog",
+      "og_title": "AI Won&#x27;t Take Your Job. Your Resistance to It Might."
+    },
+    "http://localhost:3000/blog/security-first-approach": {
+      "status": 200,
+      "text_len": 4573,
+      "title": "Our Security-First Approach to AI Automation | Gravitre Blog",
+      "og_title": "Our Security-First Approach to AI Automation"
+    },
+    "http://localhost:3000/blog/workflow-templates-library": {
+      "status": 200,
+      "text_len": 18207,
+      "title": "Introducing 50+ Pre-Built Workflow Templates | Gravitre Blog",
+      "og_title": "Introducing 50+ Pre-Built Workflow Templates"
+    },
+    "http://localhost:3000/blog/enterprise-ai-governance": {
+      "status": 200,
+      "text_len": 12895,
+      "title": "The Complete Guide to Enterprise AI Governance | Gravitre Blog",
+      "og_title": "The Complete Guide to Enterprise AI Governance"
+    },
+    "http://localhost:3000/blog/ai-agent-best-practices": {
+      "status": 200,
+      "text_len": 4539,
+      "title": "10 Best Practices for Building Reliable AI Agents | Gravitre Blog",
+      "og_title": "10 Best Practices for Building Reliable AI Agents"
+    },
+    "http://localhost:3000/docs/api/reference": {
+      "status": 200,
+      "text_len": 655,
+      "title": "API reference \u00b7 Gravitre Docs",
+      "og_title": "Documentation \u00b7 Gravitre"
+    },
+    "http://localhost:3000/docs/api/webhooks": {
+      "status": 200,
+      "text_len": 1949,
+      "title": "Webhooks | Gravitre Docs",
+      "og_title": "Webhooks | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/api/authentication": {
+      "status": 200,
+      "text_len": 1815,
+      "title": "API authentication | Gravitre Docs",
+      "og_title": "API authentication | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/integrations/salesforce": {
+      "status": 200,
+      "text_len": 1355,
+      "title": "Salesforce integration | Gravitre Docs",
+      "og_title": "Salesforce integration | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/integrations/hubspot": {
+      "status": 200,
+      "text_len": 1773,
+      "title": "HubSpot integration | Gravitre Docs",
+      "og_title": "HubSpot integration | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/concepts/authentication": {
+      "status": 200,
+      "text_len": 2416,
+      "title": "Authentication | Gravitre Docs",
+      "og_title": "Authentication | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/settings": {
+      "status": 200,
+      "text_len": 11522,
+      "title": "Manage settings | Gravitre Docs",
+      "og_title": "Manage settings | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/concepts/security": {
+      "status": 200,
+      "text_len": 2026,
+      "title": "Security overview | Gravitre Docs",
+      "og_title": "Security overview | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/security": {
+      "status": 200,
+      "text_len": 2026,
+      "title": "Security overview | Gravitre Docs",
+      "og_title": "Security overview | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/concepts/environments": {
+      "status": 200,
+      "text_len": 1994,
+      "title": "Environments | Gravitre Docs",
+      "og_title": "Environments | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/integrations/github": {
+      "status": 200,
+      "text_len": 1207,
+      "title": "GitHub integration | Gravitre Docs",
+      "og_title": "GitHub integration | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/marketplace": {
+      "status": 200,
+      "text_len": 5078,
+      "title": "Install from the Marketplace | Gravitre Docs",
+      "og_title": "Install from the Marketplace | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/concepts/introduction": {
+      "status": 200,
+      "text_len": 5989,
+      "title": "Introduction to Gravitre | Gravitre Docs",
+      "og_title": "Introduction to Gravitre | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/ai-models": {
+      "status": 200,
+      "text_len": 4794,
+      "title": "Manage Models | Gravitre Docs",
+      "og_title": "Manage Models | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/approvals": {
+      "status": 200,
+      "text_len": 4068,
+      "title": "Approvals | Gravitre Docs",
+      "og_title": "Approvals | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/assignments": {
+      "status": 200,
+      "text_len": 3183,
+      "title": "Manage assignments | Gravitre Docs",
+      "og_title": "Manage assignments | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/enterprise": {
+      "status": 200,
+      "text_len": 12727,
+      "title": "Configure Enterprise | Gravitre Docs",
+      "og_title": "Configure Enterprise | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/goals": {
+      "status": 200,
+      "text_len": 3647,
+      "title": "Define and track goals | Gravitre Docs",
+      "og_title": "Define and track goals | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/gravitre-lite": {
+      "status": 200,
+      "text_len": 2656,
+      "title": "Use Gravitre Lite | Gravitre Docs",
+      "og_title": "Use Gravitre Lite | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/history": {
+      "status": 200,
+      "text_len": 2823,
+      "title": "Review history and audit logs | Gravitre Docs",
+      "og_title": "Review history and audit logs | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/marketplace-publish": {
+      "status": 200,
+      "text_len": 3619,
+      "title": "Publish Marketplace assets | Gravitre Docs",
+      "og_title": "Publish Marketplace assets | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/meson": {
+      "status": 200,
+      "text_len": 2259,
+      "title": "Build with Meson | Gravitre Docs",
+      "og_title": "Build with Meson | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/multi-agent-run": {
+      "status": 200,
+      "text_len": 2069,
+      "title": "Multi-Agent Run | Gravitre Docs",
+      "og_title": "Multi-Agent Run | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/partner-connections": {
+      "status": 200,
+      "text_len": 14830,
+      "title": "Partner Connections | Gravitre Docs",
+      "og_title": "Partner Connections | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/schedules": {
+      "status": 200,
+      "text_len": 4259,
+      "title": "Manage schedules | Gravitre Docs",
+      "og_title": "Manage schedules | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/search": {
+      "status": 200,
+      "text_len": 3467,
+      "title": "Universal Search | Gravitre Docs",
+      "og_title": "Universal Search | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/guides/how-to/sources": {
+      "status": 200,
+      "text_len": 3645,
+      "title": "Connect Sources | Gravitre Docs",
+      "og_title": "Connect Sources | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/integrations/email": {
+      "status": 200,
+      "text_len": 1440,
+      "title": "Email (SMTP) integration | Gravitre Docs",
+      "og_title": "Email (SMTP) integration | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/integrations/jira": {
+      "status": 200,
+      "text_len": 1184,
+      "title": "Jira integration | Gravitre Docs",
+      "og_title": "Jira integration | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/integrations/pagerduty": {
+      "status": 200,
+      "text_len": 1205,
+      "title": "PagerDuty integration | Gravitre Docs",
+      "og_title": "PagerDuty integration | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/integrations/google-workspace": {
+      "status": 200,
+      "text_len": 1704,
+      "title": "Google Workspace integrations | Gravitre Docs",
+      "og_title": "Google Workspace integrations | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/integrations/quickbooks": {
+      "status": 200,
+      "text_len": 1189,
+      "title": "QuickBooks integration | Gravitre Docs",
+      "og_title": "QuickBooks integration | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/integrations/odoo": {
+      "status": 200,
+      "text_len": 1157,
+      "title": "Odoo integration | Gravitre Docs",
+      "og_title": "Odoo integration | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/integrations/zendesk": {
+      "status": 200,
+      "text_len": 1180,
+      "title": "Zendesk integration | Gravitre Docs",
+      "og_title": "Zendesk integration | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/concepts/enterprise": {
+      "status": 200,
+      "text_len": 6122,
+      "title": "Enterprise | Gravitre Docs",
+      "og_title": "Enterprise | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/concepts/metrics": {
+      "status": 200,
+      "text_len": 2221,
+      "title": "Metrics | Gravitre Docs",
+      "og_title": "Metrics | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/concepts/assistant": {
+      "status": 200,
+      "text_len": 3250,
+      "title": "Gravitre AI (Chat mode) | Gravitre Docs",
+      "og_title": "Gravitre AI (Chat mode) | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/concepts/training": {
+      "status": 200,
+      "text_len": 2402,
+      "title": "Training | Gravitre Docs",
+      "og_title": "Training | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/concepts/assignments": {
+      "status": 200,
+      "text_len": 2085,
+      "title": "Assignments | Gravitre Docs",
+      "og_title": "Assignments | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/concepts/goals": {
+      "status": 200,
+      "text_len": 2085,
+      "title": "Goals | Gravitre Docs",
+      "og_title": "Goals | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/concepts/gravitre-lite": {
+      "status": 200,
+      "text_len": 2024,
+      "title": "Gravitre Lite | Gravitre Docs",
+      "og_title": "Gravitre Lite | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/concepts/history": {
+      "status": 200,
+      "text_len": 2089,
+      "title": "History and audit | Gravitre Docs",
+      "og_title": "History and audit | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/concepts/marketplace": {
+      "status": 200,
+      "text_len": 2749,
+      "title": "Marketplace | Gravitre Docs",
+      "og_title": "Marketplace | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/concepts/partner-connections": {
+      "status": 200,
+      "text_len": 5357,
+      "title": "Partner Connections | Gravitre Docs",
+      "og_title": "Partner Connections | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/concepts/platform-overview": {
+      "status": 200,
+      "text_len": 5446,
+      "title": "Platform overview | Gravitre Docs",
+      "og_title": "Platform overview | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/concepts/schedules": {
+      "status": 200,
+      "text_len": 2199,
+      "title": "Schedules | Gravitre Docs",
+      "og_title": "Schedules | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/concepts/search": {
+      "status": 200,
+      "text_len": 2339,
+      "title": "Universal Search | Gravitre Docs",
+      "og_title": "Universal Search | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/concepts/settings": {
+      "status": 200,
+      "text_len": 5108,
+      "title": "Settings | Gravitre Docs",
+      "og_title": "Settings | Gravitre Docs"
+    },
+    "http://localhost:3000/docs/concepts/sources": {
+      "status": 200,
+      "text_len": 2183,
+      "title": "Sources | Gravitre Docs",
+      "og_title": "Sources | Gravitre Docs"
+    },
+    "http://localhost:3000/marketplace": {
+      "status": 200,
+      "text_len": 329,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    }
+  }
+}

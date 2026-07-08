@@ -230,16 +230,15 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
     onClose?.()
   }, [pathname, onClose])
 
-  // Do not wrap primary nav Links in Radix Tooltip — it regresses mobile taps and desktop clicks.
   const renderNavItem = useCallback(
     (item: NavItem, isActive: boolean, colors: (typeof sectionColors)[keyof typeof sectionColors]) => (
-      <Link
+      <a
         href={item.href}
-        onClick={onClose}
+        onPointerDown={() => onClose?.()}
         title={showNavTooltip ? item.name : undefined}
         aria-label={showNavTooltip ? item.name : undefined}
         className={cn(
-          "group relative flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-all duration-150 px-2.5 py-1.5",
+          "group relative z-10 flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-all duration-150 px-2.5 py-1.5",
           navExpanded
             ? "md:justify-start md:px-2.5 md:py-1.5"
             : "md:justify-center md:px-0 md:py-2.5",
@@ -282,7 +281,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
             {item.badge}
           </span>
         )}
-      </Link>
+      </a>
     ),
     [navExpanded, onClose, showNavTooltip],
   )
@@ -424,14 +423,13 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
                   </span>
                 </div>
 
-                {/* Section Items */}
+                {/* Section Items — use md:hidden when collapsed so clipped links never intercept clicks */}
                 <div
                   className={cn(
-                    "overflow-hidden transition-all duration-200",
-                    isCollapsed && navExpanded ? "md:max-h-0 md:opacity-0" : "md:max-h-96 md:opacity-100",
+                    isCollapsed && navExpanded ? "md:hidden" : "block",
                   )}
                 >
-                  <ul className="mt-0.5 space-y-px md:space-y-1 xl:space-y-px">
+                  <ul className="relative z-10 mt-0.5 space-y-px md:space-y-1 xl:space-y-px">
                     {group.items.map((item) => {
                       const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
                       return (

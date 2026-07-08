@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:navigation": "playwright test --config ../../playwright.config.ts e2e/marketing-navigation-crawler.spec.ts e2e/execution-result-navigation.spec.ts",
+    "test:navigation": "playwright test --config ../../playwright.config.ts e2e/marketing-navigation-crawler.spec.ts e2e/execution-result-navigation.spec.ts e2e/app-navigation-crawler.spec.ts",
     "test:navigation:install": "playwright install --with-deps chromium"
   },
   "dependencies": {
