@@ -4,7 +4,7 @@ import React, { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import Image from "next/image"
-import { AppShell } from "@/components/gravitre/app-shell"
+import { EventNotificationPreferences } from "@/components/settings/event-notification-preferences"
 import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
 import { ModelSelector } from "@/components/gravitre/model-selector"
 import { Button } from "@/components/ui/button"
@@ -807,6 +807,7 @@ function NotificationSettings() {
           className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
+      <EventNotificationPreferences />
       <Button size="sm" className="gap-2" onClick={handleSave} disabled={isSaving}>
         {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : saved ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
         {saved ? "Saved!" : "Save Changes"}

@@ -131,7 +131,12 @@ def emit_notification(
     if notification_id is None:
         return None
 
-    if hints.get("email"):
+    from app.services.notification_preference_service import channel_enabled
+
+    bell_allowed = channel_enabled(client, org_id, user_id, canonical_type, "bell")
+    email_allowed = channel_enabled(client, org_id, user_id, canonical_type, "email")
+
+    if hints.get("email") and email_allowed:
         _send_email_if_configured(
             client,
             org_id=org_id,
@@ -142,9 +147,16 @@ def emit_notification(
             entity_ref=ref,
         )
 
+    if hints.get("bell", True) and not bell_allowed:
+        logger.debug(
+            "bell channel disabled by preference notification_id=%s event_type=%s",
+            notification_id,
+            canonical_type,
+        )
+
     # Live bell push requires an active session channel; until websocket fanout exists,
     # connected clients pick up durable rows via /api/notifications polling.
-    if hints.get("bell", True) and hints.get("require_live_session", False):
+    if hints.get("bell", True) and bell_allowed and hints.get("require_live_session", False):
         logger.debug(
             "live bell push requested but no session fanout configured notification_id=%s",
             notification_id,
@@ -167,6 +179,9 @@ def _send_email_if_configured(
         from app.config import get_settings
         from app.services.notification_email_service import email_notifications_enabled
 
+        settings = get_settings()
+        if not settings.notification_email_enabled:
+            return
         if not email_notifications_enabled(client, org_id, user_id, event_type):
             return
         logger.info(
@@ -174,7 +189,7 @@ def _send_email_if_configured(
             event_type,
             user_id,
         )
-        _ = (title, body, entity_ref, get_settings())
+        _ = (title, body, entity_ref)
     except Exception as exc:  # noqa: BLE001
         logger.warning("notification email channel skipped event_type=%s: %s", event_type, exc)
 

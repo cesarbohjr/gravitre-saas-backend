@@ -2184,7 +2184,11 @@ export const notificationsApi = {
     postJson<void>(apiUrl(`/api/notifications/${id}/archive`), {}),
   delete: (id: string) =>
     deleteRequest(apiUrl(`/api/notifications/${id}`)),
-  updatePreferences: (preferences: Record<string, boolean>) =>
+  getPreferences: () =>
+    fetcher<{ preferences: Record<string, { bell_enabled: boolean; email_enabled: boolean }> }>(
+      apiUrl("/api/notifications/preferences"),
+    ),
+  updatePreferences: (preferences: Record<string, { bell_enabled: boolean; email_enabled: boolean }>) =>
     patchJson<void>(apiUrl("/api/notifications/preferences"), preferences),
 }
 

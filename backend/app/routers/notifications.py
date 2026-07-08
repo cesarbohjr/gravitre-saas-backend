@@ -2,13 +2,17 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
+from app.services.notification_preference_service import (
+    flatten_structured_preferences,
+    structured_preferences,
+)
 
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 
@@ -235,13 +239,14 @@ async def get_notification_preferences(
     if response.error:
         raise HTTPException(status_code=500, detail=str(response.error))
     if not response.data:
-        return {"preferences": {}}
-    return {"preferences": response.data[0].get("preferences") or {}}
+        return {"preferences": structured_preferences({})}
+    raw = response.data[0].get("preferences") or {}
+    return {"preferences": structured_preferences(raw if isinstance(raw, dict) else {})}
 
 
 @router.patch("/preferences")
 async def update_notification_preferences(
-    preferences: Annotated[dict[str, bool], Body(...)],
+    preferences: Annotated[dict[str, Any], Body(...)],
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -253,7 +258,7 @@ async def update_notification_preferences(
     payload = {
         "org_id": org_id,
         "user_id": user_id,
-        "preferences": preferences,
+        "preferences": flatten_structured_preferences(preferences),
     }
     response = (
         client.table("notification_preferences")
