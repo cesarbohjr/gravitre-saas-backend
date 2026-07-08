@@ -13,7 +13,7 @@ from app.services.entity_link_service import (
     build_entity_url,
     resolve_execution_result_url,
 )
-from app.services.notification_service import create_user_notification
+from app.services.notification_emitter import emit_notification
 
 logger = get_logger(__name__)
 
@@ -333,16 +333,19 @@ class ConversationalExecutionService:
                 body=str(exc),
             )
 
-        create_user_notification(
+        emit_notification(
             client,
             org_id=org_id,
             user_id=user_id,
-            notification_type=result.notification_type,
+            event_type=result.notification_type,
             title=result.title,
             body=result.body,
-            url=result.result_url,
-            entity_type=result.entity_type,
-            entity_id=result.entity_id or None,
+            entity_ref={
+                "entity_type": result.entity_type,
+                "entity_id": result.entity_id or None,
+                "result_url": result.result_url,
+            },
+            channel_hints={"bell": True, "email": False},
         )
 
         await self._state.update_task_state(

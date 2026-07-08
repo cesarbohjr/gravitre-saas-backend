@@ -15,7 +15,7 @@ from app.services.conversational_execution_service import (
     ExecutionResult,
 )
 from app.services.entity_link_service import build_connector_management_url
-from app.services.notification_service import create_user_notification
+from app.services.notification_emitter import emit_notification
 from app.services.risk_approval_evaluator import get_risk_approval_evaluator
 from app.services.chat_action_mapper import get_chat_action_mapper
 from app.services.chat_connector_models import INTEGRATION_ALIASES, ConnectorActionPlan, LIST_CREATE_INTENT
@@ -967,16 +967,19 @@ class ChatConnectorExecutionService:
             structured=result_data,
         )
 
-        create_user_notification(
+        emit_notification(
             client,
             org_id=org_id,
             user_id=user_id,
-            notification_type=result.notification_type,
+            event_type=result.notification_type,
             title=result.title,
             body=result.body,
-            url=result.result_url,
-            entity_type=result.entity_type,
-            entity_id=result.entity_id or None,
+            entity_ref={
+                "entity_type": result.entity_type,
+                "entity_id": result.entity_id or None,
+                "result_url": result.result_url,
+            },
+            channel_hints={"bell": True, "email": False},
         )
 
         prior_state = await self._state.get_task_state(conversation_id, org_id, client=client)

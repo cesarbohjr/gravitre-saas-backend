@@ -449,7 +449,7 @@ async def test_execute_plan_apollo_list_create_has_no_result_url(connector_servi
             )
         ),
     ), patch.object(connector_service, "_record_outcomes", AsyncMock()), patch(
-        "app.services.chat_connector_execution_service.create_user_notification"
+        "app.services.chat_connector_execution_service.emit_notification"
     ):
         result = await connector_service.execute_plan(
             org_id="org-1",

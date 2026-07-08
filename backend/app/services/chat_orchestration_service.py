@@ -20,7 +20,7 @@ from app.services.conversational_execution_service import (
     DECLINE_PATTERN,
     ExecutionResult,
 )
-from app.services.notification_service import create_user_notification
+from app.services.notification_emitter import emit_notification
 from app.services.connector_session_state import (
     bind_plan_from_session,
     build_session_summary,
@@ -707,16 +707,19 @@ class ChatOrchestrationService:
             notification_type="task_completed",
             task_label="Multi-step orchestration complete",
         )
-        create_user_notification(
+        emit_notification(
             client,
             org_id=org_id,
             user_id=user_id,
-            notification_type=result.notification_type,
+            event_type=result.notification_type,
             title=result.title,
             body=result.body[:500],
-            url=result.result_url,
-            entity_type=result.entity_type,
-            entity_id=result.entity_id,
+            entity_ref={
+                "entity_type": result.entity_type,
+                "entity_id": result.entity_id,
+                "result_url": result.result_url,
+            },
+            channel_hints={"bell": True, "email": False},
         )
         await self._state.update_task_state(
             conversation_id,

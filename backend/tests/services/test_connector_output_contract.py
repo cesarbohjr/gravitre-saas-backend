@@ -109,7 +109,7 @@ async def test_verified_slack_post_message_summary_is_non_empty():
             )
         ),
     ), patch.object(service, "_record_outcomes", AsyncMock()), patch(
-        "app.services.chat_connector_execution_service.create_user_notification"
+        "app.services.chat_connector_execution_service.emit_notification"
     ):
         result = await service.execute_plan(
             org_id="org-1",
