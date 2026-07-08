@@ -1,10 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { useMemo, useState, useEffect, useCallback } from "react"
+import { useMemo, useState, useEffect, useCallback, type MouseEvent } from "react"
 import { Icon, type IconName } from "@/lib/icons"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { SURFACE_COPY } from "@/lib/surface-copy"
@@ -182,6 +182,7 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpanded }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const isMobile = useIsMobile()
   const showNavTooltip = !isMobile && !navExpanded
   const [collapsedSections, setCollapsedSections] = useState<string[]>([])
@@ -230,60 +231,106 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
     onClose?.()
   }, [pathname, onClose])
 
+  const navigateFromSidebar = useCallback(
+    (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+      if (
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return
+      }
+
+      const targetPath = href.split("#")[0]
+      const targetHash = href.includes("#") ? href.slice(href.indexOf("#")) : ""
+      const currentPath = pathname.split("#")[0]
+      const currentHash = typeof window !== "undefined" ? window.location.hash : ""
+
+      if (targetPath === currentPath && (!targetHash || targetHash === currentHash)) {
+        event.preventDefault()
+        if (isMobile) onClose?.()
+        return
+      }
+
+      event.preventDefault()
+      if (isMobile) onClose?.()
+      router.push(href)
+    },
+    [isMobile, onClose, pathname, router],
+  )
+
   const renderNavItem = useCallback(
-    (item: NavItem, isActive: boolean, colors: (typeof sectionColors)[keyof typeof sectionColors]) => (
-      <a
-        href={item.href}
-        onPointerDown={() => onClose?.()}
-        title={showNavTooltip ? item.name : undefined}
-        aria-label={showNavTooltip ? item.name : undefined}
-        className={cn(
-          "group relative z-10 flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-all duration-150 px-2.5 py-1.5",
-          navExpanded
-            ? "md:justify-start md:px-2.5 md:py-1.5"
-            : "md:justify-center md:px-0 md:py-2.5",
-          isActive
-            ? cn(
-                colors.activeBg,
-                "text-foreground",
-                navExpanded && "md:border-l-2 md:-ml-px md:pl-[9px]",
-                colors.activeBorder,
-              )
-            : cn(
-                "text-muted-foreground/70 hover:text-foreground hover:bg-sidebar-accent/50",
-                navExpanded && "md:border-l-2 md:border-l-transparent md:-ml-px md:pl-[9px]",
-              ),
-        )}
-      >
-        <Icon
-          name={item.icon}
-          size="md"
-          emphasis={item.emphasis && isActive}
+    (item: NavItem, isActive: boolean, colors: (typeof sectionColors)[keyof typeof sectionColors]) => {
+      const link = (
+        <Link
+          href={item.href}
+          onClick={(event) => navigateFromSidebar(event, item.href)}
+          title={showNavTooltip ? item.name : undefined}
+          aria-label={showNavTooltip ? item.name : undefined}
           className={cn(
-            "shrink-0 transition-colors md:h-5 md:w-5",
-            navExpanded && "md:h-4 md:w-4",
-            isActive ? colors.activeIcon : "text-muted-foreground/40 group-hover:text-muted-foreground/70",
+            "group relative z-20 flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-all duration-150 px-2.5 py-1.5 pointer-events-auto",
+            navExpanded
+              ? "md:justify-start md:px-2.5 md:py-1.5"
+              : "md:justify-center md:px-0 md:py-2.5",
+            isActive
+              ? cn(
+                  colors.activeBg,
+                  "text-foreground",
+                  navExpanded && "md:border-l-2 md:-ml-px md:pl-[9px]",
+                  colors.activeBorder,
+                )
+              : cn(
+                  "text-muted-foreground/70 hover:text-foreground hover:bg-sidebar-accent/50",
+                  navExpanded && "md:border-l-2 md:border-l-transparent md:-ml-px md:pl-[9px]",
+                ),
           )}
-        />
-        <span className={cn("flex-1 truncate", navExpanded ? "md:inline" : "md:hidden")}>
-          {item.name}
-        </span>
-        {item.badge && (
-          <span
+        >
+          <Icon
+            name={item.icon}
+            size="md"
+            emphasis={item.emphasis && isActive}
             className={cn(
-              "rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
-              navExpanded ? "md:inline" : "md:hidden",
-              isActive
-                ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20"
-                : "bg-muted/60 text-muted-foreground/70",
+              "shrink-0 transition-colors md:h-5 md:w-5",
+              navExpanded && "md:h-4 md:w-4",
+              isActive ? colors.activeIcon : "text-muted-foreground/40 group-hover:text-muted-foreground/70",
             )}
-          >
-            {item.badge}
+          />
+          <span className={cn("flex-1 truncate", navExpanded ? "md:inline" : "md:hidden")}>
+            {item.name}
           </span>
-        )}
-      </a>
-    ),
-    [navExpanded, onClose, showNavTooltip],
+          {item.badge && (
+            <span
+              className={cn(
+                "rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
+                navExpanded ? "md:inline" : "md:hidden",
+                isActive
+                  ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20"
+                  : "bg-muted/60 text-muted-foreground/70",
+              )}
+            >
+              {item.badge}
+            </span>
+          )}
+        </Link>
+      )
+
+      if (!showNavTooltip) {
+        return link
+      }
+
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>{link}</TooltipTrigger>
+          <TooltipContent side="right" className="max-w-xs text-xs">
+            <p className="font-medium">{item.name}</p>
+            {item.hint ? <p className="mt-0.5 text-muted-foreground">{item.hint}</p> : null}
+          </TooltipContent>
+        </Tooltip>
+      )
+    },
+    [navExpanded, navigateFromSidebar, showNavTooltip],
   )
 
   return (
@@ -299,12 +346,12 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex h-full flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300 ease-in-out",
+          "fixed inset-y-0 left-0 z-50 flex h-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300 ease-in-out isolate",
           // Mobile: slide-out drawer
           "w-64",
           isOpen ? "translate-x-0" : "-translate-x-full max-md:invisible max-md:pointer-events-none",
           // Tablet+: pinned rail; width follows user expand preference
-          "md:static md:z-auto md:translate-x-0",
+          "md:static md:z-auto md:translate-x-0 md:flex-shrink-0",
           navExpanded ? "md:w-60" : "md:w-16",
         )}
       >
@@ -385,61 +432,65 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto scrollbar-on-hover py-3 px-1.5 md:px-2 xl:px-2">
+        <nav className="relative flex-1 overflow-y-auto py-3 px-1.5 md:px-2 xl:px-2">
           {navigation.map((group, groupIndex) => {
             const colors = sectionColors[group.group]
             const isCollapsed = collapsedSections.includes(group.group)
+            const showSectionItems = !(isCollapsed && navExpanded)
 
             return (
-              <div key={group.group} className="mb-0.5">
+              <div key={group.group} className="relative mb-0.5">
                 {/* Section Divider */}
                 {groupIndex > 0 && (
                   <div className="mx-2 mb-2 mt-1.5 h-px bg-border/40" />
                 )}
 
-                {/* Section Header — labels when nav expanded (desktop) or mobile drawer */}
-                <button
-                  onClick={() => toggleSection(group.group)}
+                {/* Section header — label is non-interactive; only chevron toggles collapse */}
+                <div
                   className={cn(
-                    "hidden w-full items-center justify-between px-2 py-1 group rounded-md hover:bg-sidebar-accent/30 transition-colors",
+                    "relative z-0 hidden items-center justify-between px-2 py-1",
                     navExpanded ? "md:flex" : "md:hidden",
                   )}
                 >
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 group-hover:text-muted-foreground/70 transition-colors">
+                  <span className="pointer-events-none text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
                     {group.group}
                   </span>
-                  <Icon
-                    name="caretDown"
-                    size="xs"
-                    className={cn(
-                      "text-muted-foreground/30 transition-transform duration-200",
-                      isCollapsed && "-rotate-90",
-                    )}
-                  />
-                </button>
+                  <button
+                    type="button"
+                    aria-expanded={!isCollapsed}
+                    aria-label={isCollapsed ? `Expand ${group.group} section` : `Collapse ${group.group} section`}
+                    onClick={() => toggleSection(group.group)}
+                    className="relative z-0 rounded p-1 hover:bg-sidebar-accent/30"
+                  >
+                    <Icon
+                      name="caretDown"
+                      size="xs"
+                      className={cn(
+                        "text-muted-foreground/30 transition-transform duration-200",
+                        isCollapsed && "-rotate-90",
+                      )}
+                    />
+                  </button>
+                </div>
                 <div className="flex w-full items-center justify-between px-2 py-1 md:hidden">
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
                     {group.group}
                   </span>
                 </div>
 
-                {/* Section Items — use md:hidden when collapsed so clipped links never intercept clicks */}
-                <div
-                  className={cn(
-                    isCollapsed && navExpanded ? "md:hidden" : "block",
-                  )}
-                >
-                  <ul className="relative z-10 mt-0.5 space-y-px md:space-y-1 xl:space-y-px">
+                {/* Section items — fully removed from layout when collapsed (never intercept clicks) */}
+                {showSectionItems ? (
+                  <ul className="relative z-20 mt-0.5 space-y-px md:space-y-1 xl:space-y-px">
                     {group.items.map((item) => {
                       const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
                       return (
-                        <li key={item.name}>
+                        <li key={item.name} className="relative z-20">
                           {renderNavItem(item, isActive, colors)}
                         </li>
                       )
                     })}
                   </ul>
-                </div>
+                ) : null}
               </div>
             )
           })}
