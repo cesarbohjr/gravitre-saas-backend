@@ -557,17 +557,20 @@ interface Testimonial {
 }
 
 export function TestimonialsCarousel({ testimonials }: { testimonials: Testimonial[] }) {
+  if (!SHOW_MARKETING_TESTIMONIALS) return null
+  return <TestimonialsCarouselActive testimonials={testimonials} />
+}
+
+function TestimonialsCarouselActive({ testimonials }: { testimonials: Testimonial[] }) {
   const [activeIndex, setActiveIndex] = useState(0)
 
   useEffect(() => {
-    if (!SHOW_MARKETING_TESTIMONIALS || testimonials.length === 0) return
+    if (testimonials.length === 0) return
     const timer = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % testimonials.length)
     }, 6000)
     return () => clearInterval(timer)
   }, [testimonials.length])
-
-  if (!SHOW_MARKETING_TESTIMONIALS) return null
 
   return (
     <div className="relative">

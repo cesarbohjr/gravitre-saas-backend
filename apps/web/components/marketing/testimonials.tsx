@@ -228,6 +228,11 @@ export function LogoCloud() {
 
 // Full-width testimonials carousel with navigation
 export function TestimonialsCarouselFull({ testimonials = defaultTestimonials }: { testimonials?: Testimonial[] }) {
+  if (!SHOW_MARKETING_TESTIMONIALS) return null
+  return <TestimonialsCarouselFullActive testimonials={testimonials} />
+}
+
+function TestimonialsCarouselFullActive({ testimonials }: { testimonials: Testimonial[] }) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [direction, setDirection] = useState(0)
 
@@ -242,15 +247,13 @@ export function TestimonialsCarouselFull({ testimonials = defaultTestimonials }:
   }
 
   useEffect(() => {
-    if (!SHOW_MARKETING_TESTIMONIALS || testimonials.length === 0) return
+    if (testimonials.length === 0) return
     const timer = setInterval(() => {
       setDirection(1)
       setActiveIndex((prev) => (prev + 1) % testimonials.length)
     }, 8000)
     return () => clearInterval(timer)
   }, [testimonials.length])
-
-  if (!SHOW_MARKETING_TESTIMONIALS) return null
 
   return (
     <div className="relative">
