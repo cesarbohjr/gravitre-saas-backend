@@ -264,7 +264,7 @@ def _dry_run_patches(service: ChatConnectorExecutionService, connected: list[str
         patch.object(service, "_verify_plan_executable", return_value=None),
         patch.object(service, "_evaluate_risk", side_effect=_fake_risk),
         patch.object(service._registry, "execute_tool", side_effect=_fake_execute_tool),
-        patch("app.services.chat_connector_execution_service.create_user_notification"),
+        patch("app.services.chat_connector_execution_service.emit_notification"),
     ):
         yield
 
@@ -284,7 +284,7 @@ def _live_patches(service: ChatConnectorExecutionService, connected: list[str]):
         patch.object(service, "_live_connected_integrations", return_value=connected),
         patch.object(service, "_verify_plan_executable", return_value=None),
         patch.object(service, "_evaluate_risk", side_effect=_fake_risk),
-        patch("app.services.chat_connector_execution_service.create_user_notification"),
+        patch("app.services.chat_connector_execution_service.emit_notification"),
     ):
         yield
 
