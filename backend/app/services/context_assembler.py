@@ -1,13 +1,17 @@
 """Parallel context assembly for intelligence router endpoints."""
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
 
 from app.config import Settings, get_settings
+from app.core.logging import get_logger
 from app.services.company_intelligence_orchestrator import get_company_intelligence_orchestrator
 from app.services.unified_retrieval_service import RetrievalScopes, get_unified_retrieval_service
 from app.services.research_service import get_research_service
 from app.workflows.repository import get_supabase_client
+
+logger = get_logger(__name__)
 
 
 class ContextAssembler:
@@ -34,21 +38,33 @@ class ContextAssembler:
         agent_payload = agent or {"id": "router", "name": "Intelligence Router"}
         strict_mode = bool(classification.get("strict_assignment_mode"))
 
-        bundle = await get_unified_retrieval_service().retrieve(
-            org_id=org_id,
-            query=request,
-            client=db_client,
-            agent=agent_payload,
-            parameters={
-                "classification": classification,
-                "knowledge_assignments": assignments or [],
-                "strict_assignment_mode": strict_mode,
-                "rag_top_k": 8,
-            },
-            environment_name=environment_name,
-            user_id=user_id,
-            scopes=RetrievalScopes(knowledge=True, org_context=True, agent_memory=True),
-        )
+        try:
+            bundle = await get_unified_retrieval_service().retrieve(
+                org_id=org_id,
+                query=request,
+                client=db_client,
+                agent=agent_payload,
+                parameters={
+                    "classification": classification,
+                    "knowledge_assignments": assignments or [],
+                    "strict_assignment_mode": strict_mode,
+                    "rag_top_k": 8,
+                },
+                environment_name=environment_name,
+                user_id=user_id,
+                scopes=RetrievalScopes(knowledge=True, org_context=True, agent_memory=True),
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("context_assembler_retrieve_failed org_id=%s error=%s", org_id, exc)
+            bundle = SimpleNamespace(
+                rag_sources=[],
+                memory_context={},
+                graph_context={},
+                sources=[],
+                org_context={},
+                retrieval_plan={},
+                retrieval_effectiveness={},
+            )
 
         rag_context: list[dict[str, Any]] = []
         for source in bundle.rag_sources:

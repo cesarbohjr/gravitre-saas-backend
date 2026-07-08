@@ -1,6 +1,7 @@
 """Tests for Wave 0-1 intelligence orchestration layer."""
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -8,6 +9,7 @@ import pytest
 from app.services.context_prioritization_engine import ContextPrioritizationEngine, ContextSource
 from app.services.conversation_memory_engine import ConversationMemoryEngine
 from app.services.execution_confidence_engine import ExecutionConfidenceEngine
+from app.services.intelligence_engine_settings import IntelligenceEngineSettings
 
 
 def test_context_prioritization_prefers_rag_for_search_intent():
@@ -57,11 +59,16 @@ async def test_intelligence_orchestrator_prepare_turn():
     from app.services.intelligence_orchestrator import IntelligenceOrchestrator
 
     orchestrator = IntelligenceOrchestrator()
-    mock_retrieval = MagicMock()
-    mock_retrieval.rag_sources = [{"content": "doc", "score": 0.8}]
-    mock_retrieval.rag_section = "<knowledge_base>doc</knowledge_base>"
-    mock_retrieval.memory_section = ""
-    mock_retrieval.org_context = {"connectedIntegrations": ["hubspot"]}
+    mock_retrieval = SimpleNamespace(
+        rag_sources=[{"content": "doc", "score": 0.8}],
+        rag_section="<knowledge_base>doc</knowledge_base>",
+        memory_section="",
+        memory_context={},
+        retrieval_plan={},
+        org_context={"connectedIntegrations": ["hubspot"]},
+        sources=[],
+        graph_context={},
+    )
 
     with patch.object(orchestrator._memory_engine, "build_context_profile", AsyncMock(return_value={"prompt_section": "", "memory": {}, "relevant": {}, "suppressed_suggestion_keys": []})), patch.object(
         orchestrator._retrieval,
@@ -94,11 +101,11 @@ async def test_intelligence_orchestrator_prepare_turn():
             user_id="user-1",
             conversation_id="conv-1",
             query="Search HubSpot for Acme",
-            classification={"intent": "crm_lookup", "department": "sales"},
+            classification={"intent": "crm_lookup", "department": "sales", "classification_confidence": 0.7},
             client=MagicMock(),
             agent_id=None,
             environment_name="default",
-            engine_settings=MagicMock(max_chunks=8),
+            engine_settings=IntelligenceEngineSettings(max_chunks=8, validation_enabled=False),
             task_state={},
             persona={},
         )

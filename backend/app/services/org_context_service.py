@@ -176,13 +176,14 @@ class OrgContextService:
             return None
 
         def load_integrations() -> tuple[list[dict[str, Any]], list[str]]:
+            from app.config import get_settings
             from app.connectors.connector_availability_service import list_connector_availability
 
             integrations: list[dict[str, Any]] = []
             availability_rows = list_connector_availability(
                 client,
                 org_id,
-                self.settings,
+                get_settings(),
                 environment_name=environment_name,
                 force_live=True,
             )

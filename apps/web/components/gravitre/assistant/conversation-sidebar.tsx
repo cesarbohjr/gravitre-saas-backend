@@ -276,7 +276,7 @@ export function ConversationSidebar({
           "fixed md:static inset-y-0 left-0 z-40 flex h-full w-72 min-w-0 flex-col isolate border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width,transform,opacity,border-color] duration-300 ease-in-out",
           isOpen
             ? "translate-x-0 opacity-100"
-            : "-translate-x-full opacity-100 md:translate-x-0 md:w-0 md:min-w-0 md:max-w-0 md:border-0 md:opacity-0 md:pointer-events-none md:overflow-hidden",
+            : "-translate-x-full max-md:pointer-events-none opacity-100 md:translate-x-0 md:w-0 md:min-w-0 md:max-w-0 md:border-0 md:opacity-0 md:pointer-events-none md:overflow-hidden",
         )}
         aria-hidden={!isOpen}
       >
@@ -349,24 +349,20 @@ export function ConversationSidebar({
                   <TooltipContent side="bottom">Search</TooltipContent>
                 </Tooltip>
                 <DropdownMenu>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={cn(
-                            "h-8 w-8",
-                            dateFilter === "all" ? "text-muted-foreground" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-                          )}
-                          aria-label="Filter conversations by date"
-                        >
-                          <Filter className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">Filter</TooltipContent>
-                  </Tooltip>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        "h-8 w-8",
+                        dateFilter === "all" ? "text-muted-foreground" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                      )}
+                      aria-label="Filter conversations by date"
+                      title="Filter"
+                    >
+                      <Filter className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-40">
                     {DATE_FILTER_OPTIONS.map((option) => (
                       <DropdownMenuItem

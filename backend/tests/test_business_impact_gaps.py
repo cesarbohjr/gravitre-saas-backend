@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.config import Settings
 from app.services.business_impact_service import load_business_impact_snapshot
 from app.services.optimization_suggestion_service import (
     OptimizationSuggestionService,
@@ -106,7 +107,16 @@ async def test_business_impact_aggregates_pending_suggestions_and_outcomes():
 
 @pytest.mark.asyncio
 async def test_v10_business_detectors_are_registered():
-    service = OptimizationSuggestionService(settings=MagicMock())
+    service = OptimizationSuggestionService(
+        settings=Settings(
+            app_env="dev",
+            supabase_url="https://test.supabase.co",
+            supabase_anon_key="anon-test",
+            supabase_service_role_key="service-role-test",
+            supabase_jwt_secret="jwt-secret-test",
+            openai_api_key="sk-test-openai",
+        )
+    )
     with patch.object(service, "_detect_slow_steps", new=AsyncMock(return_value=[])):
         with patch.object(service, "_detect_low_reliability_references", new=AsyncMock(return_value=[])):
             with patch.object(service, "_detect_poor_outcome_patterns", new=AsyncMock(return_value=[])):
@@ -122,7 +132,12 @@ async def test_v10_business_detectors_are_registered():
                         with patch.object(service, "_detect_stalled_deals", new=stalled):
                             with patch.object(service, "_detect_overdue_invoices", new=overdue):
                                 with patch.object(service, "_detect_support_backlog_growth", new=backlog):
-                                    result = await service.detect_suggestions_for_org("org-1")
+                                    with patch.object(
+                                        service,
+                                        "_detect_process_mining_bottlenecks",
+                                        new=AsyncMock(return_value=[]),
+                                    ):
+                                        result = await service.detect_suggestions_for_org("org-1")
     assert result == [{"id": "s1"}, {"id": "s2"}, {"id": "s3"}]
     stalled.assert_awaited_once()
     overdue.assert_awaited_once()

@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import useSWR from "swr"
 import { motion } from "framer-motion"
@@ -18,6 +19,7 @@ import type { InlineExecutePlan } from "@/lib/ai-inline-execute"
 import type { LayoutColumn, ResultBlockId } from "./draggable-result-stack"
 import type { AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief-panel"
 import { MesonPagePanel } from "@/components/gravitre/meson-page-panel"
+import { routeMesonSuggestion } from "@/lib/meson-page-context"
 
 function relativeTime(value?: string): string {
   if (!value) return ""
@@ -72,6 +74,7 @@ export function LiveActivityRail({
   onMoveLayoutBlockToColumn?: (blockId: ResultBlockId, target: LayoutColumn) => void
 } = {}) {
   const { user } = useAuth()
+  const router = useRouter()
   const [orgId, setOrgId] = useState<string | null>(() =>
     typeof window !== "undefined" ? getSelectedOrgFromStorage()?.id ?? null : null,
   )
@@ -117,7 +120,14 @@ export function LiveActivityRail({
   return (
     <div className="flex h-full max-h-full w-80 flex-col overflow-y-auto">
       <div className="flex flex-col gap-6 p-5">
-        <MesonPagePanel page="ai-chat" compact advisorBrief={advisorBrief} />
+        <MesonPagePanel
+          page="ai-chat"
+          compact
+          advisorBrief={advisorBrief}
+          onSuggestionClick={(suggestion) =>
+            routeMesonSuggestion("/ai", suggestion, (href) => router.push(href))
+          }
+        />
 
         <div className="border-t border-emerald-500/10 pt-4">
         <div className="flex items-center gap-2">

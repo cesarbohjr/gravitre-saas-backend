@@ -1045,6 +1045,9 @@ export function AiWorkspace({
       setActiveConversationId(id)
       activeConversationIdRef.current = id
       writeStoredConversationId(id)
+      if (typeof window !== "undefined") {
+        window.history.replaceState(null, "", `/ai?c=${encodeURIComponent(id)}`)
+      }
       operatorSessionRef.current = null
       resetExecuteJob()
 
@@ -1080,6 +1083,9 @@ export function AiWorkspace({
     persistedTurnIdsRef.current = new Set()
     persistedChatPairIdsRef.current = new Set()
     writeStoredConversationId(null)
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", "/ai")
+    }
     resetExecuteJob()
     setConversationTitle("Chat")
     setConversationLoading(false)
