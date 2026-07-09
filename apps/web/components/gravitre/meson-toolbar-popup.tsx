@@ -45,32 +45,54 @@ function useMesonToolbar(): MesonToolbarContextValue {
   return value
 }
 
+const MESON_PANEL_PREF_KEY = "gravitre:meson-panel-open"
+
 export function MesonToolbarProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
+  // Default to closed so the panel never floats over content unprompted.
+  // The user's explicit open/closed choice is remembered across navigation.
   const [panelOpen, setPanelOpen] = useState(false)
 
   useEffect(() => {
     setMounted(true)
+    try {
+      setPanelOpen(window.localStorage.getItem(MESON_PANEL_PREF_KEY) === "1")
+    } catch {
+      /* ignore storage access errors */
+    }
   }, [])
 
+  // When navigating to a surface that doesn't support Meson, hide the panel —
+  // but never auto-open it on surfaces that do (that was the source of clutter).
   useEffect(() => {
-    if (shouldShowMesonToolbar(pathname)) {
-      setPanelOpen(true)
-    } else {
+    if (!shouldShowMesonToolbar(pathname)) {
       setPanelOpen(false)
     }
   }, [pathname])
 
+  const persistPref = useCallback((open: boolean) => {
+    try {
+      window.localStorage.setItem(MESON_PANEL_PREF_KEY, open ? "1" : "0")
+    } catch {
+      /* ignore storage access errors */
+    }
+  }, [])
+
   const visible = mounted && shouldShowMesonToolbar(pathname)
 
   const togglePanel = useCallback(() => {
-    setPanelOpen((current) => !current)
-  }, [])
+    setPanelOpen((current) => {
+      const next = !current
+      persistPref(next)
+      return next
+    })
+  }, [persistPref])
 
   const closePanel = useCallback(() => {
     setPanelOpen(false)
-  }, [])
+    persistPref(false)
+  }, [persistPref])
 
   const value = useMemo(
     () => ({
