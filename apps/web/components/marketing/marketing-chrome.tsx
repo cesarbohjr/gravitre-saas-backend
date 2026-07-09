@@ -26,12 +26,10 @@ export function MarketingChrome({
 }: {
   children: React.ReactNode
 }) {
-  const [mobileMenuOpenPath, setMobileMenuOpenPath] = useState<string | null>(null)
-  const [companyDropdownOpenPath, setCompanyDropdownOpenPath] = useState<string | null>(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [companyDropdownOpen, setCompanyDropdownOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const pathname = usePathname()
-  const mobileMenuOpen = mobileMenuOpenPath === pathname
-  const companyDropdownOpen = companyDropdownOpenPath === pathname
 
   useEffect(() => {
     const handleScroll = () => {
@@ -40,6 +38,23 @@ export function MarketingChrome({
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
+
+  // Auto-close menus whenever the route changes (covers both link taps and
+  // programmatic navigation), so the overlay never lingers over the page.
+  useEffect(() => {
+    setMobileMenuOpen(false)
+    setCompanyDropdownOpen(false)
+  }, [pathname])
+
+  // Lock background scroll while the mobile menu overlay is open.
+  useEffect(() => {
+    if (!mobileMenuOpen) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = previous
+    }
+  }, [mobileMenuOpen])
 
   return (
     <div className="min-h-screen bg-white text-zinc-900" data-theme="light">
@@ -67,11 +82,7 @@ export function MarketingChrome({
                 link.children ? (
                   <div key={link.label} className="relative">
                     <button
-                      onClick={() =>
-                        setCompanyDropdownOpenPath((current) =>
-                          current === pathname ? null : pathname,
-                        )
-                      }
+                      onClick={() => setCompanyDropdownOpen((open) => !open)}
                       className={`flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition-all ${
                         companyDropdownOpen 
                           ? "text-zinc-900 bg-zinc-100" 
@@ -94,6 +105,7 @@ export function MarketingChrome({
                             <Link
                               key={child.href}
                               href={child.href}
+                              onClick={() => setCompanyDropdownOpen(false)}
                               className="block rounded-lg px-4 py-2.5 text-sm text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 transition-colors"
                             >
                               {child.label}
@@ -134,9 +146,9 @@ export function MarketingChrome({
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
             <button
-              onClick={() =>
-                setMobileMenuOpenPath((current) => (current === pathname ? null : pathname))
-              }
+              onClick={() => setMobileMenuOpen((open) => !open)}
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileMenuOpen}
               className="inline-flex h-11 w-11 items-center justify-center rounded-full text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors md:hidden"
             >
               {mobileMenuOpen ? (
@@ -168,6 +180,7 @@ export function MarketingChrome({
                         <Link
                           key={child.href}
                           href={child.href}
+                          onClick={() => setMobileMenuOpen(false)}
                           className="block rounded-xl px-4 py-3 text-base text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 transition-colors"
                         >
                           {child.label}
@@ -178,6 +191,7 @@ export function MarketingChrome({
                     <Link
                       key={link.href}
                       href={link.href!}
+                      onClick={() => setMobileMenuOpen(false)}
                       className={`block rounded-xl px-4 py-3 text-base transition-colors ${
                         pathname === link.href
                           ? "bg-zinc-100 text-zinc-900 font-medium"
@@ -191,12 +205,14 @@ export function MarketingChrome({
                 <div className="mt-4 flex flex-col gap-3 border-t border-zinc-200 pt-4">
                   <Link
                     href="/login?intent=login"
+                    onClick={() => setMobileMenuOpen(false)}
                     className="block rounded-xl px-4 py-3 text-center text-base text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 transition-colors"
                   >
                     Log in
                   </Link>
                   <Link
                     href="/get-started"
+                    onClick={() => setMobileMenuOpen(false)}
                     className="flex items-center justify-center gap-2 rounded-full bg-zinc-900 px-6 py-3 text-base font-medium text-white"
                   >
                     Get Started
@@ -213,7 +229,7 @@ export function MarketingChrome({
       {companyDropdownOpen && (
         <div 
           className="fixed inset-0 z-40" 
-          onClick={() => setCompanyDropdownOpenPath(null)}
+          onClick={() => setCompanyDropdownOpen(false)}
         />
       )}
 
