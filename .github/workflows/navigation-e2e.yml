@@ -65,12 +65,12 @@ jobs:
         env:
           CI: "true"
           APP_ENV: dev
-          SUPABASE_URL: https://test.supabase.co
-          SUPABASE_ANON_KEY: anon-test
-          SUPABASE_SERVICE_ROLE_KEY: service-role-test
-          SUPABASE_JWT_SECRET: jwt-secret-test
-          NEXT_PUBLIC_SUPABASE_URL: https://test.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: anon-test
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           OPENAI_API_KEY: sk-test-openai
           FASTAPI_BASE_URL: http://127.0.0.1:8000
           PLAYWRIGHT_BASE_URL: http://localhost:3001

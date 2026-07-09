@@ -11,6 +11,14 @@ export default async function globalSetup() {
     return
   }
 
+  const supabaseUrl = process.env.SUPABASE_URL ?? ""
+  if (!supabaseUrl || supabaseUrl.includes("test.supabase.co") || supabaseUrl.includes("placeholder")) {
+    throw new Error(
+      "Navigation E2E requires real Supabase credentials (SUPABASE_URL + service role key). " +
+        "Configure repository Actions secrets or set E2E_SKIP_FIXTURE_SEED=1 with a committed fixtures file.",
+    )
+  }
+
   const python = process.env.PYTHON ?? "python"
   execSync(`${python} scripts/billing-e2e-fixtures.py`, {
     cwd: repoRoot,
