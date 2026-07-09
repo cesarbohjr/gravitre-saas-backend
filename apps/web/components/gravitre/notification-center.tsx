@@ -162,16 +162,22 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
 
     async function connectStream() {
+      let backoffMs = 3_000
       while (!cancelled) {
         try {
           const response = await apiFetch(notificationsApi.streamUrl(), {
             headers: { Accept: "text/event-stream" },
             signal: controller.signal,
           })
+          if (response.status === 404 || response.status === 405 || response.status === 501) {
+            return
+          }
           if (!response.ok || !response.body) {
-            await new Promise((resolve) => setTimeout(resolve, 5000))
+            await new Promise((resolve) => setTimeout(resolve, backoffMs))
+            backoffMs = Math.min(backoffMs * 2, 60_000)
             continue
           }
+          backoffMs = 3_000
           const reader = response.body.getReader()
           const decoder = new TextDecoder()
           let buffer = ""
@@ -190,7 +196,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           if (cancelled || controller.signal.aborted) break
         }
         if (!cancelled) {
-          await new Promise((resolve) => setTimeout(resolve, 3000))
+          await new Promise((resolve) => setTimeout(resolve, backoffMs))
+          backoffMs = Math.min(backoffMs * 2, 60_000)
         }
       }
     }

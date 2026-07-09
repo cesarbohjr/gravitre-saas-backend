@@ -14,6 +14,33 @@ function jsonError(message: string, status: number) {
   })
 }
 
+function fallbackSseResponse() {
+  let interval: ReturnType<typeof setInterval> | undefined
+  const stream = new ReadableStream({
+    start(controller) {
+      const encoder = new TextEncoder()
+      controller.enqueue(encoder.encode("event: connected\ndata: {}\n\n"))
+      interval = setInterval(() => {
+        controller.enqueue(encoder.encode(": keepalive\n\n"))
+      }, 25_000)
+    },
+    cancel() {
+      if (interval) clearInterval(interval)
+    },
+  })
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      "content-type": "text/event-stream",
+      "cache-control": "no-cache",
+      connection: "keep-alive",
+      "x-accel-buffering": "no",
+      "x-notification-stream": "fallback",
+    },
+  })
+}
+
 export async function GET(req: NextRequest) {
   const baseUrl = getBackendBaseUrl()
   if (!baseUrl) {
@@ -52,6 +79,9 @@ export async function GET(req: NextRequest) {
   }
 
   if (!upstream.ok || !upstream.body) {
+    if (upstream.status === 404 || upstream.status === 405 || upstream.status === 501) {
+      return fallbackSseResponse()
+    }
     const text = await upstream.text().catch(() => "")
     return new Response(text || JSON.stringify({ error: "Notification stream failed" }), {
       status: upstream.status || 502,
