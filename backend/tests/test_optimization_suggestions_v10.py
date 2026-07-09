@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.config import Settings
 from app.services.optimization_suggestion_service import (
     ALLOWED_STATUSES,
     OptimizationSuggestionService,
@@ -27,7 +28,15 @@ async def test_detection_never_writes_to_production_tables():
         assert f'table("{table}").insert' not in detect_source
         assert f'table("{table}").update' not in detect_source
 
-    service = OptimizationSuggestionService(settings=MagicMock())
+    service = OptimizationSuggestionService(
+        settings=Settings(
+            app_env="dev",
+            supabase_url="https://test.supabase.co",
+            supabase_anon_key="anon-test",
+            supabase_service_role_key="service-role-test",
+            supabase_jwt_secret="jwt-secret-test",
+        )
+    )
     client = MagicMock()
     client.table.return_value.select.return_value.eq.return_value.gte.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
         data=[]
@@ -46,7 +55,12 @@ async def test_detection_never_writes_to_production_tables():
                                     with patch.object(
                                         service, "_detect_support_backlog_growth", new=AsyncMock(return_value=[])
                                     ):
-                                        await service.detect_suggestions_for_org("org-1")
+                                        with patch.object(
+                                            service,
+                                            "_detect_process_mining_bottlenecks",
+                                            new=AsyncMock(return_value=[]),
+                                        ):
+                                            await service.detect_suggestions_for_org("org-1")
     inserted_tables = [call.args[0] for call in client.table.call_args_list]
     assert all(name == "optimization_suggestions" for name in inserted_tables if name != "workflow_steps")
 

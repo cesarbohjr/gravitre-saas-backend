@@ -139,12 +139,30 @@ class ConnectorConfigAssetConfig(BaseModel):
     connect_path: str = "/connectors"
 
 
+class IntelligencePackAssignmentConfig(BaseModel):
+    source_type: str = Field(min_length=1)
+    source_id: str = Field(min_length=1)
+    label: str = Field(min_length=1)
+    department: str = Field(min_length=1)
+    subdomain: str | None = None
+    confidence_weight: float = 1.0
+    reference_summary: str = ""
+    external_url: str | None = None
+
+
+class IntelligencePackAssetConfig(BaseModel):
+    department: str = Field(min_length=1)
+    default_subdomain: str | None = None
+    assignments: list[IntelligencePackAssignmentConfig] = Field(min_length=1)
+
+
 ASSET_CONFIG_MODELS: dict[str, type[BaseModel]] = {
     "ai_agent": AgentAssetConfig,
     "workflow": WorkflowAssetConfig,
     "knowledge_pack": KnowledgePackAssetConfig,
     "department_pack": DepartmentPackAssetConfig,
     "connector_config": ConnectorConfigAssetConfig,
+    "intelligence_pack": IntelligencePackAssetConfig,
 }
 
 

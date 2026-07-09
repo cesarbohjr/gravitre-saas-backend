@@ -169,6 +169,7 @@ async def test_tool_results_are_fenced_before_model_injection(monkeypatch):
 
     engine = react_module.ReActEngine(settings=_settings(), registry=MagicMock())
     engine.registry.get_tools_for_agent = MagicMock(return_value=[])
+    engine.registry.get_available_tools = AsyncMock(return_value=[])
     engine.registry.list_connected_integrations = MagicMock(return_value=[])
 
     sentinel = "SENTINEL_TOOL_DATA"

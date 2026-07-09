@@ -89,7 +89,9 @@ CHAT_E2E_SCENARIOS: tuple[ChatE2EScenario, ...] = (
     ),
     ChatE2EScenario(
         id="asana_create_q3_review_task",
-        message="Create a task in Asana for reviewing the Q3 campaign.",
+        message=(
+            "Create a task in Asana in the Marketing project for reviewing the Q3 campaign by Friday."
+        ),
         connected_integrations=("asana",),
         expected_intent="workflow_execution",
         expected_invoke_actions=("asana.tasks.create",),

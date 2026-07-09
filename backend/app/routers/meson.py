@@ -163,7 +163,7 @@ async def meson_suggestions_route(
     )
 
 
-@router.get("/alerts", response_model=MesonAlertsResponse, response_model_by_alias=True)
+@router.get("/alerts", response_model=MesonAlertsResponse, response_model_by_alias=True, dependencies=_CONTROL_TIER)
 async def meson_alerts_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -182,7 +182,7 @@ async def meson_alerts_route(
     )
 
 
-@router.get("/insights", response_model=MesonInsightsResponse, response_model_by_alias=True)
+@router.get("/insights", response_model=MesonInsightsResponse, response_model_by_alias=True, dependencies=_CONTROL_TIER)
 async def meson_insights_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
