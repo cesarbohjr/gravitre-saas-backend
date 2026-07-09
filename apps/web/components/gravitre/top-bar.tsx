@@ -150,15 +150,15 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
       <header className="flex h-12 sm:h-14 items-center justify-between border-b border-border bg-background px-3 sm:px-4">
         {/* Left side - Menu + Org + Environment + Page title */}
         <div className="flex items-center gap-3">
-          {/* Nav toggle — mobile drawer; tablet+ expands icon rail to labels */}
+          {/* Mobile-only drawer toggle — desktop sidebar is always visible */}
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8 md:hidden"
             onClick={onMenuClick}
           >
             <Icon name="menu" size="lg" />
-            <span className="sr-only">Toggle navigation</span>
+            <span className="sr-only">Open navigation</span>
           </Button>
 
           {/* Org Selector */}

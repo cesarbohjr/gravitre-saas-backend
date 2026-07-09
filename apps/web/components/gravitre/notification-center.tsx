@@ -27,6 +27,7 @@ import {
   ArrowRight
 } from "lucide-react"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { toast } from "sonner"
 
 // Notification types
@@ -489,6 +490,7 @@ function NotificationItem({
 // Main Notification Center Component
 export function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false)
+  const pathname = usePathname()
   const context = useNotifications()
 
   const notifications = context?.notifications ?? []
@@ -496,6 +498,11 @@ export function NotificationCenter() {
   const markAsRead = context?.markAsRead ?? (() => {})
   const markAllAsRead = context?.markAllAsRead ?? (() => {})
   const clearNotification = context?.clearNotification ?? (() => {})
+
+  // Close on navigation so the full-viewport backdrop cannot block sidebar clicks.
+  useEffect(() => {
+    setIsOpen(false)
+  }, [pathname])
 
   return (
     <div className="relative">
@@ -519,12 +526,12 @@ export function NotificationCenter() {
       <AnimatePresence>
         {isOpen && (
           <>
-            {/* Backdrop */}
+            {/* Backdrop — scoped above main content; sidebar stays clickable at z-30 */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40"
+              className="fixed inset-0 z-30 md:left-60"
               onClick={() => setIsOpen(false)}
             />
 

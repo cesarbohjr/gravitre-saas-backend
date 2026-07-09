@@ -12,11 +12,8 @@ export interface SidebarNavLinkProps {
   name: string
   icon: IconName
   isActive: boolean
-  navExpanded: boolean
-  showTooltip: boolean
   badge?: string
   emphasis?: boolean
-  hint?: string
   colors: SectionColors
   onNavigate?: () => void
 }
@@ -26,39 +23,21 @@ export function SidebarNavLink({
   name,
   icon,
   isActive,
-  navExpanded,
-  showTooltip,
   badge,
   emphasis,
-  hint,
   colors,
   onNavigate,
 }: SidebarNavLinkProps) {
-  const tooltip = showTooltip ? (hint ? `${name} — ${hint}` : name) : undefined
-
   return (
     <Link
       href={href}
-      title={tooltip}
-      aria-label={showTooltip ? name : undefined}
       data-testid={`sidebar-link-${sidebarLinkTestId(name)}`}
       onClick={() => onNavigate?.()}
       className={cn(
-        "group relative z-10 flex w-full items-center gap-2.5 rounded-md text-[13px] font-medium transition-colors duration-150 px-2.5 py-1.5",
-        navExpanded
-          ? "md:justify-start md:px-2.5 md:py-1.5"
-          : "md:justify-center md:px-0 md:py-2.5",
+        "group relative z-10 flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors duration-150",
         isActive
-          ? cn(
-              colors.activeBg,
-              "text-foreground",
-              navExpanded && "md:border-l-2 md:-ml-px md:pl-[9px]",
-              colors.activeBorder,
-            )
-          : cn(
-              "text-muted-foreground/70 hover:text-foreground hover:bg-sidebar-accent/50",
-              navExpanded && "md:border-l-2 md:border-l-transparent md:-ml-px md:pl-[9px]",
-            ),
+          ? cn(colors.activeBg, "border-l-2 -ml-px pl-[9px] text-foreground", colors.activeBorder)
+          : "border-l-2 border-l-transparent -ml-px pl-[9px] text-muted-foreground/70 hover:bg-sidebar-accent/50 hover:text-foreground",
       )}
     >
       <Icon
@@ -66,17 +45,15 @@ export function SidebarNavLink({
         size="md"
         emphasis={emphasis && isActive}
         className={cn(
-          "shrink-0 transition-colors md:h-5 md:w-5",
-          navExpanded && "md:h-4 md:w-4",
+          "h-4 w-4 shrink-0 transition-colors",
           isActive ? colors.activeIcon : "text-muted-foreground/40 group-hover:text-muted-foreground/70",
         )}
       />
-      <span className={cn("min-w-0 flex-1 truncate", navExpanded ? "md:inline" : "md:hidden")}>{name}</span>
+      <span className="min-w-0 flex-1 truncate">{name}</span>
       {badge ? (
         <span
           className={cn(
             "rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
-            navExpanded ? "md:inline" : "md:hidden",
             isActive
               ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20"
               : "bg-muted/60 text-muted-foreground/70",
