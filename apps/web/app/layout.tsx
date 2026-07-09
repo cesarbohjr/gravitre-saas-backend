@@ -13,6 +13,7 @@ import { EnterpriseBrandingProvider } from '@/lib/enterprise-branding-context'
 import { EntitlementsProvider } from '@/lib/entitlements-context'
 import { UserProfileProvider } from '@/lib/user-profile-context'
 import { AccountProfileSync } from '@/components/gravitre/account-profile-sync'
+import { PointerEventsGuard } from '@/components/gravitre/pointer-events-guard'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -73,6 +74,7 @@ export default function RootLayout({
         >
           <MotionProvider>
           <AuthProvider>
+            <PointerEventsGuard />
             <OrgSyncBootstrap />
             <EnterpriseBrandingProvider>
               <EntitlementsProvider>

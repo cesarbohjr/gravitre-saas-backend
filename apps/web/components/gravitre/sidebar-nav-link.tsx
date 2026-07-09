@@ -1,9 +1,9 @@
 "use client"
 
-import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Icon, type IconName } from "@/lib/icons"
 import type { SIDEBAR_SECTION_COLORS } from "./sidebar-nav-config"
+import { clearStalePointerLocks } from "./pointer-events-guard"
 
 type SectionColors = (typeof SIDEBAR_SECTION_COLORS)[keyof typeof SIDEBAR_SECTION_COLORS]
 
@@ -18,6 +18,14 @@ export interface SidebarNavLinkProps {
   onNavigate?: () => void
 }
 
+/**
+ * Sidebar navigation uses a plain <a> (hard navigation), not next/link.
+ *
+ * Production audit (2026-07-09) found App Router soft navigation is broken in
+ * the authenticated shell: next/link calls preventDefault, then router.push is
+ * a no-op, so the URL never changes. Native anchors and location.assign work.
+ * AppShell still remounts per page, so soft nav buys little for the sidebar.
+ */
 export function SidebarNavLink({
   href,
   name,
@@ -29,10 +37,29 @@ export function SidebarNavLink({
   onNavigate,
 }: SidebarNavLinkProps) {
   return (
-    <Link
+    <a
       href={href}
       data-testid={`sidebar-link-${sidebarLinkTestId(name)}`}
-      onClick={() => onNavigate?.()}
+      onClick={(event) => {
+        clearStalePointerLocks()
+        onNavigate?.()
+
+        if (
+          event.defaultPrevented ||
+          event.metaKey ||
+          event.ctrlKey ||
+          event.shiftKey ||
+          event.altKey ||
+          event.button !== 0
+        ) {
+          return
+        }
+
+        // Force a full navigation. Soft App Router transitions are unreliable
+        // while AppShell is mounted per-page (router.push is a no-op in prod).
+        event.preventDefault()
+        window.location.assign(href)
+      }}
       className={cn(
         "group relative z-10 flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors duration-150",
         isActive
@@ -62,7 +89,7 @@ export function SidebarNavLink({
           {badge}
         </span>
       ) : null}
-    </Link>
+    </a>
   )
 }
 

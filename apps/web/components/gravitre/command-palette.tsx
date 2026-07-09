@@ -83,6 +83,12 @@ export function CommandPalette({
     router.push("/search")
   }, [pathname, router])
 
+  // Close on navigation so Radix scroll-lock / overlay cannot block sidebar clicks
+  // after AppShell remounts (shell is still mounted per-page).
+  useEffect(() => {
+    setOpen(false)
+  }, [pathname])
+
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
