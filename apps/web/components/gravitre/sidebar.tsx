@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Icon, type IconName } from "@/lib/icons"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { SURFACE_COPY } from "@/lib/surface-copy"
@@ -222,6 +222,17 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
         : [...prev, group]
     )
   }
+
+  // Lock background scroll while the mobile drawer is open (no-op on desktop,
+  // where isOpen stays false and the sidebar renders as a static rail).
+  useEffect(() => {
+    if (!isOpen) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = previous
+    }
+  }, [isOpen])
 
   return (
     <TooltipProvider delayDuration={300}>
