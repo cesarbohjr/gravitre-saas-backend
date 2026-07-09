@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import useSWR from "swr"
+import { AppShell } from "@/components/gravitre/app-shell"
 import { PageHeader } from "@/components/gravitre/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,6 +24,7 @@ export default function PredictiveOpsPage() {
   const predictions = (data?.predictions as Array<Record<string, unknown>>) || []
 
   return (
+    <AppShell title={copy.title}>
     <div className="mx-auto max-w-6xl space-y-6 p-6">
       <PageHeader title={copy.title} description={copy.description} />
       <div className="flex items-center gap-3">
@@ -73,5 +75,6 @@ export default function PredictiveOpsPage() {
         })}
       </div>
     </div>
+    </AppShell>
   )
 }

@@ -14,6 +14,8 @@ import { EntitlementsProvider } from '@/lib/entitlements-context'
 import { UserProfileProvider } from '@/lib/user-profile-context'
 import { AccountProfileSync } from '@/components/gravitre/account-profile-sync'
 import { PointerEventsGuard } from '@/components/gravitre/pointer-events-guard'
+import { AppShellGate } from '@/components/gravitre/app-shell-gate'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -83,7 +85,9 @@ export default function RootLayout({
                   <NotificationProvider>
                     <OnboardingProvider>
                       <ViewModeProvider>
-                        {children}
+                        <TooltipProvider delayDuration={200}>
+                          <AppShellGate>{children}</AppShellGate>
+                        </TooltipProvider>
                       </ViewModeProvider>
                       <OnboardingChecklist />
                     </OnboardingProvider>

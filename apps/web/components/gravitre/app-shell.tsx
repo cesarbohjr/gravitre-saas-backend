@@ -24,6 +24,12 @@ import { TrialExpiredBanner } from "@/components/billing/trial-expired-banner"
 import { UpgradeModal } from "@/components/billing/upgrade-modal"
 import { MesonToolbarPopup, MesonToolbarProvider } from "@/components/gravitre/meson-toolbar-popup"
 import {
+  AppShellMetaProvider,
+  AppShellPresenceProvider,
+  useAppShellMeta,
+  useAppShellNested,
+} from "./app-shell-context"
+import {
   PLAN_REQUIRED_EVENT,
   readStoredPlanRequired,
   clearStoredPlanRequired,
@@ -43,6 +49,27 @@ interface AppShellProps {
   title?: string
   /** Vendor key shown beside connector detail breadcrumbs. */
   breadcrumbVendor?: string
+}
+
+/**
+ * Nested page wrappers only publish title/breadcrumb metadata into the
+ * persistent shell from AppShellGate — they must not remount chrome.
+ */
+function AppShellNestedPassthrough({
+  children,
+  title,
+  breadcrumbVendor,
+}: AppShellProps) {
+  const metaCtx = useAppShellMeta()
+
+  useEffect(() => {
+    metaCtx?.setMeta({ title, breadcrumbVendor })
+    return () => {
+      metaCtx?.setMeta({})
+    }
+  }, [metaCtx, title, breadcrumbVendor])
+
+  return <>{children}</>
 }
 
 interface BillingStatus extends BillingStatusSnapshot {
@@ -74,6 +101,29 @@ function daysLeft(isoDate: string): number {
 }
 
 export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
+  const nested = useAppShellNested()
+  if (nested) {
+    return (
+      <AppShellNestedPassthrough title={title} breadcrumbVendor={breadcrumbVendor}>
+        {children}
+      </AppShellNestedPassthrough>
+    )
+  }
+
+  return (
+    <AppShellMetaProvider>
+      <AppShellChrome title={title} breadcrumbVendor={breadcrumbVendor}>
+        {children}
+      </AppShellChrome>
+    </AppShellMetaProvider>
+  )
+}
+
+function AppShellChrome({ children, title, breadcrumbVendor }: AppShellProps) {
+  const metaCtx = useAppShellMeta()
+  const resolvedTitle = metaCtx?.meta.title ?? title
+  const resolvedBreadcrumbVendor = metaCtx?.meta.breadcrumbVendor ?? breadcrumbVendor
+
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [goalWizardOpen, setGoalWizardOpen] = useState(false)
   const [trialBannerDismissed, setTrialBannerDismissed] = useState(
@@ -304,12 +354,13 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
   }
 
   return (
+    <AppShellPresenceProvider>
     <MesonToolbarProvider>
-    <div className="relative h-screen overflow-hidden bg-background">
-    <div className="grid h-full grid-cols-1 overflow-hidden md:grid-cols-[auto_minmax(0,1fr)]">
+    <div className="relative h-dvh overflow-hidden bg-background">
+    <div className="grid h-full min-h-0 grid-cols-1 overflow-hidden md:grid-cols-[auto_minmax(0,1fr)]">
         <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
-        <div className="relative z-0 flex min-w-0 flex-col overflow-hidden">
-          <TopBar title={title} onMenuClick={handleMenuClick} />
+        <div className="relative z-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
+          <TopBar title={resolvedTitle} onMenuClick={handleMenuClick} />
 
           {showTrialExpiredBanner && (
             <TrialExpiredBanner
@@ -403,7 +454,10 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
           >
             {!isImmersiveChat ? (
               <div className="px-4 pt-3 md:px-6">
-                <AppBreadcrumbs entityLabel={title} entityVendor={breadcrumbVendor} />
+                <AppBreadcrumbs
+                  entityLabel={resolvedTitle}
+                  entityVendor={resolvedBreadcrumbVendor}
+                />
               </div>
             ) : null}
             {children}
@@ -446,5 +500,6 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
       <MesonToolbarPopup />
     </div>
     </MesonToolbarProvider>
+    </AppShellPresenceProvider>
   )
 }

@@ -127,7 +127,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       <aside
         className={cn(
-          "flex h-full w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-300 ease-in-out",
+          // min-h-0 is required so the flex/grid child can shrink and the nav can scroll.
+          "flex h-full min-h-0 w-60 shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar transition-transform duration-300 ease-in-out",
           // Desktop/tablet: stay in document flow so main content cannot stack over nav hits.
           "md:relative md:z-30 md:translate-x-0 md:visible md:pointer-events-auto",
           // Mobile: off-canvas drawer only below md breakpoint.
@@ -176,7 +177,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </Button>
         </div>
 
-        <nav className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain py-3 px-2" aria-label="Main">
+        <nav
+          className="relative z-10 min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain py-3 px-2 [scrollbar-gutter:stable]"
+          aria-label="Main"
+        >
           {navigation.map((group, groupIndex) => {
             const colors = SIDEBAR_SECTION_COLORS[group.group]
             const isCollapsed = collapsedSections.includes(group.group)

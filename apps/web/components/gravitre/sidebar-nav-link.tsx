@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Icon, type IconName } from "@/lib/icons"
 import type { SIDEBAR_SECTION_COLORS } from "./sidebar-nav-config"
@@ -19,12 +20,9 @@ export interface SidebarNavLinkProps {
 }
 
 /**
- * Sidebar navigation uses a plain <a> (hard navigation), not next/link.
- *
- * Production audit (2026-07-09) found App Router soft navigation is broken in
- * the authenticated shell: next/link calls preventDefault, then router.push is
- * a no-op, so the URL never changes. Native anchors and location.assign work.
- * AppShell still remounts per page, so soft nav buys little for the sidebar.
+ * Soft App Router navigation via next/link so the persistent AppShell (sidebar)
+ * stays mounted. If the URL has not changed shortly after click (historical
+ * soft-nav stall), fall back to a hard navigation.
  */
 export function SidebarNavLink({
   href,
@@ -37,8 +35,9 @@ export function SidebarNavLink({
   onNavigate,
 }: SidebarNavLinkProps) {
   return (
-    <a
+    <Link
       href={href}
+      prefetch
       data-testid={`sidebar-link-${sidebarLinkTestId(name)}`}
       onClick={(event) => {
         clearStalePointerLocks()
@@ -55,10 +54,15 @@ export function SidebarNavLink({
           return
         }
 
-        // Force a full navigation. Soft App Router transitions are unreliable
-        // while AppShell is mounted per-page (router.push is a no-op in prod).
-        event.preventDefault()
-        window.location.assign(href)
+        const from = typeof window !== "undefined" ? window.location.pathname : ""
+        const targetPath = href.split("?")[0] ?? href
+        window.setTimeout(() => {
+          if (typeof window === "undefined") return
+          const current = window.location.pathname
+          if (current === from && current !== targetPath) {
+            window.location.assign(href)
+          }
+        }, 400)
       }}
       className={cn(
         "group relative z-10 flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors duration-150",
@@ -89,7 +93,7 @@ export function SidebarNavLink({
           {badge}
         </span>
       ) : null}
-    </a>
+    </Link>
   )
 }
 
