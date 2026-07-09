@@ -1,5 +1,6 @@
 import type { BlogPost } from "../types"
 import { GRAVITRE_BLOG_AUTHOR } from "../authors"
+import Link from "next/link"
 
 export const aiAgentBestPracticesPost: BlogPost = {
   slug: "ai-agent-best-practices",
@@ -118,8 +119,8 @@ export const aiAgentBestPracticesPost: BlogPost = {
       <p>
         Building agents is iterative. Gravitre gives you the surfaces — agents, workflows, GIBE, approvals — to make
         reliability a feature, not a post-mortem theme. Start from{" "}
-        <a href="/docs/guides/how-to/agents">the agents guide</a> or{" "}
-        <a href="/get-started">spin up a trial workspace</a>.
+        <Link href="/docs/guides/how-to/agents">the agents guide</Link> or{" "}
+        <Link href="/get-started">spin up a trial workspace</Link>.
       </p>
     </>
   ),

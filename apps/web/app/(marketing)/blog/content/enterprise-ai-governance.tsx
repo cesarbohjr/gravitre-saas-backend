@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import type { BlogPost } from "../types"
 import { SITE_URL } from "../types"
 import { GRAVITRE_BLOG_AUTHOR } from "../authors"
+import Link from "next/link"
 
 function Cite({ children }: { children: ReactNode }) {
   return <em className="text-zinc-700">{children}</em>
@@ -316,7 +317,7 @@ export const enterpriseAiGovernancePost: BlogPost = {
       </p>
       <p>
         Read more on the{" "}
-        <a href="/blog">Gravitre Blog</a> or explore the platform at{" "}
+        <Link href="/blog">Gravitre Blog</Link> or explore the platform at{" "}
         <a href={SITE_URL}>{SITE_URL.replace("https://", "")}</a>.
       </p>
     </>
