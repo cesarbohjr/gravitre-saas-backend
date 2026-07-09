@@ -51,7 +51,14 @@
   --workflow-decision: var(--chart-4);
   --workflow-decision-mid: var(--primary);
   --workflow-line-dim: var(--muted-foreground);
-  --radius: 0.5rem;
+  --radius: 0.625rem;
+  /* Premium elevation scale (light) — soft, layered, low-spread shadows */
+  --elevation-1: 0 1px 2px -1px oklch(0.18 0.02 160 / 0.08), 0 1px 3px oklch(0.18 0.02 160 / 0.06);
+  --elevation-2: 0 2px 4px -2px oklch(0.18 0.02 160 / 0.08), 0 4px 12px -2px oklch(0.18 0.02 160 / 0.08);
+  --elevation-3: 0 8px 24px -6px oklch(0.18 0.02 160 / 0.12), 0 2px 6px -2px oklch(0.18 0.02 160 / 0.08);
+  --elevation-4: 0 20px 48px -12px oklch(0.18 0.02 160 / 0.18), 0 8px 20px -8px oklch(0.18 0.02 160 / 0.10);
+  /* Top inset highlight for "glass" edge on elevated surfaces */
+  --highlight-edge: inset 0 1px 0 0 oklch(1 0 0 / 0.6);
   /* Sidebar: subtle cool surface with brand-emerald accents */
   --sidebar: oklch(0.97 0.008 160);
   --sidebar-foreground: oklch(0.18 0.02 160);
@@ -107,6 +114,12 @@
   --workflow-decision: var(--chart-4);
   --workflow-decision-mid: var(--primary);
   --workflow-line-dim: var(--muted-foreground);
+  /* Premium elevation scale (dark) — deeper drops + subtle light top edge */
+  --elevation-1: 0 1px 2px oklch(0 0 0 / 0.4), inset 0 1px 0 0 oklch(1 0 0 / 0.04);
+  --elevation-2: 0 4px 12px -2px oklch(0 0 0 / 0.5), inset 0 1px 0 0 oklch(1 0 0 / 0.05);
+  --elevation-3: 0 12px 32px -8px oklch(0 0 0 / 0.6), inset 0 1px 0 0 oklch(1 0 0 / 0.06);
+  --elevation-4: 0 24px 56px -12px oklch(0 0 0 / 0.7), inset 0 1px 0 0 oklch(1 0 0 / 0.07);
+  --highlight-edge: inset 0 1px 0 0 oklch(1 0 0 / 0.07);
   /* Sidebar: Even deeper */
   --sidebar: oklch(0.06 0.01 250);
   --sidebar-foreground: oklch(0.95 0 0);
@@ -155,6 +168,15 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  /* Premium elevation — named utilities + upgrade of standard shadow scale */
+  --shadow-elevation-1: var(--elevation-1);
+  --shadow-elevation-2: var(--elevation-2);
+  --shadow-elevation-3: var(--elevation-3);
+  --shadow-elevation-4: var(--elevation-4);
+  --shadow-sm: var(--elevation-1);
+  --shadow-md: var(--elevation-2);
+  --shadow-lg: var(--elevation-3);
+  --shadow-xl: var(--elevation-4);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -290,6 +312,60 @@
   
   .animate-gradient {
     animation: gradient 6s ease infinite;
+  }
+
+  /* ---- Premium surface + interaction utilities (shared: marketing + app) ---- */
+
+  /* Elevated surface with a subtle glass top-edge highlight. */
+  .surface-premium {
+    box-shadow: var(--elevation-2), var(--highlight-edge);
+  }
+  .surface-premium-lg {
+    box-shadow: var(--elevation-3), var(--highlight-edge);
+  }
+
+  /* Refined lift on hover — restrained translate + deepening shadow. */
+  .hover-lift {
+    transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+                border-color 0.22s ease;
+    will-change: transform;
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--elevation-3), var(--highlight-edge);
+  }
+
+  /* Soft brand glow — for primary CTAs / focus moments. */
+  .hover-glow {
+    transition: box-shadow 0.25s ease, transform 0.25s ease;
+  }
+  .hover-glow:hover {
+    box-shadow: 0 0 0 1px color-mix(in oklch, var(--primary) 40%, transparent),
+                0 8px 28px -6px color-mix(in oklch, var(--primary) 45%, transparent);
+  }
+
+  /* Fine hairline that reads as premium on both themes. */
+  .border-hairline {
+    border-color: color-mix(in oklch, var(--border) 70%, transparent);
+  }
+
+  /* Live status "breathing" — a soft pulsing halo for running/active dots.
+     Pair with a status color, e.g. <span class="status-live text-success">.
+     Uses currentColor so it inherits whatever status color is applied. */
+  @keyframes status-breathe {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, currentColor 55%, transparent); }
+    50% { box-shadow: 0 0 0 4px color-mix(in oklch, currentColor 0%, transparent); }
+  }
+  .status-live {
+    border-radius: 9999px;
+    background-color: currentColor;
+    animation: status-breathe 2s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hover-lift:hover { transform: none; }
+    .status-live { animation: none; }
   }
 
   /* Branded chat canvas: emerald + blue + violet radial tints with dot-grid.
