@@ -133,11 +133,16 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex h-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[transform,width] duration-300 ease-in-out",
+          "flex h-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[transform,width] duration-300 ease-in-out",
           "w-64",
-          isOpen ? "translate-x-0 max-md:pointer-events-auto" : "-translate-x-full max-md:invisible max-md:pointer-events-none",
-          "md:pointer-events-auto md:static md:z-auto md:translate-x-0 md:flex-shrink-0 md:visible",
+          // Desktop/tablet: stay in document flow so main content cannot stack over nav hits.
+          "md:relative md:z-30 md:translate-x-0 md:visible md:pointer-events-auto md:flex-shrink-0",
           navExpanded ? "md:w-60" : "md:w-16",
+          // Mobile: off-canvas drawer only below md breakpoint.
+          "max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50",
+          isOpen
+            ? "max-md:translate-x-0 max-md:pointer-events-auto"
+            : "max-md:-translate-x-full max-md:invisible max-md:pointer-events-none",
         )}
         aria-hidden={!isOpen && isMobile ? true : undefined}
       >
@@ -212,7 +217,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
           </Button>
         </div>
 
-        <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-3 px-1.5 md:px-2" aria-label="Main">
+        <nav className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain py-3 px-1.5 md:px-2" aria-label="Main">
           {navigation.map((group, groupIndex) => {
             const colors = SIDEBAR_SECTION_COLORS[group.group]
             const isCollapsed = collapsedSections.includes(group.group)

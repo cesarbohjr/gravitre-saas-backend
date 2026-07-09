@@ -44,7 +44,7 @@ export function SidebarNavLink({
       data-testid={`sidebar-link-${sidebarLinkTestId(name)}`}
       onClick={() => onNavigate?.()}
       className={cn(
-        "group relative flex w-full items-center gap-2.5 rounded-md text-[13px] font-medium transition-colors duration-150 px-2.5 py-1.5",
+        "group relative z-10 flex w-full items-center gap-2.5 rounded-md text-[13px] font-medium transition-colors duration-150 px-2.5 py-1.5",
         navExpanded
           ? "md:justify-start md:px-2.5 md:py-1.5"
           : "md:justify-center md:px-0 md:py-2.5",
