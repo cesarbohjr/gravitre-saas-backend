@@ -1,9 +1,11 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Icon, type IconName } from "@/lib/icons"
 import type { SIDEBAR_SECTION_COLORS } from "./sidebar-nav-config"
+import { clearStalePointerLocks } from "./pointer-events-guard"
 
 type SectionColors = (typeof SIDEBAR_SECTION_COLORS)[keyof typeof SIDEBAR_SECTION_COLORS]
 
@@ -28,11 +30,44 @@ export function SidebarNavLink({
   colors,
   onNavigate,
 }: SidebarNavLinkProps) {
+  const router = useRouter()
+
   return (
     <Link
       href={href}
       data-testid={`sidebar-link-${sidebarLinkTestId(name)}`}
-      onClick={() => onNavigate?.()}
+      onClick={(event) => {
+        // Clear stale Radix scroll-locks before the browser resolves the click target.
+        clearStalePointerLocks()
+        onNavigate?.()
+
+        // If a leftover overlay still intercepts the native Link navigation,
+        // force a client transition. Skip modified clicks (new tab, etc.).
+        if (
+          event.defaultPrevented ||
+          event.metaKey ||
+          event.ctrlKey ||
+          event.shiftKey ||
+          event.altKey ||
+          event.button !== 0
+        ) {
+          return
+        }
+
+        // Soft insurance: after a tick, if URL didn't change toward href, push.
+        const before = window.location.pathname + window.location.search + window.location.hash
+        window.setTimeout(() => {
+          const after = window.location.pathname + window.location.search + window.location.hash
+          if (after === before) {
+            const target = new URL(href, window.location.origin)
+            const targetKey = target.pathname + target.search + target.hash
+            if (targetKey !== after) {
+              clearStalePointerLocks()
+              router.push(href)
+            }
+          }
+        }, 250)
+      }}
       className={cn(
         "group relative z-10 flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors duration-150",
         isActive

@@ -161,8 +161,8 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
             <span className="sr-only">Open navigation</span>
           </Button>
 
-          {/* Org Selector */}
-          <DropdownMenu>
+          {/* Org Selector — modal={false} avoids body scroll-lock that can stick after AppShell remounts */}
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
@@ -205,7 +205,7 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
           <span className="text-muted-foreground/40 hidden sm:inline">/</span>
 
           {/* Environment Selector */}
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
@@ -295,7 +295,7 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
           <NotificationCenter />
 
           {/* User Avatar */}
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-accent group relative p-0">
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full opacity-0 group-hover:opacity-50 blur transition-opacity duration-300" />

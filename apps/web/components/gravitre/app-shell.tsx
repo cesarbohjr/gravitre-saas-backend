@@ -101,6 +101,14 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
   const handleMenuClick = useCallback(() => setSidebarOpen(true), [])
   const closeSidebar = useCallback(() => setSidebarOpen(false), [])
 
+  // Close shell overlays on route change so remount races cannot leave
+  // full-viewport dialogs / scroll-locks blocking sidebar navigation.
+  useEffect(() => {
+    setSidebarOpen(false)
+    setGoalWizardOpen(false)
+    setUpgradeModalOpen(false)
+  }, [pathname])
+
   // Fetch billing status — refresh on focus so web/mobile stay aligned after expiry.
   const { data: billingStatusData, isLoading: billingLoading, error: billingError } = useSWR<BillingStatus>(
     user ? "/api/billing/status" : null,
@@ -297,7 +305,8 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
 
   return (
     <MesonToolbarProvider>
-    <div className="grid h-screen grid-cols-1 overflow-hidden bg-background md:grid-cols-[auto_minmax(0,1fr)]">
+    <div className="relative h-screen overflow-hidden bg-background">
+    <div className="grid h-full grid-cols-1 overflow-hidden md:grid-cols-[auto_minmax(0,1fr)]">
         <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
         <div className="relative z-0 flex min-w-0 flex-col overflow-hidden">
           <TopBar title={title} onMenuClick={handleMenuClick} />
@@ -417,11 +426,11 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
             </footer>
           )}
         </div>
-      
-      {/* Command Palette - accessible via Cmd+K */}
+    </div>
+
+      {/* Shell overlays live outside the sidebar/main grid so they never
+          become implicit grid children or remount mid-stacking-context. */}
       <CommandPalette onCreateFromGoal={() => setGoalWizardOpen(true)} />
-      
-      {/* Goal Workflow Wizard */}
       <GoalWorkflowWizard
         open={goalWizardOpen}
         onOpenChange={setGoalWizardOpen}
