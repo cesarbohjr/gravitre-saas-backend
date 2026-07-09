@@ -350,8 +350,22 @@
     border-color: color-mix(in oklch, var(--border) 70%, transparent);
   }
 
+  /* Live status "breathing" — a soft pulsing halo for running/active dots.
+     Pair with a status color, e.g. <span class="status-live text-success">.
+     Uses currentColor so it inherits whatever status color is applied. */
+  @keyframes status-breathe {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, currentColor 55%, transparent); }
+    50% { box-shadow: 0 0 0 4px color-mix(in oklch, currentColor 0%, transparent); }
+  }
+  .status-live {
+    border-radius: 9999px;
+    background-color: currentColor;
+    animation: status-breathe 2s ease-in-out infinite;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .hover-lift:hover { transform: none; }
+    .status-live { animation: none; }
   }
 
   /* Branded chat canvas: emerald + blue + violet radial tints with dot-grid.
