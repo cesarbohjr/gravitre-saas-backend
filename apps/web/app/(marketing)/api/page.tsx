@@ -95,19 +95,19 @@ const sdks = [
     name: "Node.js", 
     install: "npm install @gravitre/sdk",
     color: "text-green-400",
-    docs: "/docs/api/quickstart"
+    docs: "/docs/sdk/node"
   },
   { 
     name: "Python", 
     install: "pip install gravitre",
     color: "text-blue-400",
-    docs: "/docs/api/quickstart"
+    docs: "/docs/sdk/python"
   },
   { 
     name: "Go", 
     install: "go get github.com/gravitre/go-sdk",
     color: "text-cyan-400",
-    docs: "/docs/api/quickstart"
+    docs: "/docs/sdk/go"
   },
 ]
 

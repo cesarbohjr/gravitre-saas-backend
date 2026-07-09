@@ -1,6 +1,6 @@
-import Link from "next/link"
 import type { BlogPost } from "../types"
 import { GRAVITRE_BLOG_AUTHOR } from "../authors"
+import Link from "next/link"
 
 export const aiAgentBestPracticesPost: BlogPost = {
   slug: "ai-agent-best-practices",

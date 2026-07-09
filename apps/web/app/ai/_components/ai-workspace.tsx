@@ -20,7 +20,6 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-import { workspacePanelAsideClasses } from "@/lib/workspace-panel-motion"
 import { useAuth, getAccessToken } from "@/lib/auth-context"
 import { ensureSelectedOrg, buildChatOrgPayload } from "@/lib/org-context"
 import { getEnvironmentHeader } from "@/lib/environment-context"
@@ -72,6 +71,7 @@ import {
   describeOperatorJobError,
   isBackendUnavailableError,
 } from "@/lib/operator-plan"
+import { AiExecuteResults } from "./ai-execute-results"
 import { AiFindResults } from "./ai-find-results"
 import { AiLanding } from "./ai-landing"
 import { AiLayoutPanelPicker } from "./ai-layout-panel-picker"
@@ -102,7 +102,6 @@ import {
   loadLayoutColumns,
   loadLayoutEnabled,
   loadLayoutOrder,
-  migrateLayoutColumnsToRail,
   persistLayoutColumns,
   persistLayoutEnabled,
   persistLayoutOrder,
@@ -508,19 +507,9 @@ export function AiWorkspace({
   }, [orgReady, activeConversationId, conversations, conversationsLoading, setMessages])
 
   useEffect(() => {
-    const order = loadLayoutOrder()
-    const enabled = loadLayoutEnabled()
-    const rawColumns = loadLayoutColumns()
-    const columns = migrateLayoutColumnsToRail(enabled, rawColumns)
-    if (columns !== rawColumns) {
-      persistLayoutColumns(columns)
-    }
-    setLayoutBlockOrder(order)
-    setLayoutEnabledBlocks(enabled)
-    setLayoutBlockColumns(columns)
-    if (enabled.length > 0) {
-      setActivityRailOpen(true)
-    }
+    setLayoutBlockOrder(loadLayoutOrder())
+    setLayoutEnabledBlocks(loadLayoutEnabled())
+    setLayoutBlockColumns(loadLayoutColumns())
   }, [])
 
   useEffect(() => {
@@ -1045,9 +1034,6 @@ export function AiWorkspace({
       setActiveConversationId(id)
       activeConversationIdRef.current = id
       writeStoredConversationId(id)
-      if (typeof window !== "undefined") {
-        window.history.replaceState(null, "", `/ai?c=${encodeURIComponent(id)}`)
-      }
       operatorSessionRef.current = null
       resetExecuteJob()
 
@@ -1083,9 +1069,6 @@ export function AiWorkspace({
     persistedTurnIdsRef.current = new Set()
     persistedChatPairIdsRef.current = new Set()
     writeStoredConversationId(null)
-    if (typeof window !== "undefined") {
-      window.history.replaceState(null, "", "/ai")
-    }
     resetExecuteJob()
     setConversationTitle("Chat")
     setConversationLoading(false)
@@ -1224,17 +1207,11 @@ export function AiWorkspace({
       return next
     })
     if (enabled) {
-      setLayoutBlockColumns((current) => {
-        const next = { ...current, [blockId]: "rail" as const }
-        persistLayoutColumns(next)
-        return next
-      })
       setLayoutBlockOrder((current) => {
         const next = current.includes(blockId) ? current : [...current, blockId]
         persistLayoutOrder(next)
         return next
       })
-      setActivityRailOpen(true)
     }
   }, [])
 
@@ -1244,9 +1221,8 @@ export function AiWorkspace({
   }, [])
 
   const handleMoveLayoutBlockToColumn = useCallback((blockId: ResultBlockId, target: LayoutColumn) => {
-    const resolvedTarget: LayoutColumn = target === "main" ? "rail" : target
     setLayoutBlockColumns((current) => {
-      const next = { ...current, [blockId]: resolvedTarget }
+      const next = { ...current, [blockId]: target }
       persistLayoutColumns(next)
       return next
     })
@@ -1261,7 +1237,6 @@ export function AiWorkspace({
       persistLayoutOrder(next)
       return next
     })
-    setActivityRailOpen(true)
   }, [])
 
   const latestExecuteTurn = useMemo(
@@ -1277,6 +1252,9 @@ export function AiWorkspace({
     !routing &&
     !initialPrompt.trim() &&
     !conversationLoading
+
+  const showPinnedLayout =
+    layoutEnabledBlocks.length > 0 && latestExecuteTurn == null && inlineTurns.length === 0
 
   const showEmptyThreadHint =
     !showLanding &&
@@ -1325,7 +1303,7 @@ export function AiWorkspace({
         onRetry={() => void mutateConversations()}
       />
 
-      <div className="ai-surface-shell relative z-0 flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="ai-surface-shell flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="shrink-0 border-b border-emerald-500/15 bg-card/80 backdrop-blur-md">
           <div className="flex min-h-12 items-center gap-2 overflow-x-auto px-3 py-2 md:px-4">
             <Button
@@ -1519,6 +1497,22 @@ export function AiWorkspace({
                   </div>
                 </div>
 
+                {turn.engine === "execute" ? (
+                  <AiExecuteResults
+                    plan={turn.executePlan ?? null}
+                    job={turn.executeJob ?? null}
+                    isProcessing={turn.status === "running" && executeWorking}
+                    error={turn.executeError ?? (turn.status === "running" ? executeHookError : null)}
+                    sourcePrompt={turn.prompt}
+                    blockOrder={layoutBlockOrder}
+                    enabledBlocks={layoutEnabledBlocks}
+                    onReorderBlocks={handleReorderLayoutBlocks}
+                    blockColumns={layoutBlockColumns}
+                    onMoveBlockToColumn={handleMoveLayoutBlockToColumn}
+                    column="main"
+                  />
+                ) : null}
+
                 {turn.engine === "find" ? (
                   <AiFindResults
                     results={turn.findResults ?? []}
@@ -1533,8 +1527,22 @@ export function AiWorkspace({
                 ) : null}
               </div>
             ))
-
               : null}
+
+            {showPinnedLayout ? (
+              <AiExecuteResults
+                plan={null}
+                job={null}
+                isProcessing={false}
+                error={null}
+                blockOrder={layoutBlockOrder}
+                enabledBlocks={layoutEnabledBlocks}
+                onReorderBlocks={handleReorderLayoutBlocks}
+                blockColumns={layoutBlockColumns}
+                onMoveBlockToColumn={handleMoveLayoutBlockToColumn}
+                column="main"
+              />
+            ) : null}
 
             {routing ? (
               <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -1615,29 +1623,20 @@ export function AiWorkspace({
         </div>
       </div>
 
-      <aside
-        aria-hidden={!activityRailOpen}
-        className={cn(
-          workspacePanelAsideClasses(activityRailOpen),
-          "border-l border-emerald-500/10 bg-gradient-to-b from-card/50 via-card/30 to-emerald-500/5",
-          activityRailOpen && "w-80",
-        )}
-      >
-        <div className="h-full w-80 max-h-full overflow-hidden">
-          <LiveActivityRail
-            advisorBrief={advisorBrief}
-            layoutPlan={latestExecuteTurn?.executePlan ?? null}
-            layoutJob={latestExecuteTurn?.executeJob ?? null}
-            layoutProcessing={Boolean(latestExecuteTurn?.status === "running" && executeWorking)}
-            layoutError={latestExecuteTurn?.executeError ?? null}
-            layoutBlockOrder={layoutBlockOrder}
-            layoutEnabledBlocks={layoutEnabledBlocks}
-            layoutBlockColumns={layoutBlockColumns}
-            onReorderLayoutBlocks={handleReorderLayoutBlocks}
-            onMoveLayoutBlockToColumn={handleMoveLayoutBlockToColumn}
-          />
-        </div>
-      </aside>
+      {activityRailOpen ? (
+      <LiveActivityRail
+        advisorBrief={advisorBrief}
+        layoutPlan={latestExecuteTurn?.executePlan ?? null}
+        layoutJob={latestExecuteTurn?.executeJob ?? null}
+        layoutProcessing={Boolean(latestExecuteTurn?.status === "running" && executeWorking)}
+        layoutError={latestExecuteTurn?.executeError ?? null}
+        layoutBlockOrder={layoutBlockOrder}
+        layoutEnabledBlocks={layoutEnabledBlocks}
+        layoutBlockColumns={layoutBlockColumns}
+        onReorderLayoutBlocks={handleReorderLayoutBlocks}
+        onMoveLayoutBlockToColumn={handleMoveLayoutBlockToColumn}
+      />
+      ) : null}
     </div>
   )
 }

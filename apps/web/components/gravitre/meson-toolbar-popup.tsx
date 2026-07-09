@@ -55,7 +55,11 @@ export function MesonToolbarProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    setPanelOpen(false)
+    if (shouldShowMesonToolbar(pathname)) {
+      setPanelOpen(true)
+    } else {
+      setPanelOpen(false)
+    }
   }, [pathname])
 
   const visible = mounted && shouldShowMesonToolbar(pathname)

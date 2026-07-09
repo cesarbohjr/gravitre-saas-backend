@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, startTransition, useCallback } from "react"
+import { useState, useEffect, startTransition } from "react"
 import useSWR, { mutate } from "swr"
 import Link from "next/link"
 import { Sidebar } from "./sidebar"
@@ -73,8 +73,16 @@ function daysLeft(isoDate: string): number {
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
 }
 
+const NAV_EXPANDED_STORAGE_KEY = "gravitre-nav-expanded"
+
+function readNavExpandedPreference(): boolean {
+  if (typeof window === "undefined") return false
+  return localStorage.getItem(NAV_EXPANDED_STORAGE_KEY) === "true"
+}
+
 export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [navExpanded, setNavExpanded] = useState(false)
   const [goalWizardOpen, setGoalWizardOpen] = useState(false)
   const [trialBannerDismissed, setTrialBannerDismissed] = useState(
     () =>
@@ -97,17 +105,29 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
 
   useGlobalWorkShortcuts()
 
-  // Menu button only opens the mobile drawer — desktop nav is always visible.
-  const handleMenuClick = useCallback(() => setSidebarOpen(true), [])
-  const closeSidebar = useCallback(() => setSidebarOpen(false), [])
-
-  // Close shell overlays on route change so remount races cannot leave
-  // full-viewport dialogs / scroll-locks blocking sidebar navigation.
   useEffect(() => {
-    setSidebarOpen(false)
-    setGoalWizardOpen(false)
-    setUpgradeModalOpen(false)
-  }, [pathname])
+    setNavExpanded(readNavExpandedPreference())
+  }, [])
+
+  const handleMenuClick = () => {
+    if (typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches) {
+      setNavExpanded((prev) => {
+        const next = !prev
+        localStorage.setItem(NAV_EXPANDED_STORAGE_KEY, String(next))
+        return next
+      })
+      return
+    }
+    setSidebarOpen(true)
+  }
+
+  const handleToggleNavExpanded = () => {
+    setNavExpanded((prev) => {
+      const next = !prev
+      localStorage.setItem(NAV_EXPANDED_STORAGE_KEY, String(next))
+      return next
+    })
+  }
 
   // Fetch billing status — refresh on focus so web/mobile stay aligned after expiry.
   const { data: billingStatusData, isLoading: billingLoading, error: billingError } = useSWR<BillingStatus>(
@@ -248,7 +268,7 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
     router.replace("/settings/billing?reason=subscription_required")
   }, [billingHardBlock, billingError, pathname, router])
 
-  // First-run welcome flow — only gate the home entry surface, not every sidebar navigation.
+  // First-run welcome flow — redirect paid/trial users until welcome is completed or skipped
   useEffect(() => {
     if (!user || !onboardingProgress) return
     if (!canAccessApp) return
@@ -263,10 +283,6 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
     ]
     if (exemptPrefixes.some((prefix) => pathname.startsWith(prefix))) return
     if (onboardingProgress.welcome_completed || onboardingProgress.skipped) return
-
-    const isWelcomeGateEntry = pathname === APP_ROUTES.home || pathname === "/"
-    if (!isWelcomeGateEntry) return
-
     router.replace(APP_ROUTES.welcome)
   }, [user, onboardingProgress, pathname, router, canAccessApp])
 
@@ -305,10 +321,14 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
 
   return (
     <MesonToolbarProvider>
-    <div className="relative h-screen overflow-hidden bg-background">
-    <div className="grid h-full grid-cols-1 overflow-hidden md:grid-cols-[auto_minmax(0,1fr)]">
-        <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
-        <div className="relative z-0 flex min-w-0 flex-col overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-background">
+        <Sidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          navExpanded={navExpanded}
+          onToggleNavExpanded={handleToggleNavExpanded}
+        />
+        <div className="flex flex-1 flex-col overflow-hidden">
           <TopBar title={title} onMenuClick={handleMenuClick} />
 
           {showTrialExpiredBanner && (
@@ -426,11 +446,11 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
             </footer>
           )}
         </div>
-    </div>
-
-      {/* Shell overlays live outside the sidebar/main grid so they never
-          become implicit grid children or remount mid-stacking-context. */}
+      
+      {/* Command Palette - accessible via Cmd+K */}
       <CommandPalette onCreateFromGoal={() => setGoalWizardOpen(true)} />
+      
+      {/* Goal Workflow Wizard */}
       <GoalWorkflowWizard
         open={goalWizardOpen}
         onOpenChange={setGoalWizardOpen}

@@ -79,7 +79,6 @@ import type {
   LiteSeatsResponse,
   MesonAddonsResponse,
   NotificationListResponse,
-  ActivityFeedResponse,
   OnboardingProgress,
   LiteTask,
   LiteDeliverable,
@@ -2035,20 +2034,6 @@ export const settingsApi = {
   getOrg: () => fetcher<{ organization: Record<string, unknown> }>(apiUrl("/api/settings/organization")),
   updateOrg: (data: Record<string, unknown>) =>
     patchJson<{ organization: Record<string, unknown> }>(apiUrl("/api/settings/organization"), data),
-  uploadOrgLogo: async (file: File) => {
-    const formData = new FormData()
-    formData.append("logo", file)
-    const response = await apiFetch(apiUrl("/api/settings/organization/logo"), {
-      method: "POST",
-      body: formData,
-    })
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}))
-      throw new Error(extractErrorMessage(error) || "Logo upload failed")
-    }
-    return response.json() as Promise<{ logoUrl?: string; organization?: Record<string, unknown> }>
-  },
-  removeOrgLogo: () => deleteRequest(apiUrl("/api/settings/organization/logo")),
   
   // Team
   listTeamMembers: () => fetcher<{ team: User[] }>(apiUrl("/api/settings/team")),
@@ -2192,16 +2177,6 @@ export const notificationsApi = {
   updatePreferences: (preferences: Record<string, { bell_enabled: boolean; email_enabled: boolean }>) =>
     patchJson<void>(apiUrl("/api/notifications/preferences"), preferences),
   streamUrl: () => apiUrl("/api/notifications/stream"),
-}
-
-export const activityApi = {
-  recent: (filters?: { limit?: number; source?: string }) => {
-    const params = new URLSearchParams()
-    if (filters?.limit) params.set("limit", String(filters.limit))
-    if (filters?.source) params.set("source", filters.source)
-    const query = params.toString()
-    return fetcher<ActivityFeedResponse>(apiUrl(`/api/activity/recent${query ? `?${query}` : ""}`))
-  },
 }
 
 // ============ Onboarding ============

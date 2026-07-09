@@ -29,7 +29,6 @@ import { organizationsApi } from "@/lib/api"
 import { Icon } from "@/lib/icons"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
-import { OrganizationLogoAvatar } from "@/components/gravitre/organization-logo"
 import { Building2 } from "lucide-react"
 import { toast } from "sonner"
 import type { Organization, User } from "@/types/api"
@@ -286,12 +285,13 @@ export default function ManageOrganizationsPage() {
                   <div className="flex items-start gap-4">
                     {/* Org Avatar */}
                     <div className="relative">
-                      <OrganizationLogoAvatar
-                        name={org.name}
-                        logoUrl={org.logo_url}
-                        size="lg"
-                        className={currentOrgId === org.id ? "ring-2 ring-primary/30" : undefined}
-                      />
+                      <div className={`h-14 w-14 rounded-xl flex items-center justify-center text-lg font-semibold ${
+                        currentOrgId === org.id
+                          ? "bg-primary/10 text-primary" 
+                          : "bg-secondary text-muted-foreground"
+                      }`}>
+                        {org.name.charAt(0)}
+                      </div>
                       {currentOrgId === org.id && (
                         <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-emerald-500 flex items-center justify-center ring-2 ring-background">
                           <Icon name="check" size="xs" className="text-white" />

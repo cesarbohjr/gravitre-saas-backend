@@ -1,25 +1,23 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import useSWR from "swr"
 import { motion } from "framer-motion"
 import { useAuth } from "@/lib/auth-context"
-import { runsApi, activityApi } from "@/lib/api"
+import { runsApi } from "@/lib/api"
 import { assistantApi } from "@/lib/api"
 import { getSelectedOrgFromStorage, ensureSelectedOrg } from "@/lib/org-context"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import type { Run, RunStatus, ActivityEvent } from "@/types/api"
-import { Activity, CheckCircle2, ExternalLink, Loader2, PlayCircle } from "lucide-react"
+import type { Run, RunStatus } from "@/types/api"
+import { Activity, CheckCircle2, Loader2, PlayCircle } from "lucide-react"
 import { AiExecuteResults } from "./ai-execute-results"
 import type { AgentJob } from "@/hooks/use-async-job"
 import type { InlineExecutePlan } from "@/lib/ai-inline-execute"
 import type { LayoutColumn, ResultBlockId } from "./draggable-result-stack"
 import type { AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief-panel"
 import { MesonPagePanel } from "@/components/gravitre/meson-page-panel"
-import { routeMesonSuggestion } from "@/lib/meson-page-context"
 
 function relativeTime(value?: string): string {
   if (!value) return ""
@@ -49,36 +47,6 @@ function runName(run: Run): string {
   return run.workflow_name ?? run.workflowName ?? run.workflow_id ?? run.id
 }
 
-type RecentFeedItem =
-  | { kind: "run"; id: string; title: string; status: RunStatus; href: string; at?: string }
-  | { kind: "connector"; id: string; title: string; body: string; href: string; integration?: string; at?: string }
-
-function mergeRecentFeed(runs: Run[], connectorEvents: ActivityEvent[]): RecentFeedItem[] {
-  const runItems: RecentFeedItem[] = runs
-    .filter((run) => !isRunning(run.status))
-    .slice(0, 4)
-    .map((run) => ({
-      kind: "run" as const,
-      id: run.id,
-      title: runName(run),
-      status: run.status,
-      href: `/runs/${run.id}`,
-      at: run.completed_at ?? run.started_at ?? run.created_at,
-    }))
-  const connectorItems: RecentFeedItem[] = connectorEvents.slice(0, 6).map((event) => ({
-    kind: "connector" as const,
-    id: event.id,
-    title: event.title,
-    body: event.body,
-    href: event.url || "/ai",
-    integration: event.integration,
-    at: event.created_at,
-  }))
-  return [...runItems, ...connectorItems]
-    .sort((a, b) => new Date(b.at ?? 0).getTime() - new Date(a.at ?? 0).getTime())
-    .slice(0, 6)
-}
-
 /** Right-hand rail summarizing live org activity for the unified AI surface. */
 export function LiveActivityRail({
   advisorBrief = null,
@@ -104,7 +72,6 @@ export function LiveActivityRail({
   onMoveLayoutBlockToColumn?: (blockId: ResultBlockId, target: LayoutColumn) => void
 } = {}) {
   const { user } = useAuth()
-  const router = useRouter()
   const [orgId, setOrgId] = useState<string | null>(() =>
     typeof window !== "undefined" ? getSelectedOrgFromStorage()?.id ?? null : null,
   )
@@ -122,11 +89,6 @@ export function LiveActivityRail({
     () => runsApi.list({ limit: 8 }),
     { revalidateOnFocus: false, refreshInterval: 20_000 },
   )
-  const { data: activityData } = useSWR(
-    user && orgId ? ["ai-rail-activity", orgId] : null,
-    () => activityApi.recent({ limit: 8, source: "connector_write" }),
-    { revalidateOnFocus: false, refreshInterval: 20_000 },
-  )
   const {
     data: orgContext,
     error: orgContextError,
@@ -141,7 +103,7 @@ export function LiveActivityRail({
   const runs = runsData?.runs ?? []
   const active = runs.filter((r) => isRunning(r.status))
   const inProgress = active.slice(0, 2)
-  const recent = mergeRecentFeed(runs, activityData?.events ?? [])
+  const recent = runs.filter((r) => !isRunning(r.status)).slice(0, 4)
   const connectorCount = orgContext?.counts.connectors ?? 0
   const systemsHealthy = connectorCount > 0
   const systemsUnavailable = Boolean(orgContextError)
@@ -153,16 +115,9 @@ export function LiveActivityRail({
       : "Systems healthy"
 
   return (
-    <div className="flex h-full max-h-full w-80 flex-col overflow-y-auto">
+    <aside className="hidden w-80 shrink-0 border-l border-emerald-500/10 bg-gradient-to-b from-card/50 via-card/30 to-emerald-500/5 xl:block xl:max-h-full xl:overflow-y-auto">
       <div className="flex flex-col gap-6 p-5">
-        <MesonPagePanel
-          page="ai-chat"
-          compact
-          advisorBrief={advisorBrief}
-          onSuggestionClick={(suggestion) =>
-            routeMesonSuggestion("/ai", suggestion, (href) => router.push(href))
-          }
-        />
+        <MesonPagePanel page="ai-chat" compact advisorBrief={advisorBrief} />
 
         <div className="border-t border-emerald-500/10 pt-4">
         <div className="flex items-center gap-2">
@@ -240,26 +195,20 @@ export function LiveActivityRail({
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Recent</p>
             <ul className="space-y-1">
-              {recent.map((item) => (
-                <motion.li key={`${item.kind}-${item.id}`} whileHover={{ x: 2 }}>
+              {recent.map((run) => (
+                <motion.li key={run.id} whileHover={{ x: 2 }}>
                   <Link
-                    href={item.href}
+                    href={`/runs/${run.id}`}
                     className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-secondary/60"
                   >
-                    {item.kind === "connector" ? (
-                      <ExternalLink className="h-3.5 w-3.5 shrink-0 text-violet-500" aria-hidden />
-                    ) : item.status === "completed" ? (
-                      <CheckCircle2 className={cn("h-3.5 w-3.5 shrink-0", statusTone(item.status))} aria-hidden />
+                    {run.status === "completed" ? (
+                      <CheckCircle2 className={cn("h-3.5 w-3.5 shrink-0", statusTone(run.status))} aria-hidden />
                     ) : (
-                      <PlayCircle className={cn("h-3.5 w-3.5 shrink-0", statusTone(item.status))} aria-hidden />
+                      <PlayCircle className={cn("h-3.5 w-3.5 shrink-0", statusTone(run.status))} aria-hidden />
                     )}
-                    <span className="min-w-0 flex-1 truncate text-foreground">
-                      {item.kind === "connector" && item.integration
-                        ? `${item.integration}: ${item.title}`
-                        : item.title}
-                    </span>
+                    <span className="min-w-0 flex-1 truncate text-foreground">{runName(run)}</span>
                     <span className="shrink-0 text-[11px] text-muted-foreground">
-                      {relativeTime(item.at)}
+                      {relativeTime(run.completed_at ?? run.started_at ?? run.created_at)}
                     </span>
                   </Link>
                 </motion.li>
@@ -297,6 +246,6 @@ export function LiveActivityRail({
           View all runs
         </Link>
       </div>
-    </div>
+    </aside>
   )
 }

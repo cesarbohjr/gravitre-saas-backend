@@ -4,7 +4,6 @@ import React, { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import Image from "next/image"
-import { EventNotificationPreferences } from "@/components/settings/event-notification-preferences"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
 import { ModelSelector } from "@/components/gravitre/model-selector"
@@ -52,7 +51,6 @@ import type { ApiKey, BillingUsageResponse, LiteSeatDepartment, MesonAddon, SSOC
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
-import { OrganizationLogoAvatar } from "@/components/gravitre/organization-logo"
 
 interface SettingSection {
   id: string
@@ -86,12 +84,9 @@ function OrganizationSettings({
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [uploadDialog, setUploadDialog] = useState(false)
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
   const [name, setName] = useState("")
   const [slug, setSlug] = useState("")
   const [domain, setDomain] = useState("")
-  const [logoUrl, setLogoUrl] = useState<string | null>(null)
-  const logoInputRef = React.useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!orgData) return
@@ -99,43 +94,9 @@ function OrganizationSettings({
       setName(String(orgData.name ?? ""))
       setSlug(String(orgData.slug ?? ""))
       setDomain(String(orgData.primaryDomain ?? orgData.primary_domain ?? ""))
-      setLogoUrl(String(orgData.logoUrl ?? orgData.logo_url ?? "") || null)
     }, 0)
     return () => clearTimeout(timer)
   }, [orgData])
-
-  const handleLogoUpload = async (file: File) => {
-    setIsUploadingLogo(true)
-    try {
-      const response = await settingsApi.uploadOrgLogo(file)
-      const nextLogo = String(response.logoUrl ?? response.organization?.logoUrl ?? response.organization?.logo_url ?? "")
-      setLogoUrl(nextLogo || null)
-      toast.success("Organization logo updated")
-      setUploadDialog(false)
-      await onUpdate()
-    } catch (err) {
-      console.error("[settings] Logo upload failed:", err)
-      toast.error(err instanceof Error ? err.message : "Failed to upload logo")
-    } finally {
-      setIsUploadingLogo(false)
-    }
-  }
-
-  const handleRemoveLogo = async () => {
-    setIsUploadingLogo(true)
-    try {
-      await settingsApi.removeOrgLogo()
-      setLogoUrl(null)
-      toast.success("Organization logo removed")
-      setUploadDialog(false)
-      await onUpdate()
-    } catch (err) {
-      console.error("[settings] Logo remove failed:", err)
-      toast.error("Failed to remove logo")
-    } finally {
-      setIsUploadingLogo(false)
-    }
-  }
 
   const handleSave = async () => {
     setIsSaving(true)
@@ -165,31 +126,22 @@ function OrganizationSettings({
           Organization Logo
         </label>
         <div className="mt-2 flex items-center gap-4">
-          <OrganizationLogoAvatar name={name || "Organization"} logoUrl={logoUrl} size="lg" />
+          <div className="flex h-16 w-32 items-center justify-center rounded-lg border border-border bg-secondary p-2">
+            <Image
+              src="/logo-white.svg"
+              alt="Organization Logo"
+              width={100}
+              height={40}
+              className="h-auto w-auto max-h-12"
+            />
+          </div>
           <div className="flex flex-col gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={() => setUploadDialog(true)}
-              disabled={!isAdmin}
-            >
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setUploadDialog(true)}>
               <Upload className="h-3.5 w-3.5" />
               Upload Logo
             </Button>
-            {logoUrl ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="justify-start px-0 text-muted-foreground hover:text-destructive"
-                onClick={() => void handleRemoveLogo()}
-                disabled={!isAdmin || isUploadingLogo}
-              >
-                Remove logo
-              </Button>
-            ) : null}
             <p className="text-xs text-muted-foreground">
-              PNG, SVG or JPG (max 2MB). Shown in the organization switcher.
+              PNG, SVG or JPG (max 2MB)
             </p>
           </div>
         </div>
@@ -243,38 +195,15 @@ function OrganizationSettings({
             <DialogDescription>Choose an image file to use as your organization logo.</DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <input
-              ref={logoInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) void handleLogoUpload(file)
-                e.target.value = ""
-              }}
-            />
-            <button
-              type="button"
-              className="w-full border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/40 transition-colors"
-              onClick={() => logoInputRef.current?.click()}
-              disabled={!isAdmin || isUploadingLogo}
-            >
-              {isUploadingLogo ? (
-                <Loader2 className="h-8 w-8 mx-auto text-muted-foreground mb-2 animate-spin" />
-              ) : (
-                <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-              )}
-              <p className="text-sm text-muted-foreground mb-2">Click to choose a logo file</p>
-              <Button variant="outline" size="sm" type="button" disabled={!isAdmin || isUploadingLogo}>
-                Choose File
-              </Button>
-            </button>
+            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+              <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground mb-2">Drag and drop your logo here, or click to browse</p>
+              <Button variant="outline" size="sm">Choose File</Button>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setUploadDialog(false)} disabled={isUploadingLogo}>
-              Close
-            </Button>
+            <Button variant="outline" onClick={() => setUploadDialog(false)}>Cancel</Button>
+            <Button onClick={() => setUploadDialog(false)}>Upload</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -808,7 +737,6 @@ function NotificationSettings() {
           className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
-      <EventNotificationPreferences />
       <Button size="sm" className="gap-2" onClick={handleSave} disabled={isSaving}>
         {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : saved ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
         {saved ? "Saved!" : "Save Changes"}

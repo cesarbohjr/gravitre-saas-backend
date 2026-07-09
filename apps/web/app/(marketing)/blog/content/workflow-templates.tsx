@@ -1,7 +1,7 @@
-import Link from "next/link"
 import type { ReactNode } from "react"
 import type { BlogPost } from "../types"
 import { GRAVITRE_BLOG_AUTHOR } from "../authors"
+import Link from "next/link"
 
 function TemplateEntry({
   title,
