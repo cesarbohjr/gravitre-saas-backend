@@ -270,7 +270,7 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
     router.replace("/settings/billing?reason=subscription_required")
   }, [billingHardBlock, billingError, pathname, router])
 
-  // First-run welcome flow — redirect paid/trial users until welcome is completed or skipped
+  // First-run welcome flow — only gate the home entry surface, not every sidebar navigation.
   useEffect(() => {
     if (!user || !onboardingProgress) return
     if (!canAccessApp) return
@@ -285,6 +285,10 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
     ]
     if (exemptPrefixes.some((prefix) => pathname.startsWith(prefix))) return
     if (onboardingProgress.welcome_completed || onboardingProgress.skipped) return
+
+    const isWelcomeGateEntry = pathname === APP_ROUTES.home || pathname === "/"
+    if (!isWelcomeGateEntry) return
+
     router.replace(APP_ROUTES.welcome)
   }, [user, onboardingProgress, pathname, router, canAccessApp])
 
@@ -323,14 +327,14 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
 
   return (
     <MesonToolbarProvider>
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="grid h-screen grid-cols-1 overflow-hidden bg-background md:grid-cols-[auto_minmax(0,1fr)]">
         <Sidebar
           isOpen={sidebarOpen}
           onClose={closeSidebar}
           navExpanded={navExpanded}
           onToggleNavExpanded={handleToggleNavExpanded}
         />
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="relative z-0 flex min-w-0 flex-col overflow-hidden">
           <TopBar title={title} onMenuClick={handleMenuClick} />
 
           {showTrialExpiredBanner && (

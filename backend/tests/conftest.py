@@ -48,6 +48,28 @@ def _set_required_env_vars():
 
 
 @pytest.fixture(autouse=True)
+def _disable_api_rate_limits():
+    import app.core.rate_limiter as rate_limiter_module
+
+    rate_limiter_module._memory._events.clear()
+    noop = AsyncMock(return_value=None)
+    with patch("app.core.rate_limiter.enforce_rate_limit", noop), patch(
+        "app.middleware.api_rate_limit.enforce_rate_limit", noop
+    ):
+        yield
+    rate_limiter_module._memory._events.clear()
+
+
+@pytest.fixture(autouse=True)
+def _clear_assistant_tool_caches():
+    import app.services.assistant_tools as assistant_tools_module
+
+    assistant_tools_module._CONNECTOR_STATUS_CACHE.clear()
+    assistant_tools_module._ANALYTICS_CACHE.clear()
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _reset_singletons():
     import app.services.model_router as model_router_module
     import app.services.decision_service as decision_service_module

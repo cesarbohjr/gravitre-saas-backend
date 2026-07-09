@@ -1,3 +1,4 @@
+import Link from "next/link"
 import type { ReactNode } from "react"
 import type { BlogPost } from "../types"
 import { GRAVITRE_BLOG_AUTHOR } from "../authors"
@@ -105,8 +106,8 @@ export const securityFirstPost: BlogPost = {
       </p>
       <p>
         If your security review asks how AI touches production data, start with{" "}
-        <a href="/docs/concepts/security">our security overview</a> or{" "}
-        <a href="/features">see how approvals and connector checks work in product</a>.
+        <Link href="/docs/concepts/security">our security overview</Link> or{" "}
+        <Link href="/features">see how approvals and connector checks work in product</Link>.
       </p>
     </>
   ),

@@ -44,7 +44,7 @@ export function AssistantSourceLinks({ invocations }: { invocations: ToolInvocat
         }
         break
       case "getAnalytics":
-        add("Org analytics", "/analytics")
+        add("Org analytics", "/metrics")
         break
       case "getWorkflowRuns":
         add("Workflow runs", "/workflows")

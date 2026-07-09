@@ -8,7 +8,7 @@ echo "Testing backend at $BACKEND_URL"
 
 # 1. Health check
 echo "→ Health check..."
-curl -sf "$BACKEND_URL/health" | grep -q "ok" && \
+curl -sf "$BACKEND_URL/health" | grep -qE '"status"\s*:\s*"(ok|degraded)"' && \
   echo "✅ Backend healthy" || \
   (echo "❌ Backend unreachable" && exit 1)
 

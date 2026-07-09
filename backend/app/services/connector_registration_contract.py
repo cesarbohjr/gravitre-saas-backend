@@ -36,6 +36,7 @@ _REGISTRY_PREFIX_TO_CATALOG_VENDOR = {
 # Scoped pytest targets for merge-blocking connector governance CI (Step 2).
 CONNECTOR_GOVERNANCE_PYTEST_TARGETS: tuple[str, ...] = (
     "tests/services/test_connector_registration_contract.py",
+    "tests/services/test_connector_output_contract.py",
     "tests/services/test_connector_registry_verification.py",
     "tests/services/test_connector_api_import_boundaries.py",
     "tests/services/test_connector_action_workflows.py",

@@ -1789,18 +1789,21 @@ async def execute_workflow(
             required_approvals=required_approvals,
         )
         try:
-            from app.services.notification_service import create_user_notification
+            from app.services.notification_emitter import emit_notification
 
-            create_user_notification(
+            emit_notification(
                 client,
                 org_id=org_id,
                 user_id=current_user["user_id"],
-                notification_type="approval_needed",
+                event_type="approval_needed",
                 title="Workflow awaiting approval",
                 body=f"{str(wf_name or workflow_id)} is queued in the Decision Queue.",
-                url=f"/approvals?id={run_id}",
-                entity_type="workflow_run",
-                entity_id=run_id,
+                entity_ref={
+                    "entity_type": "workflow_run",
+                    "entity_id": run_id,
+                    "result_url": f"/approvals?id={run_id}",
+                },
+                channel_hints={"bell": True, "email": False},
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("approval_needed notification skipped run_id=%s error=%s", run_id, exc)

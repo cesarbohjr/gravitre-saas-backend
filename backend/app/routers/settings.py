@@ -344,7 +344,7 @@ async def get_lite_membership_route(
         .eq("user_id", user_id)
         .execute()
     )
-    if _is_missing_table_error(member_resp.error):
+    if _is_missing_table_error(getattr(member_resp, "error", None)):
         return {"is_lite": False, "is_admin": True, "department": None}
     rows = [
         row
@@ -353,14 +353,19 @@ async def get_lite_membership_route(
         and str((row.get("departments") or {}).get("org_id")) == org_id
     ]
     if not rows:
-        admin_resp = (
-            client.table("org_members")
-            .select("role")
-            .eq("org_id", org_id)
-            .eq("user_id", user_id)
-            .limit(1)
-            .execute()
-        )
+        try:
+            admin_resp = (
+                client.table("organization_members")
+                .select("role")
+                .eq("org_id", org_id)
+                .eq("user_id", user_id)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:  # noqa: BLE001
+            if _is_missing_table_error(exc):
+                return {"is_lite": False, "is_admin": True, "department": None}
+            raise
         role = str((admin_resp.data or [{}])[0].get("role") or "member").lower()
         is_admin = role in {"owner", "admin"}
         return {"is_lite": False, "is_admin": is_admin, "department": None}

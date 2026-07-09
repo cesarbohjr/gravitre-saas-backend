@@ -4,7 +4,7 @@ import { join } from "node:path"
 import { mergeE2eProcessEnv } from "./e2e/load-env"
 
 const e2eEnv = mergeE2eProcessEnv()
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000"
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3001"
 const backendURL = (e2eEnv.FASTAPI_BASE_URL ?? "http://127.0.0.1:8000").replace(/\/+$/, "")
 
 const backendCwd = join(process.cwd(), "backend")
@@ -35,7 +35,7 @@ export default defineConfig({
       command: `${pythonCmd} -m uvicorn app.main:app --host 127.0.0.1 --port 8000`,
       cwd: "backend",
       url: `${backendURL}/health`,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === "1",
       timeout: 120_000,
       env: {
         ...e2eEnv,
@@ -44,16 +44,17 @@ export default defineConfig({
       },
     },
     {
-      command: "pnpm dev --port 3000",
+      command: "pnpm dev --port 3001",
       cwd: "apps/web",
       url: baseURL,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === "1",
       timeout: 180_000,
       env: {
         ...e2eEnv,
         FASTAPI_BASE_URL: backendURL,
-        PORT: "3000",
+        PORT: "3001",
         NEXT_PUBLIC_PLAYWRIGHT_E2E: "1",
+        PLAYWRIGHT_E2E: "1",
       },
     },
   ],

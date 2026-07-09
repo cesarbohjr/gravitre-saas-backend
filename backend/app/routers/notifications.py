@@ -1,14 +1,21 @@
 """Notifications API."""
 from __future__ import annotations
 
+import asyncio
+import json
 from datetime import datetime, timezone
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
+from app.services.notification_preference_service import (
+    flatten_structured_preferences,
+    structured_preferences,
+)
 
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 
@@ -32,6 +39,43 @@ def _normalize_notification(row: dict) -> dict:
         "is_archived": bool(row.get("is_archived") or False),
         "created_at": row.get("created_at") or datetime.now(timezone.utc).isoformat(),
     }
+
+
+@router.get("/stream")
+async def stream_notifications(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+) -> StreamingResponse:
+    """SSE fanout for live bell push while a session is connected."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    user_id = _user["user_id"]
+
+    from app.services.notification_live_bus import subscribe, unsubscribe
+
+    async def event_generator():
+        queue = subscribe(org_id, user_id)
+        try:
+            yield "event: connected\ndata: {}\n\n"
+            while True:
+                try:
+                    payload = await asyncio.wait_for(queue.get(), timeout=25.0)
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+                    continue
+                yield f"event: notification\ndata: {json.dumps(payload)}\n\n"
+        finally:
+            unsubscribe(org_id, user_id, queue)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.get("")
@@ -235,13 +279,14 @@ async def get_notification_preferences(
     if response.error:
         raise HTTPException(status_code=500, detail=str(response.error))
     if not response.data:
-        return {"preferences": {}}
-    return {"preferences": response.data[0].get("preferences") or {}}
+        return {"preferences": structured_preferences({})}
+    raw = response.data[0].get("preferences") or {}
+    return {"preferences": structured_preferences(raw if isinstance(raw, dict) else {})}
 
 
 @router.patch("/preferences")
 async def update_notification_preferences(
-    preferences: Annotated[dict[str, bool], Body(...)],
+    preferences: Annotated[dict[str, Any], Body(...)],
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -253,7 +298,7 @@ async def update_notification_preferences(
     payload = {
         "org_id": org_id,
         "user_id": user_id,
-        "preferences": preferences,
+        "preferences": flatten_structured_preferences(preferences),
     }
     response = (
         client.table("notification_preferences")

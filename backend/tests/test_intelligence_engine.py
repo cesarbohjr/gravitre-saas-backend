@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -27,21 +28,36 @@ def test_orchestration_registry_has_22_components():
 @pytest.mark.asyncio
 async def test_intelligence_router_routes_simple_question_to_tier_1():
     router = IntelligenceRouter()
-    with patch.object(router._task_classifier, "classify", AsyncMock(return_value={
-        "intent": "question_answering",
-        "latency_target": "tier_1",
-        "requires_action": False,
-        "classification_confidence": 0.6,
-    })):
-        with patch.object(router._context_assembler, "assemble", AsyncMock(return_value={"rag_context": []})):
-            with patch.object(router._model_selector, "select", AsyncMock(return_value={"primary_model": "llm"})):
+    with patch.object(router._understanding, "understand", AsyncMock(return_value={"domain": {}})):
+        with patch.object(router._clarification, "should_clarify", AsyncMock(return_value={"should_clarify": False})):
+            with patch("app.services.intelligence_router.load_chat_dialogue_settings", AsyncMock(return_value={"sentiment_detection_enabled": False})):
                 with patch(
-                    "app.services.intelligence_router.get_decision_intelligence_service",
-                ) as mock_decision:
-                    mock_decision.return_value.recommend_next_action = AsyncMock(
-                        return_value={"recommendations": [{"action": "Review docs", "confidence": 0.5, "requires_approval": True}]}
-                    )
-                    result = await router.route("org-1", "user-1", "How do I create a workflow?", "api")
+                    "app.services.knowledge_intelligence_service.enrich_classification_with_query_cluster",
+                    AsyncMock(side_effect=lambda classification, *_a, **_k: classification),
+                ):
+                    with patch.object(router._task_classifier, "classify", AsyncMock(return_value={
+                        "intent": "question_answering",
+                        "latency_target": "tier_1",
+                        "requires_action": False,
+                        "classification_confidence": 0.6,
+                    })):
+                        with patch.object(router._context_assembler, "assemble", AsyncMock(return_value={"rag_context": []})):
+                            with patch.object(router._model_selector, "select", AsyncMock(return_value={"primary_model": "llm"})):
+                                with patch(
+                                    "app.services.intelligence_router.get_dialogue_policy_engine",
+                                ) as policy_engine:
+                                    policy_engine.return_value.select_mode.return_value = {
+                                        "mode": "answer",
+                                        "reason": "ok",
+                                        "next_move": "",
+                                    }
+                                    with patch(
+                                        "app.services.intelligence_router.get_decision_intelligence_service",
+                                    ) as mock_decision:
+                                        mock_decision.return_value.recommend_next_action = AsyncMock(
+                                            return_value={"recommendations": [{"action": "Review docs", "confidence": 0.5, "requires_approval": True}]}
+                                        )
+                                        result = await router.route("org-1", "user-1", "How do I create a workflow?", "api")
     assert result["classification"]["latency_target"] == "tier_1"
     assert result["advisory_only"] is True
 
@@ -79,13 +95,20 @@ async def test_task_classifier_sets_correct_pipeline_flags():
 @pytest.mark.asyncio
 async def test_context_assembler_queries_sources_in_parallel():
     assembler = ContextAssembler()
-    with patch("app.services.context_assembler.get_rag_service") as mock_rag:
-        mock_rag.return_value.query = AsyncMock(return_value=MagicMock(chunks=[]))
-        with patch("app.services.context_assembler.get_hybrid_memory_service") as mock_mem:
-            mock_mem.return_value.query_all_memory = AsyncMock(return_value={})
-            with patch("app.services.context_assembler.get_company_intelligence_orchestrator") as mock_ci:
-                mock_ci.return_value.get_context_for_prompt = AsyncMock(return_value="")
-                result = await assembler.assemble("org-1", "user-1", "hello", {"requires_graph": False})
+    bundle = SimpleNamespace(
+        rag_sources=[],
+        memory_context={},
+        graph_context={},
+        sources=[],
+        org_context={},
+        retrieval_plan={},
+        retrieval_effectiveness={},
+    )
+    with patch("app.services.context_assembler.get_unified_retrieval_service") as mock_unified:
+        mock_unified.return_value.retrieve = AsyncMock(return_value=bundle)
+        with patch("app.services.context_assembler.get_company_intelligence_orchestrator") as mock_ci:
+            mock_ci.return_value.get_context_for_prompt = AsyncMock(return_value="")
+            result = await assembler.assemble("org-1", "user-1", "hello", {"requires_graph": False})
     assert "rag_context" in result
     assert "memory_context" in result
 
@@ -93,13 +116,11 @@ async def test_context_assembler_queries_sources_in_parallel():
 @pytest.mark.asyncio
 async def test_context_assembler_handles_source_failure_gracefully():
     assembler = ContextAssembler()
-    with patch("app.services.context_assembler.get_rag_service") as mock_rag:
-        mock_rag.return_value.query = AsyncMock(side_effect=RuntimeError("rag down"))
-        with patch("app.services.context_assembler.get_hybrid_memory_service") as mock_mem:
-            mock_mem.return_value.query_all_memory = AsyncMock(return_value={"episodic_memories": []})
-            with patch("app.services.context_assembler.get_company_intelligence_orchestrator") as mock_ci:
-                mock_ci.return_value.get_context_for_prompt = AsyncMock(return_value="")
-                result = await assembler.assemble("org-1", "user-1", "hello", {})
+    with patch("app.services.context_assembler.get_unified_retrieval_service") as mock_unified:
+        mock_unified.return_value.retrieve = AsyncMock(side_effect=RuntimeError("rag down"))
+        with patch("app.services.context_assembler.get_company_intelligence_orchestrator") as mock_ci:
+            mock_ci.return_value.get_context_for_prompt = AsyncMock(return_value="")
+            result = await assembler.assemble("org-1", "user-1", "hello", {})
     assert result["rag_context"] == []
 
 

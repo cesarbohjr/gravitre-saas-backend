@@ -9,10 +9,11 @@ export type ChatExecutionResult = {
   success?: boolean
   entity_type?: string
   entity_id?: string
-  url?: string
+  connector_management_url?: string | null
+  result_url?: string | null
+  integration?: string | null
   title?: string
   body?: string
-  external_url?: string | null
   task_label?: string
 }
 
@@ -145,6 +146,25 @@ function OrchestrationStepList({ steps }: { steps: OrchestrationStepPreview[] })
   )
 }
 
+function isExternalUrl(url: string): boolean {
+  return url.startsWith("http://") || url.startsWith("https://")
+}
+
+function resultLinkLabel(executionResult: ChatExecutionResult): string {
+  if (executionResult.integration) {
+    const normalized = executionResult.integration.trim()
+    if (normalized) {
+      return `View in ${normalized.charAt(0).toUpperCase()}${normalized.slice(1)}`
+    }
+  }
+  if (executionResult.entity_type === "agent") return "Open agent"
+  if (executionResult.entity_type === "workflow") return "Open in builder"
+  if (executionResult.entity_type === "run" || executionResult.entity_type === "workflow_run") {
+    return "View run"
+  }
+  return "View in Gravitre"
+}
+
 export function ChatExecutionPanel({
   dialogueMode,
   executionResult,
@@ -153,7 +173,8 @@ export function ChatExecutionPanel({
   onConfirm,
   className,
 }: ChatExecutionPanelProps) {
-  if (executionResult?.success && executionResult.url) {
+  if (executionResult?.success) {
+    const resultUrl = executionResult.result_url
     return (
       <div
         className={cn(
@@ -170,21 +191,23 @@ export function ChatExecutionPanel({
             {executionResult.body ? (
               <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">{executionResult.body}</p>
             ) : null}
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button asChild size="sm" className="h-8">
-                <Link href={executionResult.url}>
-                  View in Gravitre
-                  <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                </Link>
-              </Button>
-              {executionResult.external_url ? (
-                <Button asChild size="sm" variant="outline" className="h-8">
-                  <a href={executionResult.external_url} target="_blank" rel="noopener noreferrer">
-                    Open external result
-                  </a>
+            {resultUrl ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button asChild size="sm" className="h-8">
+                  {isExternalUrl(resultUrl) ? (
+                    <a href={resultUrl} target="_blank" rel="noopener noreferrer">
+                      {resultLinkLabel(executionResult)}
+                      <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                    </a>
+                  ) : (
+                    <Link href={resultUrl}>
+                      {resultLinkLabel(executionResult)}
+                      <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                    </Link>
+                  )}
                 </Button>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

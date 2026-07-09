@@ -1,0 +1,102 @@
+name: Navigation E2E
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "e2e/**"
+      - "playwright.config.ts"
+      - "scripts/check-deployed-links.py"
+      - ".github/workflows/navigation-e2e.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "e2e/**"
+      - "playwright.config.ts"
+
+concurrency:
+  group: navigation-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  navigation-click-through:
+    name: Playwright navigation crawl
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install root dev dependencies
+        run: npm ci
+
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: pnpm install --frozen-lockfile
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Prepare navigation E2E environment
+        run: |
+          if [ -n "${{ secrets.SUPABASE_URL }}" ]; then
+            echo "E2E_APP_NAV=1" >> "$GITHUB_ENV"
+            echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> "$GITHUB_ENV"
+            echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> "$GITHUB_ENV"
+            echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> "$GITHUB_ENV"
+            echo "SUPABASE_JWT_SECRET=${{ secrets.SUPABASE_JWT_SECRET }}" >> "$GITHUB_ENV"
+            echo "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> "$GITHUB_ENV"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> "$GITHUB_ENV"
+          else
+            echo "E2E_APP_NAV=0" >> "$GITHUB_ENV"
+            echo "E2E_SKIP_FIXTURE_SEED=1" >> "$GITHUB_ENV"
+            echo "SUPABASE_URL=https://placeholder.supabase.co" >> "$GITHUB_ENV"
+            echo "SUPABASE_ANON_KEY=placeholder-anon-key" >> "$GITHUB_ENV"
+            echo "SUPABASE_SERVICE_ROLE_KEY=placeholder-service-role" >> "$GITHUB_ENV"
+            echo "SUPABASE_JWT_SECRET=placeholder-jwt-secret" >> "$GITHUB_ENV"
+            echo "NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co" >> "$GITHUB_ENV"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder-anon-key" >> "$GITHUB_ENV"
+          fi
+
+      - name: Run marketing, app sidebar, and ExecutionResult navigation suites
+        run: npm run test:navigation
+        env:
+          CI: "true"
+          APP_ENV: dev
+          OPENAI_API_KEY: sk-test-openai
+          FASTAPI_BASE_URL: http://127.0.0.1:8000
+          PLAYWRIGHT_BASE_URL: http://localhost:3001
+          NEXT_PUBLIC_PLAYWRIGHT_E2E: "1"
+
+      - name: Upload Playwright report artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-navigation-artifacts
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore

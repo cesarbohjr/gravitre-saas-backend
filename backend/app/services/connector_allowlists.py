@@ -15,3 +15,7 @@ PENDING_WORKFLOW_SCHEMA_ALLOWLIST: frozenset[str] = frozenset(
     {
     }
 )
+
+from app.services.connector_output_pending_allowlist import (  # noqa: E402
+    PENDING_OUTPUT_SCHEMA_ALLOWLIST,
+)

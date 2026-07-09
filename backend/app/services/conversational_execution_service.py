@@ -8,8 +8,12 @@ from typing import Any
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.conversation_state_service import get_conversation_state_service
-from app.services.entity_link_service import build_entity_url
-from app.services.notification_service import create_user_notification
+from app.services.entity_link_service import (
+    build_connector_management_url,
+    build_entity_url,
+    resolve_execution_result_url,
+)
+from app.services.notification_emitter import emit_notification
 
 logger = get_logger(__name__)
 
@@ -42,13 +46,27 @@ class ExecutionResult:
     success: bool
     entity_type: str
     entity_id: str
-    url: str
     title: str
     body: str
-    external_url: str | None = None
+    connector_management_url: str | None = None
+    result_url: str | None = None
+    integration: str | None = None
     notification_type: str = "task_completed"
     task_label: str = ""
     structured: dict[str, Any] | None = None
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> ExecutionResult:
+        data = dict(payload or {})
+        if "result_url" not in data and "url" in data:
+            legacy_url = data.pop("url")
+            if data.get("entity_type") == "connector" and str(legacy_url or "").startswith("/connectors"):
+                data.setdefault("connector_management_url", legacy_url)
+            else:
+                data.setdefault("result_url", legacy_url)
+        data.pop("external_url", None)
+        allowed = set(cls.__dataclass_fields__)
+        return cls(**{key: value for key, value in data.items() if key in allowed})
 
 
 class ConversationalExecutionService:
@@ -206,17 +224,16 @@ class ConversationalExecutionService:
             )
             refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
             if execution.success:
+                link = ""
+                if execution.result_url:
+                    link = f"\n\n[View in Gravitre]({execution.result_url})"
                 return {
                     "stop_pipeline": True,
                     "dialogue_mode": "answer",
                     "message": (
                         f"Done — I created **{execution.title}**.\n\n"
-                        f"[View it in Gravitre]({execution.url})"
-                        + (
-                            f" · [Open external result]({execution.external_url})"
-                            if execution.external_url
-                            else ""
-                        )
+                        f"{execution.body}"
+                        f"{link}"
                     ),
                     "execution_result": execution.__dict__,
                     "task_state": refreshed,
@@ -261,7 +278,7 @@ class ConversationalExecutionService:
                 success=False,
                 entity_type="conversation",
                 entity_id=conversation_id,
-                url="/ai",
+                result_url="/ai",
                 title="Task not ready",
                 body="Missing details — continue the conversation to confirm name, purpose, or workflow goal.",
             )
@@ -296,7 +313,7 @@ class ConversationalExecutionService:
                     success=False,
                     entity_type="unknown",
                     entity_id="",
-                    url="/ai",
+                    result_url="/ai",
                     title="Unsupported task",
                     body=f"Task type {task_type} is not supported yet.",
                 )
@@ -311,21 +328,24 @@ class ConversationalExecutionService:
                 success=False,
                 entity_type=task_type,
                 entity_id="",
-                url="/ai",
+                result_url="/ai",
                 title="Execution failed",
                 body=str(exc),
             )
 
-        create_user_notification(
+        emit_notification(
             client,
             org_id=org_id,
             user_id=user_id,
-            notification_type=result.notification_type,
+            event_type=result.notification_type,
             title=result.title,
             body=result.body,
-            url=result.url,
-            entity_type=result.entity_type,
-            entity_id=result.entity_id or None,
+            entity_ref={
+                "entity_type": result.entity_type,
+                "entity_id": result.entity_id or None,
+                "result_url": result.result_url,
+            },
+            channel_hints={"bell": True, "email": False},
         )
 
         await self._state.update_task_state(
@@ -337,12 +357,12 @@ class ConversationalExecutionService:
                     {
                         "step_id": f"execute_{task_type}",
                         "label": result.task_label or result.title,
-                        "url": result.url,
+                        "url": result.result_url,
                         "entity_type": result.entity_type,
                         "entity_id": result.entity_id,
                     }
                 ],
-                "approved_actions": [{"type": task_type, "entity_id": result.entity_id, "url": result.url}],
+                "approved_actions": [{"type": task_type, "entity_id": result.entity_id, "url": result.result_url}],
             },
         )
 
@@ -373,12 +393,12 @@ class ConversationalExecutionService:
             user_id,
         )
         agent_id = str(operator["id"])
-        url = build_entity_url("agent", agent_id)
+        result_url = build_entity_url("agent", agent_id)
         return ExecutionResult(
             success=True,
             entity_type="agent",
             entity_id=agent_id,
-            url=url,
+            result_url=result_url,
             title=name,
             body=f"Created agent “{name}”" + (f" for {purpose}" if purpose else "") + ". Open the agent page to configure connectors and workflows.",
             notification_type="agent_created",
@@ -403,18 +423,18 @@ class ConversationalExecutionService:
                 success=False,
                 entity_type="workflow",
                 entity_id="",
-                url="/workflows",
+                result_url="/workflows",
                 title="Workflow creation failed",
                 body=str(output.get("error")),
             )
         workflow_id = str(output.get("id") or "")
-        url = build_entity_url("workflow", workflow_id)
+        result_url = build_entity_url("workflow", workflow_id)
         name = str(output.get("name") or goal)
         return ExecutionResult(
             success=True,
             entity_type="workflow",
             entity_id=workflow_id,
-            url=url,
+            result_url=result_url,
             title=name,
             body=f"Created draft workflow “{name}”. Open the builder to add steps and publish.",
             notification_type="workflow_created",
@@ -445,7 +465,7 @@ class ConversationalExecutionService:
                 response={
                     "answer": result.body,
                     "success": result.success,
-                    "url": result.url,
+                    "url": result.result_url,
                     "strategy_key": "conversational_execute:v1",
                 },
                 classification={

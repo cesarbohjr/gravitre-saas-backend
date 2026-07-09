@@ -26,6 +26,7 @@ from app.routers import (
     agent_tool_permissions,
     admin_intelligence,
     admin_chat,
+    activity,
     mcp_admin,
     ai_system,
     agent_council,
@@ -489,6 +490,7 @@ app.include_router(workflows.runs_router)
 app.include_router(audit.router)
 app.include_router(metrics.router)
 app.include_router(notifications.router)
+app.include_router(activity.router)
 app.include_router(onboarding.router)
 app.include_router(lite.router)
 app.include_router(entitlements.router)

@@ -101,18 +101,41 @@ def _set_trial_window(
     ).eq("org_id", org_id).execute()
 
 
+def _complete_onboarding(client, org_id: str) -> None:
+    org_row = (
+        client.table("organizations")
+        .select("settings")
+        .eq("id", org_id)
+        .limit(1)
+        .execute()
+    )
+    settings = dict((org_row.data[0].get("settings") or {}) if org_row.data else {})
+    settings["onboarding"] = {
+        "skipped": True,
+        "welcome_completed": True,
+        "checklist_dismissed": True,
+        "completed_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+        "completed_steps": ["welcome"],
+        "step_data": {},
+    }
+    client.table("organizations").update({"settings": settings}).eq("id", org_id).execute()
+
+
 def build_fixtures() -> dict:
     env = _load_env()
     client = _supabase_client(env)
     now = datetime.now(timezone.utc)
 
     expired_org, expired_user, expired_email, expired_password = _create_user(client, "expired")
+    _complete_onboarding(client, expired_org)
     _set_trial_window(client, expired_org, ends_at=now - timedelta(days=1))
 
     active_org, active_user, active_email, active_password = _create_user(client, "active")
+    _complete_onboarding(client, active_org)
     _set_trial_window(client, active_org, ends_at=now + timedelta(days=5))
 
     canceled_org, canceled_user, canceled_email, canceled_password = _create_user(client, "canceled")
+    _complete_onboarding(client, canceled_org)
     _set_trial_window(
         client,
         canceled_org,

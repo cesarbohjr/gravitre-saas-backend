@@ -374,18 +374,21 @@ async def assign_lite_work(
             environment_name="production",
         )
     try:
-        from app.services.notification_service import create_user_notification
+        from app.services.notification_emitter import emit_notification
 
-        create_user_notification(
+        emit_notification(
             client,
             org_id=org_id,
             user_id=_user["user_id"],
-            notification_type="run_started",
+            event_type="run_started",
             title="Task assigned",
             body=f"“{wf_name}” is running — you will be notified when it completes.",
-            url=f"/lite/tasks?task={run_id}",
-            entity_type="workflow_run",
-            entity_id=run_id,
+            entity_ref={
+                "entity_type": "workflow_run",
+                "entity_id": run_id,
+                "result_url": f"/lite/tasks?task={run_id}",
+            },
+            channel_hints={"bell": True, "email": False},
         )
     except Exception:  # noqa: BLE001
         pass

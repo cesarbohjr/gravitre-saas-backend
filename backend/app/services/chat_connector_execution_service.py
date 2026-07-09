@@ -14,8 +14,8 @@ from app.services.conversational_execution_service import (
     DECLINE_PATTERN,
     ExecutionResult,
 )
-from app.services.entity_link_service import build_entity_url
-from app.services.notification_service import create_user_notification
+from app.services.entity_link_service import build_connector_management_url
+from app.services.notification_emitter import emit_notification
 from app.services.risk_approval_evaluator import get_risk_approval_evaluator
 from app.services.chat_action_mapper import get_chat_action_mapper
 from app.services.chat_connector_models import INTEGRATION_ALIASES, ConnectorActionPlan, LIST_CREATE_INTENT
@@ -37,6 +37,13 @@ from app.services.connector_session_state import (
 )
 
 logger = get_logger(__name__)
+
+
+def _result_link_label(integration: str | None) -> str:
+    normalized = str(integration or "").strip()
+    if not normalized:
+        return "View result"
+    return f"View in {normalized[:1].upper()}{normalized[1:]}"
 
 CONNECTOR_MENTION = re.compile(
     r"\b(hubspot|salesforce|slack|zendesk|github|jira|stripe|pagerduty|quickbooks|crm|"
@@ -859,7 +866,7 @@ class ChatConnectorExecutionService:
                 success=False,
                 entity_type="conversation",
                 entity_id=conversation_id,
-                url="/ai",
+                result_url="/ai",
                 title="No connector task",
                 body="No pending connector action to execute.",
             )
@@ -869,7 +876,7 @@ class ChatConnectorExecutionService:
                 success=False,
                 entity_type="connector",
                 entity_id="",
-                url="/connectors",
+                connector_management_url="/connectors",
                 title="Task not ready",
                 body="Missing connector action details.",
             )
@@ -918,9 +925,10 @@ class ChatConnectorExecutionService:
                 success=False,
                 entity_type="connector",
                 entity_id="",
-                url=build_entity_url("connector", ""),
+                connector_management_url="/connectors",
                 title=plan.label,
                 body=str(exc),
+                integration=plan.integration,
                 task_label=plan.label,
             )
 
@@ -928,17 +936,19 @@ class ChatConnectorExecutionService:
         connector_id = str(observation.get("connector_id") or "")
         result_data = observation.get("result") if isinstance(observation.get("result"), dict) else {}
         external_url = self._external_url(plan.integration, plan.invoke_action, result_data, observation)
-        gravitre_url = build_entity_url("connector", connector_id) if connector_id else "/connectors"
+        connector_management_url = build_connector_management_url(connector_id)
+        result_url = external_url
 
         if not success:
             return ExecutionResult(
                 success=False,
                 entity_type="connector",
                 entity_id=connector_id,
-                url=gravitre_url,
+                connector_management_url=connector_management_url,
+                result_url=result_url,
+                integration=plan.integration,
                 title=plan.label,
                 body=str(observation.get("error") or "Connector action failed."),
-                external_url=external_url,
                 task_label=plan.label,
             )
 
@@ -947,25 +957,30 @@ class ChatConnectorExecutionService:
             success=True,
             entity_type="connector",
             entity_id=connector_id,
-            url=gravitre_url,
+            connector_management_url=connector_management_url,
+            result_url=result_url,
+            integration=plan.integration,
             title=plan.label,
             body=summary,
-            external_url=external_url,
             notification_type="task_completed",
             task_label=plan.label,
             structured=result_data,
         )
 
-        create_user_notification(
+        emit_notification(
             client,
             org_id=org_id,
             user_id=user_id,
-            notification_type=result.notification_type,
+            event_type=result.notification_type,
             title=result.title,
             body=result.body,
-            url=external_url or result.url,
-            entity_type=result.entity_type,
-            entity_id=result.entity_id or None,
+            entity_ref={
+                "entity_type": result.entity_type,
+                "entity_id": result.entity_id or None,
+                "result_url": result.result_url,
+                "integration": result.integration,
+            },
+            channel_hints={"bell": True, "email": False},
         )
 
         prior_state = await self._state.get_task_state(conversation_id, org_id, client=client)
@@ -982,7 +997,7 @@ class ChatConnectorExecutionService:
                     {
                         "step_id": f"connector_{plan.invoke_action}",
                         "label": plan.label,
-                        "url": external_url or result.url,
+                        "url": result.result_url,
                         "entity_type": "connector",
                         "entity_id": connector_id,
                     }
@@ -992,7 +1007,7 @@ class ChatConnectorExecutionService:
                         "type": plan.invoke_action,
                         "tool_name": plan.tool_name,
                         "entity_id": connector_id,
-                        "url": external_url or result.url,
+                        "url": result.result_url,
                     }
                 ],
                 **self._session_updates_after_execution(
@@ -1012,13 +1027,14 @@ class ChatConnectorExecutionService:
         task_state: dict[str, Any],
     ) -> dict[str, Any]:
         if execution.success:
-            link_line = f"[View in Gravitre]({execution.url})"
-            if execution.external_url:
-                link_line += f" · [Open external result]({execution.external_url})"
+            link_line = ""
+            if execution.result_url:
+                label = _result_link_label(execution.integration)
+                link_line = f"\n\n[{label}]({execution.result_url})"
             return {
                 "stop_pipeline": True,
                 "dialogue_mode": "answer",
-                "message": f"Done — **{execution.title}**.\n\n{execution.body}\n\n{link_line}",
+                "message": f"Done — **{execution.title}**.\n\n{execution.body}{link_line}",
                 "execution_result": execution.__dict__,
                 "task_state": task_state,
             }
@@ -1268,6 +1284,17 @@ class ChatConnectorExecutionService:
             url = result_data["issue"].get("html_url")
             if url:
                 return str(url)
+        if integration == "zendesk" and isinstance(result_data.get("ticket"), dict):
+            ticket = result_data["ticket"]
+            url = ticket.get("url")
+            if isinstance(url, str) and url.startswith(("http://", "https://")):
+                return url
+        if integration == "jira" and isinstance(result_data.get("issue"), dict):
+            issue = result_data["issue"]
+            for key in ("self", "browseUrl"):
+                url = issue.get(key)
+                if isinstance(url, str) and url.startswith(("http://", "https://")):
+                    return url
         return None
 
     @staticmethod
@@ -1312,7 +1339,7 @@ class ChatConnectorExecutionService:
             label=plan.label,
             success=result.success,
             summary=result.body,
-            url=result.external_url or result.url,
+            url=result.result_url,
             structured=structured,
         )
         if result.success:
@@ -1329,7 +1356,7 @@ class ChatConnectorExecutionService:
             {
                 "step_id": step_id,
                 "label": plan.label,
-                "url": result.external_url or result.url,
+                "url": result.result_url,
             }
         )
         session = replace(
@@ -1385,6 +1412,69 @@ class ChatConnectorExecutionService:
         if plan.invoke_action == "slack.post_message":
             channel = (result_data or {}).get("channel") or plan.args.get("channel")
             return f"Message posted to Slack #{channel}."
+        if plan.invoke_action == "hubspot.deals.create":
+            deal = result_data.get("deal") if isinstance(result_data.get("deal"), dict) else result_data
+            if isinstance(deal, dict):
+                props = deal.get("properties") if isinstance(deal.get("properties"), dict) else deal
+                name = str(props.get("dealname") or plan.args.get("dealname") or "deal").strip()
+                deal_id = deal.get("id") or props.get("hs_object_id")
+                if name and deal_id:
+                    return f'Created HubSpot deal "{name}" (id: {deal_id}).'
+                if name:
+                    return f'Created HubSpot deal "{name}".'
+        if plan.invoke_action == "hubspot.contacts.create":
+            contact = result_data.get("contact") if isinstance(result_data.get("contact"), dict) else result_data
+            if isinstance(contact, dict):
+                props = contact.get("properties") if isinstance(contact.get("properties"), dict) else contact
+                name_bits = [
+                    str(props.get("firstname") or "").strip(),
+                    str(props.get("lastname") or "").strip(),
+                ]
+                name = " ".join(bit for bit in name_bits if bit) or str(props.get("email") or "contact")
+                contact_id = contact.get("id") or props.get("hs_object_id")
+                if contact_id:
+                    return f'Created HubSpot contact {name} (id: {contact_id}).'
+                return f"Created HubSpot contact {name}."
+        if plan.invoke_action == "github.issues.create":
+            issue = result_data.get("issue")
+            if isinstance(issue, dict):
+                number = issue.get("number")
+                title = issue.get("title") or plan.args.get("title")
+                if number and title:
+                    return f'Created GitHub issue #{number}: "{title}".'
+                if number:
+                    return f"Created GitHub issue #{number}."
+        if plan.invoke_action == "zendesk.tickets.create":
+            ticket = result_data.get("ticket")
+            if isinstance(ticket, dict):
+                return (
+                    f'Created Zendesk ticket #{ticket.get("id", "")} — '
+                    f'{ticket.get("subject", "ticket")}.'
+                )
+        if plan.invoke_action == "jira.issues.create":
+            issue = result_data.get("issue") if isinstance(result_data.get("issue"), dict) else result_data
+            if isinstance(issue, dict):
+                key = issue.get("key")
+                fields = issue.get("fields") if isinstance(issue.get("fields"), dict) else {}
+                summary = fields.get("summary") or issue.get("summary") or plan.args.get("summary")
+                if key and summary:
+                    return f'Created Jira issue {key}: "{summary}".'
+                if key:
+                    return f"Created Jira issue {key}."
+        if plan.invoke_action == "gmail.messages.send":
+            return "Gmail message sent."
+        if plan.integration == "apollo" and plan.invoke_action == "apollo.lists.create":
+            label_data = result_data.get("label")
+            if isinstance(label_data, dict):
+                name = label_data.get("name") or plan.args.get("name")
+                list_id = label_data.get("id") or label_data.get("_id")
+                if name and list_id:
+                    return f'Created contact list "{name}" (id: {list_id}).'
+                if name:
+                    return f'Created contact list "{name}".'
+            name = plan.args.get("name")
+            if name:
+                return f'Created contact list "{name}".'
         return f"Completed {plan.invoke_action}."
 
     async def _record_outcomes(
@@ -1424,7 +1514,7 @@ class ChatConnectorExecutionService:
                 response={
                     "answer": result.body,
                     "success": result.success,
-                    "url": result.external_url or result.url,
+                    "url": result.result_url,
                     "strategy_key": "chat_connector_execute:v1",
                 },
                 classification={

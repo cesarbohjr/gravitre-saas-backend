@@ -1,3 +1,4 @@
+import Link from "next/link"
 import type { ReactNode } from "react"
 import type { BlogPost } from "../types"
 import { GRAVITRE_BLOG_AUTHOR } from "../authors"
@@ -599,8 +600,8 @@ export const workflowTemplatesPost: BlogPost = {
       </p>
       <p>
         Browse the full template library in the{" "}
-        <a href="/marketplace">Gravitre Marketplace</a>. Questions about a specific template or connector? The{" "}
-        <a href="/docs/guides/how-to/marketplace">Gravitre docs</a> have the details.
+        <Link href="/marketplace">Gravitre Marketplace</Link>. Questions about a specific template or connector? The{" "}
+        <Link href="/docs/guides/how-to/marketplace">Gravitre docs</Link> have the details.
       </p>
     </>
   ),

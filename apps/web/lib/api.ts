@@ -79,6 +79,7 @@ import type {
   LiteSeatsResponse,
   MesonAddonsResponse,
   NotificationListResponse,
+  ActivityFeedResponse,
   OnboardingProgress,
   LiteTask,
   LiteDeliverable,
@@ -1344,10 +1345,11 @@ export const assistantApi = {
         success?: boolean
         entity_type?: string
         entity_id?: string
-        url?: string
+        connector_management_url?: string | null
+        result_url?: string | null
+        integration?: string | null
         title?: string
         body?: string
-        external_url?: string | null
         task_label?: string
       }
       task_state?: Record<string, unknown>
@@ -2183,8 +2185,23 @@ export const notificationsApi = {
     postJson<void>(apiUrl(`/api/notifications/${id}/archive`), {}),
   delete: (id: string) =>
     deleteRequest(apiUrl(`/api/notifications/${id}`)),
-  updatePreferences: (preferences: Record<string, boolean>) =>
+  getPreferences: () =>
+    fetcher<{ preferences: Record<string, { bell_enabled: boolean; email_enabled: boolean }> }>(
+      apiUrl("/api/notifications/preferences"),
+    ),
+  updatePreferences: (preferences: Record<string, { bell_enabled: boolean; email_enabled: boolean }>) =>
     patchJson<void>(apiUrl("/api/notifications/preferences"), preferences),
+  streamUrl: () => apiUrl("/api/notifications/stream"),
+}
+
+export const activityApi = {
+  recent: (filters?: { limit?: number; source?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.limit) params.set("limit", String(filters.limit))
+    if (filters?.source) params.set("source", filters.source)
+    const query = params.toString()
+    return fetcher<ActivityFeedResponse>(apiUrl(`/api/activity/recent${query ? `?${query}` : ""}`))
+  },
 }
 
 // ============ Onboarding ============

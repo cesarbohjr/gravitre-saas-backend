@@ -690,33 +690,31 @@ def _build_stream(
                 str(exc),
             )
 
+        suggestions: list[str] = []
+        try:
+            suggestions = await asyncio.wait_for(
+                _generate_followup_suggestions(
+                    user_question=user_text,
+                    assistant_response=assistant_text,
+                    org_id=org_id,
+                    settings=settings,
+                ),
+                timeout=FOLLOWUP_SUGGESTIONS_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            logger.info(
+                "assistant followup suggestions timed out org_id=%s after %.1fs",
+                org_id,
+                FOLLOWUP_SUGGESTIONS_TIMEOUT_SECONDS,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("assistant followup suggestions skipped org_id=%s error=%s", org_id, exc)
+        if suggestions:
+            yield assistant_event_to_sse_line(sse_suggestions(suggestions))
+            cache_key = _response_cache_key(org_id, user_text)
+            _RESPONSE_CACHE[cache_key] = (time.time(), assistant_text, suggestions)
+
         yield sse_done()
-
-        async def _emit_followup_suggestions() -> None:
-            suggestions: list[str] = []
-            try:
-                suggestions = await asyncio.wait_for(
-                    _generate_followup_suggestions(
-                        user_question=user_text,
-                        assistant_response=assistant_text,
-                        org_id=org_id,
-                        settings=settings,
-                    ),
-                    timeout=FOLLOWUP_SUGGESTIONS_TIMEOUT_SECONDS,
-                )
-            except asyncio.TimeoutError:
-                logger.info(
-                    "assistant followup suggestions timed out org_id=%s after %.1fs",
-                    org_id,
-                    FOLLOWUP_SUGGESTIONS_TIMEOUT_SECONDS,
-                )
-            except Exception as exc:  # noqa: BLE001
-                logger.debug("assistant followup suggestions skipped org_id=%s error=%s", org_id, exc)
-            if suggestions:
-                cache_key = _response_cache_key(org_id, user_text)
-                _RESPONSE_CACHE[cache_key] = (time.time(), assistant_text, suggestions)
-
-        asyncio.create_task(_emit_followup_suggestions())
 
         elapsed_ms = int((time.monotonic() - start_ms) * 1000)
         perf.stop("total_response")
@@ -1264,6 +1262,7 @@ async def execute_conversation_task(
         "execution_result": execution.__dict__,
         "task_state": task_state,
         "message": execution.body if not execution.success else (
-            f"Created {execution.title}. Open {execution.url} to review."
+            f"Created {execution.title}."
+            + (f" Open {execution.result_url} to review." if execution.result_url else "")
         ),
     }

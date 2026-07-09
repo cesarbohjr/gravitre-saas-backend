@@ -175,7 +175,8 @@ async def test_plan_confirm_then_start_runs_read_step(orchestration_service):
             success=True,
             entity_type="connector",
             entity_id="conn-1",
-            url="/connectors/conn-1",
+            connector_management_url="/connectors/conn-1",
+            integration="hubspot",
             title="Search HubSpot",
             body="Found 2 contacts.",
             task_label="Search HubSpot",
@@ -259,7 +260,8 @@ async def test_step_confirm_executes_write(orchestration_service):
             success=True,
             entity_type="connector",
             entity_id="conn-2",
-            url="/connectors/conn-2",
+            connector_management_url="/connectors/conn-2",
+            integration="slack",
             title="Post to Slack",
             body="Message posted.",
             task_label="Post to Slack",
@@ -270,7 +272,11 @@ async def test_step_confirm_executes_write(orchestration_service):
             "stop_pipeline": True,
             "dialogue_mode": "answer",
             "message": "done",
-            "execution_result": {"success": True, "url": "/connectors/conn-2"},
+            "execution_result": {
+                "success": True,
+                "connector_management_url": "/connectors/conn-2",
+                "integration": "slack",
+            },
             "task_state": task_state,
         }
     )

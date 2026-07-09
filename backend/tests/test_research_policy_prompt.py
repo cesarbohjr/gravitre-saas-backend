@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.config import Settings
 from app.operators.agent_intelligence import (
     RESEARCH_POLICY,
     AgentIntelligence,
@@ -22,7 +23,14 @@ _ENGINE_SETTINGS = IntelligenceEngineSettings(validation_enabled=False)
 
 @pytest.fixture
 def intelligence() -> AgentIntelligence:
-    settings = SimpleNamespace(disable_ai=False, rag_top_k=5)
+    settings = Settings(
+        app_env="dev",
+        supabase_url="https://test.supabase.co",
+        supabase_anon_key="anon-test",
+        supabase_service_role_key="service-role-test",
+        supabase_jwt_secret="jwt-secret-test",
+        openai_api_key="sk-test-openai",
+    )
     react = MagicMock()
     react.run = AsyncMock(
         return_value=ReActResult(
@@ -46,6 +54,10 @@ def intelligence() -> AgentIntelligence:
     intel = AgentIntelligence(settings=settings, react_engine=react, unified_retrieval=unified)
     intel.tool_registry = MagicMock()
     intel.tool_registry.list_connected_integrations.return_value = ["hubspot"]
+    intel.tool_registry.enrich_connected_integrations = AsyncMock(
+        side_effect=lambda _client, _org_id, connected: connected
+    )
+    intel.tool_registry.get_available_tools = AsyncMock(return_value=[])
     intel.tool_registry.get_tools_for_agent.return_value = []
     return intel
 
@@ -193,16 +205,20 @@ async def test_policy_appears_for_assistant_streaming(intelligence: AgentIntelli
                                 ),
                             ):
                                 with patch_agent_streaming_dialogue_pipeline():
-                                    events = []
-                                    async for event in intelligence.execute_task_streaming(
-                                        org_id="org-1",
-                                        user_id="user-1",
-                                        query="What is happening externally?",
-                                        mode="standard",
-                                        requested_tools=None,
-                                        client=client,
-                                    ):
-                                        events.append(event)
+                                    with patch(
+                                        "app.services.mcp_client_service.get_mcp_client_service",
+                                    ) as mcp_service:
+                                        mcp_service.return_value.get_enabled_tools_for_org = AsyncMock(return_value=[])
+                                        events = []
+                                        async for event in intelligence.execute_task_streaming(
+                                            org_id="org-1",
+                                            user_id="user-1",
+                                            query="Summarize our pipeline status",
+                                            mode="standard",
+                                            requested_tools=None,
+                                            client=client,
+                                        ):
+                                            events.append(event)
 
     assert captured["system_prompt"]
     assert "## Research Policy" in captured["system_prompt"]
@@ -268,16 +284,20 @@ async def test_policy_appears_for_agent_chat_ui(intelligence: AgentIntelligence)
                                             return_value="",
                                         ):
                                             with patch_agent_streaming_dialogue_pipeline():
-                                                async for _ in intelligence.execute_task_streaming(
-                                                    org_id="org-1",
-                                                    user_id="user-1",
-                                                    query="Pipeline risks",
-                                                    mode="agent",
-                                                    requested_tools=scoped_tools,
-                                                    agent_id="agent-1",
-                                                    client=client,
-                                                ):
-                                                    pass
+                                                with patch(
+                                                    "app.services.mcp_client_service.get_mcp_client_service",
+                                                ) as mcp_service:
+                                                    mcp_service.return_value.get_enabled_tools_for_org = AsyncMock(return_value=[])
+                                                    async for _ in intelligence.execute_task_streaming(
+                                                        org_id="org-1",
+                                                        user_id="user-1",
+                                                        query="Pipeline risks",
+                                                        mode="agent",
+                                                        requested_tools=scoped_tools,
+                                                        agent_id="agent-1",
+                                                        client=client,
+                                                    ):
+                                                        pass
 
     assert "## Research Policy" in captured["system_prompt"]
     assert resolve_assistant_tool_names("agent", scoped_tools)

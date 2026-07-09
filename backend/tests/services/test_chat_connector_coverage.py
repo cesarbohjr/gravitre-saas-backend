@@ -124,6 +124,10 @@ async def test_high_risk_write_cannot_auto_run_without_approval():
         service,
         "_evaluate_risk",
         AsyncMock(return_value={"requires_approval": True, "approval_reason": "Write action"}),
+    ), patch.object(
+        service,
+        "_verify_plan_executable",
+        return_value=None,
     ), patch.object(service, "execute_plan", AsyncMock()) as mock_execute:
         result = await service.process_turn(
             org_id="org-1",

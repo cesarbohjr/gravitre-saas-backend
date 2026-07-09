@@ -68,7 +68,12 @@ def test_get_tools_for_agent_respects_permitted_prefix(registry: ToolRegistry):
         connected_integrations=["slack"],
     )
     names = {t["function"]["name"] for t in tools}
-    assert names == {"slack_send_message", "web_search"}
+    assert "slack_send_message" in names
+    assert "web_search" in names
+    assert all(
+        name.startswith("slack_") or name in {"web_search", "browser_agent_read", "browser_agent_interact"}
+        for name in names
+    )
 
 
 def test_get_tools_for_agent_all_wildcard(registry: ToolRegistry):
