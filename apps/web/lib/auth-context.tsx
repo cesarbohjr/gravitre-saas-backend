@@ -13,7 +13,31 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
-const AUTH_INIT_TIMEOUT_MS = 5000
+const AUTH_INIT_TIMEOUT_MS = 12_000
+
+async function readInitialAuthState(): Promise<{ user: User | null; session: Session | null }> {
+  const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession()
+  if (sessionError) {
+    throw sessionError
+  }
+  if (session?.user) {
+    return { user: session.user, session }
+  }
+
+  const { data: { user }, error: userError } = await withTimeout(
+    supabaseClient.auth.getUser(),
+    AUTH_INIT_TIMEOUT_MS,
+  )
+  if (userError) {
+    throw userError
+  }
+  if (!user) {
+    return { user: null, session: null }
+  }
+
+  const { data: { session: validatedSession } } = await supabaseClient.auth.getSession()
+  return { user, session: validatedSession ?? null }
+}
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -42,23 +66,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let mounted = true
 
-    // Validate with Supabase before trusting local session storage.
-    withTimeout(supabaseClient.auth.getUser(), AUTH_INIT_TIMEOUT_MS)
-      .then(({ data: { user } }) => {
+    // Hydrate from local session first; validate with Supabase without blocking the shell.
+    withTimeout(readInitialAuthState(), AUTH_INIT_TIMEOUT_MS)
+      .then(({ user, session }) => {
         if (!mounted) return
-        setUser(user ?? null)
-        if (user) {
-          void supabaseClient.auth.getSession().then(({ data: { session } }) => {
-            if (!mounted) return
-            setSession(session)
-          })
-        } else {
-          setSession(null)
-        }
+        setUser(user)
+        setSession(session)
       })
-      .catch((err) => {
+      .catch(async (err) => {
         console.warn("[v0] Auth session check failed:", err)
         if (!mounted) return
+        try {
+          const { data: { session } } = await supabaseClient.auth.getSession()
+          if (session?.user) {
+            setUser(session.user)
+            setSession(session)
+            return
+          }
+        } catch {
+          // fall through to signed-out state
+        }
         setSession(null)
         setUser(null)
       })
