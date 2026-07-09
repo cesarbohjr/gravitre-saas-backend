@@ -67,10 +67,11 @@ export function HardNavigation() {
       if (url.origin !== window.location.origin) return
       if (url.protocol !== "http:" && url.protocol !== "https:") return
 
-      // In-page anchor (same path + search, only the hash differs): let the
-      // browser scroll natively instead of triggering a full reload.
+      // Same-page click (identical path + search): never trigger a full
+      // reload. This covers in-page hash scrolls as well as `href="#"`
+      // placeholder links, letting the browser handle them natively.
       const samePage = url.pathname === window.location.pathname && url.search === window.location.search
-      if (samePage && url.hash) return
+      if (samePage) return
 
       // This is a genuine in-app navigation. Preempt next/link's (no-op) soft
       // navigation and perform a reliable full navigation instead.
