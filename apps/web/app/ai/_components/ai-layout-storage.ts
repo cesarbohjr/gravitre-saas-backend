@@ -85,21 +85,5 @@ export function resolveBlockColumn(
   blockId: ResultBlockId,
   columns: Partial<Record<ResultBlockId, LayoutColumn>>,
 ): LayoutColumn {
-  return columns[blockId] ?? "rail"
-}
-
-/** One-time migration: layout panels belong on the right rail, not in the chat canvas. */
-export function migrateLayoutColumnsToRail(
-  enabled: ResultBlockId[],
-  columns: Partial<Record<ResultBlockId, LayoutColumn>>,
-): Partial<Record<ResultBlockId, LayoutColumn>> {
-  let changed = false
-  const next = { ...columns }
-  for (const blockId of enabled) {
-    if (next[blockId] !== "rail") {
-      next[blockId] = "rail"
-      changed = true
-    }
-  }
-  return changed ? next : columns
+  return columns[blockId] ?? "main"
 }

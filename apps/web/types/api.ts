@@ -670,25 +670,6 @@ export interface NotificationListResponse {
   unread_count: number
 }
 
-export interface ActivityEvent {
-  id: string
-  source: string
-  event_type: string
-  title: string
-  body: string
-  status: "completed" | "failed" | "running" | string
-  entity_type?: string
-  entity_id?: string
-  url?: string
-  integration?: string
-  metadata?: Record<string, unknown>
-  created_at: string
-}
-
-export interface ActivityFeedResponse {
-  events: ActivityEvent[]
-}
-
 // ============ Onboarding ============
 export interface OnboardingStep {
   id: string

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { usePathname, useRouter } from "next/navigation"
+import { useState, useEffect, useCallback, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Icon, type IconName } from "@/lib/icons"
 import {
@@ -82,13 +82,6 @@ export function GlobalCommandBar() {
   const [query, setQuery] = useState("")
   const [selectedIndex, setSelectedIndex] = useState(0)
   const router = useRouter()
-  const pathname = usePathname()
-
-  // Close on navigation so the full-viewport backdrop cannot block sidebar clicks.
-  useEffect(() => {
-    setIsOpen(false)
-    setQuery("")
-  }, [pathname])
 
   // Filter items based on query
   const filteredItems = useCallback(() => {
@@ -212,7 +205,7 @@ export function GlobalCommandBar() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-40 bg-black/70 backdrop-blur-md md:left-60"
+              className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md"
               onClick={() => setIsOpen(false)}
             >
               {/* Ambient orbs in backdrop */}

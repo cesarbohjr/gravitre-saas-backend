@@ -13,8 +13,6 @@ export async function proxy(request: NextRequest) {
 
   const { response: supabaseResponse, user } = await updateSession(request)
 
-  const playwrightE2ePaths = ["/e2e"]
-
   const publicPaths = [
     "/",
     "/login",
@@ -43,7 +41,6 @@ export async function proxy(request: NextRequest) {
     "/favicon",
     "/robots.txt",
     "/sitemap",
-    ...playwrightE2ePaths,
   ]
 
   const isPublicPath = publicPaths.some(

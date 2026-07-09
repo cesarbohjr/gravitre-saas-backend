@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
+import Image from "next/image"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { Button } from "@/components/ui/button"
 import { GlobalCommandBar } from "./global-command-bar"
 import { NotificationCenter } from "./notification-center"
@@ -24,14 +26,8 @@ import { MesonToolbarTrigger } from "@/components/gravitre/meson-toolbar-popup"
 import { cn } from "@/lib/utils"
 import { Icon } from "@/lib/icons"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
-import {
-  OrganizationLogoAvatar,
-  OrganizationSectionIcon,
-} from "@/components/gravitre/organization-logo"
 import { useViewMode } from "@/lib/view-mode-context"
 import { useAuth } from "@/lib/auth-context"
-import { organizationsApi } from "@/lib/api"
-import type { Organization } from "@/types/api"
 import {
   getSelectedEnvironmentFromStorage,
   setSelectedEnvironmentInStorage,
@@ -45,39 +41,37 @@ import {
   invalidateOrgCache,
   setSelectedOrgInStorage,
 } from "@/lib/org-context"
-import { fetcher as apiFetcher } from "@/lib/fetcher"
 
 interface TopBarProps {
   title?: string
   onMenuClick?: () => void
 }
 
-const FALLBACK_ORGS: Organization[] = [
-  { id: DEFAULT_DEMO_ORG_ID, name: "Acme Corp" },
-  { id: SECONDARY_DEMO_ORG_ID, name: "Gravitre Labs" },
-]
+function OrgBrandMark({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[#0d3b36] ring-1 ring-emerald-500/15",
+        className,
+      )}
+    >
+      <Image
+        src="/images/gravitre-icon-white.png"
+        alt=""
+        width={12}
+        height={12}
+        className="h-3 w-3 object-contain"
+        aria-hidden
+      />
+    </div>
+  )
+}
 
 export function TopBar({ title, onMenuClick }: TopBarProps) {
   const [environment, setEnvironment] = useState<AppEnvironment>(() => getSelectedEnvironmentFromStorage())
-  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(() => getSelectedOrgFromStorage()?.id ?? null)
+  const [org, setOrg] = useState(() => getSelectedOrgFromStorage()?.name ?? "Acme Corp")
   const { mode, setMode, isLite } = useViewMode()
   const { user, signOut } = useAuth()
-
-  const { data: orgListData } = useSWR<{ organizations: Organization[] }>(
-    user ? "organizations:topbar" : null,
-    () => organizationsApi.list(),
-    { revalidateOnFocus: false },
-  )
-
-  const organizations = useMemo(() => {
-    const rows = orgListData?.organizations ?? []
-    return rows.length > 0 ? rows : FALLBACK_ORGS
-  }, [orgListData])
-
-  const currentOrg = useMemo(() => {
-    const storedId = selectedOrgId ?? getSelectedOrgFromStorage()?.id
-    return organizations.find((org) => org.id === storedId) ?? organizations[0] ?? null
-  }, [organizations, selectedOrgId])
 
   // Live profile stats (real data, no mocks). Falls back to "—" while loading/unavailable.
   const { data: overviewData } = useSWR<{ activeWorkflows?: number; successRate?: number }>(
@@ -110,7 +104,9 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
 
   useEffect(() => {
     void ensureSelectedOrg().then((orgId) => {
-      if (orgId) setSelectedOrgId(orgId)
+      const stored = getSelectedOrgFromStorage()
+      if (stored?.name) setOrg(stored.name)
+      else if (orgId) setOrg("Organization")
     })
     setEnvironment(getSelectedEnvironmentFromStorage())
     const onEnvChange = (event: Event) => {
@@ -127,7 +123,7 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
   }
 
   const handleOrgChange = (nextOrgId: string, nextOrgName: string) => {
-    setSelectedOrgId(nextOrgId)
+    setOrg(nextOrgName)
     setSelectedOrgInStorage({ id: nextOrgId, name: nextOrgName })
     invalidateOrgCache()
     window.location.reload()
@@ -150,51 +146,48 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
       <header className="flex h-12 sm:h-14 items-center justify-between border-b border-border bg-background px-3 sm:px-4">
         {/* Left side - Menu + Org + Environment + Page title */}
         <div className="flex items-center gap-3">
-          {/* Mobile-only drawer toggle — desktop sidebar is always visible */}
+          {/* Nav toggle — mobile drawer; tablet+ expands icon rail to labels */}
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 md:hidden"
+            className="h-8 w-8"
             onClick={onMenuClick}
           >
             <Icon name="menu" size="lg" />
-            <span className="sr-only">Open navigation</span>
+            <span className="sr-only">Toggle navigation</span>
           </Button>
 
-          {/* Org Selector — modal={false} avoids body scroll-lock that can stick after AppShell remounts */}
-          <DropdownMenu modal={false}>
+          {/* Org Selector */}
+          <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-8 gap-2 px-2 text-xs font-medium hover:bg-accent"
               >
-                <OrganizationSectionIcon />
-                <span className="hidden sm:inline">Organization</span>
+                <OrgBrandMark />
+                <span className="hidden sm:inline">{org}</span>
                 <Icon name="caretDown" size="xs" className="text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
-              {organizations.map((organization) => (
-                <DropdownMenuItem
-                  key={organization.id}
-                  onClick={() => handleOrgChange(organization.id, organization.name)}
-                  className="gap-2"
-                >
-                  <OrganizationLogoAvatar
-                    name={organization.name}
-                    logoUrl={organization.logo_url}
-                    size="xs"
-                  />
-                  <span className="flex-1 truncate">{organization.name}</span>
-                  {currentOrg?.id === organization.id ? (
-                    <Icon name="check" size="xs" className="text-emerald-500 shrink-0" />
-                  ) : null}
-                </DropdownMenuItem>
-              ))}
+            <DropdownMenuContent align="start" className="w-48">
+              <DropdownMenuItem
+                onClick={() => handleOrgChange(DEFAULT_DEMO_ORG_ID, "Acme Corp")}
+                className="gap-2"
+              >
+                <OrgBrandMark />
+                Acme Corp
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleOrgChange(SECONDARY_DEMO_ORG_ID, "Gravitre Labs")}
+                className="gap-2"
+              >
+                <OrgBrandMark />
+                Gravitre Labs
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/settings/organizations" className="flex items-center gap-2 text-muted-foreground">
+              <DropdownMenuItem className="gap-2 text-muted-foreground cursor-pointer" asChild>
+                <Link href="/settings/organizations">
                   <Icon name="settings" size="sm" />
                   Manage organizations
                 </Link>
@@ -205,7 +198,7 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
           <span className="text-muted-foreground/40 hidden sm:inline">/</span>
 
           {/* Environment Selector */}
-          <DropdownMenu modal={false}>
+          <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
@@ -295,7 +288,7 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
           <NotificationCenter />
 
           {/* User Avatar */}
-          <DropdownMenu modal={false}>
+          <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-accent group relative p-0">
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full opacity-0 group-hover:opacity-50 blur transition-opacity duration-300" />
@@ -346,8 +339,8 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
               </div>
               
               <div className="p-1.5">
-                <DropdownMenuItem asChild>
-                  <Link href="/settings/profile" className="flex items-center gap-3 rounded-lg px-3 py-2.5">
+                <DropdownMenuItem className="gap-3 cursor-pointer rounded-lg px-3 py-2.5 transition-colors" asChild>
+                  <Link href="/settings/profile">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
                       <Icon name="user" size="sm" className="text-blue-500" />
                     </div>
@@ -357,8 +350,8 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
                     </div>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/settings" className="flex items-center gap-3 rounded-lg px-3 py-2.5">
+                <DropdownMenuItem className="gap-3 cursor-pointer rounded-lg px-3 py-2.5 transition-colors" asChild>
+                  <Link href="/settings">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary">
                       <Icon name="settings" size="sm" className="text-muted-foreground" />
                     </div>
@@ -368,8 +361,8 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
                     </div>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/settings?section=team" className="flex items-center gap-3 rounded-lg px-3 py-2.5">
+                <DropdownMenuItem className="gap-3 cursor-pointer rounded-lg px-3 py-2.5 transition-colors" asChild>
+                  <Link href="/settings?section=team">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary">
                       <Icon name="team" size="sm" className="text-muted-foreground" />
                     </div>
@@ -379,8 +372,8 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
                     </div>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/settings/billing" className="flex items-center gap-3 rounded-lg px-3 py-2.5">
+                <DropdownMenuItem className="gap-3 cursor-pointer rounded-lg px-3 py-2.5 transition-colors" asChild>
+                  <Link href="/settings/billing">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
                       <Icon name="billing" size="sm" className="text-emerald-500" />
                     </div>
@@ -396,8 +389,8 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
               <DropdownMenuSeparator className="my-0" />
               
               <div className="p-1.5">
-                <DropdownMenuItem asChild>
-                  <Link href="/docs" className="flex items-center gap-3 rounded-lg px-3 py-2">
+                <DropdownMenuItem className="gap-3 cursor-pointer rounded-lg px-3 py-2" asChild>
+                  <Link href="/docs">
                     <Icon name="help" size="sm" className="text-muted-foreground" />
                     <span className="text-sm">Help & Documentation</span>
                   </Link>

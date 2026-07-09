@@ -20,7 +20,6 @@ import {
   Filter
 } from "lucide-react"
 import { useState } from "react"
-import { guideHref } from "@/lib/marketing-guide-links"
 
 const categories = [
   { id: "all", label: "All Guides", icon: BookOpen },
@@ -226,7 +225,7 @@ export default function GuidesPage() {
             {featuredGuides.map((guide, i) => (
               <motion.a
                 key={guide.title}
-                href={guideHref(guide.title)}
+                href={`/guides/${guide.title.toLowerCase().replace(/\s+/g, '-')}`}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -295,7 +294,7 @@ export default function GuidesPage() {
             {filteredGuides.map((guide, i) => (
               <motion.a
                 key={guide.title}
-                href={guideHref(guide.title)}
+                href={`/guides/${guide.title.toLowerCase().replace(/\s+/g, '-')}`}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
