@@ -4,7 +4,6 @@ import { useState, useEffect, startTransition } from "react"
 import useSWR, { mutate } from "swr"
 import Link from "next/link"
 import { Sidebar } from "./sidebar"
-import { HardNavigation } from "./hard-navigation"
 import { TopBar } from "./top-bar"
 import { CommandPalette } from "./command-palette"
 import { GoalWorkflowWizard } from "./goal-workflow-wizard"
@@ -322,7 +321,6 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
 
   return (
     <MesonToolbarProvider>
-    <HardNavigation />
     <div className="flex h-screen overflow-hidden bg-background">
         <Sidebar
           isOpen={sidebarOpen}
