@@ -73,16 +73,8 @@ function daysLeft(isoDate: string): number {
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
 }
 
-const NAV_EXPANDED_STORAGE_KEY = "gravitre-nav-expanded"
-
-function readNavExpandedPreference(): boolean {
-  if (typeof window === "undefined") return false
-  return localStorage.getItem(NAV_EXPANDED_STORAGE_KEY) === "true"
-}
-
 export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [navExpanded, setNavExpanded] = useState(false)
   const [goalWizardOpen, setGoalWizardOpen] = useState(false)
   const [trialBannerDismissed, setTrialBannerDismissed] = useState(
     () =>
@@ -105,30 +97,8 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
 
   useGlobalWorkShortcuts()
 
-  useEffect(() => {
-    setNavExpanded(readNavExpandedPreference())
-  }, [])
-
-  const handleMenuClick = () => {
-    if (typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches) {
-      setNavExpanded((prev) => {
-        const next = !prev
-        localStorage.setItem(NAV_EXPANDED_STORAGE_KEY, String(next))
-        return next
-      })
-      return
-    }
-    setSidebarOpen(true)
-  }
-
-  const handleToggleNavExpanded = () => {
-    setNavExpanded((prev) => {
-      const next = !prev
-      localStorage.setItem(NAV_EXPANDED_STORAGE_KEY, String(next))
-      return next
-    })
-  }
-
+  // Menu button only opens the mobile drawer — desktop nav is always visible.
+  const handleMenuClick = useCallback(() => setSidebarOpen(true), [])
   const closeSidebar = useCallback(() => setSidebarOpen(false), [])
 
   // Fetch billing status — refresh on focus so web/mobile stay aligned after expiry.
@@ -328,12 +298,7 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
   return (
     <MesonToolbarProvider>
     <div className="grid h-screen grid-cols-1 overflow-hidden bg-background md:grid-cols-[auto_minmax(0,1fr)]">
-        <Sidebar
-          isOpen={sidebarOpen}
-          onClose={closeSidebar}
-          navExpanded={navExpanded}
-          onToggleNavExpanded={handleToggleNavExpanded}
-        />
+        <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
         <div className="relative z-0 flex min-w-0 flex-col overflow-hidden">
           <TopBar title={title} onMenuClick={handleMenuClick} />
 

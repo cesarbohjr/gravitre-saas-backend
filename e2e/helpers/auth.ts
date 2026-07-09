@@ -60,7 +60,6 @@ export async function clearTrialBannerDismiss(page: Page) {
   })
 }
 
-const NAV_EXPANDED_STORAGE_KEY = "gravitre-nav-expanded"
 const WELCOME_DISMISSED_STORAGE_KEY = "gravitre-welcome-dismissed"
 
 export async function skipOnboardingForOrg(page: Page, orgId: string) {
@@ -143,13 +142,10 @@ export async function prepareAdminAppSession(
   await loginWithPassword(page, user.email, user.password)
   await setSelectedOrg(page, user.orgId)
   await clearTrialBannerDismiss(page)
-  await page.evaluate(
-    ({ navKey, welcomeKey }) => {
-      window.localStorage.setItem(navKey, "true")
-      window.localStorage.setItem(welcomeKey, "true")
-    },
-    { navKey: NAV_EXPANDED_STORAGE_KEY, welcomeKey: WELCOME_DISMISSED_STORAGE_KEY },
-  )
+  await page.evaluate((welcomeKey) => {
+    window.localStorage.setItem(welcomeKey, "true")
+    window.localStorage.removeItem("gravitre-nav-expanded")
+  }, WELCOME_DISMISSED_STORAGE_KEY)
 
   await openProductPage(page, user.orgId, landingPath)
   await skipOnboardingForOrg(page, user.orgId)
@@ -163,10 +159,5 @@ export async function prepareAdminAppSession(
   const upgradeDismiss = page.getByRole("button", { name: "Not now" })
   if (await upgradeDismiss.isVisible().catch(() => false)) {
     await upgradeDismiss.click()
-  }
-
-  const expandNav = page.getByRole("button", { name: "Expand navigation" })
-  if (await expandNav.isVisible().catch(() => false)) {
-    await expandNav.click()
   }
 }

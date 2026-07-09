@@ -26,8 +26,6 @@ import { SidebarNavLink } from "./sidebar-nav-link"
 interface SidebarProps {
   isOpen?: boolean
   onClose?: () => void
-  navExpanded?: boolean
-  onToggleNavExpanded?: () => void
 }
 
 function buildNavigation(
@@ -59,10 +57,9 @@ function buildNavigation(
   }))
 }
 
-export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpanded }: SidebarProps) {
+export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
   const isMobile = useIsMobile()
-  const showNavTooltip = !isMobile && !navExpanded
   const [collapsedSections, setCollapsedSections] = useState<string[]>([])
   const { isLite } = useViewMode()
   const { effectiveLogoUrl } = useEnterpriseBranding()
@@ -110,11 +107,8 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
       name={item.name}
       icon={item.icon}
       isActive={isSidebarItemActive(pathname, item.href)}
-      navExpanded={navExpanded}
-      showTooltip={showNavTooltip}
       badge={item.badge}
       emphasis={item.emphasis}
-      hint={item.hint}
       colors={colors}
       onNavigate={handleNavClick}
     />
@@ -133,11 +127,9 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
 
       <aside
         className={cn(
-          "flex h-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[transform,width] duration-300 ease-in-out",
-          "w-64",
+          "flex h-full w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-300 ease-in-out",
           // Desktop/tablet: stay in document flow so main content cannot stack over nav hits.
-          "md:relative md:z-30 md:translate-x-0 md:visible md:pointer-events-auto md:flex-shrink-0",
-          navExpanded ? "md:w-60" : "md:w-16",
+          "md:relative md:z-30 md:translate-x-0 md:visible md:pointer-events-auto",
           // Mobile: off-canvas drawer only below md breakpoint.
           "max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50",
           isOpen
@@ -146,66 +138,33 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
         )}
         aria-hidden={!isOpen && isMobile ? true : undefined}
       >
-        <div className="flex h-16 shrink-0 items-center justify-between border-b border-sidebar-border px-3 md:px-2">
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-sidebar-border px-3">
           <Link href="/" className="flex min-w-0 flex-1 items-center" onClick={handleNavClick}>
             {effectiveLogoUrl ? (
-              <>
-                <div className={cn("hidden md:flex h-10 w-10 items-center justify-center", navExpanded && "md:hidden")}>
-                  <img
-                    src={effectiveLogoUrl}
-                    alt="Workspace logo"
-                    className="h-10 w-10 object-contain"
-                    crossOrigin="anonymous"
-                  />
-                </div>
-                <div className={cn(navExpanded ? "md:block" : "md:hidden")}>
-                  <img
-                    src={effectiveLogoUrl}
-                    alt="Workspace logo"
-                    className="object-contain"
-                    style={{ height: "40px", width: "auto", maxWidth: "180px" }}
-                    crossOrigin="anonymous"
-                  />
-                </div>
-              </>
+              <img
+                src={effectiveLogoUrl}
+                alt="Workspace logo"
+                className="object-contain"
+                style={{ height: "40px", width: "auto", maxWidth: "180px" }}
+                crossOrigin="anonymous"
+              />
             ) : (
               <>
-                <div className={cn("hidden md:flex h-10 w-10 items-center justify-center", navExpanded && "md:hidden")}>
-                  <img src="/images/gravitre-icon-black.png" alt="Gravitre" className="h-10 w-10 object-contain dark:hidden" />
-                  <img
-                    src="/images/gravitre-icon-white.png"
-                    alt="Gravitre"
-                    className="hidden h-10 w-10 object-contain dark:block"
-                  />
-                </div>
-                <div className={cn(navExpanded ? "md:block" : "md:hidden")}>
-                  <img
-                    src="/images/gravitre-logo-black.png"
-                    alt="Gravitre"
-                    className="dark:hidden"
-                    style={{ height: "40px", width: "auto" }}
-                  />
-                  <img
-                    src="/images/gravitre-logo-white.png"
-                    alt="Gravitre"
-                    className="hidden dark:block"
-                    style={{ height: "40px", width: "auto" }}
-                  />
-                </div>
+                <img
+                  src="/images/gravitre-logo-black.png"
+                  alt="Gravitre"
+                  className="dark:hidden"
+                  style={{ height: "40px", width: "auto" }}
+                />
+                <img
+                  src="/images/gravitre-logo-white.png"
+                  alt="Gravitre"
+                  className="hidden dark:block"
+                  style={{ height: "40px", width: "auto" }}
+                />
               </>
             )}
           </Link>
-          {onToggleNavExpanded ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hidden h-8 w-8 shrink-0 md:inline-flex hover:bg-sidebar-accent"
-              onClick={onToggleNavExpanded}
-              aria-label={navExpanded ? "Collapse navigation" : "Expand navigation"}
-            >
-              <Icon name={navExpanded ? "caretLeft" : "caretRight"} size="sm" />
-            </Button>
-          ) : null}
           <Button
             variant="ghost"
             size="icon"
@@ -217,49 +176,41 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
           </Button>
         </div>
 
-        <nav className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain py-3 px-1.5 md:px-2" aria-label="Main">
+        <nav className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain py-3 px-2" aria-label="Main">
           {navigation.map((group, groupIndex) => {
             const colors = SIDEBAR_SECTION_COLORS[group.group]
             const isCollapsed = collapsedSections.includes(group.group)
-            const showSectionItems = !(isCollapsed && navExpanded)
 
             return (
               <section key={group.group} className="mb-0.5">
                 {groupIndex > 0 ? <div className="mx-2 mb-2 mt-1.5 h-px bg-border/40" aria-hidden /> : null}
 
-                <div
-                  className={cn(
-                    "mb-0.5 flex items-center justify-between px-2 py-1",
-                    navExpanded ? "md:flex" : "md:hidden",
-                  )}
-                >
+                <div className="mb-0.5 flex items-center justify-between px-2 py-1">
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
                     {group.group}
                   </span>
-                  {navExpanded ? (
-                    <button
-                      type="button"
-                      aria-expanded={!isCollapsed}
-                      aria-label={
-                        isCollapsed ? `Expand ${group.group} section` : `Collapse ${group.group} section`
-                      }
-                      onClick={() => toggleSection(group.group)}
-                      className="hidden rounded p-1 hover:bg-sidebar-accent/30 md:inline-flex"
-                    >
-                      <Icon
-                        name="caretDown"
-                        size="xs"
-                        className={cn(
-                          "text-muted-foreground/30 transition-transform duration-200",
-                          isCollapsed && "-rotate-90",
-                        )}
-                      />
-                    </button>
-                  ) : null}
+                  <button
+                    type="button"
+                    aria-expanded={!isCollapsed}
+                    aria-label={
+                      isCollapsed ? `Expand ${group.group} section` : `Collapse ${group.group} section`
+                    }
+                    onClick={() => toggleSection(group.group)}
+                    className="rounded p-1 hover:bg-sidebar-accent/30"
+                  >
+                    <Icon
+                      name="caretDown"
+                      size="xs"
+                      className={cn(
+                        "text-muted-foreground/30 transition-transform duration-200",
+                        isCollapsed && "-rotate-90",
+                      )}
+                    />
+                  </button>
                 </div>
 
-                {showSectionItems ? (
-                  <ul className="space-y-px md:space-y-1 xl:space-y-px">
+                {!isCollapsed ? (
+                  <ul className="space-y-px">
                     {group.items.map((item) => (
                       <li key={`${item.href}-${item.name}`}>{renderItem(item, colors)}</li>
                     ))}
@@ -270,23 +221,20 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
           })}
         </nav>
 
-        <div className="shrink-0 border-t border-sidebar-border px-2 py-2.5 md:px-2">
-          <div className={cn("flex items-center justify-between", navExpanded ? "md:justify-between" : "md:justify-center")}>
+        <div className="shrink-0 border-t border-sidebar-border px-2 py-2.5">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-sm">
                 <Icon name="shield" size="xs" className="text-white" />
               </div>
-              <div className={cn("flex flex-col", navExpanded ? "md:flex" : "md:hidden")}>
+              <div className="flex flex-col">
                 <span className="text-[11px] font-medium text-foreground">Gravitre</span>
                 <span className="text-[9px] text-muted-foreground/60">v1.2.0</span>
               </div>
             </div>
             <span
               title="All systems operational"
-              className={cn(
-                "h-2 w-2 cursor-help rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]",
-                navExpanded ? "md:inline-block" : "md:hidden",
-              )}
+              className="h-2 w-2 cursor-help rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]"
             />
           </div>
         </div>
