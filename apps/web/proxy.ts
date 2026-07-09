@@ -41,6 +41,8 @@ export async function proxy(request: NextRequest) {
     "/favicon",
     "/robots.txt",
     "/sitemap",
+    // Playwright ExecutionResult harness (page itself 404s unless PLAYWRIGHT_E2E=1)
+    "/e2e",
   ]
 
   const isPublicPath = publicPaths.some(
