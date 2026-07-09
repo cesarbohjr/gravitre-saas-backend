@@ -11,6 +11,7 @@ import { SURFACE_COPY } from "@/lib/surface-copy"
 import { useViewMode } from "@/lib/view-mode-context"
 import useSWR from "swr"
 import { useOnboardingProgress } from "@/hooks/use-onboarding-progress"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { useEnterpriseBranding } from "@/lib/enterprise-branding-context"
 import { useAuth } from "@/lib/auth-context"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
@@ -182,6 +183,7 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpanded }: SidebarProps) {
   const pathname = usePathname()
   const [collapsedSections, setCollapsedSections] = useState<string[]>([])
+  const isMobile = useIsMobile()
   const { isLite } = useViewMode()
   const { effectiveLogoUrl } = useEnterpriseBranding()
   const { user } = useAuth()
@@ -381,10 +383,13 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
                   <ul className="mt-0.5 space-y-px md:space-y-1 xl:space-y-px">
                     {group.items.map((item) => {
                       const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
-                      return (
-                        <li key={item.name}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
+                      // Only wrap with a tooltip on the collapsed desktop rail, where
+                      // labels are hidden and the tooltip adds value. On mobile (and the
+                      // expanded rail) the Radix tooltip trigger intercepts the tap and
+                      // blocks navigation — the original "menu opens, items dead" bug —
+                      // so we render a bare Link there instead.
+                      const showTooltip = !isMobile && !navExpanded
+                      const linkEl = (
                               <Link
                                 href={item.href}
                                 onClick={onClose}
@@ -433,20 +438,28 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
                                   </span>
                                 )}
                               </Link>
-                            </TooltipTrigger>
-                            <TooltipContent
-                              side="right"
-                              className={cn(
-                                "max-w-xs text-xs hidden md:block",
-                                navExpanded && "md:hidden",
-                              )}
-                            >
-                              <p className="font-medium">{item.name}</p>
-                              {item.hint ? (
-                                <p className="mt-0.5 text-muted-foreground">{item.hint}</p>
-                              ) : null}
-                            </TooltipContent>
-                          </Tooltip>
+                      )
+                      return (
+                        <li key={item.name}>
+                          {showTooltip ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>{linkEl}</TooltipTrigger>
+                              <TooltipContent
+                                side="right"
+                                className={cn(
+                                  "max-w-xs text-xs hidden md:block",
+                                  navExpanded && "md:hidden",
+                                )}
+                              >
+                                <p className="font-medium">{item.name}</p>
+                                {item.hint ? (
+                                  <p className="mt-0.5 text-muted-foreground">{item.hint}</p>
+                                ) : null}
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            linkEl
+                          )}
                         </li>
                       )
                     })}
