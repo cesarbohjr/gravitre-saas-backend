@@ -60,17 +60,32 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
+      - name: Prepare navigation E2E environment
+        run: |
+          if [ -n "${{ secrets.SUPABASE_URL }}" ]; then
+            echo "E2E_APP_NAV=1" >> "$GITHUB_ENV"
+            echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> "$GITHUB_ENV"
+            echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> "$GITHUB_ENV"
+            echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> "$GITHUB_ENV"
+            echo "SUPABASE_JWT_SECRET=${{ secrets.SUPABASE_JWT_SECRET }}" >> "$GITHUB_ENV"
+            echo "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> "$GITHUB_ENV"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> "$GITHUB_ENV"
+          else
+            echo "E2E_APP_NAV=0" >> "$GITHUB_ENV"
+            echo "E2E_SKIP_FIXTURE_SEED=1" >> "$GITHUB_ENV"
+            echo "SUPABASE_URL=https://placeholder.supabase.co" >> "$GITHUB_ENV"
+            echo "SUPABASE_ANON_KEY=placeholder-anon-key" >> "$GITHUB_ENV"
+            echo "SUPABASE_SERVICE_ROLE_KEY=placeholder-service-role" >> "$GITHUB_ENV"
+            echo "SUPABASE_JWT_SECRET=placeholder-jwt-secret" >> "$GITHUB_ENV"
+            echo "NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co" >> "$GITHUB_ENV"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder-anon-key" >> "$GITHUB_ENV"
+          fi
+
       - name: Run marketing, app sidebar, and ExecutionResult navigation suites
         run: npm run test:navigation
         env:
           CI: "true"
           APP_ENV: dev
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           OPENAI_API_KEY: sk-test-openai
           FASTAPI_BASE_URL: http://127.0.0.1:8000
           PLAYWRIGHT_BASE_URL: http://localhost:3001

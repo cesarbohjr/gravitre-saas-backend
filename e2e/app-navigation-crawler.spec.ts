@@ -10,8 +10,18 @@ import { loadBillingFixtures, prepareAdminAppSession } from "./helpers/auth"
 const appOrigin =
   process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3001"
 
+const hasSupabaseCredentials = () => {
+  const url = process.env.SUPABASE_URL ?? ""
+  return (
+    Boolean(url) &&
+    !url.includes("test.supabase.co") &&
+    !url.includes("placeholder")
+  )
+}
+
 test.describe("Web app sidebar navigation — click-through crawl", () => {
   test.beforeEach(async ({ page }) => {
+    test.skip(!hasSupabaseCredentials(), "Requires Supabase Actions secrets for billing fixture seed")
     test.setTimeout(1_800_000)
     const user = loadBillingFixtures().activeTrial
     await prepareAdminAppSession(page, user, "/home")
