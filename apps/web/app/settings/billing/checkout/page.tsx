@@ -110,6 +110,25 @@ function CheckoutForm({ planCode, billingInterval, returnUrl }: CheckoutFormProp
   )
 }
 
+// Never surface raw upstream/internal errors (e.g. Stripe's
+// "No API key provided. (HINT: set your API key using stripe.api_key ...)")
+// to end users. Show a friendly, non-technical message for anything that
+// looks like an internal/configuration failure, but keep short, clearly
+// user-actionable validation messages intact.
+const FRIENDLY_BILLING_ERROR =
+  "Billing is temporarily unavailable. Please try again in a moment — if the problem persists, contact support."
+
+function sanitizeCheckoutError(message: string): string {
+  const normalized = message.trim()
+  const looksInternal =
+    normalized.length === 0 ||
+    normalized.length > 140 ||
+    /api[\s_-]?key|hint:|stripe\.|traceback|exception|stack|null|undefined|internal server|status\s?5\d\d|econnrefused|fetch failed|not configured/i.test(
+      normalized,
+    )
+  return looksInternal ? FRIENDLY_BILLING_ERROR : normalized
+}
+
 function parsePlanCode(value: string | null): PlanCode | null {
   if (value === "node" || value === "control" || value === "command") {
     return value
@@ -173,13 +192,13 @@ function BillingCheckoutPageInner() {
         setClientSecret(result.clientSecret)
       } catch (error) {
         if (!cancelled) {
-          const message =
+          const rawMessage =
             error instanceof ApiRequestError
               ? error.message
               : error instanceof Error
                 ? error.message
                 : "Could not start checkout"
-          setLoadError(message)
+          setLoadError(sanitizeCheckoutError(rawMessage))
         }
       }
     })()
