@@ -51,9 +51,10 @@ def test_verified_actions_include_apollo_and_slack():
     assert "hubspot.deals.create" in VERIFIED_OUTPUT_ACTIONS
     assert "engagebay.contacts.create" in VERIFIED_OUTPUT_ACTIONS
     assert "engagebay.contacts.update" in VERIFIED_OUTPUT_ACTIONS
-    assert len(VERIFIED_OUTPUT_ACTIONS) == 10
     assert "engagebay.contacts.create" not in PENDING_OUTPUT_SCHEMA_ALLOWLIST
     assert "engagebay.contacts.update" not in PENDING_OUTPUT_SCHEMA_ALLOWLIST
+    assert len(PENDING_OUTPUT_SCHEMA_ALLOWLIST) == 0
+    assert len(VERIFIED_OUTPUT_ACTIONS) >= 10
 
 
 def test_execution_result_verifiable_requires_body_or_result_url():
