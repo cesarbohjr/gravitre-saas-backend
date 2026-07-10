@@ -51,18 +51,30 @@ def gap_recovery_prompt_section(*, connected_integrations: list[str], has_mcp_to
     real = [c for c in connected_integrations if str(c).lower() not in {"platform", "webhook", "email"}]
     if not real and not has_mcp_tools:
         return ""
+    connected_lower = {str(c).lower() for c in real}
     lines = [
         "## API gap recovery",
         (
             "When a connector has no native tool for the user's request, recover in order: "
             "(1) closest native read/write action, (2) org MCP tools whose names start with `mcp_`, "
-            "(3) `browser_agent_read` to extract data from an authenticated web UI URL the user provides."
+            "(3) `browser_agent_read` only if no native action exists — and only after explaining the gap."
         ),
         (
             "Use `browser_agent_interact` only for UI actions with no API — it requires human approval. "
             "Never guess credentials; ask the user for a session URL or complete OAuth at /connectors first."
         ),
+        (
+            "Never ask for an authenticated app URL when a native connector tool can fulfill the request. "
+            "Prefer a short clarifying question or an approval to run a native write over browser automation."
+        ),
     ]
+    if "apollo" in connected_lower:
+        lines.append(
+            "Apollo is connected: use `apollo_lists_create` / `apollo_people_search` / "
+            "`apollo_organizations_search` for lists and prospecting. "
+            "Treat user 'segment' requests as contact list/label creation. "
+            "Do not ask for an Apollo Lists page URL unless those tools are unavailable."
+        )
     if has_mcp_tools:
         lines.append("This org has MCP tools registered — prefer `mcp_*` tools for gaps before browser automation.")
     return "\n".join(lines)

@@ -33,17 +33,50 @@ def validate_connector_plan(plan: ConnectorActionPlan, message: str) -> Workflow
 
 
 def format_write_approval_message(plan: ConnectorActionPlan) -> str:
-    """Universal approval prompt for governed write actions."""
-    lines = [
-        "**Planned action:**",
-        plan.label or plan.invoke_action,
-    ]
+    """Warm, chat-native approval prompt for governed write actions."""
+    vendor = (plan.integration or "").replace("_", " ").title() or "the connected app"
+    label = (plan.label or plan.invoke_action or "this action").strip()
     details = _approval_details(plan)
+
+    # Prefer natural prose for the common Apollo/HubSpot list-create case.
+    list_name = str((plan.args or {}).get("name") or details.get("Name") or "").strip()
+    if list_name and "lists.create" in (plan.invoke_action or ""):
+        intro = (
+            f"I can create a contact list named **{list_name}** in {vendor}."
+        )
+        if "segment" in label.lower():
+            intro = (
+                f"Apollo doesn't expose CRM segments over API the same way, "
+                f"but I can create an equivalent contact list named **{list_name}**."
+            )
+        lines = [intro]
+        if details:
+            for key, value in details.items():
+                if key.lower() == "name":
+                    continue
+                lines.append(f"- {key}: {value}")
+        lines.extend(
+            [
+                "",
+                "Reply **yes** to create it, or tell me what to change "
+                "(name, modality, or follow-up criteria to populate it).",
+            ]
+        )
+        return "\n".join(lines)
+
+    lines = [
+        f"I'll run this in {vendor}: **{label}**.",
+    ]
     if details:
         lines.append("")
         for key, value in details.items():
             lines.append(f"- {key}: {value}")
-    lines.extend(["", "Approve? Reply **yes** to proceed, or tell me what to change."])
+    lines.extend(
+        [
+            "",
+            "Reply **yes** to proceed, or tell me what to change.",
+        ]
+    )
     return "\n".join(lines)
 
 

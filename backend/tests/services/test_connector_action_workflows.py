@@ -69,10 +69,26 @@ def test_write_action_approval_message_format():
         },
     )
     message = format_write_approval_message(plan)
-    assert "**Planned action:**" in message
-    assert "Approve?" in message
+    assert "I'll run this in Asana" in message or "Asana" in message
+    assert "yes" in message.lower()
     assert "Sarah" in message
     assert "Website" in message
+
+
+def test_apollo_list_approval_message_is_conversational():
+    plan = ConnectorActionPlan(
+        tool_name="apollo_lists_create",
+        invoke_action="apollo.lists.create",
+        integration="apollo",
+        kind="write",
+        label="Create contact list",
+        args={"name": "MSP Prospects", "modality": "contacts"},
+    )
+    message = format_write_approval_message(plan)
+    assert "MSP Prospects" in message
+    assert "Apollo" in message
+    assert "**Planned action:**" not in message
+    assert "yes" in message.lower()
 
 
 def test_capability_fallback_for_apollo_list_when_create_unavailable():
@@ -275,7 +291,7 @@ async def test_write_action_requires_approval_before_execute():
 
     assert result is not None
     assert result["dialogue_mode"] == "confirm"
-    assert "Approve?" in result["message"]
+    assert "Reply" in result["message"] and "yes" in result["message"].lower()
     mock_execute.assert_not_called()
 
 

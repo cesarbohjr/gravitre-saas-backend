@@ -43,40 +43,66 @@ def format_operator_response(
     next_step: str = "",
     planned: dict[str, Any] | None = None,
 ) -> str:
-    """Structured operator reply: intent → action → status → result/blocker."""
-    lines: list[str] = [f"**Intent:** {intent}"]
-    if matched_action:
-        lines.append(f"**Matched action:** `{matched_action}`")
-    lines.append(f"**Execution status:** {status}")
+    """Conversational operator reply — status + next step without rigid field labels."""
+    status_clean = status.replace("blocked — ", "").strip()
+    lines: list[str] = []
+
+    if "connector not ready" in status or missing_connector:
+        connector = missing_connector or "that integration"
+        lines.append(f"I can't run **{intent}** yet because {connector} isn't ready.")
+    elif "action not matched" in status and matched_action:
+        lines.append(
+            f"I understand you want to **{intent}**, and `{matched_action}` is available — "
+            "I just need a clearer phrasing to map it safely."
+        )
+    elif "action not in catalog" in status or missing_action:
+        lines.append(f"I can't complete **{intent}** with the actions that are currently wired up.")
+        if missing_action:
+            lines.append(f"The missing capability is `{missing_action}`.")
+    elif "no matching catalog action" in status:
+        lines.append(f"I couldn't map **{intent}** to a specific connector action yet.")
+    else:
+        lines.append(f"Here's where things stand on **{intent}**: {status_clean}.")
+
     if result:
+        lines.append("")
         lines.append(result)
-    if missing_connector:
-        lines.append(f"**Missing connector:** {missing_connector}")
-    if missing_action:
-        lines.append(f"**Missing action:** `{missing_action}`")
+
     display_known = dict(known or {})
     if planned:
         display_known = {**display_known, **planned}
-    if display_known:
-        lines.append("**Known:**")
-        for key, value in display_known.items():
-            if value:
-                lines.append(f"- {key}: {value}")
+    known_bits = [f"{key}: {value}" for key, value in display_known.items() if value]
+    if known_bits:
+        lines.append("")
+        lines.append("What I already have:")
+        for bit in known_bits:
+            lines.append(f"- {bit}")
+
     if missing_parameters:
-        lines.append("**Missing:**")
+        lines.append("")
+        lines.append("Still needed:")
         for item in missing_parameters:
             lines.append(f"- {item}")
+
     if disambiguation_options:
-        lines.append("**Found multiple matches:**")
+        lines.append("")
+        lines.append("I found a few matches — which one should I use?")
         for option in disambiguation_options[:8]:
             lines.append(f"- {option}")
-    if available_actions:
-        lines.append("**Available actions:**")
-        for action in available_actions[:12]:
+
+    if available_actions and (
+        "action not" in status or "no matching" in status or missing_action
+    ):
+        lines.append("")
+        lines.append("Available actions on this connector:")
+        for action in available_actions[:8]:
             lines.append(f"- {action}")
+
     if next_step:
-        lines.append(f"**Required next step:** {next_step}")
-    return "\n\n".join(lines)
+        lines.append("")
+        lines.append(next_step)
+
+    return "\n".join(lines).strip()
 
 
 def format_not_executable_message(payload: dict[str, Any]) -> str:

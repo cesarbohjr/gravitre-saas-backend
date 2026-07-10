@@ -232,18 +232,59 @@ class ChatConnectorExecutionService:
                 planned = self._planned_details_from_message(message, integration)
                 if gaps.get("create_list"):
                     list_action = resolve_missing_action(integration, "create_list")
-                    message_text = format_operator_response(
-                        intent=intent,
-                        status="blocked — action not matched",
-                        matched_action=list_action,
-                        planned=planned or None,
-                        available_actions=available,
-                        next_step=(
-                            f"List creation is available via `{list_action}`. "
-                            "Retry with an explicit list name, e.g. "
-                            f"\"Create an {vendor_label} list named MSP prospects\"."
-                        ),
+                    list_hint = (
+                        planned.get("List name")
+                        or planned.get("Name")
+                        or "MSP Prospects"
                     )
+                    if integration == "apollo":
+                        message_text = (
+                            f"I can create that in Apollo as a contact list "
+                            f"(Apollo's API uses lists/labels rather than CRM segments).\n\n"
+                            f"Reply with something like: "
+                            f"\"Create an Apollo list named {list_hint}\" — "
+                            f"or say **yes** after I propose the plan."
+                        )
+                    else:
+                        message_text = (
+                            f"I can create that as a contact list in {vendor_label}. "
+                            f"Try: \"Create a {vendor_label} list named {list_hint}\"."
+                        )
+                    # Prefer auto-planning when we already inferred a list name.
+                    if planned.get("List name") or planned.get("Name") or LIST_CREATE_INTENT.search(message):
+                        inferred_name = str(
+                            planned.get("List name") or planned.get("Name") or list_hint
+                        ).strip()
+                        if inferred_name and integration == "apollo":
+                            from app.services.connector_action_workflows import format_write_approval_message
+
+                            plan = ConnectorActionPlan(
+                                tool_name="apollo_lists_create",
+                                invoke_action="apollo.lists.create",
+                                integration="apollo",
+                                kind="write",
+                                label="Create contact list",
+                                args={"name": inferred_name[:200], "modality": "contacts"},
+                            )
+                            pending = {
+                                "type": "connector_action",
+                                "status": "awaiting_confirm",
+                                "plan": {
+                                    "tool_name": plan.tool_name,
+                                    "invoke_action": plan.invoke_action,
+                                    "integration": plan.integration,
+                                    "kind": plan.kind,
+                                    "label": plan.label,
+                                    "args": plan.args,
+                                },
+                            }
+                            updated_state = {**task_state, "pending_task": pending}
+                            return {
+                                "stop_pipeline": True,
+                                "dialogue_mode": "confirm",
+                                "message": format_write_approval_message(plan),
+                                "task_state": updated_state,
+                            }
                     payload = build_not_executable(
                         "not_implemented",
                         next_step=(
@@ -259,6 +300,13 @@ class ChatConnectorExecutionService:
                             "planned": planned,
                         },
                     )
+                    return {
+                        "stop_pipeline": True,
+                        "dialogue_mode": "answer",
+                        "message": message_text,
+                        "not_executable": payload,
+                        "task_state": task_state,
+                    }
                 else:
                     missing_action = resolve_missing_action(integration, "create_list")
                     message_text = format_capability_fallback_message(
@@ -367,12 +415,16 @@ class ChatConnectorExecutionService:
                     planned["Due"] = for_person.group(3).strip()
         if LIST_CREATE_INTENT.search(text):
             list_match = re.search(
-                r"\b(?:list|group)\s+(?:for|named|called)?\s*[\"']?([^\"'.]+)",
+                r"\b(?:list|group|segment)\s+(?:for|named|called)?\s*[\"']?([^\"'.]+)",
                 text,
                 re.I,
             )
             if list_match:
-                planned["List name"] = list_match.group(1).strip()[:80]
+                candidate = list_match.group(1).strip()[:80]
+                if re.fullmatch(r"msps?", candidate, re.I):
+                    planned["List name"] = "MSP Prospects"
+                else:
+                    planned["List name"] = candidate
             elif "msp" in text.lower():
                 planned["List name"] = "MSP Prospects"
         return planned

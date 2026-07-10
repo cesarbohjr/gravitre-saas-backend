@@ -3,18 +3,28 @@ name: Navigation E2E
 on:
   pull_request:
     branches: [main]
+    # Include connector-chat backend services so chat-only PRs still run required navigation E2E.
     paths:
       - "apps/web/**"
       - "e2e/**"
       - "playwright.config.ts"
       - "scripts/check-deployed-links.py"
       - ".github/workflows/navigation-e2e.yml"
+      - "backend/app/services/connector_chat_routing.py"
+      - "backend/app/services/chat_connector_execution_service.py"
+      - "backend/app/services/chat_action_mapper.py"
+      - "backend/app/operators/agent_intelligence.py"
   push:
     branches: [main]
+    # Include connector-chat backend services so chat-only PRs still run required navigation E2E.
     paths:
       - "apps/web/**"
       - "e2e/**"
       - "playwright.config.ts"
+      - "backend/app/services/connector_chat_routing.py"
+      - "backend/app/services/chat_connector_execution_service.py"
+      - "backend/app/services/chat_action_mapper.py"
+      - "backend/app/operators/agent_intelligence.py"
 
 concurrency:
   group: navigation-e2e-${{ github.ref }}
