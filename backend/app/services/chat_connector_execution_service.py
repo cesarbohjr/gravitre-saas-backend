@@ -484,7 +484,12 @@ class ChatConnectorExecutionService:
         *,
         connected_integrations: list[str],
         task_state: dict[str, Any],
+        structured_plan: ConnectorActionPlan | None = None,
     ) -> ConnectorActionPlan | None:
+        # Wave 1: structured ReAct tool_calls win over NL phrase matching.
+        if structured_plan is not None and structured_plan.invoke_action:
+            return structured_plan
+
         pending = task_state.get("pending_task") or {}
         if isinstance(pending, dict) and pending.get("type") == "connector_action":
             params = dict(pending.get("params") or task_state.get("clarified_params") or {})
@@ -687,8 +692,9 @@ class ChatConnectorExecutionService:
         connected_integrations: list[str],
         client: Any,
         environment_name: str = "production",
+        structured_plan: ConnectorActionPlan | None = None,
     ) -> dict[str, Any] | None:
-        if not self.is_connector_intent(message, task_state):
+        if structured_plan is None and not self.is_connector_intent(message, task_state):
             return None
 
         connected_integrations = self._live_connected_integrations(
@@ -701,6 +707,7 @@ class ChatConnectorExecutionService:
             message,
             connected_integrations=connected_integrations,
             task_state=task_state,
+            structured_plan=structured_plan,
         )
         if not plan:
             if self.is_connector_intent(message, task_state):

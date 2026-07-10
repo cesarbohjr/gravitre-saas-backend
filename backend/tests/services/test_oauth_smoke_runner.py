@@ -69,8 +69,13 @@ def test_normalized_to_tool_result_failure():
     assert validate_tool_result_payload(payload, action_id="hubspot.contacts.get")
 
 
-def test_smoke_plans_skip_destructive_by_default():
+def test_smoke_write_plans_include_seed_verified_actions():
     plans = smoke_action_plans(include_writes=True, allow_destructive=False)
+    action_ids = {p.action_id for p in plans}
+    assert "apollo.lists.create" in action_ids
+    assert "slack.post_message" in action_ids
+    assert "hubspot.deals.create" in action_ids
+    assert "github.issues.create" in action_ids
     assert all(not p.destructive for p in plans)
 
 
