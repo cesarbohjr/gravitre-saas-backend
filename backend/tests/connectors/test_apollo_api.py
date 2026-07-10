@@ -53,6 +53,57 @@ def test_create_label_posts_name_and_modality():
     assert call[1]["json"] == {"name": "MSP Prospects", "modality": "contacts"}
 
 
+def test_create_label_422_returns_existing_label_when_duplicate():
+    with patch("app.connectors.apollo_api._request") as mock_request:
+        mock_request.side_effect = [
+            ApolloAPIError(
+                "Apollo API 422: /labels — Name has already been taken",
+                status_code=422,
+                details={"error": "Name has already been taken"},
+            ),
+            {
+                "labels": [
+                    {"id": "existing-1", "name": "MSP Prospects", "modality": "contacts"},
+                ]
+            },
+        ]
+        out = create_label({"X-Api-Key": "k"}, name="MSP Prospects", modality="contacts")
+    assert out["already_existed"] is True
+    assert out["label"]["id"] == "existing-1"
+    assert mock_request.call_count == 2
+
+
+def test_create_label_422_reraises_when_no_existing_match():
+    with patch("app.connectors.apollo_api._request") as mock_request:
+        mock_request.side_effect = [
+            ApolloAPIError(
+                "Apollo API 422: /labels — modality invalid",
+                status_code=422,
+                details={"error": "modality invalid"},
+            ),
+            {"labels": [{"id": "other", "name": "Other", "modality": "contacts"}]},
+        ]
+        try:
+            create_label({"X-Api-Key": "k"}, name="MSP Prospects", modality="contacts")
+            assert False, "expected ApolloAPIError"
+        except ApolloAPIError as exc:
+            assert exc.status_code == 422
+            assert "modality invalid" in str(exc)
+
+
+def test_apollo_error_message_includes_vendor_detail():
+    with patch("app.connectors.apollo_api.httpx.Client") as client_cls:
+        response = MagicMock(status_code=422, text='{"error":"Name has already been taken"}')
+        response.json.return_value = {"error": "Name has already been taken"}
+        client_cls.return_value.__enter__.return_value.request.return_value = response
+        try:
+            list_labels({"X-Api-Key": "k"})
+            assert False, "expected ApolloAPIError"
+        except ApolloAPIError as exc:
+            assert "Name has already been taken" in str(exc)
+            assert exc.details == {"error": "Name has already been taken"}
+
+
 def test_list_labels_gets_labels():
     with patch("app.connectors.apollo_api.httpx.Client") as client_cls:
         response = MagicMock(status_code=200, text='{"labels":[]}')

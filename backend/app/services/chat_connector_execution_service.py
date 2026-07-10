@@ -1566,16 +1566,18 @@ class ChatConnectorExecutionService:
             return "Gmail message sent."
         if plan.integration == "apollo" and plan.invoke_action == "apollo.lists.create":
             label_data = result_data.get("label")
+            already = bool(result_data.get("already_existed"))
+            verb = "Found existing" if already else "Created"
             if isinstance(label_data, dict):
                 name = label_data.get("name") or plan.args.get("name")
                 list_id = label_data.get("id") or label_data.get("_id")
                 if name and list_id:
-                    return f'Created contact list "{name}" (id: {list_id}).'
+                    return f'{verb} contact list "{name}" (id: {list_id}).'
                 if name:
-                    return f'Created contact list "{name}".'
+                    return f'{verb} contact list "{name}".'
             name = plan.args.get("name")
             if name:
-                return f'Created contact list "{name}".'
+                return f'{verb} contact list "{name}".'
         if plan.integration == "engagebay" and plan.invoke_action in {
             "engagebay.contacts.create",
             "engagebay.contacts.update",

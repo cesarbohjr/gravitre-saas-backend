@@ -68,11 +68,16 @@ _RESERVED = frozenset(
 
 
 def _handle_error(exc: ApolloAPIError) -> Exception:
+    message = str(exc)
+    details = exc.details if isinstance(exc.details, dict) else {"raw": exc.details}
     if exc.status_code == 429:
-        return ToolRateLimitedError(str(exc))
+        return ToolRateLimitedError(message, details=details if isinstance(details, dict) else None)
     if exc.status_code in {401, 403}:
-        return ToolAuthExpiredError(str(exc))
-    return ToolValidationError(str(exc))
+        return ToolAuthExpiredError(message, details=details if isinstance(details, dict) else None)
+    return ToolValidationError(
+        message,
+        details=details if isinstance(details, dict) else {"raw": exc.details},
+    )
 
 
 def _session(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, dict[str, str]]:
