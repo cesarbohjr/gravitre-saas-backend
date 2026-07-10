@@ -466,3 +466,47 @@ async def test_execute_plan_apollo_list_create_has_no_result_url(connector_servi
     assert result.integration == "apollo"
     assert "MSP Prospects" in result.body
     assert "list-123" in result.body
+
+
+@pytest.mark.asyncio
+async def test_execute_plan_write_without_body_or_url_fails_verifiability_gate(connector_service):
+    plan = ConnectorActionPlan(
+        tool_name="apollo_lists_create",
+        invoke_action="apollo.lists.create",
+        integration="apollo",
+        kind="write",
+        label="Create Apollo contact list",
+        args={"name": "Empty"},
+        requires_approval=True,
+    )
+    with patch.object(
+        connector_service,
+        "_registry",
+        MagicMock(
+            execute_tool=AsyncMock(
+                return_value={
+                    "success": True,
+                    "connector_id": "conn-apollo",
+                    "result": {},
+                }
+            )
+        ),
+    ), patch.object(
+        connector_service,
+        "_summarize_result",
+        return_value="",
+    ), patch.object(connector_service, "_record_outcomes", AsyncMock()), patch(
+        "app.services.chat_connector_execution_service.emit_notification"
+    ) as notify:
+        result = await connector_service.execute_plan(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            plan=plan,
+            client=MagicMock(),
+            classification={},
+        )
+
+    assert result.success is False
+    assert "verifiable" in result.body.lower() or "missing body" in result.body.lower()
+    notify.assert_not_called()

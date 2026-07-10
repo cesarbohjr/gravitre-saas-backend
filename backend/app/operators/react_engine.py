@@ -415,6 +415,8 @@ class ReActEngine:
                     audit_id,
                     iteration,
                     tool_name=tool_name,
+                    tool_args=tool_args,
+                    observation=observation if isinstance(observation, dict) else None,
                     tool_success=bool(observation.get("success")),
                     status="tool_call",
                 )
@@ -590,11 +592,23 @@ class ReActEngine:
         *,
         thought: str | None = None,
         tool_name: str | None = None,
+        tool_args: dict[str, Any] | None = None,
+        observation: dict[str, Any] | None = None,
         tool_success: bool | None = None,
         status: str = "iteration",
     ) -> None:
         if not resource_id:
             return
+        obs = observation if isinstance(observation, dict) else None
+        error = None
+        error_code = None
+        if obs is not None:
+            raw_error = obs.get("error")
+            if raw_error is not None:
+                error = str(raw_error)[:500]
+            raw_code = obs.get("error_code")
+            if raw_code is not None:
+                error_code = str(raw_code)[:120]
         write_audit_event(
             ctx.client,
             org_id=ctx.org_id,
@@ -608,6 +622,10 @@ class ReActEngine:
                 "agentId": ctx.agent_id,
                 "taskId": ctx.task_id,
                 "toolName": tool_name,
+                "toolArgs": tool_args,
+                "observation": _truncate_observation(obs) if obs is not None else None,
+                "error": error,
+                "errorCode": error_code,
                 "toolSuccess": tool_success,
                 "thoughtPreview": (thought or "")[:240] if thought else None,
             },

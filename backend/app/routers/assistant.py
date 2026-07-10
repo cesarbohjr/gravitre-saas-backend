@@ -423,6 +423,16 @@ def _persist_conversation_turn(
                     "displayName": tool.get("displayName"),
                     "input": tool.get("input"),
                     "output": tool.get("output"),
+                    **(
+                        {"error": tool.get("error")}
+                        if tool.get("error") is not None
+                        else {}
+                    ),
+                    **(
+                        {"errorCode": tool.get("errorCode") or tool.get("error_code")}
+                        if tool.get("errorCode") is not None or tool.get("error_code") is not None
+                        else {}
+                    ),
                 }
                 for tool in tool_results
             ]
