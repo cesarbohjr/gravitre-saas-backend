@@ -443,6 +443,22 @@ class ReActEngine:
                     yield ReActStreamEvent(kind="done", react_result=result)
                     return
 
+                if (
+                    observation.get("pending_approval")
+                    and str(observation.get("error_code") or "") == "write_approval_required"
+                ):
+                    # Stop immediately — chat layer materializes format_write_approval_message.
+                    # Do not stream a model-authored final answer that would race the approval UX.
+                    result = ReActResult(
+                        status=ReActStatus.NEEDS_HUMAN_INPUT,
+                        answer="",
+                        trace=trace,
+                        iterations=iteration,
+                        tool_calls=tool_calls_log,
+                    )
+                    yield ReActStreamEvent(kind="done", react_result=result)
+                    return
+
         result = ReActResult(
             status=ReActStatus.MAX_ITERATIONS_REACHED,
             answer=(
@@ -474,6 +490,11 @@ class ReActEngine:
                 "error": "Tool is not permitted or not connected for this agent",
                 "error_code": "tool_not_available",
             }
+        from app.services.react_write_gate import block_react_write_execution
+
+        blocked = block_react_write_execution(tool_name, args, self.registry)
+        if blocked is not None:
+            return blocked
         return await self.registry.execute_tool(ctx=ctx, tool_name=tool_name, args=args)
 
     async def _chat_with_tools(

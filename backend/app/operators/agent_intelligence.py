@@ -31,6 +31,7 @@ from app.services.connector_chat_routing import (
     should_attempt_connector_fallback,
     should_run_connector_preflight,
 )
+from app.services.react_write_gate import materialize_react_write_approval_turn, pending_write_from_react
 from app.operators.assistant_sse import (
     format_react_tool_output,
     sse_intelligence_metadata,
@@ -43,6 +44,7 @@ from app.operators.assistant_sse import (
 )
 from app.operators.react_engine import ReActEngine, ReActStatus, get_react_engine, resolve_permitted_tools
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
+from app.services.agent_tool_permissions import is_persisted_agent_id
 from app.services.assistant_availability import (
     apply_bounded_answer_if_needed,
     build_bounded_unavailable_answer,
@@ -165,6 +167,17 @@ ASSISTANT_SURFACE_SYSTEM_PROMPT = (
     "and suggest where to look. Do not invent agent names, connector states, or "
     "metrics. Never reply with raw JSON — always use plain English sentences."
 )
+
+
+def _permission_scoped_agent_id(agent: dict[str, Any] | None, agent_id: str | None) -> str | None:
+    """Omit synthetic/non-UUID agent ids from ToolContext so invoke_tool skips STA-11 rows."""
+    config = (agent or {}).get("config") if isinstance(agent, dict) else None
+    if isinstance(config, dict) and config.get("synthetic"):
+        return None
+    value = str(agent_id or "").strip() or None
+    if not is_persisted_agent_id(value):
+        return None
+    return value
 
 
 class AgentResult(BaseModel):
@@ -852,6 +865,7 @@ class AgentIntelligence:
         agent_name = str(agent.get("name") or "Agent")
         task_text = task.strip()
         params = parameters or {}
+        permission_agent_id = _permission_scoped_agent_id(agent, agent_id)
 
         resolved_plan = resolve_plan(
             PlanResolutionRequest(
@@ -948,7 +962,7 @@ class AgentIntelligence:
             environment_name=environment_name,
             run_id=run_id,
             task_id=task_id or run_id,
-            agent_id=agent_id or None,
+            agent_id=permission_agent_id,
         )
 
         react_result = await self.react_engine.run(
@@ -1569,13 +1583,16 @@ class AgentIntelligence:
         available_tools = await self.get_agent_tools(
             agent, connected_list, permitted_tools=permitted_registry, org_id=org_id, client=client
         )
+        permission_agent_id = _permission_scoped_agent_id(
+            agent, agent_id or str(agent.get("id") or "") or None
+        )
         ctx = ToolContext(
             settings=active_settings,
             client=client,
             org_id=org_id,
             actor_id=user_id or agent_id or "system",
             environment_name=environment_name,
-            agent_id=agent_id or str(agent.get("id") or "") or None,
+            agent_id=permission_agent_id,
             connector_timeout_seconds=engine_settings.connector_timeout_seconds,
         )
 
@@ -1630,6 +1647,53 @@ class AgentIntelligence:
                 yield sse_text_delta(text_id, event.content)
             elif event.kind == "done":
                 react_result = event.react_result
+
+        if pending_write_from_react(react_result) and conversation_id:
+            approval_turn = await materialize_react_write_approval_turn(
+                settings=active_settings,
+                org_id=org_id,
+                conversation_id=conversation_id,
+                client=client,
+                react_result=react_result,
+            )
+            if approval_turn:
+                task_state = approval_turn.get("task_state") or task_state
+                response_text = str(approval_turn.get("message") or "")
+                dialogue_mode = str(approval_turn.get("dialogue_mode") or "confirm")
+                text_id, start_event = sse_text_start()
+                yield start_event
+                yield sse_text_delta(text_id, response_text)
+                yield sse_text_end(text_id)
+                yield sse_intelligence_metadata(
+                    message_id=message_id,
+                    confidence={"score": classification_confidence, "needs_clarification": False},
+                    answer_explanation="ReAct write gated for user approval",
+                    conflicts=None,
+                    refined_query=None,
+                    validation=None,
+                    dialogue_mode=dialogue_mode,
+                    persona_key=str(persona.get("persona_key") or ""),
+                    proactive_suggestions=[],
+                    task_state=task_state,
+                    execution_result=None,
+                    pending_task=approval_turn.get("pending_task"),
+                )
+                yield AssistantStreamComplete(
+                    full_content=response_text,
+                    tool_results=tool_results,
+                    react_result=react_result,
+                    model=model,
+                    message_id=message_id,
+                    confidence={"score": classification_confidence, "needs_clarification": False},
+                    answer_explanation="ReAct write gated for user approval",
+                    dialogue_mode=dialogue_mode,
+                    persona_key=str(persona.get("persona_key") or ""),
+                    proactive_suggestions=[],
+                    task_state=task_state,
+                    execution_result=None,
+                    pending_task=approval_turn.get("pending_task"),
+                )
+                return
 
         if should_attempt_connector_fallback(
             task_state=task_state,

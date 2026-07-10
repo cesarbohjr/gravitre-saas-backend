@@ -135,11 +135,15 @@ def test_react_result_to_dict_includes_trace(engine: ReActEngine):
 @pytest.mark.asyncio
 async def test_execute_tool_call_delegates_to_registry(engine: ReActEngine, tool_ctx: ToolContext):
     engine.registry.execute_tool = AsyncMock(return_value={"success": True, "result": {"ok": True}})
-    result = await engine._execute_tool_call(
-        tool_ctx,
-        "hubspot_search_contacts",
-        {"query": "acme"},
-    )
+    with patch(
+        "app.services.react_write_gate.tool_requires_user_write_approval",
+        return_value=(False, "hubspot.contacts.search", "hubspot", "Search"),
+    ):
+        result = await engine._execute_tool_call(
+            tool_ctx,
+            "hubspot_search_contacts",
+            {"query": "acme"},
+        )
     assert result["success"] is True
     engine.registry.execute_tool.assert_awaited_once_with(
         ctx=tool_ctx,

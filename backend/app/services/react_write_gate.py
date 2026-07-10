@@ -1,0 +1,198 @@
+"""Block ReAct from executing connector writes without the chat approval gate.
+
+Governed chat writes go through ``format_write_approval_message`` + ``awaiting_confirm``
+before ``execute_plan`` → ``invoke_tool``. ReAct previously called ``execute_tool``
+directly for writes (live 2026-07-10 apollo_lists_create), which is invoke_tool-governed
+but not user-approval-governed. This module closes that gap.
+"""
+from __future__ import annotations
+
+from typing import Any
+
+from app.services.chat_connector_models import ConnectorActionPlan
+from app.services.connector_action_workflows import format_write_approval_message
+from app.services.event_intelligence_service import WRITE_ACTION_SUFFIXES
+
+WRITE_APPROVAL_REQUIRED = "write_approval_required"
+
+# Extra write verbs not covered by EventIntelligence WRITE_ACTION_SUFFIXES.
+_EXTRA_WRITE_SUFFIXES = (
+    ".send",
+    ".post_message",
+    ".post",
+    ".add",
+    ".remove",
+    ".subscribe",
+    ".trigger",
+    ".assign",
+    ".transition",
+    ".comment",
+    ".acknowledge",
+    ".resolve",
+    ".reassign",
+    ".escalate",
+    ".add_note",
+)
+
+
+def invoke_action_is_write(invoke_action: str) -> bool:
+    lowered = str(invoke_action or "").strip().lower()
+    if not lowered:
+        return False
+    if any(lowered.endswith(suffix) for suffix in WRITE_ACTION_SUFFIXES):
+        return True
+    return any(lowered.endswith(suffix) for suffix in _EXTRA_WRITE_SUFFIXES)
+
+
+def tool_requires_user_write_approval(tool_name: str, registry: Any) -> tuple[bool, str, str, str]:
+    """Return (requires_approval, invoke_action, integration, label)."""
+    name = str(tool_name or "").strip()
+    if not name or name.startswith("assistant_") or name.startswith("mcp_"):
+        return False, "", "", ""
+    if name in {"web_search", "browser_agent_read", "browser_agent_interact", "knowledge_base"}:
+        return False, "", "", ""
+
+    spec = registry.get_spec(name) if registry is not None else None
+    invoke_action = str(getattr(spec, "invoke_action", "") or "")
+    integration = str(getattr(spec, "integration", "") or "")
+    label = name.replace("_", " ")
+
+    try:
+        from app.services.connector_execution_matrix import build_connector_execution_matrix
+
+        for entry in build_connector_execution_matrix():
+            if entry.tool_registry_key != name:
+                continue
+            requires = bool(
+                entry.requires_approval or entry.kind == "write" or entry.destructive
+            )
+            return (
+                requires,
+                entry.registry_key or entry.action_key or invoke_action,
+                entry.connector_id or integration,
+                entry.display_name or label,
+            )
+    except Exception:  # noqa: BLE001
+        pass
+
+    if invoke_action and invoke_action_is_write(invoke_action):
+        return True, invoke_action, integration, label
+    return False, invoke_action, integration, label
+
+
+def block_react_write_execution(
+    tool_name: str,
+    args: dict[str, Any] | None,
+    registry: Any,
+) -> dict[str, Any] | None:
+    """If this ReAct tool call is a write, refuse execution and request approval."""
+    requires, invoke_action, integration, label = tool_requires_user_write_approval(
+        tool_name, registry
+    )
+    if not requires:
+        return None
+    raw_args = dict(args or {})
+    # Explicit approval tokens are reserved for Approvals-queue / future wiring —
+    # chat confirmation uses pending_task, not a model-supplied approval_id.
+    raw_args.pop("approval_id", None)
+    raw_args.pop("approvalId", None)
+    return {
+        "success": False,
+        "tool": tool_name,
+        "action": invoke_action,
+        "integration": integration,
+        "label": label,
+        "pending_approval": True,
+        "error_code": WRITE_APPROVAL_REQUIRED,
+        "error": (
+            "Write actions require explicit user approval before execution. "
+            "Do not retry this tool; the user will confirm or edit the plan."
+        ),
+        "args": raw_args,
+    }
+
+
+def pending_write_from_react(react_result: Any | None) -> dict[str, Any] | None:
+    """Return the first ReAct tool call blocked for write approval."""
+    if react_result is None:
+        return None
+    for call in react_result.tool_calls or []:
+        result = call.get("result") if isinstance(call.get("result"), dict) else {}
+        if result.get("pending_approval") and result.get("error_code") == WRITE_APPROVAL_REQUIRED:
+            return {
+                "tool": str(call.get("tool") or call.get("name") or result.get("tool") or ""),
+                "args": dict(call.get("args") or result.get("args") or {}),
+                "result": result,
+            }
+    return None
+
+
+def plan_from_react_write(pending: dict[str, Any]) -> ConnectorActionPlan | None:
+    result = pending.get("result") if isinstance(pending.get("result"), dict) else {}
+    tool_name = str(pending.get("tool") or result.get("tool") or "").strip()
+    invoke_action = str(result.get("action") or "").strip()
+    integration = str(result.get("integration") or "").strip()
+    label = str(result.get("label") or "").strip() or tool_name.replace("_", " ")
+    args = dict(pending.get("args") or result.get("args") or {})
+    if not tool_name or not invoke_action:
+        return None
+    if not integration and "." in invoke_action:
+        integration = invoke_action.split(".", 1)[0]
+    return ConnectorActionPlan(
+        tool_name=tool_name,
+        invoke_action=invoke_action,
+        integration=integration or "connector",
+        kind="write",
+        label=label,
+        args=args,
+        requires_approval=True,
+        approval_reason="react_write_gate",
+        destructive=False,
+    )
+
+
+async def materialize_react_write_approval_turn(
+    *,
+    settings: Any,
+    org_id: str,
+    conversation_id: str,
+    client: Any,
+    react_result: Any,
+) -> dict[str, Any] | None:
+    """Persist awaiting_confirm + return the same approval UX as governed chat writes."""
+    pending = pending_write_from_react(react_result)
+    if not pending or not conversation_id:
+        return None
+    plan = plan_from_react_write(pending)
+    if not plan:
+        return None
+
+    from app.services.chat_connector_execution_service import ChatConnectorExecutionService
+    from app.services.conversation_state_service import get_conversation_state_service
+
+    pending_params = {
+        **ChatConnectorExecutionService.plan_to_dict(plan),
+        "status": "awaiting_confirm",
+        "source": "react_write_gate",
+    }
+    state = get_conversation_state_service(settings)
+    await state.update_task_state(
+        conversation_id,
+        org_id,
+        {
+            "pending_task": {
+                "type": "connector_action",
+                "status": "awaiting_confirm",
+                "params": pending_params,
+            }
+        },
+        client=client,
+    )
+    refreshed = await state.get_task_state(conversation_id, org_id, client=client)
+    return {
+        "stop_pipeline": True,
+        "dialogue_mode": "confirm",
+        "message": format_write_approval_message(plan),
+        "task_state": refreshed,
+        "pending_task": refreshed.get("pending_task"),
+    }

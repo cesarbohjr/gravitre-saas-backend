@@ -27,16 +27,36 @@ def has_pending_connector_task(task_state: dict[str, Any] | None) -> bool:
     return str(pending.get("type") or "") in PENDING_CONNECTOR_TASK_TYPES
 
 
+def _is_connector_tool_name(name: str) -> bool:
+    if not name or name in _ASSISTANT_ONLY_TOOLS:
+        return False
+    if name.startswith("assistant_"):
+        return False
+    return True
+
+
 def react_invoked_connector_tools(react_result: Any | None) -> bool:
+    """True when ReAct attempted any connector tool (success or failure)."""
     if react_result is None:
         return False
     for call in react_result.tool_calls or []:
         name = str(call.get("tool") or call.get("name") or "")
-        if not name or name in _ASSISTANT_ONLY_TOOLS:
+        if _is_connector_tool_name(name):
+            return True
+    return False
+
+
+def react_succeeded_connector_tools(react_result: Any | None) -> bool:
+    """True when at least one connector tool call returned success=true."""
+    if react_result is None:
+        return False
+    for call in react_result.tool_calls or []:
+        name = str(call.get("tool") or call.get("name") or "")
+        if not _is_connector_tool_name(name):
             continue
-        if name.startswith("assistant_"):
-            continue
-        return True
+        result = call.get("result") if isinstance(call.get("result"), dict) else {}
+        if result.get("success"):
+            return True
     return False
 
 
@@ -118,10 +138,16 @@ def should_attempt_connector_fallback(
     message: str,
     connected_integrations: list[str],
 ) -> bool:
-    """After ReAct, try phrase mapper when the model did not invoke connector tools."""
+    """After ReAct, try phrase mapper when connector tools were not successfully used.
+
+    Failed ReAct connector attempts (e.g. synthetic-agent permission crashes) must
+    still fall through to the governed approval/execute path — otherwise users see
+    a generic connector execution error and never reach invoke_tool.
+    """
+    _ = connected_integrations  # retained for call-site compatibility
     if has_pending_connector_task(task_state):
         return False
-    if react_invoked_connector_tools(react_result):
+    if react_succeeded_connector_tools(react_result):
         return False
     from app.services.chat_connector_execution_service import ChatConnectorExecutionService
 
