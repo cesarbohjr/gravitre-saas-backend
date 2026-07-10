@@ -1,0 +1,14 @@
+---
+description: Commit and push on main only — no feature branches for agent work
+alwaysApply: true
+---
+
+# Work on main only
+
+Do **not** create new git branches for agent jobs (no `cursor/*`, `v0/*`, or other feature branches).
+
+1. Check out and update **`main`** before starting work (`git fetch origin` + `git checkout main` + `git pull`).
+2. Commit and push directly to **`main`** unless the user explicitly asks for a branch or PR workflow.
+3. Do not open PRs from new branches as the default delivery path.
+4. If local state is on a stale feature branch, switch back to `main` and sync before editing.
+5. Prefer merging or discarding leftover remote branches over stacking more parallel worktrees.
