@@ -45,10 +45,14 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           OAUTH_SMOKE_ORG_ID: ${{ secrets.OAUTH_SMOKE_ORG_ID }}
+          CONNECTOR_SECRETS_ENCRYPTION_KEY: ${{ secrets.CONNECTOR_SECRETS_ENCRYPTION_KEY }}
         run: |
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
             echo "skip=1" >> "$GITHUB_OUTPUT"
             echo "Skipping verified-write live smoke — SUPABASE secrets not configured"
+          elif [ -z "$CONNECTOR_SECRETS_ENCRYPTION_KEY" ]; then
+            echo "skip=1" >> "$GITHUB_OUTPUT"
+            echo "Skipping verified-write live smoke — CONNECTOR_SECRETS_ENCRYPTION_KEY not configured"
           else
             echo "skip=0" >> "$GITHUB_OUTPUT"
           fi
@@ -59,6 +63,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CONNECTOR_SECRETS_ENCRYPTION_KEY: ${{ secrets.CONNECTOR_SECRETS_ENCRYPTION_KEY }}
           OAUTH_SMOKE_ORG_ID: ${{ secrets.OAUTH_SMOKE_ORG_ID }}
           OAUTH_SMOKE_USER_ID: ${{ secrets.OAUTH_SMOKE_USER_ID }}
           OAUTH_SMOKE_ENVIRONMENT: ${{ secrets.OAUTH_SMOKE_ENVIRONMENT || 'sandbox' }}
