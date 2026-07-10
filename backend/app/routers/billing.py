@@ -28,6 +28,7 @@ from app.billing.stripe import (
     create_checkout_session,
     create_customer_portal,
     create_subscription_for_payment_element,
+    init_stripe,
     plan_code_for_price,
     price_id_for_plan,
 )
@@ -56,7 +57,9 @@ def _stripe_customer_missing(exc: stripe.error.StripeError) -> bool:
 def _create_stripe_customer(settings: Settings, client, org_id: str, user_id: str, plan_code: str | None) -> str:
     from stripe import Customer
 
-    Customer.api_key = settings.stripe_secret_key
+    # Always init the module-level key — Customer.api_key alone is unreliable
+    # across stripe-python versions and can surface "No API key provided".
+    init_stripe(settings)
     customer = Customer.create(metadata={"org_id": org_id, "created_by": user_id})
     customer_id = customer["id"]
     client.table("org_billing").upsert(
@@ -681,7 +684,7 @@ async def create_public_checkout(
 
     from stripe import Customer
 
-    Customer.api_key = settings.stripe_secret_key
+    init_stripe(settings)
     try:
         customer = Customer.create(
             email=str(body.email).strip().lower(),
