@@ -277,14 +277,57 @@ def create_label(
     except ApolloAPIError as exc:
         if exc.status_code != 422:
             raise
+        if not _is_duplicate_label_error(exc):
+            raise
         existing = _find_existing_label(
             auth_headers,
             name=label_name,
             modality=normalized_modality,
         )
-        if existing is not None:
-            return {"label": existing, "already_existed": True}
-        raise
+        if existing is None:
+            # GET /labels often fails or omits the row (auth/pagination), but Apollo
+            # already confirmed the name exists — treat as idempotent success.
+            existing = {"name": label_name, "modality": normalized_modality}
+        return {"label": existing, "already_existed": True}
+
+
+def _is_duplicate_label_error(exc: ApolloAPIError) -> bool:
+    """True when Apollo 422 means the list/label name is already taken."""
+    haystacks: list[str] = [str(exc).casefold()]
+    detail = exc.details
+    if isinstance(detail, dict):
+        for key in ("error", "message", "error_message", "detail"):
+            value = detail.get(key)
+            if isinstance(value, str):
+                haystacks.append(value.casefold())
+            elif isinstance(value, list):
+                haystacks.extend(str(item).casefold() for item in value)
+    elif isinstance(detail, str):
+        haystacks.append(detail.casefold())
+    joined = " ".join(haystacks)
+    markers = (
+        "already exists",
+        "already been taken",
+        "has already been taken",
+        "duplicate",
+        "name taken",
+        "already taken",
+    )
+    return any(marker in joined for marker in markers)
+
+
+def _extract_label_rows(payload: Any) -> list[dict[str, Any]]:
+    if isinstance(payload, list):
+        return [row for row in payload if isinstance(row, dict)]
+    if not isinstance(payload, dict):
+        return []
+    for key in ("labels", "label", "data", "results"):
+        value = payload.get(key)
+        if isinstance(value, list):
+            return [row for row in value if isinstance(row, dict)]
+        if isinstance(value, dict) and key == "label":
+            return [value]
+    return []
 
 
 def _find_existing_label(
@@ -298,17 +341,18 @@ def _find_existing_label(
         payload = list_labels(auth_headers)
     except ApolloAPIError:
         return None
-    labels = payload.get("labels") if isinstance(payload, dict) else None
-    if not isinstance(labels, list):
+    labels = _extract_label_rows(payload)
+    if not labels:
         return None
     target = name.strip().casefold()
     for row in labels:
-        if not isinstance(row, dict):
-            continue
         row_name = str(row.get("name") or "").strip().casefold()
+        if row_name != target:
+            continue
         row_modality = str(row.get("modality") or "").strip().lower()
-        if row_name == target and (not row_modality or row_modality == modality):
-            return row
+        if row_modality and row_modality != modality:
+            continue
+        return row
     return None
 
 
