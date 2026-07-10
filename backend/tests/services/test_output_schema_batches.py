@@ -17,7 +17,9 @@ from app.services.connector_output_mappers.generic import (
     summarize_write_action,
 )
 from app.services.connector_output_verified_batches import (
+    CLEARED_ADVANCED_OUTPUT_SCHEMA_ACTIONS,
     CLEARED_OUTPUT_SCHEMA_ACTIONS,
+    VERIFIED_ADVANCED_OUTPUT_BATCHES,
     VERIFIED_OUTPUT_BATCHES,
 )
 from app.services.conversational_execution_service import ExecutionResult
@@ -50,6 +52,24 @@ def test_verified_batches_are_size_at_most_25_and_cover_cleared_set():
         overlap = seen & set(batch)
         assert not overlap, f"overlapping actions across batches: {sorted(overlap)[:8]}"
         seen |= set(batch)
+
+
+def test_advanced_batches_are_size_at_most_25_and_cover_cleared_set():
+    assert len(VERIFIED_ADVANCED_OUTPUT_BATCHES) == 6
+    for index, batch in enumerate(VERIFIED_ADVANCED_OUTPUT_BATCHES, start=8):
+        assert 1 <= len(batch) <= 25, f"advanced batch {index} size={len(batch)}"
+        assert batch <= CLEARED_ADVANCED_OUTPUT_SCHEMA_ACTIONS
+    assert (
+        frozenset().union(*VERIFIED_ADVANCED_OUTPUT_BATCHES)
+        == CLEARED_ADVANCED_OUTPUT_SCHEMA_ACTIONS
+    )
+    seen: set[str] = set()
+    for batch in VERIFIED_ADVANCED_OUTPUT_BATCHES:
+        overlap = seen & set(batch)
+        assert not overlap, f"overlapping advanced actions: {sorted(overlap)[:8]}"
+        seen |= set(batch)
+    # Advanced batches must not collide with write batches
+    assert not (CLEARED_ADVANCED_OUTPUT_SCHEMA_ACTIONS & CLEARED_OUTPUT_SCHEMA_ACTIONS)
 
 
 def test_generic_summarizer_includes_id_and_label():
@@ -96,6 +116,11 @@ def test_generic_result_url_from_nested_html_url():
     [
         (index, action)
         for index, batch in enumerate(VERIFIED_OUTPUT_BATCHES, start=1)
+        for action in sorted(batch)
+    ]
+    + [
+        (index, action)
+        for index, batch in enumerate(VERIFIED_ADVANCED_OUTPUT_BATCHES, start=8)
         for action in sorted(batch)
     ],
 )
