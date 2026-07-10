@@ -316,7 +316,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                 Maybe later
               </Button>
               <Button asChild className="flex-1 bg-gradient-to-r from-violet-500 to-purple-500 hover:opacity-90">
-                <Link href="/pricing">
+                <Link href="/settings/billing">
                   Upgrade now
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Link>
