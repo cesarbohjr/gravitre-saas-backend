@@ -1394,6 +1394,15 @@ class ChatConnectorExecutionService:
             from app.services.connector_output_mappers.engagebay import resolve_contact_result_url
 
             return resolve_contact_result_url(result_data)
+        if integration == "apollo" and invoke_action == "apollo.lists.create":
+            from app.services.connector_output_mappers.apollo import resolve_list_result_url
+
+            apollo_url = resolve_list_result_url(result_data)
+            if apollo_url:
+                return apollo_url
+            # Also check nested observation.result when already_existed payloads differ.
+            nested = observation.get("result") if isinstance(observation.get("result"), dict) else None
+            return resolve_list_result_url(nested)
         from app.services.connector_output_mappers.generic import resolve_generic_result_url
 
         return resolve_generic_result_url(result_data)
