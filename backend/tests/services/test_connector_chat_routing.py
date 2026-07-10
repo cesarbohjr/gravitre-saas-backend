@@ -61,7 +61,9 @@ def test_react_invoked_connector_tools_ignores_assistant_tools():
 
 
 def test_fallback_skipped_when_react_already_called_connector():
-    react = SimpleNamespace(tool_calls=[{"tool": "slack.post_message"}])
+    react = SimpleNamespace(
+        tool_calls=[{"tool": "slack.post_message", "result": {"success": True}}]
+    )
     assert (
         should_attempt_connector_fallback(
             task_state={},
@@ -70,6 +72,31 @@ def test_fallback_skipped_when_react_already_called_connector():
             connected_integrations=["slack"],
         )
         is False
+    )
+
+
+def test_fallback_runs_when_react_connector_tools_failed():
+    """Regression: failed apollo_lists_create must not block governed fallback."""
+    react = SimpleNamespace(
+        tool_calls=[
+            {
+                "tool": "apollo_lists_create",
+                "args": {"name": "MSP Prospects"},
+                "result": {
+                    "success": False,
+                    "error": 'invalid input syntax for type uuid: "synthetic-default"',
+                },
+            }
+        ]
+    )
+    assert (
+        should_attempt_connector_fallback(
+            task_state={},
+            react_result=react,
+            message="can you create a segment in Apollo for MSPs?",
+            connected_integrations=["apollo"],
+        )
+        is True
     )
 
 

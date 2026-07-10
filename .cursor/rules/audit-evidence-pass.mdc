@@ -1,0 +1,27 @@
+---
+description: Audit PASS/done claims must cite concrete execution evidence
+alwaysApply: true
+---
+
+# Evidence-linked audit claims
+
+Local tests, code reads, and "should work" reasoning are **not** completion.
+
+## PASS / done / working / fixed / shipped
+
+Any of these labels in an audit, status update, or handoff **must** include at least one concrete evidence pointer:
+
+- `audit_events` row timestamp + action (e.g. `tool.invoke.completed` at `2026-07-07 21:07:36Z`)
+- `conversation_messages` / notification / run id
+- CI run URL or pytest invocation that exercised the live path
+- Production log line with request/tool id
+
+Example format: `PASS — tool.invoke.completed apollo.lists.create @ 2026-07-07T21:07:36Z (connector 30f734a2…)`
+
+## NOT RUN / PARTIAL / INCONCLUSIVE
+
+Keep these labels. Do **not** upgrade them to PASS later without new evidence meeting the bar above.
+
+## Deploy bar
+
+`pytest` green locally ≠ fixed in production. For user-facing regressions: **merge → Railway redeploy → live re-run in prod chat** with a fresh trace before calling it done.

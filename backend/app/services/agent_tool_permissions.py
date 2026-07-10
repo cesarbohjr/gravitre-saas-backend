@@ -1,10 +1,27 @@
 """Agent-scoped tool permissions (STA-11)."""
 from __future__ import annotations
 
+import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from app.services.tool_types import ToolContext, ToolPermissionDeniedError
+
+
+def is_persisted_agent_id(agent_id: str | None) -> bool:
+    """Permission rows key on UUID agent ids; synthetic chat agents use non-UUID ids."""
+    value = str(agent_id or "").strip()
+    if not value or value.startswith("synthetic-"):
+        return False
+    try:
+        uuid.UUID(value)
+    except (TypeError, ValueError, AttributeError):
+        return False
+    return True
+
+
+# Backward-compatible private alias
+_is_persisted_agent_id = is_persisted_agent_id
 
 # Canonical tool action → required scopes (any one match grants access).
 _BUILTIN_ACTION_SCOPES: dict[str, list[str]] = {
@@ -249,6 +266,11 @@ def assert_agent_tool_permission(
 ) -> None:
     """Enforce agent-scoped permissions. Workflows without agent_id skip this check."""
     if not ctx.agent_id:
+        return
+    # Universal chat uses in-memory synthetic agents (id like "synthetic-default").
+    # agent_tool_permissions.agent_id is UUID — querying a non-UUID crashes before
+    # invoke_tool audits or reaches the vendor API (live apollo.lists.create regression).
+    if not is_persisted_agent_id(ctx.agent_id):
         return
 
     required = required_scopes_for_action(action)

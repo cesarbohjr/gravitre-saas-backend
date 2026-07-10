@@ -24,7 +24,7 @@ def tool_ctx() -> ToolContext:
         client=client,
         org_id="org-1",
         actor_id="user-1",
-        agent_id="agent-1",
+        agent_id="11111111-1111-1111-1111-111111111111",
     )
 
 
@@ -48,6 +48,25 @@ def test_assert_skips_without_agent_id():
         actor_id="user-1",
     )
     assert_agent_tool_permission(ctx, "slack.post_message", None, "slack")
+
+
+def test_assert_skips_synthetic_agent_id():
+    """Regression: synthetic-default must not query UUID agent_tool_permissions."""
+    client = MagicMock()
+
+    def _boom(*_args, **_kwargs):
+        raise AssertionError("synthetic agent must not query agent_tool_permissions")
+
+    client.table.side_effect = _boom
+    ctx = ToolContext(
+        settings=SimpleNamespace(disable_connectors=False),
+        client=client,
+        org_id="org-1",
+        actor_id="user-1",
+        agent_id="synthetic-default",
+    )
+    assert_agent_tool_permission(ctx, "apollo.lists.create", None, "apollo")
+    client.table.assert_not_called()
 
 
 def test_assert_denied_without_permissions(tool_ctx: ToolContext):
