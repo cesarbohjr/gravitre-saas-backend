@@ -19,11 +19,18 @@ from app.services.connector_action_workflows import (
 from app.services.connector_chat_routing import should_run_connector_preflight
 
 
-def test_preflight_runs_before_react_for_connector_intent():
+def test_preflight_defers_fresh_connector_intent_to_react():
     assert (
         should_run_connector_preflight(
             {},
             message="Create a task in Asana for Sarah to review the landing page by Friday",
+        )
+        is False
+    )
+    assert (
+        should_run_connector_preflight(
+            {"pending_task": {"type": "connector_action"}},
+            message="yes",
         )
         is True
     )

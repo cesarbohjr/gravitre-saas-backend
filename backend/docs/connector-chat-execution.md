@@ -24,6 +24,12 @@ Gravitre separates **cataloged actions** from **executable chat tools**.
 6. Extend `chat_action_mapper.py` phrase/arg extraction for common NL patterns.
 7. Add tests in `tests/services/test_connector_execution_matrix.py` and `tests/services/test_chat_action_mapper.py`.
 
+## Chat routing (ReAct-first)
+
+1. **Fresh connector intents** go to ReAct with dynamic connector tools so replies stay conversational.
+2. **Pending connector tasks** (awaiting confirm / clarification / multi-step orchestration) still run governed preflight *before* ReAct so approvals stay deterministic.
+3. If ReAct finishes without calling a connector tool, `run_connector_fallback_turn` applies orchestration + the NL phrase mapper.
+
 ## Approval rules
 
 - **Read** actions may auto-run after orchestration plan approval.
