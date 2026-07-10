@@ -14,6 +14,8 @@ on:
       - "backend/app/services/chat_connector_execution_service.py"
       - "backend/app/services/chat_action_mapper.py"
       - "backend/app/operators/agent_intelligence.py"
+      - "backend/app/services/connector_output_contract.py"
+      - "backend/app/services/connector_output_verified_batches.py"
   push:
     branches: [main]
     # Include connector-chat backend services so chat-only PRs still run required navigation E2E.
@@ -25,6 +27,8 @@ on:
       - "backend/app/services/chat_connector_execution_service.py"
       - "backend/app/services/chat_action_mapper.py"
       - "backend/app/operators/agent_intelligence.py"
+      - "backend/app/services/connector_output_contract.py"
+      - "backend/app/services/connector_output_verified_batches.py"
 
 concurrency:
   group: navigation-e2e-${{ github.ref }}
