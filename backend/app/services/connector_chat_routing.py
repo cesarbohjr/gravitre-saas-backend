@@ -45,15 +45,17 @@ def should_run_connector_preflight(
     *,
     message: str = "",
 ) -> bool:
-    """Run governed connector resolution before ReAct for in-flight or fresh connector intents."""
-    if has_pending_connector_task(task_state):
-        return True
-    text = message.strip()
-    if not text:
-        return False
-    from app.services.chat_connector_execution_service import ChatConnectorExecutionService
+    """Run governed connector resolution before ReAct only for in-flight connector tasks.
 
-    return ChatConnectorExecutionService.is_connector_intent(text, task_state or {})
+    Fresh connector intents go to ReAct first so the assistant can answer naturally
+    with tools. Phrase-mapper / orchestration run afterward via
+    ``should_attempt_connector_fallback`` when the model did not call a connector tool.
+
+    ``message`` is retained for call-site compatibility; it is not used to short-circuit
+    the LLM on first-turn intents.
+    """
+    _ = message  # call-site compatibility; fresh intents must not preflight
+    return has_pending_connector_task(task_state)
 
 
 async def run_connector_fallback_turn(

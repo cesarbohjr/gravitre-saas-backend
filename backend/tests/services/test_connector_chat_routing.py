@@ -21,15 +21,30 @@ def test_preflight_for_pending_connector_tasks():
     assert should_run_connector_preflight({"pending_task": {"type": "general"}}) is False
 
 
-def test_preflight_for_fresh_connector_intent():
+def test_preflight_skips_fresh_connector_intent_for_react_first():
+    """Fresh connector asks must reach ReAct; preflight is only for pending tasks."""
     assert (
         should_run_connector_preflight(
             {},
             message="Create a task in Asana for Sarah to review the landing page by Friday",
         )
-        is True
+        is False
+    )
+    assert (
+        should_run_connector_preflight(
+            {},
+            message="can you create a segment in Apollo for MSPs?",
+        )
+        is False
     )
     assert should_run_connector_preflight({}, message="hello there") is False
+    assert (
+        should_run_connector_preflight(
+            {"pending_task": {"type": "connector_action", "status": "awaiting_confirm"}},
+            message="yes",
+        )
+        is True
+    )
 
 
 def test_react_invoked_connector_tools_ignores_assistant_tools():
