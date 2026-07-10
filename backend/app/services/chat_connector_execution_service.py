@@ -1347,6 +1347,13 @@ class ChatConnectorExecutionService:
                 url = issue.get(key)
                 if isinstance(url, str) and url.startswith(("http://", "https://")):
                     return url
+        if integration == "engagebay" and invoke_action in {
+            "engagebay.contacts.create",
+            "engagebay.contacts.update",
+        }:
+            from app.services.connector_output_mappers.engagebay import resolve_contact_result_url
+
+            return resolve_contact_result_url(result_data)
         return None
 
     @staticmethod
@@ -1527,6 +1534,17 @@ class ChatConnectorExecutionService:
             name = plan.args.get("name")
             if name:
                 return f'Created contact list "{name}".'
+        if plan.integration == "engagebay" and plan.invoke_action in {
+            "engagebay.contacts.create",
+            "engagebay.contacts.update",
+        }:
+            from app.services.connector_output_mappers.engagebay import summarize_contact_write
+
+            return summarize_contact_write(
+                action=plan.invoke_action,
+                result_data=result_data,
+                args=dict(plan.args or {}),
+            )
         return f"Completed {plan.invoke_action}."
 
     async def _record_outcomes(
