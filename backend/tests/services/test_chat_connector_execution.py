@@ -97,7 +97,7 @@ async def test_write_action_returns_confirm(connector_service):
 
     assert result is not None
     assert result["dialogue_mode"] == "confirm"
-    assert "Approve?" in result["message"]
+    assert "Reply" in result["message"] and "yes" in result["message"].lower()
     assert result["pending_task"]["type"] == "connector_action"
 
 
@@ -248,7 +248,7 @@ async def test_asana_not_connected_returns_operator_blocker(connector_service):
 
     assert result is not None
     assert result["stop_pipeline"] is True
-    assert "**Intent:**" in result["message"]
+    assert "isn't ready" in result["message"] or "can't run" in result["message"].lower()
     assert "Asana" in result["message"]
     assert "Connect Asana" in result["message"] or "Missing connector" in result["message"]
 

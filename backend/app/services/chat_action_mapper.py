@@ -374,9 +374,11 @@ class ChatActionMapper:
 
         if entry.connector_id == "apollo" and "lists.create" in entry.action_key:
             name = quoted[0] if quoted else None
+            # Treat Apollo "segment" like a contact list/label — Apollo's public
+            # API exposes labels, not CRM segments, so we map both NL phrasings here.
             if not name:
                 for_match = re.search(
-                    r"\b(?:contact\s+)?list\b.*?\bfor\s+(.+?)(?:[?.!]|$)",
+                    r"\b(?:contact\s+)?(?:list|group|segment)\b.*?\bfor\s+(.+?)(?:[?.!]|$)",
                     text,
                     re.I,
                 )
@@ -384,16 +386,29 @@ class ChatActionMapper:
                     name = for_match.group(1).strip()
             if not name:
                 list_match = re.search(
-                    r"\b(?:list|group)\s+(?:named|called)\s*[\"']?([^\"'.]+)",
+                    r"\b(?:list|group|segment)\s+(?:named|called)\s*[\"']?([^\"'.]+)",
                     text,
                     re.I,
                 )
                 if list_match:
                     name = list_match.group(1).strip()
-            if not name and "msp" in text.lower():
-                name = "MSP Prospects"
+            if not name:
+                # "create a segment in Apollo for MSPs" / "create an MSP segment"
+                msp_match = re.search(
+                    r"\b(?:an?\s+)?(msp)\s+(?:prospect\s+)?(?:list|group|segment|contacts?)\b",
+                    text,
+                    re.I,
+                )
+                if msp_match or re.search(r"\b(?:list|group|segment)\b.*\bmsp\b", text, re.I):
+                    name = "MSP Prospects"
+                elif "msp" in text.lower() and LIST_CREATE_INTENT.search(text):
+                    name = "MSP Prospects"
             if name:
-                return {"name": name[:200], "modality": "contacts"}
+                cleaned = name.strip().strip("\"'")
+                # Normalize plural shorthand like "MSPs" → "MSP Prospects"
+                if re.fullmatch(r"msps?", cleaned, re.I):
+                    cleaned = "MSP Prospects"
+                return {"name": cleaned[:200], "modality": "contacts"}
             return None
 
         if quoted:

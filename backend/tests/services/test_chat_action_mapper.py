@@ -104,6 +104,16 @@ def test_maps_apollo_list_create():
     assert match.args.get("name") == "MSP prospects"
 
 
+def test_maps_apollo_segment_create_for_msps():
+    match = get_chat_action_mapper().match_segment(
+        "can you create a segment in Apollo for MSPs?",
+        connected_integrations=["apollo"],
+    )
+    assert match is not None
+    assert match.entry.action_key == "apollo.lists.create"
+    assert match.args.get("name") == "MSP Prospects"
+
+
 def test_maps_hubspot_deal_stage_update():
     match = get_chat_action_mapper().match_segment(
         "Update those deal stages in HubSpot after approval.",
