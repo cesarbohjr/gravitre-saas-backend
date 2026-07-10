@@ -426,7 +426,7 @@ def test_summarize_apollo_list_create_includes_name_and_id(connector_service):
 
 
 @pytest.mark.asyncio
-async def test_execute_plan_apollo_list_create_has_no_result_url(connector_service):
+async def test_execute_plan_apollo_list_create_sets_apollo_result_url(connector_service):
     plan = ConnectorActionPlan(
         tool_name="apollo_lists_create",
         invoke_action="apollo.lists.create",
@@ -450,7 +450,7 @@ async def test_execute_plan_apollo_list_create_has_no_result_url(connector_servi
         ),
     ), patch.object(connector_service, "_record_outcomes", AsyncMock()), patch(
         "app.services.chat_connector_execution_service.emit_notification"
-    ):
+    ) as notify:
         result = await connector_service.execute_plan(
             org_id="org-1",
             user_id="user-1",
@@ -461,11 +461,13 @@ async def test_execute_plan_apollo_list_create_has_no_result_url(connector_servi
         )
 
     assert result.success is True
-    assert result.result_url is None
+    assert result.result_url == "https://app.apollo.io/#/lists/list-123"
     assert result.connector_management_url == "/connectors/conn-apollo"
     assert result.integration == "apollo"
     assert "MSP Prospects" in result.body
     assert "list-123" in result.body
+    notify.assert_called_once()
+    assert notify.call_args.kwargs["entity_ref"]["result_url"] == result.result_url
 
 
 @pytest.mark.asyncio
