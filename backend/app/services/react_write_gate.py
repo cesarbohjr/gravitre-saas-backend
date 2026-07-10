@@ -127,13 +127,72 @@ def pending_write_from_react(react_result: Any | None) -> dict[str, Any] | None:
     return None
 
 
-def plan_from_react_write(pending: dict[str, Any]) -> ConnectorActionPlan | None:
+def plan_from_react_tool_call(
+    tool_name: str,
+    args: dict[str, Any] | None,
+    registry: Any,
+    *,
+    requires_approval: bool | None = None,
+) -> ConnectorActionPlan | None:
+    """Build a ConnectorActionPlan from a structured ReAct tool call (Wave 1).
+
+    Prefer this over NL ``chat_action_mapper`` whenever ReAct already produced
+    typed tool_calls with args.
+    """
+    name = str(tool_name or "").strip()
+    if not name:
+        return None
+    requires, invoke_action, integration, label = tool_requires_user_write_approval(name, registry)
+    if not invoke_action:
+        spec = registry.get_spec(name) if registry is not None else None
+        invoke_action = str(getattr(spec, "invoke_action", "") or "")
+        integration = str(getattr(spec, "integration", "") or integration)
+        label = label or name.replace("_", " ")
+    if not invoke_action:
+        return None
+    if not integration and "." in invoke_action:
+        integration = invoke_action.split(".", 1)[0]
+    kind = "write" if (requires or invoke_action_is_write(invoke_action)) else "read"
+    approval = requires if requires_approval is None else bool(requires_approval)
+    return ConnectorActionPlan(
+        tool_name=name,
+        invoke_action=invoke_action,
+        integration=integration or "connector",
+        kind=kind,
+        label=label or name.replace("_", " "),
+        args=dict(args or {}),
+        requires_approval=approval,
+        approval_reason="react_structured_tool_call" if approval else None,
+        destructive=False,
+    )
+
+
+def plan_from_react_write(pending: dict[str, Any], registry: Any | None = None) -> ConnectorActionPlan | None:
     result = pending.get("result") if isinstance(pending.get("result"), dict) else {}
     tool_name = str(pending.get("tool") or result.get("tool") or "").strip()
+    args = dict(pending.get("args") or result.get("args") or {})
+    if registry is not None:
+        plan = plan_from_react_tool_call(tool_name, args, registry, requires_approval=True)
+        if plan is not None:
+            # Preserve gate metadata when present.
+            invoke_action = str(result.get("action") or plan.invoke_action)
+            integration = str(result.get("integration") or plan.integration)
+            label = str(result.get("label") or plan.label)
+            return ConnectorActionPlan(
+                tool_name=plan.tool_name,
+                invoke_action=invoke_action,
+                integration=integration,
+                kind="write",
+                label=label,
+                args=plan.args,
+                requires_approval=True,
+                approval_reason="react_write_gate",
+                destructive=False,
+            )
+    # Fallback when registry is unavailable (unit tests / early boot).
     invoke_action = str(result.get("action") or "").strip()
     integration = str(result.get("integration") or "").strip()
     label = str(result.get("label") or "").strip() or tool_name.replace("_", " ")
-    args = dict(pending.get("args") or result.get("args") or {})
     if not tool_name or not invoke_action:
         return None
     if not integration and "." in invoke_action:
@@ -151,6 +210,37 @@ def plan_from_react_write(pending: dict[str, Any]) -> ConnectorActionPlan | None
     )
 
 
+def first_structured_connector_plan_from_react(
+    react_result: Any | None,
+    registry: Any,
+) -> ConnectorActionPlan | None:
+    """Prefer the first connector tool_call with args for governed fallback (no NL)."""
+    if react_result is None:
+        return None
+    for call in react_result.tool_calls or []:
+        if not isinstance(call, dict):
+            continue
+        tool_name = str(call.get("tool") or call.get("name") or "").strip()
+        if not tool_name or tool_name.startswith("assistant_") or tool_name in {
+            "web_search",
+            "knowledge_base",
+            "browser_agent_read",
+            "browser_agent_interact",
+        }:
+            continue
+        args = call.get("args") if isinstance(call.get("args"), dict) else {}
+        result = call.get("result") if isinstance(call.get("result"), dict) else {}
+        if not args and isinstance(result.get("args"), dict):
+            args = dict(result["args"])
+        if not args and not result.get("pending_approval"):
+            # No structured args to reuse — leave to NL mapper.
+            continue
+        plan = plan_from_react_tool_call(tool_name, args, registry)
+        if plan is not None:
+            return plan
+    return None
+
+
 async def materialize_react_write_approval_turn(
     *,
     settings: Any,
@@ -163,7 +253,9 @@ async def materialize_react_write_approval_turn(
     pending = pending_write_from_react(react_result)
     if not pending or not conversation_id:
         return None
-    plan = plan_from_react_write(pending)
+    from app.services.tool_registry import get_tool_registry
+
+    plan = plan_from_react_write(pending, get_tool_registry())
     if not plan:
         return None
 

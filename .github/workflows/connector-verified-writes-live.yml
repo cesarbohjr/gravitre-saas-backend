@@ -1,0 +1,85 @@
+name: Connector Verified Writes Live
+
+# Wave 2 — live/staging vendor matrix for seed verified writes.
+# Not merge-blocking. Skip gracefully when secrets or connectors are missing.
+on:
+  schedule:
+    - cron: "30 6 * * *"
+  workflow_dispatch:
+    inputs:
+      vendors:
+        description: "Comma-separated vendors (default: apollo,slack,hubspot,github)"
+        required: false
+        default: "apollo,slack,hubspot,github"
+      reason:
+        description: "Reason for manual trigger"
+        required: false
+
+concurrency:
+  group: connector-verified-writes-live
+  cancel-in-progress: false
+
+jobs:
+  verified-writes-live:
+    name: Seed verified-write live matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Skip if live secrets missing
+        id: secrets
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OAUTH_SMOKE_ORG_ID: ${{ secrets.OAUTH_SMOKE_ORG_ID }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "skip=1" >> "$GITHUB_OUTPUT"
+            echo "Skipping verified-write live smoke — SUPABASE secrets not configured"
+          else
+            echo "skip=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run seed verified-write smoke
+        if: steps.secrets.outputs.skip != '1'
+        working-directory: backend
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OAUTH_SMOKE_ORG_ID: ${{ secrets.OAUTH_SMOKE_ORG_ID }}
+          OAUTH_SMOKE_USER_ID: ${{ secrets.OAUTH_SMOKE_USER_ID }}
+          OAUTH_SMOKE_ENVIRONMENT: ${{ secrets.OAUTH_SMOKE_ENVIRONMENT || 'sandbox' }}
+          OAUTH_SMOKE_FORCE_SANDBOX_WRITES: ${{ secrets.OAUTH_SMOKE_FORCE_SANDBOX_WRITES || '1' }}
+          OAUTH_SMOKE_SLACK_CHANNEL: ${{ secrets.OAUTH_SMOKE_SLACK_CHANNEL }}
+          VENDORS: ${{ github.event.inputs.vendors || 'apollo,slack,hubspot,github' }}
+        run: |
+          mkdir -p ../docs/delivery
+          python ../scripts/smoke-oauth-live.py \
+            --vendors "$VENDORS" \
+            --enable-writes \
+            --environment "${OAUTH_SMOKE_ENVIRONMENT}" \
+            --json ../docs/delivery/verified-write-live-latest.json \
+            --csv ../docs/delivery/verified-write-live-latest.csv
+
+      - name: Upload live write report
+        if: always() && steps.secrets.outputs.skip != '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-write-live-report
+          path: |
+            docs/delivery/verified-write-live-latest.json
+            docs/delivery/verified-write-live-latest.csv
+          if-no-files-found: ignore

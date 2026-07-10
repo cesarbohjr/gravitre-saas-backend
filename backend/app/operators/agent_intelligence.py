@@ -1789,6 +1789,7 @@ class AgentIntelligence:
                 connected_integrations=connected_list,
                 client=client,
                 environment_name=environment_name,
+                react_result=react_result,
             )
             if fallback_turn:
                 task_state = fallback_turn.get("task_state") or task_state

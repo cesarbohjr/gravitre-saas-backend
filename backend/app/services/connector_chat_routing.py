@@ -90,13 +90,20 @@ async def run_connector_fallback_turn(
     connected_integrations: list[str],
     client: Any,
     environment_name: str = "production",
+    react_result: Any | None = None,
 ) -> dict[str, Any] | None:
-    """After ReAct, try orchestration then phrase mapper when the model did not call connector tools."""
+    """After ReAct, try orchestration then governed connector path.
+
+    Wave 1: when ReAct already produced structured connector tool_calls with args,
+    pass those into ``process_turn`` so NL ``chat_action_mapper`` is skipped.
+    """
     from app.services.chat_connector_execution_service import get_chat_connector_execution_service
     from app.services.chat_orchestration_service import (
         ChatOrchestrationService,
         get_chat_orchestration_service,
     )
+    from app.services.react_write_gate import first_structured_connector_plan_from_react
+    from app.services.tool_registry import get_tool_registry
 
     orchestration = get_chat_orchestration_service(settings)
     if ChatOrchestrationService.is_orchestration_intent(message, task_state, connected_integrations):
@@ -114,6 +121,10 @@ async def run_connector_fallback_turn(
         if turn and turn.get("stop_pipeline"):
             return turn
 
+    structured_plan = first_structured_connector_plan_from_react(
+        react_result,
+        get_tool_registry(),
+    )
     connector = get_chat_connector_execution_service(settings)
     turn = await connector.process_turn(
         org_id=org_id,
@@ -125,6 +136,7 @@ async def run_connector_fallback_turn(
         connected_integrations=connected_integrations,
         client=client,
         environment_name=environment_name,
+        structured_plan=structured_plan,
     )
     if turn and turn.get("stop_pipeline"):
         return turn

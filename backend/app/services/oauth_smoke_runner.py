@@ -327,7 +327,33 @@ def _default_write_plans() -> list[SmokeActionPlan]:
             "text": f"[Gravitre Smoke] OAuth live test {ts}",
         }
 
+    def apollo_list(ctx: SmokeBuildContext) -> dict[str, Any]:
+        ts = _smoke_ts(ctx.run_id)
+        return {
+            "name": f"Gravitre Smoke MSP {ts}",
+            "modality": "contacts",
+        }
+
+    def hubspot_deal(ctx: SmokeBuildContext) -> dict[str, Any]:
+        ts = _smoke_ts(ctx.run_id)
+        return {
+            "properties": {
+                "dealname": f"Gravitre Smoke Deal {ts}",
+                "pipeline": "default",
+                "dealstage": "appointmentscheduled",
+            }
+        }
+
     return [
+        SmokeActionPlan(
+            "apollo",
+            "apollo",
+            "apollo.lists.create",
+            "write",
+            param_builder=apollo_list,
+            expected_data_keys=("label",),
+            skip_unless_sandbox=True,
+        ),
         SmokeActionPlan(
             "hubspot",
             "hubspot",
@@ -335,6 +361,15 @@ def _default_write_plans() -> list[SmokeActionPlan]:
             "write",
             param_builder=hubspot_contact,
             expected_data_keys=("contact",),
+            skip_unless_sandbox=True,
+        ),
+        SmokeActionPlan(
+            "hubspot",
+            "hubspot",
+            "hubspot.deals.create",
+            "write",
+            param_builder=hubspot_deal,
+            expected_data_keys=("deal",),
             skip_unless_sandbox=True,
         ),
         SmokeActionPlan(
