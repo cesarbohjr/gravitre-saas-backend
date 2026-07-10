@@ -49,7 +49,11 @@ def test_verified_actions_include_apollo_and_slack():
     assert "slack.post_message" in VERIFIED_OUTPUT_ACTIONS
     assert "github.issues.create" in VERIFIED_OUTPUT_ACTIONS
     assert "hubspot.deals.create" in VERIFIED_OUTPUT_ACTIONS
-    assert len(VERIFIED_OUTPUT_ACTIONS) == 8
+    assert "engagebay.contacts.create" in VERIFIED_OUTPUT_ACTIONS
+    assert "engagebay.contacts.update" in VERIFIED_OUTPUT_ACTIONS
+    assert len(VERIFIED_OUTPUT_ACTIONS) == 10
+    assert "engagebay.contacts.create" not in PENDING_OUTPUT_SCHEMA_ALLOWLIST
+    assert "engagebay.contacts.update" not in PENDING_OUTPUT_SCHEMA_ALLOWLIST
 
 
 def test_execution_result_verifiable_requires_body_or_result_url():
@@ -125,3 +129,46 @@ async def test_verified_slack_post_message_summary_is_non_empty():
 
     assert_execution_result_verifiable(result)
     assert "sales" in result.body.lower()
+
+
+@pytest.mark.asyncio
+async def test_verified_engagebay_contact_create_summary_is_non_empty():
+    service = ChatConnectorExecutionService()
+    plan = ConnectorActionPlan(
+        tool_name="engagebay_contacts_create",
+        invoke_action="engagebay.contacts.create",
+        integration="engagebay",
+        kind="write",
+        label="Create EngageBay contact",
+        args={"email": "msp@example.com", "first_name": "Ada"},
+        requires_approval=True,
+    )
+    with patch.object(
+        service,
+        "_registry",
+        MagicMock(
+            execute_tool=AsyncMock(
+                return_value={
+                    "success": True,
+                    "connector_id": "conn-engagebay",
+                    "result": {"id": "eb-42", "email": "msp@example.com", "first_name": "Ada"},
+                }
+            )
+        ),
+    ), patch.object(service, "_record_outcomes", AsyncMock()), patch(
+        "app.services.chat_connector_execution_service.emit_notification"
+    ):
+        result = await service.execute_plan(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            plan=plan,
+            client=MagicMock(),
+            classification={},
+        )
+
+    assert_execution_result_verifiable(result)
+    assert result.result_url is None  # EngageBay: summary-only is the verified contract
+    assert "Ada" in result.body
+    assert "eb-42" in result.body
+    assert "EngageBay" in result.body

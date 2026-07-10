@@ -36,8 +36,6 @@ PENDING_OUTPUT_SCHEMA_ALLOWLIST: frozenset[str] = frozenset(
         "constant_contact.contacts.create",
         "constant_contact.contacts.update",
         "email.send",
-        "engagebay.contacts.create",
-        "engagebay.contacts.update",
         "fhir.prior_auth.checklist",
         "figma.comments.create",
         "figma.dev_resources.create",

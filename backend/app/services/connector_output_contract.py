@@ -20,6 +20,8 @@ VERIFIED_OUTPUT_ACTIONS: frozenset[str] = frozenset(
         "zendesk.tickets.create",
         "jira.issues.create",
         "gmail.messages.send",
+        "engagebay.contacts.create",
+        "engagebay.contacts.update",
     }
 )
 
