@@ -864,7 +864,7 @@ class ChatConnectorExecutionService:
                 environment_name=environment_name,
             )
             refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
-            return self._turn_from_execution(execution, refreshed)
+            return self._turn_from_execution(execution, refreshed, plan)
 
         if not plan.requires_approval:
             execution = await self.execute_plan(
@@ -877,7 +877,7 @@ class ChatConnectorExecutionService:
                 environment_name=environment_name,
             )
             refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
-            return self._turn_from_execution(execution, refreshed)
+            return self._turn_from_execution(execution, refreshed, plan)
 
         await self._state.update_task_state(
             conversation_id,
@@ -1018,6 +1018,33 @@ class ChatConnectorExecutionService:
             task_label=plan.label,
             structured=result_data,
         )
+        if plan.kind == "write":
+            from app.services.connector_output_contract import assert_execution_result_verifiable
+
+            try:
+                assert_execution_result_verifiable(result)
+            except AssertionError as exc:
+                logger.error(
+                    "connector_write_unverifiable org_id=%s action=%s error=%s",
+                    org_id,
+                    plan.invoke_action,
+                    exc,
+                )
+                return ExecutionResult(
+                    success=False,
+                    entity_type="connector",
+                    entity_id=connector_id,
+                    connector_management_url=connector_management_url,
+                    result_url=result_url,
+                    integration=plan.integration,
+                    title=plan.label,
+                    body=(
+                        "The connector action completed but returned no verifiable output "
+                        f"(missing body and result link). {exc}"
+                    ),
+                    task_label=plan.label,
+                    structured=result_data,
+                )
 
         emit_notification(
             client,
@@ -1077,7 +1104,18 @@ class ChatConnectorExecutionService:
         self,
         execution: ExecutionResult,
         task_state: dict[str, Any],
+        plan: ConnectorActionPlan | None = None,
     ) -> dict[str, Any]:
+        connector_tool = None
+        if plan is not None:
+            connector_tool = {
+                "tool_name": plan.tool_name,
+                "invoke_action": plan.invoke_action,
+                "integration": plan.integration,
+                "kind": plan.kind,
+                "label": plan.label,
+                "args": dict(plan.args),
+            }
         if execution.success:
             link_line = ""
             if execution.result_url:
@@ -1088,6 +1126,7 @@ class ChatConnectorExecutionService:
                 "dialogue_mode": "answer",
                 "message": f"Done — **{execution.title}**.\n\n{execution.body}{link_line}",
                 "execution_result": execution.__dict__,
+                "connector_tool": connector_tool,
                 "task_state": task_state,
             }
         return {
@@ -1095,6 +1134,7 @@ class ChatConnectorExecutionService:
             "dialogue_mode": "answer",
             "message": f"I couldn't complete that: {execution.body}",
             "execution_result": execution.__dict__,
+            "connector_tool": connector_tool,
             "task_state": task_state,
         }
 
@@ -1526,16 +1566,18 @@ class ChatConnectorExecutionService:
             return "Gmail message sent."
         if plan.integration == "apollo" and plan.invoke_action == "apollo.lists.create":
             label_data = result_data.get("label")
+            already = bool(result_data.get("already_existed"))
+            verb = "Found existing" if already else "Created"
             if isinstance(label_data, dict):
                 name = label_data.get("name") or plan.args.get("name")
                 list_id = label_data.get("id") or label_data.get("_id")
                 if name and list_id:
-                    return f'Created contact list "{name}" (id: {list_id}).'
+                    return f'{verb} contact list "{name}" (id: {list_id}).'
                 if name:
-                    return f'Created contact list "{name}".'
+                    return f'{verb} contact list "{name}".'
             name = plan.args.get("name")
             if name:
-                return f'Created contact list "{name}".'
+                return f'{verb} contact list "{name}".'
         if plan.integration == "engagebay" and plan.invoke_action in {
             "engagebay.contacts.create",
             "engagebay.contacts.update",

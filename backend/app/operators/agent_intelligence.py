@@ -427,10 +427,77 @@ def _recommended_actions_from_tools(tool_calls: list[dict[str, Any]], answer: st
         if plain and not plain.startswith("{"):
             first_line = plain.split("\n", 1)[0].strip()
             first_sentence = first_line.split(". ", 1)[0].strip()
-            snippet = first_sentence or first_line
-            if snippet:
-                actions.append(snippet[:200])
-    return actions[:8]
+            if first_sentence:
+                actions.append(first_sentence[:160])
+    return actions[:5]
+
+
+def _tool_results_from_connector_turn(connector_turn: dict[str, Any] | None) -> list[dict[str, Any]]:
+    """Persist governed connector turns with durable tool_calls (Wave 0 #2)."""
+    if not isinstance(connector_turn, dict):
+        return []
+    task_state = connector_turn.get("task_state") if isinstance(connector_turn.get("task_state"), dict) else {}
+    pending_top = connector_turn.get("pending_task") if isinstance(connector_turn.get("pending_task"), dict) else {}
+    pending_state = task_state.get("pending_task") if isinstance(task_state.get("pending_task"), dict) else {}
+    pending = {**pending_state, **pending_top}
+    params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
+    connector_tool = connector_turn.get("connector_tool")
+    if isinstance(connector_tool, dict):
+        params = {**params, **connector_tool}
+    execution = connector_turn.get("execution_result")
+    if not isinstance(execution, dict):
+        execution = {}
+
+    invoke_action = str(
+        params.get("invoke_action")
+        or execution.get("task_label")
+        or execution.get("title")
+        or ""
+    ).strip()
+    tool_name = str(params.get("tool_name") or invoke_action or "connector_action")
+    args = params.get("args") if isinstance(params.get("args"), dict) else {}
+    display = str(params.get("label") or execution.get("title") or tool_name)
+
+    if execution:
+        success = bool(execution.get("success"))
+        output: dict[str, Any] = {
+            "success": success,
+            "body": execution.get("body"),
+            "resultUrl": execution.get("result_url"),
+            "connectorManagementUrl": execution.get("connector_management_url"),
+            "integration": execution.get("integration"),
+            "structured": execution.get("structured"),
+            "invokeAction": invoke_action or None,
+        }
+        entry: dict[str, Any] = {
+            "name": tool_name,
+            "displayName": display,
+            "input": dict(args),
+            "output": output,
+        }
+        if not success:
+            entry["error"] = str(execution.get("body") or "Connector action failed")
+            entry["errorCode"] = "connector_execution_failed"
+        return [entry]
+
+    status = str(pending.get("status") or "")
+    if status == "awaiting_confirm" and (invoke_action or args):
+        return [
+            {
+                "name": tool_name,
+                "displayName": display,
+                "input": dict(args),
+                "output": {
+                    "success": False,
+                    "pendingApproval": True,
+                    "errorCode": "write_approval_required",
+                    "invokeAction": invoke_action or None,
+                },
+                "error": "Write requires user approval",
+                "errorCode": "write_approval_required",
+            }
+        ]
+    return []
 
 
 class AgentIntelligence:
@@ -1312,7 +1379,7 @@ class AgentIntelligence:
                 )
                 yield AssistantStreamComplete(
                     full_content=response_text,
-                    tool_results=[],
+                    tool_results=_tool_results_from_connector_turn(connector_turn),
                     react_result=None,
                     model="chat_connector",
                     message_id=message_id,
@@ -1632,6 +1699,16 @@ class AgentIntelligence:
                         "displayName": display,
                         "input": dict(event.tool_args or {}),
                         "output": output,
+                        **(
+                            {"error": observation.get("error")}
+                            if observation.get("success") is False and observation.get("error")
+                            else {}
+                        ),
+                        **(
+                            {"errorCode": observation.get("error_code")}
+                            if observation.get("error_code") is not None
+                            else {}
+                        ),
                     }
                 )
                 yield sse_react_tool_complete(

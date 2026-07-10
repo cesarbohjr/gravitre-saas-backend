@@ -25,6 +25,29 @@ class ApolloAPIError(Exception):
         self.details = details
 
 
+def _format_apollo_error_detail(detail: Any) -> str:
+    """Extract a short human-readable reason from Apollo error payloads."""
+    if detail is None:
+        return ""
+    if isinstance(detail, str):
+        return detail.strip()[:300]
+    if not isinstance(detail, dict):
+        return str(detail)[:300]
+    for key in ("error", "message", "error_message", "detail"):
+        value = detail.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()[:300]
+        if isinstance(value, list) and value:
+            return "; ".join(str(item) for item in value[:3])[:300]
+    errors = detail.get("errors")
+    if isinstance(errors, list) and errors:
+        return "; ".join(str(item) for item in errors[:3])[:300]
+    if isinstance(errors, dict) and errors:
+        parts = [f"{k}: {v}" for k, v in list(errors.items())[:3]]
+        return "; ".join(parts)[:300]
+    return ""
+
+
 def _connector_auth_type(client: Any, org_id: str, connector_id: str) -> str:
     row = (
         client.table("connectors")
@@ -122,8 +145,12 @@ def _request(
             detail = response.json()
         except Exception:
             detail = response.text[:500]
+        detail_text = _format_apollo_error_detail(detail)
+        message = f"Apollo API {response.status_code}: {path}"
+        if detail_text:
+            message = f"{message} — {detail_text}"
         raise ApolloAPIError(
-            f"Apollo API {response.status_code}: {path}",
+            message,
             status_code=response.status_code,
             details=detail,
         )
@@ -229,19 +256,60 @@ def create_label(
     name: str,
     modality: str = "contacts",
 ) -> dict[str, Any]:
-    """Create an Apollo label (contact list). Uses POST /labels."""
+    """Create an Apollo label (contact list). Uses POST /labels.
+
+    If Apollo returns 422 because the label already exists, return the existing
+    label (idempotent create) so chat re-runs of the same name succeed.
+    """
     label_name = str(name or "").strip()
     if not label_name:
         raise ApolloAPIError("label name is required")
     normalized_modality = str(modality or "contacts").strip().lower()
     if normalized_modality not in {"contacts", "accounts"}:
         raise ApolloAPIError("modality must be contacts or accounts")
-    return _request(
-        auth_headers,
-        "POST",
-        "/labels",
-        json_body={"name": label_name, "modality": normalized_modality},
-    )
+    try:
+        return _request(
+            auth_headers,
+            "POST",
+            "/labels",
+            json_body={"name": label_name, "modality": normalized_modality},
+        )
+    except ApolloAPIError as exc:
+        if exc.status_code != 422:
+            raise
+        existing = _find_existing_label(
+            auth_headers,
+            name=label_name,
+            modality=normalized_modality,
+        )
+        if existing is not None:
+            return {"label": existing, "already_existed": True}
+        raise
+
+
+def _find_existing_label(
+    auth_headers: dict[str, str],
+    *,
+    name: str,
+    modality: str,
+) -> dict[str, Any] | None:
+    """Best-effort lookup when create returns 422 (often duplicate name)."""
+    try:
+        payload = list_labels(auth_headers)
+    except ApolloAPIError:
+        return None
+    labels = payload.get("labels") if isinstance(payload, dict) else None
+    if not isinstance(labels, list):
+        return None
+    target = name.strip().casefold()
+    for row in labels:
+        if not isinstance(row, dict):
+            continue
+        row_name = str(row.get("name") or "").strip().casefold()
+        row_modality = str(row.get("modality") or "").strip().lower()
+        if row_name == target and (not row_modality or row_modality == modality):
+            return row
+    return None
 
 
 def add_contacts_to_sequence(

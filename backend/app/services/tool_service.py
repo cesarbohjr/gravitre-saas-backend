@@ -3566,7 +3566,15 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
         action,
         str(connector_id) if connector_id else None,
         "tool.invoke.failed",
-        {"error_code": last_error.code, "error": str(last_error)[:200]},
+        {
+            "error_code": last_error.code,
+            "error": str(last_error)[:500],
+            **(
+                {"vendor_details": last_error.details}
+                if getattr(last_error, "details", None)
+                else {}
+            ),
+        },
     )
     if ctx.transparency_log_id:
         try:

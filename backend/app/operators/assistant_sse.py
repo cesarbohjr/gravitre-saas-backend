@@ -178,10 +178,20 @@ def format_react_tool_output(registry_tool_name: str, observation: dict[str, Any
             "query": query,
         }
     if observation.get("success") is False:
-        return {"error": observation.get("error") or "Tool failed"}
+        payload: dict[str, Any] = {
+            "error": observation.get("error") or "Tool failed",
+            "success": False,
+        }
+        if observation.get("error_code") is not None:
+            payload["errorCode"] = observation.get("error_code")
+        return payload
     payload = observation.get("result")
     if isinstance(payload, dict):
-        return payload
+        shaped = dict(payload)
+        shaped.setdefault("success", True)
+        return shaped
+    if isinstance(observation, dict):
+        return {**observation, "success": observation.get("success", True)}
     return observation
 
 
