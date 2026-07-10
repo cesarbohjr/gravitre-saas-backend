@@ -221,3 +221,192 @@ VERIFIED_OUTPUT_BATCHES: tuple[frozenset[str], ...] = (
 )
 
 CLEARED_OUTPUT_SCHEMA_ACTIONS: frozenset[str] = frozenset().union(*VERIFIED_OUTPUT_BATCHES)
+
+# ---------------------------------------------------------------------------
+# Advanced (kind=advanced) write-like actions — cleared in batches of 25
+# ---------------------------------------------------------------------------
+
+VERIFIED_ADVANCED_OUTPUT_BATCH_08: frozenset[str] = frozenset(
+    {
+        "absorb_lms.batch.enroll",
+        "adp.batch.workers.sync",
+        "airtable.records.delete",
+        "airtable.webhooks.create",
+        "apollo.contacts.delete",
+        "apollo.contacts.update",
+        "apollo.sequences.remove",
+        "apollo.signals.subscribe",
+        "apollo.tasks.create",
+        "asana.sections.move",
+        "asana.tasks.add_project",
+        "asana.tasks.delete",
+        "aws_s3.batch.delete",
+        "aws_s3.multipart.upload",
+        "bamboohr.onboarding.tasks.assign",
+        "bamboohr.reports.run",
+        "bamboohr.webhooks.create",
+        "canva.autofill.create",
+        "canva.batch.exports",
+        "canva.designs.delete",
+        "clay.crm.sync",
+        "clickup.goals.update",
+        "clickup.tasks.bulk_update",
+        "clickup.tasks.delete",
+        "clickup.time_entries.create",
+    }
+)
+
+VERIFIED_ADVANCED_OUTPUT_BATCH_09: frozenset[str] = frozenset(
+    {
+        "clickup.webhooks.create",
+        "confluence.attachments.upload",
+        "confluence.pages.move",
+        "constant_contact.campaigns.schedule",
+        "constant_contact.contacts.delete",
+        "constant_contact.lists.add_contacts",
+        "constant_contact.tags.apply",
+        "email.batch.send",
+        "engagebay.tasks.create",
+        "figma.batch.images.export",
+        "figma.comments.delete",
+        "freshdesk.automations.trigger",
+        "freshdesk.satisfaction.send",
+        "freshdesk.tickets.merge",
+        "github.actions.dispatch",
+        "github.pulls.close",
+        "github.pulls.merge",
+        "github.releases.create",
+        "gmail.watch.create",
+        "google_analytics.funnels.run",
+        "google_analytics.realtime.run",
+        "google_calendar.events.quick_add",
+        "google_docs.documents.insert_table",
+        "google_drive.files.export",
+        "google_sheets.charts.add",
+    }
+)
+
+VERIFIED_ADVANCED_OUTPUT_BATCH_10: frozenset[str] = frozenset(
+    {
+        "google_sheets.pivot.create",
+        "google_sheets.values.batch_update",
+        "gorgias.rules.trigger",
+        "gorgias.satisfaction.request",
+        "gorgias.tags.apply",
+        "greenhouse.offers.create",
+        "gusto.benefits.enroll",
+        "hootsuite.approvals.submit",
+        "hootsuite.bulk.schedule",
+        "hootsuite.inbox.reply",
+        "hubspot.deals.update_stage",
+        "hubspot.lists.add_contact",
+        "hubspot.sequences.enroll",
+        "hubspot.tickets.create",
+        "intercom.contacts.delete",
+        "intercom.notes.create",
+        "intercom.series.trigger",
+        "intercom.tags.apply",
+        "jira.issues.assign",
+        "linkedin.conversions.track",
+        "mailchimp.automations.trigger",
+        "mailchimp.batch.subscribe",
+        "mailchimp.segments.add_member",
+        "marketo.leads.merge",
+        "marketo.lists.add_to_static_list",
+    }
+)
+
+VERIFIED_ADVANCED_OUTPUT_BATCH_11: frozenset[str] = frozenset(
+    {
+        "marketo.programs.members.add",
+        "microsoft365.excel.workbook.update",
+        "microsoft365.sharepoint.files.delete",
+        "microsoft365.sharepoint.files.upload",
+        "microsoft365.teams.members.add",
+        "microsoft365.teams.presence.set",
+        "microsoft365.teams.tabs.create",
+        "microsoft_teams.members.add",
+        "microsoft_teams.presence.set",
+        "microsoft_teams.tabs.create",
+        "mixpanel.annotations.create",
+        "mixpanel.cohorts.export",
+        "monday.automations.trigger",
+        "monday.items.delete",
+        "monday.updates.create",
+        "mongodb.aggregation.run",
+        "mongodb.change_streams.watch",
+        "motion.batch.reschedule",
+        "n8n.executions.retry",
+        "n8n.webhooks.trigger",
+        "netsuite.fulfillment.create",
+        "notion.comments.create",
+        "notion.databases.create",
+        "odoo.invoices.post",
+        "odoo.manufacturing.orders.create",
+    }
+)
+
+VERIFIED_ADVANCED_OUTPUT_BATCH_12: frozenset[str] = frozenset(
+    {
+        "odoo.partners.update",
+        "odoo.sales.orders.confirm",
+        "outlook.batch.send",
+        "outlook.categories.apply",
+        "outlook.rules.create",
+        "pagerduty.incidents.escalate",
+        "pagerduty.incidents.reassign",
+        "pipedrive.deals.update_stage",
+        "plaid.transactions.sync",
+        "postgresql.batch.upsert",
+        "postgresql.migrations.apply",
+        "quickbooks.journalentries.create",
+        "real_estate.mls.sync",
+        "salesforce.accounts.update",
+        "salesforce.opportunities.update",
+        "salesforce.opportunities.update_stage",
+        "semrush.exports.run",
+        "sendgrid.batch.send",
+        "sendgrid.campaigns.schedule",
+        "sendgrid.suppressions.add",
+        "slack.files.upload",
+        "slack.reactions.add",
+        "slack.workflows.trigger",
+        "snowflake.batch.copy",
+        "snowflake.tasks.run",
+    }
+)
+
+VERIFIED_ADVANCED_OUTPUT_BATCH_13: frozenset[str] = frozenset(
+    {
+        "stackadapt.audiences.sync",
+        "stackadapt.creatives.upload",
+        "stackadapt.reports.export",
+        "stripe.checkout.sessions.create",
+        "stripe.payment_intents.confirm",
+        "stripe.subscriptions.update",
+        "twilio.conversations.create",
+        "webhook.post.replay",
+        "workday.batch.workers.export",
+        "workday.learning.enroll",
+        "xero.banktransactions.import",
+        "zapier.batch.trigger",
+        "zapier.interfaces.submit",
+        "zapier.tables.rows.upsert",
+        "zendesk.macros.apply",
+        "zendesk.side_conversations.create",
+        "zendesk.tickets.merge",
+    }
+)
+
+VERIFIED_ADVANCED_OUTPUT_BATCHES: tuple[frozenset[str], ...] = (
+    VERIFIED_ADVANCED_OUTPUT_BATCH_08,
+    VERIFIED_ADVANCED_OUTPUT_BATCH_09,
+    VERIFIED_ADVANCED_OUTPUT_BATCH_10,
+    VERIFIED_ADVANCED_OUTPUT_BATCH_11,
+    VERIFIED_ADVANCED_OUTPUT_BATCH_12,
+    VERIFIED_ADVANCED_OUTPUT_BATCH_13,
+)
+
+CLEARED_ADVANCED_OUTPUT_SCHEMA_ACTIONS: frozenset[str] = frozenset().union(
+    *VERIFIED_ADVANCED_OUTPUT_BATCHES
+)

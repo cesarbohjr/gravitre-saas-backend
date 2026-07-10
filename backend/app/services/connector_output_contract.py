@@ -5,12 +5,119 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from app.connectors.action_catalog.registry import all_catalog_action_specs
-from app.services.connector_output_verified_batches import CLEARED_OUTPUT_SCHEMA_ACTIONS
+from app.services.connector_output_verified_batches import (
+    CLEARED_ADVANCED_OUTPUT_SCHEMA_ACTIONS,
+    CLEARED_OUTPUT_SCHEMA_ACTIONS,
+)
 from app.services.conversational_execution_service import ExecutionResult
 
 OutputDebtKind = Literal["pending_output_schema"]
 
-# Seed set (hand-tuned mappers) plus batches cleared via the generic write summarizer.
+# Final-segment tokens that mark an advanced action as write-like / mutating.
+MUTATING_ADVANCED_VERB_TOKENS: frozenset[str] = frozenset(
+    {
+        "create",
+        "update",
+        "send",
+        "add",
+        "delete",
+        "post",
+        "insert",
+        "upload",
+        "reply",
+        "comment",
+        "remove",
+        "set",
+        "append",
+        "put",
+        "track",
+        "trigger",
+        "enable",
+        "schedule",
+        "submit",
+        "publish",
+        "close",
+        "resolve",
+        "merge",
+        "acknowledge",
+        "activate",
+        "upsert",
+        "exchange",
+        "apply",
+        "request",
+        "run",
+        "share",
+        "copy",
+        "watch",
+        "note",
+        "tag",
+        "enroll",
+        "invite",
+        "assign",
+        "cancel",
+        "void",
+        "refund",
+        "pause",
+        "resume",
+        "archive",
+        "restore",
+        "approve",
+        "reject",
+        "complete",
+        "start",
+        "stop",
+        "sync",
+        "import",
+        "export",
+        "transfer",
+        "move",
+        "rename",
+        "attach",
+        "detach",
+        "link",
+        "unlink",
+        "grant",
+        "revoke",
+        "rotate",
+        "reset",
+        "provision",
+        "checkout",
+        "book",
+        "reserve",
+        "release",
+        "escalate",
+        "reopen",
+        "snooze",
+        "forward",
+        "draft",
+        "queue",
+        "replay",
+        "renew",
+        "extend",
+        "clone",
+        "fork",
+        "subscribe",
+        "confirm",
+        "accept",
+        "decline",
+        "retry",
+        "abort",
+        "expire",
+        "promote",
+        "install",
+        "upgrade",
+        "patch",
+        "scale",
+        "resize",
+        "dispatch",
+        "reassign",
+        "reschedule",
+        "autofill",
+        "exports",
+    }
+)
+
+# Seed set (hand-tuned mappers) plus write + advanced batches cleared via generic summarizer.
 _SEED_VERIFIED_OUTPUT_ACTIONS: frozenset[str] = frozenset(
     {
         "apollo.lists.create",
@@ -26,7 +133,11 @@ _SEED_VERIFIED_OUTPUT_ACTIONS: frozenset[str] = frozenset(
     }
 )
 
-VERIFIED_OUTPUT_ACTIONS: frozenset[str] = _SEED_VERIFIED_OUTPUT_ACTIONS | CLEARED_OUTPUT_SCHEMA_ACTIONS
+VERIFIED_OUTPUT_ACTIONS: frozenset[str] = (
+    _SEED_VERIFIED_OUTPUT_ACTIONS
+    | CLEARED_OUTPUT_SCHEMA_ACTIONS
+    | CLEARED_ADVANCED_OUTPUT_SCHEMA_ACTIONS
+)
 
 
 @dataclass(frozen=True)
@@ -60,12 +171,25 @@ class OutputAllowlistBucket:
         }
 
 
+def _action_key(spec: Any) -> str:
+    return spec.id if "." in spec.id else spec.tool
+
+
+def _is_mutating_advanced(action_key: str) -> bool:
+    verb = action_key.rsplit(".", 1)[-1].lower()
+    return any(token in verb for token in MUTATING_ADVANCED_VERB_TOKENS)
+
+
 def collect_write_action_keys() -> frozenset[str]:
-    return frozenset(
-        spec.id if "." in spec.id else spec.tool
-        for spec in all_catalog_action_specs()
-        if spec.kind == "write"
-    )
+    """Catalog write actions plus advanced write-like (mutating) actions."""
+    keys: set[str] = set()
+    for spec in all_catalog_action_specs():
+        key = _action_key(spec)
+        if spec.kind == "write":
+            keys.add(key)
+        elif spec.kind == "advanced" and _is_mutating_advanced(key):
+            keys.add(key)
+    return frozenset(keys)
 
 
 def collect_pending_output_schemas() -> frozenset[str]:
