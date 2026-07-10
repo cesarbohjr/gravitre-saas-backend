@@ -5,12 +5,13 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from app.connectors.action_catalog.registry import all_catalog_action_specs
+from app.services.connector_output_verified_batches import CLEARED_OUTPUT_SCHEMA_ACTIONS
 from app.services.conversational_execution_service import ExecutionResult
 
 OutputDebtKind = Literal["pending_output_schema"]
 
-# Write actions with tested inline summaries and/or resolvable result_url behavior.
-VERIFIED_OUTPUT_ACTIONS: frozenset[str] = frozenset(
+# Seed set (hand-tuned mappers) plus batches cleared via the generic write summarizer.
+_SEED_VERIFIED_OUTPUT_ACTIONS: frozenset[str] = frozenset(
     {
         "apollo.lists.create",
         "slack.post_message",
@@ -24,6 +25,8 @@ VERIFIED_OUTPUT_ACTIONS: frozenset[str] = frozenset(
         "engagebay.contacts.update",
     }
 )
+
+VERIFIED_OUTPUT_ACTIONS: frozenset[str] = _SEED_VERIFIED_OUTPUT_ACTIONS | CLEARED_OUTPUT_SCHEMA_ACTIONS
 
 
 @dataclass(frozen=True)

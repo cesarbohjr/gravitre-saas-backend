@@ -1354,7 +1354,9 @@ class ChatConnectorExecutionService:
             from app.services.connector_output_mappers.engagebay import resolve_contact_result_url
 
             return resolve_contact_result_url(result_data)
-        return None
+        from app.services.connector_output_mappers.generic import resolve_generic_result_url
+
+        return resolve_generic_result_url(result_data)
 
     @staticmethod
     def _session_updates_for_pending(
@@ -1545,7 +1547,13 @@ class ChatConnectorExecutionService:
                 result_data=result_data,
                 args=dict(plan.args or {}),
             )
-        return f"Completed {plan.invoke_action}."
+        from app.services.connector_output_mappers.generic import summarize_write_action
+
+        return summarize_write_action(
+            action=plan.invoke_action,
+            result_data=result_data,
+            args=dict(plan.args or {}),
+        )
 
     async def _record_outcomes(
         self,
