@@ -73,7 +73,39 @@ def test_create_label_422_returns_existing_label_when_duplicate():
     assert mock_request.call_count == 2
 
 
-def test_create_label_422_reraises_when_no_existing_match():
+def test_create_label_422_already_exists_succeeds_without_list_match():
+    """Prod 2026-07-10: Apollo said already exists but GET /labels did not return the row."""
+    with patch("app.connectors.apollo_api._request") as mock_request:
+        mock_request.side_effect = [
+            ApolloAPIError(
+                "Apollo API 422: /labels — MSP Prospects already exists",
+                status_code=422,
+                details={"error": "MSP Prospects already exists", "skip_alert_dialog": True},
+            ),
+            {"labels": []},
+        ]
+        out = create_label({"X-Api-Key": "k"}, name="MSP Prospects", modality="contacts")
+    assert out["already_existed"] is True
+    assert out["label"]["name"] == "MSP Prospects"
+    assert out["label"]["modality"] == "contacts"
+
+
+def test_create_label_422_list_lookup_failure_still_idempotent_on_duplicate():
+    with patch("app.connectors.apollo_api._request") as mock_request:
+        mock_request.side_effect = [
+            ApolloAPIError(
+                "Apollo API 422: /labels — MSP Prospects already exists",
+                status_code=422,
+                details={"error": "MSP Prospects already exists"},
+            ),
+            ApolloAPIError("Apollo API 403: /labels", status_code=403, details={"error": "forbidden"}),
+        ]
+        out = create_label({"X-Api-Key": "k"}, name="MSP Prospects", modality="contacts")
+    assert out["already_existed"] is True
+    assert out["label"]["name"] == "MSP Prospects"
+
+
+def test_create_label_422_reraises_when_not_duplicate():
     with patch("app.connectors.apollo_api._request") as mock_request:
         mock_request.side_effect = [
             ApolloAPIError(
@@ -81,7 +113,6 @@ def test_create_label_422_reraises_when_no_existing_match():
                 status_code=422,
                 details={"error": "modality invalid"},
             ),
-            {"labels": [{"id": "other", "name": "Other", "modality": "contacts"}]},
         ]
         try:
             create_label({"X-Api-Key": "k"}, name="MSP Prospects", modality="contacts")
@@ -89,6 +120,7 @@ def test_create_label_422_reraises_when_no_existing_match():
         except ApolloAPIError as exc:
             assert exc.status_code == 422
             assert "modality invalid" in str(exc)
+        assert mock_request.call_count == 1
 
 
 def test_apollo_error_message_includes_vendor_detail():
