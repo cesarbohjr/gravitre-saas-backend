@@ -109,7 +109,7 @@ export default function MarketplaceAnalyticsPage() {
 
   return (
     <AppShell title="Marketplace analytics">
-      <div className="relative overflow-hidden rounded-2xl border bg-card/40 p-6 md:p-8">
+      <div className="relative shrink-0 overflow-hidden rounded-2xl border bg-card/40 p-6 md:p-8">
         <GridPattern className="opacity-40" />
         <div className="relative space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
