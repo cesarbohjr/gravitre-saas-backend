@@ -999,6 +999,15 @@ class ChatConnectorExecutionService:
         result_url = external_url
 
         if not success:
+            from app.services.tool_error_messages import format_tool_error_for_user
+
+            error_code = str(observation.get("error_code") or "").strip() or None
+            body = format_tool_error_for_user(
+                error_code,
+                str(observation.get("error") or ""),
+                integration=plan.integration,
+                action=plan.invoke_action,
+            )
             return ExecutionResult(
                 success=False,
                 entity_type="connector",
@@ -1007,8 +1016,9 @@ class ChatConnectorExecutionService:
                 result_url=result_url,
                 integration=plan.integration,
                 title=plan.label,
-                body=str(observation.get("error") or "Connector action failed."),
+                body=body,
                 task_label=plan.label,
+                error_code=error_code,
             )
 
         summary = self._summarize_result(plan, result_data, observation)
@@ -1037,6 +1047,8 @@ class ChatConnectorExecutionService:
                     plan.invoke_action,
                     exc,
                 )
+                from app.services.tool_error_messages import format_tool_error_for_user
+
                 return ExecutionResult(
                     success=False,
                     entity_type="connector",
@@ -1045,12 +1057,15 @@ class ChatConnectorExecutionService:
                     result_url=result_url,
                     integration=plan.integration,
                     title=plan.label,
-                    body=(
-                        "The connector action completed but returned no verifiable output "
-                        f"(missing body and result link). {exc}"
+                    body=format_tool_error_for_user(
+                        "unverifiable_output",
+                        str(exc),
+                        integration=plan.integration,
+                        action=plan.invoke_action,
                     ),
                     task_label=plan.label,
                     structured=result_data,
+                    error_code="unverifiable_output",
                 )
 
         emit_notification(

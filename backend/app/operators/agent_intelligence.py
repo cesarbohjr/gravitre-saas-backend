@@ -323,12 +323,21 @@ def select_model_for_agent(
     if configured:
         return configured
     params = parameters or {}
-    complexity = str(params.get("complexity") or "").lower()
-    if complexity in {"high", "complex"} or params.get("require_high_model"):
-        return MODEL_TIERS["high"]["openai"]
-    if len(task) > 2500 or len(task.split()) > 400:
-        return MODEL_TIERS["high"]["openai"]
-    return MODEL_TIERS["medium"]["openai"]
+    from app.services.assistant_turn_complexity import (
+        classify_assistant_turn_complexity,
+        model_tier_for_task_type,
+    )
+
+    task_type = classify_assistant_turn_complexity(
+        task,
+        mode=str(params.get("mode") or params.get("intelligence_mode") or ""),
+        connected_integrations=params.get("connected_integrations")
+        if isinstance(params.get("connected_integrations"), list)
+        else None,
+        parameters=params,
+    )
+    tier = model_tier_for_task_type(task_type)
+    return MODEL_TIERS.get(tier, MODEL_TIERS["medium"])["openai"]
 
 
 def load_agent_task_history(
@@ -468,6 +477,7 @@ def _tool_results_from_connector_turn(connector_turn: dict[str, Any] | None) -> 
             "integration": execution.get("integration"),
             "structured": execution.get("structured"),
             "invokeAction": invoke_action or None,
+            "errorCode": execution.get("error_code") or execution.get("errorCode"),
         }
         entry: dict[str, Any] = {
             "name": tool_name,
@@ -477,7 +487,9 @@ def _tool_results_from_connector_turn(connector_turn: dict[str, Any] | None) -> 
         }
         if not success:
             entry["error"] = str(execution.get("body") or "Connector action failed")
-            entry["errorCode"] = "connector_execution_failed"
+            entry["errorCode"] = str(
+                execution.get("error_code") or execution.get("errorCode") or "connector_execution_failed"
+            )
         return [entry]
 
     status = str(pending.get("status") or "")
@@ -1641,6 +1653,8 @@ class AgentIntelligence:
             task_text,
             pipeline_classification,
             model_override=model_override,
+            mode=mode_key,
+            connected_integrations=connected_list,
         )
         route_metadata = chat_facade.build_route_metadata(
             pipeline_classification,
@@ -1815,8 +1829,10 @@ class AgentIntelligence:
                 )
                 yield AssistantStreamComplete(
                     full_content=response_text,
-                    tool_results=[],
-                    react_result=None,
+                    tool_results=(
+                        tool_results + _tool_results_from_connector_turn(fallback_turn)
+                    ),
+                    react_result=react_result,
                     model="chat_connector_fallback",
                     message_id=message_id,
                     confidence={"score": classification_confidence, "needs_clarification": False},
@@ -1847,6 +1863,18 @@ class AgentIntelligence:
         streamed_content = "".join(full_content_parts)
         if react_result is not None and not streamed_content.strip():
             streamed_content = react_result.answer or ""
+
+        # Wave 3 — if ReAct left a structured connector failure answer, prefer it over empty/partial stream.
+        from app.services.tool_error_messages import format_react_connector_failure
+
+        structured_failure = format_react_connector_failure(
+            getattr(react_result, "tool_calls", None) if react_result else None
+        )
+        if structured_failure and (
+            not streamed_content.strip()
+            or getattr(react_result, "answer", None) == structured_failure
+        ):
+            streamed_content = structured_failure
 
         streamed_content = apply_bounded_answer_if_needed(
             streamed_content,

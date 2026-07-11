@@ -45,5 +45,7 @@ async def test_resolve_chat_model_uses_model_selector():
                 "hello",
                 classification,
             )
-    assert meta["source"] == "model_selector"
+    # No llm_model from selector → Wave 4 turn-complexity tier
+    assert meta["source"] == "turn_complexity"
+    assert meta["task_type"]
     assert model

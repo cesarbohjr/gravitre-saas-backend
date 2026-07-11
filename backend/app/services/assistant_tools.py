@@ -67,21 +67,32 @@ def knowledge_base_output_from_retrieval(
 ) -> dict[str, Any]:
     """Shape unified retrieval hits like the knowledge_base tool (no second retrieve call)."""
     scope = "agent" if agent_id else "organization"
-    results = [
-        {
-            "title": item.get("source") or "Knowledge Source",
-            "snippet": (item.get("content") or "")[:280],
+    results = []
+    sources = []
+    for item in rag_sources:
+        source_id = str(
+            item.get("source_id") or item.get("sourceId") or item.get("id") or ""
+        ).strip()
+        url = str(item.get("url") or item.get("href") or "").strip() or None
+        title = str(item.get("source") or item.get("title") or "Knowledge Source")
+        snippet = (item.get("content") or item.get("snippet") or item.get("excerpt") or "")[:280]
+        result_row: dict[str, Any] = {
+            "title": title,
+            "snippet": snippet,
             "relevance": round(float(item.get("score") or 0.0), 2),
         }
-        for item in rag_sources
-    ]
-    sources = [
-        {
-            "title": item.get("source") or "Knowledge Source",
-            "excerpt": (item.get("content") or "")[:280],
+        source_row: dict[str, Any] = {
+            "title": title,
+            "excerpt": snippet,
         }
-        for item in rag_sources
-    ]
+        if source_id:
+            result_row["sourceId"] = source_id
+            source_row["sourceId"] = source_id
+        if url:
+            result_row["url"] = url
+            source_row["url"] = url
+        results.append(result_row)
+        sources.append(source_row)
     memory_hits: list[dict[str, Any]] = []
     for key in ("memories", "patterns", "facts"):
         for row in (memory_context or {}).get(key) or []:

@@ -293,12 +293,17 @@ async def test_run_max_iterations_reached(engine: ReActEngine, tool_ctx: ToolCon
 
 
 @pytest.mark.asyncio
-async def test_run_permission_denied_returns_needs_human(engine: ReActEngine, tool_ctx: ToolContext):
+async def test_run_auth_expired_surfaces_formatted_error(engine: ReActEngine, tool_ctx: ToolContext):
+    """Wave 3 — connector auth failures short-circuit with actionable copy, not LLM narration."""
+    engine.registry.get_available_tools = AsyncMock(
+        return_value=[{"type": "function", "function": {"name": "hubspot_search_contacts"}}]
+    )
     engine.registry.execute_tool = AsyncMock(
         return_value={
             "success": False,
-            "error": "Agent lacks permission",
-            "error_code": "permission_denied",
+            "error": "OAuth not completed",
+            "error_code": "auth_expired",
+            "action": "hubspot.contacts.search",
         }
     )
     engine.router._openai.chat.completions.create = AsyncMock(
@@ -319,7 +324,8 @@ async def test_run_permission_denied_returns_needs_human(engine: ReActEngine, to
             connected_integrations=["hubspot"],
         )
     assert result.status == ReActStatus.NEEDS_HUMAN_INPUT
-    assert "permission" in result.answer.lower()
+    assert "/connectors" in result.answer
+    assert "Authentication expired" in result.answer
 
 
 def test_resolve_permitted_tools_from_agent_systems():
