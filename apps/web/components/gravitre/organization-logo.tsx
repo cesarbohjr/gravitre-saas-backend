@@ -44,6 +44,60 @@ function orgInitials(name: string): string {
   return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
 }
 
+// Brand-aligned gradient palette for per-org monograms. The lead entry is
+// Gravitre's emerald so the workspace family reads as on-brand, with a small
+// set of complementary hues (shared with the department color language) to
+// give each organization a distinct, recognizable identity.
+const ORG_GRADIENTS = [
+  "from-emerald-500 to-teal-600",
+  "from-teal-500 to-cyan-600",
+  "from-blue-500 to-indigo-600",
+  "from-violet-500 to-fuchsia-600",
+  "from-amber-500 to-orange-600",
+  "from-rose-500 to-pink-600",
+] as const
+
+/** Stable hash so a given org name always maps to the same brand gradient. */
+function orgGradient(name: string): string {
+  const key = name.trim().toLowerCase()
+  let hash = 0
+  for (let i = 0; i < key.length; i += 1) {
+    hash = (hash * 31 + key.charCodeAt(i)) >>> 0
+  }
+  return ORG_GRADIENTS[hash % ORG_GRADIENTS.length]
+}
+
+/**
+ * Per-organization branded monogram — a rounded gradient tile with the org's
+ * initials. Deterministic color keeps each workspace visually distinct while
+ * staying inside the Gravitre brand palette. Used in the org switcher and as
+ * the fallback for organizations without an uploaded logo.
+ */
+export function OrgMonogram({
+  name,
+  size = "xs",
+  className,
+}: {
+  name: string
+  size?: keyof typeof sizeClasses
+  className?: string
+}) {
+  return (
+    <span
+      role="img"
+      aria-label={name}
+      className={cn(
+        "flex shrink-0 items-center justify-center bg-gradient-to-br font-semibold uppercase leading-none tracking-tight text-white shadow-sm ring-1 ring-black/10 dark:ring-white/15",
+        orgGradient(name),
+        sizeClasses[size],
+        className,
+      )}
+    >
+      <span aria-hidden>{orgInitials(name)}</span>
+    </span>
+  )
+}
+
 export function OrganizationLogoAvatar({
   name,
   logoUrl,
@@ -77,7 +131,12 @@ export function OrganizationLogoAvatar({
 
   return (
     <div
-      className={cn(boxClass, "bg-muted/70 text-muted-foreground font-semibold tracking-tight")}
+      className={cn(
+        boxClass,
+        "border-transparent bg-gradient-to-br font-semibold uppercase tracking-tight text-white shadow-sm ring-1 ring-black/10 dark:ring-white/15",
+        orgGradient(name),
+      )}
+      role="img"
       aria-label={name}
     >
       <span aria-hidden>{orgInitials(name)}</span>

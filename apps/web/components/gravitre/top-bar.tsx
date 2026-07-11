@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
-import Image from "next/image"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { Button } from "@/components/ui/button"
 import { GlobalCommandBar } from "./global-command-bar"
@@ -26,6 +25,7 @@ import { MesonToolbarTrigger } from "@/components/gravitre/meson-toolbar-popup"
 import { cn } from "@/lib/utils"
 import { Icon } from "@/lib/icons"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
+import { OrgMonogram } from "@/components/gravitre/organization-logo"
 import { useViewMode } from "@/lib/view-mode-context"
 import { useAuth } from "@/lib/auth-context"
 import {
@@ -45,26 +45,6 @@ import {
 interface TopBarProps {
   title?: string
   onMenuClick?: () => void
-}
-
-function OrgBrandMark({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn(
-        "flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[#0d3b36] ring-1 ring-emerald-500/15",
-        className,
-      )}
-    >
-      <Image
-        src="/images/gravitre-icon-white.png"
-        alt=""
-        width={12}
-        height={12}
-        className="h-3 w-3 object-contain"
-        aria-hidden
-      />
-    </div>
-  )
 }
 
 export function TopBar({ title, onMenuClick }: TopBarProps) {
@@ -165,24 +145,24 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
                 size="sm"
                 className="h-8 gap-2 px-2 text-xs font-medium hover:bg-accent"
               >
-                <OrgBrandMark />
+                <OrgMonogram name={org} size="xs" />
                 <span className="hidden sm:inline">{org}</span>
                 <Icon name="caretDown" size="xs" className="text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48">
+            <DropdownMenuContent align="start" className="w-52">
               <DropdownMenuItem
                 onClick={() => handleOrgChange(DEFAULT_DEMO_ORG_ID, "Acme Corp")}
-                className="gap-2"
+                className="gap-2.5"
               >
-                <OrgBrandMark />
+                <OrgMonogram name="Acme Corp" size="sm" />
                 Acme Corp
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => handleOrgChange(SECONDARY_DEMO_ORG_ID, "Gravitre Labs")}
-                className="gap-2"
+                className="gap-2.5"
               >
-                <OrgBrandMark />
+                <OrgMonogram name="Gravitre Labs" size="sm" />
                 Gravitre Labs
               </DropdownMenuItem>
               <DropdownMenuSeparator />
