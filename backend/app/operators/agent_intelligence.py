@@ -1916,6 +1916,10 @@ class AgentIntelligence:
                 task_state = fallback_turn.get("task_state") or task_state
                 response_text = str(fallback_turn.get("message") or "")
                 dialogue_mode = str(fallback_turn.get("dialogue_mode") or "answer")
+                pending_from_fallback = (
+                    fallback_turn.get("pending_task")
+                    or (task_state if isinstance(task_state, dict) else {}).get("pending_task")
+                )
                 text_id, start_event = sse_text_start()
                 yield start_event
                 yield sse_text_delta(text_id, response_text)
@@ -1932,7 +1936,7 @@ class AgentIntelligence:
                     proactive_suggestions=[],
                     task_state=task_state,
                     execution_result=fallback_turn.get("execution_result"),
-                    pending_task=fallback_turn.get("pending_task"),
+                    pending_task=pending_from_fallback,
                 )
                 yield AssistantStreamComplete(
                     full_content=response_text,
@@ -1949,7 +1953,7 @@ class AgentIntelligence:
                     proactive_suggestions=[],
                     task_state=task_state,
                     execution_result=fallback_turn.get("execution_result"),
-                    pending_task=fallback_turn.get("pending_task"),
+                    pending_task=pending_from_fallback,
                 )
                 return
 

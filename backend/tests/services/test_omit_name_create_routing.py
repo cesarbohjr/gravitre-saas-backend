@@ -19,6 +19,23 @@ from app.services.chat_connector_models import LIST_CREATE_INTENT
 OMIT_NAME_APOLLO_LIST = "In Apollo, create a contact list."
 
 
+def _wire_task_state_store(service: ChatConnectorExecutionService) -> dict:
+    """Persist mock: update_task_state writes; get_task_state reloads (claim 4)."""
+    store: dict = {}
+
+    async def fake_update(_cid, _oid, patch, client=None):
+        store.clear()
+        store.update(patch or {})
+
+    async def fake_get(_cid, _oid, client=None):
+        return dict(store) if store else {"pending_task": None}
+
+    service._state = MagicMock()
+    service._state.update_task_state = AsyncMock(side_effect=fake_update)
+    service._state.get_task_state = AsyncMock(side_effect=fake_get)
+    return store
+
+
 def test_omit_name_apollo_list_matches_list_create_intent():
     assert LIST_CREATE_INTENT.search(OMIT_NAME_APOLLO_LIST)
     planned = ChatConnectorExecutionService._planned_details_from_message(
@@ -49,9 +66,7 @@ async def test_omit_name_apollo_list_process_turn_routes_to_lists_create_autopla
     to the Apollo auto-plan producer (inferred_fields → assumption_notes path).
     """
     service = ChatConnectorExecutionService()
-    service._state = MagicMock()
-    service._state.update_task_state = AsyncMock()
-    service._state.get_task_state = AsyncMock(return_value={"pending_task": None})
+    _wire_task_state_store(service)
 
     shadowed = ConnectorActionPlan(
         tool_name="apollo_lists_list",
@@ -89,20 +104,19 @@ async def test_omit_name_apollo_list_process_turn_routes_to_lists_create_autopla
     assert result["dialogue_mode"] == "confirm"
     assert result["stop_pipeline"] is True
     pending = (result.get("task_state") or {}).get("pending_task") or {}
-    plan = pending.get("plan") or {}
-    assert plan.get("invoke_action") == "apollo.lists.create"
-    assert plan.get("args", {}).get("name") == "MSP Prospects"
-    assert "name" in (plan.get("inferred_fields") or [])
-    assert (plan.get("inference_sources") or {}).get("name") == "message_or_default_hint"
+    params = pending.get("params") or {}
+    assert params.get("invoke_action") == "apollo.lists.create"
+    assert params.get("args", {}).get("name") == "MSP Prospects"
+    assert "name" in (params.get("inferred_fields") or [])
+    assert (params.get("inference_sources") or {}).get("name") == "message_or_default_hint"
+    service._state.update_task_state.assert_awaited()
 
 
 @pytest.mark.asyncio
 async def test_omit_name_apollo_list_does_not_execute_lists_list_read():
     """Shadowed lists.list must never become the executed/confirmed action."""
     service = ChatConnectorExecutionService()
-    service._state = MagicMock()
-    service._state.update_task_state = AsyncMock()
-    service._state.get_task_state = AsyncMock(return_value={"pending_task": None})
+    _wire_task_state_store(service)
 
     shadowed = ConnectorActionPlan(
         tool_name="apollo_lists_list",
@@ -140,5 +154,5 @@ async def test_omit_name_apollo_list_does_not_execute_lists_list_read():
     # Must not look like a completed READ ("Done — List contact lists").
     assert result.get("dialogue_mode") != "answer" or "lists.list" not in str(result)
     assert "List contact lists" not in str(result.get("message") or "")
-    pending = ((result.get("task_state") or {}).get("pending_task") or {}).get("plan") or {}
+    pending = ((result.get("task_state") or {}).get("pending_task") or {}).get("params") or {}
     assert pending.get("invoke_action") == "apollo.lists.create"
