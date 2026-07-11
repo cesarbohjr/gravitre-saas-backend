@@ -1484,7 +1484,61 @@ class AgentIntelligence:
             understanding=understanding,
         )
         if clarification.get("should_clarify"):
-            question = str(clarification.get("question") or "Could you clarify?")
+            # STA-304 / Wave 6–7 claim 2a: disconnected-connector clarify must still
+            # emit a mid-stream ToolChip with a real errorCode (not text-only exit).
+            tool_results: list[dict[str, Any]] = []
+            trigger = str(clarification.get("trigger_type") or "")
+            if trigger == "connector_unavailable":
+                template_vars = (
+                    clarification.get("template_vars")
+                    if isinstance(clarification.get("template_vars"), dict)
+                    else {}
+                )
+                connector_label = str(template_vars.get("connector") or "connector").strip()
+                integration = connector_label.lower().replace(" ", "_")
+                # Existing reconnect-oriented code; taxonomy vs validation_error is STA-303.
+                error_code = "tool_not_available"
+                tool_name = (
+                    "slack_post_message"
+                    if integration == "slack"
+                    else f"{integration}_connector_status"
+                )
+                call_id = f"call-{uuid.uuid4().hex[:12]}"
+                observation = {
+                    "success": False,
+                    "error_code": error_code,
+                    "error": str(clarification.get("reason") or ""),
+                    "integration": integration,
+                    "action": tool_name,
+                }
+                yield sse_react_tool_start(
+                    call_id=call_id,
+                    registry_tool_name=tool_name,
+                    tool_args={},
+                )
+                yield sse_react_tool_complete(
+                    call_id=call_id,
+                    registry_tool_name=tool_name,
+                    observation=observation,
+                )
+                shaped = format_react_tool_output(tool_name, observation)
+                question = str(
+                    shaped.get("error")
+                    or clarification.get("question")
+                    or "Could you clarify?"
+                )
+                tool_results.append(
+                    {
+                        "name": tool_name,
+                        "displayName": tool_name,
+                        "input": {},
+                        "output": shaped,
+                        "error": shaped.get("error"),
+                        "errorCode": error_code,
+                    }
+                )
+            else:
+                question = str(clarification.get("question") or "Could you clarify?")
             text_id, start_event = sse_text_start()
             yield start_event
             yield sse_text_delta(text_id, question)
@@ -1502,7 +1556,7 @@ class AgentIntelligence:
             )
             yield AssistantStreamComplete(
                 full_content=question,
-                tool_results=[],
+                tool_results=tool_results,
                 react_result=None,
                 model="clarification",
                 message_id=message_id,

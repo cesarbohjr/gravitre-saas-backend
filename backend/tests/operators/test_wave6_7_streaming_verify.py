@@ -56,3 +56,37 @@ def test_execution_result_supports_assumption_notes():
     payload = result.__dict__
     assert payload["assumption_notes"] == ["Inferred workspace from last message"]
     assert payload["result_url"]
+
+
+def test_assumption_notes_from_plan_inferred_fields():
+    from app.services.chat_connector_execution_service import _assumption_notes_from_plan
+    from app.services.chat_connector_models import ConnectorActionPlan
+
+    plan = ConnectorActionPlan(
+        tool_name="apollo_lists_create",
+        invoke_action="apollo.lists.create",
+        integration="apollo",
+        kind="write",
+        label="Create contact list",
+        args={"name": "MSP Prospects", "modality": "contacts"},
+        inferred_fields=("name",),
+        inference_sources={"name": "message_or_default_hint"},
+    )
+    notes = _assumption_notes_from_plan(plan)
+    assert notes is not None
+    assert any("name=MSP Prospects" in n for n in notes)
+    assert any("message_or_default_hint" in n for n in notes)
+
+
+def test_format_react_tool_output_tool_not_available_reconnect_copy():
+    shaped = format_react_tool_output(
+        "slack_post_message",
+        {
+            "success": False,
+            "error": "Required connector slack is not connected.",
+            "error_code": "tool_not_available",
+            "integration": "slack",
+        },
+    )
+    assert shaped["errorCode"] == "tool_not_available"
+    assert "connect" in shaped["error"].lower() or "connector" in shaped["error"].lower()

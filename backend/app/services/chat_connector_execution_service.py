@@ -39,6 +39,32 @@ from app.services.connector_session_state import (
 logger = get_logger(__name__)
 
 
+def _assumption_notes_from_plan(plan: ConnectorActionPlan) -> list[str] | None:
+    """Wave 6–7 claim 4 — surface inferred plan fields as panel assumption notes."""
+    notes: list[str] = []
+    sources = plan.inference_sources if isinstance(plan.inference_sources, dict) else {}
+    for field_name in plan.inferred_fields or ():
+        key = str(field_name).strip()
+        if not key:
+            continue
+        value = plan.args.get(key)
+        if value is None:
+            # Common aliases (e.g. List name → name)
+            for arg_key, arg_val in (plan.args or {}).items():
+                if str(arg_key).lower() == key.lower():
+                    value = arg_val
+                    break
+        source = str(sources.get(key) or "").strip()
+        if value is not None and str(value).strip():
+            note = f"Assumed {key}={value}"
+        else:
+            note = f"Assumed value for {key}"
+        if source:
+            note = f"{note} (from {source})"
+        notes.append(note)
+    return notes or None
+
+
 def _result_link_label(integration: str | None) -> str:
     normalized = str(integration or "").strip()
     if not normalized:
@@ -258,6 +284,7 @@ class ChatConnectorExecutionService:
                         if inferred_name and integration == "apollo":
                             from app.services.connector_action_workflows import format_write_approval_message
 
+                            # Wave 6–7 claim 4 — mark inferred list name so the panel can label it.
                             plan = ConnectorActionPlan(
                                 tool_name="apollo_lists_create",
                                 invoke_action="apollo.lists.create",
@@ -265,6 +292,8 @@ class ChatConnectorExecutionService:
                                 kind="write",
                                 label="Create contact list",
                                 args={"name": inferred_name[:200], "modality": "contacts"},
+                                inferred_fields=("name",),
+                                inference_sources={"name": "message_or_default_hint"},
                             )
                             pending = {
                                 "type": "connector_action",
@@ -276,6 +305,8 @@ class ChatConnectorExecutionService:
                                     "kind": plan.kind,
                                     "label": plan.label,
                                     "args": plan.args,
+                                    "inferred_fields": list(plan.inferred_fields),
+                                    "inference_sources": dict(plan.inference_sources or {}),
                                 },
                             }
                             updated_state = {**task_state, "pending_task": pending}
@@ -1034,6 +1065,7 @@ class ChatConnectorExecutionService:
             notification_type="task_completed",
             task_label=plan.label,
             structured=result_data,
+            assumption_notes=_assumption_notes_from_plan(plan),
         )
         if plan.kind == "write":
             from app.services.connector_output_contract import assert_execution_result_verifiable
