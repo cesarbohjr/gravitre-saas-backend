@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import datetime, timezone
 from typing import Any
 
 from app.config import Settings, get_settings
@@ -136,6 +137,61 @@ class ConversationStateService:
         client: Any | None = None,
     ) -> None:
         await self._persist_state(conversation_id, org_id, updates, client=client)
+
+    async def ensure_owned_conversation(
+        self,
+        *,
+        org_id: str,
+        user_id: str,
+        conversation_id: str | None,
+        title: str = "New conversation",
+        client: Any | None = None,
+    ) -> str | None:
+        """Ensure a conversations row exists for mid-stream task_state writes (STA-306).
+
+        Client-supplied UUIDs are inserted with that id when missing so ReAct write-gate
+        persistence is not a silent no-op UPDATE against zero rows.
+        """
+        conv_id = (conversation_id or "").strip() or None
+        uid = (user_id or "").strip()
+        if not conv_id or not uid or not org_id:
+            return conv_id
+        try:
+            db = self._client(client)
+            owned = (
+                db.table("conversations")
+                .select("id")
+                .eq("id", conv_id)
+                .eq("org_id", org_id)
+                .eq("user_id", uid)
+                .limit(1)
+                .execute()
+            )
+            if owned.data:
+                return conv_id
+            now = datetime.now(timezone.utc).isoformat()
+            safe_title = (title or "New conversation").strip()[:80] or "New conversation"
+            db.table("conversations").insert(
+                {
+                    "id": conv_id,
+                    "org_id": org_id,
+                    "user_id": uid,
+                    "title": safe_title,
+                    "preview": safe_title[:200],
+                    "message_count": 0,
+                    "task_state": dict(DEFAULT_TASK_STATE),
+                    "created_at": now,
+                    "updated_at": now,
+                }
+            ).execute()
+            return conv_id
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "ensure_owned_conversation failed conversation_id=%s error=%s",
+                conv_id,
+                exc,
+            )
+            return conv_id
 
     async def remember_clarification(
         self,
