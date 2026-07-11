@@ -55,6 +55,8 @@ class ExecutionResult:
     task_label: str = ""
     structured: dict[str, Any] | None = None
     error_code: str | None = None
+    # Wave 7 — calibrated uncertainty notes for verify/relay UI.
+    assumption_notes: list[str] | None = None
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> ExecutionResult:

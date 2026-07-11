@@ -120,12 +120,20 @@ function getToolOutcome(toolName: string, result: unknown): ToolOutcome {
   return "success"
 }
 
+function errorCodeLabel(result: unknown): string | null {
+  const data = asRecord(result)
+  const code = data?.errorCode
+  return typeof code === "string" && code.trim() ? code.trim() : null
+}
+
 function getToolLabel(name: string, result: unknown, outcome: ToolOutcome) {
   if (outcome === "error") {
+    const code = errorCodeLabel(result)
     switch (name) {
-      case "searchWeb": return "Web search unavailable"
-      case "searchKnowledgeBase": return "Knowledge search failed"
-      default: return "Tool failed"
+      case "searchWeb": return code ? `Web search failed (${code})` : "Web search unavailable"
+      case "searchKnowledgeBase":
+        return code ? `Knowledge search failed (${code})` : "Knowledge search failed"
+      default: return code ? `Tool failed (${code})` : "Tool failed"
     }
   }
   if (outcome === "warning") {
@@ -168,8 +176,14 @@ function renderToolDetails(toolName: string, result: unknown) {
   if (!data) return <p className="text-zinc-500">No results</p>
 
   const error = typeof data.error === "string" ? data.error.trim() : ""
-  if (error) {
-    return <p className="text-red-300">{error}</p>
+  const errorCode = typeof data.errorCode === "string" ? data.errorCode.trim() : ""
+  if (error || errorCode) {
+    return (
+      <div className="space-y-1 text-red-300">
+        {errorCode ? <p className="font-mono text-[11px] text-red-400/90">{errorCode}</p> : null}
+        {error ? <p>{error}</p> : null}
+      </div>
+    )
   }
 
   if (toolName === "searchKnowledgeBase" && Array.isArray(data.results)) {

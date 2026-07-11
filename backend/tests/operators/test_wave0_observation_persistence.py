@@ -75,11 +75,18 @@ def test_tool_results_from_approval_pending_include_error_code():
 def test_format_react_tool_output_includes_error_code():
     shaped = format_react_tool_output(
         "apollo_lists_create",
-        {"success": False, "error": "boom", "error_code": "permission_denied"},
+        {
+            "success": False,
+            "error": "boom",
+            "error_code": "permission_denied",
+            "integration": "apollo",
+        },
     )
-    assert shaped["error"] == "boom"
-    assert shaped["errorCode"] == "permission_denied"
     assert shaped["success"] is False
+    assert shaped["errorCode"] == "permission_denied"
+    assert "permission" in shaped["error"].lower()
+    assert "apollo" in shaped["error"].lower()
+    assert shaped["error"] != "boom"
 
 
 @pytest.mark.asyncio
