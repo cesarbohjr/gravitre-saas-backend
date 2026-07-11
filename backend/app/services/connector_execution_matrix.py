@@ -11,6 +11,7 @@ from app.connectors.action_catalog.tool_aliases import (
     registry_keys_for_catalog_tool,
     resolve_registry_action,
 )
+from app.services.catalog_write_authority import catalog_action_requires_write_approval
 from app.services.tool_service import list_registered_actions
 
 ImplementationStatus = Literal[
@@ -132,10 +133,16 @@ def _implementation_status(
     kind: str,
     destructive: bool,
     requires_approval: bool,
+    scopes: tuple[str, ...] = (),
 ) -> str:
     if not catalog_tool_is_implemented(catalog_key, registered):
         return "not_implemented"
-    if requires_approval or kind == "write" or destructive:
+    if catalog_action_requires_write_approval(
+        kind=kind,
+        destructive=destructive,
+        requires_approval=requires_approval,
+        scopes=scopes,
+    ):
         return "requires_approval"
     return "executable"
 
@@ -156,12 +163,19 @@ def build_connector_execution_matrix() -> tuple[ConnectorActionMatrixEntry, ...]
                     kind=action.kind,
                     destructive=action.destructive,
                     requires_approval=action.requires_approval,
+                    scopes=action.scopes,
                 )
                 if implemented
                 else "not_implemented"
             )
             tool_key = _tool_registry_key(vendor, catalog_key)
             chat_executable = implemented
+            needs_approval = catalog_action_requires_write_approval(
+                kind=action.kind,
+                destructive=action.destructive,
+                requires_approval=action.requires_approval,
+                scopes=action.scopes,
+            )
             entries.append(
                 ConnectorActionMatrixEntry(
                     connector_id=vendor,
@@ -171,7 +185,7 @@ def build_connector_execution_matrix() -> tuple[ConnectorActionMatrixEntry, ...]
                     action_type=action.kind,
                     kind=action.kind,
                     destructive=action.destructive,
-                    requires_approval=action.requires_approval or action.kind == "write" or action.destructive,
+                    requires_approval=needs_approval,
                     required_scopes=action.scopes,
                     implementation_status=impl_status,
                     registry_key=registry_key,
