@@ -1116,6 +1116,9 @@ class ChatConnectorExecutionService:
                     plan,
                     result,
                     result_data,
+                    client=client,
+                    org_id=org_id,
+                    conversation_id=conversation_id,
                 ),
             },
         )
@@ -1461,6 +1464,10 @@ class ChatConnectorExecutionService:
         plan: ConnectorActionPlan,
         result: ExecutionResult,
         structured: dict[str, Any],
+        *,
+        client: Any | None = None,
+        org_id: str | None = None,
+        conversation_id: str | None = None,
     ) -> dict[str, Any]:
         session = load_connector_session(task_state)
         step_id = f"connector_{plan.invoke_action}"
@@ -1482,6 +1489,9 @@ class ChatConnectorExecutionService:
                 entity_id=result.entity_id or None,
                 structured=structured,
                 label=plan.label,
+                client=client,
+                org_id=org_id,
+                conversation_id=conversation_id,
             )
         completed = list(task_state.get("completed_steps") or [])
         completed.append(

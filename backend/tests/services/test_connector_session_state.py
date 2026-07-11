@@ -128,3 +128,23 @@ def test_inference_uses_session_summary_in_context():
     )
     enriched = infer_missing_parameters(plan, context)
     assert enriched.args.get("project") == "Website"
+
+
+def test_bind_plan_from_org_entity_cache():
+    plan = ConnectorActionPlan(
+        tool_name="apollo_lists_get",
+        invoke_action="apollo.lists.get",
+        integration="apollo",
+        kind="read",
+        label="Get list",
+        args={},
+        requires_approval=False,
+    )
+    bound = bind_plan_from_session(
+        plan,
+        ConnectorSessionState(),
+        org_bindings={"list_id": ("list-xyz", "org entity cache")},
+    )
+    assert bound.args["list_id"] == "list-xyz"
+    assert bound.inference_sources["list_id"] == "org entity cache"
+    assert "list_id" in bound.inferred_fields

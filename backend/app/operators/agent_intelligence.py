@@ -1948,6 +1948,29 @@ class AgentIntelligence:
                 strategy_key=str(row.get("type") or ""),
             )
 
+        # Wave 5 — calibrated trust + assumption labels before final text emission.
+        trust_meta = chat_facade.build_trust_metadata(
+            answer=full_content,
+            sources=rag_sources,
+            confidence=float(finalized["confidence"].get("score") or classification_confidence),
+            reasoning_summary=str(finalized.get("explanation") or ""),
+            actions_taken=tool_results,
+            actions_pending_approval=[],
+            advisory_only=bool(turn_ctx.execution_gate and turn_ctx.execution_gate.get("blocked")),
+            org_id=org_id,
+            memory_conflicts=rag_conflicts if isinstance(rag_conflicts, list) else None,
+        )
+        from app.services.answer_provenance_builder import format_assumption_prefix
+
+        claim_prefix = format_assumption_prefix(
+            (trust_meta.get("trust_envelope") or {}).get("claims") or []
+        )
+        if claim_prefix and claim_prefix not in full_content:
+            if text_id is not None and streamed_content.strip():
+                full_content = f"{full_content}\n\n{claim_prefix}".strip()
+            else:
+                full_content = f"{claim_prefix}\n\n{full_content}".strip()
+
         # Some ReAct paths populate react_result.answer without emitting text_delta
         # events (e.g. empty delta chunks). The UI contract still requires text-start/
         # text-delta/text-end before finish events.
@@ -1964,16 +1987,6 @@ class AgentIntelligence:
                 if suffix.strip():
                     yield sse_text_delta(text_id, suffix)
             yield sse_text_end(text_id)
-
-        trust_meta = chat_facade.build_trust_metadata(
-            answer=full_content,
-            sources=rag_sources,
-            confidence=float(finalized["confidence"].get("score") or classification_confidence),
-            reasoning_summary=str(finalized.get("explanation") or ""),
-            actions_taken=tool_results,
-            actions_pending_approval=[],
-            advisory_only=bool(turn_ctx.execution_gate and turn_ctx.execution_gate.get("blocked")),
-        )
 
         yield sse_intelligence_metadata(
             message_id=message_id,
