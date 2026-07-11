@@ -1184,14 +1184,16 @@ export default function AgentsPage() {
           </div>
 
           {/* Agent Orb Grid - Premium with particle field */}
-          <div className="relative flex-1 p-4 sm:p-8 overflow-auto">
+          <div className="relative flex flex-1 flex-col p-4 sm:p-8 overflow-y-auto overflow-x-hidden">
             {/* Particle field behind orbs */}
             <ParticleField count={30} color="violet" interactive className="opacity-40" />
             
-            {/* Center stage area */}
-            <div className="relative min-h-[400px] flex items-center justify-center">
-              {/* Circular platform effect */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            {/* Center stage area — flex so the orb cluster can use m-auto to stay
+               centered while short, yet scroll without clipping when tall. */}
+            <div className="relative flex flex-1 min-h-[320px] sm:min-h-[380px]">
+              {/* Circular platform effect (clipped so the large rings never force
+                 horizontal overflow on narrow/mobile viewports). */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
                 <motion.div 
                   className="w-[600px] h-[600px] rounded-full border border-violet-500/10"
                   animate={{ scale: [1, 1.05, 1], opacity: [0.3, 0.5, 0.3] }}
@@ -1209,9 +1211,11 @@ export default function AgentsPage() {
                 />
               </div>
               
-              {/* Orb constellation - extra bottom padding for status badges */}
+              {/* Orb constellation — m-auto centers the cluster when short and
+                 stays scroll-safe when tall; generous bottom padding keeps the
+                 status pills clear of the floating team-stats bar. */}
               <TooltipProvider delayDuration={200}>
-              <div className="relative flex flex-wrap gap-8 sm:gap-10 lg:gap-12 justify-center items-start pt-8 sm:pt-10 pb-28">
+              <div className="relative z-10 m-auto flex w-full flex-wrap gap-6 sm:gap-10 lg:gap-12 justify-center items-start pt-4 sm:pt-8 pb-36 sm:pb-40">
                 {error ? (
                   <WorkSectionErrorCard
                     title="Could not load agents"
@@ -1280,15 +1284,17 @@ export default function AgentsPage() {
               </TooltipProvider>
             </div>
             
-            {/* Team stats bar */}
+            {/* Team stats bar — floats above the orbs on a soft fade instead of a
+               hard opaque band, and is click-through so orbs behind it stay
+               interactive. The pill wraps and shrinks on small screens. */}
             <motion.div 
-              className="sticky bottom-0 left-0 right-0 z-50 flex justify-center py-4 bg-gradient-to-t from-background via-background to-transparent"
+              className="pointer-events-none sticky bottom-0 left-0 right-0 z-40 flex justify-center px-2 pt-10 pb-3 bg-gradient-to-t from-background via-background/80 to-transparent"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ delay: 0.5 }}
             >
-              <div className="flex items-center gap-6 px-6 py-3 rounded-full bg-card border border-border shadow-lg">
+              <div className="pointer-events-auto flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:gap-6 rounded-2xl sm:rounded-full bg-card border border-border px-4 sm:px-6 py-2.5 sm:py-3 shadow-lg">
                 <motion.div
                   className="flex items-center gap-2"
                   animate={
@@ -1312,7 +1318,7 @@ export default function AgentsPage() {
                     </div>
                   </div>
                 </motion.div>
-                <div className="w-px h-8 bg-border" />
+                <div className="hidden sm:block w-px h-8 bg-border" />
                 <div className="flex items-center gap-2">
                   <div className="h-8 w-8 rounded-full bg-info/20 flex items-center justify-center">
                     <Zap className="h-4 w-4 text-info" />
@@ -1322,7 +1328,7 @@ export default function AgentsPage() {
                     <div className="text-sm font-semibold text-foreground"><AnimatedCounter value={totalTasks} duration={1.5} /></div>
                   </div>
                 </div>
-                <div className="w-px h-8 bg-border" />
+                <div className="hidden sm:block w-px h-8 bg-border" />
                 <div className="flex items-center gap-2">
                   <ActivityIndicator value={teamHealth} size={36} color="emerald" />
                   <div>
