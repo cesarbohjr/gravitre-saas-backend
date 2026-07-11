@@ -286,7 +286,7 @@ export default function MarketplaceBillingPage() {
 
   return (
     <AppShell title="Partner billing">
-      <div className="relative overflow-hidden rounded-2xl border bg-card/40 p-6 md:p-8">
+      <div className="relative shrink-0 overflow-hidden rounded-2xl border bg-card/40 p-6 md:p-8">
         <GridPattern className="opacity-40" />
         <div className="relative mx-auto max-w-3xl space-y-8">
           <div className="flex flex-wrap items-start justify-between gap-4">

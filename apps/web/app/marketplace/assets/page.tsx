@@ -676,7 +676,11 @@ function MarketplaceAssetsContent() {
 
   return (
     <AppShell title="Marketplace">
-      <div className="relative overflow-hidden rounded-2xl border bg-card/40 p-6 md:p-8">
+      {/* shrink-0 stops the AppShell's flex-col <main> from compressing this
+         wrapper to the viewport height. Without it, the grid overflows but is
+         clipped by overflow-hidden (used for the decorative grid pattern),
+         which silently kills page scroll and cuts off cards. */}
+      <div className="relative shrink-0 overflow-hidden rounded-2xl border bg-card/40 p-6 md:p-8">
         <GridPattern className="opacity-40" />
         <div className="relative flex flex-col gap-6 lg:flex-row">
           {categories ? (
