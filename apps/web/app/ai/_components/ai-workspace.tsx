@@ -164,7 +164,7 @@ export function AiWorkspace({
     return initialConversationId || readStoredConversationId()
   })
   const [conversationTitle, setConversationTitle] = useState("Chat")
-  const [chatMode, setChatMode] = useState<"standard" | "deep">("standard")
+  const [chatMode, setChatMode] = useState<"fast" | "deep">("fast")
   const [selectedDepartment, setSelectedDepartment] = useState(() =>
     typeof window === "undefined" ? "all" : getQuickDepartment(),
   )
@@ -1374,7 +1374,7 @@ export function AiWorkspace({
 
               <button
                 type="button"
-                onClick={() => setChatMode((current) => (current === "deep" ? "standard" : "deep"))}
+                onClick={() => setChatMode((current) => (current === "deep" ? "fast" : "deep"))}
                 title={
                   chatMode === "deep"
                     ? "Agent mode — full connector tool surface with ReAct"

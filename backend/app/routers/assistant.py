@@ -43,6 +43,7 @@ from app.services.conversation_context_service import (
     load_conversation_summary,
     persist_conversation_summary,
 )
+from app.services.conversation_state_service import get_conversation_state_service
 from app.services.assistant_mode import resolve_assistant_model
 from app.services.assistant_tools import (
     DEFAULT_ASSISTANT_TOOLS,
@@ -874,6 +875,13 @@ async def assistant_chat(
     conversation_id = (body.conversation_id or "").strip() or None
     existing_summary: str | None = None
     if conversation_id and user_id:
+        # STA-306 — row must exist before ReAct write-gate persists pending_task mid-stream.
+        conversation_id = await get_conversation_state_service(settings).ensure_owned_conversation(
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            title=(last_user or "New conversation")[:80],
+        )
         existing_summary = load_conversation_summary(
             get_supabase_client(settings),
             conversation_id=conversation_id,

@@ -1870,6 +1870,8 @@ class AgentIntelligence:
                     task_state=task_state,
                     execution_result=None,
                     pending_task=approval_turn.get("pending_task"),
+                    effective_mode=mode_key,
+                    pipeline_tier=pipeline_tier,
                 )
                 yield AssistantStreamComplete(
                     full_content=response_text,
@@ -2118,6 +2120,8 @@ class AgentIntelligence:
             explainability=turn_ctx.explainability,
             execution_gate=turn_ctx.execution_gate,
             trust_envelope=trust_meta.get("trust_envelope"),
+            effective_mode=mode_key,
+            pipeline_tier=pipeline_tier,
         )
 
         yield AssistantStreamComplete(
