@@ -57,12 +57,18 @@ const ORG_GRADIENTS = [
   "from-rose-500 to-pink-600",
 ] as const
 
-/** Stable hash so a given org name always maps to the same brand gradient. */
+/**
+ * Stable hash so a given org name always maps to the same brand gradient.
+ * Uses FNV-1a, which distributes short, similar strings (org names) far more
+ * evenly than a simple polynomial hash — avoiding collisions where two
+ * different orgs would otherwise share the same color.
+ */
 function orgGradient(name: string): string {
   const key = name.trim().toLowerCase()
-  let hash = 0
+  let hash = 0x811c9dc5 // FNV offset basis
   for (let i = 0; i < key.length; i += 1) {
-    hash = (hash * 31 + key.charCodeAt(i)) >>> 0
+    hash ^= key.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193) >>> 0 // FNV prime
   }
   return ORG_GRADIENTS[hash % ORG_GRADIENTS.length]
 }
