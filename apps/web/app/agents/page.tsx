@@ -1108,15 +1108,17 @@ export default function AgentsPage() {
                   <Plus className="h-4 w-4" />
                   New Agent
                 </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={toggleDetailPanel}
-                  aria-label={detailPanelOpen ? "Hide agent details" : "Show agent details"}
-                  className="hidden lg:inline-flex"
-                >
-                  {detailPanelOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
-                </Button>
+                {visibleSelectedAgent ? (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={toggleDetailPanel}
+                    aria-label={detailPanelOpen ? "Hide agent details" : "Show agent details"}
+                    className="hidden lg:inline-flex"
+                  >
+                    {detailPanelOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+                  </Button>
+                ) : null}
               </>
             }
           >
@@ -1352,7 +1354,11 @@ export default function AgentsPage() {
 
 {/* Right - Agent Detail Panel - Premium glassmorphism */}
         <AnimatePresence initial={false}>
-          {detailPanelOpen ? (
+          {/* Only reserve the side-panel width when there is actually an agent
+             to show. Previously the panel defaulted open and reserved 420px even
+             with no selection, leaving a large empty panel that squeezed the orb
+             stage into a narrow strip. */}
+          {detailPanelOpen && visibleSelectedAgent ? (
             <motion.div
               key="agent-detail-panel"
               initial={{ width: 0, opacity: 0 }}
@@ -1363,17 +1369,15 @@ export default function AgentsPage() {
             >
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-blue-500 to-emerald-500" />
               <AnimatePresence mode="wait">
-                {visibleSelectedAgent && (
-                  <TooltipProvider delayDuration={200}>
-                    <AgentDetailPanel
-                      key={visibleSelectedAgent.id}
-                      agent={visibleSelectedAgent}
-                      onStart={handleStartAgent}
-                      onStop={handleStopAgent}
-                      isMutating={isMutatingAgent === visibleSelectedAgent.id}
-                    />
-                  </TooltipProvider>
-                )}
+                <TooltipProvider delayDuration={200}>
+                  <AgentDetailPanel
+                    key={visibleSelectedAgent.id}
+                    agent={visibleSelectedAgent}
+                    onStart={handleStartAgent}
+                    onStop={handleStopAgent}
+                    isMutating={isMutatingAgent === visibleSelectedAgent.id}
+                  />
+                </TooltipProvider>
               </AnimatePresence>
             </motion.div>
           ) : null}
