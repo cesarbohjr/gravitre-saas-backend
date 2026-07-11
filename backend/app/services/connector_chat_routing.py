@@ -167,11 +167,19 @@ def should_attempt_connector_fallback(
     a generic connector execution error and never reach invoke_tool.
     """
     _ = connected_integrations  # retained for call-site compatibility
-    if has_pending_connector_task(task_state):
+    from app.services.chat_connector_execution_service import ChatConnectorExecutionService
+    from app.services.conversational_execution_service import CONFIRM_PATTERN, DECLINE_PATTERN
+
+    pending = has_pending_connector_task(task_state)
+    text = (message or "").strip()
+    # Pending confirm/decline must always reach process_turn — including when an
+    # earlier org-scoped response cache or ReAct text path skipped preflight.
+    if pending and (CONFIRM_PATTERN.match(text) or DECLINE_PATTERN.match(text)):
+        return True
+    if pending:
         return False
     if react_succeeded_connector_tools(react_result):
         return False
-    from app.services.chat_connector_execution_service import ChatConnectorExecutionService
 
     if not ChatConnectorExecutionService.is_connector_intent(message, task_state or {}):
         return False

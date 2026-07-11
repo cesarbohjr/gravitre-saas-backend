@@ -440,3 +440,14 @@ async def test_assistant_org_context_returns_production_connectors(async_client,
     assert body["connectors"][0]["type"] == "hubspot"
     service.get_snapshot.assert_called_once()
     assert service.get_snapshot.call_args.kwargs["environment_name"] == "production"
+
+
+def test_response_cache_skips_confirmations_and_scopes_by_conversation():
+    """Claim 4: org-scoped 'yes' cache must not skip pending connector confirm."""
+    assert assistant_module._response_cache_eligible("In Apollo, create a contact list.")
+    assert not assistant_module._response_cache_eligible("yes")
+    assert not assistant_module._response_cache_eligible("no")
+    assert not assistant_module._response_cache_eligible("confirm")
+    k1 = assistant_module._response_cache_key("org", "yes", "conv-a")
+    k2 = assistant_module._response_cache_key("org", "yes", "conv-b")
+    assert k1 != k2
