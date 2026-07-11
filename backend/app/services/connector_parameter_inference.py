@@ -45,8 +45,30 @@ def infer_missing_parameters(
     context: ParameterInferenceContext,
 ) -> ConnectorActionPlan:
     """Fill confidently inferrable args before validation; never infer sensitive fields."""
+    from app.services.connector_session_state import COMMON_BIND_KEYS
+
     session = context.connector_session or load_connector_session(context.task_state)
-    plan = bind_plan_from_session(plan, session)
+    org_bindings: dict[str, tuple[str, str]] | None = None
+    if context.client and context.org_id:
+        try:
+            from app.services.entity_resolution_store import org_bindings_for_candidates
+
+            hint_aliases = [context.message]
+            hint_aliases.extend(context.conversation_history[-3:])
+            for value in (plan.args or {}).values():
+                if isinstance(value, str) and value.strip():
+                    hint_aliases.append(value)
+            candidates_by_arg = {key: aliases for key, aliases in COMMON_BIND_KEYS}
+            org_bindings = org_bindings_for_candidates(
+                context.client,
+                context.org_id,
+                integration=plan.integration,
+                candidates_by_arg=candidates_by_arg,
+                hint_aliases=hint_aliases,
+            ) or None
+        except Exception:  # noqa: BLE001
+            org_bindings = None
+    plan = bind_plan_from_session(plan, session, org_bindings=org_bindings)
     if plan.invoke_action == "asana.tasks.create":
         return _infer_asana_task_create(plan, context)
     return plan

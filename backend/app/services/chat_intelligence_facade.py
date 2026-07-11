@@ -88,23 +88,64 @@ class ChatIntelligenceFacade:
         actions_taken: list[dict[str, Any]] | None = None,
         actions_pending_approval: list[dict[str, Any]] | None = None,
         advisory_only: bool = False,
+        org_id: str | None = None,
+        inferred_fields: list[str] | None = None,
+        inference_sources: dict[str, str] | None = None,
+        memory_conflicts: list[Any] | None = None,
     ) -> dict[str, Any]:
-        wrapped = get_ai_trust_layer().wrap_response(
-            answer=answer,
-            sources=sources,
-            confidence=confidence,
-            reasoning_summary=reasoning_summary,
-            actions_taken=actions_taken or [],
-            actions_pending_approval=actions_pending_approval or [],
-            advisory_only=advisory_only,
+        from app.services.answer_provenance_builder import (
+            assumption_strings,
+            claim_breakdown,
+            collect_claims_from_sources,
         )
+
+        claims = collect_claims_from_sources(
+            sources=sources,
+            tool_results=actions_taken,
+            inferred_fields=inferred_fields,
+            inference_sources=inference_sources,
+            memory_conflicts=memory_conflicts,
+            answer_has_content=bool(str(answer or "").strip()),
+        )
+        assumptions = assumption_strings(claims)
+        trust = get_ai_trust_layer()
+        if org_id:
+            wrapped = trust.wrap_response_calibrated(
+                org_id,
+                answer=answer,
+                sources=sources,
+                confidence=confidence,
+                reasoning_summary=reasoning_summary,
+                actions_taken=actions_taken or [],
+                actions_pending_approval=actions_pending_approval or [],
+                advisory_only=advisory_only,
+                surface="assistant",
+                settings=self.settings,
+                assumptions=assumptions,
+            )
+        else:
+            wrapped = trust.wrap_response(
+                answer=answer,
+                sources=sources,
+                confidence=confidence,
+                reasoning_summary=reasoning_summary,
+                actions_taken=actions_taken or [],
+                actions_pending_approval=actions_pending_approval or [],
+                advisory_only=advisory_only,
+                assumptions=assumptions,
+            )
         return {
             "trust_envelope": {
                 "confidence": wrapped.get("confidence"),
+                "calibrated_confidence": wrapped.get("calibrated_confidence"),
+                "confidence_band": wrapped.get("confidence_band"),
                 "reasoning_summary": wrapped.get("reasoning_summary"),
                 "advisory_only": wrapped.get("advisory_only"),
                 "actions_taken": wrapped.get("actions_taken"),
                 "actions_pending_approval": wrapped.get("actions_pending_approval"),
+                "assumptions": wrapped.get("assumptions") or [],
+                "claims": claims,
+                "claim_breakdown": claim_breakdown(claims),
             }
         }
 

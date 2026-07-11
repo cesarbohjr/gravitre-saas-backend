@@ -218,6 +218,32 @@ async def _resolve_asana_assignee(
     if len(matches) == 1:
         updated_args = dict(plan.args or {})
         updated_args["assignee"] = matches[0][1]
+        try:
+            from app.services.entity_resolution_store import upsert_resolution
+
+            upsert_resolution(
+                client,
+                org_id=org_id,
+                alias=hint,
+                entity_type="employee",
+                entity_id=matches[0][1],
+                integration="asana",
+                source="disambiguation",
+                confidence=0.9,
+            )
+            if matches[0][0]:
+                upsert_resolution(
+                    client,
+                    org_id=org_id,
+                    alias=matches[0][0],
+                    entity_type="employee",
+                    entity_id=matches[0][1],
+                    integration="asana",
+                    source="disambiguation",
+                    confidence=0.9,
+                )
+        except Exception:  # noqa: BLE001
+            pass
         return WorkflowCheck(
             status="resolved",
             message="",

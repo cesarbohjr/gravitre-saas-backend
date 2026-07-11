@@ -548,6 +548,9 @@ class ChatOrchestrationService:
             step,
             result,
             completed_steps=completed,
+            client=client,
+            org_id=org_id,
+            conversation_id=conversation_id,
         )
         await self._state.update_task_state(
             conversation_id,
@@ -915,6 +918,9 @@ class ChatOrchestrationService:
         result: ExecutionResult,
         *,
         completed_steps: list[dict[str, Any]],
+        client: Any | None = None,
+        org_id: str | None = None,
+        conversation_id: str | None = None,
     ) -> dict[str, Any]:
         session = load_connector_session(task_state)
         invoke_action = step.plan.invoke_action if step.plan else ""
@@ -936,6 +942,9 @@ class ChatOrchestrationService:
                 entity_id=result.entity_id or None,
                 structured=dict(result.structured or {}),
                 label=step.label,
+                client=client,
+                org_id=org_id,
+                conversation_id=conversation_id,
             )
         session = replace(
             session,

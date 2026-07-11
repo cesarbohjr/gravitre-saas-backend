@@ -15,6 +15,7 @@ CONFIDENCE_BY_SOURCE: dict[str, str] = {
     "recent conversation": "medium",
     "only open project in asana": "medium",
     "session entity cache": "medium",
+    "org entity cache": "medium",
     "orchestration step output": "high",
 }
 
@@ -180,6 +181,9 @@ def record_entity_from_execution(
     entity_id: str | None,
     structured: dict[str, Any] | None,
     label: str,
+    client: Any | None = None,
+    org_id: str | None = None,
+    conversation_id: str | None = None,
 ) -> ConnectorSessionState:
     entities = dict(session.active_entities)
     resource = invoke_action.split(".")[-2] if invoke_action.count(".") >= 2 else "entity"
@@ -199,14 +203,36 @@ def record_entity_from_execution(
         resolved[f"{integration}_name"] = str(attributes["name"])
     if attributes.get("email"):
         resolved[f"{integration}_email"] = str(attributes["email"])
-    return replace(session, active_entities=entities, resolved_entities=resolved)
+    updated = replace(session, active_entities=entities, resolved_entities=resolved)
+
+    # Wave 5 — promote session bindings into durable org resolution store.
+    if client and org_id:
+        try:
+            from app.services.entity_resolution_store import promote_from_session
+
+            promote_from_session(
+                client,
+                org_id=org_id,
+                session=updated,
+                integration=integration,
+                entity_id=entity_id,
+                structured={**attributes, **(structured or {})},
+                conversation_id=conversation_id,
+                source="tool_output",
+                confidence=0.85,
+            )
+        except Exception:  # noqa: BLE001
+            pass
+    return updated
 
 
 def bind_plan_from_session(
     plan: ConnectorActionPlan,
     session: ConnectorSessionState,
+    *,
+    org_bindings: dict[str, tuple[str, str]] | None = None,
 ) -> ConnectorActionPlan:
-    """Bind missing plan args from prior step outputs and session entities."""
+    """Bind missing plan args from prior step outputs, session entities, and org cache."""
     args = dict(plan.args or {})
     inferred = list(plan.inferred_fields)
     sources = dict(plan.inference_sources)
@@ -214,7 +240,7 @@ def bind_plan_from_session(
     for arg_key, candidates in COMMON_BIND_KEYS:
         if _arg_present(args, arg_key):
             continue
-        value, source = _lookup_binding(session, candidates)
+        value, source = _lookup_binding(session, candidates, org_bindings=org_bindings, arg_key=arg_key)
         if value is None or not source:
             continue
         args[arg_key] = value
@@ -276,6 +302,9 @@ def _extract_entity_attributes(structured: dict[str, Any]) -> dict[str, Any]:
 def _lookup_binding(
     session: ConnectorSessionState,
     candidates: tuple[str, ...],
+    *,
+    org_bindings: dict[str, tuple[str, str]] | None = None,
+    arg_key: str | None = None,
 ) -> tuple[str | None, str | None]:
     for _step_id, payload in reversed(list(session.step_outputs.items())):
         structured = payload.get("structured")
@@ -297,6 +326,11 @@ def _lookup_binding(
         legacy = session.resolved_entities.get(candidate)
         if legacy:
             return legacy, "session entity cache"
+    # Wave 5 — org-level durable resolutions (after session miss).
+    if org_bindings and arg_key and arg_key in org_bindings:
+        value, source = org_bindings[arg_key]
+        if value not in (None, ""):
+            return str(value), source or "org entity cache"
     return None, None
 
 
