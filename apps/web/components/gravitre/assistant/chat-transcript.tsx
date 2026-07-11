@@ -15,7 +15,7 @@ import {
   type ChatExecutionResult,
   type ChatPendingTask,
 } from "@/components/gravitre/assistant/chat-execution-panel"
-import { type ToolInvocation } from "@/components/gravitre/assistant/tool-chip"
+import { ToolChip, type ToolInvocation } from "@/components/gravitre/assistant/tool-chip"
 import { uiMessageText } from "@/lib/chat-messages"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 
@@ -93,10 +93,12 @@ export function ChatTranscript({
       {messages.map((message) => {
         const isUser = message.role === "user"
         const text = uiMessageText(message)
-        if (isUser && !text.trim()) return null
-        if (!isUser && !text.trim()) return null
         const toolInvocations = !isUser ? extractToolInvocations(message) : []
+        if (isUser && !text.trim()) return null
+        // Wave 6 — keep tool-only assistant bubbles so live tool chips are visible mid-stream.
+        if (!isUser && !text.trim() && toolInvocations.length === 0) return null
         const displayText = isUser ? text : polishAssistantText(text)
+        const isLastAssistant = message.id === lastAssistantId
 
         return (
           <motion.div
@@ -124,9 +126,18 @@ export function ChatTranscript({
                   <p className="whitespace-pre-wrap">{text}</p>
                 ) : (
                   <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-li:my-0.5 prose-headings:mb-2 prose-headings:mt-3">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText || "…"}</ReactMarkdown>
+                    {toolInvocations.length > 0 ? (
+                      <div className="not-prose mb-2 space-y-1">
+                        {toolInvocations.map((invocation) => (
+                          <ToolChip key={invocation.toolCallId} invocation={invocation} />
+                        ))}
+                      </div>
+                    ) : null}
+                    {displayText.trim() ? (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText}</ReactMarkdown>
+                    ) : null}
                     <AssistantSourceLinks invocations={toolInvocations} />
-                    {message.id === lastAssistantId ? (
+                    {isLastAssistant ? (
                       <>
                         <ChatExecutionPanel
                           dialogueMode={dialogueMode}
@@ -138,7 +149,7 @@ export function ChatTranscript({
                         <ExplainabilityPanel
                           explanation={explainability}
                           contextExplanation={contextExplanation}
-                          toolInvocations={toolInvocations}
+                          toolInvocations={[]}
                         />
                       </>
                     ) : null}

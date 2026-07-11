@@ -15,6 +15,10 @@ export type ChatExecutionResult = {
   title?: string
   body?: string
   task_label?: string
+  /** Wave 7 — structured failure code (e.g. unverifiable_output). */
+  error_code?: string | null
+  /** Wave 7 — calibrated uncertainty notes from trust envelope. */
+  assumption_notes?: string[] | null
 }
 
 export type OrchestrationStepPreview = {
@@ -173,8 +177,59 @@ export function ChatExecutionPanel({
   onConfirm,
   className,
 }: ChatExecutionPanelProps) {
+  if (executionResult && executionResult.success === false) {
+    const code = executionResult.error_code
+    const unverifiable = code === "unverifiable_output"
+    return (
+      <div
+        className={cn(
+          "mt-3 rounded-xl border px-4 py-3 text-sm",
+          unverifiable
+            ? "border-amber-500/25 bg-amber-500/5"
+            : "border-red-500/25 bg-red-500/5",
+          className,
+        )}
+      >
+        <div className="flex items-start gap-2">
+          <ShieldAlert
+            className={cn(
+              "mt-0.5 h-4 w-4 shrink-0",
+              unverifiable ? "text-amber-600" : "text-red-600",
+            )}
+          />
+          <div className="min-w-0 flex-1">
+            <p className="font-medium text-foreground">
+              {executionResult.task_label || executionResult.title || "Action did not complete"}
+            </p>
+            {code ? (
+              <p className="mt-1 font-mono text-[11px] text-muted-foreground">{code}</p>
+            ) : null}
+            {executionResult.body ? (
+              <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
+                {executionResult.body}
+              </p>
+            ) : null}
+            {executionResult.connector_management_url ? (
+              <div className="mt-3">
+                <Button asChild size="sm" variant="outline" className="h-8">
+                  <Link href={executionResult.connector_management_url}>
+                    Open connectors
+                    <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (executionResult?.success) {
     const resultUrl = executionResult.result_url
+    const assumptions = (executionResult.assumption_notes || []).filter(
+      (note) => typeof note === "string" && note.trim(),
+    )
     return (
       <div
         className={cn(
@@ -190,6 +245,21 @@ export function ChatExecutionPanel({
             </p>
             {executionResult.body ? (
               <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">{executionResult.body}</p>
+            ) : null}
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              {resultUrl
+                ? "Verified — open the result link to confirm in the source system."
+                : "Completed with inline summary only (no deep link returned)."}
+            </p>
+            {assumptions.length > 0 ? (
+              <div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-2.5 py-2 text-[11px] text-amber-900 dark:text-amber-200">
+                <p className="font-medium">Assumptions</p>
+                <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                  {assumptions.slice(0, 4).map((note) => (
+                    <li key={note}>{note}</li>
+                  ))}
+                </ul>
+              </div>
             ) : null}
             {resultUrl ? (
               <div className="mt-3 flex flex-wrap gap-2">

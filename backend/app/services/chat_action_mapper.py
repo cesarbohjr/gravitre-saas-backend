@@ -217,10 +217,19 @@ class ChatActionMapper:
             if re.search(r"\bcreate\s+(?:follow[- ]?up\s+)?tasks?\b", text, re.I):
                 score += 14.0
         if entry.connector_id == "apollo" and LIST_CREATE_INTENT.search(text):
-            if "list" in entry.action_key or "lists" in entry.registry_key:
-                score += 24.0
+            # Prefer lists.create; demote list/search/contact creates that steal the match.
+            if "lists.create" in entry.action_key:
+                score += 40.0
+            elif "contacts.create" in entry.action_key:
+                score -= 40.0
+            elif "lists.list" in entry.action_key or (
+                "list" in entry.action_key and "create" not in entry.action_key
+            ):
+                score -= 40.0
             elif "search" in entry.action_key:
                 score -= 28.0
+            elif "list" in entry.action_key or "lists" in entry.registry_key:
+                score += 8.0
             else:
                 score -= 12.0
         if entry.connector_id == "apollo" and re.search(r"\b(search|find|check)\b", text, re.I):

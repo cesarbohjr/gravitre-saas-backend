@@ -1266,6 +1266,18 @@ class AgentIntelligence:
             task_state = conv_turn.get("task_state") or task_state
             response_text = str(conv_turn.get("message") or "")
             dialogue_mode = str(conv_turn.get("dialogue_mode") or "answer")
+            # Wave 7 — stream verify/relay (execution + pending) before answer text.
+            if conv_turn.get("execution_result") or conv_turn.get("pending_task"):
+                yield sse_intelligence_metadata(
+                    message_id=message_id,
+                    confidence={"score": classification_confidence, "needs_clarification": False},
+                    answer_explanation="Conversational operator execution",
+                    dialogue_mode=dialogue_mode,
+                    persona_key=str(persona.get("persona_key") or ""),
+                    task_state=task_state,
+                    execution_result=conv_turn.get("execution_result"),
+                    pending_task=conv_turn.get("pending_task"),
+                )
             text_id, start_event = sse_text_start()
             yield start_event
             yield sse_text_delta(text_id, response_text)
@@ -1319,6 +1331,17 @@ class AgentIntelligence:
                 task_state = orchestration_turn.get("task_state") or task_state
                 response_text = str(orchestration_turn.get("message") or "")
                 dialogue_mode = str(orchestration_turn.get("dialogue_mode") or "answer")
+                if orchestration_turn.get("execution_result") or orchestration_turn.get("pending_task"):
+                    yield sse_intelligence_metadata(
+                        message_id=message_id,
+                        confidence={"score": classification_confidence, "needs_clarification": False},
+                        answer_explanation="Multi-step connector orchestration",
+                        dialogue_mode=dialogue_mode,
+                        persona_key=str(persona.get("persona_key") or ""),
+                        task_state=task_state,
+                        execution_result=orchestration_turn.get("execution_result"),
+                        pending_task=orchestration_turn.get("pending_task"),
+                    )
                 text_id, start_event = sse_text_start()
                 yield start_event
                 yield sse_text_delta(text_id, response_text)
@@ -1371,6 +1394,17 @@ class AgentIntelligence:
                 task_state = connector_turn.get("task_state") or task_state
                 response_text = str(connector_turn.get("message") or "")
                 dialogue_mode = str(connector_turn.get("dialogue_mode") or "answer")
+                if connector_turn.get("execution_result") or connector_turn.get("pending_task"):
+                    yield sse_intelligence_metadata(
+                        message_id=message_id,
+                        confidence={"score": classification_confidence, "needs_clarification": False},
+                        answer_explanation="Governed connector execution",
+                        dialogue_mode=dialogue_mode,
+                        persona_key=str(persona.get("persona_key") or ""),
+                        task_state=task_state,
+                        execution_result=connector_turn.get("execution_result"),
+                        pending_task=connector_turn.get("pending_task"),
+                    )
                 text_id, start_event = sse_text_start()
                 yield start_event
                 yield sse_text_delta(text_id, response_text)
@@ -1450,7 +1484,61 @@ class AgentIntelligence:
             understanding=understanding,
         )
         if clarification.get("should_clarify"):
-            question = str(clarification.get("question") or "Could you clarify?")
+            # STA-304 / Wave 6–7 claim 2a: disconnected-connector clarify must still
+            # emit a mid-stream ToolChip with a real errorCode (not text-only exit).
+            tool_results: list[dict[str, Any]] = []
+            trigger = str(clarification.get("trigger_type") or "")
+            if trigger == "connector_unavailable":
+                template_vars = (
+                    clarification.get("template_vars")
+                    if isinstance(clarification.get("template_vars"), dict)
+                    else {}
+                )
+                connector_label = str(template_vars.get("connector") or "connector").strip()
+                integration = connector_label.lower().replace(" ", "_")
+                # Existing reconnect-oriented code; taxonomy vs validation_error is STA-303.
+                error_code = "tool_not_available"
+                tool_name = (
+                    "slack_post_message"
+                    if integration == "slack"
+                    else f"{integration}_connector_status"
+                )
+                call_id = f"call-{uuid.uuid4().hex[:12]}"
+                observation = {
+                    "success": False,
+                    "error_code": error_code,
+                    "error": str(clarification.get("reason") or ""),
+                    "integration": integration,
+                    "action": tool_name,
+                }
+                yield sse_react_tool_start(
+                    call_id=call_id,
+                    registry_tool_name=tool_name,
+                    tool_args={},
+                )
+                yield sse_react_tool_complete(
+                    call_id=call_id,
+                    registry_tool_name=tool_name,
+                    observation=observation,
+                )
+                shaped = format_react_tool_output(tool_name, observation)
+                question = str(
+                    shaped.get("error")
+                    or clarification.get("question")
+                    or "Could you clarify?"
+                )
+                tool_results.append(
+                    {
+                        "name": tool_name,
+                        "displayName": tool_name,
+                        "input": {},
+                        "output": shaped,
+                        "error": shaped.get("error"),
+                        "errorCode": error_code,
+                    }
+                )
+            else:
+                question = str(clarification.get("question") or "Could you clarify?")
             text_id, start_event = sse_text_start()
             yield start_event
             yield sse_text_delta(text_id, question)
@@ -1468,7 +1556,7 @@ class AgentIntelligence:
             )
             yield AssistantStreamComplete(
                 full_content=question,
-                tool_results=[],
+                tool_results=tool_results,
                 react_result=None,
                 model="clarification",
                 message_id=message_id,
@@ -1584,6 +1672,20 @@ class AgentIntelligence:
         )
         if history_lines:
             task_prompt = f"{task_prompt}\n<conversation_history>\n" + "\n".join(history_lines) + "\n</conversation_history>"
+
+        # Wave 6 — stream plan / task state before tools so the UI can show progress live.
+        if turn_ctx.strategic_plan or (
+            isinstance(task_state, dict) and task_state.get("current_plan")
+        ):
+            yield sse_intelligence_metadata(
+                message_id=message_id,
+                confidence={"score": classification_confidence, "needs_clarification": False},
+                answer_explanation="Plan ready — running tools",
+                dialogue_mode=dialogue_mode,
+                persona_key=str(persona.get("persona_key") or ""),
+                task_state=task_state,
+                strategic_plan=turn_ctx.strategic_plan,
+            )
 
         tool_results: list[dict[str, Any]] = []
         if "knowledge_base" in tool_names:
@@ -1998,7 +2100,10 @@ class AgentIntelligence:
             dialogue_mode=dialogue_mode,
             persona_key=str(persona.get("persona_key") or ""),
             proactive_suggestions=suggestion_texts,
-            task_state=task_state if dialogue_mode == "guide" else None,
+            task_state=task_state
+            if dialogue_mode == "guide"
+            or (isinstance(task_state, dict) and task_state.get("current_plan"))
+            else None,
             simulation_summary=simulation_summary or risk_evaluation.get("simulation_summary"),
             context_profile=finalized.get("context_profile"),
             context_explanation=finalized.get("context_explanation"),
@@ -2031,7 +2136,10 @@ class AgentIntelligence:
             dialogue_mode=dialogue_mode,
             persona_key=str(persona.get("persona_key") or ""),
             proactive_suggestions=suggestion_texts,
-            task_state=task_state if dialogue_mode == "guide" else None,
+            task_state=task_state
+            if dialogue_mode == "guide"
+            or (isinstance(task_state, dict) and task_state.get("current_plan"))
+            else None,
         )
 
         if tier0_enabled(engine_settings) and full_content.strip():

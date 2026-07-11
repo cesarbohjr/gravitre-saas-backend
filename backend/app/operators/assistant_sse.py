@@ -178,12 +178,28 @@ def format_react_tool_output(registry_tool_name: str, observation: dict[str, Any
             "query": query,
         }
     if observation.get("success") is False:
+        from app.services.tool_error_messages import format_tool_error_for_user
+
+        error_code = observation.get("error_code")
+        raw_error = observation.get("error")
+        formatted = format_tool_error_for_user(
+            str(error_code) if error_code is not None else None,
+            str(raw_error) if raw_error is not None else None,
+            integration=observation.get("integration")
+            if isinstance(observation.get("integration"), str)
+            else None,
+            action=(
+                observation.get("action")
+                if isinstance(observation.get("action"), str)
+                else registry_tool_name
+            ),
+        )
         payload: dict[str, Any] = {
-            "error": observation.get("error") or "Tool failed",
+            "error": formatted,
             "success": False,
         }
-        if observation.get("error_code") is not None:
-            payload["errorCode"] = observation.get("error_code")
+        if error_code is not None:
+            payload["errorCode"] = error_code
         return payload
     payload = observation.get("result")
     if isinstance(payload, dict):

@@ -1418,7 +1418,9 @@ export function AiWorkspace({
           </div>
         </div>
 
-        {dialogueMode === "guide" ? <PlanProgressIndicator taskState={taskState} /> : null}
+        {taskState?.current_plan?.steps?.length ? (
+          <PlanProgressIndicator taskState={taskState} />
+        ) : null}
         {executionGate && (executionGate.requires_approval || executionGate.can_proceed === false) ? (
           <div className="shrink-0 border-b border-amber-200/60 bg-amber-50/50 px-4 py-1.5 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
             {executionGate.reason ?? "Execution requires review before proceeding."}

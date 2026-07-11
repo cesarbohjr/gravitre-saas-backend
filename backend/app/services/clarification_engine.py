@@ -104,6 +104,7 @@ class ClarificationEngine:
                 "trigger_type": rule_result["trigger_type"],
                 "question": question,
                 "reason": rule_result["reason"],
+                "template_vars": rule_result.get("template_vars") or {},
             }
 
         if confidence < self.ESCALATION_THRESHOLD and classification.get("requires_action"):
