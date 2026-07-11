@@ -4,18 +4,42 @@ Governed chat writes go through ``format_write_approval_message`` + ``awaiting_c
 before ``execute_plan`` → ``invoke_tool``. ReAct previously called ``execute_tool``
 directly for writes (live 2026-07-10 apollo_lists_create), which is invoke_tool-governed
 but not user-approval-governed. This module closes that gap.
+
+Authority for “is this a write?” is the connector action catalog (kind + scopes +
+destructive / requires_approval flags) — not a name-pattern early-return that treated
+``kind=advanced`` as non-mutating and skipped the suffix fallback.
 """
 from __future__ import annotations
 
 from typing import Any
 
 from app.services.chat_connector_models import ConnectorActionPlan
+from app.services.catalog_write_authority import (
+    catalog_action_requires_write_approval,
+    catalog_scopes_indicate_mutation,
+)
 from app.services.connector_action_workflows import format_write_approval_message
 from app.services.event_intelligence_service import WRITE_ACTION_SUFFIXES
 
 WRITE_APPROVAL_REQUIRED = "write_approval_required"
 
+# Re-export for callers that imported helpers from this module.
+__all__ = (
+    "WRITE_APPROVAL_REQUIRED",
+    "block_react_write_execution",
+    "catalog_action_requires_write_approval",
+    "catalog_scopes_indicate_mutation",
+    "first_structured_connector_plan_from_react",
+    "invoke_action_is_write",
+    "materialize_react_write_approval_turn",
+    "pending_write_from_react",
+    "plan_from_react_tool_call",
+    "plan_from_react_write",
+    "tool_requires_user_write_approval",
+)
+
 # Extra write verbs not covered by EventIntelligence WRITE_ACTION_SUFFIXES.
+# Used only as last-resort fallback when a registry tool is missing from the catalog.
 _EXTRA_WRITE_SUFFIXES = (
     ".send",
     ".post_message",
@@ -32,6 +56,11 @@ _EXTRA_WRITE_SUFFIXES = (
     ".reassign",
     ".escalate",
     ".add_note",
+    ".update_stage",
+    ".add_contact",
+    ".add_project",
+    ".add_member",
+    ".add_contacts",
 )
 
 
@@ -63,8 +92,11 @@ def tool_requires_user_write_approval(tool_name: str, registry: Any) -> tuple[bo
         for entry in build_connector_execution_matrix():
             if entry.tool_registry_key != name:
                 continue
-            requires = bool(
-                entry.requires_approval or entry.kind == "write" or entry.destructive
+            requires = catalog_action_requires_write_approval(
+                kind=entry.kind,
+                destructive=bool(entry.destructive),
+                requires_approval=bool(entry.requires_approval),
+                scopes=entry.required_scopes,
             )
             return (
                 requires,
@@ -75,6 +107,7 @@ def tool_requires_user_write_approval(tool_name: str, registry: Any) -> tuple[bo
     except Exception:  # noqa: BLE001
         pass
 
+    # Registry-only tools with no catalog row — last-resort suffix heuristic.
     if invoke_action and invoke_action_is_write(invoke_action):
         return True, invoke_action, integration, label
     return False, invoke_action, integration, label

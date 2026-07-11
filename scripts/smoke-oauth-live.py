@@ -180,6 +180,24 @@ def main() -> int:
 
     hard_fail = summary.get("failed", 0) + summary.get("auth_failure", 0) + summary.get("api_error", 0)
     hard_fail += summary.get("missing_scopes", 0) + summary.get("invalid_schema", 0)
+
+    # Wave 2 honesty: skipped ≠ passed. With --enable-writes, at least one write must pass
+    # or the run is incomplete (not green).
+    if args.enable_writes:
+        write_rows = [r for r in report["results"] if r.get("kind") == "write"]
+        write_passed = sum(1 for r in write_rows if r.get("status") == "passed")
+        write_skipped = sum(1 for r in write_rows if r.get("status") == "skipped")
+        print(
+            f"  writes: passed={write_passed} skipped={write_skipped} "
+            f"total_write_rows={len(write_rows)} (skipped is not pass)"
+        )
+        if write_rows and write_passed == 0:
+            print(
+                "ERROR: --enable-writes ran but zero write actions passed "
+                "(skipped/auth_failure must not be reported as green)."
+            )
+            return 1
+
     return 1 if hard_fail else 0
 
 
