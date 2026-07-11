@@ -740,6 +740,18 @@ class ChatConnectorExecutionService:
             task_state=task_state,
             structured_plan=structured_plan,
         )
+        # Wave 6–7 claim 4 — omit-name "create a contact list" must reach the Apollo
+        # auto-plan producer (inferred_fields → assumption_notes). plan_action otherwise
+        # shadows it with apollo.lists.list / contacts.create when lists.create cannot
+        # extract a name from the message.
+        if (
+            plan is not None
+            and structured_plan is None
+            and LIST_CREATE_INTENT.search(message)
+            and str(plan.integration or "").lower() == "apollo"
+            and "lists.create" not in str(plan.invoke_action or "").lower()
+        ):
+            plan = None
         if not plan:
             if self.is_connector_intent(message, task_state):
                 integration = self._detect_integration(message)
