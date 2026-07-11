@@ -1848,6 +1848,9 @@ class AgentIntelligence:
                 conversation_id=conversation_id,
                 client=client,
                 react_result=react_result,
+                message=task_text,
+                task_state=task_state,
+                environment_name=environment_name,
             )
             if approval_turn:
                 task_state = approval_turn.get("task_state") or task_state
