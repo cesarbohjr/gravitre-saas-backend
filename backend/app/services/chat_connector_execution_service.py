@@ -346,15 +346,10 @@ class ChatConnectorExecutionService:
                             pending = {
                                 "type": "connector_action",
                                 "status": "awaiting_confirm",
-                                "plan": {
-                                    "tool_name": plan.tool_name,
-                                    "invoke_action": plan.invoke_action,
-                                    "integration": plan.integration,
-                                    "kind": plan.kind,
-                                    "label": plan.label,
-                                    "args": plan.args,
-                                    "inferred_fields": list(plan.inferred_fields),
-                                    "inference_sources": dict(plan.inference_sources or {}),
+                                "params": {
+                                    **ChatConnectorExecutionService.plan_to_dict(plan),
+                                    "status": "awaiting_confirm",
+                                    "source": "apollo_list_create_autoplan",
                                 },
                             }
                             updated_state = {**task_state, "pending_task": pending}
@@ -363,6 +358,8 @@ class ChatConnectorExecutionService:
                                 "dialogue_mode": "confirm",
                                 "message": format_write_approval_message(plan),
                                 "task_state": updated_state,
+                                "pending_task": pending,
+                                "persist_pending_task": True,
                             }
                     payload = build_not_executable(
                         "not_implemented",
@@ -835,7 +832,7 @@ class ChatConnectorExecutionService:
                             ),
                             "task_state": task_state,
                         }
-                return self._build_unresolved_turn(
+                unresolved = self._build_unresolved_turn(
                     message=message,
                     integration=integration,
                     connected_integrations=connected_integrations,
@@ -844,6 +841,24 @@ class ChatConnectorExecutionService:
                     environment_name=environment_name,
                     task_state=task_state,
                 )
+                # STA-305 — auto-plan confirm must durable-persist pending_task (params),
+                # same as ReAct materialize / governed write confirm.
+                if unresolved and unresolved.pop("persist_pending_task", False):
+                    pending = (unresolved.get("task_state") or {}).get("pending_task")
+                    if pending:
+                        await self._state.update_task_state(
+                            conversation_id,
+                            org_id,
+                            {"pending_task": pending},
+                            client=client,
+                        )
+                        unresolved["task_state"] = await self._state.get_task_state(
+                            conversation_id, org_id, client=client
+                        )
+                        unresolved["pending_task"] = (
+                            unresolved["task_state"] or {}
+                        ).get("pending_task")
+                return unresolved
             return None
 
         blocked = self._verify_plan_executable(

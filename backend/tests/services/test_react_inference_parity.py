@@ -165,3 +165,86 @@ def test_list_create_fallback_skips_orchestration_shadowing():
     # Prefer-connector flag used in run_connector_fallback_turn
     prefer_connector = bool(LIST_CREATE_INTENT.search(msg))
     assert prefer_connector is True
+
+
+def test_plan_action_restores_inferred_fields_from_pending():
+    service = ChatConnectorExecutionService()
+    service._registry = MagicMock()
+    service._registry.get_spec.return_value = SimpleNamespace(
+        invoke_action="apollo.lists.create",
+        integration="apollo",
+    )
+    task_state = {
+        "pending_task": {
+            "type": "connector_action",
+            "status": "awaiting_confirm",
+            "params": {
+                "tool_name": "apollo_lists_create",
+                "invoke_action": "apollo.lists.create",
+                "integration": "apollo",
+                "kind": "write",
+                "label": "Create contact list",
+                "args": {"name": "MSP Prospects", "modality": "contacts"},
+                "requires_approval": True,
+                "inferred_fields": ["name"],
+                "inference_sources": {"name": "message_or_default_hint"},
+            },
+        }
+    }
+    plan = service.plan_action("yes", connected_integrations=["apollo"], task_state=task_state)
+    assert plan is not None
+    assert plan.inferred_fields == ("name",)
+    assert _assumption_notes_from_plan(plan)
+
+
+@pytest.mark.asyncio
+async def test_omit_name_autoplan_persists_params_not_plan_key():
+    """Auto-plan must durable-persist pending under params (STA-305 prod miss)."""
+    service = ChatConnectorExecutionService()
+    service._state = MagicMock()
+    service._state.update_task_state = AsyncMock()
+    service._state.get_task_state = AsyncMock(
+        return_value={
+            "pending_task": {
+                "type": "connector_action",
+                "status": "awaiting_confirm",
+                "params": {
+                    "invoke_action": "apollo.lists.create",
+                    "args": {"name": "MSP Prospects"},
+                    "inferred_fields": ["name"],
+                },
+            }
+        }
+    )
+    with patch.object(service, "_live_connected_integrations", return_value=["apollo"]), patch.object(
+        service,
+        "plan_action",
+        return_value=None,
+    ), patch(
+        "app.services.chat_connector_execution_service.find_integration_availability",
+        return_value={"execution_available": True},
+    ), patch.object(
+        service,
+        "_list_chat_actions",
+        return_value=["apollo.lists.create — Create contact list"],
+    ):
+        result = await service.process_turn(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            message="In Apollo, create a contact list.",
+            classification={"intent": "connector_action"},
+            task_state={},
+            connected_integrations=["apollo"],
+            client=MagicMock(),
+        )
+
+    assert result is not None
+    assert result["dialogue_mode"] == "confirm"
+    service._state.update_task_state.assert_awaited()
+    saved = service._state.update_task_state.await_args.args[2]
+    pending = saved["pending_task"]
+    assert "params" in pending
+    assert pending["params"]["args"]["name"] == "MSP Prospects"
+    assert "name" in pending["params"]["inferred_fields"]
+    assert result.get("pending_task") is not None
