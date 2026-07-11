@@ -298,9 +298,23 @@ async def _generate_followup_suggestions(
     return []
 
 
-def _response_cache_key(org_id: str, question: str) -> str:
+def _response_cache_key(org_id: str, question: str, conversation_id: str | None = None) -> str:
     digest = hashlib.sha256(question.strip().lower().encode("utf-8")).hexdigest()[:16]
-    return f"{org_id}:{digest}"
+    conv = (conversation_id or "").strip() or "none"
+    # Scope by conversation so short confirmations ("yes") never collide across threads.
+    return f"{org_id}:{conv}:{digest}"
+
+
+def _response_cache_eligible(question: str) -> bool:
+    """Confirm/decline turns are conversation-state dependent — never cache them."""
+    from app.services.conversational_execution_service import CONFIRM_PATTERN, DECLINE_PATTERN
+
+    text = (question or "").strip()
+    if not text:
+        return False
+    if CONFIRM_PATTERN.match(text) or DECLINE_PATTERN.match(text):
+        return False
+    return True
 
 
 def _build_cached_stream(content: str, tool_results: list[dict[str, Any]], suggestions: list[str]):
@@ -722,8 +736,9 @@ def _build_stream(
             logger.debug("assistant followup suggestions skipped org_id=%s error=%s", org_id, exc)
         if suggestions:
             yield assistant_event_to_sse_line(sse_suggestions(suggestions))
-            cache_key = _response_cache_key(org_id, user_text)
-            _RESPONSE_CACHE[cache_key] = (time.time(), assistant_text, suggestions)
+            if _response_cache_eligible(user_text):
+                cache_key = _response_cache_key(org_id, user_text, conversation_id)
+                _RESPONSE_CACHE[cache_key] = (time.time(), assistant_text, suggestions)
 
         yield sse_done()
 
@@ -844,9 +859,13 @@ async def assistant_chat(
     resolved_tools = resolve_assistant_tool_names(body.mode, explicit_tools)
     model_override, task_type = resolve_assistant_model(body.mode, body.model_override)
 
-    cache_key = _response_cache_key(org_id, last_user)
+    cache_key = _response_cache_key(org_id, last_user, conversation_id=(body.conversation_id or "").strip() or None)
     cached = _RESPONSE_CACHE.get(cache_key)
-    if cached and time.time() - cached[0] < _RESPONSE_CACHE_TTL:
+    if (
+        _response_cache_eligible(last_user)
+        and cached
+        and time.time() - cached[0] < _RESPONSE_CACHE_TTL
+    ):
         cached_content, cached_suggestions = cached[1], cached[2]
         cached_tools = await _run_tools(
             resolved_tools,

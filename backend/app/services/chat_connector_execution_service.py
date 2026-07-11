@@ -342,6 +342,7 @@ class ChatConnectorExecutionService:
                                 args={"name": inferred_name[:200], "modality": "contacts"},
                                 inferred_fields=("name",),
                                 inference_sources={"name": "message_or_default_hint"},
+                                requires_approval=True,
                             )
                             pending = {
                                 "type": "connector_action",
