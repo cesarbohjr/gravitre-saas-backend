@@ -145,7 +145,7 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
                 size="sm"
                 className="h-8 gap-2 px-2 text-xs font-medium hover:bg-accent"
               >
-                <OrgMonogram name={org} size="xs" />
+                <Icon name="company" size="sm" className="text-muted-foreground" />
                 <span className="hidden sm:inline">{org}</span>
                 <Icon name="caretDown" size="xs" className="text-muted-foreground" />
               </Button>
