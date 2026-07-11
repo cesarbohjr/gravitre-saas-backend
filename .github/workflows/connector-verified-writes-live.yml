@@ -66,6 +66,8 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
           CONNECTOR_SECRETS_ENCRYPTION_KEY: ${{ secrets.CONNECTOR_SECRETS_ENCRYPTION_KEY }}
+          HUBSPOT_CLIENT_ID: ${{ secrets.HUBSPOT_CLIENT_ID }}
+          HUBSPOT_CLIENT_SECRET: ${{ secrets.HUBSPOT_CLIENT_SECRET }}
           OAUTH_SMOKE_ORG_ID: ${{ secrets.OAUTH_SMOKE_ORG_ID }}
           OAUTH_SMOKE_USER_ID: ${{ secrets.OAUTH_SMOKE_USER_ID }}
           OAUTH_SMOKE_ENVIRONMENT: ${{ secrets.OAUTH_SMOKE_ENVIRONMENT || 'sandbox' }}
