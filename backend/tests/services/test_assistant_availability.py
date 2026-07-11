@@ -16,13 +16,24 @@ from app.services.assistant_tools import knowledge_base_output_from_retrieval
 
 def test_knowledge_base_output_from_retrieval_shape():
     payload = knowledge_base_output_from_retrieval(
-        [{"source": "Gravitre Platform Guide", "content": "Gravitre is an AI platform.", "score": 0.91}],
+        [
+            {
+                "source": "Gravitre Platform Guide",
+                "content": "Gravitre is an AI platform.",
+                "score": 0.91,
+                "source_id": "src-123",
+                "url": "https://example.com/guide",
+            }
+        ],
         {"embedding_method": "openai"},
         {"memories": [{"content": "User prefers concise answers", "score": 0.5}]},
     )
     assert payload["totalResults"] == 1
     assert payload["method"] == "openai"
     assert payload["results"][0]["title"] == "Gravitre Platform Guide"
+    assert payload["results"][0]["sourceId"] == "src-123"
+    assert payload["results"][0]["url"] == "https://example.com/guide"
+    assert payload["sources"][0]["sourceId"] == "src-123"
     assert payload["memoryHitCount"] == 1
 
 

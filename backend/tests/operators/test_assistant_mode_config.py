@@ -15,7 +15,12 @@ def test_normalize_mode_maps_deep_to_agent():
 def test_resolve_upgrades_to_agent_when_connectors_connected():
     assert resolve_effective_intelligence_mode("standard", ["hubspot"]) == "agent"
     assert resolve_effective_intelligence_mode("deep", ["slack"]) == "agent"
-    assert resolve_effective_intelligence_mode("fast", ["hubspot", "slack"]) == "agent"
+
+
+def test_resolve_keeps_fast_when_connectors_connected():
+    """Wave 4 — FAST must not silently upgrade to agent."""
+    assert resolve_effective_intelligence_mode("fast", ["hubspot", "slack"]) == "fast"
+    assert resolve_effective_intelligence_mode("fast", ["apollo"], has_mcp_tools=True) == "fast"
 
 
 def test_resolve_keeps_agent_without_connectors():

@@ -96,11 +96,17 @@ def resolve_effective_intelligence_mode(
     *,
     has_mcp_tools: bool = False,
 ) -> str:
-    """Upgrade to agent mode when connectors or MCP tools are live — full tool surface for Claude-like UX."""
+    """Upgrade standard/reasoning to agent when connectors or MCP tools are live.
+
+    Wave 4 — ``fast`` is honest: it keeps the tiny tool set and low iteration
+    budget even when connectors are connected (no silent upgrade to agent).
+    """
     normalized = normalize_mode(mode)
+    if normalized == "fast":
+        return "fast"
     connected = [str(c).strip().lower() for c in (connected_integrations or []) if str(c).strip()]
     connected = [c for c in connected if c not in {"platform", "webhook", "email"}]
-    if (connected or has_mcp_tools) and normalized in {"fast", "standard", "reasoning"}:
+    if (connected or has_mcp_tools) and normalized in {"standard", "reasoning"}:
         return "agent"
     return normalized
 

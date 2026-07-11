@@ -428,23 +428,6 @@ class ReActEngine:
                     }
                 )
 
-                if observation.get("error_code") == "permission_denied":
-                    result = ReActResult(
-                        status=ReActStatus.NEEDS_HUMAN_INPUT,
-                        answer=(
-                            f"Tool '{tool_name}' requires additional permissions. "
-                            f"{observation.get('error', 'Permission denied')}"
-                        ),
-                        trace=trace,
-                        iterations=iteration,
-                        tool_calls=tool_calls_log,
-                    )
-                    if emit_text_deltas:
-                        for piece in chunk_text_deltas(result.answer):
-                            yield ReActStreamEvent(kind="text_delta", content=piece)
-                    yield ReActStreamEvent(kind="done", react_result=result)
-                    return
-
                 if (
                     observation.get("pending_approval")
                     and str(observation.get("error_code") or "") == "write_approval_required"
@@ -458,6 +441,37 @@ class ReActEngine:
                         iterations=iteration,
                         tool_calls=tool_calls_log,
                     )
+                    yield ReActStreamEvent(kind="done", react_result=result)
+                    return
+
+                from app.services.tool_error_messages import (
+                    REACT_SHORT_CIRCUIT_ERROR_CODES,
+                    format_tool_error_for_user,
+                    integration_from_tool_name,
+                )
+
+                error_code = str(observation.get("error_code") or "").strip().lower()
+                if (
+                    observation.get("success") is False
+                    and error_code in REACT_SHORT_CIRCUIT_ERROR_CODES
+                ):
+                    # Wave 3 — surface real error_code; do not let the model invent failure stories.
+                    answer = format_tool_error_for_user(
+                        error_code,
+                        str(observation.get("error") or ""),
+                        integration=integration_from_tool_name(tool_name),
+                        action=str(observation.get("action") or ""),
+                    )
+                    result = ReActResult(
+                        status=ReActStatus.NEEDS_HUMAN_INPUT,
+                        answer=answer,
+                        trace=trace,
+                        iterations=iteration,
+                        tool_calls=tool_calls_log,
+                    )
+                    if emit_text_deltas:
+                        for piece in chunk_text_deltas(result.answer):
+                            yield ReActStreamEvent(kind="text_delta", content=piece)
                     yield ReActStreamEvent(kind="done", react_result=result)
                     return
 

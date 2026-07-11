@@ -130,8 +130,14 @@ class ChatIntelligenceFacade:
         classification: dict[str, Any],
         *,
         model_override: str | None = None,
+        mode: str | None = None,
+        connected_integrations: list[str] | None = None,
     ) -> tuple[str, dict[str, Any]]:
         from app.operators.agent_intelligence import MODEL_TIERS, resolve_agent_inference_model
+        from app.services.assistant_turn_complexity import (
+            classify_assistant_turn_complexity,
+            model_tier_for_task_type,
+        )
 
         if model_override:
             return model_override, {"source": "override"}
@@ -141,14 +147,34 @@ class ChatIntelligenceFacade:
         configured = (agent.get("model") or inference.base_model or "").strip()
         if configured:
             return configured, {"source": "agent_configured"}
+
+        task_type = classify_assistant_turn_complexity(
+            task_text,
+            mode=mode
+            or str(classification.get("mode") or classification.get("intelligence_mode") or ""),
+            connected_integrations=connected_integrations,
+            parameters={
+                "complexity": classification.get("complexity"),
+                "require_high_model": classification.get("require_high_model"),
+            },
+        )
+        complexity_tier = model_tier_for_task_type(task_type)
+
         selection = await get_model_selector(self.settings).select(org_id, classification)
         llm_model = str(selection.get("llm_model") or "").strip()
         if llm_model:
-            return llm_model, {"source": "model_selector", **selection}
-        tier = str(selection.get("llm_tier") or "standard")
-        tier_map = {"fast": "low", "standard": "medium", "reasoning": "high"}
-        mapped = tier_map.get(tier, "medium")
-        return MODEL_TIERS[mapped]["openai"], {"source": "model_selector", **selection}
+            return llm_model, {
+                "source": "model_selector",
+                "task_type": task_type.value,
+                "complexity_tier": complexity_tier,
+                **selection,
+            }
+        return MODEL_TIERS[complexity_tier]["openai"], {
+            "source": "turn_complexity",
+            "task_type": task_type.value,
+            "tier": complexity_tier,
+            **selection,
+        }
 
 
 def get_chat_intelligence_facade(settings: Settings | None = None) -> ChatIntelligenceFacade:
