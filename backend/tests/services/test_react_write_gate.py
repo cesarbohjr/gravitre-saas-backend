@@ -190,3 +190,79 @@ async def test_materialize_react_write_approval_persists_awaiting_confirm():
     saved = state.update_task_state.await_args.args[2]
     assert saved["pending_task"]["status"] == "awaiting_confirm"
     assert saved["pending_task"]["params"]["invoke_action"] == "apollo.lists.create"
+
+
+@pytest.mark.asyncio
+async def test_react_write_chain_gate_then_execute_plan_with_synthetic_agent():
+    """Contract: ReAct blocks write under synthetic agent; approved plan executes via execute_plan.
+
+    Live twin: scripts/smoke-react-write-live.py (daily in connector-verified-writes-live.yml).
+    """
+    from app.services.tool_registry import get_tool_registry
+
+    tool_ctx = ToolContext(
+        settings=SimpleNamespace(disable_connectors=False),
+        client=MagicMock(),
+        org_id="org-1",
+        actor_id="user-1",
+        agent_id="synthetic-default",
+    )
+    registry = get_tool_registry()
+    registry.execute_tool = AsyncMock()  # type: ignore[method-assign]
+    engine = ReActEngine(settings=SimpleNamespace(disable_ai=False), registry=registry)
+
+    blocked = await engine._execute_tool_call(
+        tool_ctx,
+        "apollo_lists_create",
+        {"name": "gravitre-react-gate-probe-ci", "modality": "contacts"},
+        allowed_tool_names={"apollo_lists_create"},
+    )
+    assert blocked["error_code"] == WRITE_APPROVAL_REQUIRED
+    registry.execute_tool.assert_not_called()
+
+    react = SimpleNamespace(
+        tool_calls=[
+            {
+                "tool": "apollo_lists_create",
+                "args": {"name": "gravitre-react-gate-probe-ci", "modality": "contacts"},
+                "result": blocked,
+            }
+        ]
+    )
+    pending = pending_write_from_react(react)
+    plan = plan_from_react_write(pending, registry)
+    assert plan is not None
+    assert plan.invoke_action == "apollo.lists.create"
+    assert plan.requires_approval is True
+
+    exec_result = SimpleNamespace(
+        success=True,
+        error_code=None,
+        entity_id="30f734a2-dbdb-45aa-9112-19c6d604d451",
+        result_url="https://app.apollo.io/#/lists/ci",
+        body="Created contact list",
+        integration="apollo",
+        task_label="Create contact list",
+    )
+    svc = MagicMock()
+    svc.execute_plan = AsyncMock(return_value=exec_result)
+    with patch(
+        "app.services.chat_connector_execution_service.get_chat_connector_execution_service",
+        return_value=svc,
+    ):
+        from app.services.chat_connector_execution_service import get_chat_connector_execution_service
+
+        result = await get_chat_connector_execution_service(SimpleNamespace()).execute_plan(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            plan=plan,
+            client=MagicMock(),
+            classification={"intent": "connector_action", "requires_approval": True},
+            environment_name="production",
+        )
+
+    assert result.success is True
+    assert result.error_code is None
+    svc.execute_plan.assert_awaited_once()
+    assert svc.execute_plan.await_args.kwargs["plan"].invoke_action == "apollo.lists.create"
