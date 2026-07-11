@@ -65,6 +65,54 @@ def _assumption_notes_from_plan(plan: ConnectorActionPlan) -> list[str] | None:
     return notes or None
 
 
+def enrich_plan_inference_metadata(
+    plan: ConnectorActionPlan,
+    *,
+    message: str = "",
+) -> ConnectorActionPlan:
+    """STA-305 — shared inference labeling for governed chat AND ReAct write plans.
+
+    Marks omit-name Apollo list creates with the default hint so execute_plan can
+    emit assumption_notes. Does not invent unrelated fields; session/org binding
+    still runs via infer_missing_parameters separately.
+    """
+    from dataclasses import replace
+
+    if str(plan.invoke_action or "") != "apollo.lists.create":
+        return plan
+    args = dict(plan.args or {})
+    name = str(args.get("name") or "").strip()
+    planned = ChatConnectorExecutionService._planned_details_from_message(
+        message or "",
+        "apollo",
+    )
+    explicit = str(planned.get("List name") or planned.get("Name") or "").strip()
+    if explicit and name and name.lower() == explicit.lower():
+        # User supplied the name in the message — not an assumption.
+        return plan
+    if not name:
+        inferred_name = explicit or "MSP Prospects"
+        args["name"] = inferred_name[:200]
+        if "modality" not in args:
+            args["modality"] = "contacts"
+        inferred = tuple(dict.fromkeys([*(plan.inferred_fields or ()), "name"]))
+        sources = dict(plan.inference_sources or {})
+        sources["name"] = "message_or_default_hint"
+        return replace(
+            plan,
+            args=args,
+            inferred_fields=inferred,
+            inference_sources=sources,
+        )
+    if not explicit and name == "MSP Prospects" and "name" not in (plan.inferred_fields or ()):
+        # ReAct/tool supplied the same default without labeling it.
+        inferred = tuple(dict.fromkeys([*(plan.inferred_fields or ()), "name"]))
+        sources = dict(plan.inference_sources or {})
+        sources.setdefault("name", "message_or_default_hint")
+        return replace(plan, inferred_fields=inferred, inference_sources=sources)
+    return plan
+
+
 def _result_link_label(integration: str | None) -> str:
     normalized = str(integration or "").strip()
     if not normalized:
@@ -528,17 +576,14 @@ class ChatConnectorExecutionService:
             spec = self._registry.get_spec(tool_name)
             if not spec:
                 return None
-            return ConnectorActionPlan(
-                tool_name=tool_name,
-                invoke_action=str(params.get("invoke_action") or spec.invoke_action),
-                integration=str(params.get("integration") or spec.integration),
-                kind=str(params.get("kind") or "write"),
-                label=str(params.get("label") or tool_name),
-                args=dict(params.get("args") or {}),
-                requires_approval=bool(params.get("requires_approval")),
-                approval_reason=params.get("approval_reason"),
-                destructive=bool(params.get("destructive")),
-            )
+            # STA-305 — restore inferred_fields / inference_sources via plan_from_dict.
+            if not params.get("invoke_action"):
+                params["invoke_action"] = spec.invoke_action
+            if not params.get("integration"):
+                params["integration"] = spec.integration
+            if not params.get("label"):
+                params["label"] = tool_name
+            return self.plan_from_dict(params)
 
         mapper = get_chat_action_mapper()
         match = mapper.match_segment(message, connected_integrations=connected_integrations)
@@ -874,15 +919,8 @@ class ChatConnectorExecutionService:
         )
 
         pending_params = {
-            "tool_name": plan.tool_name,
-            "invoke_action": plan.invoke_action,
-            "integration": plan.integration,
-            "kind": plan.kind,
-            "label": plan.label,
-            "args": plan.args,
-            "requires_approval": plan.requires_approval,
-            "approval_reason": plan.approval_reason,
-            "destructive": plan.destructive,
+            **self.plan_to_dict(plan),
+            "status": "awaiting_confirm",
         }
 
         if DECLINE_PATTERN.match(message.strip()):

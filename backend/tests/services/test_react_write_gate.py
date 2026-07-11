@@ -173,6 +173,9 @@ async def test_materialize_react_write_approval_persists_awaiting_confirm():
     with patch(
         "app.services.conversation_state_service.get_conversation_state_service",
         return_value=state,
+    ), patch(
+        "app.services.connector_parameter_inference.infer_missing_parameters",
+        side_effect=lambda plan, _ctx: plan,
     ):
         turn = await materialize_react_write_approval_turn(
             settings=SimpleNamespace(),
@@ -180,6 +183,7 @@ async def test_materialize_react_write_approval_persists_awaiting_confirm():
             conversation_id="conv-1",
             client=MagicMock(),
             react_result=react,
+            message='Create an Apollo contact list named "MSP Prospects".',
         )
 
     assert turn is not None

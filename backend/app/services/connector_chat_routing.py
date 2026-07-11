@@ -106,7 +106,17 @@ async def run_connector_fallback_turn(
     from app.services.tool_registry import get_tool_registry
 
     orchestration = get_chat_orchestration_service(settings)
-    if ChatOrchestrationService.is_orchestration_intent(message, task_state, connected_integrations):
+    from app.services.chat_connector_models import LIST_CREATE_INTENT
+
+    # STA-305 — omit-name list create must reach connector auto-plan, not multi-step
+    # orchestration (comma after "Apollo," falsely trips is_orchestration_intent).
+    prefer_connector = bool(LIST_CREATE_INTENT.search(message or ""))
+    if (
+        not prefer_connector
+        and ChatOrchestrationService.is_orchestration_intent(
+            message, task_state, connected_integrations
+        )
+    ):
         turn = await orchestration.process_turn(
             org_id=org_id,
             user_id=user_id,

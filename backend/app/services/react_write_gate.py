@@ -281,6 +281,9 @@ async def materialize_react_write_approval_turn(
     conversation_id: str,
     client: Any,
     react_result: Any,
+    message: str = "",
+    task_state: dict[str, Any] | None = None,
+    environment_name: str = "production",
 ) -> dict[str, Any] | None:
     """Persist awaiting_confirm + return the same approval UX as governed chat writes."""
     pending = pending_write_from_react(react_result)
@@ -292,8 +295,30 @@ async def materialize_react_write_approval_turn(
     if not plan:
         return None
 
-    from app.services.chat_connector_execution_service import ChatConnectorExecutionService
+    from app.services.chat_connector_execution_service import (
+        ChatConnectorExecutionService,
+        enrich_plan_inference_metadata,
+    )
+    from app.services.connector_parameter_inference import (
+        ParameterInferenceContext,
+        infer_missing_parameters,
+    )
+    from app.services.connector_session_state import load_connector_session
     from app.services.conversation_state_service import get_conversation_state_service
+
+    # STA-305 — ReAct plans must carry the same inference metadata as governed chat.
+    plan = enrich_plan_inference_metadata(plan, message=message or "")
+    inference_context = ParameterInferenceContext(
+        message=message or "",
+        conversation_history=list((task_state or {}).get("recent_user_messages") or []),
+        task_state=task_state or {},
+        connector_session=load_connector_session(task_state or {}),
+        client=client,
+        org_id=org_id,
+        settings=settings,
+        environment_name=environment_name,
+    )
+    plan = infer_missing_parameters(plan, inference_context)
 
     pending_params = {
         **ChatConnectorExecutionService.plan_to_dict(plan),
