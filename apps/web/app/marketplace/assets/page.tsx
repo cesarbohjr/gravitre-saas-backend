@@ -794,7 +794,12 @@ function MarketplaceAssetsContent() {
               </div>
             ) : error ? (
               <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
-                Failed to load marketplace catalog.
+                <p className="font-medium">Failed to load marketplace catalog.</p>
+                <p className="mt-1 text-destructive/80">
+                  {error instanceof Error && error.message.trim()
+                    ? error.message
+                    : "Check that the FastAPI backend is running and FASTAPI_BASE_URL points at it (local default: http://localhost:8000)."}
+                </p>
               </div>
             ) : visibleAssets.length === 0 ? (
               <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">{emptyMessage}</div>

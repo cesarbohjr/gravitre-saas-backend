@@ -4,7 +4,10 @@ const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" } as co
 const METHODS_WITH_BODY = new Set(["POST", "PUT", "PATCH", "DELETE"])
 
 function getFastApiBaseUrl() {
-  const value = process.env.FASTAPI_BASE_URL?.trim()
+  // Match next.config.mjs rewrite fallback so local `next dev` works without
+  // requiring FASTAPI_BASE_URL when the backend is on localhost:8000.
+  const value = (process.env.FASTAPI_BASE_URL?.trim() || "http://localhost:8000")
+    .replace(/[\r\n]+/g, "")
   if (!value) {
     throw new Error("FASTAPI_BASE_URL is not set")
   }
