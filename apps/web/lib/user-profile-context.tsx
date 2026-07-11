@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from "react"
 
 interface UserProfile {
   firstName: string
@@ -60,35 +60,38 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(profile))
   }, [profile])
 
-  const updateProfile = (updates: Partial<UserProfile>) => {
+  // Stable identities so consumers that depend on these in effect deps
+  // (e.g. AccountProfileSync) don't trigger an infinite render loop.
+  const updateProfile = useCallback((updates: Partial<UserProfile>) => {
     setProfile(prev => ({ ...prev, ...updates }))
-  }
+  }, [])
 
-  const setAvatarImage = (image: string | null) => {
+  const setAvatarImage = useCallback((image: string | null) => {
     setProfile(prev => ({ ...prev, avatarImage: image }))
-  }
+  }, [])
 
-  const getInitials = () => {
+  const getInitials = useCallback(() => {
     return `${profile.firstName[0] || ""}${profile.lastName[0] || ""}`.toUpperCase()
-  }
+  }, [profile.firstName, profile.lastName])
 
-  const getFullName = () => {
+  const getFullName = useCallback(() => {
     return `${profile.firstName} ${profile.lastName}`.trim()
-  }
+  }, [profile.firstName, profile.lastName])
 
-  return (
-    <UserProfileContext.Provider
-      value={{
-        profile,
-        updateProfile,
-        setAvatarImage,
-        getInitials,
-        getFullName,
-      }}
-    >
-      {children}
-    </UserProfileContext.Provider>
+  // Memoize the context value so its identity only changes when its
+  // contents actually change, preventing needless consumer re-renders.
+  const value = useMemo(
+    () => ({
+      profile,
+      updateProfile,
+      setAvatarImage,
+      getInitials,
+      getFullName,
+    }),
+    [profile, updateProfile, setAvatarImage, getInitials, getFullName],
   )
+
+  return <UserProfileContext.Provider value={value}>{children}</UserProfileContext.Provider>
 }
 
 export function useUserProfile() {

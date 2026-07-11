@@ -1,7 +1,6 @@
 "use client"
 
 import { Sidebar } from "@/components/gravitre/sidebar"
-import { HardNavigation } from "@/components/gravitre/hard-navigation"
 import { TopBar } from "@/components/gravitre/top-bar"
 import { NotificationProvider } from "@/components/gravitre/notification-center"
 import { MesonToolbarPopup, MesonToolbarProvider } from "@/components/gravitre/meson-toolbar-popup"
@@ -17,7 +16,6 @@ export default function LiteLayout({
   return (
     <NotificationProvider>
       <MesonToolbarProvider>
-        <HardNavigation />
         <div className="flex h-screen bg-background">
           <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
           <div className="flex flex-1 flex-col overflow-hidden">

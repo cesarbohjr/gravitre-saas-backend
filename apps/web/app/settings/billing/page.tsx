@@ -856,9 +856,9 @@ function BillingPageInner() {
 
                 <p className="text-xs text-muted-foreground mt-4 text-center">
                   Need older invoices?{" "}
-                  <a href="#" className="text-foreground hover:underline">
+                  <Link href="/support" className="text-foreground hover:underline">
                     Contact support
-                  </a>
+                  </Link>
                 </p>
               </section>
             </div>
