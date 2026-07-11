@@ -188,8 +188,8 @@ export function GlobalCommandBar() {
             <Icon name="search" size="sm" className="transition-colors group-hover:text-primary" />
             <div className="absolute inset-0 blur-sm group-hover:bg-primary/30 transition-all opacity-0 group-hover:opacity-100" />
           </div>
-          <span className="hidden sm:inline font-medium">Search or command...</span>
-          <kbd className="ml-1 hidden rounded-md bg-background/80 border border-border/50 px-2 py-0.5 font-mono text-[10px] text-muted-foreground sm:inline-flex items-center gap-0.5 group-hover:border-primary/30 transition-colors">
+          <span className="hidden lg:inline font-medium">Search or command...</span>
+          <kbd className="ml-1 hidden rounded-md bg-background/80 border border-border/50 px-2 py-0.5 font-mono text-[10px] text-muted-foreground lg:inline-flex items-center gap-0.5 group-hover:border-primary/30 transition-colors">
             <Icon name="command" size="xs" />K
           </kbd>
         </motion.div>
