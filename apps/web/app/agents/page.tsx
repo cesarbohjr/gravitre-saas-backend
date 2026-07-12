@@ -1193,7 +1193,7 @@ export default function AgentsPage() {
             
             {/* Center stage area — flex so the orb cluster can use m-auto to stay
                centered while short, yet scroll without clipping when tall. */}
-            <div className="relative flex flex-1 min-h-[320px] sm:min-h-[380px]">
+            <div className="relative flex flex-1 min-h-[420px] sm:min-h-[380px]">
               {/* Circular platform effect (clipped so the large rings never force
                  horizontal overflow on narrow/mobile viewports). */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
@@ -1219,12 +1219,15 @@ export default function AgentsPage() {
                  status pills clear of the floating team-stats bar. */}
               <TooltipProvider delayDuration={200}>
               <div className={cn(
-                "relative z-10 m-auto flex w-full gap-6 sm:gap-10 lg:gap-12 items-start pt-4 sm:pt-8 pb-36 sm:pb-40",
+                "relative z-10 m-auto flex w-full gap-6 sm:gap-10 lg:gap-12 pt-4 sm:pt-8",
                 // Mobile: horizontal swipe carousel so every agent is reachable
-                // with a left/right scroll instead of a tall vertical stack.
-                "flex-nowrap snap-x snap-mandatory overflow-x-auto scrollbar-hide px-4 -mx-4",
+                // with a left/right scroll. overflow-x-auto forces overflow-y to
+                // clip, so center the full-height orbs in the tall band and use a
+                // small bottom padding (the big pb is only for the desktop
+                // floating stats bar, which does not overlap on mobile).
+                "flex-nowrap items-center snap-x snap-mandatory overflow-x-auto scrollbar-hide px-4 -mx-4 pb-8",
                 // sm+: return to the centered wrapping constellation.
-                "sm:flex-wrap sm:justify-center sm:overflow-x-visible sm:px-0 sm:mx-0 sm:snap-none",
+                "sm:flex-wrap sm:items-start sm:justify-center sm:overflow-x-visible sm:px-0 sm:mx-0 sm:snap-none sm:pb-40",
               )}>
                 {error ? (
                   <WorkSectionErrorCard
