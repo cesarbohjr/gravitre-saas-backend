@@ -293,6 +293,63 @@ async def test_run_max_iterations_reached(engine: ReActEngine, tool_ctx: ToolCon
 
 
 @pytest.mark.asyncio
+async def test_streaming_extends_cap_when_routing_escalates(
+    engine: ReActEngine, tool_ctx: ToolContext
+):
+    """Mid-turn escalate must raise the iteration ceiling (routing wave Bugbot High)."""
+    from app.services.assistant_routing_tier import RoutingControl
+
+    ctrl = RoutingControl(tier="simple", model="gpt-4o-mini", max_iterations=1, pinned_fast=False)
+    call_n = {"n": 0}
+
+    async def _chat(_messages, _tools, _model):
+        call_n["n"] += 1
+        if call_n["n"] == 1:
+            # Escalate after first model call so subsequent rounds honor new max.
+            assert ctrl.escalate("research", "test_mid_turn") is True
+            assert ctrl.max_iterations >= 12
+            return SimpleNamespace(
+                choices=[
+                    _choice(
+                        "",
+                        tool_calls=[_tool_call("hubspot_search_contacts", '{"query":"a"}', "c1")],
+                    )
+                ]
+            )
+        if call_n["n"] == 2:
+            return SimpleNamespace(
+                choices=[
+                    _choice(
+                        "",
+                        tool_calls=[_tool_call("hubspot_search_contacts", '{"query":"b"}', "c2")],
+                    )
+                ]
+            )
+        return SimpleNamespace(choices=[_choice("Finished after escalate")])
+
+    engine.registry.execute_tool = AsyncMock(return_value={"success": True, "result": {}})
+    with patch.object(engine, "_chat_with_tools", AsyncMock(side_effect=_chat)):
+        with patch("app.operators.react_engine.moderate_input", new=AsyncMock()):
+            with patch("app.operators.react_engine.write_audit_event"):
+                done = None
+                async for event in engine.run_streaming(
+                    ctx=tool_ctx,
+                    task="Keep searching",
+                    permitted_tools=["hubspot"],
+                    connected_integrations=["hubspot"],
+                    max_iterations=1,
+                    routing_control=ctrl,
+                ):
+                    if event.kind == "done":
+                        done = event.react_result
+
+    assert done is not None
+    assert done.status == ReActStatus.COMPLETED
+    assert call_n["n"] >= 3
+    assert done.iterations >= 3
+
+
+@pytest.mark.asyncio
 async def test_run_auth_expired_surfaces_formatted_error(engine: ReActEngine, tool_ctx: ToolContext):
     """Wave 3 — connector auth failures short-circuit with actionable copy, not LLM narration."""
     engine.registry.get_available_tools = AsyncMock(

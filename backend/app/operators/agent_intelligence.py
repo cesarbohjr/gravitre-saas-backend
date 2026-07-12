@@ -1208,6 +1208,10 @@ class AgentIntelligence:
                     conflicts=None,
                     refined_query=None,
                     validation=None,
+                    effective_mode=mode_key,
+                    pipeline_tier=pipeline_tier,
+                    routing_tier=routing_control.tier,
+                    routing=routing_sse,
                 )
                 yield AssistantStreamComplete(
                     full_content=answer,
@@ -1305,6 +1309,10 @@ class AgentIntelligence:
                     task_state=task_state,
                     execution_result=conv_turn.get("execution_result"),
                     pending_task=conv_turn.get("pending_task"),
+                    effective_mode=mode_key,
+                    pipeline_tier=pipeline_tier,
+                    routing_tier=routing_control.tier,
+                    routing=routing_sse,
                 )
             text_id, start_event = sse_text_start()
             yield start_event
@@ -1323,6 +1331,10 @@ class AgentIntelligence:
                 task_state=task_state,
                 execution_result=conv_turn.get("execution_result"),
                 pending_task=conv_turn.get("pending_task"),
+                effective_mode=mode_key,
+                pipeline_tier=pipeline_tier,
+                routing_tier=routing_control.tier,
+                routing=routing_sse,
             )
             yield AssistantStreamComplete(
                 full_content=response_text,
@@ -1369,6 +1381,10 @@ class AgentIntelligence:
                         task_state=task_state,
                         execution_result=orchestration_turn.get("execution_result"),
                         pending_task=orchestration_turn.get("pending_task"),
+                        effective_mode=mode_key,
+                        pipeline_tier=pipeline_tier,
+                        routing_tier=routing_control.tier,
+                        routing=routing_sse,
                     )
                 text_id, start_event = sse_text_start()
                 yield start_event
@@ -1387,6 +1403,10 @@ class AgentIntelligence:
                     task_state=task_state,
                     execution_result=orchestration_turn.get("execution_result"),
                     pending_task=orchestration_turn.get("pending_task"),
+                    effective_mode=mode_key,
+                    pipeline_tier=pipeline_tier,
+                    routing_tier=routing_control.tier,
+                    routing=routing_sse,
                 )
                 yield AssistantStreamComplete(
                     full_content=response_text,
@@ -1432,6 +1452,10 @@ class AgentIntelligence:
                         task_state=task_state,
                         execution_result=connector_turn.get("execution_result"),
                         pending_task=connector_turn.get("pending_task"),
+                        effective_mode=mode_key,
+                        pipeline_tier=pipeline_tier,
+                        routing_tier=routing_control.tier,
+                        routing=routing_sse,
                     )
                 text_id, start_event = sse_text_start()
                 yield start_event
@@ -1450,6 +1474,10 @@ class AgentIntelligence:
                     task_state=task_state,
                     execution_result=connector_turn.get("execution_result"),
                     pending_task=connector_turn.get("pending_task"),
+                    effective_mode=mode_key,
+                    pipeline_tier=pipeline_tier,
+                    routing_tier=routing_control.tier,
+                    routing=routing_sse,
                 )
                 yield AssistantStreamComplete(
                     full_content=response_text,
@@ -1571,6 +1599,7 @@ class AgentIntelligence:
             yield start_event
             yield sse_text_delta(text_id, question)
             yield sse_text_end(text_id)
+            # Routing wave — early clarify exits still emit classified tier (Trace C).
             yield sse_intelligence_metadata(
                 message_id=message_id,
                 confidence={"score": classification_confidence, "needs_clarification": True},
@@ -1581,6 +1610,15 @@ class AgentIntelligence:
                 dialogue_mode="clarify",
                 persona_key=persona.get("persona_key"),
                 proactive_suggestions=[],
+                effective_mode=mode_key,
+                pipeline_tier=pipeline_tier,
+                routing_tier=routing_control.tier,
+                routing={
+                    **routing_sse,
+                    "routingTier": routing_control.tier,
+                    "maxToolRounds": routing_control.max_iterations,
+                    "escalations": list(routing_control.escalations),
+                },
             )
             yield AssistantStreamComplete(
                 full_content=question,

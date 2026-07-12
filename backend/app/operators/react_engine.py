@@ -285,7 +285,26 @@ class ReActEngine:
         trace: list[ReActTraceStep] = []
         tool_calls_log: list[dict[str, Any]] = []
 
-        for iteration in range(1, max(1, max_iterations) + 1):
+        # Cap must track mid-turn routing escalate (Bugbot High / routing wave).
+        # Refresh before the loop condition so an escalate during iteration N
+        # can still unlock rounds N+1..new_max.
+        iteration = 0
+        effective_max = max(1, int(max_iterations))
+        if routing_control is not None:
+            effective_max = max(
+                effective_max,
+                max(1, int(getattr(routing_control, "max_iterations", 0) or 0)),
+            )
+
+        while True:
+            if routing_control is not None:
+                effective_max = max(
+                    effective_max,
+                    max(1, int(getattr(routing_control, "max_iterations", 0) or 0)),
+                )
+            if iteration >= effective_max:
+                break
+            iteration += 1
             if routing_control is not None and getattr(routing_control, "model", None):
                 resolved_model = routing_control.model
             try:
@@ -512,7 +531,7 @@ class ReActEngine:
                 "steps or provide more specific inputs."
             ),
             trace=trace,
-            iterations=max_iterations,
+            iterations=iteration,
             tool_calls=tool_calls_log,
         )
         if emit_text_deltas:
