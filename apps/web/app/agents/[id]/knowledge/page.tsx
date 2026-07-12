@@ -236,7 +236,7 @@ export default function AgentKnowledgePage({
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-4 gap-4 mt-6">
+            <div className="grid grid-cols-2 gap-4 mt-6 sm:grid-cols-4">
               {[
                 { label: "Datasets", value: stats.totalDatasets, sub: `${stats.readyDatasets} ready`, icon: "database", color: "emerald" },
                 { label: "Instructions", value: stats.totalInstructions, sub: `${stats.activeInstructions} active`, icon: "file", color: "blue" },

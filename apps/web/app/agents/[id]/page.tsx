@@ -347,9 +347,9 @@ export default function AgentProfilePage({
               <span className="text-foreground">{agent.name}</span>
             </div>
 
-            <div className="grid grid-cols-12 gap-8">
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
               {/* Left: Agent Identity */}
-              <div className="col-span-4">
+              <div className="lg:col-span-4">
                 <div className="flex flex-col items-center text-center">
                   <AgentOrb agent={agent} status={status} />
                   
@@ -401,13 +401,13 @@ export default function AgentProfilePage({
               </div>
 
               {/* Right: Stats & Info */}
-              <div className="col-span-8">
+              <div className="lg:col-span-8">
                 {/* Live Stats Grid */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
-                  className="grid grid-cols-3 gap-4 mb-6"
+                  className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-3"
                 >
                   {[
                     { label: "Tasks completed (operational)", value: agent.stats.tasksCompleted.toLocaleString(), icon: "check", color: "emerald" },
