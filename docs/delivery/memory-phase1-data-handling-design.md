@@ -16,6 +16,18 @@ Separate **schema-gate evidence** (WorkflowFieldSpec coverage) from **authorizat
 **Reopen condition (met 2026-07-12):** STA-312 recorded Cesar Bohorquez Jr. as sole governance owner and selected **Option B** in writing. Memory Phase 1 engineering is authorized under Option B constraints (opaque tokens / redacted mentions only; org opt-in default off; no raw PII).
 
 This document remains the binding data-handling design. Implementation must not deviate toward raw embedding.
+
+## Capability caveat (what shipped vs original “which Sarah” intent)
+
+Phase 1 Option B improves retrieval over **opaque tokens of normalized mentions**, not fuzzy name similarity.
+
+| Query / index | Matches? |
+| --- | --- |
+| Indexed `"sarah"`, query `"sarah"` (same normalize+HMAC) | Yes |
+| Indexed `"sarah"`, query `"Sarah Smith"` (different normalized form) | **No** — not fuzzy |
+
+Do **not** treat Memory Phase 1 as shipping “resolve which Sarah.” Fuzzy / multi-candidate person disambiguation remains on the rule-based path and `org_entity_resolution_records`. Standing rule also recorded in `docs/ENGINEERING_STANDARDS.md`.
+
 ---
 
 ## Category boundary (do not collapse)

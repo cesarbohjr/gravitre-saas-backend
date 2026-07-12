@@ -152,7 +152,11 @@ async def search_memory_by_mention(
     match_count: int = 5,
     min_score: float = 0.92,
 ) -> list[dict[str, Any]]:
-    """Embed HMAC(redacted mention) and search — never sends raw mention to provider."""
+    """Embed HMAC(redacted mention) and search — never sends raw mention to provider.
+
+    Match semantics: exact opaque-token identity after normalize+HMAC, not fuzzy
+    name similarity ('Sarah' vs 'Sarah Smith' are different tokens).
+    """
     secret = _hmac_secret(settings)
     alias_norm = redact_mention_for_digest(mention)
     if not alias_norm:

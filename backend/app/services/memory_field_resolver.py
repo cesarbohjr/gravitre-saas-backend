@@ -5,6 +5,11 @@ Runs only when:
 - field.sensitive is true
 - connector allowlisted (if configured)
 Falls back to rule-based / clarification; never embeds raw PII.
+
+Capability caveat (do not misread as fuzzy disambiguation):
+opaque-alias vectors match previously indexed *normalized* mentions via exact
+HMAC tokens (e.g. "sarah"↔"sarah"). They do NOT fuzzy-resolve "Sarah"↔"Sarah Smith".
+Fuzzy / multi-alias expansion stays on rule-based + org_entity_resolution_records.
 """
 from __future__ import annotations
 
@@ -43,7 +48,7 @@ async def resolve_sensitive_field_mention(
     entity_type: str = "entity",
     primary_arg_key: str | None = None,
 ) -> MemoryResolveResult:
-    """Resolve a fuzzy mention for a sensitive WorkflowFieldSpec."""
+    """Resolve a mention for a sensitive WorkflowFieldSpec (exact HMAC alias match)."""
     if not field.sensitive:
         return MemoryResolveResult(status="skipped", reason="field_not_sensitive")
 

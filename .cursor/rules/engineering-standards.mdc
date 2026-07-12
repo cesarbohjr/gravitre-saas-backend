@@ -1,0 +1,16 @@
+---
+description: Standing delivery/governance rules — evidence-linked PASS, one layer ≠ done, dual-path verify, schema-gate ≠ auth, class-level bugs
+alwaysApply: true
+---
+
+# Engineering standards (always)
+
+Before claiming Done, shipping governance-adjacent work, or closing a “looks fixed” bug, follow **`docs/ENGINEERING_STANDARDS.md`**:
+
+1. **Evidence-linked PASS** — prod trace/audit/HTTP artifact, not pytest alone.
+2. **One layer ≠ done** — confirm every user-facing layer (API + UI + deploy).
+3. **Dual paths** — ReAct vs governed chat (etc.) need independent verification until they share one gate.
+4. **Schema-gate ≠ authorization** — PII / third-party ML purpose needs a named owner + written option (see STA-312 / Memory Option B).
+5. **Class-level** — check structural/shared-path bugs before closing an isolated case.
+
+Memory Phase 1 caveat: opaque-alias vectors are **exact HMAC match** of normalized mentions — not fuzzy `"Sarah"`↔`"Sarah Smith"`.

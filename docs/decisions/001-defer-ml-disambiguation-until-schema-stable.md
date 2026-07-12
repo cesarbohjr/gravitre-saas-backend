@@ -88,3 +88,5 @@ Until STA-312 is resolved, **no Memory embedding code**. That pause may last ind
 | Schema attachment | Resolvers attach only to `WorkflowFieldSpec.sensitive` / inferrable fields |
 
 **Engineering authorization:** Memory Phase 1 Option B implementation may proceed. Do not send raw email/assignee/channel strings to any embedding provider.
+
+**Capability caveat (Phase 1 as shipped):** Opaque-alias vectors match previously indexed **normalized** mentions via **exact HMAC** (e.g. indexed `"sarah"` matches query `"sarah"`). They do **not** fuzzy-resolve `"Sarah"` ↔ `"Sarah Smith"`. Fuzzy / multi-alias person disambiguation remains rule-based + `org_entity_resolution_records`. See `docs/ENGINEERING_STANDARDS.md` and `docs/delivery/memory-phase1-data-handling-design.md`.
