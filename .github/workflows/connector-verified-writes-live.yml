@@ -83,6 +83,25 @@ jobs:
             --json ../docs/delivery/verified-write-live-latest.json \
             --csv ../docs/delivery/verified-write-live-latest.csv
 
+      # Permanent Wave 0–2 regression: ReAct path (synthetic agent) ≠ governed invoke.
+      # Catches ToolContext/agent-id + write-gate regressions that governed smoke alone misses.
+      - name: Run ReAct write→approval→execute smoke
+        if: steps.secrets.outputs.skip != '1'
+        working-directory: backend
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+          CONNECTOR_SECRETS_ENCRYPTION_KEY: ${{ secrets.CONNECTOR_SECRETS_ENCRYPTION_KEY }}
+          OAUTH_SMOKE_ORG_ID: ${{ secrets.OAUTH_SMOKE_ORG_ID }}
+          OAUTH_SMOKE_USER_ID: ${{ secrets.OAUTH_SMOKE_USER_ID }}
+          OAUTH_SMOKE_ENVIRONMENT: ${{ secrets.OAUTH_SMOKE_ENVIRONMENT || 'sandbox' }}
+        run: |
+          mkdir -p ../docs/delivery
+          python ../scripts/smoke-react-write-live.py \
+            --json ../docs/delivery/react-write-live-latest.json
+
       - name: Upload live write report
         if: always() && steps.secrets.outputs.skip != '1'
         uses: actions/upload-artifact@v4
@@ -91,4 +110,5 @@ jobs:
           path: |
             docs/delivery/verified-write-live-latest.json
             docs/delivery/verified-write-live-latest.csv
+            docs/delivery/react-write-live-latest.json
           if-no-files-found: ignore
