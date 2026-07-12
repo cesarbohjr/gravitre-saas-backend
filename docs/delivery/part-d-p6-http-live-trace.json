@@ -1,0 +1,66 @@
+{
+  "ticket": "STA-311",
+  "ran_at": "2026-07-12T09:36:23.686752+00:00",
+  "prod_git_sha": "267a53bb5954f4040502403046e2aeaa2ea7a25b",
+  "main_sha_expected": "267a53bb",
+  "department_id": "c31b1254-b8c3-42bc-996a-f69acda9661b",
+  "department_name": "PartD-P6-HTTP-2b2f60",
+  "target_user_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+  "target_email": "cesar@gravitre.app",
+  "add_http": {
+    "status": 200,
+    "body": {
+      "member": {
+        "id": "6328b0eb-e014-4d80-b7a2-0fee76af35f3",
+        "department_id": "c31b1254-b8c3-42bc-996a-f69acda9661b",
+        "user_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+        "role": "viewer",
+        "created_at": "2026-07-12T09:36:20.241273+00:00"
+      }
+    }
+  },
+  "remove_http": {
+    "status": 200,
+    "body": {
+      "success": true
+    }
+  },
+  "audits": [
+    {
+      "action": "department_member.removed",
+      "created_at": "2026-07-12T09:36:21.888697+00:00",
+      "resource_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "metadata": {
+        "userId": "f7e32f06-49df-4e73-8962-f41c21850762",
+        "departmentId": "c31b1254-b8c3-42bc-996a-f69acda9661b"
+      }
+    },
+    {
+      "action": "department_member.added",
+      "created_at": "2026-07-12T09:36:20.282003+00:00",
+      "resource_id": "6328b0eb-e014-4d80-b7a2-0fee76af35f3",
+      "metadata": {
+        "role": "viewer",
+        "userId": "f7e32f06-49df-4e73-8962-f41c21850762",
+        "departmentId": "c31b1254-b8c3-42bc-996a-f69acda9661b"
+      }
+    },
+    {
+      "action": "department_member.removed",
+      "created_at": "2026-07-12T09:36:18.735037+00:00",
+      "resource_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "metadata": {
+        "userId": "f7e32f06-49df-4e73-8962-f41c21850762",
+        "departmentId": "c31b1254-b8c3-42bc-996a-f69acda9661b"
+      }
+    }
+  ],
+  "verdict": "PASS",
+  "pass_checks": {
+    "add_http_ok": true,
+    "remove_http_ok": true,
+    "audit_added": true,
+    "audit_removed": true,
+    "deploy_sha_match": true
+  }
+}
