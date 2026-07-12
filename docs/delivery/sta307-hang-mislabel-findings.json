@@ -1,0 +1,65 @@
+{
+  "ticket": "STA-307",
+  "investigated_at": "2026-07-12T05:20:00+00:00",
+  "issue2": "REFUTED (see sta307-conversation-id-check.json)",
+  "hang": {
+    "verdict": "NOT_server_side_orchestration_poll_loop",
+    "execute_path_evidence": {
+      "conversation_id": "ca3db55e-ee42-49e0-866f-46c1a75afedd",
+      "before_status": "awaiting_plan_confirm",
+      "steps": ["Hubspot (not connected)", "Hubspot (not connected)"],
+      "POST": "/api/assistant/conversation/{id}/execute confirm=true",
+      "http": 200,
+      "elapsed_ms": 1159,
+      "after_status": "completed",
+      "success": false,
+      "note": "All-skipped confirm completed in ~1.2s on Railway — no 2-minute executor wait."
+    },
+    "likely_2min_source": {
+      "file": "apps/web/app/api/chat/route.ts",
+      "setting": "export const maxDuration = 120",
+      "interpretation": "UI confirm via chat message (\"yes\") or a long chat turn hits the Next.js chat proxy 120s ceiling; spinner ends in error. Execute-button path is fast. Zero-runnable plans should never enter confirm UX at all."
+    }
+  },
+  "step2_mislabel": {
+    "verdict": "PLANNER_BUG_not_UI",
+    "original_pending_plan": {
+      "conversation_id": "ca3db55e-ee42-49e0-866f-46c1a75afedd",
+      "assistant_message_id": "c2ba72e3-cadd-437a-b73f-f14e57e72da6",
+      "steps": [
+        {
+          "step_id": "step_1",
+          "label": "Hubspot (not connected)",
+          "segment": "FULL goal (HubSpot+Slack)"
+        },
+        {
+          "step_id": "step_2",
+          "label": "Hubspot (not connected)",
+          "segment": "FULL goal (HubSpot+Slack) — identical"
+        }
+      ]
+    },
+    "root_causes": [
+      "MULTI_STEP_SPLIT did not split on 'and draft' (only notify|create|post|send|…)",
+      "_expand_single_segment used [^,.;]* which treats 'and' as inside the clause → duplicate full-sentence segments",
+      "_plan_segment disconnected label used first mentioned vendor (HubSpot) for every full-sentence segment",
+      "bonus: github alias 'gh' substring-matched inside 'high-intent'"
+    ],
+    "local_repro_before_fix": {
+      "split": ["entire sentence"],
+      "expand": ["entire sentence", "entire sentence"],
+      "mentioned": ["hubspot", "slack", "github"]
+    },
+    "local_repro_after_fix": {
+      "split": ["Search HubSpot for high-intent leads", "draft a follow-up in Slack for approval"],
+      "mentioned": ["hubspot", "slack"],
+      "gh_in_high_intent": false
+    }
+  },
+  "fixes": [
+    "Zero-runnable → status=blocked terminal via _present_all_blocked_plan (no awaiting_plan_confirm)",
+    "_start_execution short-circuits all-unsupported plans",
+    "Split/expand + word-boundary alias matching for correct HubSpot then Slack labels"
+  ],
+  "stale_title_followup": "STA-308 (Low)"
+}

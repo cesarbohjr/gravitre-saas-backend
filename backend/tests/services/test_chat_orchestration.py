@@ -299,3 +299,48 @@ async def test_step_confirm_executes_write(orchestration_service):
     assert result is not None
     mock_execute.assert_awaited_once()
     mock_finalize.assert_awaited_once()
+
+
+def test_sta307_high_intent_prompt_splits_hubspot_then_slack(orchestration_service):
+    """STA-307 — planner must not label both steps HubSpot for the example chip."""
+    message = "Search HubSpot for high-intent leads and draft a follow-up in Slack for approval"
+    # \"gh\" inside high-intent must not false-match github.
+    assert "github" not in orchestration_service._mentioned_integrations(message, [])
+    segments = orchestration_service._split_segments(message)
+    assert len(segments) >= 2
+    assert "hubspot" in segments[0].lower()
+    assert "slack" in segments[1].lower()
+    assert "hubspot" not in segments[1].lower()
+
+
+@pytest.mark.asyncio
+async def test_sta307_disconnected_pair_labels_and_blocks_immediately(orchestration_service):
+    """STA-307 regression: two disconnected connectors → correct labels + terminal blocked."""
+    message = "Search HubSpot for high-intent leads and draft a follow-up in Slack for approval"
+    result = await orchestration_service.process_turn(
+        org_id="org-1",
+        user_id="user-1",
+        conversation_id="conv-sta307",
+        message=message,
+        classification={"intent": "workflow_execution"},
+        task_state={"pending_task": None},
+        connected_integrations=["apollo"],  # hubspot + slack absent
+        client=MagicMock(),
+    )
+    assert result is not None
+    assert result["dialogue_mode"] == "answer"
+    assert "nothing is runnable" in result["message"].lower() or "blocked" in result["message"].lower()
+    # Durable pending written via update_task_state (mock get_task_state is static).
+    assert orchestration_service._state.update_task_state.await_count >= 1
+    patch = orchestration_service._state.update_task_state.await_args.args[2]
+    pending = patch["pending_task"]
+    assert pending["type"] == "connector_orchestration"
+    assert pending["status"] == "blocked"
+    steps = pending["params"]["steps"]
+    assert len(steps) >= 2
+    labels = [str(s.get("label") or "").lower() for s in steps]
+    hub_idx = next(i for i, label in enumerate(labels) if "hubspot" in label)
+    slack_idx = next(i for i, label in enumerate(labels) if "slack" in label)
+    assert hub_idx != slack_idx
+    assert all(s.get("supported") is False for s in steps)
+    assert result.get("execution_result", {}).get("success") is False

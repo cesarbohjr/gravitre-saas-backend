@@ -34,11 +34,12 @@ from app.services.connector_session_state import (
 logger = get_logger(__name__)
 
 MULTI_STEP_SPLIT = re.compile(
-    r"(?:,\s+and\s+|\s+;\s+|\s+then\s+|\s+and then\s+|\s+and\s+(?=notify|create|post|send|update|add|log)\b)",
+    r"(?:,\s+and\s+|\s+;\s+|\s+then\s+|\s+and then\s+|"
+    r"\s+and\s+(?=notify|create|post|send|update|add|log|draft|search|find|look|query|message)\b)",
     re.I,
 )
 SEGMENT_COMMA = re.compile(
-    r",\s*(?=(?:create|build|make|post|send|notify|update|add|log)\b)",
+    r",\s*(?=(?:create|build|make|post|send|notify|update|add|log|draft|search|find)\b)",
     re.I,
 )
 MULTI_STEP_HINT = re.compile(
@@ -153,6 +154,15 @@ class ChatOrchestrationService:
             steps = await self._build_plan(message, connected_integrations, org_id, user_id, classification)
             if len(steps) < 2:
                 return None
+            # STA-307 — zero runnable steps: terminal blocked state (no confirm / no wait loop).
+            if not any(step.supported for step in steps):
+                return await self._present_all_blocked_plan(
+                    conversation_id,
+                    org_id,
+                    message,
+                    steps,
+                    client,
+                )
             return await self._present_plan_confirm(
                 conversation_id,
                 org_id,
@@ -307,7 +317,9 @@ class ChatOrchestrationService:
         classification: dict[str, Any],
     ) -> OrchestrationStep:
         connected = {c.lower() for c in connected_integrations}
-        mentioned = self._mentioned_integrations(segment, connected_integrations)
+        # Prefer the vendor that appears first in *this* segment so multi-vendor
+        # full-sentence leakage cannot label every step as the first org-wide hit.
+        mentioned = self._mentioned_integrations_ordered(segment, connected_integrations)
         for integration in mentioned:
             if not self._integration_is_connected(integration, connected):
                 return OrchestrationStep(
@@ -367,6 +379,91 @@ class ChatOrchestrationService:
             requires_approval=plan.requires_approval,
             plan=plan,
         )
+
+    async def _present_all_blocked_plan(
+        self,
+        conversation_id: str,
+        org_id: str,
+        goal: str,
+        steps: list[OrchestrationStep],
+        client: Any,
+    ) -> dict[str, Any]:
+        """STA-307 — every step unsupported → immediate terminal blocked (no confirm)."""
+        step_dicts = [step.to_dict() for step in steps]
+        params = {
+            "goal": goal,
+            "steps": step_dicts,
+            "current_step_index": len(steps),
+            "step_results": [
+                {
+                    "step_id": step.step_id,
+                    "label": step.label,
+                    "success": False,
+                    "summary": step.skip_reason or "Skipped unsupported step.",
+                    "url": "/connectors",
+                }
+                for step in steps
+            ],
+            "total_steps": len(steps),
+        }
+        structured_plan = {
+            "goal": goal,
+            "steps": [
+                {
+                    "step_id": step.step_id,
+                    "description": step.label,
+                    "requires_approval": False,
+                    "supported": False,
+                }
+                for step in steps
+            ],
+        }
+        await self._state.update_task_state(
+            conversation_id,
+            org_id,
+            {
+                "current_plan": structured_plan,
+                "pending_steps": [],
+                "completed_steps": [],
+                "clarified_params": params,
+                "pending_task": {
+                    "type": "connector_orchestration",
+                    "status": "blocked",
+                    "params": params,
+                },
+            },
+        )
+        refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
+        lines = [self._format_step_line(idx, step) for idx, step in enumerate(steps, start=1)]
+        reasons = [
+            step.skip_reason or step.label
+            for step in steps
+            if step.skip_reason or step.label
+        ]
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "answer",
+            "message": (
+                f"I planned a **{len(steps)}-step orchestration**, but **nothing is runnable** "
+                f"— every step is blocked:\n\n"
+                + "\n".join(lines)
+                + "\n\nConnect the required tools at /connectors (or rephrase with connectors "
+                "you already have), then ask again. No approval is needed until at least one "
+                "step can run."
+                + (f"\n\nBlocked because: {'; '.join(reasons[:4])}" if reasons else "")
+            ),
+            "task_state": refreshed,
+            "pending_task": self._pending_task_payload(refreshed),
+            "execution_result": {
+                "success": False,
+                "entity_type": "orchestration",
+                "entity_id": conversation_id,
+                "result_url": "/connectors",
+                "title": "Orchestration blocked — zero runnable steps",
+                "body": "\n".join(lines),
+                "task_label": "Multi-step orchestration blocked",
+            },
+        }
 
     async def _present_plan_confirm(
         self,
@@ -447,6 +544,15 @@ class ChatOrchestrationService:
                 "message": "The orchestration plan is empty.",
                 "task_state": task_state,
             }
+        # STA-307 — confirm of an all-skipped plan must not enter a run/wait loop.
+        if not any(step.supported and step.plan for step in steps):
+            return await self._present_all_blocked_plan(
+                conversation_id,
+                org_id,
+                str(params.get("goal") or "orchestration"),
+                steps,
+                client,
+            )
         params["current_step_index"] = 0
         params["step_results"] = []
         await self._state.update_task_state(
@@ -838,33 +944,100 @@ class ChatOrchestrationService:
 
     @staticmethod
     def _expand_single_segment(message: str, connected_integrations: list[str]) -> list[str]:
-        """Split a single sentence that mentions multiple integrations."""
+        """Split a single sentence that mentions multiple integrations.
+
+        STA-307: previous `[^,.;]*vendor[^,.;]*` matcher returned the *entire*
+        sentence for every vendor (\"and\" is allowed), so both steps inherited
+        HubSpot-first labeling. Prefer conjunction splits, then local clauses.
+        """
         text = message.strip()
         integrations = ChatOrchestrationService._mentioned_integrations(text, connected_integrations)
         if len(integrations) < 2:
             return [text]
+
+        pieces = [
+            p.strip(" .")
+            for p in re.split(r"\s+and\s+|\s*;\s*|\s+then\s+|\s+and then\s+", text, flags=re.I)
+            if p and p.strip(" .")
+        ]
+        if len(pieces) >= 2:
+            mapped: list[str] = []
+            for piece in pieces:
+                if ChatOrchestrationService._mentioned_integrations(piece, connected_integrations):
+                    mapped.append(piece)
+            # Keep only if we still cover ≥2 distinct vendors across pieces.
+            vendors_seen: list[str] = []
+            for piece in mapped:
+                for v in ChatOrchestrationService._mentioned_integrations(piece, connected_integrations):
+                    if v not in vendors_seen:
+                        vendors_seen.append(v)
+            if len(mapped) >= 2 and len(vendors_seen) >= 2:
+                return mapped
+
         segments: list[str] = []
         lowered = text.lower()
         for integration in integrations:
             aliases = INTEGRATION_ALIASES.get(integration, (integration,))
-            alias = next((a for a in aliases if a in lowered), integration)
-            pattern = re.compile(rf"([^,.;]*\b{re.escape(alias)}\b[^,.;]*)", re.I)
+            alias = next(
+                (
+                    a
+                    for a in aliases
+                    if re.search(rf"\b{re.escape(a)}\b", lowered)
+                ),
+                integration,
+            )
+            # Clause ending at next conjunction / punctuation after the alias.
+            pattern = re.compile(
+                rf"((?:^|[,;]|\band\b|\bthen\b)\s*)?([^.|;]*?\b{re.escape(alias)}\b[^.|;]*?)(?=\s+\band\b|\s+\bthen\b|[.;]|$)",
+                re.I,
+            )
             match = pattern.search(text)
             if match:
-                segments.append(match.group(1).strip())
-        return segments or [text]
+                clause = (match.group(2) or "").strip(" ,.")
+                if clause and clause not in segments:
+                    segments.append(clause)
+        return segments if len(segments) >= 2 else [text]
+
+    @staticmethod
+    def _alias_matches(alias: str, lowered: str) -> bool:
+        """Word-boundary match so short aliases (gh, crm) don't hit substrings."""
+        a = (alias or "").strip().lower()
+        if not a:
+            return False
+        if " " in a:
+            return a in lowered
+        return bool(re.search(rf"\b{re.escape(a)}\b", lowered))
 
     @staticmethod
     def _mentioned_integrations(message: str, connected_integrations: list[str]) -> list[str]:
         lowered = message.lower()
-        connected = {c.lower() for c in connected_integrations}
         found: list[str] = []
         for integration, aliases in INTEGRATION_ALIASES.items():
-            if any(alias in lowered for alias in aliases):
-                if integration in connected or integration not in found:
+            if any(ChatOrchestrationService._alias_matches(alias, lowered) for alias in aliases):
+                if integration not in found:
                     found.append(integration)
-        return list(dict.fromkeys(found))
+        return found
 
+    @staticmethod
+    def _mentioned_integrations_ordered(message: str, connected_integrations: list[str]) -> list[str]:
+        """Same as _mentioned_integrations but ordered by first appearance in text."""
+        lowered = message.lower()
+        found = ChatOrchestrationService._mentioned_integrations(message, connected_integrations)
+
+        def first_pos(integration: str) -> int:
+            aliases = INTEGRATION_ALIASES.get(integration, (integration,))
+            positions = []
+            for alias in aliases:
+                if " " in alias:
+                    idx = lowered.find(alias)
+                else:
+                    m = re.search(rf"\b{re.escape(alias)}\b", lowered)
+                    idx = m.start() if m else -1
+                if idx >= 0:
+                    positions.append(idx)
+            return min(positions) if positions else 10**9
+
+        return sorted(found, key=first_pos)
     @staticmethod
     def _enrich_plan_with_context(
         plan: ConnectorActionPlan,
