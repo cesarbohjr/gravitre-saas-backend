@@ -25,8 +25,8 @@
       "component": "entity_resolution_store.py — exact normalized alias; Asana substring match",
       "model_today": "none — no embeddings",
       "slot_from_doc": "embedding + rerank for disambiguation",
-      "decision": "CLOSED_FOR_NOW on engineering roadmap — schema-gate met is engineering-only; embeddings need named governance owner (STA-312) + Option A/B/C on memory-phase1-data-handling-design.md",
-      "gate": "Reopen only via STA-312; not In Progress"
+      "decision": "AUTHORIZED Option B (STA-312) — opaque tokens + redacted mentions; org opt-in; engineering via STA-316",
+      "gate": "STA-312 Done; implement under STA-316"
     },
     {
       "engine": "Recommendation",
