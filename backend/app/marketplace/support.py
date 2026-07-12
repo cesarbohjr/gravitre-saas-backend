@@ -223,6 +223,86 @@ def list_org_installs(
 AUDIT_ASSET_UNINSTALLED = "marketplace.asset.uninstalled"
 
 
+def _deactivate_install_entities(
+    client: Any,
+    org_id: str,
+    *,
+    entity_type: str | None,
+    entity_id: str | None,
+    metadata: dict[str, Any],
+) -> dict[str, list[str]]:
+    """Soft-deactivate agents/workflows/RAG spawned by a marketplace install."""
+    now = _now()
+    deactivated: dict[str, list[str]] = {"agents": [], "workflows": [], "ragSources": []}
+
+    agent_ids: list[str] = []
+    for raw in metadata.get("agentIds") or []:
+        if raw:
+            agent_ids.append(str(raw))
+    if entity_type in {"operator", "agent", "ai_agent"} and entity_id:
+        agent_ids.append(str(entity_id))
+    for agent_id in dict.fromkeys(agent_ids):
+        try:
+            client.table("operators").update(
+                {"deleted_at": now, "status": "inactive", "updated_at": now}
+            ).eq("id", agent_id).eq("org_id", org_id).execute()
+            deactivated["agents"].append(agent_id)
+        except Exception:  # noqa: BLE001
+            continue
+
+    workflow_ids: list[str] = []
+    for raw in metadata.get("workflowIds") or []:
+        if raw:
+            workflow_ids.append(str(raw))
+    if entity_type == "workflow" and entity_id:
+        workflow_ids.append(str(entity_id))
+    for workflow_id in dict.fromkeys(workflow_ids):
+        try:
+            client.table("workflow_defs").update(
+                {"status": "archived", "updated_at": now}
+            ).eq("id", workflow_id).eq("org_id", org_id).execute()
+            client.table("workflows").update(
+                {"status": "archived", "updated_at": now}
+            ).eq("id", workflow_id).eq("org_id", org_id).execute()
+            deactivated["workflows"].append(workflow_id)
+        except Exception:  # noqa: BLE001
+            continue
+
+    rag_ids: list[str] = []
+    for raw in metadata.get("ragSourceIds") or []:
+        if raw:
+            rag_ids.append(str(raw))
+    if entity_type == "rag_source" and entity_id:
+        rag_ids.append(str(entity_id))
+    for rag_id in dict.fromkeys(rag_ids):
+        try:
+            client.table("rag_sources").update(
+                {"status": "inactive", "updated_at": now}
+            ).eq("id", rag_id).eq("org_id", org_id).execute()
+            deactivated["ragSources"].append(rag_id)
+        except Exception:  # noqa: BLE001
+            continue
+
+    return deactivated
+
+
+def _deactivate_legacy_department_pack(client: Any, org_id: str, slug: str | None) -> bool:
+    if not slug:
+        return False
+    try:
+        result = (
+            client.table("org_department_pack_installs")
+            .update({"status": "uninstalled", "updated_at": _now()})
+            .eq("org_id", org_id)
+            .eq("pack_id", slug)
+            .eq("status", "active")
+            .execute()
+        )
+        return bool(result.data)
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def uninstall_marketplace_asset(
     client: Any,
     org_id: str,
@@ -230,11 +310,13 @@ def uninstall_marketplace_asset(
     *,
     actor_id: str,
 ) -> dict[str, Any]:
-    """Mark the org's active install as uninstalled (MKT-AUDIT-8.1)."""
+    """Uninstall ledger row and soft-deactivate spawned entities (Part D P4 / STA-309)."""
     asset = resolve_browsable_asset(client, org_id, asset_ref)
     existing = (
         client.table("marketplace_installs")
-        .select("id, status")
+        .select(
+            "id, status, installed_entity_type, installed_entity_id, metadata"
+        )
         .eq("org_id", org_id)
         .eq("asset_id", asset["id"])
         .eq("status", "active")
@@ -244,10 +326,25 @@ def uninstall_marketplace_asset(
     if not existing.data:
         raise MarketplaceSupportError("No active install found for this asset", code="NOT_FOUND")
 
-    install_id = str(existing.data[0]["id"])
+    install_row = existing.data[0]
+    install_id = str(install_row["id"])
+    metadata = dict(install_row.get("metadata") or {})
+    deactivated = _deactivate_install_entities(
+        client,
+        org_id,
+        entity_type=install_row.get("installed_entity_type"),
+        entity_id=install_row.get("installed_entity_id"),
+        metadata=metadata,
+    )
+    legacy_cleared = _deactivate_legacy_department_pack(client, org_id, asset.get("slug"))
+
     now = _now()
     client.table("marketplace_installs").update(
-        {"status": "uninstalled", "updated_at": now}
+        {
+            "status": "uninstalled",
+            "updated_at": now,
+            "metadata": {**metadata, "deactivatedOnUninstall": deactivated},
+        }
     ).eq("id", install_id).execute()
 
     from app.workflows.audit import write_audit_event
@@ -259,13 +356,20 @@ def uninstall_marketplace_asset(
         action=AUDIT_ASSET_UNINSTALLED,
         resource_type="marketplace_install",
         resource_id=install_id,
-        metadata={"assetId": asset["id"], "slug": asset.get("slug")},
+        metadata={
+            "assetId": asset["id"],
+            "slug": asset.get("slug"),
+            "deactivated": deactivated,
+            "legacyDepartmentPackCleared": legacy_cleared,
+        },
     )
     return {
         "uninstalled": True,
         "installId": install_id,
         "assetId": asset["id"],
         "slug": asset.get("slug"),
+        "deactivated": deactivated,
+        "legacyDepartmentPackCleared": legacy_cleared,
     }
 
 

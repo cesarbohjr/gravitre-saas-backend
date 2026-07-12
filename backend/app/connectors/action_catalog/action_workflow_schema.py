@@ -43,6 +43,7 @@ HUBSPOT_CONTACTS_CREATE_SCHEMA = ActionWorkflowSchema(
             "email or contact name",
             ("email", "firstname", "properties"),
             validator="hubspot_contact_identity",
+            sensitive=True,
         ),
     ),
     optional_fields=(
@@ -54,7 +55,8 @@ HUBSPOT_CONTACTS_CREATE_SCHEMA = ActionWorkflowSchema(
 SLACK_POST_MESSAGE_SCHEMA = ActionWorkflowSchema(
     intent_label="Post Slack message",
     required_fields=(
-        WorkflowFieldSpec("channel", ("channel",)),
+        # Channel is Slack's entity-resolution target (assignee/email analogue for Memory).
+        WorkflowFieldSpec("channel", ("channel",), sensitive=True),
         WorkflowFieldSpec("message", ("text", "message")),
     ),
 )

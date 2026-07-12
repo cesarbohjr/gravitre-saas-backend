@@ -552,6 +552,46 @@ def _install_connector_config(
     }
 
 
+def _install_intelligence_pack_asset(
+    client: Any,
+    org_id: str,
+    asset: dict[str, Any],
+    *,
+    actor_id: str,
+    install_variables: dict[str, str] | None,
+) -> dict[str, Any]:
+    """Wire catalog intelligence_pack installs through install_intelligence_pack (Part D P5)."""
+    from app.marketplace.intelligence_packs.install import install_intelligence_pack
+
+    variables = install_variables or {}
+    agent_id = str(
+        variables.get("agentId")
+        or variables.get("agent_id")
+        or variables.get("AGENTID")
+        or ""
+    ).strip()
+    if not agent_id:
+        raise MarketplaceError(
+            "intelligence_pack install requires installVariables.agentId",
+            code="VALIDATION_ERROR",
+        )
+    pack_id = str(asset.get("slug") or asset.get("id") or "").strip()
+    result = install_intelligence_pack(
+        client,
+        org_id,
+        agent_id,
+        pack_id,
+        actor_id=actor_id,
+    )
+    return {
+        "entityType": "intelligence_pack",
+        "entityId": pack_id,
+        "agentId": agent_id,
+        "assignmentIds": [row.get("id") for row in result.get("assignments") or [] if row.get("id")],
+        "assignmentCount": result.get("count") or 0,
+    }
+
+
 def _record_install(
     client: Any,
     *,
@@ -715,6 +755,14 @@ def install_asset(
             asset,
             parsed,  # type: ignore[arg-type]
             environment_name=environment_name,
+        )
+    elif asset_type == "intelligence_pack":
+        installed = _install_intelligence_pack_asset(
+            client,
+            org_id,
+            asset,
+            actor_id=actor_id,
+            install_variables=install_variables,
         )
     else:
         raise MarketplaceError(f"Unsupported asset type: {asset_type}", code="VALIDATION_ERROR")

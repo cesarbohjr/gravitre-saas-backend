@@ -17,7 +17,7 @@ from app.services.chat_tool_bridge import build_dynamic_chat_tool_specs
 
 READ_VERBS = re.compile(r"\b(search|find|list|get|lookup|query|show|fetch|read|summarize|pull)\b", re.I)
 WRITE_VERBS = re.compile(
-    r"\b(create|update|post|send|write|close|log|notify|message|assign|enroll|add|share|upload|delete|remove)\b",
+    r"\b(create|update|post|send|write|close|log|notify|message|assign|enroll|add|share|upload|delete|remove|draft|compose)\b",
     re.I,
 )
 QUOTED = re.compile(r'["\']([^"\']{1,500})["\']')
@@ -73,6 +73,10 @@ class ChatActionMapper:
         if not entries:
             return None
         best: ActionMatch | None = None
+        # STA-305 catalog-kind authority: clear write intent + write args fail must not
+        # silently crown .list/.search or payload-fallthrough lookalikes (update/stories).
+        best_write_without_args: ActionMatch | None = None
+        write_intent = bool(WRITE_VERBS.search(text))
         for entry in entries:
             tool_name = entry.tool_registry_key
             if tool_name not in build_dynamic_chat_tool_specs():
@@ -82,6 +86,21 @@ class ChatActionMapper:
                 continue
             args = self._extract_args(text, entry)
             if args is None:
+                if write_intent and entry.kind != "read":
+                    candidate_wo = ActionMatch(
+                        entry=entry, tool_name=tool_name, score=score, args={}
+                    )
+                    if (
+                        best_write_without_args is None
+                        or candidate_wo.score > best_write_without_args.score
+                        or (
+                            candidate_wo.score == best_write_without_args.score
+                            and self._prefer_write_authority(
+                                candidate_wo.entry, best_write_without_args.entry
+                            )
+                        )
+                    ):
+                        best_write_without_args = candidate_wo
                 continue
             candidate = ActionMatch(entry=entry, tool_name=tool_name, score=score, args=args)
             if best is None or candidate.score > best.score or (
@@ -89,7 +108,42 @@ class ChatActionMapper:
                 and self._prefer_entry(candidate.entry, best.entry, text)
             ):
                 best = candidate
+        if write_intent and best_write_without_args is not None:
+            if best is None:
+                return best_write_without_args
+            if best.entry.kind == "read":
+                return best_write_without_args
+            # Override payload-fallthrough lookalikes only when the targeted write
+            # was score-competitive (avoids demoting a real deals.update to contacts.create).
+            if self._is_intent_text_fallthrough(best.args):
+                if best_write_without_args.score >= best.score - 8:
+                    return best_write_without_args
+            elif self._prefer_write_authority(best_write_without_args.entry, best.entry):
+                if best_write_without_args.score >= best.score - 8:
+                    return best_write_without_args
         return best
+
+    @staticmethod
+    def _is_intent_text_fallthrough(args: dict[str, Any]) -> bool:
+        payload = args.get("payload")
+        return (
+            isinstance(payload, dict)
+            and "intent_text" in payload
+            and set(args.keys()) <= {"payload"}
+        )
+
+    @staticmethod
+    def _prefer_write_authority(
+        candidate: ConnectorActionMatrixEntry,
+        incumbent: ConnectorActionMatrixEntry,
+    ) -> bool:
+        """Prefer create/post/send over update/stories lookalikes under write intent."""
+        create_markers = (".create", "post_message", "messages.send", "drafts.create")
+        cand_create = any(m in candidate.action_key or m in candidate.registry_key for m in create_markers)
+        inc_create = any(m in incumbent.action_key or m in incumbent.registry_key for m in create_markers)
+        if cand_create and not inc_create:
+            return True
+        return False
 
     @staticmethod
     def _prefer_entry(
@@ -186,12 +240,12 @@ class ChatActionMapper:
         if "task" in text and "item" in suffix:
             score += 8.0
         if entry.connector_id == "slack" and "post_message" in entry.registry_key:
-            if re.search(r"\b(post|send|notify)\b", text) and "slack" in text:
+            if re.search(r"\b(post|send|notify|draft|compose)\b", text) and "slack" in text:
                 score += 20.0
             if "approval" in text:
                 score += 6.0
         if entry.connector_id == "slack" and "conversations.create" in entry.action_key:
-            if re.search(r"\b(post|send|message|summary)\b", text) and not re.search(
+            if re.search(r"\b(post|send|message|summary|draft|compose)\b", text) and not re.search(
                 r"\b(create|new)\s+(?:a\s+)?channel\b",
                 text,
                 re.I,
@@ -298,7 +352,7 @@ class ChatActionMapper:
             message_text = quoted[-1] if quoted else None
             if not message_text:
                 post_match = re.search(
-                    r"(?:post|send|notify|message)\s+(?:this\s+)?(.+?)(?:\s+to\s+slack|\s+for\s+approval|$)",
+                    r"(?:post|send|notify|message|draft|compose)\s+(?:a\s+|this\s+)?(.+?)(?:\s+(?:to|in)\s+slack|\s+for\s+approval|$)",
                     text,
                     re.I,
                 )
@@ -309,7 +363,7 @@ class ChatActionMapper:
             if not message_text and "summary" in text.lower():
                 message_text = "Summary pending approval."
             channel_token = channel.group(0) if channel else None
-            if not channel_token and re.search(r"\bto\s+slack\b", text, re.I):
+            if not channel_token and re.search(r"\b(?:to|in)\s+slack\b", text, re.I):
                 channel_token = "general"
             if channel_token and message_text:
                 clean = channel_token.lstrip("#").replace("<", "").replace(">", "")
