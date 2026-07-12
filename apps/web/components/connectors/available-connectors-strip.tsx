@@ -16,6 +16,7 @@ type AvailableConnectorsStripProps = {
   entries: AvailableConnectorEntry[]
   onBrowseAll: () => void
   onSelect: (type: string) => void
+  showBrowseAll?: boolean
   className?: string
 }
 
@@ -23,6 +24,7 @@ export function AvailableConnectorsStrip({
   entries,
   onBrowseAll,
   onSelect,
+  showBrowseAll = true,
   className,
 }: AvailableConnectorsStripProps) {
   const trackRef = useRef<HTMLDivElement>(null)
@@ -71,18 +73,20 @@ export function AvailableConnectorsStrip({
   return (
     <section
       aria-label="Available connectors"
-      className={cn("border-b border-border bg-secondary/20 px-4 py-4 md:px-6", className)}
+      className={cn("border-b border-border bg-secondary/20 px-4 py-2.5 md:px-6", className)}
     >
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+        <div className="flex flex-wrap items-baseline gap-x-2">
           <h2 className="text-sm font-semibold text-foreground">Available connectors</h2>
           <p className="text-xs text-muted-foreground">
             Self-serve integrations ready to connect from this workspace.
           </p>
         </div>
-        <Button variant="outline" size="sm" className="h-8" onClick={onBrowseAll}>
-          Browse all
-        </Button>
+        {showBrowseAll && (
+          <Button variant="outline" size="sm" className="h-8" onClick={onBrowseAll}>
+            Browse all
+          </Button>
+        )}
       </div>
       <div
         ref={trackRef}
