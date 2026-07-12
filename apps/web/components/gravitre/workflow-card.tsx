@@ -334,6 +334,7 @@ export function WorkflowCard({
                 variant="ghost" 
                 size="sm" 
                 className="h-7 w-7 p-0 bg-card/80 backdrop-blur-sm border border-border hover:bg-secondary hover:border-muted-foreground/50"
+                aria-label={status === "active" ? `Pause ${name}` : `Resume ${name}`}
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
@@ -354,6 +355,7 @@ export function WorkflowCard({
               variant="ghost" 
               size="sm" 
               className="h-7 w-7 p-0 bg-card/80 backdrop-blur-sm border border-border hover:bg-secondary hover:border-muted-foreground/50"
+              aria-label={`${name} options`}
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
