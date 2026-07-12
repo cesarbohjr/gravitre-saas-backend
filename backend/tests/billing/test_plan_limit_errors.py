@@ -55,6 +55,9 @@ def test_marketplace_install_limit_exceeded_returns_standard_shape():
         def eq(self, *_args, **_kwargs):
             return self
 
+        def neq(self, *_args, **_kwargs):
+            return self
+
         def execute(self):
             return FakeResult()
 
