@@ -569,6 +569,7 @@ function AgentDetailPanel({
               variant="ghost" 
               size="icon"
               onClick={() => router.push(`/agents/${agent.id}`)}
+              aria-label={`Configure ${agent.name}`}
             >
               <Settings className="h-4 w-4" />
             </Button>

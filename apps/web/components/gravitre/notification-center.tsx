@@ -408,6 +408,8 @@ export function NotificationCenter() {
         size="icon" 
         className="h-8 w-8 hover:bg-accent relative group"
         onClick={() => setIsOpen(!isOpen)}
+        aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
+        aria-expanded={isOpen}
       >
         <Bell className="h-4 w-4 text-muted-foreground transition-transform group-hover:rotate-12" />
         {unreadCount > 0 && (

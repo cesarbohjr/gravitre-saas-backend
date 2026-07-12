@@ -390,13 +390,14 @@ export default function NotificationsPage() {
                             </div>
                           </div>
 
-                          {/* Actions */}
-                          <div className="flex items-start gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {/* Actions — always visible on touch; fade-in on hover/focus for pointer users */}
+                          <div className="flex items-start gap-1 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                             {!notification.is_read && (
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8"
+                                aria-label="Mark as read"
                                 onClick={(e) => {
                                   e.preventDefault()
                                   e.stopPropagation()
@@ -410,6 +411,7 @@ export default function NotificationsPage() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 hover:text-destructive"
+                              aria-label="Delete notification"
                               onClick={(e) => {
                                 e.preventDefault()
                                 e.stopPropagation()

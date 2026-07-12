@@ -395,7 +395,7 @@ function InsightCard({ insight, onClick }: { insight: MetricInsight; onClick?: (
           <p className="text-xs text-muted-foreground line-clamp-2">{insight.description}</p>
           <p className="text-[10px] text-muted-foreground mt-1">{insight.timestamp}</p>
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" tabIndex={-1} aria-hidden="true">
           <Eye className="h-3.5 w-3.5" />
         </Button>
       </div>
