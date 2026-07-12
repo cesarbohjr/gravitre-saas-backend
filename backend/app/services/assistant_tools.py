@@ -534,6 +534,7 @@ def tool_create_workflow(
     from app.workflows.audit import write_audit_event
 
     name = _draft_workflow_name(query)
+    client = None
     try:
         client = get_supabase_client(settings)
         write_audit_event(
@@ -600,6 +601,33 @@ def tool_create_workflow(
         }
     except Exception as exc:  # noqa: BLE001
         logger.warning("assistant create_workflow tool failed org_id=%s error=%s", org_id, str(exc))
+        err_text = str(exc)
+        is_dup = (
+            "23505" in err_text
+            or "idx_workflow_defs_org_name_version" in err_text
+            or "duplicate key" in err_text.lower()
+        )
+        if client is not None:
+            write_audit_event(
+                client,
+                org_id=org_id,
+                actor_id=user_id or "system",
+                action="tool.invoke.failed",
+                resource_type="workflow",
+                resource_id=org_id,
+                metadata={
+                    "action": "assistant.create_workflow",
+                    "error": "duplicate_name" if is_dup else "exception",
+                    "name": name,
+                    "message": (
+                        "A workflow with this name already exists"
+                        if is_dup
+                        else err_text[:300]
+                    ),
+                },
+            )
+        if is_dup:
+            return {"error": f"workflow already exists: {name}"}
         return {"error": "workflow create failed"}
 
 

@@ -135,6 +135,36 @@ def test_create_workflow_inserts_draft(monkeypatch):
     assert payload["status"] == "draft"
 
 
+def test_tool_create_workflow_duplicate_name_emits_failed_audit(monkeypatch: pytest.MonkeyPatch):
+    client = MagicMock()
+    insert_builder = MagicMock()
+    insert_builder.execute.side_effect = Exception(
+        "{'message': 'duplicate key value violates unique constraint idx_workflow_defs_org_name_version', "
+        "'code': '23505'}"
+    )
+    table = MagicMock()
+    table.insert.return_value = insert_builder
+    client.table.return_value = table
+    monkeypatch.setattr(tools_module, "get_supabase_client", lambda _s: client)
+    audit = MagicMock()
+    monkeypatch.setattr("app.workflows.audit.write_audit_event", audit)
+
+    output = tools_module.tool_create_workflow(
+        "org-1",
+        "PartD P1 live gate create verification 2026-07-12",
+        _settings(),
+        user_id="user-1",
+    )
+
+    assert "already exists" in output["error"]
+    actions = [c.kwargs.get("action") for c in audit.call_args_list]
+    assert "tool.invoke.requested" in actions
+    assert "tool.invoke.failed" in actions
+    failed = next(c for c in audit.call_args_list if c.kwargs.get("action") == "tool.invoke.failed")
+    assert failed.kwargs["metadata"]["error"] == "duplicate_name"
+
+
+
 @pytest.mark.asyncio
 async def test_run_assistant_tools_skips_unknown_ids():
     results = await tools_module.run_assistant_tools(
