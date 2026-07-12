@@ -14,6 +14,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const AUTH_INIT_TIMEOUT_MS = 5000
+// supabase-js getUser()/getSession() can hang indefinitely during a concurrent
+// token refresh or a network stall. Since every apiFetch awaits getAccessToken
+// before sending, an unbounded hang leaves SWR stuck in isLoading forever
+// (perpetual skeletons). Bound each auth call so it degrades to null instead.
+const ACCESS_TOKEN_TIMEOUT_MS = 8000
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -127,7 +132,7 @@ export async function getAccessToken(): Promise<string | null> {
     const {
       data: { user },
       error: userError,
-    } = await supabaseClient.auth.getUser()
+    } = await withTimeout(supabaseClient.auth.getUser(), ACCESS_TOKEN_TIMEOUT_MS)
 
     if (userError || !user) {
       return null
@@ -136,7 +141,7 @@ export async function getAccessToken(): Promise<string | null> {
     const {
       data: { session },
       error,
-    } = await supabaseClient.auth.getSession()
+    } = await withTimeout(supabaseClient.auth.getSession(), ACCESS_TOKEN_TIMEOUT_MS)
 
     if (error) {
       console.warn("[v0] getAccessToken error:", error.message)
@@ -147,7 +152,7 @@ export async function getAccessToken(): Promise<string | null> {
       const {
         data: { session: refreshedSession },
         error: refreshError,
-      } = await supabaseClient.auth.refreshSession()
+      } = await withTimeout(supabaseClient.auth.refreshSession(), ACCESS_TOKEN_TIMEOUT_MS)
 
       if (refreshError) {
         console.warn("[v0] Session refresh failed:", refreshError.message)

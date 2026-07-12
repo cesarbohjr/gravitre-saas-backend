@@ -21,8 +21,13 @@ function withSelectedOrg(url: string): string {
 
 async function hasLiveSupabaseSession(): Promise<boolean> {
   try {
-    const { data: { user } } = await supabaseClient.auth.getUser()
-    return Boolean(user)
+    // Bound the call: supabase-js getUser() can hang during a concurrent
+    // refresh, which would otherwise stall the 401 handling path forever.
+    const result = await Promise.race([
+      supabaseClient.auth.getUser(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
+    ])
+    return Boolean(result?.data?.user)
   } catch {
     return false
   }
