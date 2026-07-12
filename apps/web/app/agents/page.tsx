@@ -335,7 +335,7 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
       whileHover={reduced ? undefined : { scale: 1.02, y: -3 }}
       whileTap={reduced ? undefined : { scale: 0.98 }}
       className={cn(
-        "relative group flex w-[168px] sm:w-[184px] flex-col items-center rounded-2xl border border-transparent px-3 py-4 text-left transition-[colors,box-shadow] duration-200",
+        "relative group flex w-[168px] sm:w-[184px] shrink-0 snap-center flex-col items-center rounded-2xl border border-transparent px-3 py-4 text-left transition-[colors,box-shadow] duration-200",
         isSelected
           ? "border-primary/30 bg-card/70 shadow-lg z-10"
           : "hover:border-border/60 hover:bg-card/40 hover:shadow-xl hover:shadow-black/20",
@@ -1218,16 +1218,23 @@ export default function AgentsPage() {
                  stays scroll-safe when tall; generous bottom padding keeps the
                  status pills clear of the floating team-stats bar. */}
               <TooltipProvider delayDuration={200}>
-              <div className="relative z-10 m-auto flex w-full flex-wrap gap-6 sm:gap-10 lg:gap-12 justify-center items-start pt-4 sm:pt-8 pb-36 sm:pb-40">
+              <div className={cn(
+                "relative z-10 m-auto flex w-full gap-6 sm:gap-10 lg:gap-12 items-start pt-4 sm:pt-8 pb-36 sm:pb-40",
+                // Mobile: horizontal swipe carousel so every agent is reachable
+                // with a left/right scroll instead of a tall vertical stack.
+                "flex-nowrap snap-x snap-mandatory overflow-x-auto scrollbar-hide px-4 -mx-4",
+                // sm+: return to the centered wrapping constellation.
+                "sm:flex-wrap sm:justify-center sm:overflow-x-visible sm:px-0 sm:mx-0 sm:snap-none",
+              )}>
                 {error ? (
                   <WorkSectionErrorCard
                     title="Could not load agents"
                     message="We couldn't reach the agents service. Check your connection and try again."
                     onRetry={() => void mutate()}
-                    className="max-w-sm"
+                    className="mx-auto max-w-sm"
                   />
                 ) : isLoading && agents.length === 0 ? (
-                  <div className="flex flex-wrap justify-center gap-8 sm:gap-10 lg:gap-12 pt-8 sm:pt-10 pb-28">
+                  <div className="mx-auto flex flex-wrap justify-center gap-8 sm:gap-10 lg:gap-12 pt-8 sm:pt-10 pb-28">
                     {Array.from({ length: 6 }).map((_, index) => (
                       <div key={index} className="flex flex-col items-center gap-3">
                         <Skeleton className="h-24 w-24 rounded-full" />
@@ -1237,7 +1244,7 @@ export default function AgentsPage() {
                     ))}
                   </div>
                 ) : filteredAgents.length === 0 ? (
-                  <div className="text-center space-y-3 px-4">
+                  <div className="mx-auto text-center space-y-3 px-4">
                     {normalizedSearchQuery ? (
                       <>
                         <Bot className="mx-auto h-10 w-10 text-muted-foreground/40" />

@@ -11,7 +11,7 @@ import { getSelectedOrgFromStorage, ensureSelectedOrg } from "@/lib/org-context"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import type { Run, RunStatus } from "@/types/api"
-import { Activity, CheckCircle2, Loader2, PlayCircle } from "lucide-react"
+import { Activity, CheckCircle2, Loader2, PlayCircle, X } from "lucide-react"
 import { AiExecuteResults } from "./ai-execute-results"
 import type { AgentJob } from "@/hooks/use-async-job"
 import type { InlineExecutePlan } from "@/lib/ai-inline-execute"
@@ -59,6 +59,7 @@ export function LiveActivityRail({
   layoutBlockColumns = {},
   onReorderLayoutBlocks,
   onMoveLayoutBlockToColumn,
+  onClose,
 }: {
   advisorBrief?: AdvisorBrief | null
   layoutPlan?: InlineExecutePlan | null
@@ -70,6 +71,7 @@ export function LiveActivityRail({
   layoutBlockColumns?: Partial<Record<ResultBlockId, LayoutColumn>>
   onReorderLayoutBlocks?: (next: ResultBlockId[]) => void
   onMoveLayoutBlockToColumn?: (blockId: ResultBlockId, target: LayoutColumn) => void
+  onClose?: () => void
 } = {}) {
   const { user } = useAuth()
   const [orgId, setOrgId] = useState<string | null>(() =>
@@ -115,8 +117,28 @@ export function LiveActivityRail({
       : "Systems healthy"
 
   return (
-    <aside className="hidden w-80 shrink-0 border-l border-emerald-500/10 bg-gradient-to-b from-card/50 via-card/30 to-emerald-500/5 xl:block xl:max-h-full xl:overflow-y-auto">
+    <aside
+      className={cn(
+        // Mobile/tablet: slide-in overlay drawer anchored to the right edge,
+        // matching the chat-history sidebar pattern so the panel icon works.
+        "fixed inset-y-0 right-0 z-50 flex w-[86%] max-w-sm flex-col overflow-y-auto border-l border-emerald-500/10 bg-card shadow-2xl",
+        // xl+: static inline sidebar with the branded gradient.
+        "xl:static xl:z-auto xl:w-80 xl:max-w-none xl:shrink-0 xl:max-h-full xl:shadow-none xl:bg-gradient-to-b xl:from-card/50 xl:via-card/30 xl:to-emerald-500/5",
+      )}
+    >
       <div className="flex flex-col gap-6 p-5">
+        <div className="flex items-center justify-between xl:hidden">
+          <h2 className="text-sm font-semibold text-foreground">Activity</h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground"
+            onClick={onClose}
+            aria-label="Close activity panel"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
         <MesonPagePanel page="ai-chat" compact advisorBrief={advisorBrief} />
 
         <div className="border-t border-emerald-500/10 pt-4">
