@@ -245,7 +245,15 @@ def _check_plan_limits(client: Any, org_id: str, asset_type: str) -> None:
     if asset_type in {"workflow", "department_pack"}:
         limit = plan.get("workflows_limit")
         if limit is not None:
-            result = client.table("workflow_defs").select("id").eq("org_id", org_id).execute()
+            # Soft-deactivate archives workflow_defs on uninstall (STA-309); archived
+            # rows must not consume plan capacity or reinstall forever 402s.
+            result = (
+                client.table("workflow_defs")
+                .select("id")
+                .eq("org_id", org_id)
+                .neq("status", "archived")
+                .execute()
+            )
             current = len(result.data or [])
             if current >= int(limit):
                 raise PlanLimitExceededError(
