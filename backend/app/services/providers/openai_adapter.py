@@ -41,6 +41,25 @@ def _supports_custom_temperature(model: str) -> bool:
     return True
 
 
+def _uses_max_completion_tokens(model: str) -> bool:
+    """Newer OpenAI models reject ``max_tokens`` — use ``max_completion_tokens``.
+
+    Observed on prod with gpt-5.4-mini classification:
+    Unsupported parameter: 'max_tokens' … Use 'max_completion_tokens' instead.
+    """
+    lowered = model.lower()
+    return lowered.startswith(("gpt-5", "o1", "o3", "o4"))
+
+
+def _apply_max_tokens_kwargs(kwargs: dict[str, Any], model: str, max_tokens: int | None) -> None:
+    if max_tokens is None:
+        return
+    if _uses_max_completion_tokens(model):
+        kwargs["max_completion_tokens"] = max_tokens
+    else:
+        kwargs["max_tokens"] = max_tokens
+
+
 class OpenAIAdapter(ProviderAdapter):
     provider_name = "openai"
     supported_models = ["gpt-5.5", "gpt-5.4-mini", "gpt-4.1", "text-embedding-3-small"]
@@ -84,8 +103,7 @@ class OpenAIAdapter(ProviderAdapter):
                     kwargs["temperature"] = (
                         options.temperature if options.temperature is not None else 0.2
                     )
-                if options.max_tokens is not None:
-                    kwargs["max_tokens"] = options.max_tokens
+                _apply_max_tokens_kwargs(kwargs, model, options.max_tokens)
                 resp = await client.chat.completions.create(**kwargs)
                 content = resp.choices[0].message.content or ""
                 if not content.strip():
@@ -145,8 +163,7 @@ class OpenAIAdapter(ProviderAdapter):
         }
         if _supports_custom_temperature(model):
             kwargs["temperature"] = options.temperature if options.temperature is not None else 0.2
-        if options.max_tokens is not None:
-            kwargs["max_tokens"] = options.max_tokens
+        _apply_max_tokens_kwargs(kwargs, model, options.max_tokens)
 
         start = time.perf_counter()
         parts: list[str] = []

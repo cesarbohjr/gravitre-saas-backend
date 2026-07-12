@@ -66,6 +66,35 @@ class TestOpenAIAdapter:
         assert "temperature" not in kwargs
 
     @pytest.mark.asyncio
+    async def test_gpt54_mini_uses_max_completion_tokens(self):
+        """Prod regression: gpt-5.4-mini rejects max_tokens on classification calls."""
+        client = AsyncMock()
+        client.chat.completions.create = AsyncMock(return_value=_openai_resp("ok"))
+        adapter = OpenAIAdapter(client_getter=lambda: client, api_key_getter=lambda: "sk")
+        await adapter.complete(
+            [{"role": "user", "content": "hi"}],
+            "gpt-5.4-mini",
+            CompletionOptions(max_tokens=200),
+        )
+        kwargs = client.chat.completions.create.await_args.kwargs
+        assert kwargs["max_completion_tokens"] == 200
+        assert "max_tokens" not in kwargs
+
+    @pytest.mark.asyncio
+    async def test_gpt41_keeps_max_tokens(self):
+        client = AsyncMock()
+        client.chat.completions.create = AsyncMock(return_value=_openai_resp("ok"))
+        adapter = OpenAIAdapter(client_getter=lambda: client, api_key_getter=lambda: "sk")
+        await adapter.complete(
+            [{"role": "user", "content": "hi"}],
+            "gpt-4.1",
+            CompletionOptions(max_tokens=128),
+        )
+        kwargs = client.chat.completions.create.await_args.kwargs
+        assert kwargs["max_tokens"] == 128
+        assert "max_completion_tokens" not in kwargs
+
+    @pytest.mark.asyncio
     async def test_gpt41_passes_temperature(self):
         client = AsyncMock()
         client.chat.completions.create = AsyncMock(return_value=_openai_resp("hello"))
