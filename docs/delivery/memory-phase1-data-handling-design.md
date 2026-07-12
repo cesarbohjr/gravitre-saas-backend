@@ -1,11 +1,11 @@
 # Memory Phase 1 — data-handling design (pre-code)
 
-**Status:** Closed-for-now on engineering roadmap — **no Memory embedding code authorized**  
+**Status:** Option B signed off — Memory Phase 1 engineering authorized (opaque tokens only)  
 **Date:** 2026-07-12 (updated same day after leadership path confirmed)  
 **Parent gate:** ADR 001 (`docs/decisions/001-defer-ml-disambiguation-until-schema-stable.md`)  
 **Related (closed, engineering-only):** `docs/delivery/adr001-sensitive-schema-audit.json`  
 **Authorization tracker:** `docs/delivery/adr001-memory-authorization-review.json`  
-**Organizational reopen ticket:** [STA-312](https://linear.app/staqbot/issue/STA-312) — name data-governance owner
+**Organizational reopen ticket:** [STA-312](https://linear.app/staqbot/issue/STA-312) — **Done** (Cesar sole owner + Option B)
 
 ## Purpose
 
@@ -13,9 +13,9 @@ Separate **schema-gate evidence** (WorkflowFieldSpec coverage) from **authorizat
 
 **Engineering posture:** least-raw / prefer no vectors; do not assume DPA coverage; opt-in if any third-party path. This is a correct refusal to invent a governance decision by default because the code could be written.
 
-**Reopen condition (not In Progress):** Memory embedding work resumes only when STA-312 records a **named governance owner** (or documented sole-owner acceptance) **and** that owner selects Option A/B/C below in writing. Until then this sits parked indefinitely — that is fine.
+**Reopen condition (met 2026-07-12):** STA-312 recorded Cesar Bohorquez Jr. as sole governance owner and selected **Option B** in writing. Memory Phase 1 engineering is authorized under Option B constraints (opaque tokens / redacted mentions only; org opt-in default off; no raw PII).
 
-This is **not** an implementation plan. No embedding index, no new provider calls for Memory, until reopen conditions are met.
+This document remains the binding data-handling design. Implementation must not deviate toward raw embedding.
 ---
 
 ## Category boundary (do not collapse)
@@ -23,7 +23,7 @@ This is **not** an implementation plan. No embedding index, no new provider call
 | Claim | Status | Authorizes |
 | --- | --- | --- |
 | ADR 001 schema-gate (≥5 priority connectors with multi-field assignee/email-style `sensitive` WorkflowFieldSpecs) | **Met in code** — freeze as closed engineering evidence | Nothing about third-party embedding of customer PII |
-| Memory Phase 1 embeddings for chat fill / entity disambiguation | **Paused** | Requires this design + explicit governance sign-off |
+| Memory Phase 1 embeddings for chat fill / entity disambiguation | **Authorized — Option B** | Opaque tokens + redacted mentions; org opt-in off; STA-312 sign-off |
 
 `WorkflowFieldSpec.sensitive=True` today means: **do not auto-infer** these args; any future ML resolver must attach to the schema. It is **not** permission to send those values to an embedding API.
 
@@ -158,9 +158,18 @@ This repository and prior delivery artifacts do **not** name a standing complian
 
 ## Review checklist (before any Memory embedding PR)
 
-- [ ] Option A / B / C selected in writing  
-- [ ] If B or C: DPA/purpose coverage confirmed (not inferred from RAG)  
-- [ ] Storage mode + retention + local purge specified; provider-log gap disclosed  
-- [ ] Org default = opt-in (or documented exception)  
-- [ ] Named sign-off owner for data governance (Q5) recorded  
-- [ ] Authorization tracker updated only after the above
+- [x] Option A / B / C selected in writing — **B** (2026-07-12, Cesar)
+- [x] If B or C: purpose coverage confirmed by named sole governance owner (opaque tokens / redacted mentions only; not inferred from RAG)
+- [ ] Storage mode + retention + local purge specified; provider-log gap disclosed
+- [x] Org default = opt-in (or documented exception)
+- [x] Named sign-off owner for data governance (Q5) recorded — Cesar Bohorquez Jr.
+- [x] Authorization tracker updated only after the above
+
+## Governance decision record (2026-07-12)
+
+| Field | Value |
+| --- | --- |
+| Owner | Cesar Bohorquez Jr. (sole) |
+| Option | **B** |
+| Ticket | STA-312 Done |
+| Rejected | Raw PII embedding (D) |

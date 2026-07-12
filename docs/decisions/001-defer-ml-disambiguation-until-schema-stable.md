@@ -1,6 +1,6 @@
 # ADR 001: Defer ML/embeddings assignee disambiguation until workflow schema is stable
 
-**Status:** Accepted (deferred) — schema-gate closed engineering-only; Memory embeddings closed-for-now  
+**Status:** Accepted — schema-gate closed engineering-only; Memory Phase 1 **Option B authorized** (2026-07-12)  
 **Date:** 2026-07-07  
 **Context:** Connector chat execution (Phases A–D), registration contract shrink work
 
@@ -75,3 +75,16 @@ Embeddings must attach to `WorkflowFieldSpec` only (sensitive / inferrable flags
 | Unblocked next eng | Knowledge Phase 2 ([STA-313](https://linear.app/staqbot/issue/STA-313)), Recommendation heuristics ([STA-314](https://linear.app/staqbot/issue/STA-314)), maxDuration residual ([STA-315](https://linear.app/staqbot/issue/STA-315)), stale title ([STA-308](https://linear.app/staqbot/issue/STA-308)) |
 
 Until STA-312 is resolved, **no Memory embedding code**. That pause may last indefinitely; that is correct.
+
+## Sign-off (2026-07-12) — STA-312 closed; Memory Phase 1 unpaused (Option B)
+
+| Decision | Outcome |
+| --- | --- |
+| Governance owner | **Cesar Bohorquez Jr.** — sole data-governance approver for this purpose |
+| Option | **B** — opaque entity tokens + redacted mention queries; OpenAI embed API; separate Memory table/index; never raw PII |
+| Purpose confirmation | Owner authorizes the **new purpose** (chat entity/assignee disambiguation) for opaque-token / redacted-mention traffic — not inferred from RAG/KB DPA alone |
+| Raw PII embedding (Option D) | Still **rejected** |
+| Org default | **Opt-in off** |
+| Schema attachment | Resolvers attach only to `WorkflowFieldSpec.sensitive` / inferrable fields |
+
+**Engineering authorization:** Memory Phase 1 Option B implementation may proceed. Do not send raw email/assignee/channel strings to any embedding provider.

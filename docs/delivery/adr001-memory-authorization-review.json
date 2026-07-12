@@ -3,7 +3,7 @@
   "reviewed_at": "2026-07-12",
   "updated_at": "2026-07-12",
   "adr_path": "docs/decisions/001-defer-ml-disambiguation-until-schema-stable.md",
-  "adr_status": "Accepted (deferred) 2026-07-07 — schema-gate engineering evidence closed; Memory Phase 1 embeddings NOT signed off",
+  "adr_status": "Accepted (deferred) 2026-07-07 — schema-gate closed; Memory Phase 1 Option B signed off 2026-07-12",
   "category_boundary": {
     "lesson": "Schema-gate met:true must not be read as governance authorization to embed customer PII — same failure shape as backend-only DONE standing in for full-path PASS",
     "schema_gate_audit": {
@@ -12,11 +12,20 @@
       "human_decision_2026_07_12": "Accept met-in-code on its own terms; authorizes nothing about third-party embedding of identity fields"
     },
     "memory_phase_1_embeddings": {
-      "status": "CLOSED_FOR_NOW on engineering roadmap (not In Progress)",
-      "human_decision_2026_07_12": "Do not sign off. Organizational blocker: no named data-governance owner",
+      "status": "AUTHORIZED — Option B",
+      "human_decision_2026_07_12": "STA-312: Cesar Bohorquez Jr. sole governance owner; Option B opaque tokens + redacted mentions via OpenAI; raw PII rejected; org opt-in default off",
       "design_artifact": "docs/delivery/memory-phase1-data-handling-design.md",
       "decision_ticket": "STA-312",
-      "reopen_when": "STA-312 names governance owner AND that owner selects Option A/B/C in writing on the data-handling design"
+      "option": "B",
+      "governance_owner": "Cesar Bohorquez Jr.",
+      "constraints": [
+        "Never embed raw email / assignee display name / channel name",
+        "Opaque org-scoped tokens or HMAC entity ids only for durable vectors",
+        "Query side: redacted mention fragments only",
+        "Separate Memory table — not rag_embeddings",
+        "Org setting default off (opt-in)",
+        "Attach only via WorkflowFieldSpec.sensitive / inferrable"
+      ]
     }
   },
   "why_deferred_still_valid": [
@@ -53,27 +62,30 @@
       "met": true,
       "engineering_gate_closed": true,
       "pending_human_sign_off": false,
-      "note": "Human accepted engineering-gate closure 2026-07-12; explicitly did NOT authorize Memory embeddings"
+      "note": "Human accepted engineering-gate closure 2026-07-12; Memory embeddings later authorized via STA-312 Option B"
     }
   },
   "ml_phase_authorization": {
     "phase_0_inventory": "AUTHORIZED (done) — docs/delivery/ml-stack-phase0-findings.json",
     "intent_engine": "PART OF routing wave — not a separate ML project; shipping as assistant_routing_tier heuristics first",
-    "knowledge_phase_2_rerank_eval": "AUTHORIZED / ticketed STA-313 — measured eval only",
-    "recommendation_heuristic_cards": "AUTHORIZED / ticketed STA-314 — suggest-only, reuse execute_plan gate",
-    "memory_phase_1_embeddings": "CLOSED_FOR_NOW — reopen only via STA-312 named governance owner + written Option A/B/C on docs/delivery/memory-phase1-data-handling-design.md",
+    "knowledge_phase_2_rerank_eval": "DONE — STA-313 measured eval; production ms-marco unchanged pending human swap",
+    "recommendation_heuristic_cards": "DONE — STA-314 suggest-only",
+    "memory_phase_1_embeddings": "AUTHORIZED Option B — STA-312 Cesar sole owner; opaque tokens only; engineering may proceed",
     "forecasting_gnn_cv_speech": "OUT OF SCOPE"
   },
   "unaffected_closures": {
     "STA-305": "Done — catalog-kind + draft lexicon; prod PASS 473454da",
     "STA-309": "Done — pack uninstall entity teardown",
     "STA-310": "Done — intelligence_pack install_asset branch",
-    "STA-311": "Done — department_members audit"
+    "STA-311": "Done — department_members audit",
+    "STA-312": "Done — governance owner + Option B",
+    "STA-313": "Done — Knowledge rerank measured eval",
+    "STA-314": "Done — Recommendation heuristics"
   },
   "sequence": {
     "schema_gate": "closed engineering-only",
-    "memory": "closed-for-now — STA-312 organizational decision; not engineering In Progress",
-    "next_engineering": ["STA-313 Knowledge Phase 2 rerank eval", "STA-314 Recommendation heuristics", "STA-315 maxDuration residual", "STA-308 stale title"],
-    "other_non_memory": "clear to proceed"
+    "memory": "unpaused — Option B engineering authorized",
+    "next_engineering": ["Memory Phase 1 Option B opaque-token resolver + opt-in setting + separate table"],
+    "other_non_memory": "STA-313/314 done"
   }
 }
