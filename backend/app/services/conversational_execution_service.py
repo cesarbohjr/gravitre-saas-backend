@@ -40,6 +40,10 @@ AGENT_CREATE = re.compile(
     re.I,
 )
 
+PLATFORM_TASK_TYPES = frozenset(
+    {"create_agent", "create_workflow", "execute_workflow", "run_agent_task"}
+)
+
 
 @dataclass(frozen=True)
 class ExecutionResult:
@@ -151,6 +155,10 @@ class ConversationalExecutionService:
             return bool(clarified.get("agent_name") and clarified.get("agent_purpose"))
         if task_type == "create_workflow":
             return bool(clarified.get("workflow_goal"))
+        if task_type == "execute_workflow":
+            return bool(clarified.get("workflow_id") or clarified.get("query"))
+        if task_type == "run_agent_task":
+            return bool(clarified.get("task") and (clarified.get("agent_id") or clarified.get("agent_name")))
         return False
 
     def build_confirm_message(self, task_type: str, clarified: dict[str, Any]) -> str:
@@ -160,6 +168,28 @@ class ConversationalExecutionService:
             return (
                 f"I'll create an agent named **{name}** to help with **{purpose}**.\n\n"
                 "Reply **yes** to create it now, or tell me what you'd like to change."
+            )
+        if task_type == "execute_workflow":
+            wf_name = str(clarified.get("workflow_name") or clarified.get("query") or "this workflow")
+            wf_id = str(clarified.get("workflow_id") or "").strip()
+            id_bit = f" (id `{wf_id}`)" if wf_id else ""
+            goal = str(clarified.get("workflow_goal") or "").strip()
+            goal_line = f"\nGoal: {goal}" if goal else ""
+            return (
+                f"I'll **execute** the workflow **{wf_name}**{id_bit}.{goal_line}\n\n"
+                "This starts a new run and may trigger connected steps "
+                "(connectors, agents, notifications).\n\n"
+                "Reply **yes** to run it now, or **no** to cancel."
+            )
+        if task_type == "run_agent_task":
+            agent_name = str(clarified.get("agent_name") or "the agent")
+            task = str(clarified.get("task") or "").strip()
+            truncated = task if len(task) <= 240 else task[:237] + "..."
+            return (
+                f"I'll run **{agent_name}** on this task:\n\n> {truncated}\n\n"
+                "The agent may use its permitted tools and connected integrations "
+                "(including writes).\n\n"
+                "Reply **yes** to start, or **no** to cancel."
             )
         goal = str(clarified.get("workflow_goal") or "your workflow")
         trigger = clarified.get("workflow_trigger")
@@ -186,6 +216,12 @@ class ConversationalExecutionService:
             return None
 
         clarified = dict(task_state.get("clarified_params") or {})
+        # ReAct platform materialize stores params on pending_task — merge so confirm works.
+        pending_early = task_state.get("pending_task") if isinstance(task_state.get("pending_task"), dict) else {}
+        if pending_early.get("params") and isinstance(pending_early["params"], dict):
+            merged = dict(pending_early["params"])
+            merged.update(clarified)
+            clarified = merged
         updates = self.extract_param_updates(message, task_type, clarified)
         if updates:
             clarified.update(updates)
@@ -204,10 +240,19 @@ class ConversationalExecutionService:
                 org_id,
                 {"pending_task": None, "clarified_params": {}},
             )
+            if task_type == "execute_workflow":
+                decline_msg = "No problem — I won't execute that workflow. Tell me when you'd like to try again."
+            elif task_type == "run_agent_task":
+                decline_msg = "No problem — I won't run that agent task. Tell me when you'd like to try again."
+            else:
+                decline_msg = (
+                    "No problem — I won't create anything. "
+                    "Tell me when you'd like to try again or what you'd prefer instead."
+                )
             return {
                 "stop_pipeline": True,
                 "dialogue_mode": "answer",
-                "message": "No problem — I won't create anything. Tell me when you'd like to try again or what you'd prefer instead.",
+                "message": decline_msg,
                 "task_state": await self._state.get_task_state(conversation_id, org_id, client=client),
             }
 
@@ -230,14 +275,16 @@ class ConversationalExecutionService:
                 link = ""
                 if execution.result_url:
                     link = f"\n\n[View in Gravitre]({execution.result_url})"
+                if task_type == "execute_workflow":
+                    done = f"Done — I started **{execution.title}**.\n\n{execution.body}{link}"
+                elif task_type == "run_agent_task":
+                    done = f"Done — **{execution.title}** finished.\n\n{execution.body}{link}"
+                else:
+                    done = f"Done — I created **{execution.title}**.\n\n{execution.body}{link}"
                 return {
                     "stop_pipeline": True,
                     "dialogue_mode": "answer",
-                    "message": (
-                        f"Done — I created **{execution.title}**.\n\n"
-                        f"{execution.body}"
-                        f"{link}"
-                    ),
+                    "message": done,
                     "execution_result": execution.__dict__,
                     "task_state": refreshed,
                 }
@@ -311,6 +358,10 @@ class ConversationalExecutionService:
                 result = await self._create_agent(org_id, user_id, clarified, client)
             elif task_type == "create_workflow":
                 result = await self._create_workflow(org_id, user_id, clarified, client)
+            elif task_type == "execute_workflow":
+                result = await self._execute_workflow(org_id, user_id, clarified, client)
+            elif task_type == "run_agent_task":
+                result = await self._run_agent_task(org_id, user_id, clarified, client)
             else:
                 return ExecutionResult(
                     success=False,
@@ -380,9 +431,20 @@ class ConversationalExecutionService:
         client: Any,
     ) -> ExecutionResult:
         from app.operators.repository import create_operator
+        from app.workflows.audit import write_audit_event
 
         name = str(clarified.get("agent_name") or "New Agent").strip()[:120]
         purpose = str(clarified.get("agent_purpose") or "").strip()
+        invoke_action = "assistant.create_agent"
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=user_id or "system",
+            action="tool.invoke.requested",
+            resource_type="agent",
+            resource_id=org_id,
+            metadata={"action": invoke_action, "name": name},
+        )
         operator = create_operator(
             client,
             org_id,
@@ -396,6 +458,24 @@ class ConversationalExecutionService:
             user_id,
         )
         agent_id = str(operator["id"])
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=user_id or "system",
+            action="tool.invoke.completed",
+            resource_type="agent",
+            resource_id=agent_id,
+            metadata={"action": invoke_action, "name": name},
+        )
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=user_id or "system",
+            action="agent.created",
+            resource_type="agent",
+            resource_id=agent_id,
+            metadata={"source": "conversational_execution", "name": name},
+        )
         result_url = build_entity_url("agent", agent_id)
         return ExecutionResult(
             success=True,
@@ -442,6 +522,169 @@ class ConversationalExecutionService:
             body=f"Created draft workflow “{name}”. Open the builder to add steps and publish.",
             notification_type="workflow_created",
             task_label=f"Created workflow {name}",
+        )
+
+    async def _execute_workflow(
+        self,
+        org_id: str,
+        user_id: str,
+        clarified: dict[str, Any],
+        client: Any,
+    ) -> ExecutionResult:
+        from app.services.assistant_tools import tool_execute_workflow
+        from app.workflows.audit import write_audit_event
+
+        query = str(clarified.get("query") or clarified.get("workflow_name") or "").strip()
+        workflow_id = str(clarified.get("workflow_id") or "").strip()
+        if workflow_id and workflow_id not in query:
+            query = workflow_id
+        env = str(clarified.get("environment_name") or "production")
+        invoke_action = "assistant.execute_workflow"
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=user_id or "system",
+            action="tool.invoke.requested",
+            resource_type="workflow",
+            resource_id=workflow_id or org_id,
+            metadata={
+                "action": invoke_action,
+                "workflow_id": workflow_id or None,
+                "workflow_name": clarified.get("workflow_name"),
+            },
+        )
+        output = tool_execute_workflow(
+            org_id,
+            query,
+            self.settings,
+            user_id=user_id,
+            environment_name=env,
+        )
+        if output.get("error"):
+            write_audit_event(
+                client,
+                org_id=org_id,
+                actor_id=user_id or "system",
+                action="tool.invoke.failed",
+                resource_type="workflow",
+                resource_id=workflow_id or org_id,
+                metadata={"action": invoke_action, "error": output.get("error"), "message": output.get("message")},
+            )
+            return ExecutionResult(
+                success=False,
+                entity_type="workflow",
+                entity_id=workflow_id,
+                result_url=build_entity_url("workflow", workflow_id) if workflow_id else "/workflows",
+                title="Workflow execution failed",
+                body=str(output.get("message") or output.get("error")),
+                error_code=str(output.get("error") or "workflow_execute_failed"),
+            )
+        run_id = str(output.get("runId") or "")
+        wf_id = str(output.get("workflowId") or workflow_id)
+        wf_name = str(output.get("workflowName") or clarified.get("workflow_name") or "Workflow")
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=user_id or "system",
+            action="tool.invoke.completed",
+            resource_type="workflow",
+            resource_id=wf_id or org_id,
+            metadata={
+                "action": invoke_action,
+                "workflow_id": wf_id,
+                "run_id": run_id,
+                "status": output.get("status"),
+            },
+        )
+        result_url = build_entity_url("workflow_run", run_id) if run_id else build_entity_url("workflow", wf_id)
+        return ExecutionResult(
+            success=True,
+            entity_type="workflow_run",
+            entity_id=run_id or wf_id,
+            result_url=result_url,
+            title=wf_name,
+            body=str(output.get("message") or f"Workflow run started for “{wf_name}”."),
+            notification_type="workflow_executed",
+            task_label=f"Executed workflow {wf_name}",
+            structured={"runId": run_id, "workflowId": wf_id, "status": output.get("status")},
+        )
+
+    async def _run_agent_task(
+        self,
+        org_id: str,
+        user_id: str,
+        clarified: dict[str, Any],
+        client: Any,
+    ) -> ExecutionResult:
+        from app.services.assistant_tools import tool_run_agent_task
+        from app.workflows.audit import write_audit_event
+
+        task = str(clarified.get("task") or "").strip()
+        agent_id = str(clarified.get("agent_id") or "").strip() or None
+        agent_name = str(clarified.get("agent_name") or "Agent")
+        invoke_action = "assistant.run_agent_task"
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=user_id or "system",
+            action="tool.invoke.requested",
+            resource_type="agent",
+            resource_id=agent_id or org_id,
+            metadata={"action": invoke_action, "agent_id": agent_id, "task": task[:200]},
+        )
+        output = await tool_run_agent_task(
+            org_id,
+            task,
+            self.settings,
+            agent_id=agent_id,
+            user_id=user_id,
+        )
+        resolved_id = str(output.get("agentId") or agent_id or "")
+        if output.get("error"):
+            write_audit_event(
+                client,
+                org_id=org_id,
+                actor_id=user_id or "system",
+                action="tool.invoke.failed",
+                resource_type="agent",
+                resource_id=resolved_id or org_id,
+                metadata={"action": invoke_action, "error": output.get("error")},
+            )
+            return ExecutionResult(
+                success=False,
+                entity_type="agent",
+                entity_id=resolved_id,
+                result_url=build_entity_url("agent", resolved_id) if resolved_id else "/agents",
+                title="Agent task failed",
+                body=str(output.get("error")),
+            )
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=user_id or "system",
+            action="tool.invoke.completed",
+            resource_type="agent",
+            resource_id=resolved_id or org_id,
+            metadata={
+                "action": invoke_action,
+                "agent_id": resolved_id,
+                "status": output.get("status"),
+                "react_trace_steps": output.get("reactTraceSteps"),
+            },
+        )
+        name = str(output.get("agentName") or agent_name)
+        out_text = str(output.get("output") or "").strip()
+        body = out_text[:500] if out_text else f"Agent “{name}” completed the task."
+        return ExecutionResult(
+            success=True,
+            entity_type="agent",
+            entity_id=resolved_id,
+            result_url=build_entity_url("agent", resolved_id) if resolved_id else "/agents",
+            title=name,
+            body=body,
+            notification_type="agent_task_completed",
+            task_label=f"Ran agent {name}",
+            structured={"status": output.get("status"), "output": output.get("output")},
         )
 
     async def _record_learning_outcome(

@@ -51,6 +51,44 @@ def test_apollo_lists_list_is_read_not_gated():
     assert action == "apollo.lists.list"
 
 
+def test_platform_write_tools_require_approval():
+    from app.services.react_write_gate import PLATFORM_WRITE_TOOLS
+    from app.services.tool_registry import get_tool_registry
+
+    registry = get_tool_registry()
+    expected = {
+        "assistant_create_workflow": "assistant.create_workflow",
+        "assistant_execute_workflow": "assistant.execute_workflow",
+        "assistant_run_agent_task": "assistant.run_agent_task",
+    }
+    assert PLATFORM_WRITE_TOOLS == frozenset(expected)
+    for tool, action in expected.items():
+        requires, invoke, integration, label = tool_requires_user_write_approval(tool, registry)
+        assert requires is True, tool
+        assert invoke == action
+        assert integration == "platform"
+        assert label
+        blocked = block_react_write_execution(tool, {"goal": "x", "query": "x", "task": "x"}, registry)
+        assert blocked is not None
+        assert blocked["pending_approval"] is True
+        assert blocked["error_code"] == WRITE_APPROVAL_REQUIRED
+
+
+def test_assistant_read_tools_remain_ungated():
+    from app.services.tool_registry import get_tool_registry
+
+    registry = get_tool_registry()
+    for tool in (
+        "assistant_connector_status",
+        "assistant_workflow_runs",
+        "assistant_analytics",
+        "assistant_dependency_impact",
+    ):
+        requires, *_ = tool_requires_user_write_approval(tool, registry)
+        assert requires is False, tool
+        assert block_react_write_execution(tool, {}, registry) is None
+
+
 def test_block_react_write_does_not_call_through():
     from app.services.tool_registry import get_tool_registry
 
@@ -194,3 +232,121 @@ async def test_materialize_react_write_approval_persists_awaiting_confirm():
     saved = state.update_task_state.await_args.args[2]
     assert saved["pending_task"]["status"] == "awaiting_confirm"
     assert saved["pending_task"]["params"]["invoke_action"] == "apollo.lists.create"
+
+
+@pytest.mark.asyncio
+async def test_materialize_platform_create_workflow_pending_type():
+    from app.services.react_write_gate import materialize_react_write_approval_turn
+
+    react = SimpleNamespace(
+        tool_calls=[
+            {
+                "tool": "assistant_create_workflow",
+                "args": {"goal": "Sync HubSpot to Slack", "name": "HS Slack"},
+                "result": {
+                    "success": False,
+                    "pending_approval": True,
+                    "error_code": WRITE_APPROVAL_REQUIRED,
+                    "action": "assistant.create_workflow",
+                    "integration": "platform",
+                    "label": "Create workflow",
+                    "args": {"goal": "Sync HubSpot to Slack", "name": "HS Slack"},
+                },
+            }
+        ]
+    )
+    state = MagicMock()
+    state.update_task_state = AsyncMock()
+    state.get_task_state = AsyncMock(
+        return_value={
+            "pending_task": {
+                "type": "create_workflow",
+                "status": "awaiting_confirm",
+                "params": {"workflow_goal": "Sync HubSpot to Slack"},
+            }
+        }
+    )
+    with patch(
+        "app.services.conversation_state_service.get_conversation_state_service",
+        return_value=state,
+    ):
+        turn = await materialize_react_write_approval_turn(
+            settings=SimpleNamespace(),
+            org_id="org-1",
+            conversation_id="conv-1",
+            client=MagicMock(),
+            react_result=react,
+            message="Create a workflow that syncs HubSpot to Slack",
+        )
+
+    assert turn is not None
+    assert turn["dialogue_mode"] == "confirm"
+    assert "Sync HubSpot to Slack" in turn["message"]
+    saved = state.update_task_state.await_args.args[2]
+    assert saved["pending_task"]["type"] == "create_workflow"
+    assert saved["pending_task"]["status"] == "awaiting_confirm"
+    assert saved["clarified_params"]["workflow_goal"] == "Sync HubSpot to Slack"
+    assert saved["clarified_params"]["invoke_action"] == "assistant.create_workflow"
+
+
+@pytest.mark.asyncio
+async def test_materialize_platform_execute_workflow_uses_distinct_pending_type():
+    from app.services.react_write_gate import materialize_react_write_approval_turn
+
+    react = SimpleNamespace(
+        tool_calls=[
+            {
+                "tool": "assistant_execute_workflow",
+                "args": {"query": "Lead nurture"},
+                "result": {
+                    "success": False,
+                    "pending_approval": True,
+                    "error_code": WRITE_APPROVAL_REQUIRED,
+                    "action": "assistant.execute_workflow",
+                    "integration": "platform",
+                    "label": "Execute workflow",
+                    "args": {"query": "Lead nurture"},
+                },
+            }
+        ]
+    )
+    state = MagicMock()
+    state.update_task_state = AsyncMock()
+    state.get_task_state = AsyncMock(
+        return_value={
+            "pending_task": {
+                "type": "execute_workflow",
+                "status": "awaiting_confirm",
+                "params": {"workflow_id": "wf-1", "workflow_name": "Lead nurture"},
+            }
+        }
+    )
+    with patch(
+        "app.services.conversation_state_service.get_conversation_state_service",
+        return_value=state,
+    ), patch(
+        "app.services.react_write_gate._resolve_workflow_for_approval",
+        return_value={
+            "id": "wf-1",
+            "name": "Lead nurture",
+            "goal": "Nurture uncertain leads",
+        },
+    ):
+        turn = await materialize_react_write_approval_turn(
+            settings=SimpleNamespace(),
+            org_id="org-1",
+            conversation_id="conv-1",
+            client=MagicMock(),
+            react_result=react,
+            message="Execute Lead nurture now",
+        )
+
+    assert turn is not None
+    assert turn["dialogue_mode"] == "confirm"
+    assert "execute" in turn["message"].lower()
+    assert "Lead nurture" in turn["message"]
+    assert "create a draft" not in turn["message"].lower()
+    saved = state.update_task_state.await_args.args[2]
+    assert saved["pending_task"]["type"] == "execute_workflow"
+    assert saved["clarified_params"]["workflow_id"] == "wf-1"
+    assert saved["clarified_params"]["invoke_action"] == "assistant.execute_workflow"

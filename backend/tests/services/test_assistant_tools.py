@@ -119,6 +119,7 @@ def test_create_workflow_inserts_draft(monkeypatch):
     table.upsert.return_value = upsert_builder
     client.table.return_value = table
     monkeypatch.setattr(tools_module, "get_supabase_client", lambda _s: client)
+    monkeypatch.setattr("app.workflows.audit.write_audit_event", MagicMock())
 
     output = tools_module.tool_create_workflow(
         "org-1",

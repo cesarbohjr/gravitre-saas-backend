@@ -467,11 +467,21 @@ def tool_create_agent(
 ) -> dict[str, Any]:
     from app.operators.repository import create_operator
     from app.services.entity_link_service import build_entity_url
+    from app.workflows.audit import write_audit_event
 
     agent_name = (name or _draft_workflow_name(query)).strip()[:120]
     agent_purpose = (purpose or query or "").strip()[:500] or None
     try:
         client = get_supabase_client(settings)
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=user_id or "system",
+            action="tool.invoke.requested",
+            resource_type="agent",
+            resource_id=org_id,
+            metadata={"action": "assistant.create_agent", "name": agent_name},
+        )
         operator = create_operator(
             client,
             org_id,
@@ -485,6 +495,24 @@ def tool_create_agent(
             user_id,
         )
         agent_id = str(operator["id"])
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=user_id or "system",
+            action="tool.invoke.completed",
+            resource_type="agent",
+            resource_id=agent_id,
+            metadata={"action": "assistant.create_agent", "name": agent_name},
+        )
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=user_id or "system",
+            action="agent.created",
+            resource_type="agent",
+            resource_id=agent_id,
+            metadata={"source": "assistant_tools", "name": agent_name},
+        )
         return {
             "id": agent_id,
             "name": agent_name,
@@ -503,9 +531,20 @@ def tool_create_workflow(
     *,
     user_id: str | None = None,
 ) -> dict[str, Any]:
+    from app.workflows.audit import write_audit_event
+
     name = _draft_workflow_name(query)
     try:
         client = get_supabase_client(settings)
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=user_id or "system",
+            action="tool.invoke.requested",
+            resource_type="workflow",
+            resource_id=org_id,
+            metadata={"action": "assistant.create_workflow", "name": name},
+        )
         definition = {"schema_version": _SCHEMA_VERSION, "steps": []}
         row = {
             "org_id": org_id,
@@ -521,11 +560,38 @@ def tool_create_workflow(
         }
         result = client.table("workflow_defs").insert(row).execute()
         if not result.data:
+            write_audit_event(
+                client,
+                org_id=org_id,
+                actor_id=user_id or "system",
+                action="tool.invoke.failed",
+                resource_type="workflow",
+                resource_id=org_id,
+                metadata={"action": "assistant.create_workflow", "error": "insert_empty"},
+            )
             return {"error": "workflow create failed"}
         workflow_id = str(result.data[0]["id"])
         from app.workflows.schema_sync import mirror_legacy_workflow_row_to_contract
 
         mirror_legacy_workflow_row_to_contract(client, dict(result.data[0]))
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=user_id or "system",
+            action="tool.invoke.completed",
+            resource_type="workflow",
+            resource_id=workflow_id,
+            metadata={"action": "assistant.create_workflow", "name": name},
+        )
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=user_id or "system",
+            action="workflow.created",
+            resource_type="workflow",
+            resource_id=workflow_id,
+            metadata={"source": "assistant_tools", "name": name},
+        )
         return {
             "id": workflow_id,
             "name": name,

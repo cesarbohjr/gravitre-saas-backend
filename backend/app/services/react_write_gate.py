@@ -23,14 +23,35 @@ from app.services.event_intelligence_service import WRITE_ACTION_SUFFIXES
 
 WRITE_APPROVAL_REQUIRED = "write_approval_required"
 
+# Platform writes that must use the same chat approval gate as connector writes.
+# Explicit allowlist (Wave 1 / PR #90 pattern) — not a blanket assistant_* skip.
+PLATFORM_WRITE_TOOLS = frozenset(
+    {
+        "assistant_create_workflow",
+        "assistant_execute_workflow",
+        "assistant_run_agent_task",
+    }
+)
+
+PLATFORM_PENDING_TASK_TYPES = frozenset(
+    {
+        "create_workflow",
+        "execute_workflow",
+        "run_agent_task",
+    }
+)
+
 # Re-export for callers that imported helpers from this module.
 __all__ = (
+    "PLATFORM_PENDING_TASK_TYPES",
+    "PLATFORM_WRITE_TOOLS",
     "WRITE_APPROVAL_REQUIRED",
     "block_react_write_execution",
     "catalog_action_requires_write_approval",
     "catalog_scopes_indicate_mutation",
     "first_structured_connector_plan_from_react",
     "invoke_action_is_write",
+    "materialize_react_platform_write_approval_turn",
     "materialize_react_write_approval_turn",
     "pending_write_from_react",
     "plan_from_react_tool_call",
@@ -76,7 +97,7 @@ def invoke_action_is_write(invoke_action: str) -> bool:
 def tool_requires_user_write_approval(tool_name: str, registry: Any) -> tuple[bool, str, str, str]:
     """Return (requires_approval, invoke_action, integration, label)."""
     name = str(tool_name or "").strip()
-    if not name or name.startswith("assistant_") or name.startswith("mcp_"):
+    if not name or name.startswith("mcp_"):
         return False, "", "", ""
     if name in {"web_search", "browser_agent_read", "browser_agent_interact", "knowledge_base"}:
         return False, "", "", ""
@@ -85,6 +106,27 @@ def tool_requires_user_write_approval(tool_name: str, registry: Any) -> tuple[bo
     invoke_action = str(getattr(spec, "invoke_action", "") or "")
     integration = str(getattr(spec, "integration", "") or "")
     label = name.replace("_", " ")
+
+    # Platform writes: explicit allowlist (do not rely on suffix heuristics —
+    # assistant.create_workflow / .execute_workflow / .run_agent_task would miss).
+    if name in PLATFORM_WRITE_TOOLS:
+        if not invoke_action and spec is not None:
+            invoke_action = str(getattr(spec, "invoke_action", "") or "")
+        if not invoke_action:
+            invoke_action = f"assistant.{name.removeprefix('assistant_')}"
+        if not integration:
+            integration = "platform"
+        if name == "assistant_create_workflow":
+            label = "Create workflow"
+        elif name == "assistant_execute_workflow":
+            label = "Execute workflow"
+        elif name == "assistant_run_agent_task":
+            label = "Run agent task"
+        return True, invoke_action, integration, label
+
+    # Remaining assistant_* tools are read/status helpers — never gated.
+    if name.startswith("assistant_"):
+        return False, "", "", ""
 
     try:
         from app.services.connector_execution_matrix import build_connector_execution_matrix
@@ -274,6 +316,182 @@ def first_structured_connector_plan_from_react(
     return None
 
 
+def _resolve_workflow_for_approval(
+    client: Any,
+    org_id: str,
+    *,
+    query: str,
+    workflow_id: str | None = None,
+) -> dict[str, Any] | None:
+    """Resolve a workflow row for execute approval copy (name/goal/id)."""
+    from app.workflows.repository import list_workflows
+
+    workflows = list_workflows(client, org_id)
+    wf_id = str(workflow_id or "").strip()
+    if wf_id:
+        for row in workflows:
+            if str(row.get("id") or "") == wf_id:
+                return dict(row)
+    needle = str(query or "").strip().lower()
+    if not needle:
+        return None
+    for row in workflows:
+        row_id = str(row.get("id") or "")
+        name = str(row.get("name") or "").lower()
+        if row_id == needle or (name and name in needle) or (needle and needle in name):
+            return dict(row)
+    return None
+
+
+def _resolve_agent_for_approval(
+    client: Any,
+    org_id: str,
+    *,
+    task: str,
+    agent_id: str | None = None,
+) -> dict[str, Any] | None:
+    from app.services.assistant_tools import _resolve_agent_for_task
+
+    return _resolve_agent_for_task(client, org_id, task, agent_id=agent_id)
+
+
+async def materialize_react_platform_write_approval_turn(
+    *,
+    settings: Any,
+    org_id: str,
+    conversation_id: str,
+    client: Any,
+    react_result: Any,
+    message: str = "",
+    environment_name: str = "production",
+) -> dict[str, Any] | None:
+    """Persist platform pending_task (create/execute/run) — not connector_action shape."""
+    pending = pending_write_from_react(react_result)
+    if not pending or not conversation_id:
+        return None
+    tool = str(pending.get("tool") or "").strip()
+    if tool not in PLATFORM_WRITE_TOOLS:
+        return None
+    args = dict(pending.get("args") or {})
+    result = pending.get("result") if isinstance(pending.get("result"), dict) else {}
+    if not args and isinstance(result.get("args"), dict):
+        args = dict(result["args"])
+
+    from app.services.conversation_state_service import get_conversation_state_service
+
+    state = get_conversation_state_service(settings)
+
+    if tool == "assistant_create_workflow":
+        goal = str(args.get("goal") or args.get("name") or message or "Assistant workflow").strip()
+        name = str(args.get("name") or "").strip()
+        clarified = {
+            "workflow_goal": goal,
+            **({"workflow_name": name} if name else {}),
+            "source": "react_write_gate",
+            "tool_name": tool,
+            "invoke_action": "assistant.create_workflow",
+        }
+        task_type = "create_workflow"
+        confirm_message = (
+            f"I'll create a draft workflow for **{goal}**.\n\n"
+            "Reply **yes** to create it now, or tell me what to adjust."
+        )
+    elif tool == "assistant_execute_workflow":
+        query = str(args.get("query") or args.get("workflowId") or message or "").strip()
+        workflow_id_arg = str(args.get("workflowId") or args.get("workflow_id") or "").strip() or None
+        match = _resolve_workflow_for_approval(
+            client, org_id, query=query, workflow_id=workflow_id_arg
+        )
+        if not match:
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "clarify",
+                "message": (
+                    "I need a specific workflow to execute. "
+                    "Name the workflow exactly, or open Workflows and paste its id."
+                ),
+                "task_state": await state.get_task_state(conversation_id, org_id, client=client),
+                "pending_task": None,
+            }
+        wf_id = str(match.get("id") or "")
+        wf_name = str(match.get("name") or "Workflow")
+        wf_goal = str(match.get("goal") or match.get("description") or "").strip()
+        clarified = {
+            "query": query or wf_name,
+            "workflow_id": wf_id,
+            "workflow_name": wf_name,
+            "workflow_goal": wf_goal or None,
+            "environment_name": environment_name,
+            "source": "react_write_gate",
+            "tool_name": tool,
+            "invoke_action": "assistant.execute_workflow",
+        }
+        task_type = "execute_workflow"
+        goal_line = f"\nGoal: {wf_goal}" if wf_goal else ""
+        confirm_message = (
+            f"I'll **execute** the workflow **{wf_name}** "
+            f"(id `{wf_id}`).{goal_line}\n\n"
+            "This starts a new run and may trigger connected steps "
+            "(connectors, agents, notifications).\n\n"
+            "Reply **yes** to run it now, or **no** to cancel."
+        )
+    else:  # assistant_run_agent_task
+        task = str(args.get("task") or message or "").strip()
+        agent_id_arg = str(args.get("agentId") or args.get("agent_id") or "").strip() or None
+        agent = _resolve_agent_for_approval(client, org_id, task=task, agent_id=agent_id_arg)
+        if not agent or not task:
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "clarify",
+                "message": (
+                    "I need an agent and a task before I can run anything. "
+                    "Name the agent and describe the task."
+                ),
+                "task_state": await state.get_task_state(conversation_id, org_id, client=client),
+                "pending_task": None,
+            }
+        agent_id = str(agent.get("id") or "")
+        agent_name = str(agent.get("name") or "Agent")
+        clarified = {
+            "task": task,
+            "agent_id": agent_id,
+            "agent_name": agent_name,
+            "source": "react_write_gate",
+            "tool_name": tool,
+            "invoke_action": "assistant.run_agent_task",
+        }
+        task_type = "run_agent_task"
+        truncated = task if len(task) <= 240 else task[:237] + "..."
+        confirm_message = (
+            f"I'll run **{agent_name}** on this task:\n\n> {truncated}\n\n"
+            "The agent may use its permitted tools and connected integrations "
+            "(including writes).\n\n"
+            "Reply **yes** to start, or **no** to cancel."
+        )
+
+    await state.update_task_state(
+        conversation_id,
+        org_id,
+        {
+            "clarified_params": clarified,
+            "pending_task": {
+                "type": task_type,
+                "status": "awaiting_confirm",
+                "params": clarified,
+            },
+        },
+        client=client,
+    )
+    refreshed = await state.get_task_state(conversation_id, org_id, client=client)
+    return {
+        "stop_pipeline": True,
+        "dialogue_mode": "confirm",
+        "message": confirm_message,
+        "task_state": refreshed,
+        "pending_task": refreshed.get("pending_task"),
+    }
+
+
 async def materialize_react_write_approval_turn(
     *,
     settings: Any,
@@ -289,6 +507,19 @@ async def materialize_react_write_approval_turn(
     pending = pending_write_from_react(react_result)
     if not pending or not conversation_id:
         return None
+
+    tool = str(pending.get("tool") or "").strip()
+    if tool in PLATFORM_WRITE_TOOLS:
+        return await materialize_react_platform_write_approval_turn(
+            settings=settings,
+            org_id=org_id,
+            conversation_id=conversation_id,
+            client=client,
+            react_result=react_result,
+            message=message,
+            environment_name=environment_name,
+        )
+
     from app.services.tool_registry import get_tool_registry
 
     plan = plan_from_react_write(pending, get_tool_registry())
