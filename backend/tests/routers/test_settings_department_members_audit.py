@@ -36,9 +36,10 @@ async def test_add_department_member_writes_audit(mock_client, _resolve, mock_au
     members = MagicMock()
     members.upsert.return_value = members
     members.select.return_value = members
-    members.single.return_value = members
+    members.eq.return_value = members
+    members.limit.return_value = members
     members.execute.return_value = MagicMock(
-        data={"id": "mem-1", "department_id": "dept-1", "user_id": "user-2", "role": "viewer"},
+        data=[{"id": "mem-1", "department_id": "dept-1", "user_id": "user-2", "role": "viewer"}],
         error=None,
     )
 
@@ -60,6 +61,42 @@ async def test_add_department_member_writes_audit(mock_client, _resolve, mock_au
     assert result["member"]["id"] == "mem-1"
     mock_audit.assert_called_once()
     assert mock_audit.call_args.kwargs["action"] == "department_member.added"
+
+
+def test_resolve_org_user_id_uses_organization_members_not_org_members():
+    from app.routers.settings import _resolve_org_user_id
+
+    client = MagicMock()
+    users = MagicMock()
+    users.select.return_value = users
+    users.ilike.return_value = users
+    users.limit.return_value = users
+    users.execute.return_value = MagicMock(
+        data=[{"id": "u-1", "auth_user_id": "auth-1", "email": "a@ex.com"}],
+        error=None,
+    )
+    org_members = MagicMock()
+    org_members.select.return_value = org_members
+    org_members.eq.return_value = org_members
+    org_members.limit.return_value = org_members
+    org_members.execute.return_value = MagicMock(
+        data=[{"user_id": "auth-1"}],
+        error=None,
+    )
+    seen: list[str] = []
+
+    def table(name):
+        seen.append(name)
+        if name == "users":
+            return users
+        if name == "organization_members":
+            return org_members
+        raise AssertionError(f"unexpected table {name}")
+
+    client.table.side_effect = table
+    assert _resolve_org_user_id(client, "org-1", "a@ex.com") == "auth-1"
+    assert "organization_members" in seen
+    assert "org_members" not in seen
 
 
 @pytest.mark.asyncio
