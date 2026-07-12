@@ -423,14 +423,14 @@ export default function ManageOrganizationsPage() {
             <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
               <Icon name="help" size="sm" className="text-primary" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h3 className="font-medium text-foreground">Need help with organizations?</h3>
               <p className="text-sm text-muted-foreground mt-1">
                 Organizations help you separate different teams, clients, or projects. Each organization 
                 has its own agents, workflows, and billing. You can be a member of multiple organizations 
                 and switch between them anytime.
               </p>
-              <div className="flex items-center gap-4 mt-4">
+              <div className="flex flex-wrap items-center gap-4 mt-4">
                 <Button variant="outline" size="sm" className="gap-2" asChild>
                   <Link href="/docs/organizations">
                     <Icon name="file" size="sm" />
