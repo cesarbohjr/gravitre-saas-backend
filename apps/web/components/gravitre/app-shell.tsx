@@ -102,7 +102,8 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
   const isImmersiveChat =
     pathname === "/ai" ||
     pathname.startsWith("/ai/") ||
-    (pathname.startsWith("/agents/") && pathname.endsWith("/chat"))
+    (pathname.startsWith("/agents/") && pathname.endsWith("/chat")) ||
+    pathname === "/connectors"
   const { user, loading } = useAuth()
   const { effectiveHidePoweredBy } = useEnterpriseBranding()
 

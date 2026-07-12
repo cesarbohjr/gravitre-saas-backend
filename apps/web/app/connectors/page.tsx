@@ -2273,7 +2273,7 @@ function ConnectorsPageContent() {
 
   return (
     <AppShell title={SURFACE_COPY.pages.connectors.title}>
-      <div className="flex flex-col min-h-full">
+      <div className="flex flex-col h-full min-h-0">
         {/* Header */}
         <div className="border-b border-border px-4 md:px-6 py-4">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
