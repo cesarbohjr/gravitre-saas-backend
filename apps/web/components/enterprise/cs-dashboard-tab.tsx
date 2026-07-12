@@ -413,6 +413,7 @@ export function CsDashboardTab() {
   const router = useRouter()
   const [busy, setBusy] = useState<string | null>(null)
   const [applyingId, setApplyingId] = useState<string | null>(null)
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [applyResult, setApplyResult] = useState<IntegrationSuggestionApplyResponse | null>(null)
   const [applyResultOpen, setApplyResultOpen] = useState(false)
   const [dismissingFailureId, setDismissingFailureId] = useState<string | null>(null)
@@ -516,10 +517,29 @@ export function CsDashboardTab() {
       await mutateSuggestions()
       setApplyResult(result)
       setApplyResultOpen(true)
+      if (result.requiresApproval) {
+        showToast("Approval required before this write can run")
+      }
     } catch {
       showToast("Failed to apply recommendation")
     } finally {
       setApplyingId(null)
+    }
+  }
+
+  const confirmSuggestion = async () => {
+    const id = applyResult?.suggestion?.id
+    if (!id) return
+    setConfirmingId(id)
+    try {
+      const result = await enterpriseApi.confirmIntegrationSuggestion(id)
+      await mutateSuggestions()
+      setApplyResult(result)
+      showToast("Recommendation applied")
+    } catch {
+      showToast("Failed to confirm recommendation")
+    } finally {
+      setConfirmingId(null)
     }
   }
 
@@ -790,6 +810,8 @@ export function CsDashboardTab() {
         open={applyResultOpen}
         onOpenChange={setApplyResultOpen}
         onContinue={continueAfterApply}
+        onConfirm={() => void confirmSuggestion()}
+        confirming={Boolean(confirmingId)}
       />
     </div>
   )

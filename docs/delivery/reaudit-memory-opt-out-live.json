@@ -1,0 +1,26 @@
+{
+  "ticket": "STA-316",
+  "kind": "reaudit-memory-opt-out-live",
+  "ran_at": "2026-07-12T18:33:21.251968+00:00",
+  "git_tip": "6cb1378d",
+  "off_org_id": "eb7945c3-3df1-46fa-9469-b532400cbd7c",
+  "smoke_org_policy": {
+    "enabled": true,
+    "connectors": []
+  },
+  "raw_pii_blocked": true,
+  "raw_errors": [],
+  "provider_calls": [],
+  "opt_out_resolver": {
+    "status": "skipped",
+    "reason": "org_opt_in_off",
+    "provider_calls_during": 0,
+    "pass": true
+  },
+  "pass": {
+    "raw_pii_never_embedded": true,
+    "default_off_skips_without_provider": true,
+    "smoke_org_explicit_opt_in": true
+  },
+  "verdict": "PASS"
+}

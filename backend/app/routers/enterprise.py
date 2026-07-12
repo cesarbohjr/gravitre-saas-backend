@@ -37,8 +37,10 @@ from app.services.enterprise_secrets_service import encrypt_enterprise_secret, r
 from app.services.siem_export_service import build_siem_event, dispatch_siem_event
 from app.services.workforce_analytics_service import build_workforce_analytics
 from app.services.integration_suggestion_service import (
+    MUTATING_SUGGESTION_TYPES,
     IntegrationSuggestionError,
     apply_integration_suggestion,
+    confirm_integration_suggestion,
     dismiss_integration_suggestion,
     list_integration_suggestions,
     scan_integration_suggestions,
@@ -376,13 +378,13 @@ async def get_integration_suggestions(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
-    status: str = Query(default="open"),
+    status: str = Query(default="actionable"),
     connector_type: str | None = Query(default=None, alias="connectorType"),
 ) -> dict[str, Any]:
-    """List audit-driven connector and workflow suggestions (STA-123)."""
+    """List audit-driven connector and workflow suggestions (STA-123 / STA-317)."""
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    if status not in {"open", "dismissed", "applied"}:
+    if status not in {"open", "dismissed", "applied", "awaiting_confirm", "actionable"}:
         raise HTTPException(status_code=400, detail="Invalid status filter")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     suggestions = list_integration_suggestions(
@@ -439,19 +441,71 @@ async def apply_integration_suggestion_route(
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
-    """Apply an integration suggestion — install pack, open connectors, or seed workflow (Tier 6)."""
+    """Apply an integration suggestion (STA-123 / STA-317).
+
+    Mutating types require **admin** and stage ``awaiting_confirm`` (catalog /
+    write-authority check) — call ``POST .../confirm`` to execute with
+    ``tool.invoke.*`` audits. ``connect_connector`` remains an immediate
+    redirect for any org member.
+    """
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    peek = (
+        client.table("integration_suggestions")
+        .select("suggestion_type,status")
+        .eq("org_id", org_id)
+        .eq("id", suggestion_id)
+        .limit(1)
+        .execute()
+    )
+    if not peek.data:
+        raise HTTPException(status_code=404, detail="Suggestion not found")
+    suggestion_type = str(peek.data[0].get("suggestion_type") or "")
+    if suggestion_type in MUTATING_SUGGESTION_TYPES:
+        # STA-317 option "both" — admin bar before staging awaiting_confirm.
+        await require_admin(current_user, org_id, settings)
     try:
         return await apply_integration_suggestion(
             client,
             org_id,
             suggestion_id,
             actor_id=current_user["user_id"],
+            settings=settings,
         )
     except IntegrationSuggestionError as exc:
         status_code = 404 if exc.code == "SUGGESTION_NOT_FOUND" else 400
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+
+
+@router.post("/integration-suggestions/{suggestion_id}/confirm")
+async def confirm_integration_suggestion_route(
+    suggestion_id: str,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Confirm a mutating integration suggestion after awaiting_confirm (STA-317).
+
+    Requires org admin (or platform admin). Executes through catalog-gated
+    create-workflow / pack-install paths that emit ``tool.invoke.*`` audits.
+    """
+    current_user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return await confirm_integration_suggestion(
+            client,
+            org_id,
+            suggestion_id,
+            actor_id=current_user["user_id"],
+            settings=settings,
+        )
+    except IntegrationSuggestionError as exc:
+        if exc.code == "SUGGESTION_NOT_FOUND":
+            status_code = 404
+        elif exc.code == "SUGGESTION_NOT_AWAITING_CONFIRM":
+            status_code = 409
+        else:
+            status_code = 400
         raise HTTPException(status_code=status_code, detail=str(exc)) from exc
 
 

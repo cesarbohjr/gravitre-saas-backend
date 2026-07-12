@@ -62,6 +62,33 @@ def test_preflight_runs_for_fresh_multi_connector_orchestration():
     )
 
 
+def test_preflight_skips_omit_name_list_create_despite_apollo_comma():
+    """STA-305 parallel-path: omit-name create must not preflight as orchestration.
+
+    \"In Apollo, create a contact list.\" splits on the comma and falsely trips
+    is_orchestration_intent; prefer_connector must suppress preflight so the
+    governed auto-plan (MSP Prospects / inferred_fields) can run.
+    """
+    message = "In Apollo, create a contact list."
+    assert (
+        should_run_connector_preflight(
+            {},
+            message=message,
+            connected_integrations=["apollo", "hubspot", "slack"],
+        )
+        is False
+    )
+    # Pending orchestration still preflights (confirm/decline path).
+    assert (
+        should_run_connector_preflight(
+            {"pending_task": {"type": "connector_orchestration", "status": "awaiting_plan_confirm"}},
+            message=message,
+            connected_integrations=["apollo"],
+        )
+        is True
+    )
+
+
 def test_react_invoked_connector_tools_ignores_assistant_tools():
     result = SimpleNamespace(
         tool_calls=[

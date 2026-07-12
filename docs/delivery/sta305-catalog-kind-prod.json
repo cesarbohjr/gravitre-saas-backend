@@ -1,6 +1,6 @@
 {
   "ticket": "STA-305",
-  "probed_at": "2026-07-12T07:15:20.676477+00:00",
+  "probed_at": "2026-07-12T19:00:54.276560+00:00",
   "local_mapper": {
     "segment": "draft a follow-up in Slack for approval",
     "matched_action": "slack.post_message",
@@ -14,18 +14,19 @@
     "pass": true
   },
   "live": {
-    "sha": "473454dacbfbdd2586996be4502eae2aa748f666",
-    "conversation_id": "7eabffc3-9bbe-4e51-9b70-e2a0da713807",
-    "marker": "48fd9eee",
+    "sha": "192a6096782efa1f796600659298eb7d43d8cc97",
+    "conversation_id": "018e55ac-23b3-43a4-bb45-9f965cfdbd24",
+    "marker": "77035e56",
     "http": 200,
-    "elapsed_ms": 8536,
+    "elapsed_ms": 4739,
     "labels": [
       "Hubspot (not connected)",
-      "Post message"
+      "Slack (not connected)",
+      "Orchestration blocked \\u2014 zero runnable steps"
     ],
-    "text_head": "I planned a **2-step orchestration**:\n\n1. \u25cb Hubspot (not connected) \u2014 *skipped* (Connect Hubspot in Gravitre to run this action.)\n2. **Post message** (write, approval required)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change.",
+    "text_head": "I planned a **2-step orchestration**, but **nothing is runnable** \u2014 every step is blocked:\n\n1. \u25cb Hubspot (not connected) \u2014 *skipped* (Connect Hubspot in Gravitre to run this action.)\n2. \u25cb Slack (not connected) \u2014 *skipped* (Connect Slack in Gravitre to run this action.)\n\nConnect the required tools at /connectors (or rephrase with connectors you already have), then ask again. No approval is needed until at least one step can run.\n\nBlocked because: Connect Hubspot in Gravitre to run this action.; C",
     "list_channels_seen": false,
-    "post_like_seen": true,
+    "post_like_seen": false,
     "pass": true
   },
   "verdict": "PASS"

@@ -12,33 +12,46 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import type { IntegrationSuggestionApplyResponse } from "@/types/api"
-import { ArrowRight, CheckCircle2, ExternalLink, Lightbulb } from "lucide-react"
+import { ArrowRight, CheckCircle2, ExternalLink, Lightbulb, ShieldAlert } from "lucide-react"
 
 export function ApplySuggestionResultSheet({
   result,
   open,
   onOpenChange,
   onContinue,
+  onConfirm,
+  confirming = false,
 }: {
   result: IntegrationSuggestionApplyResponse | null
   open: boolean
   onOpenChange: (open: boolean) => void
   onContinue: () => void
+  onConfirm?: () => void
+  confirming?: boolean
 }) {
   const summary = result?.applySummary
   const entities = summary?.entities ?? []
   const highlights = summary?.evidenceHighlights ?? []
+  const needsApproval = Boolean(result?.requiresApproval)
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="flex w-full flex-col sm:max-w-md">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-success" aria-hidden />
-            Recommendation applied
+            {needsApproval ? (
+              <ShieldAlert className="h-5 w-5 text-warning" aria-hidden />
+            ) : (
+              <CheckCircle2 className="h-5 w-5 text-success" aria-hidden />
+            )}
+            {needsApproval ? "Approval required" : "Recommendation applied"}
           </SheetTitle>
           <SheetDescription>
-            {summary?.title ?? result?.suggestion.title ?? "Changes were provisioned in your org."}
+            {needsApproval
+              ? "This write needs confirmation — same gate as chat connector / platform writes."
+              : (summary?.title ??
+                result?.suggestion.title ??
+                "Changes were provisioned in your org.")}
           </SheetDescription>
         </SheetHeader>
 
@@ -47,6 +60,17 @@ export function ApplySuggestionResultSheet({
             <Badge variant="outline" className="capitalize">
               {summary.suggestionType.replace(/_/g, " ")}
             </Badge>
+          ) : null}
+
+          {needsApproval && result?.pendingTask ? (
+            <div className="space-y-2 rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm">
+              <p className="font-medium">
+                {String(result.pendingTask.params?.invoke_action ?? result.pendingTask.type ?? "write")}
+              </p>
+              <p className="text-muted-foreground">
+                Reply confirm to run this action. No durable write happens until you approve.
+              </p>
+            </div>
           ) : null}
 
           {entities.length > 0 ? (
@@ -96,13 +120,26 @@ export function ApplySuggestionResultSheet({
         </div>
 
         <SheetFooter className="border-t pt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Stay here
-          </Button>
-          <Button onClick={onContinue} className="gap-1">
-            Continue
-            <ArrowRight className="h-4 w-4" />
-          </Button>
+          {needsApproval ? (
+            <>
+              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={confirming}>
+                Cancel
+              </Button>
+              <Button onClick={() => onConfirm?.()} disabled={confirming || !onConfirm}>
+                {confirming ? "Confirming…" : "Confirm write"}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Stay here
+              </Button>
+              <Button onClick={onContinue}>
+                Continue
+                <ArrowRight className="ml-1.5 h-4 w-4" />
+              </Button>
+            </>
+          )}
         </SheetFooter>
       </SheetContent>
     </Sheet>

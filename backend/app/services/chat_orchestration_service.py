@@ -369,7 +369,14 @@ class ChatOrchestrationService:
             destructive=plan.destructive,
             requires_approval=bool(risk.get("requires_approval") or plan.kind == "write"),
             approval_reason=risk.get("approval_reason"),
+            inferred_fields=tuple(plan.inferred_fields or ()),
+            inference_sources=dict(plan.inference_sources or {}),
         )
+        # STA-305 — orchestration steps must carry the same omit-name inference
+        # labeling as governed chat / ReAct (parallel-path parity).
+        from app.services.chat_connector_execution_service import enrich_plan_inference_metadata
+
+        plan = enrich_plan_inference_metadata(plan, message=goal or segment)
         return OrchestrationStep(
             step_id=step_id,
             segment=segment,

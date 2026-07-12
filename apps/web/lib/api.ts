@@ -2411,6 +2411,11 @@ export const enterpriseApi = {
       apiUrl(`/api/enterprise/integration-suggestions/${suggestionId}/apply`),
       {},
     ),
+  confirmIntegrationSuggestion: (suggestionId: string) =>
+    postJson<IntegrationSuggestionApplyResponse>(
+      apiUrl(`/api/enterprise/integration-suggestions/${suggestionId}/confirm`),
+      {},
+    ),
 }
 
 // ============ Knowledge sync (STA-45, org-admin) ============

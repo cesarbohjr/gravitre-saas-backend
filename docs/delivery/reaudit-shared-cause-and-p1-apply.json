@@ -1,0 +1,86 @@
+{
+  "kind": "shared-root-cause-and-p1-apply",
+  "ran_at": "2026-07-12T19:12:00+00:00",
+  "prod_sha": "192a6096782efa1f796600659298eb7d43d8cc97",
+  "question_1_shared_cause": {
+    "hypothesis": "openai_adapter max_tokens→max_completion_tokens rejection silently empties inferred_fields / blocks Trace D escalation / chips+assumption_notes",
+    "verdict": "RULED_OUT_AS_SHARED_CAUSE_OF_6_7_8",
+    "evidence": [
+      {
+        "claim": "Item 6 omit-name inference is deterministic, not LLM classification",
+        "proof": "enrich_plan_inference_metadata locally fills name=MSP Prospects + inferred_fields=['name'] for args={} apollo.lists.create; task_classifier is rule_based_classify_query; routing tier is regex"
+      },
+      {
+        "claim": "Item 6 live failure is parallel-path miss (class bug)",
+        "proof": "Message 'In Apollo, create a contact list.' → segments=['In Apollo','create a contact list'] → is_orchestration_intent=True → should_run_connector_preflight=True. STA-305 LIST_CREATE prefer_connector guard exists only in run_connector_fallback_turn, NOT in should_run_connector_preflight. Preflight orchestration builds lists.create with args={} and never calls enrich_plan_inference_metadata."
+      },
+      {
+        "claim": "Item 7 Trace D escalation is not LLM classification",
+        "proof": "assistant.routing.escalated from escalate_for_write_tool / consecutive_tool_failures (deterministic). Force probe needs Slack write mid-turn; Slack token_expired prevents write tool invoke → 0 escalations. Unrelated to max_tokens."
+      },
+      {
+        "claim": "Item 8 assumption_notes follows item 6 path miss; chips are SSE tool shaping",
+        "proof": "assumption_notes require inferred_fields from enrich path (same as #6). Mid-stream chips require tool-output events; spotcheck null chips + Slack/Apollo auth_expired are separate from classification API param."
+      },
+      {
+        "claim": "max_tokens failure is real but separate",
+        "proof": "MODEL_CALL_FAILURE on gpt-5.4-mini during CLASSIFICATION enrichments (contextual_understanding soft-fails to {}). Does not produce plan.inferred_fields or routing.escalated. Still fix, but will not green 6/7/8 alone."
+      }
+    ]
+  },
+  "question_2_integration_suggestions_apply": {
+    "verdict": "BLOCKER_P1_CLASS",
+    "evidence_file": "docs/delivery/p1-integration-suggestions-apply-live.json",
+    "live": {
+      "http": 200,
+      "suggestion_id": "f56383fa-08bc-49ec-b171-0f1299ae2d70",
+      "suggestion_type": "automate_workflow",
+      "workflow_id": "e378a5e5-cae6-43e3-aad6-99239efcbb11",
+      "require_admin_on_route": false,
+      "catalog_write_authority": false,
+      "chat_awaiting_confirm": false,
+      "tool_invoke_audits": 0,
+      "audit_observed": "integration.suggestion.applied"
+    },
+    "also_writes": ["install_department_pack", "automate_workflow"],
+    "benign_branch": "connect_connector → redirect only"
+  },
+  "item_3_duplicate_name": {
+    "verdict": "TEST_HYGIENE",
+    "note": "Create gate still awaiting_confirm + tool.invoke.requested/failed; failure body was workflow already exists for reused fixed name. Not a governance bypass."
+  },
+  "revised_priority": [
+    {
+      "rank": 1,
+      "item": "integration-suggestions/apply P1-class bypass",
+      "action": "Human gate-model choice then fix (admin + audit parity); live evidence already green for severity"
+    },
+    {
+      "rank": 2,
+      "item": "Item 6 / 8.4 path miss — LIST_CREATE preflight guard",
+      "action": "Apply STA-305 prefer_connector to should_run_connector_preflight (and enrich orchestration step plans). Same class as prior one-path-fixed bugs."
+    },
+    {
+      "rank": 3,
+      "item": "Item 7 Trace D — after Slack reconnect, re-prove escalation",
+      "action": "Distinct from #6; do not bundle with adapter fix"
+    },
+    {
+      "rank": 4,
+      "item": "openai_adapter max_completion_tokens",
+      "action": "Real separate bug; fix for classification enrichments; not shared root of 6/7/8"
+    },
+    {
+      "rank": 5,
+      "item": "audit_events.actor_id null on oauth invoke",
+      "action": "Audit integrity"
+    },
+    {
+      "rank": 6,
+      "item": "Item 3 smoke unique names",
+      "action": "Test hygiene only"
+    }
+  ],
+  "clear_for_new_features": false,
+  "reverify_gate": "After fixes: full fresh 12-item re-audit before Revenue Intelligence / Pack #2"
+}

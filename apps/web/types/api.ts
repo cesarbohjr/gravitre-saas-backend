@@ -1552,6 +1552,14 @@ export interface IntegrationSuggestionApplyResponse {
   redirectPath?: string | null
   installResult?: Record<string, unknown> | null
   applySummary?: IntegrationSuggestionApplySummary | null
+  /** STA-317 — mutating apply staged; call confirm before durable write. */
+  requiresApproval?: boolean
+  pendingTask?: {
+    type?: string
+    status?: string
+    params?: Record<string, unknown>
+  } | null
+  confirmPath?: string | null
 }
 
 export interface IntegrationSuggestionApplySummary {

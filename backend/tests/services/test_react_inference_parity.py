@@ -159,12 +159,21 @@ async def test_materialize_react_write_enriches_omit_name():
 
 def test_list_create_fallback_skips_orchestration_shadowing():
     from app.services.chat_connector_models import LIST_CREATE_INTENT
+    from app.services.connector_chat_routing import should_run_connector_preflight
 
     msg = "In Apollo, create a contact list."
     assert LIST_CREATE_INTENT.search(msg)
-    # Prefer-connector flag used in run_connector_fallback_turn
+    # Prefer-connector flag used in run_connector_fallback_turn AND preflight.
     prefer_connector = bool(LIST_CREATE_INTENT.search(msg))
     assert prefer_connector is True
+    assert (
+        should_run_connector_preflight(
+            {},
+            message=msg,
+            connected_integrations=["apollo", "slack"],
+        )
+        is False
+    )
 
 
 def test_plan_action_restores_inferred_fields_from_pending():

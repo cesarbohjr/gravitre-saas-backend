@@ -1,0 +1,104 @@
+{
+  "probe": "p1_integration_suggestions_apply",
+  "ran_at": "2026-07-12T19:11:52.990153+00:00",
+  "prod_sha": "192a6096782efa1f796600659298eb7d43d8cc97",
+  "suggestion_id": "f56383fa-08bc-49ec-b171-0f1299ae2d70",
+  "suggestion_type": "automate_workflow",
+  "http_status": 200,
+  "http_status_alt_header": null,
+  "response": {
+    "workflowId": "e378a5e5-cae6-43e3-aad6-99239efcbb11",
+    "redirectPath": "/workflows/e378a5e5-cae6-43e3-aad6-99239efcbb11/builder",
+    "installResult": null,
+    "suggestion": {
+      "id": "f56383fa-08bc-49ec-b171-0f1299ae2d70",
+      "orgId": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "suggestionType": "automate_workflow",
+      "connectorType": null,
+      "packId": null,
+      "workflowTemplateId": null,
+      "title": "P1 reaudit apply probe f56383fa",
+      "message": "Create a draft workflow from suggestion apply (governance probe)",
+      "evidence": {
+        "probe": true,
+        "reaudit": true
+      },
+      "confidence": 0.99,
+      "priority": 1,
+      "status": "applied",
+      "suggestedAt": "2026-07-12T19:11:44.206633+00:00",
+      "dismissedAt": null,
+      "createdAt": "2026-07-12T19:11:44.206633+00:00",
+      "updatedAt": "2026-07-12T19:11:51.531749+00:00"
+    },
+    "applySummary": {
+      "suggestionType": "automate_workflow",
+      "title": "P1 reaudit apply probe f56383fa",
+      "entities": [
+        {
+          "type": "workflow",
+          "id": "e378a5e5-cae6-43e3-aad6-99239efcbb11",
+          "label": "P1 reaudit apply probe f56383fa"
+        }
+      ],
+      "evidenceHighlights": [
+        "probe: True",
+        "reaudit: True"
+      ],
+      "redirectPath": "/workflows/e378a5e5-cae6-43e3-aad6-99239efcbb11/builder"
+    }
+  },
+  "response_alt": null,
+  "direct_service_fallback": null,
+  "auth_model": {
+    "route_depends": "get_current_user + get_org_context",
+    "require_admin_on_route": false,
+    "route_snippet": "@router.post(\"/integration-suggestions/{suggestion_id}/apply\")\nasync def apply_integration_suggestion_route(\n    suggestion_id: str,\n    current_user: Annotated[dict, Depends(get_current_user)],\n    org_id: Annotated[str | None, Depends(get_org_context)],\n    settings: Annotated[Settings, Depends(get_settings)],\n) -> dict[str, Any]:\n    \"\"\"Apply an integration suggestion \u2014 install pack, open connectors, or seed workflow (Tier 6).\"\"\"\n    if org_id is None:\n        raise HTTPException(status_code="
+  },
+  "wrote_workflow": true,
+  "workflow_row": {
+    "id": "e378a5e5-cae6-43e3-aad6-99239efcbb11",
+    "name": "Operations Automation",
+    "status": "draft",
+    "created_by": "f7e32f06-49df-4e73-8962-f41c21850762",
+    "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+  },
+  "audits_since_insert": [
+    {
+      "id": "495d1243-cf73-4fe7-9864-e386f2172fb6",
+      "action": "integration.suggestion.applied",
+      "resource_type": "integration_suggestion",
+      "resource_id": "f56383fa-08bc-49ec-b171-0f1299ae2d70",
+      "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "created_at": "2026-07-12T19:11:51.600985+00:00",
+      "metadata_keys": [
+        "workflowId",
+        "redirectPath",
+        "suggestionType"
+      ]
+    }
+  ],
+  "tool_invoke_audits": [],
+  "suggestion_applied_audits": [
+    {
+      "id": "495d1243-cf73-4fe7-9864-e386f2172fb6",
+      "action": "integration.suggestion.applied",
+      "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "resource_id": "f56383fa-08bc-49ec-b171-0f1299ae2d70",
+      "created_at": "2026-07-12T19:11:51.600985+00:00"
+    }
+  ],
+  "catalog_write_authority": false,
+  "chat_awaiting_confirm": false,
+  "verdict": {
+    "executes_real_write": true,
+    "goes_through_catalog_write_authority": false,
+    "goes_through_chat_approval_gate": false,
+    "tool_invoke_audit_trail": false,
+    "parallel_audit_integration_suggestion_applied": true,
+    "require_admin_on_route": false,
+    "severity": "BLOCKER_P1_CLASS",
+    "summary": "Real workflow write via apply; audit is integration.suggestion.applied only \u2014 no catalog/chat/tool.invoke gate",
+    "effective_http_or_direct": 200
+  }
+}

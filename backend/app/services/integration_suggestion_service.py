@@ -16,7 +16,14 @@ logger = logging.getLogger(__name__)
 
 AUDIT_INTEGRATION_SUGGESTIONS_SCANNED = "integration.suggestions.scanned"
 AUDIT_INTEGRATION_SUGGESTION_APPLIED = "integration.suggestion.applied"
+AUDIT_INTEGRATION_SUGGESTION_APPROVAL_REQUIRED = "integration.suggestion.approval_required"
 RESOURCE_TYPE_INTEGRATION_SUGGESTION = "integration_suggestion"
+
+# STA-317 — mutating applies require BOTH require_admin (router) AND chat-gate
+# parity (catalog / write-authority check + awaiting_confirm before durable write).
+MUTATING_SUGGESTION_TYPES = frozenset({"automate_workflow", "install_department_pack"})
+PACK_INSTALL_TOOL = "marketplace_install_department_pack"
+PACK_INSTALL_INVOKE = "marketplace.install_department_pack"
 
 MANUAL_PCT_THRESHOLD = 0.40
 MIN_EVENTS_FOR_SUGGESTION = 5
@@ -441,15 +448,21 @@ def list_integration_suggestions(
     client: Any,
     org_id: str,
     *,
-    status: str = "open",
+    status: str = "actionable",
     connector_type: str | None = None,
     limit: int = 50,
 ) -> list[dict[str, Any]]:
+    statuses: list[str]
+    if status == "actionable":
+        statuses = ["open", "awaiting_confirm"]
+    else:
+        statuses = [status]
+
     def build_query(table):
         query = (
             table.select("*")
             .eq("org_id", org_id)
-            .eq("status", status)
+            .in_("status", statuses)
             .order("priority", desc=True)
             .order("suggested_at", desc=True)
             .limit(limit)
@@ -635,8 +648,18 @@ async def apply_integration_suggestion(
     suggestion_id: str,
     *,
     actor_id: str | None = None,
+    settings: Settings | None = None,
 ) -> dict[str, Any]:
-    """Apply an open integration suggestion (STA-123 Tier 6)."""
+    """Apply an open integration suggestion (STA-123 Tier 6 / STA-317 gate).
+
+    ``connect_connector`` remains an immediate redirect (no durable write).
+
+    Mutating types (``automate_workflow``, ``install_department_pack``) stage
+    ``awaiting_confirm`` after catalog/write-authority checks — they do **not**
+    execute until ``confirm_integration_suggestion``. Router also enforces
+    ``require_admin`` for mutating apply/confirm (human choice: both).
+    """
+    _ = settings  # reserved for confirm path callers that share the signature
     existing = (
         client.table("integration_suggestions")
         .select("*")
@@ -648,51 +671,308 @@ async def apply_integration_suggestion(
     if not existing.data:
         raise IntegrationSuggestionError("Suggestion not found", code="SUGGESTION_NOT_FOUND")
     row = existing.data[0]
-    if row.get("status") != "open":
+    status = str(row.get("status") or "")
+    suggestion_type = row.get("suggestion_type")
+
+    if status == "awaiting_confirm" and suggestion_type in MUTATING_SUGGESTION_TYPES:
+        return _approval_required_response(row)
+
+    if status != "open":
         raise IntegrationSuggestionError("Suggestion is not open", code="SUGGESTION_NOT_OPEN")
 
-    suggestion_type = row.get("suggestion_type")
     result: dict[str, Any] = {
         "workflowId": None,
         "redirectPath": None,
         "installResult": None,
+        "requiresApproval": False,
+        "pendingTask": None,
+        "confirmPath": None,
     }
 
     if suggestion_type == "connect_connector":
         connector_type = row.get("connector_type")
         result["redirectPath"] = f"/connectors?type={connector_type}" if connector_type else "/connectors"
-    elif suggestion_type == "install_department_pack":
-        pack_id = row.get("pack_id")
+        return _finalize_applied(client, org_id, suggestion_id, row, result, actor_id=actor_id)
+
+    if suggestion_type in MUTATING_SUGGESTION_TYPES:
+        pending = _build_mutating_pending_task(row)
+        now = _now_iso()
+        evidence = dict(row.get("evidence") or {})
+        evidence["pending_approval"] = pending
+        updated = (
+            client.table("integration_suggestions")
+            .update(
+                {
+                    "status": "awaiting_confirm",
+                    "evidence": evidence,
+                    "updated_at": now,
+                }
+            )
+            .eq("org_id", org_id)
+            .eq("id", suggestion_id)
+            .execute()
+        )
+        staged = (updated.data or [{**row, "status": "awaiting_confirm", "evidence": evidence}])[0]
+        if actor_id:
+            write_audit_event(
+                client,
+                org_id,
+                actor_id,
+                AUDIT_INTEGRATION_SUGGESTION_APPROVAL_REQUIRED,
+                RESOURCE_TYPE_INTEGRATION_SUGGESTION,
+                suggestion_id,
+                metadata={
+                    "suggestionType": suggestion_type,
+                    "toolName": (pending.get("params") or {}).get("tool_name"),
+                    "invokeAction": (pending.get("params") or {}).get("invoke_action"),
+                },
+            )
+        logger.info(
+            "integration_suggestion_approval_required org_id=%s suggestion_id=%s type=%s",
+            org_id,
+            suggestion_id,
+            suggestion_type,
+        )
+        return _approval_required_response(staged)
+
+    raise IntegrationSuggestionError("Unsupported suggestion type", code="UNSUPPORTED_SUGGESTION_TYPE")
+
+
+async def confirm_integration_suggestion(
+    client: Any,
+    org_id: str,
+    suggestion_id: str,
+    *,
+    actor_id: str,
+    settings: Settings,
+) -> dict[str, Any]:
+    """Execute a mutating suggestion after awaiting_confirm (STA-317 chat parity)."""
+    existing = (
+        client.table("integration_suggestions")
+        .select("*")
+        .eq("org_id", org_id)
+        .eq("id", suggestion_id)
+        .limit(1)
+        .execute()
+    )
+    if not existing.data:
+        raise IntegrationSuggestionError("Suggestion not found", code="SUGGESTION_NOT_FOUND")
+    row = existing.data[0]
+    if str(row.get("status") or "") != "awaiting_confirm":
+        raise IntegrationSuggestionError(
+            "Suggestion is not awaiting confirmation",
+            code="SUGGESTION_NOT_AWAITING_CONFIRM",
+        )
+    suggestion_type = row.get("suggestion_type")
+    if suggestion_type not in MUTATING_SUGGESTION_TYPES:
+        raise IntegrationSuggestionError("Unsupported suggestion type", code="UNSUPPORTED_SUGGESTION_TYPE")
+
+    evidence = dict(row.get("evidence") or {})
+    pending = evidence.get("pending_approval") if isinstance(evidence.get("pending_approval"), dict) else {}
+    params = dict(pending.get("params") or {})
+
+    result: dict[str, Any] = {
+        "workflowId": None,
+        "redirectPath": None,
+        "installResult": None,
+        "requiresApproval": False,
+        "pendingTask": None,
+        "confirmPath": None,
+    }
+
+    if suggestion_type == "automate_workflow":
+        from app.services.assistant_tools import tool_create_workflow
+
+        goal = str(
+            params.get("workflow_goal")
+            or row.get("message")
+            or row.get("title")
+            or "Assistant workflow"
+        ).strip()
+        # Re-check write authority at confirm time (catalog / platform allowlist).
+        _assert_create_workflow_requires_approval()
+        created = tool_create_workflow(org_id, goal, settings, user_id=actor_id)
+        if created.get("error"):
+            raise IntegrationSuggestionError(
+                str(created.get("error") or "Workflow create failed"),
+                code="WORKFLOW_CREATE_FAILED",
+            )
+        workflow_id = str(created.get("id") or "")
+        result["workflowId"] = workflow_id or None
+        result["redirectPath"] = f"/workflows/{workflow_id}/builder" if workflow_id else "/workflows"
+    else:  # install_department_pack
+        pack_id = str(params.get("pack_id") or row.get("pack_id") or "").strip()
         if not pack_id:
             raise IntegrationSuggestionError("Pack id missing on suggestion", code="PACK_ID_MISSING")
         from app.services.agent_role_marketplace_service import install_department_pack
 
-        result["installResult"] = install_department_pack(
+        write_audit_event(
             client,
             org_id,
+            actor_id,
+            "tool.invoke.requested",
+            "marketplace_pack",
             pack_id,
-            actor_id=actor_id,
+            metadata={"action": PACK_INSTALL_INVOKE, "suggestionId": suggestion_id},
         )
+        try:
+            install_result = install_department_pack(
+                client,
+                org_id,
+                pack_id,
+                actor_id=actor_id,
+            )
+        except Exception as exc:  # noqa: BLE001
+            write_audit_event(
+                client,
+                org_id,
+                actor_id,
+                "tool.invoke.failed",
+                "marketplace_pack",
+                pack_id,
+                metadata={
+                    "action": PACK_INSTALL_INVOKE,
+                    "suggestionId": suggestion_id,
+                    "error": str(exc)[:500],
+                },
+            )
+            raise
+        write_audit_event(
+            client,
+            org_id,
+            actor_id,
+            "tool.invoke.completed",
+            "marketplace_pack",
+            pack_id,
+            metadata={"action": PACK_INSTALL_INVOKE, "suggestionId": suggestion_id},
+        )
+        result["installResult"] = install_result
         result["redirectPath"] = f"/marketplace/assets/{pack_id}"
-    elif suggestion_type == "automate_workflow":
-        workflow_id = await _create_workflow_from_suggestion(client, org_id, row, actor_id=actor_id)
-        result["workflowId"] = workflow_id
-        result["redirectPath"] = f"/workflows/{workflow_id}/builder"
-    else:
-        raise IntegrationSuggestionError("Unsupported suggestion type", code="UNSUPPORTED_SUGGESTION_TYPE")
 
+    evidence.pop("pending_approval", None)
+    return _finalize_applied(
+        client,
+        org_id,
+        suggestion_id,
+        {**row, "evidence": evidence},
+        result,
+        actor_id=actor_id,
+        evidence_override=evidence,
+    )
+
+
+def _assert_create_workflow_requires_approval() -> None:
+    from app.services.react_write_gate import tool_requires_user_write_approval
+    from app.services.tool_registry import get_tool_registry
+
+    requires, invoke_action, _integration, _label = tool_requires_user_write_approval(
+        "assistant_create_workflow",
+        get_tool_registry(),
+    )
+    if not requires:
+        raise IntegrationSuggestionError(
+            "assistant_create_workflow is not gated by write authority",
+            code="WRITE_AUTHORITY_MISSING",
+        )
+    if invoke_action and invoke_action != "assistant.create_workflow":
+        raise IntegrationSuggestionError(
+            f"Unexpected invoke_action for create workflow: {invoke_action}",
+            code="WRITE_AUTHORITY_MISMATCH",
+        )
+
+
+def _build_mutating_pending_task(row: dict[str, Any]) -> dict[str, Any]:
+    suggestion_type = str(row.get("suggestion_type") or "")
+    suggestion_id = str(row.get("id") or "")
+    if suggestion_type == "automate_workflow":
+        _assert_create_workflow_requires_approval()
+        goal = str(row.get("message") or row.get("title") or "Assistant workflow").strip()
+        name = str(row.get("title") or "").strip()[:120] or None
+        return {
+            "type": "create_workflow",
+            "status": "awaiting_confirm",
+            "params": {
+                "workflow_goal": goal,
+                **({"workflow_name": name} if name else {}),
+                "source": "integration_suggestion_apply",
+                "suggestion_id": suggestion_id,
+                "tool_name": "assistant_create_workflow",
+                "invoke_action": "assistant.create_workflow",
+            },
+        }
+    if suggestion_type == "install_department_pack":
+        pack_id = str(row.get("pack_id") or "").strip()
+        if not pack_id:
+            raise IntegrationSuggestionError("Pack id missing on suggestion", code="PACK_ID_MISSING")
+        # Pack install is not a connector-catalog action; treat as platform-class write
+        # that always requires approval (parity with PLATFORM_WRITE_TOOLS gating).
+        return {
+            "type": "install_department_pack",
+            "status": "awaiting_confirm",
+            "params": {
+                "pack_id": pack_id,
+                "source": "integration_suggestion_apply",
+                "suggestion_id": suggestion_id,
+                "tool_name": PACK_INSTALL_TOOL,
+                "invoke_action": PACK_INSTALL_INVOKE,
+            },
+        }
+    raise IntegrationSuggestionError("Unsupported suggestion type", code="UNSUPPORTED_SUGGESTION_TYPE")
+
+
+def _approval_required_response(row: dict[str, Any]) -> dict[str, Any]:
+    evidence = row.get("evidence") or {}
+    pending = evidence.get("pending_approval") if isinstance(evidence, dict) else None
+    if not isinstance(pending, dict):
+        pending = _build_mutating_pending_task(row)
+    suggestion_id = str(row.get("id") or "")
+    suggestion = _serialize_suggestion(row)
+    return {
+        "workflowId": None,
+        "redirectPath": None,
+        "installResult": None,
+        "requiresApproval": True,
+        "pendingTask": pending,
+        "confirmPath": f"/api/enterprise/integration-suggestions/{suggestion_id}/confirm",
+        "suggestion": suggestion,
+        "applySummary": {
+            "suggestionType": row.get("suggestion_type"),
+            "title": row.get("title"),
+            "entities": [],
+            "evidenceHighlights": ["Approval required before this write can run"],
+            "redirectPath": None,
+        },
+    }
+
+
+def _finalize_applied(
+    client: Any,
+    org_id: str,
+    suggestion_id: str,
+    row: dict[str, Any],
+    result: dict[str, Any],
+    *,
+    actor_id: str | None = None,
+    evidence_override: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     now = _now_iso()
+    payload: dict[str, Any] = {"status": "applied", "updated_at": now}
+    if evidence_override is not None:
+        payload["evidence"] = evidence_override
     updated = (
         client.table("integration_suggestions")
-        .update({"status": "applied", "updated_at": now})
+        .update(payload)
         .eq("org_id", org_id)
         .eq("id", suggestion_id)
         .execute()
     )
-    applied_row = (updated.data or existing.data)[0]
+    applied_row = (updated.data or [{**row, **payload}])[0]
     suggestion = _serialize_suggestion(applied_row)
     result["suggestion"] = suggestion
     result["applySummary"] = _build_apply_summary(result, row)
+    result.setdefault("requiresApproval", False)
+    result.setdefault("pendingTask", None)
+    result.setdefault("confirmPath", None)
 
     if actor_id:
         write_audit_event(
@@ -703,7 +983,7 @@ async def apply_integration_suggestion(
             RESOURCE_TYPE_INTEGRATION_SUGGESTION,
             suggestion_id,
             metadata={
-                "suggestionType": suggestion_type,
+                "suggestionType": row.get("suggestion_type"),
                 "workflowId": result.get("workflowId"),
                 "redirectPath": result.get("redirectPath"),
             },
@@ -713,7 +993,7 @@ async def apply_integration_suggestion(
         "integration_suggestion_applied org_id=%s suggestion_id=%s type=%s",
         org_id,
         suggestion_id,
-        suggestion_type,
+        row.get("suggestion_type"),
     )
     return result
 

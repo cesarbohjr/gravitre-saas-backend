@@ -75,12 +75,22 @@ def should_run_connector_preflight(
     not swallowed by ``connector_unavailable`` clarify (which only names the first
     missing connector) and so zero-runnable plans reach terminal ``blocked``
     synchronously without a confirm/wait loop.
+
+    STA-305 — omit-name list creates must *not* preflight as orchestration. A comma
+    after the vendor name (e.g. \"In Apollo, create a contact list.\") falsely trips
+    ``is_orchestration_intent``; the LIST_CREATE prefer_connector guard must live
+    here as well as in ``run_connector_fallback_turn`` (parallel-path parity).
     """
     if has_pending_connector_task(task_state):
         return True
     if not (message or "").strip():
         return False
+    from app.services.chat_connector_models import LIST_CREATE_INTENT
     from app.services.chat_orchestration_service import ChatOrchestrationService
+
+    # Prefer governed single-connector auto-plan over multi-step orchestration.
+    if LIST_CREATE_INTENT.search(message or ""):
+        return False
 
     return ChatOrchestrationService.is_orchestration_intent(
         message,

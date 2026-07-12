@@ -11,6 +11,7 @@ from app.services.integration_suggestion_service import (
     aggregate_tool_usage,
     apply_integration_suggestion,
     build_integration_suggestions,
+    confirm_integration_suggestion,
     dismiss_integration_suggestion,
     list_integration_suggestions,
     scan_integration_suggestions,
@@ -21,6 +22,7 @@ def _table(select_data: list | None = None) -> MagicMock:
     mock = MagicMock()
     mock.select.return_value = mock
     mock.eq.return_value = mock
+    mock.in_.return_value = mock
     mock.gte.return_value = mock
     mock.like.return_value = mock
     mock.order.return_value = mock
@@ -245,6 +247,30 @@ def test_scan_integration_suggestions_persists(mock_build, mock_fetch, mock_audi
     mock_audit.assert_called_once()
 
 
+def test_mutating_suggestion_types_are_explicit():
+    """STA-317 — only automate_workflow + install_department_pack are mutating."""
+    from app.services.integration_suggestion_service import MUTATING_SUGGESTION_TYPES
+
+    assert MUTATING_SUGGESTION_TYPES == frozenset(
+        {"automate_workflow", "install_department_pack"}
+    )
+    assert "connect_connector" not in MUTATING_SUGGESTION_TYPES
+
+
+def test_apply_and_confirm_routes_enforce_admin_for_mutating():
+    """STA-317 option both — confirm Depends(require_admin); apply peeks + require_admin."""
+    import inspect
+
+    from app.routers import enterprise as enterprise_router
+
+    apply_src = inspect.getsource(enterprise_router.apply_integration_suggestion_route)
+    confirm_src = inspect.getsource(enterprise_router.confirm_integration_suggestion_route)
+    assert "MUTATING_SUGGESTION_TYPES" in apply_src
+    assert "require_admin" in apply_src
+    assert "Depends(require_admin)" in confirm_src
+    assert "tool.invoke" in confirm_src or "awaiting_confirm" in confirm_src
+
+
 @patch("app.services.integration_suggestion_service.write_audit_event")
 def test_apply_connect_connector_suggestion(mock_audit):
     existing_row = {
@@ -280,11 +306,10 @@ def test_apply_connect_connector_suggestion(mock_audit):
 
 @patch("app.services.integration_suggestion_service.write_audit_event")
 @patch(
-    "app.services.integration_suggestion_service._create_workflow_from_suggestion",
-    new_callable=AsyncMock,
+    "app.services.integration_suggestion_service._assert_create_workflow_requires_approval",
 )
-def test_apply_automate_workflow_creates_draft(mock_create, mock_audit):
-    mock_create.return_value = "wf-1"
+def test_apply_automate_workflow_stages_awaiting_confirm(mock_assert, mock_audit):
+    """STA-317 — mutating apply must not create a workflow until confirm."""
     existing_row = {
         "id": "sug-2",
         "org_id": "org-1",
@@ -303,15 +328,144 @@ def test_apply_automate_workflow_creates_draft(mock_create, mock_audit):
         "created_at": "2026-06-09T00:00:00+00:00",
         "updated_at": "2026-06-09T00:00:00+00:00",
     }
+    staged = {
+        **existing_row,
+        "status": "awaiting_confirm",
+        "evidence": {
+            **existing_row["evidence"],
+            "pending_approval": {
+                "type": "create_workflow",
+                "status": "awaiting_confirm",
+                "params": {
+                    "workflow_goal": "Create workflow for manual tasks",
+                    "tool_name": "assistant_create_workflow",
+                    "invoke_action": "assistant.create_workflow",
+                },
+            },
+        },
+    }
     suggestions_table = _table([existing_row])
     suggestions_table.update.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(
-        data=[{**existing_row, "status": "applied"}]
+        data=[staged]
     )
     client = MagicMock()
     client.table.return_value = suggestions_table
 
     result = asyncio.run(apply_integration_suggestion(client, "org-1", "sug-2", actor_id="user-1"))
+    assert result["requiresApproval"] is True
+    assert result["workflowId"] is None
+    assert result["pendingTask"]["type"] == "create_workflow"
+    assert result["pendingTask"]["params"]["invoke_action"] == "assistant.create_workflow"
+    assert result["confirmPath"] == "/api/enterprise/integration-suggestions/sug-2/confirm"
+    assert result["suggestion"]["status"] == "awaiting_confirm"
+    mock_assert.assert_called()
+    mock_audit.assert_called_once()
+    assert mock_audit.call_args.args[3] == "integration.suggestion.approval_required"
+
+
+@patch("app.services.integration_suggestion_service.write_audit_event")
+@patch(
+    "app.services.assistant_tools.tool_create_workflow",
+    return_value={"id": "wf-1", "name": "Draft", "status": "draft"},
+)
+@patch(
+    "app.services.integration_suggestion_service._assert_create_workflow_requires_approval",
+)
+def test_confirm_automate_workflow_executes_via_tool_create(mock_assert, mock_create, mock_audit):
+    staged = {
+        "id": "sug-2",
+        "org_id": "org-1",
+        "suggestion_type": "automate_workflow",
+        "connector_type": "hubspot",
+        "pack_id": None,
+        "title": "Automate HubSpot workflows",
+        "message": "Create workflow for manual tasks",
+        "evidence": {
+            "pending_approval": {
+                "type": "create_workflow",
+                "status": "awaiting_confirm",
+                "params": {
+                    "workflow_goal": "Create workflow for manual tasks",
+                    "tool_name": "assistant_create_workflow",
+                    "invoke_action": "assistant.create_workflow",
+                },
+            }
+        },
+        "status": "awaiting_confirm",
+        "confidence": 0.8,
+        "priority": 65,
+    }
+    table = _table([staged])
+    table.update.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(
+        data=[{**staged, "status": "applied", "evidence": {}}]
+    )
+    client = MagicMock()
+    client.table.return_value = table
+    settings = MagicMock()
+
+    result = asyncio.run(
+        confirm_integration_suggestion(
+            client, "org-1", "sug-2", actor_id="user-1", settings=settings
+        )
+    )
+    assert result["requiresApproval"] is False
     assert result["workflowId"] == "wf-1"
-    assert result["redirectPath"] == "/workflows/wf-1/builder"
-    mock_create.assert_awaited_once()
+    assert result["suggestion"]["status"] == "applied"
+    mock_create.assert_called_once()
+    mock_assert.assert_called()
+    # applied audit present
+    assert any(
+        call.args[3] == "integration.suggestion.applied" for call in mock_audit.call_args_list
+    )
+
+
+@patch("app.services.integration_suggestion_service.write_audit_event")
+@patch(
+    "app.services.integration_suggestion_service._assert_create_workflow_requires_approval",
+)
+def test_apply_install_pack_stages_awaiting_confirm(mock_assert, mock_audit):
+    _ = mock_assert
+    existing_row = {
+        "id": "sug-pack",
+        "org_id": "org-1",
+        "suggestion_type": "install_department_pack",
+        "connector_type": "hubspot",
+        "pack_id": "sales-ops",
+        "title": "Install Sales Ops pack",
+        "message": "Install pack",
+        "evidence": {},
+        "confidence": 0.9,
+        "priority": 80,
+        "status": "open",
+        "suggested_at": "2026-06-09T00:00:00+00:00",
+        "dismissed_at": None,
+        "created_at": "2026-06-09T00:00:00+00:00",
+        "updated_at": "2026-06-09T00:00:00+00:00",
+    }
+    staged = {
+        **existing_row,
+        "status": "awaiting_confirm",
+        "evidence": {
+            "pending_approval": {
+                "type": "install_department_pack",
+                "status": "awaiting_confirm",
+                "params": {
+                    "pack_id": "sales-ops",
+                    "tool_name": "marketplace_install_department_pack",
+                    "invoke_action": "marketplace.install_department_pack",
+                },
+            }
+        },
+    }
+    table = _table([existing_row])
+    table.update.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(
+        data=[staged]
+    )
+    client = MagicMock()
+    client.table.return_value = table
+
+    result = asyncio.run(apply_integration_suggestion(client, "org-1", "sug-pack", actor_id="user-1"))
+    assert result["requiresApproval"] is True
+    assert result["installResult"] is None
+    assert result["pendingTask"]["params"]["pack_id"] == "sales-ops"
     mock_audit.assert_called_once()
