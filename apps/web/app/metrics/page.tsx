@@ -544,6 +544,7 @@ export default function MetricsPage() {
                 size="sm" 
                 className="h-8 w-8 p-0 md:w-auto md:px-3 md:gap-2" 
                 onClick={handleRefresh}
+                aria-label="Refresh metrics"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${isLoading || isValidating ? "animate-spin" : ""}`} />
               </Button>

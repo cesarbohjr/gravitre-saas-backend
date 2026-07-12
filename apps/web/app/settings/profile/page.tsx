@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useId } from "react"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
@@ -241,7 +241,9 @@ export default function ProfilePage() {
                   />
                   <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full opacity-0 group-hover:opacity-75 blur transition-all duration-500" />
                   <button 
+                    type="button"
                     onClick={() => setShowAvatarModal(true)}
+                    aria-label="Change profile photo"
                     className="relative flex h-24 w-24 items-center justify-center rounded-full ring-4 ring-background overflow-hidden cursor-pointer"
                   >
                     <UserAccountAvatar useCurrentUser className="h-24 w-24 text-2xl" fallbackClassName="text-2xl" />
@@ -251,7 +253,10 @@ export default function ProfilePage() {
                     </div>
                   </button>
                   <button 
+                    type="button"
                     onClick={() => setShowAvatarModal(true)}
+                    aria-hidden="true"
+                    tabIndex={-1}
                     className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-blue-600 hover:scale-110"
                   >
                     <Camera className="h-4 w-4" />
@@ -529,6 +534,7 @@ export default function ProfilePage() {
                     <select 
                       value={profile.timezone}
                       onChange={(e) => handleChange("timezone", e.target.value)}
+                      aria-label="Timezone"
                       className="mt-2 w-full h-11 rounded-xl border border-border bg-card px-4 text-sm text-foreground transition-all duration-200 hover:border-muted-foreground/50 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
                     >
                       <option value="America/Los_Angeles">Pacific Time (PT)</option>
@@ -678,9 +684,10 @@ function InputField({
   onFocus?: () => void
   onBlur?: () => void
 }) {
+  const fieldId = useId()
   return (
     <div className="group">
-      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+      <label htmlFor={fieldId} className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
         {label}
       </label>
       <div className={cn(
@@ -694,6 +701,7 @@ function InputField({
           isActive ? "text-blue-500" : "text-muted-foreground"
         )} />
         <input
+          id={fieldId}
           type={type}
           value={value}
           onChange={(e) => onChange(e.target.value)}
