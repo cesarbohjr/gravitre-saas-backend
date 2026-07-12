@@ -351,30 +351,41 @@ async def delete_lite_seat_department_route(
 
 
 def _resolve_org_user_id(client, org_id: str, email: str) -> str | None:
+    """Resolve email → org member user_id via users + organization_members."""
     normalized = email.strip().lower()
-    members = (
-        client.table("org_members")
-        .select("user_id, users(email)")
-        .eq("org_id", org_id)
-        .execute()
-    )
-    if members.error:
-        return None
-    for row in members.data or []:
-        users = row.get("users") or {}
-        row_email = str(users.get("email") or "").strip().lower()
-        if row_email == normalized:
-            return str(row.get("user_id"))
     profile = (
         client.table("users")
-        .select("id, email")
+        .select("id, auth_user_id, email")
         .ilike("email", normalized)
         .limit(1)
         .execute()
     )
-    if profile.data:
-        return str(profile.data[0].get("id"))
-    return None
+    if getattr(profile, "error", None) or not profile.data:
+        return None
+    row = profile.data[0]
+    candidates: list[str] = []
+    for key in ("auth_user_id", "id"):
+        val = row.get(key)
+        if val:
+            sid = str(val)
+            if sid not in candidates:
+                candidates.append(sid)
+    for user_id in candidates:
+        membership = (
+            client.table("organization_members")
+            .select("user_id")
+            .eq("org_id", org_id)
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        if getattr(membership, "error", None):
+            continue
+        if membership.data:
+            return user_id
+    # Allow add when profile exists even if membership row is missing
+    # (matches prior fallback; route still scopes by org_id on department).
+    return candidates[0] if candidates else None
 
 
 @router.get("/lite-membership")
@@ -458,26 +469,43 @@ async def add_department_member_route(
             {"department_id": body.department_id, "user_id": user_id, "role": role},
             on_conflict="department_id,user_id",
         )
-        .select("id, department_id, user_id, role")
-        .single()
         .execute()
     )
-    if inserted.error:
+    if getattr(inserted, "error", None):
         raise HTTPException(status_code=500, detail=str(inserted.error))
+    member_row = None
+    if isinstance(inserted.data, list) and inserted.data:
+        member_row = inserted.data[0]
+    elif isinstance(inserted.data, dict):
+        member_row = inserted.data
+    if not member_row:
+        fetched = (
+            client.table("department_members")
+            .select("id, department_id, user_id, role")
+            .eq("department_id", body.department_id)
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        if getattr(fetched, "error", None):
+            raise HTTPException(status_code=500, detail=str(fetched.error))
+        member_row = (fetched.data or [None])[0]
+    if not member_row:
+        raise HTTPException(status_code=500, detail="Department member upsert failed")
     write_audit_event(
         client,
         org_id=org_id,
         actor_id=_user["user_id"],
         action="department_member.added",
         resource_type="department_member",
-        resource_id=str((inserted.data or {}).get("id") or user_id),
+        resource_id=str(member_row.get("id") or user_id),
         metadata={
             "departmentId": body.department_id,
             "userId": user_id,
             "role": role,
         },
     )
-    return {"member": inserted.data}
+    return {"member": member_row}
 
 
 @router.delete("/lite-seats/members")
