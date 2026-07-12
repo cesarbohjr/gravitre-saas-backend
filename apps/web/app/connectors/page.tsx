@@ -2466,6 +2466,15 @@ function ConnectorsPageContent() {
                 variant="outline"
                 size="sm"
                 className="gap-2 shrink-0"
+                onClick={() => openAddModal()}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Browse all</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 shrink-0"
                 disabled={isLiveRefreshing || isValidating || !orgId}
                 onClick={() => void refreshLiveStatus()}
               >
@@ -2517,6 +2526,7 @@ function ConnectorsPageContent() {
           entries={availableToConnect}
           onBrowseAll={() => openAddModal()}
           onSelect={(type) => openAddModal(type)}
+          showBrowseAll={false}
         />
 
         {/* Network Topology View */}
