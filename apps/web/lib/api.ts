@@ -2120,6 +2120,17 @@ export const settingsApi = {
 
   // Usage-based billing
   getBillingUsage: () => fetcher<BillingUsageResponse>(apiUrl("/api/settings/billing-usage")),
+
+  // STA-316 Memory Option B — opaque-token entity embeddings (opt-in)
+  getMemoryEntityEmbeddings: () =>
+    fetcher<{ memoryEntityEmbeddings: { enabled: boolean; connectors: string[] } }>(
+      apiUrl("/api/settings/memory-entity-embeddings"),
+    ),
+  updateMemoryEntityEmbeddings: (data: { enabled: boolean; connectors: string[] }) =>
+    putJson<{ memoryEntityEmbeddings: { enabled: boolean; connectors: string[] } }>(
+      apiUrl("/api/settings/memory-entity-embeddings"),
+      data,
+    ),
 }
 
 // ============ Environments ============

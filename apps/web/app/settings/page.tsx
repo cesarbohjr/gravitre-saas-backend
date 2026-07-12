@@ -47,6 +47,7 @@ import Link from "next/link"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { settingsApi, ssoApi } from "@/lib/api"
+import { MemoryEntityEmbeddingsSettings } from "@/components/settings/memory-entity-embeddings-settings"
 import type { ApiKey, BillingUsageResponse, LiteSeatDepartment, MesonAddon, SSOConfiguration, SSOProviderType, User } from "@/types/api"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -61,7 +62,7 @@ interface SettingSection {
 
 const sections: SettingSection[] = [
   { id: "organization", title: "Organization", description: "Manage organization details and branding", icon: Building2 },
-  { id: "ai-models", title: "AI Models", description: "Configure default models and AI behavior", icon: Brain },
+  { id: "ai-models", title: "AI Models", description: "Configure default models, AI behavior, and Memory entity matching", icon: Brain },
   { id: "security", title: "Security", description: "Authentication, SSO, and access controls", icon: Shield },
   { id: "api-keys", title: "API Keys", description: "Manage API keys for integrations", icon: Key },
   { id: "notifications", title: "Notifications", description: "Configure alerts and notification channels", icon: Bell },
@@ -1098,7 +1099,7 @@ function WebhooksSettings() {
   )
 }
 
-function AIModelsSettings() {
+function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [workspaceModel, setWorkspaceModel] = useState("auto")
@@ -1230,6 +1231,8 @@ function AIModelsSettings() {
           </label>
         </div>
       </div>
+
+      <MemoryEntityEmbeddingsSettings isAdmin={isAdmin} />
 
       <Button size="sm" className="gap-2" onClick={handleSave} disabled={isSaving}>
         {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : saved ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
@@ -1595,7 +1598,7 @@ function SettingsContent() {
             }}
           />
         )
-      case "ai-models": return <AIModelsSettings />
+      case "ai-models": return <AIModelsSettings isAdmin={isAdmin} />
       case "security": return <SecuritySettings />
       case "api-keys": return <ApiKeysSettings isAdmin={isAdmin} />
       case "notifications": return <NotificationSettings />
