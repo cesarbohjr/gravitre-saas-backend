@@ -582,11 +582,14 @@ def _install_intelligence_pack_asset(
         agent_id,
         pack_id,
         actor_id=actor_id,
+        asset_id=str(asset.get("id") or ""),
     )
     return {
         "entityType": "intelligence_pack",
-        "entityId": pack_id,
+        # marketplace_installs.installed_entity_id is uuid — use asset id, not slug.
+        "entityId": str(asset["id"]),
         "agentId": agent_id,
+        "packId": pack_id,
         "assignmentIds": [row.get("id") for row in result.get("assignments") or [] if row.get("id")],
         "assignmentCount": result.get("count") or 0,
     }
