@@ -1353,7 +1353,11 @@ class AgentIntelligence:
             )
             return
 
-        if should_run_connector_preflight(task_state, message=task_text):
+        if should_run_connector_preflight(
+            task_state,
+            message=task_text,
+            connected_integrations=list(connected_early or []),
+        ):
             from app.services.chat_orchestration_service import get_chat_orchestration_service
 
             orchestration_turn = await get_chat_orchestration_service(active_settings).process_turn(
@@ -1363,7 +1367,7 @@ class AgentIntelligence:
                 message=task_text,
                 classification=pipeline_classification,
                 task_state=task_state,
-                connected_integrations=connected_early,
+                connected_integrations=list(connected_early or []),
                 client=client,
                 environment_name=environment_name,
             )

@@ -189,13 +189,16 @@ class ClarificationEngine:
             str(c).lower()
             for c in (context.get("connected_integrations") or context.get("connectedIntegrations") or [])
         }
-        for connector in connectors_needed:
-            if connector.lower() not in connected and clarified.get(f"connector_{connector}") != "connected":
-                return {
-                    "trigger_type": "connector_unavailable",
-                    "reason": f"Required connector {connector} is not connected.",
-                    "template_vars": {"connector": connector.replace("_", " ").title()},
-                }
+        # STA-307 — multi-connector asks belong to orchestration (correct labels +
+        # zero-runnable blocked), not a single-connector unavailable clarify.
+        if len(connectors_needed) < 2:
+            for connector in connectors_needed:
+                if connector.lower() not in connected and clarified.get(f"connector_{connector}") != "connected":
+                    return {
+                        "trigger_type": "connector_unavailable",
+                        "reason": f"Required connector {connector} is not connected.",
+                        "template_vars": {"connector": connector.replace("_", " ").title()},
+                    }
 
         if classification.get("requires_action") and self.ACTION_VERBS.search(request):
             if not clarified.get("action_target") and not understanding.get("entities"):
