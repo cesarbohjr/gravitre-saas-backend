@@ -1,0 +1,225 @@
+{
+  "ticket": "STA-313",
+  "title": "Knowledge Phase 2 measured rerank eval",
+  "ran_at": "2026-07-12T08:06:52.536310+00:00",
+  "queries_path": "C:/Users/Cesar/Downloads/Gravitre Operator AI/docs/delivery/sta313-rerank-eval-queries.json",
+  "n_queries": 8,
+  "n_corpus": 14,
+  "top_k": 3,
+  "baseline": {
+    "name": "ms-marco-MiniLM-L-6-v2",
+    "status": "degraded",
+    "error": null,
+    "n_queries_scored": 8,
+    "top_k": 3,
+    "mean_precision_at_k": 0.9375,
+    "mean_mrr": 1.0,
+    "methods": [
+      "cross_encoder_unavailable+lexical_fallback"
+    ],
+    "per_query": [
+      {
+        "id": "hybrid_search",
+        "precision_at_k": 1.0,
+        "mrr": 1.0,
+        "ranked_ids": [
+          "doc-hybrid-overview",
+          "doc-hybrid-rrf",
+          "doc-noise-apollo"
+        ],
+        "method": "cross_encoder_unavailable+lexical_fallback"
+      },
+      {
+        "id": "pipeline_hygiene",
+        "precision_at_k": 1.0,
+        "mrr": 1.0,
+        "ranked_ids": [
+          "doc-stale-opps",
+          "doc-pipeline-hygiene",
+          "doc-connector-ingest"
+        ],
+        "method": "cross_encoder_unavailable+lexical_fallback"
+      },
+      {
+        "id": "connector_sync",
+        "precision_at_k": 1.0,
+        "mrr": 1.0,
+        "ranked_ids": [
+          "doc-connector-ingest",
+          "doc-finance-pilot",
+          "doc-approval-gate"
+        ],
+        "method": "cross_encoder_unavailable+lexical_fallback"
+      },
+      {
+        "id": "incident_response",
+        "precision_at_k": 1.0,
+        "mrr": 1.0,
+        "ranked_ids": [
+          "doc-pagerduty-runbook",
+          "doc-hybrid-overview",
+          "doc-hybrid-rrf"
+        ],
+        "method": "cross_encoder_unavailable+lexical_fallback"
+      },
+      {
+        "id": "finance_pilot",
+        "precision_at_k": 1.0,
+        "mrr": 1.0,
+        "ranked_ids": [
+          "doc-finance-pilot",
+          "doc-hybrid-overview",
+          "doc-hybrid-rrf"
+        ],
+        "method": "cross_encoder_unavailable+lexical_fallback"
+      },
+      {
+        "id": "approval_gate",
+        "precision_at_k": 1.0,
+        "mrr": 1.0,
+        "ranked_ids": [
+          "doc-approval-gate",
+          "doc-execute-plan",
+          "doc-finance-pilot"
+        ],
+        "method": "cross_encoder_unavailable+lexical_fallback"
+      },
+      {
+        "id": "rag_rerank",
+        "precision_at_k": 0.5,
+        "mrr": 1.0,
+        "ranked_ids": [
+          "doc-rerank-msmarco",
+          "doc-hybrid-overview",
+          "doc-noise-apollo"
+        ],
+        "method": "cross_encoder_unavailable+lexical_fallback"
+      },
+      {
+        "id": "department_scope",
+        "precision_at_k": 1.0,
+        "mrr": 1.0,
+        "ranked_ids": [
+          "doc-department-members",
+          "doc-hybrid-overview",
+          "doc-hybrid-rrf"
+        ],
+        "method": "cross_encoder_unavailable+lexical_fallback"
+      }
+    ],
+    "note": "Cross-encoder weights unavailable in this environment; scores used lexical fallback and are not an upgrade decision."
+  },
+  "candidates": [
+    {
+      "name": "lexical_overlap",
+      "status": "ok",
+      "error": null,
+      "n_queries_scored": 8,
+      "top_k": 3,
+      "mean_precision_at_k": 0.9375,
+      "mean_mrr": 1.0,
+      "methods": [
+        "lexical_overlap"
+      ],
+      "per_query": [
+        {
+          "id": "hybrid_search",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-hybrid-overview",
+            "doc-hybrid-rrf",
+            "doc-noise-apollo"
+          ],
+          "method": "lexical_overlap"
+        },
+        {
+          "id": "pipeline_hygiene",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-stale-opps",
+            "doc-pipeline-hygiene",
+            "doc-connector-ingest"
+          ],
+          "method": "lexical_overlap"
+        },
+        {
+          "id": "connector_sync",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-connector-ingest",
+            "doc-finance-pilot",
+            "doc-approval-gate"
+          ],
+          "method": "lexical_overlap"
+        },
+        {
+          "id": "incident_response",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-pagerduty-runbook",
+            "doc-hybrid-overview",
+            "doc-hybrid-rrf"
+          ],
+          "method": "lexical_overlap"
+        },
+        {
+          "id": "finance_pilot",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-finance-pilot",
+            "doc-hybrid-overview",
+            "doc-hybrid-rrf"
+          ],
+          "method": "lexical_overlap"
+        },
+        {
+          "id": "approval_gate",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-approval-gate",
+            "doc-execute-plan",
+            "doc-finance-pilot"
+          ],
+          "method": "lexical_overlap"
+        },
+        {
+          "id": "rag_rerank",
+          "precision_at_k": 0.5,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-rerank-msmarco",
+            "doc-hybrid-overview",
+            "doc-noise-apollo"
+          ],
+          "method": "lexical_overlap"
+        },
+        {
+          "id": "department_scope",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-department-members",
+            "doc-hybrid-overview",
+            "doc-hybrid-rrf"
+          ],
+          "method": "lexical_overlap"
+        }
+      ],
+      "note": null
+    }
+  ],
+  "comparison": {
+    "upgrade_authorized": false,
+    "recommendations": [
+      "Baseline not fully scored (error or degraded fallback) \u2014 do not change production reranker."
+    ]
+  },
+  "production_default_unchanged": true,
+  "verdict": "KEEP_MS_MARCO"
+}

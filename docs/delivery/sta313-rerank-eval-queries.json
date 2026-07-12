@@ -1,0 +1,119 @@
+{
+  "ticket": "STA-313",
+  "title": "Knowledge Phase 2 rerank eval — fixed query set",
+  "note": "Hermetic labeled corpus for measured comparison. Prod RAG queries can be appended later via scripts/eval-knowledge-rerank.py --from-prod; they do not replace this fixed set.",
+  "queries": [
+    {
+      "id": "hybrid_search",
+      "query": "How does hybrid search combine vector similarity and BM25 keyword ranking?",
+      "relevant_ids": ["doc-hybrid-rrf", "doc-hybrid-overview"]
+    },
+    {
+      "id": "pipeline_hygiene",
+      "query": "Review stale opportunities weekly with no activity in fourteen days",
+      "relevant_ids": ["doc-stale-opps", "doc-pipeline-hygiene"]
+    },
+    {
+      "id": "connector_sync",
+      "query": "Connector knowledge sync ingests Notion Confluence HubSpot Zendesk",
+      "relevant_ids": ["doc-connector-ingest"]
+    },
+    {
+      "id": "incident_response",
+      "query": "When PagerDuty alerts fire summarize severity and customer impact",
+      "relevant_ids": ["doc-pagerduty-runbook"]
+    },
+    {
+      "id": "finance_pilot",
+      "query": "QuickBooks and NetSuite read-only connectors during pilots",
+      "relevant_ids": ["doc-finance-pilot"]
+    },
+    {
+      "id": "approval_gate",
+      "query": "Connector write actions require human confirm before execute_plan",
+      "relevant_ids": ["doc-approval-gate", "doc-execute-plan"]
+    },
+    {
+      "id": "rag_rerank",
+      "query": "Cross-encoder ms-marco MiniLM reranks hybrid RAG candidates",
+      "relevant_ids": ["doc-rerank-msmarco", "doc-hybrid-rrf"]
+    },
+    {
+      "id": "department_scope",
+      "query": "Department scoped agents and lite seat members",
+      "relevant_ids": ["doc-department-members"]
+    }
+  ],
+  "corpus": [
+    {
+      "id": "doc-hybrid-overview",
+      "title": "Hybrid retrieval overview",
+      "content": "Gravitre hybrid search retrieves semantic vector neighbors and BM25 keyword matches, then merges ranked lists before optional cross-encoder reranking."
+    },
+    {
+      "id": "doc-hybrid-rrf",
+      "title": "RRF merge",
+      "content": "Reciprocal Rank Fusion (RRF) combines vector similarity ranks and BM25 keyword ranks into a single candidate list for the reranker."
+    },
+    {
+      "id": "doc-rerank-msmarco",
+      "title": "ms-marco cross-encoder",
+      "content": "The default RAG cross-encoder is cross-encoder/ms-marco-MiniLM-L-6-v2. It scores query-document pairs and filters by rag_rerank_score_threshold."
+    },
+    {
+      "id": "doc-stale-opps",
+      "title": "Stale opportunities",
+      "content": "Pipeline hygiene playbook: review opportunities with no activity in fourteen days and escalate owners weekly."
+    },
+    {
+      "id": "doc-pipeline-hygiene",
+      "title": "Pipeline hygiene",
+      "content": "Weekly stale opportunity review keeps CRM forecast accurate. Skip closed-won and closed-lost records."
+    },
+    {
+      "id": "doc-connector-ingest",
+      "title": "Connector knowledge sync",
+      "content": "Connector knowledge sync ingests Notion, Confluence, HubSpot, and Zendesk articles into org RAG sources for retrieval."
+    },
+    {
+      "id": "doc-pagerduty-runbook",
+      "title": "PagerDuty incident summary",
+      "content": "When PagerDuty alerts fire, summarize severity, impacted customers, and open incidents before paging on-call."
+    },
+    {
+      "id": "doc-finance-pilot",
+      "title": "Finance connector pilots",
+      "content": "During pilots, QuickBooks and NetSuite connectors stay read-only. Writes remain behind approval gates."
+    },
+    {
+      "id": "doc-approval-gate",
+      "title": "Human confirmation",
+      "content": "Connector write actions require human confirm. The assistant presents a pending task; execute_plan runs only after confirmation."
+    },
+    {
+      "id": "doc-execute-plan",
+      "title": "execute_plan gate",
+      "content": "execute_plan is the shared write gate for conversational operator confirms. Recommendation cards must not bypass it."
+    },
+    {
+      "id": "doc-department-members",
+      "title": "Department members",
+      "content": "Lite seat department_members control which users see department-scoped agents and packs. Add and remove emit audit events."
+    },
+    {
+      "id": "doc-noise-apollo",
+      "title": "Apollo lists",
+      "content": "Apollo people search and list creation are unrelated to RAG hybrid retrieval math."
+    },
+    {
+      "id": "doc-noise-slack",
+      "title": "Slack channels",
+      "content": "Posting Slack messages uses chat_action_mapper catalog kinds and does not describe BM25 or RRF."
+    },
+    {
+      "id": "doc-noise-billing",
+      "title": "Billing plans",
+      "content": "Meson and Control plan limits are billing topics, not retrieval ranking."
+    }
+  ]
+}

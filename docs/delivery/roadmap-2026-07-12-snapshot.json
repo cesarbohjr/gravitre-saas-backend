@@ -1,0 +1,33 @@
+{
+  "document": "Roadmap snapshot 2026-07-12 (post Part D P1/P3 confirm + ML start)",
+  "as_of": "2026-07-12",
+  "part_d": {
+    "P1_P3": "CLOSED — prod SHA a3e69a22, PR #96, three distinct live traces",
+    "P2": "Collapsed/closed — shared create_workflow spine",
+    "P4_P5_P6": {
+      "STA-309_310_311": "Merged PR #102 → prod SHA 473454da; unit PASS",
+      "strict_bar": "NOT fully closed — missing distinct live API traces for uninstall / intelligence_pack install / department_member audit",
+      "artifact": "docs/delivery/part-d-p4-p6-implementation.json"
+    }
+  },
+  "closed": {
+    "waves_0_7": true,
+    "routing_wave": true,
+    "STA-305": "prod-verified 473454da",
+    "STA-307": "prod-verified",
+    "STA-315": "merged PR #103 → 4f546439 (maxDuration 300)"
+  },
+  "open": {
+    "STA-308": "PR #104 open — stale title Option 1",
+    "STA-313": "In Progress — Knowledge rerank measured eval",
+    "STA-314": "Backlog → starting after/with 313 harness",
+    "STA-312": "Memory reopen — named owner + Option A/B/C"
+  },
+  "parked": {
+    "memory_phase_1_embeddings": "organizational blocker — not eng"
+  },
+  "ml": {
+    "phase_2_knowledge_rerank": "STA-313 started — harness + fixed query set; no silent provider swap",
+    "phase_3_recommendation_heuristics": "STA-314 next — suggest-only + no-auto-execute tests"
+  }
+}
