@@ -5,8 +5,14 @@ import { NextRequest } from "next/server"
 // forwards the request (with the caller's JWT + org) and streams the backend's
 // AI SDK UI message stream back to the browser.
 
-// Assistant pipeline (retrieval + ReAct + follow-up chips) can exceed 30s on tool-heavy turns.
-export const maxDuration = 120
+// STA-315 / STA-307 residual: confirm-via-chat ("yes") and tool-heavy turns run
+// through this proxy for the full stream lifetime. A 120s ceiling false-failed
+// the UI while backend execute (button path) finished in ~1s. Match the
+// notifications SSE ceiling (300) — Vercel Pro fluid max — so healthy long
+// confirms are not truncated solely by the Next.js proxy.
+// Note: only Next.js segment config exports are allowed from this file
+// (do not export a named constant for the ceiling — it breaks `next build`).
+export const maxDuration = 300
 
 function getBackendBaseUrl(): string | null {
   const value = process.env.FASTAPI_BASE_URL?.trim()
