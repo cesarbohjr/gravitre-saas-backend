@@ -1,0 +1,32 @@
+{
+  "ticket": "STA-305",
+  "probed_at": "2026-07-12T07:01:52.079945+00:00",
+  "local_mapper": {
+    "segment": "draft a follow-up in Slack for approval",
+    "matched_action": "slack.post_message",
+    "kind": "write",
+    "score": 48.0,
+    "args": {
+      "channel": "general",
+      "message": "follow-up",
+      "text": "follow-up"
+    },
+    "pass": true
+  },
+  "live": {
+    "sha": "e1527c638e0cc9e56f0149377893b8ef7a527db9",
+    "conversation_id": "59289661-b522-4fe5-b5ea-9521b6f88c82",
+    "marker": "c027c6f0",
+    "http": 200,
+    "elapsed_ms": 5803,
+    "labels": [
+      "Hubspot (not connected)",
+      "List channels"
+    ],
+    "text_head": "I planned a **2-step orchestration**:\n\n1. \u25cb Hubspot (not connected) \u2014 *skipped* (Connect Hubspot in Gravitre to run this action.)\n2. **List channels** (read, approval required)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change.",
+    "list_channels_seen": true,
+    "post_like_seen": false,
+    "pass": false
+  },
+  "verdict": "FAIL"
+}

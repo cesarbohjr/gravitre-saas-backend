@@ -180,3 +180,62 @@ def test_missing_connector_skip_reason():
     )
     assert reason is not None
     assert "Connect" in reason
+
+
+def test_sta305_slack_draft_not_list_channels():
+    """STA-305: draft lexicon + catalog-kind — never crown List channels."""
+    match = get_chat_action_mapper().match_segment(
+        "draft a follow-up in Slack for approval",
+        connected_integrations=["slack"],
+    )
+    assert match is not None
+    assert "post_message" in match.entry.registry_key
+    assert "list" not in match.entry.action_key
+
+
+def test_sta305_asana_omit_title_prefers_tasks_create():
+    match = get_chat_action_mapper().match_segment(
+        "Create an Asana task.",
+        connected_integrations=["asana"],
+    )
+    assert match is not None
+    assert match.entry.registry_key == "asana.tasks.create"
+    assert "stories" not in match.entry.action_key
+
+
+def test_sta305_jira_omit_fields_prefers_issues_create():
+    match = get_chat_action_mapper().match_segment(
+        "Create a Jira issue.",
+        connected_integrations=["jira"],
+    )
+    assert match is not None
+    assert "issues.create" in match.entry.action_key
+    assert "update" not in match.entry.action_key
+
+
+def test_sta305_gmail_send_not_drafts_lookalike():
+    match = get_chat_action_mapper().match_segment(
+        "Send an email via Gmail.",
+        connected_integrations=["gmail"],
+    )
+    assert match is not None
+    assert match.entry.registry_key == "gmail.messages.send"
+
+
+def test_sta305_apollo_omit_name_prefers_lists_create():
+    match = get_chat_action_mapper().match_segment(
+        "In Apollo, create a contact list.",
+        connected_integrations=["apollo"],
+    )
+    assert match is not None
+    assert match.entry.action_key == "apollo.lists.create"
+    assert "list" not in match.entry.action_key.split("lists.")[-1] or "create" in match.entry.action_key
+
+
+def test_sta305_hubspot_contact_create_omit_name():
+    match = get_chat_action_mapper().match_segment(
+        "Create a HubSpot contact.",
+        connected_integrations=["hubspot"],
+    )
+    assert match is not None
+    assert match.entry.registry_key == "hubspot.contacts.create"

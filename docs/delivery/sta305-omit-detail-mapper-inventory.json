@@ -1,0 +1,219 @@
+{
+  "ticket": "STA-305",
+  "title": "NL mapper: omit-detail create intents shadowed by list/search/lookalike actions",
+  "investigated_at": "2026-07-11T23:55:00Z",
+  "method": {
+    "mapper": "backend/app/services/chat_action_mapper.py",
+    "api": "get_chat_action_mapper().match_segment(message, connected_integrations=[...])",
+    "scope": "local mapper probes only — no prod writes",
+    "code_paths": {
+      "args_gate": "match_segment skips candidates when _extract_args returns None (lines 83–85)",
+      "read_permissive": "_extract_args kind==read always gets query/limit for search/list (lines 270–283)",
+      "write_fallthrough": "WRITE_VERBS → {\"payload\": {\"intent_text\": text}} for any unmatched write/advanced (lines 429–430)",
+      "apollo_boost": "LIST_CREATE_INTENT +40 lists.create / −40 list+contact lookalikes (lines 219–234) — does not keep create when args missing"
+    }
+  },
+  "class_verdict": {
+    "is_structural": true,
+    "summary": "Structural class bug, not one-offs. Strict create extractors return None on omit-detail; those high-score creates are dropped; any other write/advanced with WRITE_VERBS fallthrough (or a lookalike phrase boost) wins. Apollo scoring mitigations only change relative scores — they do not preserve create identity when args fail.",
+    "root_patterns": [
+      {
+        "id": "args_gate_drop",
+        "description": "Correct *.create scores highest but _extract_args returns None → candidate discarded"
+      },
+      {
+        "id": "write_intent_text_fallthrough",
+        "description": "Generic WRITE_VERBS payload lets update/delete/stories/comment/drafts/labels win at equal base write score"
+      },
+      {
+        "id": "phrase_lookalike",
+        "description": "Substring/phrase boosts match wrong resource (e.g. 'contact list' → contacts.create)"
+      },
+      {
+        "id": "title_overcapture",
+        "description": "When create does pass args gate, name/title regex over-captures ('named Review' → name 'named Review')"
+      },
+      {
+        "id": "catalog_gap",
+        "description": "HubSpot has no lists.create in chat matrix — only lists.add_contact — so list-create NL cannot bind correctly"
+      }
+    ],
+    "recommended_fix_layer": "shared_catalog_kind_authority",
+    "recommendation_detail": "Prefer shared catalog-kind authority over per-scenario score tweaks: when write/create intent is clear and the top-scoring create candidate fails only on missing required args, keep that action_key identity and route to clarify/auto-plan (inferred_fields / assumption_notes) — never silent fallthrough via intent_text payload to lookalike update/list/search/stories. Per-integration boosts (Apollo LIST_CREATE_INTENT) are insufficient and already proven incomplete for omit-name. Secondary: tighten phrase boundaries (contact list ≠ contact) and title extractors; add HubSpot list-create only if catalog supports it.",
+    "not_recommended_as_primary": "Per-scenario score patches alone (Apollo-style ±40) — they still lose when args gate drops the create candidate"
+  },
+  "table": [
+    {
+      "message": "Create a contact list in HubSpot.",
+      "connected": ["hubspot"],
+      "matched_action": "hubspot.contacts.create",
+      "matched_kind": "write",
+      "score": 52.0,
+      "args": {"properties": {"firstname": "Imported contact"}},
+      "correct": false,
+      "expected_action": "hubspot.lists.create (not in chat matrix; only hubspot.lists.add_contact exists)",
+      "create_intent_shadowed": true,
+      "shadow_pattern": "phrase_lookalike",
+      "notes": "Regex create (hubspot )?contacts? matches inside 'contact list'; +22 boost. Highest create candidate for lists does not exist in catalog. contacts.search also scores 44 via read permissive query='in'."
+    },
+    {
+      "message": "Create a HubSpot contact.",
+      "connected": ["hubspot"],
+      "matched_action": "hubspot.contacts.create",
+      "matched_kind": "write",
+      "score": 52.0,
+      "args": {"properties": {"firstname": "Imported contact"}},
+      "correct": true,
+      "expected_action": "hubspot.contacts.create",
+      "create_intent_shadowed": false,
+      "shadow_pattern": null,
+      "notes": "Intentional placeholder when omit email — args gate passes via create-contact regex. Not a shadow case."
+    },
+    {
+      "message": "Create a HubSpot deal.",
+      "connected": ["hubspot"],
+      "matched_action": "hubspot.deals.create",
+      "matched_kind": "write",
+      "score": 30.0,
+      "args": {"properties": {"dealname": "New deal from chat"}},
+      "correct": true,
+      "expected_action": "hubspot.deals.create",
+      "create_intent_shadowed": false,
+      "shadow_pattern": null,
+      "notes": "Placeholder dealname. Fragile: deals.delete/update/update_stage also score 30 via write_intent_text_fallthrough; create wins only because it appears first among ties after its dedicated extractor succeeds."
+    },
+    {
+      "message": "Create an Asana task.",
+      "connected": ["asana"],
+      "matched_action": "asana.stories.create",
+      "matched_kind": "write",
+      "score": 22.0,
+      "args": {"payload": {"intent_text": "Create an Asana task."}},
+      "correct": false,
+      "expected_action": "asana.tasks.create",
+      "create_intent_shadowed": true,
+      "shadow_pattern": "args_gate_drop+write_intent_text_fallthrough",
+      "notes": "asana.tasks.create scores 42 (+16/+20 create-task boosts) but _extract_asana_task_args returns None (no title after 'task'). Dropped by args gate. First equal-score write with intent_text fallthrough wins: stories.create."
+    },
+    {
+      "message": "Create a task in Asana named Review.",
+      "connected": ["asana"],
+      "matched_action": "asana.tasks.create",
+      "matched_kind": "write",
+      "score": 38.0,
+      "args": {"name": "named Review"},
+      "correct": "partial",
+      "expected_action": "asana.tasks.create",
+      "create_intent_shadowed": false,
+      "shadow_pattern": "title_overcapture",
+      "notes": "Correct action wins, but title regex captures 'named Review' instead of 'Review'. Not classic list/search shadow."
+    },
+    {
+      "message": "Create a Jira issue.",
+      "connected": ["jira"],
+      "matched_action": "jira.issues.update",
+      "matched_kind": "write",
+      "score": 30.0,
+      "args": {"payload": {"intent_text": "Create a Jira issue."}},
+      "correct": false,
+      "expected_action": "jira.issues.create",
+      "create_intent_shadowed": true,
+      "shadow_pattern": "args_gate_drop+write_intent_text_fallthrough",
+      "notes": "issues.create scores 30 but requires quoted summary (and optional project) — returns None. issues.update is first matrix entry among equal-score OK writes (comment/transition/assign also tied)."
+    },
+    {
+      "message": "Create a Jira issue titled Bug.",
+      "connected": ["jira"],
+      "matched_action": "jira.issues.update",
+      "matched_kind": "write",
+      "score": 30.0,
+      "args": {"payload": {"intent_text": "Create a Jira issue titled Bug."}},
+      "correct": false,
+      "expected_action": "jira.issues.create",
+      "create_intent_shadowed": true,
+      "shadow_pattern": "args_gate_drop+write_intent_text_fallthrough",
+      "notes": "Title extractor only accepts quoted summary — 'titled Bug' not parsed. Same shadow as omit case."
+    },
+    {
+      "message": "Send an email via Gmail.",
+      "connected": ["gmail"],
+      "matched_action": "gmail.drafts.create",
+      "matched_kind": "write",
+      "score": 22.0,
+      "args": {"payload": {"intent_text": "Send an email via Gmail."}},
+      "correct": false,
+      "expected_action": "gmail.messages.send",
+      "create_intent_shadowed": true,
+      "shadow_pattern": "args_gate_drop+write_intent_text_fallthrough",
+      "notes": "messages.send requires email address → None. drafts.create wins first among equal-score fallthrough writes (labels.create, threads.modify, etc. also tied)."
+    },
+    {
+      "message": "Create a Gmail draft.",
+      "connected": ["gmail"],
+      "matched_action": "gmail.drafts.create",
+      "matched_kind": "write",
+      "score": 22.0,
+      "args": {"payload": {"intent_text": "Create a Gmail draft."}},
+      "correct": true,
+      "expected_action": "gmail.drafts.create",
+      "create_intent_shadowed": false,
+      "shadow_pattern": null,
+      "notes": "Action key correct, but only via generic intent_text fallthrough — no dedicated drafts extractor. Fragile vs labels.create at same score."
+    },
+    {
+      "message": "Post a message to Slack.",
+      "connected": ["slack"],
+      "matched_action": "slack.post_message",
+      "matched_kind": "write",
+      "score": 42.0,
+      "args": {"channel": "general", "message": "a message", "text": "a message"},
+      "correct": true,
+      "expected_action": "slack.post_message",
+      "create_intent_shadowed": false,
+      "shadow_pattern": null,
+      "notes": "Control — dedicated slack post_message scoring (+20) and args (channel default general) keep correct action."
+    }
+  ],
+  "extra_probes": [
+    {
+      "message": "In Apollo, create a contact list.",
+      "connected": ["apollo"],
+      "matched_action": "apollo.contacts.update",
+      "matched_kind": "advanced",
+      "score": 18.0,
+      "args": {"payload": {"intent_text": "In Apollo, create a contact list."}},
+      "correct": false,
+      "expected_action": "apollo.lists.create",
+      "create_intent_shadowed": true,
+      "shadow_pattern": "args_gate_drop+write_intent_text_fallthrough",
+      "notes": "lists.create scores 72 (LIST_CREATE_INTENT +40) but omit-name → args None → still shadowed. Mapper-level FAIL; Wave 6–7 process_turn fallthrough/auto-plan is outside match_segment. Named variant 'Create a contact list in Apollo named MSP Prospects.' correctly matches lists.create."
+    },
+    {
+      "message": "Create a Monday task.",
+      "connected": ["monday"],
+      "matched_action": "monday.items.update",
+      "matched_kind": "write",
+      "score": 38.0,
+      "args": {"payload": {"intent_text": "Create a Monday task."}},
+      "correct": false,
+      "expected_action": "monday.items.create",
+      "create_intent_shadowed": true,
+      "shadow_pattern": "args_gate_drop+write_intent_text_fallthrough",
+      "notes": "Same class: items.create needs item_name; omit → None; update wins via intent_text. 'Create a Monday task named Review.' also fails create extractor (vendor token between 'a' and 'task')."
+    },
+    {
+      "message": "Create a HubSpot contact named Jane.",
+      "connected": ["hubspot"],
+      "matched_action": "hubspot.contacts.create",
+      "matched_kind": "write",
+      "score": 52.0,
+      "args": {"properties": {"firstname": "Imported contact"}},
+      "correct": "partial",
+      "expected_action": "hubspot.contacts.create",
+      "create_intent_shadowed": false,
+      "shadow_pattern": "title_overcapture",
+      "notes": "Related extractor gap: named Jane ignored; placeholder firstname used. Not a shadow, but same omit-detail fragility family."
+    }
+  ],
+  "markdown_table": "| Message | Connected | Matched action | Correct? | Shadow pattern | Notes |\n| --- | --- | --- | --- | --- | --- |\n| Create a contact list in HubSpot. | hubspot | hubspot.contacts.create | No | phrase_lookalike | 'contact list' stolen by contacts.create boost; no lists.create in matrix |\n| Create a HubSpot contact. | hubspot | hubspot.contacts.create | Yes | — | Intentional placeholder firstname |\n| Create a HubSpot deal. | hubspot | hubspot.deals.create | Yes | — | Placeholder dealname; fragile vs equal-score update/delete fallthrough |\n| Create an Asana task. | asana | asana.stories.create | No | args_gate_drop + write_fallthrough | tasks.create score 42 but args None → stories.create |\n| Create a task in Asana named Review. | asana | asana.tasks.create | Partial | title_overcapture | Action OK; name='named Review' |\n| Create a Jira issue. | jira | jira.issues.update | No | args_gate_drop + write_fallthrough | create needs quoted summary |\n| Create a Jira issue titled Bug. | jira | jira.issues.update | No | args_gate_drop + write_fallthrough | 'titled' not parsed as summary |\n| Send an email via Gmail. | gmail | gmail.drafts.create | No | args_gate_drop + write_fallthrough | send needs email → drafts.create lookalike |\n| Create a Gmail draft. | gmail | gmail.drafts.create | Yes | — | Correct key via generic fallthrough only |\n| Post a message to Slack. | slack | slack.post_message | Yes | — | Control |\n| In Apollo, create a contact list. | apollo | apollo.contacts.update | No | args_gate_drop + write_fallthrough | lists.create score 72 still dropped on omit name |\n| Create a Monday task. | monday | monday.items.update | No | args_gate_drop + write_fallthrough | Extra clear create — same class |"
+}

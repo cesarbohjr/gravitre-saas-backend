@@ -1,0 +1,37 @@
+{
+  "wave": "Part D P4–P6",
+  "implemented_at": "2026-07-12",
+  "tickets": {
+    "P4": {
+      "id": "STA-309",
+      "url": "https://linear.app/staqbot/issue/STA-309/part-d-p4-pack-uninstall-must-tear-down-spawned-entities",
+      "fix": "uninstall_marketplace_asset soft-deactivates agents/workflows/rag + legacy org_department_pack_installs",
+      "files": [
+        "backend/app/marketplace/support.py",
+        "backend/tests/marketplace/test_marketplace_uninstall.py"
+      ],
+      "unit": "PASS — test_marketplace_uninstall.py"
+    },
+    "P5": {
+      "id": "STA-310",
+      "url": "https://linear.app/staqbot/issue/STA-310/part-d-p5-wire-intelligence-pack-install-into-marketplace-install",
+      "fix": "install_asset intelligence_pack branch → install_intelligence_pack (requires agentId)",
+      "files": [
+        "backend/app/marketplace/service.py",
+        "backend/tests/marketplace/test_marketplace_install_intelligence_pack.py"
+      ],
+      "unit": "PASS — test_marketplace_install_intelligence_pack.py"
+    },
+    "P6": {
+      "id": "STA-311",
+      "url": "https://linear.app/staqbot/issue/STA-311/part-d-p6-audit-department-members-permission-changes",
+      "fix": "write_audit_event on department_member.added / department_member.removed",
+      "files": [
+        "backend/app/routers/settings.py",
+        "backend/tests/routers/test_settings_department_members_audit.py"
+      ],
+      "unit": "PASS — test_settings_department_members_audit.py"
+    }
+  },
+  "api_evidence_note": "Unit coverage lands with this PR; live API traces require deploy of branch sta-305-memory-adr-p4-p6"
+}

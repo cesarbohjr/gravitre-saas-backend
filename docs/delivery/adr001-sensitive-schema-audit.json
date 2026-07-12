@@ -1,0 +1,80 @@
+{
+  "document": "ADR 001 — priority-connector sensitive multi-field schema audit",
+  "audited_at": "2026-07-12",
+  "criterion": "At least 5 priority connectors have multi-field write schemas with assignee/email-style sensitive fields",
+  "priority_connectors": ["hubspot", "asana", "apollo", "slack", "jira"],
+  "baseline_verdict": "NOT_MET",
+  "baseline_qualifying_count": 1,
+  "note": "Freeze NOT MET baseline before schema flags. Allowlist shrinks already met (len 0) do not satisfy this criterion.",
+  "connectors": [
+    {
+      "connector": "asana",
+      "action": "asana.tasks.create",
+      "schema_path": "backend/app/connectors/action_catalog/action_workflow_schema.py",
+      "multi_field": true,
+      "sensitive_fields": [
+        {"label": "due date", "arg_keys": ["due_on"], "sensitive": true},
+        {"label": "Assignee", "arg_keys": ["assignee_hint", "assignee"], "sensitive": true}
+      ],
+      "qualifies_baseline": true,
+      "qualifies_after_fix": true
+    },
+    {
+      "connector": "hubspot",
+      "action": "hubspot.contacts.create",
+      "schema_path": "backend/app/connectors/action_catalog/action_workflow_schema.py",
+      "multi_field": true,
+      "sensitive_fields_baseline": [],
+      "email_style_fields_unmarked": [
+        {"label": "email or contact name", "arg_keys": ["email", "firstname", "properties"], "sensitive": false}
+      ],
+      "qualifies_baseline": false,
+      "qualifies_after_fix": true,
+      "fix": "Mark email-or-contact-name WorkflowFieldSpec sensitive=True"
+    },
+    {
+      "connector": "apollo",
+      "action": "apollo.contacts.create",
+      "schema_path": "backend/app/connectors/action_catalog/workflow_schemas_batch_25.py",
+      "multi_field": false,
+      "sensitive_fields_baseline": [],
+      "email_style_fields_unmarked": [
+        {"label": "contact email or name", "arg_keys": ["email", "first_name", "firstname", "payload"], "sensitive": false}
+      ],
+      "qualifies_baseline": false,
+      "qualifies_after_fix": true,
+      "fix": "Mark contact email-or-name WorkflowFieldSpec sensitive=True (email-style)"
+    },
+    {
+      "connector": "jira",
+      "action": "jira.issues.create",
+      "schema_path": "backend/app/connectors/action_catalog/workflow_schemas_batch_25.py",
+      "multi_field": true,
+      "sensitive_fields_baseline": [],
+      "assignee_field_baseline": null,
+      "qualifies_baseline": false,
+      "qualifies_after_fix": true,
+      "fix": "Add optional assignee WorkflowFieldSpec(..., sensitive=True) on issues.create"
+    },
+    {
+      "connector": "slack",
+      "action": "slack.post_message",
+      "schema_path": "backend/app/connectors/action_catalog/action_workflow_schema.py",
+      "multi_field": true,
+      "sensitive_fields_baseline": [],
+      "entity_analogue": "channel is Slack's entity-resolution target (assignee/email analogue for Memory attachment)",
+      "fields_unmarked": [
+        {"label": "channel", "arg_keys": ["channel"], "sensitive": false},
+        {"label": "message", "arg_keys": ["text", "message"], "sensitive": false}
+      ],
+      "qualifies_baseline": false,
+      "qualifies_after_fix": true,
+      "fix": "Mark channel WorkflowFieldSpec sensitive=True"
+    }
+  ],
+  "after_fix_expected": {
+    "qualifying_count": 5,
+    "criterion_met": true,
+    "pending": "Human sign-off on ADR 001 reopen before Memory Phase 1 embeddings"
+  }
+}
