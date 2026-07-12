@@ -1,5 +1,5 @@
 {
-  "started_at": "2026-07-12T08:45:52.842971+00:00",
+  "started_at": "2026-07-12T09:09:44.232842+00:00",
   "base_url": "https://gravitre-saas-backend-production.up.railway.app",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
@@ -10,154 +10,124 @@
   "traces": {
     "P5_intelligence_pack_install": {
       "ticket": "STA-310",
-      "verdict": "PASS",
-      "evidence_mode": "prod_db_via_install_asset_after_option_a_and_entityId_uuid_fix",
-      "install_row": {
-        "id": "89a5eb96-8696-4141-a51a-cabf1d496e15",
-        "status": "active",
-        "installed_entity_type": "intelligence_pack",
-        "installed_entity_id": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790"
+      "path": "POST /api/marketplace/assets/{ref}/install asset_type=intelligence_pack",
+      "install_http": 409,
+      "install_response": {
+        "success": false,
+        "error": "Assignment already exists",
+        "code": "VALIDATION_ERROR",
+        "details": {}
       },
       "audits": [
         {
-          "action": "marketplace.asset.installed",
-          "resource_id": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
-          "metadata": {
-            "slug": "support-intelligence-pack",
-            "entityId": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
-            "assetType": "intelligence_pack",
-            "installId": "89a5eb96-8696-4141-a51a-cabf1d496e15",
-            "entityType": "intelligence_pack"
-          },
-          "created_at": "2026-07-12T08:51:56.038151+00:00"
-        },
-        {
+          "id": "a4226bcb-ab53-40df-ac9b-c025b75e6159",
           "action": "marketplace.intelligence_pack.installed",
+          "resource_type": "intelligence_pack",
           "resource_id": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
           "metadata": {
             "pack_id": "support-intelligence-pack",
-            "agent_id": "04196fcb-0c2a-4c1d-9cac-d2817714c6fe",
+            "agent_id": "6184e1d3-7f72-4482-af94-373be8cda00b",
             "asset_id": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
             "assignment_count": 4
           },
-          "created_at": "2026-07-12T08:51:55.36757+00:00"
+          "created_at": "2026-07-12T09:09:46.982874+00:00"
         }
       ],
+      "install_row": {
+        "id": "c1656fd5-cd1d-4d71-bda8-2fd95176d415",
+        "status": "active",
+        "installed_entity_type": "intelligence_pack",
+        "installed_entity_id": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
+        "metadata": {
+          "packId": "support-intelligence-pack",
+          "agentId": "6184e1d3-7f72-4482-af94-373be8cda00b",
+          "checklist": [],
+          "assignmentIds": [
+            "07475363-329e-43a4-9770-7fcc1aaa16ef",
+            "6526dedb-2bdc-4d2d-bbf7-3457df00d7ef",
+            "cca6d5a2-cba8-48f2-ada1-0adc80b4c99d",
+            "ff8b99a9-c1af-4889-a6c9-b3c22769b07d"
+          ],
+          "assignmentCount": 4
+        },
+        "asset_id": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790"
+      },
+      "verdict": "FAIL",
       "pass_checks": {
-        "install_asset_ok": true,
+        "http_ok": false,
         "intelligence_pack_entity": true,
-        "audit_evidence": true
+        "audit_or_assignment_evidence": true
       }
     },
     "P4_uninstall_teardown": {
       "ticket": "STA-309",
       "path": "install knowledge_pack/ai_agent \u2192 POST /uninstall \u2192 deactivated entities + audit",
-      "install_http": 200,
+      "install_http": 402,
       "install_response": {
-        "installed": true,
-        "assetId": "490115b7-be67-4658-991d-0cc5f4ffdfed",
-        "assetType": "workflow",
-        "slug": "competitive-intelligence-monitoring",
-        "install": {
-          "id": "01c3ca14-dc32-47ed-8b9d-4c968af7c8a9",
-          "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
-          "asset_id": "490115b7-be67-4658-991d-0cc5f4ffdfed",
-          "asset_version": 1,
-          "installed_entity_type": "workflow",
-          "installed_entity_id": "3c4c2dba-715e-5c61-8761-2d2594113217",
-          "install_variables": {},
-          "status": "active",
-          "installed_by": "f7e32f06-49df-4e73-8962-f41c21850762",
-          "installed_at": "2026-07-12T08:45:57.472868+00:00",
-          "updated_at": "2026-07-12T08:45:57.472894+00:00",
-          "metadata": {
-            "checklist": [],
-            "workflowId": "3c4c2dba-715e-5c61-8761-2d2594113217"
-          }
-        },
-        "entities": {
-          "entityType": "workflow",
-          "entityId": "3c4c2dba-715e-5c61-8761-2d2594113217",
-          "workflowId": "3c4c2dba-715e-5c61-8761-2d2594113217"
-        },
-        "connectorChecklist": []
+        "error": "plan_limit_exceeded",
+        "limit_type": "workflow_count",
+        "current": 10,
+        "max": 10,
+        "upgrade_url": "/settings/billing"
       },
       "spawned_agent_ids": [],
       "active_installs_after_install": [
         {
-          "id": "01c3ca14-dc32-47ed-8b9d-4c968af7c8a9",
+          "id": "c1656fd5-cd1d-4d71-bda8-2fd95176d415",
           "status": "active",
-          "installed_entity_type": "workflow",
-          "installed_entity_id": "3c4c2dba-715e-5c61-8761-2d2594113217",
+          "installed_entity_type": "intelligence_pack",
+          "installed_entity_id": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
           "metadata": {
+            "packId": "support-intelligence-pack",
+            "agentId": "6184e1d3-7f72-4482-af94-373be8cda00b",
             "checklist": [],
-            "workflowId": "3c4c2dba-715e-5c61-8761-2d2594113217"
+            "assignmentIds": [
+              "07475363-329e-43a4-9770-7fcc1aaa16ef",
+              "6526dedb-2bdc-4d2d-bbf7-3457df00d7ef",
+              "cca6d5a2-cba8-48f2-ada1-0adc80b4c99d",
+              "ff8b99a9-c1af-4889-a6c9-b3c22769b07d"
+            ],
+            "assignmentCount": 4
           }
         }
       ],
       "agents_before_uninstall": [],
-      "uninstall_http": 200,
+      "uninstall_http": 404,
       "uninstall_response": {
-        "uninstalled": true,
-        "installId": "01c3ca14-dc32-47ed-8b9d-4c968af7c8a9",
-        "assetId": "490115b7-be67-4658-991d-0cc5f4ffdfed",
-        "slug": "competitive-intelligence-monitoring",
-        "deactivated": {
-          "agents": [],
-          "workflows": [
-            "3c4c2dba-715e-5c61-8761-2d2594113217"
-          ],
-          "ragSources": []
-        },
-        "legacyDepartmentPackCleared": false
+        "success": false,
+        "error": "No active install found for this asset",
+        "code": "NOT_FOUND",
+        "details": {}
       },
       "audits": [
         {
-          "id": "b34dd62e-7c0e-467d-98a1-3d0871fd0bdb",
+          "id": "40c18b87-c19d-41a0-98f7-eae85510c67c",
           "action": "marketplace.asset.uninstalled",
           "resource_type": "marketplace_install",
-          "resource_id": "01c3ca14-dc32-47ed-8b9d-4c968af7c8a9",
+          "resource_id": "c1656fd5-cd1d-4d71-bda8-2fd95176d415",
           "metadata": {
-            "slug": "competitive-intelligence-monitoring",
-            "assetId": "490115b7-be67-4658-991d-0cc5f4ffdfed",
+            "slug": "support-intelligence-pack",
+            "assetId": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
             "deactivated": {
               "agents": [],
-              "workflows": [
-                "3c4c2dba-715e-5c61-8761-2d2594113217"
-              ],
+              "workflows": [],
               "ragSources": []
             },
             "legacyDepartmentPackCleared": false
           },
-          "created_at": "2026-07-12T08:45:58.162791+00:00"
+          "created_at": "2026-07-12T09:09:49.37417+00:00"
         }
       ],
       "agents_after_uninstall": [],
       "rag_after_uninstall": [],
-      "install_after": [
-        {
-          "id": "01c3ca14-dc32-47ed-8b9d-4c968af7c8a9",
-          "status": "uninstalled",
-          "metadata": {
-            "checklist": [],
-            "workflowId": "3c4c2dba-715e-5c61-8761-2d2594113217",
-            "deactivatedOnUninstall": {
-              "agents": [],
-              "workflows": [
-                "3c4c2dba-715e-5c61-8761-2d2594113217"
-              ],
-              "ragSources": []
-            }
-          }
-        }
-      ],
+      "install_after": [],
       "pass_checks": {
-        "uninstall_http_ok": true,
-        "response_uninstalled": true,
-        "deactivated_entities_reported": true,
+        "uninstall_http_ok": false,
+        "response_uninstalled": false,
+        "deactivated_entities_reported": false,
         "uninstall_audit": true
       },
-      "verdict": "PASS"
+      "verdict": "FAIL"
     },
     "P6_department_member_audit": {
       "ticket": "STA-311",
@@ -187,11 +157,16 @@
           "id": "8e4bee27-c2a4-4ff2-b6cd-dc34e6da57e8",
           "name": "PartD-P6-Probe-9e2e11",
           "lite_seat_allocation": 1
+        },
+        {
+          "id": "46a1c4ed-e0ef-48fc-bf9b-1abf221a0f0e",
+          "name": "PartD-P6-Probe-455e8e",
+          "lite_seat_allocation": 1
         }
       ],
       "target_user_id": "f7e32f06-49df-4e73-8962-f41c21850762",
       "target_email": "cesar@gravitre.app",
-      "department_id": "8e4bee27-c2a4-4ff2-b6cd-dc34e6da57e8",
+      "department_id": "46a1c4ed-e0ef-48fc-bf9b-1abf221a0f0e",
       "add_http": 500,
       "add_response": {
         "success": false,
@@ -206,63 +181,25 @@
         "code": "INTERNAL_ERROR",
         "details": {}
       },
-      "fixed_handler_against_prod_db": {
-        "added": {
-          "member": {
-            "id": "ecb27ac4-3a78-463e-9bc1-0453baf2ed19",
-            "department_id": "8e4bee27-c2a4-4ff2-b6cd-dc34e6da57e8",
-            "user_id": "f7e32f06-49df-4e73-8962-f41c21850762",
-            "role": "viewer",
-            "created_at": "2026-07-12T08:46:02.55023+00:00"
-          }
-        },
-        "removed": {
-          "success": true
-        }
-      },
-      "evidence_mode": "prod_db_via_fixed_handler \u2014 HTTP still 500 on current prod SHA until org_members hotfix deploys",
-      "audits": [
-        {
-          "id": "9c64657a-cc11-414e-a39a-e4ccf9603c7d",
-          "action": "department_member.removed",
-          "resource_type": "department_member",
-          "resource_id": "f7e32f06-49df-4e73-8962-f41c21850762",
-          "metadata": {
-            "userId": "f7e32f06-49df-4e73-8962-f41c21850762",
-            "departmentId": "8e4bee27-c2a4-4ff2-b6cd-dc34e6da57e8"
-          },
-          "created_at": "2026-07-12T08:46:03.945998+00:00"
-        },
-        {
-          "id": "ecbbb39f-6d19-4c45-99cd-0089515a5af2",
-          "action": "department_member.added",
-          "resource_type": "department_member",
-          "resource_id": "ecb27ac4-3a78-463e-9bc1-0453baf2ed19",
-          "metadata": {
-            "role": "viewer",
-            "userId": "f7e32f06-49df-4e73-8962-f41c21850762",
-            "departmentId": "8e4bee27-c2a4-4ff2-b6cd-dc34e6da57e8"
-          },
-          "created_at": "2026-07-12T08:46:02.726379+00:00"
-        }
-      ],
+      "fixed_handler_error": "{'message': \"Could not find the table 'public.org_members' in the schema cache\", 'code': 'PGRST205', 'hint': \"Perhaps you meant the table 'public.organization_members'\", 'details': None}",
+      "audits": [],
       "pass_checks": {
-        "add_http_ok_or_fixed_handler": true,
-        "remove_http_ok_or_fixed_handler": true,
-        "audit_added": true,
-        "audit_removed": true
+        "add_http_ok_or_fixed_handler": false,
+        "remove_http_ok_or_fixed_handler": false,
+        "audit_added": false,
+        "audit_removed": false
       },
-      "verdict": "PASS"
+      "verdict": "FAIL"
     }
   },
   "prod_health": {
     "http": 200,
     "body": {
       "status": "ok",
-      "timestamp": "2026-07-12T08:45:52.945313+00:00",
+      "timestamp": "2026-07-12T09:09:44.504124+00:00",
       "version": "0.1.0",
       "environment": "prod",
-      "git_sha": "ceb1e8ffd561a04bedac62a140c3157c3405fc13",
+      "git_sha": "62d8f0b16571b52e786bc9322b62d5f6b6d70f5a",
       "ai_disabled": false,
       "checks": {
         "database": "healthy",
@@ -272,7 +209,7 @@
       }
     }
   },
-  "prod_git_sha": "ceb1e8ffd561a04bedac62a140c3157c3405fc13",
+  "prod_git_sha": "62d8f0b16571b52e786bc9322b62d5f6b6d70f5a",
   "sha_contains_p4_p6": true,
   "intelligence_pack_seed": [
     "exists:marketing-intelligence-pack",
@@ -289,25 +226,24 @@
     "via": "supabase_service_role",
     "body": [
       {
-        "id": "8e4bee27-c2a4-4ff2-b6cd-dc34e6da57e8",
+        "id": "46a1c4ed-e0ef-48fc-bf9b-1abf221a0f0e",
         "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
-        "name": "PartD-P6-Probe-9e2e11",
+        "name": "PartD-P6-Probe-455e8e",
         "lite_seat_allocation": 1,
         "department_admin_id": null,
-        "created_at": "2026-07-12T08:45:53.723104+00:00",
-        "updated_at": "2026-07-12T08:45:53.723104+00:00"
+        "created_at": "2026-07-12T09:09:45.31604+00:00",
+        "updated_at": "2026-07-12T09:09:45.31604+00:00"
       }
     ]
   },
-  "probe_department_id": "8e4bee27-c2a4-4ff2-b6cd-dc34e6da57e8",
+  "probe_department_id": "46a1c4ed-e0ef-48fc-bf9b-1abf221a0f0e",
   "fixture_agent_id": "b7858c50-6205-5899-888c-f9e55668acc3",
   "fixture_agent_source": "agents",
   "verdicts": {
-    "P4": "PASS",
-    "P5": "PASS",
-    "P6": "PASS"
+    "P4": "FAIL",
+    "P5": "FAIL",
+    "P6": "FAIL"
   },
-  "overall": "PASS",
-  "finished_at": "2026-07-12T08:48:54.142852+00:00",
-  "option_a_applied": true
+  "overall": "FAIL",
+  "finished_at": "2026-07-12T09:09:55.324125+00:00"
 }

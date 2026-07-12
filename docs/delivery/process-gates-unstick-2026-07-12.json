@@ -1,0 +1,57 @@
+{
+  "document": "Process / gates closure — unstick checklist",
+  "closed_at": "2026-07-12",
+  "gates": [
+    {
+      "id": "evidence_linked_pass_claims",
+      "status": "ACTIVE_POLICY_NOT_BLOCKER",
+      "meaning": "User-facing PASS/fixed/shipped claims require concrete evidence (audit timestamp+action, conversation/run id, CI URL, or prod live trace). Local pytest alone is not production-fixed.",
+      "where_recorded": [
+        "Cursor user rule: Evidence-linked audit PASS claims",
+        "Linear ticket append sections for STA-307/305/310/316"
+      ],
+      "unstick": "Not a queue item — ongoing quality gate. Latest application: STA-310 HTTP live PASS in docs/delivery/part-d-p5-live-trace.json (2026-07-12)."
+    },
+    {
+      "id": "schema_gate_ne_pii_authorization",
+      "status": "CLOSED_RECORDED",
+      "meaning": "ADR 001 schema-gate met-in-code does not authorize third-party embedding of identity PII. Memory Option B required separate STA-312 sole-owner sign-off.",
+      "where_recorded": [
+        "docs/decisions/001-defer-ml-disambiguation-until-schema-stable.md",
+        "docs/delivery/adr001-memory-authorization-review.json",
+        "docs/delivery/memory-phase1-data-handling-design.md"
+      ],
+      "unstick": "Boundary documented; STA-312 Option B + STA-316 implementation complete. No further gate work."
+    },
+    {
+      "id": "work_on_main_only",
+      "status": "ACTIVE_POLICY_NOT_BLOCKER",
+      "meaning": "Agent delivery commits/pushes on main unless user asks for branch/PR workflow.",
+      "where_recorded": [".cursor/rules/work-on-main.mdc"],
+      "unstick": "Policy already in force. Residual feature PRs #104/#105 merged to main (2026-07-12)."
+    }
+  ],
+  "open_engineering_closed_this_pass": {
+    "STA-310": "PR #105 merged (62d8f0b1); HTTP live install PASS after Railway deploy",
+    "STA-308": "PR #104 merged (350a6719); Option 1 retitle on divergent ask"
+  },
+  "human_decisions_still_required": [
+    {
+      "id": "memory_test_org_opt_in",
+      "options": [
+        "A — enable memoryEntityEmbeddings for org cbbf993b-b22f-41ce-964b-1fc25e0dd9ea (prod smoke org) only",
+        "B — enable for a different named org_id (provide UUID)",
+        "C — leave all orgs off (no change)"
+      ]
+    },
+    {
+      "id": "sta313_prod_rerank_swap",
+      "options": [
+        "keep-ms-marco — production stays on cross-encoder/ms-marco-MiniLM-L-6-v2",
+        "bge-base — set RAG_CROSS_ENCODER_MODEL=BAAI/bge-reranker-base (ΔP@3=+0.0625 on n=8 synthetic)",
+        "bge-large — set RAG_CROSS_ENCODER_MODEL=BAAI/bge-reranker-large (same ΔP@3=+0.0625; heavier)"
+      ],
+      "note": "Eval caveat: n=8 synthetic corpus; not a real-KB A/B."
+    }
+  ]
+}
