@@ -421,8 +421,11 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
 
           <main
             className={cn(
-              "flex min-h-0 flex-1 flex-col",
-              isImmersiveChat ? "overflow-hidden pb-0" : "overflow-y-auto pb-20",
+              // min-w-0 + overflow-x-hidden stop any wide inner child (tables,
+              // flex rows, charts) from forcing the whole viewport wider than
+              // the screen on mobile. Wide data views own their own x-scroll.
+              "flex min-h-0 min-w-0 flex-1 flex-col",
+              isImmersiveChat ? "overflow-hidden pb-0" : "overflow-y-auto overflow-x-hidden pb-20",
             )}
           >
             {!isImmersiveChat ? (

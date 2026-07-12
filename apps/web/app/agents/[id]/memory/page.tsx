@@ -528,8 +528,8 @@ export default function AgentMemoryPage({
               <span className="text-foreground">Memory</span>
             </div>
 
-            <div className="grid grid-cols-12 gap-8">
-              <div className="col-span-4 flex flex-col items-center justify-center">
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+              <div className="lg:col-span-4 flex flex-col items-center justify-center">
                 <BrainVisualization />
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
@@ -542,7 +542,7 @@ export default function AgentMemoryPage({
                 </motion.div>
               </div>
 
-              <div className="col-span-8 grid grid-cols-4 gap-4 content-center">
+              <div className="lg:col-span-8 grid grid-cols-2 gap-4 content-center sm:grid-cols-4">
                 <StatCard label="Total Memories" value={stats.total} icon="brain" color="emerald" />
                 <StatCard label="Avg Confidence" value={stats.avgConfidence} icon="target" color="blue" suffix="%" />
                 <StatCard label="Total Usage" value={stats.totalUsage} icon="activity" color="violet" />

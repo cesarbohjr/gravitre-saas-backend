@@ -1626,18 +1626,27 @@ export function AiWorkspace({
       </div>
 
       {activityRailOpen ? (
-      <LiveActivityRail
-        advisorBrief={advisorBrief}
-        layoutPlan={latestExecuteTurn?.executePlan ?? null}
-        layoutJob={latestExecuteTurn?.executeJob ?? null}
-        layoutProcessing={Boolean(latestExecuteTurn?.status === "running" && executeWorking)}
-        layoutError={latestExecuteTurn?.executeError ?? null}
-        layoutBlockOrder={layoutBlockOrder}
-        layoutEnabledBlocks={layoutEnabledBlocks}
-        layoutBlockColumns={layoutBlockColumns}
-        onReorderLayoutBlocks={handleReorderLayoutBlocks}
-        onMoveLayoutBlockToColumn={handleMoveLayoutBlockToColumn}
-      />
+      <>
+        {/* Mobile/tablet scrim — tap to dismiss the overlay drawer. */}
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm xl:hidden"
+          onClick={() => setActivityRailOpen(false)}
+          aria-hidden
+        />
+        <LiveActivityRail
+          advisorBrief={advisorBrief}
+          layoutPlan={latestExecuteTurn?.executePlan ?? null}
+          layoutJob={latestExecuteTurn?.executeJob ?? null}
+          layoutProcessing={Boolean(latestExecuteTurn?.status === "running" && executeWorking)}
+          layoutError={latestExecuteTurn?.executeError ?? null}
+          layoutBlockOrder={layoutBlockOrder}
+          layoutEnabledBlocks={layoutEnabledBlocks}
+          layoutBlockColumns={layoutBlockColumns}
+          onReorderLayoutBlocks={handleReorderLayoutBlocks}
+          onMoveLayoutBlockToColumn={handleMoveLayoutBlockToColumn}
+          onClose={() => setActivityRailOpen(false)}
+        />
+      </>
       ) : null}
     </div>
   )

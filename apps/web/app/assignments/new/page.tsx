@@ -586,7 +586,7 @@ function NewAssignmentPageContent() {
                   <p className="text-sm text-muted-foreground mb-4">
                     Select the types of deliverables you want the agent to create
                   </p>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                     {outputTypes.map((output) => (
                       <button
                         key={output.id}
@@ -638,7 +638,7 @@ function NewAssignmentPageContent() {
                   <p className="text-sm text-muted-foreground">
                     Choose where to send the results
                   </p>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                     {destinations.map((dest) => (
                       <button
                         key={dest.id}
