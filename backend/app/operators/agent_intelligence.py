@@ -1144,6 +1144,34 @@ class AgentIntelligence:
         engine_settings = await load_intelligence_engine_settings(org_id, active_settings, client=client)
         pipeline_tier = mode_to_tier(mode_key)
 
+        from app.services.assistant_routing_tier import (
+            RoutingControl,
+            classify_routing_tier,
+            default_model_for_tier,
+            escalate_for_user_deepen,
+        )
+
+        routing_decision = classify_routing_tier(
+            task_text,
+            mode=mode_key,
+            connected_integrations=list(connected_early or []),
+            parameters={"mode": mode_key},
+        )
+        routing_control = RoutingControl(
+            tier=routing_decision.tier,
+            model=routing_decision.model,
+            max_iterations=max(max_iterations, routing_decision.max_tool_rounds),
+            pinned_fast=routing_decision.pinned_fast,
+            model_resolver=default_model_for_tier,
+        )
+        escalate_for_user_deepen(routing_control, task_text)
+        max_iterations = routing_control.max_iterations
+        routing_sse = {
+            **routing_decision.to_sse(),
+            "routingTier": routing_control.tier,
+            "maxToolRounds": routing_control.max_iterations,
+        }
+
         tier0_started = time.monotonic()
         if tier0_enabled(engine_settings):
             tier0_hit = await get_tier0_answer(
@@ -1674,6 +1702,20 @@ class AgentIntelligence:
             task_prompt = f"{task_prompt}\n<conversation_history>\n" + "\n".join(history_lines) + "\n</conversation_history>"
 
         # Wave 6 — stream plan / task state before tools so the UI can show progress live.
+        # Routing wave — emit named product tier + latency budget before tools.
+        yield sse_intelligence_metadata(
+            message_id=message_id,
+            confidence={"score": classification_confidence, "needs_clarification": False},
+            answer_explanation="Routing classified",
+            dialogue_mode=dialogue_mode,
+            persona_key=str(persona.get("persona_key") or ""),
+            task_state=task_state,
+            strategic_plan=turn_ctx.strategic_plan,
+            effective_mode=mode_key,
+            pipeline_tier=pipeline_tier,
+            routing_tier=routing_control.tier,
+            routing=routing_sse,
+        )
         if turn_ctx.strategic_plan or (
             isinstance(task_state, dict) and task_state.get("current_plan")
         ):
@@ -1685,6 +1727,10 @@ class AgentIntelligence:
                 persona_key=str(persona.get("persona_key") or ""),
                 task_state=task_state,
                 strategic_plan=turn_ctx.strategic_plan,
+                effective_mode=mode_key,
+                pipeline_tier=pipeline_tier,
+                routing_tier=routing_control.tier,
+                routing=routing_sse,
             )
 
         tool_results: list[dict[str, Any]] = []
@@ -1758,6 +1804,14 @@ class AgentIntelligence:
             mode=mode_key,
             connected_integrations=connected_list,
         )
+        # Routing wave: prefer classified product-tier model unless caller forced override.
+        if not model_override and routing_control.model:
+            model = routing_control.model
+            model_selection_meta = {
+                **(model_selection_meta or {}),
+                "routing_tier": routing_control.tier,
+                "source": "assistant_routing_tier",
+            }
         route_metadata = chat_facade.build_route_metadata(
             pipeline_classification,
             model_selection_meta,
@@ -1795,7 +1849,48 @@ class AgentIntelligence:
             max_iterations=max_iterations,
             audit_resource_type="assistant",
             audit_resource_id=agent_id or user_id or org_id,
+            routing_control=routing_control,
         ):
+            if event.kind == "routing_escalation":
+                esc = event.result if isinstance(event.result, dict) else {}
+                routing_sse = {
+                    **routing_sse,
+                    "routingTier": routing_control.tier,
+                    "maxToolRounds": routing_control.max_iterations,
+                    "lastEscalation": esc,
+                }
+                try:
+                    write_audit_event(
+                        client,
+                        org_id=org_id,
+                        actor_id=user_id or "system",
+                        action="assistant.routing.escalated",
+                        resource_type="assistant",
+                        resource_id=message_id or conversation_id or org_id,
+                        metadata={
+                            "from_tier": esc.get("from_tier"),
+                            "to_tier": esc.get("to_tier"),
+                            "from_model": esc.get("from_model"),
+                            "to_model": esc.get("to_model"),
+                            "reason": esc.get("reason"),
+                            "conversation_id": conversation_id,
+                        },
+                    )
+                except Exception:  # noqa: BLE001
+                    logger.debug("routing escalation audit skipped", exc_info=True)
+                yield sse_intelligence_metadata(
+                    message_id=message_id,
+                    confidence={"score": classification_confidence, "needs_clarification": False},
+                    answer_explanation=f"Routing escalated to {routing_control.tier}",
+                    dialogue_mode=dialogue_mode,
+                    persona_key=str(persona.get("persona_key") or ""),
+                    task_state=task_state,
+                    effective_mode=mode_key,
+                    pipeline_tier=pipeline_tier,
+                    routing_tier=routing_control.tier,
+                    routing=routing_sse,
+                )
+                continue
             if event.kind == "tool_start" and event.tool_name:
                 call_id = event.tool_call_id or f"call-{uuid.uuid4().hex[:12]}"
                 yield sse_react_tool_start(
@@ -1875,6 +1970,8 @@ class AgentIntelligence:
                     pending_task=approval_turn.get("pending_task"),
                     effective_mode=mode_key,
                     pipeline_tier=pipeline_tier,
+                    routing_tier=routing_control.tier,
+                    routing=routing_sse,
                 )
                 yield AssistantStreamComplete(
                     full_content=response_text,
@@ -2129,6 +2226,12 @@ class AgentIntelligence:
             trust_envelope=trust_meta.get("trust_envelope"),
             effective_mode=mode_key,
             pipeline_tier=pipeline_tier,
+            routing_tier=routing_control.tier,
+            routing={
+                **routing_sse,
+                "routingTier": routing_control.tier,
+                "escalations": list(routing_control.escalations),
+            },
         )
 
         yield AssistantStreamComplete(

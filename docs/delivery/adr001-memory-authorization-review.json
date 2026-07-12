@@ -1,0 +1,43 @@
+{
+  "document": "ADR 001 review — Memory Engine / ML Phase authorization",
+  "reviewed_at": "2026-07-12",
+  "adr_path": "docs/decisions/001-defer-ml-disambiguation-until-schema-stable.md",
+  "adr_status": "Accepted (deferred) 2026-07-07",
+  "why_deferred_still_valid": [
+    "Schema-first governance — embeddings must attach to WorkflowFieldSpec, not parallel heuristics",
+    "Constraint type is governance/schema stability — not cost/latency/residency"
+  ],
+  "revisit_triggers": {
+    "PENDING_WORKFLOW_SCHEMA_ALLOWLIST_shrink_ge_25": {
+      "required": "166 → ≤141",
+      "observed_len": 0,
+      "met": true
+    },
+    "ORPHAN_HANDLER_ALLOWLIST_shrink_ge_2": {
+      "observed_len": 0,
+      "met": true
+    },
+    "API_IMPORT_EXCEPTION_ALLOWLIST_shrink_ge_2": {
+      "observed_len": 0,
+      "met": true
+    },
+    "priority_connectors_multi_field_sensitive_schemas_ge_5": {
+      "required": "≥5 of HubSpot, Asana, Apollo, Slack, Jira with multi-field write schemas including assignee/email-style sensitive fields",
+      "observed": "CONFIRM_BEFORE_MEMORY_PHASE_1 — allowlists empty does not prove the multi-field sensitive-schema criterion",
+      "met": "pending_human_confirm"
+    }
+  },
+  "ml_phase_authorization": {
+    "phase_0_inventory": "AUTHORIZED (done) — docs/delivery/ml-stack-phase0-findings.json",
+    "intent_engine": "PART OF routing wave — not a separate ML project; shipping as assistant_routing_tier heuristics first",
+    "knowledge_phase_2_rerank_eval": "AUTHORIZED as measured eval only (Cohere/bge vs ms-marco) — no assumed upgrade",
+    "recommendation_heuristic_cards": "AUTHORIZED suggest-only (must reuse execute_plan gate; no auto-execute)",
+    "memory_phase_1_embeddings": "NOT AUTHORIZED until ≥5 priority-connector multi-field sensitive schemas confirmed AND embeddings designed behind WorkflowFieldSpec",
+    "forecasting_gnn_cv_speech": "OUT OF SCOPE"
+  },
+  "sequence": {
+    "routing_wave": "in progress — complexity tiers + mid-turn escalate-only",
+    "after_routing_prod_evidence": "Knowledge Phase 2 eval + Recommendation cards OK; Memory waits ADR reopen criteria",
+    "sta_305": "parallel — catalog-kind create authority; does not block routing wave CI"
+  }
+}
