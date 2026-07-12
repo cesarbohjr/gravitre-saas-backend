@@ -1,6 +1,6 @@
 # ADR 001: Defer ML/embeddings assignee disambiguation until workflow schema is stable
 
-**Status:** Accepted (deferred)  
+**Status:** Accepted (deferred) — schema-gate closed engineering-only; Memory embeddings closed-for-now  
 **Date:** 2026-07-07  
 **Context:** Connector chat execution (Phases A–D), registration contract shrink work
 
@@ -60,15 +60,18 @@ Re-open this ADR when **all** of the following are true:
 
 Embeddings must attach to `WorkflowFieldSpec` only (sensitive / inferrable flags) — **no** parallel one-off heuristics per vendor. Do not implement the embedding index or vector search until this reopen is **explicitly signed off**.
 
-## Human decision (2026-07-12) — schema-gate closed; Memory embeddings not signed off
+## Human decision (2026-07-12) — schema-gate closed; Memory embeddings closed-for-now
 
 **Category boundary:** The schema-gate criterion being met in code is accepted as **engineering-only evidence**. It does **not** authorize sending customer identity fields (email, assignee, channel) to a third-party embedding provider. Collapsing those claims is the same failure shape as treating backend-only Done as full-path PASS.
 
 | Decision | Outcome |
 | --- | --- |
 | Freeze schema-gate audit | Closed — `docs/delivery/adr001-sensitive-schema-audit.json` |
-| Memory Phase 1 embeddings | **Not signed off** — paused |
-| Next artifact | `docs/delivery/memory-phase1-data-handling-design.md` (what / provider / storage / org controls / sign-off owner) |
+| Memory Phase 1 embeddings | **Closed-for-now** on engineering roadmap (not In Progress) |
+| Data-handling design | `docs/delivery/memory-phase1-data-handling-design.md` (written) |
+| Organizational decision | [STA-312](https://linear.app/staqbot/issue/STA-312) — name data-governance owner; only that unblocks Memory embeddings |
+| Reopen when | STA-312 names owner **and** owner selects Option A/B/C in writing |
 | STA-305 / STA-309 / STA-310 / STA-311 | Unaffected; remain closed |
+| Unblocked next eng | Knowledge Phase 2 ([STA-313](https://linear.app/staqbot/issue/STA-313)), Recommendation heuristics ([STA-314](https://linear.app/staqbot/issue/STA-314)), maxDuration residual ([STA-315](https://linear.app/staqbot/issue/STA-315)), stale title ([STA-308](https://linear.app/staqbot/issue/STA-308)) |
 
-Until the data-handling design is reviewed and question 5 (named data-governance / DPA sign-off owner) is answered, **no Memory embedding code**.
+Until STA-312 is resolved, **no Memory embedding code**. That pause may last indefinitely; that is correct.
