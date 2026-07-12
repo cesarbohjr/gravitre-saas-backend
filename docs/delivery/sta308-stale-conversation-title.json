@@ -1,0 +1,29 @@
+{
+  "ticket": "STA-308",
+  "title": "Refresh stale conversation title when task changes mid-thread",
+  "choice": "Option 1 — update title on divergent new ask (not subtitle)",
+  "investigated_at": "2026-07-12",
+  "root_cause": {
+    "file": "apps/web/app/ai/_components/ai-workspace.tsx",
+    "behavior": "ensureConversation returned early when activeConversationId was set and never updated title",
+    "repro": "STA-307 session ca3db55e — title stayed 'Search MSPs in Apollo' after HubSpot/Slack ask"
+  },
+  "fix": {
+    "helper": "apps/web/lib/conversation-title.ts",
+    "wiring": "ensureConversation → refreshConversationTitleIfNeeded → conversationsApi.update",
+    "rules": [
+      "Skip affirmations (yes / go ahead / confirm)",
+      "Skip soft continuations (also / actually / wait)",
+      "Require ≥3 content tokens on the new ask",
+      "Refresh when Jaccard(token sets) < 0.35 vs current title"
+    ]
+  },
+  "evidence": {
+    "unit": "apps/web/__tests__/lib/conversation-title.test.ts",
+    "prior": [
+      "docs/delivery/sta307-original-session-ca3db55e.json",
+      "docs/delivery/sta307-conversation-id-check.json"
+    ]
+  },
+  "verdict": "PASS — divergent mid-thread tasks retitle; confirms and follow-ups do not"
+}
