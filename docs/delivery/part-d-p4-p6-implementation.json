@@ -33,5 +33,6 @@
       "unit": "PASS — test_settings_department_members_audit.py"
     }
   },
-  "api_evidence_note": "Unit coverage lands with this PR; live API traces require deploy of branch sta-305-memory-adr-p4-p6"
-}
+  "api_evidence_note": "Unit coverage + shipped on prod SHA 473454da (PR #102). STA-305 live chat PASS on same SHA (Post message, not List channels).",
+  "prod_sha": "473454dacbfbdd2586996be4502eae2aa748f666",
+  "pr": "https://github.com/cesarbohjr/gravitre-saas-backend/pull/102"
