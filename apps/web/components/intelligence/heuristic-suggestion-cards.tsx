@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import useSWR from "swr"
-import { ArrowRight } from "@phosphor-icons/react"
+import { ArrowRight, X } from "@phosphor-icons/react"
 import { useAuth } from "@/lib/auth-context"
 import { intelligenceApi } from "@/lib/api"
 
@@ -27,15 +27,34 @@ type HeuristicResponse = {
 /**
  * STA-314 suggest-only cards.
  * Intentionally has no Execute / Apply / Install / Schedule handlers —
- * navigation links only. Writes still go through chat confirm / execute_plan.
+ * navigation links + dismiss only. Writes still go through chat confirm / execute_plan.
  */
 export function HeuristicSuggestionCards() {
   const { user } = useAuth()
-  const { data, error, isLoading } = useSWR<HeuristicResponse>(
+  const { data, error, isLoading, mutate } = useSWR<HeuristicResponse>(
     user ? "intelligence/recommendations/heuristics" : null,
     () => intelligenceApi.heuristicRecommendations() as Promise<HeuristicResponse>,
     { revalidateOnFocus: false },
   )
+
+  const dismiss = async (cardId: string) => {
+    await mutate(
+      (current) =>
+        current
+          ? {
+              ...current,
+              recommendations: current.recommendations.filter((c) => c.id !== cardId),
+              count: Math.max(0, (current.count || 0) - 1),
+            }
+          : current,
+      { revalidate: false },
+    )
+    try {
+      await intelligenceApi.dismissHeuristicRecommendation(cardId)
+    } catch {
+      mutate()
+    }
+  }
 
   if (!user || isLoading) return null
   if (error || !data?.recommendations?.length) return null
@@ -61,16 +80,27 @@ export function HeuristicSuggestionCards() {
                 <p className="text-sm font-medium text-foreground">{card.title}</p>
                 <p className="text-xs text-muted-foreground">{card.reason}</p>
               </div>
-              {card.href ? (
-                <Link
-                  href={card.href}
-                  className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary hover:underline"
-                  data-testid="heuristic-card-nav"
+              <div className="flex shrink-0 items-center gap-2">
+                {card.href ? (
+                  <Link
+                    href={card.href}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                    data-testid="heuristic-card-nav"
+                  >
+                    Open
+                    <ArrowRight className="h-3 w-3" />
+                  </Link>
+                ) : null}
+                <button
+                  type="button"
+                  aria-label={`Dismiss ${card.title}`}
+                  className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  data-testid="heuristic-card-dismiss"
+                  onClick={() => void dismiss(card.id)}
                 >
-                  Open
-                  <ArrowRight className="h-3 w-3" />
-                </Link>
-              ) : null}
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           </li>
         ))}

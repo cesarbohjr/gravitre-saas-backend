@@ -1703,6 +1703,11 @@ export const intelligenceApi = {
       }>
       count: number
     }>(apiUrl("/api/intelligence/recommendations/heuristics")),
+  dismissHeuristicRecommendation: (cardId: string) =>
+    postJson<{ dismissed: boolean; cardId: string; advisoryOnly: boolean }>(
+      apiUrl(`/api/intelligence/recommendations/heuristics/${encodeURIComponent(cardId)}/dismiss`),
+      {},
+    ),
   modelCatalog: () => fetcher<MlAdminCatalogResponse>(apiUrl("/api/intelligence/models/catalog")),
   learningProgress: () =>
     fetcher<IntelligenceLearningProgress>(apiUrl("/api/admin/intelligence/learning-progress")),
