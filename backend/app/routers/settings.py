@@ -12,6 +12,11 @@ from supabase import create_client
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.config import Settings, get_settings
 from app.services.model_policy_service import load_org_model_policy, normalize_model_policy, save_org_model_policy
+from app.services.memory_entity_embeddings_settings import (
+    load_memory_entity_embeddings_settings,
+    normalize_memory_entity_embeddings,
+    save_memory_entity_embeddings_settings,
+)
 from app.workflows.audit import write_audit_event
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
@@ -54,6 +59,11 @@ class ModelPolicyUpdateRequest(BaseModel):
     mode: str = "open"
     providers: list[str] = Field(default_factory=list)
     models: list[str] = Field(default_factory=list)
+
+
+class MemoryEntityEmbeddingsUpdateRequest(BaseModel):
+    enabled: bool = False
+    connectors: list[str] = Field(default_factory=list)
 
 
 def _is_missing_table_error(error: Exception | None) -> bool:
@@ -151,6 +161,45 @@ async def update_model_policy_route(
         metadata={"modelPolicy": policy},
     )
     return {"modelPolicy": policy}
+
+
+@router.get("/memory-entity-embeddings")
+async def get_memory_entity_embeddings_route(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return {
+        "memoryEntityEmbeddings": load_memory_entity_embeddings_settings(client, org_id),
+    }
+
+
+@router.put("/memory-entity-embeddings")
+async def update_memory_entity_embeddings_route(
+    body: MemoryEntityEmbeddingsUpdateRequest,
+    admin_ctx: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin_ctx
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    policy = save_memory_entity_embeddings_settings(
+        client,
+        org_id,
+        normalize_memory_entity_embeddings(body.model_dump()),
+    )
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=user["user_id"],
+        action="memory_entity_embeddings.updated",
+        resource_type="org_settings",
+        resource_id=str(org_id),
+        metadata={"memoryEntityEmbeddings": policy},
+    )
+    return {"memoryEntityEmbeddings": policy}
 
 
 @router.get("/lite-seats")

@@ -171,6 +171,17 @@ async def resolve_assignee_disambiguation(
     if not hint or (plan.args or {}).get("assignee"):
         return None
 
+    # STA-316: WorkflowFieldSpec-backed Memory path (opt-in opaque tokens only).
+    memory_check = await _try_memory_assignee_resolve(
+        client=client,
+        org_id=org_id,
+        plan=plan,
+        hint=hint,
+        settings=settings,
+    )
+    if memory_check is not None:
+        return memory_check
+
     if plan.integration == "asana":
         return await _resolve_asana_assignee(
             client=client,
@@ -179,6 +190,85 @@ async def resolve_assignee_disambiguation(
             hint=hint,
             settings=settings,
             environment_name=environment_name,
+        )
+    return None
+
+
+async def _try_memory_assignee_resolve(
+    *,
+    client: Any,
+    org_id: str,
+    plan: ConnectorActionPlan,
+    hint: str,
+    settings: Any,
+) -> WorkflowCheck | None:
+    """Opt-in Memory resolver for sensitive assignee fields. Returns None to fall through."""
+    from app.connectors.action_catalog.action_workflow_schema import get_workflow_schema
+    from app.services.memory_field_resolver import (
+        pick_sensitive_field_for_arg,
+        resolve_sensitive_field_mention,
+    )
+
+    schema = get_workflow_schema(plan.invoke_action)
+    if not schema:
+        return None
+    fields = list(schema.required_fields) + list(schema.optional_fields)
+    field = pick_sensitive_field_for_arg(fields, "assignee_hint") or pick_sensitive_field_for_arg(
+        fields, "assignee"
+    )
+    if field is None:
+        return None
+
+    result = await resolve_sensitive_field_mention(
+        client=client,
+        settings=settings,
+        org_id=org_id,
+        integration=plan.integration or "",
+        field=field,
+        mention=hint,
+        entity_type="employee",
+        primary_arg_key="assignee",
+    )
+    if result.status == "skipped" or result.status == "miss":
+        return None
+    if result.status == "bound" and result.entity_id:
+        updated_args = dict(plan.args or {})
+        updated_args["assignee"] = result.entity_id
+        try:
+            from app.services.entity_resolution_store import upsert_resolution
+
+            upsert_resolution(
+                client,
+                org_id=org_id,
+                alias=hint,
+                entity_type="employee",
+                entity_id=result.entity_id,
+                integration=plan.integration or "",
+                source="memory_opaque",
+                confidence=0.85,
+            )
+        except Exception:  # noqa: BLE001
+            pass
+        return WorkflowCheck(
+            status="resolved",
+            message="",
+            updated_plan=replace(plan, args=updated_args),
+        )
+    if result.status == "ambiguous" and result.candidates:
+        labels = tuple(label for _eid, label in result.candidates[:8])
+        return WorkflowCheck(
+            status="needs disambiguation",
+            candidates=labels,
+            known={"Assignee hint": hint},
+            dialogue_mode="clarify",
+            message=format_operator_response(
+                intent=schema.intent_label or "Assign task",
+                status="needs disambiguation",
+                matched_action=plan.invoke_action,
+                known={"Assignee hint": hint},
+                disambiguation_options=list(labels),
+                next_step="Which one should I assign?",
+            ),
         )
     return None
 
@@ -242,6 +332,37 @@ async def _resolve_asana_assignee(
                     source="disambiguation",
                     confidence=0.9,
                 )
+        except Exception:  # noqa: BLE001
+            pass
+        # Best-effort: index opaque tokens when Memory opt-in is enabled.
+        try:
+            from app.services.memory_entity_embeddings_service import index_entity_and_alias
+            from app.services.memory_entity_embeddings_settings import (
+                load_memory_entity_embeddings_settings,
+                memory_embeddings_enabled_for,
+            )
+
+            policy = load_memory_entity_embeddings_settings(client, org_id)
+            if memory_embeddings_enabled_for(policy, integration="asana"):
+                await index_entity_and_alias(
+                    client,
+                    settings,
+                    org_id=org_id,
+                    integration="asana",
+                    entity_type="employee",
+                    entity_id=matches[0][1],
+                    alias=hint,
+                )
+                if matches[0][0]:
+                    await index_entity_and_alias(
+                        client,
+                        settings,
+                        org_id=org_id,
+                        integration="asana",
+                        entity_type="employee",
+                        entity_id=matches[0][1],
+                        alias=matches[0][0],
+                    )
         except Exception:  # noqa: BLE001
             pass
         return WorkflowCheck(
