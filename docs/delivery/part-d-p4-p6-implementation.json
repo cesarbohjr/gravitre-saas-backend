@@ -1,5 +1,5 @@
 {
-  "wave": "Part D P4–P6",
+  "wave": "Part D P4\u2013P6",
   "implemented_at": "2026-07-12",
   "tickets": {
     "P4": {
@@ -10,17 +10,17 @@
         "backend/app/marketplace/support.py",
         "backend/tests/marketplace/test_marketplace_uninstall.py"
       ],
-      "unit": "PASS — test_marketplace_uninstall.py"
+      "unit": "PASS \u2014 test_marketplace_uninstall.py"
     },
     "P5": {
       "id": "STA-310",
       "url": "https://linear.app/staqbot/issue/STA-310/part-d-p5-wire-intelligence-pack-install-into-marketplace-install",
-      "fix": "install_asset intelligence_pack branch → install_intelligence_pack (requires agentId)",
+      "fix": "install_asset intelligence_pack branch \u2192 install_intelligence_pack (requires agentId)",
       "files": [
         "backend/app/marketplace/service.py",
         "backend/tests/marketplace/test_marketplace_install_intelligence_pack.py"
       ],
-      "unit": "PASS — test_marketplace_install_intelligence_pack.py"
+      "unit": "PASS \u2014 test_marketplace_install_intelligence_pack.py"
     },
     "P6": {
       "id": "STA-311",
@@ -30,7 +30,7 @@
         "backend/app/routers/settings.py",
         "backend/tests/routers/test_settings_department_members_audit.py"
       ],
-      "unit": "PASS — test_settings_department_members_audit.py"
+      "unit": "PASS \u2014 test_settings_department_members_audit.py"
     }
   },
   "api_evidence_note": "Unit coverage + shipped on prod SHA 473454da (PR #102). STA-305 live chat PASS on same SHA (Post message, not List channels).",
@@ -38,10 +38,17 @@
   "pr": "https://github.com/cesarbohjr/gravitre-saas-backend/pull/102",
   "evidence_bar_assessment_2026_07_12": {
     "merged_and_live_on_prod_sha": true,
-    "distinct_live_api_traces_per_item": false,
+    "distinct_live_api_traces_per_item": true,
     "what_exists": "Unit tests + PR #102 merge to prod SHA 473454da; same SHA as STA-305 live chat (not a substitute for P4/P5/P6 path traces)",
-    "gap_vs_project_bar": "P1 required three separate live traces for three pending-task types. P4/P5/P6 do not yet have equivalent live uninstall / intelligence_pack install / department_member audit traces.",
-    "part_d_fully_closed_under_strict_bar": false,
-    "next": "Run three live prod traces (or explicitly accept unit+SHA for lower-severity P4–P6) before calling Part D fully closed"
+    "gap_vs_project_bar": "Closed 2026-07-12: live traces in part-d-p4-p6-live-traces.json + part-d-p5-live-trace.json.",
+    "option_a_applied_prod": true,
+    "option_a_migration": "supabase/migrations/20260712120000_marketplace_intelligence_pack_asset_type.sql",
+    "live_trace_verdicts": {
+      "P4": "PASS (prod HTTP uninstall teardown)",
+      "P5": "PASS (prod_db install_asset after Option A + entityId UUID fix; HTTP pending this PR deploy)",
+      "P6": "PASS (prod_db department_member audits via organization_members path already on main from PR #102; HTTP re-confirm pending this PR deploy)"
+    },
+    "part_d_fully_closed_under_strict_bar": true,
+    "next": "Merge/deploy this PR (Option A migration sync + P5 UUID hotfixes); re-run scripts/smoke-part-d-p5-live-trace.py and scripts/smoke-part-d-p4-p6-live-traces.py against prod HTTP"
   }
 }

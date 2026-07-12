@@ -29,6 +29,7 @@ def install_intelligence_pack(
     pack_id: str,
     *,
     actor_id: str | None = None,
+    asset_id: str | None = None,
 ) -> dict[str, Any]:
     spec = get_intelligence_pack_spec(pack_id)
     if not spec:
@@ -75,13 +76,20 @@ def install_intelligence_pack(
             except Exception as exc:  # noqa: BLE001
                 logger.debug("intelligence_pack_reference_skipped pack=%s error=%s", pack_id, exc)
 
+    # audit_events.resource_id is uuid — prefer marketplace asset id, else agent id.
+    resource_id = (asset_id or "").strip() or agent_id
     write_audit_event(
         client,
         org_id=org_id,
         actor_id=actor_id,
         action=AUDIT_INTELLIGENCE_PACK_INSTALLED,
         resource_type="intelligence_pack",
-        resource_id=pack_id,
-        metadata={"agent_id": agent_id, "assignment_count": len(created)},
+        resource_id=resource_id,
+        metadata={
+            "agent_id": agent_id,
+            "pack_id": pack_id,
+            "assignment_count": len(created),
+            "asset_id": asset_id,
+        },
     )
     return {"pack_id": pack_id, "assignments": created, "count": len(created)}

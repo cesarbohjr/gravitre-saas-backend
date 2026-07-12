@@ -97,6 +97,8 @@ def test_install_asset_intelligence_pack_branch(
     mock_install_pack.assert_called_once()
     assert mock_install_pack.call_args.args[2] == "agent-99"
     assert mock_install_pack.call_args.args[3] == "marketing-intelligence-pack"
+    assert mock_install_pack.call_args.kwargs.get("asset_id") == ASSET_ID
+    assert result["entities"]["entityId"] == ASSET_ID
 
 
 @patch("app.marketplace.entitlements.assert_install_entitlement")
