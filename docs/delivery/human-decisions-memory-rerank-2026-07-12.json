@@ -1,0 +1,32 @@
+{
+  "document": "Human decisions — Memory opt-in + STA-313 rerank",
+  "decided_at": "2026-07-12T09:16:00Z",
+  "decided_by": "Cesar Bohorquez Jr. (chat instruction)",
+  "decisions": [
+    {
+      "id": "memory_test_org_opt_in",
+      "choice": "A",
+      "summary": "Enable memoryEntityEmbeddings for smoke org only",
+      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "setting": {
+        "memoryEntityEmbeddings": {
+          "enabled": true,
+          "connectors": []
+        }
+      },
+      "method": "PUT /api/settings/memory-entity-embeddings on Railway prod with org-scoped JWT",
+      "verification": {
+        "api_after": {"enabled": true, "connectors": []},
+        "db_after": {"enabled": true, "connectors": []},
+        "enabled_orgs_only": ["cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"]
+      }
+    },
+    {
+      "id": "sta313_prod_rerank_swap",
+      "choice": "keep-ms-marco",
+      "summary": "No production rerank model change",
+      "production_model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+      "note": "bge-base/large remain UPGRADE_CANDIDATE from n=8 synthetic eval; not shipped"
+    }
+  ]
+}

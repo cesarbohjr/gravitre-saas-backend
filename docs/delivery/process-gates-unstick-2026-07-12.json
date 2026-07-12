@@ -35,23 +35,10 @@
     "STA-310": "PR #105 merged (62d8f0b1); HTTP live install PASS after Railway deploy",
     "STA-308": "PR #104 merged (350a6719); Option 1 retitle on divergent ask"
   },
-  "human_decisions_still_required": [
-    {
-      "id": "memory_test_org_opt_in",
-      "options": [
-        "A — enable memoryEntityEmbeddings for org cbbf993b-b22f-41ce-964b-1fc25e0dd9ea (prod smoke org) only",
-        "B — enable for a different named org_id (provide UUID)",
-        "C — leave all orgs off (no change)"
-      ]
-    },
-    {
-      "id": "sta313_prod_rerank_swap",
-      "options": [
-        "keep-ms-marco — production stays on cross-encoder/ms-marco-MiniLM-L-6-v2",
-        "bge-base — set RAG_CROSS_ENCODER_MODEL=BAAI/bge-reranker-base (ΔP@3=+0.0625 on n=8 synthetic)",
-        "bge-large — set RAG_CROSS_ENCODER_MODEL=BAAI/bge-reranker-large (same ΔP@3=+0.0625; heavier)"
-      ],
-      "note": "Eval caveat: n=8 synthetic corpus; not a real-KB A/B."
-    }
-  ]
+  "human_decisions_still_required": [],
+  "human_decisions_resolved_2026_07_12": {
+    "memory_test_org_opt_in": "A — enabled for cbbf993b-b22f-41ce-964b-1fc25e0dd9ea only",
+    "sta313_prod_rerank_swap": "keep-ms-marco — no change",
+    "artifact": "docs/delivery/human-decisions-memory-rerank-2026-07-12.json"
+  }
 }
