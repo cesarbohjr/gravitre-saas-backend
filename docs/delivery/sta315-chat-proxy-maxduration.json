@@ -1,0 +1,44 @@
+{
+  "ticket": "STA-315",
+  "title": "Chat proxy maxDuration residual — long confirms false-fail",
+  "investigated_at": "2026-07-12",
+  "inventory": {
+    "confirm_via_chat": {
+      "ui": "DefaultChatTransport → POST /api/chat → FastAPI /api/assistant/chat (SSE stream)",
+      "files": [
+        "apps/web/app/ai/_components/ai-workspace.tsx",
+        "apps/web/app/agents/[id]/chat/page.tsx",
+        "apps/web/app/api/chat/route.ts"
+      ],
+      "prior_ceiling_seconds": 120,
+      "risk": "Wall-clock maxDuration covers entire stream; UI spinner errors when proxy kills the function even if backend is healthy"
+    },
+    "confirm_via_execute_button": {
+      "ui": "conversationsApi.executeConversationTask → POST /api/assistant/conversation/{id}/execute",
+      "files": ["apps/web/lib/api.ts"],
+      "note": "Bypasses /api/chat maxDuration; STA-307 measured ~1159ms for all-skipped confirm"
+    },
+    "peer_ceiling": {
+      "file": "apps/web/app/api/notifications/stream/route.ts",
+      "maxDuration": 300
+    }
+  },
+  "fix": {
+    "change": "Raise /api/chat maxDuration from 120 → 300 (CHAT_PROXY_MAX_DURATION_SECONDS)",
+    "rationale": "Same class as notifications SSE; does not invent a second confirm path; removes silent false-fail class for long chat confirms and tool-heavy turns",
+    "non_goals": [
+      "Does not raise backend latency budget",
+      "Does not replace execute-button path",
+      "Does not claim provider-side stream can run forever — 300s is the shared Vercel Pro-style ceiling already used in-app"
+    ]
+  },
+  "evidence": {
+    "unit": "apps/web/__tests__/lib/chat-proxy-max-duration.test.ts",
+    "prior_prod": {
+      "source": "docs/delivery/sta307-hang-mislabel-findings.json",
+      "execute_elapsed_ms": 1159,
+      "false_fail_class": "chat proxy 120s vs fast backend execute"
+    }
+  },
+  "verdict": "PASS — ceiling raised; regression locks ≥300 and ≥ notifications stream"
+}
