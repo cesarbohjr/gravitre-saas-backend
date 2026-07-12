@@ -345,7 +345,7 @@ async def delete_lite_seat_department_route(
         .eq("id", department_id)
         .execute()
     )
-    if deleted.error:
+    if getattr(deleted, "error", None):
         raise HTTPException(status_code=500, detail=str(deleted.error))
     return {"success": True}
 
@@ -534,7 +534,7 @@ async def remove_department_member_route(
         .eq("user_id", user_id)
         .execute()
     )
-    if deleted.error:
+    if getattr(deleted, "error", None):
         raise HTTPException(status_code=500, detail=str(deleted.error))
     write_audit_event(
         client,

@@ -114,7 +114,10 @@ async def test_remove_department_member_writes_audit(mock_client, mock_audit):
     members = MagicMock()
     members.delete.return_value = members
     members.eq.return_value = members
-    members.execute.return_value = MagicMock(data=[{"id": "mem-1"}], error=None)
+    # Prod supabase-py APIResponse has no .error attribute — simulate that shape.
+    api_resp = MagicMock(spec=["data"])
+    api_resp.data = [{"id": "mem-1"}]
+    members.execute.return_value = api_resp
 
     def table(name):
         if name == "departments":
@@ -134,3 +137,43 @@ async def test_remove_department_member_writes_audit(mock_client, mock_audit):
     assert result["success"] is True
     mock_audit.assert_called_once()
     assert mock_audit.call_args.kwargs["action"] == "department_member.removed"
+
+
+@pytest.mark.asyncio
+@patch("app.routers.settings.write_audit_event")
+@patch("app.routers.settings.create_client")
+async def test_remove_department_member_tolerates_missing_error_attr(mock_client, mock_audit):
+    """Regression: accessing deleted.error raised AttributeError → HTTP 500 on prod."""
+    client = MagicMock()
+    mock_client.return_value = client
+    dept = MagicMock()
+    dept.select.return_value = dept
+    dept.eq.return_value = dept
+    dept.limit.return_value = dept
+    dept.execute.return_value = MagicMock(data=[{"id": "dept-1"}], error=None)
+
+    class _NoErrorAttr:
+        data = [{"id": "mem-1"}]
+
+    members = MagicMock()
+    members.delete.return_value = members
+    members.eq.return_value = members
+    members.execute.return_value = _NoErrorAttr()
+
+    def table(name):
+        if name == "departments":
+            return dept
+        if name == "department_members":
+            return members
+        return MagicMock()
+
+    client.table.side_effect = table
+    admin = ({"user_id": "admin-1"}, "org-1")
+    result = await remove_department_member_route(
+        admin,
+        _settings(),
+        department_id="dept-1",
+        user_id="user-2",
+    )
+    assert result["success"] is True
+    mock_audit.assert_called_once()
