@@ -32,12 +32,17 @@ BATCH_25_ACTION_KEYS: tuple[str, ...] = (
 )
 
 
-def _req(label: str, *keys: str, validator: str | None = None) -> WorkflowFieldSpec:
-    return WorkflowFieldSpec(label, keys, validator=validator)
+def _req(
+    label: str,
+    *keys: str,
+    validator: str | None = None,
+    sensitive: bool = False,
+) -> WorkflowFieldSpec:
+    return WorkflowFieldSpec(label, keys, validator=validator, sensitive=sensitive)
 
 
-def _opt(label: str, *keys: str) -> WorkflowFieldSpec:
-    return WorkflowFieldSpec(label, keys)
+def _opt(label: str, *keys: str, sensitive: bool = False) -> WorkflowFieldSpec:
+    return WorkflowFieldSpec(label, keys, sensitive=sensitive)
 
 
 WORKFLOW_SCHEMAS_BATCH_25: dict[str, ActionWorkflowSchema] = {
@@ -77,7 +82,10 @@ WORKFLOW_SCHEMAS_BATCH_25: dict[str, ActionWorkflowSchema] = {
             _req("project key", "project_key", "project"),
             _req("summary", "summary", "title"),
         ),
-        optional_fields=(_opt("Description", "description"),),
+        optional_fields=(
+            _opt("Description", "description"),
+            _opt("Assignee", "assignee", "assignee_hint", sensitive=True),
+        ),
     ),
     "jira.issues.update": ActionWorkflowSchema(
         intent_label="Update Jira issue",
@@ -176,6 +184,7 @@ WORKFLOW_SCHEMAS_BATCH_25: dict[str, ActionWorkflowSchema] = {
                 "firstname",
                 "payload",
                 validator="named_or_payload",
+                sensitive=True,
             ),
         ),
     ),

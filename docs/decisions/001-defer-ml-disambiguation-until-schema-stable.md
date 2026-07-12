@@ -35,3 +35,27 @@ Re-open this ADR when **all** of the following are true:
 - `backend/app/services/connector_parameter_inference.py` — context-aware inference (Feature 1)
 - `backend/app/connectors/action_catalog/action_workflow_schema.py` — declarative schemas
 - Scoped CI: `.github/workflows/connector-governance.yml`
+
+## Reopen proposal (2026-07-12) — pending human sign-off
+
+**Status:** Proposed reopen — **not authorized for Memory Phase 1 until human signs off.**
+
+### Triggers met (evidence)
+
+| Trigger | Evidence |
+| --- | --- |
+| `PENDING_WORKFLOW_SCHEMA_ALLOWLIST` ≤141 | Observed length **0** — `docs/delivery/adr001-memory-authorization-review.json` |
+| `ORPHAN_HANDLER_ALLOWLIST` / `API_IMPORT_EXCEPTION_ALLOWLIST` shrink ≥2 | Observed length **0** each — same review artifact |
+| ≥5 priority connectors with multi-field write schemas + assignee/email-style **sensitive** fields | Baseline **NOT MET** frozen in `docs/delivery/adr001-sensitive-schema-audit.json`; after schema flags: HubSpot / Asana / Apollo / Slack / Jira all qualify |
+
+### Schema evidence paths (post-flag)
+
+- Asana `asana.tasks.create` — `assignee` / `due_on` already `sensitive=True` (`action_workflow_schema.py`)
+- HubSpot `hubspot.contacts.create` — email-style identity field `sensitive=True` (`action_workflow_schema.py`)
+- Apollo `apollo.contacts.create` — email-or-name field `sensitive=True` (`workflow_schemas_batch_25.py`)
+- Jira `jira.issues.create` — optional assignee `sensitive=True` (`workflow_schemas_batch_25.py`)
+- Slack `slack.post_message` — channel marked `sensitive=True` as entity-resolution analogue (`action_workflow_schema.py`)
+
+### Memory Phase 1 constraint (unchanged)
+
+Embeddings must attach to `WorkflowFieldSpec` only (sensitive / inferrable flags) — **no** parallel one-off heuristics per vendor. Do not implement the embedding index or vector search until this reopen is **explicitly signed off**.

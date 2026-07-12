@@ -127,7 +127,7 @@ CONNECTOR_MENTION = re.compile(
 )
 ACTION_VERB = re.compile(
     r"\b(search|find|list|get|lookup|query|show|fetch|create|update|post|send|write|"
-    r"close|log|notify|message|assign|enroll|add)\b",
+    r"close|log|notify|message|assign|enroll|add|draft|compose)\b",
     re.I,
 )
 QUOTED = re.compile(r'["\']([^"\']{1,500})["\']')

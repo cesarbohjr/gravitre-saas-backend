@@ -415,6 +415,19 @@ async def add_department_member_route(
     )
     if inserted.error:
         raise HTTPException(status_code=500, detail=str(inserted.error))
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=_user["user_id"],
+        action="department_member.added",
+        resource_type="department_member",
+        resource_id=str((inserted.data or {}).get("id") or user_id),
+        metadata={
+            "departmentId": body.department_id,
+            "userId": user_id,
+            "role": role,
+        },
+    )
     return {"member": inserted.data}
 
 
@@ -446,6 +459,15 @@ async def remove_department_member_route(
     )
     if deleted.error:
         raise HTTPException(status_code=500, detail=str(deleted.error))
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=_user["user_id"],
+        action="department_member.removed",
+        resource_type="department_member",
+        resource_id=str(user_id),
+        metadata={"departmentId": department_id, "userId": user_id},
+    )
     return {"success": True}
 
 
