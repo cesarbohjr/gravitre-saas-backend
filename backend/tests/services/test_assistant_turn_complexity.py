@@ -32,13 +32,14 @@ def test_multi_step_hint_is_workflow_planning():
     assert task == TaskType.WORKFLOW_PLANNING
 
 
-def test_default_is_rag_answering():
+def test_default_short_is_summarization():
     task = classify_assistant_turn_complexity(
         "Summarize our Q2 pipeline health for the team",
         mode="standard",
     )
-    assert task == TaskType.RAG_ANSWERING
-    assert model_tier_for_task_type(task) == "medium"
+    # Routing wave: short non-write prompts classify as simple → SUMMARIZATION.
+    assert task == TaskType.SUMMARIZATION
+    assert model_tier_for_task_type(task) == "low"
 
 
 def test_explicit_high_complexity_param():
