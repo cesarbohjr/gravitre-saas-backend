@@ -69,7 +69,9 @@ export function StatsGrid({ children, columns = 3, className }: StatsGridProps) 
       className={cn(
         "grid gap-2 sm:gap-3",
         columns === 2 && "grid-cols-2",
-        columns === 3 && "grid-cols-3",
+        // Start at 2 cols on small phones so labels like "Recommendation
+        // success rate" aren't crushed, then expand to 3 from sm up.
+        columns === 3 && "grid-cols-2 sm:grid-cols-3",
         columns === 4 && "grid-cols-2 sm:grid-cols-4",
         className
       )}

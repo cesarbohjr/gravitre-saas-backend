@@ -34,7 +34,11 @@ export function CalendarView({
   const today = new Date()
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
+    <div className="overflow-x-auto scrollbar-hide rounded-xl border border-border bg-card">
+      {/* On phones a full-width 7-col grid crushes day cells to ~50px, making
+          event chips unreadable. Keep a comfortable min-width and let the
+          calendar scroll horizontally; go full-width from md up. */}
+      <div className="min-w-[46rem] md:min-w-0">
       <div className="grid grid-cols-7 border-b border-border bg-muted/40">
         {WEEKDAYS.map((day) => (
           <div
@@ -161,6 +165,7 @@ export function CalendarView({
             </div>
           )
         })}
+      </div>
       </div>
     </div>
   )

@@ -220,8 +220,9 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
   return (
     <Dialog open={open} onOpenChange={(next) => !next && resetAndClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
+        <DialogHeader className="text-left">
+          {/* pr-8 keeps the title clear of the absolute top-right close button */}
+          <DialogTitle className="pr-8">
             {step === 1 && "Add Data Source"}
             {step === 2 && `Configure ${selectedType?.name ?? "Connection"}`}
             {step === 3 && "Test & Connect"}
