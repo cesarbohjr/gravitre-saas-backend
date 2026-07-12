@@ -99,7 +99,10 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
   const [planRequired, setPlanRequired] = useState<PlanRequiredDetail | null>(null)
   const router = useRouter()
   const pathname = usePathname()
-  const isImmersiveChat = pathname === "/ai" || pathname.startsWith("/ai/")
+  const isImmersiveChat =
+    pathname === "/ai" ||
+    pathname.startsWith("/ai/") ||
+    (pathname.startsWith("/agents/") && pathname.endsWith("/chat"))
   const { user, loading } = useAuth()
   const { effectiveHidePoweredBy } = useEnterpriseBranding()
 
