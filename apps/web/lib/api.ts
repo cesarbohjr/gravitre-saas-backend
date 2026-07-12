@@ -1687,6 +1687,22 @@ export type IntelligenceEvaluationsResponse = {
 
 export const intelligenceApi = {
   snapshot: () => fetcher<IntelligenceSnapshot>(apiUrl("/api/admin/intelligence/snapshot")),
+  heuristicRecommendations: () =>
+    fetcher<{
+      advisoryOnly: boolean
+      actionsTaken: unknown[]
+      recommendations: Array<{
+        id: string
+        kind: string
+        title: string
+        reason: string
+        confidence: number
+        priority: number
+        advisoryOnly: boolean
+        href: string
+      }>
+      count: number
+    }>(apiUrl("/api/intelligence/recommendations/heuristics")),
   modelCatalog: () => fetcher<MlAdminCatalogResponse>(apiUrl("/api/intelligence/models/catalog")),
   learningProgress: () =>
     fetcher<IntelligenceLearningProgress>(apiUrl("/api/admin/intelligence/learning-progress")),

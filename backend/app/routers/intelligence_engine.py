@@ -119,6 +119,95 @@ async def intelligence_recommend(
     )
 
 
+@router.get("/recommendations/heuristics")
+async def intelligence_heuristic_recommendations(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _member: Annotated[tuple, Depends(require_org_member)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """STA-314 suggest-only heuristic cards — never invokes tools or write gates."""
+    from app.services.recommendation_heuristics_service import (
+        assert_no_execute_surface,
+        build_heuristic_recommendations,
+    )
+    from app.workflows.repository import get_supabase_client
+
+    client = get_supabase_client(settings)
+    connected: list[dict[str, Any]] = []
+    usage_by_connector: dict[str, int] = {}
+    installed_packs: set[str] = set()
+
+    try:
+        connectors_res = (
+            client.table("connectors")
+            .select("id,vendor,status,display_name,auth_status")
+            .eq("org_id", org_id)
+            .execute()
+        )
+        for row in list(connectors_res.data or []):
+            vendor = str(row.get("vendor") or "").strip().lower()
+            if not vendor:
+                continue
+            status_value = str(row.get("status") or row.get("auth_status") or "").lower()
+            connected.append(
+                {
+                    "vendor": vendor,
+                    "label": row.get("display_name") or vendor,
+                    "status": status_value or "connected",
+                    "connected": True,
+                    "executable": status_value not in {"error", "expired", "disconnected"},
+                }
+            )
+    except Exception:
+        connected = []
+
+    try:
+        packs_res = (
+            client.table("org_department_pack_installs")
+            .select("pack_id")
+            .eq("org_id", org_id)
+            .execute()
+        )
+        installed_packs = {
+            str(row.get("pack_id") or "").strip()
+            for row in list(packs_res.data or [])
+            if row.get("pack_id")
+        }
+    except Exception:
+        installed_packs = set()
+
+    try:
+        events_res = (
+            client.table("audit_events")
+            .select("metadata")
+            .eq("org_id", org_id)
+            .limit(500)
+            .execute()
+        )
+        for row in list(events_res.data or []):
+            meta = row.get("metadata") or {}
+            if not isinstance(meta, dict):
+                continue
+            vendor = str(
+                meta.get("connector")
+                or meta.get("connector_type")
+                or meta.get("vendor")
+                or ""
+            ).strip().lower()
+            if vendor:
+                usage_by_connector[vendor] = usage_by_connector.get(vendor, 0) + 1
+    except Exception:
+        usage_by_connector = {}
+
+    payload = build_heuristic_recommendations(
+        connected_connectors=connected,
+        usage_by_connector=usage_by_connector,
+        installed_packs=installed_packs,
+    )
+    assert_no_execute_surface(payload)
+    return payload
+
+
 @router.post("/forecast")
 async def intelligence_forecast(
     body: ForecastRequest,

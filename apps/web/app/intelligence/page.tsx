@@ -13,6 +13,7 @@ import { ApiError } from "@/lib/fetcher"
 import { formatPercent, readNumber, readString } from "@/lib/intelligence/helpers"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { RecommendationExplanation } from "@/components/intelligence/recommendation-explanation"
+import { HeuristicSuggestionCards } from "@/components/intelligence/heuristic-suggestion-cards"
 import { SimulationCard } from "@/components/intelligence/simulation-card"
 import { IntelligenceTrace } from "@/components/intelligence/intelligence-trace"
 import { IntelligenceHealthGrid } from "@/components/intelligence/intelligence-health-grid"
@@ -113,6 +114,8 @@ export default function IntelligenceCenterPage() {
           advisoryOnly
           sources={[{ type: "optimization_suggestions", label: "Org optimization signals" }]}
         />
+
+        <HeuristicSuggestionCards />
 
         <IntelligenceHealthGrid orgScopedKey={user ? "intelligence-center" : null} />
 

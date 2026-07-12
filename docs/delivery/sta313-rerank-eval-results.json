@@ -1,21 +1,21 @@
 {
   "ticket": "STA-313",
   "title": "Knowledge Phase 2 measured rerank eval",
-  "ran_at": "2026-07-12T08:06:52.536310+00:00",
+  "ran_at": "2026-07-12T08:27:46.666499+00:00",
   "queries_path": "C:/Users/Cesar/Downloads/Gravitre Operator AI/docs/delivery/sta313-rerank-eval-queries.json",
   "n_queries": 8,
   "n_corpus": 14,
   "top_k": 3,
   "baseline": {
     "name": "ms-marco-MiniLM-L-6-v2",
-    "status": "degraded",
+    "status": "ok",
     "error": null,
     "n_queries_scored": 8,
     "top_k": 3,
     "mean_precision_at_k": 0.9375,
     "mean_mrr": 1.0,
     "methods": [
-      "cross_encoder_unavailable+lexical_fallback"
+      "cross_encoder"
     ],
     "per_query": [
       {
@@ -23,11 +23,10 @@
         "precision_at_k": 1.0,
         "mrr": 1.0,
         "ranked_ids": [
-          "doc-hybrid-overview",
           "doc-hybrid-rrf",
-          "doc-noise-apollo"
+          "doc-hybrid-overview"
         ],
-        "method": "cross_encoder_unavailable+lexical_fallback"
+        "method": "cross_encoder"
       },
       {
         "id": "pipeline_hygiene",
@@ -35,43 +34,36 @@
         "mrr": 1.0,
         "ranked_ids": [
           "doc-stale-opps",
-          "doc-pipeline-hygiene",
-          "doc-connector-ingest"
+          "doc-pipeline-hygiene"
         ],
-        "method": "cross_encoder_unavailable+lexical_fallback"
+        "method": "cross_encoder"
       },
       {
         "id": "connector_sync",
         "precision_at_k": 1.0,
         "mrr": 1.0,
         "ranked_ids": [
-          "doc-connector-ingest",
-          "doc-finance-pilot",
-          "doc-approval-gate"
+          "doc-connector-ingest"
         ],
-        "method": "cross_encoder_unavailable+lexical_fallback"
+        "method": "cross_encoder"
       },
       {
         "id": "incident_response",
         "precision_at_k": 1.0,
         "mrr": 1.0,
         "ranked_ids": [
-          "doc-pagerduty-runbook",
-          "doc-hybrid-overview",
-          "doc-hybrid-rrf"
+          "doc-pagerduty-runbook"
         ],
-        "method": "cross_encoder_unavailable+lexical_fallback"
+        "method": "cross_encoder"
       },
       {
         "id": "finance_pilot",
         "precision_at_k": 1.0,
         "mrr": 1.0,
         "ranked_ids": [
-          "doc-finance-pilot",
-          "doc-hybrid-overview",
-          "doc-hybrid-rrf"
+          "doc-finance-pilot"
         ],
-        "method": "cross_encoder_unavailable+lexical_fallback"
+        "method": "cross_encoder"
       },
       {
         "id": "approval_gate",
@@ -79,35 +71,30 @@
         "mrr": 1.0,
         "ranked_ids": [
           "doc-approval-gate",
-          "doc-execute-plan",
-          "doc-finance-pilot"
+          "doc-execute-plan"
         ],
-        "method": "cross_encoder_unavailable+lexical_fallback"
+        "method": "cross_encoder"
       },
       {
         "id": "rag_rerank",
         "precision_at_k": 0.5,
         "mrr": 1.0,
         "ranked_ids": [
-          "doc-rerank-msmarco",
-          "doc-hybrid-overview",
-          "doc-noise-apollo"
+          "doc-rerank-msmarco"
         ],
-        "method": "cross_encoder_unavailable+lexical_fallback"
+        "method": "cross_encoder"
       },
       {
         "id": "department_scope",
         "precision_at_k": 1.0,
         "mrr": 1.0,
         "ranked_ids": [
-          "doc-department-members",
-          "doc-hybrid-overview",
-          "doc-hybrid-rrf"
+          "doc-department-members"
         ],
-        "method": "cross_encoder_unavailable+lexical_fallback"
+        "method": "cross_encoder"
       }
     ],
-    "note": "Cross-encoder weights unavailable in this environment; scores used lexical fallback and are not an upgrade decision."
+    "note": null
   },
   "candidates": [
     {
@@ -211,15 +198,240 @@
           "method": "lexical_overlap"
         }
       ],
-      "note": null
+      "note": null,
+      "delta_precision_at_k": 0.0,
+      "delta_mrr": 0.0
+    },
+    {
+      "name": "bge-reranker-base",
+      "status": "ok",
+      "error": null,
+      "n_queries_scored": 8,
+      "top_k": 3,
+      "mean_precision_at_k": 1.0,
+      "mean_mrr": 1.0,
+      "methods": [
+        "cross_encoder"
+      ],
+      "per_query": [
+        {
+          "id": "hybrid_search",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-hybrid-overview",
+            "doc-hybrid-rrf",
+            "doc-noise-slack"
+          ],
+          "method": "cross_encoder"
+        },
+        {
+          "id": "pipeline_hygiene",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-pipeline-hygiene",
+            "doc-stale-opps",
+            "doc-pagerduty-runbook"
+          ],
+          "method": "cross_encoder"
+        },
+        {
+          "id": "connector_sync",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-connector-ingest",
+            "doc-approval-gate",
+            "doc-finance-pilot"
+          ],
+          "method": "cross_encoder"
+        },
+        {
+          "id": "incident_response",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-pagerduty-runbook",
+            "doc-pipeline-hygiene",
+            "doc-department-members"
+          ],
+          "method": "cross_encoder"
+        },
+        {
+          "id": "finance_pilot",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-finance-pilot",
+            "doc-approval-gate",
+            "doc-execute-plan"
+          ],
+          "method": "cross_encoder"
+        },
+        {
+          "id": "approval_gate",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-approval-gate",
+            "doc-execute-plan",
+            "doc-finance-pilot"
+          ],
+          "method": "cross_encoder"
+        },
+        {
+          "id": "rag_rerank",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-rerank-msmarco",
+            "doc-hybrid-overview",
+            "doc-hybrid-rrf"
+          ],
+          "method": "cross_encoder"
+        },
+        {
+          "id": "department_scope",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-department-members",
+            "doc-pagerduty-runbook",
+            "doc-noise-billing"
+          ],
+          "method": "cross_encoder"
+        }
+      ],
+      "note": null,
+      "delta_precision_at_k": 0.0625,
+      "delta_mrr": 0.0
+    },
+    {
+      "name": "bge-reranker-large",
+      "status": "ok",
+      "error": null,
+      "n_queries_scored": 8,
+      "top_k": 3,
+      "mean_precision_at_k": 1.0,
+      "mean_mrr": 1.0,
+      "methods": [
+        "cross_encoder"
+      ],
+      "per_query": [
+        {
+          "id": "hybrid_search",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-hybrid-rrf",
+            "doc-hybrid-overview",
+            "doc-noise-slack"
+          ],
+          "method": "cross_encoder"
+        },
+        {
+          "id": "pipeline_hygiene",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-stale-opps",
+            "doc-pipeline-hygiene",
+            "doc-noise-billing"
+          ],
+          "method": "cross_encoder"
+        },
+        {
+          "id": "connector_sync",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-connector-ingest",
+            "doc-approval-gate",
+            "doc-execute-plan"
+          ],
+          "method": "cross_encoder"
+        },
+        {
+          "id": "incident_response",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-pagerduty-runbook",
+            "doc-noise-apollo",
+            "doc-finance-pilot"
+          ],
+          "method": "cross_encoder"
+        },
+        {
+          "id": "finance_pilot",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-finance-pilot",
+            "doc-approval-gate",
+            "doc-connector-ingest"
+          ],
+          "method": "cross_encoder"
+        },
+        {
+          "id": "approval_gate",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-approval-gate",
+            "doc-execute-plan",
+            "doc-finance-pilot"
+          ],
+          "method": "cross_encoder"
+        },
+        {
+          "id": "rag_rerank",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-rerank-msmarco",
+            "doc-hybrid-overview",
+            "doc-hybrid-rrf"
+          ],
+          "method": "cross_encoder"
+        },
+        {
+          "id": "department_scope",
+          "precision_at_k": 1.0,
+          "mrr": 1.0,
+          "ranked_ids": [
+            "doc-department-members",
+            "doc-rerank-msmarco",
+            "doc-noise-apollo"
+          ],
+          "method": "cross_encoder"
+        }
+      ],
+      "note": null,
+      "delta_precision_at_k": 0.0625,
+      "delta_mrr": 0.0
     }
   ],
   "comparison": {
-    "upgrade_authorized": false,
+    "upgrade_authorized": true,
+    "winners": [
+      "bge-reranker-base",
+      "bge-reranker-large"
+    ],
     "recommendations": [
-      "Baseline not fully scored (error or degraded fallback) \u2014 do not change production reranker."
-    ]
+      "lexical_overlap: no measured win (delta_P@3=0.0, delta_MRR=0.0) \u2014 keep ms-marco",
+      "bge-reranker-base: measured win (delta_P@3=0.0625, delta_MRR=0.0)",
+      "bge-reranker-large: measured win (delta_P@3=0.0625, delta_MRR=0.0)"
+    ],
+    "note": "Production default must stay ms-marco unless upgrade_authorized and a human ships an explicit change."
   },
   "production_default_unchanged": true,
-  "verdict": "KEEP_MS_MARCO"
+  "verdict": "UPGRADE_CANDIDATE",
+  "caveats": [
+    "n=8 labeled synthetic queries — measured win is directional, not production-sufficient alone",
+    "Production RAG_CROSS_ENCODER_MODEL remains ms-marco until an explicit human ship decision",
+    "Cohere not scored in this run (no COHERE_API_KEY in eval env)"
+  ],
+  "human_decision_required_before_swap": true
 }
