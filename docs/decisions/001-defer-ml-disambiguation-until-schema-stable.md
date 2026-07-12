@@ -59,3 +59,16 @@ Re-open this ADR when **all** of the following are true:
 ### Memory Phase 1 constraint (unchanged)
 
 Embeddings must attach to `WorkflowFieldSpec` only (sensitive / inferrable flags) — **no** parallel one-off heuristics per vendor. Do not implement the embedding index or vector search until this reopen is **explicitly signed off**.
+
+## Human decision (2026-07-12) — schema-gate closed; Memory embeddings not signed off
+
+**Category boundary:** The schema-gate criterion being met in code is accepted as **engineering-only evidence**. It does **not** authorize sending customer identity fields (email, assignee, channel) to a third-party embedding provider. Collapsing those claims is the same failure shape as treating backend-only Done as full-path PASS.
+
+| Decision | Outcome |
+| --- | --- |
+| Freeze schema-gate audit | Closed — `docs/delivery/adr001-sensitive-schema-audit.json` |
+| Memory Phase 1 embeddings | **Not signed off** — paused |
+| Next artifact | `docs/delivery/memory-phase1-data-handling-design.md` (what / provider / storage / org controls / sign-off owner) |
+| STA-305 / STA-309 / STA-310 / STA-311 | Unaffected; remain closed |
+
+Until the data-handling design is reviewed and question 5 (named data-governance / DPA sign-off owner) is answered, **no Memory embedding code**.

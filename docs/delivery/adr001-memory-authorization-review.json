@@ -1,11 +1,26 @@
 {
   "document": "ADR 001 review — Memory Engine / ML Phase authorization",
   "reviewed_at": "2026-07-12",
+  "updated_at": "2026-07-12",
   "adr_path": "docs/decisions/001-defer-ml-disambiguation-until-schema-stable.md",
-  "adr_status": "Accepted (deferred) 2026-07-07 — reopen proposed 2026-07-12 pending human sign-off",
+  "adr_status": "Accepted (deferred) 2026-07-07 — schema-gate engineering evidence closed; Memory Phase 1 embeddings NOT signed off",
+  "category_boundary": {
+    "lesson": "Schema-gate met:true must not be read as governance authorization to embed customer PII — same failure shape as backend-only DONE standing in for full-path PASS",
+    "schema_gate_audit": {
+      "artifact": "docs/delivery/adr001-sensitive-schema-audit.json",
+      "status": "CLOSED — engineering-only",
+      "human_decision_2026_07_12": "Accept met-in-code on its own terms; authorizes nothing about third-party embedding of identity fields"
+    },
+    "memory_phase_1_embeddings": {
+      "status": "PAUSED",
+      "human_decision_2026_07_12": "Do not sign off. Require Memory Phase 1 data-handling design + Q5 ownership answer before any embedding code",
+      "design_artifact": "docs/delivery/memory-phase1-data-handling-design.md"
+    }
+  },
   "why_deferred_still_valid": [
     "Schema-first governance — embeddings must attach to WorkflowFieldSpec, not parallel heuristics",
-    "Constraint type is governance/schema stability — not cost/latency/residency"
+    "Constraint type for the original ADR deferral was governance/schema stability — not cost/latency/residency",
+    "Identity-field embedding is a separate data-handling/compliance decision from the schema-gate"
   ],
   "revisit_triggers": {
     "PENDING_WORKFLOW_SCHEMA_ALLOWLIST_shrink_ge_25": {
@@ -34,7 +49,9 @@
       },
       "observed": "5/5 after WorkflowFieldSpec sensitive flags (HubSpot email, Apollo email, Jira assignee, Slack channel, Asana assignee/due)",
       "met": true,
-      "pending_human_sign_off": true
+      "engineering_gate_closed": true,
+      "pending_human_sign_off": false,
+      "note": "Human accepted engineering-gate closure 2026-07-12; explicitly did NOT authorize Memory embeddings"
     }
   },
   "ml_phase_authorization": {
@@ -42,12 +59,18 @@
     "intent_engine": "PART OF routing wave — not a separate ML project; shipping as assistant_routing_tier heuristics first",
     "knowledge_phase_2_rerank_eval": "AUTHORIZED as measured eval only (Cohere/bge vs ms-marco) — no assumed upgrade",
     "recommendation_heuristic_cards": "AUTHORIZED suggest-only (must reuse execute_plan gate; no auto-execute)",
-    "memory_phase_1_embeddings": "NOT AUTHORIZED until human signs off ADR 001 reopen — criterion met in code/docs, sign-off pending",
+    "memory_phase_1_embeddings": "NOT AUTHORIZED — paused pending docs/delivery/memory-phase1-data-handling-design.md review and named data-governance sign-off owner (Q5)",
     "forecasting_gnn_cv_speech": "OUT OF SCOPE"
   },
+  "unaffected_closures": {
+    "STA-305": "Done — catalog-kind + draft lexicon; prod PASS 473454da",
+    "STA-309": "Done — pack uninstall entity teardown",
+    "STA-310": "Done — intelligence_pack install_asset branch",
+    "STA-311": "Done — department_members audit"
+  },
   "sequence": {
-    "routing_wave": "prod evidence complete for Trace D escalate",
-    "after_routing_prod_evidence": "Knowledge Phase 2 eval + Recommendation cards OK; Memory waits ADR reopen human sign-off",
-    "sta_305": "catalog-kind authority + draft lexicon in this wave"
+    "schema_gate": "closed engineering-only",
+    "memory": "paused — data-handling design submitted for review",
+    "other_non_memory": "clear to proceed"
   }
 }
