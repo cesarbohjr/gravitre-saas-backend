@@ -1,0 +1,102 @@
+{
+  "ticket": "STA-314",
+  "kind": "gap-close-live",
+  "ran_at": "2026-07-12T10:08:16.122910+00:00",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "signals": {
+    "connectorCount": 5,
+    "connectors": [
+      {
+        "vendor": "pipedrive",
+        "label": "pipedrive-staging",
+        "status": "healthy",
+        "executable": true
+      },
+      {
+        "vendor": "apollo",
+        "label": "apollo-production",
+        "status": "healthy",
+        "executable": true
+      },
+      {
+        "vendor": "microsoft365",
+        "label": "microsoft365-production",
+        "status": "healthy",
+        "executable": true
+      },
+      {
+        "vendor": "hubspot",
+        "label": "hubspot",
+        "status": "healthy",
+        "executable": true
+      },
+      {
+        "vendor": "slack",
+        "label": "slack",
+        "status": "healthy",
+        "executable": true
+      }
+    ],
+    "usageByConnector": {
+      "apollo": 42,
+      "assistant": 16,
+      "pipedrive": 8,
+      "slack": 6
+    },
+    "installedPackCount": 0,
+    "installedPacksSample": [],
+    "dismissedCount": 0
+  },
+  "local_builder": {
+    "advisoryOnly": true,
+    "actionsTaken": [],
+    "count": 5,
+    "kinds": [
+      "connector_missing_pack",
+      "connector_missing_pack",
+      "connector_missing_pack",
+      "connector_connected_unused",
+      "connector_connected_unused"
+    ],
+    "noExecuteSurface": true
+  },
+  "http_get": {
+    "status": 200,
+    "advisoryOnly": true,
+    "actionsTakenEmpty": true,
+    "noExecuteSurface": true,
+    "count": 0,
+    "kinds": [],
+    "body": {
+      "advisoryOnly": true,
+      "actionsTaken": [],
+      "recommendations": [],
+      "count": 0
+    },
+    "note": "HTTP reflects currently deployed Railway revision; local_builder uses gap-close signal wiring against prod DB."
+  },
+  "http_dismiss_probe": {
+    "status": 404,
+    "body": {
+      "detail": "Not Found"
+    },
+    "expectedAfterDeploy": 200
+  },
+  "ui_evidence": {
+    "path": "apps/web/components/intelligence/heuristic-suggestion-cards.tsx",
+    "hasOpenNav": true,
+    "hasDismiss": true,
+    "bansExecuteHandlers": true,
+    "bansExecuteLabels": true,
+    "advisoryCopy": true
+  },
+  "pass": {
+    "localSignalsLoaded": true,
+    "localNoExecute": true,
+    "httpGet200": true,
+    "httpAdvisoryOnly": true,
+    "uiNavAndDismissOnly": true
+  }
+}

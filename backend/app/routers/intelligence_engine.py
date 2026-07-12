@@ -122,90 +122,62 @@ async def intelligence_recommend(
 @router.get("/recommendations/heuristics")
 async def intelligence_heuristic_recommendations(
     org_id: Annotated[str, Depends(get_org_context)],
-    _member: Annotated[tuple, Depends(require_org_member)],
+    member: Annotated[tuple, Depends(require_org_member)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """STA-314 suggest-only heuristic cards — never invokes tools or write gates."""
     from app.services.recommendation_heuristics_service import (
         assert_no_execute_surface,
         build_heuristic_recommendations,
+        filter_dismissed_recommendations,
+        load_dismissed_card_ids,
+        load_heuristic_signals,
     )
     from app.workflows.repository import get_supabase_client
 
+    user, _org, _role = member
+    user_id = str(user.get("user_id") or user.get("sub") or "")
     client = get_supabase_client(settings)
-    connected: list[dict[str, Any]] = []
-    usage_by_connector: dict[str, int] = {}
-    installed_packs: set[str] = set()
-
-    try:
-        connectors_res = (
-            client.table("connectors")
-            .select("id,vendor,status,display_name,auth_status")
-            .eq("org_id", org_id)
-            .execute()
-        )
-        for row in list(connectors_res.data or []):
-            vendor = str(row.get("vendor") or "").strip().lower()
-            if not vendor:
-                continue
-            status_value = str(row.get("status") or row.get("auth_status") or "").lower()
-            connected.append(
-                {
-                    "vendor": vendor,
-                    "label": row.get("display_name") or vendor,
-                    "status": status_value or "connected",
-                    "connected": True,
-                    "executable": status_value not in {"error", "expired", "disconnected"},
-                }
-            )
-    except Exception:
-        connected = []
-
-    try:
-        packs_res = (
-            client.table("org_department_pack_installs")
-            .select("pack_id")
-            .eq("org_id", org_id)
-            .execute()
-        )
-        installed_packs = {
-            str(row.get("pack_id") or "").strip()
-            for row in list(packs_res.data or [])
-            if row.get("pack_id")
-        }
-    except Exception:
-        installed_packs = set()
-
-    try:
-        events_res = (
-            client.table("audit_events")
-            .select("metadata")
-            .eq("org_id", org_id)
-            .limit(500)
-            .execute()
-        )
-        for row in list(events_res.data or []):
-            meta = row.get("metadata") or {}
-            if not isinstance(meta, dict):
-                continue
-            vendor = str(
-                meta.get("connector")
-                or meta.get("connector_type")
-                or meta.get("vendor")
-                or ""
-            ).strip().lower()
-            if vendor:
-                usage_by_connector[vendor] = usage_by_connector.get(vendor, 0) + 1
-    except Exception:
-        usage_by_connector = {}
-
+    signals = load_heuristic_signals(client, org_id)
     payload = build_heuristic_recommendations(
-        connected_connectors=connected,
-        usage_by_connector=usage_by_connector,
-        installed_packs=installed_packs,
+        connected_connectors=signals["connected_connectors"],
+        usage_by_connector=signals["usage_by_connector"],
+        installed_packs=signals["installed_packs"],
+        lookback_days=int(signals.get("lookback_days") or 30),
     )
+    if user_id:
+        payload = filter_dismissed_recommendations(
+            payload,
+            load_dismissed_card_ids(client, org_id, user_id),
+        )
     assert_no_execute_surface(payload)
     return payload
+
+
+@router.post("/recommendations/heuristics/{card_id}/dismiss")
+async def intelligence_heuristic_dismiss(
+    card_id: str,
+    org_id: Annotated[str, Depends(get_org_context)],
+    member: Annotated[tuple, Depends(require_org_member)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """STA-314 dismiss (STA-123 pattern) — advisory only; never executes tools."""
+    from app.services.recommendation_heuristics_service import dismiss_heuristic_card
+    from app.workflows.repository import get_supabase_client
+
+    user, _org, _role = member
+    user_id = str(user.get("user_id") or user.get("sub") or "")
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User required")
+    try:
+        return dismiss_heuristic_card(
+            get_supabase_client(settings),
+            org_id,
+            user_id,
+            card_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.post("/forecast")
