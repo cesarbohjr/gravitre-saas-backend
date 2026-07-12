@@ -218,6 +218,7 @@ export default function IntegrationDetailPage({ params }: { params: Promise<{ id
                       size="icon"
                       className="h-8 w-8 shrink-0"
                       onClick={() => toggleSecretVisibility(index)}
+                      aria-label={secret.isVisible ? `Hide ${secret.key}` : `Show ${secret.key}`}
                     >
                       {secret.isVisible ? (
                         <EyeOff className="h-4 w-4 text-muted-foreground" />

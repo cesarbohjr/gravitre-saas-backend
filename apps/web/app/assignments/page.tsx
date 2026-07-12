@@ -651,9 +651,12 @@ export default function AssignmentsPage() {
                 <Icon name="filter" size="sm" />
                 <span className="hidden sm:inline">Filter</span>
               </Button>
-              <div className="flex items-center p-1 rounded-lg bg-secondary/50">
+              <div className="flex items-center p-1 rounded-lg bg-secondary/50" role="group" aria-label="Assignment view mode">
                 <button
+                  type="button"
                   onClick={() => setViewMode("list")}
+                  aria-label="List view"
+                  aria-pressed={viewMode === "list"}
                   className={cn(
                     "p-2 rounded-md transition-all",
                     viewMode === "list" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground"
@@ -662,7 +665,10 @@ export default function AssignmentsPage() {
                   <Icon name="rows" size="sm" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => setViewMode("kanban")}
+                  aria-label="Board view"
+                  aria-pressed={viewMode === "kanban"}
                   className={cn(
                     "p-2 rounded-md transition-all",
                     viewMode === "kanban" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground"

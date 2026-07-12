@@ -533,6 +533,7 @@ function TrainingPageContent() {
               <select
                 value={datasetType}
                 onChange={(event) => setDatasetType(event.target.value as TrainingDatasetType)}
+                aria-label="Dataset type"
                 className="rounded-lg border border-border bg-background/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
               >
                 <option value="examples">Examples</option>
@@ -607,6 +608,7 @@ function TrainingPageContent() {
                       <select
                         value={trainModelBase}
                         onChange={(event) => setTrainModelBase(event.target.value)}
+                        aria-label="Base model"
                         className="rounded-lg border border-border bg-background/80 px-3 py-2 text-sm"
                       >
                         {BASE_MODEL_OPTIONS.map((model) => (
@@ -750,6 +752,7 @@ function TrainingPageContent() {
             <select
               value={effectiveSelectedAgentId}
               onChange={(event) => setSelectedAgentId(event.target.value)}
+              aria-label="Apply instruction to agent"
               className="rounded-lg border border-border bg-background/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
             >
               <option value="">All agents</option>
@@ -854,6 +857,7 @@ function TrainingPageContent() {
                 setAssignAgentId(event.target.value)
                 setAssignModelId("")
               }}
+              aria-label="Workflow agent"
               className="rounded-lg border border-border bg-background/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
             >
               {assignableAgents.length === 0 && <option value="">No workflow agents</option>}
@@ -866,6 +870,7 @@ function TrainingPageContent() {
             <select
               value={effectiveAssignModelId}
               onChange={(event) => setAssignModelId(event.target.value)}
+              aria-label="Fine-tuned model assignment"
               className="rounded-lg border border-border bg-background/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
             >
               <option value="">Base model only (clear assignment)</option>

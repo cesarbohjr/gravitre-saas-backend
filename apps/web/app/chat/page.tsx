@@ -662,6 +662,7 @@ export default function ChatPage() {
             type="submit"
             size="sm"
             disabled={!user || !query.trim() || isSearching}
+            aria-label={isSearching ? "Searching" : "Search"}
             className={cn(
               "gap-2 transition-transform duration-150 active:scale-90",
               query.trim() && !isSearching && "motion-safe:hover:scale-105",

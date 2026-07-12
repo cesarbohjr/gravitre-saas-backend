@@ -269,6 +269,7 @@ function EnvironmentNode({
             size="icon" 
             className="h-8 w-8 shrink-0"
             onClick={handleCopyUrl}
+            aria-label={copied ? "API endpoint copied" : "Copy API endpoint"}
           >
             {copied ? (
               <Check className="h-3.5 w-3.5 text-success" />
@@ -283,7 +284,7 @@ function EnvironmentNode({
       <div className="absolute top-4 right-4">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`${environment.name} environment options`}>
               <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>

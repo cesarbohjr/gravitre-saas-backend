@@ -284,7 +284,7 @@ export function ConversationSidebar({
               <div className="flex items-center gap-1 flex-1">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={exitSelection}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={exitSelection} aria-label="Cancel selection">
                       <X className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
@@ -296,7 +296,7 @@ export function ConversationSidebar({
                 <div className="ml-auto flex items-center gap-1">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={toggleSelectAll}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={toggleSelectAll} aria-label={allSelected ? "Clear selection" : "Select all"}>
                         {allSelected ? <CheckCheck className="h-4 w-4 text-emerald-600" /> : <ListChecks className="h-4 w-4" />}
                       </Button>
                     </TooltipTrigger>
@@ -310,6 +310,7 @@ export function ConversationSidebar({
                         className="h-8 w-8 text-muted-foreground disabled:opacity-40"
                         disabled={selectedIds.size === 0}
                         onClick={archiveSelected}
+                        aria-label="Archive selected"
                       >
                         <Archive className="h-4 w-4" />
                       </Button>
@@ -324,6 +325,7 @@ export function ConversationSidebar({
                         className="h-8 w-8 text-red-500 hover:bg-destructive/10 hover:text-red-600 disabled:opacity-40 dark:hover:text-red-400"
                         disabled={selectedIds.size === 0}
                         onClick={() => setBulkDeleteOpen(true)}
+                        aria-label="Delete selected"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -339,7 +341,7 @@ export function ConversationSidebar({
               <div className="flex items-center gap-0.5">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setSearchOpen((v) => !v)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setSearchOpen((v) => !v)} aria-label="Search conversations">
                       <Search className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
@@ -387,6 +389,7 @@ export function ConversationSidebar({
                       className="h-8 w-8 text-muted-foreground disabled:opacity-40"
                       disabled={conversations.length === 0}
                       onClick={enterSelection}
+                      aria-label="Select conversations"
                     >
                       <ListChecks className="h-4 w-4" />
                     </Button>
@@ -395,7 +398,7 @@ export function ConversationSidebar({
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={onNew}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={onNew} aria-label="New conversation">
                       <MessageSquarePlus className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>

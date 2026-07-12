@@ -144,6 +144,7 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
                 variant="ghost"
                 size="sm"
                 className="h-8 gap-2 px-2 text-xs font-medium hover:bg-accent"
+                aria-label={`Organization: ${org}. Switch organization`}
               >
                 <Icon name="company" size="sm" className="text-muted-foreground" />
                 <span className="hidden sm:inline">{org}</span>
@@ -209,7 +210,7 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
           {title && (
             <>
               <span className="text-muted-foreground/40 hidden md:inline">/</span>
-              <h1 className="text-sm font-medium text-foreground hidden md:block">{title}</h1>
+              <span className="text-sm font-medium text-foreground hidden md:block" aria-current="page">{title}</span>
             </>
           )}
         </div>
@@ -270,7 +271,7 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
           {/* User Avatar */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-accent group relative p-0">
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-accent group relative p-0" aria-label="Account menu">
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full opacity-0 group-hover:opacity-50 blur transition-opacity duration-300" />
                 <UserAccountAvatar useCurrentUser size="sm" className="relative ring-2 ring-background" />
               </Button>
