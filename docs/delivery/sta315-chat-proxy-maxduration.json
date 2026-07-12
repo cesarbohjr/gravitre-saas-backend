@@ -24,7 +24,7 @@
     }
   },
   "fix": {
-    "change": "Raise /api/chat maxDuration from 120 → 300 (CHAT_PROXY_MAX_DURATION_SECONDS)",
+    "change": "Raise /api/chat maxDuration from 120 → 300 (literal segment config export only — Next.js rejects extra named exports from route files)",
     "rationale": "Same class as notifications SSE; does not invent a second confirm path; removes silent false-fail class for long chat confirms and tool-heavy turns",
     "non_goals": [
       "Does not raise backend latency budget",

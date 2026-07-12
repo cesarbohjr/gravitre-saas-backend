@@ -10,8 +10,9 @@ import { NextRequest } from "next/server"
 // the UI while backend execute (button path) finished in ~1s. Match the
 // notifications SSE ceiling (300) — Vercel Pro fluid max — so healthy long
 // confirms are not truncated solely by the Next.js proxy.
-export const CHAT_PROXY_MAX_DURATION_SECONDS = 300
-export const maxDuration = CHAT_PROXY_MAX_DURATION_SECONDS
+// Note: only Next.js segment config exports are allowed from this file
+// (do not export a named constant for the ceiling — it breaks `next build`).
+export const maxDuration = 300
 
 function getBackendBaseUrl(): string | null {
   const value = process.env.FASTAPI_BASE_URL?.trim()
