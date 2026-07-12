@@ -205,25 +205,27 @@ def main() -> int:
         intel_ref = str(intel_db[0]["id"]) if intel_db else None
         report["intelligence_pack_ref"] = intel_ref
 
-        # Prefer connector-free workflow — records installed_entity_type=workflow
-        # (knowledge_pack/intelligence_pack blocked by marketplace_installs CHECK today).
-        wf_rows = (
-            sb.table("marketplace_assets")
-            .select("id,slug,asset_type,status,required_connectors,title")
-            .eq("asset_type", "workflow")
-            .eq("status", "published")
-            .limit(40)
-            .execute()
-            .data
-            or []
-        )
-
+        # Prefer connector-free workflow (proves workflow soft-archive on uninstall).
+        # Fall back to connector-free ai_agent if workflows are unavailable.
         def _required_connectors(row: dict) -> list:
             raw = row.get("required_connectors") or []
             return [c for c in raw if isinstance(c, dict) and c.get("required") is True]
 
-        free_wfs = [r for r in wf_rows if not _required_connectors(r)]
-        teardown_asset = free_wfs[0] if free_wfs else None
+        def _pick_connector_free(asset_type: str) -> dict | None:
+            rows = (
+                sb.table("marketplace_assets")
+                .select("id,slug,asset_type,status,required_connectors,title")
+                .eq("asset_type", asset_type)
+                .eq("status", "published")
+                .limit(40)
+                .execute()
+                .data
+                or []
+            )
+            free = [r for r in rows if not _required_connectors(r)]
+            return free[0] if free else None
+
+        teardown_asset = _pick_connector_free("workflow") or _pick_connector_free("ai_agent")
         agent_asset_ref = str(teardown_asset["id"]) if teardown_asset else None
         report["agent_asset_ref"] = agent_asset_ref
         report["agent_asset_slug"] = teardown_asset.get("slug") if teardown_asset else None
@@ -418,8 +420,33 @@ def main() -> int:
                 hdr,
                 json_body={},
             )
+            # If workflow install still hits plan limit, fall back to ai_agent teardown probe.
+            if (
+                i_code == 402
+                and isinstance(i_body, dict)
+                and i_body.get("limit_type") == "workflow_count"
+                and (report.get("teardown_asset_type") == "workflow")
+            ):
+                alt = _pick_connector_free("ai_agent")
+                if alt:
+                    agent_asset_ref = str(alt["id"])
+                    report["agent_asset_ref"] = agent_asset_ref
+                    report["agent_asset_slug"] = alt.get("slug")
+                    report["teardown_asset_type"] = alt.get("asset_type")
+                    report["p4_fallback_reason"] = "workflow_plan_limit_exceeded"
+                    http_json(http, "POST", f"/api/marketplace/assets/{agent_asset_ref}/uninstall", hdr)
+                    time.sleep(0.5)
+                    i_code, i_body = http_json(
+                        http,
+                        "POST",
+                        f"/api/marketplace/assets/{agent_asset_ref}/install",
+                        hdr,
+                        json_body={},
+                    )
             p4["install_http"] = i_code
             p4["install_response"] = i_body if isinstance(i_body, dict) else {"raw": i_body}
+            p4["teardown_asset_ref"] = agent_asset_ref
+            p4["teardown_asset_type"] = report.get("teardown_asset_type")
             spawned_agent_ids: list[str] = []
             if isinstance(i_body, dict):
                 meta = i_body.get("metadata") or {}
@@ -500,8 +527,9 @@ def main() -> int:
                 or (deactivated.get("workflows") if isinstance(deactivated, dict) else None)
                 or (deactivated.get("ragSources") if isinstance(deactivated, dict) else None)
             )
-            # Also verify DB soft-deactivate for any reported agents/rag
+            # Also verify DB soft-deactivate for any reported agents/workflows/rag
             post_agents = []
+            post_workflows = []
             post_rag = []
             check_ids = list((deactivated.get("agents") if isinstance(deactivated, dict) else []) or [])
             if check_ids:
@@ -517,6 +545,20 @@ def main() -> int:
                 soft_deactivated = soft_deactivated or any(
                     (row.get("deleted_at") or row.get("status") == "inactive") for row in post_agents
                 )
+            wf_ids = list((deactivated.get("workflows") if isinstance(deactivated, dict) else []) or [])
+            if wf_ids:
+                post_workflows = (
+                    sb.table("workflow_defs")
+                    .select("id,status")
+                    .eq("org_id", ORG)
+                    .in_("id", wf_ids)
+                    .execute()
+                    .data
+                    or []
+                )
+                soft_deactivated = soft_deactivated or any(
+                    str(row.get("status") or "").lower() == "archived" for row in post_workflows
+                )
             rag_ids = list((deactivated.get("ragSources") if isinstance(deactivated, dict) else []) or [])
             if rag_ids:
                 post_rag = (
@@ -530,6 +572,7 @@ def main() -> int:
                 )
                 soft_deactivated = soft_deactivated or any(row.get("status") == "inactive" for row in post_rag)
             p4["agents_after_uninstall"] = post_agents
+            p4["workflows_after_uninstall"] = post_workflows
             p4["rag_after_uninstall"] = post_rag
             ledger = (
                 sb.table("marketplace_installs")

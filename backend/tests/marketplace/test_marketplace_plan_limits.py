@@ -67,3 +67,60 @@ def test_structured_error_includes_upgrade_path(mock_plan, mock_operators):
     with pytest.raises(PlanLimitExceededError) as exc:
         install_asset(client, "org-1", ASSET_ID, actor_id="user-1")
     assert exc.value.detail["upgrade_url"] == "/settings/billing"
+
+
+def _workflow_asset() -> dict:
+    return {
+        "id": ASSET_ID,
+        "slug": "executive-summary-generation",
+        "asset_type": "workflow",
+        "status": "published",
+        "visibility": "public",
+        "current_version": 1,
+        "config": {
+            "name": "Executive Summary",
+            "description": "Smoke workflow",
+            "trigger": {"type": "manual"},
+            "steps": [{"id": "overview", "name": "Overview", "type": "noop"}],
+        },
+        "required_connectors": [],
+        "install_variables": [],
+    }
+
+
+@patch("app.marketplace.service.get_plan_for_org", return_value={"agents_limit": 10, "workflows_limit": 10})
+def test_workflow_limit_excludes_archived_defs(mock_plan):
+    """Archived defs (post-uninstall soft-deactivate) must not block reinstall."""
+    from app.marketplace.service import _check_plan_limits
+
+    wf = MagicMock()
+    wf.select.return_value = wf
+    wf.eq.return_value = wf
+    wf.neq.return_value = wf
+    # Only non-archived rows returned by the filtered query
+    wf.execute.return_value = MagicMock(data=[{"id": f"w-{i}"} for i in range(7)])
+
+    client = MagicMock()
+    client.table.side_effect = lambda name: wf if name == "workflow_defs" else MagicMock()
+
+    _check_plan_limits(client, "org-1", "workflow")  # should not raise
+    wf.neq.assert_called_with("status", "archived")
+
+
+@patch("app.marketplace.service.get_plan_for_org", return_value={"agents_limit": 10, "workflows_limit": 10})
+def test_workflow_limit_still_enforced_on_active_count(mock_plan):
+    from app.marketplace.service import _check_plan_limits
+
+    wf = MagicMock()
+    wf.select.return_value = wf
+    wf.eq.return_value = wf
+    wf.neq.return_value = wf
+    wf.execute.return_value = MagicMock(data=[{"id": f"w-{i}"} for i in range(10)])
+
+    client = MagicMock()
+    client.table.side_effect = lambda name: wf if name == "workflow_defs" else MagicMock()
+
+    with pytest.raises(PlanLimitExceededError) as exc:
+        _check_plan_limits(client, "org-1", "workflow")
+    assert exc.value.detail["limit_type"] == "workflow_count"
+    assert exc.value.detail["current"] == 10
