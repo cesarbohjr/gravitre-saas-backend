@@ -64,18 +64,29 @@ def should_run_connector_preflight(
     task_state: dict[str, Any] | None,
     *,
     message: str = "",
+    connected_integrations: list[str] | None = None,
 ) -> bool:
-    """Run governed connector resolution before ReAct only for in-flight connector tasks.
+    """Run governed connector/orchestration resolution before clarification + ReAct.
 
-    Fresh connector intents go to ReAct first so the assistant can answer naturally
-    with tools. Phrase-mapper / orchestration run afterward via
-    ``should_attempt_connector_fallback`` when the model did not call a connector tool.
+    Pending connector tasks always preflight. Fresh *single*-connector intents still
+    go to ReAct first (phrase-mapper via ``should_attempt_connector_fallback``).
 
-    ``message`` is retained for call-site compatibility; it is not used to short-circuit
-    the LLM on first-turn intents.
+    STA-307 — fresh *multi-step orchestration* intents also preflight so they are
+    not swallowed by ``connector_unavailable`` clarify (which only names the first
+    missing connector) and so zero-runnable plans reach terminal ``blocked``
+    synchronously without a confirm/wait loop.
     """
-    _ = message  # call-site compatibility; fresh intents must not preflight
-    return has_pending_connector_task(task_state)
+    if has_pending_connector_task(task_state):
+        return True
+    if not (message or "").strip():
+        return False
+    from app.services.chat_orchestration_service import ChatOrchestrationService
+
+    return ChatOrchestrationService.is_orchestration_intent(
+        message,
+        task_state or {},
+        list(connected_integrations or []),
+    )
 
 
 async def run_connector_fallback_turn(

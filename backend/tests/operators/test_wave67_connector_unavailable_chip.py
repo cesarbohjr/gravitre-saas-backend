@@ -47,3 +47,21 @@ def test_clarification_engine_passes_template_vars_for_connector_unavailable():
     assert result is not None
     assert result["trigger_type"] == "connector_unavailable"
     assert result["template_vars"]["connector"]
+
+
+def test_clarification_skips_connector_unavailable_for_multi_connector():
+    """STA-307 — HubSpot+Slack must not collapse to single-connector clarify."""
+    from app.services.clarification_engine import ClarificationEngine
+
+    engine = ClarificationEngine(settings=None)
+    result = engine._rule_based_trigger(
+        classification={
+            "requires_action": True,
+            "request": "Search HubSpot for high-intent leads and draft a follow-up in Slack",
+        },
+        context={"connected_integrations": ["apollo"]},
+        understanding={"connector_dependencies": ["hubspot", "slack"]},
+        clarified={},
+        confidence=0.9,
+    )
+    assert result is None or result.get("trigger_type") != "connector_unavailable"

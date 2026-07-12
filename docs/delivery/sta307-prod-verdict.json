@@ -1,0 +1,49 @@
+{
+  "probe": "sta307_prod_fix",
+  "ticket": "STA-307",
+  "pr": 99,
+  "expected_sha_prefix": "67b61671",
+  "started_at": "2026-07-12T05:39:24.840602+00:00",
+  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+  "conversation_id": "ba031ab3-9961-42fa-9d09-35157e06b081",
+  "prompt": "Search HubSpot for high-intent leads and draft a follow-up in Slack for approval [STA-307-prod 62c2f794]",
+  "prod_health": {
+    "status": "ok",
+    "timestamp": "2026-07-12T05:39:24.546827+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "67b616719e82f70ed4bad5282187f1eb9b9f34de",
+    "ai_disabled": false,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "prod_sha": "67b616719e82f70ed4bad5282187f1eb9b9f34de",
+  "prod_sha_ok": true,
+  "turn": {
+    "http": 200,
+    "elapsed_ms": 15931,
+    "dialogue_mode": "clarify",
+    "text_head": "That tool isn't connected or permitted for this agent. Connect it at /connectors or switch mode.",
+    "intel_count": 1,
+    "sse_pending_status": null,
+    "db_pending_status": null,
+    "pending_type": null,
+    "labels": [],
+    "state_http": 200
+  },
+  "checks": {
+    "labels_hubspot_then_slack": false,
+    "status_blocked": false,
+    "not_awaiting_confirm": true,
+    "elapsed_under_45s": true,
+    "honest_copy": false
+  },
+  "verdict": "FAIL",
+  "finished_at": "2026-07-12T05:39:41.410420+00:00"
+}

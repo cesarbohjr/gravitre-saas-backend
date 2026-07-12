@@ -22,7 +22,7 @@ def test_preflight_for_pending_connector_tasks():
 
 
 def test_preflight_skips_fresh_connector_intent_for_react_first():
-    """Fresh connector asks must reach ReAct; preflight is only for pending tasks."""
+    """Fresh single-connector asks must reach ReAct; pending tasks still preflight."""
     assert (
         should_run_connector_preflight(
             {},
@@ -42,6 +42,21 @@ def test_preflight_skips_fresh_connector_intent_for_react_first():
         should_run_connector_preflight(
             {"pending_task": {"type": "connector_action", "status": "awaiting_confirm"}},
             message="yes",
+        )
+        is True
+    )
+
+
+def test_preflight_runs_for_fresh_multi_connector_orchestration():
+    """STA-307 — HubSpot+Slack chip must preflight before connector_unavailable clarify."""
+    message = (
+        "Search HubSpot for high-intent leads and draft a follow-up in Slack for approval"
+    )
+    assert (
+        should_run_connector_preflight(
+            {},
+            message=message,
+            connected_integrations=[],
         )
         is True
     )
