@@ -1,0 +1,20 @@
+{
+  "probe": "fast_mode_honesty",
+  "started_at": "2026-07-11T17:01:38.859857+00:00",
+  "finished_at": "2026-07-11T17:02:22.739685+00:00",
+  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "git_sha": "749caca8820b43bf19ab70ac55b4394ce8bf44d5",
+  "conversation_id": "5477acb6-5b56-405d-bb28-93521492b792",
+  "request_mode": "fast",
+  "http": 200,
+  "effective_modes_seen": [
+    {
+      "effectiveMode": "fast",
+      "pipelineTier": "tier_1",
+      "answerExplanation": "This answer combined retrieved context with tool results.\n\nThis answer drew on 2 internal sources, including Organizatio"
+    }
+  ],
+  "final_effective_mode": "fast",
+  "pass": true,
+  "note": "PASS requires SSE effectiveMode=fast with org connectors present (backend must not upgrade fast\u2192agent)."
+}

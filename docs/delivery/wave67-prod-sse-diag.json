@@ -1,0 +1,607 @@
+{
+  "started_at": "2026-07-11T08:06:27.930878+00:00",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "turns": {
+    "A_slack_fail": {
+      "conversation_id": "f1b61f29-74ec-4d1c-8f9c-e8dc00daa5fc",
+      "prompt": "Post a Slack message to #general saying wave67-prod-diag \u2014 ignore",
+      "tools": [
+        "slack_post_message",
+        "connector_status"
+      ],
+      "http_status": 200,
+      "raw_sse_chars": 1669,
+      "event_count": 11,
+      "text_preview": "That tool isn't connected or permitted for this agent. Connect it at /connectors or switch mode.",
+      "evidence": {
+        "error_codes": [],
+        "pending_plans": [],
+        "msp_prospects_mentions": [],
+        "result_urls": [],
+        "assumption_notes": [],
+        "dialogue_modes": [
+          "clarify"
+        ],
+        "tool_names": [
+          "slack_post_message"
+        ],
+        "execution_success": []
+      },
+      "printed": [
+        {
+          "i": 0,
+          "type": "start"
+        },
+        {
+          "i": 1,
+          "type": "start-step"
+        },
+        {
+          "i": 2,
+          "type": "tool-input-available",
+          "data_keys": [
+            "input",
+            "toolCallId",
+            "toolName"
+          ],
+          "data_trunc": "{\"input\": {\"query\": \"\"}, \"toolCallId\": \"call-34f9db7961ef\", \"toolName\": \"slack_post_message\"}"
+        },
+        {
+          "i": 3,
+          "type": "tool-output-available",
+          "data_keys": [
+            "output",
+            "toolCallId"
+          ],
+          "data_trunc": "{\"output\": {\"error\": \"That tool isn't connected or permitted for this agent. Connect it at /connectors or switch mode.\", \"success\": false, \"errorCode\": \"tool_not_available\"}, \"toolCallId\": \"call-34f9db7961ef\"}"
+        },
+        {
+          "i": 4,
+          "type": "text-start"
+        },
+        {
+          "i": 5,
+          "type": "text-delta"
+        },
+        {
+          "i": 6,
+          "type": "text-end"
+        },
+        {
+          "i": 7,
+          "type": "data-intelligence",
+          "dialogueMode": "clarify",
+          "answerExplanation_200": "Clarification needed: Required connector slack is not connected."
+        },
+        {
+          "i": 8,
+          "type": "finish-step"
+        },
+        {
+          "i": 9,
+          "type": "finish"
+        },
+        {
+          "i": 10,
+          "type": "data-suggestions"
+        }
+      ],
+      "events": [
+        {
+          "type": "start"
+        },
+        {
+          "type": "start-step"
+        },
+        {
+          "type": "tool-input-available",
+          "toolCallId": "call-34f9db7961ef",
+          "toolName": "slack_post_message",
+          "input": {
+            "query": ""
+          }
+        },
+        {
+          "type": "tool-output-available",
+          "toolCallId": "call-34f9db7961ef",
+          "output": {
+            "error": "That tool isn't connected or permitted for this agent. Connect it at /connectors or switch mode.",
+            "success": false,
+            "errorCode": "tool_not_available"
+          }
+        },
+        {
+          "type": "text-start",
+          "id": "text-1588bfa7677d"
+        },
+        {
+          "type": "text-delta",
+          "id": "text-1588bfa7677d",
+          "delta": "That tool isn't connected or permitted for this agent. Connect it at /connectors or switch mode."
+        },
+        {
+          "type": "text-end",
+          "id": "text-1588bfa7677d"
+        },
+        {
+          "type": "data-intelligence",
+          "data": {
+            "messageId": "29bafd6c-d1af-45f4-9500-af41e07c9da0",
+            "confidence": {
+              "score": 0.7,
+              "needs_clarification": true
+            },
+            "answerExplanation": "Clarification needed: Required connector slack is not connected.",
+            "conflicts": [],
+            "refinedQuery": null,
+            "validation": null,
+            "dialogueMode": "clarify",
+            "personaKey": "friendly_assistant",
+            "proactiveSuggestions": [],
+            "taskState": null,
+            "simulationSummary": null,
+            "executionResult": null,
+            "pendingTask": null,
+            "contextProfile": null,
+            "contextExplanation": null,
+            "businessSignals": [],
+            "strategicPlan": null,
+            "knowledgeAssignments": [],
+            "assignedSourcesUsed": [],
+            "knowledgeGapMessage": null,
+            "missingAssignmentLabels": [],
+            "memoryConflicts": [],
+            "advisorBrief": null,
+            "explainability": {},
+            "executionGate": {},
+            "trustEnvelope": {}
+          }
+        },
+        {
+          "type": "finish-step"
+        },
+        {
+          "type": "finish"
+        },
+        {
+          "type": "data-suggestions",
+          "data": {
+            "suggestions": [
+              "Confirm the target Slack workspace",
+              "Provide the exact message text",
+              "Approve posting to #general"
+            ]
+          }
+        }
+      ]
+    },
+    "B_apollo_named": {
+      "conversation_id": "539014c2-4185-4a39-81dc-ae6da175bcd8",
+      "prompt": "Create an Apollo contact list named exactly 'gravitre-wave67-prod-diag-20260711'",
+      "tools": [
+        "apollo_lists_create",
+        "apollo_lists_list"
+      ],
+      "http_status": 200,
+      "raw_sse_chars": 2072,
+      "event_count": 11,
+      "text_preview": "I can create a contact list named **gravitre-wave67-prod-diag-20260711** in Apollo.\n\nReply **yes** to create it, or tell me what to change (name, modality, or follow-up criteria to populate it).",
+      "evidence": {
+        "error_codes": [],
+        "pending_plans": [],
+        "msp_prospects_mentions": [],
+        "result_urls": [],
+        "assumption_notes": [],
+        "dialogue_modes": [
+          "confirm"
+        ],
+        "tool_names": [
+          "apollo_lists_create"
+        ],
+        "execution_success": []
+      },
+      "printed": [
+        {
+          "i": 0,
+          "type": "start"
+        },
+        {
+          "i": 1,
+          "type": "start-step"
+        },
+        {
+          "i": 2,
+          "type": "tool-input-available",
+          "data_keys": [
+            "input",
+            "toolCallId",
+            "toolName"
+          ],
+          "data_trunc": "{\"input\": {\"name\": \"gravitre-wave67-prod-diag-20260711\", \"list_name\": \"gravitre-wave67-prod-diag-20260711\", \"modality\": \"contacts\"}, \"toolCallId\": \"call-7acba2885704\", \"toolName\": \"apollo_lists_create\"}"
+        },
+        {
+          "i": 3,
+          "type": "tool-output-available",
+          "data_keys": [
+            "output",
+            "toolCallId"
+          ],
+          "data_trunc": "{\"output\": {\"error\": \"This write needs your approval before it runs.\", \"success\": false, \"errorCode\": \"write_approval_required\"}, \"toolCallId\": \"call-7acba2885704\"}"
+        },
+        {
+          "i": 4,
+          "type": "text-start"
+        },
+        {
+          "i": 5,
+          "type": "text-delta"
+        },
+        {
+          "i": 6,
+          "type": "text-end"
+        },
+        {
+          "i": 7,
+          "type": "data-intelligence",
+          "dialogueMode": "confirm",
+          "answerExplanation_200": "ReAct write gated for user approval"
+        },
+        {
+          "i": 8,
+          "type": "finish-step"
+        },
+        {
+          "i": 9,
+          "type": "finish"
+        },
+        {
+          "i": 10,
+          "type": "data-suggestions"
+        }
+      ],
+      "events": [
+        {
+          "type": "start"
+        },
+        {
+          "type": "start-step"
+        },
+        {
+          "type": "tool-input-available",
+          "toolCallId": "call-7acba2885704",
+          "toolName": "apollo_lists_create",
+          "input": {
+            "name": "gravitre-wave67-prod-diag-20260711",
+            "list_name": "gravitre-wave67-prod-diag-20260711",
+            "modality": "contacts"
+          }
+        },
+        {
+          "type": "tool-output-available",
+          "toolCallId": "call-7acba2885704",
+          "output": {
+            "error": "This write needs your approval before it runs.",
+            "success": false,
+            "errorCode": "write_approval_required"
+          }
+        },
+        {
+          "type": "text-start",
+          "id": "text-802bea05ddd6"
+        },
+        {
+          "type": "text-delta",
+          "id": "text-802bea05ddd6",
+          "delta": "I can create a contact list named **gravitre-wave67-prod-diag-20260711** in Apollo.\n\nReply **yes** to create it, or tell me what to change (name, modality, or follow-up criteria to populate it)."
+        },
+        {
+          "type": "text-end",
+          "id": "text-802bea05ddd6"
+        },
+        {
+          "type": "data-intelligence",
+          "data": {
+            "messageId": "ed71d225-e22b-4179-8423-8c82b0309c29",
+            "confidence": {
+              "score": 0.7,
+              "needs_clarification": false
+            },
+            "answerExplanation": "ReAct write gated for user approval",
+            "conflicts": [],
+            "refinedQuery": null,
+            "validation": null,
+            "dialogueMode": "confirm",
+            "personaKey": "friendly_assistant",
+            "proactiveSuggestions": [],
+            "taskState": {
+              "clarified_params": {},
+              "rejected_options": [],
+              "approved_actions": [],
+              "current_plan": null,
+              "completed_steps": [],
+              "pending_steps": [],
+              "persona_override": null,
+              "preferred_tone": null,
+              "unresolved_tasks": [],
+              "suppressed_suggestions": [],
+              "pending_task": null,
+              "connector_session": {},
+              "resolved_entities": {}
+            },
+            "simulationSummary": null,
+            "executionResult": null,
+            "pendingTask": null,
+            "contextProfile": null,
+            "contextExplanation": null,
+            "businessSignals": [],
+            "strategicPlan": null,
+            "knowledgeAssignments": [],
+            "assignedSourcesUsed": [],
+            "knowledgeGapMessage": null,
+            "missingAssignmentLabels": [],
+            "memoryConflicts": [],
+            "advisorBrief": null,
+            "explainability": {},
+            "executionGate": {},
+            "trustEnvelope": {}
+          }
+        },
+        {
+          "type": "finish-step"
+        },
+        {
+          "type": "finish"
+        },
+        {
+          "type": "data-suggestions",
+          "data": {
+            "suggestions": [
+              "Confirm contact list ownership",
+              "Specify inclusion criteria",
+              "Approve list creation"
+            ]
+          }
+        }
+      ]
+    },
+    "C_apollo_omit_name": {
+      "conversation_id": "e2cb4562-c663-4285-9694-e372c42585f7",
+      "prompt": "In Apollo, create a contact list.",
+      "tools": [
+        "apollo_lists_create",
+        "apollo_lists_list"
+      ],
+      "http_status": 200,
+      "raw_sse_chars": 2463,
+      "event_count": 17,
+      "text_preview": "Apollo is connected and ready. What should I name the new contact list?\n\nIf you want, reply with just the list name, for example: \u201cQ3 Enterprise Prospects.\u201dI planned a **2-step orchestration**:\n\n1. **Search people** (read, auto-run)\n2. **Update contact** (advanced, approval required)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change.",
+      "evidence": {
+        "error_codes": [],
+        "pending_plans": [
+          {
+            "i": 13,
+            "keys": [
+              "params",
+              "type"
+            ],
+            "preview": "{\"type\": \"connector_orchestration\", \"params\": {}}"
+          }
+        ],
+        "msp_prospects_mentions": [],
+        "result_urls": [],
+        "assumption_notes": [],
+        "dialogue_modes": [
+          "confirm"
+        ],
+        "tool_names": [],
+        "execution_success": []
+      },
+      "printed": [
+        {
+          "i": 0,
+          "type": "start"
+        },
+        {
+          "i": 1,
+          "type": "start-step"
+        },
+        {
+          "i": 2,
+          "type": "text-start"
+        },
+        {
+          "i": 3,
+          "type": "text-delta"
+        },
+        {
+          "i": 4,
+          "type": "text-delta"
+        },
+        {
+          "i": 5,
+          "type": "text-delta"
+        },
+        {
+          "i": 6,
+          "type": "text-delta"
+        },
+        {
+          "i": 7,
+          "type": "text-delta"
+        },
+        {
+          "i": 8,
+          "type": "text-delta"
+        },
+        {
+          "i": 9,
+          "type": "text-delta"
+        },
+        {
+          "i": 10,
+          "type": "text-start"
+        },
+        {
+          "i": 11,
+          "type": "text-delta"
+        },
+        {
+          "i": 12,
+          "type": "text-end"
+        },
+        {
+          "i": 13,
+          "type": "data-intelligence",
+          "dialogueMode": "confirm",
+          "answerExplanation_200": "Connector fallback after ReAct",
+          "pendingTask_keys": [
+            "params",
+            "type"
+          ]
+        },
+        {
+          "i": 14,
+          "type": "finish-step"
+        },
+        {
+          "i": 15,
+          "type": "finish"
+        },
+        {
+          "i": 16,
+          "type": "data-suggestions"
+        }
+      ],
+      "events": [
+        {
+          "type": "start"
+        },
+        {
+          "type": "start-step"
+        },
+        {
+          "type": "text-start",
+          "id": "text-02623ce10de7"
+        },
+        {
+          "type": "text-delta",
+          "id": "text-02623ce10de7",
+          "delta": "Apollo is connected and "
+        },
+        {
+          "type": "text-delta",
+          "id": "text-02623ce10de7",
+          "delta": "ready. What should I nam"
+        },
+        {
+          "type": "text-delta",
+          "id": "text-02623ce10de7",
+          "delta": "e the new contact list?\n"
+        },
+        {
+          "type": "text-delta",
+          "id": "text-02623ce10de7",
+          "delta": "\nIf you want, reply with"
+        },
+        {
+          "type": "text-delta",
+          "id": "text-02623ce10de7",
+          "delta": " just the list name, for"
+        },
+        {
+          "type": "text-delta",
+          "id": "text-02623ce10de7",
+          "delta": " example: \u201cQ3 Enterprise"
+        },
+        {
+          "type": "text-delta",
+          "id": "text-02623ce10de7",
+          "delta": " Prospects.\u201d"
+        },
+        {
+          "type": "text-start",
+          "id": "text-8a2601f882f6"
+        },
+        {
+          "type": "text-delta",
+          "id": "text-8a2601f882f6",
+          "delta": "I planned a **2-step orchestration**:\n\n1. **Search people** (read, auto-run)\n2. **Update contact** (advanced, approval required)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change."
+        },
+        {
+          "type": "text-end",
+          "id": "text-8a2601f882f6"
+        },
+        {
+          "type": "data-intelligence",
+          "data": {
+            "messageId": "bb7f69e2-2c7e-4ca5-b3d0-70e2fce3ae0e",
+            "confidence": {
+              "score": 0.7,
+              "needs_clarification": false
+            },
+            "answerExplanation": "Connector fallback after ReAct",
+            "conflicts": [],
+            "refinedQuery": null,
+            "validation": null,
+            "dialogueMode": "confirm",
+            "personaKey": "friendly_assistant",
+            "proactiveSuggestions": [],
+            "taskState": {
+              "clarified_params": {},
+              "rejected_options": [],
+              "approved_actions": [],
+              "current_plan": null,
+              "completed_steps": [],
+              "pending_steps": [],
+              "persona_override": null,
+              "preferred_tone": null,
+              "unresolved_tasks": [],
+              "suppressed_suggestions": [],
+              "pending_task": null,
+              "connector_session": {},
+              "resolved_entities": {}
+            },
+            "simulationSummary": null,
+            "executionResult": null,
+            "pendingTask": {
+              "type": "connector_orchestration",
+              "params": {}
+            },
+            "contextProfile": null,
+            "contextExplanation": null,
+            "businessSignals": [],
+            "strategicPlan": null,
+            "knowledgeAssignments": [],
+            "assignedSourcesUsed": [],
+            "knowledgeGapMessage": null,
+            "missingAssignmentLabels": [],
+            "memoryConflicts": [],
+            "advisorBrief": null,
+            "explainability": {},
+            "executionGate": {},
+            "trustEnvelope": {}
+          }
+        },
+        {
+          "type": "finish-step"
+        },
+        {
+          "type": "finish"
+        },
+        {
+          "type": "data-suggestions",
+          "data": {
+            "suggestions": [
+              "Which Apollo contacts should be included?",
+              "What list name should I use?",
+              "Any filters or exclusions needed?"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "finished_at": "2026-07-11T08:06:57.729011+00:00"
+}

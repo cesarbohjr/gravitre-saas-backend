@@ -1,0 +1,437 @@
+{
+  "probe": "routing_wave_prod_live",
+  "pr": 97,
+  "expected_sha_prefix": "65998eb7",
+  "started_at": "2026-07-12T04:53:28.316351+00:00",
+  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+  "traces": {
+    "A_fast_honesty": {
+      "pass": true,
+      "criteria": "effectiveMode=fast AND routingTier=simple; must NOT upgrade to agent",
+      "conversation_id": "33da9667-3349-45a2-9a6e-40bb9b6d1d4f",
+      "result": {
+        "http": 200,
+        "conversation_id": "33da9667-3349-45a2-9a6e-40bb9b6d1d4f",
+        "mode_requested": "fast",
+        "message": "What connectors are connected? (routing-wave A e4aa66c3)",
+        "text": "The connected connectors in your workspace are Apollo and Pipedrive.\n\nThere are 2 connected integrations total:\n- Apollo \u2014 connected\n- Pipedrive \u2014 connected\n\nFor context, HubSpot is connected in the org snapshot but its execution is not available, Slack has an error, and Salesforce is disconnected. If you want, I can also help you sort the connectors by what\u2019s usable right now versus what needs attention.",
+        "tools_seen": [
+          {
+            "type": "tool-input-available",
+            "toolName": "searchKnowledgeBase",
+            "toolCallId": "call-737f55d34276"
+          },
+          {
+            "type": "tool-output-available",
+            "toolCallId": "call-737f55d34276"
+          }
+        ],
+        "intel_count": 2,
+        "sse_pending": null,
+        "db_pending": null,
+        "task_state_keys": [
+          "clarified_params",
+          "rejected_options",
+          "approved_actions",
+          "current_plan",
+          "completed_steps",
+          "pending_steps",
+          "persona_override",
+          "preferred_tone",
+          "unresolved_tasks",
+          "suppressed_suggestions",
+          "pending_task",
+          "connector_session",
+          "resolved_entities"
+        ],
+        "routing_tiers_seen": [
+          "simple",
+          "simple"
+        ],
+        "effective_modes_seen": [
+          "fast",
+          "fast"
+        ],
+        "pipeline_tiers_seen": [
+          "tier_1",
+          "tier_1"
+        ],
+        "final_routingTier": "simple",
+        "final_effectiveMode": "fast",
+        "final_pipelineTier": "tier_1",
+        "last_intel": {
+          "effectiveMode": "fast",
+          "pipelineTier": "tier_1",
+          "routingTier": "simple",
+          "routing": {
+            "routingTier": "simple",
+            "modelTier": "low",
+            "latencyBudgetMs": {
+              "ttft": 800,
+              "total": 8000
+            },
+            "maxToolRounds": 3,
+            "pinnedFast": true,
+            "reasons": [
+              "fast_or_explicit_simple"
+            ],
+            "escalations": []
+          },
+          "expl": "This answer combined retrieved context with tool results.\n\nThis answer drew on 2 internal sources, including Organization snapshot and Connected systems.",
+          "pending": null
+        },
+        "attempt": 1
+      },
+      "upgraded_away_from_fast": false
+    },
+    "B_write_intent": {
+      "pass": true,
+      "criteria": "routingTier multi_step OR research (not simple); pending approval OK (not confirmed)",
+      "conversation_id": "13dcc2ac-7fd1-47ea-8137-e74a0337002e",
+      "result": {
+        "http": 200,
+        "conversation_id": "13dcc2ac-7fd1-47ea-8137-e74a0337002e",
+        "mode_requested": "standard",
+        "message": "In Apollo, create a contact list named Routing Wave Live.",
+        "text": "I can create a contact list named **Routing Wave Live** in Apollo.\n\nReply **yes** to create it, or tell me what to change (name, modality, or follow-up criteria to populate it).",
+        "tools_seen": [
+          {
+            "type": "tool-input-available",
+            "toolName": "searchKnowledgeBase",
+            "toolCallId": "call-16af89ca7ee6"
+          },
+          {
+            "type": "tool-output-available",
+            "toolCallId": "call-16af89ca7ee6"
+          },
+          {
+            "type": "tool-input-available",
+            "toolName": "apollo_lists_create",
+            "toolCallId": "call-0db22fd05e83"
+          },
+          {
+            "type": "tool-output-available",
+            "toolCallId": "call-0db22fd05e83"
+          }
+        ],
+        "intel_count": 2,
+        "sse_pending": {
+          "type": "connector_action",
+          "params": {
+            "args": {
+              "name": "Routing Wave Live",
+              "modality": "contacts",
+              "list_name": "Routing Wave Live"
+            },
+            "kind": "write",
+            "label": "Create contact list",
+            "source": "react_write_gate",
+            "status": "awaiting_confirm",
+            "tool_name": "apollo_lists_create",
+            "destructive": false,
+            "integration": "apollo",
+            "invoke_action": "apollo.lists.create",
+            "approval_reason": "react_write_gate",
+            "inferred_fields": [],
+            "inference_sources": {},
+            "requires_approval": true
+          },
+          "status": "awaiting_confirm"
+        },
+        "db_pending": {
+          "type": "connector_action",
+          "params": {
+            "args": {
+              "name": "Routing Wave Live",
+              "modality": "contacts",
+              "list_name": "Routing Wave Live"
+            },
+            "kind": "write",
+            "label": "Create contact list",
+            "source": "react_write_gate",
+            "status": "awaiting_confirm",
+            "tool_name": "apollo_lists_create",
+            "destructive": false,
+            "integration": "apollo",
+            "invoke_action": "apollo.lists.create",
+            "approval_reason": "react_write_gate",
+            "inferred_fields": [],
+            "inference_sources": {},
+            "requires_approval": true
+          },
+          "status": "awaiting_confirm"
+        },
+        "task_state_keys": [
+          "clarified_params",
+          "rejected_options",
+          "approved_actions",
+          "current_plan",
+          "completed_steps",
+          "pending_steps",
+          "persona_override",
+          "preferred_tone",
+          "unresolved_tasks",
+          "suppressed_suggestions",
+          "pending_task",
+          "connector_session",
+          "resolved_entities"
+        ],
+        "routing_tiers_seen": [
+          "research",
+          "research"
+        ],
+        "effective_modes_seen": [
+          "agent",
+          "agent"
+        ],
+        "pipeline_tiers_seen": [
+          "tier_3",
+          "tier_3"
+        ],
+        "final_routingTier": "research",
+        "final_effectiveMode": "agent",
+        "final_pipelineTier": "tier_3",
+        "last_intel": {
+          "effectiveMode": "agent",
+          "pipelineTier": "tier_3",
+          "routingTier": "research",
+          "routing": {
+            "routingTier": "research",
+            "modelTier": "high",
+            "latencyBudgetMs": {
+              "ttft": 2500,
+              "total": 60000
+            },
+            "maxToolRounds": 15,
+            "pinnedFast": false,
+            "reasons": [
+              "agent_or_reasoning_mode"
+            ]
+          },
+          "expl": "ReAct write gated for user approval",
+          "pending": {
+            "type": "connector_action",
+            "params": {
+              "args": {
+                "name": "Routing Wave Live",
+                "modality": "contacts",
+                "list_name": "Routing Wave Live"
+              },
+              "kind": "write",
+              "label": "Create contact list",
+              "source": "react_write_gate",
+              "status": "awaiting_confirm",
+              "tool_name": "apollo_lists_create",
+              "destructive": false,
+              "integration": "apollo",
+              "invoke_action": "apollo.lists.create",
+              "approval_reason": "react_write_gate",
+              "inferred_fields": [],
+              "inference_sources": {},
+              "requires_approval": true
+            },
+            "status": "awaiting_confirm"
+          }
+        }
+      },
+      "pending_gate": {
+        "type": "connector_action",
+        "params": {
+          "args": {
+            "name": "Routing Wave Live",
+            "modality": "contacts",
+            "list_name": "Routing Wave Live"
+          },
+          "kind": "write",
+          "label": "Create contact list",
+          "source": "react_write_gate",
+          "status": "awaiting_confirm",
+          "tool_name": "apollo_lists_create",
+          "destructive": false,
+          "integration": "apollo",
+          "invoke_action": "apollo.lists.create",
+          "approval_reason": "react_write_gate",
+          "inferred_fields": [],
+          "inference_sources": {},
+          "requires_approval": true
+        },
+        "status": "awaiting_confirm"
+      },
+      "stopped_at_pending": true,
+      "note": "Did not confirm write \u2014 prefer stop at pending approval"
+    },
+    "C_deepen_research": {
+      "pass": true,
+      "criteria": "routingTier=research OR escalation to research",
+      "conversation_id": "43f80b35-d0da-428a-8a58-9012748e3ccc",
+      "attempts": [
+        {
+          "attempt": 1,
+          "mode": "standard",
+          "conversation_id": "43f80b35-d0da-428a-8a58-9012748e3ccc",
+          "final_routingTier": "research",
+          "tiers_seen": [
+            "research",
+            "research"
+          ],
+          "effectiveMode": "agent",
+          "http": 200,
+          "text_head": "Invalid parameters for this Pipedrive action (pipedrive.pipelines.list). Check required fields and try again.\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document",
+          "expl": "This answer combined retrieved context with tool results.\n\nThis answer drew on 3 internal sources, including Organization snapshot and Connected systems."
+        }
+      ],
+      "result": {
+        "http": 200,
+        "conversation_id": "43f80b35-d0da-428a-8a58-9012748e3ccc",
+        "mode_requested": "standard",
+        "message": "go deeper with a full analysis comparing our Apollo and Pipedrive pipeline health [routing-wave C d82ec1da]",
+        "text": "Invalid parameters for this Pipedrive action (pipedrive.pipelines.list). Check required fields and try again.\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document?",
+        "tools_seen": [
+          {
+            "type": "tool-input-available",
+            "toolName": "searchKnowledgeBase",
+            "toolCallId": "call-258ec039b1cb"
+          },
+          {
+            "type": "tool-output-available",
+            "toolCallId": "call-258ec039b1cb"
+          },
+          {
+            "type": "tool-input-available",
+            "toolName": "getConnectorStatus",
+            "toolCallId": "call-a8809e6ba3ee"
+          },
+          {
+            "type": "tool-output-available",
+            "toolCallId": "call-a8809e6ba3ee"
+          },
+          {
+            "type": "tool-input-available",
+            "toolName": "pipedrive_pipelines_list",
+            "toolCallId": "call-c5197b465c7e"
+          },
+          {
+            "type": "tool-output-available",
+            "toolCallId": "call-c5197b465c7e"
+          }
+        ],
+        "intel_count": 2,
+        "sse_pending": null,
+        "db_pending": null,
+        "task_state_keys": [
+          "clarified_params",
+          "rejected_options",
+          "approved_actions",
+          "current_plan",
+          "completed_steps",
+          "pending_steps",
+          "persona_override",
+          "preferred_tone",
+          "unresolved_tasks",
+          "suppressed_suggestions",
+          "pending_task",
+          "connector_session",
+          "resolved_entities"
+        ],
+        "routing_tiers_seen": [
+          "research",
+          "research"
+        ],
+        "effective_modes_seen": [
+          "agent",
+          "agent"
+        ],
+        "pipeline_tiers_seen": [
+          "tier_3",
+          "tier_3"
+        ],
+        "final_routingTier": "research",
+        "final_effectiveMode": "agent",
+        "final_pipelineTier": "tier_3",
+        "last_intel": {
+          "effectiveMode": "agent",
+          "pipelineTier": "tier_3",
+          "routingTier": "research",
+          "routing": {
+            "routingTier": "research",
+            "modelTier": "high",
+            "latencyBudgetMs": {
+              "ttft": 2500,
+              "total": 60000
+            },
+            "maxToolRounds": 15,
+            "pinnedFast": false,
+            "reasons": [
+              "agent_or_reasoning_mode"
+            ],
+            "escalations": []
+          },
+          "expl": "This answer combined retrieved context with tool results.\n\nThis answer drew on 3 internal sources, including Organization snapshot and Connected systems.",
+          "pending": null
+        },
+        "attempt": 1
+      }
+    }
+  },
+  "trace_d": {
+    "informational": true,
+    "pass": true,
+    "criteria": "count assistant.routing.escalated since script start (>=0 always; ideal >=1 if B/C escalated)",
+    "count": 0,
+    "events": [],
+    "note": "zero assistant.routing.escalated rows since script start (may classify at research/multi_step without mid-turn escalate)"
+  },
+  "prod_health": {
+    "status": "ok",
+    "timestamp": "2026-07-12T04:53:28.065305+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "a6ff361fbefc51218932897b6b3c1351c7395018",
+    "ai_disabled": false,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "prod_sha": "a6ff361fbefc51218932897b6b3c1351c7395018",
+  "prod_sha_ok": true,
+  "accept_sha_prefixes": [
+    "65998eb7",
+    "3aff41ad",
+    "a6ff361f"
+  ],
+  "allow_any_prod_sha": false,
+  "contains_pr97_note": "3aff41ad merges main after 65998eb7 (#97); follow-up clarify-SSE fix may supersede",
+  "finished_at": "2026-07-12T04:56:56.674164+00:00",
+  "verdict": "PASS",
+  "summary": {
+    "A": true,
+    "B": true,
+    "C": true,
+    "D_escalation_count": 0,
+    "prod_sha": "a6ff361fbefc51218932897b6b3c1351c7395018",
+    "verdict": "PASS",
+    "evidence": {
+      "A_effectiveMode": "fast",
+      "A_routingTier": "simple",
+      "A_conversation_id": "33da9667-3349-45a2-9a6e-40bb9b6d1d4f",
+      "B_routingTier": "research",
+      "B_tiers_seen": [
+        "research",
+        "research"
+      ],
+      "B_pending": true,
+      "B_conversation_id": "13dcc2ac-7fd1-47ea-8137-e74a0337002e",
+      "C_routingTier": "research",
+      "C_tiers_seen": [
+        "research",
+        "research"
+      ],
+      "C_conversation_id": "43f80b35-d0da-428a-8a58-9012748e3ccc"
+    }
+  }
+}

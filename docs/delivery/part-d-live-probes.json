@@ -1,0 +1,78 @@
+{
+  "workflow_create_chat": {
+    "cid": "90c3587e-76b1-44fe-84a5-3cac3db72a55",
+    "http": 200,
+    "text": "I'll create a draft workflow for **Create a workflow that syncs new HubSpot contacts to Slack**.\n\nReply **yes** to create it now, or tell me what to adjust.",
+    "tools": [],
+    "intel": [
+      {
+        "mode": "confirm",
+        "expl": "Conversational operator execution",
+        "pend": true,
+        "exec": false
+      },
+      {
+        "mode": "confirm",
+        "expl": "Conversational operator execution",
+        "pend": true,
+        "exec": false
+      }
+    ],
+    "pending_type": "create_workflow",
+    "pending_status": "awaiting_confirm"
+  },
+  "agent_create_chat": {
+    "cid": "cee3575c-b596-4b5b-9d2f-2c863fd70882",
+    "http": 200,
+    "text": "I'll create an agent named **Create an agent named PartD Probe** to help with **summarizing Slack threads**.\n\nReply **yes** to create it now, or tell me what you'd like to change.",
+    "tools": [],
+    "intel": [
+      {
+        "mode": "confirm",
+        "expl": "Conversational operator execution",
+        "pend": true,
+        "exec": false
+      },
+      {
+        "mode": "confirm",
+        "expl": "Conversational operator execution",
+        "pend": true,
+        "exec": false
+      }
+    ],
+    "pending_type": "create_agent",
+    "pending_status": "awaiting_confirm"
+  },
+  "execute_workflow_chat": {
+    "cid": "a929b339-32ca-42f3-9d23-714efd3dd398",
+    "http": 200,
+    "text": "I found the most recent workflow from your recent runs: \u201cUncertain lead \u2192 Council \u2192 Enroll or nurture.\u201d Its last two executions failed, both on July 2.\n\nApollo and Pipedrive are healthy and available for execution. Slack is configured but blocked because authentication expired, and HubSpot is connected but missing required scopes, so any workflow step that depends on Slack or HubSpot may fail agai",
+    "tools": [
+      {
+        "type": "tool-input-available",
+        "toolName": "getConnectorStatus",
+        "toolCallId": "call-de81d99ca221"
+      },
+      {
+        "type": "tool-output-available",
+        "toolCallId": "call-de81d99ca221"
+      }
+    ],
+    "intel": [
+      {
+        "mode": "confirm",
+        "expl": "Plan ready \u2014 running tools",
+        "pend": false,
+        "exec": false
+      },
+      {
+        "mode": "confirm",
+        "expl": "Live data came from assistant_connector_status (1 call).\n\nThis answer drew on 2 ",
+        "pend": false,
+        "exec": false
+      }
+    ],
+    "pending_type": null,
+    "pending_status": null
+  }
+}

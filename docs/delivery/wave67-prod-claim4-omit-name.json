@@ -1,0 +1,117 @@
+{
+  "started_at": "2026-07-11T17:04:40.700601+00:00",
+  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "git_sha": "749caca8820b43bf19ab70ac55b4394ce8bf44d5",
+  "conversation_id": "100ff046-2ba3-45f8-9c6d-7d472be60392",
+  "claim": "4_omit_name_assumption_notes",
+  "turn_omit": {
+    "http": 200,
+    "summary": {
+      "event_count": 17,
+      "execution_results": [],
+      "pending_tasks": [
+        {
+          "type": "connector_orchestration",
+          "params": {
+            "goal": "In Apollo, create a contact list.",
+            "steps": [
+              {
+                "kind": "read",
+                "plan": {
+                  "args": {
+                    "limit": 10,
+                    "query": "In Apollo"
+                  },
+                  "kind": "read",
+                  "label": "Search people",
+                  "tool_name": "apollo_people_search",
+                  "destructive": false,
+                  "integration": "apollo",
+                  "invoke_action": "apollo.people.search",
+                  "approval_reason": null,
+                  "inferred_fields": [],
+                  "inference_sources": {},
+                  "requires_approval": false
+                },
+                "label": "Search people",
+                "segment": "In Apollo",
+                "step_id": "step_1",
+                "supported": true,
+                "skip_reason": null,
+                "requires_approval": false
+              },
+              {
+                "kind": "advanced",
+                "plan": {
+                  "args": {
+                    "payload": {
+                      "intent_text": "create a contact list in apollo"
+                    }
+                  },
+                  "kind": "advanced",
+                  "label": "Update contact",
+                  "tool_name": "apollo_contacts_update",
+                  "destructive": true,
+                  "integration": "apollo",
+                  "invoke_action": "apollo.contacts.update",
+                  "approval_reason": "Action type 'apollo.contacts.update' requires approval per policy",
+                  "inferred_fields": [],
+                  "inference_sources": {},
+                  "requires_approval": true
+                },
+                "label": "Update contact",
+                "segment": "create a contact list",
+                "step_id": "step_2",
+                "supported": true,
+                "skip_reason": null,
+                "requires_approval": true
+              }
+            ],
+            "total_steps": 2,
+            "step_results": [],
+            "current_step_index": 0
+          },
+          "status": "awaiting_plan_confirm"
+        }
+      ],
+      "assumption_notes_seen": [],
+      "modes": [],
+      "text_preview": ""
+    }
+  },
+  "turn_yes": {
+    "http": 200,
+    "summary": {
+      "event_count": 10,
+      "execution_results": [
+        {
+          "i": 2,
+          "success": false,
+          "result_url": null,
+          "assumption_notes": null,
+          "error_code": "auth_expired"
+        },
+        {
+          "i": 6,
+          "success": false,
+          "result_url": null,
+          "assumption_notes": null,
+          "error_code": "auth_expired"
+        }
+      ],
+      "pending_tasks": [],
+      "assumption_notes_seen": [],
+      "modes": [],
+      "text_preview": ""
+    }
+  },
+  "verdict": {
+    "assumption_notes_appeared": false,
+    "assumption_notes": [],
+    "execution_success": false,
+    "result_url": null,
+    "omit_pending_sse": true,
+    "status": "PARTIAL"
+  },
+  "finished_at": "2026-07-11T17:04:59.620949+00:00"
+}

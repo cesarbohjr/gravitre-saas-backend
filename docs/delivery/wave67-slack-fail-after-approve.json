@@ -1,0 +1,19 @@
+{
+  "conversation_id": "c37a9aec-df85-4a59-a260-b577b980edd9",
+  "gate_at": "2026-07-11T06:29:58.687285+00:00",
+  "approve_at": "2026-07-11T06:29:58.942755+00:00",
+  "done_at": "2026-07-11T06:30:00.093950+00:00",
+  "execution": {
+    "success": false,
+    "error_code": "validation_error",
+    "body": "Invalid parameters for this Slack action (slack.post_message). Check required fields and try again.",
+    "result_url": null,
+    "entity_id": "",
+    "integration": "slack"
+  },
+  "shaped_chip": {
+    "error": "Invalid parameters for this Slack action (slack_post_message). Check required fields and try again.",
+    "success": false,
+    "errorCode": "validation_error"
+  }
+}

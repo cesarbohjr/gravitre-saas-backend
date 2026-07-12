@@ -1,0 +1,145 @@
+{
+  "prod_sha": "a3e69a220aeaa53718e4aee610e1121b9b6ba4bf",
+  "conversation_id": "42e87009-102c-46e7-a030-d85c9a43e545",
+  "goal": "PartD P1 create unique gate 7ee843a6",
+  "turn_a": {
+    "http": 200,
+    "text": "I'll create a draft workflow for **PartD P1 create unique gate 7ee843a6**.\n\nReply **yes** to create it now, or tell me what to adjust.",
+    "pending": {
+      "type": "create_workflow",
+      "params": {
+        "source": "react_write_gate",
+        "tool_name": "assistant_create_workflow",
+        "invoke_action": "assistant.create_workflow",
+        "workflow_goal": "PartD P1 create unique gate 7ee843a6",
+        "workflow_name": "PartD P1 create unique gate 7ee843a6"
+      },
+      "status": "awaiting_confirm"
+    },
+    "intel": [
+      {
+        "mode": "confirm",
+        "pending": null,
+        "exec": null
+      },
+      {
+        "mode": "confirm",
+        "pending": {
+          "type": "create_workflow",
+          "params": {
+            "source": "react_write_gate",
+            "tool_name": "assistant_create_workflow",
+            "invoke_action": "assistant.create_workflow",
+            "workflow_goal": "PartD P1 create unique gate 7ee843a6",
+            "workflow_name": "PartD P1 create unique gate 7ee843a6"
+          },
+          "status": "awaiting_confirm"
+        },
+        "exec": null
+      }
+    ]
+  },
+  "turn_b": {
+    "http": 200,
+    "text": "Done \u2014 I created **PartD P1 create unique gate 7ee843a6**.\n\nCreated draft workflow \u201cPartD P1 create unique gate 7ee843a6\u201d. Open the builder to add steps and publish.\n\n[View in Gravitre](/workflows/78206dfa-9468-4190-8ab0-e8918f185e45/builder)",
+    "pending": {
+      "type": "create_workflow",
+      "result": {
+        "body": "Created draft workflow \u201cPartD P1 create unique gate 7ee843a6\u201d. Open the builder to add steps and publish.",
+        "title": "PartD P1 create unique gate 7ee843a6",
+        "success": true,
+        "entity_id": "78206dfa-9468-4190-8ab0-e8918f185e45",
+        "error_code": null,
+        "result_url": "/workflows/78206dfa-9468-4190-8ab0-e8918f185e45/builder",
+        "structured": null,
+        "task_label": "Created workflow PartD P1 create unique gate 7ee843a6",
+        "entity_type": "workflow",
+        "integration": null,
+        "assumption_notes": null,
+        "notification_type": "workflow_created",
+        "connector_management_url": null
+      },
+      "status": "executed"
+    },
+    "intel": [
+      {
+        "mode": "answer",
+        "pending": null,
+        "exec": {
+          "success": true,
+          "entity_type": "workflow",
+          "entity_id": "78206dfa-9468-4190-8ab0-e8918f185e45",
+          "title": "PartD P1 create unique gate 7ee843a6",
+          "body": "Created draft workflow \u201cPartD P1 create unique gate 7ee843a6\u201d. Open the builder to add steps and publish.",
+          "connector_management_url": null,
+          "result_url": "/workflows/78206dfa-9468-4190-8ab0-e8918f185e45/builder",
+          "integration": null,
+          "notification_type": "workflow_created",
+          "task_label": "Created workflow PartD P1 create unique gate 7ee843a6",
+          "structured": null,
+          "error_code": null,
+          "assumption_notes": null
+        }
+      },
+      {
+        "mode": "answer",
+        "pending": null,
+        "exec": {
+          "success": true,
+          "entity_type": "workflow",
+          "entity_id": "78206dfa-9468-4190-8ab0-e8918f185e45",
+          "title": "PartD P1 create unique gate 7ee843a6",
+          "body": "Created draft workflow \u201cPartD P1 create unique gate 7ee843a6\u201d. Open the builder to add steps and publish.",
+          "connector_management_url": null,
+          "result_url": "/workflows/78206dfa-9468-4190-8ab0-e8918f185e45/builder",
+          "integration": null,
+          "notification_type": "workflow_created",
+          "task_label": "Created workflow PartD P1 create unique gate 7ee843a6",
+          "structured": null,
+          "error_code": null,
+          "assumption_notes": null
+        }
+      }
+    ]
+  },
+  "tool_invoke": [
+    {
+      "id": "2839e193-9812-4a18-8d93-d0a222885206",
+      "action": "tool.invoke.requested",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata": {
+        "name": "PartD P1 create unique gate 7ee843a6",
+        "action": "assistant.create_workflow"
+      },
+      "created_at": "2026-07-12T03:47:05.788221+00:00"
+    },
+    {
+      "id": "15047c21-618b-4b47-9f7b-cb8a1a5f730d",
+      "action": "tool.invoke.completed",
+      "resource_id": "78206dfa-9468-4190-8ab0-e8918f185e45",
+      "metadata": {
+        "name": "PartD P1 create unique gate 7ee843a6",
+        "action": "assistant.create_workflow"
+      },
+      "created_at": "2026-07-12T03:47:05.874056+00:00"
+    }
+  ],
+  "workflow_created": [
+    {
+      "id": "9b9e0ad9-a896-4259-90db-c5cab4a4943d",
+      "action": "workflow.created",
+      "resource_id": "78206dfa-9468-4190-8ab0-e8918f185e45",
+      "metadata": {
+        "name": "PartD P1 create unique gate 7ee843a6",
+        "source": "assistant_tools"
+      },
+      "created_at": "2026-07-12T03:47:05.912338+00:00"
+    }
+  ],
+  "pass": true,
+  "prior_success_evidence_02_37": {
+    "workflow_id": "465ae838-e8d2-4d87-9d35-95ffe5d84a4b",
+    "note": "First live run completed create with tool.invoke.completed + workflow.created; second run FAIL was duplicate name",
+    "audits_at": "2026-07-12T02:37:19Z"
+  }
+}

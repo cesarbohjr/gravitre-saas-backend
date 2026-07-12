@@ -1,0 +1,419 @@
+{
+  "started_at": "2026-07-11T17:02:45.067106+00:00",
+  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+  "conversation_id": "5106065c-74cf-4d38-a6fd-b7f8c625fca8",
+  "list_name": "gravitre-wave67-prod-approve-202607111702",
+  "claim": "3_approval_panel_result_url",
+  "prod_health": {
+    "status": "ok",
+    "timestamp": "2026-07-11T17:02:45.990496+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "749caca8820b43bf19ab70ac55b4394ce8bf44d5",
+    "ai_disabled": false,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "turn_gate": {
+    "wall_start": "2026-07-11T17:02:46.408537+00:00",
+    "http": 200,
+    "summary": {
+      "event_count": 27,
+      "execution_results": [],
+      "pending_tasks_sse": [],
+      "has_pending_task_sse": false,
+      "text_preview": "Apollo is connected, and I checked the existing contact lists. I don\u2019t see a list named exactly `gravitre-wave67-prod-approve-202607111702`.\n\nMy plan is simple: create one Apollo contact list with that exact name, as a contacts list, and make no other changes.\n\nPlease reply \u201cApprove\u201d and I\u2019ll create it.\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document?",
+      "last_execution": null
+    },
+    "raw_head": "data: {\"type\":\"start\"}\n\ndata: {\"type\":\"start-step\"}\n\ndata: {\"type\":\"data-intelligence\",\"data\":{\"messageId\":\"67708622-cae1-435a-a5b2-7ad095aa3f78\",\"confidence\":{\"score\":0.7,\"needs_clarification\":false},\"answerExplanation\":\"Plan ready \\u2014 running tools\",\"conflicts\":[],\"refinedQuery\":null,\"validation\":null,\"dialogueMode\":\"confirm\",\"personaKey\":\"friendly_assistant\",\"proactiveSuggestions\":[],\"taskState\":{\"clarified_params\":{},\"rejected_options\":[],\"approved_actions\":[],\"current_plan\":{\"goal\":\"Create an Apollo contact list named exactly 'gravitre-wave67-prod-approve-202607111702'. Do not invent a different name.\",\"status\":\"ok\",\"requires_human_review\":true,\"steps\":[{\"step_id\":\"step_1\",\"description\":\"Clarify success criteria and constraints\",\"dependencies\":[],\"requires_approval\":false,\"estimate"
+  },
+  "db_task_state_after_gate": {
+    "row_found": true,
+    "task_state_keys": [
+      "current_plan",
+      "pending_task",
+      "pending_steps",
+      "preferred_tone",
+      "completed_steps",
+      "approved_actions",
+      "clarified_params",
+      "persona_override",
+      "rejected_options",
+      "unresolved_tasks",
+      "connector_session",
+      "resolved_entities",
+      "suppressed_suggestions"
+    ],
+    "pending_task": null,
+    "task_state_preview": {
+      "current_plan": {
+        "goal": "Create an Apollo contact list named exactly 'gravitre-wave67-prod-approve-202607111702'. Do not invent a different name.",
+        "steps": [
+          {
+            "step_id": "step_1",
+            "description": "Clarify success criteria and constraints",
+            "dependencies": [],
+            "requires_approval": false,
+            "estimated_complexity": "low",
+            "connector_requirements": []
+          },
+          {
+            "step_id": "step_2",
+            "description": "Gather evidence from RAG and connectors",
+            "dependencies": [
+              "step_1"
+            ],
+            "requires_approval": false,
+            "estimated_complexity": "medium",
+            "connector_requirements": []
+          },
+          {
+            "step_id": "step_3",
+            "description": "Draft plan for human review",
+            "dependencies": [
+              "step_2"
+            ],
+            "requires_approval": true,
+            "estimated_complexity": "medium",
+            "connector_requirements": []
+          },
+          {
+            "step_id": "step_4",
+            "description": "Execute only after explicit approval",
+            "dependencies": [
+              "step_3"
+            ],
+            "requires_approval": true,
+            "estimated_complexity": "medium",
+            "connector_requirements": []
+          }
+        ],
+        "status": "ok",
+        "requires_human_review": true
+      },
+      "pending_task": null,
+      "pending_steps": [
+        {
+          "step_id": "step_1",
+          "description": "Clarify success criteria and constraints",
+          "dependencies": [],
+          "requires_approval": false,
+          "estimated_complexity": "low",
+          "connector_requirements": []
+        },
+        {
+          "step_id": "step_2",
+          "description": "Gather evidence from RAG and connectors",
+          "dependencies": [
+            "step_1"
+          ],
+          "requires_approval": false,
+          "estimated_complexity": "medium",
+          "connector_requirements": []
+        },
+        {
+          "step_id": "step_3",
+          "description": "Draft plan for human review",
+          "dependencies": [
+            "step_2"
+          ],
+          "requires_approval": true,
+          "estimated_complexity": "medium",
+          "connector_requirements": []
+        },
+        {
+          "step_id": "step_4",
+          "description": "Execute only after explicit approval",
+          "dependencies": [
+            "step_3"
+          ],
+          "requires_approval": true,
+          "estimated_complexity": "medium",
+          "connector_requirements": []
+        }
+      ],
+      "preferred_tone": null,
+      "completed_steps": [],
+      "approved_actions": [],
+      "clarified_params": {},
+      "persona_override": null
+    }
+  },
+  "pending_task_present_in_db_after_step4": false,
+  "turn_approve": {
+    "wall_start": "2026-07-11T17:03:06.021762+00:00",
+    "http": 200,
+    "summary": {
+      "event_count": 14,
+      "execution_results": [],
+      "pending_tasks_sse": [
+        {
+          "type": "connector_action",
+          "params": {
+            "args": {
+              "name": "gravitre-wave67-prod-approve-202607111702",
+              "modality": "contacts",
+              "list_name": "gravitre-wave67-prod-approve-202607111702"
+            },
+            "kind": "write",
+            "label": "Create contact list",
+            "source": "react_write_gate",
+            "status": "awaiting_confirm",
+            "tool_name": "apollo_lists_create",
+            "destructive": false,
+            "integration": "apollo",
+            "invoke_action": "apollo.lists.create",
+            "approval_reason": "react_write_gate",
+            "inferred_fields": [],
+            "inference_sources": {},
+            "requires_approval": true
+          },
+          "status": "awaiting_confirm"
+        }
+      ],
+      "has_pending_task_sse": true,
+      "text_preview": "I can create a contact list named **gravitre-wave67-prod-approve-202607111702** in Apollo.\n\nReply **yes** to create it, or tell me what to change (name, modality, or follow-up criteria to populate it).",
+      "last_execution": null
+    },
+    "raw_head": "data: {\"type\":\"start\"}\n\ndata: {\"type\":\"start-step\"}\n\ndata: {\"type\":\"data-intelligence\",\"data\":{\"messageId\":\"a77e4ae3-0f63-4d5e-88a4-f522e7613d5a\",\"confidence\":{\"score\":0.7,\"needs_clarification\":false},\"answerExplanation\":\"Plan ready \\u2014 running tools\",\"conflicts\":[],\"refinedQuery\":null,\"validation\":null,\"dialogueMode\":\"answer\",\"personaKey\":\"friendly_assistant\",\"proactiveSuggestions\":[],\"taskState\":{\"clarified_params\":{},\"rejected_options\":[],\"approved_actions\":[],\"current_plan\":{\"goal\":\"Create an Apollo contact list named exactly 'gravitre-wave67-prod-approve-202607111702'. Do not invent a different name.\",\"steps\":[{\"step_id\":\"step_1\",\"description\":\"Clarify success criteria and constraints\",\"dependencies\":[],\"requires_approval\":false,\"estimated_complexity\":\"low\",\"connector_requirements\""
+  },
+  "db_task_state_after_approve": {
+    "row_found": true,
+    "task_state_keys": [
+      "current_plan",
+      "pending_task",
+      "pending_steps",
+      "preferred_tone",
+      "completed_steps",
+      "approved_actions",
+      "clarified_params",
+      "persona_override",
+      "rejected_options",
+      "unresolved_tasks",
+      "connector_session",
+      "resolved_entities",
+      "suppressed_suggestions"
+    ],
+    "pending_task": {
+      "type": "connector_action",
+      "params": {
+        "args": {
+          "name": "gravitre-wave67-prod-approve-202607111702",
+          "modality": "contacts",
+          "list_name": "gravitre-wave67-prod-approve-202607111702"
+        },
+        "kind": "write",
+        "label": "Create contact list",
+        "source": "react_write_gate",
+        "status": "awaiting_confirm",
+        "tool_name": "apollo_lists_create",
+        "destructive": false,
+        "integration": "apollo",
+        "invoke_action": "apollo.lists.create",
+        "approval_reason": "react_write_gate",
+        "inferred_fields": [],
+        "inference_sources": {},
+        "requires_approval": true
+      },
+      "status": "awaiting_confirm"
+    },
+    "task_state_preview": {
+      "current_plan": {
+        "goal": "Create an Apollo contact list named exactly 'gravitre-wave67-prod-approve-202607111702'. Do not invent a different name.",
+        "steps": [
+          {
+            "step_id": "step_1",
+            "description": "Clarify success criteria and constraints",
+            "dependencies": [],
+            "requires_approval": false,
+            "estimated_complexity": "low",
+            "connector_requirements": []
+          },
+          {
+            "step_id": "step_2",
+            "description": "Gather evidence from RAG and connectors",
+            "dependencies": [
+              "step_1"
+            ],
+            "requires_approval": false,
+            "estimated_complexity": "medium",
+            "connector_requirements": []
+          },
+          {
+            "step_id": "step_3",
+            "description": "Draft plan for human review",
+            "dependencies": [
+              "step_2"
+            ],
+            "requires_approval": true,
+            "estimated_complexity": "medium",
+            "connector_requirements": []
+          },
+          {
+            "step_id": "step_4",
+            "description": "Execute only after explicit approval",
+            "dependencies": [
+              "step_3"
+            ],
+            "requires_approval": true,
+            "estimated_complexity": "medium",
+            "connector_requirements": []
+          }
+        ],
+        "status": "ok",
+        "requires_human_review": true
+      },
+      "pending_task": {
+        "type": "connector_action",
+        "params": {
+          "args": {
+            "name": "gravitre-wave67-prod-approve-202607111702",
+            "modality": "contacts",
+            "list_name": "gravitre-wave67-prod-approve-202607111702"
+          },
+          "kind": "write",
+          "label": "Create contact list",
+          "source": "react_write_gate",
+          "status": "awaiting_confirm",
+          "tool_name": "apollo_lists_create",
+          "destructive": false,
+          "integration": "apollo",
+          "invoke_action": "apollo.lists.create",
+          "approval_reason": "react_write_gate",
+          "inferred_fields": [],
+          "inference_sources": {},
+          "requires_approval": true
+        },
+        "status": "awaiting_confirm"
+      },
+      "pending_steps": [
+        {
+          "step_id": "step_1",
+          "description": "Clarify success criteria and constraints",
+          "dependencies": [],
+          "requires_approval": false,
+          "estimated_complexity": "low",
+          "connector_requirements": []
+        },
+        {
+          "step_id": "step_2",
+          "description": "Gather evidence from RAG and connectors",
+          "dependencies": [
+            "step_1"
+          ],
+          "requires_approval": false,
+          "estimated_complexity": "medium",
+          "connector_requirements": []
+        },
+        {
+          "step_id": "step_3",
+          "description": "Draft plan for human review",
+          "dependencies": [
+            "step_2"
+          ],
+          "requires_approval": true,
+          "estimated_complexity": "medium",
+          "connector_requirements": []
+        },
+        {
+          "step_id": "step_4",
+          "description": "Execute only after explicit approval",
+          "dependencies": [
+            "step_3"
+          ],
+          "requires_approval": true,
+          "estimated_complexity": "medium",
+          "connector_requirements": []
+        }
+      ],
+      "preferred_tone": null,
+      "completed_steps": [],
+      "approved_actions": [],
+      "clarified_params": {},
+      "persona_override": null
+    }
+  },
+  "audit_events_last_10m": [
+    {
+      "id": "3b65567d-ec6c-4504-ad1d-05d7a45aefd9",
+      "created_at": "2026-07-11T17:03:13.764265+00:00",
+      "action": "agent.react.iteration",
+      "status": "tool_call",
+      "resource_type": "assistant",
+      "resource_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "metadata_keys": [
+        "error",
+        "status",
+        "taskId",
+        "agentId",
+        "toolArgs",
+        "toolName",
+        "errorCode",
+        "iteration",
+        "observation",
+        "toolSuccess",
+        "thoughtPreview"
+      ],
+      "tool": null,
+      "result_url": null,
+      "error_code": null
+    },
+    {
+      "id": "ed4f7ce2-1fff-4095-8da6-0ecb899c56b8",
+      "created_at": "2026-07-11T17:03:00.19868+00:00",
+      "action": "tool.invoke.completed",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "attempt",
+        "step_id",
+        "latency_ms",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.list",
+      "result_url": null,
+      "error_code": null
+    },
+    {
+      "id": "878bd715-afae-4af4-b287-1ae99eaf802e",
+      "created_at": "2026-07-11T17:02:59.868699+00:00",
+      "action": "tool.invoke.requested",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "step_id",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.list",
+      "result_url": null,
+      "error_code": null
+    }
+  ],
+  "approved_execution": {
+    "success": null,
+    "result_url": null,
+    "assumption_notes": null,
+    "error_code": null,
+    "body": null,
+    "text_preview": "I can create a contact list named **gravitre-wave67-prod-approve-202607111702** in Apollo.\n\nReply **yes** to create it, or tell me what to change (name, modality, or follow-up criteria to populate it)."
+  },
+  "verdict": {
+    "claim3_deep_link_result_url_after_approve": false,
+    "result_url": null,
+    "result_url_is_deep_link": false,
+    "success": null,
+    "pending_task_in_db_after_gate": false,
+    "note": "PASS if chat yes yielded executionResult.success with http deep-link result_url (not /connectors/)."
+  },
+  "finished_at": "2026-07-11T17:03:16.333624+00:00"
+}

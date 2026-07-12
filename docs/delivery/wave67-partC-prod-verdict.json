@@ -1,0 +1,39 @@
+{
+  "part": "C",
+  "finished_at": "2026-07-11T08:15:00+00:00",
+  "pr89": {
+    "url": "https://github.com/cesarbohjr/gravitre-saas-backend/pull/89",
+    "merged": true,
+    "merge_sha": "15bfc4ffb6b625ed31f9aa0570b611f64b167551",
+    "routing_fix_commit": "8810c0c6a0b83fb5ead1becf4b1ac09e24d96251"
+  },
+  "prod_health_git_sha": "15bfc4ffb6b625ed31f9aa0570b611f64b167551",
+  "prod_api": "https://gravitre-saas-backend-production.up.railway.app",
+  "tickets": {
+    "STA-305": "https://linear.app/staqbot/issue/STA-305/nl-mapper-omit-detail-create-intents-shadowed-by-listsearchlookalike",
+    "STA-306": "https://linear.app/staqbot/issue/STA-306/react-write-gate-approval-ux-without-persisted-pending-task-claim-3"
+  },
+  "claims_prod": {
+    "1_plan_before_tools": {
+      "status": "PASS",
+      "evidence": "wave67-prod-spotcheck.json — Plan ready SSE i=2 before tool-input i=3 @ 2026-07-11T07:57:57Z"
+    },
+    "2_tool_chips_error_code": {
+      "status": "PASS",
+      "evidence": "wave67-prod-sse-diag.json turn A — tool-output errorCode=tool_not_available on slack_post_message; dialogueMode=clarify",
+      "note": "Disconnected Slack path (status=error). auth_expired mid-stream READ misclassification remains STA-303 companion / Part A local evidence — does not block chip+errorCode claim."
+    },
+    "3_approval_panel_result_url": {
+      "status": "FAIL",
+      "evidence": "wave67-prod-claim3-approve.json — write_approval_required UX fires but pending_task not persisted; yes cannot execute; no Apollo result_url; no lists.create audit",
+      "ticket": "STA-306"
+    },
+    "4_assumption_notes_ui": {
+      "status": "FAIL",
+      "evidence": "wave67-prod-sse-diag.json turn C — omit-name asks for name via ReAct; no MSP Prospects auto-plan; no assumption_notes in SSE",
+      "note": "Local process_turn causal PASS (Part B) does not close prod: chat is ReAct-first and never hits Apollo auto-plan producer on this path. STA-305 covers broader mapper shadowing; claim 4 needs ReAct→auto-plan or structured create with inferred_fields on the live chat path."
+    }
+  },
+  "wave67_done": false,
+  "reason": "Not 4/4 PASS on prod API. Claim 1+2 pass; claim 3+4 fail on live chat path."
+}

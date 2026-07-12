@@ -1,0 +1,539 @@
+{
+  "started_at": "2026-07-11T17:10:09.686638+00:00",
+  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+  "conversation_id": "4a5a14aa-1d3a-4e53-8e8c-30fe22ce9f7f",
+  "list_name": "gravitre-wave67-c3-20260711171009",
+  "claim": "3_soft_then_hard_approval_result_url",
+  "protocol": [
+    "Turn A: create list with exact name",
+    "Read conversations.task_state.pending_task",
+    "Turn B: yes if awaiting_confirm else Approve",
+    "Read pending_task again",
+    "Turn C: yes again or POST /api/assistant/conversation/{id}/execute"
+  ],
+  "prod_health": {
+    "status": "ok",
+    "timestamp": "2026-07-11T17:10:10.101004+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "749caca8820b43bf19ab70ac55b4394ce8bf44d5",
+    "ai_disabled": false,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "git_sha_matches_749caca": true,
+  "turn_a": {
+    "message": "Create an Apollo contact list named exactly 'gravitre-wave67-c3-20260711171009'. Do not invent a different name.",
+    "wall_start": "2026-07-11T17:10:10.517195+00:00",
+    "http": 200,
+    "summary": {
+      "event_count": 13,
+      "execution_results": [],
+      "pending_tasks_sse": [
+        {
+          "type": "connector_action",
+          "params": {
+            "args": {
+              "name": "gravitre-wave67-c3-[REDACTED_CC]",
+              "modality": "contacts",
+              "list_name": "gravitre-wave67-c3-[REDACTED_CC]"
+            },
+            "kind": "write",
+            "label": "Create contact list",
+            "source": "react_write_gate",
+            "status": "awaiting_confirm",
+            "tool_name": "apollo_lists_create",
+            "destructive": false,
+            "integration": "apollo",
+            "invoke_action": "apollo.lists.create",
+            "approval_reason": "react_write_gate",
+            "inferred_fields": [],
+            "inference_sources": {},
+            "requires_approval": true
+          },
+          "status": "awaiting_confirm"
+        }
+      ],
+      "has_pending_task_sse": true,
+      "text_preview": "I can create a contact list named **gravitre-wave67-c3-[REDACTED_CC]** in Apollo.\n\nReply **yes** to create it, or tell me what to change (name, modality, or follow-up criteria to populate it).",
+      "last_execution": null
+    },
+    "raw_head": "data: {\"type\":\"start\"}\n\ndata: {\"type\":\"start-step\"}\n\ndata: {\"type\":\"tool-input-available\",\"toolCallId\":\"call-c648f4f71b30\",\"toolName\":\"searchKnowledgeBase\",\"input\":{\"query\":\"Create an Apollo contact list named exactly 'gravitre-wave67-c3-20260711171009'. Do not invent a different name.\",\"limit\":5}}\n\ndata: {\"type\":\"tool-output-available\",\"toolCallId\":\"call-c648f4f71b30\",\"output\":{\"results\":[],\"sources\":[],\"totalResults\":0,\"method\":\"unified_retrieval\",\"scope\":\"organization\"}}\n\ndata: {\"type\":\"tool-input-available\",\"toolCallId\":\"call-78d4db0b8cd4\",\"toolName\":\"apollo_lists_create\",\"input\":{\"name\":\"gravitre-wave67-c3-[REDACTED_CC]\",\"list_name\":\"gravitre-wave67-c3-[REDACTED_CC]\",\"modality\":\"contacts\"}}\n\ndata: {\"type\":\"tool-output-available\",\"toolCallId\":\"call-78d4db0b8cd4\",\"output\":{\"error\":\"This"
+  },
+  "db_task_state_after_a": {
+    "row_found": true,
+    "task_state_keys": [
+      "current_plan",
+      "pending_task",
+      "pending_steps",
+      "preferred_tone",
+      "completed_steps",
+      "approved_actions",
+      "clarified_params",
+      "persona_override",
+      "rejected_options",
+      "unresolved_tasks",
+      "connector_session",
+      "resolved_entities",
+      "suppressed_suggestions"
+    ],
+    "pending_task": {
+      "type": "connector_action",
+      "params": {
+        "args": {
+          "name": "gravitre-wave67-c3-[REDACTED_CC]",
+          "modality": "contacts",
+          "list_name": "gravitre-wave67-c3-[REDACTED_CC]"
+        },
+        "kind": "write",
+        "label": "Create contact list",
+        "source": "react_write_gate",
+        "status": "awaiting_confirm",
+        "tool_name": "apollo_lists_create",
+        "destructive": false,
+        "integration": "apollo",
+        "invoke_action": "apollo.lists.create",
+        "approval_reason": "react_write_gate",
+        "inferred_fields": [],
+        "inference_sources": {},
+        "requires_approval": true
+      },
+      "status": "awaiting_confirm"
+    },
+    "pending_status": "awaiting_confirm",
+    "task_state_preview": {
+      "current_plan": null,
+      "pending_task": {
+        "type": "connector_action",
+        "params": {
+          "args": {
+            "name": "gravitre-wave67-c3-[REDACTED_CC]",
+            "modality": "contacts",
+            "list_name": "gravitre-wave67-c3-[REDACTED_CC]"
+          },
+          "kind": "write",
+          "label": "Create contact list",
+          "source": "react_write_gate",
+          "status": "awaiting_confirm",
+          "tool_name": "apollo_lists_create",
+          "destructive": false,
+          "integration": "apollo",
+          "invoke_action": "apollo.lists.create",
+          "approval_reason": "react_write_gate",
+          "inferred_fields": [],
+          "inference_sources": {},
+          "requires_approval": true
+        },
+        "status": "awaiting_confirm"
+      },
+      "pending_steps": [],
+      "preferred_tone": null,
+      "completed_steps": [],
+      "approved_actions": [],
+      "clarified_params": {},
+      "persona_override": null,
+      "rejected_options": [],
+      "unresolved_tasks": []
+    }
+  },
+  "turn_b_message_choice": {
+    "pending_status": "awaiting_confirm",
+    "message": "yes",
+    "rule": "yes if awaiting_confirm else Approve"
+  },
+  "turn_b": {
+    "message": "yes",
+    "wall_start": "2026-07-11T17:10:25.562855+00:00",
+    "http": 200,
+    "summary": {
+      "event_count": 10,
+      "execution_results": [
+        {
+          "i": 2,
+          "success": true,
+          "result_url": "https://app.apollo.io/#/lists/6a527904f7a1d9001cbd913f",
+          "error_code": null,
+          "assumption_notes": null,
+          "body": "Created contact list \"gravitre-wave67-c3-[REDACTED_CC]\" (id: 6a527904f7a1d9001cbd913f).",
+          "title": "Create contact list"
+        },
+        {
+          "i": 6,
+          "success": true,
+          "result_url": "https://app.apollo.io/#/lists/6a527904f7a1d9001cbd913f",
+          "error_code": null,
+          "assumption_notes": null,
+          "body": "Created contact list \"gravitre-wave67-c3-[REDACTED_CC]\" (id: 6a527904f7a1d9001cbd913f).",
+          "title": "Create contact list"
+        }
+      ],
+      "pending_tasks_sse": [],
+      "has_pending_task_sse": false,
+      "text_preview": "Done \u2014 **Create contact list**.\n\nCreated contact list \"gravitre-wave67-c3-[REDACTED_CC]\" (id: 6a527904f7a1d9001cbd913f).\n\n[View in Apollo](https://app.apollo.io/#/lists/6a527904f7a1d9001cbd913f)",
+      "last_execution": {
+        "i": 6,
+        "success": true,
+        "result_url": "https://app.apollo.io/#/lists/6a527904f7a1d9001cbd913f",
+        "error_code": null,
+        "assumption_notes": null,
+        "body": "Created contact list \"gravitre-wave67-c3-[REDACTED_CC]\" (id: 6a527904f7a1d9001cbd913f).",
+        "title": "Create contact list"
+      }
+    },
+    "raw_head": "data: {\"type\":\"start\"}\n\ndata: {\"type\":\"start-step\"}\n\ndata: {\"type\":\"data-intelligence\",\"data\":{\"messageId\":\"c6f6557c-c4aa-4d3b-93a1-e681129cceed\",\"confidence\":{\"score\":0.7,\"needs_clarification\":false},\"answerExplanation\":\"Governed connector execution\",\"conflicts\":[],\"refinedQuery\":null,\"validation\":null,\"dialogueMode\":\"answer\",\"personaKey\":\"friendly_assistant\",\"proactiveSuggestions\":[],\"taskState\":{\"clarified_params\":{},\"rejected_options\":[],\"approved_actions\":[{\"url\":\"https://app.apollo.io/#/lists/6a527904f7a1d9001cbd913f\",\"type\":\"apollo.lists.create\",\"entity_id\":\"30f734a2-dbdb-45aa-9112-19c6d604d451\",\"tool_name\":\"apollo_lists_create\"}],\"current_plan\":null,\"completed_steps\":[{\"url\":\"https://app.apollo.io/#/lists/6a527904f7a1d9001cbd913f\",\"label\":\"Create contact list\",\"step_id\":\"connector_"
+  },
+  "db_task_state_after_b": {
+    "row_found": true,
+    "task_state_keys": [
+      "current_plan",
+      "pending_task",
+      "pending_steps",
+      "preferred_tone",
+      "completed_steps",
+      "approved_actions",
+      "clarified_params",
+      "persona_override",
+      "rejected_options",
+      "unresolved_tasks",
+      "connector_session",
+      "resolved_entities",
+      "suppressed_suggestions"
+    ],
+    "pending_task": {
+      "type": "connector_action",
+      "result": {
+        "body": "Created contact list \"gravitre-wave67-c3-[REDACTED_CC]\" (id: 6a527904f7a1d9001cbd913f).",
+        "title": "Create contact list",
+        "success": true,
+        "entity_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+        "error_code": null,
+        "result_url": "https://app.apollo.io/#/lists/6a527904f7a1d9001cbd913f",
+        "structured": {
+          "label": {
+            "id": "6a527904f7a1d9001cbd913f",
+            "name": "gravitre-wave67-c3-[REDACTED_CC]",
+            "user_id": "6a20f3cf0cb1120020d333df",
+            "modality": "contacts",
+            "created_at": "2026-07-11T17:10:28.023Z",
+            "updated_at": "2026-07-11T17:10:28.023Z",
+            "cached_count": 0,
+            "book_of_business": null
+          }
+        },
+        "task_label": "Create contact list",
+        "entity_type": "connector",
+        "integration": "apollo",
+        "assumption_notes": null,
+        "notification_type": "task_completed",
+        "connector_management_url": "/connectors/30f734a2-dbdb-45aa-9112-19c6d604d451"
+      },
+      "status": "executed"
+    },
+    "pending_status": "executed",
+    "task_state_preview": {
+      "current_plan": null,
+      "pending_task": {
+        "type": "connector_action",
+        "result": {
+          "body": "Created contact list \"gravitre-wave67-c3-[REDACTED_CC]\" (id: 6a527904f7a1d9001cbd913f).",
+          "title": "Create contact list",
+          "success": true,
+          "entity_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+          "error_code": null,
+          "result_url": "https://app.apollo.io/#/lists/6a527904f7a1d9001cbd913f",
+          "structured": {
+            "label": {
+              "id": "6a527904f7a1d9001cbd913f",
+              "name": "gravitre-wave67-c3-[REDACTED_CC]",
+              "user_id": "6a20f3cf0cb1120020d333df",
+              "modality": "contacts",
+              "created_at": "2026-07-11T17:10:28.023Z",
+              "updated_at": "2026-07-11T17:10:28.023Z",
+              "cached_count": 0,
+              "book_of_business": null
+            }
+          },
+          "task_label": "Create contact list",
+          "entity_type": "connector",
+          "integration": "apollo",
+          "assumption_notes": null,
+          "notification_type": "task_completed",
+          "connector_management_url": "/connectors/30f734a2-dbdb-45aa-9112-19c6d604d451"
+        },
+        "status": "executed"
+      },
+      "pending_steps": [],
+      "preferred_tone": null,
+      "completed_steps": [
+        {
+          "url": "https://app.apollo.io/#/lists/6a527904f7a1d9001cbd913f",
+          "label": "Create contact list",
+          "step_id": "connector_apollo.lists.create",
+          "entity_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+          "entity_type": "connector"
+        }
+      ],
+      "approved_actions": [
+        {
+          "url": "https://app.apollo.io/#/lists/6a527904f7a1d9001cbd913f",
+          "type": "apollo.lists.create",
+          "entity_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+          "tool_name": "apollo_lists_create"
+        }
+      ],
+      "clarified_params": {},
+      "persona_override": null,
+      "rejected_options": [],
+      "unresolved_tasks": []
+    }
+  },
+  "turn_c": {
+    "needed": false
+  },
+  "audit_events_last_15m": [
+    {
+      "id": "6c40903a-7985-4dd5-9920-f6c35300350b",
+      "created_at": "2026-07-11T17:10:28.074979+00:00",
+      "action": "tool.invoke.completed",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "attempt",
+        "step_id",
+        "latency_ms",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.create",
+      "result_url": null,
+      "error_code": null,
+      "metadata_snippet": {
+        "action": "apollo.lists.create"
+      }
+    },
+    {
+      "id": "45cec349-1cef-4196-ac28-5f2798a0a454",
+      "created_at": "2026-07-11T17:10:27.730715+00:00",
+      "action": "tool.invoke.requested",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "step_id",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.create",
+      "result_url": null,
+      "error_code": null,
+      "metadata_snippet": {
+        "action": "apollo.lists.create"
+      }
+    },
+    {
+      "id": "70c5e5c5-5884-4138-b630-55605cd7af64",
+      "created_at": "2026-07-11T17:10:21.649821+00:00",
+      "action": "agent.react.iteration",
+      "status": "tool_call",
+      "resource_type": "assistant",
+      "resource_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "metadata_keys": [
+        "error",
+        "status",
+        "taskId",
+        "agentId",
+        "toolArgs",
+        "toolName",
+        "errorCode",
+        "iteration",
+        "observation",
+        "toolSuccess",
+        "thoughtPreview"
+      ],
+      "tool": null,
+      "result_url": null,
+      "error_code": null,
+      "metadata_snippet": {
+        "status": "tool_call"
+      }
+    },
+    {
+      "id": "48874c4f-c997-49ae-a5ff-214482c67ef2",
+      "created_at": "2026-07-11T17:04:57.202207+00:00",
+      "action": "tool.invoke.failed",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "error",
+        "action",
+        "step_id",
+        "error_code",
+        "connector_id",
+        "vendor_details"
+      ],
+      "tool": "apollo.people.search",
+      "result_url": null,
+      "error_code": "auth_expired",
+      "metadata_snippet": {
+        "action": "apollo.people.search",
+        "error_code": "auth_expired"
+      }
+    },
+    {
+      "id": "606641e0-eb91-4ff0-bda7-336f8ad66a9f",
+      "created_at": "2026-07-11T17:04:56.963239+00:00",
+      "action": "tool.invoke.requested",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "step_id",
+        "connector_id"
+      ],
+      "tool": "apollo.people.search",
+      "result_url": null,
+      "error_code": null,
+      "metadata_snippet": {
+        "action": "apollo.people.search"
+      }
+    },
+    {
+      "id": "3b65567d-ec6c-4504-ad1d-05d7a45aefd9",
+      "created_at": "2026-07-11T17:03:13.764265+00:00",
+      "action": "agent.react.iteration",
+      "status": "tool_call",
+      "resource_type": "assistant",
+      "resource_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "metadata_keys": [
+        "error",
+        "status",
+        "taskId",
+        "agentId",
+        "toolArgs",
+        "toolName",
+        "errorCode",
+        "iteration",
+        "observation",
+        "toolSuccess",
+        "thoughtPreview"
+      ],
+      "tool": null,
+      "result_url": null,
+      "error_code": null,
+      "metadata_snippet": {
+        "status": "tool_call"
+      }
+    },
+    {
+      "id": "ed4f7ce2-1fff-4095-8da6-0ecb899c56b8",
+      "created_at": "2026-07-11T17:03:00.19868+00:00",
+      "action": "tool.invoke.completed",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "attempt",
+        "step_id",
+        "latency_ms",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.list",
+      "result_url": null,
+      "error_code": null,
+      "metadata_snippet": {
+        "action": "apollo.lists.list"
+      }
+    },
+    {
+      "id": "878bd715-afae-4af4-b287-1ae99eaf802e",
+      "created_at": "2026-07-11T17:02:59.868699+00:00",
+      "action": "tool.invoke.requested",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "step_id",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.list",
+      "result_url": null,
+      "error_code": null,
+      "metadata_snippet": {
+        "action": "apollo.lists.list"
+      }
+    }
+  ],
+  "audit_apollo_lists_create": [
+    {
+      "id": "6c40903a-7985-4dd5-9920-f6c35300350b",
+      "created_at": "2026-07-11T17:10:28.074979+00:00",
+      "action": "tool.invoke.completed",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "attempt",
+        "step_id",
+        "latency_ms",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.create",
+      "result_url": null,
+      "error_code": null,
+      "metadata_snippet": {
+        "action": "apollo.lists.create"
+      }
+    },
+    {
+      "id": "45cec349-1cef-4196-ac28-5f2798a0a454",
+      "created_at": "2026-07-11T17:10:27.730715+00:00",
+      "action": "tool.invoke.requested",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "step_id",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.create",
+      "result_url": null,
+      "error_code": null,
+      "metadata_snippet": {
+        "action": "apollo.lists.create"
+      }
+    }
+  ],
+  "approved_execution": {
+    "source": "turn_b",
+    "success": true,
+    "result_url": "https://app.apollo.io/#/lists/6a527904f7a1d9001cbd913f",
+    "assumption_notes": null,
+    "error_code": null,
+    "body": "Created contact list \"gravitre-wave67-c3-[REDACTED_CC]\" (id: 6a527904f7a1d9001cbd913f).",
+    "title": "Create contact list",
+    "message": null
+  },
+  "verdict": {
+    "claim3": "PASS",
+    "success": true,
+    "result_url": "https://app.apollo.io/#/lists/6a527904f7a1d9001cbd913f",
+    "result_url_is_apollo_deep_link": true,
+    "git_sha": "749caca8820b43bf19ab70ac55b4394ce8bf44d5",
+    "git_sha_matches_749caca": true,
+    "note": "PASS only if success + apollo deep-link result_url (not /connectors/)."
+  },
+  "finished_at": "2026-07-11T17:10:32.697062+00:00"
+}

@@ -1,0 +1,26 @@
+{
+  "fix": "P1 platform write gate + P3 chat create audit",
+  "status": "implemented_awaiting_deploy_live_trace",
+  "clarification": {
+    "execute_pending_type": "execute_workflow",
+    "reuses_create": false,
+    "approval_shows": ["workflow_name", "workflow_id", "workflow_goal", "side-effect warning about connected steps"]
+  },
+  "p2_check": {
+    "verdict": "collapses_for_gating",
+    "detail": "ReAct assistant_create_workflow now materializes pending_task.type=create_workflow (same spine as conversational). Dual entry points remain; dual ungated path closed."
+  },
+  "files": [
+    "backend/app/services/react_write_gate.py",
+    "backend/app/services/conversational_execution_service.py",
+    "backend/app/services/assistant_tools.py",
+    "backend/tests/services/test_react_write_gate.py",
+    "backend/tests/services/test_conversational_execution.py"
+  ],
+  "unit_tests": "30 passed (test_react_write_gate + test_conversational_execution + test_react_engine)",
+  "live_trace_required": {
+    "format": "pending_task created → approval shown → user confirms → tool.invoke.requested/completed → audit event",
+    "tools": ["assistant_create_workflow", "assistant_execute_workflow", "assistant_run_agent_task"],
+    "note": "Run after prod deploy of this PR"
+  }
+}

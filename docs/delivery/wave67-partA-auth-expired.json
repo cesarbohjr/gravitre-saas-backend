@@ -1,0 +1,66 @@
+{
+  "part": "A",
+  "started_at": "2026-07-11T07:04:38.144916+00:00",
+  "setup": {
+    "slack_connector_id": "fe7433c3-6475-474a-863f-91b98d17a0b8",
+    "note": "status temporarily healthy; token remains expired (connected-but-broken)"
+  },
+  "events": [
+    {
+      "step": "midstream_read_tool",
+      "started_at": "2026-07-11T07:04:38.144937+00:00",
+      "ended_at": "2026-07-11T07:04:40.563357+00:00",
+      "observation": {
+        "success": false,
+        "error_code": "validation_error",
+        "error": "token_expired",
+        "action": "slack.conversations.list"
+      },
+      "shaped_chip": {
+        "error": "Invalid parameters for this the connector action (slack.conversations.list). Check required fields and try again.",
+        "success": false,
+        "errorCode": "validation_error"
+      },
+      "sse_tool_output_type": "tool-output-available",
+      "sse_errorCode": "validation_error"
+    },
+    {
+      "step": "write_gate",
+      "at": "2026-07-11T07:04:40.565965+00:00",
+      "error_code": "write_approval_required",
+      "pending_approval": true
+    },
+    {
+      "step": "write_after_approve",
+      "conversation_id": "d04c2262-eb37-4ae0-9588-a08bed048031",
+      "approve_at": "2026-07-11T07:04:40.808068+00:00",
+      "done_at": "2026-07-11T07:04:42.658003+00:00",
+      "execution": {
+        "success": false,
+        "error_code": "auth_expired",
+        "body": "Authentication expired for Slack. Reconnect it at /connectors, then try again.",
+        "entity_id": ""
+      },
+      "shaped_chip": {
+        "error": "Authentication expired for Slack. Reconnect it at /connectors, then try again.",
+        "success": false,
+        "errorCode": "auth_expired"
+      }
+    }
+  ],
+  "claim_2": {
+    "status": "PARTIAL",
+    "required_mode": "connected_but_expired \u2192 auth_expired (not tool_not_available)",
+    "read_midstream": {
+      "error_code": "validation_error",
+      "chip_errorCode": "validation_error"
+    },
+    "write_chain": {
+      "gate": "write_approval_required",
+      "execution_error_code": "auth_expired",
+      "chip_errorCode": "auth_expired"
+    }
+  },
+  "restored_status": "error",
+  "finished_at": "2026-07-11T07:04:42.756443+00:00"
+}

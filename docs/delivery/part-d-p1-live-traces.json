@@ -1,0 +1,339 @@
+{
+  "started_at": "2026-07-12T02:39:19.817242+00:00",
+  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+  "expected_sha_prefix": "a3e69a22",
+  "claim": "part_d_p1_platform_write_gate",
+  "pr": 96,
+  "merge_commit": "a3e69a220aeaa53718e4aee610e1121b9b6ba4bf",
+  "prod_health": {
+    "status": "ok",
+    "timestamp": "2026-07-12T02:39:20.157671+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "a3e69a220aeaa53718e4aee610e1121b9b6ba4bf",
+    "ai_disabled": false,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "prod_sha_ok": true,
+  "trace_create_workflow": {
+    "conversation_id": "53b3b342-8246-4223-8fe8-20088f360461",
+    "turn_a": {
+      "http": 200,
+      "text": "I'll create a draft workflow for **PartD P1 live gate create verification 2026-07-12**.\n\nReply **yes** to create it now, or tell me what to adjust.",
+      "db_pending": {
+        "type": "create_workflow",
+        "params": {
+          "source": "react_write_gate",
+          "tool_name": "assistant_create_workflow",
+          "invoke_action": "assistant.create_workflow",
+          "workflow_goal": "PartD P1 live gate create verification 2026-07-12",
+          "workflow_name": "PartD P1 live gate create verification 2026-07-12"
+        },
+        "status": "awaiting_confirm"
+      },
+      "gate_pass": true
+    },
+    "turn_b": {
+      "http": 200,
+      "text": "I couldn't complete that request: workflow create failed",
+      "db_pending": {
+        "type": "create_workflow",
+        "result": {
+          "body": "workflow create failed",
+          "title": "Workflow creation failed",
+          "success": false,
+          "entity_id": "",
+          "error_code": null,
+          "result_url": "/workflows",
+          "structured": null,
+          "task_label": "",
+          "entity_type": "workflow",
+          "integration": null,
+          "assumption_notes": null,
+          "notification_type": "task_completed",
+          "connector_management_url": null
+        },
+        "status": "executed"
+      },
+      "exec": {
+        "success": false,
+        "entity_type": "workflow",
+        "entity_id": "",
+        "title": "Workflow creation failed",
+        "body": "workflow create failed",
+        "connector_management_url": null,
+        "result_url": "/workflows",
+        "integration": null,
+        "notification_type": "task_completed",
+        "task_label": "",
+        "structured": null,
+        "error_code": null,
+        "assumption_notes": null
+      }
+    },
+    "audits": [
+      {
+        "id": "9eb2164a-06d4-4410-ba9a-e8ae11898824",
+        "action": "tool.invoke.requested",
+        "resource_type": "workflow",
+        "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+        "metadata": {
+          "name": "PartD P1 live gate create verification 2026-07-12",
+          "action": "assistant.create_workflow"
+        },
+        "created_at": "2026-07-12T02:39:36.145634+00:00"
+      }
+    ],
+    "tool_invoke_for_action": [
+      {
+        "id": "9eb2164a-06d4-4410-ba9a-e8ae11898824",
+        "action": "tool.invoke.requested",
+        "resource_type": "workflow",
+        "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+        "metadata": {
+          "name": "PartD P1 live gate create verification 2026-07-12",
+          "action": "assistant.create_workflow"
+        },
+        "created_at": "2026-07-12T02:39:36.145634+00:00"
+      }
+    ],
+    "workflow_created": [],
+    "pass": false
+  },
+  "trace_execute_workflow": {
+    "conversation_id": "2b313f98-5a49-496b-a631-aebf2f4cf004",
+    "target_workflow": {
+      "id": "465ae838-e8d2-4d87-9d35-95ffe5d84a4b",
+      "name": "PartD P1 live gate create verification 2026-07-12"
+    },
+    "turn_a": {
+      "http": 200,
+      "text": "I'll **execute** the workflow **PartD P1 live gate create verification 2026-07-12** (id `465ae838-e8d2-4d87-9d35-95ffe5d84a4b`).\nGoal: Draft created by Gravitre Assistant\n\nThis starts a new run and may trigger connected steps (connectors, agents, notifications).\n\nReply **yes** to run it now, or **no** to cancel.",
+      "db_pending": {
+        "type": "execute_workflow",
+        "params": {
+          "query": "PartD P1 live gate create verification 2026-07-12",
+          "source": "react_write_gate",
+          "tool_name": "assistant_execute_workflow",
+          "workflow_id": "465ae838-e8d2-4d87-9d35-95ffe5d84a4b",
+          "invoke_action": "assistant.execute_workflow",
+          "workflow_goal": "Draft created by Gravitre Assistant",
+          "workflow_name": "PartD P1 live gate create verification 2026-07-12",
+          "environment_name": "production"
+        },
+        "status": "awaiting_confirm"
+      },
+      "gate_pass": true,
+      "approval_copy_has_execute": true,
+      "approval_copy_not_create_draft": true
+    },
+    "turn_b": {
+      "http": 200,
+      "text": "I couldn't complete that request: No active workflow version. Create and activate a version first.",
+      "db_pending": {
+        "type": "execute_workflow",
+        "result": {
+          "body": "No active workflow version. Create and activate a version first.",
+          "title": "Workflow execution failed",
+          "success": false,
+          "entity_id": "465ae838-e8d2-4d87-9d35-95ffe5d84a4b",
+          "error_code": "workflow_execute_failed",
+          "result_url": "/workflows/465ae838-e8d2-4d87-9d35-95ffe5d84a4b/builder",
+          "structured": null,
+          "task_label": "",
+          "entity_type": "workflow",
+          "integration": null,
+          "assumption_notes": null,
+          "notification_type": "task_completed",
+          "connector_management_url": null
+        },
+        "status": "executed"
+      }
+    },
+    "audits": [
+      {
+        "id": "0c0ab4db-945c-48d3-9087-0c819e050a13",
+        "action": "tool.invoke.failed",
+        "resource_type": "workflow",
+        "resource_id": "465ae838-e8d2-4d87-9d35-95ffe5d84a4b",
+        "metadata": {
+          "error": "workflow_execute_failed",
+          "action": "assistant.execute_workflow",
+          "message": "No active workflow version. Create and activate a version first."
+        },
+        "created_at": "2026-07-12T02:39:51.95455+00:00"
+      },
+      {
+        "id": "0eb53bab-1f18-404e-b8d0-d61a0145b430",
+        "action": "tool.invoke.requested",
+        "resource_type": "workflow",
+        "resource_id": "465ae838-e8d2-4d87-9d35-95ffe5d84a4b",
+        "metadata": {
+          "action": "assistant.execute_workflow",
+          "workflow_id": "465ae838-e8d2-4d87-9d35-95ffe5d84a4b",
+          "workflow_name": "PartD P1 live gate create verification 2026-07-12"
+        },
+        "created_at": "2026-07-12T02:39:51.727014+00:00"
+      }
+    ],
+    "tool_invoke_for_action": [
+      {
+        "id": "0c0ab4db-945c-48d3-9087-0c819e050a13",
+        "action": "tool.invoke.failed",
+        "resource_type": "workflow",
+        "resource_id": "465ae838-e8d2-4d87-9d35-95ffe5d84a4b",
+        "metadata": {
+          "error": "workflow_execute_failed",
+          "action": "assistant.execute_workflow",
+          "message": "No active workflow version. Create and activate a version first."
+        },
+        "created_at": "2026-07-12T02:39:51.95455+00:00"
+      },
+      {
+        "id": "0eb53bab-1f18-404e-b8d0-d61a0145b430",
+        "action": "tool.invoke.requested",
+        "resource_type": "workflow",
+        "resource_id": "465ae838-e8d2-4d87-9d35-95ffe5d84a4b",
+        "metadata": {
+          "action": "assistant.execute_workflow",
+          "workflow_id": "465ae838-e8d2-4d87-9d35-95ffe5d84a4b",
+          "workflow_name": "PartD P1 live gate create verification 2026-07-12"
+        },
+        "created_at": "2026-07-12T02:39:51.727014+00:00"
+      }
+    ],
+    "pass": true,
+    "note": "Runtime execute failure after confirm still PASSes gate+audit if requested+completed/failed present"
+  },
+  "trace_run_agent_task": {
+    "conversation_id": "f8dd10f8-866e-4bcb-8f69-cb8f02bb9878",
+    "target_agent": {
+      "id": "b7858c50-6205-5899-888c-f9e55668acc3",
+      "name": "Sales Agent"
+    },
+    "turn_a": {
+      "http": 200,
+      "text": "I'll run **Sales Agent** on this task:\n\n> Reply with exactly the words P1 gate ok.\n\nThe agent may use its permitted tools and connected integrations (including writes).\n\nReply **yes** to start, or **no** to cancel.",
+      "db_pending": {
+        "type": "run_agent_task",
+        "params": {
+          "task": "Reply with exactly the words P1 gate ok.",
+          "source": "react_write_gate",
+          "agent_id": "b7858c50-6205-5899-888c-f9e55668acc3",
+          "tool_name": "assistant_run_agent_task",
+          "agent_name": "Sales Agent",
+          "invoke_action": "assistant.run_agent_task"
+        },
+        "status": "awaiting_confirm"
+      },
+      "gate_pass": true
+    },
+    "turn_b": {
+      "http": 200,
+      "text": "Done \u2014 **Sales Agent** finished.\n\nAgent \u201cSales Agent\u201d completed the task.\n\n[View in Gravitre](/agents/b7858c50-6205-5899-888c-f9e55668acc3)",
+      "db_pending": {
+        "type": "run_agent_task",
+        "result": {
+          "body": "Agent \u201cSales Agent\u201d completed the task.",
+          "title": "Sales Agent",
+          "success": true,
+          "entity_id": "b7858c50-6205-5899-888c-f9e55668acc3",
+          "error_code": null,
+          "result_url": "/agents/b7858c50-6205-5899-888c-f9e55668acc3",
+          "structured": {
+            "output": null,
+            "status": "completed"
+          },
+          "task_label": "Ran agent Sales Agent",
+          "entity_type": "agent",
+          "integration": null,
+          "assumption_notes": null,
+          "notification_type": "agent_task_completed",
+          "connector_management_url": null
+        },
+        "status": "executed"
+      }
+    },
+    "audits": [
+      {
+        "id": "8d7d0652-1a07-48ee-bc27-d9e47c02dfba",
+        "action": "tool.invoke.completed",
+        "resource_type": "agent",
+        "resource_id": "b7858c50-6205-5899-888c-f9e55668acc3",
+        "metadata": {
+          "action": "assistant.run_agent_task",
+          "status": "completed",
+          "agent_id": "b7858c50-6205-5899-888c-f9e55668acc3",
+          "react_trace_steps": 1
+        },
+        "created_at": "2026-07-12T02:40:12.629337+00:00"
+      },
+      {
+        "id": "d1ec0b51-dacf-4958-9d0d-709f21384760",
+        "action": "tool.invoke.requested",
+        "resource_type": "agent",
+        "resource_id": "b7858c50-6205-5899-888c-f9e55668acc3",
+        "metadata": {
+          "task": "Reply with exactly the words P1 gate ok.",
+          "action": "assistant.run_agent_task",
+          "agent_id": "b7858c50-6205-5899-888c-f9e55668acc3"
+        },
+        "created_at": "2026-07-12T02:40:10.590034+00:00"
+      }
+    ],
+    "tool_invoke_for_action": [
+      {
+        "id": "8d7d0652-1a07-48ee-bc27-d9e47c02dfba",
+        "action": "tool.invoke.completed",
+        "resource_type": "agent",
+        "resource_id": "b7858c50-6205-5899-888c-f9e55668acc3",
+        "metadata": {
+          "action": "assistant.run_agent_task",
+          "status": "completed",
+          "agent_id": "b7858c50-6205-5899-888c-f9e55668acc3",
+          "react_trace_steps": 1
+        },
+        "created_at": "2026-07-12T02:40:12.629337+00:00"
+      },
+      {
+        "id": "d1ec0b51-dacf-4958-9d0d-709f21384760",
+        "action": "tool.invoke.requested",
+        "resource_type": "agent",
+        "resource_id": "b7858c50-6205-5899-888c-f9e55668acc3",
+        "metadata": {
+          "task": "Reply with exactly the words P1 gate ok.",
+          "action": "assistant.run_agent_task",
+          "agent_id": "b7858c50-6205-5899-888c-f9e55668acc3"
+        },
+        "created_at": "2026-07-12T02:40:10.590034+00:00"
+      }
+    ],
+    "pass": true
+  },
+  "finished_at": "2026-07-12T02:40:15.336592+00:00",
+  "create_retrace": {
+    "artifact": "docs/delivery/part-d-p1-create-retrace.json",
+    "conversation_id": "42e87009-102c-46e7-a030-d85c9a43e545",
+    "workflow_id": "78206dfa-9468-4190-8ab0-e8918f185e45",
+    "pass": true,
+    "note": "Unique-name re-trace after duplicate-name false FAIL on first bundled run; full pending→yes→tool.invoke.requested/completed→workflow.created",
+    "audits_at": "2026-07-12T03:47:05Z"
+  },
+  "summary": {
+    "create_workflow": true,
+    "execute_workflow": true,
+    "run_agent_task": true
+  },
+  "all_three_pass": true,
+  "verdict": "PASS",
+  "p1_p3_closed_at": "2026-07-12T03:47:22Z",
+  "evidence_bar": "pending_task awaiting_confirm → user yes → tool.invoke.requested/completed (or failed after confirm for execute) → domain audit where applicable",
+  "false_fail_note": "Bundled create at 02:39 marked FAIL due to duplicate workflow name from 02:37 success; not a gate regression. Create closed via unique-name retrace 42e87009."
+}

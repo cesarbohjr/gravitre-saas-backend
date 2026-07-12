@@ -1,7 +1,7 @@
 {
   "ticket": "STA-314",
   "kind": "gap-close-live",
-  "ran_at": "2026-07-12T10:08:16.122910+00:00",
+  "ran_at": "2026-07-12T17:34:11.414408+00:00",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
   "base_url": "https://gravitre-saas-backend-production.up.railway.app",
@@ -47,7 +47,7 @@
     },
     "installedPackCount": 0,
     "installedPacksSample": [],
-    "dismissedCount": 0
+    "dismissedCount": 1
   },
   "local_builder": {
     "advisoryOnly": true,
@@ -67,20 +67,107 @@
     "advisoryOnly": true,
     "actionsTakenEmpty": true,
     "noExecuteSurface": true,
-    "count": 0,
-    "kinds": [],
+    "count": 5,
+    "kinds": [
+      "connector_missing_pack",
+      "connector_missing_pack",
+      "connector_missing_pack",
+      "connector_connected_unused",
+      "connector_connected_unused"
+    ],
     "body": {
       "advisoryOnly": true,
       "actionsTaken": [],
-      "recommendations": [],
-      "count": 0
+      "recommendations": [
+        {
+          "id": "pack-pipedrive-sales-ops",
+          "kind": "connector_missing_pack",
+          "title": "Add a pack for pipedrive-staging",
+          "reason": "pipedrive-staging has recent usage (8 invocations) but pack 'sales-ops' is not installed.",
+          "evidence": {
+            "vendor": "pipedrive",
+            "invocations": 8,
+            "suggestedPackId": "sales-ops",
+            "lookbackDays": 30
+          },
+          "confidence": 0.8,
+          "priority": 80,
+          "advisoryOnly": true,
+          "href": "/marketplace"
+        },
+        {
+          "id": "pack-apollo-sales-ops",
+          "kind": "connector_missing_pack",
+          "title": "Add a pack for apollo-production",
+          "reason": "apollo-production has recent usage (42 invocations) but pack 'sales-ops' is not installed.",
+          "evidence": {
+            "vendor": "apollo",
+            "invocations": 42,
+            "suggestedPackId": "sales-ops",
+            "lookbackDays": 30
+          },
+          "confidence": 0.8,
+          "priority": 80,
+          "advisoryOnly": true,
+          "href": "/marketplace"
+        },
+        {
+          "id": "pack-slack-support-ops",
+          "kind": "connector_missing_pack",
+          "title": "Add a pack for slack",
+          "reason": "slack has recent usage (6 invocations) but pack 'support-ops' is not installed.",
+          "evidence": {
+            "vendor": "slack",
+            "invocations": 6,
+            "suggestedPackId": "support-ops",
+            "lookbackDays": 30
+          },
+          "confidence": 0.8,
+          "priority": 80,
+          "advisoryOnly": true,
+          "href": "/marketplace"
+        },
+        {
+          "id": "unused-microsoft365",
+          "kind": "connector_connected_unused",
+          "title": "microsoft365-production is connected but unused",
+          "reason": "microsoft365-production is connected with no tool usage in the last 30 days. Try it from chat or a workflow.",
+          "evidence": {
+            "vendor": "microsoft365",
+            "invocations": 0,
+            "lookbackDays": 30
+          },
+          "confidence": 0.75,
+          "priority": 70,
+          "advisoryOnly": true,
+          "href": "/connectors"
+        },
+        {
+          "id": "unused-hubspot",
+          "kind": "connector_connected_unused",
+          "title": "hubspot is connected but unused",
+          "reason": "hubspot is connected with no tool usage in the last 30 days. Try it from chat or a workflow.",
+          "evidence": {
+            "vendor": "hubspot",
+            "invocations": 0,
+            "lookbackDays": 30
+          },
+          "confidence": 0.75,
+          "priority": 70,
+          "advisoryOnly": true,
+          "href": "/connectors"
+        }
+      ],
+      "count": 5
     },
     "note": "HTTP reflects currently deployed Railway revision; local_builder uses gap-close signal wiring against prod DB."
   },
   "http_dismiss_probe": {
-    "status": 404,
+    "status": 200,
     "body": {
-      "detail": "Not Found"
+      "dismissed": true,
+      "cardId": "sta314-smoke-probe-unused-slack",
+      "advisoryOnly": true
     },
     "expectedAfterDeploy": 200
   },

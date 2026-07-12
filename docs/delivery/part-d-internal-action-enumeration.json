@@ -1,0 +1,345 @@
+{
+  "audit_meta": {
+    "scope": "Part D internal action enumeration",
+    "mode": "findings_only",
+    "generated_at": "2026-07-11",
+    "prod_sha_at_audit": "24efb1c5",
+    "discipline": "No fixes — findings + prioritized gaps only"
+  },
+  "assistant_write_tools": [
+    {
+      "tool": "assistant_create_workflow",
+      "writes": true,
+      "gate": false,
+      "intentional_or_accidental": "intentional_exemption_in_code",
+      "evidence": "react_write_gate.py:79-80 exempts assistant_* prefix"
+    },
+    {
+      "tool": "assistant_execute_workflow",
+      "writes": true,
+      "gate": "partial",
+      "note": "Workflow policy may require run approval inside executor; no chat confirm",
+      "evidence": "workflows.py:_execute_workflow_with_context"
+    },
+    {
+      "tool": "assistant_run_agent_task",
+      "writes": true,
+      "gate": false,
+      "note": "Delegates to AgentIntelligence.execute_task; nested connector writes may follow",
+      "evidence": "handoff_service.py:run_agent_task"
+    }
+  ],
+  "actions": [
+    {
+      "type": "workflow_create",
+      "paths": [
+        {
+          "entry_points": ["ReAct assistant_create_workflow", "conversational WORKFLOW_CREATE regex", "POST /api/workflows", "Meson deploy", "marketplace pack install"],
+          "chain_react": "react_engine → tool_registry._execute_assistant_platform_tool → assistant_tools.tool_create_workflow → workflow_defs.insert",
+          "chain_conversational": "agent_intelligence → conversational_execution_service.process_turn → _create_workflow → tool_create_workflow",
+          "chain_rest": "workflows.create_workflow_route → workflow_defs.insert + write_audit_event(workflow.created)",
+          "schema_validation": "partial — empty draft schema_version=2; full validate_definition on execute/version publish",
+          "approval_gate": "partial — conversational awaiting_confirm YES; ReAct NO (assistant_* exempt); REST require_admin",
+          "gate_intentional_or_accidental": "intentional dual-path (ReAct exemption explicit in react_write_gate)",
+          "verifiable_output": true,
+          "verifiable_fields": ["id", "result_url via build_entity_url"],
+          "audit": "partial — REST/Meson audit; chat tool_create_workflow notification only",
+          "caching_risk": "response cache skips confirm turns (post-#95); conversational uses pending_task",
+          "severity_if_gap": "blocker",
+          "evidence_citations": [
+            "backend/app/services/react_write_gate.py:76-80",
+            "backend/app/services/assistant_tools.py:499-537",
+            "backend/app/services/conversational_execution_service.py:34-37,217-264,411-445",
+            "backend/app/routers/workflows.py:3859-3912"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "workflow_edit_update",
+      "paths": [
+        {
+          "entry_points": ["PATCH /api/workflows/{id}", "node/edge/version/schedule routes", "UI builder-persistence"],
+          "chain_rest": "workflows.update_workflow_route → workflow_defs.update → write_audit_event(workflow.updated)",
+          "schema_validation": true,
+          "approval_gate": true,
+          "gate_detail": "require_admin / can_manage_workflow_versions; no chat path",
+          "gate_intentional_or_accidental": "n/a",
+          "verifiable_output": true,
+          "audit": true,
+          "caching_risk": "none",
+          "severity_if_gap": "none",
+          "evidence_citations": ["backend/app/routers/workflows.py:3915-3961"]
+        }
+      ]
+    },
+    {
+      "type": "pack_activate_install",
+      "paths": [
+        {
+          "entry_points": ["POST /api/marketplace/role-packs/{id}/install", "POST /api/marketplace/assets/{ref}/install", "verticals/*/install", "integration-suggestions apply"],
+          "chain": "marketplace install → agent_role_marketplace_service.install_department_pack OR marketplace/service.install_asset → entitlements.assert_install_entitlement → upsert installs + audit",
+          "schema_validation": true,
+          "approval_gate": true,
+          "gate_detail": "require_admin; CONNECTORS_NOT_READY 409; plan limits",
+          "gate_intentional_or_accidental": "intentional (admin REST)",
+          "verifiable_output": true,
+          "verifiable_fields": ["installed", "agentIds", "workflowIds", "installId"],
+          "audit": true,
+          "caching_risk": "none",
+          "severity_if_gap": "medium",
+          "gap_note": "intelligence_pack in ASSET_CONFIG_MODELS but install_asset has no intelligence_pack branch; install_intelligence_pack not HTTP-routed",
+          "evidence_citations": [
+            "backend/app/routers/marketplace.py:905-927",
+            "backend/app/services/agent_role_marketplace_service.py:420-501",
+            "backend/app/marketplace/service.py:606-747"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "pack_configure",
+      "paths": [
+        {
+          "entry_points": ["installVariables on install", "PATCH marketplace asset (publisher)", "POST-install agent/workflow PATCH"],
+          "chain": "install vars → _resolve_asset_payload; publisher → crud.update_org_asset; post-install → update_agent/update_workflow",
+          "schema_validation": true,
+          "approval_gate": true,
+          "gate_detail": "require_admin; no dedicated configure-installed-pack API",
+          "gate_intentional_or_accidental": "intentional",
+          "verifiable_output": true,
+          "audit": "partial",
+          "caching_risk": "none",
+          "severity_if_gap": "low",
+          "evidence_citations": ["backend/app/marketplace/service.py:660-670", "backend/app/marketplace/crud.py:304-394"]
+        }
+      ]
+    },
+    {
+      "type": "pack_deactivate_uninstall",
+      "paths": [
+        {
+          "entry_points": ["POST /api/marketplace/assets/{ref}/uninstall"],
+          "chain": "uninstall_marketplace_asset_route → support.uninstall_marketplace_asset → marketplace_installs.status=uninstalled → audit",
+          "schema_validation": false,
+          "approval_gate": true,
+          "gate_detail": "require_admin",
+          "gate_intentional_or_accidental": "accidental_incomplete",
+          "verifiable_output": true,
+          "audit": true,
+          "caching_risk": "none",
+          "severity_if_gap": "medium",
+          "gap_note": "Ledger-only uninstall — spawned agents/workflows/RAG and legacy org_department_pack_installs not torn down",
+          "evidence_citations": [
+            "backend/app/routers/marketplace.py:1638-1648",
+            "backend/app/marketplace/support.py:226-269"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "agent_create",
+      "paths": [
+        {
+          "entry_points": ["conversational AGENT_CREATE regex", "POST /api/agents", "Meson deploy", "pack _ensure_agents"],
+          "chain_conversational": "conversational_execution_service._create_agent → operators.repository.create_operator",
+          "chain_rest": "operators.router.create_agent_route → create_operator + entitlement limits + audit agent.created",
+          "schema_validation": "partial",
+          "approval_gate": "partial — conversational awaiting_confirm; REST require_admin; no ReAct assistant_create_agent",
+          "gate_intentional_or_accidental": "accidental_audit_omission_on_chat",
+          "verifiable_output": true,
+          "verifiable_fields": ["id", "result_url /agents/{id}"],
+          "audit": "partial — REST audits; conversational notification only",
+          "caching_risk": "conversational pending_task; yes-cache fixed in #95",
+          "severity_if_gap": "medium",
+          "evidence_citations": [
+            "backend/app/services/conversational_execution_service.py:375-409",
+            "backend/app/operators/router.py:1504-1554",
+            "backend/app/operators/assistant_mode_config.py:7-18"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "agent_edit_update",
+      "paths": [
+        {
+          "entry_points": ["PATCH /api/agents/{id}", "start", "auto-execute", "versions"],
+          "chain_rest": "operators.router.update_agent_route → update_operator → audit agent.updated",
+          "schema_validation": true,
+          "approval_gate": true,
+          "gate_detail": "require_admin; no chat write path",
+          "gate_intentional_or_accidental": "n/a",
+          "verifiable_output": true,
+          "audit": true,
+          "caching_risk": "none",
+          "severity_if_gap": "none",
+          "evidence_citations": ["backend/app/operators/router.py:1582-1650"]
+        }
+      ]
+    },
+    {
+      "type": "agent_delete",
+      "paths": [
+        {
+          "entry_points": ["DELETE /api/agents/{id}"],
+          "chain_rest": "delete_agent_route → soft-delete deleted_at → audit agent.deleted",
+          "schema_validation": false,
+          "approval_gate": true,
+          "gate_detail": "require_admin; no chat path",
+          "gate_intentional_or_accidental": "n/a",
+          "verifiable_output": true,
+          "audit": true,
+          "caching_risk": "none",
+          "severity_if_gap": "none",
+          "evidence_citations": ["backend/app/operators/router.py:1670-1694"]
+        }
+      ]
+    },
+    {
+      "type": "permission_role_changes",
+      "paths": [
+        {
+          "entry_points": ["PATCH /api/org/members/{id}", "PUT agent tool-permissions", "settings lite-seats/department members"],
+          "chain": "org.update_member → audit; agent_tool_permissions.grant/revoke → audit; settings department_members upsert (no audit)",
+          "schema_validation": true,
+          "approval_gate": true,
+          "gate_detail": "require_admin; last-admin guard; not chat-reachable",
+          "gate_intentional_or_accidental": "accidental_department_audit_gap",
+          "verifiable_output": true,
+          "audit": "partial — department_members add/remove lacks write_audit_event",
+          "caching_risk": "none",
+          "severity_if_gap": "low",
+          "evidence_citations": [
+            "backend/app/routers/org.py:156-236",
+            "backend/app/routers/agent_tool_permissions.py:73-140",
+            "backend/app/routers/settings.py:384-449"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "tier_billing_entitlement_changes",
+      "paths": [
+        {
+          "entry_points": ["POST /api/billing/*", "Stripe webhook", "admin billing sync"],
+          "chain": "billing checkout → Stripe; webhook → subscriptions.tier; marketplace entitlements fulfill",
+          "schema_validation": true,
+          "approval_gate": true,
+          "gate_detail": "org member / admin / webhook signature; not chat-reachable",
+          "gate_intentional_or_accidental": "intentional",
+          "verifiable_output": true,
+          "audit": "partial — checkout audited; webhook tier upserts may lack per-event audit",
+          "caching_risk": "none",
+          "severity_if_gap": "low",
+          "evidence_citations": [
+            "backend/app/routers/billing.py:488-563",
+            "backend/app/routers/webhooks/stripe.py:97-214"
+          ]
+        }
+      ]
+    }
+  ],
+  "prioritized_gaps": [
+    {
+      "priority": 1,
+      "severity": "blocker",
+      "gap": "ReAct assistant_create_workflow / assistant_execute_workflow / assistant_run_agent_task bypass chat approval and tool.invoke audit",
+      "why": "Same class as Wave 1 connector reunification — internal writes still dual-profile"
+    },
+    {
+      "priority": 2,
+      "severity": "high",
+      "gap": "Dual workflow create: conversational gated, ReAct ungated — product inconsistency",
+      "why": "User phrasing determines whether confirm UX appears"
+    },
+    {
+      "priority": 3,
+      "severity": "high",
+      "gap": "Chat-path agent/workflow create omit write_audit_event (REST/Meson audit)",
+      "why": "Evidence bar for internal creates cannot match connector tool.invoke.*"
+    },
+    {
+      "priority": 4,
+      "severity": "medium",
+      "gap": "Pack uninstall is ledger-only; entities remain; legacy department packs have no uninstall",
+      "why": "Deactivate incomplete vs activate"
+    },
+    {
+      "priority": 5,
+      "severity": "medium",
+      "gap": "intelligence_pack install dead-end (schema exists, no install_asset branch / HTTP route)",
+      "why": "Catalog promises capability that cannot execute"
+    },
+    {
+      "priority": 6,
+      "severity": "low",
+      "gap": "department_members permission changes lack audit; org_role_permissions matrix is documentation-only",
+      "why": "Secondary to chat write reunification"
+    }
+  ],
+  "cache_state_skepticism": [
+    {
+      "mechanism": "_RESPONSE_CACHE",
+      "status_post_95": "confirm/decline never cached; keys include conversation_id",
+      "residual_risk": "Cache still org-scoped for non-confirm messages — watch for other stateful short phrases"
+    },
+    {
+      "mechanism": "conversational pending_task",
+      "status": "Uses awaiting_confirm like connectors but different schema shape",
+      "residual_risk": "Schema fragmentation with connector_action / connector_orchestration"
+    },
+    {
+      "mechanism": "assistant_* direct DB writes",
+      "status": "No pending_task at all on ReAct path",
+      "residual_risk": "Nothing to cache-skip — gate never ran"
+    }
+  ],
+  "live_probes_prod": {
+    "sha": "24efb1c5",
+    "org": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+    "artifact": "docs/delivery/part-d-live-probes.json",
+    "probed_at": "2026-07-11T23:58:38Z",
+    "results": [
+      {
+        "probe": "workflow_create_chat",
+        "message": "Create a workflow that syncs new HubSpot contacts to Slack.",
+        "pending_type": "create_workflow",
+        "pending_status": "awaiting_confirm",
+        "gate_observed": true,
+        "note": "Conversational path LIVE PASS for confirm UX"
+      },
+      {
+        "probe": "agent_create_chat",
+        "message": "Create an agent named PartD Probe for summarizing Slack threads.",
+        "pending_type": "create_agent",
+        "pending_status": "awaiting_confirm",
+        "gate_observed": true,
+        "note": "Conversational path LIVE PASS for confirm UX"
+      },
+      {
+        "probe": "execute_workflow_chat",
+        "message": "Execute my most recent workflow now.",
+        "pending_type": null,
+        "gate_observed": false,
+        "tools_called": ["getConnectorStatus"],
+        "note": "No conversational execute_workflow task type exists (only create_agent/create_workflow). Request fell through to reasoning; did not materialize pending_task. Execute is ReAct-tool-only and assistant_execute_workflow is write-gate-exempt (local verify 2026-07-11)."
+      }
+    ],
+    "local_gate_verify": {
+      "assistant_create_workflow_requires_approval": false,
+      "assistant_execute_workflow_requires_approval": false,
+      "assistant_run_agent_task_requires_approval": false,
+      "apollo_lists_create_requires_approval": true,
+      "method": "tool_requires_user_write_approval + block_react_write_execution against get_tool_registry()"
+    },
+    "not_live_mutated": "Prod ReAct assistant_create_workflow was not invoked end-to-end (would create durable workflow without confirm). Exemption proven by code + local registry probe; conversational create path proven live."
+  },
+  "not_audited": [
+    "Live prod mutation via ReAct assistant_* create/execute (intentionally avoided)",
+    "Live prod traces for every REST path",
+    "Workflow step internals after execute",
+    "Frontend confirm UI for conversational creates",
+    "MCP server-side policies"
+  ]
+}

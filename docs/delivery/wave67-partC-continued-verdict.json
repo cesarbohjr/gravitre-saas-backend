@@ -1,0 +1,36 @@
+{
+  "part": "C_continued",
+  "finished_at": "2026-07-11T17:15:00+00:00",
+  "deploy_git_sha": "749caca8820b43bf19ab70ac55b4394ce8bf44d5",
+  "prs": {
+    "89": "Wave 6–7 streaming (prior merge 15bfc4ff)",
+    "92": "https://github.com/cesarbohjr/gravitre-saas-backend/pull/92 — Fast UI + STA-306 ensure conversation"
+  },
+  "audit_7_fast": {
+    "status": "PASS",
+    "evidence": "docs/delivery/wave67-fast-mode-live.json",
+    "at": "2026-07-11T17:02:22.739685+00:00",
+    "effectiveMode": "fast",
+    "pipelineTier": "tier_1"
+  },
+  "claims_prod": {
+    "1_plan_before_tools": { "status": "PASS", "note": "prior Part C" },
+    "2_tool_chips_error_code": { "status": "PASS", "note": "prior Part C tool_not_available" },
+    "3_approval_panel_result_url": {
+      "status": "PASS",
+      "evidence": "docs/delivery/wave67-prod-claim3-rerun.json",
+      "conversation_id": "4a5a14aa-1d3a-4e53-8e8c-30fe22ce9f7f",
+      "result_url": "https://app.apollo.io/#/lists/6a527904f7a1d9001cbd913f",
+      "audit": "tool.invoke.completed apollo.lists.create @ 2026-07-11T17:10:28.074979+00:00",
+      "sta306": "ensure_owned_conversation fixed silent UPDATE; soft Approve then yes executes"
+    },
+    "4_assumption_notes_ui": {
+      "status": "FAIL",
+      "note": "ReAct-first omit-name still does not hit Apollo auto-plan / assumption_notes on prod chat; STA-305",
+      "evidence": "docs/delivery/wave67-prod-claim4-omit-name.json"
+    }
+  },
+  "wave67_done": false,
+  "reason": "3/4 prod PASS; claim 4 still open (STA-305).",
+  "sequence_approved": "Wave 6-7 closure (claim 4) → Part D → routing wave → read-only ML; FAST UI done in parallel"
+}
