@@ -74,6 +74,8 @@ def sse_intelligence_metadata(
     trust_envelope: dict[str, Any] | None = None,
     effective_mode: str | None = None,
     pipeline_tier: str | None = None,
+    routing_tier: str | None = None,
+    routing: dict[str, Any] | None = None,
 ) -> AssistantStreamEvent:
     return _sse(
         {
@@ -107,6 +109,8 @@ def sse_intelligence_metadata(
                 "trustEnvelope": trust_envelope or {},
                 "effectiveMode": effective_mode,
                 "pipelineTier": pipeline_tier,
+                "routingTier": routing_tier,
+                "routing": routing,
             },
         }
     )

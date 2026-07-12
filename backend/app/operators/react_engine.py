@@ -180,6 +180,7 @@ class ReActEngine:
         agent: dict[str, Any] | None = None,
         audit_resource_type: str = "agent_job",
         audit_resource_id: str | None = None,
+        routing_control: Any | None = None,
     ) -> AsyncIterator[ReActStreamEvent]:
         """Streaming variant — same reasoning loop as run(), yields progress events."""
         async for event in self._react_loop(
@@ -194,6 +195,7 @@ class ReActEngine:
             audit_resource_type=audit_resource_type,
             audit_resource_id=audit_resource_id,
             emit_text_deltas=True,
+            routing_control=routing_control,
         ):
             yield event
 
@@ -211,6 +213,7 @@ class ReActEngine:
         audit_resource_type: str = "agent_job",
         audit_resource_id: str | None = None,
         emit_text_deltas: bool,
+        routing_control: Any | None = None,
     ) -> AsyncIterator[ReActStreamEvent]:
         """Shared ReAct implementation for run() and run_streaming()."""
         import uuid
@@ -246,7 +249,11 @@ class ReActEngine:
                 environment_name=ctx.environment_name,
             )
 
-        resolved_model = model or MODEL_TIERS["high"]["openai"]
+        resolved_model = (
+            (getattr(routing_control, "model", None) if routing_control is not None else None)
+            or model
+            or MODEL_TIERS["high"]["openai"]
+        )
         messages: list[dict[str, Any]] = []
         hardened = harden_system_prompt(system_prompt or _default_react_system_prompt())
         if hardened:
@@ -279,6 +286,8 @@ class ReActEngine:
         tool_calls_log: list[dict[str, Any]] = []
 
         for iteration in range(1, max(1, max_iterations) + 1):
+            if routing_control is not None and getattr(routing_control, "model", None):
+                resolved_model = routing_control.model
             try:
                 response = await self._chat_with_tools(messages, tools, resolved_model)
             except Exception as exc:  # noqa: BLE001
@@ -370,6 +379,17 @@ class ReActEngine:
                 tool_name = tc.function.name
                 tool_args = _parse_tool_arguments(tc.function.arguments)
                 call_id = f"call-{uuid.uuid4().hex[:12]}"
+                if routing_control is not None:
+                    from app.services.assistant_routing_tier import escalate_for_write_tool
+                    from app.services.react_write_gate import tool_requires_user_write_approval
+
+                    requires_write, *_ = tool_requires_user_write_approval(tool_name, self.registry)
+                    if escalate_for_write_tool(routing_control, tool_is_write=bool(requires_write)):
+                        esc = routing_control.escalations[-1]
+                        yield ReActStreamEvent(
+                            kind="routing_escalation",
+                            result=esc,
+                        )
                 if emit_text_deltas:
                     yield ReActStreamEvent(
                         kind="tool_start",
@@ -391,6 +411,16 @@ class ReActEngine:
                         tool_call_id=call_id,
                         result=observation,
                     )
+                if routing_control is not None and isinstance(observation, dict):
+                    from app.services.assistant_routing_tier import record_tool_outcome
+
+                    if record_tool_outcome(
+                        routing_control,
+                        success=bool(observation.get("success")),
+                        error_code=str(observation.get("error_code") or "") or None,
+                    ):
+                        esc = routing_control.escalations[-1]
+                        yield ReActStreamEvent(kind="routing_escalation", result=esc)
                 tool_calls_log.append(
                     {
                         "iteration": iteration,
