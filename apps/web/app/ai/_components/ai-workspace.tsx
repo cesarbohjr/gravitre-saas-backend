@@ -43,6 +43,10 @@ import {
   type PersistedInlineTurn,
 } from "@/lib/ai-inline-turn-persistence"
 import { conversationsApi, searchApi, assistantApi } from "@/lib/api"
+import {
+  deriveConversationTitle,
+  shouldRefreshConversationTitle,
+} from "@/lib/conversation-title"
 import { ApiError } from "@/lib/fetcher"
 import type { AiEngine } from "@/lib/ai-surface-handoff"
 import type { SearchResult } from "@/types/api"
@@ -203,6 +207,7 @@ export function AiWorkspace({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const activeConversationIdRef = useRef<string | null>(activeConversationId)
+  const conversationTitleRef = useRef(conversationTitle)
   const submitLockRef = useRef(false)
   const pendingConversationRef = useRef<Promise<string | null> | null>(null)
   const pendingConversationIdsRef = useRef<Set<string>>(new Set())
@@ -461,6 +466,10 @@ export function AiWorkspace({
   }, [activeConversationId])
 
   useEffect(() => {
+    conversationTitleRef.current = conversationTitle
+  }, [conversationTitle])
+
+  useEffect(() => {
     if (!user) {
       setOrgReady(false)
       return
@@ -530,17 +539,57 @@ export function AiWorkspace({
     [],
   )
 
+  const refreshConversationTitleIfNeeded = useCallback(
+    (conversationId: string, prompt: string) => {
+      const currentTitle = conversationTitleRef.current
+      if (!shouldRefreshConversationTitle(currentTitle, prompt)) return
+      const nextTitle = deriveConversationTitle(prompt)
+      conversationTitleRef.current = nextTitle
+      setConversationTitle(nextTitle)
+      void conversationsApi
+        .update(conversationId, { title: nextTitle })
+        .then((updated) => {
+          void mutateConversations(
+            (current) => {
+              if (!current) return current
+              return {
+                ...current,
+                conversations: current.conversations.map((conversation) =>
+                  conversation.id === conversationId
+                    ? { ...conversation, title: updated.title || nextTitle }
+                    : conversation,
+                ),
+              }
+            },
+            { revalidate: false },
+          )
+          void mutateConversations()
+        })
+        .catch(() => {
+          // Title refresh is best-effort UX; never block the send path.
+        })
+    },
+    [mutateConversations],
+  )
+
   const ensureConversation = useCallback(
     async (title: string) => {
-      if (activeConversationIdRef.current) return activeConversationIdRef.current
+      const existingId = activeConversationIdRef.current
+      // STA-308: reuse keeps the create-time title unless the new ask diverges.
+      if (existingId) {
+        refreshConversationTitleIfNeeded(existingId, title)
+        return existingId
+      }
       if (!pendingConversationRef.current) {
+        const createTitle = deriveConversationTitle(title)
         pendingConversationRef.current = conversationsApi
-          .create({ title: title.slice(0, 80) })
+          .create({ title: createTitle })
           .then((created) => {
             activeConversationIdRef.current = created.id
             pendingConversationIdsRef.current.add(created.id)
             setActiveConversationId(created.id)
-            setConversationTitle(created.title || title.slice(0, 80))
+            setConversationTitle(created.title || createTitle)
+            conversationTitleRef.current = created.title || createTitle
             writeStoredConversationId(created.id)
             void mutateConversations(
               (current) => {
@@ -565,7 +614,7 @@ export function AiWorkspace({
       }
       return pendingConversationRef.current
     },
-    [mutateConversations],
+    [mutateConversations, refreshConversationTitleIfNeeded],
   )
 
   const applyConversationMessages = useCallback(
