@@ -1,0 +1,55 @@
+{
+  "document": "Engineering roadmap snapshot after Memory governance pause",
+  "as_of": "2026-07-12",
+  "category_lesson": "Schema-gate met ≠ PII→embedding authorization; do not leave Memory visually In Progress when only an org owner can unblock it",
+  "closed": {
+    "STA-305": "catalog-kind + draft lexicon — prod PASS 473454da",
+    "STA-309": "pack uninstall entity teardown",
+    "STA-310": "intelligence_pack install_asset",
+    "STA-311": "department_members audit",
+    "routing_wave_trace_d": "mid-turn escalate PASS",
+    "wave_6_7": "claims closed prior",
+    "part_d_p1_p3": "platform write gate prior",
+    "adr001_schema_gate": "CLOSED engineering-only — docs/delivery/adr001-sensitive-schema-audit.json"
+  },
+  "parked_not_in_progress": {
+    "memory_phase_1_embeddings": {
+      "status": "closed-for-now on engineering roadmap",
+      "reason": "organizational — no named data-governance owner for third-party ML / PII-adjacent purpose",
+      "design": "docs/delivery/memory-phase1-data-handling-design.md",
+      "reopen_when": "STA-312 names governance owner AND that owner selects Option A/B/C in writing",
+      "decision_ticket": "STA-312"
+    }
+  },
+  "unblocked_next": {
+    "STA-313": {
+      "title": "Knowledge Phase 2: measured rerank eval (ms-marco vs Cohere/bge)",
+      "url": "https://linear.app/staqbot/issue/STA-313",
+      "gated_on_memory": false,
+      "priority": "Medium"
+    },
+    "STA-314": {
+      "title": "Recommendation Phase 3: heuristic suggest-only cards",
+      "url": "https://linear.app/staqbot/issue/STA-314",
+      "gated_on_memory": false,
+      "priority": "Medium"
+    },
+    "STA-308": {
+      "title": "Stale conversation title when task changes mid-thread",
+      "url": "https://linear.app/staqbot/issue/STA-308",
+      "priority": "Low",
+      "status": "Backlog"
+    },
+    "STA-315": {
+      "title": "Chat proxy maxDuration=120 residual",
+      "url": "https://linear.app/staqbot/issue/STA-315",
+      "priority": "Medium",
+      "evidence": "docs/delivery/sta307-hang-mislabel-findings.json"
+    }
+  },
+  "explicit_non_goals_now": [
+    "Memory embedding implementation",
+    "Fake compliance-approved step without named owner",
+    "Assuming RAG DPA covers entity-fill embeddings"
+  ]
+}

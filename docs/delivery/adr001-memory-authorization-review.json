@@ -12,9 +12,11 @@
       "human_decision_2026_07_12": "Accept met-in-code on its own terms; authorizes nothing about third-party embedding of identity fields"
     },
     "memory_phase_1_embeddings": {
-      "status": "PAUSED",
-      "human_decision_2026_07_12": "Do not sign off. Require Memory Phase 1 data-handling design + Q5 ownership answer before any embedding code",
-      "design_artifact": "docs/delivery/memory-phase1-data-handling-design.md"
+      "status": "CLOSED_FOR_NOW on engineering roadmap (not In Progress)",
+      "human_decision_2026_07_12": "Do not sign off. Organizational blocker: no named data-governance owner",
+      "design_artifact": "docs/delivery/memory-phase1-data-handling-design.md",
+      "decision_ticket": "STA-312",
+      "reopen_when": "STA-312 names governance owner AND that owner selects Option A/B/C in writing on the data-handling design"
     }
   },
   "why_deferred_still_valid": [
@@ -57,9 +59,9 @@
   "ml_phase_authorization": {
     "phase_0_inventory": "AUTHORIZED (done) — docs/delivery/ml-stack-phase0-findings.json",
     "intent_engine": "PART OF routing wave — not a separate ML project; shipping as assistant_routing_tier heuristics first",
-    "knowledge_phase_2_rerank_eval": "AUTHORIZED as measured eval only (Cohere/bge vs ms-marco) — no assumed upgrade",
-    "recommendation_heuristic_cards": "AUTHORIZED suggest-only (must reuse execute_plan gate; no auto-execute)",
-    "memory_phase_1_embeddings": "NOT AUTHORIZED — paused pending docs/delivery/memory-phase1-data-handling-design.md review and named data-governance sign-off owner (Q5)",
+    "knowledge_phase_2_rerank_eval": "AUTHORIZED / ticketed STA-313 — measured eval only",
+    "recommendation_heuristic_cards": "AUTHORIZED / ticketed STA-314 — suggest-only, reuse execute_plan gate",
+    "memory_phase_1_embeddings": "CLOSED_FOR_NOW — reopen only via STA-312 named governance owner + written Option A/B/C on docs/delivery/memory-phase1-data-handling-design.md",
     "forecasting_gnn_cv_speech": "OUT OF SCOPE"
   },
   "unaffected_closures": {
@@ -70,7 +72,8 @@
   },
   "sequence": {
     "schema_gate": "closed engineering-only",
-    "memory": "paused — data-handling design submitted for review",
+    "memory": "closed-for-now — STA-312 organizational decision; not engineering In Progress",
+    "next_engineering": ["STA-313 Knowledge Phase 2 rerank eval", "STA-314 Recommendation heuristics", "STA-315 maxDuration residual", "STA-308 stale title"],
     "other_non_memory": "clear to proceed"
   }
 }

@@ -1,17 +1,21 @@
 # Memory Phase 1 — data-handling design (pre-code)
 
-**Status:** Draft for governance review — **no Memory embedding code authorized**  
-**Date:** 2026-07-12  
+**Status:** Closed-for-now on engineering roadmap — **no Memory embedding code authorized**  
+**Date:** 2026-07-12 (updated same day after leadership path confirmed)  
 **Parent gate:** ADR 001 (`docs/decisions/001-defer-ml-disambiguation-until-schema-stable.md`)  
 **Related (closed, engineering-only):** `docs/delivery/adr001-sensitive-schema-audit.json`  
-**Authorization tracker:** `docs/delivery/adr001-memory-authorization-review.json`
+**Authorization tracker:** `docs/delivery/adr001-memory-authorization-review.json`  
+**Organizational reopen ticket:** [STA-312](https://linear.app/staqbot/issue/STA-312) — name data-governance owner
 
 ## Purpose
 
 Separate **schema-gate evidence** (WorkflowFieldSpec coverage) from **authorization to embed identity-style fields** for chat assignee/entity disambiguation. This document answers the data-handling questions that must be resolved before Memory Phase 1 embeddings may be built or signed off.
 
-This is **not** an implementation plan. No embedding index, no new provider calls for Memory, until this design is approved and sign-off ownership (Q5) is clear.
+**Engineering posture:** least-raw / prefer no vectors; do not assume DPA coverage; opt-in if any third-party path. This is a correct refusal to invent a governance decision by default because the code could be written.
 
+**Reopen condition (not In Progress):** Memory embedding work resumes only when STA-312 records a **named governance owner** (or documented sole-owner acceptance) **and** that owner selects Option A/B/C below in writing. Until then this sits parked indefinitely — that is fine.
+
+This is **not** an implementation plan. No embedding index, no new provider calls for Memory, until reopen conditions are met.
 ---
 
 ## Category boundary (do not collapse)
@@ -125,10 +129,9 @@ Exact/normalized `org_entity_resolution_records` (no embeddings) may remain avai
 
 ### Gap to flag
 
-This repository and prior delivery artifacts do **not** name a standing compliance/legal approver for new AI data purposes. If no such role exists in the org, **that is itself a blocker** for Option B/C — not something engineering can self-certify.
+This repository and prior delivery artifacts do **not** name a standing compliance/legal approver for new AI data purposes. That gap is now tracked as a **standalone organizational decision**: [STA-312](https://linear.app/staqbot/issue/STA-312) — not an engineering In Progress item.
 
-**Until Q5 is answered with a named reviewer (or an explicit written decision that the operator owner accepts governance risk with no separate legal function), Memory Phase 1 embeddings stay paused** even if Options A–D below are product-preferred.
-
+**Until STA-312 names a reviewer (or records explicit sole-owner acceptance), Memory Phase 1 embeddings stay closed-for-now on the engineering roadmap** — permanently paused by default because no one is authorized to unblock them, not because an active eng task is blocked.
 ---
 
 ## Decision options (for governance)

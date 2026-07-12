@@ -1,0 +1,68 @@
+{
+  "phase": 0,
+  "title": "ML/AI stack → existing engines (investigation only)",
+  "date": "2026-07-11",
+  "constraint": "Safe-to-parallelize only; no new writes; does not block claim 4 / Part D",
+  "findings": [
+    {
+      "engine": "Intent (turn complexity)",
+      "component": "assistant_turn_complexity.py",
+      "model_today": "none — regex/heuristics",
+      "slot_from_doc": "DistilBERT/MiniLM-class classifier",
+      "decision": "PART OF routing wave — do not duplicate as separate Intent Engine project",
+      "gate": "After claim 4 PASS + Part D"
+    },
+    {
+      "engine": "Knowledge (RAG)",
+      "component": "rag/embedding.py + hybrid_rerank.py",
+      "model_today": "OpenAI text-embedding-3-small (1536); rerank cross-encoder/ms-marco-MiniLM-L-6-v2; Voyage optional off",
+      "slot_from_doc": "embeddings + Cohere/bge reranker",
+      "decision": "Embeddings already present; Phase 2 = measured upgrade evaluation only (before/after precision on real KB queries vs Cohere Rerank / bge-reranker-large) — not assumed better",
+      "gate": "Safe parallel after Phase 0 confirm (done)"
+    },
+    {
+      "engine": "Memory (entity resolution)",
+      "component": "entity_resolution_store.py — exact normalized alias; Asana substring match",
+      "model_today": "none — no embeddings",
+      "slot_from_doc": "embedding + rerank for disambiguation",
+      "decision": "CLOSED_FOR_NOW on engineering roadmap — schema-gate met is engineering-only; embeddings need named governance owner (STA-312) + Option A/B/C on memory-phase1-data-handling-design.md",
+      "gate": "Reopen only via STA-312; not In Progress"
+    },
+    {
+      "engine": "Recommendation",
+      "component": "not built",
+      "model_today": "n/a",
+      "slot_from_doc": "heuristic first, CF/ML later",
+      "decision": "Heuristic suggest-only cards; UI+API tests ban direct execute; no ML until usage data",
+      "gate": "Safe parallel (recommend-only hard requirement)"
+    },
+    {
+      "engine": "Forecasting / GNN / CV / speech / churn ML",
+      "decision": "OUT OF SCOPE — defer indefinitely / pack-specific",
+      "gate": "N/A"
+    }
+  ],
+  "adr_001_summary": {
+    "path": "docs/decisions/001-defer-ml-disambiguation-until-schema-stable.md",
+    "status": "Accepted (deferred) 2026-07-07",
+    "why_deferred": [
+      "Schema-first governance is the bottleneck — embeddings before stable ActionWorkflowSchema would disambiguate into fields that cannot be validated/presented consistently",
+      "Rule-based inference + session binding sufficient for v1 (asana.tasks.create, apollo.lists.create)",
+      "Avoid 166-at-once mistake — embeddings should attach to WorkflowFieldSpec, not per-vendor heuristics"
+    ],
+    "constraints_are": "governance/schema stability — not cost, latency, or data residency",
+    "revisit_triggers_all_required": [
+      "PENDING_WORKFLOW_SCHEMA_ALLOWLIST shrunk by ≥25 from baseline 166 (→ ≤141)",
+      "≥5 priority connectors have multi-field write schemas with assignee/email-style sensitive fields",
+      "ORPHAN_HANDLER_ALLOWLIST and API_IMPORT_EXCEPTION_ALLOWLIST each shrunk by ≥2 without CI regressions"
+    ],
+    "status_as_of_2026_07_11": {
+      "PENDING_WORKFLOW_SCHEMA_ALLOWLIST_len": 0,
+      "ORPHAN_HANDLER_ALLOWLIST_len": 0,
+      "API_IMPORT_EXCEPTION_ALLOWLIST_len": 0,
+      "note": "Quantitative allowlist shrink triggers appear already met (all three allowlists empty). Before authorizing Memory Phase 1, still confirm the ≥5 priority-connector multi-field sensitive-schema criterion and that embeddings will attach to WorkflowFieldSpec (not parallel heuristics)."
+    }
+  },
+  "build_authorized": false,
+  "note": "Menu not order — only build when Phase 0 says a model is needed now and gate allows."
+}
