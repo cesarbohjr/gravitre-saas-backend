@@ -1132,6 +1132,7 @@ class AgentIntelligence:
         from app.services.mcp_client_service import get_mcp_client_service
 
         mcp_tools_early = await get_mcp_client_service(active_settings).get_enabled_tools_for_org(org_id)
+        requested_mode = normalize_mode(mode)
         mode_key = resolve_effective_intelligence_mode(
             mode,
             connected_early,
@@ -1151,11 +1152,14 @@ class AgentIntelligence:
             escalate_for_user_deepen,
         )
 
+        # Routing complexity must follow the *requested* mode, not the connector-driven
+        # agent upgrade. Otherwise standard→agent forces research at start and mid-turn
+        # escalate (write_tool_from_simple / consecutive failures) can never fire Trace D.
         routing_decision = classify_routing_tier(
             task_text,
-            mode=mode_key,
+            mode=requested_mode,
             connected_integrations=list(connected_early or []),
-            parameters={"mode": mode_key},
+            parameters={"mode": requested_mode, "effective_mode": mode_key},
         )
         routing_control = RoutingControl(
             tier=routing_decision.tier,

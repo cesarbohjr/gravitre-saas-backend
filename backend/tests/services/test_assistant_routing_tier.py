@@ -74,6 +74,24 @@ def test_escalate_only_write_from_simple():
     assert escalate_for_write_tool(ctrl, tool_is_write=True) is False
 
 
+def test_requested_standard_stays_simple_without_write_verbs():
+    """Trace D force: routing must use requested mode, not connector-upgraded agent."""
+    d = classify_routing_tier(
+        "Please deliver TraceD-abc to #general for ops.",
+        mode="standard",
+        connected_integrations=["apollo", "slack", "hubspot"],
+    )
+    assert d.tier == "simple"
+    assert d.pinned_fast is False
+    # Agent mode (effective after connector upgrade) would wrongly pin research.
+    d_agent = classify_routing_tier(
+        "Please deliver TraceD-abc to #general for ops.",
+        mode="agent",
+        connected_integrations=["apollo", "slack", "hubspot"],
+    )
+    assert d_agent.tier == "research"
+
+
 def test_escalate_consecutive_failures():
     ctrl = RoutingControl(tier="multi_step", model="gpt-mid", max_iterations=6)
     assert record_tool_outcome(ctrl, success=False, error_code="timeout") is False

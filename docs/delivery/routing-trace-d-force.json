@@ -1,0 +1,168 @@
+{
+  "probe": "routing_trace_d_force",
+  "started_at": "2026-07-12T06:25:31.227403+00:00",
+  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+  "nonce": "02fe2338",
+  "attempts": [
+    {
+      "prompt": "Please deliver TraceD-02fe2338 to #general for ops.",
+      "local_classify_tier": "simple",
+      "local_classify_reasons": [
+        "default_length"
+      ],
+      "local_pinned_fast": false,
+      "turn": {
+        "http": 200,
+        "elapsed_ms": 10581,
+        "conversation_id": "3a0fc376-48fd-49a6-8946-1d91bc491a06",
+        "message": "Please deliver TraceD-02fe2338 to #general for ops.",
+        "text_head": "I'll run this in Slack: **slack send message**.\n\n- Message: TraceD-02fe2338 for ops.\n\nReply **yes** to proceed, or tell me what to change.",
+        "tools_seen": [
+          {
+            "type": "tool-input-available",
+            "toolName": "searchKnowledgeBase",
+            "toolCallId": "call-5353e2f802b0"
+          },
+          {
+            "type": "tool-output-available",
+            "toolCallId": "call-5353e2f802b0"
+          },
+          {
+            "type": "tool-input-available",
+            "toolName": "slack_send_message",
+            "toolCallId": "call-d699c4231afa"
+          },
+          {
+            "type": "tool-output-available",
+            "toolCallId": "call-d699c4231afa"
+          }
+        ],
+        "intel_count": 2,
+        "routing_tiers_seen": [
+          "research",
+          "research"
+        ],
+        "final_routingTier": "research",
+        "effective_modes_seen": [
+          "agent",
+          "agent"
+        ],
+        "sse_escalations": []
+      },
+      "audits": [],
+      "pass": false
+    },
+    {
+      "prompt": "Give ops a heads-up in #general: TraceD-02fe2338 ready.",
+      "local_classify_tier": "simple",
+      "local_classify_reasons": [
+        "default_length"
+      ],
+      "local_pinned_fast": false,
+      "turn": {
+        "http": 200,
+        "elapsed_ms": 9342,
+        "conversation_id": "4d0b2205-7d66-4a70-9cba-e8caa6b7dca2",
+        "message": "Give ops a heads-up in #general: TraceD-02fe2338 ready.",
+        "text_head": "I'll run this in Slack: **slack send message**.\n\n- Message: Ops heads-up: TraceD-02fe2338 ready.\n\nReply **yes** to proceed, or tell me what to change.",
+        "tools_seen": [
+          {
+            "type": "tool-input-available",
+            "toolName": "searchKnowledgeBase",
+            "toolCallId": "call-dd92ab5cdb71"
+          },
+          {
+            "type": "tool-output-available",
+            "toolCallId": "call-dd92ab5cdb71"
+          },
+          {
+            "type": "tool-input-available",
+            "toolName": "slack_send_message",
+            "toolCallId": "call-a99e5a16f192"
+          },
+          {
+            "type": "tool-output-available",
+            "toolCallId": "call-a99e5a16f192"
+          }
+        ],
+        "intel_count": 2,
+        "routing_tiers_seen": [
+          "research",
+          "research"
+        ],
+        "final_routingTier": "research",
+        "effective_modes_seen": [
+          "agent",
+          "agent"
+        ],
+        "sse_escalations": []
+      },
+      "audits": [],
+      "pass": false
+    },
+    {
+      "prompt": "Put TraceD-02fe2338 into #general so the team sees it.",
+      "local_classify_tier": "simple",
+      "local_classify_reasons": [
+        "default_length"
+      ],
+      "local_pinned_fast": false,
+      "turn": {
+        "http": 200,
+        "elapsed_ms": 8759,
+        "conversation_id": "07fce7f4-3554-4a75-9e40-d406f61751cf",
+        "message": "Put TraceD-02fe2338 into #general so the team sees it.",
+        "text_head": "I'll run this in Slack: **slack send message**.\n\n- Message: TraceD-02fe2338\n\nReply **yes** to proceed, or tell me what to change.",
+        "tools_seen": [
+          {
+            "type": "tool-input-available",
+            "toolName": "searchKnowledgeBase",
+            "toolCallId": "call-d004d18b89fb"
+          },
+          {
+            "type": "tool-output-available",
+            "toolCallId": "call-d004d18b89fb"
+          },
+          {
+            "type": "tool-input-available",
+            "toolName": "slack_send_message",
+            "toolCallId": "call-a16626aa381d"
+          },
+          {
+            "type": "tool-output-available",
+            "toolCallId": "call-a16626aa381d"
+          }
+        ],
+        "intel_count": 2,
+        "routing_tiers_seen": [
+          "research",
+          "research"
+        ],
+        "final_routingTier": "research",
+        "effective_modes_seen": [
+          "agent",
+          "agent"
+        ],
+        "sse_escalations": []
+      },
+      "audits": [],
+      "pass": false
+    }
+  ],
+  "prod_health": {
+    "git_sha": "d0f753ceef258fa1c538b108f30f46b2405a6b7b",
+    "status": "ok"
+  },
+  "verdict": "FAIL",
+  "finished_at": "2026-07-12T06:26:00.909963+00:00",
+  "summary": {
+    "verdict": "FAIL",
+    "prod_sha": "d0f753ceef258fa1c538b108f30f46b2405a6b7b",
+    "attempts": 3,
+    "winning_conversation_id": null,
+    "winning_audits": [],
+    "note": "PASS requires durable assistant.routing.escalated audit from mid-turn write_tool_from_simple or consecutive_tool_failures"
+  }
+}

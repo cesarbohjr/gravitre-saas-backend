@@ -1,0 +1,59 @@
+{
+  "ticket": "STA-305",
+  "finding": "sta307_chip_slack_draft_to_list_channels",
+  "probed_at": "2026-07-12T06:20:00+00:00",
+  "segment": "draft a follow-up in Slack for approval [STA-307-chip efdff554]",
+  "path": {
+    "orchestration": "ChatOrchestrationService._plan_segment",
+    "calls": "ChatConnectorExecutionService.plan_action → get_chat_action_mapper().match_segment",
+    "same_mapper_as_sta305": true
+  },
+  "verb_detection": {
+    "WRITE_VERBS_match": false,
+    "READ_VERBS_match": false,
+    "note": "WRITE_VERBS lacks 'draft'; post_message Slack boost requires post|send|notify"
+  },
+  "candidates": [
+    {
+      "action": "slack.post_message",
+      "display": "Post message",
+      "kind": "write",
+      "score": 18.0,
+      "args_ok": false,
+      "args": null,
+      "outcome": "DROPPED_by_args_gate"
+    },
+    {
+      "action": "slack.conversations.list",
+      "display": "List channels",
+      "kind": "read",
+      "score": 12.0,
+      "args_ok": true,
+      "args": {
+        "limit": 10,
+        "query": "draft a follow-up in Slack for approval [STA-307-chip efdff554]"
+      },
+      "outcome": "WINNER"
+    },
+    {
+      "action": "slack.users.list",
+      "display": "List workspace users",
+      "kind": "read",
+      "score": 12.0,
+      "args_ok": true,
+      "outcome": "tied_score_list_lookalike"
+    }
+  ],
+  "match_segment": {
+    "tool": "slack_conversations_list",
+    "score": 12.0,
+    "action": "slack.conversations.list",
+    "display": "List channels"
+  },
+  "root_cause_class": "STA-305 args_gate_drop + permissive read/list extraction; write verb lexicon gap for 'draft'",
+  "prod_chip_trace": {
+    "conversation_id": "681bed15-fd07-40e9-925e-0a0b2844ff75",
+    "sha": "d0f753ceef258fa1c538b108f30f46b2405a6b7b",
+    "labels": ["Hubspot (not connected)", "List channels"]
+  }
+}
