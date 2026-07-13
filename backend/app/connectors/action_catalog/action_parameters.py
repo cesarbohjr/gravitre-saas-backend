@@ -199,6 +199,16 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
         },
         "required": ["list_id", "contact_id"],
     },
+    "hubspot.lists.create": {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "description": "List name"},
+            "object_type_id": {"type": "string", "description": "HubSpot object type id (default 0-1 contacts)"},
+            "processing_type": {"type": "string", "description": "MANUAL or DYNAMIC"},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": ["name"],
+    },
     "hubspot.notes.create": {
         "type": "object",
         "properties": {

@@ -66,12 +66,14 @@ def test_capability_fallback_message_is_catalog_driven():
     assert "apollo.lists.create" in message
 
 
-def test_capability_fallback_when_list_create_not_cataloged():
+def test_capability_fallback_when_list_create_cataloged_but_not_wired():
+    """hubspot.lists.create is cataloged; fallback should say cannot create yet (not 'not cataloged')."""
     message = format_capability_fallback_message(
         integration="hubspot",
         intent="Create contact list (Enterprise leads)",
         available_actions=["contacts.search — Search contacts"],
     )
     assert "hubspot" in message.lower()
-    assert "list creation is not cataloged" in message.lower()
+    assert "cannot create hubspot lists yet" in message.lower()
     assert "hubspot.lists.create" in message
+    assert "list creation is not cataloged" not in message.lower()

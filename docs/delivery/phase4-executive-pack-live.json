@@ -1,0 +1,31 @@
+{
+  "pass": true,
+  "ran_at": "2026-07-13T18:08:31.537982+00:00",
+  "prod_git_sha": "e29668e389285c5ba2146a6a0456746571aac4f0",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "pack_slug": "executive-intelligence-pack",
+  "asset_id": "13e1be46-39fb-4a3c-bbdb-c5a3bfaf1cc9",
+  "bundle": {
+    "agentId": "963cf15d-7385-547a-8551-dbbdf846d258",
+    "workflowId": "efceae9c-4e07-5f05-b5bf-c2546f46a8c4",
+    "assignmentCount": 4,
+    "fredActivated": {
+      "id": "5add8bd8-7f3f-4b85-9158-f45028fcb572",
+      "type": "fred",
+      "status": "active",
+      "authMode": "gravitree_managed"
+    },
+    "stubCount": 0
+  },
+  "fred_invoke": {
+    "success": true,
+    "cache_id": "67b1129a-9f06-42c3-9bce-77f069f28a06",
+    "entity_ids": [
+      "1e80b973-a777-4714-aeb0-31211d428e32"
+    ],
+    "signal_ids": [
+      "4c518b05-cb5d-4d0b-b8be-749d714a4540"
+    ]
+  },
+  "note": "Executive pack demo bundle install + fred.series.get via invoke_tool (Phase 4 track)."
+}

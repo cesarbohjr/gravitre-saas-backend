@@ -77,6 +77,7 @@ VENDOR_DEFINITIONS: tuple = (
             action("hubspot", "deals.update_stage", "Update deal stage", tier="v3", kind="advanced", scope_suffix="deals:write"),
             action("hubspot", "sequences.enroll", "Enroll in sequence", tier="v3", kind="advanced", scope_suffix="sequences:enroll"),
             action("hubspot", "lists.add_contact", "Add contact to list", tier="v3", kind="advanced", scope_suffix="lists:write"),
+            action("hubspot", "lists.create", "Create list", tier="v3", kind="advanced", scope_suffix="lists:write", destructive=True),
             action("hubspot", "tickets.create", "Create support ticket", tier="v3", kind="advanced", scope_suffix="tickets:write", destructive=True, requires_approval=True),
         ),
         v4=(),

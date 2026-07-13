@@ -607,9 +607,44 @@ def _install_intelligence_pack_asset(
     *,
     actor_id: str,
     install_variables: dict[str, str] | None,
+    environment_name: str = "production",
+    settings: Any | None = None,
 ) -> dict[str, Any]:
-    """Wire catalog intelligence_pack installs through install_intelligence_pack (Part D P5)."""
+    """Wire catalog intelligence_pack installs through install_intelligence_pack (Part D P5).
+
+    Executive pack: when demo_agent_name is set, create agent + workflow + connector stubs
+    (no agentId required). Other packs still require installVariables.agentId.
+    """
+    from app.marketplace.intelligence_packs.catalog import get_intelligence_pack_spec
+    from app.marketplace.intelligence_packs.executive_install import install_executive_pack_demo_bundle
     from app.marketplace.intelligence_packs.install import install_intelligence_pack
+
+    pack_id = str(asset.get("slug") or asset.get("id") or "").strip()
+    spec = get_intelligence_pack_spec(pack_id)
+
+    if spec and spec.demo_agent_name:
+        bundle = install_executive_pack_demo_bundle(
+            client,
+            org_id,
+            asset,
+            spec,
+            actor_id=actor_id,
+            environment_name=environment_name,
+            settings=settings,
+            activate_fred=True,
+        )
+        return {
+            "entityType": "intelligence_pack",
+            "entityId": str(asset["id"]),
+            "agentId": bundle.get("agentId"),
+            "workflowId": bundle.get("workflowId"),
+            "packId": pack_id,
+            "assignmentIds": bundle.get("assignmentIds") or [],
+            "assignmentCount": bundle.get("assignmentCount") or 0,
+            "connectorStubs": bundle.get("connectorStubs"),
+            "fredActivated": bundle.get("fredActivated"),
+            "demoBundle": True,
+        }
 
     variables = install_variables or {}
     agent_id = str(
@@ -623,7 +658,6 @@ def _install_intelligence_pack_asset(
             "intelligence_pack install requires installVariables.agentId",
             code="VALIDATION_ERROR",
         )
-    pack_id = str(asset.get("slug") or asset.get("id") or "").strip()
     result = install_intelligence_pack(
         client,
         org_id,
@@ -808,12 +842,16 @@ def install_asset(
             environment_name=environment_name,
         )
     elif asset_type == "intelligence_pack":
+        from app.config import get_settings
+
         installed = _install_intelligence_pack_asset(
             client,
             org_id,
             asset,
             actor_id=actor_id,
             install_variables=install_variables,
+            environment_name=environment_name,
+            settings=get_settings(),
         )
     else:
         raise MarketplaceError(f"Unsupported asset type: {asset_type}", code="VALIDATION_ERROR")

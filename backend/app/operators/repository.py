@@ -68,12 +68,45 @@ def create_operator(
         "approval_roles": payload.get("approval_roles") or [],
         "created_by": created_by,
     }
+    # Marketplace installs pass a stable id (marketplace_entity_id) for idempotent reinstall.
+    if payload.get("id"):
+        row["id"] = payload["id"]
     if payload.get("environment_id"):
         row["environment_id"] = payload.get("environment_id")
     if payload.get("icon") is not None:
         row["icon"] = payload.get("icon")
     if payload.get("avatar_color") is not None:
         row["avatar_color"] = payload.get("avatar_color")
+    if payload.get("id"):
+        existing = (
+            client.table("operators")
+            .select("*")
+            .eq("id", payload["id"])
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+        )
+        if existing.data:
+            update = {
+                "name": row["name"],
+                "description": row.get("description"),
+                "status": row.get("status") or "active",
+                "role": row.get("role"),
+                "capabilities": row.get("capabilities") or [],
+                "config": row.get("config") or {},
+                "allowed_environments": row.get("allowed_environments") or [],
+                "updated_at": _now_iso(),
+            }
+            r = (
+                client.table("operators")
+                .update(update)
+                .eq("id", payload["id"])
+                .eq("org_id", org_id)
+                .execute()
+            )
+            operator = dict((r.data or existing.data)[0])
+            mirror_operator_to_legacy_agents(client, org_id, operator)
+            return operator
     r = client.table("operators").insert(row).execute()
     if not r.data:
         raise RuntimeError("operators insert returned no row")

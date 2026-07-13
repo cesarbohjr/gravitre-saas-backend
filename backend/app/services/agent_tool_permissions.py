@@ -41,6 +41,7 @@ _BUILTIN_ACTION_SCOPES: dict[str, list[str]] = {
     "hubspot.deals.create": ["hubspot:deals:write", "hubspot:*"],
     "hubspot.deals.update": ["hubspot:deals:write", "hubspot:*"],
     "hubspot.lists.add_contact": ["hubspot:lists:write", "hubspot:contacts:write", "hubspot:*"],
+    "hubspot.lists.create": ["hubspot:lists:write", "hubspot:*"],
     "salesforce.leads.get": ["salesforce:leads:read", "salesforce:*"],
     "salesforce.leads.update": ["salesforce:leads:write", "salesforce:*"],
     "salesforce.accounts.get": ["salesforce:accounts:read", "salesforce:*"],

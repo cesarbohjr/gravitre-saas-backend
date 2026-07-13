@@ -27,6 +27,13 @@ class IntelligencePackSpec:
     marketplace_tags: list[str] = field(default_factory=list)
     tier: str = "starter"
     assignments: list[IntelligencePackAssignment] = field(default_factory=list)
+    # Optional demo bundle (Executive pack): create agent + workflow + stage connectors
+    demo_agent_name: str | None = None
+    demo_systems: list[str] = field(default_factory=list)
+    connector_template_id: str | None = None
+    workflow_name: str | None = None
+    workflow_description: str | None = None
+    workflow_steps: list[dict[str, Any]] = field(default_factory=list)
 
 
 def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
@@ -88,6 +95,64 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
                 IntelligencePackAssignment("sharepoint_site", "client-kb", "Client Knowledge Base", "msp", "helpdesk"),
             ],
         ),
+        IntelligencePackSpec(
+            pack_id="executive-intelligence-pack",
+            name="Executive Intelligence Pack",
+            department="executive",
+            default_subdomain="macro_intelligence",
+            description=(
+                "Gravitree-managed macro intelligence: FRED/SEC/World Bank/OECD sources, "
+                "executive analyst agent, and a read-only FRED signal workflow."
+            ),
+            marketplace_tags=["executive", "starter", "intelligence-pack", "gravitree"],
+            assignments=[
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "fred-macro-series",
+                    "FRED Macro Series",
+                    "executive",
+                    "macro_intelligence",
+                    reference_summary="Platform-managed FRED series (GDP, UNRATE, CPI) via fred.series.get.",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "sec-edgar-filings",
+                    "SEC EDGAR Filings",
+                    "executive",
+                    "regulatory",
+                    reference_summary="SEC company filings lookup (Gravitree-managed; activation may require SEC_USER_AGENT).",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "world-bank-indicators",
+                    "World Bank Indicators",
+                    "executive",
+                    "macro_intelligence",
+                    reference_summary="World Bank country indicators via shared Phase 1.5 path.",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "oecd-datasets",
+                    "OECD Datasets",
+                    "executive",
+                    "macro_intelligence",
+                    reference_summary="OECD SDMX dataset probes (capability scaffold).",
+                ),
+            ],
+            demo_agent_name="Executive Macro Analyst",
+            demo_systems=["fred"],
+            connector_template_id="executive-intelligence-sources",
+            workflow_name="Executive FRED Macro Signal",
+            workflow_description="Read-only: fetch latest FRED GDP series via invoke_tool (Gravitree-managed).",
+            workflow_steps=[
+                {
+                    "id": "fred-gdp",
+                    "name": "Fetch FRED GDP",
+                    "type": "invoke_tool",
+                    "config": {"action": "fred.series.get", "params": {"series_id": "GDP"}},
+                },
+            ],
+        ),
     ]
 
 
@@ -111,6 +176,12 @@ def intelligence_pack_to_marketplace_asset(spec: IntelligencePackSpec) -> dict[s
         "config": {
             "department": spec.department,
             "default_subdomain": spec.default_subdomain,
+            "demo_agent_name": spec.demo_agent_name,
+            "demo_systems": list(spec.demo_systems),
+            "connector_template_id": spec.connector_template_id,
+            "workflow_name": spec.workflow_name,
+            "workflow_description": spec.workflow_description,
+            "workflow_steps": list(spec.workflow_steps),
             "assignments": [
                 {
                     "source_type": row.source_type,
