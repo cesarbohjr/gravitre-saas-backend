@@ -15,9 +15,10 @@ export const securityFirstPost: BlogPost = {
   dateModified: "2026-07-13",
   displayDate: "March 28, 2026",
   readTime: "6 min read",
-  heroImage: "",
+  heroImage: "/images/blog/security-first-hero.jpg",
   heroGradient: "from-slate-100 via-emerald-50 to-zinc-100",
-  heroAlt: "Abstract shield and lock motif representing secure AI automation.",
+  heroAlt:
+    "Glossy translucent glass blocks refracting glowing streams of AI action words, evoking layered, controlled AI automation.",
   keywords: [
     "AI automation security",
     "least privilege",
