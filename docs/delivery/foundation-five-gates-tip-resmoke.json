@@ -1,0 +1,63 @@
+{
+  "tip_required": "716e9f44",
+  "prod_git_sha": "716e9f4476dab25a4f12863f549929594c02ccaf",
+  "ran_at": "2026-07-13T04:15:44.527862+00:00",
+  "gates": {
+    "item6": {
+      "pass": true,
+      "conversation_id": "98d5c09d-3890-47a8-a84a-430097fe24eb",
+      "inferred_fields": [
+        "name"
+      ],
+      "action": "apollo.lists.create",
+      "status": "awaiting_confirm",
+      "artifact": "docs/delivery/reaudit-item6-omit-name-live.json"
+    },
+    "item7": {
+      "pass": true,
+      "verdict": "PASS",
+      "winning_conversation_id": "e85c952c-c69f-408e-8b5b-7d5956acf88c",
+      "reason": "write_tool_from_simple",
+      "audit_id": "8f5895cf-2fce-4660-9575-ab88923e5118",
+      "created_at": "2026-07-13T04:11:21.331067+00:00",
+      "artifact": "docs/delivery/routing-trace-d-force.json"
+    },
+    "item8": {
+      "pass": true,
+      "overall": "PASS",
+      "midstream_chips": true,
+      "assumption_notes_omit_name": true,
+      "artifact": "docs/delivery/reaudit-item8-chips-live.json"
+    },
+    "apply_gate": {
+      "pass": true,
+      "suggestion_id": "44f2e663-e2d9-4861-be13-905a4accf0c8",
+      "apply_staged_ok": true,
+      "requires_approval": true,
+      "workflow_id": "88c3340c-45e0-4973-a178-fd341b04d516",
+      "confirm_has_tool_invoke": true,
+      "artifact": "docs/delivery/sta317-apply-confirm-live.json"
+    },
+    "actor_id": {
+      "pass": true,
+      "list_name": "Gravitre Actor Audit 1097823cb2",
+      "events": [
+        {
+          "id": "d8e87a36-4658-4112-a612-86a53421d70c",
+          "action": "tool.invoke.completed",
+          "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+          "created_at": "2026-07-13T04:10:41.455657+00:00"
+        },
+        {
+          "id": "d6d95b0c-6b4b-4a96-9ad8-3e8082d344d3",
+          "action": "tool.invoke.requested",
+          "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+          "created_at": "2026-07-13T04:10:39.819574+00:00"
+        }
+      ],
+      "artifact": "docs/delivery/audit-actor-id-oauth-invoke-verify.json"
+    }
+  },
+  "overall": "PASS",
+  "blockers": []
+}

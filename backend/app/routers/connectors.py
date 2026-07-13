@@ -145,6 +145,18 @@ ALLOWED_CONNECTOR_VENDORS = frozenset(
         "fhir",
         "clio",
         "pipedrive",
+        # Phase 1 intelligence / category sources
+        "fred",
+        "sec_edgar",
+        "world_bank",
+        "oecd",
+        "opencorporates",
+        "nvd",
+        "cisa_kev",
+        "zoominfo",
+        "linkedin_sales_navigator",
+        "crunchbase",
+        "pdl",
     }
 )
 
