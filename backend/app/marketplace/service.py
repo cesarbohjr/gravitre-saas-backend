@@ -613,13 +613,14 @@ def _install_intelligence_pack_asset(
     """Wire catalog intelligence_pack installs through install_intelligence_pack (Part D P5).
 
     Demo packs (demo_agent_name set): create agent + workflow + connector stubs (no agentId).
-    Dispatch by pack_id — Executive activates FRED; MSP activates NVD.
+    Dispatch by pack_id — Executive activates FRED; MSP activates NVD; Sales stages CRM only.
     Other packs still require installVariables.agentId.
     """
     from app.marketplace.intelligence_packs.catalog import get_intelligence_pack_spec
     from app.marketplace.intelligence_packs.executive_install import install_executive_pack_demo_bundle
     from app.marketplace.intelligence_packs.install import install_intelligence_pack
     from app.marketplace.intelligence_packs.msp_install import install_msp_pack_demo_bundle
+    from app.marketplace.intelligence_packs.sales_install import install_sales_pack_demo_bundle
 
     pack_id = str(asset.get("slug") or asset.get("id") or "").strip()
     spec = get_intelligence_pack_spec(pack_id)
@@ -648,6 +649,36 @@ def _install_intelligence_pack_asset(
                 "nvdActivated": bundle.get("nvdActivated"),
                 "demoBundle": True,
             }
+
+        if pack_id == "sales-intelligence-pack":
+            bundle = install_sales_pack_demo_bundle(
+                client,
+                org_id,
+                asset,
+                spec,
+                actor_id=actor_id,
+                environment_name=environment_name,
+                settings=settings,
+            )
+            return {
+                "entityType": "intelligence_pack",
+                "entityId": str(asset["id"]),
+                "agentId": bundle.get("agentId"),
+                "workflowId": bundle.get("workflowId"),
+                "packId": pack_id,
+                "assignmentIds": bundle.get("assignmentIds") or [],
+                "assignmentCount": bundle.get("assignmentCount") or 0,
+                "connectorStubs": bundle.get("connectorStubs"),
+                "hubspotConnectorId": bundle.get("hubspotConnectorId"),
+                "stopLinesHonored": bundle.get("stopLinesHonored"),
+                "demoBundle": True,
+            }
+
+        if pack_id != "executive-intelligence-pack":
+            raise MarketplaceError(
+                f"Unknown intelligence pack demo installer for {pack_id}",
+                code="VALIDATION_ERROR",
+            )
 
         bundle = install_executive_pack_demo_bundle(
             client,

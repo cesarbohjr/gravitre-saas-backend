@@ -58,13 +58,61 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             name="Sales Intelligence Pack",
             department="sales",
             default_subdomain="pipeline_management",
-            description="CRM, forecast reports, playbooks, and pipeline review knowledge.",
-            marketplace_tags=["sales", "starter", "intelligence-pack"],
+            description=(
+                "Customer CRM pipeline intelligence: HubSpot read-only snapshot workflow, "
+                "Sales Pipeline Analyst agent, HubSpot/Apollo stubs. "
+                "Crunchbase/PDL → Memory/KG gated; BYO ZoomInfo/LI Sales Nav fail-closed; CIS/hiring deferred."
+            ),
+            marketplace_tags=["sales", "starter", "intelligence-pack", "crm"],
             assignments=[
-                IntelligencePackAssignment("hubspot_view", "sales-pipeline", "CRM Pipeline", "sales", "pipeline_management"),
-                IntelligencePackAssignment("google_drive_folder", "forecast-reports", "Forecast Reports", "sales", "forecasting"),
-                IntelligencePackAssignment("knowledge_pack", "sales-playbooks", "Sales Playbooks", "sales", "enterprise_sales"),
-                IntelligencePackAssignment("notion_page", "pipeline-reviews", "Pipeline Reviews", "sales", "pipeline_management"),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "hubspot-pipeline",
+                    "HubSpot Pipeline",
+                    "sales",
+                    "pipeline_management",
+                    reference_summary="Customer HubSpot CRM pipelines via hubspot.pipelines.list (read-only demo).",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "sales-playbooks",
+                    "Sales Playbooks",
+                    "sales",
+                    "enterprise_sales",
+                    reference_summary="Curated sales playbook knowledge for pipeline reviews.",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "forecast-reports",
+                    "Forecast Reports",
+                    "sales",
+                    "forecasting",
+                    reference_summary="Forecast report references for sales ops (customer docs).",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "account-research-notes",
+                    "Account Research Notes",
+                    "sales",
+                    "enterprise_sales",
+                    reference_summary=(
+                        "Account research placeholders. Crunchbase/PDL enrichment not enabled "
+                        "(governance stop-line)."
+                    ),
+                ),
+            ],
+            demo_agent_name="Sales Pipeline Analyst",
+            demo_systems=["hubspot"],
+            connector_template_id="sales-intelligence-sources",
+            workflow_name="Sales HubSpot Pipeline Snapshot",
+            workflow_description="Read-only: list HubSpot deal pipelines via invoke_tool (customer-owned CRM).",
+            workflow_steps=[
+                {
+                    "id": "hubspot-pipelines",
+                    "name": "List HubSpot Pipelines",
+                    "type": "invoke_tool",
+                    "config": {"action": "hubspot.pipelines.list", "params": {}},
+                },
             ],
         ),
         IntelligencePackSpec(

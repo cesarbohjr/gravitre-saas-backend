@@ -192,9 +192,10 @@ Spine: `hubspot.lists.create` registered + vendor-cataloged; live smoke created 
 Apollo discover on smoke org is **plan-limited** (`apollo.people.search` 403 free plan) — accepted as PARTIAL; upgrade/master API key required for full chain.  
 Artifacts: `docs/delivery/phase4-sales-workflow-e2e-live.json`, `docs/delivery/phase4-executive-pack-live.json`.
 
-### Pack track — Executive DONE; MSP DONE → Sales next
-**Executive Intelligence Pack** — **DONE** (`phase4-executive-pack-live.json`).  
-**MSP Intelligence Pack** — **DONE** (`phase4-msp-pack-live.json`): Vulnerability Analyst, NVD+CISA stubs, NVD activate, `nvd.cve.get` workflow. CIS deferred. CISA invoke follow-on.  
+### Pack track — Executive DONE; MSP DONE; Sales DONE
+**Executive** — **DONE** (`phase4-executive-pack-live.json`).  
+**MSP** — **DONE** (`phase4-msp-pack-live.json`). CIS deferred; CISA staged only.  
+**Sales** — **DONE** (`phase4-sales-pack-live.json`): Pipeline Analyst, HubSpot/Apollo stubs, `hubspot.pipelines.list` read-only. Crunchbase/PDL/KG/Memory gated; BYO ZoomInfo/LI fail-closed; no OpenCorporates enable.  
 OpenCorporates stays activation-gated.
 
 ### Phase 5 — HELD (do not start; full prompt not filed)
@@ -230,4 +231,5 @@ API accounts/keys for FRED, SEC_USER_AGENT, OpenCorporates commercial token, NVD
 ~~Executive Intelligence Pack~~ — **DONE** (`docs/delivery/phase4-executive-pack-live.json`).  
 ~~Phase 4 full E2E~~ — **PARTIAL accepted** (Apollo free-plan blocker; HubSpot list create live).  
 ~~MSP Intelligence Pack~~ — **DONE** (`docs/delivery/phase4-msp-pack-live.json`).  
-**Next:** Sales Intelligence Pack. Phase 5 ML remains **HELD**.
+~~Sales Intelligence Pack~~ — **DONE** (`docs/delivery/phase4-sales-pack-live.json`).  
+**Pack track complete (Executive → MSP → Sales).** Phase 5 ML remains **HELD**. Optional follow-ons: CISA invoke, Apollo plan upgrade, SEC EDGAR Sales research invoke.

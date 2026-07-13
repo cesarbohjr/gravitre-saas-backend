@@ -40,6 +40,7 @@ _BUILTIN_ACTION_SCOPES: dict[str, list[str]] = {
     "hubspot.deals.get": ["hubspot:deals:read", "hubspot:*"],
     "hubspot.deals.create": ["hubspot:deals:write", "hubspot:*"],
     "hubspot.deals.update": ["hubspot:deals:write", "hubspot:*"],
+    "hubspot.pipelines.list": ["hubspot:pipelines:read", "hubspot:deals:read", "hubspot:*"],
     "hubspot.lists.add_contact": ["hubspot:lists:write", "hubspot:contacts:write", "hubspot:*"],
     "hubspot.lists.create": ["hubspot:lists:write", "hubspot:*"],
     "salesforce.leads.get": ["salesforce:leads:read", "salesforce:*"],
@@ -322,10 +323,11 @@ def default_demo_scopes_for_system(system: str) -> list[str]:
             "hubspot:contacts:read",
             "hubspot:contacts:write",
             "hubspot:deals:write",
+            "hubspot:deals:read",
+            "hubspot:pipelines:read",
             "hubspot:notes:write",
             "hubspot:sequences:enroll",
             "hubspot:lists:write",
-            "hubspot:deals:read",
             "hubspot:*",
         ]
     if system == "salesforce":
