@@ -209,6 +209,38 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
         },
         "required": ["name"],
     },
+    "fred.series.get": {
+        "type": "object",
+        "properties": {
+            "series_id": {"type": "string", "description": "FRED series id (e.g. GDP, UNRATE)."},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": ["series_id"],
+    },
+    "nvd.cve.get": {
+        "type": "object",
+        "properties": {
+            "cve_id": {"type": "string", "description": "CVE id (e.g. CVE-2024-1234)."},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": ["cve_id"],
+    },
+    "cisa_kev.feed.get": {
+        "type": "object",
+        "properties": {
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
+    "sec_edgar.filings.search": {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Company name or ticker for SEC EDGAR search."},
+            "company": {"type": "string", "description": "Alias for query."},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": ["query"],
+    },
     "hubspot.notes.create": {
         "type": "object",
         "properties": {
