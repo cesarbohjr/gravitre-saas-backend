@@ -164,10 +164,11 @@ Order: FRED/SEC/WB/OECD → OpenCorporates/NVD/CISA → confirm Apollo `customer
 Marketplace category template: Install pre-stages connectors as needs-connection; **no** auto-auth.  
 Evidence: DB + HTTP stub artifacts above.
 
-### Phase 1.5 — Shared ingestion plumbing — IN PROGRESS (blocks packs)
-Durable cache + one normalize dispatcher + one provenance KG write + one PackSignalDefinition path. Prove with FRED + NVD, then World Bank third-source test. Live prod evidence required.  
+### Phase 1.5 — Shared ingestion plumbing — DONE
+Durable cache + one normalize dispatcher + one provenance KG write + one PackSignalDefinition path. Proven with FRED + NVD + World Bank (service + HTTP).  
 Spec: `docs/delivery/phase1.5-shared-ingestion-plumbing.md`.  
-**No Executive/MSP/Sales pack build until DONE.** Migration: await explicit Option A/B/C.
+Artifacts: `docs/delivery/phase1.5-shared-plumbing-live.json`, `docs/delivery/phase1.5-shared-plumbing-http-live.json`.  
+Ownership: agent/tool/router = Phase 3; CRM outcomes = Phase 5 precondition gap.
 
 ### Phase 2 — Pack-facing use of shared path (after 1.5)
 Memory **only** via existing opt-in gate; pack-specific signal *content* on top of PackSignalDefinition — **not** new per-source cache/KG plumbing.
