@@ -1,7 +1,7 @@
 {
-  "pass": false,
-  "partial": true,
-  "ran_at": "2026-07-13T18:36:25.221534+00:00",
+  "pass": true,
+  "partial": false,
+  "ran_at": "2026-07-13T18:54:19.380958+00:00",
   "prod_git_sha": "e29668e389285c5ba2146a6a0456746571aac4f0",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "registered": {
@@ -16,8 +16,10 @@
       "authMode": "gravitree_managed"
     },
     "sec_edgar": {
-      "error": "sec_edgar is not yet available (platform credentials missing)",
-      "connector_id": "9ba9f202-f44c-4b83-88d4-5725bc6ce6e2"
+      "id": "9ba9f202-f44c-4b83-88d4-5725bc6ce6e2",
+      "type": "sec_edgar",
+      "status": "active",
+      "authMode": "gravitree_managed"
     }
   },
   "cisa_kev_feed_get": {
@@ -29,18 +31,22 @@
       "caa79a8a-76cc-4e3f-9ab7-3e19efc45b79"
     ],
     "signal_ids": [
-      "4ea4fc1d-e1ff-42b5-80db-034d0570abbe"
+      "fa801060-d2d4-492b-ad49-77deeb69634a"
     ]
   },
   "sec_edgar_filings_search": {
-    "success": false,
-    "error_code": "GRAVITREE_SOURCE_UNAVAILABLE",
-    "error_message": "sec_edgar is not yet available (platform credentials missing)",
+    "success": true,
+    "error_code": null,
+    "error_message": null,
     "query": "Microsoft",
-    "filing_count": null,
-    "cache_id": null,
-    "entity_ids": [],
-    "signal_ids": []
+    "filing_count": 5,
+    "cache_id": "30409f6f-4ea6-4941-a88f-32f795e2d322",
+    "entity_ids": [
+      "3622fc5d-f6bd-4061-bd27-e68cae142eeb"
+    ],
+    "signal_ids": [
+      "33a5200a-925b-4b0d-914e-bc2f7c7546f1"
+    ]
   },
   "apollo_plan_upgrade": {
     "status": "human_only",
@@ -52,5 +58,5 @@
     "code_ready": "permission_denied/apollo_plan_limit taxonomy + API-key preference already shipped"
   },
   "phase5_ml": "HELD",
-  "note": "Follow-ons: CISA invoke PASS; SEC EDGAR tool registered but needs human SEC_USER_AGENT on platform. Apollo plan upgrade human-only. Phase 5 ML HELD."
+  "note": "Follow-ons PASS: CISA invoke + SEC EDGAR research (SEC_USER_AGENT set local+Railway). Apollo plan upgrade still human-only. Phase 5 ML HELD."
 }
