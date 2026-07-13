@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from supabase import create_client
 
 from app.config import Settings, get_settings
-from app.deps import require_admin
+from app.auth.dependencies import require_admin
 from app.intelligence_packs.executive.sources import fetch_fred_series, fetch_world_bank_indicator
 from app.intelligence_packs.msp import fetch_nvd_cve
 from app.intelligence_packs.shared.pipeline import ensure_plumbing_registered, run_shared_ingestion
