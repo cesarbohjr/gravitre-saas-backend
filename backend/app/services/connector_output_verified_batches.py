@@ -395,6 +395,7 @@ VERIFIED_ADVANCED_OUTPUT_BATCH_13: frozenset[str] = frozenset(
         "zendesk.macros.apply",
         "zendesk.side_conversations.create",
         "zendesk.tickets.merge",
+        "hubspot.lists.create",
     }
 )
 
