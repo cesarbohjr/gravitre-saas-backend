@@ -110,6 +110,64 @@ async def test_missing_connector_triggers_clarification(clarification_engine):
 
 
 @pytest.mark.asyncio
+async def test_slack_send_asks_for_message_not_workflow_execution(clarification_engine):
+    """Prod regression: 'send a message in slack general channel' must not leak intent."""
+    clarification_engine._polish_question = AsyncMock(return_value=None)
+    result = await clarification_engine.should_clarify(
+        {
+            "request": "send a message in slack general channel",
+            "classification_confidence": 0.85,
+            "requires_action": True,
+            "intent": "workflow_execution",
+        },
+        {"connected_integrations": ["slack"]},
+        [],
+    )
+    assert result["should_clarify"] is True
+    assert result["trigger_type"] == "missing_required_param"
+    question = result["question"] or ""
+    assert "workflow_execution" not in question
+    assert "workflow_execution" not in str(result.get("template_vars") or {})
+    assert "Slack" in question or "slack" in question.lower()
+    assert "message" in question.lower()
+
+
+@pytest.mark.asyncio
+async def test_slack_send_with_body_and_channel_does_not_over_clarify(clarification_engine):
+    clarification_engine._polish_question = AsyncMock(return_value=None)
+    result = await clarification_engine.should_clarify(
+        {
+            "request": 'send "standup in 5" to slack #general',
+            "classification_confidence": 0.9,
+            "requires_action": True,
+            "intent": "workflow_execution",
+        },
+        {"connected_integrations": ["slack"]},
+        [],
+    )
+    assert result["should_clarify"] is False
+
+
+@pytest.mark.asyncio
+async def test_generic_action_clarify_humanizes_intent(clarification_engine):
+    clarification_engine._polish_question = AsyncMock(return_value=None)
+    result = await clarification_engine.should_clarify(
+        {
+            "request": "send the update",
+            "classification_confidence": 0.8,
+            "requires_action": True,
+            "intent": "workflow_execution",
+        },
+        {},
+        [],
+    )
+    assert result["should_clarify"] is True
+    assert result["trigger_type"] == "missing_required_param"
+    assert "workflow_execution" not in (result["question"] or "")
+    assert result["template_vars"]["action"] == "do that"
+
+
+@pytest.mark.asyncio
 async def test_clarification_uses_fast_tier_not_reasoning():
     engine = ClarificationEngine()
     with patch("app.services.model_router.get_model_router") as get_router:
