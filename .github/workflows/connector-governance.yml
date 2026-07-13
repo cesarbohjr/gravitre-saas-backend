@@ -7,6 +7,8 @@ on:
   push:
     branches: [main]
     paths:
+      - "backend/app/services/chat_action_mapper.py"
+      - "backend/app/services/react_write_gate.py"
       - "backend/app/services/connector_*.py"
       - "backend/app/services/chat_connector*.py"
       - "backend/app/services/chat_orchestration_service.py"
@@ -15,11 +17,15 @@ on:
       - "backend/tests/services/test_action_workflow_validation.py"
       - "backend/tests/services/test_chat_connector_execution.py"
       - "backend/tests/services/test_chat_orchestration.py"
+      - "backend/tests/services/test_chat_action_mapper.py"
+      - "backend/tests/services/test_react_inference_parity.py"
       - "backend/tests/smoke/test_connector_action_smoke.py"
       - ".github/workflows/connector-governance.yml"
   pull_request:
     branches: [main]
     paths:
+      - "backend/app/services/chat_action_mapper.py"
+      - "backend/app/services/react_write_gate.py"
       - "backend/app/services/connector_*.py"
       - "backend/app/services/chat_connector*.py"
       - "backend/app/services/chat_orchestration_service.py"
@@ -28,6 +34,8 @@ on:
       - "backend/tests/services/test_action_workflow_validation.py"
       - "backend/tests/services/test_chat_connector_execution.py"
       - "backend/tests/services/test_chat_orchestration.py"
+      - "backend/tests/services/test_chat_action_mapper.py"
+      - "backend/tests/services/test_react_inference_parity.py"
       - "backend/tests/smoke/test_connector_action_smoke.py"
       - ".github/workflows/connector-governance.yml"
 
@@ -73,6 +81,8 @@ jobs:
             tests/services/test_connector_session_state.py \
             tests/services/test_chat_connector_execution.py \
             tests/services/test_chat_orchestration.py \
+            tests/services/test_chat_action_mapper.py \
+            tests/services/test_react_inference_parity.py \
             tests/services/test_workflow_schemas_batch_25.py \
             tests/services/test_workflow_schemas_batch_50.py \
             tests/services/test_workflow_schemas_batch_75.py \

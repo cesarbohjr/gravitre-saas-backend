@@ -133,7 +133,7 @@ const adminNavigation: NavGroup[] = [
         hint: "Pipeline and revenue signals needing review",
       },
       { name: SURFACE_COPY.learning.title, href: APP_ROUTES.learning, icon: "atom", hint: "Query, memory, and search learning" },
-      { name: "History", href: "/audit", icon: "history" },
+      { name: "Audit trail", href: "/audit", icon: "history" },
     ],
   },
   {

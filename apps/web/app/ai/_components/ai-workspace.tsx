@@ -12,6 +12,7 @@ import { DefaultChatTransport, type UIMessage } from "ai"
 import useSWR from "swr"
 import {
   ArrowUp,
+  Info,
   Loader2,
   PanelLeft,
   PanelLeftClose,
@@ -1398,6 +1399,14 @@ export function AiWorkspace({
             </div>
 
             <div className="ml-auto flex shrink-0 items-center gap-1.5">
+              <a
+                href="/ai/help/control"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                title="How Gravitre keeps you in control"
+                aria-label="How Gravitre keeps you in control"
+              >
+                <Info className="h-3.5 w-3.5" />
+              </a>
               <Select
                 value={selectedDepartment}
                 onValueChange={(value) => {

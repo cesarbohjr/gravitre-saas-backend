@@ -8,6 +8,7 @@ import {
   ChartLineUp,
   Wrench,
   Megaphone,
+  Lifebuoy,
 } from "@phosphor-icons/react"
 import type { Icon } from "@phosphor-icons/react"
 
@@ -65,6 +66,12 @@ export const DEPARTMENT_ICONS: Record<string, CategoryIconConfig> = {
     chipBgDark: "dark:bg-teal-950/40",
     iconColor: "text-teal-600 dark:text-teal-400",
   },
+  support: {
+    icon: Lifebuoy,
+    chipBg: "bg-orange-100",
+    chipBgDark: "dark:bg-orange-950/40",
+    iconColor: "text-orange-600 dark:text-orange-400",
+  },
   hr: {
     icon: UsersThree,
     chipBg: "bg-rose-100",
@@ -98,6 +105,10 @@ const DEPARTMENT_ALIASES: Record<string, string> = {
   cs: "customer_success",
   customer_success: "customer_success",
   customersuccess: "customer_success",
+  support_operations: "support",
+  customer_support: "support",
+  helpdesk: "support",
+  service_desk: "support",
   human_resources: "hr",
   people: "hr",
   hr_operations: "hr",

@@ -119,7 +119,7 @@ export const ADMIN_SIDEBAR_NAV: SidebarNavGroup[] = [
         icon: "atom",
         hint: "Query, memory, and search learning",
       },
-      { name: "History", href: "/audit", icon: "history" },
+      { name: "Audit trail", href: "/audit", icon: "history", hint: "Who did what, when — compliance and review" },
     ],
   },
   {

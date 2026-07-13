@@ -68,7 +68,7 @@ Still available; UI redirects `/marketplace/role-packs` → `/marketplace/assets
 | GET | `/api/marketplace/role-packs/{packId}` | Legacy pack detail |
 | POST | `/api/marketplace/role-packs/{packId}/install` | Legacy install (`org_department_pack_installs`) |
 
-Legacy pack IDs map to unified slugs (e.g. `support-ops` → `customer-success-pack`).
+Legacy pack IDs map to unified slugs (e.g. `support-ops` → `support-operations-pack`).
 
 ## What gets installed (department pack)
 

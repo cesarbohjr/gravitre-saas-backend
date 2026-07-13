@@ -102,6 +102,7 @@ export function AssistantSourceLinks({ invocations }: { invocations: ToolInvocat
   }
 
   add("View audit trail", "/audit")
+  add("How Gravitre keeps you in control", "/ai/help/control")
 
   if (!links.length && !citations.length) return null
 

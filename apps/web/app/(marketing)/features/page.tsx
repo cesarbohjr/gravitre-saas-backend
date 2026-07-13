@@ -979,7 +979,7 @@ export default function FeaturesPage() {
               { 
                 icon: Shield, 
                 title: "Full control", 
-                desc: "Human-in-the-loop approvals, audit trails, and role-based access keep you in charge",
+                desc: "Asks before it acts, shows its work, and never guesses silently — approvals, audit trails, and labeled assumptions",
                 color: "blue"
               },
               { 

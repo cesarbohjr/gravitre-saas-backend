@@ -299,6 +299,17 @@ class ChatActionMapper:
         if "hubspot" in entry.connector_id and "contacts.create" in entry.action_key:
             if re.search(r"\bcreate\s+(?:a\s+)?(?:hubspot\s+)?contacts?\b", text, re.I):
                 score += 22.0
+        if "github" in entry.connector_id and "issues.create" in entry.action_key:
+            if re.search(r"\bcreate\s+(?:a\s+)?(?:github\s+)?issues?\b", text, re.I):
+                score += 22.0
+        if "github" in entry.connector_id and (
+            "issues.comment" in entry.action_key or "issues.list" in entry.action_key
+        ):
+            if re.search(r"\bcreate\s+(?:a\s+)?(?:github\s+)?issues?\b", text, re.I):
+                score -= 24.0
+        if "jira" in entry.connector_id and "issues.create" in entry.action_key:
+            if re.search(r"\bcreate\s+(?:a\s+)?(?:jira\s+)?issues?\b", text, re.I):
+                score += 18.0
         if "hubspot" in entry.connector_id and "contacts.update" in entry.action_key:
             if re.search(r"\bcreate\s+(?:a\s+)?(?:hubspot\s+)?contacts?\b", text, re.I):
                 score -= 24.0
@@ -416,11 +427,38 @@ class ChatActionMapper:
 
         if "jira" in entry.connector_id and "issues.create" in entry.action_key:
             summary = quoted[0] if quoted else None
+            if not summary:
+                titled = re.search(
+                    r"\btitled\s+[\"']?([^\"'.]+)[\"']?",
+                    text,
+                    re.I,
+                )
+                if titled:
+                    summary = titled.group(1).strip()
             project_match = re.search(r"\bproject\s+([\w-]+)\b", text, re.I)
             if summary and project_match:
                 return {"project_key": project_match.group(1), "summary": summary}
             if summary:
                 return {"summary": summary, "project_key": "ENG"}
+            return None
+
+        if "github" in entry.connector_id and "issues.create" in entry.action_key:
+            title = quoted[0] if quoted else None
+            if not title:
+                titled = re.search(
+                    r"\btitled\s+[\"']?([^\"'.]+)[\"']?",
+                    text,
+                    re.I,
+                )
+                if titled:
+                    title = titled.group(1).strip()
+            repo_match = re.search(r"\brepo(?:sitory)?\s+([\w.-]+/[\w.-]+)\b", text, re.I)
+            if title:
+                payload: dict[str, Any] = {"title": title[:200]}
+                if repo_match:
+                    payload["repo"] = repo_match.group(1)
+                return payload
+            # Bare create — keep write candidate without inventing a title
             return None
 
         if "hubspot" in entry.connector_id and "contacts.create" in entry.action_key:

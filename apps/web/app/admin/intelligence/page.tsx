@@ -12,6 +12,7 @@ import { ApiError } from "@/lib/fetcher"
 import { ArrowsClockwise } from "@phosphor-icons/react"
 import { OverviewTab } from "./_components/overview-tab"
 import { BusinessImpactCard } from "./_components/business-impact-card"
+import { ConnectorOpsCard } from "./_components/connector-ops-card"
 import { MemoryPromotionTab } from "./_components/memory-promotion-tab"
 import { RelationshipsTab } from "./_components/relationships-tab"
 import { EvaluationTab } from "./_components/evaluation-tab"
@@ -104,6 +105,7 @@ export default function AdminIntelligencePage() {
 
           <TabsContent value="overview" className="mt-0 space-y-6">
             <BusinessImpactCard />
+            <ConnectorOpsCard />
             <OverviewTab data={data} isLoading={isLoading} />
           </TabsContent>
 

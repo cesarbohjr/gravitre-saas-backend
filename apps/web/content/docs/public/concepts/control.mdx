@@ -1,0 +1,38 @@
+---
+title: How Gravitre keeps you in control
+description: Every write asks first, every result links back, every guess is labeled.
+audience: public
+depth: high
+tier: all
+status: published
+category: Core Concepts
+readTime: 3 min
+prev:
+  title: History and audit
+  href: /docs/concepts/history
+next:
+  title: Security
+  href: /docs/concepts/security
+---
+
+Gravitre is built so AI actions stay **governed**, **verifiable**, and **honest about uncertainty**.
+
+## Every write asks first
+
+Mutating connector actions and other writes route through the same approval / confirm gate as the rest of the platform. Chat suggestions and recommendation cards do not get a shortcut.
+
+See also: [Approvals](/docs/guides/how-to/approvals).
+
+## Every result links back to the real thing
+
+Tool runs expose sources, connector status, and the org [audit trail](/docs/concepts/history) so you can inspect what actually happened.
+
+In the product: **History → Audit trail** (`/audit`), or **View audit trail** under a chat reply.
+
+## Every guess is labeled
+
+Missing fields and inferred values show up as assumption notes or inferred fields — not silent certainty.
+
+## In-app one-pager
+
+Signed-in users can open the short version from chat: [/ai/help/control](/ai/help/control).

@@ -31,6 +31,7 @@ MODE_B_GO_LIVE_REQUIRES_INFRASTRUCTURE = True
 
 DEPARTMENT_PACK_SLUG_TIERS: dict[str, int] = {
     "marketing-operations-pack": 2,
+    "support-operations-pack": 1,
 }
 
 MIN_PACK_TIER = 1

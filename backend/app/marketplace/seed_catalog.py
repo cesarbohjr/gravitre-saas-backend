@@ -54,6 +54,12 @@ CANVA = {
     "required": False,
     "connectPath": "/connectors?type=canva",
 }
+ZENDESK = {
+    "connectorType": "zendesk",
+    "label": "Zendesk Support",
+    "required": True,
+    "connectPath": "/connectors?type=zendesk",
+}
 
 
 @dataclass(frozen=True)
@@ -201,6 +207,7 @@ def _ai_agents() -> list[CatalogAsset]:
         ("revenue-operations-agent", "Revenue Operations Agent", "Revenue Operations", "REVENUE_OPS", ["hubspot", "salesforce"], ["pipeline-hygiene", "forecasting"]),
         ("sales-pipeline-agent", "Sales Pipeline Agent", "Sales", "SALES", ["hubspot", "salesforce"], ["pipeline-review", "deal-coaching"]),
         ("customer-success-agent", "Customer Success Agent", "Customer Success", "CS", ["hubspot"], ["health-scoring", "renewal-risk"]),
+        ("ticket-triage", "Ticket Triage Agent", "Support", "SUPPORT", ["zendesk"], ["ticket-triage", "macro-suggestion"]),
         ("cfo-agent", "CFO Agent", "Finance", "FINANCE", ["quickbooks"], ["variance-analysis", "board-reporting"]),
         ("sdr-coach", "SDR Coach", "Sales", "SALES", ["hubspot"], ["call-coaching", "sequence-optimization"]),
     ]
@@ -225,7 +232,13 @@ def _ai_agents() -> list[CatalogAsset]:
                     systems=systems,
                     capabilities=capabilities,
                 ),
-                required_connectors=[HUBSPOT] if "hubspot" in systems else [],
+                required_connectors=(
+                    [HUBSPOT]
+                    if "hubspot" in systems
+                    else [ZENDESK]
+                    if "zendesk" in systems
+                    else []
+                ),
             )
         )
     return assets
@@ -337,6 +350,30 @@ def _workflows() -> list[CatalogAsset]:
             [
                 _agent_step("collect", "Collect status themes", "revenue-operations-agent", "Draft weekly status bullets."),
                 _invoke("publish", "Post to Slack", "slack.post_message", connector="slack"),
+            ],
+        ),
+        (
+            "zendesk-ticket-triage",
+            "Zendesk Ticket Triage",
+            "Support",
+            [ZENDESK],
+            [
+                {
+                    "id": "ticket_lookup",
+                    "name": "Fetch ticket context",
+                    "type": "invoke_tool",
+                    "config": {
+                        "action": "zendesk.tickets.get",
+                        "param_sources": {"ticket_id": "$ticket_id"},
+                    },
+                    "requires_connector": "zendesk",
+                },
+                _agent_step(
+                    "triage",
+                    "AI ticket triage",
+                    "ticket-triage",
+                    "Classify urgency, suggest response macro, and flag escalation if needed.",
+                ),
             ],
         ),
     ]
@@ -646,7 +683,66 @@ def _department_packs() -> list[CatalogAsset]:
         pack_children=["hr-operations-knowledge"],
     )
 
-    return [marketing_pack, msp_pack, revops_pack, cs_pack, hr_pack]
+    support_pack = CatalogAsset(
+        slug="support-operations-pack",
+        title="Support Operations Pack",
+        description="Zendesk ticket triage agent, support knowledge pack, and optional SLA escalation workflow.",
+        asset_type="department_pack",
+        category="department_pack",
+        department="Support",
+        tags=["support", "zendesk", "department-pack", "tier-1", "starter"],
+        pricing_type="paid",
+        price_cents=4900,
+        pack_tier=1,
+        config=_department_pack_config(
+            workflow_name="New ticket → triage → escalation",
+            workflow_description="Zendesk ticket lookup and AI triage with escalation path.",
+            agents=[
+                _agent(
+                    "ticket-triage",
+                    name="Ticket Triage Agent",
+                    purpose="Classifies support tickets, suggests macros, and escalates priority cases.",
+                    role="Support Operations",
+                    department="Support",
+                    persona_key="SUPPORT",
+                    systems=["zendesk"],
+                    capabilities=["ticket-triage", "macro-suggestion"],
+                ),
+            ],
+            rag_sources=[
+                _rag_doc("rag:help-center", "Help Center Knowledge", pack="support-operations-pack"),
+                _rag_doc("rag:escalation", "Escalation Matrix", pack="support-operations-pack"),
+                _rag_doc("rag:macros", "Support Macros", pack="support-operations-pack"),
+            ],
+            workflow_steps=[
+                {
+                    "id": "ticket_lookup",
+                    "name": "Fetch ticket context",
+                    "type": "invoke_tool",
+                    "config": {
+                        "action": "zendesk.tickets.get",
+                        "param_sources": {"ticket_id": "$ticket_id"},
+                    },
+                    "requires_connector": "zendesk",
+                },
+                _agent_step(
+                    "triage",
+                    "AI ticket triage",
+                    "ticket-triage",
+                    "Classify urgency, suggest response macro, and flag escalation if needed.",
+                ),
+            ],
+        ),
+        required_connectors=[ZENDESK],
+        pack_children=[
+            "ticket-triage",
+            "zendesk-ticket-triage",
+            "support-operations-knowledge",
+            "sla-breach-escalation",
+        ],
+    )
+
+    return [marketing_pack, msp_pack, revops_pack, cs_pack, hr_pack, support_pack]
 
 
 def _intelligence_packs() -> list[CatalogAsset]:
@@ -696,6 +792,6 @@ def catalog_assets_by_slug() -> dict[str, CatalogAsset]:
 LEGACY_PACK_SLUG_MAP: dict[str, str] = {
     "sales-ops": "revenue-operations-pack",
     "marketing-ops": "marketing-operations-pack",
-    "support-ops": "customer-success-pack",
+    "support-ops": "support-operations-pack",
     "finance-ops": "revenue-operations-pack",
 }

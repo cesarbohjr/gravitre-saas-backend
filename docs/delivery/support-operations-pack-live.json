@@ -1,0 +1,92 @@
+{
+  "packSlug": "support-operations-pack",
+  "orgId": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "legacyMap": "support-ops → support-operations-pack",
+  "startedAt": "2026-07-13T02:23:42.940905+00:00",
+  "finishedAt": "2026-07-13T02:23:47.636792+00:00",
+  "status": "PARTIAL",
+  "summary": "Catalog seed + published asset + entitlement + Zendesk connector + preview canInstall=true all PASS. Full install blocked by org plan agent_count limit (current=2, max=1). Unit catalog/install validation PASS via pytest.",
+  "unitEvidence": {
+    "pytest": "tests/marketplace/test_marketplace_seed_catalog.py tests/services/test_recommendation_heuristics.py tests/marketplace/test_department_pack_pricing.py — 85 passed",
+    "catalogAction": "zendesk.tickets.get",
+    "packTier": 1,
+    "priceCents": 4900
+  },
+  "steps": [
+    {
+      "label": "seed_catalog_assets",
+      "status": "pass",
+      "assetIds": {
+        "ticket-triage": "cc7301e2-a76b-464f-84ba-dd6a82d37445",
+        "zendesk-ticket-triage": "538efb54-e0fd-4bac-89e7-c556eee9fe06",
+        "support-operations-knowledge": "8f039ea9-90b3-4826-922f-ac1f8563e739",
+        "sla-breach-escalation": "bf517a91-d2f3-4716-9f78-21903c25ac49",
+        "support-operations-pack": "922dc7cc-14d2-4fa2-b7b7-7401eab2578e"
+      },
+      "packItemCount": 4
+    },
+    {
+      "label": "verify_published_asset",
+      "status": "pass",
+      "asset": {
+        "id": "922dc7cc-14d2-4fa2-b7b7-7401eab2578e",
+        "slug": "support-operations-pack",
+        "status": "published",
+        "pack_tier": 1,
+        "price_cents": 4900,
+        "pricing_type": "paid",
+        "updated_at": "2026-07-13T02:23:44.625026+00:00"
+      }
+    },
+    {
+      "label": "ensure_entitlement",
+      "status": "pass",
+      "created": false,
+      "entitlementId": "8c24637e-af0b-4b84-aab3-068ce09bc96d"
+    },
+    {
+      "label": "ensure_zendesk_connector",
+      "status": "pass",
+      "connectorId": "1fe77fe5-a44a-4492-8eff-96ee9cb5acad",
+      "created": false
+    },
+    {
+      "label": "preview_install",
+      "status": "pass",
+      "canInstall": true,
+      "blockers": []
+    },
+    {
+      "label": "install_asset",
+      "status": "blocked",
+      "reason": "plan_limit_exceeded",
+      "detail": {
+        "error": "plan_limit_exceeded",
+        "limit_type": "agent_count",
+        "current": 2,
+        "max": 1,
+        "upgrade_url": "/settings/billing"
+      }
+    }
+  ],
+  "evidence": {
+    "assetId": "922dc7cc-14d2-4fa2-b7b7-7401eab2578e",
+    "assetUpdatedAt": "2026-07-13T02:23:44.625026+00:00",
+    "seededSlugs": [
+      "ticket-triage",
+      "zendesk-ticket-triage",
+      "support-operations-knowledge",
+      "sla-breach-escalation",
+      "support-operations-pack"
+    ],
+    "previewCanInstall": true,
+    "installBlocker": {
+      "error": "plan_limit_exceeded",
+      "limit_type": "agent_count",
+      "current": 2,
+      "max": 1,
+      "upgrade_url": "/settings/billing"
+    },
+    "unitInstallValidated": true
+  }
+}

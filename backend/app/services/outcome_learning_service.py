@@ -33,6 +33,13 @@ OUTCOME_EVENTS = frozenset(
         "approval_required",
         "approval_granted",
         "approval_denied",
+        # Item 4 — CRM-labeled outcomes (stored primarily in crm_recommendation_outcomes;
+        # also allowed here so learning ingest can mirror when wired).
+        "crm_contacted",
+        "crm_replied",
+        "crm_booked",
+        "crm_won",
+        "crm_lost",
     ]
 )
 

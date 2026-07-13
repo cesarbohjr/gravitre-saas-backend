@@ -48,7 +48,7 @@ const LABELS: Record<string, string> = {
   schedules: "Schedules",
   approvals: "Approvals",
   metrics: "Metrics",
-  audit: "History",
+  audit: "Audit trail",
   settings: "Settings",
   environments: "Environments",
   assignments: "Assignments",

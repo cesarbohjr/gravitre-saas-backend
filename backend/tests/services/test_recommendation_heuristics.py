@@ -149,14 +149,14 @@ def test_load_installed_packs_unions_marketplace_and_legacy():
                     {
                         "asset_id": "a1",
                         "installed_entity_type": "department_pack",
-                        "metadata": {"packId": "customer-success-pack"},
+                        "metadata": {"packId": "support-operations-pack"},
                         "status": "active",
                     }
                 ]
             )
         elif name == "marketplace_assets":
             mock.execute.return_value = MagicMock(
-                data=[{"id": "a1", "slug": "customer-success-pack", "asset_type": "department_pack"}]
+                data=[{"id": "a1", "slug": "support-operations-pack", "asset_type": "department_pack"}]
             )
         else:
             mock.execute.return_value = MagicMock(data=[])
@@ -166,7 +166,7 @@ def test_load_installed_packs_unions_marketplace_and_legacy():
     client.table.side_effect = table
     packs = load_installed_packs(client, "org-1")
     assert "sales-ops" in packs
-    assert "customer-success-pack" in packs
+    assert "support-operations-pack" in packs
     assert "support-ops" in packs  # slug mapped back to legacy id
 
 
