@@ -1,6 +1,11 @@
 # Phase 1.5 — Shared ingestion plumbing (generalize before packs)
 
-**Status:** IN PROGRESS — implementation started 2026-07-13. **Blocks** Executive / MSP / Sales Intelligence Pack builds.  
+**Status:** DONE — HTTP live smoke PASS on Railway tip 8cb6c39e @ 2026-07-13T08:31:23Z (FRED+NVD+World Bank).
+
+**Closure evidence:**
+- Service-level: docs/delivery/phase1.5-shared-plumbing-live.json (PASS @ 2026-07-13T07:52:55Z)
+- HTTP live: docs/delivery/phase1.5-shared-plumbing-http-live.json (PASS @ 2026-07-13T08:31:23Z, http_status 200, prod git_sha=8cb6c39eeb83401e889def36051dd66030d76850)
+- Ownership in HTTP artifact: gent_tool_router_wiring=deferred_to_phase_3; crm_outcome_emit=flagged_phase_5_precondition_gap; shared_functions_unchanged_for_third_source=true
 **Date:** 2026-07-13  
 **Parent:** `docs/delivery/master-knowledge-intelligence-packs-program.md`  
 **Why this exists:** Phase 1 made the pack/install/`auth_mode` layer global. The data path under it (`fetch → cache → normalize → KG → signal`) is still per-source bespoke — same shape as Wave 1 (two paths pretending to be one), one layer deeper. Closing this **before** three packs land avoids four slightly-different pipelines to unify later.

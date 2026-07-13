@@ -1,6 +1,6 @@
 # Master Project — Knowledge Packages + Intelligence Packs + Connector Categories
 
-**Status:** Phase 1 **DONE**. Phase 1.5 **IN PROGRESS** (blocks Executive/MSP/Sales pack builds).  
+**Status:** Phase 1 **DONE**. Phase 1.5 **DONE** (FRED+NVD+World Bank HTTP live PASS). Pack track unblocked for Executive/MSP/Sales builds (agent chat wiring still Phase 3).  
 **Date:** 2026-07-13  
 **Pipeline canon (all sources):**  
 
@@ -55,12 +55,16 @@ Rollup: `docs/delivery/foundation-five-gates-tip-resmoke.json`
 
 **Phase 1 = DONE** only with both DB and HTTP rows above. One layer alone was PARTIAL (per FAST-mode lesson).
 
-### Phase 1.5 — Shared ingestion plumbing (IN PROGRESS — blocks packs)
+### Phase 1.5 — Shared ingestion plumbing (DONE)
 
 **Full scope:** `docs/delivery/phase1.5-shared-ingestion-plumbing.md`  
-**Migration preflight:** `docs/delivery/phase1.5-migration-preflight.md` — **awaiting Option A/B/C** before prod apply.
+**Migration preflight:** `docs/delivery/phase1.5-migration-preflight.md` — applied on prod.
+**Live evidence:**
+- Service: `docs/delivery/phase1.5-shared-plumbing-live.json` (PASS @ 2026-07-13T07:52:55Z)
+- HTTP: `docs/delivery/phase1.5-shared-plumbing-http-live.json` (PASS @ 2026-07-13T08:31:23Z on tip `8cb6c39e`, http_status 200)
+**Ownership boundaries (still hold):** `agent_tool_router_wiring=deferred_to_phase_3` (chat cannot call these yet, by design); `crm_outcome_emit=flagged_phase_5_precondition_gap` (expectation-setting, not a blocker for current scope); `shared_functions_unchanged_for_third_source=true`.
 
-**Diagnosis:** Pack/install/`auth_mode` is global; `fetch → cache → normalize → KG → signal` is still per-source bespoke (Wave 1 shape, one layer deeper). Do **not** build Executive/MSP/Sales packs until this closes with live evidence.
+**Diagnosis:** Pack/install/`auth_mode` is global; `fetch → cache → normalize → KG → signal` is still per-source bespoke (Wave 1 shape, one layer deeper). Phase 1.5 closed with service + HTTP live evidence; pack builds may proceed (chat wiring = Phase 3).
 
 | Gate | Bar |
 |------|-----|
@@ -77,7 +81,7 @@ Rollup: `docs/delivery/foundation-five-gates-tip-resmoke.json`
 | Agent / tool / router so chat can call FRED/NVD live | **Phase 3** (Executive pack proof) | Not Phase 1.5 |
 | CRM outcome emit production callers | **Phase 5 precondition gap** | Not Phase 1.5 blocker |
 
-**Executive Intelligence Pack build: BLOCKED until Phase 1.5 DONE.**
+**Executive Intelligence Pack build: UNBLOCKED** (Phase 1.5 DONE). Agent/tool/router chat wiring remains Phase 3.
 
 ### Phase 5 placeholder
 
@@ -176,8 +180,8 @@ Catalog allowlists of packs/sources per agent; server-side deny cross-pack retri
 ICP/enrich/signal lookup nodes (read) + any HubSpot/Apollo write still through approval gate.  
 Acceptance: ICP → enrich → Apollo discover → HubSpot list create → live `tool.invoke.completed` + `result_url`.
 
-### Pack track (only after Phase 1.5 DONE)
-Executive → MSP → Sales per original build order; OpenCorporates client = shared module as previously designed. **Blocked until 1.5 live evidence.**
+### Pack track (Phase 1.5 DONE — unblocked)
+Executive → MSP → Sales per original build order; OpenCorporates client = shared module as previously designed. Chat-callable sources still Phase 3.
 
 ### Phase 5 — HELD (do not start; full prompt not filed)
 
@@ -207,4 +211,4 @@ API accounts/keys for FRED, SEC_USER_AGENT, OpenCorporates commercial token, NVD
 ~~Licensing owner~~ — **locked to Cesar** (STA-312 scope extended).  
 ~~Go Phase 1~~ — **DONE** (DB + HTTP stub evidence).  
 ~~Scope Phase 1.5~~ — **DONE** (`docs/delivery/phase1.5-shared-ingestion-plumbing.md`).  
-**Next:** (1) name migration Option A/B/C for `20260713160000_intelligence_pack_shared_plumbing.sql`; (2) deploy tip; (3) live smoke; (4) mark 1.5 DONE. Executive pack remains **blocked**.
+**Next:** Executive Intelligence Pack build may start. Phase 3 still owns agent/tool/router wiring so chat can call FRED/NVD/WB.
