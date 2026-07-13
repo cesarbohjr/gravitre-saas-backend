@@ -187,13 +187,15 @@ Memory **only** via existing opt-in gate; pack-specific signal *content* on top 
 ### Phase 3 — Bounded agent training + tool/router wiring — DONE (FRED/NVD invoke)
 `fred.series.get` / `nvd.cve.get` registered and live-proven via invoke_tool smoke. Curated chat tools `fred_get_series` / `nvd_get_cve`. Catalog allowlists via permitted_tools + scopes. World Bank chat wiring can follow same pattern later. No autonomous learning.
 
-### Phase 4 — Workflow nodes + live E2E — PARTIAL (HubSpot list create live)
+### Phase 4 — Workflow nodes + live E2E — PARTIAL (**accepted 2026-07-13**)
 Spine: `hubspot.lists.create` registered + vendor-cataloged; live smoke created list_id `9` with `result_url`.  
-Apollo discover on smoke org is **plan-limited** (`apollo.people.search` 403 free plan); `apollo.lists.create` succeeded. Full ICP→enrich→Apollo→HubSpot chain = PARTIAL until Apollo plan/scopes allow people search.  
+Apollo discover on smoke org is **plan-limited** (`apollo.people.search` 403 free plan) — accepted as PARTIAL; upgrade/master API key required for full chain.  
 Artifacts: `docs/delivery/phase4-sales-workflow-e2e-live.json`, `docs/delivery/phase4-executive-pack-live.json`.
 
-### Pack track — Executive DONE (local/prod-DB smoke); MSP → Sales next
-**Executive Intelligence Pack** (`executive-intelligence-pack`): demo Macro Analyst agent, source stubs, FRED activate + `fred.series.get` workflow — **pass** (`phase4-executive-pack-live.json`). OpenCorporates stays activation-gated.
+### Pack track — Executive DONE; MSP DONE → Sales next
+**Executive Intelligence Pack** — **DONE** (`phase4-executive-pack-live.json`).  
+**MSP Intelligence Pack** — **DONE** (`phase4-msp-pack-live.json`): Vulnerability Analyst, NVD+CISA stubs, NVD activate, `nvd.cve.get` workflow. CIS deferred. CISA invoke follow-on.  
+OpenCorporates stays activation-gated.
 
 ### Phase 5 — HELD (do not start; full prompt not filed)
 
@@ -226,4 +228,6 @@ API accounts/keys for FRED, SEC_USER_AGENT, OpenCorporates commercial token, NVD
 ~~Phase 3 FRED/NVD invoke~~ — **DONE** (`docs/delivery/phase3-fred-nvd-invoke-live.json`).  
 ~~CRM outcome first caller~~ — **wired** (`docs/delivery/crm-outcome-emit-live.json`; waiting on real HubSpot webhook volume).  
 ~~Executive Intelligence Pack~~ — **DONE** (`docs/delivery/phase4-executive-pack-live.json`).  
-**Partial:** Phase 4 HubSpot `lists.create` live; Apollo people search blocked by free-plan 403 (`phase4-sales-workflow-e2e-live.json`). Phase 5 ML remains **HELD**. Next: MSP pack / finish Phase 4 chain when Apollo plan allows.
+~~Phase 4 full E2E~~ — **PARTIAL accepted** (Apollo free-plan blocker; HubSpot list create live).  
+~~MSP Intelligence Pack~~ — **DONE** (`docs/delivery/phase4-msp-pack-live.json`).  
+**Next:** Sales Intelligence Pack. Phase 5 ML remains **HELD**.
