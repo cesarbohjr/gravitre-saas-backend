@@ -118,6 +118,9 @@ def test_hubspot_token_expired_message(_configured, mock_tokens, _auth):
     assert availability["blocking_reason"] == "token_expired"
     message = format_connector_blocking_message("hubspot", availability, action_key="hubspot.contacts.search")
     assert "authentication has expired" in message.lower()
+    from app.connectors.connector_availability_service import error_code_for_unavailable_integration
+
+    assert error_code_for_unavailable_integration(availability) == "auth_expired"
 
 
 @patch("app.connectors.connector_availability_service.list_registered_actions", return_value=["hubspot.contacts.search"])

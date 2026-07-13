@@ -1560,8 +1560,31 @@ class AgentIntelligence:
                 )
                 connector_label = str(template_vars.get("connector") or "connector").strip()
                 integration = connector_label.lower().replace(" ", "_")
-                # Existing reconnect-oriented code; taxonomy vs validation_error is STA-303.
-                error_code = "tool_not_available"
+                # Prefer live availability taxonomy: auth_expired → reconnect copy,
+                # not tool_not_available (implies never connected / not permitted).
+                from app.connectors.connector_availability_service import (
+                    error_code_for_unavailable_integration,
+                    find_integration_availability,
+                    format_connector_blocking_message,
+                )
+
+                availability = None
+                try:
+                    availability = find_integration_availability(
+                        client,
+                        org_id,
+                        integration,
+                        active_settings,
+                        environment_name=environment_name,
+                        force_live=True,
+                    )
+                except Exception:  # noqa: BLE001 — clarify must still emit a chip
+                    availability = None
+                error_code = error_code_for_unavailable_integration(availability)
+                detail = format_connector_blocking_message(
+                    integration,
+                    availability,
+                )
                 tool_name = (
                     "slack_post_message"
                     if integration == "slack"
@@ -1571,7 +1594,7 @@ class AgentIntelligence:
                 observation = {
                     "success": False,
                     "error_code": error_code,
-                    "error": str(clarification.get("reason") or ""),
+                    "error": detail or str(clarification.get("reason") or ""),
                     "integration": integration,
                     "action": tool_name,
                 }

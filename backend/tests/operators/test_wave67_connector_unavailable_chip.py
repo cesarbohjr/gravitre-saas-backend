@@ -32,6 +32,55 @@ def test_connector_unavailable_chip_shapes_tool_not_available():
     assert "connect" in shaped["error"].lower() or "connector" in shaped["error"].lower()
 
 
+def test_connector_unavailable_chip_shapes_auth_expired_when_token_expired():
+    """Expired OAuth must use auth_expired reconnect copy, not tool_not_available."""
+    tool_name = "slack_post_message"
+    observation = {
+        "success": False,
+        "error_code": "auth_expired",
+        "error": "Slack is configured, but authentication has expired. Reconnect Slack.",
+        "integration": "slack",
+        "action": tool_name,
+    }
+    complete = sse_react_tool_complete(
+        call_id="call-expired",
+        registry_tool_name=tool_name,
+        observation=observation,
+    )
+    shaped = format_react_tool_output(tool_name, observation)
+    assert complete.payload["output"]["errorCode"] == "auth_expired"
+    assert shaped["errorCode"] == "auth_expired"
+    assert "expired" in shaped["error"].lower()
+    assert "reconnect" in shaped["error"].lower()
+    assert "permitted" not in shaped["error"].lower()
+
+
+def test_error_code_for_unavailable_integration_prefers_auth_expired():
+    from app.connectors.connector_availability_service import (
+        error_code_for_unavailable_integration,
+    )
+
+    assert error_code_for_unavailable_integration(None) == "tool_not_available"
+    assert (
+        error_code_for_unavailable_integration(
+            {"auth_status": "auth_expired", "blocking_reason": "token_expired"}
+        )
+        == "auth_expired"
+    )
+    assert (
+        error_code_for_unavailable_integration(
+            {"auth_status": "connected", "blocking_reason": "missing_scope"}
+        )
+        == "permission_denied"
+    )
+    assert (
+        error_code_for_unavailable_integration(
+            {"auth_status": "not_connected", "blocking_reason": "pending_auth"}
+        )
+        == "tool_not_available"
+    )
+
+
 def test_clarification_engine_passes_template_vars_for_connector_unavailable():
     """template_vars must reach agent_intelligence for chip integration label."""
     from app.services.clarification_engine import ClarificationEngine

@@ -330,6 +330,26 @@ def find_integration_availability(
     return max(matches, key=lambda item: bool(item.get("execution_available")))
 
 
+def error_code_for_unavailable_integration(
+    availability: dict[str, Any] | None,
+) -> str:
+    """Map connector availability to chat/clarify chip errorCode.
+
+    Expired OAuth must surface as ``auth_expired`` (reconnect copy), not
+    ``tool_not_available`` (which implies the connector was never connected /
+    not permitted for the agent).
+    """
+    if not availability:
+        return "tool_not_available"
+    auth = str(availability.get("auth_status") or "").strip().lower()
+    reason = str(availability.get("blocking_reason") or "").strip().lower()
+    if auth == "auth_expired" or reason == "token_expired":
+        return "auth_expired"
+    if reason == "missing_scope":
+        return "permission_denied"
+    return "tool_not_available"
+
+
 def format_connector_blocking_message(
     integration: str,
     availability: dict[str, Any] | None,
