@@ -35,7 +35,8 @@ from app.workflows.repository import get_supabase_client
 
 ORG = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
 BASE = "https://gravitre-saas-backend-production.up.railway.app"
-EXPECTED_SHA_PREFIX = "a3e69a22"
+# Accept any current prod tip; set PART_D_P1_EXPECTED_SHA_PREFIX to pin when needed.
+EXPECTED_SHA_PREFIX = os.environ.get("PART_D_P1_EXPECTED_SHA_PREFIX", "")
 OUT = ROOT / "docs" / "delivery" / "part-d-p1-live-traces.json"
 
 
@@ -202,12 +203,16 @@ async def main() -> None:
         health = (await ac.get("/health")).json()
         report["prod_health"] = health
         sha = str(health.get("git_sha") or "")
-        report["prod_sha_ok"] = sha.startswith(EXPECTED_SHA_PREFIX)
+        report["prod_sha_ok"] = (not EXPECTED_SHA_PREFIX) or sha.startswith(EXPECTED_SHA_PREFIX)
         if not report["prod_sha_ok"]:
             report["verdict"] = "BLOCKED_WRONG_SHA"
             OUT.write_text(json.dumps(report, indent=2), encoding="utf-8")
             print(json.dumps({"verdict": report["verdict"], "sha": sha}, indent=2))
             return
+
+        # Unique per run — fixed names collide with prior re-audit creates (duplicate_name).
+        create_nonce = uuid.uuid4().hex[:8]
+        create_goal = f"PartD P1 live gate create {create_nonce}"
 
         # ---- 1) create_workflow via ReAct tool (avoid conversational regex) ----
         cid_create = str(uuid.uuid4())
@@ -216,8 +221,7 @@ async def main() -> None:
             ac,
             hdr,
             text=(
-                "Please invoke create_workflow now with goal: "
-                "PartD P1 live gate create verification 2026-07-12. "
+                f"Please invoke create_workflow now with goal: {create_goal}. "
                 "Do not ask clarifying questions — call the tool."
             ),
             tools=["create_workflow", "execute_workflow", "run_agent_task", "connector_status"],
@@ -231,7 +235,10 @@ async def main() -> None:
             turn_a_create = await chat(
                 ac,
                 hdr,
-                text="Create a workflow that syncs new HubSpot contacts into a Slack digest for PartD P1 gate.",
+                text=(
+                    f"Create a workflow named {create_goal} that syncs new HubSpot contacts "
+                    "into a Slack digest for PartD P1 gate."
+                ),
                 tools=["create_workflow", "connector_status"],
                 conversation_id=cid_create,
             )

@@ -187,15 +187,43 @@ def test_audit_events_written_on_workflow_run(mock_pii, mock_siem):
     sb.table.return_value.insert.return_value.execute.return_value = MagicMock(data=[{}])
     write_audit_event(
         sb,
-        org_id="org-1",
-        actor_id="user-1",
+        org_id="00000000-0000-0000-0000-000000000099",
+        actor_id="00000000-0000-0000-0000-000000000001",
         action="workflow.run.completed",
         resource_type="workflow",
-        resource_id="run-1",
+        resource_id="00000000-0000-0000-0000-000000000002",
         metadata={"recordsProcessed": 5},
     )
-    insert_row = sb.table.return_value.insert.call_args[0][0]
+    insert_row = sb.table.return_value.insert.call_args_list[0][0][0]
     assert insert_row["action"] == "workflow.run.completed"
+    assert insert_row["actor_id"] == "00000000-0000-0000-0000-000000000001"
+
+
+@patch("app.workflows.audit._schedule_siem_dispatch")
+@patch("app.workflows.audit._get_org_pii_mode", return_value="standard")
+def test_audit_events_skipped_when_actor_not_uuid(mock_pii, mock_siem, caplog):
+    from unittest.mock import MagicMock
+
+    from app.workflows.audit import write_audit_event
+
+    sb = MagicMock()
+    sb.table.return_value.insert.return_value.execute.return_value = MagicMock(data=[{}])
+    with caplog.at_level("WARNING"):
+        write_audit_event(
+            sb,
+            org_id="00000000-0000-0000-0000-000000000099",
+            actor_id="oauth-smoke-runner",
+            action="tool.invoke.completed",
+            resource_type="workflow_run",
+            resource_id="00000000-0000-0000-0000-000000000099",
+            metadata={"action": "apollo.lists.create"},
+        )
+
+    table_names = [c.args[0] for c in sb.table.call_args_list]
+    assert "audit_events" not in table_names
+    assert "audit_logs" in table_names
+    assert any("audit_events skipped" in r.message for r in caplog.records)
+    assert not any("audit_dual_write_gap" in r.message and "events=failed" in r.message for r in caplog.records)
 
 
 @patch("app.workflows.audit._schedule_siem_dispatch")
@@ -209,13 +237,15 @@ def test_audit_events_written_on_connector_change(mock_pii, mock_siem):
     sb.table.return_value.insert.return_value.execute.return_value = MagicMock(data=[{}])
     write_audit_event(
         sb,
-        org_id="org-1",
+        org_id="00000000-0000-0000-0000-000000000099",
         actor_id=None,
         action="connector.auth.failed",
         resource_type="connector",
-        resource_id="c-1",
+        resource_id="00000000-0000-0000-0000-0000000000c1",
         metadata={"vendor": "hubspot"},
     )
+    # Non-uuid actor → skip audit_events; still write audit_logs
+    assert sb.table.call_args_list[0].args[0] == "audit_logs"
     insert_row = sb.table.return_value.insert.call_args[0][0]
     assert insert_row["action"] == "connector.auth.failed"
 

@@ -1,13 +1,13 @@
 {
   "probe": "routing_trace_d_force",
-  "started_at": "2026-07-12T18:56:43.567671+00:00",
+  "started_at": "2026-07-12T19:45:13.598070+00:00",
   "base_url": "https://gravitre-saas-backend-production.up.railway.app",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
-  "nonce": "ed74f4d3",
+  "nonce": "a9f4bcb0",
   "attempts": [
     {
-      "prompt": "Please deliver TraceD-ed74f4d3 to #general for ops.",
+      "prompt": "Please deliver TraceD-a9f4bcb0 to #general for ops.",
       "local_classify_tier": "simple",
       "local_classify_reasons": [
         "default_length"
@@ -15,19 +15,19 @@
       "local_pinned_fast": false,
       "turn": {
         "http": 200,
-        "elapsed_ms": 11374,
-        "conversation_id": "8e93a8bf-8500-4166-8349-064b03771387",
-        "message": "Please deliver TraceD-ed74f4d3 to #general for ops.",
-        "text_head": "I can\u2019t deliver that to Slack because the Slack connector is currently in an error state, so #general isn\u2019t reachable from here. The best next move is to fix or reconnect Slack in /connectors, then I can send TraceD-ed74f4d3 to the channel for you.\nI can\u2019t deliver that to Slack because the Slack connector is currently in an error state, so #general isn\u2019t reachable from here. The best next move is ",
+        "elapsed_ms": 9900,
+        "conversation_id": "e02959c6-8917-46bb-839c-79876189710f",
+        "message": "Please deliver TraceD-a9f4bcb0 to #general for ops.",
+        "text_head": "You want TraceD-a9f4bcb0 delivered to #general for ops. I can post that to Slack now, but I need the exact message text you want sent or confirmation that I should send a brief handoff note with just that trace ID.\n\nIf you want, I can send: \u201cTraceD-a9f4bcb0 is ready for ops review.\u201d\nYou want TraceD-a9f4bcb0 delivered to #general for ops. I can post it now, but I need your confirmation on the exact",
         "tools_seen": [
           {
             "type": "tool-input-available",
             "toolName": "searchKnowledgeBase",
-            "toolCallId": "call-1a4d86656cf7"
+            "toolCallId": "call-683c27c61b67"
           },
           {
             "type": "tool-output-available",
-            "toolCallId": "call-1a4d86656cf7"
+            "toolCallId": "call-683c27c61b67"
           }
         ],
         "intel_count": 2,
@@ -46,7 +46,7 @@
       "pass": false
     },
     {
-      "prompt": "Give ops a heads-up in #general: TraceD-ed74f4d3 ready.",
+      "prompt": "Give ops a heads-up in #general: TraceD-a9f4bcb0 ready.",
       "local_classify_tier": "simple",
       "local_classify_reasons": [
         "default_length"
@@ -54,88 +54,103 @@
       "local_pinned_fast": false,
       "turn": {
         "http": 200,
-        "elapsed_ms": 7772,
-        "conversation_id": "7707a0f5-075c-47a7-ae04-dea86d590066",
-        "message": "Give ops a heads-up in #general: TraceD-ed74f4d3 ready.",
-        "text_head": "I can send the heads-up, but Slack is currently in an error state, so I can\u2019t post to #general from here yet. The best next move is to fix or reconnect Slack under Connectors; once that\u2019s healthy, I can send: \u201cTraceD-ed74f4d3 ready.\u201d\nI can send the heads-up, but Slack is currently in an error state, so I can\u2019t post to #general from here yet. The best next move is to fix or reconnect Slack under Co",
+        "elapsed_ms": 7345,
+        "conversation_id": "54b5015e-e06a-4dbf-b8a3-a66d2ad1e0b1",
+        "message": "Give ops a heads-up in #general: TraceD-a9f4bcb0 ready.",
+        "text_head": "I'll run this in Slack: **slack send message**.\n\n- Message: Heads-up: TraceD-a9f4bcb0 is ready.\n\nReply **yes** to proceed, or tell me what to change.",
         "tools_seen": [
           {
             "type": "tool-input-available",
             "toolName": "searchKnowledgeBase",
-            "toolCallId": "call-727c37a70317"
+            "toolCallId": "call-861a5fc08704"
           },
           {
             "type": "tool-output-available",
-            "toolCallId": "call-727c37a70317"
+            "toolCallId": "call-861a5fc08704"
+          },
+          {
+            "type": "tool-input-available",
+            "toolName": "slack_send_message",
+            "toolCallId": "call-5f0a36772a02"
+          },
+          {
+            "type": "tool-output-available",
+            "toolCallId": "call-5f0a36772a02"
           }
         ],
-        "intel_count": 2,
+        "intel_count": 3,
         "routing_tiers_seen": [
           "simple",
-          "simple"
+          "multi_step",
+          "multi_step"
         ],
-        "final_routingTier": "simple",
+        "final_routingTier": "multi_step",
         "effective_modes_seen": [
+          "agent",
           "agent",
           "agent"
         ],
-        "sse_escalations": []
+        "sse_escalations": [
+          {
+            "expl": "Routing escalated to multi_step",
+            "lastEscalation": {
+              "from_tier": "simple",
+              "to_tier": "multi_step",
+              "from_model": "gpt-5.4-mini",
+              "to_model": "gpt-5.5",
+              "reason": "write_tool_from_simple"
+            },
+            "routingTier": "multi_step"
+          },
+          {
+            "expl": "ReAct write gated for user approval",
+            "lastEscalation": {
+              "from_tier": "simple",
+              "to_tier": "multi_step",
+              "from_model": "gpt-5.4-mini",
+              "to_model": "gpt-5.5",
+              "reason": "write_tool_from_simple"
+            },
+            "routingTier": "multi_step"
+          }
+        ]
       },
-      "audits": [],
-      "pass": false
-    },
-    {
-      "prompt": "Put TraceD-ed74f4d3 into #general so the team sees it.",
-      "local_classify_tier": "simple",
-      "local_classify_reasons": [
-        "default_length"
+      "audits": [
+        {
+          "id": "93d6454f-115b-46ea-837c-65f71900efdc",
+          "created_at": "2026-07-12T19:45:28.932003+00:00",
+          "resource_id": "9ca33549-ef4a-432c-8817-eb3317cf8add",
+          "from_tier": "simple",
+          "to_tier": "multi_step",
+          "reason": "write_tool_from_simple",
+          "metadata_conversation_id": "54b5015e-e06a-4dbf-b8a3-a66d2ad1e0b1"
+        }
       ],
-      "local_pinned_fast": false,
-      "turn": {
-        "http": 200,
-        "elapsed_ms": 7442,
-        "conversation_id": "72424dbe-2747-445f-9f28-52e00073db96",
-        "message": "Put TraceD-ed74f4d3 into #general so the team sees it.",
-        "text_head": "I can\u2019t post to Slack from this workspace because the Slack connector is in an error state, so I\u2019m blocked on sending to `#general` right now. The one best next move is to reconnect Slack under Connectors; once that\u2019s fixed, I can place TraceD-ed74f4d3 into the channel for you.\nI can\u2019t post to `#general` right now because the Slack connector is in an error state. The team won\u2019t see it until Slack ",
-        "tools_seen": [
-          {
-            "type": "tool-input-available",
-            "toolName": "searchKnowledgeBase",
-            "toolCallId": "call-4b92b3e7c8ce"
-          },
-          {
-            "type": "tool-output-available",
-            "toolCallId": "call-4b92b3e7c8ce"
-          }
-        ],
-        "intel_count": 2,
-        "routing_tiers_seen": [
-          "simple",
-          "simple"
-        ],
-        "final_routingTier": "simple",
-        "effective_modes_seen": [
-          "agent",
-          "agent"
-        ],
-        "sse_escalations": []
-      },
-      "audits": [],
-      "pass": false
+      "pass": true
     }
   ],
   "prod_health": {
-    "git_sha": "192a6096782efa1f796600659298eb7d43d8cc97",
+    "git_sha": "c55ac7910b17d4f34deac4156b21018da6f52933",
     "status": "ok"
   },
-  "verdict": "FAIL",
-  "finished_at": "2026-07-12T18:57:11.142274+00:00",
+  "verdict": "PASS",
+  "finished_at": "2026-07-12T19:45:32.340188+00:00",
   "summary": {
-    "verdict": "FAIL",
-    "prod_sha": "192a6096782efa1f796600659298eb7d43d8cc97",
-    "attempts": 3,
-    "winning_conversation_id": null,
-    "winning_audits": [],
+    "verdict": "PASS",
+    "prod_sha": "c55ac7910b17d4f34deac4156b21018da6f52933",
+    "attempts": 2,
+    "winning_conversation_id": "54b5015e-e06a-4dbf-b8a3-a66d2ad1e0b1",
+    "winning_audits": [
+      {
+        "id": "93d6454f-115b-46ea-837c-65f71900efdc",
+        "created_at": "2026-07-12T19:45:28.932003+00:00",
+        "resource_id": "9ca33549-ef4a-432c-8817-eb3317cf8add",
+        "from_tier": "simple",
+        "to_tier": "multi_step",
+        "reason": "write_tool_from_simple",
+        "metadata_conversation_id": "54b5015e-e06a-4dbf-b8a3-a66d2ad1e0b1"
+      }
+    ],
     "note": "PASS requires durable assistant.routing.escalated audit from mid-turn write_tool_from_simple or consecutive_tool_failures"
   }
 }

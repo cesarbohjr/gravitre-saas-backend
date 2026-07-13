@@ -1,0 +1,31 @@
+{
+  "pass": true,
+  "events": [
+    {
+      "id": "c33bb7fe-b438-405e-ae92-19924b1a3d0b",
+      "action": "tool.invoke.completed",
+      "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "created_at": "2026-07-12T19:39:28.386298+00:00",
+      "metadata": {
+        "action": "apollo.lists.create",
+        "attempt": 1,
+        "step_id": null,
+        "latency_ms": 1723,
+        "connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451"
+      }
+    },
+    {
+      "id": "136b9188-62f2-43ea-8bbe-30628ddf0ee8",
+      "action": "tool.invoke.requested",
+      "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "created_at": "2026-07-12T19:39:26.434664+00:00",
+      "metadata": {
+        "action": "apollo.lists.create",
+        "step_id": null,
+        "connector_id": null
+      }
+    }
+  ],
+  "invoke_success": true,
+  "list_name": "Gravitre Actor Audit 97a0fe3ff5"
+}

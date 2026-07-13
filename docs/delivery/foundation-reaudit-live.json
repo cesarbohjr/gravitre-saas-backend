@@ -98,7 +98,7 @@
     {
       "id": 7,
       "name": "Routing wave Trace A/B/C/D",
-      "status": "PARTIAL",
+      "status": "PASS",
       "evidence": [
         "docs/delivery/routing-wave-prod-live.json",
         "docs/delivery/routing-trace-d-force.json",
@@ -108,8 +108,8 @@
         "A_fast_honesty": "PASS",
         "B_write_intent": "PASS multi_step + pending",
         "C_research": "PASS routingTier=research",
-        "D_force_escalation": "FAIL — 0 assistant.routing.escalated across 3 attempts",
-        "D_blocker": "Slack connector error/token_expired; force path expects Slack write mid-turn"
+        "D_force_escalation": "PASS — 2026-07-12T19:45Z audit 93d6454f write_tool_from_simple via slack_send_message (conv 54b5015e); Slack fe7433c3 healthy/connected",
+        "D_blocker": null
       }
     },
     {

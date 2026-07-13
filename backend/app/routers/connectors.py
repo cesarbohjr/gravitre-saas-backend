@@ -741,6 +741,12 @@ async def sync_connector_route_alias(
             )
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        except Exception as exc:  # noqa: BLE001
+            # Surface PostgREST/schema errors (e.g. missing rag_sources.created_by) instead of opaque 500.
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=error_detail(str(exc)[:300] or "Knowledge sync failed", "KNOWLEDGE_SYNC_FAILED"),
+            ) from exc
         return {
             "success": True,
             "status": "completed",

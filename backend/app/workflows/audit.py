@@ -115,23 +115,37 @@ def write_audit_event(
     pii_mode = _get_org_pii_mode(client, org_id)
     meta = redact_metadata(metadata or {}, mode=pii_mode)
 
-    events_row: dict[str, Any] = {
-        "org_id": org_id,
-        "action": action,
-        "resource_type": resource_type,
-        "resource_id": resource_id_str,
-        "metadata": meta,
-    }
-    if _is_uuid(actor_id):
-        events_row["actor_id"] = actor_id
+    # audit_events.actor_id and resource_id are uuid NOT NULL (and actor_id FKs
+    # auth.users). Never insert without both — omitting actor_id caused
+    # dual_write_gap via null-constraint failures on oauth smoke / system actors.
+    actor_uuid = str(actor_id).strip() if actor_id is not None and _is_uuid(actor_id) else None
+    resource_uuid = resource_id_str if _is_uuid(resource_id_str) else None
 
     events_ok = False
+    events_attempted = False
     logs_ok = False
-    try:
-        client.table("audit_events").insert(events_row).execute()
-        events_ok = True
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("audit_events insert failed action=%s: %s", action, exc)
+    if actor_uuid and resource_uuid:
+        events_attempted = True
+        events_row: dict[str, Any] = {
+            "org_id": org_id,
+            "action": action,
+            "resource_type": resource_type,
+            "resource_id": resource_uuid,
+            "actor_id": actor_uuid,
+            "metadata": meta,
+        }
+        try:
+            client.table("audit_events").insert(events_row).execute()
+            events_ok = True
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("audit_events insert failed action=%s: %s", action, exc)
+    else:
+        logger.warning(
+            "audit_events skipped action=%s reason=non_uuid_actor_or_resource actor=%r resource=%r",
+            action,
+            actor_id,
+            resource_id_str,
+        )
 
     label = action.replace(".", " ").replace("_", " ").title()
     contract_row: dict[str, Any] = {
@@ -140,16 +154,16 @@ def write_audit_event(
         "resource_type": resource_type,
         "details": meta,
     }
-    if _is_uuid(actor_id):
-        contract_row["actor_id"] = actor_id
-    if _is_uuid(resource_id_str):
-        contract_row["resource_id"] = resource_id_str
+    if actor_uuid:
+        contract_row["actor_id"] = actor_uuid
+    if resource_uuid:
+        contract_row["resource_id"] = resource_uuid
 
     legacy_row: dict[str, Any] = {
         "org_id": org_id,
         "action": action,
         "action_label": label,
-        "actor": actor_id,
+        "actor": str(actor_id) if actor_id is not None else "",
         "resource": resource_id_str,
         "resource_type": resource_type,
         "details": meta,
@@ -169,7 +183,7 @@ def write_audit_event(
             org_id,
             action,
         )
-    elif logs_ok and not events_ok:
+    elif events_attempted and not events_ok and logs_ok:
         logger.warning(
             "audit_dual_write_gap org_id=%s action=%s events=failed logs=ok",
             org_id,

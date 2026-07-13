@@ -188,9 +188,9 @@ def _update_connector_after_sync(
     client.table("connectors").update(
         {
             "config": config,
-            "last_synced_at": last_synced_at,
+            "last_sync_at": last_synced_at,
             "records_synced": int(pages_synced),
-            "status": "active",
+            "status": "healthy",
         }
     ).eq("id", connector_id).eq("org_id", org_id).execute()
 

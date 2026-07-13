@@ -65,6 +65,37 @@ def _supabase_client(env: dict[str, str]):
     return create_client(url, key)
 
 
+def _is_uuid(value: str) -> bool:
+    import uuid
+
+    try:
+        uuid.UUID(str(value))
+        return True
+    except (TypeError, ValueError):
+        return False
+
+
+def _resolve_org_member_actor(client, org_id: str) -> str:
+    """Pick a real auth.users UUID for audit_events.actor_id (NOT NULL + FK)."""
+    for role_filter in ("admin", None):
+        q = (
+            client.table("organization_members")
+            .select("user_id, role")
+            .eq("org_id", org_id)
+            .limit(5)
+        )
+        if role_filter:
+            q = q.eq("role", role_filter)
+        rows = q.execute()
+        for row in rows.data or []:
+            uid = str(row.get("user_id") or "").strip()
+            if _is_uuid(uid):
+                return uid
+    raise SystemExit(
+        f"No UUID org member for org {org_id}. Set OAUTH_SMOKE_USER_ID to an auth.users id."
+    )
+
+
 def _resolve_org_id(env: dict[str, str], client) -> tuple[str, str]:
     org_id = (
         env.get("OAUTH_SMOKE_ORG_ID")
@@ -80,25 +111,32 @@ def _resolve_org_id(env: dict[str, str], client) -> tuple[str, str]:
         or env.get("SMOKE_USER_ID")
         or os.environ.get("OAUTH_SMOKE_USER_ID")
         or os.environ.get("SMOKE_USER_ID")
-        or "oauth-smoke-runner"
+        or ""
     ).strip()
 
-    if org_id:
-        return org_id, actor_id
-
-    members = (
-        client.table("organization_members")
-        .select("org_id, user_id, role")
-        .eq("role", "admin")
-        .limit(1)
-        .execute()
-    )
-    if not members.data:
-        raise SystemExit(
-            "No org id found. Set OAUTH_SMOKE_ORG_ID or connect an admin org in Supabase."
+    if not org_id:
+        members = (
+            client.table("organization_members")
+            .select("org_id, user_id, role")
+            .eq("role", "admin")
+            .limit(1)
+            .execute()
         )
-    row = members.data[0]
-    return str(row["org_id"]), str(row.get("user_id") or actor_id)
+        if not members.data:
+            raise SystemExit(
+                "No org id found. Set OAUTH_SMOKE_ORG_ID or connect an admin org in Supabase."
+            )
+        row = members.data[0]
+        org_id = str(row["org_id"])
+        if not actor_id:
+            actor_id = str(row.get("user_id") or "")
+
+    # audit_events.actor_id is uuid NOT NULL REFERENCES auth.users — never pass
+    # the legacy "oauth-smoke-runner" label (caused dual_write_gap on invoke).
+    if not _is_uuid(actor_id):
+        actor_id = _resolve_org_member_actor(client, org_id)
+
+    return org_id, actor_id
 
 
 def main() -> int:

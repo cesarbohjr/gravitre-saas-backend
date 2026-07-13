@@ -1,0 +1,37 @@
+{
+  "kind": "hubspot-sync-failed-investigation",
+  "ran_at": "2026-07-13T00:55:12+00:00",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "connector_id": "547cdda5-2637-4a2b-b087-d5ea89486575",
+  "ui_symptom": "Sync failed — An unexpected error occurred. Our team has been notified.",
+  "repro_http": {
+    "path": "POST /api/connectors/547cdda5-2637-4a2b-b087-d5ea89486575/sync",
+    "status": 500,
+    "code": "INTERNAL_ERROR"
+  },
+  "root_causes": [
+    {
+      "error": "PGRST204 Could not find the 'created_by' column of 'rag_sources'",
+      "fix": "migration 20260712194500_rag_sources_created_by.sql applied to prod smyeexlrqdpymwjmgzqu"
+    },
+    {
+      "error": "PGRST204 Could not find the 'last_synced_at' column of 'connectors'",
+      "fix": "knowledge_sync_service._update_connector_after_sync now writes last_sync_at (and status=healthy)"
+    }
+  ],
+  "local_verify_after_fix": {
+    "pass": true,
+    "source_id": "555c0391-37c4-45b1-8106-e1b51e6bcdb8",
+    "pages_synced": 0,
+    "jobs_queued": 0,
+    "connector_status": "healthy",
+    "last_sync_at": "2026-07-13T00:55:12.519209+00:00",
+    "non_blocking_errors": [
+      "email: HubSpot API 403: /crm/v3/objects/emails/search"
+    ]
+  },
+  "deploy_needed": [
+    "backend/app/services/knowledge_sync_service.py (last_sync_at)",
+    "backend/app/routers/connectors.py (surface knowledge sync errors instead of opaque 500)"
+  ]
+}
