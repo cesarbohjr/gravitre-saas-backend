@@ -1,0 +1,20 @@
+{
+  "probe": "auth_expired_clarify_chip",
+  "finished_at": "2026-07-13T17:58:45.038501+00:00",
+  "prod_sha": "e29668e389285c5ba2146a6a0456746571aac4f0",
+  "conversation_id": "f1d370d0-a8bf-43b3-bbca-26121e8061d3",
+  "http": 200,
+  "text": "Authentication expired for Slack. Reconnect it at /connectors, then try again.",
+  "error_codes": [
+    "auth_expired"
+  ],
+  "chips": [
+    {
+      "type": "tool-output-available",
+      "errorCode": "auth_expired",
+      "error": "Authentication expired for Slack. Reconnect it at /connectors, then try again.",
+      "toolName": null
+    }
+  ],
+  "pass": true
+}
