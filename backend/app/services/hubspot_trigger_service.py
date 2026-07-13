@@ -20,6 +20,83 @@ from app.workflows.schema import compute_run_hash
 
 logger = logging.getLogger(__name__)
 
+# Explicit HubSpot dealstage values only — never invent labels.
+_CLOSED_WON_VALUES = frozenset(
+    {
+        "closedwon",
+        "closed_won",
+        "closed-won",
+        "won",
+    }
+)
+_CLOSED_LOST_VALUES = frozenset(
+    {
+        "closedlost",
+        "closed_lost",
+        "closed-lost",
+        "lost",
+    }
+)
+
+
+def map_hubspot_event_to_crm_outcome(event: dict[str, Any], normalized: dict[str, Any]) -> dict[str, Any] | None:
+    """Return outcome mapping when evidence is explicit; otherwise None (skip)."""
+    subscription_type = str(event.get("subscriptionType") or event.get("eventType") or "")
+    property_name = str(event.get("propertyName") or "").strip().lower()
+    property_value = str(event.get("propertyValue") or "").strip().lower().replace(" ", "")
+
+    if subscription_type.startswith("deal.") and property_name in {"dealstage", "hs_deal_stage"}:
+        if property_value in _CLOSED_WON_VALUES:
+            deal = normalized.get("deal") or {}
+            return {
+                "outcome_type": "won",
+                "external_record_id": deal.get("id") or str(event.get("objectId") or ""),
+            }
+        if property_value in _CLOSED_LOST_VALUES:
+            deal = normalized.get("deal") or {}
+            return {
+                "outcome_type": "lost",
+                "external_record_id": deal.get("id") or str(event.get("objectId") or ""),
+            }
+    return None
+
+
+def maybe_emit_crm_outcome_from_hubspot_event(
+    client: Any,
+    *,
+    org_id: str,
+    event: dict[str, Any],
+    normalized: dict[str, Any],
+) -> dict[str, Any] | None:
+    """First production caller for ingest_crm_recommendation_outcome (Phase 5 precondition)."""
+    mapped = map_hubspot_event_to_crm_outcome(event, normalized)
+    if not mapped:
+        return None
+    ext_id = str(mapped.get("external_record_id") or "").strip()
+    if not ext_id:
+        logger.debug("hubspot_crm_outcome_skip_missing_object_id")
+        return None
+    from app.services.crm_outcome_capture_service import ingest_crm_recommendation_outcome
+
+    try:
+        return ingest_crm_recommendation_outcome(
+            client,
+            org_id=org_id,
+            outcome_type=str(mapped["outcome_type"]),
+            connector_type="hubspot",
+            external_record_id=ext_id,
+            metadata={
+                "source": "hubspot_webhook",
+                "subscriptionType": event.get("subscriptionType") or event.get("eventType"),
+                "propertyName": event.get("propertyName"),
+                "propertyValue": event.get("propertyValue"),
+                "portalId": event.get("portalId"),
+            },
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("hubspot_crm_outcome_emit_failed org_id=%s err=%s", org_id, exc)
+        return None
+
 
 def _resolve_triggered_by(client: Any, org_id: str) -> str:
     membership = (
@@ -237,10 +314,33 @@ async def process_hubspot_event_batch(
                 property_name=str(property_name) if property_name is not None else None,
             )
         ]
+
+        normalized = normalize_hubspot_event(event)
+        # Phase 5 precondition: emit CRM outcomes even when no workflow triggers match
+        crm_emit = maybe_emit_crm_outcome_from_hubspot_event(
+            client,
+            org_id=org_id,
+            event=event,
+            normalized=normalized,
+        )
+        if crm_emit:
+            logger.info(
+                "hubspot_crm_outcome_emitted org_id=%s outcome=%s id=%s",
+                org_id,
+                crm_emit.get("outcomeType"),
+                crm_emit.get("id"),
+            )
+            outcomes.append(
+                {
+                    "crm_outcome": crm_emit,
+                    "connector_id": connector_id,
+                    "status": "crm_outcome_recorded",
+                }
+            )
+
         if not matching:
             continue
 
-        normalized = normalize_hubspot_event(event)
         access_token, token_err = ensure_hubspot_access_token(
             client,
             org_id,

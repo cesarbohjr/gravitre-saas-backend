@@ -26,17 +26,47 @@ def ingest_crm_recommendation_outcome(
     metadata: dict[str, Any] | None = None,
     occurred_at: str | None = None,
 ) -> dict[str, Any]:
-    """Persist one labeled CRM outcome. Raises ValueError on invalid type."""
+    """Persist one labeled CRM outcome. Raises ValueError on invalid type.
+
+    Soft-dedupes on (org_id, connector_type, external_record_id, outcome_type) when
+    external_record_id is present — select-before-insert, no schema change.
+    """
     outcome = str(outcome_type or "").strip().lower()
     if outcome not in CRM_OUTCOME_TYPES:
         raise ValueError(f"Invalid CRM outcome_type: {outcome_type}")
+
+    ctype = (connector_type or "").strip().lower() or None
+    ext_id = (external_record_id or "").strip() or None
+
+    if ext_id and ctype:
+        try:
+            existing = (
+                client.table("crm_recommendation_outcomes")
+                .select("id")
+                .eq("org_id", org_id)
+                .eq("connector_type", ctype)
+                .eq("external_record_id", ext_id)
+                .eq("outcome_type", outcome)
+                .limit(1)
+                .execute()
+            )
+            rows = getattr(existing, "data", None)
+            if isinstance(rows, list) and rows:
+                return {
+                    "stored": False,
+                    "deduped": True,
+                    "id": str(rows[0]["id"]),
+                    "outcomeType": outcome,
+                }
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("crm_outcome_dedupe_lookup_skipped err=%s", exc)
 
     row = {
         "id": str(uuid4()),
         "org_id": org_id,
         "outcome_type": outcome,
-        "connector_type": (connector_type or "").strip().lower() or None,
-        "external_record_id": (external_record_id or "").strip() or None,
+        "connector_type": ctype,
+        "external_record_id": ext_id,
         "recommendation_id": (recommendation_id or "").strip() or None,
         "icp_score": icp_score,
         "metadata": metadata or {},
@@ -47,7 +77,7 @@ def ingest_crm_recommendation_outcome(
     except Exception as exc:  # noqa: BLE001
         logger.warning("crm_outcome_ingest_failed org_id=%s err=%s", org_id, exc)
         raise
-    return {"stored": True, "id": row["id"], "outcomeType": outcome}
+    return {"stored": True, "deduped": False, "id": row["id"], "outcomeType": outcome}
 
 
 def count_crm_outcomes(client: Any, org_id: str) -> int:
