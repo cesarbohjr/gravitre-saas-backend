@@ -59,6 +59,35 @@ class ClarificationEngine:
         re.I,
     )
 
+    # Connector writes with an explicit vendor target — do not ask the generic
+    # "which record/workflow" question (leaks intents like workflow_execution).
+    SLACK_SEND_PATTERN = re.compile(
+        r"(?:\b(?:post|send|notify|draft|compose)\b.+\bslack\b)"
+        r"|(?:\bslack\b.+\b(?:post|send|message|notify|draft|compose)\b)",
+        re.I,
+    )
+    SLACK_CHANNEL_TOKEN = re.compile(
+        r"(#[\w-]+)"
+        r"|(?:\bin|to)\s+(?:the\s+)?([a-z0-9_-]+)\s+channel\b"
+        r"|(?:\bchannel\s+)([a-z0-9_-]+)\b"
+        r"|(?:\b(?:to|in)\s+slack\b)",
+        re.I,
+    )
+    QUOTED = re.compile(r"[\"']([^\"']{1,500})[\"']")
+    PLACEHOLDER_MESSAGE = re.compile(
+        r"^(?:a\s+)?(?:message|msg|note|notification|update|summary|this|it)$",
+        re.I,
+    )
+
+    INTENT_ACTION_LABELS: dict[str, str] = {
+        "workflow_execution": "do that",
+        "optimization": "optimize this",
+        "data_analysis": "analyze this",
+        "connector_action": "run that connector action",
+        "search": "search",
+        "question": "answer that",
+    }
+
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
         self._state = get_conversation_state_service(self.settings)
@@ -114,7 +143,7 @@ class ClarificationEngine:
                 context,
                 conversation_history or [],
                 {
-                    "action": classification.get("intent") or "this action",
+                    "action": self._humanize_action(classification.get("intent") or "this action"),
                     "specific_question": "Could you share the target and any constraints?",
                 },
             )
@@ -180,7 +209,9 @@ class ClarificationEngine:
                     "trigger_type": "high_risk_confirmation",
                     "reason": "High-risk action requires explicit confirmation.",
                     "template_vars": {
-                        "action_description": f"{classification.get('intent') or 'perform this action'}",
+                        "action_description": self._humanize_action(
+                            classification.get("intent") or "perform this action"
+                        ),
                     },
                 }
 
@@ -200,13 +231,22 @@ class ClarificationEngine:
                         "template_vars": {"connector": connector.replace("_", " ").title()},
                     }
 
+        # Slack send/post: ask for message body (and channel if missing) — never
+        # surface raw intents like "workflow_execution".
+        if classification.get("requires_action") and self.SLACK_SEND_PATTERN.search(request):
+            slack_trigger = self._slack_send_clarification(request, clarified)
+            if slack_trigger is not None:
+                return slack_trigger
+            # Channel + body present (or already clarified) — let mapper/execution proceed.
+            return None
+
         if classification.get("requires_action") and self.ACTION_VERBS.search(request):
             if not clarified.get("action_target") and not understanding.get("entities"):
                 return {
                     "trigger_type": "missing_required_param",
                     "reason": "Action request missing target.",
                     "template_vars": {
-                        "action": classification.get("intent") or "complete this",
+                        "action": self._humanize_action(classification.get("intent") or "complete this"),
                         "missing_param": "which record, workflow, or resource to act on",
                     },
                 }
@@ -233,12 +273,90 @@ class ClarificationEngine:
                 "trigger_type": "under_specified_action",
                 "reason": "Under-specified action request.",
                 "template_vars": {
-                    "action": classification.get("intent") or "help with this",
+                    "action": self._humanize_action(classification.get("intent") or "help with this"),
                     "specific_question": "What is the target and desired outcome?",
                 },
             }
 
         return None
+
+    def _humanize_action(self, value: str) -> str:
+        """Never show snake_case classifier intents in user-facing copy."""
+        raw = str(value or "").strip()
+        if not raw:
+            return "complete this"
+        key = raw.lower().replace(" ", "_")
+        if key in self.INTENT_ACTION_LABELS:
+            return self.INTENT_ACTION_LABELS[key]
+        if "_" in raw:
+            return raw.replace("_", " ")
+        return raw
+
+    def _slack_channel_label(self, request: str) -> str | None:
+        match = self.SLACK_CHANNEL_TOKEN.search(request)
+        if not match:
+            return None
+        if match.group(1):
+            return match.group(1).lstrip("#")
+        if match.group(2):
+            return match.group(2)
+        if match.group(3):
+            return match.group(3)
+        # "(?:to|in) slack" with no named channel — default like the mapper.
+        return "general"
+
+    def _slack_message_body(self, request: str) -> str | None:
+        quoted = self.QUOTED.findall(request)
+        if quoted:
+            return quoted[-1].strip()
+        post_match = re.search(
+            r"(?:post|send|notify|message|draft|compose)\s+(?:a\s+|this\s+)?(.+?)"
+            r"(?:\s+(?:to|in)\s+(?:the\s+)?(?:slack|#|[\w-]+\s+channel)|"
+            r"\s+for\s+approval|$)",
+            request,
+            re.I,
+        )
+        if not post_match:
+            return None
+        body = post_match.group(1).strip(" .")
+        # Drop trailing "… channel" fragments when channel was captured in the body group.
+        body = re.sub(r"\s+(?:in|to)\s+slack\b.*$", "", body, flags=re.I).strip()
+        if not body or self.PLACEHOLDER_MESSAGE.match(body):
+            return None
+        if body.lower() in {"message in slack", "a message in slack"}:
+            return None
+        return body
+
+    def _slack_send_clarification(
+        self,
+        request: str,
+        clarified: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        if clarified.get("slack_message") or clarified.get("action_target"):
+            return None
+        channel = self._slack_channel_label(request)
+        body = self._slack_message_body(request)
+        if body and channel:
+            return None
+        if not body:
+            where = f"#{channel}" if channel else "Slack"
+            return {
+                "trigger_type": "missing_required_param",
+                "reason": "Slack send missing message body.",
+                "template_vars": {
+                    "action": f"send a Slack message to {where}" if channel else "send a Slack message",
+                    "missing_param": "what the message should say",
+                },
+            }
+        # Body present but no channel cue.
+        return {
+            "trigger_type": "missing_required_param",
+            "reason": "Slack send missing channel.",
+            "template_vars": {
+                "action": "send a Slack message",
+                "missing_param": "which channel to post in (for example #general)",
+            },
+        }
 
     async def generate_clarification_question(
         self,
