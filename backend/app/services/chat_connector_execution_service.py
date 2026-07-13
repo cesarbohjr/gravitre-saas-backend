@@ -897,6 +897,10 @@ class ChatConnectorExecutionService:
             environment_name=environment_name,
         )
         plan = infer_missing_parameters(plan, inference_context)
+        # STA-305 — omit-name apollo.lists.create must get MSP Prospects (or explicit
+        # message name) before schema validation, or validate_connector_plan asks
+        # for "list name" and never stages awaiting_confirm.
+        plan = enrich_plan_inference_metadata(plan, message=message or "")
 
         clarification = validate_connector_plan(plan, message)
         if clarification:

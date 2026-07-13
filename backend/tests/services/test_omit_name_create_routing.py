@@ -113,6 +113,54 @@ async def test_omit_name_apollo_list_process_turn_routes_to_lists_create_autopla
 
 
 @pytest.mark.asyncio
+async def test_omit_name_lists_create_empty_args_enriched_before_validate():
+    """Mapper path with args={} must enrich MSP Prospects before schema clarify."""
+    service = ChatConnectorExecutionService()
+    _wire_task_state_store(service)
+
+    empty = ConnectorActionPlan(
+        tool_name="apollo_lists_create",
+        invoke_action="apollo.lists.create",
+        integration="apollo",
+        kind="write",
+        label="Create contact list",
+        args={},
+        requires_approval=True,
+    )
+
+    with patch.object(service, "_live_connected_integrations", return_value=["apollo"]), patch.object(
+        service,
+        "plan_action",
+        return_value=empty,
+    ), patch(
+        "app.services.chat_connector_execution_service.find_integration_availability",
+        return_value={"execution_available": True, "connector_id": "apollo-1"},
+    ), patch.object(service, "_verify_plan_executable", return_value=None), patch.object(
+        service,
+        "_evaluate_risk",
+        new=AsyncMock(return_value={"requires_approval": True}),
+    ):
+        result = await service.process_turn(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            message=OMIT_NAME_APOLLO_LIST,
+            classification={"intent": "connector_action", "requires_action": True},
+            task_state={},
+            connected_integrations=["apollo"],
+            client=MagicMock(),
+        )
+
+    assert result is not None
+    assert result.get("dialogue_mode") == "confirm"
+    assert "Still needed" not in str(result.get("message") or "")
+    pending = (result.get("task_state") or {}).get("pending_task") or {}
+    params = pending.get("params") or {}
+    assert params.get("args", {}).get("name") == "MSP Prospects"
+    assert "name" in (params.get("inferred_fields") or [])
+
+
+@pytest.mark.asyncio
 async def test_omit_name_apollo_list_does_not_execute_lists_list_read():
     """Shadowed lists.list must never become the executed/confirmed action."""
     service = ChatConnectorExecutionService()
