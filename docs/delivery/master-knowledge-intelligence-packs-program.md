@@ -1,6 +1,6 @@
 # Master Project — Knowledge Packages + Intelligence Packs + Connector Categories
 
-**Status:** Phase 1 **DONE** (2026-07-13) — DB + HTTP evidence linked below.  
+**Status:** Phase 1 **DONE**. Phase 1.5 **IN PROGRESS** (blocks Executive/MSP/Sales pack builds).  
 **Date:** 2026-07-13  
 **Pipeline canon (all sources):**  
 
@@ -55,9 +55,35 @@ Rollup: `docs/delivery/foundation-five-gates-tip-resmoke.json`
 
 **Phase 1 = DONE** only with both DB and HTTP rows above. One layer alone was PARTIAL (per FAST-mode lesson).
 
+### Phase 1.5 — Shared ingestion plumbing (IN PROGRESS — blocks packs)
+
+**Full scope:** `docs/delivery/phase1.5-shared-ingestion-plumbing.md`  
+**Migration preflight:** `docs/delivery/phase1.5-migration-preflight.md` — **awaiting Option A/B/C** before prod apply.
+
+**Diagnosis:** Pack/install/`auth_mode` is global; `fetch → cache → normalize → KG → signal` is still per-source bespoke (Wave 1 shape, one layer deeper). Do **not** build Executive/MSP/Sales packs until this closes with live evidence.
+
+| Gate | Bar |
+|------|-----|
+| A — Same shared functions | ONE `cache_get`/`cache_set`, ONE `normalize_source_result` dispatcher (mappers plugged in), ONE `write_external_entity_with_provenance`, ONE PackSignalDefinition registration path — FRED+NVD as registrations, not copies |
+| B — Third-source proof | World Bank = mapper + PackSignalDefinition only; **zero** changes to shared cache/KG-write/registry internals — else not DONE |
+| C — Live prod | Cache row + KG/provenance write + signal registration for **FRED, NVD, and World Bank** on Railway tip (not local-only) |
+| D — Ownership fields in artifact | `agent_tool_router_wiring: deferred_to_phase_3`; `crm_outcome_emit: flagged_phase_5_precondition_gap` |
+
+**Phase ownership (locked):**
+
+| Concern | Owns | Not |
+|---------|------|-----|
+| Shared cache / normalize / KG write / PackSignalDefinition | **Phase 1.5** | — |
+| Agent / tool / router so chat can call FRED/NVD live | **Phase 3** (Executive pack proof) | Not Phase 1.5 |
+| CRM outcome emit production callers | **Phase 5 precondition gap** | Not Phase 1.5 blocker |
+
+**Executive Intelligence Pack build: BLOCKED until Phase 1.5 DONE.**
+
 ### Phase 5 placeholder
 
 Phase 5 (ML/predictive layer) — scoped and reviewed in conversation, **held** pending outcome-data volume and governance re-review; revive from chat when Phase 0–4 are live-verified — do not execute a stale docs prompt.
+
+**Known precondition gap (surfaced 2026-07-13):** `crm_recommendation_outcomes` schema + `ingest_*` exist; **zero production callers**. Real outcome-data volume for Phase 5 is **not close**. Track explicitly; do not treat as Phase 1.5 scope.
 
 ---
 
@@ -82,7 +108,7 @@ Three modes as **one** `auth_mode` enum on catalog metadata — not three codeba
 Packs are **marketplace-installable demos**: agents + workflows + connectors + knowledge wiring + bounded agent context allowlists — production-ready customer demos, not vapor UI.
 
 ### C. Pipeline (same funnel for all)
-See stage reality table below. Phase 2 builds **minimum real** KG/signal wiring for cleared sources only — not the full aspirational engine.
+See stage reality table below. **Phase 1.5** generalizes the shared cache → normalize → KG → PackSignalDefinition path (FRED + NVD + World Bank proof). Later pack work uses that path; it must not invent parallel plumbing.
 
 ### D. Explicitly out of this pass
 - Stripe subscription charge wiring (usage logging only until SKUs)  
@@ -129,26 +155,33 @@ ML stack Phase 0 (`docs/delivery/ml-stack-phase0-findings.json`): Recommendation
 
 ## Sequenced delivery plan
 
-### Phase 1 — Catalog `auth_mode` + BYO fail-closed + gravitree sources (public first)
+### Phase 1 — Catalog `auth_mode` + BYO fail-closed + gravitree sources (public first) — DONE
 Order: FRED/SEC/WB/OECD → OpenCorporates/NVD/CISA → confirm Apollo `customer_owned` → ZoomInfo/LI Sales Nav **tests first** → PDL/Crunchbase last (stop at cache until governance owner clears).  
-Marketplace category template: Install pre-stages connectors as needs-connection; **no** auto-auth.
+Marketplace category template: Install pre-stages connectors as needs-connection; **no** auto-auth.  
+Evidence: DB + HTTP stub artifacts above.
 
-### Phase 2 — Pipeline wiring (cleared sources only)
-Durable cache + provenance → KG (where allowed) → minimal signal detection → Memory **only** via existing opt-in gate.
+### Phase 1.5 — Shared ingestion plumbing — IN PROGRESS (blocks packs)
+Durable cache + one normalize dispatcher + one provenance KG write + one PackSignalDefinition path. Prove with FRED + NVD, then World Bank third-source test. Live prod evidence required.  
+Spec: `docs/delivery/phase1.5-shared-ingestion-plumbing.md`.  
+**No Executive/MSP/Sales pack build until DONE.** Migration: await explicit Option A/B/C.
 
-### Phase 3 — Bounded agent training
-Catalog allowlists of packs/sources per agent; server-side deny cross-pack retrieval. No autonomous learning.
+### Phase 2 — Pack-facing use of shared path (after 1.5)
+Memory **only** via existing opt-in gate; pack-specific signal *content* on top of PackSignalDefinition — **not** new per-source cache/KG plumbing.
+
+### Phase 3 — Bounded agent training + tool/router wiring (Executive proof)
+Catalog allowlists of packs/sources per agent; server-side deny cross-pack retrieval.  
+**Also owns:** wire shared Phase 1.5 functions into the real agent/tool/router path so chat can call FRED/NVD (etc.) live. No autonomous learning.
 
 ### Phase 4 — Workflow nodes + live E2E
 ICP/enrich/signal lookup nodes (read) + any HubSpot/Apollo write still through approval gate.  
 Acceptance: ICP → enrich → Apollo discover → HubSpot list create → live `tool.invoke.completed` + `result_url`.
 
-### Pack track (parallel after Phase 1 skeleton)
-Executive → MSP → Sales per original build order; OpenCorporates client = shared module as previously designed.
+### Pack track (only after Phase 1.5 DONE)
+Executive → MSP → Sales per original build order; OpenCorporates client = shared module as previously designed. **Blocked until 1.5 live evidence.**
 
 ### Phase 5 — HELD (do not start; full prompt not filed)
 
-See **Phase 5 placeholder** under Product decisions. Do not expand into a standalone delivery prompt until preconditions are met.
+See **Phase 5 placeholder** under Product decisions. Do not expand into a standalone delivery prompt until preconditions are met. CRM outcome emit still unwired — outcome volume precondition not met.
 
 ---
 
@@ -172,4 +205,6 @@ API accounts/keys for FRED, SEC_USER_AGENT, OpenCorporates commercial token, NVD
 ## Immediate asks
 
 ~~Licensing owner~~ — **locked to Cesar** (STA-312 scope extended).  
-~~Go Phase 1~~ — **in progress** (stubs + auth_mode + public sources + BYO tests).
+~~Go Phase 1~~ — **DONE** (DB + HTTP stub evidence).  
+~~Scope Phase 1.5~~ — **DONE** (`docs/delivery/phase1.5-shared-ingestion-plumbing.md`).  
+**Next:** (1) name migration Option A/B/C for `20260713160000_intelligence_pack_shared_plumbing.sql`; (2) deploy tip; (3) live smoke; (4) mark 1.5 DONE. Executive pack remains **blocked**.
