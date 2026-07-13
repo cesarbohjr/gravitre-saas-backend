@@ -1,14 +1,27 @@
 {
   "item": 4,
   "kind": "crm-outcome-capture",
-  "ran_at": "2026-07-13T02:30:00.000000+00:00",
+  "ran_at": "2026-07-13T03:31:08.000000+00:00",
+  "verified_at": "2026-07-13T03:31:30.000000+00:00",
   "schema": "supabase/migrations/20260713120000_crm_recommendation_outcomes.sql",
   "service": "backend/app/services/crm_outcome_capture_service.py",
   "outcome_types": ["contacted", "replied", "booked", "won", "lost"],
   "ml": false,
   "synthetic_labels": false,
-  "prod_migration_applied": false,
+  "human_choice": "Option A",
+  "prod_project_id": "smyeexlrqdpymwjmgzqu",
+  "prod_migration_applied": true,
+  "prod_migration_version": "20260713033108",
+  "prod_migration_name": "crm_recommendation_outcomes",
+  "probe": {
+    "table_regclass": "crm_recommendation_outcomes",
+    "total_rows": 0,
+    "smoke_org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+    "smoke_org_rows": 0,
+    "rls_enabled": true,
+    "policy_count": 1
+  },
   "live_events": 0,
   "status": "waiting_on_crm_sync",
-  "note": "Schema + ingest stub shipped. Migration not applied to prod in this pass — requires Option A/B/C. No live CRM sync events available to land yet; empty probe is expected until EngageBay/HubSpot sync emits outcomes."
+  "note": "Option A applied on prod. Empty probe PASS (0 rows). No synthetic labels inserted. Waiting on EngageBay/HubSpot connector/sync to emit real CRM outcome events into crm_recommendation_outcomes."
 }
