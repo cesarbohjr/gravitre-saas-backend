@@ -124,7 +124,7 @@ function AgentOrb({ agent, status }: { agent: Agent; status: typeof statusConfig
       {/* Main orb */}
       <motion.div
         className={cn(
-          "relative h-32 w-32 rounded-3xl flex items-center justify-center bg-gradient-to-br",
+          "relative h-20 w-20 sm:h-24 sm:w-24 rounded-3xl flex items-center justify-center bg-gradient-to-br",
           agent.personality.gradient,
           "shadow-2xl"
         )}
@@ -138,7 +138,7 @@ function AgentOrb({ agent, status }: { agent: Agent; status: typeof statusConfig
         {/* Inner content */}
         <div className="text-center">
           <motion.span 
-            className="text-4xl font-bold text-white"
+            className="text-2xl sm:text-3xl font-bold text-white"
             animate={{ opacity: [0.9, 1, 0.9] }}
             transition={{ duration: 2, repeat: Infinity }}
           >
@@ -333,9 +333,9 @@ export default function AgentProfilePage({
           <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-emerald-500/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
           <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-teal-500/10 to-transparent rounded-full blur-3xl translate-y-1/2 -translate-x-1/3" />
           
-          <div className="relative px-8 py-8">
+          <div className="relative px-4 py-5 sm:px-8 sm:py-6">
             {/* Breadcrumb */}
-            <div className="flex items-center gap-2 text-sm mb-8">
+            <div className="flex items-center gap-2 text-sm mb-5 sm:mb-6">
               <Link
                 href="/agents"
                 className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
@@ -347,7 +347,7 @@ export default function AgentProfilePage({
               <span className="text-foreground">{agent.name}</span>
             </div>
 
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
               {/* Left: Agent Identity */}
               <div className="lg:col-span-4">
                 <div className="flex flex-col items-center text-center">
@@ -357,9 +357,9 @@ export default function AgentProfilePage({
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="mt-8"
+                    className="mt-6 w-full"
                   >
-                    <h1 className="text-3xl font-bold text-foreground mb-1">{agent.name}</h1>
+                    <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-1 break-words">{agent.name}</h1>
                     <p className="text-muted-foreground mb-2">{agent.role}</p>
                     <p className="text-sm text-emerald-400 font-medium">{agent.tagline}</p>
                   </motion.div>
@@ -369,7 +369,7 @@ export default function AgentProfilePage({
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
-                    className="flex flex-col gap-2 mt-6 w-full max-w-xs"
+                    className="flex flex-col gap-2 mt-5 w-full max-w-xs"
                   >
                     <Button 
                       className="w-full gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 shadow-lg shadow-emerald-500/25"
@@ -487,7 +487,7 @@ export default function AgentProfilePage({
         </div>
 
         {/* Content Tabs */}
-        <div className="flex-1 px-8 py-6">
+        <div className="flex-1 px-4 py-6 sm:px-8">
           {/* Tab Navigation */}
           <div className="flex items-center gap-1 p-1 rounded-xl bg-secondary/50 w-fit mb-6">
             {[
@@ -519,7 +519,7 @@ export default function AgentProfilePage({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="grid grid-cols-2 gap-6"
+                className="grid grid-cols-1 gap-6 sm:grid-cols-2"
               >
                 <div className="rounded-xl border border-border bg-card/50 p-6 col-span-2">
                   <AgentCapabilitiesCard
