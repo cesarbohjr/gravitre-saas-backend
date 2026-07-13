@@ -25,6 +25,23 @@ class ApolloAPIError(Exception):
         self.details = details
 
 
+def is_apollo_plan_limit_error(exc: ApolloAPIError) -> bool:
+    """True when Apollo rejects the call due to plan/key scope — not expired auth."""
+    if exc.status_code != 403:
+        return False
+    text = f"{exc} {exc.details or ''}".lower()
+    markers = (
+        "free plan",
+        "upgrade your plan",
+        "upgrade your",
+        "not accessible with this access token",
+        "not accessible with this api_key",
+        "api_inaccessible",
+        "please upgrade",
+    )
+    return any(marker in text for marker in markers)
+
+
 def _format_apollo_error_detail(detail: Any) -> str:
     """Extract a short human-readable reason from Apollo error payloads."""
     if detail is None:
@@ -78,6 +95,14 @@ def resolve_apollo_connector(
         raise ApolloAPIError("No active Apollo connector found", status_code=404)
     cid = str(conn["id"])
 
+    # Prefer master API key when present — People/Companies API Search often rejects
+    # free-plan OAuth bearer tokens with 403 plan limits even while OAuth is "connected".
+    api_key = get_decrypted_secret(client, cid, "api_token", settings) or get_decrypted_secret(
+        client, cid, "api_key", settings
+    )
+    if api_key:
+        return cid, {"X-Api-Key": api_key.strip()}
+
     oauth_tokens = load_oauth_tokens(client, cid, settings)
     if oauth_tokens and oauth_tokens.get("access_token"):
         access, err = ensure_generic_session(
@@ -92,12 +117,6 @@ def resolve_apollo_connector(
             return cid, {"Authorization": f"Bearer {access}"}
         if err and _connector_auth_type(client, org_id, cid) == "oauth":
             raise ApolloAPIError(err, status_code=401)
-
-    api_key = get_decrypted_secret(client, cid, "api_token", settings) or get_decrypted_secret(
-        client, cid, "api_key", settings
-    )
-    if api_key:
-        return cid, {"X-Api-Key": api_key.strip()}
 
     raise ApolloAPIError("Apollo OAuth or API key not configured", status_code=401)
 
@@ -160,17 +179,30 @@ def _request(
 
 
 def verify_apollo_credentials(auth_headers: dict[str, str]) -> bool:
-    """Lightweight health probe for OAuth bearer or API key."""
+    """Lightweight health probe for OAuth bearer or API key.
+
+    Avoids People API Search — free/basic keys often 403 that endpoint while auth is valid.
+    """
     try:
         if "Authorization" in auth_headers:
             _request(auth_headers, "GET", "/users/api_profile")
             return True
         api_key = auth_headers.get("X-Api-Key")
         if api_key:
-            _request({"X-Api-Key": api_key}, "POST", "/mixed_people/api_search", params={"per_page": 1})
+            # Labels is a light authenticated call; falls back to api_profile.
+            try:
+                _request({"X-Api-Key": api_key}, "GET", "/labels")
+            except ApolloAPIError as exc:
+                if is_apollo_plan_limit_error(exc):
+                    _request({"X-Api-Key": api_key}, "GET", "/users/api_profile")
+                else:
+                    raise
             return True
         return False
     except ApolloAPIError as exc:
+        if is_apollo_plan_limit_error(exc):
+            # Credentials work; plan blocks some routes — still connected.
+            return True
         if exc.status_code in {401, 403}:
             return False
         raise
@@ -212,6 +244,8 @@ def apollo_connection_auth_status(
         _ = cid
         return "connected" if verify_apollo_credentials(headers) else "auth_expired"
     except ApolloAPIError as exc:
+        if is_apollo_plan_limit_error(exc):
+            return "connected"
         if exc.status_code in {401, 403, 404}:
             return "auth_expired" if exc.status_code != 404 else "misconfigured"
         return "misconfigured"

@@ -99,6 +99,58 @@ def map_world_bank(raw: SourceResult) -> list[NormalizedExternalRecord]:
     ]
 
 
+def map_cisa_kev(raw: SourceResult) -> list[NormalizedExternalRecord]:
+    data = raw.get("data")
+    payload = data if isinstance(data, dict) else {"raw": data}
+    prov = dict(raw.get("provenance") or {})
+    sample = payload.get("sample") if isinstance(payload, dict) else None
+    sample_list = sample if isinstance(sample, list) else []
+    count = int(payload.get("count") or len(sample_list) or 0) if isinstance(payload, dict) else 0
+    first = sample_list[0] if sample_list else {}
+    cve = str((first or {}).get("cveID") or (first or {}).get("cveId") or "kev-feed").upper()
+    title = str((first or {}).get("vulnerabilityName") or f"CISA KEV feed ({count} CVEs)")
+    return [
+        {
+            "vendor": "cisa_kev",
+            "entity_type": "kev_catalog",
+            "external_id": "cisa-kev-feed",
+            "title": title[:240],
+            "payload": {
+                "count": count,
+                "sample_size": len(sample_list),
+                "sample_cve": cve if cve != "KEV-FEED" else None,
+                "kev": payload,
+            },
+            "provenance": {**prov, "mapper": "map_cisa_kev"},
+            "signal_hints": {"kev_entries_present": count > 0},
+        }
+    ]
+
+
+def map_sec_edgar(raw: SourceResult) -> list[NormalizedExternalRecord]:
+    data = raw.get("data")
+    findings: list[dict[str, Any]] = data if isinstance(data, list) else []
+    prov = dict(raw.get("provenance") or {})
+    query = str(prov.get("query") or "unknown")
+    first = findings[0] if findings else {}
+    title = str((first or {}).get("title") or f"SEC filings for {query}")
+    return [
+        {
+            "vendor": "sec_edgar",
+            "entity_type": "sec_filings",
+            "external_id": f"sec:{query.lower()}",
+            "title": title[:240],
+            "payload": {
+                "query": query,
+                "filing_count": len(findings),
+                "filings_sample": findings[:5],
+            },
+            "provenance": {**prov, "mapper": "map_sec_edgar"},
+            "signal_hints": {"filings_found": len(findings) > 0},
+        }
+    ]
+
+
 def _detect_fred_macro(record: NormalizedExternalRecord) -> dict[str, Any] | None:
     hints = record.get("signal_hints") or {}
     if not hints.get("has_latest_value"):
@@ -133,11 +185,38 @@ def _detect_world_bank_indicator(record: NormalizedExternalRecord) -> dict[str, 
     }
 
 
+def _detect_cisa_kev(record: NormalizedExternalRecord) -> dict[str, Any] | None:
+    hints = record.get("signal_hints") or {}
+    if not hints.get("kev_entries_present"):
+        return None
+    return {
+        "title": record.get("title") or "CISA KEV catalog update",
+        "severity": "high",
+        "payload": {"count": (record.get("payload") or {}).get("count")},
+    }
+
+
+def _detect_sec_filings(record: NormalizedExternalRecord) -> dict[str, Any] | None:
+    hints = record.get("signal_hints") or {}
+    if not hints.get("filings_found"):
+        return None
+    return {
+        "title": record.get("title") or "SEC EDGAR filings found",
+        "severity": "info",
+        "payload": {
+            "query": (record.get("payload") or {}).get("query"),
+            "filing_count": (record.get("payload") or {}).get("filing_count"),
+        },
+    }
+
+
 def register_builtin_mappers_and_signals() -> None:
-    """Idempotent bootstrap — FRED + NVD + World Bank as registrations only."""
+    """Idempotent bootstrap — FRED + NVD + World Bank + CISA + SEC as registrations only."""
     register_mapper("fred", map_fred)
     register_mapper("nvd", map_nvd)
     register_mapper("world_bank", map_world_bank)
+    register_mapper("cisa_kev", map_cisa_kev)
+    register_mapper("sec_edgar", map_sec_edgar)
     register_signal(
         PackSignalDefinition(
             id="fred.macro_observation",
@@ -164,5 +243,24 @@ def register_builtin_mappers_and_signals() -> None:
             signal_type="indicator_observation",
             title="World Bank indicator observation",
             detect=_detect_world_bank_indicator,
+        )
+    )
+    register_signal(
+        PackSignalDefinition(
+            id="cisa_kev.catalog_present",
+            vendor="cisa_kev",
+            signal_type="kev_catalog_present",
+            title="CISA KEV catalog present",
+            detect=_detect_cisa_kev,
+            severity="high",
+        )
+    )
+    register_signal(
+        PackSignalDefinition(
+            id="sec_edgar.filings_present",
+            vendor="sec_edgar",
+            signal_type="sec_filings_present",
+            title="SEC EDGAR filings present",
+            detect=_detect_sec_filings,
         )
     )

@@ -1,0 +1,33 @@
+{
+  "pass": true,
+  "ran_at": "2026-07-13T18:27:29.784095+00:00",
+  "prod_git_sha": "e29668e389285c5ba2146a6a0456746571aac4f0",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "pack_slug": "sales-intelligence-pack",
+  "asset_id": "5a1947ca-32d6-48da-bb69-5895ad0be8ad",
+  "bundle": {
+    "agentId": "33daecd4-838f-5973-8e02-b73c1f00158f",
+    "workflowId": "c79d82c1-0856-575d-b0c3-dedc0b59b8af",
+    "assignmentCount": 4,
+    "hubspotConnectorId": "547cdda5-2637-4a2b-b087-d5ea89486575",
+    "stubCount": 0,
+    "skippedCount": 2,
+    "stopLinesHonored": [
+      "no_crunchbase_pdl_kg_memory",
+      "no_opencorporates_enable",
+      "no_byo_shared_keys",
+      "no_linkedin_scrape",
+      "phase5_ml_held"
+    ]
+  },
+  "hubspot_pipelines_invoke": {
+    "success": true,
+    "error_code": null,
+    "error_message": null,
+    "data_keys": [
+      "results"
+    ],
+    "pipeline_count": 1
+  },
+  "note": "Sales pack demo: HubSpot read-only pipelines.list. No Crunchbase/PDL/KG/Memory, no OpenCorporates enable, no BYO shared keys. Phase 5 ML HELD."
+}

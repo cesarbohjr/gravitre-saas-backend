@@ -1,0 +1,36 @@
+{
+  "pass": false,
+  "partial": true,
+  "ran_at": "2026-07-13T17:36:06.843614+00:00",
+  "prod_git_sha": "52205362c7548ecc752421554b035b177f7867c0",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "registered_hubspot_lists_create": true,
+  "apollo_connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+  "hubspot_connector_id": "547cdda5-2637-4a2b-b087-d5ea89486575",
+  "blockers": [],
+  "results": {
+    "apollo.people.search": {
+      "success": false,
+      "error_code": "auth_expired",
+      "error_message": "Apollo API 403: /mixed_people/api_search \u2014 api/v1/mixed_people/api_search is not accessible with this access token on a free plan. Please upgrade your plan from https://app.apollo.io/.",
+      "data_keys": []
+    },
+    "apollo.lists.create": {
+      "success": true,
+      "error_code": null,
+      "result_url": null,
+      "data_keys": [
+        "label"
+      ]
+    },
+    "hubspot.lists.create": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "https://app.hubspot.com/contacts/lists/9",
+      "list_id": "9"
+    }
+  },
+  "chain": "apollo.people.search -> apollo.lists.create -> hubspot.lists.create",
+  "note": "Phase 4 Sales-style E2E via invoke_tool (workflow-node packaging may follow). FULL PASS requires active Apollo + HubSpot on smoke org and all three successes."
+}

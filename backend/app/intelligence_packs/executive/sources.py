@@ -138,7 +138,7 @@ async def fetch_sec_company_filings(
                 vendor,
                 auth_mode=mode,
                 data=findings,
-                provenance={"source": "sec_edgar", "user_agent_set": True},
+                provenance={"source": "sec_edgar", "user_agent_set": True, "query": q},
             )
     except Exception as exc:  # noqa: BLE001
         logger.debug("sec_fetch_failed query=%s error=%s", q, exc)

@@ -27,6 +27,13 @@ class IntelligencePackSpec:
     marketplace_tags: list[str] = field(default_factory=list)
     tier: str = "starter"
     assignments: list[IntelligencePackAssignment] = field(default_factory=list)
+    # Optional demo bundle (Executive pack): create agent + workflow + stage connectors
+    demo_agent_name: str | None = None
+    demo_systems: list[str] = field(default_factory=list)
+    connector_template_id: str | None = None
+    workflow_name: str | None = None
+    workflow_description: str | None = None
+    workflow_steps: list[dict[str, Any]] = field(default_factory=list)
 
 
 def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
@@ -51,13 +58,61 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             name="Sales Intelligence Pack",
             department="sales",
             default_subdomain="pipeline_management",
-            description="CRM, forecast reports, playbooks, and pipeline review knowledge.",
-            marketplace_tags=["sales", "starter", "intelligence-pack"],
+            description=(
+                "Customer CRM pipeline intelligence: HubSpot read-only snapshot workflow, "
+                "Sales Pipeline Analyst agent, HubSpot/Apollo stubs. "
+                "Crunchbase/PDL → Memory/KG gated; BYO ZoomInfo/LI Sales Nav fail-closed; CIS/hiring deferred."
+            ),
+            marketplace_tags=["sales", "starter", "intelligence-pack", "crm"],
             assignments=[
-                IntelligencePackAssignment("hubspot_view", "sales-pipeline", "CRM Pipeline", "sales", "pipeline_management"),
-                IntelligencePackAssignment("google_drive_folder", "forecast-reports", "Forecast Reports", "sales", "forecasting"),
-                IntelligencePackAssignment("knowledge_pack", "sales-playbooks", "Sales Playbooks", "sales", "enterprise_sales"),
-                IntelligencePackAssignment("notion_page", "pipeline-reviews", "Pipeline Reviews", "sales", "pipeline_management"),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "hubspot-pipeline",
+                    "HubSpot Pipeline",
+                    "sales",
+                    "pipeline_management",
+                    reference_summary="Customer HubSpot CRM pipelines via hubspot.pipelines.list (read-only demo).",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "sales-playbooks",
+                    "Sales Playbooks",
+                    "sales",
+                    "enterprise_sales",
+                    reference_summary="Curated sales playbook knowledge for pipeline reviews.",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "forecast-reports",
+                    "Forecast Reports",
+                    "sales",
+                    "forecasting",
+                    reference_summary="Forecast report references for sales ops (customer docs).",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "account-research-notes",
+                    "Account Research Notes",
+                    "sales",
+                    "enterprise_sales",
+                    reference_summary=(
+                        "Account research placeholders. Crunchbase/PDL enrichment not enabled "
+                        "(governance stop-line)."
+                    ),
+                ),
+            ],
+            demo_agent_name="Sales Pipeline Analyst",
+            demo_systems=["hubspot"],
+            connector_template_id="sales-intelligence-sources",
+            workflow_name="Sales HubSpot Pipeline Snapshot",
+            workflow_description="Read-only: list HubSpot deal pipelines via invoke_tool (customer-owned CRM).",
+            workflow_steps=[
+                {
+                    "id": "hubspot-pipelines",
+                    "name": "List HubSpot Pipelines",
+                    "type": "invoke_tool",
+                    "config": {"action": "hubspot.pipelines.list", "params": {}},
+                },
             ],
         ),
         IntelligencePackSpec(
@@ -78,14 +133,128 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             pack_id="msp-intelligence-pack",
             name="MSP Intelligence Pack",
             department="msp",
-            default_subdomain="rmm",
-            description="PSA, RMM policies, vendor docs, and client knowledge base assignments.",
-            marketplace_tags=["msp", "starter", "intelligence-pack"],
+            default_subdomain="vulnerability_intelligence",
+            description=(
+                "Gravitree-managed vulnerability intelligence: NVD CVE lookup, CISA KEV staging, "
+                "MSP analyst agent, and a read-only NVD CVE workflow. CIS Controls deferred."
+            ),
+            marketplace_tags=["msp", "starter", "intelligence-pack", "gravitree"],
             assignments=[
-                IntelligencePackAssignment("connectwise", "psa-tickets", "PSA Tickets", "msp", "helpdesk"),
-                IntelligencePackAssignment("knowledge_pack", "rmm-policies", "RMM Policies", "msp", "rmm"),
-                IntelligencePackAssignment("google_drive_folder", "vendor-documentation", "Vendor Documentation", "msp", "security_operations"),
-                IntelligencePackAssignment("sharepoint_site", "client-kb", "Client Knowledge Base", "msp", "helpdesk"),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "nvd-cve-feed",
+                    "NVD CVE Feed",
+                    "msp",
+                    "vulnerability_intelligence",
+                    reference_summary="Platform-managed NVD CVE lookup via nvd.cve.get (Phase 1.5 shared path).",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "cisa-kev-catalog",
+                    "CISA KEV Catalog",
+                    "msp",
+                    "vulnerability_intelligence",
+                    reference_summary="CISA Known Exploited Vulnerabilities via cisa_kev.feed.get (Phase 1.5 shared path).",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "rmm-policies",
+                    "RMM Policies",
+                    "msp",
+                    "rmm",
+                    reference_summary="Curated RMM policy knowledge for MSP operations.",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "vendor-security-advisories",
+                    "Vendor Security Advisories",
+                    "msp",
+                    "security_operations",
+                    reference_summary="Vendor advisory references for patch prioritization (CIS deferred).",
+                ),
+            ],
+            demo_agent_name="MSP Vulnerability Analyst",
+            demo_systems=["nvd", "cisa_kev"],
+            connector_template_id="msp-intelligence-sources",
+            workflow_name="MSP NVD CVE Lookup",
+            workflow_description="Read-only: fetch a CVE via invoke_tool (Gravitree-managed NVD).",
+            workflow_steps=[
+                {
+                    "id": "nvd-cve",
+                    "name": "Fetch NVD CVE",
+                    "type": "invoke_tool",
+                    "config": {"action": "nvd.cve.get", "params": {"cve_id": "CVE-2024-3094"}},
+                },
+                {
+                    "id": "cisa-kev",
+                    "name": "Fetch CISA KEV sample",
+                    "type": "invoke_tool",
+                    "config": {"action": "cisa_kev.feed.get", "params": {}},
+                },
+            ],
+        ),
+        IntelligencePackSpec(
+            pack_id="executive-intelligence-pack",
+            name="Executive Intelligence Pack",
+            department="executive",
+            default_subdomain="macro_intelligence",
+            description=(
+                "Gravitree-managed macro intelligence: FRED/SEC/World Bank/OECD sources, "
+                "executive analyst agent, and a read-only FRED signal workflow."
+            ),
+            marketplace_tags=["executive", "starter", "intelligence-pack", "gravitree"],
+            assignments=[
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "fred-macro-series",
+                    "FRED Macro Series",
+                    "executive",
+                    "macro_intelligence",
+                    reference_summary="Platform-managed FRED series (GDP, UNRATE, CPI) via fred.series.get.",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "sec-edgar-filings",
+                    "SEC EDGAR Filings",
+                    "executive",
+                    "regulatory",
+                    reference_summary="SEC company filings lookup (Gravitree-managed; activation may require SEC_USER_AGENT).",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "world-bank-indicators",
+                    "World Bank Indicators",
+                    "executive",
+                    "macro_intelligence",
+                    reference_summary="World Bank country indicators via shared Phase 1.5 path.",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "oecd-datasets",
+                    "OECD Datasets",
+                    "executive",
+                    "macro_intelligence",
+                    reference_summary="OECD SDMX dataset probes (capability scaffold).",
+                ),
+            ],
+            demo_agent_name="Executive Macro Analyst",
+            demo_systems=["fred", "sec_edgar"],
+            connector_template_id="executive-intelligence-sources",
+            workflow_name="Executive FRED Macro Signal",
+            workflow_description="Read-only: fetch latest FRED GDP series via invoke_tool (Gravitree-managed).",
+            workflow_steps=[
+                {
+                    "id": "fred-gdp",
+                    "name": "Fetch FRED GDP",
+                    "type": "invoke_tool",
+                    "config": {"action": "fred.series.get", "params": {"series_id": "GDP"}},
+                },
+                {
+                    "id": "sec-filings",
+                    "name": "Search SEC EDGAR filings",
+                    "type": "invoke_tool",
+                    "config": {"action": "sec_edgar.filings.search", "params": {"query": "Microsoft"}},
+                },
             ],
         ),
     ]
@@ -111,6 +280,12 @@ def intelligence_pack_to_marketplace_asset(spec: IntelligencePackSpec) -> dict[s
         "config": {
             "department": spec.department,
             "default_subdomain": spec.default_subdomain,
+            "demo_agent_name": spec.demo_agent_name,
+            "demo_systems": list(spec.demo_systems),
+            "connector_template_id": spec.connector_template_id,
+            "workflow_name": spec.workflow_name,
+            "workflow_description": spec.workflow_description,
+            "workflow_steps": list(spec.workflow_steps),
             "assignments": [
                 {
                     "source_type": row.source_type,

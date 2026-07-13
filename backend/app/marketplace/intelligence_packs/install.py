@@ -40,21 +40,46 @@ def install_intelligence_pack(
     created: list[dict[str, Any]] = []
 
     for row in spec.assignments:
-        assignment = assignment_svc.create_assignment(
-            client,
-            org_id,
-            agent_id,
-            {
-                "source_type": row.source_type,
-                "source_id": row.source_id,
-                "label": row.label,
-                "department": row.department,
-                "subdomain": row.subdomain or spec.default_subdomain,
-                "confidence_weight": row.confidence_weight,
-                "owning_department": row.department,
-                "metadata": {"intelligence_pack_id": spec.pack_id, "tier": spec.tier},
-            },
-        )
+        try:
+            assignment = assignment_svc.create_assignment(
+                client,
+                org_id,
+                agent_id,
+                {
+                    "source_type": row.source_type,
+                    "source_id": row.source_id,
+                    "label": row.label,
+                    "department": row.department,
+                    "subdomain": row.subdomain or spec.default_subdomain,
+                    "confidence_weight": row.confidence_weight,
+                    "owning_department": row.department,
+                    "metadata": {"intelligence_pack_id": spec.pack_id, "tier": spec.tier},
+                },
+            )
+        except Exception as exc:  # noqa: BLE001 — FastAPI HTTPException 409 on reinstall
+            detail = getattr(exc, "detail", None)
+            status_code = getattr(exc, "status_code", None)
+            if status_code != 409 and "already exists" not in str(detail or exc).lower():
+                raise
+            existing = (
+                client.table("agent_knowledge_assignments")
+                .select("*")
+                .eq("org_id", org_id)
+                .eq("agent_id", agent_id)
+                .eq("source_type", row.source_type)
+                .eq("source_id", row.source_id)
+                .limit(1)
+                .execute()
+            )
+            if not existing.data:
+                raise
+            assignment = existing.data[0]
+            logger.info(
+                "intelligence_pack_assignment_exists pack=%s source=%s/%s",
+                pack_id,
+                row.source_type,
+                row.source_id,
+            )
         created.append(assignment)
         if row.reference_summary:
             try:

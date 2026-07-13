@@ -30,9 +30,13 @@ def _platform_env_present(vendor: str, settings: Settings) -> bool:
         return bool((os.environ.get("FRED_API_KEY") or getattr(settings, "fred_api_key", "") or "").strip())
     if vendor == "nvd":
         return True
+    if vendor == "cisa_kev":
+        return True
     if vendor == "sec_edgar":
         ua = (os.environ.get("SEC_USER_AGENT") or getattr(settings, "sec_user_agent", "") or "").strip()
         return "@" in ua
+    if vendor == "world_bank":
+        return True
     if not keys:
         return True
     for key in keys:

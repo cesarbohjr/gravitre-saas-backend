@@ -187,12 +187,17 @@ Memory **only** via existing opt-in gate; pack-specific signal *content* on top 
 ### Phase 3 — Bounded agent training + tool/router wiring — DONE (FRED/NVD invoke)
 `fred.series.get` / `nvd.cve.get` registered and live-proven via invoke_tool smoke. Curated chat tools `fred_get_series` / `nvd_get_cve`. Catalog allowlists via permitted_tools + scopes. World Bank chat wiring can follow same pattern later. No autonomous learning.
 
-### Phase 4 — Workflow nodes + live E2E
-ICP/enrich/signal lookup nodes (read) + any HubSpot/Apollo write still through approval gate.  
-Acceptance: ICP → enrich → Apollo discover → HubSpot list create → live `tool.invoke.completed` + `result_url`.
+### Phase 4 — Workflow nodes + live E2E — PARTIAL (**accepted 2026-07-13**)
+Spine: `hubspot.lists.create` registered + vendor-cataloged; live smoke created list_id `9` with `result_url`.  
+Apollo discover on smoke org is **plan-limited** (`apollo.people.search` 403 free plan) — accepted as PARTIAL; upgrade/master API key required for full chain.  
+Artifacts: `docs/delivery/phase4-sales-workflow-e2e-live.json`, `docs/delivery/phase4-executive-pack-live.json`.
 
-### Pack track (Phase 1.5 + Phase 3 DONE — unblocked)
-Executive → MSP → Sales per original build order; OpenCorporates client = shared module as previously designed.
+### Pack track — Executive DONE; MSP DONE; Sales DONE
+**Executive** — **DONE** (`phase4-executive-pack-live.json`).  
+**MSP** — **DONE** (`phase4-msp-pack-live.json`). CIS deferred; **CISA invoke follow-on:** `cisa_kev.feed.get`.  
+**Sales** — **DONE** (`phase4-sales-pack-live.json`): Pipeline Analyst, HubSpot/Apollo stubs, `hubspot.pipelines.list` read-only. Crunchbase/PDL/KG/Memory gated; BYO ZoomInfo/LI fail-closed; no OpenCorporates enable.  
+**SEC EDGAR research** — `sec_edgar.filings.search` (platform `SEC_USER_AGENT`).  
+OpenCorporates stays activation-gated. Phase 5 ML **HELD**.
 
 ### Phase 5 — HELD (do not start; full prompt not filed)
 
@@ -224,4 +229,13 @@ API accounts/keys for FRED, SEC_USER_AGENT, OpenCorporates commercial token, NVD
 ~~Scope Phase 1.5~~ — **DONE** (`docs/delivery/phase1.5-shared-ingestion-plumbing.md`).  
 ~~Phase 3 FRED/NVD invoke~~ — **DONE** (`docs/delivery/phase3-fred-nvd-invoke-live.json`).  
 ~~CRM outcome first caller~~ — **wired** (`docs/delivery/crm-outcome-emit-live.json`; waiting on real HubSpot webhook volume).  
-**Next:** Executive Intelligence Pack build / Phase 4 workflow E2E. Phase 5 ML remains **HELD**.
+~~Executive Intelligence Pack~~ — **DONE** (`docs/delivery/phase4-executive-pack-live.json`).  
+~~Phase 4 full E2E~~ — **PARTIAL accepted** (Apollo free-plan blocker; HubSpot list create live).  
+~~MSP Intelligence Pack~~ — **DONE** (`docs/delivery/phase4-msp-pack-live.json`).  
+~~Sales Intelligence Pack~~ — **DONE** (`docs/delivery/phase4-sales-pack-live.json`).  
+**Pack track complete (Executive → MSP → Sales).** Phase 5 ML remains **HELD** (do not start).  
+
+**Follow-ons (2026-07-13):**
+- **CISA invoke** — `cisa_kev.feed.get` (+ Phase 1.5 mapper/signal)
+- **SEC EDGAR research** — `sec_edgar.filings.search` (requires `SEC_USER_AGENT`)
+- **Apollo plan upgrade** — **human-only** (`docs/delivery/apollo-plan-upgrade-human.md`)

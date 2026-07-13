@@ -337,6 +337,28 @@ def add_contact_to_list(access_token: str, list_id: str, contact_id: str) -> dic
     )
 
 
+def create_list(
+    access_token: str,
+    name: str,
+    *,
+    object_type_id: str = "0-1",
+    processing_type: str = "MANUAL",
+) -> dict[str, Any]:
+    """Create a HubSpot CRM list (contacts by default: objectTypeId 0-1)."""
+    if not name or not str(name).strip():
+        raise HubSpotAPIError("name is required")
+    return _request(
+        "POST",
+        "/crm/v3/lists",
+        access_token,
+        json_body={
+            "name": str(name).strip()[:100],
+            "objectTypeId": str(object_type_id or "0-1"),
+            "processingType": str(processing_type or "MANUAL"),
+        },
+    )
+
+
 def search_crm_objects(
     access_token: str,
     object_type: str,

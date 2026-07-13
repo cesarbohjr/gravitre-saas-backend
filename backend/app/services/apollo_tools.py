@@ -13,6 +13,7 @@ from app.connectors.apollo_api import (
     create_task,
     delete_contact,
     get_contact,
+    is_apollo_plan_limit_error,
     list_labels,
     remove_contacts_from_sequence,
     resolve_apollo_connector,
@@ -26,6 +27,7 @@ from app.services.tool_types import (
     NormalizedResult,
     ToolAuthExpiredError,
     ToolContext,
+    ToolPermissionDeniedError,
     ToolRateLimitedError,
     ToolValidationError,
 )
@@ -72,6 +74,11 @@ def _handle_error(exc: ApolloAPIError) -> Exception:
     details = exc.details if isinstance(exc.details, dict) else {"raw": exc.details}
     if exc.status_code == 429:
         return ToolRateLimitedError(message, details=details if isinstance(details, dict) else None)
+    if is_apollo_plan_limit_error(exc):
+        return ToolPermissionDeniedError(
+            message,
+            details={**(details if isinstance(details, dict) else {"raw": exc.details}), "reason": "apollo_plan_limit"},
+        )
     if exc.status_code in {401, 403}:
         return ToolAuthExpiredError(message, details=details if isinstance(details, dict) else None)
     return ToolValidationError(

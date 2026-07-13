@@ -38,6 +38,13 @@ def _platform_key_present(vendor: str, settings: Any) -> bool:
     if vendor == "nvd":
         # NVD allows unauthenticated reads; treat as available even without key
         return True
+    if vendor == "cisa_kev":
+        return True
+    if vendor == "sec_edgar":
+        ua = (os.environ.get("SEC_USER_AGENT") or getattr(settings, "sec_user_agent", "") or "").strip()
+        return "@" in ua
+    if vendor == "world_bank":
+        return True
     return False
 
 
@@ -128,7 +135,85 @@ def _exec_nvd_cve_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedRes
     )
 
 
+def _exec_cisa_kev_feed_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.intelligence_packs.msp import fetch_cisa_kev
+
+    _assert_gravitree_ready("cisa_kev", ctx)
+    _ = params  # full feed sample; optional filters can follow
+    raw = _run_async(fetch_cisa_kev(settings=ctx.settings))
+    if not raw.get("ok"):
+        return NormalizedResult(
+            success=False,
+            action="cisa_kev.feed.get",
+            error_code=str(raw.get("error_code") or "CISA_KEV_FETCH_FAILED"),
+            error_message=str(raw.get("message") or "CISA KEV fetch failed"),
+            connector_id=ctx.connector_id,
+        )
+    ingested = run_shared_ingestion(
+        ctx.client,
+        org_id=ctx.org_id,
+        vendor="cisa_kev",
+        cache_key="feed:latest",
+        raw=raw,
+        ttl_seconds=86400,
+    )
+    data = raw.get("data") if isinstance(raw.get("data"), dict) else {}
+    return NormalizedResult(
+        success=True,
+        action="cisa_kev.feed.get",
+        connector_id=ctx.connector_id,
+        data={
+            "vendor": "cisa_kev",
+            "count": data.get("count"),
+            "sample": data.get("sample"),
+            "ingestion": ingested,
+        },
+    )
+
+
+def _exec_sec_edgar_filings_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.intelligence_packs.executive.sources import fetch_sec_company_filings
+
+    _assert_gravitree_ready("sec_edgar", ctx)
+    query = str(params.get("query") or params.get("company") or params.get("q") or "").strip()
+    if not query:
+        raise ToolValidationError(
+            "sec_edgar.filings.search requires query",
+            code="SEC_QUERY_REQUIRED",
+        )
+    raw = _run_async(fetch_sec_company_filings(query, settings=ctx.settings))
+    if not raw.get("ok"):
+        return NormalizedResult(
+            success=False,
+            action="sec_edgar.filings.search",
+            error_code=str(raw.get("error_code") or "SEC_FETCH_FAILED"),
+            error_message=str(raw.get("message") or "SEC EDGAR fetch failed"),
+            connector_id=ctx.connector_id,
+        )
+    ingested = run_shared_ingestion(
+        ctx.client,
+        org_id=ctx.org_id,
+        vendor="sec_edgar",
+        cache_key=f"filings:{query.lower()}",
+        raw=raw,
+        ttl_seconds=1800,
+    )
+    return NormalizedResult(
+        success=True,
+        action="sec_edgar.filings.search",
+        connector_id=ctx.connector_id,
+        data={
+            "vendor": "sec_edgar",
+            "query": query,
+            "filings": raw.get("data"),
+            "ingestion": ingested,
+        },
+    )
+
+
 INTELLIGENCE_PACK_TOOL_EXECUTORS: dict[str, ToolExecutor] = {
     "fred.series.get": _exec_fred_series_get,
     "nvd.cve.get": _exec_nvd_cve_get,
+    "cisa_kev.feed.get": _exec_cisa_kev_feed_get,
+    "sec_edgar.filings.search": _exec_sec_edgar_filings_search,
 }

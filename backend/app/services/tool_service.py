@@ -562,6 +562,32 @@ def _exec_hubspot_lists_add_contact(ctx: ToolContext, params: dict[str, Any]) ->
     )
 
 
+def _exec_hubspot_lists_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.hubspot import create_list as hubspot_create_list
+
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    name = params.get("name") or params.get("list_name") or params.get("listName")
+    if not name:
+        raise ToolValidationError("hubspot.lists.create requires name")
+    try:
+        data = hubspot_create_list(
+            token,
+            str(name),
+            object_type_id=str(params.get("object_type_id") or params.get("objectTypeId") or "0-1"),
+            processing_type=str(params.get("processing_type") or params.get("processingType") or "MANUAL"),
+        )
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    list_id = str((data or {}).get("listId") or (data or {}).get("list", {}).get("listId") or (data or {}).get("id") or "")
+    result_url = f"https://app.hubspot.com/contacts/lists/{list_id}" if list_id else None
+    return NormalizedResult(
+        success=True,
+        action="hubspot.lists.create",
+        connector_id=cid,
+        data={"list": data, "list_id": list_id or None, "result_url": result_url},
+    )
+
+
 def _exec_hubspot_sequences_enroll(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token = _hubspot_connector_and_token(ctx, params)
     try:
@@ -3139,6 +3165,7 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "hubspot.deals.delete": _exec_hubspot_deals_delete,
     "hubspot.deals.update": _exec_hubspot_deals_update,
     "hubspot.lists.add_contact": _exec_hubspot_lists_add_contact,
+    "hubspot.lists.create": _exec_hubspot_lists_create,
     "hubspot.companies.search": _exec_hubspot_companies_search,
     "hubspot.pipelines.list": _exec_hubspot_pipelines_list,
     "hubspot.tickets.create": _exec_hubspot_tickets_create,

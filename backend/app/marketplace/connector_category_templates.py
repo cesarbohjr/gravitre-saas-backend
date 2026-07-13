@@ -108,6 +108,14 @@ CONNECTOR_CATEGORY_TEMPLATES: dict[str, dict[str, Any]] = {
         "description": "Vulnerability and KEV feeds (Gravitree-managed).",
         "connectors": ["nvd", "cisa_kev"],
     },
+    "sales-intelligence-sources": {
+        "name": "Sales Intelligence Sources",
+        "description": (
+            "Customer CRM + discovery stubs (HubSpot, Apollo). "
+            "Does not stage Crunchbase/PDL or BYO ZoomInfo/LI Sales Nav."
+        ),
+        "connectors": ["hubspot", "apollo"],
+    },
     "byo-premium-prospecting": {
         "name": "BYO Premium Prospecting",
         "description": "Customer-subscription providers — fail closed without your own keys.",
