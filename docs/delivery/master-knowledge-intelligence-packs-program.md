@@ -194,9 +194,10 @@ Artifacts: `docs/delivery/phase4-sales-workflow-e2e-live.json`, `docs/delivery/p
 
 ### Pack track — Executive DONE; MSP DONE; Sales DONE
 **Executive** — **DONE** (`phase4-executive-pack-live.json`).  
-**MSP** — **DONE** (`phase4-msp-pack-live.json`). CIS deferred; CISA staged only.  
+**MSP** — **DONE** (`phase4-msp-pack-live.json`). CIS deferred; **CISA invoke follow-on:** `cisa_kev.feed.get`.  
 **Sales** — **DONE** (`phase4-sales-pack-live.json`): Pipeline Analyst, HubSpot/Apollo stubs, `hubspot.pipelines.list` read-only. Crunchbase/PDL/KG/Memory gated; BYO ZoomInfo/LI fail-closed; no OpenCorporates enable.  
-OpenCorporates stays activation-gated.
+**SEC EDGAR research** — `sec_edgar.filings.search` (platform `SEC_USER_AGENT`).  
+OpenCorporates stays activation-gated. Phase 5 ML **HELD**.
 
 ### Phase 5 — HELD (do not start; full prompt not filed)
 
@@ -232,4 +233,9 @@ API accounts/keys for FRED, SEC_USER_AGENT, OpenCorporates commercial token, NVD
 ~~Phase 4 full E2E~~ — **PARTIAL accepted** (Apollo free-plan blocker; HubSpot list create live).  
 ~~MSP Intelligence Pack~~ — **DONE** (`docs/delivery/phase4-msp-pack-live.json`).  
 ~~Sales Intelligence Pack~~ — **DONE** (`docs/delivery/phase4-sales-pack-live.json`).  
-**Pack track complete (Executive → MSP → Sales).** Phase 5 ML remains **HELD**. Optional follow-ons: CISA invoke, Apollo plan upgrade, SEC EDGAR Sales research invoke.
+**Pack track complete (Executive → MSP → Sales).** Phase 5 ML remains **HELD** (do not start).  
+
+**Follow-ons (2026-07-13):**
+- **CISA invoke** — `cisa_kev.feed.get` (+ Phase 1.5 mapper/signal)
+- **SEC EDGAR research** — `sec_edgar.filings.search` (requires `SEC_USER_AGENT`)
+- **Apollo plan upgrade** — **human-only** (`docs/delivery/apollo-plan-upgrade-human.md`)

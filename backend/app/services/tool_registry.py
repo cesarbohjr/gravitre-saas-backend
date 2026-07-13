@@ -548,6 +548,39 @@ def _build_agent_tool_specs() -> dict[str, AgentToolSpec]:
             integration="nvd",
         ),
         AgentToolSpec(
+            name="cisa_kev_get_feed",
+            description=(
+                "Fetch a sample of the CISA Known Exploited Vulnerabilities catalog "
+                "(Gravitree-managed public feed)."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+            invoke_action="cisa_kev.feed.get",
+            integration="cisa_kev",
+        ),
+        AgentToolSpec(
+            name="sec_edgar_search_filings",
+            description=(
+                "Search SEC EDGAR for recent company filings (10-K/10-Q/8-K). "
+                "Gravitree-managed; requires SEC_USER_AGENT on the platform."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Company name or ticker, e.g. Microsoft",
+                    },
+                },
+                "required": ["query"],
+            },
+            invoke_action="sec_edgar.filings.search",
+            integration="sec_edgar",
+        ),
+        AgentToolSpec(
             name="web_search",
             description=(
                 "Search the web for current information not in the knowledge base. "

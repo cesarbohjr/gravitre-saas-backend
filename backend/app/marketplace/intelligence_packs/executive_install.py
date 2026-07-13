@@ -49,7 +49,7 @@ def install_executive_pack_demo_bundle(
             "capabilities": ["macro_intelligence", "fred_lookup"],
             "config": {
                 "marketplaceAssetId": asset_id,
-                "permitted_tools": ["fred_get_series", "fred"],
+                "permitted_tools": ["fred_get_series", "sec_edgar_search_filings", "fred", "sec_edgar"],
                 "pack_id": spec.pack_id,
                 "department": "executive",
             },
@@ -69,11 +69,11 @@ def install_executive_pack_demo_bundle(
             "department": "executive",
             "model": "default",
             "capabilities": ["macro_intelligence", "fred_lookup"],
-            "systems": list(spec.demo_systems) or ["fred"],
+            "systems": list(spec.demo_systems) or ["fred", "sec_edgar"],
             "guardrails": ["read_only_external_sources"],
             "config": {
                 "marketplaceAssetId": asset_id,
-                "permitted_tools": ["fred_get_series", "fred"],
+                "permitted_tools": ["fred_get_series", "sec_edgar_search_filings", "fred", "sec_edgar"],
                 "pack_id": spec.pack_id,
             },
             "status": "active",
@@ -81,7 +81,7 @@ def install_executive_pack_demo_bundle(
         on_conflict="id",
     ).execute()
 
-    for system in spec.demo_systems or ["fred"]:
+    for system in spec.demo_systems or ["fred", "sec_edgar"]:
         upsert_agent_tool_permission(
             client,
             org_id,
@@ -116,6 +116,7 @@ def install_executive_pack_demo_bundle(
             staged = {"error": str(exc), "created": [], "stagedCount": 0}
 
     activated_fred: dict[str, Any] | None = None
+    activated_sec: dict[str, Any] | None = None
     if activate_fred and settings is not None:
         fred_connector_id: str | None = None
         for row in staged.get("created") or []:
@@ -144,6 +145,34 @@ def install_executive_pack_demo_bundle(
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.info("executive_pack_fred_activate_skipped err=%s", exc)
+
+        sec_connector_id: str | None = None
+        for row in list(staged.get("created") or []) + list(staged.get("skipped") or []):
+            if str(row.get("connectorType") or row.get("type") or "").lower() == "sec_edgar":
+                sec_connector_id = str(row.get("id") or "") or None
+                break
+        if not sec_connector_id:
+            existing_sec = (
+                client.table("connectors")
+                .select("id, type, status")
+                .eq("org_id", org_id)
+                .eq("type", "sec_edgar")
+                .is_("deleted_at", "null")
+                .limit(1)
+                .execute()
+            )
+            if existing_sec.data:
+                sec_connector_id = str(existing_sec.data[0]["id"])
+        if sec_connector_id:
+            try:
+                activated_sec = activate_gravitree_connector(
+                    client,
+                    org_id=org_id,
+                    connector_id=sec_connector_id,
+                    settings=settings,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.info("executive_pack_sec_activate_skipped err=%s", exc)
 
     workflow_id = None
     if spec.workflow_name and spec.workflow_steps:
@@ -206,4 +235,5 @@ def install_executive_pack_demo_bundle(
         "assignmentIds": [row.get("id") for row in assignments.get("assignments") or [] if row.get("id")],
         "connectorStubs": staged,
         "fredActivated": activated_fred,
+        "secEdgarActivated": activated_sec,
     }

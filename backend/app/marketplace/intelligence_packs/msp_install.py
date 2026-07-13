@@ -93,7 +93,7 @@ def install_msp_pack_demo_bundle(
             "capabilities": ["vulnerability_intelligence", "nvd_lookup"],
             "config": {
                 "marketplaceAssetId": asset_id,
-                "permitted_tools": ["nvd_get_cve", "nvd"],
+                "permitted_tools": ["nvd_get_cve", "cisa_kev_get_feed", "nvd", "cisa_kev"],
                 "pack_id": spec.pack_id,
                 "department": "msp",
             },
@@ -112,11 +112,11 @@ def install_msp_pack_demo_bundle(
             "department": "msp",
             "model": "default",
             "capabilities": ["vulnerability_intelligence", "nvd_lookup"],
-            "systems": list(spec.demo_systems) or ["nvd"],
+            "systems": list(spec.demo_systems) or ["nvd", "cisa_kev"],
             "guardrails": ["read_only_external_sources"],
             "config": {
                 "marketplaceAssetId": asset_id,
-                "permitted_tools": ["nvd_get_cve", "nvd"],
+                "permitted_tools": ["nvd_get_cve", "cisa_kev_get_feed", "nvd", "cisa_kev"],
                 "pack_id": spec.pack_id,
             },
             "status": "active",
@@ -124,7 +124,7 @@ def install_msp_pack_demo_bundle(
         on_conflict="id",
     ).execute()
 
-    for system in spec.demo_systems or ["nvd"]:
+    for system in spec.demo_systems or ["nvd", "cisa_kev"]:
         upsert_agent_tool_permission(
             client,
             org_id,
@@ -159,9 +159,13 @@ def install_msp_pack_demo_bundle(
             staged = {"error": str(exc), "created": [], "stagedCount": 0, "skipped": []}
 
     activated_nvd: dict[str, Any] | None = None
+    activated_cisa: dict[str, Any] | None = None
     if activate_nvd and settings is not None:
         activated_nvd = _activate_connector_type(
             client, org_id, "nvd", staged=staged, settings=settings
+        )
+        activated_cisa = _activate_connector_type(
+            client, org_id, "cisa_kev", staged=staged, settings=settings
         )
 
     workflow_id = None
@@ -225,4 +229,5 @@ def install_msp_pack_demo_bundle(
         "assignmentIds": [row.get("id") for row in assignments.get("assignments") or [] if row.get("id")],
         "connectorStubs": staged,
         "nvdActivated": activated_nvd,
+        "cisaKevActivated": activated_cisa,
     }

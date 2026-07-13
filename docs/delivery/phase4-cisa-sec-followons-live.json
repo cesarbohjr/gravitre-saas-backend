@@ -1,0 +1,56 @@
+{
+  "pass": false,
+  "partial": true,
+  "ran_at": "2026-07-13T18:36:25.221534+00:00",
+  "prod_git_sha": "e29668e389285c5ba2146a6a0456746571aac4f0",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "registered": {
+    "cisa_kev.feed.get": true,
+    "sec_edgar.filings.search": true
+  },
+  "activations": {
+    "cisa_kev": {
+      "id": "b213fffb-f43a-4dba-af6f-812b8f9f253f",
+      "type": "cisa_kev",
+      "status": "active",
+      "authMode": "gravitree_managed"
+    },
+    "sec_edgar": {
+      "error": "sec_edgar is not yet available (platform credentials missing)",
+      "connector_id": "9ba9f202-f44c-4b83-88d4-5725bc6ce6e2"
+    }
+  },
+  "cisa_kev_feed_get": {
+    "success": true,
+    "error_code": null,
+    "count": 1638,
+    "cache_id": "515595d6-4898-4d28-870f-a69b1bebcb97",
+    "entity_ids": [
+      "caa79a8a-76cc-4e3f-9ab7-3e19efc45b79"
+    ],
+    "signal_ids": [
+      "4ea4fc1d-e1ff-42b5-80db-034d0570abbe"
+    ]
+  },
+  "sec_edgar_filings_search": {
+    "success": false,
+    "error_code": "GRAVITREE_SOURCE_UNAVAILABLE",
+    "error_message": "sec_edgar is not yet available (platform credentials missing)",
+    "query": "Microsoft",
+    "filing_count": null,
+    "cache_id": null,
+    "entity_ids": [],
+    "signal_ids": []
+  },
+  "apollo_plan_upgrade": {
+    "status": "human_only",
+    "blocker": "Smoke-org Apollo OAuth is free-plan; people/company search returns 403.",
+    "options": [
+      "Upgrade Apollo plan so OAuth can call People API Search",
+      "Add a master API key on the Apollo connector (code prefers X-Api-Key over OAuth)"
+    ],
+    "code_ready": "permission_denied/apollo_plan_limit taxonomy + API-key preference already shipped"
+  },
+  "phase5_ml": "HELD",
+  "note": "Follow-ons: CISA invoke PASS; SEC EDGAR tool registered but needs human SEC_USER_AGENT on platform. Apollo plan upgrade human-only. Phase 5 ML HELD."
+}

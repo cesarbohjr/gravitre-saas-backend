@@ -30,6 +30,8 @@ _BUILTIN_ACTION_SCOPES: dict[str, list[str]] = {
     "webhook.post": ["webhook:post", "webhook:*"],
     "fred.series.get": ["fred:series:read", "fred:*"],
     "nvd.cve.get": ["nvd:cve:read", "nvd:*"],
+    "cisa_kev.feed.get": ["cisa_kev:feed:read", "cisa_kev:*"],
+    "sec_edgar.filings.search": ["sec_edgar:filings:read", "sec_edgar:*"],
     "hubspot.contacts.get": ["hubspot:contacts:read", "hubspot:*"],
     "hubspot.contacts.update": ["hubspot:contacts:write", "hubspot:*"],
     "hubspot.notes.create": ["hubspot:notes:write", "hubspot:*"],
@@ -318,6 +320,10 @@ def default_demo_scopes_for_system(system: str) -> list[str]:
         return ["fred:series:read", "fred:*"]
     if system == "nvd":
         return ["nvd:cve:read", "nvd:*"]
+    if system == "cisa_kev":
+        return ["cisa_kev:feed:read", "cisa_kev:*"]
+    if system == "sec_edgar":
+        return ["sec_edgar:filings:read", "sec_edgar:*"]
     if system == "hubspot":
         return [
             "hubspot:contacts:read",

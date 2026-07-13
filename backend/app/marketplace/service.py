@@ -647,6 +647,7 @@ def _install_intelligence_pack_asset(
                 "assignmentCount": bundle.get("assignmentCount") or 0,
                 "connectorStubs": bundle.get("connectorStubs"),
                 "nvdActivated": bundle.get("nvdActivated"),
+                "cisaKevActivated": bundle.get("cisaKevActivated"),
                 "demoBundle": True,
             }
 
@@ -700,6 +701,7 @@ def _install_intelligence_pack_asset(
             "assignmentCount": bundle.get("assignmentCount") or 0,
             "connectorStubs": bundle.get("connectorStubs"),
             "fredActivated": bundle.get("fredActivated"),
+            "secEdgarActivated": bundle.get("secEdgarActivated"),
             "demoBundle": True,
         }
 
