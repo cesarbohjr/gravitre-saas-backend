@@ -2,19 +2,19 @@
   "probe": "sta307_prod_fix",
   "ticket": "STA-307",
   "pr": 99,
-  "expected_sha_prefix": "67b61671",
-  "started_at": "2026-07-13T01:46:46.080163+00:00",
+  "expected_sha_prefix": "19ac9ba7",
+  "started_at": "2026-07-13T02:00:32.929573+00:00",
   "base_url": "https://gravitre-saas-backend-production.up.railway.app",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
-  "conversation_id": "d9ff6e2e-792b-46f9-b31f-2bf6e338c579",
-  "prompt": "Search HubSpot for high-intent leads and draft a follow-up in Slack for approval [STA-307-prod c2dc9317]",
+  "conversation_id": "f5a74fe2-8b74-4403-9685-84ef10fa34d7",
+  "prompt": "Search HubSpot for high-intent leads and draft a follow-up in Slack for approval [STA-307-prod 2e06db2d]",
   "prod_health": {
     "status": "ok",
-    "timestamp": "2026-07-13T01:46:45.215145+00:00",
+    "timestamp": "2026-07-13T02:00:32.054765+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "8fc29454de466e975bad4dc0066a21da310b1ff5",
+    "git_sha": "19ac9ba7002ff0bbb63097c10c7e533fcca1b1d9",
     "ai_disabled": false,
     "checks": {
       "database": "healthy",
@@ -23,30 +23,45 @@
       "clickhouse": "configured"
     }
   },
-  "prod_sha": "8fc29454de466e975bad4dc0066a21da310b1ff5",
+  "prod_sha": "19ac9ba7002ff0bbb63097c10c7e533fcca1b1d9",
   "prod_sha_ok": true,
+  "mode": "connected",
   "turn": {
     "http": 200,
-    "elapsed_ms": 4286,
+    "elapsed_ms": 5268,
     "dialogue_mode": "confirm",
-    "text_head": "I planned a **2-step orchestration**:\n\n1. \u25cb Hubspot (not connected) \u2014 *skipped* (Connect Hubspot in Gravitre to run this action.)\n2. **Post message** (write, approval required)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change.",
+    "text_head": "I planned a **2-step orchestration**:\n\n1. **Search contacts** (read, approval required)\n2. **Post message** (write, approval required)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change.",
     "intel_count": 2,
     "sse_pending_status": "awaiting_plan_confirm",
     "db_pending_status": "awaiting_plan_confirm",
     "pending_type": "connector_orchestration",
+    "pending_status": "awaiting_plan_confirm",
     "labels": [
-      "Hubspot (not connected)",
+      "Search contacts",
       "Post message"
+    ],
+    "integrations": [
+      "hubspot",
+      "slack"
+    ],
+    "skip_reasons": [
+      null,
+      null
     ],
     "state_http": 200
   },
   "checks": {
-    "labels_hubspot_then_slack": false,
+    "mode": "connected",
+    "labels_hubspot_and_slack": true,
+    "hubspot_not_falsely_disconnected": true,
+    "steps_supported": true,
+    "status_ok": true,
     "status_blocked": false,
     "not_awaiting_confirm": false,
     "elapsed_under_45s": true,
-    "honest_copy": true
+    "honest_copy": true,
+    "orch_type": true
   },
-  "verdict": "FAIL",
-  "finished_at": "2026-07-13T01:46:51.031358+00:00"
+  "verdict": "PASS",
+  "finished_at": "2026-07-13T02:00:38.862143+00:00"
 }

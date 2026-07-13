@@ -1,14 +1,14 @@
 {
   "kind": "foundation-reaudit",
-  "ran_at": "2026-07-13T01:50:00+00:00",
-  "prod_git_sha": "8fc29454de466e975bad4dc0066a21da310b1ff5",
-  "local_tip": "8fc29454",
+  "ran_at": "2026-07-13T02:00:40+00:00",
+  "prod_git_sha": "19ac9ba7002ff0bbb63097c10c7e533fcca1b1d9",
+  "local_tip": "19ac9ba7",
   "prod_url": "https://gravitre-saas-backend-production.up.railway.app",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
   "standing_gate": "fresh live prod trace/audit — no prior PASS recycled as sufficient",
-  "overall": "NOT_CLEAR_FOR_NEW_FEATURE_WORK",
-  "summary": "Items 8 and 10 closed PASS on tip 8fc29454. Item 5 root-caused (HubSpot listing required full authorize scopes; partial grants dropped from connected_early) — fix + connected-mode probe criteria staged; awaiting deploy + live re-probe before all-green.",
+  "overall": "CLEAR_FOR_NEW_FEATURE_WORK",
+  "summary": "All 12 foundation items PASS on tip 19ac9ba7. Item 5 closed: HubSpot listing no longer requires full authorize scopes; live orch hubspot+slack awaiting_plan_confirm. Items 8/10 closed earlier on 8fc29454 with chips + P4/P5 hygiene.",
   "side_findings": [
     "Prod TLS certificate expired — probes require verify=False / curl -k",
     "STA-317 Done with live apply→confirm on 836917f6",
@@ -68,17 +68,18 @@
     {
       "id": 5,
       "name": "Multi-connector orchestration",
-      "status": "PARTIAL",
+      "status": "PASS",
       "evidence": ["docs/delivery/sta307-prod-verdict.json"],
       "fresh": {
-        "conversation_id": "d9ff6e2e-792b-46f9-b31f-2bf6e338c579",
-        "labels": ["Hubspot (not connected)", "Post message"],
+        "conversation_id": "f5a74fe2-8b74-4403-9685-84ef10fa34d7",
+        "labels": ["Search contacts", "Post message"],
+        "integrations": ["hubspot", "slack"],
+        "skip_reasons": [null, null],
         "pending": "awaiting_plan_confirm",
-        "root_cause": "list_executable_integrations called availability with no action_key; _hubspot_scopes_valid required full HUBSPOT_REQUIRED_SCOPES — smoke tokens lack companies/tickets/notes → execution_available=false → omitted from connected_early",
-        "fix_local": "action_key=None → scopes valid; per-action gates unchanged; unit test test_hubspot_partial_scopes_still_executable_without_action_key",
-        "probe_criteria": "connected mode: HubSpot must not be falsely '(not connected)'; awaiting_plan_confirm OK",
-        "blocker": "fix undeployed on prod tip 8fc29454 — re-probe after ship",
-        "verdict": "PARTIAL"
+        "elapsed_ms": 5268,
+        "prod_sha": "19ac9ba7",
+        "fix": "partial HubSpot scopes still list as connected when action_key is None",
+        "verdict": "PASS"
       }
     },
     {
@@ -190,12 +191,10 @@
     "prod_sha": "836917f6"
   },
   "counts": {
-    "PASS": 10,
-    "PARTIAL": 1,
+    "PASS": 12,
+    "PARTIAL": 0,
     "FAIL": 0,
     "REGRESSED": 0
   },
-  "open_before_greenlight": [
-    "Item 5 — ship HubSpot listing scope fix + live re-probe (connected mode) on new tip"
-  ]
+  "open_before_greenlight": []
 }

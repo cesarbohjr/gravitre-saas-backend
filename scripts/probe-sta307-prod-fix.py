@@ -37,7 +37,7 @@ OUT = ROOT / "docs" / "delivery" / "sta307-prod-verdict.json"
 ORG = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
 BASE = "https://gravitre-saas-backend-production.up.railway.app"
 # Tip at last Item-5 fix ship; override with STA307_ALLOW_ANY_SHA=1
-EXPECTED_SHA_PREFIX = "8fc29454"
+EXPECTED_SHA_PREFIX = "19ac9ba7"
 CHAT_TIMEOUT = 180.0
 PROMPT = (
     "Search HubSpot for high-intent leads and draft a follow-up in Slack "
@@ -122,6 +122,38 @@ def step_labels(pending: dict | None) -> list[str]:
             continue
         out.append(str(step.get("label") or step.get("description") or ""))
     return out
+
+
+def step_integrations(pending: dict | None) -> list[str]:
+    """Vendor keys from orchestration steps (labels may be generic action names)."""
+    if not isinstance(pending, dict):
+        return []
+    params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
+    steps = params.get("steps") if isinstance(params.get("steps"), list) else []
+    out: list[str] = []
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        plan = step.get("plan") if isinstance(step.get("plan"), dict) else {}
+        integ = (
+            plan.get("integration")
+            or step.get("integration")
+            or plan.get("tool_name")
+            or step.get("tool_name")
+            or ""
+        )
+        out.append(str(integ).lower())
+    return out
+
+
+def step_skip_reasons(pending: dict | None) -> list[str | None]:
+    if not isinstance(pending, dict):
+        return []
+    params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
+    steps = params.get("steps") if isinstance(params.get("steps"), list) else []
+    return [
+        (step.get("skip_reason") if isinstance(step, dict) else None) for step in steps
+    ]
 
 
 async def main() -> int:
@@ -222,8 +254,18 @@ async def main() -> int:
         pending = db_pending if isinstance(db_pending, dict) else sse_pending
         labels = step_labels(pending)
         labels_l = [x.lower() for x in labels]
-        hub_idxs = [i for i, lb in enumerate(labels_l) if "hubspot" in lb]
-        slack_idxs = [i for i, lb in enumerate(labels_l) if "slack" in lb]
+        integrations = step_integrations(pending)
+        skip_reasons = step_skip_reasons(pending)
+        hub_idxs = [
+            i
+            for i, (lb, integ) in enumerate(zip(labels_l, integrations))
+            if "hubspot" in lb or "hubspot" in integ
+        ]
+        slack_idxs = [
+            i
+            for i, (lb, integ) in enumerate(zip(labels_l, integrations))
+            if "slack" in lb or "slack" in integ
+        ]
         status = (pending or {}).get("status") if isinstance(pending, dict) else None
         dialogue = None
         for item in reversed(parsed["intel"]):
@@ -235,11 +277,10 @@ async def main() -> int:
             len(hub_idxs) >= 1
             and len(slack_idxs) >= 1
             and hub_idxs[0] != slack_idxs[0]
-            and not all("hubspot" in lb and "slack" not in lb for lb in labels_l)
         )
         # Both steps must not be HubSpot-only duplicates
-        if len(labels_l) >= 2 and all("hubspot" in lb for lb in labels_l[:2]) and not any(
-            "slack" in lb for lb in labels_l[:2]
+        if len(integrations) >= 2 and all("hubspot" in x for x in integrations[:2]) and not any(
+            "slack" in x for x in integrations[:2]
         ):
             labels_ok = False
 
@@ -248,6 +289,11 @@ async def main() -> int:
         hub_labels = [lb for lb in labels if "hubspot" in lb.lower()]
         hubspot_false_not_connected = any(
             "not connected" in lb.lower() for lb in hub_labels
+        ) or any(
+            i < len(skip_reasons)
+            and skip_reasons[i]
+            and "not connected" in str(skip_reasons[i]).lower()
+            for i in hub_idxs
         )
         orch_ok = (
             isinstance(pending, dict) and pending.get("type") == "connector_orchestration"
@@ -276,12 +322,15 @@ async def main() -> int:
             status_ok = status in {"awaiting_plan_confirm", "blocked"}
             copy_ok = True
             availability_ok = labels_ok and not hubspot_false_not_connected
+            # Both planned steps should be supported (no skip_reason) when connectors healthy
+            steps_supported = all(sr is None for sr in skip_reasons) if skip_reasons else False
             pass_all = (
                 r.status_code == 200
                 and availability_ok
                 and status_ok
                 and fast_ok
                 and orch_ok
+                and steps_supported
             )
             mode = "connected"
             blocked_ok = status == "blocked"
@@ -299,12 +348,15 @@ async def main() -> int:
             "pending_type": (pending or {}).get("type") if isinstance(pending, dict) else None,
             "pending_status": status,
             "labels": labels,
+            "integrations": integrations,
+            "skip_reasons": skip_reasons,
             "state_http": st.status_code,
         }
         report["checks"] = {
             "mode": mode,
             "labels_hubspot_and_slack": labels_ok,
             "hubspot_not_falsely_disconnected": not hubspot_false_not_connected,
+            "steps_supported": all(sr is None for sr in skip_reasons) if skip_reasons else False,
             "status_ok": status_ok,
             "status_blocked": blocked_ok,
             "not_awaiting_confirm": no_confirm,
