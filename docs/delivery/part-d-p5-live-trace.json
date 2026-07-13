@@ -1,14 +1,19 @@
 {
   "ticket": "STA-310",
-  "ran_at": "2026-07-12T18:23:52.726820+00:00",
+  "ran_at": "2026-07-13T01:45:44.315197+00:00",
   "option_a_applied": true,
+  "prod_tip": "8fc29454de466e975bad4dc0066a21da310b1ff5",
   "pack": {
     "id": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
     "slug": "support-intelligence-pack",
     "asset_type": "intelligence_pack"
   },
-  "probe_agent_id": "c2603847-5d93-4c8c-a290-565d4603d4b1",
-  "probe_agent_name": "PartD-P5-Probe-df4dda",
+  "probe_agent_id": "c5f77294-34df-4df3-a5f1-5d90cef90f46",
+  "probe_agent_name": "PartD-P5-Probe-b54318",
+  "pre_cleanup": {
+    "uninstall_http": 404,
+    "assignments_cleared": 0
+  },
   "http_install": {
     "status": 200,
     "body": {
@@ -17,28 +22,28 @@
       "assetType": "intelligence_pack",
       "slug": "support-intelligence-pack",
       "install": {
-        "id": "4aff1a91-fc03-4347-a591-861176f8dc42",
+        "id": "b4cadeba-b92d-4026-ab47-1880ad636fbc",
         "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
         "asset_id": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
         "asset_version": 1,
         "installed_entity_type": "intelligence_pack",
         "installed_entity_id": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
         "install_variables": {
-          "agentId": "c2603847-5d93-4c8c-a290-565d4603d4b1"
+          "agentId": "c5f77294-34df-4df3-a5f1-5d90cef90f46"
         },
         "status": "active",
         "installed_by": "f7e32f06-49df-4e73-8962-f41c21850762",
-        "installed_at": "2026-07-12T18:23:46.900412+00:00",
-        "updated_at": "2026-07-12T18:23:46.900443+00:00",
+        "installed_at": "2026-07-13T01:45:41.164225+00:00",
+        "updated_at": "2026-07-13T01:45:41.164249+00:00",
         "metadata": {
           "packId": "support-intelligence-pack",
-          "agentId": "c2603847-5d93-4c8c-a290-565d4603d4b1",
+          "agentId": "c5f77294-34df-4df3-a5f1-5d90cef90f46",
           "checklist": [],
           "assignmentIds": [
-            "a764e691-71c5-4ccc-98a7-738c3ce4e23c",
-            "6f37897b-dfbc-45a3-8f77-03ea24935274",
-            "502454b8-a5a2-4af6-ad52-7c91d550b879",
-            "cb9a75a1-bb8d-4423-85fa-9aa88d30ac0c"
+            "c9310541-50cd-4e80-857d-101e4b83895d",
+            "7d744f42-7fc7-4b32-bb2c-8731207db050",
+            "6966acea-0c23-4f16-a4a5-f0e091f5b563",
+            "a421e601-7828-40a9-8955-466a8a102d57"
           ],
           "assignmentCount": 4
         }
@@ -46,13 +51,13 @@
       "entities": {
         "entityType": "intelligence_pack",
         "entityId": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
-        "agentId": "c2603847-5d93-4c8c-a290-565d4603d4b1",
+        "agentId": "c5f77294-34df-4df3-a5f1-5d90cef90f46",
         "packId": "support-intelligence-pack",
         "assignmentIds": [
-          "a764e691-71c5-4ccc-98a7-738c3ce4e23c",
-          "6f37897b-dfbc-45a3-8f77-03ea24935274",
-          "502454b8-a5a2-4af6-ad52-7c91d550b879",
-          "cb9a75a1-bb8d-4423-85fa-9aa88d30ac0c"
+          "c9310541-50cd-4e80-857d-101e4b83895d",
+          "7d744f42-7fc7-4b32-bb2c-8731207db050",
+          "6966acea-0c23-4f16-a4a5-f0e091f5b563",
+          "a421e601-7828-40a9-8955-466a8a102d57"
         ],
         "assignmentCount": 4
       },
@@ -63,7 +68,7 @@
     "status": 200,
     "body": {
       "uninstalled": true,
-      "installId": "4aff1a91-fc03-4347-a591-861176f8dc42",
+      "installId": "b4cadeba-b92d-4026-ab47-1880ad636fbc",
       "assetId": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
       "slug": "support-intelligence-pack",
       "deactivated": {
@@ -75,19 +80,19 @@
     }
   },
   "install_row": {
-    "id": "4aff1a91-fc03-4347-a591-861176f8dc42",
+    "id": "b4cadeba-b92d-4026-ab47-1880ad636fbc",
     "status": "active",
     "installed_entity_type": "intelligence_pack",
     "installed_entity_id": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
     "metadata": {
       "packId": "support-intelligence-pack",
-      "agentId": "c2603847-5d93-4c8c-a290-565d4603d4b1",
+      "agentId": "c5f77294-34df-4df3-a5f1-5d90cef90f46",
       "checklist": [],
       "assignmentIds": [
-        "a764e691-71c5-4ccc-98a7-738c3ce4e23c",
-        "6f37897b-dfbc-45a3-8f77-03ea24935274",
-        "502454b8-a5a2-4af6-ad52-7c91d550b879",
-        "cb9a75a1-bb8d-4423-85fa-9aa88d30ac0c"
+        "c9310541-50cd-4e80-857d-101e4b83895d",
+        "7d744f42-7fc7-4b32-bb2c-8731207db050",
+        "6966acea-0c23-4f16-a4a5-f0e091f5b563",
+        "a421e601-7828-40a9-8955-466a8a102d57"
       ],
       "assignmentCount": 4
     }
@@ -99,10 +104,10 @@
         "slug": "support-intelligence-pack",
         "entityId": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
         "assetType": "intelligence_pack",
-        "installId": "4aff1a91-fc03-4347-a591-861176f8dc42",
+        "installId": "b4cadeba-b92d-4026-ab47-1880ad636fbc",
         "entityType": "intelligence_pack"
       },
-      "created_at": "2026-07-12T18:23:47.114768+00:00",
+      "created_at": "2026-07-13T01:45:41.249319+00:00",
       "resource_type": "marketplace_asset",
       "resource_id": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790"
     },
@@ -110,11 +115,11 @@
       "action": "marketplace.intelligence_pack.installed",
       "metadata": {
         "pack_id": "support-intelligence-pack",
-        "agent_id": "c2603847-5d93-4c8c-a290-565d4603d4b1",
+        "agent_id": "c5f77294-34df-4df3-a5f1-5d90cef90f46",
         "asset_id": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
         "assignment_count": 4
       },
-      "created_at": "2026-07-12T18:23:46.814645+00:00",
+      "created_at": "2026-07-13T01:45:41.124557+00:00",
       "resource_type": "intelligence_pack",
       "resource_id": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790"
     }

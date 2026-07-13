@@ -1,31 +1,115 @@
 {
-  "started_at": "2026-07-12T18:57:48.847221+00:00",
+  "started_at": "2026-07-13T01:45:03.759094+00:00",
   "base_url": "https://gravitre-saas-backend-production.up.railway.app",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
-  "expected_ship_sha_prefix": "473454da",
+  "expected_ship_sha_prefix": "8fc29454",
   "claim": "part_d_p4_p5_p6_live_traces",
-  "pr": 102,
-  "merge_commit": "473454dacbfbdd2586996be4502eae2aa748f666",
+  "prod_tip": "8fc29454de466e975bad4dc0066a21da310b1ff5",
   "traces": {
     "P5_intelligence_pack_install": {
       "ticket": "STA-310",
       "path": "POST /api/marketplace/assets/{ref}/install asset_type=intelligence_pack",
-      "install_http": 409,
+      "install_http": 200,
       "install_response": {
-        "success": false,
-        "error": "Assignment already exists",
-        "code": "VALIDATION_ERROR",
-        "details": {}
+        "installed": true,
+        "assetId": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
+        "assetType": "intelligence_pack",
+        "slug": "support-intelligence-pack",
+        "install": {
+          "id": "b4cadeba-b92d-4026-ab47-1880ad636fbc",
+          "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "asset_id": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
+          "asset_version": 1,
+          "installed_entity_type": "intelligence_pack",
+          "installed_entity_id": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
+          "install_variables": {
+            "agentId": "c5f77294-34df-4df3-a5f1-5d90cef90f46"
+          },
+          "status": "active",
+          "installed_by": "f7e32f06-49df-4e73-8962-f41c21850762",
+          "installed_at": "2026-07-13T01:45:41.164225+00:00",
+          "updated_at": "2026-07-13T01:45:41.164249+00:00",
+          "metadata": {
+            "packId": "support-intelligence-pack",
+            "agentId": "c5f77294-34df-4df3-a5f1-5d90cef90f46",
+            "checklist": [],
+            "assignmentIds": [
+              "c9310541-50cd-4e80-857d-101e4b83895d",
+              "7d744f42-7fc7-4b32-bb2c-8731207db050",
+              "6966acea-0c23-4f16-a4a5-f0e091f5b563",
+              "a421e601-7828-40a9-8955-466a8a102d57"
+            ],
+            "assignmentCount": 4
+          }
+        },
+        "entities": {
+          "entityType": "intelligence_pack",
+          "entityId": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
+          "agentId": "c5f77294-34df-4df3-a5f1-5d90cef90f46",
+          "packId": "support-intelligence-pack",
+          "assignmentIds": [
+            "c9310541-50cd-4e80-857d-101e4b83895d",
+            "7d744f42-7fc7-4b32-bb2c-8731207db050",
+            "6966acea-0c23-4f16-a4a5-f0e091f5b563",
+            "a421e601-7828-40a9-8955-466a8a102d57"
+          ],
+          "assignmentCount": 4
+        },
+        "connectorChecklist": []
       },
-      "audits": [],
-      "install_row": null,
-      "verdict": "FAIL",
+      "audits": [
+        {
+          "action": "marketplace.asset.installed",
+          "metadata": {
+            "slug": "support-intelligence-pack",
+            "entityId": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
+            "assetType": "intelligence_pack",
+            "installId": "b4cadeba-b92d-4026-ab47-1880ad636fbc",
+            "entityType": "intelligence_pack"
+          },
+          "created_at": "2026-07-13T01:45:41.249319+00:00",
+          "resource_type": "marketplace_asset",
+          "resource_id": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790"
+        },
+        {
+          "action": "marketplace.intelligence_pack.installed",
+          "metadata": {
+            "pack_id": "support-intelligence-pack",
+            "agent_id": "c5f77294-34df-4df3-a5f1-5d90cef90f46",
+            "asset_id": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
+            "assignment_count": 4
+          },
+          "created_at": "2026-07-13T01:45:41.124557+00:00",
+          "resource_type": "intelligence_pack",
+          "resource_id": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790"
+        }
+      ],
+      "install_row": {
+        "id": "b4cadeba-b92d-4026-ab47-1880ad636fbc",
+        "status": "active",
+        "installed_entity_type": "intelligence_pack",
+        "installed_entity_id": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
+        "metadata": {
+          "packId": "support-intelligence-pack",
+          "agentId": "c5f77294-34df-4df3-a5f1-5d90cef90f46",
+          "checklist": [],
+          "assignmentIds": [
+            "c9310541-50cd-4e80-857d-101e4b83895d",
+            "7d744f42-7fc7-4b32-bb2c-8731207db050",
+            "6966acea-0c23-4f16-a4a5-f0e091f5b563",
+            "a421e601-7828-40a9-8955-466a8a102d57"
+          ],
+          "assignmentCount": 4
+        }
+      },
+      "verdict": "PASS",
       "pass_checks": {
-        "http_ok": false,
-        "intelligence_pack_entity": false,
-        "audit_or_assignment_evidence": false
-      }
+        "http_ok": true,
+        "intelligence_pack_entity": true,
+        "audit_evidence": true
+      },
+      "dedicated_artifact": "C:/Users/Cesar/Downloads/Gravitre Operator AI/docs/delivery/part-d-p5-live-trace.json"
     },
     "P4_uninstall_teardown": {
       "ticket": "STA-309",
@@ -33,45 +117,55 @@
       "install_http": 200,
       "install_response": {
         "installed": true,
-        "assetId": "490115b7-be67-4658-991d-0cc5f4ffdfed",
-        "assetType": "workflow",
-        "slug": "competitive-intelligence-monitoring",
+        "assetId": "d9c093bd-3302-42d6-991e-488923b0f577",
+        "assetType": "knowledge_pack",
+        "slug": "hr-operations-knowledge",
         "install": {
-          "id": "1d4f1fb3-3692-4848-94cd-9f2433684bc2",
+          "id": "2c2201e5-b4fb-49af-b4f8-24023a7a6cea",
           "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
-          "asset_id": "490115b7-be67-4658-991d-0cc5f4ffdfed",
+          "asset_id": "d9c093bd-3302-42d6-991e-488923b0f577",
           "asset_version": 1,
-          "installed_entity_type": "workflow",
-          "installed_entity_id": "3c4c2dba-715e-5c61-8761-2d2594113217",
+          "installed_entity_type": "knowledge_pack",
+          "installed_entity_id": "0d60fd95-cb0f-58cf-a5dc-d7b166ecaacc",
           "install_variables": {},
           "status": "active",
           "installed_by": "f7e32f06-49df-4e73-8962-f41c21850762",
-          "installed_at": "2026-07-12T18:57:54.255897+00:00",
-          "updated_at": "2026-07-12T18:57:54.255915+00:00",
+          "installed_at": "2026-07-13T01:45:09.979371+00:00",
+          "updated_at": "2026-07-13T01:45:09.979393+00:00",
           "metadata": {
             "checklist": [],
-            "workflowId": "3c4c2dba-715e-5c61-8761-2d2594113217"
+            "ragSourceIds": [
+              "0d60fd95-cb0f-58cf-a5dc-d7b166ecaacc",
+              "b74b0d3c-6a36-56b5-a9c5-8380b685acc1"
+            ]
           }
         },
         "entities": {
-          "entityType": "workflow",
-          "entityId": "3c4c2dba-715e-5c61-8761-2d2594113217",
-          "workflowId": "3c4c2dba-715e-5c61-8761-2d2594113217"
+          "entityType": "knowledge_pack",
+          "entityId": "0d60fd95-cb0f-58cf-a5dc-d7b166ecaacc",
+          "ragSourceIds": [
+            "0d60fd95-cb0f-58cf-a5dc-d7b166ecaacc",
+            "b74b0d3c-6a36-56b5-a9c5-8380b685acc1"
+          ]
         },
         "connectorChecklist": []
       },
-      "teardown_asset_ref": "490115b7-be67-4658-991d-0cc5f4ffdfed",
-      "teardown_asset_type": "workflow",
+      "teardown_asset_ref": "d9c093bd-3302-42d6-991e-488923b0f577",
+      "teardown_asset_type": "knowledge_pack",
+      "used_existing_install": false,
       "spawned_agent_ids": [],
       "active_installs_after_install": [
         {
-          "id": "1d4f1fb3-3692-4848-94cd-9f2433684bc2",
+          "id": "2c2201e5-b4fb-49af-b4f8-24023a7a6cea",
           "status": "active",
-          "installed_entity_type": "workflow",
-          "installed_entity_id": "3c4c2dba-715e-5c61-8761-2d2594113217",
+          "installed_entity_type": "knowledge_pack",
+          "installed_entity_id": "0d60fd95-cb0f-58cf-a5dc-d7b166ecaacc",
           "metadata": {
             "checklist": [],
-            "workflowId": "3c4c2dba-715e-5c61-8761-2d2594113217"
+            "ragSourceIds": [
+              "0d60fd95-cb0f-58cf-a5dc-d7b166ecaacc",
+              "b74b0d3c-6a36-56b5-a9c5-8380b685acc1"
+            ]
           }
         }
       ],
@@ -79,60 +173,70 @@
       "uninstall_http": 200,
       "uninstall_response": {
         "uninstalled": true,
-        "installId": "1d4f1fb3-3692-4848-94cd-9f2433684bc2",
-        "assetId": "490115b7-be67-4658-991d-0cc5f4ffdfed",
-        "slug": "competitive-intelligence-monitoring",
+        "installId": "2c2201e5-b4fb-49af-b4f8-24023a7a6cea",
+        "assetId": "d9c093bd-3302-42d6-991e-488923b0f577",
+        "slug": "hr-operations-knowledge",
         "deactivated": {
           "agents": [],
-          "workflows": [
-            "3c4c2dba-715e-5c61-8761-2d2594113217"
-          ],
-          "ragSources": []
+          "workflows": [],
+          "ragSources": [
+            "0d60fd95-cb0f-58cf-a5dc-d7b166ecaacc",
+            "b74b0d3c-6a36-56b5-a9c5-8380b685acc1"
+          ]
         },
         "legacyDepartmentPackCleared": false
       },
       "audits": [
         {
-          "id": "62995454-0d30-4972-9476-9e817ac73b29",
+          "id": "c8528e0b-3332-476f-a321-5c4b1868d7d8",
           "action": "marketplace.asset.uninstalled",
           "resource_type": "marketplace_install",
-          "resource_id": "1d4f1fb3-3692-4848-94cd-9f2433684bc2",
+          "resource_id": "2c2201e5-b4fb-49af-b4f8-24023a7a6cea",
           "metadata": {
-            "slug": "competitive-intelligence-monitoring",
-            "assetId": "490115b7-be67-4658-991d-0cc5f4ffdfed",
+            "slug": "hr-operations-knowledge",
+            "assetId": "d9c093bd-3302-42d6-991e-488923b0f577",
             "deactivated": {
               "agents": [],
-              "workflows": [
-                "3c4c2dba-715e-5c61-8761-2d2594113217"
-              ],
-              "ragSources": []
+              "workflows": [],
+              "ragSources": [
+                "0d60fd95-cb0f-58cf-a5dc-d7b166ecaacc",
+                "b74b0d3c-6a36-56b5-a9c5-8380b685acc1"
+              ]
             },
             "legacyDepartmentPackCleared": false
           },
-          "created_at": "2026-07-12T18:57:55.129602+00:00"
+          "created_at": "2026-07-13T01:45:10.710998+00:00"
         }
       ],
       "agents_after_uninstall": [],
-      "workflows_after_uninstall": [
+      "workflows_after_uninstall": [],
+      "rag_after_uninstall": [
         {
-          "id": "3c4c2dba-715e-5c61-8761-2d2594113217",
-          "status": "archived"
+          "id": "0d60fd95-cb0f-58cf-a5dc-d7b166ecaacc",
+          "status": "inactive"
+        },
+        {
+          "id": "b74b0d3c-6a36-56b5-a9c5-8380b685acc1",
+          "status": "inactive"
         }
       ],
-      "rag_after_uninstall": [],
       "install_after": [
         {
-          "id": "1d4f1fb3-3692-4848-94cd-9f2433684bc2",
+          "id": "2c2201e5-b4fb-49af-b4f8-24023a7a6cea",
           "status": "uninstalled",
           "metadata": {
             "checklist": [],
-            "workflowId": "3c4c2dba-715e-5c61-8761-2d2594113217",
+            "ragSourceIds": [
+              "0d60fd95-cb0f-58cf-a5dc-d7b166ecaacc",
+              "b74b0d3c-6a36-56b5-a9c5-8380b685acc1"
+            ],
             "deactivatedOnUninstall": {
               "agents": [],
-              "workflows": [
-                "3c4c2dba-715e-5c61-8761-2d2594113217"
-              ],
-              "ragSources": []
+              "workflows": [],
+              "ragSources": [
+                "0d60fd95-cb0f-58cf-a5dc-d7b166ecaacc",
+                "b74b0d3c-6a36-56b5-a9c5-8380b685acc1"
+              ]
             }
           }
         }
@@ -202,15 +306,15 @@
       ],
       "target_user_id": "f7e32f06-49df-4e73-8962-f41c21850762",
       "target_email": "cesar@gravitre.app",
-      "department_id": "767969b1-be00-44b6-8d3b-5f37f2b311e9",
+      "department_id": "71d28fdc-ab14-4088-9ea1-60ea7d2d4e09",
       "add_http": 200,
       "add_response": {
         "member": {
-          "id": "a6182c2d-12ee-49fb-971c-e4b5d918670d",
-          "department_id": "767969b1-be00-44b6-8d3b-5f37f2b311e9",
+          "id": "d9322a38-843b-4b56-8852-ea8e71d7ec1c",
+          "department_id": "71d28fdc-ab14-4088-9ea1-60ea7d2d4e09",
           "user_id": "f7e32f06-49df-4e73-8962-f41c21850762",
           "role": "viewer",
-          "created_at": "2026-07-12T18:57:58.280207+00:00"
+          "created_at": "2026-07-13T01:45:13.474013+00:00"
         }
       },
       "remove_http": 200,
@@ -219,38 +323,27 @@
       },
       "audits": [
         {
-          "id": "89fcdd93-6c99-41fc-9910-ffcdfa70b464",
+          "id": "444715e4-7e69-495c-b956-12e7ad958fd0",
           "action": "department_member.removed",
           "resource_type": "department_member",
           "resource_id": "f7e32f06-49df-4e73-8962-f41c21850762",
           "metadata": {
             "userId": "f7e32f06-49df-4e73-8962-f41c21850762",
-            "departmentId": "767969b1-be00-44b6-8d3b-5f37f2b311e9"
+            "departmentId": "71d28fdc-ab14-4088-9ea1-60ea7d2d4e09"
           },
-          "created_at": "2026-07-12T18:57:58.704761+00:00"
+          "created_at": "2026-07-13T01:45:13.854686+00:00"
         },
         {
-          "id": "957ee99b-6e3e-4aae-91df-eee217a5d7d8",
+          "id": "1ba0f56d-de8f-4863-8adc-9627bc3fa8ea",
           "action": "department_member.added",
           "resource_type": "department_member",
-          "resource_id": "a6182c2d-12ee-49fb-971c-e4b5d918670d",
+          "resource_id": "d9322a38-843b-4b56-8852-ea8e71d7ec1c",
           "metadata": {
             "role": "viewer",
             "userId": "f7e32f06-49df-4e73-8962-f41c21850762",
-            "departmentId": "767969b1-be00-44b6-8d3b-5f37f2b311e9"
+            "departmentId": "71d28fdc-ab14-4088-9ea1-60ea7d2d4e09"
           },
-          "created_at": "2026-07-12T18:57:58.311723+00:00"
-        },
-        {
-          "id": "68362f0c-9a97-4e2f-acca-238b654fbbcc",
-          "action": "department_member.removed",
-          "resource_type": "department_member",
-          "resource_id": "f7e32f06-49df-4e73-8962-f41c21850762",
-          "metadata": {
-            "userId": "f7e32f06-49df-4e73-8962-f41c21850762",
-            "departmentId": "767969b1-be00-44b6-8d3b-5f37f2b311e9"
-          },
-          "created_at": "2026-07-12T18:57:57.424907+00:00"
+          "created_at": "2026-07-13T01:45:13.506777+00:00"
         }
       ],
       "pass_checks": {
@@ -266,10 +359,10 @@
     "http": 200,
     "body": {
       "status": "ok",
-      "timestamp": "2026-07-12T18:57:48.773323+00:00",
+      "timestamp": "2026-07-13T01:45:02.881903+00:00",
       "version": "0.1.0",
       "environment": "prod",
-      "git_sha": "192a6096782efa1f796600659298eb7d43d8cc97",
+      "git_sha": "8fc29454de466e975bad4dc0066a21da310b1ff5",
       "ai_disabled": false,
       "checks": {
         "database": "healthy",
@@ -279,7 +372,7 @@
       }
     }
   },
-  "prod_git_sha": "192a6096782efa1f796600659298eb7d43d8cc97",
+  "prod_git_sha": "8fc29454de466e975bad4dc0066a21da310b1ff5",
   "sha_contains_p4_p6": true,
   "intelligence_pack_seed": [
     "exists:marketing-intelligence-pack",
@@ -289,31 +382,34 @@
   ],
   "intelligence_pack_seed_errors": [],
   "intelligence_pack_ref": "e6fbedaa-9d2a-4656-98b6-1e0fa4c9f790",
-  "agent_asset_ref": "490115b7-be67-4658-991d-0cc5f4ffdfed",
-  "agent_asset_slug": "competitive-intelligence-monitoring",
-  "teardown_asset_type": "workflow",
+  "agent_asset_ref": "d9c093bd-3302-42d6-991e-488923b0f577",
+  "agent_asset_slug": "hr-operations-knowledge",
+  "teardown_asset_type": "knowledge_pack",
+  "probe_operators_soft_deleted": [],
   "department_create": {
     "via": "supabase_service_role",
     "body": [
       {
-        "id": "767969b1-be00-44b6-8d3b-5f37f2b311e9",
+        "id": "71d28fdc-ab14-4088-9ea1-60ea7d2d4e09",
         "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
-        "name": "PartD-P6-Probe-a754cd",
+        "name": "PartD-P6-Probe-cd1eab",
         "lite_seat_allocation": 1,
         "department_admin_id": null,
-        "created_at": "2026-07-12T18:57:49.697063+00:00",
-        "updated_at": "2026-07-12T18:57:49.697063+00:00"
+        "created_at": "2026-07-13T01:45:04.450541+00:00",
+        "updated_at": "2026-07-13T01:45:04.450541+00:00"
       }
     ]
   },
-  "probe_department_id": "767969b1-be00-44b6-8d3b-5f37f2b311e9",
-  "fixture_agent_id": "b7858c50-6205-5899-888c-f9e55668acc3",
-  "fixture_agent_source": "agents",
+  "probe_department_id": "71d28fdc-ab14-4088-9ea1-60ea7d2d4e09",
+  "fixture_agent_id": "256fb288-4169-412a-93e1-7588ca9d83ce",
+  "fixture_agent_source": "probe_agents",
+  "probe_agent_name": "PartD-P5-Probe-d96a1a",
   "verdicts": {
     "P4": "PASS",
-    "P5": "FAIL",
+    "P5": "PASS",
     "P6": "PASS"
   },
-  "overall": "FAIL",
-  "finished_at": "2026-07-12T18:58:00.601557+00:00"
+  "overall": "PASS",
+  "finished_at": "2026-07-13T01:45:44.316734+00:00",
+  "option_a_applied": true
 }

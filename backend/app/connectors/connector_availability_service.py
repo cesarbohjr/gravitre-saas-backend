@@ -11,7 +11,6 @@ from app.connectors.connection_health import (
     resolve_display_connector_status,
 )
 from app.connectors.hubspot_oauth import (
-    HUBSPOT_REQUIRED_SCOPES,
     load_oauth_tokens,
     normalize_vendor as normalize_hubspot_vendor,
 )
@@ -53,14 +52,13 @@ def _hubspot_scopes_valid(tokens: dict[str, Any] | None, action_key: str | None)
     scopes = {str(scope) for scope in (tokens.get("scopes") or [])}
     if not scopes:
         return True, None
+    # Connected-integration listing (no action_key) must not require the full
+    # authorize-time scope set. Smoke / partial grants (contacts+deals+lists
+    # without companies/tickets/notes) are still a connected HubSpot connector;
+    # per-action gates apply when action_key is set.
     if not action_key:
-        required = tuple(
-            scope.strip()
-            for scope in HUBSPOT_REQUIRED_SCOPES.split()
-            if scope.strip()
-        )
-    else:
-        required = HUBSPOT_ACTION_REQUIRED_SCOPES.get(action_key, ())
+        return True, None
+    required = HUBSPOT_ACTION_REQUIRED_SCOPES.get(action_key, ())
     if not required:
         return True, None
     missing = [scope for scope in required if scope not in scopes]

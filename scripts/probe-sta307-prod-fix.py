@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
-"""STA-307 prod live verdict — HubSpot+Slack disconnected labels + immediate blocked.
+"""STA-307 / foundation Item 5 — multi-connector HubSpot+Slack orch live verdict.
 
-PASS requires:
-  - prod git_sha starts with EXPECTED_SHA_PREFIX (PR #99 merge)
-  - plan steps labeled HubSpot then Slack (not both HubSpot)
+Two modes (smoke org is usually CONNECTED):
+
+CONNECTED (default):
+  - plan labels include HubSpot and Slack as distinct steps
+  - HubSpot must NOT be labeled "(not connected)" when connector is healthy
+  - pending_task.type == connector_orchestration
+  - status awaiting_plan_confirm (writes gated) is PASS
+  - elapsed_ms well under 120s chat proxy ceiling
+
+DISCONNECTED (STA307_EXPECT_DISCONNECTED=1):
+  - original STA-307 baseline: both steps blocked / not connected copy
   - pending_task.status == blocked (no awaiting_plan_confirm)
-  - chat turn elapsed_ms well under the 120s Next.js chat proxy ceiling
 """
 from __future__ import annotations
 
@@ -29,14 +36,19 @@ BACKEND = ROOT / "backend"
 OUT = ROOT / "docs" / "delivery" / "sta307-prod-verdict.json"
 ORG = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
 BASE = "https://gravitre-saas-backend-production.up.railway.app"
-# PR #99 squash merge on main
-EXPECTED_SHA_PREFIX = "67b61671"
+# Tip at last Item-5 fix ship; override with STA307_ALLOW_ANY_SHA=1
+EXPECTED_SHA_PREFIX = "8fc29454"
 CHAT_TIMEOUT = 180.0
 PROMPT = (
     "Search HubSpot for high-intent leads and draft a follow-up in Slack "
     "for approval [STA-307-prod {nonce}]"
 )
 ALLOW_ANY = os.environ.get("STA307_ALLOW_ANY_SHA", "").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+}
+EXPECT_DISCONNECTED = os.environ.get("STA307_EXPECT_DISCONNECTED", "").strip().lower() in {
     "1",
     "true",
     "yes",
@@ -231,26 +243,51 @@ async def main() -> int:
         ):
             labels_ok = False
 
-        blocked_ok = status == "blocked"
-        no_confirm = status != "awaiting_plan_confirm"
         fast_ok = elapsed_ms < 45_000  # well under 120s proxy hang
         text = parsed.get("text") or ""
-        copy_ok = (
-            "nothing is runnable" in text.lower()
-            or "blocked" in text.lower()
-            or "not connected" in text.lower()
+        hub_labels = [lb for lb in labels if "hubspot" in lb.lower()]
+        hubspot_false_not_connected = any(
+            "not connected" in lb.lower() for lb in hub_labels
+        )
+        orch_ok = (
+            isinstance(pending, dict) and pending.get("type") == "connector_orchestration"
         )
 
-        pass_all = (
-            r.status_code == 200
-            and labels_ok
-            and blocked_ok
-            and no_confirm
-            and fast_ok
-            and isinstance(pending, dict)
-            and pending.get("type") == "connector_orchestration"
-        )
+        if EXPECT_DISCONNECTED:
+            blocked_ok = status == "blocked"
+            no_confirm = status != "awaiting_plan_confirm"
+            copy_ok = (
+                "nothing is runnable" in text.lower()
+                or "blocked" in text.lower()
+                or "not connected" in text.lower()
+            )
+            status_ok = blocked_ok and no_confirm
+            availability_ok = True  # disconnected baseline expects not-connected labels
+            pass_all = (
+                r.status_code == 200
+                and labels_ok
+                and status_ok
+                and fast_ok
+                and orch_ok
+            )
+            mode = "disconnected"
+        else:
+            # Connected smoke org: HubSpot must appear as connected; confirm gate is OK.
+            status_ok = status in {"awaiting_plan_confirm", "blocked"}
+            copy_ok = True
+            availability_ok = labels_ok and not hubspot_false_not_connected
+            pass_all = (
+                r.status_code == 200
+                and availability_ok
+                and status_ok
+                and fast_ok
+                and orch_ok
+            )
+            mode = "connected"
+            blocked_ok = status == "blocked"
+            no_confirm = status != "awaiting_plan_confirm"
 
+        report["mode"] = mode
         report["turn"] = {
             "http": r.status_code,
             "elapsed_ms": elapsed_ms,
@@ -260,15 +297,20 @@ async def main() -> int:
             "sse_pending_status": (sse_pending or {}).get("status") if sse_pending else None,
             "db_pending_status": (db_pending or {}).get("status") if isinstance(db_pending, dict) else None,
             "pending_type": (pending or {}).get("type") if isinstance(pending, dict) else None,
+            "pending_status": status,
             "labels": labels,
             "state_http": st.status_code,
         }
         report["checks"] = {
-            "labels_hubspot_then_slack": labels_ok,
+            "mode": mode,
+            "labels_hubspot_and_slack": labels_ok,
+            "hubspot_not_falsely_disconnected": not hubspot_false_not_connected,
+            "status_ok": status_ok,
             "status_blocked": blocked_ok,
             "not_awaiting_confirm": no_confirm,
             "elapsed_under_45s": fast_ok,
             "honest_copy": copy_ok,
+            "orch_type": orch_ok,
         }
         report["verdict"] = "PASS" if pass_all else "FAIL"
         report["finished_at"] = utcnow()

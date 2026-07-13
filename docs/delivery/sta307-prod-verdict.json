@@ -3,18 +3,18 @@
   "ticket": "STA-307",
   "pr": 99,
   "expected_sha_prefix": "67b61671",
-  "started_at": "2026-07-12T18:56:35.537139+00:00",
+  "started_at": "2026-07-13T01:46:46.080163+00:00",
   "base_url": "https://gravitre-saas-backend-production.up.railway.app",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
-  "conversation_id": "e1e6a490-b562-4e02-b23e-e00734b3ae52",
-  "prompt": "Search HubSpot for high-intent leads and draft a follow-up in Slack for approval [STA-307-prod ee691f2d]",
+  "conversation_id": "d9ff6e2e-792b-46f9-b31f-2bf6e338c579",
+  "prompt": "Search HubSpot for high-intent leads and draft a follow-up in Slack for approval [STA-307-prod c2dc9317]",
   "prod_health": {
     "status": "ok",
-    "timestamp": "2026-07-12T18:56:34.865565+00:00",
+    "timestamp": "2026-07-13T01:46:45.215145+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "192a6096782efa1f796600659298eb7d43d8cc97",
+    "git_sha": "8fc29454de466e975bad4dc0066a21da310b1ff5",
     "ai_disabled": false,
     "checks": {
       "database": "healthy",
@@ -23,30 +23,30 @@
       "clickhouse": "configured"
     }
   },
-  "prod_sha": "192a6096782efa1f796600659298eb7d43d8cc97",
+  "prod_sha": "8fc29454de466e975bad4dc0066a21da310b1ff5",
   "prod_sha_ok": true,
   "turn": {
     "http": 200,
-    "elapsed_ms": 3637,
-    "dialogue_mode": "answer",
-    "text_head": "I planned a **2-step orchestration**, but **nothing is runnable** \u2014 every step is blocked:\n\n1. \u25cb Hubspot (not connected) \u2014 *skipped* (Connect Hubspot in Gravitre to run this action.)\n2. \u25cb Slack (not connected) \u2014 *skipped* (Connect Slack in Gravitre to run this action.)\n\nConnect the required tools at /connectors (or rephrase with connectors you already have), then ask again. No approval is needed until at least one step can run.\n\nBlocked because: Connect Hubspot in Gravitre to run this action.; C",
+    "elapsed_ms": 4286,
+    "dialogue_mode": "confirm",
+    "text_head": "I planned a **2-step orchestration**:\n\n1. \u25cb Hubspot (not connected) \u2014 *skipped* (Connect Hubspot in Gravitre to run this action.)\n2. **Post message** (write, approval required)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change.",
     "intel_count": 2,
-    "sse_pending_status": "blocked",
-    "db_pending_status": "blocked",
+    "sse_pending_status": "awaiting_plan_confirm",
+    "db_pending_status": "awaiting_plan_confirm",
     "pending_type": "connector_orchestration",
     "labels": [
       "Hubspot (not connected)",
-      "Slack (not connected)"
+      "Post message"
     ],
     "state_http": 200
   },
   "checks": {
-    "labels_hubspot_then_slack": true,
-    "status_blocked": true,
-    "not_awaiting_confirm": true,
+    "labels_hubspot_then_slack": false,
+    "status_blocked": false,
+    "not_awaiting_confirm": false,
     "elapsed_under_45s": true,
     "honest_copy": true
   },
-  "verdict": "PASS",
-  "finished_at": "2026-07-12T18:56:39.847070+00:00"
+  "verdict": "FAIL",
+  "finished_at": "2026-07-13T01:46:51.031358+00:00"
 }

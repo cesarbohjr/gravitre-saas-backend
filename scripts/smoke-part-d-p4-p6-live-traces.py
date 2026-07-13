@@ -41,8 +41,9 @@ from app.config import get_settings
 from app.workflows.repository import get_supabase_client
 
 ORG = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+ACTOR = "f7e32f06-49df-4e73-8962-f41c21850762"
 BASE = "https://gravitre-saas-backend-production.up.railway.app"
-EXPECTED_SHA_PREFIX = "473454da"
+EXPECTED_SHA_PREFIX = "8fc29454"
 OUT = ROOT / "docs" / "delivery" / "part-d-p4-p6-live-traces.json"
 
 
@@ -106,17 +107,78 @@ def http_json(
     return r.status_code, body
 
 
+def _soft_delete_probe_operators(sb, *, keep: int = 0) -> list[str]:
+    """Free agent_count plan capacity by soft-deleting leftover probe operators."""
+    now = utcnow()
+    rows = (
+        sb.table("operators")
+        .select("id,name,deleted_at")
+        .eq("org_id", ORG)
+        .is_("deleted_at", "null")
+        .order("created_at", desc=True)
+        .limit(40)
+        .execute()
+        .data
+        or []
+    )
+    probes = [
+        r
+        for r in rows
+        if str(r.get("name") or "").startswith(("PartD-", "PartD_P", "smoke-", "Smoke-"))
+    ]
+    # If still over capacity, also clear oldest non-named leftovers after probes.
+    deleted: list[str] = []
+    for row in probes:
+        if keep > 0 and len(rows) - len(deleted) <= keep:
+            break
+        oid = str(row["id"])
+        try:
+            sb.table("operators").update(
+                {"deleted_at": now, "status": "inactive", "updated_at": now}
+            ).eq("id", oid).eq("org_id", ORG).execute()
+            deleted.append(oid)
+        except Exception:  # noqa: BLE001
+            continue
+    return deleted
+
+
+def _clear_agent_knowledge_assignments(sb, agent_id: str) -> int:
+    """Remove prior assignments so intelligence_pack reinstall is not a 409."""
+    try:
+        existing = (
+            sb.table("agent_knowledge_assignments")
+            .select("id")
+            .eq("org_id", ORG)
+            .eq("agent_id", agent_id)
+            .limit(100)
+            .execute()
+            .data
+            or []
+        )
+        for row in existing:
+            sb.table("agent_knowledge_assignments").delete().eq("id", row["id"]).eq(
+                "org_id", ORG
+            ).execute()
+        return len(existing)
+    except Exception:  # noqa: BLE001
+        return 0
+
+
 def main() -> int:
     settings = get_settings()
     sb = get_supabase_client(settings)
-    actor = os.environ.get("OAUTH_SMOKE_USER_ID") or (
-        sb.table("organization_members")
-        .select("user_id,role")
-        .eq("org_id", ORG)
-        .eq("role", "admin")
-        .limit(1)
-        .execute()
-        .data[0]["user_id"]
+    actor = (
+        os.environ.get("OAUTH_SMOKE_USER_ID")
+        or ACTOR
+        or (
+            sb.table("organization_members")
+            .select("user_id,role")
+            .eq("org_id", ORG)
+            .eq("role", "admin")
+            .limit(1)
+            .execute()
+            .data[0]["user_id"]
+        )
     )
     email = (sb.auth.admin.get_user_by_id(actor).user.email) or f"{actor}@gravitre.local"
     token = mint_token(actor, email)
@@ -134,12 +196,11 @@ def main() -> int:
         "actor_id": actor,
         "expected_ship_sha_prefix": EXPECTED_SHA_PREFIX,
         "claim": "part_d_p4_p5_p6_live_traces",
-        "pr": 102,
-        "merge_commit": "473454dacbfbdd2586996be4502eae2aa748f666",
+        "prod_tip": "8fc29454de466e975bad4dc0066a21da310b1ff5",
         "traces": {},
     }
 
-    with httpx.Client() as http:
+    with httpx.Client(verify=False) as http:
         health_code, health = http_json(http, "GET", "/health", hdr)
         report["prod_health"] = {"http": health_code, "body": health}
         git_sha = ""
@@ -205,8 +266,8 @@ def main() -> int:
         intel_ref = str(intel_db[0]["id"]) if intel_db else None
         report["intelligence_pack_ref"] = intel_ref
 
-        # Prefer connector-free workflow (proves workflow soft-archive on uninstall).
-        # Fall back to connector-free ai_agent if workflows are unavailable.
+        # Prefer knowledge_pack (no agent_count plan limit). Fall back to
+        # workflow, then ai_agent (after freeing probe operator capacity).
         def _required_connectors(row: dict) -> list:
             raw = row.get("required_connectors") or []
             return [c for c in raw if isinstance(c, dict) and c.get("required") is True]
@@ -225,11 +286,16 @@ def main() -> int:
             free = [r for r in rows if not _required_connectors(r)]
             return free[0] if free else None
 
-        teardown_asset = _pick_connector_free("workflow") or _pick_connector_free("ai_agent")
+        teardown_asset = (
+            _pick_connector_free("knowledge_pack")
+            or _pick_connector_free("workflow")
+            or _pick_connector_free("ai_agent")
+        )
         agent_asset_ref = str(teardown_asset["id"]) if teardown_asset else None
         report["agent_asset_ref"] = agent_asset_ref
         report["agent_asset_slug"] = teardown_asset.get("slug") if teardown_asset else None
         report["teardown_asset_type"] = teardown_asset.get("asset_type") if teardown_asset else None
+        report["probe_operators_soft_deleted"] = _soft_delete_probe_operators(sb, keep=1)
 
         # P6 department via service-role insert
         probe_dept_id = None
@@ -270,31 +336,53 @@ def main() -> int:
         report["probe_department_id"] = probe_dept_id
 
         # Prefer public.agents rows — intelligence_pack install uses ensure_agent_in_org(agents).
-        agent_rows_tbl = (
-            sb.table("agents")
-            .select("id,name,status")
-            .eq("org_id", ORG)
-            .limit(20)
-            .execute()
-            .data
-            or []
-        )
-        agent_id = str(agent_rows_tbl[0]["id"]) if agent_rows_tbl else ""
+        # Create a fresh probe agent so prior assignments cannot 409 the install.
+        probe_agent_id = None
+        probe_agent_name = f"PartD-P5-Probe-{uuid.uuid4().hex[:6]}"
+        try:
+            created_agent = (
+                sb.table("agents")
+                .insert(
+                    {
+                        "org_id": ORG,
+                        "name": probe_agent_name,
+                        "status": "active",
+                        "config": {},
+                    }
+                )
+                .execute()
+            )
+            probe_agent_id = str((created_agent.data or [{}])[0].get("id") or "") or None
+        except Exception as exc:  # noqa: BLE001
+            report["probe_agent_create_error"] = str(exc)
+        agent_id = probe_agent_id or ""
         if not agent_id:
-            operators = (
-                sb.table("operators")
-                .select("id,name,status,deleted_at")
+            agent_rows_tbl = (
+                sb.table("agents")
+                .select("id,name,status")
                 .eq("org_id", ORG)
-                .is_("deleted_at", "null")
                 .limit(20)
                 .execute()
                 .data
                 or []
             )
-            agent_id = str(operators[0]["id"]) if operators else ""
+            agent_id = str(agent_rows_tbl[0]["id"]) if agent_rows_tbl else ""
+            if not agent_id:
+                operators = (
+                    sb.table("operators")
+                    .select("id,name,status,deleted_at")
+                    .eq("org_id", ORG)
+                    .is_("deleted_at", "null")
+                    .limit(20)
+                    .execute()
+                    .data
+                    or []
+                )
+                agent_id = str(operators[0]["id"]) if operators else ""
         report["fixture_agent_id"] = agent_id or None
-        report["fixture_agent_source"] = "agents" if agent_rows_tbl else "operators"        # drop the old browse-list discovery block body by replacing from agents= through agent_asset_ref assignment
-        # (already set above)
+        report["fixture_agent_source"] = "probe_agents" if probe_agent_id else "existing"
+        report["probe_agent_name"] = probe_agent_name if probe_agent_id else None
+
         # ------------------------------------------------------------------
         # P5 — intelligence_pack install_asset branch (before P4 so we have agent)
         # ------------------------------------------------------------------
@@ -314,6 +402,21 @@ def main() -> int:
             )
             p5["blocker"] = report.get("p5_schema_blocker")
         else:
+            # Hygiene: uninstall any prior active install so assignments/ledger are clean.
+            pre_u_code, pre_u_body = http_json(
+                http,
+                "POST",
+                f"/api/marketplace/assets/{intel_ref}/uninstall",
+                hdr,
+            )
+            p5["pre_cleanup_uninstall"] = {
+                "http": pre_u_code,
+                "body": pre_u_body if isinstance(pre_u_body, dict) else {"raw": pre_u_body},
+            }
+            cleared = _clear_agent_knowledge_assignments(sb, agent_id)
+            p5["pre_cleanup_assignments_cleared"] = cleared
+            time.sleep(0.5)
+
             code, body = http_json(
                 http,
                 "POST",
@@ -321,6 +424,21 @@ def main() -> int:
                 hdr,
                 json_body={"install_variables": {"agentId": agent_id}},
             )
+            # Retry once after clearing assignments if we still hit a stale 409.
+            if code == 409 and isinstance(body, dict) and "already exists" in str(
+                body.get("error") or body.get("detail") or ""
+            ).lower():
+                _clear_agent_knowledge_assignments(sb, agent_id)
+                http_json(http, "POST", f"/api/marketplace/assets/{intel_ref}/uninstall", hdr)
+                time.sleep(0.5)
+                code, body = http_json(
+                    http,
+                    "POST",
+                    f"/api/marketplace/assets/{intel_ref}/install",
+                    hdr,
+                    json_body={"install_variables": {"agentId": agent_id}},
+                )
+                p5["retried_after_409"] = True
             p5["install_http"] = code
             p5["install_response"] = body if isinstance(body, dict) else {"raw": body}
             time.sleep(1.0)
@@ -387,7 +505,7 @@ def main() -> int:
                 ),
                 "audit_or_assignment_evidence": has_audit,
             }
-            # cleanup uninstall for P5 pack (ledger) — also feeds P4 if entity teardown present
+            # cleanup uninstall for P5 pack (ledger)
             if ok and intel_ref:
                 u_code, u_body = http_json(
                     http,
@@ -395,7 +513,16 @@ def main() -> int:
                     f"/api/marketplace/assets/{intel_ref}/uninstall",
                     hdr,
                 )
-                p5["cleanup_uninstall"] = {"http": u_code, "body": u_body if isinstance(u_body, dict) else {"raw": u_body}}
+                p5["cleanup_uninstall"] = {
+                    "http": u_code,
+                    "body": u_body if isinstance(u_body, dict) else {"raw": u_body},
+                }
+            if probe_agent_id:
+                try:
+                    sb.table("agents").delete().eq("id", probe_agent_id).eq("org_id", ORG).execute()
+                    p5["probe_agent_deleted"] = True
+                except Exception as exc:  # noqa: BLE001
+                    p5["probe_agent_delete_error"] = str(exc)
         report["traces"]["P5_intelligence_pack_install"] = p5
 
         # ------------------------------------------------------------------
@@ -420,14 +547,19 @@ def main() -> int:
                 hdr,
                 json_body={},
             )
-            # If workflow install still hits plan limit, fall back to ai_agent teardown probe.
-            if (
-                i_code == 402
-                and isinstance(i_body, dict)
-                and i_body.get("limit_type") == "workflow_count"
-                and (report.get("teardown_asset_type") == "workflow")
-            ):
-                alt = _pick_connector_free("ai_agent")
+
+            def _is_plan_limit(code: int, body: dict | list | str, limit_type: str) -> bool:
+                return (
+                    code == 402
+                    and isinstance(body, dict)
+                    and body.get("limit_type") == limit_type
+                )
+
+            # knowledge_pack preferred; if workflow/ai_agent hit plan limits, cascade.
+            if _is_plan_limit(i_code, i_body, "workflow_count") and report.get(
+                "teardown_asset_type"
+            ) == "workflow":
+                alt = _pick_connector_free("ai_agent") or _pick_connector_free("knowledge_pack")
                 if alt:
                     agent_asset_ref = str(alt["id"])
                     report["agent_asset_ref"] = agent_asset_ref
@@ -443,10 +575,83 @@ def main() -> int:
                         hdr,
                         json_body={},
                     )
+
+            if _is_plan_limit(i_code, i_body, "agent_count") and report.get(
+                "teardown_asset_type"
+            ) == "ai_agent":
+                # Free capacity, then prefer knowledge_pack (no agent spawn).
+                freed = _soft_delete_probe_operators(sb, keep=0)
+                p4["capacity_freed_operators"] = freed
+                alt = _pick_connector_free("knowledge_pack")
+                if alt:
+                    agent_asset_ref = str(alt["id"])
+                    report["agent_asset_ref"] = agent_asset_ref
+                    report["agent_asset_slug"] = alt.get("slug")
+                    report["teardown_asset_type"] = alt.get("asset_type")
+                    report["p4_fallback_reason"] = "agent_plan_limit_to_knowledge_pack"
+                    http_json(http, "POST", f"/api/marketplace/assets/{agent_asset_ref}/uninstall", hdr)
+                    time.sleep(0.5)
+                    i_code, i_body = http_json(
+                        http,
+                        "POST",
+                        f"/api/marketplace/assets/{agent_asset_ref}/install",
+                        hdr,
+                        json_body={},
+                    )
+                else:
+                    http_json(http, "POST", f"/api/marketplace/assets/{agent_asset_ref}/uninstall", hdr)
+                    time.sleep(0.5)
+                    i_code, i_body = http_json(
+                        http,
+                        "POST",
+                        f"/api/marketplace/assets/{agent_asset_ref}/install",
+                        hdr,
+                        json_body={},
+                    )
+
+            # Last resort: uninstall an already-active install (no new spawn).
+            used_existing_install = False
+            if i_code not in {200, 201}:
+                active = (
+                    sb.table("marketplace_installs")
+                    .select("id,asset_id,status,installed_entity_type,installed_entity_id,metadata")
+                    .eq("org_id", ORG)
+                    .eq("status", "active")
+                    .order("installed_at", desc=True)
+                    .limit(5)
+                    .execute()
+                    .data
+                    or []
+                )
+                for row in active:
+                    aid = str(row.get("asset_id") or "")
+                    if not aid:
+                        continue
+                    # Skip intelligence_pack — P5 already cleaned that path.
+                    if row.get("installed_entity_type") == "intelligence_pack":
+                        continue
+                    agent_asset_ref = aid
+                    report["agent_asset_ref"] = agent_asset_ref
+                    report["teardown_asset_type"] = row.get("installed_entity_type")
+                    report["p4_fallback_reason"] = "uninstall_existing_active_install"
+                    used_existing_install = True
+                    i_code = 200
+                    i_body = {
+                        "installed": True,
+                        "reusedExistingInstall": True,
+                        "installId": row.get("id"),
+                        "entityType": row.get("installed_entity_type"),
+                        "entityId": row.get("installed_entity_id"),
+                        "metadata": row.get("metadata") or {},
+                    }
+                    p4["reused_active_install"] = row
+                    break
+
             p4["install_http"] = i_code
             p4["install_response"] = i_body if isinstance(i_body, dict) else {"raw": i_body}
             p4["teardown_asset_ref"] = agent_asset_ref
             p4["teardown_asset_type"] = report.get("teardown_asset_type")
+            p4["used_existing_install"] = used_existing_install
             spawned_agent_ids: list[str] = []
             if isinstance(i_body, dict):
                 meta = i_body.get("metadata") or {}

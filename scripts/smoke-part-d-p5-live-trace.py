@@ -35,6 +35,27 @@ def utcnow() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _clear_agent_knowledge_assignments(client, agent_id: str) -> int:
+    try:
+        existing = (
+            client.table("agent_knowledge_assignments")
+            .select("id")
+            .eq("org_id", ORG)
+            .eq("agent_id", agent_id)
+            .limit(100)
+            .execute()
+            .data
+            or []
+        )
+        for row in existing:
+            client.table("agent_knowledge_assignments").delete().eq("id", row["id"]).eq(
+                "org_id", ORG
+            ).execute()
+        return len(existing)
+    except Exception:  # noqa: BLE001
+        return 0
+
+
 def main() -> int:
     c = get_supabase_client(get_settings())
     pack = (
@@ -82,57 +103,78 @@ def main() -> int:
     }
 
     since = utcnow()
-    install = httpx.post(
-        f"{BASE}/api/marketplace/assets/{pack['id']}/install",
-        headers=hdr,
-        json={"installVariables": {"agentId": agent_id}},
-        timeout=120,
-    )
-    time.sleep(1.0)
-    audits = (
-        c.table("audit_events")
-        .select("action,metadata,created_at,resource_type,resource_id")
-        .eq("org_id", ORG)
-        .gte("created_at", since)
-        .in_(
-            "action",
-            ["marketplace.intelligence_pack.installed", "marketplace.asset.installed"],
+    with httpx.Client(verify=False, timeout=120) as http:
+        # Hygiene: clear any prior active install + stale assignments before fresh install.
+        pre_uninstall = http.post(
+            f"{BASE}/api/marketplace/assets/{pack['id']}/uninstall",
+            headers=hdr,
         )
-        .order("created_at", desc=True)
-        .limit(10)
-        .execute()
-        .data
-        or []
-    )
-    install_row = (
-        c.table("marketplace_installs")
-        .select("id,status,installed_entity_type,installed_entity_id,metadata")
-        .eq("org_id", ORG)
-        .eq("asset_id", pack["id"])
-        .eq("status", "active")
-        .order("installed_at", desc=True)
-        .limit(1)
-        .execute()
-        .data
-        or []
-    )
-    body = install.json() if install.content else {}
-    ok = (
-        install.status_code in {200, 201}
-        and isinstance(body, dict)
-        and (
-            body.get("installed") is True
-            or body.get("assetType") == "intelligence_pack"
-            or (install_row and install_row[0].get("installed_entity_type") == "intelligence_pack")
+        cleared = _clear_agent_knowledge_assignments(c, agent_id)
+        time.sleep(0.5)
+
+        install = http.post(
+            f"{BASE}/api/marketplace/assets/{pack['id']}/install",
+            headers=hdr,
+            json={"installVariables": {"agentId": agent_id}},
         )
-        and bool(audits)
-    )
-    # cleanup
-    uninstall = httpx.post(
-        f"{BASE}/api/marketplace/assets/{pack['id']}/uninstall",
-        headers=hdr,
-        timeout=60,
-    )
+        body = install.json() if install.content else {}
+        if install.status_code == 409 and "already exists" in str(
+            (body or {}).get("error") or (body or {}).get("detail") or ""
+        ).lower():
+            _clear_agent_knowledge_assignments(c, agent_id)
+            http.post(f"{BASE}/api/marketplace/assets/{pack['id']}/uninstall", headers=hdr)
+            time.sleep(0.5)
+            install = http.post(
+                f"{BASE}/api/marketplace/assets/{pack['id']}/install",
+                headers=hdr,
+                json={"installVariables": {"agentId": agent_id}},
+            )
+            body = install.json() if install.content else {}
+
+        time.sleep(1.0)
+        audits = (
+            c.table("audit_events")
+            .select("action,metadata,created_at,resource_type,resource_id")
+            .eq("org_id", ORG)
+            .gte("created_at", since)
+            .in_(
+                "action",
+                ["marketplace.intelligence_pack.installed", "marketplace.asset.installed"],
+            )
+            .order("created_at", desc=True)
+            .limit(10)
+            .execute()
+            .data
+            or []
+        )
+        install_row = (
+            c.table("marketplace_installs")
+            .select("id,status,installed_entity_type,installed_entity_id,metadata")
+            .eq("org_id", ORG)
+            .eq("asset_id", pack["id"])
+            .eq("status", "active")
+            .order("installed_at", desc=True)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        ok = (
+            install.status_code in {200, 201}
+            and isinstance(body, dict)
+            and (
+                body.get("installed") is True
+                or body.get("assetType") == "intelligence_pack"
+                or (install_row and install_row[0].get("installed_entity_type") == "intelligence_pack")
+            )
+            and bool(audits)
+        )
+        # cleanup
+        uninstall = http.post(
+            f"{BASE}/api/marketplace/assets/{pack['id']}/uninstall",
+            headers=hdr,
+            timeout=60,
+        )
     try:
         c.table("agents").delete().eq("id", agent_id).eq("org_id", ORG).execute()
     except Exception:
@@ -142,9 +184,14 @@ def main() -> int:
         "ticket": "STA-310",
         "ran_at": utcnow(),
         "option_a_applied": True,
+        "prod_tip": "8fc29454de466e975bad4dc0066a21da310b1ff5",
         "pack": pack,
         "probe_agent_id": agent_id,
         "probe_agent_name": probe_name,
+        "pre_cleanup": {
+            "uninstall_http": pre_uninstall.status_code,
+            "assignments_cleared": cleared,
+        },
         "http_install": {"status": install.status_code, "body": body},
         "http_uninstall": {
             "status": uninstall.status_code,

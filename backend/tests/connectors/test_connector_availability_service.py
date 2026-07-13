@@ -64,6 +64,43 @@ def test_hubspot_connected_executable_for_contact_search(
     assert availability["display_status"] == "connected"
 
 
+@patch("app.connectors.connector_availability_service.resolve_connector_auth_status", return_value="connected")
+@patch("app.connectors.connector_availability_service.load_oauth_tokens")
+@patch("app.connectors.connector_availability_service._hubspot_oauth_configured", return_value=True)
+def test_hubspot_partial_scopes_still_executable_without_action_key(
+    _configured,
+    mock_tokens,
+    _auth,
+):
+    """STA-307: listing must not require full authorize scopes (companies/tickets/notes)."""
+    mock_tokens.return_value = {
+        "access_token": "tok",
+        "scopes": [
+            "oauth",
+            "crm.objects.contacts.read",
+            "crm.objects.contacts.write",
+            "crm.objects.deals.read",
+            "crm.objects.deals.write",
+            "crm.lists.read",
+            "crm.lists.write",
+            "automation",
+        ],
+    }
+    availability = evaluate_connector_availability(
+        MagicMock(),
+        "org-1",
+        _hubspot_row(),
+        _settings(),
+        force_live=True,
+        action_key=None,
+    )
+    assert availability["auth_status"] == "connected"
+    assert availability["display_status"] == "connected"
+    assert availability["scopes_valid"] is True
+    assert availability["blocking_reason"] is None
+    assert availability["execution_available"] is True
+
+
 @patch("app.connectors.connector_availability_service.resolve_connector_auth_status", return_value="auth_expired")
 @patch("app.connectors.connector_availability_service.load_oauth_tokens")
 @patch("app.connectors.connector_availability_service._hubspot_oauth_configured", return_value=True)

@@ -1,98 +1,100 @@
 {
   "kind": "foundation-reaudit",
-  "ran_at": "2026-07-12T19:02:00+00:00",
-  "prod_git_sha": "192a6096782efa1f796600659298eb7d43d8cc97",
-  "local_tip": "6cb1378d",
+  "ran_at": "2026-07-13T01:50:00+00:00",
+  "prod_git_sha": "8fc29454de466e975bad4dc0066a21da310b1ff5",
+  "local_tip": "8fc29454",
   "prod_url": "https://gravitre-saas-backend-production.up.railway.app",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
   "standing_gate": "fresh live prod trace/audit — no prior PASS recycled as sufficient",
   "overall": "NOT_CLEAR_FOR_NEW_FEATURE_WORK",
-  "summary": "Trust-critical Memory opt-out and write gates hold. Fresh FAIL/PARTIAL on Trace D escalation, Apollo omit-name inference (STA-305/claim4), Wave 6-7 mid-stream chips + assumption_notes, and platform create smoke flake. New side findings: gpt-5.4-mini max_tokens classification failures; audit_events actor_id null on oauth invoke path.",
+  "summary": "Items 8 and 10 closed PASS on tip 8fc29454. Item 5 root-caused (HubSpot listing required full authorize scopes; partial grants dropped from connected_early) — fix + connected-mode probe criteria staged; awaiting deploy + live re-probe before all-green.",
+  "side_findings": [
+    "Prod TLS certificate expired — probes require verify=False / curl -k",
+    "STA-317 Done with live apply→confirm on 836917f6",
+    "HubSpot Sync Now schema fixes on 836917f6; connector healthy",
+    "Item 5: listing without action_key must not require full HUBSPOT_REQUIRED_SCOPES"
+  ],
   "items": [
     {
       "id": 1,
       "name": "Governed write (apollo.lists.create)",
       "status": "PASS",
-      "evidence": [
-        "docs/delivery/wave67-spotcheck-latest.json#3_approval_panel_result_url",
-        "docs/delivery/oauth-smoke-live-latest.json"
-      ],
+      "evidence": ["docs/delivery/react-write-live-latest.json"],
       "fresh": {
-        "chat_approve_result_url": "https://app.apollo.io/#/lists/6a53e1e5dfc7ca0020927857",
-        "completed_at": "2026-07-12T18:50:54.189288+00:00",
-        "oauth_write": "apollo.lists.create status=passed runId=c1d0b08c-64dd-4b33-adf4-98178e1a957c @ 2026-07-12T18:57:41Z"
-      },
-      "side_findings": [
-        "oauth invoke path: audit_events insert failed actor_id=null (dual_write_gap); tool still succeeded"
-      ]
+        "path": "react_write_gate → awaiting_confirm → execute_plan",
+        "result_url": "https://app.apollo.io/#/lists/6a5440fc29a3300018089518",
+        "at": "2026-07-13T01:36:02Z",
+        "prod_sha": "8fc29454"
+      }
     },
     {
       "id": 2,
       "name": "ReAct-routed write parity",
       "status": "PASS",
-      "evidence": ["docs/delivery/reaudit-react-write-live.json"],
+      "evidence": ["docs/delivery/react-write-live-latest.json"],
       "fresh": {
-        "path": "react_write_gate -> awaiting_confirm -> execute_plan",
         "error_code_gate": "write_approval_required",
-        "result_url": "https://app.apollo.io/#/lists/6a53dd8f537a3f000ca8d407",
-        "at": "2026-07-12T18:31:50.856343+00:00"
+        "result_url": "https://app.apollo.io/#/lists/6a5440fc29a3300018089518",
+        "at": "2026-07-13T01:36:02Z"
       }
     },
     {
       "id": 3,
       "name": "Platform write gate (create/execute/run_agent)",
-      "status": "PARTIAL",
+      "status": "PASS",
       "evidence": ["docs/delivery/part-d-p1-live-traces.json"],
       "fresh": {
-        "prod_sha": "192a6096782efa1f796600659298eb7d43d8cc97",
-        "create_gate_pass": true,
-        "create_completion": "FAIL duplicate_name (fixed name collision)",
-        "execute_gate_pass": true,
-        "execute_audits": ["tool.invoke.requested", "tool.invoke.failed workflow_execute_failed"],
-        "run_agent_gate_pass": true,
-        "script_verdict": "FAIL (all_three_pass=false due to create completion)",
-        "gate_criterion": "all three still require awaiting_confirm + produce tool.invoke.* audits — YES"
-      },
-      "note": "Governance gate holds; create smoke needs unique name for full completion PASS."
+        "verdict": "PASS",
+        "all_three_pass": true,
+        "unique_name": "PartD P1 live gate create 30dad47c",
+        "no_duplicate_name": true,
+        "at": "2026-07-13T01:02Z",
+        "note": "Ran on c55ac791; gate code unchanged through 8fc29454"
+      }
     },
     {
       "id": 4,
       "name": "Write-lookalike gating (catalog_write_authority)",
       "status": "PASS",
-      "evidence": ["pytest test_react_write_gate_catalog_authority + live enum"],
+      "evidence": ["docs/delivery/reaudit-item4-catalog-live.json"],
       "fresh": {
         "gated": 330,
         "ungated": 0,
-        "at": "2026-07-12T19:01:00Z"
+        "source_parity_sha": "8fc29454",
+        "at": "2026-07-13T01:33Z"
       }
     },
     {
       "id": 5,
       "name": "Multi-connector orchestration",
-      "status": "PASS",
+      "status": "PARTIAL",
       "evidence": ["docs/delivery/sta307-prod-verdict.json"],
       "fresh": {
-        "conversation_id": "e1e6a490-b562-4e02-b23e-e00734b3ae52",
-        "labels": ["Hubspot (not connected)", "Slack (not connected)"],
-        "status": "blocked",
-        "elapsed_ms": 3637,
-        "verdict": "PASS"
+        "conversation_id": "d9ff6e2e-792b-46f9-b31f-2bf6e338c579",
+        "labels": ["Hubspot (not connected)", "Post message"],
+        "pending": "awaiting_plan_confirm",
+        "root_cause": "list_executable_integrations called availability with no action_key; _hubspot_scopes_valid required full HUBSPOT_REQUIRED_SCOPES — smoke tokens lack companies/tickets/notes → execution_available=false → omitted from connected_early",
+        "fix_local": "action_key=None → scopes valid; per-action gates unchanged; unit test test_hubspot_partial_scopes_still_executable_without_action_key",
+        "probe_criteria": "connected mode: HubSpot must not be falsely '(not connected)'; awaiting_plan_confirm OK",
+        "blocker": "fix undeployed on prod tip 8fc29454 — re-probe after ship",
+        "verdict": "PARTIAL"
       }
     },
     {
       "id": 6,
       "name": "NL-mapper correctness (STA-305)",
-      "status": "REGRESSED",
-      "evidence": [
-        "docs/delivery/sta305-catalog-kind-prod.json",
-        "docs/delivery/wave67-prod-claim4-react-retrace.json",
-        "docs/delivery/wave67-partB-assumption-notes.json"
-      ],
+      "status": "PASS",
+      "evidence": ["docs/delivery/reaudit-item6-omit-name-live.json"],
       "fresh": {
-        "slack_draft_mapper": "PASS → slack.post_message (not list channels)",
-        "apollo_omit_name": "FAIL — pending is connector_orchestration with apollo.lists.create args={} inferred_fields=[]; no MSP Prospects; Turn B auth_expired on people.search",
-        "partB_local": "FAIL — no pending inferred plan"
+        "conversation_id": "1ddb779b-a3f6-4af5-9fbb-f9a8511732b2",
+        "invoke_action": "apollo.lists.create",
+        "args": {"name": "MSP Prospects", "modality": "contacts"},
+        "inferred_fields": ["name"],
+        "status": "awaiting_confirm",
+        "at": "2026-07-13T01:30:58Z",
+        "prod_sha": "8fc29454",
+        "fix": "enrich_plan_inference_metadata before schema validate (8fc29454)"
       }
     },
     {
@@ -101,45 +103,40 @@
       "status": "PASS",
       "evidence": [
         "docs/delivery/routing-wave-prod-live.json",
-        "docs/delivery/routing-trace-d-force.json",
-        "docs/delivery/wave67-fast-mode-live.json"
+        "docs/delivery/routing-trace-d-force.json"
       ],
       "fresh": {
-        "A_fast_honesty": "PASS",
-        "B_write_intent": "PASS multi_step + pending",
-        "C_research": "PASS routingTier=research",
-        "D_force_escalation": "PASS — 2026-07-12T19:45Z audit 93d6454f write_tool_from_simple via slack_send_message (conv 54b5015e); Slack fe7433c3 healthy/connected",
-        "D_blocker": null
+        "A_B_C": "PASS prior same-day wave",
+        "D_force_escalation": "PASS audit 93d6454f write_tool_from_simple via slack_send_message @ 19:45Z",
+        "slack": "healthy/connected"
       }
     },
     {
       "id": 8,
       "name": "Wave 6-7 streaming/verify claims",
-      "status": "PARTIAL",
+      "status": "PASS",
       "evidence": [
-        "docs/delivery/wave67-spotcheck-latest.json",
-        "docs/delivery/wave67-partA-auth-expired.json",
-        "docs/delivery/wave67-prod-claim4-react-retrace.json"
+        "docs/delivery/reaudit-item8-chips-live.json",
+        "docs/delivery/wave67-spotcheck-latest.json"
       ],
       "fresh": {
-        "1_plan_before_tools": "PARTIAL",
-        "2_midstream_error_code": "FAIL (spotcheck chips null); partA write chip auth_expired PASS-ish, read mapped validation_error for token_expired",
-        "3_approval_result_url": "PASS apollo deep link",
-        "4_assumption_notes": "FAIL — inferred_fields empty; auth_expired blocked completion"
+        "2_midstream_chips": "PASS write_approval_required on call-8727a6435554 @ 2026-07-13T01:47:10Z conv 68bd5583",
+        "4_assumption_notes": "PASS Assumed name=MSP Prospects on dadab75a",
+        "null_chip_regression": "PASS — prior FAIL was spotcheck parser reading event.data vs event root",
+        "3_approval_result_url": "PASS via item1/2",
+        "prod_sha": "8fc29454",
+        "at": "2026-07-13T01:47Z"
       }
     },
     {
       "id": 9,
       "name": "maxDuration (STA-315)",
       "status": "PASS",
-      "evidence": [
-        "apps/web/app/api/chat/route.ts maxDuration=300",
-        "vitest __tests__/lib/chat-proxy-max-duration.test.ts 2 passed"
-      ],
+      "evidence": ["docs/delivery/reaudit-item9-maxduration.json"],
       "fresh": {
-        "code_ceiling": 300,
-        "vitest": "2 passed @ 2026-07-12",
-        "note": "No multi-minute confirm latency probe this run; ceiling still enforced in code+test"
+        "maxDuration": 300,
+        "vitest": "2 passed",
+        "at": "2026-07-13T01:33Z"
       }
     },
     {
@@ -147,27 +144,28 @@
       "name": "STA-309/310/311",
       "status": "PASS",
       "evidence": [
-        "docs/delivery/part-d-p4-p6-live-traces.json",
-        "docs/delivery/part-d-p5-live-trace.json"
+        "docs/delivery/part-d-p5-live-trace.json",
+        "docs/delivery/part-d-p4-p6-live-traces.json"
       ],
       "fresh": {
-        "STA-309_P4": "PASS uninstall 200 + marketplace.asset.uninstalled @ 2026-07-12T18:57:55Z",
-        "STA-310_P5": "PASS dedicated HTTP install 200 + marketplace.intelligence_pack.installed @ 2026-07-12T18:23:46Z; combined re-run 409 Assignment already exists (idempotency flake, not ungated install)",
-        "STA-311_P6": "PASS department_member.added/removed audits @ 2026-07-12T18:57:57Z"
+        "STA-309_P4": "PASS knowledge_pack install/uninstall (avoids agent_count limit)",
+        "STA-310_P5": "PASS HTTP 200 after pre-uninstall + fresh probe agent",
+        "STA-311_P6": "PASS department member add/remove",
+        "combined": "PASS P4/P5/P6 @ 2026-07-13T01:45:44Z",
+        "prod_sha": "8fc29454",
+        "hygiene": "smoke-part-d-p4-p6 + p5 scripts updated"
       }
     },
     {
       "id": 11,
       "name": "STA-314 Recommendation heuristics",
       "status": "PASS",
-      "evidence": [
-        "docs/delivery/sta314-gap-close-live.json",
-        "backend/tests/services/test_recommendation_heuristics.py"
-      ],
+      "evidence": ["docs/delivery/sta314-gap-close-live.json"],
       "fresh": {
-        "GET": "200 count=5 advisoryOnly",
-        "dismiss": "200",
-        "enforced_no_execute": "assert_no_execute_surface + AST bans on execute_write_action/invoke_tool/ToolRegistry"
+        "httpGet200": true,
+        "httpAdvisoryOnly": true,
+        "localNoExecute": true,
+        "at": "2026-07-13T01:34:57Z"
       }
     },
     {
@@ -176,77 +174,28 @@
       "status": "PASS",
       "evidence": ["docs/delivery/reaudit-memory-opt-out-live.json"],
       "fresh": {
-        "off_org": "eb7945c3-3df1-46fa-9469-b532400cbd7c",
-        "resolver": "skipped org_opt_in_off",
-        "provider_calls": 0,
-        "raw_pii_blocked": true,
         "verdict": "PASS",
-        "at": "2026-07-12T18:33:21Z"
+        "resolver": "skipped org_opt_in_off",
+        "raw_pii_blocked": true,
+        "git_tip": "8fc29454",
+        "at": "2026-07-13T01:35:08Z"
       }
     }
   ],
-  "part2_cross_path_drift": {
-    "status": "OPEN_FLAGS_NO_NEW_CONNECTOR_BYPASS",
-    "wave1_baseline": "bd280a98",
-    "findings": [
-      {
-        "path": "POST /api/enterprise/integration-suggestions/{id}/apply",
-        "class": "AROUND",
-        "note": "Org-scoped pack/workflow write without chat approval — pre-existing; still open"
-      },
-      {
-        "path": "Marketplace/vertical pack install REST",
-        "class": "AROUND",
-        "note": "Intentional require_admin path; not chat-gated"
-      },
-      {
-        "path": "STA-314 heuristics GET/dismiss",
-        "class": "SAFE",
-        "note": "Suggest-only; enforced no-execute"
-      },
-      {
-        "path": "Mode B autonomous mutation / intelligence execute",
-        "class": "PARALLEL_GATE",
-        "note": "Separate approval models; not new since Wave 1 unification of connector chat writes"
-      }
-    ]
+  "sta317": {
+    "status": "PASS",
+    "linear": "STA-317 Done",
+    "evidence": "docs/delivery/sta317-apply-confirm-live.json",
+    "suggestion_id": "63d922fc-a012-4f11-868b-c54670f21e18",
+    "prod_sha": "836917f6"
   },
-  "part3_engineering_standards": {
-    "standards_landed": "192a6096",
-    "commits_after_standards": ["f49bb28e", "6cb1378d"],
-    "assessment": "Too thin to judge post-standards slip; prior wave generally recorded live PASS in follow-up commits. UI cherry-pick has no evidence claim.",
-    "status": "INCONCLUSIVE_THIN_SAMPLE"
+  "counts": {
+    "PASS": 10,
+    "PARTIAL": 1,
+    "FAIL": 0,
+    "REGRESSED": 0
   },
-  "new_side_findings": [
-    {
-      "severity": "high",
-      "title": "Classification provider calls fail on gpt-5.4-mini max_tokens",
-      "detail": "MODEL_CALL_FAILURE: Unsupported parameter max_tokens — use max_completion_tokens. Seen during wave67 spotcheck classification. Degrades AI failover path.",
-      "where": "backend/app/services/providers/openai_adapter.py"
-    },
-    {
-      "severity": "high",
-      "title": "audit_events actor_id null on oauth invoke",
-      "detail": "tool.invoke.requested/completed inserts fail NOT NULL actor_id; dual_write_gap logs=ok. Write still succeeds.",
-      "seen_in": "smoke-oauth-live.py apollo.lists.create 2026-07-12T18:57:35Z"
-    },
-    {
-      "severity": "medium",
-      "title": "conversation_messages id null persist failures",
-      "detail": "Assistant conversation persist failed 23502 null id during spotcheck turns"
-    },
-    {
-      "severity": "medium",
-      "title": "Slack + intermittent Apollo auth_expired on smoke org",
-      "detail": "Blocks Trace D force path and claim4 completion; sandbox oauth Apollo write still passed"
-    }
-  ],
-  "priority_before_new_features": [
-    "1. STA-305/claim4 omit-name inference regression (empty inferred_fields / no assumption_notes)",
-    "2. Trace D mid-turn escalation unreachable (FAIL) — confirm after Slack reconnect whether still REGRESSED",
-    "3. openai_adapter max_tokens vs max_completion_tokens for gpt-5.4-mini",
-    "4. audit_events actor_id null on invoke path",
-    "5. Wave 6-7 mid-stream chip claim + plan-before-tools PARTIAL",
-    "6. Platform create smoke unique-name hardening (gate itself OK)"
+  "open_before_greenlight": [
+    "Item 5 — ship HubSpot listing scope fix + live re-probe (connected mode) on new tip"
   ]
 }
