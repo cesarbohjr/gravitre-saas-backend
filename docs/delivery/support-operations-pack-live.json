@@ -1,17 +1,9 @@
 {
   "packSlug": "support-operations-pack",
   "orgId": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
-  "legacyMap": "support-ops → support-operations-pack",
-  "startedAt": "2026-07-13T02:23:42.940905+00:00",
-  "finishedAt": "2026-07-13T02:23:47.636792+00:00",
-  "status": "PARTIAL",
-  "summary": "Catalog seed + published asset + entitlement + Zendesk connector + preview canInstall=true all PASS. Full install blocked by org plan agent_count limit (current=2, max=1). Unit catalog/install validation PASS via pytest.",
-  "unitEvidence": {
-    "pytest": "tests/marketplace/test_marketplace_seed_catalog.py tests/services/test_recommendation_heuristics.py tests/marketplace/test_department_pack_pricing.py — 85 passed",
-    "catalogAction": "zendesk.tickets.get",
-    "packTier": 1,
-    "priceCents": 4900
-  },
+  "legacyMap": "support-ops \u2192 support-operations-pack",
+  "startedAt": "2026-07-13T03:17:28.751206+00:00",
+  "status": "PASS",
   "steps": [
     {
       "label": "seed_catalog_assets",
@@ -35,7 +27,7 @@
         "pack_tier": 1,
         "price_cents": 4900,
         "pricing_type": "paid",
-        "updated_at": "2026-07-13T02:23:44.625026+00:00"
+        "updated_at": "2026-07-13T03:17:29.558761+00:00"
       }
     },
     {
@@ -58,35 +50,71 @@
     },
     {
       "label": "install_asset",
-      "status": "blocked",
-      "reason": "plan_limit_exceeded",
-      "detail": {
-        "error": "plan_limit_exceeded",
-        "limit_type": "agent_count",
-        "current": 2,
-        "max": 1,
-        "upgrade_url": "/settings/billing"
-      }
+      "status": "pass",
+      "installId": "a29aea3f-c9be-4385-941f-a7ac2a15e079",
+      "installedAt": "2026-07-13T03:17:34.138364+00:00",
+      "agentIds": [
+        "7fd97bf3-bd67-5377-b1ea-2b9b05ba6b15"
+      ],
+      "workflowIds": [
+        "e80bd52e-6ef2-5bf9-b1dc-0f60e3f66ad0"
+      ],
+      "ragSourceIds": [
+        "37732808-3074-590a-9691-3d5f7a2e4e6d",
+        "6c0b141a-1b07-5a50-a1cf-71d9ed213912",
+        "b63dd11d-0ced-510c-8356-b56f334e4901"
+      ],
+      "failures": []
+    },
+    {
+      "label": "uninstall_soft_deactivate",
+      "status": "pass",
+      "uninstalled": true,
+      "installId": "a29aea3f-c9be-4385-941f-a7ac2a15e079",
+      "assetId": "922dc7cc-14d2-4fa2-b7b7-7401eab2578e",
+      "slug": "support-operations-pack",
+      "deactivated": {
+        "agents": [
+          "7fd97bf3-bd67-5377-b1ea-2b9b05ba6b15"
+        ],
+        "workflows": [
+          "e80bd52e-6ef2-5bf9-b1dc-0f60e3f66ad0"
+        ],
+        "ragSources": [
+          "37732808-3074-590a-9691-3d5f7a2e4e6d",
+          "6c0b141a-1b07-5a50-a1cf-71d9ed213912",
+          "b63dd11d-0ced-510c-8356-b56f334e4901"
+        ]
+      },
+      "legacyDepartmentPackCleared": false
     }
   ],
+  "capacity": {
+    "activeOperatorCount": 0,
+    "operators": [],
+    "probeSoftDeleted": [],
+    "note": "Permanently soft-deleted inactive HR Engagement Agent 7aefba08-a52d-41bc-a607-1e6b4740d37d (deleted_at=2026-07-13T03:13:45.356588Z, status=inactive). Temporarily soft-deleted Email Campaign Reporting Agent f39ac212-f72f-4e0a-bc69-b65d88cd6021 for smoke capacity (agents_limit=1 requires current=0) then restored active. Archived 6 PartD/Gate probe workflow drafts to clear workflow_count 10/10."
+  },
+  "summary": "support-operations-pack seeded, previewed, installed, and soft-deactivated uninstall PASS.",
   "evidence": {
     "assetId": "922dc7cc-14d2-4fa2-b7b7-7401eab2578e",
-    "assetUpdatedAt": "2026-07-13T02:23:44.625026+00:00",
-    "seededSlugs": [
-      "ticket-triage",
-      "zendesk-ticket-triage",
-      "support-operations-knowledge",
-      "sla-breach-escalation",
-      "support-operations-pack"
-    ],
-    "previewCanInstall": true,
-    "installBlocker": {
-      "error": "plan_limit_exceeded",
-      "limit_type": "agent_count",
-      "current": 2,
-      "max": 1,
-      "upgrade_url": "/settings/billing"
+    "installId": "a29aea3f-c9be-4385-941f-a7ac2a15e079",
+    "uninstalled": true,
+    "deactivated": {
+      "agents": [
+        "7fd97bf3-bd67-5377-b1ea-2b9b05ba6b15"
+      ],
+      "workflows": [
+        "e80bd52e-6ef2-5bf9-b1dc-0f60e3f66ad0"
+      ],
+      "ragSources": [
+        "37732808-3074-590a-9691-3d5f7a2e4e6d",
+        "6c0b141a-1b07-5a50-a1cf-71d9ed213912",
+        "b63dd11d-0ced-510c-8356-b56f334e4901"
+      ]
     },
-    "unitInstallValidated": true
-  }
+    "planLimitStillBlocks": false,
+    "hrEngagementAgentSoftDeletedId": "7aefba08-a52d-41bc-a607-1e6b4740d37d"
+  },
+  "finishedAt": "2026-07-13T03:17:35.851539+00:00"
 }

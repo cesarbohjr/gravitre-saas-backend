@@ -1,21 +1,21 @@
 {
-  "ran_at": "2026-07-13T02:19:29.761880+00:00",
-  "finished_at": "2026-07-13T02:19:31.683668+00:00",
+  "ran_at": "2026-07-13T03:08:57.090249+00:00",
+  "finished_at": "2026-07-13T03:08:57.698611+00:00",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "base_url": "https://gravitre-saas-backend-production.up.railway.app",
   "period_days": 7,
-  "mode": "service_role_db",
+  "mode": "http_admin",
   "http": {
     "attempted": true,
-    "status": 404,
-    "error": "{\"detail\":\"Not Found\"}",
-    "git_sha": "19ac9ba7002ff0bbb63097c10c7e533fcca1b1d9"
+    "status": 200,
+    "error": null,
+    "git_sha": "6b48a47e3be4f469cff6aa4830806aa33e473ad8"
   },
-  "note": "Admin HTTP auth unavailable or non-200; aggregated via service-role against prod audit_events",
+  "note": "HTTP admin endpoint used",
   "metrics": {
     "orgId": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
     "periodDays": 7,
-    "since": "2026-07-06T02:19:30.526861+00:00",
+    "since": "2026-07-06T03:08:56.429643+00:00",
     "spikeThreshold": {
       "failedRate": 0.1,
       "minN": 10
