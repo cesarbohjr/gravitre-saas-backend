@@ -1786,6 +1786,41 @@ export const intelligenceApi = {
         operationalLoad: number
       }
     }>(apiUrl("/api/admin/intelligence/business-impact")),
+  connectorWrites: (params?: { periodDays?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.periodDays != null) query.set("periodDays", String(params.periodDays))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<{
+      orgId?: string
+      periodDays: number
+      since?: string
+      spikeThreshold?: { failedRate: number; minN: number }
+      totalEvents?: number
+      rowCount?: number
+      spikeCount?: number
+      hasSpike?: boolean
+      spikes?: Array<{
+        vendor: string
+        action: string
+        n: number
+        failed: number
+        failedRate: number
+        topErrorCodes?: Array<{ code: string; count: number }>
+      }>
+      rows?: Array<{
+        vendor: string
+        action: string
+        requested: number
+        completed: number
+        failed: number
+        n: number
+        successRate: number
+        failedRate: number
+        topErrorCodes?: Array<{ code: string; count: number }>
+        spike?: boolean
+      }>
+    }>(apiUrl(`/api/admin/intelligence/connector-writes${suffix}`))
+  },
   engineSettings: () =>
     fetcher<{
       validationEnabled: boolean

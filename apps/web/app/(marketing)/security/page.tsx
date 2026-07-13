@@ -35,7 +35,7 @@ const features = [
   {
     icon: Eye,
     title: "Audit Logging",
-    description: "Comprehensive audit logs track all user actions, API calls, and system events. Logs are retained and available for compliance review.",
+    description: "Audit trails show connector writes and approvals so operators can see what the AI did — and what it asked before acting. Logs are retained for compliance review.",
   },
   {
     icon: Server,

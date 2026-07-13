@@ -1,0 +1,65 @@
+{
+  "packSlug": "support-operations-pack",
+  "generatedAt": "2026-07-13T02:20:00Z",
+  "goal": "Classify Item 3 files as config vs framework; target ≥80% config reuse",
+  "summary": {
+    "totalFilesChanged": 8,
+    "configFiles": 7,
+    "frameworkFiles": 1,
+    "configPercent": 87.5,
+    "targetMet": true,
+    "note": "Pack #2 reuses existing CatalogAsset helpers, pack_pricing tiers, support-operations-knowledge, and sla-breach-escalation without rebuilding support-intelligence-pack."
+  },
+  "files": [
+    {
+      "path": "backend/app/marketplace/seed_catalog.py",
+      "classification": "config",
+      "rationale": "Adds ZENDESK connector const, ticket-triage agent, zendesk-ticket-triage workflow, support-operations-pack CatalogAsset, and LEGACY_PACK_SLUG_MAP remap — declarative catalog seed data."
+    },
+    {
+      "path": "backend/app/marketplace/pack_pricing.py",
+      "classification": "config",
+      "rationale": "Registers support-operations-pack → Tier 1 in DEPARTMENT_PACK_SLUG_TIERS only; pricing framework unchanged."
+    },
+    {
+      "path": "backend/app/services/department_pack_catalog.py",
+      "classification": "config",
+      "rationale": "Aligns legacy support-ops invoke action to catalog name zendesk.tickets.get."
+    },
+    {
+      "path": "backend/app/services/recommendation_heuristics_service.py",
+      "classification": "config",
+      "rationale": "Keeps _LEGACY_PACK_TO_SLUG in sync with seed_catalog map (support-ops → support-operations-pack)."
+    },
+    {
+      "path": "apps/web/lib/marketplace-category-icons.ts",
+      "classification": "config",
+      "rationale": "Adds Support department icon + aliases; no new component framework."
+    },
+    {
+      "path": "backend/tests/marketplace/test_marketplace_seed_catalog.py",
+      "classification": "config",
+      "rationale": "Seed count + support pack assertions against catalog config."
+    },
+    {
+      "path": "backend/tests/services/test_recommendation_heuristics.py",
+      "classification": "config",
+      "rationale": "Updates fixture slug expectations for remapped legacy support-ops."
+    },
+    {
+      "path": "docs/integration/agent-role-marketplace.md",
+      "classification": "framework",
+      "rationale": "Integration doc wording (not runtime pack config); counted as non-config for reuse %."
+    }
+  ],
+  "reusedExistingAssets": [
+    "support-operations-knowledge",
+    "sla-breach-escalation",
+    "_department_pack_config / _agent / _invoke helpers",
+    "PACK_TIER_PRICE_CENTS[1] = 4900"
+  ],
+  "notTouched": [
+    "support-intelligence-pack",
+    "backend/app/marketplace/intelligence_packs/"
+  ]
+}

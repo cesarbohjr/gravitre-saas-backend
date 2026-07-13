@@ -26,7 +26,7 @@ _FORBIDDEN_IMPORT_NAMES = (
 _LEGACY_PACK_TO_SLUG: dict[str, str] = {
     "sales-ops": "revenue-operations-pack",
     "marketing-ops": "marketing-operations-pack",
-    "support-ops": "customer-success-pack",
+    "support-ops": "support-operations-pack",
     "finance-ops": "revenue-operations-pack",
 }
 

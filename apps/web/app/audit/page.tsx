@@ -158,6 +158,14 @@ export default function AuditPage() {
             <div className="flex-1 min-w-0">
               <h1 className="text-lg md:text-xl font-semibold text-foreground">Audit Trail</h1>
               <p className="text-xs md:text-sm text-muted-foreground mt-0.5">Who did what, when, and the outcome</p>
+              {(user?.role === "admin" || user?.role === "owner") ? (
+                <p className="mt-2 max-w-2xl rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">For admins:</span> this is the org
+                  compliance surface — export CSV/JSON for reviews, filter by actor and action, and
+                  verify writes that chat confirmed. Also linked from Settings and every chat reply
+                  that ran tools.
+                </p>
+              ) : null}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <Button variant="outline" size="sm" className="h-9 gap-2" onClick={() => void handleExport("csv")}>

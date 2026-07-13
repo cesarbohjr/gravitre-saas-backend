@@ -472,6 +472,19 @@ async def get_business_impact_snapshot(
     return await load_business_impact_snapshot(org_id, settings=settings)
 
 
+@router.get("/connector-writes")
+async def get_connector_writes_ops(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+    period_days: int = Query(default=7, ge=1, le=90, alias="periodDays"),
+) -> dict[str, Any]:
+    """Connector invoke ops: requested/completed/failed rates + spike banners."""
+    from app.services.connector_ops_metrics_service import load_connector_ops_metrics
+
+    return await load_connector_ops_metrics(org_id, period_days=period_days, settings=settings)
+
+
 @router.get("/performance")
 async def get_performance_dashboard(
     org_id: Annotated[str, Depends(get_org_context)],

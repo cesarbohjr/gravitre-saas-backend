@@ -228,7 +228,7 @@ def list_pack_specs() -> list[DepartmentPackSpec]:
                     "name": "Fetch ticket context",
                     "type": "invoke_tool",
                     "config": {
-                        "action": "zendesk.get_ticket",
+                        "action": "zendesk.tickets.get",
                         "param_sources": {"ticket_id": "$ticket_id"},
                     },
                     "requires_connector": "zendesk",

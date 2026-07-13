@@ -1,0 +1,24 @@
+{
+  "ticket": "trust-control-explainer",
+  "item": 1,
+  "kind": "trust-ui-live",
+  "ran_at": "2026-07-13T02:20:00.000000+00:00",
+  "routes": {
+    "control_one_pager": "/ai/help/control",
+    "docs_mirror": "/docs/concepts/control",
+    "audit": "/audit"
+  },
+  "discoverability": {
+    "chat_source_links": "How Gravitre keeps you in control + View audit trail",
+    "chat_header_info": true,
+    "sidebar_label": "Audit trail",
+    "settings_admin_link": true,
+    "audit_admin_callout": true
+  },
+  "pass": {
+    "page_exists": true,
+    "docs_exists": true,
+    "no_write_gate_change": true
+  },
+  "note": "Static route + UI discoverability; no write-execution changes."
+}

@@ -1,0 +1,69 @@
+{
+  "ticket": "STA-305",
+  "title": "Mapper class regression — HubSpot / Jira / GitHub / Asana",
+  "ran_at": "2026-07-13T02:16:00Z",
+  "command": "cd backend; python -m pytest tests/services/test_chat_action_mapper.py -q",
+  "suite_result": {
+    "passed": 29,
+    "failed": 0,
+    "warnings": 1,
+    "exit_code": 0,
+    "verdict": "PASS"
+  },
+  "vendors": {
+    "hubspot": {
+      "verdict": "PASS",
+      "tests": [
+        "test_maps_hubspot_search",
+        "test_maps_hubspot_deal_stage_update",
+        "test_maps_hubspot_contact_create_without_email",
+        "test_maps_hubspot_deal_create",
+        "test_sta305_hubspot_contact_create_omit_name",
+        "test_sta305_hubspot_contact_list_phrase_not_contacts_search"
+      ],
+      "class_focus": [
+        "Create a HubSpot contact. → hubspot.contacts.create",
+        "Create a HubSpot contact for Acme. → hubspot.contacts.create (not search)"
+      ]
+    },
+    "jira": {
+      "verdict": "PASS",
+      "tests": [
+        "test_sta305_jira_omit_fields_prefers_issues_create",
+        "test_sta305_jira_titled_issue_prefers_create"
+      ],
+      "class_focus": [
+        "Create a Jira issue. → issues.create (not update)",
+        "Create a Jira issue titled Bug. → issues.create"
+      ]
+    },
+    "github": {
+      "verdict": "PASS",
+      "tests": [
+        "test_sta305_github_omit_title_prefers_issues_create",
+        "test_sta305_github_titled_issue_prefers_create"
+      ],
+      "class_focus": [
+        "Create a GitHub issue. → issues.create (not comment/list)",
+        "Create a GitHub issue titled \"Fix login timeout\". → issues.create"
+      ]
+    },
+    "asana": {
+      "verdict": "PASS",
+      "tests": [
+        "test_maps_asana_task_create",
+        "test_maps_asana_task_create_an_asana_task_phrasing",
+        "test_maps_asana_follow_up_tasks_in_asana",
+        "test_maps_asana_task_for_person_with_due_date",
+        "test_maps_asana_task_assignee_only_without_invented_title",
+        "test_sta305_asana_omit_title_prefers_tasks_create",
+        "test_sta305_asana_named_task_still_tasks_create"
+      ],
+      "class_focus": [
+        "Create an Asana task. → asana.tasks.create (not stories.create)",
+        "Create an Asana task named Review. → asana.tasks.create"
+      ]
+    }
+  },
+  "summary": "All four STA-305 class vendors PASS under test_chat_action_mapper.py (29/29 green)."
+}

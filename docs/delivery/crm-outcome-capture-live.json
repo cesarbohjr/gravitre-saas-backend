@@ -1,0 +1,14 @@
+{
+  "item": 4,
+  "kind": "crm-outcome-capture",
+  "ran_at": "2026-07-13T02:30:00.000000+00:00",
+  "schema": "supabase/migrations/20260713120000_crm_recommendation_outcomes.sql",
+  "service": "backend/app/services/crm_outcome_capture_service.py",
+  "outcome_types": ["contacted", "replied", "booked", "won", "lost"],
+  "ml": false,
+  "synthetic_labels": false,
+  "prod_migration_applied": false,
+  "live_events": 0,
+  "status": "waiting_on_crm_sync",
+  "note": "Schema + ingest stub shipped. Migration not applied to prod in this pass — requires Option A/B/C. No live CRM sync events available to land yet; empty probe is expected until EngageBay/HubSpot sync emits outcomes."
+}

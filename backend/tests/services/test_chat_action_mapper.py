@@ -239,3 +239,55 @@ def test_sta305_hubspot_contact_create_omit_name():
     )
     assert match is not None
     assert match.entry.registry_key == "hubspot.contacts.create"
+
+
+def test_sta305_github_omit_title_prefers_issues_create():
+    """STA-305 class: bare GitHub issue create must not crown comment/list."""
+    match = get_chat_action_mapper().match_segment(
+        "Create a GitHub issue.",
+        connected_integrations=["github"],
+    )
+    assert match is not None
+    assert "issues.create" in match.entry.action_key
+    assert "comment" not in match.entry.action_key
+    assert "list" not in match.entry.action_key
+
+
+def test_sta305_github_titled_issue_prefers_create():
+    match = get_chat_action_mapper().match_segment(
+        'Create a GitHub issue titled "Fix login timeout".',
+        connected_integrations=["github"],
+    )
+    assert match is not None
+    assert "issues.create" in match.entry.action_key
+
+
+def test_sta305_jira_titled_issue_prefers_create():
+    match = get_chat_action_mapper().match_segment(
+        "Create a Jira issue titled Bug.",
+        connected_integrations=["jira"],
+    )
+    assert match is not None
+    assert "issues.create" in match.entry.action_key
+    assert "update" not in match.entry.action_key
+
+
+def test_sta305_hubspot_contact_list_phrase_not_contacts_search():
+    """Write-ish HubSpot create contact must beat search lookalikes."""
+    match = get_chat_action_mapper().match_segment(
+        "Create a HubSpot contact for Acme.",
+        connected_integrations=["hubspot"],
+    )
+    assert match is not None
+    assert "contacts.create" in match.entry.action_key
+    assert "search" not in match.entry.action_key
+
+
+def test_sta305_asana_named_task_still_tasks_create():
+    match = get_chat_action_mapper().match_segment(
+        "Create an Asana task named Review.",
+        connected_integrations=["asana"],
+    )
+    assert match is not None
+    assert match.entry.registry_key == "asana.tasks.create"
+    assert "stories" not in match.entry.action_key
