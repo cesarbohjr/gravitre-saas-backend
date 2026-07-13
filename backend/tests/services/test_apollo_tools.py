@@ -38,6 +38,28 @@ def test_apollo_people_search(mock_search, mock_session, _rate):
 
 @patch("app.services.apollo_tools.enforce_rate_limit")
 @patch("app.services.apollo_tools.resolve_apollo_connector")
+@patch("app.services.apollo_tools.search_people")
+def test_apollo_people_search_plan_limit_is_permission_denied(mock_search, mock_session, _rate):
+    from app.connectors.apollo_api import ApolloAPIError
+    from app.services.tool_types import ToolPermissionDeniedError
+
+    mock_session.return_value = ("conn-apollo", {"Authorization": "Bearer token"})
+    mock_search.side_effect = ApolloAPIError(
+        "Apollo API 403: /mixed_people/api_search — not accessible with this access token on a free plan. Please upgrade your plan.",
+        status_code=403,
+        details={"error": "api/v1/mixed_people/api_search is not accessible with this access token on a free plan"},
+    )
+    try:
+        APOLLO_TOOL_EXECUTORS["apollo.people.search"](_ctx(), {"person_titles": ["CEO"]})
+        assert False, "expected ToolPermissionDeniedError"
+    except ToolPermissionDeniedError as exc:
+        assert exc.code == "permission_denied"
+        assert "free plan" in str(exc).lower() or "upgrade" in str(exc).lower()
+        assert (exc.details or {}).get("reason") == "apollo_plan_limit"
+
+
+@patch("app.services.apollo_tools.enforce_rate_limit")
+@patch("app.services.apollo_tools.resolve_apollo_connector")
 @patch("app.services.apollo_tools.create_contact")
 def test_apollo_contacts_create(mock_create, mock_session, _rate):
     mock_session.return_value = ("conn-apollo", {"Authorization": "Bearer token"})

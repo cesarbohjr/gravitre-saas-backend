@@ -100,6 +100,12 @@ def main() -> int:
             "error_message": r.error_message,
             "data_keys": list((r.data or {}).keys())[:12],
         }
+        if not r.success and (
+            r.error_code == "permission_denied"
+            or "free plan" in str(r.error_message or "").lower()
+            or "upgrade your plan" in str(r.error_message or "").lower()
+        ):
+            blockers.append("apollo_plan_upgrade_or_master_api_key_required")
 
     # Step 2 — Apollo list create
     if not apollo_id:

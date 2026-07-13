@@ -25,8 +25,39 @@ def test_search_people_uses_x_api_key_header():
 
 
 def test_verify_apollo_api_key_false_on_401():
-    with patch("app.connectors.apollo_api.search_people", side_effect=ApolloAPIError("bad", status_code=401)):
+    with patch(
+        "app.connectors.apollo_api._request",
+        side_effect=ApolloAPIError("bad", status_code=401),
+    ):
         assert verify_apollo_api_key("bad") is False
+
+
+def test_verify_apollo_api_key_true_on_plan_limit_labels():
+    """Plan-limited search must not mark credentials as expired."""
+    from app.connectors.apollo_api import verify_apollo_credentials
+
+    with patch(
+        "app.connectors.apollo_api._request",
+        side_effect=ApolloAPIError(
+            "Apollo API 403: /labels — free plan",
+            status_code=403,
+            details={"error": "Please upgrade your plan"},
+        ),
+    ):
+        assert verify_apollo_credentials({"X-Api-Key": "k"}) is True
+
+
+def test_is_apollo_plan_limit_error():
+    from app.connectors.apollo_api import is_apollo_plan_limit_error
+
+    assert is_apollo_plan_limit_error(
+        ApolloAPIError(
+            "not accessible with this access token on a free plan",
+            status_code=403,
+        )
+    )
+    assert not is_apollo_plan_limit_error(ApolloAPIError("forbidden", status_code=403))
+    assert not is_apollo_plan_limit_error(ApolloAPIError("expired", status_code=401))
 
 
 @patch("app.connectors.apollo_api.get_decrypted_secret")
