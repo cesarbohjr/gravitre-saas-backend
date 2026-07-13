@@ -1,6 +1,6 @@
 # Master Project — Knowledge Packages + Intelligence Packs + Connector Categories
 
-**Status:** Phase 1 **in progress** (auth_mode, needs_connection stubs, public gravitree sources, BYO fail-closed).  
+**Status:** Phase 1 **DONE** (2026-07-13) — DB + HTTP evidence linked below.  
 **Date:** 2026-07-13  
 **Pipeline canon (all sources):**  
 
@@ -42,6 +42,18 @@ Rollup: `docs/delivery/foundation-five-gates-tip-resmoke.json`
 - **OpenCorporates:** build shared `gravitree_managed` client + catalog plumbing; **activation blocked** until Cesar confirms commercial license (`OPENCORPORATES_LICENSE_CONFIRMED` / equivalent). Same pattern as Crunchbase/PDL stop-line: code may exist, **live tenant enablement may not**.
 - **Contact-level stop-line:** Crunchbase + PDL stay behind governance/activation gates; no KG/Memory writes.
 - **Scope this pass:** public gravitree sources (FRED, SEC, World Bank, OECD) + `auth_mode` + BYO fail-closed tests + stub template install + gated OC/NVD/CISA scaffolding.
+
+### Phase 1 closure evidence (DONE)
+
+| Layer | Result | Artifact |
+|-------|--------|----------|
+| Code + unit | 15 PASS | `backend/tests/intelligence_packs/` |
+| Prod migration Option A | Applied (pipedrive retained) | `docs/delivery/phase1-migration-preflight.md` |
+| DB-side stub staging | PASS (7 needs_connection, 0 live) | `docs/delivery/phase1-needs-connection-stub-live.json` |
+| **HTTP API stub staging** | **PASS** on tip `8df5f07e` — GET templates 200; POST executive + BYO install 200; 7 stubs `needs_connection`; 0 live; cleaned up | `docs/delivery/phase1-needs-connection-stub-http-live.json` |
+| Deploy | Railway prod `git_sha=8df5f07e783d6c84181e7dd27fc581ce9bda7b7e` | `/health` |
+
+**Phase 1 = DONE** only with both DB and HTTP rows above. One layer alone was PARTIAL (per FAST-mode lesson).
 
 ### Phase 5 placeholder
 

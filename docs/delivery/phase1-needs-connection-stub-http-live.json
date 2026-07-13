@@ -1,0 +1,277 @@
+{
+  "pass": true,
+  "prod_git_sha": "8df5f07e783d6c84181e7dd27fc581ce9bda7b7e",
+  "ran_at": "2026-07-13T06:58:44.080351+00:00",
+  "base": "https://gravitre-saas-backend-production.up.railway.app",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+  "note": "HTTP install via marketplace API with admin JWT; service-role soft-delete used only for pre-clean leftover stubs and post-verify cleanup \u2014 not for install itself.",
+  "get_status": 200,
+  "get_template_ids": [
+    "byo-premium-prospecting",
+    "executive-intelligence-sources",
+    "msp-intelligence-sources"
+  ],
+  "pre_cleanup": [],
+  "posts": {
+    "executive-intelligence-sources": {
+      "status_code": 200,
+      "stagedCount": 5,
+      "created": [
+        {
+          "connectorType": "fred",
+          "id": "b4a136b1-061c-4032-ae5d-e1dbfec2f6f7",
+          "status": "needs_connection",
+          "authMode": "gravitree_managed"
+        },
+        {
+          "connectorType": "sec_edgar",
+          "id": "e6e724f1-afb3-4e89-b275-461ceb62dd51",
+          "status": "needs_connection",
+          "authMode": "gravitree_managed"
+        },
+        {
+          "connectorType": "world_bank",
+          "id": "ddf04b24-6791-442d-a478-d02f94fde241",
+          "status": "needs_connection",
+          "authMode": "gravitree_managed"
+        },
+        {
+          "connectorType": "oecd",
+          "id": "2e244210-2e0b-4ede-bc59-6f542788633b",
+          "status": "needs_connection",
+          "authMode": "gravitree_managed"
+        },
+        {
+          "connectorType": "opencorporates",
+          "id": "5fb9e9d1-e7a2-45a6-80fd-523963cf03e3",
+          "status": "needs_connection",
+          "authMode": "gravitree_managed"
+        }
+      ],
+      "skipped": [],
+      "installed": true,
+      "body_keys": [
+        "created",
+        "description",
+        "installed",
+        "name",
+        "note",
+        "skipped",
+        "stagedCount",
+        "templateId"
+      ]
+    },
+    "byo-premium-prospecting": {
+      "status_code": 200,
+      "stagedCount": 2,
+      "created": [
+        {
+          "connectorType": "zoominfo",
+          "id": "44b0ed73-2db1-4023-a96b-c5725c8037f5",
+          "status": "needs_connection",
+          "authMode": "byo_required"
+        },
+        {
+          "connectorType": "linkedin_sales_navigator",
+          "id": "04461cd8-69b7-477d-a41e-cfded86b9d71",
+          "status": "needs_connection",
+          "authMode": "byo_required"
+        }
+      ],
+      "skipped": [],
+      "installed": true,
+      "body_keys": [
+        "created",
+        "description",
+        "installed",
+        "name",
+        "note",
+        "skipped",
+        "stagedCount",
+        "templateId"
+      ]
+    }
+  },
+  "created": [
+    {
+      "connectorType": "fred",
+      "id": "b4a136b1-061c-4032-ae5d-e1dbfec2f6f7",
+      "status": "needs_connection",
+      "authMode": "gravitree_managed",
+      "templateId": "executive-intelligence-sources"
+    },
+    {
+      "connectorType": "sec_edgar",
+      "id": "e6e724f1-afb3-4e89-b275-461ceb62dd51",
+      "status": "needs_connection",
+      "authMode": "gravitree_managed",
+      "templateId": "executive-intelligence-sources"
+    },
+    {
+      "connectorType": "world_bank",
+      "id": "ddf04b24-6791-442d-a478-d02f94fde241",
+      "status": "needs_connection",
+      "authMode": "gravitree_managed",
+      "templateId": "executive-intelligence-sources"
+    },
+    {
+      "connectorType": "oecd",
+      "id": "2e244210-2e0b-4ede-bc59-6f542788633b",
+      "status": "needs_connection",
+      "authMode": "gravitree_managed",
+      "templateId": "executive-intelligence-sources"
+    },
+    {
+      "connectorType": "opencorporates",
+      "id": "5fb9e9d1-e7a2-45a6-80fd-523963cf03e3",
+      "status": "needs_connection",
+      "authMode": "gravitree_managed",
+      "templateId": "executive-intelligence-sources"
+    },
+    {
+      "connectorType": "zoominfo",
+      "id": "44b0ed73-2db1-4023-a96b-c5725c8037f5",
+      "status": "needs_connection",
+      "authMode": "byo_required",
+      "templateId": "byo-premium-prospecting"
+    },
+    {
+      "connectorType": "linkedin_sales_navigator",
+      "id": "04461cd8-69b7-477d-a41e-cfded86b9d71",
+      "status": "needs_connection",
+      "authMode": "byo_required",
+      "templateId": "byo-premium-prospecting"
+    }
+  ],
+  "skipped": [],
+  "statuses": {
+    "b4a136b1-061c-4032-ae5d-e1dbfec2f6f7": "needs_connection",
+    "e6e724f1-afb3-4e89-b275-461ceb62dd51": "needs_connection",
+    "ddf04b24-6791-442d-a478-d02f94fde241": "needs_connection",
+    "2e244210-2e0b-4ede-bc59-6f542788633b": "needs_connection",
+    "5fb9e9d1-e7a2-45a6-80fd-523963cf03e3": "needs_connection",
+    "44b0ed73-2db1-4023-a96b-c5725c8037f5": "needs_connection",
+    "04461cd8-69b7-477d-a41e-cfded86b9d71": "needs_connection"
+  },
+  "auth_modes": {
+    "b4a136b1-061c-4032-ae5d-e1dbfec2f6f7": "gravitree_managed",
+    "e6e724f1-afb3-4e89-b275-461ceb62dd51": "gravitree_managed",
+    "ddf04b24-6791-442d-a478-d02f94fde241": "gravitree_managed",
+    "2e244210-2e0b-4ede-bc59-6f542788633b": "gravitree_managed",
+    "5fb9e9d1-e7a2-45a6-80fd-523963cf03e3": "gravitree_managed",
+    "44b0ed73-2db1-4023-a96b-c5725c8037f5": "byo_required",
+    "04461cd8-69b7-477d-a41e-cfded86b9d71": "byo_required"
+  },
+  "staged_counts": {
+    "executive-intelligence-sources": 5,
+    "byo-premium-prospecting": 2
+  },
+  "zero_live_connections": true,
+  "db_rows": [
+    {
+      "id": "b4a136b1-061c-4032-ae5d-e1dbfec2f6f7",
+      "type": "fred",
+      "status": "needs_connection",
+      "auth_mode": "gravitree_managed",
+      "deleted_at": null
+    },
+    {
+      "id": "ddf04b24-6791-442d-a478-d02f94fde241",
+      "type": "world_bank",
+      "status": "needs_connection",
+      "auth_mode": "gravitree_managed",
+      "deleted_at": null
+    },
+    {
+      "id": "5fb9e9d1-e7a2-45a6-80fd-523963cf03e3",
+      "type": "opencorporates",
+      "status": "needs_connection",
+      "auth_mode": "gravitree_managed",
+      "deleted_at": null
+    },
+    {
+      "id": "04461cd8-69b7-477d-a41e-cfded86b9d71",
+      "type": "linkedin_sales_navigator",
+      "status": "needs_connection",
+      "auth_mode": "byo_required",
+      "deleted_at": null
+    },
+    {
+      "id": "e6e724f1-afb3-4e89-b275-461ceb62dd51",
+      "type": "sec_edgar",
+      "status": "needs_connection",
+      "auth_mode": "gravitree_managed",
+      "deleted_at": null
+    },
+    {
+      "id": "2e244210-2e0b-4ede-bc59-6f542788633b",
+      "type": "oecd",
+      "status": "needs_connection",
+      "auth_mode": "gravitree_managed",
+      "deleted_at": null
+    },
+    {
+      "id": "44b0ed73-2db1-4023-a96b-c5725c8037f5",
+      "type": "zoominfo",
+      "status": "needs_connection",
+      "auth_mode": "byo_required",
+      "deleted_at": null
+    }
+  ],
+  "cleanup": {
+    "ok": true,
+    "soft_deleted": [
+      "b4a136b1-061c-4032-ae5d-e1dbfec2f6f7",
+      "e6e724f1-afb3-4e89-b275-461ceb62dd51",
+      "ddf04b24-6791-442d-a478-d02f94fde241",
+      "2e244210-2e0b-4ede-bc59-6f542788633b",
+      "5fb9e9d1-e7a2-45a6-80fd-523963cf03e3",
+      "44b0ed73-2db1-4023-a96b-c5725c8037f5",
+      "04461cd8-69b7-477d-a41e-cfded86b9d71"
+    ],
+    "error": null,
+    "deleted_at": "2026-07-13T06:58:47.781837+00:00"
+  },
+  "assertions": [
+    {
+      "name": "get_templates_includes_required",
+      "ok": true,
+      "missing": [],
+      "count": 3
+    },
+    {
+      "name": "pre_cleanup_service_role",
+      "ok": true,
+      "soft_deleted_count": 0,
+      "note": "service-role soft-delete of leftover stubs only \u2014 install is HTTP"
+    },
+    {
+      "name": "post_install_200",
+      "ok": true,
+      "templates": [
+        "executive-intelligence-sources",
+        "byo-premium-prospecting"
+      ]
+    },
+    {
+      "name": "created_status_needs_connection",
+      "ok": true,
+      "createdCount": 7
+    },
+    {
+      "name": "no_live_statuses_on_created",
+      "ok": true
+    },
+    {
+      "name": "db_status_and_auth_mode",
+      "ok": true
+    },
+    {
+      "name": "cleanup_soft_delete",
+      "ok": true
+    }
+  ],
+  "errors": [],
+  "finished_at": "2026-07-13T06:58:48.476831+00:00"
+}
