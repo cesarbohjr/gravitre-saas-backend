@@ -1,0 +1,157 @@
+{
+  "pass": true,
+  "ran_at": "2026-07-13T07:52:55.417938+00:00",
+  "mode": "service_role_pipeline_live",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "per_vendor_ok": {
+    "fred": true,
+    "nvd": true,
+    "world_bank": true
+  },
+  "results": {
+    "fred": {
+      "ok": true,
+      "vendor": "fred",
+      "cache": {
+        "id": "67b1129a-9f06-42c3-9bce-77f069f28a06",
+        "cache_key": "series:GDP",
+        "expires_at": "2026-07-13T08:52:53.148257+00:00",
+        "round_trip_get_id": "67b1129a-9f06-42c3-9bce-77f069f28a06"
+      },
+      "entities": [
+        {
+          "id": "1e80b973-a777-4714-aeb0-31211d428e32",
+          "created": true,
+          "vendor": "fred",
+          "external_id": "GDP"
+        }
+      ],
+      "signals": [
+        {
+          "id": "c9331952-acc9-4a65-a345-f6b6c43c48fe",
+          "signal_definition_id": "fred.macro_observation",
+          "vendor": "fred"
+        }
+      ],
+      "shared_surfaces": {
+        "cache_get": "app.intelligence_packs.shared.durable_cache.cache_get",
+        "cache_set": "app.intelligence_packs.shared.durable_cache.cache_set",
+        "normalize_source_result": "app.intelligence_packs.shared.normalize.normalize_source_result",
+        "write_external_entity_with_provenance": "app.intelligence_packs.shared.provenance.write_external_entity_with_provenance",
+        "pack_signal_registration": "app.intelligence_packs.shared.signals.register_signal"
+      }
+    },
+    "nvd": {
+      "ok": true,
+      "vendor": "nvd",
+      "cache": {
+        "id": "1fe8c30b-29dc-49cb-82e0-deec581eea3a",
+        "cache_key": "cve:CVE-2024-21762",
+        "expires_at": "2026-07-13T08:52:54.382809+00:00",
+        "round_trip_get_id": "1fe8c30b-29dc-49cb-82e0-deec581eea3a"
+      },
+      "entities": [
+        {
+          "id": "a58a867d-d05f-4cfb-8c08-a687a53e30b8",
+          "created": false,
+          "vendor": "nvd",
+          "external_id": "CVE-2024-21762"
+        }
+      ],
+      "signals": [
+        {
+          "id": "5e94a31c-eae8-4a8f-883c-431e8af5d642",
+          "signal_definition_id": "nvd.cve_present",
+          "vendor": "nvd"
+        }
+      ],
+      "shared_surfaces": {
+        "cache_get": "app.intelligence_packs.shared.durable_cache.cache_get",
+        "cache_set": "app.intelligence_packs.shared.durable_cache.cache_set",
+        "normalize_source_result": "app.intelligence_packs.shared.normalize.normalize_source_result",
+        "write_external_entity_with_provenance": "app.intelligence_packs.shared.provenance.write_external_entity_with_provenance",
+        "pack_signal_registration": "app.intelligence_packs.shared.signals.register_signal"
+      }
+    },
+    "world_bank": {
+      "ok": true,
+      "vendor": "world_bank",
+      "cache": {
+        "id": "201dcd31-b7ff-4a0f-b328-1d1af6d108e1",
+        "cache_key": "indicator:US:NY.GDP.MKTP.CD",
+        "expires_at": "2026-07-14T07:52:54.945056+00:00",
+        "round_trip_get_id": "201dcd31-b7ff-4a0f-b328-1d1af6d108e1"
+      },
+      "entities": [
+        {
+          "id": "55cfca73-80ee-4eca-9fa8-3ecb56bad512",
+          "created": false,
+          "vendor": "world_bank",
+          "external_id": "US:NY.GDP.MKTP.CD"
+        }
+      ],
+      "signals": [
+        {
+          "id": "959912b6-108e-407a-b9e1-a918e5b4af95",
+          "signal_definition_id": "world_bank.indicator_observation",
+          "vendor": "world_bank"
+        }
+      ],
+      "shared_surfaces": {
+        "cache_get": "app.intelligence_packs.shared.durable_cache.cache_get",
+        "cache_set": "app.intelligence_packs.shared.durable_cache.cache_set",
+        "normalize_source_result": "app.intelligence_packs.shared.normalize.normalize_source_result",
+        "write_external_entity_with_provenance": "app.intelligence_packs.shared.provenance.write_external_entity_with_provenance",
+        "pack_signal_registration": "app.intelligence_packs.shared.signals.register_signal"
+      }
+    }
+  },
+  "row_ids": {
+    "fred": {
+      "cache_id": "67b1129a-9f06-42c3-9bce-77f069f28a06",
+      "entity_ids": [
+        "1e80b973-a777-4714-aeb0-31211d428e32"
+      ],
+      "signal_ids": [
+        "c9331952-acc9-4a65-a345-f6b6c43c48fe"
+      ]
+    },
+    "nvd": {
+      "cache_id": "1fe8c30b-29dc-49cb-82e0-deec581eea3a",
+      "entity_ids": [
+        "a58a867d-d05f-4cfb-8c08-a687a53e30b8"
+      ],
+      "signal_ids": [
+        "5e94a31c-eae8-4a8f-883c-431e8af5d642"
+      ]
+    },
+    "world_bank": {
+      "cache_id": "201dcd31-b7ff-4a0f-b328-1d1af6d108e1",
+      "entity_ids": [
+        "55cfca73-80ee-4eca-9fa8-3ecb56bad512"
+      ],
+      "signal_ids": [
+        "959912b6-108e-407a-b9e1-a918e5b4af95"
+      ]
+    }
+  },
+  "agent_tool_router_wiring": "deferred_to_phase_3",
+  "crm_outcome_emit": "flagged_phase_5_precondition_gap",
+  "third_source": "world_bank",
+  "shared_functions_unchanged_for_third_source": true,
+  "shared_surfaces_point_to": {
+    "cache_get": "app.intelligence_packs.shared.durable_cache.cache_get",
+    "cache_set": "app.intelligence_packs.shared.durable_cache.cache_set",
+    "normalize_source_result": "app.intelligence_packs.shared.normalize.normalize_source_result",
+    "write_external_entity_with_provenance": "app.intelligence_packs.shared.provenance.write_external_entity_with_provenance",
+    "pack_signal_registration": "app.intelligence_packs.shared.signals.register_signal"
+  },
+  "gates": {
+    "A_same_shared_functions": true,
+    "B_world_bank_third_source": true,
+    "C_live_prod_evidence": true,
+    "D_ownership_fields": true
+  },
+  "note": "DB-side live smoke via run_shared_ingestion on prod; HTTP smoke follows merge+deploy.",
+  "migration_applied": "20260713160000_intelligence_pack_shared_plumbing"
+}
