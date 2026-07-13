@@ -510,6 +510,44 @@ def _build_agent_tool_specs() -> dict[str, AgentToolSpec]:
             map_params=_zendesk_ticket_update,
         ),
         AgentToolSpec(
+            name="fred_get_series",
+            description=(
+                "Fetch a FRED macro time-series observation (Gravitree-managed). "
+                "Use for US GDP, unemployment, inflation, and other FRED series_id values."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "series_id": {
+                        "type": "string",
+                        "description": "FRED series ID, e.g. GDP, UNRATE, CPIAUCSL",
+                    },
+                },
+                "required": ["series_id"],
+            },
+            invoke_action="fred.series.get",
+            integration="fred",
+        ),
+        AgentToolSpec(
+            name="nvd_get_cve",
+            description=(
+                "Look up a CVE in the NIST NVD catalog (Gravitree-managed). "
+                "Use when the agent needs vulnerability details for a CVE id."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "cve_id": {
+                        "type": "string",
+                        "description": "CVE identifier, e.g. CVE-2024-21762",
+                    },
+                },
+                "required": ["cve_id"],
+            },
+            invoke_action="nvd.cve.get",
+            integration="nvd",
+        ),
+        AgentToolSpec(
             name="web_search",
             description=(
                 "Search the web for current information not in the knowledge base. "
@@ -777,6 +815,9 @@ class ToolRegistry:
 
     def _connected(self, spec: AgentToolSpec, connected_integrations: list[str]) -> bool:
         if spec.always_available:
+            return True
+        # Phase 3: gravitree-managed sources use platform keys — available without tenant OAuth
+        if spec.integration in {"fred", "nvd"}:
             return True
         connected = {str(c).strip().lower() for c in connected_integrations}
         return spec.integration in connected

@@ -28,6 +28,8 @@ _BUILTIN_ACTION_SCOPES: dict[str, list[str]] = {
     "slack.post_message": ["slack:messages:write", "slack:*"],
     "email.send": ["email:send", "email:*"],
     "webhook.post": ["webhook:post", "webhook:*"],
+    "fred.series.get": ["fred:series:read", "fred:*"],
+    "nvd.cve.get": ["nvd:cve:read", "nvd:*"],
     "hubspot.contacts.get": ["hubspot:contacts:read", "hubspot:*"],
     "hubspot.contacts.update": ["hubspot:contacts:write", "hubspot:*"],
     "hubspot.notes.create": ["hubspot:notes:write", "hubspot:*"],
@@ -310,6 +312,10 @@ def assert_agent_tool_permission(
 
 def default_demo_scopes_for_system(system: str) -> list[str]:
     """Scopes granted to demo seed agents by declared systems[]."""
+    if system == "fred":
+        return ["fred:series:read", "fred:*"]
+    if system == "nvd":
+        return ["nvd:cve:read", "nvd:*"]
     if system == "hubspot":
         return [
             "hubspot:contacts:read",

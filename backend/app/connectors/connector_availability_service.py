@@ -131,6 +131,67 @@ def evaluate_connector_availability(
     token_valid = auth_status == "connected"
     scopes_valid = True
 
+    # Phase 3: gravitree_managed uses platform credentials (no tenant OAuth)
+    from app.intelligence_packs.shared.auth_mode import AuthMode, get_auth_mode, resolve_credential_source
+    from app.services.gravitree_connector_activation import _platform_env_present
+
+    if get_auth_mode(vendor) == AuthMode.GRAVITREE_MANAGED:
+        present = _platform_env_present(vendor, settings)
+        resolved = resolve_credential_source(
+            vendor,
+            org_has_secret=False,
+            platform_env_present=present,
+            settings=settings,
+        )
+        configured = True
+        if resolved.get("ok") and raw_status in {"active", "connected", "healthy", "syncing"}:
+            authenticated = True
+            token_valid = True
+            auth_status = "connected"
+            mapped_status = map_auth_status_to_connector_status(auth_status, raw_status)
+            display_status = resolve_display_connector_status(mapped_status, auth_status)
+        elif resolved.get("ok") and raw_status in {"needs_connection", "pending_auth", "pending"}:
+            authenticated = False
+            token_valid = False
+            auth_status = "pending_auth"
+            mapped_status = "needs_connection"
+            display_status = "disconnected"
+            blocking_reason = "pending_auth"
+            recovery_action = f"Activate {vendor} (Gravitree-managed) — no customer credentials required."
+            action_registered = True
+            if action_key:
+                action_registered = action_key in set(list_registered_actions())
+            return {
+                "connector_id": connector_id,
+                "vendor": vendor,
+                "configured": configured,
+                "authenticated": False,
+                "token_valid": False,
+                "scopes_valid": True,
+                "health_status": mapped_status,
+                "execution_available": False,
+                "read_available": False,
+                "write_available": False,
+                "last_checked_at": _utc_now(),
+                "source_of_truth": SOURCE_OF_TRUTH,
+                "blocking_reason": blocking_reason,
+                "recovery_action": recovery_action,
+                "auth_status": auth_status,
+                "display_status": display_status,
+                "status": display_status,
+                "connected": False,
+                "raw_status": raw_status,
+                "environment": env,
+                "name": str(row.get("name") or vendor or "connector"),
+                "auth_mode": AuthMode.GRAVITREE_MANAGED.value,
+            }
+        else:
+            authenticated = False
+            token_valid = False
+            auth_status = "misconfigured"
+            mapped_status = "error"
+            display_status = "error"
+
     if normalize_hubspot_vendor(vendor) == "hubspot":
         configured = _hubspot_oauth_configured(settings, env)
         tokens = load_oauth_tokens(client, connector_id, settings) if configured else None

@@ -3291,9 +3291,11 @@ _TOOL_REGISTRY.update(ENGAGEBAY_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(PIPEDRIVE_TOOL_EXECUTORS)
 
 from app.services.priority_connector_tools import PRIORITY_CONNECTOR_TOOLS
+from app.services.intelligence_pack_tools import INTELLIGENCE_PACK_TOOL_EXECUTORS
 from app.connectors.catalog_http.registry import build_catalog_http_executors
 
 _TOOL_REGISTRY.update(PRIORITY_CONNECTOR_TOOLS)
+_TOOL_REGISTRY.update(INTELLIGENCE_PACK_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(build_catalog_http_executors(skip=set(_TOOL_REGISTRY.keys())))
 
 # Workflow step type → canonical tool action
