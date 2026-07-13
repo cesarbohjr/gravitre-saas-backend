@@ -1,0 +1,164 @@
+{
+  "pass": true,
+  "ran_at": "2026-07-13T06:43:18.349891+00:00",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+  "prod_note": "Live against PROD Supabase (service role) smoke org cbbf993b-b22f-41ce-964b-1fc25e0dd9ea; stubs only \u2014 no credentials / no live connections.",
+  "pre_cleanup": [],
+  "skipped": [],
+  "created": [
+    {
+      "connectorType": "fred",
+      "id": "8338fea8-9705-4c5a-8c9b-2cbe491b1bb3",
+      "status": "needs_connection",
+      "authMode": "gravitree_managed",
+      "templateId": "executive-intelligence-sources"
+    },
+    {
+      "connectorType": "sec_edgar",
+      "id": "b1230fd4-472f-4e79-9c98-aa8d14cb6ee7",
+      "status": "needs_connection",
+      "authMode": "gravitree_managed",
+      "templateId": "executive-intelligence-sources"
+    },
+    {
+      "connectorType": "world_bank",
+      "id": "b82cf82f-8ecf-49f4-80f7-c085a61c0487",
+      "status": "needs_connection",
+      "authMode": "gravitree_managed",
+      "templateId": "executive-intelligence-sources"
+    },
+    {
+      "connectorType": "oecd",
+      "id": "f1319ddb-1596-4d64-b657-700e72caabe4",
+      "status": "needs_connection",
+      "authMode": "gravitree_managed",
+      "templateId": "executive-intelligence-sources"
+    },
+    {
+      "connectorType": "opencorporates",
+      "id": "ae44b7be-9225-4697-86cd-85c0af27259d",
+      "status": "needs_connection",
+      "authMode": "gravitree_managed",
+      "templateId": "executive-intelligence-sources"
+    },
+    {
+      "connectorType": "zoominfo",
+      "id": "bdf2585f-0e96-4001-86a7-5757f73cf346",
+      "status": "needs_connection",
+      "authMode": "byo_required",
+      "templateId": "byo-premium-prospecting"
+    },
+    {
+      "connectorType": "linkedin_sales_navigator",
+      "id": "6e61ed74-117d-4224-9287-7fc194b35ecb",
+      "status": "needs_connection",
+      "authMode": "byo_required",
+      "templateId": "byo-premium-prospecting"
+    }
+  ],
+  "statuses": {
+    "8338fea8-9705-4c5a-8c9b-2cbe491b1bb3": "needs_connection",
+    "b1230fd4-472f-4e79-9c98-aa8d14cb6ee7": "needs_connection",
+    "b82cf82f-8ecf-49f4-80f7-c085a61c0487": "needs_connection",
+    "f1319ddb-1596-4d64-b657-700e72caabe4": "needs_connection",
+    "ae44b7be-9225-4697-86cd-85c0af27259d": "needs_connection",
+    "bdf2585f-0e96-4001-86a7-5757f73cf346": "needs_connection",
+    "6e61ed74-117d-4224-9287-7fc194b35ecb": "needs_connection"
+  },
+  "auth_modes": {
+    "8338fea8-9705-4c5a-8c9b-2cbe491b1bb3": "gravitree_managed",
+    "b1230fd4-472f-4e79-9c98-aa8d14cb6ee7": "gravitree_managed",
+    "b82cf82f-8ecf-49f4-80f7-c085a61c0487": "gravitree_managed",
+    "f1319ddb-1596-4d64-b657-700e72caabe4": "gravitree_managed",
+    "ae44b7be-9225-4697-86cd-85c0af27259d": "gravitree_managed",
+    "bdf2585f-0e96-4001-86a7-5757f73cf346": "byo_required",
+    "6e61ed74-117d-4224-9287-7fc194b35ecb": "byo_required"
+  },
+  "db_rows": [
+    {
+      "id": "8338fea8-9705-4c5a-8c9b-2cbe491b1bb3",
+      "type": "fred",
+      "status": "needs_connection",
+      "auth_mode": "gravitree_managed",
+      "deleted_at": null
+    },
+    {
+      "id": "b82cf82f-8ecf-49f4-80f7-c085a61c0487",
+      "type": "world_bank",
+      "status": "needs_connection",
+      "auth_mode": "gravitree_managed",
+      "deleted_at": null
+    },
+    {
+      "id": "ae44b7be-9225-4697-86cd-85c0af27259d",
+      "type": "opencorporates",
+      "status": "needs_connection",
+      "auth_mode": "gravitree_managed",
+      "deleted_at": null
+    },
+    {
+      "id": "bdf2585f-0e96-4001-86a7-5757f73cf346",
+      "type": "zoominfo",
+      "status": "needs_connection",
+      "auth_mode": "byo_required",
+      "deleted_at": null
+    },
+    {
+      "id": "b1230fd4-472f-4e79-9c98-aa8d14cb6ee7",
+      "type": "sec_edgar",
+      "status": "needs_connection",
+      "auth_mode": "gravitree_managed",
+      "deleted_at": null
+    },
+    {
+      "id": "f1319ddb-1596-4d64-b657-700e72caabe4",
+      "type": "oecd",
+      "status": "needs_connection",
+      "auth_mode": "gravitree_managed",
+      "deleted_at": null
+    },
+    {
+      "id": "6e61ed74-117d-4224-9287-7fc194b35ecb",
+      "type": "linkedin_sales_navigator",
+      "status": "needs_connection",
+      "auth_mode": "byo_required",
+      "deleted_at": null
+    }
+  ],
+  "cleanup": {
+    "ok": true,
+    "soft_deleted": [
+      "8338fea8-9705-4c5a-8c9b-2cbe491b1bb3",
+      "b1230fd4-472f-4e79-9c98-aa8d14cb6ee7",
+      "b82cf82f-8ecf-49f4-80f7-c085a61c0487",
+      "f1319ddb-1596-4d64-b657-700e72caabe4",
+      "ae44b7be-9225-4697-86cd-85c0af27259d",
+      "bdf2585f-0e96-4001-86a7-5757f73cf346",
+      "6e61ed74-117d-4224-9287-7fc194b35ecb"
+    ],
+    "error": null,
+    "deleted_at": "2026-07-13T06:43:20.722785+00:00"
+  },
+  "assertions": [
+    {
+      "name": "created_status_needs_connection",
+      "ok": true,
+      "createdCount": 7
+    },
+    {
+      "name": "no_live_statuses_on_created",
+      "ok": true
+    },
+    {
+      "name": "db_status_and_auth_mode",
+      "ok": true
+    },
+    {
+      "name": "cleanup_soft_delete",
+      "ok": true
+    }
+  ],
+  "errors": [],
+  "finished_at": "2026-07-13T06:43:21.643827+00:00"
+}
