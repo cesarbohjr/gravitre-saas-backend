@@ -1,0 +1,59 @@
+{
+  "pass": true,
+  "ran_at": "2026-07-13T10:06:06.247533+00:00",
+  "prod_git_sha": "52205362c7548ecc752421554b035b177f7867c0",
+  "base": "https://gravitre-saas-backend-production.up.railway.app",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "http_status": 200,
+  "mode": "http_invoke_tool_smoke",
+  "per_action_ok": {
+    "fred.series.get": true,
+    "nvd.cve.get": true
+  },
+  "results": {
+    "fred.series.get": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "cache_id": "67b1129a-9f06-42c3-9bce-77f069f28a06",
+      "entity_ids": [
+        "1e80b973-a777-4714-aeb0-31211d428e32"
+      ],
+      "signal_ids": [
+        "016360df-6dc4-4ab6-90a5-ee9e44f5ac52"
+      ],
+      "shared_surfaces": {
+        "cache_get": "app.intelligence_packs.shared.durable_cache.cache_get",
+        "cache_set": "app.intelligence_packs.shared.durable_cache.cache_set",
+        "normalize_source_result": "app.intelligence_packs.shared.normalize.normalize_source_result",
+        "write_external_entity_with_provenance": "app.intelligence_packs.shared.provenance.write_external_entity_with_provenance",
+        "pack_signal_registration": "app.intelligence_packs.shared.signals.register_signal"
+      }
+    },
+    "nvd.cve.get": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "cache_id": "1fe8c30b-29dc-49cb-82e0-deec581eea3a",
+      "entity_ids": [
+        "a58a867d-d05f-4cfb-8c08-a687a53e30b8"
+      ],
+      "signal_ids": [
+        "d2a2837c-ec65-4c4c-97d9-8339dcf208cf"
+      ],
+      "shared_surfaces": {
+        "cache_get": "app.intelligence_packs.shared.durable_cache.cache_get",
+        "cache_set": "app.intelligence_packs.shared.durable_cache.cache_set",
+        "normalize_source_result": "app.intelligence_packs.shared.normalize.normalize_source_result",
+        "write_external_entity_with_provenance": "app.intelligence_packs.shared.provenance.write_external_entity_with_provenance",
+        "pack_signal_registration": "app.intelligence_packs.shared.signals.register_signal"
+      }
+    }
+  },
+  "registered": [
+    "fred.series.get",
+    "nvd.cve.get"
+  ],
+  "agent_tool_router_wiring": "phase_3_invoke_tool",
+  "note": "Phase 3 HTTP invoke_tool smoke on deployed tip."
+}

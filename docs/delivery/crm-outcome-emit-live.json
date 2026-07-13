@@ -1,0 +1,24 @@
+{
+  "pass": true,
+  "ran_at": "2026-07-13T10:06:32.762068+00:00",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "mode": "synthetic_hubspot_closedwon_emit",
+  "mapping_ok": true,
+  "count_before": 0,
+  "count_after": 1,
+  "emit": {
+    "stored": true,
+    "deduped": false,
+    "id": "1c324114-770e-4e20-97bc-d3261a4cb471",
+    "outcomeType": "won"
+  },
+  "emit_dedupe": {
+    "stored": false,
+    "deduped": true,
+    "id": "1c324114-770e-4e20-97bc-d3261a4cb471",
+    "outcomeType": "won"
+  },
+  "phase_5_ml": "HELD",
+  "note": "First production caller wired in hubspot_trigger_service. This artifact uses a synthetic closedwon event against the smoke org (explicit label only). Real HubSpot webhook traffic will use the same path. Phase 5 ML remains HELD.",
+  "waiting_on_real_hubspot_webhook": true
+}

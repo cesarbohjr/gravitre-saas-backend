@@ -1,6 +1,6 @@
 # Master Project — Knowledge Packages + Intelligence Packs + Connector Categories
 
-**Status:** Phase 1 **DONE**. Phase 1.5 **DONE** (FRED+NVD+World Bank HTTP live PASS). Pack track unblocked for Executive/MSP/Sales builds (agent chat wiring still Phase 3).  
+**Status:** Phase 1 **DONE**. Phase 1.5 **DONE**. Phase 3 **DONE** (FRED/NVD `invoke_tool` live PASS). CRM outcome emit **wired** (HubSpot first caller; Phase 5 ML still HELD).  
 **Date:** 2026-07-13  
 **Pipeline canon (all sources):**  
 
@@ -62,32 +62,43 @@ Rollup: `docs/delivery/foundation-five-gates-tip-resmoke.json`
 **Live evidence:**
 - Service: `docs/delivery/phase1.5-shared-plumbing-live.json` (PASS @ 2026-07-13T07:52:55Z)
 - HTTP: `docs/delivery/phase1.5-shared-plumbing-http-live.json` (PASS @ 2026-07-13T08:31:23Z on tip `8cb6c39e`, http_status 200)
-**Ownership boundaries (still hold):** `agent_tool_router_wiring=deferred_to_phase_3` (chat cannot call these yet, by design); `crm_outcome_emit=flagged_phase_5_precondition_gap` (expectation-setting, not a blocker for current scope); `shared_functions_unchanged_for_third_source=true`.
+**Ownership boundaries (at Phase 1.5 close):** agent/tool/router was deferred to Phase 3; CRM emit was a Phase 5 precondition gap. **Superseded:** Phase 3 DONE + HubSpot CRM emit wired (see below).
 
-**Diagnosis:** Pack/install/`auth_mode` is global; `fetch → cache → normalize → KG → signal` is still per-source bespoke (Wave 1 shape, one layer deeper). Phase 1.5 closed with service + HTTP live evidence; pack builds may proceed (chat wiring = Phase 3).
+**Diagnosis:** Pack/install/`auth_mode` is global; Phase 1.5 closed the shared cache→normalize→KG→signal path. Phase 3 wires that path into `invoke_tool` for FRED/NVD.
 
 | Gate | Bar |
 |------|-----|
 | A — Same shared functions | ONE `cache_get`/`cache_set`, ONE `normalize_source_result` dispatcher (mappers plugged in), ONE `write_external_entity_with_provenance`, ONE PackSignalDefinition registration path — FRED+NVD as registrations, not copies |
 | B — Third-source proof | World Bank = mapper + PackSignalDefinition only; **zero** changes to shared cache/KG-write/registry internals — else not DONE |
 | C — Live prod | Cache row + KG/provenance write + signal registration for **FRED, NVD, and World Bank** on Railway tip (not local-only) |
-| D — Ownership fields in artifact | `agent_tool_router_wiring: deferred_to_phase_3`; `crm_outcome_emit: flagged_phase_5_precondition_gap` |
+| D — Ownership fields in artifact | Historical: deferred_to_phase_3 / flagged_phase_5_precondition_gap |
 
-**Phase ownership (locked):**
+**Phase ownership (updated 2026-07-13):**
 
-| Concern | Owns | Not |
-|---------|------|-----|
-| Shared cache / normalize / KG write / PackSignalDefinition | **Phase 1.5** | — |
-| Agent / tool / router so chat can call FRED/NVD live | **Phase 3** (Executive pack proof) | Not Phase 1.5 |
-| CRM outcome emit production callers | **Phase 5 precondition gap** | Not Phase 1.5 blocker |
+| Concern | Owns | Status |
+|---------|------|--------|
+| Shared cache / normalize / KG write / PackSignalDefinition | **Phase 1.5** | DONE |
+| Agent / tool / router so chat can call FRED/NVD live | **Phase 3** | **DONE** — `fred.series.get` / `nvd.cve.get` via `invoke_tool` |
+| CRM outcome emit production callers | **Phase 5 precondition** | **Wired** (HubSpot first caller); Phase 5 ML still HELD |
 
-**Executive Intelligence Pack build: UNBLOCKED** (Phase 1.5 DONE). Agent/tool/router chat wiring remains Phase 3.
+### Phase 3 — FRED/NVD invoke_tool (DONE)
+
+**Evidence:** `docs/delivery/phase3-fred-nvd-invoke-live.json` — PASS on tip `52205362` via `POST /api/intelligence-packs/tools/invoke-smoke`.
+
+| Action | cache | entity | signal |
+|--------|-------|--------|--------|
+| `fred.series.get` | `67b1129a-…` | `1e80b973-…` | `016360df-…` |
+| `nvd.cve.get` | `1fe8c30b-…` | `a58a867d-…` | `d2a2837c-…` |
+
+Tools registered in `_TOOL_REGISTRY` + ToolRegistry curated specs (`fred_get_series`, `nvd_get_cve`). Executors call Phase 1.5 `run_shared_ingestion` only. Gravitree activate: `POST /api/connectors/{id}/activate-gravitree`.
 
 ### Phase 5 placeholder
 
-Phase 5 (ML/predictive layer) — scoped and reviewed in conversation, **held** pending outcome-data volume and governance re-review; revive from chat when Phase 0–4 are live-verified — do not execute a stale docs prompt.
+Phase 5 (ML/predictive layer) — **HELD**. Do not start ML.
 
-**Known precondition gap (surfaced 2026-07-13):** `crm_recommendation_outcomes` schema + `ingest_*` exist; **zero production callers**. Real outcome-data volume for Phase 5 is **not close**. Track explicitly; do not treat as Phase 1.5 scope.
+**CRM outcome emit (precondition progress 2026-07-13):** HubSpot webhook path now calls `ingest_crm_recommendation_outcome` for explicit `dealstage` → `closedwon`/`closedlost` only (never invent labels). Soft-dedupe on (org, connector, external_id, outcome_type).
+
+**Evidence:** `docs/delivery/crm-outcome-emit-live.json` — synthetic closedwon emit PASS (row `1c324114-…`); `waiting_on_real_hubspot_webhook: true`. Outcome volume for Phase 5 ML is still not close — first caller exists; real traffic still needed.
 
 ---
 
@@ -173,20 +184,19 @@ Ownership: agent/tool/router = Phase 3; CRM outcomes = Phase 5 precondition gap.
 ### Phase 2 — Pack-facing use of shared path (after 1.5)
 Memory **only** via existing opt-in gate; pack-specific signal *content* on top of PackSignalDefinition — **not** new per-source cache/KG plumbing.
 
-### Phase 3 — Bounded agent training + tool/router wiring (Executive proof)
-Catalog allowlists of packs/sources per agent; server-side deny cross-pack retrieval.  
-**Also owns:** wire shared Phase 1.5 functions into the real agent/tool/router path so chat can call FRED/NVD (etc.) live. No autonomous learning.
+### Phase 3 — Bounded agent training + tool/router wiring — DONE (FRED/NVD invoke)
+`fred.series.get` / `nvd.cve.get` registered and live-proven via invoke_tool smoke. Curated chat tools `fred_get_series` / `nvd_get_cve`. Catalog allowlists via permitted_tools + scopes. World Bank chat wiring can follow same pattern later. No autonomous learning.
 
 ### Phase 4 — Workflow nodes + live E2E
 ICP/enrich/signal lookup nodes (read) + any HubSpot/Apollo write still through approval gate.  
 Acceptance: ICP → enrich → Apollo discover → HubSpot list create → live `tool.invoke.completed` + `result_url`.
 
-### Pack track (Phase 1.5 DONE — unblocked)
-Executive → MSP → Sales per original build order; OpenCorporates client = shared module as previously designed. Chat-callable sources still Phase 3.
+### Pack track (Phase 1.5 + Phase 3 DONE — unblocked)
+Executive → MSP → Sales per original build order; OpenCorporates client = shared module as previously designed.
 
 ### Phase 5 — HELD (do not start; full prompt not filed)
 
-See **Phase 5 placeholder** under Product decisions. Do not expand into a standalone delivery prompt until preconditions are met. CRM outcome emit still unwired — outcome volume precondition not met.
+See **Phase 5 placeholder**. CRM outcome **emit path wired** (HubSpot); ML still held until real outcome volume accumulates.
 
 ---
 
@@ -212,4 +222,6 @@ API accounts/keys for FRED, SEC_USER_AGENT, OpenCorporates commercial token, NVD
 ~~Licensing owner~~ — **locked to Cesar** (STA-312 scope extended).  
 ~~Go Phase 1~~ — **DONE** (DB + HTTP stub evidence).  
 ~~Scope Phase 1.5~~ — **DONE** (`docs/delivery/phase1.5-shared-ingestion-plumbing.md`).  
-**Next:** Executive Intelligence Pack build may start. Phase 3 still owns agent/tool/router wiring so chat can call FRED/NVD/WB.
+~~Phase 3 FRED/NVD invoke~~ — **DONE** (`docs/delivery/phase3-fred-nvd-invoke-live.json`).  
+~~CRM outcome first caller~~ — **wired** (`docs/delivery/crm-outcome-emit-live.json`; waiting on real HubSpot webhook volume).  
+**Next:** Executive Intelligence Pack build / Phase 4 workflow E2E. Phase 5 ML remains **HELD**.
