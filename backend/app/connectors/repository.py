@@ -135,12 +135,17 @@ def create_connector(
     config: dict,
     created_by: str | None,
     environment_name: str = "production",
+    *,
+    status: str = "active",
 ) -> dict:
-    """Create connector. Returns row without secrets."""
+    """Create connector. Returns row without secrets.
+
+    Pass status=\"needs_connection\" for marketplace template stubs (no auth yet).
+    """
     row = {
         "org_id": org_id,
         "type": connector_type,
-        "status": "active",
+        "status": status or "active",
         "config": config or {},
         "created_by": created_by,
         "environment": normalize_environment_name(environment_name),

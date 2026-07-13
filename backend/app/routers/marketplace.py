@@ -1824,6 +1824,54 @@ async def get_marketplace_publisher_analytics(
     )
 
 
+@router.post("/connector-category-templates/{template_id}/install")
+async def marketplace_connector_category_template_install(
+    template_id: str,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+) -> dict:
+    """Stage connectors as needs_connection stubs — does not authenticate.
+
+    Phase 1: template install must show stubs before OAuth/API-key.
+    """
+    from app.marketplace.connector_category_templates import (
+        CONNECTOR_CATEGORY_TEMPLATES,
+        install_connector_category_template,
+    )
+
+    user, org_id = admin
+    if template_id not in CONNECTOR_CATEGORY_TEMPLATES:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown connector category template")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        result = install_connector_category_template(
+            client,
+            org_id,
+            template_id,
+            created_by=user["user_id"],
+            environment_name=environment_name,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+    return {"installed": True, "templateId": template_id, **result}
+
+
+@router.get("/connector-category-templates")
+async def marketplace_list_connector_category_templates(
+    _: Annotated[dict, Depends(get_current_user)],
+) -> dict:
+    from app.marketplace.connector_category_templates import CONNECTOR_CATEGORY_TEMPLATES
+
+    items = [
+        {"id": tid, "name": spec["name"], "description": spec["description"], "connectors": spec["connectors"]}
+        for tid, spec in CONNECTOR_CATEGORY_TEMPLATES.items()
+    ]
+    return {"items": items, "count": len(items)}
+
+
 @router.post("/assets/{asset_ref}/install")
 async def marketplace_asset_install(
     asset_ref: str,

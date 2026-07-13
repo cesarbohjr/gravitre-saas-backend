@@ -93,6 +93,37 @@ def _active_connector_types(client: Any, org_id: str, *, environment_name: str) 
     return types
 
 
+def _staged_connector_types(client: Any, org_id: str, *, environment_name: str) -> set[str]:
+    """Connectors pre-staged by template install (needs_connection / pending_auth)."""
+    staged_statuses = ["needs_connection", "pending_auth", "pending"]
+    types: set[str] = set()
+    try:
+        result = (
+            client.table("connectors")
+            .select("type,status")
+            .eq("org_id", org_id)
+            .in_("status", staged_statuses)
+            .execute()
+        )
+        types = {str(row["type"]) for row in (result.data or []) if row.get("type")}
+        if environment_name:
+            env_result = (
+                client.table("connectors")
+                .select("type,status")
+                .eq("org_id", org_id)
+                .in_("status", staged_statuses)
+                .eq("environment", environment_name)
+                .execute()
+            )
+            types.update(str(row["type"]) for row in (env_result.data or []) if row.get("type"))
+    except Exception as exc:
+        if not _is_missing_table_error(exc):
+            message = str(exc).lower()
+            if "42703" not in message and "environment" not in message and "needs_connection" not in message:
+                raise
+    return types
+
+
 def _find_active_connector_id(
     client: Any,
     org_id: str,
@@ -143,10 +174,12 @@ def validate_connectors_for_asset(
     else:
         refs = validate_required_connectors(required_connectors)  # type: ignore[arg-type]
     active = _active_connector_types(client, org_id, environment_name=environment_name)
+    staged = _staged_connector_types(client, org_id, environment_name=environment_name)
     blockers: list[dict[str, Any]] = []
     checklist: list[dict[str, Any]] = []
     for req in refs:
         connected = req.connector_type in active
+        needs_connection = (not connected) and req.connector_type in staged
         action_url = req.connect_path or f"/connectors?type={req.connector_type}"
         checklist.append(
             {
@@ -154,6 +187,8 @@ def validate_connectors_for_asset(
                 "label": req.label or req.connector_type,
                 "required": req.required,
                 "connected": connected,
+                "needsConnection": needs_connection,
+                "status": "connected" if connected else ("needs_connection" if needs_connection else "missing"),
                 "connectPath": action_url,
                 "action_url": action_url,
                 "ready": connected or not req.required,
@@ -163,8 +198,13 @@ def validate_connectors_for_asset(
             blockers.append(
                 {
                     "connector": req.connector_type,
-                    "reason": f"{req.label or req.connector_type} is not connected",
+                    "reason": (
+                        f"{req.label or req.connector_type} is staged — complete connection"
+                        if needs_connection
+                        else f"{req.label or req.connector_type} is not connected"
+                    ),
                     "action_url": action_url,
+                    "needsConnection": needs_connection,
                 }
             )
     return {

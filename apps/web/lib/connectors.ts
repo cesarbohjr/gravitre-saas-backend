@@ -6,6 +6,9 @@
 
 export type ConnectorAuthType = "oauth" | "apiKey" | "webhook"
 
+/** Catalog credential ownership — enforced server-side via auth_mode. */
+export type ConnectorAuthMode = "customer_owned" | "gravitree_managed" | "byo_required"
+
 /** How credentials are collected — orthogonal to UI authType label. */
 export type ConnectorCredentialModel =
   | "oauth2"
@@ -26,6 +29,8 @@ export interface CatalogConnectorEntry {
   authType: ConnectorAuthType
   category: string
   credentialModel: ConnectorCredentialModel
+  /** customer_owned | gravitree_managed | byo_required — Phase 1 */
+  authMode?: ConnectorAuthMode
   /** Backend agent tools implemented */
   shipped?: boolean
   /** OAuth start/callback routes implemented and verified for this vendor */
@@ -36,6 +41,8 @@ export interface CatalogConnectorEntry {
   requiresInstanceUrl?: boolean
   requiresPartnerApproval?: boolean
   setupComplexity?: ConnectorSetupComplexity
+  /** Code exists but tenant activation blocked (license/governance) */
+  activationBlocked?: boolean
 }
 
 export const CONNECTOR_CATEGORY_META: Record<string, { color: string; label: string }> = {
@@ -241,9 +248,18 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "SEMrush", vendorKey: "semrush", description: "SEO and marketing intelligence", authType: "apiKey", credentialModel: "api_key", category: "CRM / Marketing" },
   { type: "StackAdapt", vendorKey: "stackadapt", description: "Programmatic advertising", authType: "apiKey", credentialModel: "api_key", category: "CRM / Marketing" },
   // Sales / Prospecting
-  { type: "LinkedIn", vendorKey: "linkedin", description: "Prospect enrichment for Sales Agent", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", shipped: true },
-  { type: "Apollo", vendorKey: "apollo", description: "Sales intelligence and outreach", authType: "oauth", credentialModel: "oauth2", category: "Sales / Prospecting", shipped: true, oauthReady: true },
-  { type: "Clay", vendorKey: "clay", description: "Data enrichment, tables, and workflow automation", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", shipped: true },
+  { type: "LinkedIn", vendorKey: "linkedin", description: "Prospect enrichment for Sales Agent", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", shipped: true, authMode: "customer_owned" },
+  { type: "Apollo", vendorKey: "apollo", description: "Sales intelligence and outreach", authType: "oauth", credentialModel: "oauth2", category: "Sales / Prospecting", shipped: true, oauthReady: true, authMode: "customer_owned" },
+  { type: "Clay", vendorKey: "clay", description: "Data enrichment, tables, and workflow automation", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", shipped: true, authMode: "customer_owned" },
+  { type: "ZoomInfo", vendorKey: "zoominfo", description: "BYO premium B2B data — connect your own subscription", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", authMode: "byo_required" },
+  { type: "LinkedIn Sales Navigator", vendorKey: "linkedin_sales_navigator", description: "BYO Sales Navigator — never uses a shared Gravitree key", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", authMode: "byo_required" },
+  { type: "FRED", vendorKey: "fred", description: "Federal Reserve economic data (Gravitree-managed)", authType: "apiKey", credentialModel: "platform_only", category: "Intelligence Sources", authMode: "gravitree_managed" },
+  { type: "SEC EDGAR", vendorKey: "sec_edgar", description: "SEC filings search (Gravitree-managed)", authType: "apiKey", credentialModel: "platform_only", category: "Intelligence Sources", authMode: "gravitree_managed" },
+  { type: "World Bank", vendorKey: "world_bank", description: "World Bank indicators (Gravitree-managed)", authType: "apiKey", credentialModel: "platform_only", category: "Intelligence Sources", authMode: "gravitree_managed" },
+  { type: "OECD", vendorKey: "oecd", description: "OECD statistics (Gravitree-managed)", authType: "apiKey", credentialModel: "platform_only", category: "Intelligence Sources", authMode: "gravitree_managed" },
+  { type: "OpenCorporates", vendorKey: "opencorporates", description: "Company registry lookup — activation pending commercial license", authType: "apiKey", credentialModel: "platform_only", category: "Intelligence Sources", authMode: "gravitree_managed", activationBlocked: true },
+  { type: "NVD", vendorKey: "nvd", description: "National Vulnerability Database (Gravitree-managed)", authType: "apiKey", credentialModel: "platform_only", category: "Intelligence Sources", authMode: "gravitree_managed" },
+  { type: "CISA KEV", vendorKey: "cisa_kev", description: "CISA Known Exploited Vulnerabilities feed", authType: "apiKey", credentialModel: "platform_only", category: "Intelligence Sources", authMode: "gravitree_managed" },
   // Payments / Finance
   { type: "Stripe", vendorKey: "stripe", description: "Payment processing", authType: "apiKey", credentialModel: "api_key", category: "Payments / Finance", shipped: true },
   { type: "QuickBooks", vendorKey: "quickbooks", description: "Accounting software", authType: "oauth", credentialModel: "oauth2", category: "Payments / Finance", shipped: true },

@@ -314,6 +314,22 @@ class Settings(BaseSettings):
     # Multi-provider failover
     gemini_api_key: str = ""          # Google Gemini (GEMINI_API_KEY)
     voyage_api_key: str = ""          # Voyage AI embeddings fallback (VOYAGE_API_KEY)
+    # Intelligence packs — Gravitree-managed sources (Phase 1). Humans provision on Railway.
+    fred_api_key: str = ""
+    fred_base_url: str = "https://api.stlouisfed.org/fred"
+    sec_user_agent: str = ""  # Must identify Gravitre + contact email
+    sec_base_url: str = "https://efts.sec.gov/LATEST"
+    worldbank_base_url: str = "https://api.worldbank.org/v2"
+    oecd_base_url: str = "https://sdmx.oecd.org/public/rest/data"
+    opencorporates_api_token: str = ""
+    opencorporates_base_url: str = "https://api.opencorporates.com"
+    # Cesar commercial-license sign-off — code may exist; tenants blocked until true
+    opencorporates_license_confirmed: bool = False
+    nvd_api_key: str = ""
+    nvd_base_url: str = "https://services.nvd.nist.gov/rest/json"
+    cisa_kev_url: str = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+    crunchbase_api_key: str = ""
+    pdl_api_key: str = ""
     # True only after corpus is re-indexed with Voyage (1024-dim). See docs/voyage-reindex-runbook.md
     voyage_embedding_enabled: bool = False
     # Provider preference for the failover chain: openai | anthropic | gemini | auto
