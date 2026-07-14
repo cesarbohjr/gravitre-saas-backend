@@ -635,11 +635,31 @@ def _exec_hubspot_pipelines_list(ctx: ToolContext, params: dict[str, Any]) -> No
         data = list_deal_pipelines(token)
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
+    # Phase 3.5 cohesion — deep link + notification for pack/smoke consumers
+    result_url = "https://app.hubspot.com/contacts/pipelines"
+    if isinstance(data, dict):
+        payload = {**data, "result_url": result_url}
+    else:
+        payload = {"pipelines": data, "result_url": result_url}
+    try:
+        from app.services.intelligence_pack_tools import emit_pack_source_notification
+
+        pipelines = payload.get("pipelines") or payload.get("results") or []
+        count = len(pipelines) if isinstance(pipelines, list) else 0
+        emit_pack_source_notification(
+            ctx,
+            title="HubSpot pipelines listed",
+            body=f"Listed {count} deal pipeline(s)",
+            result_url=result_url,
+            action="hubspot.pipelines.list",
+        )
+    except Exception:  # noqa: BLE001
+        pass
     return NormalizedResult(
         success=True,
         action="hubspot.pipelines.list",
         connector_id=cid,
-        data=data,
+        data=payload,
     )
 
 
@@ -678,7 +698,26 @@ def _exec_hubspot_deals_list(ctx: ToolContext, params: dict[str, Any]) -> Normal
         data = list_deals(token, limit=int(params.get("limit") or 25))
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
-    return NormalizedResult(success=True, action="hubspot.deals.list", connector_id=cid, data=data)
+    result_url = "https://app.hubspot.com/contacts/objects/0-3/views/all/list"
+    if isinstance(data, dict):
+        payload = {**data, "result_url": result_url}
+    else:
+        payload = {"results": data, "result_url": result_url}
+    try:
+        from app.services.intelligence_pack_tools import emit_pack_source_notification
+
+        results = payload.get("results") or payload.get("deals") or []
+        count = len(results) if isinstance(results, list) else 0
+        emit_pack_source_notification(
+            ctx,
+            title="HubSpot deals listed",
+            body=f"Listed {count} deal(s) for account health",
+            result_url=result_url,
+            action="hubspot.deals.list",
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    return NormalizedResult(success=True, action="hubspot.deals.list", connector_id=cid, data=payload)
 
 
 def _exec_hubspot_companies_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
@@ -2514,11 +2553,26 @@ def _exec_zendesk_tickets_list(ctx: ToolContext, params: dict[str, Any]) -> Norm
         )
     except ZendeskAPIError as exc:
         raise _vendor_api_error(exc, "zendesk") from exc
+    result_url = f"https://{subdomain}.zendesk.com/agent/filters/all"
+    payload = {"tickets": tickets, "result_url": result_url, "subdomain": subdomain}
+    try:
+        from app.services.intelligence_pack_tools import emit_pack_source_notification
+
+        count = len(tickets) if isinstance(tickets, list) else 0
+        emit_pack_source_notification(
+            ctx,
+            title=f"Zendesk tickets listed ({subdomain})",
+            body=f"Listed {count} ticket(s)",
+            result_url=result_url,
+            action="zendesk.tickets.list",
+        )
+    except Exception:  # noqa: BLE001
+        pass
     return NormalizedResult(
         success=True,
         action="zendesk.tickets.list",
         connector_id=cid,
-        data={"tickets": tickets},
+        data=payload,
     )
 
 
