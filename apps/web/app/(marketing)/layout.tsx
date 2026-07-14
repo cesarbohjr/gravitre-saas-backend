@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { GoogleTagManager } from "@/components/marketing/google-tag-manager"
 import { MarketingChrome } from "@/components/marketing/marketing-chrome"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
 
@@ -25,5 +26,10 @@ export const metadata: Metadata = {
 }
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
-  return <MarketingChrome>{children}</MarketingChrome>
+  return (
+    <>
+      <GoogleTagManager />
+      <MarketingChrome>{children}</MarketingChrome>
+    </>
+  )
 }
