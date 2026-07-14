@@ -137,6 +137,41 @@ async def billing_health(settings: Annotated[Settings, Depends(get_settings)]):
     }
 
 
+@router.get("/webhook/health")
+async def billing_webhook_health(settings: Annotated[Settings, Depends(get_settings)]):
+    """Verify Stripe webhook config and idempotency table readiness."""
+    from app.billing.webhook_idempotency import check_webhook_idempotency_table
+
+    issues: list[str] = []
+
+    if not settings.stripe_webhook_secret:
+        issues.append("STRIPE_WEBHOOK_SECRET is not set")
+    elif not settings.stripe_webhook_secret.startswith("whsec_"):
+        issues.append("STRIPE_WEBHOOK_SECRET has invalid format (should start with whsec_)")
+
+    idempotency_table = {"table": "stripe_webhook_events", "reachable": False, "error": "supabase_not_configured"}
+    if settings.supabase_url and settings.supabase_service_role_key:
+        client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+        idempotency_table = check_webhook_idempotency_table(client)
+        if not idempotency_table.get("reachable"):
+            issues.append(
+                f"stripe_webhook_events table is not reachable ({idempotency_table.get('error')})"
+            )
+    else:
+        issues.append("Supabase is not configured for webhook idempotency checks")
+
+    return {
+        "status": "healthy" if not issues else "unhealthy",
+        "issues": issues,
+        "webhook_secret_set": bool(settings.stripe_webhook_secret),
+        "idempotency_table": idempotency_table,
+        "endpoints": {
+            "legacy": "/api/billing/webhook",
+            "canonical": "/api/webhooks/stripe",
+        },
+    }
+
+
 def _default_subscription(org_id: str) -> dict:
     now = datetime.now(timezone.utc).isoformat()
     return {

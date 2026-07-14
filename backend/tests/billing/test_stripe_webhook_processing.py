@@ -163,3 +163,45 @@ def test_sanitize_org_id():
     assert stripe_webhook_router._sanitize_org_id("") is None
     assert stripe_webhook_router._sanitize_org_id("  ") is None
     assert stripe_webhook_router._sanitize_org_id("org-1") == "org-1"
+
+
+def test_check_webhook_idempotency_table_reachable():
+    from app.billing.webhook_idempotency import check_webhook_idempotency_table
+
+    client = _FakeClient()
+    client._store["stripe_webhook_events"] = []
+    result = check_webhook_idempotency_table(client)
+    assert result["reachable"] is True
+    assert result["error"] is None
+
+
+def test_check_webhook_idempotency_table_missing():
+    from app.billing.webhook_idempotency import check_webhook_idempotency_table
+
+    class _MissingTableClient:
+        def table(self, _name: str):
+            raise Exception('Could not find the table "public.stripe_webhook_events" in the schema cache')
+
+    result = check_webhook_idempotency_table(_MissingTableClient())
+    assert result["reachable"] is False
+    assert result["error"] == "table_missing"
+
+
+@pytest.mark.asyncio
+async def test_billing_webhook_health_endpoint(monkeypatch):
+    from app.routers import billing as billing_router
+
+    settings = MagicMock()
+    settings.stripe_webhook_secret = "whsec_test"
+    settings.supabase_url = "https://test.supabase.co"
+    settings.supabase_service_role_key = "service-role"
+
+    client = _FakeClient()
+    client._store["stripe_webhook_events"] = []
+
+    monkeypatch.setattr(billing_router, "create_client", lambda *_args, **_kwargs: client)
+
+    result = await billing_router.billing_webhook_health(settings)
+    assert result["status"] == "healthy"
+    assert result["webhook_secret_set"] is True
+    assert result["idempotency_table"]["reachable"] is True

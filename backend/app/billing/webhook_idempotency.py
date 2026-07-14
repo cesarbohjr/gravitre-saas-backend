@@ -22,6 +22,27 @@ def _is_missing_table_error(exc: Exception) -> bool:
     )
 
 
+def check_webhook_idempotency_table(client: Client) -> dict[str, Any]:
+    """Probe whether stripe_webhook_events exists and is readable."""
+    try:
+        client.table(TABLE).select("stripe_event_id").limit(1).execute()
+        return {"table": TABLE, "reachable": True, "error": None}
+    except Exception as exc:
+        if _is_missing_table_error(exc):
+            return {
+                "table": TABLE,
+                "reachable": False,
+                "error": "table_missing",
+                "detail": str(exc),
+            }
+        return {
+            "table": TABLE,
+            "reachable": False,
+            "error": "query_failed",
+            "detail": str(exc),
+        }
+
+
 def is_webhook_event_processed(client: Client, stripe_event_id: str) -> bool:
     try:
         result = (
