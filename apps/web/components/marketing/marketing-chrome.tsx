@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { ArrowRight, Menu, X, ChevronDown } from "lucide-react"
+import { openMarketingConsentSettings } from "@/lib/marketing-consent"
 
 const navLinks = [
   { href: "/features", label: "Features" },
@@ -327,6 +328,15 @@ export function MarketingChrome({
                     </Link>
                   </li>
                 ))}
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => openMarketingConsentSettings()}
+                    className="text-sm text-zinc-500 transition-colors hover:text-zinc-900"
+                  >
+                    Cookie settings
+                  </button>
+                </li>
               </ul>
             </div>
           </div>
