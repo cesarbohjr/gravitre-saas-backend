@@ -256,6 +256,7 @@ def _send_email_if_configured(
         from app.services.notification_email_service import (
             email_notifications_enabled,
             send_assignment_completion_email,
+            send_marketplace_install_email,
             send_swarm_completion_email,
             send_workflow_completion_email,
         )
@@ -303,6 +304,17 @@ def _send_email_if_configured(
                 job_id=str(ctx.get("job_id") or ""),
                 task_title=str(ctx.get("task_title") or title),
                 requires_approval=bool(ctx.get("requires_approval")),
+            )
+            return
+        if kind == "marketplace_install":
+            send_marketplace_install_email(
+                client,
+                settings,
+                org_id=org_id,
+                user_id=user_id,
+                asset_title=str(ctx.get("asset_title") or title),
+                asset_type=str(ctx.get("asset_type") or ""),
+                view_path=str(ctx.get("view_path") or entity_ref.get("result_url") or "/marketplace/installed"),
             )
             return
 

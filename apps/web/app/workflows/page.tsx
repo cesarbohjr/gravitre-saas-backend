@@ -61,6 +61,7 @@ interface Workflow {
   runCount: number
   nodes?: WorkflowNode[]
   isRunning?: boolean
+  fromMarketplace?: boolean
 }
 
 function normalizeWorkflowStatus(raw: string): Workflow["status"] {
@@ -76,6 +77,12 @@ function normalizeWorkflowStatus(raw: string): Workflow["status"] {
 function normalizeWorkflow(input: Record<string, unknown>): Workflow {
   const status = String(input.status ?? "draft")
   const environment = String(input.environment ?? "staging")
+  const config = (input.config ?? {}) as Record<string, unknown>
+  const activeVersion = (input.active_version ?? input.activeVersion) as Record<string, unknown> | undefined
+  const versionConfig = (activeVersion?.config ?? {}) as Record<string, unknown>
+  const fromMarketplace = Boolean(
+    config.marketplaceAssetId || versionConfig.marketplaceAssetId,
+  )
   return {
     id: String(input.id ?? ""),
     name: String(input.name ?? "workflow"),
@@ -87,6 +94,7 @@ function normalizeWorkflow(input: Record<string, unknown>): Workflow {
     runCount: Number(input.runCount ?? input.run_count ?? 0),
     nodes: Array.isArray(input.nodes) ? (input.nodes as WorkflowNode[]) : undefined,
     isRunning: Boolean(input.isRunning ?? input.is_running ?? false),
+    fromMarketplace,
   }
 }
 

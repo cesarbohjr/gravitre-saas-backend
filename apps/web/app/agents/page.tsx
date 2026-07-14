@@ -87,6 +87,7 @@ type Agent = ApiAgent & {
   model?: string
   knowledgeDocCount?: number
   recentTasks?: AgentRecentTask[]
+  config?: Record<string, unknown>
 }
 
 const AGENT_DETAIL_PANEL_KEY = "gravitre:agentsDetailPanelOpen"
@@ -164,6 +165,10 @@ function normalizeAgent(input: Record<string, unknown>): Agent {
       : Array.isArray(input.recent_tasks)
         ? (input.recent_tasks as AgentRecentTask[])
         : [],
+    config:
+      input.config && typeof input.config === "object"
+        ? (input.config as Record<string, unknown>)
+        : undefined,
   }
 }
 
@@ -377,6 +382,12 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
             variant="orb"
             className="absolute -top-1 right-0 z-20 max-w-[92px] truncate rounded-full border border-border bg-card/95 px-2 py-0.5 text-[9px] font-medium text-muted-foreground shadow-sm transition-colors group-hover:border-foreground/20 group-hover:text-foreground"
           />
+        ) : null}
+
+        {Boolean(agent.config?.marketplaceAssetId) ? (
+          <span className="absolute -bottom-1 left-1/2 z-20 -translate-x-1/2 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary shadow-sm">
+            Marketplace
+          </span>
         ) : null}
 
         {agent.stats.tasksToday > 0 && (

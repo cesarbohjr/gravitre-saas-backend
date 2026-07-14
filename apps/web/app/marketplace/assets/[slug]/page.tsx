@@ -5,9 +5,9 @@ import Link from "next/link"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { AssetPurchaseButton } from "@/components/marketplace/asset-purchase-button"
 import { AssetReviewsSection } from "@/components/marketplace/asset-reviews-section"
 import { AssetTrustBadges } from "@/components/marketplace/asset-trust-badges"
+import { InstallStepperSheet } from "@/components/marketplace/install-experience"
 import {
   ConnectorChecklist,
   EntitlementBadge,
@@ -20,14 +20,6 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { ESTIMATED_HOURS_SAVED_MONTHLY } from "@/lib/outcome-labels"
@@ -37,26 +29,22 @@ import {
   CheckCircle2,
   ChevronRight,
   Copy,
-  ExternalLink,
   Loader2,
   ShoppingCart,
+  Sparkles,
   Trash2,
 } from "lucide-react"
 import { toast } from "sonner"
-import { toastMarketplaceInstallFailure } from "@/lib/marketplace-install-error"
 import type {
   MarketplaceAssetDetail,
-  MarketplaceAssetInstallCheck,
   MarketplaceAssetSummary,
   MarketplaceInstallBlocker,
 } from "@/types/api"
 
-type InstallStep = "check" | "confirm" | "installing" | "done"
-
 function BlockerList({ blockers }: { blockers: MarketplaceInstallBlocker[] }) {
   if (!blockers.length) return null
   return (
-    <ul className="space-y-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+    <ul className="space-y-2 rounded-2xl border border-destructive/30 bg-destructive/5 p-3 text-sm">
       {blockers.map((blocker) => (
         <li key={blocker.connector} className="flex items-start gap-2">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden />
@@ -71,130 +59,6 @@ function BlockerList({ blockers }: { blockers: MarketplaceInstallBlocker[] }) {
         </li>
       ))}
     </ul>
-  )
-}
-
-function InstallStepperSheet({
-  asset,
-  open,
-  onOpenChange,
-  onComplete,
-  isAdmin,
-}: {
-  asset: MarketplaceAssetSummary | null
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onComplete: () => void
-  isAdmin: boolean
-}) {
-  const [step, setStep] = useState<InstallStep>("check")
-  const [installResult, setInstallResult] = useState<Record<string, unknown> | null>(null)
-
-  const checkKey = open && asset ? ["marketplace-install-check", asset.id] : null
-  const { data: check, isLoading: checkLoading, mutate: refreshCheck } = useSWR(
-    checkKey,
-    () => marketplaceApi.installCheck(asset!.id),
-    { revalidateOnFocus: false },
-  )
-
-  const handleOpenChange = (next: boolean) => {
-    if (!next) {
-      setStep("check")
-      setInstallResult(null)
-    }
-    onOpenChange(next)
-  }
-
-  const activeStep: InstallStep =
-    step === "installing" || step === "done"
-      ? step
-      : step === "check" && check && !checkLoading
-        ? check.canInstall
-          ? "confirm"
-          : "check"
-        : step
-
-  const runInstall = async () => {
-    if (!asset) return
-    setStep("installing")
-    try {
-      const result = await marketplaceApi.installAsset(asset.slug)
-      setInstallResult(result.entities ?? {})
-      setStep("done")
-      onComplete()
-      toast.success(`${asset.title} installed`)
-    } catch (err) {
-      toastMarketplaceInstallFailure(err, {
-        blockerActionUrl: check?.blockers?.[0]?.action_url,
-      })
-      await refreshCheck()
-      setStep("check")
-    }
-  }
-
-  return (
-    <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle>Install {asset?.title ?? "asset"}</SheetTitle>
-          <SheetDescription>Provision agents, workflows, and knowledge into your org.</SheetDescription>
-        </SheetHeader>
-        <div className="flex-1 space-y-4 overflow-y-auto px-4">
-          {checkLoading ? (
-            <div className="grid place-items-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden />
-            </div>
-          ) : null}
-          {!checkLoading && activeStep === "check" && !check?.canInstall ? (
-            <>
-              <BlockerList blockers={check?.blockers ?? []} />
-              <ConnectorChecklist items={check?.connectorChecklist ?? asset?.connectorChecklist ?? []} />
-              {check?.requiresPayment && !check?.hasEntitlement && asset && isAdmin ? (
-                <AssetPurchaseButton asset={asset} check={check} onPurchased={() => void refreshCheck()} />
-              ) : null}
-            </>
-          ) : null}
-          {!checkLoading && (activeStep === "confirm" || step === "installing") ? (
-            <ConnectorChecklist items={check?.connectorChecklist ?? asset?.connectorChecklist ?? []} />
-          ) : null}
-          {activeStep === "done" ? (
-            <div className="space-y-3 rounded-lg border border-success/30 bg-success/5 p-4 text-sm">
-              <p className="flex items-center gap-2 font-medium text-success">
-                <CheckCircle2 className="h-4 w-4" aria-hidden />
-                Installation complete
-              </p>
-              {installResult?.workflowId ? (
-                <Button size="sm" variant="outline" asChild>
-                  <Link href={`/workflows/${String(installResult.workflowId)}/builder`}>
-                    Open workflow
-                    <ExternalLink className="ml-1.5 h-3.5 w-3.5" aria-hidden />
-                  </Link>
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-        <SheetFooter className="border-t pt-4">
-          {activeStep === "confirm" ? (
-            <>
-              <Button variant="outline" onClick={() => handleOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button onClick={runInstall}>Confirm install</Button>
-            </>
-          ) : null}
-          {step === "installing" ? (
-            <Button disabled>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-              Installing…
-            </Button>
-          ) : null}
-          {activeStep === "done" ? (
-            <Button onClick={() => handleOpenChange(false)}>Done</Button>
-          ) : null}
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
   )
 }
 
@@ -372,21 +236,24 @@ function MarketplaceAssetDetailContent() {
 
             <div className="flex flex-wrap gap-2">
               {isAdmin && !asset.installed ? (
-                <Button onClick={openInstall}>
+                <Button className="rounded-full font-semibold" onClick={openInstall}>
                   {needsPurchase ? (
                     <>
                       <ShoppingCart className="mr-1.5 h-4 w-4" aria-hidden />
-                      {`Buy · ${formatAssetPrice(asset)}`}
+                      {`Buy & install · ${formatAssetPrice(asset)}`}
                     </>
                   ) : asset.canInstall ? (
-                    "Install into workspace"
+                    <>
+                      <Sparkles className="mr-1.5 h-4 w-4" aria-hidden />
+                      Install to workspace
+                    </>
                   ) : (
                     "Connect apps to install"
                   )}
                 </Button>
               ) : null}
               {isAdmin ? (
-                <Button variant="ghost" disabled={busy} onClick={handleClone}>
+                <Button variant="ghost" className="rounded-full" disabled={busy} onClick={handleClone}>
                   {busy ? (
                     <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
                   ) : (
@@ -397,10 +264,10 @@ function MarketplaceAssetDetailContent() {
               ) : null}
               {asset.installed ? (
                 <>
-                  <Button variant="outline" asChild>
+                  <Button className="rounded-full font-semibold" asChild>
                     <Link href="/marketplace/installed">
-                      Manage installed
-                      <ChevronRight className="ml-1 h-3.5 w-3.5" aria-hidden />
+                      <CheckCircle2 className="mr-1.5 h-4 w-4 text-success" aria-hidden />
+                      Open installed
                     </Link>
                   </Button>
                   {isAdmin ? (

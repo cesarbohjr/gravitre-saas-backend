@@ -33,6 +33,26 @@ def test_build_install_deep_links_for_department_pack():
     assert "/agents/op-1" in paths
 
 
+def test_build_install_deep_links_singular_entity_ids():
+    row = {
+        "installed_entity_type": "agent",
+        "installed_entity_id": "agent-solo",
+        "metadata": {
+            "agentId": "agent-solo",
+            "workflowId": "wf-solo",
+            "ragSourceId": "rag-solo",
+        },
+    }
+    links = build_install_deep_links(row)
+    paths = {link["path"] for link in links}
+    assert "/agents/agent-solo" in paths
+    assert "/workflows/wf-solo" in paths
+    assert "/sources/rag-solo" in paths
+    labels = {link["label"] for link in links}
+    assert "Workflow" in labels
+    assert "Knowledge source" in labels
+
+
 def test_list_org_installs_returns_deep_links():
     install_row = {
         "id": "install-1",

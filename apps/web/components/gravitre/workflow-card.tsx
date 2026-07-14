@@ -44,6 +44,7 @@ interface WorkflowCardProps {
   runCount: number
   nodes?: WorkflowNode[]
   isRunning?: boolean
+  fromMarketplace?: boolean
   connectorDependencies?: ConnectorDependency[]
   onClick?: () => void
   onEdit?: () => void
@@ -175,6 +176,7 @@ export function WorkflowCard({
   runCount,
   nodes = [],
   isRunning = false,
+  fromMarketplace = false,
   connectorDependencies,
   onClick,
   onEdit,
@@ -238,19 +240,26 @@ export function WorkflowCard({
               </div>
             </div>
 
-            {/* Environment badge */}
-            <div className={`
-              flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wide
-              ${environment === "production" 
-                ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20" 
-                : "bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/20"
-              }
-            `}>
-              <Icon 
-                name={environment === "production" ? "production" : "staging"} 
-                size="xs" 
-              />
-              {environment === "production" ? "PROD" : "STG"}
+            <div className="flex flex-col items-end gap-1">
+              {fromMarketplace ? (
+                <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary">
+                  Marketplace
+                </span>
+              ) : null}
+              {/* Environment badge */}
+              <div className={`
+                flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wide
+                ${environment === "production" 
+                  ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20" 
+                  : "bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/20"
+                }
+              `}>
+                <Icon 
+                  name={environment === "production" ? "production" : "staging"} 
+                  size="xs" 
+                />
+                {environment === "production" ? "PROD" : "STG"}
+              </div>
             </div>
           </div>
 

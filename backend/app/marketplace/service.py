@@ -736,6 +736,80 @@ def _install_intelligence_pack_asset(
     }
 
 
+def _normalize_installed_entity_metadata(installed: dict[str, Any]) -> dict[str, Any]:
+    """Ensure singular entity ids are mirrored into plural arrays for UI counts/deep links."""
+    meta = {k: v for k, v in installed.items() if k not in {"entityType", "entityId"}}
+    agent_ids = [str(v) for v in (meta.get("agentIds") or []) if v]
+    workflow_ids = [str(v) for v in (meta.get("workflowIds") or []) if v]
+    rag_ids = [str(v) for v in (meta.get("ragSourceIds") or []) if v]
+    for key, bucket in (
+        ("agentId", agent_ids),
+        ("operatorId", agent_ids),
+        ("workflowId", workflow_ids),
+        ("ragSourceId", rag_ids),
+    ):
+        value = meta.get(key)
+        if value and str(value) not in bucket:
+            bucket.append(str(value))
+    if agent_ids:
+        meta["agentIds"] = agent_ids
+    if workflow_ids:
+        meta["workflowIds"] = workflow_ids
+    if rag_ids:
+        meta["ragSourceIds"] = rag_ids
+    return meta
+
+
+def _notify_asset_installed(
+    client: Any,
+    *,
+    org_id: str,
+    actor_id: str,
+    asset: dict[str, Any],
+    install_row: dict[str, Any],
+    deep_links: list[dict[str, Any]],
+) -> None:
+    """Bell + email that the pack is live in this workspace."""
+    title = str(asset.get("title") or asset.get("slug") or "Marketplace asset")
+    primary = next((link for link in deep_links if link.get("path")), None)
+    path = str((primary or {}).get("path") or "/marketplace/installed")
+    body = (
+        f"“{title}” is installed and ready in your Gravitre workspace. "
+        "Open Agents, Workflows, or Installed to start using it."
+    )
+    try:
+        from app.services.notification_emitter import emit_notification
+
+        emit_notification(
+            client,
+            org_id=org_id,
+            user_id=actor_id,
+            event_type="system",
+            title=f"Installed · {title}",
+            body=body,
+            entity_ref={
+                "entity_type": "marketplace_install",
+                "entity_id": str(install_row.get("id") or asset.get("id") or ""),
+                "result_url": path,
+            },
+            channel_hints={"bell": True, "email": True},
+            email_context={
+                "kind": "marketplace_install",
+                "asset_title": title,
+                "asset_type": str(asset.get("asset_type") or ""),
+                "view_path": path,
+                "deep_link_count": len(deep_links),
+            },
+        )
+    except Exception as exc:  # noqa: BLE001 — install must succeed even if notify fails
+        logger.warning(
+            "marketplace_install_notify_failed org_id=%s asset_id=%s error=%s",
+            org_id,
+            asset.get("id"),
+            exc,
+        )
+
+
 def _record_install(
     client: Any,
     *,
@@ -746,6 +820,7 @@ def _record_install(
     install_variables: dict[str, str] | None,
     checklist: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    entity_meta = _normalize_installed_entity_metadata(installed)
     row = {
         "org_id": org_id,
         "asset_id": asset["id"],
@@ -759,7 +834,7 @@ def _record_install(
         "updated_at": _now(),
         "metadata": {
             "checklist": checklist,
-            **{k: v for k, v in installed.items() if k not in {"entityType", "entityId"}},
+            **entity_meta,
         },
     }
     existing = (
@@ -941,6 +1016,17 @@ def install_asset(
             "installId": install_row.get("id"),
         },
     )
+    from app.marketplace.support import build_install_deep_links
+
+    deep_links = build_install_deep_links(install_row)
+    _notify_asset_installed(
+        client,
+        org_id=org_id,
+        actor_id=actor_id,
+        asset=asset,
+        install_row=install_row,
+        deep_links=deep_links,
+    )
     logger.info(
         "marketplace_asset_installed org_id=%s asset_id=%s entity_type=%s entity_id=%s",
         org_id,
@@ -953,8 +1039,10 @@ def install_asset(
         "assetId": asset_id,
         "assetType": asset_type,
         "slug": asset.get("slug"),
+        "title": asset.get("title"),
         "install": install_row,
         "entities": installed,
+        "deepLinks": deep_links,
         "connectorChecklist": connector_validation["checklist"],
     }
 

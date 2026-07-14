@@ -7,52 +7,38 @@ import useSWR from "swr"
 import { motion, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { MarketplaceFacetSidebar } from "@/components/marketplace/marketplace-facet-sidebar"
-import { AssetPurchaseButton } from "@/components/marketplace/asset-purchase-button"
 import { AssetTrustBadges } from "@/components/marketplace/asset-trust-badges"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
 import { GridPattern } from "@/components/gravitre/premium-effects"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { cn } from "@/lib/utils"
 import {
-  AlertCircle,
   Bot,
   CheckCircle2,
   ChevronRight,
   Copy,
   Database,
-  ExternalLink,
   Loader2,
   Package,
   Plug,
   Search,
   ShoppingCart,
+  Sparkles,
   Star,
   Workflow,
 } from "lucide-react"
 import { toast } from "sonner"
-import { toastMarketplaceInstallFailure } from "@/lib/marketplace-install-error"
 import type {
-  MarketplaceAssetInstallCheck,
   MarketplaceAssetSummary,
   MarketplaceFacetCount,
-  MarketplaceInstallBlocker,
 } from "@/types/api"
 import { CategoryIconChip } from "@/components/marketplace/category-icon-chip"
 import { AssetSaveButton } from "@/components/marketplace/asset-save-button"
 import {
-  ConnectorChecklist,
   EntitlementBadge,
   NonAdminPurchaseNotice,
   PackContentsPreview,
@@ -61,6 +47,7 @@ import {
   formatAssetPrice,
   isFreeAsset,
 } from "@/components/marketplace/marketplace-asset-commerce"
+import { InstallStepperSheet } from "@/components/marketplace/install-experience"
 import type { AssetCategory } from "@/lib/marketplace-category-icons"
 
 const TYPE_FILTERS = [
@@ -108,8 +95,6 @@ function dedupeFacets(items: MarketplaceFacetCount[]): MarketplaceFacetCount[] {
   return Array.from(merged.values())
 }
 
-type InstallStep = "check" | "confirm" | "installing" | "done"
-
 function useDebouncedValue<T>(value: T, delayMs = 300): T {
   const [debounced, setDebounced] = useState(value)
   useEffect(() => {
@@ -156,27 +141,6 @@ function ReadinessRing({
         {connected}/{total}
       </span>
     </div>
-  )
-}
-
-function BlockerList({ blockers }: { blockers: MarketplaceInstallBlocker[] }) {
-  if (!blockers.length) return null
-  return (
-    <ul className="space-y-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-      {blockers.map((blocker) => (
-        <li key={blocker.connector} className="flex items-start gap-2">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden />
-          <div className="flex-1">
-            <p>{blocker.reason}</p>
-            {blocker.action_url ? (
-              <Link href={blocker.action_url} className="text-primary underline-offset-4 hover:underline">
-                Connect {blocker.connector}
-              </Link>
-            ) : null}
-          </div>
-        </li>
-      ))}
-    </ul>
   )
 }
 
@@ -232,13 +196,18 @@ function AssetCard({
       layout={!reduceMotion}
       initial={reduceMotion ? false : { opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
+      whileHover={reduceMotion ? undefined : { y: -3 }}
       transition={{ duration: 0.35, delay: reduceMotion ? 0 : index * 0.04 }}
       className={cn(
-        "flex h-full flex-col rounded-xl border bg-card p-5 shadow-sm transition-shadow hover:shadow-md",
-        asset.installed ? "border-success/30" : "border-border",
+        "group relative flex h-full flex-col overflow-hidden rounded-3xl border bg-gradient-to-br from-card via-card to-muted/20 p-5 shadow-sm transition-shadow hover:shadow-lg",
+        asset.installed ? "border-success/30" : "border-border/80 hover:border-primary/30",
       )}
     >
-      <div className="mb-3 flex items-start justify-between gap-3">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-primary/10 opacity-0 blur-2xl transition-opacity group-hover:opacity-100"
+      />
+      <div className="relative mb-3 flex items-start justify-between gap-3">
         <button
           type="button"
           onClick={() => onOpenDetail(asset)}
@@ -250,8 +219,10 @@ function AssetCard({
             size="md"
           />
           <div className="min-w-0">
-            <h3 className="font-semibold leading-tight">{asset.title}</h3>
-            <p className="text-xs text-muted-foreground">{asset.department ?? asset.assetType}</p>
+            <h3 className="font-semibold leading-tight tracking-tight">{asset.title}</h3>
+            <p className="text-xs capitalize text-muted-foreground">
+              {(asset.department ?? asset.assetType).replace(/_/g, " ")}
+            </p>
           </div>
         </button>
         <div className="flex shrink-0 items-center gap-1">
@@ -311,10 +282,14 @@ function AssetCard({
 
       {!isAdmin && needsPurchase ? <div className="mb-4"><NonAdminPurchaseNotice /></div> : null}
 
-      <div className="mt-auto flex flex-wrap gap-2">
+      <div className="mt-auto flex flex-col gap-2">
         {showPrimaryAction ? (
           <Button
             size="sm"
+            className={cn(
+              "h-10 w-full rounded-full font-semibold shadow-sm",
+              !blocked && !needsPurchase && "bg-foreground text-background hover:bg-foreground/90",
+            )}
             disabled={Boolean(busy)}
             onClick={() => onInstall(asset)}
             title={blocked && !needsPurchase ? "Connect required apps first" : undefined}
@@ -327,187 +302,48 @@ function AssetCard({
             ) : needsPurchase ? (
               <>
                 <ShoppingCart className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                {`Buy · ${formatAssetPrice(asset)}`}
+                {`Buy & install · ${formatAssetPrice(asset)}`}
               </>
             ) : blocked ? (
-              "Connect apps first"
+              "Connect apps to install"
             ) : (
-              "Install"
+              <>
+                <Sparkles className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                Install to workspace
+              </>
             )}
           </Button>
-        ) : null}
-        <Button size="sm" variant={showPrimaryAction ? "outline" : "default"} onClick={() => onOpenDetail(asset)}>
-          Details
-          <ChevronRight className="ml-1 h-3.5 w-3.5" aria-hidden />
-        </Button>
-        {isAdmin ? (
-          <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => onClone(asset)}>
-            {busy === `clone:${asset.id}` ? (
-              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
-            ) : (
-              <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-            )}
-            Clone draft
+        ) : asset.installed ? (
+          <Button size="sm" className="h-10 w-full rounded-full font-semibold" asChild>
+            <Link href="/marketplace/installed">
+              <CheckCircle2 className="mr-1.5 h-3.5 w-3.5 text-success" aria-hidden />
+              Open installed
+            </Link>
           </Button>
         ) : null}
-      </div>
-    </motion.article>
-  )
-}
-
-function InstallStepperSheet({
-  asset,
-  open,
-  onOpenChange,
-  onComplete,
-  isAdmin,
-}: {
-  asset: MarketplaceAssetSummary | null
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onComplete: () => void
-  isAdmin: boolean
-}) {
-  const [step, setStep] = useState<InstallStep>("check")
-  const [installResult, setInstallResult] = useState<Record<string, unknown> | null>(null)
-
-  const checkKey = open && asset ? ["marketplace-install-check", asset.id] : null
-  const { data: check, isLoading: checkLoading, mutate: refreshCheck } = useSWR(
-    checkKey,
-    () => marketplaceApi.installCheck(asset!.id),
-    { revalidateOnFocus: false },
-  )
-
-  const handleOpenChange = (next: boolean) => {
-    if (!next) {
-      setStep("check")
-      setInstallResult(null)
-    }
-    onOpenChange(next)
-  }
-
-  const activeStep: InstallStep =
-    step === "installing" || step === "done"
-      ? step
-      : step === "check" && check && !checkLoading
-        ? check.canInstall
-          ? "confirm"
-          : "check"
-        : step
-
-  const runInstall = async () => {
-    if (!asset) return
-    setStep("installing")
-    try {
-      const result = await marketplaceApi.installAsset(asset.slug)
-      setInstallResult(result.entities ?? {})
-      setStep("done")
-      onComplete()
-      toast.success(`${asset.title} installed`)
-    } catch (err) {
-      toastMarketplaceInstallFailure(err, {
-        blockerActionUrl: check?.blockers?.[0]?.action_url,
-      })
-      await refreshCheck()
-      setStep("check")
-    }
-  }
-
-  const checklist = check?.connectorChecklist ?? asset?.connectorChecklist ?? []
-  const blockers = check?.blockers ?? []
-
-  return (
-    <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle>Install {asset?.title ?? "asset"}</SheetTitle>
-          <SheetDescription>Provision agents, workflows, and knowledge into your org.</SheetDescription>
-        </SheetHeader>
-
-        <div className="flex-1 space-y-4 overflow-y-auto px-4">
-          <ol className="flex gap-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            {(["check", "confirm", "done"] as const).map((id, idx) => (
-              <li
-                key={id}
-                className={cn(
-                  "flex items-center gap-1",
-                  (activeStep === id || (step === "installing" && id === "confirm") || (activeStep === "done" && id === "done")) &&
-                    "text-primary",
-                )}
-              >
-                <span className="grid h-5 w-5 place-items-center rounded-full border text-[10px]">{idx + 1}</span>
-                {id}
-              </li>
-            ))}
-          </ol>
-
-          {checkLoading ? (
-            <div className="grid place-items-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden />
-            </div>
-          ) : null}
-
-          {!checkLoading && activeStep === "check" && !check?.canInstall ? (
-            <>
-              <BlockerList blockers={blockers} />
-              <ConnectorChecklist items={checklist} />
-              {check?.requiresPayment && !check?.hasEntitlement && asset && isAdmin ? (
-                <AssetPurchaseButton asset={asset} check={check} onPurchased={() => void refreshCheck()} />
-              ) : null}
-            </>
-          ) : null}
-
-          {!checkLoading && (activeStep === "confirm" || step === "installing") ? (
-            <>
-              <p className="text-sm text-muted-foreground">All required connectors are connected. Confirm to install into your workspace.</p>
-              <ConnectorChecklist items={checklist} />
-            </>
-          ) : null}
-
-          {activeStep === "done" ? (
-            <div className="space-y-3 rounded-lg border border-success/30 bg-success/5 p-4 text-sm">
-              <p className="flex items-center gap-2 font-medium text-success">
-                <CheckCircle2 className="h-4 w-4" aria-hidden />
-                Installation complete
-              </p>
-              {installResult?.workflowId ? (
-                <Button size="sm" variant="outline" asChild>
-                  <Link href={`/workflows/${String(installResult.workflowId)}/builder`}>
-                    Open workflow
-                    <ExternalLink className="ml-1.5 h-3.5 w-3.5" aria-hidden />
-                  </Link>
-                </Button>
-              ) : null}
-            </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1 rounded-full"
+            onClick={() => onOpenDetail(asset)}
+          >
+            Details
+            <ChevronRight className="ml-1 h-3.5 w-3.5" aria-hidden />
+          </Button>
+          {isAdmin ? (
+            <Button size="sm" variant="ghost" className="rounded-full" disabled={Boolean(busy)} onClick={() => onClone(asset)}>
+              {busy === `clone:${asset.id}` ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+              ) : (
+                <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+              )}
+              Clone
+            </Button>
           ) : null}
         </div>
-
-        <SheetFooter className="border-t pt-4">
-          {activeStep === "check" && !check?.canInstall ? (
-            <Button variant="outline" onClick={() => handleOpenChange(false)}>
-              Close
-            </Button>
-          ) : null}
-          {activeStep === "confirm" ? (
-            <>
-              <Button variant="outline" onClick={() => handleOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button onClick={runInstall}>Confirm install</Button>
-            </>
-          ) : null}
-          {step === "installing" ? (
-            <Button disabled>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-              Installing…
-            </Button>
-          ) : null}
-          {activeStep === "done" ? (
-            <Button onClick={() => handleOpenChange(false)}>Done</Button>
-          ) : null}
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+      </div>
+    </motion.article>
   )
 }
 
@@ -694,6 +530,33 @@ function MarketplaceAssetsContent() {
           ) : null}
 
           <div className="min-w-0 flex-1 space-y-6">
+            <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-primary/10 via-card to-muted/30 p-5 md:p-6">
+              <div
+                aria-hidden
+                className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-primary/15 blur-3xl"
+              />
+              <div className="relative flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                <div className="max-w-xl space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                    Gravitre Marketplace
+                  </p>
+                  <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+                    Install packs into your workspace
+                  </h1>
+                  <p className="text-sm text-muted-foreground">
+                    One click provisions agents, workflows, and knowledge — then we notify you with deep links
+                    to open them.
+                  </p>
+                </div>
+                <Button asChild variant="outline" className="rounded-full">
+                  <Link href="/marketplace/installed">
+                    View installed
+                    <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Link href="/marketplace" className="hover:text-foreground">
@@ -722,7 +585,7 @@ function MarketplaceAssetsContent() {
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search marketplace…"
-                  className="pl-9"
+                  className="rounded-full pl-9"
                 />
               </div>
             </div>
