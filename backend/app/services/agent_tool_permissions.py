@@ -124,6 +124,8 @@ _BUILTIN_ACTION_SCOPES: dict[str, list[str]] = {
     "calendar.events.create": ["calendar:write", "calendar:*"],
     "analytics.properties.list": ["analytics:read", "google_analytics:*", "analytics:*"],
     "analytics.reports.run": ["analytics:read", "google_analytics:*", "analytics:*"],
+    "searchconsole.sites.list": ["searchconsole:read", "google_search_console:*", "searchconsole:*"],
+    "searchconsole.searchAnalytics.query": ["searchconsole:read", "google_search_console:*", "searchconsole:*"],
     "gmail.messages.list": ["gmail:read", "gmail:*"],
     "gmail.messages.get": ["gmail:read", "gmail:*"],
     "gmail.messages.send": ["gmail:send", "gmail:write", "gmail:*"],

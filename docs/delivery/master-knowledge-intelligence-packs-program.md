@@ -31,7 +31,7 @@ Rollup: `docs/delivery/foundation-five-gates-tip-resmoke.json`
 | Decision | Status |
 |----------|--------|
 | Monetization | **LOCKED (b)** — standalone pack subscriptions |
-| Licensing / data-governance owner | **LOCKED — Cesar Bohorquez Jr.** (sole owner, same as STA-312). Covers PII-embedding **and** Crunchbase / PDL / OpenCorporates-commercial / CIS Controls **and** Finance banking/QB/Xero/NetSuite, HR HRIS/ATS/Payroll, Compliance PHI-vs-guidance scope. |
+| Licensing / data-governance owner | **LOCKED — Cesar Bohorquez Jr.** (sole owner, same as STA-312). Covers PII-embedding **and** Crunchbase / PDL / OpenCorporates-commercial / CIS Controls **and** Finance banking/QB/Xero/NetSuite, HR HRIS/ATS/Payroll, Compliance PHI-vs-guidance scope **and** GSC raw search-query → Memory/KG (Marketing stop-line). |
 | Phase 5 ML | **UNHELD** — v1 shipped (CRM outcomes + ranked heuristics; no CF). Pack vision pass does **not** add churn/CF ML. |
 | 12-pack vision | **Phase 0 DONE** — `docs/delivery/phase0-twelve-pack-marketplace-vision.md`. Build order below. |
 
@@ -42,6 +42,7 @@ Rollup: `docs/delivery/foundation-five-gates-tip-resmoke.json`
 - **`needs_connection` stubs are in Phase 1** — not deferred. Template install must show staged connectors before OAuth/API-key; Phase 1 is not Done without this.
 - **OpenCorporates:** build shared `gravitree_managed` client + catalog plumbing; **activation blocked** until Cesar confirms commercial license (`OPENCORPORATES_LICENSE_CONFIRMED` / equivalent). Same pattern as Crunchbase/PDL stop-line: code may exist, **live tenant enablement may not**.
 - **Contact-level stop-line:** Crunchbase + PDL stay behind governance/activation gates; no KG/Memory writes.
+- **GSC query stop-line (Marketing #6):** raw Search Console query strings (`searchAnalytics.query` row-level query text) must **not** be written to Organizational Memory / Knowledge Graph without Cesar governance sign-off (STA-312 pattern, applied preemptively). Aggregate/rollup metrics (clicks, impressions, position by URL) are **not** gated and may flow through the pack signal pipeline. See `docs/delivery/marketing-phase0-gsc-oauth.md`.
 - **Scope this pass:** public gravitree sources (FRED, SEC, World Bank, OECD) + `auth_mode` + BYO fail-closed tests + stub template install + gated OC/NVD/CISA scaffolding.
 
 ### Phase 1 closure evidence (DONE)
@@ -268,7 +269,7 @@ API accounts/keys for FRED, SEC_USER_AGENT, OpenCorporates commercial token, NVD
 | **3.5** | Shared Pack KPI + notify/result_url cohesion smoke on Executive | **DONE** — `docs/delivery/phase35-executive-cohesion-live.json` |
 | 4 | Customer Success | **DONE** — `docs/delivery/phase4-customer-success-pack-live.json` (internal HubSpot; Zendesk staged) |
 | 5 | Prospecting & Lead Scouting | **DONE** — `docs/delivery/phase4-prospecting-pack-live.json` (Apollo/HubSpot lists; search plan-limited) |
-| 6 | Marketing | GSC OAuth **NEW**; SEMrush/Ahrefs BYO |
+| 6 | Marketing | GSC OAuth **NEW** (Verdict B — blocked on GCP human setup); SEMrush/Ahrefs BYO; **GSC raw-query → Memory/KG stop-line** |
 | 7 | RevOps | After Sales+Marketing+CS (Finance when live) |
 | 8 | AI Search | **Research spike only** — no scrape |
 | 9 | Finance | Cesar sign-off before live banking/QB/Xero/NetSuite |

@@ -44,11 +44,29 @@ def run_shared_ingestion(
             "signals": [],
         }
 
+    # Marketing #6: GSC raw query strings never enter cache→entity→signal→Memory/KG path
+    data_payload = raw.get("data")
+    if v in {"google_search_console", "searchconsole", "gsc"}:
+        from app.intelligence_packs.shared.gsc_data_governance import (
+            GscGovernanceError,
+            assert_gsc_safe_for_memory_kg,
+            sanitize_gsc_payload_for_memory_kg,
+        )
+
+        try:
+            assert_gsc_safe_for_memory_kg(data_payload, source=v)
+        except GscGovernanceError:
+            # Strip query text; persist only aggregates. Do not fail the whole ingest silently
+            # with raw queries still in payload.
+            data_payload = sanitize_gsc_payload_for_memory_kg(data_payload)
+            assert_gsc_safe_for_memory_kg(data_payload, source=v)
+            raw = {**raw, "data": data_payload}
+
     cache_row = cache_set(
         client,
         vendor=v,
         cache_key=cache_key,
-        payload=raw.get("data"),
+        payload=data_payload,
         ttl_seconds=ttl_seconds,
         provenance=dict(raw.get("provenance") or {}),
     )

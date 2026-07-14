@@ -92,6 +92,7 @@ from app.routers import (
     confluence_sync,
     notion_sync,
     google_analytics,
+    google_search_console,
     pagerduty_triggers,
     salesforce_triggers,
     segment_triggers,
@@ -516,6 +517,7 @@ app.include_router(notion_sync.router)
 app.include_router(confluence_sync.router)
 app.include_router(workday_sync.router)
 app.include_router(google_analytics.router)
+app.include_router(google_search_console.router)
 app.include_router(segment_triggers.router)
 app.include_router(segment_inbound.router)
 app.include_router(decisions.router)

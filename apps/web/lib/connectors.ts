@@ -72,6 +72,7 @@ export const SHIPPED_OAUTH_CONNECTOR_TYPES = [
   "Notion",
   "Slack",
   "Google Analytics",
+  "Google Search Console",
   "Google Calendar",
   "Gmail",
   "Google Drive",
@@ -114,6 +115,7 @@ export const OAUTH_VENDOR_KEYS = new Set([
   "notion",
   "slack",
   "google_analytics",
+  "google_search_console",
   "google_calendar",
   "gmail",
   "google_drive",
@@ -194,6 +196,7 @@ const VENDOR_LABELS: Record<string, string> = {
   salesforce: "Salesforce",
   hubspot: "HubSpot",
   google_analytics: "Google Analytics",
+  google_search_console: "Google Search Console",
   google_calendar: "Google Calendar",
   google_drive: "Google Drive",
   google_docs: "Google Docs",
@@ -239,6 +242,7 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "HubSpot", vendorKey: "hubspot", description: "Marketing, sales, and service", authType: "oauth", credentialModel: "oauth2", category: "CRM / Marketing", shipped: true },
   { type: "Pipedrive", vendorKey: "pipedrive", description: "Sales CRM and pipeline management", authType: "oauth", credentialModel: "oauth2", category: "CRM / Marketing", shipped: true, oauthReady: true },
   { type: "Google Analytics", vendorKey: "google_analytics", description: "GA4 campaign and conversion analytics", authType: "oauth", credentialModel: "oauth2", category: "CRM / Marketing", shipped: true },
+  { type: "Google Search Console", vendorKey: "google_search_console", description: "Search performance and ranking analytics (OAuth)", authType: "oauth", credentialModel: "oauth2", category: "CRM / Marketing", shipped: true },
   { type: "Marketo", vendorKey: "marketo", description: "Enterprise marketing automation", authType: "oauth", credentialModel: "oauth2_custom", category: "CRM / Marketing", shipped: true },
   { type: "Segment", vendorKey: "segment", description: "Customer data platform", authType: "apiKey", credentialModel: "api_key", category: "CRM / Marketing", shipped: true },
   { type: "Mailchimp", vendorKey: "mailchimp", description: "Email marketing campaigns", authType: "oauth", credentialModel: "oauth2", category: "CRM / Marketing", oauthReady: true },
@@ -416,6 +420,7 @@ export function connectorVendorKey(type: string): string {
   const key = type.toLowerCase().replace(/\s+/g, "").replace(/\./g, "")
   if (key === "googlecalendar") return "google_calendar"
   if (key === "googleanalytics") return "google_analytics"
+  if (key === "googlesearchconsole" || key === "searchconsole" || key === "gsc") return "google_search_console"
   if (key === "googledrive") return "google_drive"
   if (key === "googledocs") return "google_docs"
   if (key === "googlesheets") return "google_sheets"
@@ -510,14 +515,14 @@ export function resolveConnectorDisplayStatus(
   const auth = String(authStatus ?? "").trim().toLowerCase()
   if (auth === "connected") return "connected"
   if (auth === "auth_expired" || auth === "misconfigured") return "error"
-  if (auth === "pending_auth" || auth === "pending_property") return "disconnected"
+  if (auth === "pending_auth" || auth === "pending_property" || auth === "pending_site") return "disconnected"
 
   const raw = String(rawStatus ?? "disconnected").trim().toLowerCase()
   if (raw === "connected" || raw === "syncing" || raw === "error" || raw === "disconnected") {
     return raw
   }
   if (raw === "healthy" || raw === "active") return "connected"
-  if (raw === "pending_auth" || raw === "pending" || raw === "pending_property") {
+  if (raw === "pending_auth" || raw === "pending" || raw === "pending_property" || raw === "pending_site") {
     return "disconnected"
   }
   if (raw === "error") return "error"

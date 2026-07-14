@@ -34,6 +34,8 @@ CONNECTOR_AUTH_MODES: dict[str, AuthMode] = {
     "slack": AuthMode.CUSTOMER_OWNED,
     "zendesk": AuthMode.CUSTOMER_OWNED,
     "linkedin": AuthMode.CUSTOMER_OWNED,  # distinct from Sales Navigator BYO
+    "google_search_console": AuthMode.CUSTOMER_OWNED,
+    "google_analytics": AuthMode.CUSTOMER_OWNED,
     # Gravitree intelligence sources (public / aggregate first)
     "fred": AuthMode.GRAVITREE_MANAGED,
     "sec_edgar": AuthMode.GRAVITREE_MANAGED,

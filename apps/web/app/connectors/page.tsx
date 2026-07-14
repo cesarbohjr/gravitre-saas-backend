@@ -2039,10 +2039,112 @@ function GaPropertyPickerModal({
   )
 }
 
+function GscSitePickerModal({
+  connectorId,
+  open,
+  onClose,
+  onLinked,
+}: {
+  connectorId: string
+  open: boolean
+  onClose: () => void
+  onLinked: () => void
+}) {
+  const [sites, setSites] = useState<Array<{ site_url: string; permission_level?: string }>>([])
+  const [selectedUrl, setSelectedUrl] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!open || !connectorId) return
+    startTransition(() => setLoading(true))
+    connectorsApi
+      .listGoogleSearchConsoleSites(connectorId)
+      .then((res) => {
+        setSites(res.sites || [])
+        const linked = res.linkedSiteUrl
+        if (linked) setSelectedUrl(linked)
+        else if (res.sites?.length === 1) setSelectedUrl(res.sites[0].site_url)
+      })
+      .catch((err) => {
+        console.error("[connectors] GSC sites:", err)
+        toast.error("Could not load Search Console sites")
+      })
+      .finally(() => setLoading(false))
+  }, [open, connectorId])
+
+  const handleLink = async () => {
+    if (!selectedUrl) return
+    const site = sites.find((s) => s.site_url === selectedUrl)
+    setSaving(true)
+    try {
+      await connectorsApi.linkGoogleSearchConsoleSite(connectorId, {
+        siteUrl: selectedUrl,
+        permissionLevel: site?.permission_level,
+      })
+      toast.success("Search Console site linked")
+      onLinked()
+      onClose()
+    } catch (err) {
+      console.error("[connectors] GSC site link:", err)
+      toast.error("Failed to link site")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Link Search Console site</DialogTitle>
+          <DialogDescription>
+            Choose which Google Search Console property this connector should use for search analytics.
+            This is separate from Google Analytics — connecting GA4 does not grant Search Console access.
+          </DialogDescription>
+        </DialogHeader>
+        {loading ? (
+          <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading sites…
+          </div>
+        ) : sites.length === 0 ? (
+          <p className="py-4 text-sm text-muted-foreground">
+            No Search Console sites found for this Google account.
+          </p>
+        ) : (
+          <select
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+            value={selectedUrl}
+            onChange={(e) => setSelectedUrl(e.target.value)}
+          >
+            <option value="">Select a site…</option>
+            {sites.map((s) => (
+              <option key={s.site_url} value={s.site_url}>
+                {s.site_url}
+                {s.permission_level ? ` (${s.permission_level})` : ""}
+              </option>
+            ))}
+          </select>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={handleLink} disabled={!selectedUrl || saving || loading}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Link site"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function ConnectorsPageContent() {
   const { user } = useAuth()
   const searchParams = useSearchParams()
   const [gaPropertyPicker, setGaPropertyPicker] = useState<{ connectorId: string } | null>(null)
+  const [gscSitePicker, setGscSitePicker] = useState<{ connectorId: string } | null>(null)
   const [orgId, setOrgId] = useState<string | null>(() => getQuickOrgId())
 
   useEffect(() => {
@@ -2107,6 +2209,7 @@ function ConnectorsPageContent() {
     const provider = searchParams.get("provider")
     const connectorId = searchParams.get("connectorId")
     const selectProperty = searchParams.get("selectProperty")
+    const selectSite = searchParams.get("selectSite")
     if (!oauth) return
     if (oauth === "success") {
       void mutate()
@@ -2114,6 +2217,11 @@ function ConnectorsPageContent() {
         startTransition(() => setGaPropertyPicker({ connectorId }))
         toast.info("Select a GA4 property", {
           description: "Your Google account has multiple analytics properties.",
+        })
+      } else if (provider === "google_search_console" && selectSite === "1" && connectorId) {
+        startTransition(() => setGscSitePicker({ connectorId }))
+        toast.info("Select a Search Console site", {
+          description: "Your Google account has multiple Search Console properties.",
         })
       } else {
         toast.success("Connection successful", {
@@ -2133,6 +2241,7 @@ function ConnectorsPageContent() {
       url.searchParams.delete("connectorId")
       url.searchParams.delete("message")
       url.searchParams.delete("selectProperty")
+      url.searchParams.delete("selectSite")
       window.history.replaceState({}, "", url.pathname + url.search)
     }
   }, [searchParams, mutate])
@@ -2775,6 +2884,14 @@ function ConnectorsPageContent() {
             connectorId={gaPropertyPicker.connectorId}
             open
             onClose={() => setGaPropertyPicker(null)}
+            onLinked={() => void mutate()}
+          />
+        )}
+        {gscSitePicker && (
+          <GscSitePickerModal
+            connectorId={gscSitePicker.connectorId}
+            open
+            onClose={() => setGscSitePicker(null)}
             onLinked={() => void mutate()}
           />
         )}
