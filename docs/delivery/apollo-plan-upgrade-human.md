@@ -1,30 +1,31 @@
-# Apollo plan upgrade (human-only)
+# Apollo plan upgrade (BYO — bypassed for platform smoke)
 
-**Status:** Blocker for full Phase 4 Sales E2E discover step (`apollo.people.search`).  
-**Not agent-actionable** — Cesar / ops must change the Apollo account or connector secrets.
+**Status (2026-07-13):** **Bypassed for Phase 4 PARTIAL acceptance.**  
+Smoke-org Apollo free-plan 403 is **not** a platform blocker. Users add their own Apollo account API keys (upgraded plan) via connector secrets — `customer_owned` auth.
 
-## Evidence
+## Product decision
 
-Smoke org Apollo connector is OAuth-only on Apollo **free plan**. Live 403:
+- Gravitre does **not** require a platform master Apollo key for Phase 4 / Sales pack demos.
+- Tenants who need People/Company search bring an upgraded Apollo plan + API key on their connector.
+- Runtime already prefers connector `api_token` / `api_key` over OAuth when both exist; free-plan 403 maps to `permission_denied` (`apollo_plan_limit`).
+
+## Evidence (historical)
+
+Smoke org Apollo connector was OAuth-only on Apollo **free plan**. Live 403:
 
 `api/v1/mixed_people/api_search is not accessible with this access token on a free plan`
 
-Same class of error for `mixed_companies/search`. Artifact: `docs/delivery/phase4-sales-workflow-e2e-live.json`.
+Artifact: `docs/delivery/phase4-sales-workflow-e2e-live.json`. Phase 4 E2E accepted **PARTIAL**.
 
-## Options (pick one)
+## Optional human path (tenant)
 
-1. **Upgrade** the smoke-org Apollo subscription so OAuth People API Search is allowed.
-2. Add a **master API key** on connector `30f734a2-dbdb-45aa-9112-19c6d604d451` (`api_token` / `api_key` secret). Runtime prefers `X-Api-Key` over OAuth when present.
+1. Upgrade that tenant’s Apollo subscription so People API Search is allowed, **or**
+2. Add an API key on their Apollo connector (`api_token` / `api_key`).
+
+Then re-run: `python scripts/smoke-phase4-sales-workflow-e2e-live.py` for that org.
 
 ## Already shipped in code
 
 - Free-plan 403 → `permission_denied` (`apollo_plan_limit`), not `auth_expired`
 - Prefer master API key over OAuth bearer when both exist
 - Health probe no longer uses people search for credential checks
-
-## After human change
-
-Re-run: `python scripts/smoke-phase4-sales-workflow-e2e-live.py`  
-Expect `apollo.people.search` success + existing HubSpot `lists.create` PASS for full Phase 4 chain.
-
-Phase 5 ML remains **HELD**.

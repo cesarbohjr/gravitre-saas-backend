@@ -139,10 +139,13 @@ def main() -> int:
             "cache_id": (ingestion.get("cache") or {}).get("id"),
             "entity_ids": [e.get("id") for e in (ingestion.get("entities") or [])],
             "signal_ids": [s.get("id") for s in (ingestion.get("signals") or [])],
+            "api_key_present": bool((invoke.data or {}).get("api_key_present")),
+            "rate_limit_tier": (invoke.data or {}).get("rate_limit_tier"),
         },
         "note": (
             "MSP pack demo bundle install + nvd.cve.get via invoke_tool. "
-            "CIS Controls deferred. CISA KEV staged only (no invoke yet). Phase 5 ML HELD."
+            "NVD apiKey auth / authenticated rate-limit tier when NVD_API_KEY is set. "
+            "CIS Controls deferred."
         ),
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)

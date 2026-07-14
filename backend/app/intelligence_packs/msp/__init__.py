@@ -24,9 +24,15 @@ async def fetch_nvd_cve(cve_id: str, *, settings: Settings | None = None) -> Sou
     if not cid:
         return unavailable(vendor, auth_mode=mode, error_code="NVD_CVE_REQUIRED", message="CVE id required")
     cache_key = f"nvd:{cid}"
+    api_key_present = bool(key)
     cached = get_source_cache().get(cache_key)
     if cached is not None:
-        return ok_result(vendor, auth_mode=mode, data=cached, provenance={"source": "nvd", "cached": True})
+        return ok_result(
+            vendor,
+            auth_mode=mode,
+            data=cached,
+            provenance={"source": "nvd", "cached": True, "api_key_present": api_key_present},
+        )
 
     base = (os.environ.get("NVD_BASE_URL") or getattr(cfg, "nvd_base_url", "") or "https://services.nvd.nist.gov/rest/json").rstrip("/")
     headers = {"apiKey": key} if key else {}
@@ -42,7 +48,17 @@ async def fetch_nvd_cve(cve_id: str, *, settings: Settings | None = None) -> Sou
                 )
             data = resp.json()
             get_source_cache().set(cache_key, data, ttl_seconds=3600)
-            return ok_result(vendor, auth_mode=mode, data=data, provenance={"source": "nvd", "cve": cid})
+            return ok_result(
+                vendor,
+                auth_mode=mode,
+                data=data,
+                provenance={
+                    "source": "nvd",
+                    "cve": cid,
+                    "api_key_present": api_key_present,
+                    "rate_limit_tier": "authenticated" if api_key_present else "public",
+                },
+            )
     except Exception as exc:  # noqa: BLE001
         logger.debug("nvd_fetch_failed cve=%s error=%s", cid, exc)
         return unavailable(vendor, auth_mode=mode, error_code="NVD_FETCH_FAILED", message="NVD request failed")

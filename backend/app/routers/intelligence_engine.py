@@ -150,6 +150,31 @@ async def intelligence_heuristic_recommendations(
             payload,
             load_dismissed_card_ids(client, org_id, user_id),
         )
+    # Phase 5.2 — outcome-informed ranking (advisory only; never executes; never drops cards).
+    try:
+        from app.services.recommendation_quality_engine import get_recommendation_quality_engine
+
+        original = list(payload.get("recommendations") or [])
+        ranked = await get_recommendation_quality_engine(settings).rank_recommendations(
+            original,
+            org_id=org_id,
+            department="sales",
+        )
+        if ranked:
+            ranked_ids = {str(c.get("id") or "") for c in ranked}
+            for card in original:
+                cid = str(card.get("id") or "")
+                if cid and cid not in ranked_ids:
+                    ranked.append(card)
+            payload = dict(payload)
+            payload["recommendations"] = ranked
+            payload["outcomeRanked"] = True
+        else:
+            payload = dict(payload)
+            payload["outcomeRanked"] = False
+    except Exception:  # noqa: BLE001
+        payload = dict(payload)
+        payload["outcomeRanked"] = False
     assert_no_execute_surface(payload)
     return payload
 

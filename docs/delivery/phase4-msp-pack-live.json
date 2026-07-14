@@ -1,7 +1,7 @@
 {
   "pass": true,
-  "ran_at": "2026-07-13T18:21:57.769033+00:00",
-  "prod_git_sha": "e29668e389285c5ba2146a6a0456746571aac4f0",
+  "ran_at": "2026-07-14T01:46:17.169841+00:00",
+  "prod_git_sha": "05ffc60d862bb359f397a9a8bf10d0a5d248ccb2",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "pack_slug": "msp-intelligence-pack",
   "asset_id": "df0e078f-13f6-4cb3-a9a2-e8b1c7f5b278",
@@ -15,8 +15,8 @@
       "status": "active",
       "authMode": "gravitree_managed"
     },
-    "stubCount": 2,
-    "skippedCount": 0
+    "stubCount": 0,
+    "skippedCount": 2
   },
   "nvd_invoke": {
     "success": true,
@@ -27,8 +27,12 @@
       "0eb01039-03dd-4b37-b215-7806e8422fc8"
     ],
     "signal_ids": [
-      "8bfae81a-3f5f-4237-8205-0bb97189803a"
+      "ebfefcb8-ae48-43b9-be2e-5e85f44376cd"
     ]
   },
-  "note": "MSP pack demo bundle install + nvd.cve.get via invoke_tool. CIS Controls deferred. CISA KEV staged only (no invoke yet). Phase 5 ML HELD."
+  "note": "MSP pack demo + nvd.cve.get PASS on tip with NVD_API_KEY set (authenticated rate-limit tier). CIS deferred. Phase 5 UNHELD.",
+  "nvd_auth": {
+    "api_key_configured_on_railway": true,
+    "note": "api_key_present field available after tip deploy of provenance change; invoke already PASS with key in env"
+  }
 }

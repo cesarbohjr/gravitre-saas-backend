@@ -122,6 +122,7 @@ def _exec_nvd_cve_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedRes
         raw=raw,
         ttl_seconds=3600,
     )
+    provenance = dict(raw.get("provenance") or {})
     return NormalizedResult(
         success=True,
         action="nvd.cve.get",
@@ -131,6 +132,10 @@ def _exec_nvd_cve_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedRes
             "cve_id": cve_id,
             "nvd": raw.get("data"),
             "ingestion": ingested,
+            "provenance": provenance,
+            "api_key_present": bool(provenance.get("api_key_present")),
+            "rate_limit_tier": provenance.get("rate_limit_tier")
+            or ("authenticated" if provenance.get("api_key_present") else "public"),
         },
     )
 

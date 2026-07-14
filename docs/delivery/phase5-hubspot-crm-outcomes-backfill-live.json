@@ -1,0 +1,40 @@
+{
+  "pass": true,
+  "ran_at": "2026-07-14T01:58:13.099488+00:00",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "connector_id": "547cdda5-2637-4a2b-b087-d5ea89486575",
+  "count_before": 4,
+  "count_after": 6,
+  "scanned": 5,
+  "stored": 2,
+  "deduped": 3,
+  "seed_actions": [],
+  "won_stages": [
+    "closed-won",
+    "closed_won",
+    "closedwon",
+    "won"
+  ],
+  "lost_stages": [
+    "closed-lost",
+    "closed_lost",
+    "closedlost",
+    "lost"
+  ],
+  "samples": [
+    {
+      "deal_id": "216530782177",
+      "outcome": "won",
+      "id": "2c3daa0f-9ff0-4180-9f46-edcd8819e71d",
+      "stage": "closedwon"
+    },
+    {
+      "deal_id": "216687077334",
+      "outcome": "won",
+      "id": "ac9cffd0-6a3b-4c44-868f-df5b8a451f02",
+      "stage": "closedwon"
+    }
+  ],
+  "phase_5": "IN_PROGRESS",
+  "note": "HubSpot closed deal backfill into crm_recommendation_outcomes (pipeline isClosed + explicit dealstage). Smoke deals seeded to closed stages when none were closed. Mirrors to intelligence_outcome_events on insert."
+}
