@@ -27,7 +27,7 @@ def test_google_calendar_oauth_configured_shared_credentials():
 def test_google_calendar_redirect_and_authorize():
     settings = SimpleNamespace(api_public_url="https://api.example.com", public_app_url="")
     redirect = google_calendar_redirect_uri(settings)
-    assert redirect == "https://api.example.com/api/connectors/oauth/google_calendar/callback"
+    assert redirect == "https://api.example.com/api/connectors/oauth/google/callback"
     url = google_calendar_authorize_url("cid", redirect, "state")
     assert "accounts.google.com" in url
     assert "calendar" in url

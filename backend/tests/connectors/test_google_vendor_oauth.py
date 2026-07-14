@@ -21,3 +21,15 @@ def test_google_oauth_vendors_set():
     assert "gmail" in GOOGLE_OAUTH_VENDORS
     assert "google_search_console" in GOOGLE_OAUTH_VENDORS
     assert len(GOOGLE_OAUTH_VENDORS) == 7
+
+
+def test_google_oauth_uses_shared_callback_uri():
+    from types import SimpleNamespace
+
+    from app.connectors.google_oauth_common import google_oauth_redirect_uri
+
+    settings = SimpleNamespace(public_app_url="https://gravitre.app", api_public_url="https://api.gravitre.app")
+    shared = "https://gravitre.app/api/connectors/oauth/google/callback"
+    assert google_oauth_redirect_uri(settings, "google_analytics") == shared
+    assert google_oauth_redirect_uri(settings, "google_search_console") == shared
+    assert google_oauth_redirect_uri(settings, "gmail") == shared
