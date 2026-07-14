@@ -1,20 +1,10 @@
-"""Apollo discovery capability labeling — plan-tier probe (not executor changes).
+"""Apollo discovery capability labeling — plan-tier messaging (not executor changes).
 
 Company/contact search APIs require a paid Apollo plan with search access.
-List create often works on free plans. Probe detects the known free-plan 403
-signature so install/setup can warn before a workflow fails mid-run.
+List create often works on free plans. Live probing lives in apollo_tools
+(governed execution layer); this module owns the shared BYO copy/constants.
 """
 from __future__ import annotations
-
-from typing import Any
-
-from app.connectors.apollo_api import (
-    ApolloAPIError,
-    is_apollo_plan_limit_error,
-    resolve_apollo_connector,
-    search_organizations,
-    search_people,
-)
 
 APOLLO_DISCOVERY_REQUIRES = "paid Apollo plan with search API access"
 
@@ -54,82 +44,20 @@ def is_apollo_discovery_plan_limit_text(text: str | None) -> bool:
 
 
 def probe_apollo_discovery_capabilities(
-    client: Any,
+    client: object,
     org_id: str,
     connector_id: str,
-    settings: Any,
+    settings: object,
     *,
     environment_name: str | None = None,
-) -> dict[str, Any]:
-    """Live probe: can this connected Apollo run people/company search?
+) -> dict:
+    """Delegate live probe to governed apollo_tools (no raw apollo_api import here)."""
+    from app.services.apollo_tools import probe_apollo_discovery_capabilities as _probe
 
-    Does not modify executors — calls the same HTTP search routes used by tools.
-    Returns a capability map suitable for install checklist / connector availability.
-    """
-    base: dict[str, Any] = {
-        "vendor": "apollo",
-        "discoveryRequires": APOLLO_DISCOVERY_REQUIRES,
-        "requirementNote": APOLLO_DISCOVERY_REQUIREMENT_NOTE,
-        "userMessage": APOLLO_DISCOVERY_USER_MESSAGE,
-        "capabilityNote": APOLLO_DISCOVERY_CAPABILITY_NOTE,
-        "searchPeople": None,
-        "searchCompanies": None,
-        "planLimited": False,
-        "probed": False,
-        "error": None,
-    }
-    try:
-        _cid, headers = resolve_apollo_connector(
-            client,
-            org_id,
-            connector_id,
-            settings,
-            environment_name=environment_name,
-        )
-    except ApolloAPIError as exc:
-        base["error"] = str(exc)
-        if is_apollo_plan_limit_error(exc) or is_apollo_discovery_plan_limit_text(str(exc)):
-            base["planLimited"] = True
-            base["searchPeople"] = False
-            base["searchCompanies"] = False
-            base["probed"] = True
-        return base
-    except Exception as exc:  # noqa: BLE001
-        base["error"] = f"{exc.__class__.__name__}: {exc}"
-        return base
-
-    people_ok = False
-    companies_ok = False
-    plan_limited = False
-
-    try:
-        search_people(headers, params={"per_page": 1})
-        people_ok = True
-    except ApolloAPIError as exc:
-        if is_apollo_plan_limit_error(exc) or is_apollo_discovery_plan_limit_text(str(exc)):
-            plan_limited = True
-            people_ok = False
-        else:
-            base["error"] = str(exc)
-
-    try:
-        search_organizations(headers, params={"per_page": 1})
-        companies_ok = True
-    except ApolloAPIError as exc:
-        if is_apollo_plan_limit_error(exc) or is_apollo_discovery_plan_limit_text(str(exc)):
-            plan_limited = True
-            companies_ok = False
-        elif not base.get("error"):
-            base["error"] = str(exc)
-
-    base.update(
-        {
-            "probed": True,
-            "searchPeople": people_ok,
-            "searchCompanies": companies_ok,
-            "planLimited": plan_limited,
-        }
+    return _probe(
+        client,
+        org_id,
+        connector_id,
+        settings,
+        environment_name=environment_name,
     )
-    if plan_limited:
-        base["warning"] = APOLLO_DISCOVERY_USER_MESSAGE
-    return base
