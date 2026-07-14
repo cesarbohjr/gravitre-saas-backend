@@ -256,11 +256,16 @@ def evaluate_connector_availability(
         try:
             from app.connectors.apollo_discovery_capability import (
                 APOLLO_DISCOVERY_REQUIREMENT_NOTE,
+                APOLLO_DISCOVERY_REQUIRES,
                 APOLLO_DISCOVERY_USER_MESSAGE,
                 probe_apollo_discovery_capabilities,
             )
 
             out["requirementNote"] = APOLLO_DISCOVERY_REQUIREMENT_NOTE
+            out["capabilityNotes"] = [
+                "Can create list? yes (typically works on free Apollo)",
+                f"Can search companies/people? requires: {APOLLO_DISCOVERY_REQUIRES}",
+            ]
             if force_live:
                 probe = probe_apollo_discovery_capabilities(
                     client,
@@ -282,15 +287,9 @@ def evaluate_connector_availability(
                         out["recovery_action"] = APOLLO_DISCOVERY_USER_MESSAGE
                 else:
                     out["discoveryLimitation"] = None
-                else:
-                    # Static label even without live probe (catalog honesty)
-                    from app.connectors.apollo_discovery_capability import APOLLO_DISCOVERY_REQUIRES
-
-                    out["discoveryLimitation"] = None
-                    out["capabilityNotes"] = [
-                        "Can create list? yes (typically works on free Apollo)",
-                        f"Can search companies/people? requires: {APOLLO_DISCOVERY_REQUIRES}",
-                    ]
+            else:
+                # Static label even without live probe (catalog honesty)
+                out["discoveryLimitation"] = None
         except Exception:  # noqa: BLE001
             pass
 
