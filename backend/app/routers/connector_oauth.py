@@ -940,6 +940,8 @@ async def oauth_callback(
     }
     if vendor == "google_analytics" and not property_linked:
         success_params["selectProperty"] = "1"
+    if vendor == "google_search_console" and not property_linked:
+        success_params["selectSite"] = "1"
 
     return RedirectResponse(
         _frontend_redirect(settings, redirect_path, success_params),

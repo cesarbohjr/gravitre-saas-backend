@@ -136,6 +136,8 @@ def map_auth_status_to_connector_status(auth_status: str | None, current_status:
         return "pending_auth"
     if auth_status == "pending_property":
         return "pending_auth"
+    if auth_status == "pending_site":
+        return "pending_auth"
     if auth_status in {"auth_expired", "misconfigured"}:
         return "error"
     return current_status
@@ -148,7 +150,7 @@ def resolve_display_connector_status(raw_status: str, auth_status: str | None) -
         return "connected"
     if auth in {"auth_expired", "misconfigured"}:
         return "error"
-    if auth in {"pending_auth", "pending_property"}:
+    if auth in {"pending_auth", "pending_property", "pending_site"}:
         return "disconnected"
 
     normalized = str(raw_status or "disconnected").lower()

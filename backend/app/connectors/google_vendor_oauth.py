@@ -1,4 +1,4 @@
-"""Unified Google product OAuth (Gravitre OAuth app) — GA4, Calendar, Gmail, Drive, Docs, Sheets."""
+"""Unified Google product OAuth (Gravitre OAuth app) — GA4, Calendar, Gmail, Drive, Docs, Sheets, Search Console."""
 from __future__ import annotations
 
 import logging
@@ -36,6 +36,7 @@ GOOGLE_OAUTH_VENDORS = frozenset(
         "google_drive",
         "google_docs",
         "google_sheets",
+        "google_search_console",
     }
 )
 
@@ -57,6 +58,11 @@ _VENDOR_ALIASES: dict[str, str] = {
     "googlesheets": "google_sheets",
     "google_sheets": "google_sheets",
     "sheets": "google_sheets",
+    "googlesearchconsole": "google_search_console",
+    "google_search_console": "google_search_console",
+    "searchconsole": "google_search_console",
+    "gsc": "google_search_console",
+    "webmasters": "google_search_console",
 }
 
 _VENDOR_SCOPES: dict[str, str] = {
@@ -66,6 +72,7 @@ _VENDOR_SCOPES: dict[str, str] = {
     "google_drive": "https://www.googleapis.com/auth/drive",
     "google_docs": "https://www.googleapis.com/auth/documents",
     "google_sheets": "https://www.googleapis.com/auth/spreadsheets",
+    "google_search_console": "https://www.googleapis.com/auth/webmasters.readonly",
 }
 
 VENDOR_DOCS: dict[str, str] = {
@@ -75,6 +82,7 @@ VENDOR_DOCS: dict[str, str] = {
     "google_drive": "https://developers.google.com/drive/api",
     "google_docs": "https://developers.google.com/docs/api",
     "google_sheets": "https://developers.google.com/sheets/api",
+    "google_search_console": "https://developers.google.com/webmaster-tools/v1/api_reference_index",
 }
 
 
@@ -179,6 +187,20 @@ def _connector_property_id(client: Any, org_id: str, connector_id: str) -> str |
     return property_id or None
 
 
+def _connector_site_url(client: Any, org_id: str, connector_id: str) -> str | None:
+    row = (
+        client.table("connectors")
+        .select("config")
+        .eq("id", connector_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+    )
+    config = dict((row.data or [{}])[0].get("config") or {})
+    site_url = (config.get("site_url") or config.get("siteUrl") or "").strip()
+    return site_url or None
+
+
 def complete_google_vendor_oauth_connection(
     client: Any,
     org_id: str,
@@ -190,7 +212,7 @@ def complete_google_vendor_oauth_connection(
     environment_name: str | None = None,
     reconnect: bool = False,
 ) -> bool:
-    """Complete OAuth. Returns True when GA4 auto-linked a single property."""
+    """Complete OAuth. Returns True when GA4/GSC auto-linked a single property/site."""
     env = environment_name or _connector_environment(client, org_id, connector_id)
     client_id, client_secret = google_oauth_credentials(settings, env)
     if not client_id or not client_secret:
@@ -223,34 +245,52 @@ def complete_google_vendor_oauth_connection(
     config["oauth_provider"] = vendor
     client.table("connectors").update({"config": config}).eq("id", connector_id).eq("org_id", org_id).execute()
 
-    if vendor != "google_analytics":
-        return True
-
-    from app.connectors.google_analytics import list_ga4_properties
-    from app.connectors.google_analytics_oauth import link_ga4_property
-
     access = str(tokens.get("access_token") or "")
     if not access:
+        return vendor not in {"google_analytics", "google_search_console"}
+
+    if vendor == "google_analytics":
+        from app.connectors.google_analytics import list_ga4_properties
+        from app.connectors.google_analytics_oauth import link_ga4_property
+
+        properties = list_ga4_properties(access)
+        ga4_only = [
+            p
+            for p in properties
+            if p.get("property_type") in {None, "PROPERTY_TYPE_ORDINARY", "PROPERTY_TYPE_UNSPECIFIED"}
+        ]
+        candidates = ga4_only or properties
+        if len(candidates) == 1:
+            prop = candidates[0]
+            link_ga4_property(
+                client,
+                org_id,
+                connector_id,
+                property_id=str(prop["property_id"]),
+                property_name=prop.get("display_name"),
+                property_resource=prop.get("property_resource"),
+            )
+            return True
         return False
-    properties = list_ga4_properties(access)
-    ga4_only = [
-        p
-        for p in properties
-        if p.get("property_type") in {None, "PROPERTY_TYPE_ORDINARY", "PROPERTY_TYPE_UNSPECIFIED"}
-    ]
-    candidates = ga4_only or properties
-    if len(candidates) == 1:
-        prop = candidates[0]
-        link_ga4_property(
-            client,
-            org_id,
-            connector_id,
-            property_id=str(prop["property_id"]),
-            property_name=prop.get("display_name"),
-            property_resource=prop.get("property_resource"),
-        )
-        return True
-    return False
+
+    if vendor == "google_search_console":
+        from app.connectors.google_search_console import list_gsc_sites
+        from app.connectors.google_search_console_oauth import link_gsc_site
+
+        sites = list_gsc_sites(access)
+        if len(sites) == 1:
+            site = sites[0]
+            link_gsc_site(
+                client,
+                org_id,
+                connector_id,
+                site_url=str(site["site_url"]),
+                permission_level=site.get("permission_level"),
+            )
+            return True
+        return False
+
+    return True
 
 
 def google_vendor_connection_auth_status(
@@ -277,4 +317,6 @@ def google_vendor_connection_auth_status(
         return "auth_expired"
     if vendor == "google_analytics" and not _connector_property_id(client, org_id, connector_id):
         return "pending_property"
+    if vendor == "google_search_console" and not _connector_site_url(client, org_id, connector_id):
+        return "pending_site"
     return "connected"

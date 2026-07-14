@@ -4,6 +4,7 @@ from __future__ import annotations
 # Catalog vendor prefix → tool_service registry prefix
 REGISTRY_VENDOR_PREFIX_ALIASES: dict[str, str] = {
     "google_analytics": "analytics",
+    "google_search_console": "searchconsole",
     "google_calendar": "calendar",
     "google_drive": "drive",
     "google_docs": "docs",

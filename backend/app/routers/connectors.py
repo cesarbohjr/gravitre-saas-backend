@@ -95,6 +95,7 @@ ALLOWED_CONNECTOR_VENDORS = frozenset(
         "pagerduty",
         "notion",
         "google_analytics",
+        "google_search_console",
         "gmail",
         "google_drive",
         "google_docs",
@@ -213,6 +214,7 @@ def _docs_url(vendor: str) -> str | None:
         "pagerduty": "https://developer.pagerduty.com/docs/",
         "notion": "https://developers.notion.com/docs",
         "google_analytics": "https://developers.google.com/analytics/devguides/config/admin/v1",
+        "google_search_console": "https://developers.google.com/webmaster-tools/v1/api_reference_index",
         "google_calendar": "https://developers.google.com/calendar/api/guides/overview",
         "gmail": "https://developers.google.com/gmail/api",
         "google_drive": "https://developers.google.com/drive/api",
@@ -680,7 +682,15 @@ async def test_connector_route(
             )
             if not token:
                 return {"success": False, "message": "Missing GitHub OAuth or PAT"}
-        if vendor in {"google_calendar", "gmail", "google_drive", "google_docs", "google_sheets", "google_analytics"}:
+        if vendor in {
+            "google_calendar",
+            "gmail",
+            "google_drive",
+            "google_docs",
+            "google_sheets",
+            "google_analytics",
+            "google_search_console",
+        }:
             from app.connectors.google_vendor_oauth import ensure_google_vendor_session
 
             token, err = ensure_google_vendor_session(

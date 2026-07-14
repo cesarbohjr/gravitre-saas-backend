@@ -1252,6 +1252,21 @@ export const connectorsApi = {
       apiUrl(`/api/connectors/${connectorId}/google-analytics/property`),
       data
     ),
+  listGoogleSearchConsoleSites: (connectorId: string) =>
+    fetcher<{
+      connectorId: string
+      sites: Array<{ site_url: string; permission_level?: string }>
+      linkedSiteUrl?: string
+      linkedPermissionLevel?: string
+    }>(apiUrl(`/api/connectors/${connectorId}/google-search-console/sites`)),
+  linkGoogleSearchConsoleSite: (
+    connectorId: string,
+    data: { siteUrl: string; permissionLevel?: string }
+  ) =>
+    putJson<{ connectorId: string; siteUrl: string; permissionLevel?: string; status: string }>(
+      apiUrl(`/api/connectors/${connectorId}/google-search-console/site`),
+      data
+    ),
 }
 
 // ============ Sources ============

@@ -176,6 +176,24 @@ VENDOR_DEFINITIONS: tuple = (
         ),
     ),
     build_vendor(
+        "google_search_console",
+        "Google Search Console",
+        "CRM / Marketing",
+        "https://developers.google.com/webmaster-tools/v1/api_reference_index",
+        shipped=True,
+        department="marketing",
+        v1=(
+            action("google_search_console", "sites.list", "List Search Console sites", tier="v1", kind="read", scope_suffix="read", idempotent=True),
+            action("google_search_console", "searchAnalytics.query", "Query search analytics", tier="v1", kind="read", scope_suffix="read", idempotent=True),
+        ),
+        v2=(
+            action("google_search_console", "sites.get", "Get site details", tier="v2", kind="read", scope_suffix="read", idempotent=True),
+        ),
+        v3=(
+            action("google_search_console", "sitemaps.list", "List sitemaps", tier="v3", kind="advanced", scope_suffix="read", idempotent=True),
+        ),
+    ),
+    build_vendor(
         "mailchimp",
         "Mailchimp",
         "CRM / Marketing",

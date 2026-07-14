@@ -82,6 +82,10 @@ def _blocking_details(
         return "misconfigured", f"Configure {vendor} OAuth in server settings or complete connector setup."
     if auth_status == "pending_auth":
         return "pending_auth", f"Complete OAuth for {vendor} on the Connectors page."
+    if auth_status == "pending_property":
+        return "pending_auth", "Link a GA4 property for this Google Analytics connector."
+    if auth_status == "pending_site":
+        return "pending_auth", "Link a Search Console site for this Google Search Console connector."
     if auth_status == "auth_expired" or not token_valid:
         return "token_expired", f"{vendor.title()} is configured, but authentication has expired. Reconnect {vendor.title()}."
     if not authenticated:

@@ -2441,6 +2441,69 @@ def _ga_property_id(conn: dict[str, Any], params: dict[str, Any]) -> str:
     return linked
 
 
+def _gsc_site_url(conn: dict[str, Any], params: dict[str, Any]) -> str:
+    site = params.get("site_url") or params.get("siteUrl")
+    if site:
+        return str(site).strip()
+    cfg = conn.get("config") or {}
+    linked = (cfg.get("site_url") or cfg.get("siteUrl") or "").strip()
+    if not linked:
+        raise ToolValidationError(
+            "searchconsole actions require site_url or a linked Search Console site"
+        )
+    return linked
+
+
+def _exec_searchconsole_sites_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_search_console import GoogleSearchConsoleAPIError, list_gsc_sites
+
+    cid, token = _google_vendor_token(ctx, "google_search_console", params)
+    try:
+        sites = list_gsc_sites(token)
+    except GoogleSearchConsoleAPIError as exc:
+        raise _vendor_api_error(exc, "google_search_console") from exc
+    return NormalizedResult(
+        success=True,
+        action="searchconsole.sites.list",
+        connector_id=cid,
+        data={"sites": sites, "result_url": "https://search.google.com/search-console"},
+    )
+
+
+def _exec_searchconsole_search_analytics_query(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_search_console import GoogleSearchConsoleAPIError, query_search_analytics
+    from app.intelligence_packs.shared.gsc_data_governance import annotate_gsc_tool_result
+
+    conn = _connector_by_type(ctx, "google_search_console", params)
+    cid, token = _google_vendor_token(ctx, "google_search_console", params)
+    site_url = _gsc_site_url(conn, params)
+    start_date = str(params.get("start_date") or params.get("startDate") or "7daysAgo")
+    end_date = str(params.get("end_date") or params.get("endDate") or "today")
+    raw_dims = params.get("dimensions")
+    if isinstance(raw_dims, list) and raw_dims:
+        dimensions = [str(d) for d in raw_dims]
+    else:
+        dimensions = ["page"]
+    row_limit = int(params.get("row_limit") or params.get("rowLimit") or 25)
+    try:
+        payload = query_search_analytics(
+            token,
+            site_url,
+            start_date=start_date,
+            end_date=end_date,
+            dimensions=dimensions,
+            row_limit=row_limit,
+        )
+    except GoogleSearchConsoleAPIError as exc:
+        raise _vendor_api_error(exc, "google_search_console") from exc
+    return NormalizedResult(
+        success=True,
+        action="searchconsole.searchAnalytics.query",
+        connector_id=cid,
+        data=annotate_gsc_tool_result(payload),
+    )
+
+
 def _vendor_api_error(exc: Exception, vendor: str) -> ToolError:
     status = getattr(exc, "status_code", None)
     if status == 429:
@@ -3319,6 +3382,8 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "analytics.properties.list": _exec_analytics_properties_list,
     "analytics.reports.run": _exec_analytics_reports_run,
     "analytics.metadata.list": _exec_analytics_metadata_list,
+    "searchconsole.sites.list": _exec_searchconsole_sites_list,
+    "searchconsole.searchAnalytics.query": _exec_searchconsole_search_analytics_query,
     "gmail.messages.list": _exec_gmail_messages_list,
     "gmail.messages.get": _exec_gmail_messages_get,
     "gmail.messages.send": _exec_gmail_messages_send,

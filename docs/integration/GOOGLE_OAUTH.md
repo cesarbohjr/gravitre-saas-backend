@@ -12,6 +12,7 @@ One Google Cloud OAuth client (**“Gravitre OAuth”**) powers login (Supabase)
 | **Google Drive** | Yes | `drive.files.list`, `drive.files.get` |
 | **Google Docs** | Yes | `docs.documents.get` |
 | **Google Sheets** | Yes | `sheets.spreadsheets.get`, `sheets.values.get` |
+| **Google Search Console** | Yes + site linking | `searchconsole.sites.list`, `searchconsole.searchAnalytics.query` |
 | **User login** | Supabase Auth | (not Railway) |
 
 ## Environment variables (Railway)
@@ -37,6 +38,7 @@ https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/gma
 https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/google_drive/callback
 https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/google_docs/callback
 https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/google_sheets/callback
+https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/google_search_console/callback
 ```
 
 ## APIs to enable
@@ -47,6 +49,21 @@ https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/goo
 - Google Drive API
 - Google Docs API
 - Google Sheets API
+- **Search Console API** — required for Marketing pack GSC connector (human GCP step; see below)
+
+## Google Search Console (Marketing #6) — human GCP checklist
+
+**Do this in Google Cloud Console before engineering wires `google_search_console` OAuth.** Agent/Cursor has no console access.
+
+1. Enable **Search Console API**
+2. OAuth consent screen → add scope `https://www.googleapis.com/auth/webmasters.readonly`
+3. OAuth client (Gravitre OAuth) → Authorized redirect URIs → add:
+   ```
+   https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/google_search_console/callback
+   ```
+4. Confirm in chat that steps 1–3 are live — connection code stays blocked until then
+
+**Data stop-line:** raw GSC search query strings must not enter Organizational Memory / Knowledge Graph without Cesar sign-off (`docs/delivery/marketing-phase0-gsc-oauth.md`). Aggregates by URL are fine.
 
 ## CLI
 
