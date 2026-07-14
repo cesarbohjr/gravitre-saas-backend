@@ -694,3 +694,45 @@ def send_assignment_completion_email(
         client=client,
         org_id=org_id,
     )
+
+
+def send_marketplace_install_email(
+    client: Any,
+    settings: Settings,
+    *,
+    org_id: str,
+    user_id: str,
+    asset_title: str,
+    asset_type: str,
+    view_path: str,
+) -> bool:
+    if not settings.notification_email_enabled:
+        return False
+    if not email_notifications_enabled(client, org_id, user_id, "system"):
+        return False
+    to_addr = resolve_user_email(client, org_id, user_id)
+    if not to_addr:
+        return False
+    brand = load_org_email_branding(client, org_id, settings)
+    path = view_path if str(view_path).startswith("/") else f"/{view_path}"
+    view_url = f"{brand.app_base_url.rstrip('/')}{path}"
+    type_label = (asset_type or "asset").replace("_", " ")
+    subject, html_body = _simple_completion_email(
+        brand,
+        subject_prefix="Marketplace install",
+        headline=f"{asset_title} is ready",
+        summary=(
+            f"Your {type_label} “{asset_title}” was installed into {brand.brand_name}. "
+            "Agents, workflows, and knowledge from this pack are now available in your workspace."
+        ),
+        view_url=view_url,
+        cta_label="Open in Gravitre",
+    )
+    return _send_email(
+        settings,
+        to_addr=to_addr,
+        subject=subject,
+        html_body=html_body,
+        client=client,
+        org_id=org_id,
+    )

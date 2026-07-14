@@ -62,10 +62,11 @@ def test_validate_connectors_returns_blockers():
     assert result["blockers"][0]["action_url"]
 
 
+@patch("app.marketplace.service._notify_asset_installed")
 @patch("app.marketplace.service.write_audit_event")
 @patch("app.marketplace.service.create_operator")
 @patch("app.marketplace.service.get_plan_for_org", return_value={"agents_limit": None, "workflows_limit": None})
-def test_install_ai_agent_uses_create_operator(mock_plan, mock_create_operator, mock_audit):
+def test_install_ai_agent_uses_create_operator(mock_plan, mock_create_operator, mock_audit, mock_notify):
     mock_create_operator.return_value = {"id": "operator-1", "name": "Lead Qualifier Agent"}
     asset = _published_agent_asset()
     assets = _table([asset])
@@ -101,12 +102,16 @@ def test_install_ai_agent_uses_create_operator(mock_plan, mock_create_operator, 
 
     assert result["installed"] is True
     assert result["entities"]["operatorId"] == "operator-1"
+    assert result.get("slug") == "lead-qualifier-agent"
+    assert isinstance(result["deepLinks"], list)
+    assert any(link.get("path") == "/agents/operator-1" for link in result["deepLinks"])
     mock_create_operator.assert_called_once()
     payload = mock_create_operator.call_args.args[2]
     assert payload["name"] == "Lead Qualifier Agent"
     assert payload["status"] == "active"
     assert "id" in payload
     mock_audit.assert_called_once()
+    mock_notify.assert_called_once()
 
 
 @patch("app.marketplace.service.get_plan_for_org", return_value={"agents_limit": None, "workflows_limit": None})

@@ -1914,13 +1914,23 @@ export interface MarketplacePublisherProfile {
   updatedAt?: string
 }
 
+export interface MarketplaceInstallDeepLink {
+  label: string
+  entityType: string
+  entityId: string
+  path: string
+}
+
 export interface MarketplaceAssetInstallResult {
   installed: boolean
   assetId: string
   slug?: string
+  title?: string
   assetType?: string
   entities?: Record<string, unknown>
+  deepLinks?: MarketplaceInstallDeepLink[]
   connectorChecklist?: MarketplaceConnectorChecklistItem[]
+  install?: Record<string, unknown>
 }
 
 export interface MarketplaceAssetInstallCheck {
@@ -2089,13 +2099,6 @@ export interface MarketplaceAssetCloneResult {
   }
 }
 
-export interface MarketplaceInstallDeepLink {
-  label: string
-  entityType: string
-  entityId: string
-  path: string
-}
-
 export interface MarketplaceInstall {
   id: string
   assetId: string
@@ -2109,6 +2112,9 @@ export interface MarketplaceInstall {
     agentIds?: string[]
     workflowIds?: string[]
     ragSourceIds?: string[]
+    agentId?: string
+    workflowId?: string
+    ragSourceId?: string
     operatorId?: string
   }
   deepLinks: MarketplaceInstallDeepLink[]

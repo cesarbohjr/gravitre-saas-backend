@@ -47,8 +47,22 @@ def _entity_deep_link(entity_type: str, entity_id: str, metadata: dict[str, Any]
     return None
 
 
+def _metadata_id_list(metadata: dict[str, Any], *, plural_key: str, singular_key: str) -> list[str]:
+    """Prefer plural arrays; fall back to singular ids written by single-entity installs."""
+    values = metadata.get(plural_key)
+    out: list[str] = []
+    if isinstance(values, list):
+        out.extend(str(v) for v in values if v)
+    singular = metadata.get(singular_key)
+    if singular and str(singular) not in out:
+        out.append(str(singular))
+    return out
+
+
 def build_install_deep_links(row: dict[str, Any]) -> list[dict[str, Any]]:
     metadata = row.get("metadata") or {}
+    if not isinstance(metadata, dict):
+        metadata = {}
     links: list[dict[str, Any]] = []
     seen_paths: set[str] = set()
 
@@ -78,16 +92,15 @@ def build_install_deep_links(row: dict[str, Any]) -> list[dict[str, Any]]:
             primary_path,
         )
 
-    for agent_id in metadata.get("agentIds") or []:
-        add("Agent", "agent", str(agent_id), f"/agents/{agent_id}")
-    for workflow_id in metadata.get("workflowIds") or []:
-        add("Workflow", "workflow", str(workflow_id), f"/workflows/{workflow_id}")
-    for source_id in metadata.get("ragSourceIds") or []:
-        add("Knowledge source", "rag_source", str(source_id), f"/sources/{source_id}")
-
+    for agent_id in _metadata_id_list(metadata, plural_key="agentIds", singular_key="agentId"):
+        add("Agent", "agent", agent_id, f"/agents/{agent_id}")
     operator_id = metadata.get("operatorId")
     if operator_id:
         add("Operator", "operator", str(operator_id), f"/agents/{operator_id}")
+    for workflow_id in _metadata_id_list(metadata, plural_key="workflowIds", singular_key="workflowId"):
+        add("Workflow", "workflow", workflow_id, f"/workflows/{workflow_id}")
+    for source_id in _metadata_id_list(metadata, plural_key="ragSourceIds", singular_key="ragSourceId"):
+        add("Knowledge source", "rag_source", source_id, f"/sources/{source_id}")
 
     return links
 

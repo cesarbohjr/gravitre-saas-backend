@@ -71,25 +71,34 @@ function InstalledAssetCard({
   const theme = themeFor(department)
   const DeptIcon = theme.icon
   const installedAt = formatInstalledAt(install.installedAt)
-  const agentCount = install.metadata?.agentIds?.length ?? 0
-  const workflowCount = install.metadata?.workflowIds?.length ?? 0
-  const sourceCount = install.metadata?.ragSourceIds?.length ?? 0
+  const agentCount =
+    install.metadata?.agentIds?.length ??
+    (install.metadata?.agentId || install.metadata?.operatorId ? 1 : 0)
+  const workflowCount =
+    install.metadata?.workflowIds?.length ?? (install.metadata?.workflowId ? 1 : 0)
+  const sourceCount =
+    install.metadata?.ragSourceIds?.length ?? (install.metadata?.ragSourceId ? 1 : 0)
   const slug = asset?.slug
+  const deepLinks = (install.deepLinks ?? []).filter(
+    (link) => !(link.label === "Primary" && (install.deepLinks?.length ?? 0) > 1),
+  )
 
   return (
     <motion.div
       initial={reduced ? false : { opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: reduced ? 0 : index * 0.05 }}
-      className="flex flex-col rounded-xl border border-border bg-card p-5"
+      className="flex flex-col rounded-3xl border border-border bg-card p-5 shadow-sm"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl", theme.soft)}>
+          <span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-2xl", theme.soft)}>
             <DeptIcon className={cn("h-5 w-5", theme.ring)} aria-hidden />
           </span>
           <div className="min-w-0">
-            <h3 className="text-base font-semibold text-foreground">{asset?.title ?? "Installed asset"}</h3>
+            <h3 className="text-base font-semibold tracking-tight text-foreground">
+              {asset?.title ?? "Installed asset"}
+            </h3>
             <p className="text-xs capitalize text-muted-foreground">{department.replace(/-/g, " ")}</p>
           </div>
         </div>
@@ -99,32 +108,47 @@ function InstalledAssetCard({
         </span>
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        <Link
-          href="/agents"
-          className="group rounded-lg border border-border bg-muted/30 p-2.5 text-center transition-colors hover:border-primary/40"
-        >
-          <Bot className="mx-auto h-4 w-4 text-muted-foreground group-hover:text-foreground" aria-hidden />
-          <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">{agentCount}</p>
-          <p className="text-[11px] text-muted-foreground">Agents</p>
-        </Link>
-        <Link
-          href="/workflows"
-          className="group rounded-lg border border-border bg-muted/30 p-2.5 text-center transition-colors hover:border-primary/40"
-        >
-          <Workflow className="mx-auto h-4 w-4 text-muted-foreground group-hover:text-foreground" aria-hidden />
-          <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">{workflowCount}</p>
-          <p className="text-[11px] text-muted-foreground">Workflows</p>
-        </Link>
-        <Link
-          href="/sources"
-          className="group rounded-lg border border-border bg-muted/30 p-2.5 text-center transition-colors hover:border-primary/40"
-        >
-          <Database className="mx-auto h-4 w-4 text-muted-foreground group-hover:text-foreground" aria-hidden />
-          <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">{sourceCount}</p>
-          <p className="text-[11px] text-muted-foreground">Sources</p>
-        </Link>
-      </div>
+      {deepLinks.length ? (
+        <div className="mt-4 grid gap-2">
+          {deepLinks.slice(0, 4).map((link) => (
+            <Link
+              key={`${link.entityType}:${link.entityId}:${link.path}`}
+              href={link.entityType === "workflow" ? `${link.path}/builder` : link.path}
+              className="group flex items-center justify-between rounded-2xl border border-border/70 bg-muted/20 px-3 py-2.5 text-sm transition-colors hover:border-primary/40 hover:bg-muted/40"
+            >
+              <span className="font-medium text-foreground">{link.label}</span>
+              <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <Link
+            href="/agents"
+            className="group rounded-2xl border border-border bg-muted/30 p-2.5 text-center transition-colors hover:border-primary/40"
+          >
+            <Bot className="mx-auto h-4 w-4 text-muted-foreground group-hover:text-foreground" aria-hidden />
+            <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">{agentCount}</p>
+            <p className="text-[11px] text-muted-foreground">Agents</p>
+          </Link>
+          <Link
+            href="/workflows"
+            className="group rounded-2xl border border-border bg-muted/30 p-2.5 text-center transition-colors hover:border-primary/40"
+          >
+            <Workflow className="mx-auto h-4 w-4 text-muted-foreground group-hover:text-foreground" aria-hidden />
+            <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">{workflowCount}</p>
+            <p className="text-[11px] text-muted-foreground">Workflows</p>
+          </Link>
+          <Link
+            href="/sources"
+            className="group rounded-2xl border border-border bg-muted/30 p-2.5 text-center transition-colors hover:border-primary/40"
+          >
+            <Database className="mx-auto h-4 w-4 text-muted-foreground group-hover:text-foreground" aria-hidden />
+            <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">{sourceCount}</p>
+            <p className="text-[11px] text-muted-foreground">Sources</p>
+          </Link>
+        </div>
+      )}
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
         <span className="text-xs text-muted-foreground">
@@ -132,7 +156,7 @@ function InstalledAssetCard({
         </span>
         <div className="flex items-center gap-1">
           {slug ? (
-            <Button variant="ghost" size="sm" asChild>
+            <Button variant="ghost" size="sm" className="rounded-full" asChild>
               <Link href={`/marketplace/assets/${encodeURIComponent(slug)}`}>
                 Manage
                 <ArrowRight className="ml-1 h-4 w-4" aria-hidden />
