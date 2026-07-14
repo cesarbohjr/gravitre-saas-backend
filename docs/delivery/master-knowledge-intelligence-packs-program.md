@@ -1,6 +1,6 @@
 # Master Project — Knowledge Packages + Intelligence Packs + Connector Categories
 
-**Status:** Phase 1 **DONE**. Phase 1.5 **DONE**. Phase 3 **DONE** (FRED/NVD `invoke_tool` live PASS). CRM outcome emit **wired**. Phase 5 ML **UNHELD** (v1 in progress: volume → learning bridge → outcome-ranked heuristics).  
+**Status:** Phase 1 **DONE**. Phase 1.5 **DONE**. Phase 3 **DONE**. Pack track Executive→MSP→Sales **DONE** (Phase 4 PARTIAL). Phase 5 ML v1 **shipped**. **12-pack vision Phase 0 audited** (2026-07-14) — extend program, do not replace.  
 **Date:** 2026-07-14  
 **Pipeline canon (all sources):**  
 
@@ -31,8 +31,9 @@ Rollup: `docs/delivery/foundation-five-gates-tip-resmoke.json`
 | Decision | Status |
 |----------|--------|
 | Monetization | **LOCKED (b)** — standalone pack subscriptions |
-| Licensing / data-governance owner | **LOCKED — Cesar Bohorquez Jr.** (sole owner, same as STA-312). Covers PII-embedding **and** Crunchbase / PDL / OpenCorporates-commercial / CIS Controls licensing sign-off. |
-| Phase 5 ML | **UNHELD (2026-07-13)** — v1 filed below (heuristic + CRM outcomes; no CF yet) |
+| Licensing / data-governance owner | **LOCKED — Cesar Bohorquez Jr.** (sole owner, same as STA-312). Covers PII-embedding **and** Crunchbase / PDL / OpenCorporates-commercial / CIS Controls **and** Finance banking/QB/Xero/NetSuite, HR HRIS/ATS/Payroll, Compliance PHI-vs-guidance scope. |
+| Phase 5 ML | **UNHELD** — v1 shipped (CRM outcomes + ranked heuristics; no CF). Pack vision pass does **not** add churn/CF ML. |
+| 12-pack vision | **Phase 0 DONE** — `docs/delivery/phase0-twelve-pack-marketplace-vision.md`. Build order below. |
 
 ---
 
@@ -250,4 +251,44 @@ API accounts/keys for FRED, SEC_USER_AGENT, OpenCorporates commercial token, NVD
 - **SEC EDGAR research** — `sec_edgar.filings.search` (requires `SEC_USER_AGENT`) — DONE
 - **Apollo plan upgrade** — **BYPASSED** (tenant BYO keys; `docs/delivery/apollo-plan-upgrade-human.md`)
 - **NVD API key** — activated + Railway/local; MSP re-smoke PASS
-- **Phase 5 v1** — HubSpot outcome volume + learning bridge + ranked heuristics
+- **Phase 5 v1** — HubSpot outcome volume + learning bridge + ranked heuristics — DONE (PR #118)
+- **12-pack vision Phase 0** — `docs/delivery/phase0-twelve-pack-marketplace-vision.md` — DONE (no build yet)
+
+---
+
+## 12-pack Marketplace vision (absorbed 2026-07-14)
+
+**Not a second program.** Same pipeline, auth_mode, Phase 1.5 shared ingestion, approval gate, notifications. Full Phase 0 tables: `docs/delivery/phase0-twelve-pack-marketplace-vision.md`.
+
+### Locked pack order (after Executive → MSP → Sales)
+
+| # | Pack | Status / gate |
+|---|------|----------------|
+| 1–3 | Executive, MSP, Sales | **DONE** |
+| **3.5** | Shared Pack KPI + notify/result_url cohesion smoke on Executive | **DONE** — `docs/delivery/phase35-executive-cohesion-live.json` |
+| 4 | Customer Success | Internal CRM/support reuse; no new governance |
+| 5 | Prospecting & Lead Scouting | **≠ Sales** (outbound vs pipeline); stop-lines apply |
+| 6 | Marketing | GSC OAuth **NEW**; SEMrush/Ahrefs BYO |
+| 7 | RevOps | After Sales+Marketing+CS (Finance when live) |
+| 8 | AI Search | **Research spike only** — no scrape |
+| 9 | Finance | Cesar sign-off before live banking/QB/Xero/NetSuite |
+| 10 | HR & Talent | Cesar sign-off before live HRIS/ATS/Payroll |
+| 11 | Compliance | Guidance docs only; PHI → stop |
+| 12 | Business Operating System | **Last** — rollup only |
+
+### Cross-cutting UX (every pack from #4 onward)
+
+1. One shared Pack KPI pattern (build once in 3.5) — `PackKpiPanel` + `GET /api/intelligence-packs/{id}/kpis`  
+2. Signals/workflows → existing `emit_notification()` taxonomy  
+3. External records → existing verified-output / `result_url`  
+4. Prove on Executive first, then template CS  
+
+**Manual agent pick (not pack-ordered):** [STA-321](https://linear.app/staqbot/issue/STA-321) — Assignments / Workflow builder / Swarm.
+
+**Finance/HR connectors:** Pre-existing scaffolding only — prod has **0** usable QB/Xero/NetSuite/HRIS connectors (1 QB `pending_auth`). Dormant until Cesar sign-off (STA-312 pattern).
+
+**Sales + Prospecting:** Both ship; Prospecting reuses Apollo/PDL/Crunchbase/BYO wiring — no duplicate clients.  
+
+### Out of scope this pass
+
+Live Finance/HR/Compliance connectors pending sign-off; AI Search build; Business OS; new CF/churn ML.

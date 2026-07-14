@@ -1,0 +1,45 @@
+{
+  "pass": true,
+  "ran_at": "2026-07-14T05:46:09.559282+00:00",
+  "prod_git_sha": "9c6e65fca48c3e721825e4f665e97ce96aae1c90",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "pack_id": "executive-intelligence-pack",
+  "checks": {
+    "result_url": {
+      "pass": true,
+      "fred": "https://api.stlouisfed.org/fred/series/observations",
+      "sec": "https://efts.sec.gov/LATEST/search-index?q=Microsoft&dateRange=custom&startdt=2020-01-01",
+      "fred_success": true,
+      "sec_success": true
+    },
+    "notifications": {
+      "pass": true,
+      "count_before": 28,
+      "count_after": 30,
+      "recent_titles": [
+        "SEC EDGAR: Microsoft",
+        "FRED series GDP",
+        "Create contact list"
+      ],
+      "path": "emit_notification(task_completed)"
+    },
+    "pack_kpis": {
+      "pass": true,
+      "summary": {
+        "installed": false,
+        "signalsCount": 11,
+        "entitiesCount": 3,
+        "cacheTouches": 3,
+        "agentCount": 0,
+        "workflowCount": 0
+      },
+      "api": "GET /api/intelligence-packs/executive-intelligence-pack/kpis"
+    },
+    "shared_dashboard_component": {
+      "pass": true,
+      "component": "apps/web/components/marketplace/pack-kpi-panel.tsx",
+      "mounted_on": "apps/web/app/intelligence/reports/page.tsx (Executive tab)"
+    }
+  },
+  "note": "Phase 3.5 Executive cohesion: shared PackKpiPanel + result_url on fred/sec invoke + emit_notification on pack source success."
+}

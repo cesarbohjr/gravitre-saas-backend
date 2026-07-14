@@ -63,6 +63,40 @@ def _assert_gravitree_ready(vendor: str, ctx: ToolContext) -> None:
         )
 
 
+def _emit_pack_source_notification(
+    ctx: ToolContext,
+    *,
+    title: str,
+    body: str,
+    result_url: str | None,
+    action: str,
+) -> None:
+    """Phase 3.5 — pack source success through unified emit_notification path."""
+    actor = str(getattr(ctx, "actor_id", None) or "").strip()
+    if not actor or not ctx.org_id:
+        return
+    try:
+        from app.services.notification_emitter import emit_notification
+
+        emit_notification(
+            ctx.client,
+            org_id=ctx.org_id,
+            user_id=actor,
+            event_type="task_completed",
+            title=title,
+            body=body,
+            entity_ref={
+                "type": "intelligence_pack_tool",
+                "id": action,
+                "result_url": result_url,
+                "url": result_url,
+            },
+            channel_hints={"bell": True, "email": False},
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _exec_fred_series_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     from app.intelligence_packs.executive.sources import fetch_fred_series
 
@@ -85,6 +119,15 @@ def _exec_fred_series_get(ctx: ToolContext, params: dict[str, Any]) -> Normalize
         raw=raw,
         ttl_seconds=3600,
     )
+    provenance = dict(raw.get("provenance") or {})
+    result_url = str(provenance.get("url") or f"https://fred.stlouisfed.org/series/{series_id}")
+    _emit_pack_source_notification(
+        ctx,
+        title=f"FRED series {series_id}",
+        body=f"Fetched and ingested FRED series {series_id}.",
+        result_url=result_url,
+        action="fred.series.get",
+    )
     return NormalizedResult(
         success=True,
         action="fred.series.get",
@@ -94,6 +137,8 @@ def _exec_fred_series_get(ctx: ToolContext, params: dict[str, Any]) -> Normalize
             "series_id": series_id,
             "observations": raw.get("data"),
             "ingestion": ingested,
+            "result_url": result_url,
+            "provenance": provenance,
         },
     )
 
@@ -123,6 +168,14 @@ def _exec_nvd_cve_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedRes
         ttl_seconds=3600,
     )
     provenance = dict(raw.get("provenance") or {})
+    result_url = f"https://nvd.nist.gov/vuln/detail/{cve_id}"
+    _emit_pack_source_notification(
+        ctx,
+        title=f"NVD {cve_id}",
+        body=f"Fetched and ingested {cve_id}.",
+        result_url=result_url,
+        action="nvd.cve.get",
+    )
     return NormalizedResult(
         success=True,
         action="nvd.cve.get",
@@ -136,6 +189,7 @@ def _exec_nvd_cve_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedRes
             "api_key_present": bool(provenance.get("api_key_present")),
             "rate_limit_tier": provenance.get("rate_limit_tier")
             or ("authenticated" if provenance.get("api_key_present") else "public"),
+            "result_url": result_url,
         },
     )
 
@@ -195,6 +249,8 @@ def _exec_sec_edgar_filings_search(ctx: ToolContext, params: dict[str, Any]) -> 
             error_message=str(raw.get("message") or "SEC EDGAR fetch failed"),
             connector_id=ctx.connector_id,
         )
+    from urllib.parse import quote
+
     ingested = run_shared_ingestion(
         ctx.client,
         org_id=ctx.org_id,
@@ -202,6 +258,14 @@ def _exec_sec_edgar_filings_search(ctx: ToolContext, params: dict[str, Any]) -> 
         cache_key=f"filings:{query.lower()}",
         raw=raw,
         ttl_seconds=1800,
+    )
+    result_url = f"https://efts.sec.gov/LATEST/search-index?q={quote(query)}&dateRange=custom&startdt=2020-01-01"
+    _emit_pack_source_notification(
+        ctx,
+        title=f"SEC EDGAR: {query}",
+        body=f"Fetched and ingested SEC filings for {query}.",
+        result_url=result_url,
+        action="sec_edgar.filings.search",
     )
     return NormalizedResult(
         success=True,
@@ -212,6 +276,7 @@ def _exec_sec_edgar_filings_search(ctx: ToolContext, params: dict[str, Any]) -> 
             "query": query,
             "filings": raw.get("data"),
             "ingestion": ingested,
+            "result_url": result_url,
         },
     )
 
