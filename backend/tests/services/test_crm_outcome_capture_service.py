@@ -41,7 +41,29 @@ def test_ingest_persists_row():
     )
     assert result["stored"] is True
     assert result["outcomeType"] == "contacted"
-    client.table.assert_called_with("crm_recommendation_outcomes")
-    payload = table.insert.call_args.args[0]
+    # crm + learning mirror
+    assert client.table.call_args_list[0].args[0] == "crm_recommendation_outcomes"
+    assert any(c.args[0] == "intelligence_outcome_events" for c in client.table.call_args_list)
+    payload = table.insert.call_args_list[0].args[0]
     assert payload["org_id"] == "org-1"
     assert payload["connector_type"] == "hubspot"
+
+
+def test_ingest_won_mirrors_crm_won_event():
+    table = MagicMock()
+    table.insert.return_value = table
+    table.execute.return_value = MagicMock(data=[{}])
+    client = MagicMock()
+    client.table.return_value = table
+
+    result = ingest_crm_recommendation_outcome(
+        client,
+        org_id="org-1",
+        outcome_type="won",
+        connector_type="hubspot",
+        external_record_id="deal-9",
+    )
+    assert result["stored"] is True
+    mirror = table.insert.call_args_list[1].args[0]
+    assert mirror["outcome_event"] == "crm_won"
+    assert mirror["department"] == "sales"

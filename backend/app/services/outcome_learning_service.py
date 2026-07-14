@@ -52,6 +52,9 @@ POSITIVE_EVENTS = frozenset(
         "business_metric_improved",
         "user_feedback_positive",
         "approval_granted",
+        "crm_won",
+        "crm_booked",
+        "crm_replied",
     }
 )
 
@@ -162,6 +165,45 @@ class OutcomeLearningService:
 
     def record_recommendation_outcome_async(self, **kwargs: Any) -> None:
         self._fire_and_forget(self.record_recommendation_outcome(**kwargs))
+
+    async def record_crm_outcome(
+        self,
+        *,
+        org_id: str,
+        outcome_event: str,
+        external_record_id: str,
+        recommendation_id: str | None = None,
+        connector_type: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Async CRM label write into intelligence_outcome_events (Phase 5.1)."""
+        self._validate_event(outcome_event)
+        meta = dict(metadata or {})
+        if connector_type:
+            meta.setdefault("connector_type", connector_type)
+        entity_id = recommendation_id or external_record_id
+        payload = {
+            "id": str(uuid4()),
+            "org_id": org_id,
+            "outcome_event": outcome_event,
+            "entity_type": "crm_deal" if not recommendation_id else "recommendation",
+            "entity_id": entity_id,
+            "recommendation_id": recommendation_id or external_record_id,
+            "department": "sales",
+            "task_type": "crm_outcome",
+            "model_name": None,
+            "confidence_score": None,
+            "before_value": None,
+            "after_value": None,
+            "measured_at": self._now_iso(),
+            "measurement_status": "recorded",
+            "metadata": meta,
+            "created_at": self._now_iso(),
+        }
+        await self._insert_event(payload)
+
+    def record_crm_outcome_async(self, **kwargs: Any) -> None:
+        self._fire_and_forget(self.record_crm_outcome(**kwargs))
 
     async def record_prediction_outcome(
         self,

@@ -37,6 +37,8 @@ _CLOSED_LOST_VALUES = frozenset(
         "lost",
     }
 )
+CLOSED_WON_DEALSTAGES = _CLOSED_WON_VALUES
+CLOSED_LOST_DEALSTAGES = _CLOSED_LOST_VALUES
 
 
 def map_hubspot_event_to_crm_outcome(event: dict[str, Any], normalized: dict[str, Any]) -> dict[str, Any] | None:

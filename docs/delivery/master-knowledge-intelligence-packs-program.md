@@ -1,7 +1,7 @@
 # Master Project — Knowledge Packages + Intelligence Packs + Connector Categories
 
-**Status:** Phase 1 **DONE**. Phase 1.5 **DONE**. Phase 3 **DONE** (FRED/NVD `invoke_tool` live PASS). CRM outcome emit **wired** (HubSpot first caller; Phase 5 ML still HELD).  
-**Date:** 2026-07-13  
+**Status:** Phase 1 **DONE**. Phase 1.5 **DONE**. Phase 3 **DONE** (FRED/NVD `invoke_tool` live PASS). CRM outcome emit **wired**. Phase 5 ML **UNHELD** (v1 in progress: volume → learning bridge → outcome-ranked heuristics).  
+**Date:** 2026-07-14  
 **Pipeline canon (all sources):**  
 
 `source → connector → normalization/cache → Business Knowledge Graph → Signal Engine → Organizational Memory → department agent → workflow + outcome tracking`
@@ -32,7 +32,7 @@ Rollup: `docs/delivery/foundation-five-gates-tip-resmoke.json`
 |----------|--------|
 | Monetization | **LOCKED (b)** — standalone pack subscriptions |
 | Licensing / data-governance owner | **LOCKED — Cesar Bohorquez Jr.** (sole owner, same as STA-312). Covers PII-embedding **and** Crunchbase / PDL / OpenCorporates-commercial / CIS Controls licensing sign-off. |
-| Phase 5 ML | **HELD** — see placeholder below (full prompt not written to docs/delivery) |
+| Phase 5 ML | **UNHELD (2026-07-13)** — v1 filed below (heuristic + CRM outcomes; no CF yet) |
 
 ---
 
@@ -92,13 +92,23 @@ Rollup: `docs/delivery/foundation-five-gates-tip-resmoke.json`
 
 Tools registered in `_TOOL_REGISTRY` + ToolRegistry curated specs (`fred_get_series`, `nvd_get_cve`). Executors call Phase 1.5 `run_shared_ingestion` only. Gravitree activate: `POST /api/connectors/{id}/activate-gravitree`.
 
-### Phase 5 placeholder
+### Phase 5 — UNHELD (v1 scope filed 2026-07-14)
 
-Phase 5 (ML/predictive layer) — **HELD**. Do not start ML.
+Cesar lifted the hold. Full CF/collaborative-filtering recommender remains deferred (`ml-stack-phase0-findings.json`: heuristic first).
 
-**CRM outcome emit (precondition progress 2026-07-13):** HubSpot webhook path now calls `ingest_crm_recommendation_outcome` for explicit `dealstage` → `closedwon`/`closedlost` only (never invent labels). Soft-dedupe on (org, connector, external_id, outcome_type).
+| Slice | Scope | Status |
+|-------|--------|--------|
+| **5.0 Volume** | Real HubSpot closed won/lost → `crm_recommendation_outcomes` (webhook + optional backfill) | In progress |
+| **5.1 Learning bridge** | On CRM ingest, mirror `crm_won`/`crm_lost` → `intelligence_outcome_events` | Shipped (code) |
+| **5.2 Outcome-ranked heuristics** | `GET /recommendations/heuristics` soft-ranks via `recommendation_quality_engine` (advisory-only; never drops cards) | Shipped (code) |
 
-**Evidence:** `docs/delivery/crm-outcome-emit-live.json` — synthetic closedwon emit PASS (row `1c324114-…`); `waiting_on_real_hubspot_webhook: true`. Outcome volume for Phase 5 ML is still not close — first caller exists; real traffic still needed.
+**Non-goals for v1:** collaborative filtering, auto-execute from cards, GNN/forecasting, `deal_loss_scorer` until ≥25 labeled deals.
+
+**CRM outcome emit (precondition):** HubSpot webhook path calls `ingest_crm_recommendation_outcome` for explicit `dealstage` → `closedwon`/`closedlost` only. Soft-dedupe on (org, connector, external_id, outcome_type).
+
+**Apollo:** BYO tenant keys — platform smoke does not wait on Apollo plan upgrade (`docs/delivery/apollo-plan-upgrade-human.md`).
+
+**Evidence:** `docs/delivery/crm-outcome-emit-live.json`; backfill `docs/delivery/phase5-hubspot-crm-outcomes-backfill-live.json` (when run).
 
 ---
 
@@ -197,11 +207,11 @@ Artifacts: `docs/delivery/phase4-sales-workflow-e2e-live.json`, `docs/delivery/p
 **MSP** — **DONE** (`phase4-msp-pack-live.json`). CIS deferred; **CISA invoke follow-on:** `cisa_kev.feed.get`.  
 **Sales** — **DONE** (`phase4-sales-pack-live.json`): Pipeline Analyst, HubSpot/Apollo stubs, `hubspot.pipelines.list` read-only. Crunchbase/PDL/KG/Memory gated; BYO ZoomInfo/LI fail-closed; no OpenCorporates enable.  
 **SEC EDGAR research** — `sec_edgar.filings.search` (platform `SEC_USER_AGENT`).  
-OpenCorporates stays activation-gated. Phase 5 ML **HELD**.
+OpenCorporates stays activation-gated. Phase 5 ML **UNHELD** (v1: volume + bridge + ranked heuristics).
 
-### Phase 5 — HELD (do not start; full prompt not filed)
+### Phase 5 — UNHELD (see filed v1 table under Product decisions / Phase 5 section)
 
-See **Phase 5 placeholder**. CRM outcome **emit path wired** (HubSpot); ML still held until real outcome volume accumulates.
+CRM outcome **emit path wired** (HubSpot); backfill + learning bridge + outcome-ranked heuristics are the v1 path. CF/ML deferred until usage data at scale.
 
 ---
 
@@ -228,14 +238,16 @@ API accounts/keys for FRED, SEC_USER_AGENT, OpenCorporates commercial token, NVD
 ~~Go Phase 1~~ — **DONE** (DB + HTTP stub evidence).  
 ~~Scope Phase 1.5~~ — **DONE** (`docs/delivery/phase1.5-shared-ingestion-plumbing.md`).  
 ~~Phase 3 FRED/NVD invoke~~ — **DONE** (`docs/delivery/phase3-fred-nvd-invoke-live.json`).  
-~~CRM outcome first caller~~ — **wired** (`docs/delivery/crm-outcome-emit-live.json`; waiting on real HubSpot webhook volume).  
+~~CRM outcome first caller~~ — **wired** (`docs/delivery/crm-outcome-emit-live.json`; Phase 5 volume via webhook + backfill).  
 ~~Executive Intelligence Pack~~ — **DONE** (`docs/delivery/phase4-executive-pack-live.json`).  
 ~~Phase 4 full E2E~~ — **PARTIAL accepted** (Apollo free-plan blocker; HubSpot list create live).  
 ~~MSP Intelligence Pack~~ — **DONE** (`docs/delivery/phase4-msp-pack-live.json`).  
 ~~Sales Intelligence Pack~~ — **DONE** (`docs/delivery/phase4-sales-pack-live.json`).  
-**Pack track complete (Executive → MSP → Sales).** Phase 5 ML remains **HELD** (do not start).  
+**Pack track complete (Executive → MSP → Sales).** Phase 5 ML **UNHELD** — v1 volume/bridge/ranked heuristics.
 
-**Follow-ons (2026-07-13):**
-- **CISA invoke** — `cisa_kev.feed.get` (+ Phase 1.5 mapper/signal)
-- **SEC EDGAR research** — `sec_edgar.filings.search` (requires `SEC_USER_AGENT`)
-- **Apollo plan upgrade** — **human-only** (`docs/delivery/apollo-plan-upgrade-human.md`)
+**Follow-ons:**
+- **CISA invoke** — `cisa_kev.feed.get` (+ Phase 1.5 mapper/signal) — DONE
+- **SEC EDGAR research** — `sec_edgar.filings.search` (requires `SEC_USER_AGENT`) — DONE
+- **Apollo plan upgrade** — **BYPASSED** (tenant BYO keys; `docs/delivery/apollo-plan-upgrade-human.md`)
+- **NVD API key** — activated + Railway/local; MSP re-smoke PASS
+- **Phase 5 v1** — HubSpot outcome volume + learning bridge + ranked heuristics
