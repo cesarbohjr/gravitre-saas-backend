@@ -124,6 +124,7 @@ export default function IntelligenceReportsPage() {
             <TabsTrigger value="roi">{reportsCopy.tabRoi}</TabsTrigger>
             <TabsTrigger value="scorecards">{reportsCopy.tabScorecards}</TabsTrigger>
             <TabsTrigger value="executive">{reportsCopy.tabExecutive}</TabsTrigger>
+            <TabsTrigger value="customer-success">{reportsCopy.tabCustomerSuccess}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="roi" className="mt-6 space-y-4">
@@ -207,6 +208,13 @@ export default function IntelligenceReportsPage() {
               packTitle="Executive Intelligence Pack"
             />
             <ExecutiveIntelligenceScorecard orgScopedKey={user && orgId ? `reports-${orgId}` : null} />
+          </TabsContent>
+
+          <TabsContent value="customer-success" className="mt-6 space-y-4">
+            <PackKpiPanel
+              packId="customer-success-intelligence-pack"
+              packTitle="Customer Success Intelligence Pack"
+            />
           </TabsContent>
         </Tabs>
       </div>

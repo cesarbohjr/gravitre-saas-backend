@@ -130,6 +130,79 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             ],
         ),
         IntelligencePackSpec(
+            pack_id="customer-success-intelligence-pack",
+            name="Customer Success Intelligence Pack",
+            department="customer_success",
+            default_subdomain="account_health",
+            description=(
+                "Internal retention / health signals: HubSpot CRM + Zendesk support reads, "
+                "Customer Success Health Analyst, QBR-style workflow. "
+                "No new external governance surface; reuses existing connectors only."
+            ),
+            marketplace_tags=["customer_success", "starter", "intelligence-pack", "retention"],
+            assignments=[
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "hubspot-account-health",
+                    "HubSpot Account Health",
+                    "customer_success",
+                    "account_health",
+                    reference_summary="CRM pipeline stages via hubspot.pipelines.list (read-only).",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "zendesk-support-signals",
+                    "Zendesk Support Signals",
+                    "customer_success",
+                    "support_health",
+                    reference_summary="Open/recent tickets via zendesk.tickets.list (read-only).",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "product-usage-signals",
+                    "Product Usage Signals",
+                    "customer_success",
+                    "product_adoption",
+                    reference_summary="Internal product-usage metadata references (no new connector).",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "billing-health-metadata",
+                    "Billing Health Metadata",
+                    "customer_success",
+                    "renewal_risk",
+                    reference_summary="Billing metadata references for renewal risk (existing Stripe/CRM; no live finance gate).",
+                ),
+            ],
+            demo_agent_name="Customer Success Health Analyst",
+            demo_systems=["hubspot", "zendesk"],
+            connector_template_id="customer-success-intelligence-sources",
+            workflow_name="CS Account Health Snapshot",
+            workflow_description=(
+                "Read-only: HubSpot pipelines + Zendesk ticket list for retention health briefings."
+            ),
+            workflow_steps=[
+                {
+                    "id": "hubspot-pipelines",
+                    "name": "List HubSpot Pipelines",
+                    "type": "invoke_tool",
+                    "config": {"action": "hubspot.pipelines.list", "params": {}},
+                },
+                {
+                    "id": "hubspot-deals",
+                    "name": "List HubSpot Deals",
+                    "type": "invoke_tool",
+                    "config": {"action": "hubspot.deals.list", "params": {"limit": 10}},
+                },
+                {
+                    "id": "zendesk-tickets",
+                    "name": "List Zendesk Tickets",
+                    "type": "invoke_tool",
+                    "config": {"action": "zendesk.tickets.list", "params": {"limit": 10}},
+                },
+            ],
+        ),
+        IntelligencePackSpec(
             pack_id="msp-intelligence-pack",
             name="MSP Intelligence Pack",
             department="msp",

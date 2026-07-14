@@ -106,6 +106,8 @@ _BUILTIN_ACTION_SCOPES: dict[str, list[str]] = {
     "zendesk.tickets.create": ["zendesk:tickets:write", "zendesk:*"],
     "zendesk.tickets.update": ["zendesk:tickets:write", "zendesk:*"],
     "zendesk.tickets.add_tags": ["zendesk:tickets:write", "zendesk:*"],
+    "zendesk.tickets.list": ["zendesk:tickets:read", "zendesk:*"],
+    "zendesk.tickets.close": ["zendesk:tickets:write", "zendesk:*"],
     "github.pulls.list": ["github:pulls:read", "github:*"],
     "github.issues.get": ["github:issues:read", "github:*"],
     "github.repos.get": ["github:repos:read", "github:*"],
@@ -335,6 +337,12 @@ def default_demo_scopes_for_system(system: str) -> list[str]:
             "hubspot:sequences:enroll",
             "hubspot:lists:write",
             "hubspot:*",
+        ]
+    if system == "zendesk":
+        return [
+            "zendesk:tickets:read",
+            "zendesk:tickets:write",
+            "zendesk:*",
         ]
     if system == "salesforce":
         return [

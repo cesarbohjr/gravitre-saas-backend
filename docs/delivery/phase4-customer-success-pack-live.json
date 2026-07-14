@@ -1,0 +1,92 @@
+{
+  "pass": true,
+  "ran_at": "2026-07-14T06:07:41.484709+00:00",
+  "prod_git_sha": "3df8b7be6f7c2ee24dadf9fc5fb4b6b8db2c5563",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "pack_slug": "customer-success-intelligence-pack",
+  "asset_id": "fbd24c15-e932-4d71-81e3-8ba4da4ef16a",
+  "bundle": {
+    "agentId": "2981e93b-7831-56da-ba59-96f74ac44117",
+    "workflowId": "3e5c8e27-eb20-5725-bb6f-fa2ca8f286dd",
+    "assignmentCount": 4,
+    "hubspotConnectorId": "547cdda5-2637-4a2b-b087-d5ea89486575",
+    "zendeskConnectorId": null,
+    "stubCount": 0,
+    "skippedCount": 2,
+    "stopLinesHonored": [
+      "internal_data_only",
+      "no_new_external_governance",
+      "no_crunchbase_pdl_kg_memory",
+      "reuse_existing_connectors"
+    ]
+  },
+  "invokes": {
+    "hubspot.pipelines.list": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "https://app.hubspot.com/contacts/pipelines",
+      "data_keys": [
+        "results",
+        "result_url"
+      ]
+    },
+    "hubspot.deals.list": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "https://app.hubspot.com/contacts/objects/0-3/views/all/list",
+      "data_keys": [
+        "results",
+        "result_url"
+      ]
+    },
+    "zendesk.tickets.list": {
+      "success": false,
+      "error_code": "skipped",
+      "error_message": "no active zendesk",
+      "result_url": null,
+      "data_keys": [],
+      "connector_active": false,
+      "required_for_pass": false,
+      "note": "pending_auth on smoke org \u2014 staged in pack, not required for #4 PASS"
+    }
+  },
+  "kpis": {
+    "packId": "customer-success-intelligence-pack",
+    "installed": false,
+    "installId": null,
+    "assetId": "fbd24c15-e932-4d71-81e3-8ba4da4ef16a",
+    "agentCount": 0,
+    "workflowCount": 0,
+    "signalsCount": 0,
+    "entitiesCount": 0,
+    "cacheTouches": 0,
+    "assignmentsCount": 4,
+    "vendors": {}
+  },
+  "tied_to_smoke_actions": [
+    {
+      "notification_id": "630e3828-649b-468e-a65a-1179c8cee00a",
+      "action": "hubspot.pipelines.list",
+      "title": "HubSpot pipelines listed",
+      "result_url": "https://app.hubspot.com/contacts/pipelines",
+      "created_at": "2026-07-14T06:07:37.244237+00:00",
+      "matches_invoke_url": true
+    },
+    {
+      "notification_id": "466aa865-fa4b-4919-9234-01d1f667caff",
+      "action": "hubspot.deals.list",
+      "title": "HubSpot deals listed",
+      "result_url": "https://app.hubspot.com/contacts/objects/0-3/views/all/list",
+      "created_at": "2026-07-14T06:07:40.381322+00:00",
+      "matches_invoke_url": true
+    }
+  ],
+  "cohesion": {
+    "result_url_ok": true,
+    "notification_id_tie_ok": true,
+    "kpi_panel_ui_ok": true
+  },
+  "note": "CS pack #4: internal HubSpot CRM (+ Zendesk when connected). Phase 3.5 pattern on retention/health content. Notifications tied by notification_id + title\u2192action + url match to invoke result_url \u2014 not bare count delta."
+}

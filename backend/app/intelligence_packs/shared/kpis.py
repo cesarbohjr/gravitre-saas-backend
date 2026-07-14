@@ -11,6 +11,7 @@ PACK_VENDOR_MAP: dict[str, tuple[str, ...]] = {
     "executive-intelligence-pack": ("fred", "sec_edgar", "world_bank", "oecd"),
     "msp-intelligence-pack": ("nvd", "cisa_kev"),
     "sales-intelligence-pack": (),  # CRM-backed; no gravitree shared vendors yet
+    "customer-success-intelligence-pack": (),  # CRM/support-backed; no gravitree shared vendors
     "marketing-intelligence-pack": (),
     "support-intelligence-pack": (),
 }

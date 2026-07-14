@@ -63,7 +63,7 @@ def _assert_gravitree_ready(vendor: str, ctx: ToolContext) -> None:
         )
 
 
-def _emit_pack_source_notification(
+def emit_pack_source_notification(
     ctx: ToolContext,
     *,
     title: str,
@@ -71,7 +71,10 @@ def _emit_pack_source_notification(
     result_url: str | None,
     action: str,
 ) -> None:
-    """Phase 3.5 — pack source success through unified emit_notification path."""
+    """Phase 3.5 — pack source success through unified emit_notification path.
+
+    Public so CRM/support executors (HubSpot/Zendesk) can reuse the same cohesion path.
+    """
     actor = str(getattr(ctx, "actor_id", None) or "").strip()
     if not actor or not ctx.org_id:
         return
@@ -95,6 +98,10 @@ def _emit_pack_source_notification(
         )
     except Exception:  # noqa: BLE001
         pass
+
+
+# Back-compat alias for earlier Phase 3.5 call sites / tests
+_emit_pack_source_notification = emit_pack_source_notification
 
 
 def _exec_fred_series_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:

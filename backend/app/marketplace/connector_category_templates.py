@@ -116,6 +116,14 @@ CONNECTOR_CATEGORY_TEMPLATES: dict[str, dict[str, Any]] = {
         ),
         "connectors": ["hubspot", "apollo"],
     },
+    "customer-success-intelligence-sources": {
+        "name": "Customer Success Intelligence Sources",
+        "description": (
+            "Internal CRM + support stubs (HubSpot, Zendesk). "
+            "No new external enrichment vendors."
+        ),
+        "connectors": ["hubspot", "zendesk"],
+    },
     "byo-premium-prospecting": {
         "name": "BYO Premium Prospecting",
         "description": "Customer-subscription providers — fail closed without your own keys.",
