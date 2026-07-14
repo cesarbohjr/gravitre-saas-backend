@@ -184,6 +184,7 @@ export const SURFACE_COPY = {
       tabScorecards: "Department scorecards",
       tabExecutive: "Executive scorecard",
       tabCustomerSuccess: "Customer Success",
+      tabProspecting: "Prospecting",
     },
     predictive: {
       title: "Predictive ops",

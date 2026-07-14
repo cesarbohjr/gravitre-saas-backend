@@ -1,0 +1,157 @@
+{
+  "pass": true,
+  "ran_at": "2026-07-14T06:37:31.991073+00:00",
+  "prod_git_sha": "f67f4bc8523db64ef5ee6092710769ab95e49df1",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "pack_slug": "prospecting-intelligence-pack",
+  "asset_id": "4318e62d-380d-4cf5-8506-fc0b638a6b63",
+  "bundle": {
+    "agentId": "cec00b75-3b0b-5880-93ee-ce532ae25ed1",
+    "workflowId": "4c218adc-9ae7-5acf-b7a8-8b2a3bfac686",
+    "assignmentCount": 5,
+    "apolloConnectorId": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+    "hubspotConnectorId": "547cdda5-2637-4a2b-b087-d5ea89486575",
+    "stubCount": 0,
+    "byoStubCount": 0,
+    "stopLinesHonored": [
+      "no_crunchbase_pdl_kg_memory",
+      "no_opencorporates_enable",
+      "no_byo_shared_keys",
+      "no_linkedin_scrape",
+      "reuse_existing_connectors",
+      "sales_vs_prospecting_boundary"
+    ]
+  },
+  "invokes": {
+    "apollo.organizations.search": {
+      "success": false,
+      "error_code": "permission_denied",
+      "error_message": "Apollo API 403: /mixed_companies/search \u2014 api/v1/mixed_companies/search is not accessible with this access token on a free plan. Please upgrade your plan from https://app.apollo.io/.",
+      "result_url": null,
+      "data_keys": [],
+      "list_id": null,
+      "required_for_pass": false,
+      "plan_limited": true
+    },
+    "apollo.people.search": {
+      "success": false,
+      "error_code": "permission_denied",
+      "error_message": "Apollo API 403: /mixed_people/api_search \u2014 api/v1/mixed_people/api_search is not accessible with this access token on a free plan. Please upgrade your plan from https://app.apollo.io/.",
+      "result_url": null,
+      "data_keys": [],
+      "list_id": null,
+      "required_for_pass": false,
+      "plan_limited": true
+    },
+    "apollo.lists.create": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "https://app.apollo.io/#/lists/6a55d9224a7d46001c3a8dd4",
+      "data_keys": [
+        "label",
+        "result_url",
+        "list_id"
+      ],
+      "list_id": "6a55d9224a7d46001c3a8dd4"
+    },
+    "hubspot.lists.create": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "https://app.hubspot.com/contacts/lists/13",
+      "data_keys": [
+        "list",
+        "list_id",
+        "result_url"
+      ],
+      "list_id": "13"
+    }
+  },
+  "assignment_real_vs_stub": {
+    "icp-criteria": {
+      "depends_on_connector": null,
+      "status": "knowledge_assignment_only",
+      "note": "ICP playbook reference \u2014 no new connector"
+    },
+    "apollo-company-discovery": {
+      "depends_on_connector": "apollo",
+      "connector_active": true,
+      "action": "apollo.organizations.search",
+      "live_in_smoke": false,
+      "plan_limited": true,
+      "status": "real_plan_limited",
+      "note": "Executor real; free-plan 403 is tenant plan state (Sales Phase 4 PARTIAL pattern)"
+    },
+    "apollo-contact-discovery": {
+      "depends_on_connector": "apollo",
+      "connector_active": true,
+      "action": "apollo.people.search",
+      "live_in_smoke": false,
+      "plan_limited": true,
+      "status": "real_plan_limited",
+      "note": "Logic is real (executor exists); free-plan 403 is org/plan state not unbuilt"
+    },
+    "list-building": {
+      "depends_on_connector": [
+        "apollo",
+        "hubspot"
+      ],
+      "actions": [
+        "apollo.lists.create",
+        "hubspot.lists.create"
+      ],
+      "live_in_smoke": true,
+      "status": "real"
+    },
+    "account-enrichment-gated": {
+      "depends_on_connector": [
+        "crunchbase",
+        "pdl"
+      ],
+      "status": "governance_stub",
+      "note": "STA-312 stop-line \u2014 no Memory/KG path; not staged as live connectors"
+    }
+  },
+  "kpis": {
+    "packId": "prospecting-intelligence-pack",
+    "installed": false,
+    "installId": null,
+    "assetId": "4318e62d-380d-4cf5-8506-fc0b638a6b63",
+    "agentCount": 0,
+    "workflowCount": 0,
+    "signalsCount": 0,
+    "entitiesCount": 0,
+    "cacheTouches": 0,
+    "assignmentsCount": 5,
+    "vendors": {}
+  },
+  "tied_to_smoke_actions": [
+    {
+      "notification_id": "9377f5f1-7ea5-4271-898e-6ca9ef2b6d16",
+      "action": "apollo.lists.create",
+      "title": "Apollo list created: Prospecting Pack Smoke 20260714063720",
+      "result_url": "https://app.apollo.io/#/lists/6a55d9224a7d46001c3a8dd4",
+      "created_at": "2026-07-14T06:37:22.807057+00:00",
+      "matches_invoke_url": true
+    },
+    {
+      "notification_id": "549bf3ca-39dc-4bd7-951e-c2a48f0464fc",
+      "action": "hubspot.lists.create",
+      "title": "HubSpot list created: Prospecting Pack Sync 20260714063720",
+      "result_url": "https://app.hubspot.com/contacts/lists/13",
+      "created_at": "2026-07-14T06:37:26.022203+00:00",
+      "matches_invoke_url": true
+    }
+  ],
+  "cohesion": {
+    "result_url_ok": true,
+    "notification_id_tie_ok": true,
+    "search_partial_ok": true,
+    "tied_orgs": false,
+    "tied_people": false,
+    "kpi_panel_ui_ok": true,
+    "sta312_stop_line_ok": true
+  },
+  "note": "Prospecting #5: outbound Apollo + HubSpot list sync. \u2260 Sales CRM pack. STA-312: no Crunchbase/PDL Memory/KG path. Notifications tied by notification_id + title\u2192action + url match \u2014 not bare count delta."
+}

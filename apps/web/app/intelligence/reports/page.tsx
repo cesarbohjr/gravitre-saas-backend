@@ -125,6 +125,7 @@ export default function IntelligenceReportsPage() {
             <TabsTrigger value="scorecards">{reportsCopy.tabScorecards}</TabsTrigger>
             <TabsTrigger value="executive">{reportsCopy.tabExecutive}</TabsTrigger>
             <TabsTrigger value="customer-success">{reportsCopy.tabCustomerSuccess}</TabsTrigger>
+            <TabsTrigger value="prospecting">{reportsCopy.tabProspecting}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="roi" className="mt-6 space-y-4">
@@ -214,6 +215,13 @@ export default function IntelligenceReportsPage() {
             <PackKpiPanel
               packId="customer-success-intelligence-pack"
               packTitle="Customer Success Intelligence Pack"
+            />
+          </TabsContent>
+
+          <TabsContent value="prospecting" className="mt-6 space-y-4">
+            <PackKpiPanel
+              packId="prospecting-intelligence-pack"
+              packTitle="Prospecting & Lead Scouting Pack"
             />
           </TabsContent>
         </Tabs>
