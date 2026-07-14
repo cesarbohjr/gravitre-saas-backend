@@ -35,8 +35,8 @@ OAuth plumbing does **not** need a new flow. GSC fits the existing **unified Goo
 
 1. Add `google_search_console` to `GOOGLE_OAUTH_VENDORS`, aliases, and `_VENDOR_SCOPES`:
    - Scope: `https://www.googleapis.com/auth/webmasters.readonly` (read path only; full `webmasters` not needed for Marketing v1)
-2. GCP: enable **Search Console API**; add scope to consent screen; register redirect  
-   `…/api/connectors/oauth/google_search_console/callback` (same client, new redirect URI — same pattern as existing Google products)
+2. GCP: enable Search Console API; add `webmasters.readonly` to consent screen; ensure **shared** redirect  
+   `https://gravitre.app/api/connectors/oauth/google/callback` is registered (one URI for all Google products — not a per-product GSC URI)
 3. Frontend: `connectors.ts` type + `SHIPPED_OAUTH_CONNECTOR_TYPES` / `OAUTH_VENDOR_KEYS`
 4. DB: connector type allowed-types migration (same as other Google types)
 5. Site selection UX after connect (mirror GA4 property linking) — `pending_site` / `site_url` in connector config

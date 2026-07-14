@@ -740,22 +740,40 @@ async def oauth_callback(
     account_id: str | None = Query(default=None, alias="accountId"),
 ) -> RedirectResponse:
     """OAuth callback (browser redirect). Exchanges code and stores encrypted tokens."""
-    vendor = _resolve_oauth_vendor(provider)
-    default_fail = _frontend_redirect(settings, "/connectors", {"oauth": "error", "provider": vendor})
+    path_provider = str(provider or "").strip().lower()
+    default_fail = _frontend_redirect(
+        settings,
+        "/connectors",
+        {"oauth": "error", "provider": path_provider or "unknown"},
+    )
 
     if error:
-        params = {"oauth": "error", "provider": vendor, "message": error_description or error}
+        params = {
+            "oauth": "error",
+            "provider": path_provider or "unknown",
+            "message": error_description or error,
+        }
         return RedirectResponse(_frontend_redirect(settings, "/connectors", params), status_code=302)
 
     if not code or not state:
         return RedirectResponse(default_fail, status_code=302)
 
+    # Shared Google callback (`/oauth/google/callback`): product is in signed state,
+    # not the URL — one GCP redirect URI covers GA4, Gmail, Drive, GSC, etc.
+    shared_google_callback = path_provider in {"google", "google_oauth"}
     try:
-        payload = verify_oauth_state(
-            state,
-            _oauth_state_secret(settings),
-            expected_provider=vendor,
-        )
+        if shared_google_callback:
+            payload = verify_oauth_state(state, _oauth_state_secret(settings), expected_provider=None)
+            vendor = _resolve_oauth_vendor(str(payload.get("provider") or ""))
+            if vendor not in GOOGLE_OAUTH_VENDORS:
+                raise ValueError("OAuth state provider is not a Google connector product")
+        else:
+            vendor = _resolve_oauth_vendor(provider)
+            payload = verify_oauth_state(
+                state,
+                _oauth_state_secret(settings),
+                expected_provider=vendor,
+            )
     except ValueError as exc:
         return RedirectResponse(
             _frontend_redirect(settings, "/connectors", {"oauth": "error", "message": str(exc)}),

@@ -28,18 +28,18 @@ One Google Cloud OAuth client (**“Gravitre OAuth”**) powers login (Supabase)
 
 ## Redirect URIs (Google Cloud Console)
 
-Production (`API_PUBLIC_URL` = Railway API host):
+**One Google OAuth client. One connector callback.** Product (GA4 / Gmail / GSC / …) is selected at connect time and carried in signed OAuth `state` — not as separate redirect URIs.
+
+Production (`public_app_url` = `https://gravitre.app`):
 
 ```
 https://smyeexlrqdpymwjmgzqu.supabase.co/auth/v1/callback
-https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/google_analytics/callback
-https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/google_calendar/callback
-https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/gmail/callback
-https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/google_drive/callback
-https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/google_docs/callback
-https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/google_sheets/callback
-https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/google_search_console/callback
+https://gravitre.app/api/connectors/oauth/google/callback
 ```
+
+That is the full connector list. Do **not** add per-product URIs (`…/google_analytics/callback`, `…/google_search_console/callback`, etc.) — they are obsolete.
+
+Optional legacy Railway host (only if still used elsewhere): not required for connectors when `gravitre.app` is registered.
 
 ## APIs to enable
 
@@ -53,15 +53,17 @@ https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/goo
 
 ## Google Search Console (Marketing #6) — human GCP checklist
 
-**Do this in Google Cloud Console before engineering wires `google_search_console` OAuth.** Agent/Cursor has no console access.
+**Do this in Google Cloud Console before live GSC connect works.** Agent/Cursor has no console access.
 
 1. Enable **Search Console API**
 2. OAuth consent screen → add scope `https://www.googleapis.com/auth/webmasters.readonly`
-3. OAuth client (Gravitre OAuth) → Authorized redirect URIs → add:
+3. OAuth client (Gravitre OAuth) → Authorized redirect URIs — **only** the shared connector callback (already listed above):
    ```
-   https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/google_search_console/callback
+   https://gravitre.app/api/connectors/oauth/google/callback
    ```
-4. Confirm in chat that steps 1–3 are live — connection code stays blocked until then
+   No per-product GSC URI is required.
+4. If the consent screen is in **Testing**, add the connecting user (e.g. `cesar@gravitre.app`) under **Test users** — otherwise Google returns `403: access_denied` / “has not completed the Google verification process”.
+5. Confirm in chat when ready — then retry Connect Search Console
 
 **Data stop-line:** raw GSC search query strings must not enter Organizational Memory / Knowledge Graph without Cesar sign-off (`docs/delivery/marketing-phase0-gsc-oauth.md`). Aggregates by URL are fine.
 

@@ -30,7 +30,7 @@ def test_google_analytics_oauth_configured():
 def test_google_analytics_redirect_and_authorize():
     settings = SimpleNamespace(api_public_url="https://api.example.com", public_app_url="")
     redirect = google_analytics_redirect_uri(settings)
-    assert redirect == "https://api.example.com/api/connectors/oauth/google_analytics/callback"
+    assert redirect == "https://api.example.com/api/connectors/oauth/google/callback"
     url = google_analytics_authorize_url("cid", redirect, "state123")
     assert "accounts.google.com" in url
     assert "analytics.readonly" in url
