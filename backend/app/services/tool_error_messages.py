@@ -80,9 +80,42 @@ def format_tool_error_for_user(
     *,
     integration: str | None = None,
     action: str | None = None,
+    reason: str | None = None,
 ) -> str:
     """Return actionable user copy for a tool/connector failure."""
     code = str(error_code or "").strip().lower()
+    detail = str(error_message or "").strip()
+    reason_text = str(reason or "").strip().lower()
+    action_l = str(action or "").strip().lower()
+    integration_l = str(integration or "").strip().lower()
+
+    # Apollo discovery BYO-tier — prefer explicit plan-limit copy over generic permission_denied
+    from app.connectors.apollo_discovery_capability import (
+        APOLLO_DISCOVERY_USER_MESSAGE,
+        is_apollo_discovery_plan_limit_text,
+    )
+
+    apollo_discovery_action = any(
+        tip in action_l
+        for tip in ("people.search", "organizations.search", "companies.search", "contacts.search")
+    ) or not action_l
+    if (
+        integration_l == "apollo"
+        or "apollo" in action_l
+        or is_apollo_discovery_plan_limit_text(detail)
+        or reason_text == "apollo_plan_limit"
+        or is_apollo_discovery_plan_limit_text(reason_text)
+    ) and (
+        reason_text == "apollo_plan_limit"
+        or is_apollo_discovery_plan_limit_text(detail)
+        or (code == "permission_denied" and apollo_discovery_action and is_apollo_discovery_plan_limit_text(detail))
+    ):
+        return APOLLO_DISCOVERY_USER_MESSAGE
+
+    # When permission_denied carries the free-plan body even without integration hint
+    if code == "permission_denied" and is_apollo_discovery_plan_limit_text(detail):
+        return APOLLO_DISCOVERY_USER_MESSAGE
+
     template = _TOOL_ERROR_USER_MESSAGES.get(code)
     if template:
         return template.format(
@@ -90,7 +123,6 @@ def format_tool_error_for_user(
             action_suffix=_action_suffix(action),
         ).strip()
 
-    detail = str(error_message or "").strip()
     if detail:
         # Avoid dumping huge vendor payloads into chat.
         if len(detail) > 400:
@@ -135,5 +167,6 @@ def format_react_connector_failure(tool_calls: list[dict[str, Any]] | None) -> s
             str(result.get("error") or call.get("error") or ""),
             integration=integration_from_tool_name(tool),
             action=str(result.get("action") or ""),
+            reason=str((result.get("details") or {}).get("reason") or result.get("reason") or ""),
         )
     return None

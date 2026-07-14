@@ -360,6 +360,97 @@ def _exec_sequences_remove(ctx: ToolContext, params: dict[str, Any]) -> Normaliz
     return NormalizedResult(success=True, action="apollo.sequences.remove", connector_id=cid, data=data)
 
 
+def probe_apollo_discovery_capabilities(
+    client: Any,
+    org_id: str,
+    connector_id: str,
+    settings: Any,
+    *,
+    environment_name: str | None = None,
+) -> dict[str, Any]:
+    """Lightweight capability probe for BYO search-plan labeling (not an executor).
+
+    Calls the same HTTP search routes used by discovery tools so install/setup can
+    warn on free-plan 403 before a workflow fails mid-run. Does not change
+    apollo.people.search / apollo.organizations.search executors.
+    """
+    from app.connectors.apollo_discovery_capability import (
+        APOLLO_DISCOVERY_CAPABILITY_NOTE,
+        APOLLO_DISCOVERY_REQUIREMENT_NOTE,
+        APOLLO_DISCOVERY_REQUIRES,
+        APOLLO_DISCOVERY_USER_MESSAGE,
+        is_apollo_discovery_plan_limit_text,
+    )
+
+    base: dict[str, Any] = {
+        "vendor": "apollo",
+        "discoveryRequires": APOLLO_DISCOVERY_REQUIRES,
+        "requirementNote": APOLLO_DISCOVERY_REQUIREMENT_NOTE,
+        "userMessage": APOLLO_DISCOVERY_USER_MESSAGE,
+        "capabilityNote": APOLLO_DISCOVERY_CAPABILITY_NOTE,
+        "searchPeople": None,
+        "searchCompanies": None,
+        "planLimited": False,
+        "probed": False,
+        "error": None,
+    }
+    try:
+        _cid, headers = resolve_apollo_connector(
+            client,
+            org_id,
+            connector_id,
+            settings,
+            environment_name=environment_name,
+        )
+    except ApolloAPIError as exc:
+        base["error"] = str(exc)
+        if is_apollo_plan_limit_error(exc) or is_apollo_discovery_plan_limit_text(str(exc)):
+            base["planLimited"] = True
+            base["searchPeople"] = False
+            base["searchCompanies"] = False
+            base["probed"] = True
+        return base
+    except Exception as exc:  # noqa: BLE001
+        base["error"] = f"{exc.__class__.__name__}: {exc}"
+        return base
+
+    people_ok = False
+    companies_ok = False
+    plan_limited = False
+
+    try:
+        search_people(headers, params={"per_page": 1})
+        people_ok = True
+    except ApolloAPIError as exc:
+        if is_apollo_plan_limit_error(exc) or is_apollo_discovery_plan_limit_text(str(exc)):
+            plan_limited = True
+            people_ok = False
+        else:
+            base["error"] = str(exc)
+
+    try:
+        search_organizations(headers, params={"per_page": 1})
+        companies_ok = True
+    except ApolloAPIError as exc:
+        if is_apollo_plan_limit_error(exc) or is_apollo_discovery_plan_limit_text(str(exc)):
+            plan_limited = True
+            companies_ok = False
+        elif not base.get("error"):
+            base["error"] = str(exc)
+
+    base.update(
+        {
+            "probed": True,
+            "searchPeople": people_ok,
+            "searchCompanies": companies_ok,
+            "planLimited": plan_limited,
+        }
+    )
+    if plan_limited:
+        base["warning"] = APOLLO_DISCOVERY_USER_MESSAGE
+    return base
+
+
 APOLLO_TOOL_EXECUTORS: dict[str, Any] = {
     "apollo.people.search": _exec_people_search,
     "apollo.organizations.search": _exec_organizations_search,

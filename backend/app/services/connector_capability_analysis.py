@@ -149,14 +149,25 @@ def capability_check_lines(
     *,
     vendor: str,
     capabilities: tuple[str, ...] = LIST_FALLBACK_CAPABILITIES,
+    plan_limited_discovery: bool | None = None,
 ) -> list[str]:
     declared = declared_capabilities(vendor)
     lines: list[str] = []
+    vendor_l = str(vendor or "").strip().lower()
     for capability in capabilities:
         if capability not in declared:
             continue
         label = CAPABILITY_DISPLAY_LABELS.get(capability, capability.replace("_", " "))
-        lines.append(f"- {label} {'yes' if gaps.get(capability) else 'no'}")
+        available = bool(gaps.get(capability))
+        line = f"- {label} {'yes' if available else 'no'}"
+        if vendor_l == "apollo" and capability in {"search_people", "search_companies"}:
+            from app.connectors.apollo_discovery_capability import APOLLO_DISCOVERY_REQUIRES
+
+            if plan_limited_discovery or not available:
+                line = f"- {label} no — requires: {APOLLO_DISCOVERY_REQUIRES}"
+            else:
+                line = f"- {label} yes — requires: {APOLLO_DISCOVERY_REQUIRES} (tenant plan must include search)"
+        lines.append(line)
     return lines
 
 

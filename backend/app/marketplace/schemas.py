@@ -66,6 +66,7 @@ class RequiredConnectorRef(BaseModel):
     label: str = ""
     required: bool = True
     connect_path: str = Field(default="/connectors", alias="connectPath")
+    requirement_note: str = Field(default="", alias="requirementNote")
 
     model_config = {"populate_by_name": True}
 

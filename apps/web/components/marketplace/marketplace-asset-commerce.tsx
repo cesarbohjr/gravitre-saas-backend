@@ -98,26 +98,39 @@ export function ConnectorChecklist({
       {description ? <p className="mb-2 text-[11px] text-muted-foreground">{description}</p> : null}
       <ul className="space-y-2">
         {items.map((item) => (
-          <li key={item.connectorType} className="flex items-start justify-between gap-2 text-sm">
-            <div className="flex min-w-0 items-center gap-2">
-              {item.connected ? (
-                <CheckCircle2 className={cn("h-4 w-4 shrink-0", checklistTone(item))} aria-hidden />
-              ) : (
-                <Plug className={cn("h-4 w-4 shrink-0", checklistTone(item))} aria-hidden />
-              )}
-              <span className={cn("truncate", !item.connected && item.required && "font-medium")}>
-                {item.label || item.connectorType}
-                {item.required ? (
-                  <span className="ml-1 text-[10px] font-semibold uppercase text-destructive">Required</span>
+          <li key={item.connectorType} className="space-y-1 text-sm">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-2">
+                {item.connected ? (
+                  <CheckCircle2 className={cn("h-4 w-4 shrink-0", checklistTone(item))} aria-hidden />
                 ) : (
-                  <span className="ml-1 text-[10px] text-muted-foreground">Optional</span>
+                  <Plug className={cn("h-4 w-4 shrink-0", checklistTone(item))} aria-hidden />
                 )}
-              </span>
+                <span className={cn("truncate", !item.connected && item.required && "font-medium")}>
+                  {item.label || item.connectorType}
+                  {item.required ? (
+                    <span className="ml-1 text-[10px] font-semibold uppercase text-destructive">Required</span>
+                  ) : (
+                    <span className="ml-1 text-[10px] text-muted-foreground">Optional</span>
+                  )}
+                </span>
+              </div>
+              {!item.connected ? (
+                <Button size="sm" variant="outline" className="shrink-0" asChild>
+                  <Link href={item.action_url || item.connectPath}>Connect</Link>
+                </Button>
+              ) : null}
             </div>
-            {!item.connected ? (
-              <Button size="sm" variant="outline" className="shrink-0" asChild>
-                <Link href={item.action_url || item.connectPath}>Connect</Link>
-              </Button>
+            {item.requirementNote ? (
+              <p className="pl-6 text-[11px] text-muted-foreground text-pretty">{item.requirementNote}</p>
+            ) : null}
+            {item.discoveryLimitation || item.warning ? (
+              <p
+                className="pl-6 text-[11px] text-amber-700 dark:text-amber-400 text-pretty"
+                data-testid="apollo-discovery-limitation"
+              >
+                {item.discoveryLimitation || item.warning}
+              </p>
             ) : null}
           </li>
         ))}

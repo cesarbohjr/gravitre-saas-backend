@@ -103,6 +103,9 @@ interface ConnectorAvailability {
   recoveryAction?: string
   lastCheckedAt?: string
   sourceOfTruth?: string
+  requirementNote?: string
+  discoveryLimitation?: string
+  capabilityNotes?: string[]
 }
 
 interface Connector {
@@ -167,6 +170,14 @@ function parseConnectorAvailability(model: Record<string, unknown>): ConnectorAv
     recoveryAction: String(raw.recoveryAction ?? raw.recovery_action ?? "").trim() || undefined,
     lastCheckedAt: String(raw.lastCheckedAt ?? raw.last_checked_at ?? "").trim() || undefined,
     sourceOfTruth: String(raw.sourceOfTruth ?? raw.source_of_truth ?? "").trim() || undefined,
+    requirementNote: String(raw.requirementNote ?? raw.requirement_note ?? "").trim() || undefined,
+    discoveryLimitation:
+      String(raw.discoveryLimitation ?? raw.discovery_limitation ?? "").trim() || undefined,
+    capabilityNotes: Array.isArray(raw.capabilityNotes)
+      ? (raw.capabilityNotes as unknown[]).map(String)
+      : Array.isArray(raw.capability_notes)
+        ? (raw.capability_notes as unknown[]).map(String)
+        : undefined,
   }
 }
 
@@ -499,6 +510,27 @@ function ConnectorNode({
           </div>
 
           <ConnectorReadinessBadges availability={connector.availability} />
+
+          {connector.availability?.requirementNote ? (
+            <p className="mb-2 text-[11px] text-muted-foreground text-pretty">
+              {connector.availability.requirementNote}
+            </p>
+          ) : null}
+          {connector.availability?.discoveryLimitation ? (
+            <p
+              className="mb-2 text-[11px] text-amber-700 dark:text-amber-400 text-pretty"
+              data-testid="apollo-discovery-limitation"
+            >
+              {connector.availability.discoveryLimitation}
+            </p>
+          ) : null}
+          {connector.availability?.capabilityNotes?.length ? (
+            <ul className="mb-2 space-y-0.5 pl-4 text-[11px] text-muted-foreground list-disc">
+              {connector.availability.capabilityNotes.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          ) : null}
 
           {/* Live metrics */}
           <div className="grid grid-cols-3 gap-2 p-2 rounded-lg bg-secondary/50 mb-3">

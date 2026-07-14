@@ -164,6 +164,8 @@ def validate_connectors_for_asset(
     required_connectors: list[RequiredConnectorRef] | list[dict[str, Any]],
     *,
     environment_name: str = "production",
+    settings: Any | None = None,
+    probe_apollo_discovery: bool = True,
 ) -> dict[str, Any]:
     """Return ``{can_install, blockers, checklist}`` (MKT-9.1 shape)."""
     refs: list[RequiredConnectorRef]
@@ -181,19 +183,100 @@ def validate_connectors_for_asset(
         connected = req.connector_type in active
         needs_connection = (not connected) and req.connector_type in staged
         action_url = req.connect_path or f"/connectors?type={req.connector_type}"
-        checklist.append(
-            {
-                "connectorType": req.connector_type,
-                "label": req.label or req.connector_type,
-                "required": req.required,
-                "connected": connected,
-                "needsConnection": needs_connection,
-                "status": "connected" if connected else ("needs_connection" if needs_connection else "missing"),
-                "connectPath": action_url,
-                "action_url": action_url,
-                "ready": connected or not req.required,
-            }
-        )
+        # Broader "connected" for capability labeling: healthy/error may still have credentials
+        if not connected and str(req.connector_type).lower() == "apollo":
+            try:
+                rows = (
+                    client.table("connectors")
+                    .select("id, type, status")
+                    .eq("org_id", org_id)
+                    .eq("type", "apollo")
+                    .is_("deleted_at", "null")
+                    .limit(3)
+                    .execute()
+                )
+                for row in rows.data or []:
+                    st = str(row.get("status") or "").lower()
+                    if st not in {"needs_connection", "pending_auth", "pending", "deleted"}:
+                        connected = True
+                        break
+            except Exception:  # noqa: BLE001
+                pass
+        item: dict[str, Any] = {
+            "connectorType": req.connector_type,
+            "label": req.label or req.connector_type,
+            "required": req.required,
+            "connected": connected,
+            "needsConnection": needs_connection,
+            "status": "connected" if connected else ("needs_connection" if needs_connection else "missing"),
+            "connectPath": action_url,
+            "action_url": action_url,
+            "ready": connected or not req.required,
+            "requirementNote": (req.requirement_note or "").strip() or None,
+        }
+        # Proactive Apollo discovery probe when connected (setup-time warning)
+        if (
+            probe_apollo_discovery
+            and connected
+            and str(req.connector_type).lower() == "apollo"
+            and settings is not None
+        ):
+            try:
+                from app.connectors.apollo_discovery_capability import (
+                    APOLLO_DISCOVERY_REQUIREMENT_NOTE,
+                    APOLLO_DISCOVERY_USER_MESSAGE,
+                    probe_apollo_discovery_capabilities,
+                )
+                from app.connectors.repository import get_connector_by_type
+
+                conn = get_connector_by_type(
+                    client, org_id, "apollo", environment_name=environment_name
+                )
+                # Prefer any non-deleted apollo row when status flipped to error
+                if not conn:
+                    rows = (
+                        client.table("connectors")
+                        .select("id, type, status")
+                        .eq("org_id", org_id)
+                        .eq("type", "apollo")
+                        .is_("deleted_at", "null")
+                        .limit(1)
+                        .execute()
+                    )
+                    conn = (rows.data or [None])[0]
+                if conn and conn.get("id"):
+                    probe = probe_apollo_discovery_capabilities(
+                        client,
+                        org_id,
+                        str(conn["id"]),
+                        settings,
+                        environment_name=environment_name,
+                    )
+                    item["requirementNote"] = item.get("requirementNote") or APOLLO_DISCOVERY_REQUIREMENT_NOTE
+                    item["discoveryProbe"] = {
+                        "probed": probe.get("probed"),
+                        "planLimited": probe.get("planLimited"),
+                        "searchPeople": probe.get("searchPeople"),
+                        "searchCompanies": probe.get("searchCompanies"),
+                    }
+                    if probe.get("planLimited"):
+                        item["discoveryLimitation"] = APOLLO_DISCOVERY_USER_MESSAGE
+                        item["warning"] = APOLLO_DISCOVERY_USER_MESSAGE
+                    elif probe.get("probed") and (
+                        probe.get("searchPeople") is False or probe.get("searchCompanies") is False
+                    ):
+                        item["discoveryLimitation"] = APOLLO_DISCOVERY_USER_MESSAGE
+            except Exception:  # noqa: BLE001
+                if not item.get("requirementNote"):
+                    from app.connectors.apollo_discovery_capability import APOLLO_DISCOVERY_REQUIREMENT_NOTE
+
+                    item["requirementNote"] = APOLLO_DISCOVERY_REQUIREMENT_NOTE
+        elif str(req.connector_type).lower() == "apollo" and not item.get("requirementNote"):
+            from app.connectors.apollo_discovery_capability import APOLLO_DISCOVERY_REQUIREMENT_NOTE
+
+            item["requirementNote"] = APOLLO_DISCOVERY_REQUIREMENT_NOTE
+
+        checklist.append(item)
         if req.required and not connected:
             blockers.append(
                 {
@@ -959,6 +1042,8 @@ def install_asset(
         org_id,
         asset.get("required_connectors") or [],
         environment_name=environment_name,
+        settings=None,
+        probe_apollo_discovery=False,
     )
     if not connector_validation["can_install"] and not force:
         raise MarketplaceError(
@@ -1106,13 +1191,23 @@ def preview_install(
     asset_id: str,
     *,
     environment_name: str = "production",
+    settings: Any | None = None,
 ) -> dict[str, Any]:
     asset = fetch_marketplace_asset(client, asset_id)
+    if settings is None:
+        try:
+            from app.config import get_settings
+
+            settings = get_settings()
+        except Exception:  # noqa: BLE001
+            settings = None
     validation = validate_connectors_for_asset(
         client,
         org_id,
         asset.get("required_connectors") or [],
         environment_name=environment_name,
+        settings=settings,
+        probe_apollo_discovery=True,
     )
     from app.marketplace.entitlements import get_entitlement_status
 

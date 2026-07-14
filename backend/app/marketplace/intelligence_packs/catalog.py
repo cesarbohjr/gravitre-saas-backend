@@ -61,7 +61,10 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             description=(
                 "Customer CRM pipeline intelligence: HubSpot read-only snapshot workflow, "
                 "Sales Pipeline Analyst agent, HubSpot/Apollo stubs. "
-                "Crunchbase/PDL → Memory/KG gated; BYO ZoomInfo/LI Sales Nav fail-closed; CIS/hiring deferred."
+                "Apollo company/contact discovery requires your own Apollo plan with search API access "
+                "(BYO-tier — same transparency as ZoomInfo / LinkedIn Sales Navigator). "
+                "HubSpot pipeline reads work without Apollo search. "
+                "Crunchbase/PDL → Memory/KG gated; CIS/hiring deferred."
             ),
             marketplace_tags=["sales", "starter", "intelligence-pack", "crm"],
             assignments=[
@@ -123,7 +126,10 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             description=(
                 "Outbound lead gen: Apollo find-companies/contacts + list create, optional HubSpot "
                 "list sync, Lead Scouting Analyst. ≠ Sales pipeline pack. "
-                "Crunchbase/PDL → Memory/KG gated (STA-312); BYO ZoomInfo/LI Sales Nav stubs only."
+                "Build ICP and Create list work with any connected Apollo account; "
+                "company/contact discovery specifically requires a paid Apollo plan with search API access "
+                "(BYO-tier — same as ZoomInfo / LinkedIn Sales Navigator). "
+                "Crunchbase/PDL → Memory/KG gated (STA-312)."
             ),
             marketplace_tags=["prospecting", "starter", "intelligence-pack", "outbound", "apollo"],
             assignments=[
@@ -141,7 +147,11 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
                     "Apollo Company Discovery",
                     "sales",
                     "outbound_prospecting",
-                    reference_summary="Find companies via apollo.organizations.search (existing action).",
+                    reference_summary=(
+                        "Find companies via apollo.organizations.search. "
+                        "Requires tenant Apollo plan with search API access (BYO-tier); "
+                        "free-plan connections stay connected for list create but discovery is blocked."
+                    ),
                 ),
                 IntelligencePackAssignment(
                     "knowledge_pack",
@@ -150,8 +160,9 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
                     "sales",
                     "outbound_prospecting",
                     reference_summary=(
-                        "Find contacts via apollo.people.search. Plan-limited on free Apollo; "
-                        "contact-level Memory/KG writes remain STA-312 gated."
+                        "Find contacts via apollo.people.search. "
+                        "Requires paid Apollo plan with search API access (BYO-tier). "
+                        "Contact-level Memory/KG writes remain STA-312 gated."
                     ),
                 ),
                 IntelligencePackAssignment(
@@ -160,7 +171,10 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
                     "List Building",
                     "sales",
                     "outbound_prospecting",
-                    reference_summary="Create Apollo/HubSpot lists via existing lists.create actions.",
+                    reference_summary=(
+                        "Create Apollo/HubSpot lists via existing lists.create actions — "
+                        "works with free or paid Apollo accounts."
+                    ),
                 ),
                 IntelligencePackAssignment(
                     "knowledge_pack",
