@@ -123,13 +123,55 @@ def _body_params(params: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in params.items() if k not in _RESERVED and v is not None}
 
 
+def _emit_apollo_pack_notification(
+    ctx: ToolContext,
+    *,
+    title: str,
+    body: str,
+    result_url: str | None,
+    action: str,
+) -> None:
+    try:
+        from app.services.intelligence_pack_tools import emit_pack_source_notification
+
+        emit_pack_source_notification(
+            ctx,
+            title=title,
+            body=body,
+            result_url=result_url,
+            action=action,
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _with_result_url(data: Any, result_url: str | None) -> dict[str, Any]:
+    if isinstance(data, dict):
+        payload = dict(data)
+        if result_url:
+            payload["result_url"] = result_url
+        return payload
+    return {"data": data, "result_url": result_url}
+
+
 def _exec_people_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, headers = _session(ctx, params)
     try:
         data = search_people(headers, params=_search_params(params))
     except ApolloAPIError as exc:
         raise _handle_error(exc) from exc
-    return NormalizedResult(success=True, action="apollo.people.search", connector_id=cid, data=data)
+    result_url = "https://app.apollo.io/#/people"
+    payload = _with_result_url(data, result_url)
+    people = payload.get("people") or payload.get("contacts") or []
+    count = len(people) if isinstance(people, list) else 0
+    _emit_apollo_pack_notification(
+        ctx,
+        title="Apollo people search",
+        body=f"Found {count} contact(s)",
+        result_url=result_url,
+        action="apollo.people.search",
+    )
+    return NormalizedResult(success=True, action="apollo.people.search", connector_id=cid, data=payload)
 
 
 def _exec_organizations_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
@@ -138,7 +180,18 @@ def _exec_organizations_search(ctx: ToolContext, params: dict[str, Any]) -> Norm
         data = search_organizations(headers, params=_search_params(params))
     except ApolloAPIError as exc:
         raise _handle_error(exc) from exc
-    return NormalizedResult(success=True, action="apollo.organizations.search", connector_id=cid, data=data)
+    result_url = "https://app.apollo.io/#/companies"
+    payload = _with_result_url(data, result_url)
+    orgs = payload.get("organizations") or payload.get("accounts") or []
+    count = len(orgs) if isinstance(orgs, list) else 0
+    _emit_apollo_pack_notification(
+        ctx,
+        title="Apollo organizations search",
+        body=f"Found {count} organization(s)",
+        result_url=result_url,
+        action="apollo.organizations.search",
+    )
+    return NormalizedResult(success=True, action="apollo.organizations.search", connector_id=cid, data=payload)
 
 
 def _exec_contacts_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
@@ -174,7 +227,22 @@ def _exec_lists_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedRe
         data = create_label(headers, name=str(name), modality=str(modality))
     except ApolloAPIError as exc:
         raise _handle_error(exc) from exc
-    return NormalizedResult(success=True, action="apollo.lists.create", connector_id=cid, data=data)
+    from app.services.connector_output_mappers.apollo import resolve_list_result_url
+
+    result_url = resolve_list_result_url(data if isinstance(data, dict) else {"label": data})
+    payload = _with_result_url(data, result_url)
+    if isinstance(payload, dict) and result_url and "list_id" not in payload:
+        label = payload.get("label") if isinstance(payload.get("label"), dict) else payload
+        if isinstance(label, dict) and (label.get("id") or label.get("_id")):
+            payload["list_id"] = str(label.get("id") or label.get("_id"))
+    _emit_apollo_pack_notification(
+        ctx,
+        title=f"Apollo list created: {name}",
+        body=f"Created {modality} list",
+        result_url=result_url,
+        action="apollo.lists.create",
+    )
+    return NormalizedResult(success=True, action="apollo.lists.create", connector_id=cid, data=payload)
 
 
 def _exec_contacts_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:

@@ -116,6 +116,14 @@ CONNECTOR_CATEGORY_TEMPLATES: dict[str, dict[str, Any]] = {
         ),
         "connectors": ["hubspot", "apollo"],
     },
+    "prospecting-intelligence-sources": {
+        "name": "Prospecting Intelligence Sources",
+        "description": (
+            "Outbound discovery stubs (Apollo + HubSpot for list sync). "
+            "Does not stage Crunchbase/PDL (STA-312). BYO ZoomInfo/LI Sales Nav via separate template."
+        ),
+        "connectors": ["apollo", "hubspot"],
+    },
     "customer-success-intelligence-sources": {
         "name": "Customer Success Intelligence Sources",
         "description": (

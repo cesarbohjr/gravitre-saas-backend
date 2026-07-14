@@ -116,6 +116,112 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             ],
         ),
         IntelligencePackSpec(
+            pack_id="prospecting-intelligence-pack",
+            name="Prospecting & Lead Scouting Pack",
+            department="sales",
+            default_subdomain="outbound_prospecting",
+            description=(
+                "Outbound lead gen: Apollo find-companies/contacts + list create, optional HubSpot "
+                "list sync, Lead Scouting Analyst. ≠ Sales pipeline pack. "
+                "Crunchbase/PDL → Memory/KG gated (STA-312); BYO ZoomInfo/LI Sales Nav stubs only."
+            ),
+            marketplace_tags=["prospecting", "starter", "intelligence-pack", "outbound", "apollo"],
+            assignments=[
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "icp-criteria",
+                    "ICP Criteria",
+                    "sales",
+                    "outbound_prospecting",
+                    reference_summary="Ideal customer profile criteria for outbound scouting (RAG/playbook; no new connector).",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "apollo-company-discovery",
+                    "Apollo Company Discovery",
+                    "sales",
+                    "outbound_prospecting",
+                    reference_summary="Find companies via apollo.organizations.search (existing action).",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "apollo-contact-discovery",
+                    "Apollo Contact Discovery",
+                    "sales",
+                    "outbound_prospecting",
+                    reference_summary=(
+                        "Find contacts via apollo.people.search. Plan-limited on free Apollo; "
+                        "contact-level Memory/KG writes remain STA-312 gated."
+                    ),
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "list-building",
+                    "List Building",
+                    "sales",
+                    "outbound_prospecting",
+                    reference_summary="Create Apollo/HubSpot lists via existing lists.create actions.",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "account-enrichment-gated",
+                    "Account Enrichment (gated)",
+                    "sales",
+                    "outbound_prospecting",
+                    reference_summary=(
+                        "Crunchbase/PDL enrichment placeholders. Not enabled — STA-312 "
+                        "governance stop-line (no Memory/KG path)."
+                    ),
+                ),
+            ],
+            demo_agent_name="Lead Scouting Analyst",
+            demo_systems=["apollo", "hubspot"],
+            connector_template_id="prospecting-intelligence-sources",
+            workflow_name="Prospecting Apollo Lead Scout",
+            workflow_description=(
+                "Outbound: Apollo org search → people search → Apollo list create → HubSpot list create. "
+                "No Crunchbase/PDL/KG writes."
+            ),
+            workflow_steps=[
+                {
+                    "id": "apollo-orgs",
+                    "name": "Find Companies",
+                    "type": "invoke_tool",
+                    "config": {
+                        "action": "apollo.organizations.search",
+                        "params": {"q_organization_name": "Microsoft", "per_page": 5},
+                    },
+                },
+                {
+                    "id": "apollo-people",
+                    "name": "Find Contacts",
+                    "type": "invoke_tool",
+                    "config": {
+                        "action": "apollo.people.search",
+                        "params": {"q_keywords": "VP Sales", "per_page": 5},
+                    },
+                },
+                {
+                    "id": "apollo-list",
+                    "name": "Create Apollo List",
+                    "type": "invoke_tool",
+                    "config": {
+                        "action": "apollo.lists.create",
+                        "params": {"name": "Prospecting Pack Scout List", "modality": "contacts"},
+                    },
+                },
+                {
+                    "id": "hubspot-list",
+                    "name": "Create HubSpot List",
+                    "type": "invoke_tool",
+                    "config": {
+                        "action": "hubspot.lists.create",
+                        "params": {"name": "Prospecting Pack Sync List"},
+                    },
+                },
+            ],
+        ),
+        IntelligencePackSpec(
             pack_id="support-intelligence-pack",
             name="Support Intelligence Pack",
             department="support",

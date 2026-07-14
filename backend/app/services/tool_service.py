@@ -580,6 +580,18 @@ def _exec_hubspot_lists_create(ctx: ToolContext, params: dict[str, Any]) -> Norm
         raise _handle_hubspot_error(exc) from exc
     list_id = str((data or {}).get("listId") or (data or {}).get("list", {}).get("listId") or (data or {}).get("id") or "")
     result_url = f"https://app.hubspot.com/contacts/lists/{list_id}" if list_id else None
+    try:
+        from app.services.intelligence_pack_tools import emit_pack_source_notification
+
+        emit_pack_source_notification(
+            ctx,
+            title=f"HubSpot list created: {name}",
+            body=f"Created HubSpot list {list_id or name}",
+            result_url=result_url,
+            action="hubspot.lists.create",
+        )
+    except Exception:  # noqa: BLE001
+        pass
     return NormalizedResult(
         success=True,
         action="hubspot.lists.create",
