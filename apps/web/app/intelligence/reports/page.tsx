@@ -29,6 +29,7 @@ import {
 } from "@/lib/intelligence/helpers"
 import { IntelligenceSparkline } from "@/components/intelligence/intelligence-sparkline"
 import { ExecutiveIntelligenceScorecard } from "@/components/intelligence/executive-intelligence-scorecard"
+import { PackKpiPanel } from "@/components/marketplace/pack-kpi-panel"
 import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 
@@ -200,7 +201,11 @@ export default function IntelligenceReportsPage() {
             </Button>
           </TabsContent>
 
-          <TabsContent value="executive" className="mt-6">
+          <TabsContent value="executive" className="mt-6 space-y-4">
+            <PackKpiPanel
+              packId="executive-intelligence-pack"
+              packTitle="Executive Intelligence Pack"
+            />
             <ExecutiveIntelligenceScorecard orgScopedKey={user && orgId ? `reports-${orgId}` : null} />
           </TabsContent>
         </Tabs>

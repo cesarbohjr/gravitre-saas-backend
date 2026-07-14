@@ -1,0 +1,62 @@
+{
+  "pass": true,
+  "ran_at": "2026-07-14T05:46:09.559282+00:00",
+  "prod_git_sha": "9c6e65fca48c3e721825e4f665e97ce96aae1c90",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "pack_id": "executive-intelligence-pack",
+  "checks": {
+    "result_url": {
+      "pass": true,
+      "fred": "https://api.stlouisfed.org/fred/series/observations",
+      "sec": "https://efts.sec.gov/LATEST/search-index?q=Microsoft&dateRange=custom&startdt=2020-01-01",
+      "fred_success": true,
+      "sec_success": true
+    },
+      "notifications": {
+        "pass": true,
+        "count_before": 28,
+        "count_after": 30,
+        "tied_to_smoke_actions": [
+          {
+            "id": "95c457a8-b66e-4b9c-bf6f-563b22566623",
+            "action": "fred.series.get",
+            "title": "FRED series GDP",
+            "url": "https://api.stlouisfed.org/fred/series/observations",
+            "created_at": "2026-07-14T05:46:03.861469+00:00"
+          },
+          {
+            "id": "7ee80616-96c7-4621-910b-cadb256c3c8c",
+            "action": "sec_edgar.filings.search",
+            "title": "SEC EDGAR: Microsoft",
+            "url": "https://efts.sec.gov/LATEST/search-index?q=Microsoft&dateRange=custom&startdt=2020-01-01",
+            "created_at": "2026-07-14T05:46:06.998804+00:00"
+          }
+        ],
+        "recent_titles": [
+          "SEC EDGAR: Microsoft",
+          "FRED series GDP",
+          "Create contact list"
+        ],
+        "path": "emit_notification(task_completed)",
+        "note": "Window 05:45–05:47Z had exactly these 2 task_completed rows; URLs match smoke result_urls 1:1."
+      },
+    "pack_kpis": {
+      "pass": true,
+      "summary": {
+        "installed": false,
+        "signalsCount": 11,
+        "entitiesCount": 3,
+        "cacheTouches": 3,
+        "agentCount": 0,
+        "workflowCount": 0
+      },
+      "api": "GET /api/intelligence-packs/executive-intelligence-pack/kpis"
+    },
+    "shared_dashboard_component": {
+      "pass": true,
+      "component": "apps/web/components/marketplace/pack-kpi-panel.tsx",
+      "mounted_on": "apps/web/app/intelligence/reports/page.tsx (Executive tab)"
+    }
+  },
+  "note": "Phase 3.5 Executive cohesion: shared PackKpiPanel + result_url on fred/sec invoke + emit_notification on pack source success."
+}

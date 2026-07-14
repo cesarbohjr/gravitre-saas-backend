@@ -1685,6 +1685,22 @@ export type IntelligenceEvaluationsResponse = {
   }
 }
 
+export const intelligencePacksApi = {
+  packKpis: (packId: string) =>
+    fetcher<{
+      packId: string
+      installed: boolean
+      installId?: string | null
+      agentCount?: number
+      workflowCount?: number
+      signalsCount?: number
+      entitiesCount?: number
+      cacheTouches?: number
+      assignmentsCount?: number
+      vendors?: Record<string, { signals?: number; entities?: number }>
+    }>(apiUrl(`/api/intelligence-packs/${encodeURIComponent(packId)}/kpis`)),
+}
+
 export const intelligenceApi = {
   snapshot: () => fetcher<IntelligenceSnapshot>(apiUrl("/api/admin/intelligence/snapshot")),
   heuristicRecommendations: () =>

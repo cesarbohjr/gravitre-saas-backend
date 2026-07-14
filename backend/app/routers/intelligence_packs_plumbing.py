@@ -7,13 +7,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from supabase import create_client
 
-from app.auth.dependencies import require_admin
+from app.auth.dependencies import require_admin, require_org_member
 from app.config import Settings, get_settings
 from app.intelligence_packs.executive.sources import fetch_fred_series, fetch_world_bank_indicator
 from app.intelligence_packs.msp import fetch_nvd_cve
+from app.intelligence_packs.shared.kpis import pack_kpi_summary
 from app.intelligence_packs.shared.pipeline import ensure_plumbing_registered, run_shared_ingestion
 from app.services.tool_service import invoke_tool, list_registered_actions
 from app.services.tool_types import ToolContext
+from app.workflows.repository import get_supabase_client
 
 router = APIRouter(prefix="/api/intelligence-packs", tags=["intelligence-packs-plumbing"])
 
@@ -95,6 +97,20 @@ async def intelligence_packs_plumbing_smoke(
     }
 
 
+@router.get("/{pack_id}/kpis")
+async def intelligence_pack_kpis(
+    pack_id: str,
+    member: Annotated[tuple, Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Phase 3.5 — shared Pack KPI summary for marketplace / reports surfaces."""
+    _user, org_id, _role = member
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org required")
+    client = get_supabase_client(settings)
+    return pack_kpi_summary(client, org_id=str(org_id), pack_id=pack_id)
+
+
 @router.post("/tools/invoke-smoke")
 async def intelligence_packs_phase3_invoke_smoke(
     body: Phase3InvokeSmokeBody,
@@ -119,6 +135,7 @@ async def intelligence_packs_phase3_invoke_smoke(
         actor_id=str(user.get("user_id") or ""),
         environment_name="production",
     )
+
     results: dict[str, Any] = {}
     for action, params in (
         ("fred.series.get", {"series_id": body.fred_series_id}),
