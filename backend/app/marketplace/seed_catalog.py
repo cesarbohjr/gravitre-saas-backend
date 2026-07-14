@@ -35,6 +35,11 @@ APOLLO = {
     "label": "Apollo.io",
     "required": False,
     "connectPath": "/connectors?type=apollo",
+    "requirementNote": (
+        "Company/contact discovery requires your own Apollo plan with search API access "
+        "(BYO-tier, same pattern as ZoomInfo / LinkedIn Sales Navigator). "
+        "Build ICP and Create list work with any connected Apollo account."
+    ),
 }
 NOTION = {
     "connectorType": "notion",
@@ -751,6 +756,30 @@ def _intelligence_packs() -> list[CatalogAsset]:
     assets: list[CatalogAsset] = []
     for spec in list_intelligence_pack_specs():
         payload = intelligence_pack_to_marketplace_asset(spec)
+        required: list[dict[str, Any]] = []
+        if spec.pack_id in {"sales-intelligence-pack", "prospecting-intelligence-pack"}:
+            required = [
+                {
+                    **HUBSPOT,
+                    "required": True,
+                    "label": "HubSpot CRM",
+                },
+                {
+                    **APOLLO,
+                    "required": True if spec.pack_id == "prospecting-intelligence-pack" else False,
+                    "label": "Apollo.io (discovery = BYO search plan)",
+                },
+            ]
+        elif spec.demo_systems:
+            for system in spec.demo_systems:
+                required.append(
+                    {
+                        "connectorType": system,
+                        "label": system.replace("_", " ").title(),
+                        "required": False,
+                        "connectPath": f"/connectors?type={system}",
+                    }
+                )
         assets.append(
             CatalogAsset(
                 slug=payload["slug"],
@@ -761,6 +790,7 @@ def _intelligence_packs() -> list[CatalogAsset]:
                 department=payload["department"],
                 tags=payload["tags"],
                 config=payload["config"],
+                required_connectors=required,
             )
         )
     return assets

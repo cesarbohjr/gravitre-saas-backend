@@ -1837,6 +1837,10 @@ export interface MarketplaceConnectorChecklistItem {
   connectPath: string
   action_url?: string
   ready: boolean
+  requirementNote?: string | null
+  discoveryLimitation?: string | null
+  warning?: string | null
+  needsConnection?: boolean
 }
 
 export interface MarketplaceInstallBlocker {

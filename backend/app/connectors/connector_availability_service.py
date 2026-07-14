@@ -227,7 +227,7 @@ def evaluate_connector_availability(
         else:
             write_available = False
 
-    return {
+    out = {
         "connector_id": connector_id,
         "vendor": vendor,
         "configured": configured,
@@ -250,6 +250,51 @@ def evaluate_connector_availability(
         "environment": env,
         "name": str(row.get("name") or vendor or "connector"),
     }
+
+    # Apollo discovery BYO-tier: surface plan limit at connect/availability time
+    if normalized_vendor == "apollo" and authenticated and connector_id:
+        try:
+            from app.connectors.apollo_discovery_capability import (
+                APOLLO_DISCOVERY_REQUIREMENT_NOTE,
+                APOLLO_DISCOVERY_USER_MESSAGE,
+                probe_apollo_discovery_capabilities,
+            )
+
+            out["requirementNote"] = APOLLO_DISCOVERY_REQUIREMENT_NOTE
+            if force_live:
+                probe = probe_apollo_discovery_capabilities(
+                    client,
+                    org_id,
+                    connector_id,
+                    settings,
+                    environment_name=env,
+                )
+                out["discoveryProbe"] = {
+                    "probed": probe.get("probed"),
+                    "planLimited": probe.get("planLimited"),
+                    "searchPeople": probe.get("searchPeople"),
+                    "searchCompanies": probe.get("searchCompanies"),
+                }
+                if probe.get("planLimited"):
+                    out["discoveryLimitation"] = APOLLO_DISCOVERY_USER_MESSAGE
+                    # Do not block connector as a whole — lists still work
+                    if not out.get("recovery_action"):
+                        out["recovery_action"] = APOLLO_DISCOVERY_USER_MESSAGE
+                else:
+                    out["discoveryLimitation"] = None
+                else:
+                    # Static label even without live probe (catalog honesty)
+                    from app.connectors.apollo_discovery_capability import APOLLO_DISCOVERY_REQUIRES
+
+                    out["discoveryLimitation"] = None
+                    out["capabilityNotes"] = [
+                        "Can create list? yes (typically works on free Apollo)",
+                        f"Can search companies/people? requires: {APOLLO_DISCOVERY_REQUIRES}",
+                    ]
+        except Exception:  # noqa: BLE001
+            pass
+
+    return out
 
 
 def list_connector_availability(

@@ -1103,11 +1103,13 @@ class ChatConnectorExecutionService:
             from app.services.tool_error_messages import format_tool_error_for_user
 
             error_code = str(observation.get("error_code") or "").strip() or None
+            details = observation.get("details") if isinstance(observation.get("details"), dict) else {}
             body = format_tool_error_for_user(
                 error_code,
                 str(observation.get("error") or ""),
                 integration=plan.integration,
                 action=plan.invoke_action,
+                reason=str(details.get("reason") or ""),
             )
             return ExecutionResult(
                 success=False,

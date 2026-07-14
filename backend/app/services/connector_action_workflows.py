@@ -9,6 +9,7 @@ from app.services.action_workflow_validation import WorkflowCheck
 from app.services.chat_connector_models import ConnectorActionPlan, LIST_CREATE_INTENT
 from app.services.connector_capability_analysis import (
     LIST_CAPABILITY_CHECKS,
+    LIST_FALLBACK_CAPABILITIES,
     analyze_capability_gaps,
     build_capability_summary,
     capability_check_lines,
@@ -136,6 +137,7 @@ def format_capability_fallback_message(
     available_actions: list[str] | None = None,
     planned: dict[str, str] | None = None,
     capability: str = "create_list",
+    plan_limited_discovery: bool | None = None,
 ) -> str:
     gaps = analyze_capability_gaps(integration, available_actions)
     vendor_label = integration.replace("_", " ").title()
@@ -146,7 +148,21 @@ def format_capability_fallback_message(
         gaps=gaps,
         focus_capability=capability,
     )
-    check_lines = capability_check_lines(gaps, vendor=integration)
+    caps = LIST_FALLBACK_CAPABILITIES
+    if str(integration or "").strip().lower() == "apollo":
+        caps = (
+            "search_people",
+            "search_companies",
+            "create_list",
+            "add_to_list",
+            "saved_search",
+        )
+    check_lines = capability_check_lines(
+        gaps,
+        vendor=integration,
+        capabilities=caps,
+        plan_limited_discovery=plan_limited_discovery,
+    )
     return format_operator_response(
         intent=intent,
         status="blocked — action not in catalog",

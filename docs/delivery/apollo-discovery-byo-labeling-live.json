@@ -1,0 +1,62 @@
+{
+  "pass": true,
+  "ran_at": "2026-07-14T07:11:51.657157+00:00",
+  "prod_git_sha": "c8fde65bf9f009e0cbe7876bd744efdb75b158ce",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "apollo_connector": {
+    "id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+    "type": "apollo",
+    "status": "healthy"
+  },
+  "setup_time": {
+    "checklist_apollo_item": {
+      "connectorType": "apollo",
+      "label": "Apollo.io",
+      "required": true,
+      "connected": true,
+      "needsConnection": false,
+      "status": "connected",
+      "connectPath": "/connectors?type=apollo",
+      "action_url": "/connectors?type=apollo",
+      "ready": true,
+      "requirementNote": "Company/contact discovery requires your own Apollo plan with search API access (BYO-tier, same pattern as ZoomInfo / LinkedIn Sales Navigator). Build ICP and Create list work with any connected Apollo account.",
+      "discoveryProbe": {
+        "probed": true,
+        "planLimited": true,
+        "searchPeople": false,
+        "searchCompanies": false
+      },
+      "discoveryLimitation": "Company/contact discovery requires an Apollo plan with search API access \u2014 see https://app.apollo.io/ to upgrade",
+      "warning": "Company/contact discovery requires an Apollo plan with search API access \u2014 see https://app.apollo.io/ to upgrade"
+    },
+    "probe": {
+      "vendor": "apollo",
+      "discoveryRequires": "paid Apollo plan with search API access",
+      "requirementNote": "Company/contact discovery requires your own Apollo plan with search API access (same BYO-tier pattern as ZoomInfo / LinkedIn Sales Navigator). Build ICP and Create list work with any connected Apollo account.",
+      "userMessage": "Company/contact discovery requires an Apollo plan with search API access \u2014 see https://app.apollo.io/ to upgrade",
+      "capabilityNote": "Can search companies/people? requires: paid Apollo plan with search API access (list create works without it)",
+      "searchPeople": false,
+      "searchCompanies": false,
+      "planLimited": true,
+      "probed": true,
+      "error": null,
+      "warning": "Company/contact discovery requires an Apollo plan with search API access \u2014 see https://app.apollo.io/ to upgrade"
+    },
+    "warning_renders": true,
+    "static_requirement_note": "Company/contact discovery requires your own Apollo plan with search API access (same BYO-tier pattern as ZoomInfo / LinkedIn Sales Navigator). Build ICP and Create list work with any connected Apollo account."
+  },
+  "workflow_run_time": {
+    "invoke_success": false,
+    "error_code": "permission_denied",
+    "error_message": "Apollo API 403: /mixed_people/api_search \u2014 api/v1/mixed_people/api_search is not accessible with this access token on a free plan. Please upgrade your plan from https://app.apollo.io/.",
+    "mapped_user_message": "Company/contact discovery requires an Apollo plan with search API access \u2014 see https://app.apollo.io/ to upgrade",
+    "expected": "Company/contact discovery requires an Apollo plan with search API access \u2014 see https://app.apollo.io/ to upgrade",
+    "mapped_ok": true
+  },
+  "catalog_copy": {
+    "sales_has_search_note": true,
+    "prospecting_has_search_note": true,
+    "prospecting_has_icp_list_honesty": true
+  },
+  "note": "Apollo discovery BYO labeling: setup probe + format_tool_error_for_user. Executors unchanged. Free-plan 403 \u2192 explicit upgrade message."
+}
