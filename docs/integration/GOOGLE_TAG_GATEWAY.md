@@ -22,6 +22,6 @@ Implements Google’s [manual Tag Gateway setup](https://developers.google.com/t
 
 ## Notes
 
-- Consent Mode defaults still run before the GTM loader.
+- Consent Mode: see [`CONSENT_MODE.md`](./CONSENT_MODE.md) (defaults must run before `gtm.js`; banner updates use `gtag('consent','update')`).
 - Configure each GTM tag’s Consent Settings in the container UI so tags honor Consent Mode.
 - The `/gtg` Tag Gateway proxy stays deployed for a future first-party switch; the live snippet currently uses Google’s hosted loader so GA4/Tag Assistant install checks pass under CSP.
