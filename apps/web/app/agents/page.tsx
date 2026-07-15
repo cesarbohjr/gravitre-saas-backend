@@ -91,9 +91,9 @@ type Agent = ApiAgent & {
   config?: Record<string, unknown>
 }
 
- const AGENT_DETAIL_PANEL_KEY = "gravitre:agentsDetailPanelOpen"
- const AGENT_HEADER_COLLAPSED_KEY = "gravitre:agentsHeaderCollapsed"
- const AGENTS_REFRESH_MS = 30_000
+const AGENT_DETAIL_PANEL_KEY = "gravitre:agentsDetailPanelOpen"
+const AGENT_HEADER_COLLAPSED_KEY = "gravitre:agentsHeaderCollapsed"
+const AGENTS_REFRESH_MS = 30_000
 
 function deriveModelLabel(input: Record<string, unknown>): string {
   const config = (input.config ?? {}) as Record<string, unknown>
@@ -1084,6 +1084,34 @@ export default function AgentsPage() {
     return () => window.clearTimeout(timer)
   }, [activeCount])
 
+  const rosterActions = (
+    <>
+      <MesonBuildButton
+        onClick={() => setMesonWizardOpen(true)}
+        isOpen={mesonWizardOpen}
+      />
+      <Button variant="outline" onClick={() => router.push(APP_ROUTES.multiAgentRun)} className="gap-2">
+        <Users className="h-4 w-4" />
+        <span className="hidden sm:inline">Multi-Agent Run</span>
+      </Button>
+      <Button onClick={() => router.push("/agents/new")} className="gap-2 bg-zinc-900 hover:bg-zinc-800 text-white">
+        <Plus className="h-4 w-4" />
+        <span className="hidden sm:inline">New Agent</span>
+      </Button>
+      {visibleSelectedAgent ? (
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={toggleDetailPanel}
+          aria-label={detailPanelOpen ? "Hide agent details" : "Show agent details"}
+          className="hidden lg:inline-flex"
+        >
+          {detailPanelOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+        </Button>
+      ) : null}
+    </>
+  )
+
   return (
   <AppShell title={SURFACE_COPY.pages.agents.title}>
     <div className="relative flex flex-col lg:flex-row h-full overflow-hidden">
@@ -1108,111 +1136,97 @@ export default function AgentsPage() {
 
   {/* Left - Agent Roster with Orbs */}
   <div className="relative z-10 flex-1 flex flex-col lg:border-r border-border/50 backdrop-blur-sm">
-          {/* Header (collapsible so the user can hide the team overview and
-             get a clear, full-height canvas of just the agents) */}
+          {/* Collapse only hides overview title/stats — primary CTAs stay reachable. */}
           {!headerCollapsed ? (
-          <PageHeader
-            title={SURFACE_COPY.pages.agents.rosterTitle}
-            description={SURFACE_COPY.pages.agents.description}
-            icon={Brain}
-            iconColor="from-violet-500/20 to-purple-500/20"
-            actions={
-              <>
-                <MesonBuildButton
-                  onClick={() => setMesonWizardOpen(true)}
-                  isOpen={mesonWizardOpen}
-                />
-                <Button variant="outline" onClick={() => router.push(APP_ROUTES.multiAgentRun)} className="gap-2">
-                  <Users className="h-4 w-4" />
-                  Multi-Agent Run
-                </Button>
-                <Button onClick={() => router.push("/agents/new")} className="gap-2 bg-zinc-900 hover:bg-zinc-800 text-white">
-                  <Plus className="h-4 w-4" />
-                  New Agent
-                </Button>
-                {visibleSelectedAgent ? (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={toggleDetailPanel}
-                    aria-label={detailPanelOpen ? "Hide agent details" : "Show agent details"}
-                    className="hidden lg:inline-flex"
-                  >
-                    {detailPanelOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
-                  </Button>
-                ) : null}
-              </>
-            }
-          >
-            <StatsGrid columns={3}>
-              <StatCard
-                label="Total"
-                value={<AnimatedCounter value={totalAgents} duration={0.8} />}
-              />
-              <motion.div
-                animate={
-                  activeStatPulse
-                    ? { scale: [1, 1.04, 1], boxShadow: ["0 0 0 rgba(16,185,129,0)", "0 0 20px rgba(16,185,129,0.25)", "0 0 0 rgba(16,185,129,0)"] }
-                    : { scale: 1 }
-                }
-                transition={{ duration: 0.6, ease: "easeOut" }}
-                className="rounded-lg"
-              >
+            <PageHeader
+              title={SURFACE_COPY.pages.agents.rosterTitle}
+              description={SURFACE_COPY.pages.agents.description}
+              icon={Brain}
+              iconColor="from-violet-500/20 to-purple-500/20"
+              actions={rosterActions}
+            >
+              <StatsGrid columns={3}>
                 <StatCard
-                  label="Active"
-                  value={<AnimatedCounter value={activeCount} duration={0.8} />}
-                  variant="success"
-                  className={activeCount > 0 ? "border-success/30" : undefined}
+                  label="Total"
+                  value={<AnimatedCounter value={totalAgents} duration={0.8} />}
                 />
-              </motion.div>
-              <StatCard
-                label="Tasks"
-                value={<AnimatedCounter value={totalTasks} duration={1} />}
-                variant="info"
-              />
-            </StatsGrid>
-          </PageHeader>
-          ) : null}
+                <motion.div
+                  animate={
+                    activeStatPulse
+                      ? { scale: [1, 1.04, 1], boxShadow: ["0 0 0 rgba(16,185,129,0)", "0 0 20px rgba(16,185,129,0.25)", "0 0 0 rgba(16,185,129,0)"] }
+                      : { scale: 1 }
+                  }
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                  className="rounded-lg"
+                >
+                  <StatCard
+                    label="Active"
+                    value={<AnimatedCounter value={activeCount} duration={0.8} />}
+                    variant="success"
+                    className={activeCount > 0 ? "border-success/30" : undefined}
+                  />
+                </motion.div>
+                <StatCard
+                  label="Tasks"
+                  value={<AnimatedCounter value={totalTasks} duration={1} />}
+                  variant="info"
+                />
+              </StatsGrid>
+            </PageHeader>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-background/40 px-3 py-2.5 backdrop-blur-sm sm:px-4">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold tracking-tight text-foreground">
+                  {SURFACE_COPY.pages.agents.rosterTitle}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {activeCount} active · {totalAgents} total · {totalTasks} tasks today
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2">{rosterActions}</div>
+            </div>
+          )}
 
           {/* Search */}
           <div className="p-3 sm:p-4 border-b border-border space-y-2">
             <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                ref={searchInputRef}
-                type="search"
-                placeholder="Search agents by name, role, department..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                aria-label="Search agents"
-                className="w-full h-10 sm:h-9 rounded-lg border border-border bg-secondary pl-9 pr-9 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-              {searchQuery ? (
-                <button
-                  type="button"
-                  aria-label="Clear search"
-                  onClick={() => {
-                    setSearchQuery("")
-                    searchInputRef.current?.focus()
-                  }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              ) : null}
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={toggleHeaderCollapsed}
-              aria-label={headerCollapsed ? "Show team overview" : "Hide team overview for a clear agent canvas"}
-              title={headerCollapsed ? "Show team overview" : "Hide team overview"}
-              className="h-10 w-10 sm:h-9 sm:w-9 shrink-0"
-            >
-              {headerCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-            </Button>
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  ref={searchInputRef}
+                  type="search"
+                  placeholder="Search agents by name, role, department..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  aria-label="Search agents"
+                  className="w-full h-10 sm:h-9 rounded-lg border border-border bg-secondary pl-9 pr-9 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+                {searchQuery ? (
+                  <button
+                    type="button"
+                    aria-label="Clear search"
+                    onClick={() => {
+                      setSearchQuery("")
+                      searchInputRef.current?.focus()
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                ) : null}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={toggleHeaderCollapsed}
+                aria-label={headerCollapsed ? "Show team overview" : "Hide team overview for a clear agent canvas"}
+                aria-expanded={!headerCollapsed}
+                title={headerCollapsed ? "Show team overview" : "Clear canvas"}
+                className="h-10 w-10 shrink-0 sm:h-9 sm:w-9"
+              >
+                {headerCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+              </Button>
             </div>
             {normalizedSearchQuery && agents.length > 0 ? (
               <p className="text-xs text-muted-foreground">
