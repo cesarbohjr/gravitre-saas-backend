@@ -13,8 +13,7 @@ import {
   MorphingBackground, 
   NeuralNetwork,
   StatusBeacon,
-  AnimatedCounter,
-  ActivityIndicator
+  AnimatedCounter
 } from "@/components/gravitre/premium-effects"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -56,6 +55,8 @@ import {
   Settings,
   X,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   PanelRightClose,
   PanelRightOpen,
   Circle,
@@ -90,8 +91,9 @@ type Agent = ApiAgent & {
   config?: Record<string, unknown>
 }
 
-const AGENT_DETAIL_PANEL_KEY = "gravitre:agentsDetailPanelOpen"
-const AGENTS_REFRESH_MS = 30_000
+ const AGENT_DETAIL_PANEL_KEY = "gravitre:agentsDetailPanelOpen"
+ const AGENT_HEADER_COLLAPSED_KEY = "gravitre:agentsHeaderCollapsed"
+ const AGENTS_REFRESH_MS = 30_000
 
 function deriveModelLabel(input: Record<string, unknown>): string {
   const config = (input.config ?? {}) as Record<string, unknown>
@@ -971,6 +973,21 @@ export default function AgentsPage() {
       return next
     })
   }
+
+  // Collapse the team-overview hero (title + stat cards) to give the user a
+  // clear, full-height canvas of just the agents. Persisted across visits.
+  const [headerCollapsed, setHeaderCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false
+    return window.localStorage.getItem(AGENT_HEADER_COLLAPSED_KEY) === "1"
+  })
+
+  const toggleHeaderCollapsed = () => {
+    setHeaderCollapsed((collapsed) => {
+      const next = !collapsed
+      window.localStorage.setItem(AGENT_HEADER_COLLAPSED_KEY, next ? "1" : "0")
+      return next
+    })
+  }
   
   // Fetch agents from API with SWR — refresh every 30s for live task/active counts
   const { data, error, isLoading, mutate } = useSWR<{ agents: Agent[] }>(
@@ -1055,15 +1072,6 @@ export default function AgentsPage() {
   const activeCount = agents.filter((a) => a.status === "active" || a.status === "processing").length
   const totalTasks = agents.reduce((sum, a) => sum + a.stats.tasksToday, 0)
   const totalAgents = agents.length
-  const teamHealth =
-    agents.length > 0
-      ? Math.round(
-          agents.reduce(
-            (sum, agent) => sum + (shouldShowSuccessRate(agent) ? agent.stats.successRate : 100),
-            0,
-          ) / agents.length,
-        )
-      : 100
 
   const prevActiveCountRef = useRef(activeCount)
   const [activeStatPulse, setActiveStatPulse] = useState(false)
@@ -1100,7 +1108,9 @@ export default function AgentsPage() {
 
   {/* Left - Agent Roster with Orbs */}
   <div className="relative z-10 flex-1 flex flex-col lg:border-r border-border/50 backdrop-blur-sm">
-          {/* Header */}
+          {/* Header (collapsible so the user can hide the team overview and
+             get a clear, full-height canvas of just the agents) */}
+          {!headerCollapsed ? (
           <PageHeader
             title={SURFACE_COPY.pages.agents.rosterTitle}
             description={SURFACE_COPY.pages.agents.description}
@@ -1162,10 +1172,12 @@ export default function AgentsPage() {
               />
             </StatsGrid>
           </PageHeader>
+          ) : null}
 
           {/* Search */}
           <div className="p-3 sm:p-4 border-b border-border space-y-2">
-            <div className="relative">
+            <div className="flex items-center gap-2">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 ref={searchInputRef}
@@ -1190,6 +1202,18 @@ export default function AgentsPage() {
                 </button>
               ) : null}
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={toggleHeaderCollapsed}
+              aria-label={headerCollapsed ? "Show team overview" : "Hide team overview for a clear agent canvas"}
+              title={headerCollapsed ? "Show team overview" : "Hide team overview"}
+              className="h-10 w-10 sm:h-9 sm:w-9 shrink-0"
+            >
+              {headerCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+            </Button>
+            </div>
             {normalizedSearchQuery && agents.length > 0 ? (
               <p className="text-xs text-muted-foreground">
                 {filteredAgents.length} of {agents.length} agent{agents.length === 1 ? "" : "s"}
@@ -1202,9 +1226,11 @@ export default function AgentsPage() {
             {/* Particle field behind orbs */}
             <ParticleField count={30} color="violet" interactive className="opacity-40" />
             
-            {/* Center stage area — flex so the orb cluster can use m-auto to stay
-               centered while short, yet scroll without clipping when tall. */}
-            <div className="relative flex flex-1 min-h-[420px] sm:min-h-[380px]">
+            {/* Center stage area. On mobile it keeps a fixed-height band for the
+               horizontal carousel; on desktop it grows with content (min-h-0) so
+               a tall, wrapped constellation flows from the top and scrolls in the
+               parent instead of being vertically centered and clipped. */}
+            <div className="relative flex flex-1 flex-col min-h-[420px] sm:min-h-0">
               {/* Circular platform effect (clipped so the large rings never force
                  horizontal overflow on narrow/mobile viewports). */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
@@ -1225,20 +1251,21 @@ export default function AgentsPage() {
                 />
               </div>
               
-              {/* Orb constellation — m-auto centers the cluster when short and
-                 stays scroll-safe when tall; generous bottom padding keeps the
-                 status pills clear of the floating team-stats bar. */}
+              {/* Orb constellation.
+                 Mobile: a single-row horizontal swipe carousel, vertically
+                 centered in the fixed-height band (my-auto).
+                 Desktop: a wrapping constellation that flows from the top
+                 (sm:my-0, sm:items-start) and scrolls naturally — no vertical
+                 centering, so tall multi-row layouts are never clipped. */}
               <TooltipProvider delayDuration={200}>
               <div className={cn(
-                "relative z-10 m-auto flex w-full gap-6 sm:gap-10 lg:gap-12 pt-4 sm:pt-8",
-                // Mobile: horizontal swipe carousel so every agent is reachable
-                // with a left/right scroll. overflow-x-auto forces overflow-y to
-                // clip, so center the full-height orbs in the tall band and use a
-                // small bottom padding (the big pb is only for the desktop
-                // floating stats bar, which does not overlap on mobile).
-                "flex-nowrap items-center snap-x snap-mandatory overflow-x-auto scrollbar-hide px-4 -mx-4 pb-8",
-                // sm+: return to the centered wrapping constellation.
-                "sm:flex-wrap sm:items-start sm:justify-center sm:overflow-x-visible sm:px-0 sm:mx-0 sm:snap-none sm:pb-40",
+                "relative z-10 flex w-full gap-6 sm:gap-10 lg:gap-12",
+                // Mobile carousel. overflow-x-auto forces overflow-y to clip, so
+                // full-height orbs are centered within the tall band.
+                "my-auto flex-nowrap items-center snap-x snap-mandatory overflow-x-auto scrollbar-hide px-4 -mx-4 py-6",
+                // sm+: wrapping constellation, top-aligned, generous padding so
+                // orb badges/labels are never clipped by the scroll container.
+                "sm:my-0 sm:flex-wrap sm:items-start sm:justify-center sm:overflow-x-visible sm:px-0 sm:mx-0 sm:snap-none sm:py-10",
               )}>
                 {error ? (
                   <WorkSectionErrorCard
@@ -1307,61 +1334,6 @@ export default function AgentsPage() {
               </div>
               </TooltipProvider>
             </div>
-            
-            {/* Team stats bar — floats above the orbs on a soft fade instead of a
-               hard opaque band, and is click-through so orbs behind it stay
-               interactive. The pill wraps and shrinks on small screens. */}
-            <motion.div 
-              className="pointer-events-none sticky bottom-0 left-0 right-0 z-40 flex justify-center px-2 pt-10 pb-3 bg-gradient-to-t from-background via-background/80 to-transparent"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ delay: 0.5 }}
-            >
-              <div className="pointer-events-auto flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:gap-6 rounded-2xl sm:rounded-full bg-card border border-border px-4 sm:px-6 py-2.5 sm:py-3 shadow-lg">
-                <motion.div
-                  className="flex items-center gap-2"
-                  animate={
-                    activeStatPulse
-                      ? { scale: [1, 1.03, 1] }
-                      : { scale: 1 }
-                  }
-                  transition={{ duration: 0.5, ease: "easeOut" }}
-                >
-                  <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-success/20">
-                    {activeCount > 0 ? (
-                      <StatusBeacon status="active" size="sm" pulse />
-                    ) : (
-                      <Activity className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground">Active</div>
-                    <div className="text-sm font-semibold text-foreground">
-                      <AnimatedCounter value={activeCount} duration={0.8} />
-                    </div>
-                  </div>
-                </motion.div>
-                <div className="hidden sm:block w-px h-8 bg-border" />
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-full bg-info/20 flex items-center justify-center">
-                    <Zap className="h-4 w-4 text-info" />
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground">Tasks Today</div>
-                    <div className="text-sm font-semibold text-foreground"><AnimatedCounter value={totalTasks} duration={1.5} /></div>
-                  </div>
-                </div>
-                <div className="hidden sm:block w-px h-8 bg-border" />
-                <div className="flex items-center gap-2">
-                  <ActivityIndicator value={teamHealth} size={36} color="emerald" />
-                  <div>
-                    <div className="text-xs text-muted-foreground">Health</div>
-                    <div className="text-sm font-semibold text-success">{teamHealth}%</div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
           </div>
         </div>
 
