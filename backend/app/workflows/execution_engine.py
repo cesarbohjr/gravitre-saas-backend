@@ -13,7 +13,8 @@ from typing import Any
 from app.workflows.builder_sync import _node_to_step
 
 _PASSTHROUGH_NODE_TYPES = frozenset({"source", "trigger"})
-_APPROVAL_NODE_TYPES = frozenset({"approval"})
+# human_approval is normalized to approval before execute; keep both for defense-in-depth.
+_APPROVAL_NODE_TYPES = frozenset({"approval", "human_approval"})
 _CHECKPOINT_KEY = "_graph_execution"
 
 

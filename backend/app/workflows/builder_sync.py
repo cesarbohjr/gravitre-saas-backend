@@ -34,7 +34,9 @@ LEGACY_PERSISTED_NODE_TYPES = frozenset({"agent", "task", "connector", "tool", "
 
 def persist_node_type(canvas_type: str) -> tuple[str, dict[str, Any]]:
     """Map builder-only node types to DB-safe types while preserving canvas type in metadata."""
-    normalized = str(canvas_type or "task").strip().lower()
+    from app.workflows.definition_resolver import normalize_legacy_node_type
+
+    normalized = normalize_legacy_node_type(canvas_type)
     if normalized in BUILDER_ONLY_NODE_TYPES:
         return "task", {"builder_node_type": normalized}
     if normalized in LEGACY_PERSISTED_NODE_TYPES:
@@ -43,11 +45,15 @@ def persist_node_type(canvas_type: str) -> tuple[str, dict[str, Any]]:
 
 
 def restore_node_type(node: dict[str, Any]) -> str:
+    from app.workflows.definition_resolver import normalize_legacy_node_type
+
     metadata = node.get("metadata") if isinstance(node.get("metadata"), dict) else {}
     builder_type = metadata.get("builder_node_type")
     if isinstance(builder_type, str) and builder_type in PERSISTED_GRAPH_NODE_TYPES:
         return builder_type
-    stored = str(node.get("node_type") or node.get("type") or "task").strip().lower()
+    stored = normalize_legacy_node_type(
+        str(node.get("node_type") or node.get("type") or "task")
+    )
     if stored in PERSISTED_GRAPH_NODE_TYPES:
         return stored
     return "task"
@@ -336,7 +342,11 @@ def definition_to_builder_nodes(definition: dict[str, Any]) -> tuple[list[dict[s
         step_type = str(step.get("type") or "noop")
         metadata = step.get("metadata") if isinstance(step.get("metadata"), dict) else {}
         config = step.get("config") if isinstance(step.get("config"), dict) else {}
-        if step_type == "invoke_tool":
+        from app.workflows.definition_resolver import normalize_legacy_node_type
+
+        mapped_type = normalize_legacy_node_type(step_type)
+        node_metadata = dict(metadata)
+        if mapped_type == "invoke_tool" or step_type == "invoke_tool":
             node_type = "connector"
             tool_config = dict(config)
             if tool_config.get("action") and not tool_config.get("tool_action"):
@@ -344,6 +354,11 @@ def definition_to_builder_nodes(definition: dict[str, Any]) -> tuple[list[dict[s
         elif step_type in {"slack_post_message", "email_send", "webhook_post", "rag_retrieve"}:
             node_type = "tool"
             tool_config = dict(config)
+        elif mapped_type == "approval":
+            # GoalService/Meson emit human_approval — must not hydrate as task.
+            node_type = "approval"
+            tool_config = dict(config)
+            node_metadata["has_approval_gate"] = True
         else:
             node_type = "agent" if step_type == "agent" else "task"
             tool_config = dict(config)
@@ -354,7 +369,7 @@ def definition_to_builder_nodes(definition: dict[str, Any]) -> tuple[list[dict[s
                 "title": str(step.get("name") or step_id),
                 "name": str(step.get("name") or step_id),
                 "config": tool_config,
-                "metadata": metadata,
+                "metadata": node_metadata,
                 "position": {"x": x, "y": 160},
                 "position_x": x,
                 "position_y": 160,
