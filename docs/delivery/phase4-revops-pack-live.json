@@ -1,0 +1,86 @@
+{
+  "pass": true,
+  "ran_at": "2026-07-15T18:13:06.811099+00:00",
+  "prod_git_sha": "0a3d543ff342601899c65599cbdb52dc17657d6f",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "pack_slug": "revops-intelligence-pack",
+  "asset_id": "425c1286-2e20-4d35-98b2-e6bc0029d08e",
+  "bundle": {
+    "agentId": "adca42ad-2aba-5814-b276-16fd12cf31f9",
+    "workflowId": "6e6df145-ff76-5eb4-b21f-ba7f5b64cdae",
+    "assignmentCount": 3,
+    "hubspotConnectorId": "547cdda5-2637-4a2b-b087-d5ea89486575",
+    "salesforceConnectorId": null,
+    "stubCount": 1,
+    "skippedCount": 1,
+    "stopLinesHonored": [
+      "reuse_existing_crm",
+      "no_finance_connectors_without_cesar_signoff",
+      "heuristic_forecast_ok"
+    ]
+  },
+  "invokes": {
+    "hubspot.pipelines.list": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "https://app.hubspot.com/contacts/pipelines",
+      "data_keys": [
+        "results",
+        "result_url"
+      ]
+    },
+    "hubspot.deals.list": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "https://app.hubspot.com/contacts/objects/0-3/views/all/list",
+      "data_keys": [
+        "results",
+        "result_url"
+      ]
+    }
+  },
+  "kpis": {
+    "packId": "revops-intelligence-pack",
+    "installed": false,
+    "installId": null,
+    "assetId": "425c1286-2e20-4d35-98b2-e6bc0029d08e",
+    "agentCount": 0,
+    "workflowCount": 0,
+    "signalsCount": 0,
+    "entitiesCount": 0,
+    "cacheTouches": 0,
+    "assignmentsCount": 3,
+    "vendors": {}
+  },
+  "tied_to_smoke_actions": [
+    {
+      "notification_id": "33568ef3-8285-421f-8abc-a6e675035c53",
+      "action": "hubspot.pipelines.list",
+      "title": "HubSpot pipelines listed",
+      "result_url": "https://app.hubspot.com/contacts/pipelines",
+      "created_at": "2026-07-15T18:13:02.606778+00:00",
+      "matches_invoke_url": true
+    },
+    {
+      "notification_id": "d2cef62d-2f0a-46fc-8547-f5e67b72fc20",
+      "action": "hubspot.deals.list",
+      "title": "HubSpot deals listed",
+      "result_url": "https://app.hubspot.com/contacts/objects/0-3/views/all/list",
+      "created_at": "2026-07-15T18:13:05.403643+00:00",
+      "matches_invoke_url": true
+    }
+  ],
+  "cohesion": {
+    "result_url_ok": true,
+    "notification_id_tie_ok": true,
+    "kpi_panel_ui_ok": true
+  },
+  "governance": {
+    "reuse_existing_crm": true,
+    "finance_connectors_gated": true,
+    "heuristic_forecast_ok": true
+  },
+  "note": "RevOps #7: HubSpot CRM rollup after Sales+Marketing+CS. Salesforce optional; Finance banking/QB/Xero/NetSuite gated. Notifications tied by notification_id + title\u2192action + url match."
+}
