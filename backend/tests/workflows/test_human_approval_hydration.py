@@ -16,6 +16,23 @@ from app.workflows.execution_engine import _APPROVAL_NODE_TYPES
 from app.workflows.execution_engine_runtime import _is_approval_node
 
 
+def test_validate_definition_normalizes_human_approval():
+    from app.workflows.schema import validate_definition
+
+    validated = validate_definition(
+        {
+            "schema_version": "2025.1",
+            "steps": [
+                {"id": "s1", "name": "Start", "type": "noop", "config": {}},
+                {"id": "gate", "name": "Gate", "type": "human_approval", "config": {}},
+            ],
+        }
+    )
+    gate = next(s for s in validated["steps"] if s["id"] == "gate")
+    assert gate["type"] == "approval"
+    assert (gate.get("metadata") or {}).get("has_approval_gate") is True
+
+
 def test_normalize_legacy_maps_human_approval_to_approval():
     assert normalize_legacy_node_type("human_approval") == "approval"
     assert normalize_legacy_node_type("approval") == "approval"
