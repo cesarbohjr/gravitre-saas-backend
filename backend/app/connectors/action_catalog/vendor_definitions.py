@@ -661,10 +661,7 @@ VENDOR_DEFINITIONS: tuple = (
         "Plaid",
         "Payments / Finance",
         "https://plaid.com/docs/api/",
-        shipped=False,
-        department="finance",
-        v1=(
-            action("plaid", "accounts.get", "Get linked accounts", tier="v1", kind="read", scope_suffix="accounts:read", idempotent=True),
+        shipped=True,
             action("plaid", "transactions.list", "List transactions", tier="v1", kind="read", scope_suffix="transactions:read", idempotent=True),
             action("plaid", "balances.get", "Get balances", tier="v1", kind="read", scope_suffix="balances:read", idempotent=True),
         ),
@@ -1397,7 +1394,7 @@ VENDOR_DEFINITIONS: tuple = (
         "Gusto",
         "HR / People",
         "https://docs.gusto.com/app-integrations/reference",
-        shipped=False,
+        shipped=True,
         department="operations",
         v1=(
             action("gusto", "employees.get", "Get employee", tier="v1", kind="read", scope_suffix="employees:read", idempotent=True),

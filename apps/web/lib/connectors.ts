@@ -286,7 +286,7 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "QuickBooks", vendorKey: "quickbooks", description: "Accounting software", authType: "oauth", credentialModel: "oauth2", category: "Payments / Finance", shipped: true },
   { type: "NetSuite", vendorKey: "netsuite", description: "Enterprise ERP", authType: "oauth", credentialModel: "oauth2_custom", category: "Payments / Finance", shipped: true },
   { type: "Xero", vendorKey: "xero", description: "Cloud accounting", authType: "oauth", credentialModel: "oauth2_custom", category: "Payments / Finance", oauthReady: true, shipped: true },
-  { type: "Plaid", vendorKey: "plaid", description: "Financial data via Plaid Link (not OAuth callback)", authType: "apiKey", credentialModel: "plaid_link", category: "Payments / Finance", setupComplexity: "high" },
+  { type: "Plaid", vendorKey: "plaid", description: "Financial data via Plaid Link (F3 unlocked) — not generic OAuth callback", authType: "apiKey", credentialModel: "plaid_link", category: "Payments / Finance", shipped: true, setupComplexity: "high", authMode: "customer_owned" },
   // Communication
   { type: "Slack", vendorKey: "slack", description: "Team messaging", authType: "oauth", credentialModel: "oauth2", category: "Communication", shipped: true, oauthReady: true },
   { type: "Microsoft Teams", vendorKey: "microsoft_teams", description: "Collaboration hub", authType: "oauth", credentialModel: "oauth2_custom", category: "Communication" },
@@ -321,7 +321,7 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "Workday", vendorKey: "workday", description: "HR management", authType: "oauth", credentialModel: "oauth2_custom", category: "HR / People", shipped: true },
   { type: "BambooHR", vendorKey: "bamboohr", description: "HR software", authType: "apiKey", credentialModel: "api_key", category: "HR / People", requiresSubdomain: true, shipped: true },
   { type: "Greenhouse", vendorKey: "greenhouse", description: "Recruiting and applicant tracking", authType: "apiKey", credentialModel: "api_key", category: "HR / People", shipped: true },
-  { type: "Gusto", vendorKey: "gusto", description: "Payroll and benefits", authType: "oauth", credentialModel: "partner_oauth", category: "HR / People", requiresPartnerApproval: true, setupComplexity: "enterprise" },
+  { type: "Gusto", vendorKey: "gusto", description: "Payroll and benefits (H3 unlocked) — partner OAuth when approved", authType: "oauth", credentialModel: "partner_oauth", category: "HR / People", shipped: true, requiresPartnerApproval: true, setupComplexity: "enterprise", authMode: "customer_owned" },
   { type: "ADP", vendorKey: "adp", description: "HR and payroll", authType: "apiKey", credentialModel: "partner_oauth", category: "HR / People", requiresPartnerApproval: true, setupComplexity: "enterprise" },
   // Storage / Dev / Infra
   { type: "AWS S3", vendorKey: "aws_s3", description: "Cloud object storage", authType: "apiKey", credentialModel: "iam", category: "Storage / Dev / Infra" },
