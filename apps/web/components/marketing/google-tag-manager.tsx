@@ -4,20 +4,20 @@ import {
   CONSENT_BANNER_REGIONS,
   MARKETING_CONSENT_STORAGE_KEY,
 } from "@/lib/marketing-consent"
-import { MARKETING_GTG_PATH, MARKETING_GTM_ID } from "@/lib/marketing-gtm"
+import { MARKETING_GTM_ID, MARKETING_GTM_NOSCRIPT_SRC } from "@/lib/marketing-gtm"
 
 export { MARKETING_GTM_ID } from "@/lib/marketing-gtm"
 
 /**
- * Consent Mode (Advanced) defaults + first-party GTM bootstrap (Tag Gateway).
+ * Consent Mode (Advanced) defaults + Google Tag Manager bootstrap.
  *
  * Order matches Google's GTM + custom banner guidance:
  * 1) define dataLayer / gtag
  * 2) set region-scoped consent defaults (+ restore stored choice)
- * 3) load GTM from the first-party measurement path
+ * 3) load GTM from googletagmanager.com
  *
  * @see https://developers.google.com/tag-platform/security/guides/consent?consentmode=advanced
- * @see https://developers.google.com/tag-platform/tag-manager/gateway/setup-guide?setup=manual
+ * @see https://developers.google.com/tag-platform/tag-manager/installation
  */
 export function GoogleTagManager() {
   const regionList = CONSENT_BANNER_REGIONS.map((code) => `'${code}'`).join(",")
@@ -71,13 +71,13 @@ export function GoogleTagManager() {
   (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
   new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
   j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-  '${MARKETING_GTG_PATH}/?id='+i+dl;f.parentNode.insertBefore(j,f);
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
   })(window,document,'script','dataLayer','${MARKETING_GTM_ID}');
 })();
       `}</Script>
       <noscript>
         <iframe
-          src={`${MARKETING_GTG_PATH}/ns.html?id=${MARKETING_GTM_ID}`}
+          src={MARKETING_GTM_NOSCRIPT_SRC}
           height="0"
           width="0"
           style={{ display: "none", visibility: "hidden" }}
