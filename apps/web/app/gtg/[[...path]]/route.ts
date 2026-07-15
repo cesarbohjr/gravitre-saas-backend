@@ -1,4 +1,8 @@
-import { MARKETING_GTG_FPS_HOST } from "@/lib/marketing-gtm"
+import {
+  MARKETING_GTG_FPS_HOST,
+  MARKETING_GTG_PATH,
+  MARKETING_GTM_ID,
+} from "@/lib/marketing-gtm"
 
 export const runtime = "edge"
 
@@ -22,7 +26,11 @@ type RouteContext = {
 async function proxyToTagGateway(request: Request, context: RouteContext): Promise<Response> {
   const { path: segments } = await context.params
   const incoming = new URL(request.url)
-  const pathSuffix = segments?.length ? `/${segments.join("/")}` : "/"
+  // Preserve the first-party measurement path prefix on the FPS origin
+  // (Google expects /gtg/healthy, not /healthy).
+  const pathSuffix = segments?.length
+    ? `${MARKETING_GTG_PATH}/${segments.join("/")}`
+    : `${MARKETING_GTG_PATH}/`
   const target = new URL(`https://${MARKETING_GTG_FPS_HOST}${pathSuffix}`)
   target.search = incoming.search
 
@@ -32,6 +40,7 @@ async function proxyToTagGateway(request: Request, context: RouteContext): Promi
     headers.set(key, value)
   })
   headers.set("Host", MARKETING_GTG_FPS_HOST)
+  headers.set("X-Gtg-Tag-Id", MARKETING_GTM_ID)
   applyGeoHeaders(request, headers)
 
   const init: RequestInit = {
