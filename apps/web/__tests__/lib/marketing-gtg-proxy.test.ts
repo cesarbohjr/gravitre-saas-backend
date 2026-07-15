@@ -7,25 +7,19 @@ import {
 
 describe("buildTagGatewayUpstreamUrl", () => {
   it("preserves the /gtg prefix and healthy subpath", () => {
-    const url = buildTagGatewayUpstreamUrl("https://gravitre.app/gtg/healthy", ["healthy"])
+    const url = buildTagGatewayUpstreamUrl("", ["healthy"])
     expect(url.toString()).toBe("https://gtm-p9txqf82.fps.goog/gtg/healthy")
   })
 
   it("forwards validate_geo on the measurement root", () => {
-    const url = buildTagGatewayUpstreamUrl(
-      "https://gravitre.app/gtg?validate_geo=healthy",
-      undefined
-    )
+    const url = buildTagGatewayUpstreamUrl("?validate_geo=healthy", null)
     expect(url.origin).toBe("https://gtm-p9txqf82.fps.goog")
     expect(url.pathname).toBe("/gtg/")
     expect(url.searchParams.get("validate_geo")).toBe("healthy")
   })
 
   it("forwards id for the GTM loader", () => {
-    const url = buildTagGatewayUpstreamUrl(
-      "https://gravitre.app/gtg/?id=GTM-P9TXQF82",
-      []
-    )
+    const url = buildTagGatewayUpstreamUrl("?id=GTM-P9TXQF82", [])
     expect(url.searchParams.get("id")).toBe("GTM-P9TXQF82")
   })
 })
