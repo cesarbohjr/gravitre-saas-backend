@@ -38,7 +38,22 @@ def utcnow() -> str:
 
 def _load_env() -> None:
     merged: dict[str, str] = {}
-    for p in (BACKEND / ".env", BACKEND / ".env.operator.local", REPO / ".env"):
+    candidates = [
+        BACKEND / ".env",
+        BACKEND / ".env.operator.local",
+        REPO / ".env",
+    ]
+    # Worktrees under .cursor-tmp lack secrets; fall back to primary checkout.
+    if REPO.parent.name == ".cursor-tmp":
+        primary = REPO.parent.parent
+        candidates.extend(
+            [
+                primary / "backend" / ".env",
+                primary / "backend" / ".env.operator.local",
+                primary / ".env",
+            ]
+        )
+    for p in candidates:
         if not p.is_file():
             continue
         loaded = None

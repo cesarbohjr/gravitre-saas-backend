@@ -25,7 +25,7 @@ def _table(select_data: list | None = None) -> MagicMock:
 def _intelligence_pack_asset() -> dict:
     return {
         "id": ASSET_ID,
-        "slug": "marketing-intelligence-pack",
+        "slug": "support-intelligence-pack",
         "asset_type": "intelligence_pack",
         "status": "published",
         "visibility": "public",
@@ -34,14 +34,14 @@ def _intelligence_pack_asset() -> dict:
         "required_connectors": [],
         "install_variables": [{"key": "agentId", "label": "Agent ID", "required": True}],
         "config": {
-            "department": "marketing",
-            "default_subdomain": "content_marketing",
+            "department": "support",
+            "default_subdomain": "ticketing",
             "assignments": [
                 {
-                    "source_type": "google_drive_folder",
-                    "source_id": "brand-guidelines",
-                    "label": "Brand Guidelines",
-                    "department": "marketing",
+                    "source_type": "zendesk_view",
+                    "source_id": "open-tickets",
+                    "label": "Open Tickets",
+                    "department": "support",
                 }
             ],
         },
@@ -96,7 +96,7 @@ def test_install_asset_intelligence_pack_branch(
     assert result["assetType"] == "intelligence_pack"
     mock_install_pack.assert_called_once()
     assert mock_install_pack.call_args.args[2] == "agent-99"
-    assert mock_install_pack.call_args.args[3] == "marketing-intelligence-pack"
+    assert mock_install_pack.call_args.args[3] == "support-intelligence-pack"
     assert mock_install_pack.call_args.kwargs.get("asset_id") == ASSET_ID
     assert result["entities"]["entityId"] == ASSET_ID
 

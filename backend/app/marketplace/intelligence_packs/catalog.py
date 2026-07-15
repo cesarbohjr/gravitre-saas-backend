@@ -53,10 +53,24 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             assignments=[
                 IntelligencePackAssignment("google_drive_folder", "brand-guidelines", "Brand Guidelines", "marketing", "brand_marketing", reference_summary="Brand voice, visual standards, and messaging guardrails."),
                 IntelligencePackAssignment("google_drive_folder", "campaign-playbooks", "Campaign Playbooks", "marketing", "content_marketing", reference_summary="Approved campaign templates and launch checklists."),
-                IntelligencePackAssignment("hubspot_view", "marketing-campaigns", "HubSpot Campaigns", "marketing", "demand_generation"),
-                IntelligencePackAssignment("google_analytics", "ga4-property", "GA4 Property", "marketing", "analytics"),
                 IntelligencePackAssignment(
-                    "google_search_console",
+                    "hubspot_object",
+                    "marketing-campaigns",
+                    "HubSpot Campaigns",
+                    "marketing",
+                    "demand_generation",
+                    reference_summary="HubSpot campaign/CRM objects for demand-gen briefings (read-only).",
+                ),
+                IntelligencePackAssignment(
+                    "ga4_property",
+                    "ga4-property",
+                    "GA4 Property",
+                    "marketing",
+                    "analytics",
+                    reference_summary="GA4 property analytics references.",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
                     "gsc-site",
                     "Google Search Console Site",
                     "marketing",
@@ -66,7 +80,14 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
                         "Raw query strings gated from Memory/KG."
                     ),
                 ),
-                IntelligencePackAssignment("canva", "brand-assets", "Canva Brand Assets", "marketing", "brand_marketing"),
+                IntelligencePackAssignment(
+                    "canva_folder",
+                    "brand-assets",
+                    "Canva Brand Assets",
+                    "marketing",
+                    "brand_marketing",
+                    reference_summary="Canva brand asset folder references.",
+                ),
             ],
             demo_agent_name="SEO Marketing Analyst",
             demo_systems=["google_search_console", "google_analytics", "hubspot"],

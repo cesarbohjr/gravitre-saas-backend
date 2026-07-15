@@ -1,0 +1,55 @@
+{
+  "pass": true,
+  "checked_at": "2026-07-15T08:05:52.150991+00:00",
+  "prod_git_sha": "0db6ddf0e13c300d7d1a0f4a57552dc0ca018a05",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "pack_id": "marketing-intelligence-pack",
+  "bundle": {
+    "agentId": "cd8d78e7-af1e-51f6-b22c-bbce74b6860d",
+    "workflowId": "5c6cb57e-cb40-52b5-8057-8c1b8c240467",
+    "assignmentCount": 6,
+    "gscConnectorId": "a17f1efd-8ba9-4f29-9ed1-ad3fffe2a332",
+    "hubspotConnectorId": "547cdda5-2637-4a2b-b087-d5ea89486575",
+    "ga4ConnectorId": null,
+    "stopLinesHonored": [
+      "gsc_raw_query_memory_kg_blocked",
+      "semrush_ahrefs_byo_only",
+      "reuse_existing_connectors"
+    ]
+  },
+  "invokes": {
+    "searchconsole.sites.list": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "https://search.google.com/search-console",
+      "data_keys": [
+        "sites",
+        "result_url"
+      ]
+    }
+  },
+  "kpis": {
+    "packId": "marketing-intelligence-pack",
+    "installed": false,
+    "installId": null,
+    "assetId": "b5f790df-1d48-4b5a-969b-8c1bb18650bb",
+    "agentCount": 0,
+    "workflowCount": 0,
+    "signalsCount": 0,
+    "entitiesCount": 0,
+    "cacheTouches": 0,
+    "assignmentsCount": 8,
+    "vendors": {
+      "google_search_console": {
+        "signals": 0,
+        "entities": 0
+      }
+    }
+  },
+  "notifications_in_window": 0,
+  "governance": {
+    "gsc_raw_query_memory_kg_blocked": true,
+    "semrush_ahrefs_byo_only": true
+  }
+}
