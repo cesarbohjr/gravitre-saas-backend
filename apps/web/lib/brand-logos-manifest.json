@@ -2,6 +2,7 @@
   "adp": "adp",
   "airtable": "airtable",
   "asana": "asana",
+  "figma": "figma",
   "clickup": "clickup",
   "confluence": "confluence",
   "github": "github",
@@ -34,11 +35,17 @@
   "xero": "xero",
   "zapier": "zapier",
   "zendesk": "zendesk",
+  "anthropic": "anthropic",
+  "meta": "meta",
+  "linear": "linear",
   "mysql": "mysql",
   "bigquery": "googlebigquery",
   "databricks": "databricks",
   "elasticsearch": "elasticsearch",
   "redis": "redis",
   "mariadb": "mariadb",
-  "supabase": "supabase"
+  "supabase": "supabase",
+  "clickhouse": "clickhouse",
+  "duckdb": "duckdb",
+  "qdrant": "qdrant"
 }

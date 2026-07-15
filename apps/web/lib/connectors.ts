@@ -258,6 +258,7 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "Apollo", vendorKey: "apollo", description: "Sales intelligence and outreach — list create works when connected; company/contact discovery requires your own Apollo plan with search API access (BYO-tier, same pattern as ZoomInfo / LinkedIn Sales Navigator)", authType: "oauth", credentialModel: "oauth2", category: "Sales / Prospecting", shipped: true, oauthReady: true, authMode: "customer_owned" },
   { type: "Clay", vendorKey: "clay", description: "Data enrichment, tables, and workflow automation", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", shipped: true, authMode: "customer_owned" },
   { type: "ZoomInfo", vendorKey: "zoominfo", description: "BYO premium B2B data — connect your own subscription", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", authMode: "byo_required" },
+  { type: "People Data Labs", vendorKey: "pdl", description: "BYO People Data Labs API — person/company enrich from your dashboard.peopledatalabs.com key; contact Memory/KG writes remain gated", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", shipped: true, authMode: "byo_required" },
   { type: "LinkedIn Sales Navigator", vendorKey: "linkedin_sales_navigator", description: "BYO Sales Navigator — never uses a shared Gravitree key", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", authMode: "byo_required" },
   { type: "FRED", vendorKey: "fred", description: "Federal Reserve economic data (Gravitree-managed)", authType: "apiKey", credentialModel: "platform_only", category: "Intelligence Sources", authMode: "gravitree_managed" },
   { type: "SEC EDGAR", vendorKey: "sec_edgar", description: "SEC filings search (Gravitree-managed)", authType: "apiKey", credentialModel: "platform_only", category: "Intelligence Sources", authMode: "gravitree_managed" },
@@ -416,6 +417,33 @@ const CATEGORY_BY_VENDOR = new Map(
 export function lookupConnectorCategory(vendor: string): string {
   const key = connectorVendorKey(vendor)
   return CATEGORY_BY_VENDOR.get(key) ?? ""
+}
+
+export function lookupCatalogEntry(typeOrVendorKey: string): CatalogConnectorEntry | undefined {
+  const key = connectorVendorKey(typeOrVendorKey)
+  return (
+    CONNECTOR_CATALOG.find((entry) => entry.vendorKey === key) ||
+    CONNECTOR_CATALOG.find((entry) => entry.type.toLowerCase() === String(typeOrVendorKey || "").trim().toLowerCase())
+  )
+}
+
+/** Gravitree-managed / platform-only sources stay off the Connectors hub (Marketplace instead). */
+export function isConnectorsHubHidden(
+  typeOrVendorKey: string,
+  config?: Record<string, unknown> | null,
+): boolean {
+  const entry = lookupCatalogEntry(typeOrVendorKey)
+  if (entry?.authMode === "gravitree_managed" || entry?.credentialModel === "platform_only") {
+    return true
+  }
+  const mode = String(config?.auth_mode ?? config?.authMode ?? "")
+    .trim()
+    .toLowerCase()
+  if (mode === "gravitree_managed") return true
+  const model = String(config?.credential_model ?? config?.credentialModel ?? "")
+    .trim()
+    .toLowerCase()
+  return model === "platform_only"
 }
 
 export function connectorVendorKey(type: string): string {
