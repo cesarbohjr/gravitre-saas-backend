@@ -293,7 +293,7 @@ VENDOR_DEFINITIONS: tuple = (
         "SEMrush",
         "CRM / Marketing",
         "https://developer.semrush.com/api/v3/analytics/basic-docs/",
-        shipped=False,
+        shipped=True,
         department="marketing",
         v1=(
             action("semrush", "domain.overview", "Domain overview", tier="v1", kind="read", scope_suffix="analytics:read", idempotent=True),
@@ -308,6 +308,28 @@ VENDOR_DEFINITIONS: tuple = (
             action("semrush", "batch.domain", "Batch domain reports", tier="v3", kind="advanced", scope_suffix="analytics:read"),
             action("semrush", "competitors.compare", "Competitor comparison", tier="v3", kind="advanced", scope_suffix="analytics:read"),
             action("semrush", "exports.run", "Run export job", tier="v3", kind="advanced", scope_suffix="exports:write"),
+        ),
+    ),
+    build_vendor(
+        "ahrefs",
+        "Ahrefs",
+        "CRM / Marketing",
+        "https://docs.ahrefs.com/docs/api/reference/introduction",
+        shipped=True,
+        department="marketing",
+        v1=(
+            action("ahrefs", "backlinks.list", "Backlinks report", tier="v1", kind="read", scope_suffix="backlinks:read", idempotent=True),
+            action("ahrefs", "keywords.list", "Keyword overview", tier="v1", kind="read", scope_suffix="keywords:read", idempotent=True),
+            action("ahrefs", "domain.rating", "Domain rating", tier="v1", kind="read", scope_suffix="domain:read", idempotent=True),
+        ),
+        v2=(
+            action("ahrefs", "projects.create", "Create project", tier="v2", kind="write", scope_suffix="projects:write", destructive=True),
+            action("ahrefs", "rank_tracker.add", "Add keywords to rank tracker", tier="v2", kind="write", scope_suffix="tracking:write", destructive=True),
+        ),
+        v3=(
+            action("ahrefs", "batch.backlinks", "Batch backlinks reports", tier="v3", kind="advanced", scope_suffix="backlinks:read"),
+            action("ahrefs", "competitors.compare", "Competitor comparison", tier="v3", kind="advanced", scope_suffix="domain:read"),
+            action("ahrefs", "exports.run", "Run export job", tier="v3", kind="advanced", scope_suffix="exports:write"),
         ),
     ),
     build_vendor(

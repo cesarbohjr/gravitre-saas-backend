@@ -52,7 +52,8 @@
 | LinkedIn | API key | None | Marketing API token | N/A | No | No | **Partial** — 1 enrich tool |
 | Stripe | API key | None | Secret key (`sk_`) | N/A | No | No | **Partial** — 2 read tools |
 | Mixpanel | API key | None | Project token / service account | N/A | No | No | **No** — catalog only |
-| SEMrush | API key | None | API key | N/A | No | No | **No** — catalog only |
+| SEMrush | API key | None | API key (BYO) | N/A | No | No | **Partial** — v1 reads (domain/keywords/backlinks) |
+| Ahrefs | API key | None | API key (BYO) | N/A | No | No | **Partial** — v1 reads (DR/keywords/backlinks) |
 | StackAdapt | API key | None | API token | N/A | No | No | **No** — catalog only |
 | Apollo | API key | None | API key | N/A | No | No | **No** — catalog only |
 | SendGrid | API key | None | API key | N/A | No | No | **No** — catalog only |

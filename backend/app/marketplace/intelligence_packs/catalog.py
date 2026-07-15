@@ -43,15 +43,32 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             name="Marketing Intelligence Pack",
             department="marketing",
             default_subdomain="content_marketing",
-            description="Brand, campaign, HubSpot, GA4, and creative knowledge assignments.",
-            marketplace_tags=["marketing", "starter", "intelligence-pack"],
+            description=(
+                "Brand, campaign, HubSpot, GA4, Google Search Console, and creative knowledge. "
+                "GSC page/URL aggregates may feed pack signals; raw search-query strings are "
+                "gated from Memory/KG (STA-312 pattern). SEMrush/Ahrefs are BYO API keys only "
+                "(no shared Gravitree key; v1 domain/keyword/backlink reads live)."
+            ),
+            marketplace_tags=["marketing", "starter", "intelligence-pack", "seo"],
             assignments=[
                 IntelligencePackAssignment("google_drive_folder", "brand-guidelines", "Brand Guidelines", "marketing", "brand_marketing", reference_summary="Brand voice, visual standards, and messaging guardrails."),
                 IntelligencePackAssignment("google_drive_folder", "campaign-playbooks", "Campaign Playbooks", "marketing", "content_marketing", reference_summary="Approved campaign templates and launch checklists."),
                 IntelligencePackAssignment("hubspot_view", "marketing-campaigns", "HubSpot Campaigns", "marketing", "demand_generation"),
                 IntelligencePackAssignment("google_analytics", "ga4-property", "GA4 Property", "marketing", "analytics"),
+                IntelligencePackAssignment(
+                    "google_search_console",
+                    "gsc-site",
+                    "Google Search Console Site",
+                    "marketing",
+                    "analytics",
+                    reference_summary=(
+                        "Search performance page aggregates via searchconsole.searchAnalytics.query. "
+                        "Raw query strings gated from Memory/KG."
+                    ),
+                ),
                 IntelligencePackAssignment("canva", "brand-assets", "Canva Brand Assets", "marketing", "brand_marketing"),
             ],
+            demo_systems=["google_search_console", "google_analytics", "hubspot"],
         ),
         IntelligencePackSpec(
             pack_id="sales-intelligence-pack",

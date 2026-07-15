@@ -30,6 +30,38 @@ GOOGLE_ANALYTICS = {
     "required": False,
     "connectPath": "/connectors?type=google_analytics",
 }
+GOOGLE_SEARCH_CONSOLE = {
+    "connectorType": "google_search_console",
+    "label": "Google Search Console",
+    "required": False,
+    "connectPath": "/connectors?type=google_search_console",
+    "requirementNote": (
+        "Page/URL search aggregates may feed Marketing pack signals. "
+        "Raw Search Console query strings are gated from Organizational Memory / Knowledge Graph."
+    ),
+}
+SEMRUSH = {
+    "connectorType": "semrush",
+    "label": "SEMrush",
+    "required": False,
+    "connectPath": "/connectors?type=semrush",
+    "requirementNote": (
+        "SEMrush requires your own SEMrush API subscription (BYO). "
+        "Gravitre never uses a shared platform key. "
+        "v1 reads: domain overview, organic keywords, backlinks."
+    ),
+}
+AHREFS = {
+    "connectorType": "ahrefs",
+    "label": "Ahrefs",
+    "required": False,
+    "connectPath": "/connectors?type=ahrefs",
+    "requirementNote": (
+        "Ahrefs requires your own Ahrefs API subscription (BYO). "
+        "Gravitre never uses a shared platform key. "
+        "v1 reads: domain rating, organic keywords, backlinks."
+    ),
+}
 APOLLO = {
     "connectorType": "apollo",
     "label": "Apollo.io",
@@ -769,6 +801,14 @@ def _intelligence_packs() -> list[CatalogAsset]:
                     "required": True if spec.pack_id == "prospecting-intelligence-pack" else False,
                     "label": "Apollo.io (discovery = BYO search plan)",
                 },
+            ]
+        elif spec.pack_id == "marketing-intelligence-pack":
+            required = [
+                {**GOOGLE_SEARCH_CONSOLE, "required": False},
+                {**GOOGLE_ANALYTICS, "required": False},
+                {**HUBSPOT, "required": False, "label": "HubSpot CRM"},
+                {**SEMRUSH, "required": False},
+                {**AHREFS, "required": False},
             ]
         elif spec.demo_systems:
             for system in spec.demo_systems:

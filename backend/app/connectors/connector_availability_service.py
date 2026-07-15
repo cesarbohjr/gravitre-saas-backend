@@ -297,6 +297,31 @@ def evaluate_connector_availability(
         except Exception:  # noqa: BLE001
             pass
 
+    # SEMrush / Ahrefs BYO — static honesty until executors exist
+    if get_auth_mode(normalized_vendor) == AuthMode.BYO_REQUIRED and normalized_vendor in {
+        "semrush",
+        "ahrefs",
+    }:
+        try:
+            from app.connectors.seo_byo_capability import (
+                byo_seo_capability_notes,
+                byo_seo_requirement_note,
+            )
+
+            note = byo_seo_requirement_note(normalized_vendor)
+            if note:
+                out["requirementNote"] = note
+            caps = byo_seo_capability_notes(normalized_vendor)
+            if caps:
+                out["capabilityNotes"] = caps
+            if not authenticated:
+                out["recovery_action"] = (
+                    out.get("recovery_action")
+                    or f"Connect your own {normalized_vendor} API key (BYO — no shared Gravitree key)."
+                )
+        except Exception:  # noqa: BLE001
+            pass
+
     return out
 
 

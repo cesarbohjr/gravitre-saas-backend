@@ -136,6 +136,7 @@ ALLOWED_CONNECTOR_VENDORS = frozenset(
         "n8n",
         "claude",
         "semrush",
+        "ahrefs",
         "stackadapt",
         "odoo",
         "absorb_lms",
