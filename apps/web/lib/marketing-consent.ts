@@ -124,13 +124,16 @@ export function persistMarketingConsent(state: MarketingConsentState): StoredMar
 
 export function updateGtagConsent(state: MarketingConsentState): void {
   if (typeof window === "undefined") return
-  const gtag = window.gtag
-  if (typeof gtag !== "function") {
-    window.dataLayer = window.dataLayer || []
-    window.dataLayer.push(["consent", "update", state])
-    return
+  window.dataLayer = window.dataLayer || []
+  // gtag must push the Arguments object — pushing a plain array is ignored by Consent Mode.
+  if (typeof window.gtag !== "function") {
+    // Match Google's stub: push the Arguments object (not a plain array).
+    window.gtag = function gtag() {
+      // eslint-disable-next-line prefer-rest-params
+      window.dataLayer!.push(arguments)
+    }
   }
-  gtag("consent", "update", state)
+  window.gtag("consent", "update", state)
 }
 
 function isConsentValue(value: unknown): value is ConsentValue {

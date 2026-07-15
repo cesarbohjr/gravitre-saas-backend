@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
   DENIED_CONSENT,
   GRANTED_CONSENT,
   isConsentBannerRegion,
+  updateGtagConsent,
 } from "@/lib/marketing-consent"
 
 describe("marketing consent regions", () => {
@@ -30,5 +31,39 @@ describe("marketing consent regions", () => {
       ad_storage: "granted",
       analytics_storage: "granted",
     })
+  })
+})
+
+describe("updateGtagConsent", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    // @ts-expect-error test cleanup
+    delete globalThis.window
+  })
+
+  it("calls gtag('consent','update', state)", () => {
+    const gtag = vi.fn()
+    vi.stubGlobal("window", {
+      dataLayer: [],
+      gtag,
+    })
+
+    updateGtagConsent(GRANTED_CONSENT)
+
+    expect(gtag).toHaveBeenCalledWith("consent", "update", GRANTED_CONSENT)
+  })
+
+  it("installs a gtag stub that pushes Arguments, not a plain array", () => {
+    const dataLayer: unknown[] = []
+    vi.stubGlobal("window", { dataLayer })
+
+    updateGtagConsent(DENIED_CONSENT)
+
+    expect(typeof window.gtag).toBe("function")
+    expect(dataLayer).toHaveLength(1)
+    const entry = dataLayer[0] as IArguments
+    expect(entry[0]).toBe("consent")
+    expect(entry[1]).toBe("update")
+    expect(entry[2]).toEqual(DENIED_CONSENT)
   })
 })
