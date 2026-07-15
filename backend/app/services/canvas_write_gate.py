@@ -1,20 +1,20 @@
-"""Canvas / workflow-execute write authority (Part D P1-class for builder path).
+"""Canvas / workflow-execute adapter around catalog write authority.
 
-Chat/ReAct gates writes via ``catalog_write_authority`` + ``react_write_gate``.
-Canvas execute previously relied only on optional BE-20 ``approval_policies`` and
-in-graph approval nodes. ``invoke_tool`` writes were not in ``EXTERNAL_STEP_TYPES``,
-so ``required_approvals=0`` (e.g. ``ensure_demo_execute_policy``) let vendor writes
-run with ``approval_required=false``.
+Classification of write vs read is NOT implemented here. This module only:
+1. Maps workflow steps → invoke action keys
+2. Asks ``catalog_write_authority.invoke_action_requires_write_approval``
+   (same schema-derived source of truth as chat/ReAct)
+3. Enforces run-level approval requirements before those writes execute
 
-This module is the single place that:
-1. Detects catalog write-capable steps in a workflow definition (approval floor).
-2. Blocks write step handlers unless the run carried a real approval requirement.
+Chat/ReAct previously gated writes via catalog_write_authority; canvas execute
+relied on optional BE-20 policies and in-graph approval nodes — a parallel,
+weaker path. This adapter closes that gap without a second classification.
 """
 from __future__ import annotations
 
 from typing import Any
 
-from app.services.catalog_write_authority import catalog_action_requires_write_approval
+from app.services.catalog_write_authority import invoke_action_requires_write_approval
 from app.services.tool_service import STEP_TYPE_TO_ACTION
 
 CANVAS_WRITE_AUTHORITY_BLOCKED = "canvas_write_authority_blocked"
@@ -35,35 +35,6 @@ def _invoke_action_from_step(step: dict[str, Any]) -> str | None:
     return None
 
 
-def _action_requires_write_approval(action: str) -> bool:
-    """Catalog-first write check; suffix fallback when catalog row missing."""
-    lowered = str(action or "").strip().lower()
-    if not lowered:
-        return False
-    try:
-        from app.services.connector_execution_matrix import build_connector_execution_matrix
-
-        for entry in build_connector_execution_matrix():
-            keys = {
-                str(entry.registry_key or "").strip().lower(),
-                str(entry.action_key or "").strip().lower(),
-            }
-            if lowered not in keys:
-                continue
-            return catalog_action_requires_write_approval(
-                kind=entry.kind,
-                destructive=bool(entry.destructive),
-                requires_approval=bool(entry.requires_approval),
-                scopes=entry.required_scopes,
-            )
-    except Exception:  # noqa: BLE001
-        pass
-
-    from app.services.react_write_gate import invoke_action_is_write
-
-    return invoke_action_is_write(lowered)
-
-
 def _iter_definition_steps(definition: dict[str, Any] | None) -> list[dict[str, Any]]:
     if not isinstance(definition, dict):
         return []
@@ -78,7 +49,6 @@ def _iter_definition_steps(definition: dict[str, Any] | None) -> list[dict[str, 
             for node in nodes:
                 if not isinstance(node, dict):
                     continue
-                # Builder nodes may carry tool action in config
                 out.append(
                     {
                         "id": node.get("id"),
@@ -96,7 +66,7 @@ def definition_has_catalog_write_steps(definition: dict[str, Any] | None) -> boo
         if stype in EXTERNAL_WRITE_STEP_TYPES:
             return True
         action = _invoke_action_from_step(step)
-        if action and _action_requires_write_approval(action):
+        if action and invoke_action_requires_write_approval(action):
             return True
     return False
 
@@ -132,7 +102,7 @@ def block_canvas_write_step(
     elif stype == "invoke_tool":
         cfg = config if isinstance(config, dict) else {}
         action = str(cfg.get("action") or cfg.get("tool_action") or "").strip() or None
-    if not action or not _action_requires_write_approval(action):
+    if not action or not invoke_action_requires_write_approval(action):
         return None
     if run_allows_catalog_write_execution(run_row):
         return None

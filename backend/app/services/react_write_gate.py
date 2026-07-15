@@ -15,11 +15,14 @@ from typing import Any
 
 from app.services.chat_connector_models import ConnectorActionPlan
 from app.services.catalog_write_authority import (
+    action_name_indicates_write,
     catalog_action_requires_write_approval,
     catalog_scopes_indicate_mutation,
+    find_matrix_entry_for_tool_registry_key,
+    invoke_action_requires_write_approval,
+    matrix_entry_requires_write_approval,
 )
 from app.services.connector_action_workflows import format_write_approval_message
-from app.services.event_intelligence_service import WRITE_ACTION_SUFFIXES
 
 WRITE_APPROVAL_REQUIRED = "write_approval_required"
 
@@ -51,6 +54,7 @@ __all__ = (
     "catalog_scopes_indicate_mutation",
     "first_structured_connector_plan_from_react",
     "invoke_action_is_write",
+    "invoke_action_requires_write_approval",
     "materialize_react_platform_write_approval_turn",
     "materialize_react_write_approval_turn",
     "pending_write_from_react",
@@ -59,39 +63,10 @@ __all__ = (
     "tool_requires_user_write_approval",
 )
 
-# Extra write verbs not covered by EventIntelligence WRITE_ACTION_SUFFIXES.
-# Used only as last-resort fallback when a registry tool is missing from the catalog.
-_EXTRA_WRITE_SUFFIXES = (
-    ".send",
-    ".post_message",
-    ".post",
-    ".add",
-    ".remove",
-    ".subscribe",
-    ".trigger",
-    ".assign",
-    ".transition",
-    ".comment",
-    ".acknowledge",
-    ".resolve",
-    ".reassign",
-    ".escalate",
-    ".add_note",
-    ".update_stage",
-    ".add_contact",
-    ".add_project",
-    ".add_member",
-    ".add_contacts",
-)
-
 
 def invoke_action_is_write(invoke_action: str) -> bool:
-    lowered = str(invoke_action or "").strip().lower()
-    if not lowered:
-        return False
-    if any(lowered.endswith(suffix) for suffix in WRITE_ACTION_SUFFIXES):
-        return True
-    return any(lowered.endswith(suffix) for suffix in _EXTRA_WRITE_SUFFIXES)
+    """Backward-compatible alias — delegates to catalog_write_authority."""
+    return action_name_indicates_write(invoke_action)
 
 
 def tool_requires_user_write_approval(tool_name: str, registry: Any) -> tuple[bool, str, str, str]:
@@ -128,29 +103,18 @@ def tool_requires_user_write_approval(tool_name: str, registry: Any) -> tuple[bo
     if name.startswith("assistant_"):
         return False, "", "", ""
 
-    try:
-        from app.services.connector_execution_matrix import build_connector_execution_matrix
+    entry = find_matrix_entry_for_tool_registry_key(name)
+    if entry is not None:
+        requires = matrix_entry_requires_write_approval(entry)
+        return (
+            requires,
+            entry.registry_key or entry.action_key or invoke_action,
+            entry.connector_id or integration,
+            entry.display_name or label,
+        )
 
-        for entry in build_connector_execution_matrix():
-            if entry.tool_registry_key != name:
-                continue
-            requires = catalog_action_requires_write_approval(
-                kind=entry.kind,
-                destructive=bool(entry.destructive),
-                requires_approval=bool(entry.requires_approval),
-                scopes=entry.required_scopes,
-            )
-            return (
-                requires,
-                entry.registry_key or entry.action_key or invoke_action,
-                entry.connector_id or integration,
-                entry.display_name or label,
-            )
-    except Exception:  # noqa: BLE001
-        pass
-
-    # Registry-only tools with no catalog row — last-resort suffix heuristic.
-    if invoke_action and invoke_action_is_write(invoke_action):
+    # Registry-only tools with no catalog row — last-resort via shared authority.
+    if invoke_action and invoke_action_requires_write_approval(invoke_action):
         return True, invoke_action, integration, label
     return False, invoke_action, integration, label
 

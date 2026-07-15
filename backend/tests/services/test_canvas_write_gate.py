@@ -40,6 +40,19 @@ def test_definition_detects_apollo_lists_create_as_write():
     assert definition_has_catalog_write_steps(NOOP_DEF) is False
 
 
+def test_canvas_delegates_classification_to_catalog_write_authority():
+    """Canvas must not re-derive write/read — same SoT as chat/ReAct."""
+    from app.services.catalog_write_authority import invoke_action_requires_write_approval
+    from app.services.react_write_gate import tool_requires_user_write_approval
+    from app.services.tool_registry import get_tool_registry
+
+    assert invoke_action_requires_write_approval("apollo.lists.create") is True
+    assert definition_has_catalog_write_steps(APOLLO_WRITE_DEF) is True
+    requires, action, *_ = tool_requires_user_write_approval("apollo_lists_create", get_tool_registry())
+    assert requires is True
+    assert action == "apollo.lists.create" or "lists.create" in action
+
+
 def test_policy_floor_forces_approval_for_invoke_tool_write_even_when_policy_zero():
     settings = Settings()
     decision = evaluate_policy(
