@@ -17,14 +17,14 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      // Stripe.js must be allowed to load/execute or the Payment Element never mounts.
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://*.js.stripe.com",
+      // Stripe.js + marketing GTM/GA must be allowed to load/execute.
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://*.js.stripe.com https://www.googletagmanager.com https://www.google-analytics.com https://*.googletagmanager.com https://*.google-analytics.com",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
       "font-src 'self' data:",
       "connect-src 'self' https: wss:",
-      // Stripe renders the card input and 3-D Secure challenges inside these frames.
-      "frame-src 'self' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://m.stripe.network",
+      // Stripe Payment Element frames + GTM noscript iframe.
+      "frame-src 'self' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://m.stripe.network https://www.googletagmanager.com",
       "frame-ancestors 'none'",
     ].join("; "),
   },
