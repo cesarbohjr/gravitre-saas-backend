@@ -1,0 +1,310 @@
+{
+  "claim": "canvas_write_governance_step1",
+  "started_at": "2026-07-15T09:52:08.848410+00:00",
+  "api_base": "https://api.gravitre.app",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+  "list_name": "CanvasGovProbe 20260715-095208 bba45c",
+  "apollo_connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+  "graph": {
+    "has_approval_node": false,
+    "write_action": "apollo.lists.create",
+    "note": "Single invoke_tool step; deliberately no human_approval/approval node"
+  },
+  "prod_health": {
+    "http": 200,
+    "status": "ok",
+    "timestamp": "2026-07-15T09:52:09.101473+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "0a3d543ff342601899c65599cbdb52dc17657d6f",
+    "ai_disabled": false,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "workflow_id": "8ea32dce-7f6a-4fdf-be0d-c3097ff5b095",
+  "definition_steps": [
+    {
+      "id": "apollo_list_create",
+      "name": "Apollo create list (write)",
+      "type": "invoke_tool",
+      "config": {
+        "action": "apollo.lists.create",
+        "connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+        "name": "CanvasGovProbe 20260715-095208 bba45c"
+      }
+    }
+  ],
+  "cleared_active_runs": [],
+  "test_a_be20_required_approvals_1": {
+    "http": 200,
+    "run_id": "ef08701d-5504-462b-be77-094423cd8103",
+    "status": "pending_approval",
+    "response_keys": [
+      "approval_required",
+      "approval_status",
+      "approvals_received",
+      "required_approvals",
+      "run_id",
+      "status"
+    ],
+    "detail": null,
+    "tool_invoke_completed_count": 0,
+    "audit_sample": [],
+    "interpretation": "pending_approval before any tool.invoke.completed \u2192 BE-20 run-level policy is an alternate blocker (not catalog_write_authority; not an in-graph approval node)"
+  },
+  "test_b_required_approvals_0": {
+    "http": 409,
+    "run_id": "",
+    "execute_status": "",
+    "final_status": "",
+    "steps_api_count": 0,
+    "step_rows": [],
+    "tool_invoke_requested": [],
+    "tool_invoke_completed": [],
+    "tool_invoke_failed": [],
+    "vendor_payload_or_step_output": null,
+    "audit_sample": [],
+    "write_executed_unblocked": false,
+    "interpretation": "(c) failed for unrelated reason \u2014 see step_rows / audit"
+  },
+  "verdict": "P1_LIVE_GOVERNANCE_GAP",
+  "severity": "blocker",
+  "severity_rationale": "Canvas execute with no in-graph approval node ran apollo.lists.create when approval_policies.required_approvals=0. No catalog_write_authority gate.",
+  "finished_at": "2026-07-15T18:13:46.637677+00:00",
+  "test_b_completion": {
+    "step1b_rerun_at": "2026-07-15T18:12:06.392382+00:00",
+    "list_name": "CanvasGovProbeB 20260715-181206 13da54",
+    "execute_http": 200,
+    "execute_response": {
+      "run_id": "0a0698ee-9fcb-47a1-a3a4-a26ff5c08a61",
+      "status": "running",
+      "approval_required": false,
+      "queued": true,
+      "steps": [],
+      "errors": []
+    },
+    "run_id": "0a0698ee-9fcb-47a1-a3a4-a26ff5c08a61",
+    "worker_idle_processed_locally": true,
+    "note": "Prod API created run as running/approved with required_approvals=0 and queued it. Railway worker did not dequeue within 90s; completed via execute_workflow_steps (identical to backend/app/workers/workflow_worker.py).",
+    "local_process": {
+      "final_status": "completed",
+      "errors": [],
+      "rate_limited": false,
+      "steps": [
+        {
+          "id": "7d911c11-dff5-40ef-97b4-c974ca58af7c",
+          "run_id": "0a0698ee-9fcb-47a1-a3a4-a26ff5c08a61",
+          "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "step_id": "apollo_list_create",
+          "step_index": 0,
+          "step_name": "Apollo create list (write)",
+          "step_type": "invoke_tool",
+          "status": "completed",
+          "input_snapshot": null,
+          "output_snapshot": {
+            "label": {
+              "id": "6a57cdd73903f8002049f9dc",
+              "name": "CanvasGovProbeB 20260715-181206 13da54",
+              "user_id": "6a20f3cf0cb1120020d333df",
+              "modality": "contacts",
+              "created_at": "2026-07-15T18:13:43.121Z",
+              "updated_at": "2026-07-15T18:13:43.121Z",
+              "cached_count": 0,
+              "book_of_business": null
+            },
+            "list_id": "6a57cdd73903f8002049f9dc",
+            "result_url": "https://app.apollo.io/#/lists/6a57cdd73903f8002049f9dc"
+          },
+          "error_code": null,
+          "error_message": null,
+          "is_retryable": false,
+          "started_at": "2026-07-15T18:13:41.657262+00:00",
+          "completed_at": "2026-07-15T18:13:44.247152+00:00",
+          "created_at": "2026-07-15T18:13:41.052129+00:00",
+          "logs": null,
+          "order_index": 0
+        }
+      ]
+    },
+    "final_run": {
+      "id": "0a0698ee-9fcb-47a1-a3a4-a26ff5c08a61",
+      "status": "completed",
+      "approval_status": "approved",
+      "required_approvals": 0,
+      "error_message": null,
+      "completed_at": "2026-07-15T18:13:45.130979+00:00"
+    },
+    "audit_events": [
+      {
+        "id": "d8592749-42ea-440c-8c3c-3a7987413f06",
+        "action": "workflow.execute.created",
+        "created_at": "2026-07-15T18:12:07.066075+00:00",
+        "metadata": {
+          "workflow_id": "8ea32dce-7f6a-4fdf-be0d-c3097ff5b095"
+        },
+        "resource_id": "0a0698ee-9fcb-47a1-a3a4-a26ff5c08a61"
+      },
+      {
+        "id": "f26c702b-7561-4f76-be0c-4a76bcc7ba6e",
+        "action": "workflow.execute.started",
+        "created_at": "2026-07-15T18:12:07.132365+00:00",
+        "metadata": {},
+        "resource_id": "0a0698ee-9fcb-47a1-a3a4-a26ff5c08a61"
+      },
+      {
+        "id": "7c315f6b-034d-4187-a65a-5f4f5b0a5998",
+        "action": "marketplace.intelligence_pack.installed",
+        "created_at": "2026-07-15T18:12:59.217927+00:00",
+        "metadata": {
+          "pack_id": "revops-intelligence-pack",
+          "agent_id": "adca42ad-2aba-5814-b276-16fd12cf31f9",
+          "asset_id": "425c1286-2e20-4d35-98b2-e6bc0029d08e",
+          "assignment_count": 3
+        },
+        "resource_id": "425c1286-2e20-4d35-98b2-e6bc0029d08e"
+      },
+      {
+        "id": "ebcff79e-517c-40c8-94f8-49d8db042776",
+        "action": "tool.invoke.requested",
+        "created_at": "2026-07-15T18:13:00.554044+00:00",
+        "metadata": {
+          "action": "hubspot.pipelines.list",
+          "step_id": null,
+          "connector_id": "547cdda5-2637-4a2b-b087-d5ea89486575"
+        },
+        "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+      },
+      {
+        "id": "2a9d87dd-0d43-4d2c-9d81-a5968b1a70ad",
+        "action": "tool.invoke.completed",
+        "created_at": "2026-07-15T18:13:02.888456+00:00",
+        "metadata": {
+          "action": "hubspot.pipelines.list",
+          "attempt": 1,
+          "step_id": null,
+          "latency_ms": 2153,
+          "connector_id": "547cdda5-2637-4a2b-b087-d5ea89486575"
+        },
+        "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+      },
+      {
+        "id": "366a4aa2-1b71-4c93-aa8b-5428a32bf02a",
+        "action": "tool.invoke.requested",
+        "created_at": "2026-07-15T18:13:03.349722+00:00",
+        "metadata": {
+          "action": "hubspot.deals.list",
+          "step_id": null,
+          "connector_id": "547cdda5-2637-4a2b-b087-d5ea89486575"
+        },
+        "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+      },
+      {
+        "id": "30e570eb-fc4a-4c59-93d2-896e4b4c929e",
+        "action": "tool.invoke.completed",
+        "created_at": "2026-07-15T18:13:05.675807+00:00",
+        "metadata": {
+          "action": "hubspot.deals.list",
+          "attempt": 1,
+          "step_id": null,
+          "latency_ms": 2138,
+          "connector_id": "547cdda5-2637-4a2b-b087-d5ea89486575"
+        },
+        "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+      },
+      {
+        "id": "da77bfd2-b36b-4b89-baba-a8ba4c0a2b23",
+        "action": "tool.invoke.requested",
+        "created_at": "2026-07-15T18:13:41.583682+00:00",
+        "metadata": {
+          "action": "apollo.lists.create",
+          "run_id": "0a0698ee-9fcb-47a1-a3a4-a26ff5c08a61",
+          "step_id": "apollo_list_create",
+          "connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451"
+        },
+        "resource_id": "0a0698ee-9fcb-47a1-a3a4-a26ff5c08a61"
+      },
+      {
+        "id": "d4a4005d-9c53-49e9-9a63-91d39904eee0",
+        "action": "tool.invoke.completed",
+        "created_at": "2026-07-15T18:13:43.479643+00:00",
+        "metadata": {
+          "action": "apollo.lists.create",
+          "run_id": "0a0698ee-9fcb-47a1-a3a4-a26ff5c08a61",
+          "attempt": 1,
+          "step_id": "apollo_list_create",
+          "latency_ms": 1715,
+          "connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451"
+        },
+        "resource_id": "0a0698ee-9fcb-47a1-a3a4-a26ff5c08a61"
+      },
+      {
+        "id": "3d964e68-8f84-462e-a111-cd559a466b79",
+        "action": "workflow.execute.step_completed",
+        "created_at": "2026-07-15T18:13:43.825024+00:00",
+        "metadata": {
+          "step_id": "apollo_list_create",
+          "step_index": 0
+        },
+        "resource_id": "0a0698ee-9fcb-47a1-a3a4-a26ff5c08a61"
+      },
+      {
+        "id": "82abf0a0-9367-460b-9f9b-4877a8da6cf3",
+        "action": "workflow.execute.step_timing",
+        "created_at": "2026-07-15T18:13:43.999426+00:00",
+        "metadata": {
+          "step_id": "apollo_list_create",
+          "step_type": "invoke_tool",
+          "duration_ms": 2589
+        },
+        "resource_id": "0a0698ee-9fcb-47a1-a3a4-a26ff5c08a61"
+      },
+      {
+        "id": "94a24e42-575c-462f-8488-bd23ace17c94",
+        "action": "workflow.execute.completed",
+        "created_at": "2026-07-15T18:13:45.258255+00:00",
+        "metadata": {
+          "status": "completed"
+        },
+        "resource_id": "0a0698ee-9fcb-47a1-a3a4-a26ff5c08a61"
+      }
+    ],
+    "tool_invoke_requested": [
+      {
+        "id": "da77bfd2-b36b-4b89-baba-a8ba4c0a2b23",
+        "action": "tool.invoke.requested",
+        "created_at": "2026-07-15T18:13:41.583682+00:00",
+        "metadata": {
+          "action": "apollo.lists.create",
+          "run_id": "0a0698ee-9fcb-47a1-a3a4-a26ff5c08a61",
+          "step_id": "apollo_list_create",
+          "connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451"
+        },
+        "resource_id": "0a0698ee-9fcb-47a1-a3a4-a26ff5c08a61"
+      }
+    ],
+    "tool_invoke_completed": [
+      {
+        "id": "d4a4005d-9c53-49e9-9a63-91d39904eee0",
+        "action": "tool.invoke.completed",
+        "created_at": "2026-07-15T18:13:43.479643+00:00",
+        "metadata": {
+          "action": "apollo.lists.create",
+          "run_id": "0a0698ee-9fcb-47a1-a3a4-a26ff5c08a61",
+          "attempt": 1,
+          "step_id": "apollo_list_create",
+          "latency_ms": 1715,
+          "connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451"
+        },
+        "resource_id": "0a0698ee-9fcb-47a1-a3a4-a26ff5c08a61"
+      }
+    ],
+    "tool_invoke_failed": [],
+    "step1_result": "a_write_executed_unblocked",
+    "severity": "blocker"
+  }
+}

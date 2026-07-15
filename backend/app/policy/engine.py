@@ -11,6 +11,18 @@ from app.workflows.constants import SAFE_DEFAULT_APPROVER_ROLES
 EXTERNAL_STEP_TYPES = {"slack_post_message", "email_send", "webhook_post"}
 
 
+def _definition_has_write_steps(definition: dict[str, Any]) -> bool:
+    """True for legacy external steps OR catalog write-capable invoke_tool actions."""
+    if any(st in EXTERNAL_STEP_TYPES for st in _step_types(definition)):
+        return True
+    try:
+        from app.services.canvas_write_gate import definition_has_catalog_write_steps
+
+        return definition_has_catalog_write_steps(definition)
+    except Exception:  # noqa: BLE001
+        return False
+
+
 @dataclass
 class PolicyContext:
     settings: Settings
@@ -44,7 +56,9 @@ def _step_types(definition: dict[str, Any]) -> list[str]:
 def evaluate_policy(context: PolicyContext) -> PolicyDecision:
     steps = _step_types(context.definition)
     step_count = len(steps)
-    has_external = any(st in EXTERNAL_STEP_TYPES for st in steps)
+    # Catalog writes (e.g. apollo.lists.create via invoke_tool) count as external
+    # for the approval floor — same class as slack/email/webhook.
+    has_external = _definition_has_write_steps(context.definition)
     required_approvals = int(context.required_approvals or 0)
     approver_roles = list(context.approver_roles or [])
     approval_floor_applied = False
