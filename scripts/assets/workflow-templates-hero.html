@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Workflow Templates Hero</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 1200px;
+      height: 675px;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 45%, #f0fdf4 100%);
+      overflow: hidden;
+      position: relative;
+    }
+    .orb-1 {
+      position: absolute;
+      top: -120px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 700px;
+      height: 500px;
+      background: #d1fae5;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.55;
+    }
+    .orb-2 {
+      position: absolute;
+      top: 40px;
+      right: -80px;
+      width: 280px;
+      height: 280px;
+      background: #dbeafe;
+      border-radius: 50%;
+      filter: blur(60px);
+      opacity: 0.35;
+    }
+    .orb-3 {
+      position: absolute;
+      bottom: -60px;
+      left: -40px;
+      width: 240px;
+      height: 240px;
+      background: #fef3c7;
+      border-radius: 50%;
+      filter: blur(60px);
+      opacity: 0.3;
+    }
+    .grid-dots {
+      position: absolute;
+      inset: 0;
+      opacity: 0.04;
+      background-image: radial-gradient(circle, #18181b 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    .container {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      padding: 48px 56px;
+      display: flex;
+      flex-direction: column;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      align-self: center;
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: 1px solid #a7f3d0;
+      background: rgba(236, 253, 245, 0.85);
+      color: #047857;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+    }
+    h1 {
+      text-align: center;
+      font-size: 34px;
+      font-weight: 700;
+      color: #18181b;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 8px;
+    }
+    h1 span {
+      background: linear-gradient(90deg, #059669, #14b8a6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      text-align: center;
+      font-size: 15px;
+      color: #71717a;
+      margin-bottom: 28px;
+    }
+    .tabs {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .tab {
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #71717a;
+      background: rgba(255,255,255,0.7);
+      border: 1px solid #e4e4e7;
+    }
+    .tab.active {
+      background: #18181b;
+      color: #fff;
+      border-color: #18181b;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      flex: 1;
+      align-items: start;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #e4e4e7;
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    .card-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+      font-size: 20px;
+    }
+    .card-icon.teal { background: #ccfbf1; }
+    .card-icon.blue { background: #dbeafe; }
+    .card-icon.purple { background: #ede9fe; }
+    .card-icon.amber { background: #fef3c7; }
+    .card-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #18181b;
+      margin-bottom: 4px;
+      line-height: 1.3;
+    }
+    .card-meta {
+      font-size: 11px;
+      color: #a1a1aa;
+      margin-bottom: 10px;
+    }
+    .card-desc {
+      font-size: 11px;
+      color: #71717a;
+      line-height: 1.45;
+      flex: 1;
+      margin-bottom: 12px;
+    }
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .pill {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #f4f4f5;
+      color: #52525b;
+    }
+    .pill.free {
+      background: #ecfdf5;
+      color: #047857;
+    }
+    .install-btn {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: #059669;
+      color: #fff;
+    }
+    .steps {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 22px;
+    }
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-radius: 14px;
+      background: #fff;
+      border: 1px solid #e4e4e7;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .step-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: #d1fae5;
+      color: #047857;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #18181b;
+    }
+    .step-desc {
+      font-size: 10px;
+      color: #a1a1aa;
+    }
+  </style>
+</head>
+<body>
+  <div class="orb-1"></div>
+  <div class="orb-2"></div>
+  <div class="orb-3"></div>
+  <div class="grid-dots"></div>
+  <div class="container">
+    <div class="badge"><span class="badge-dot"></span> Gravitre Marketplace</div>
+    <h1>60+ templates &amp; <span>department packs</span></h1>
+    <p class="subtitle">Workflows, agents, and knowledge — installable in minutes, not weeks.</p>
+
+    <div class="tabs">
+      <div class="tab">All</div>
+      <div class="tab">Agents</div>
+      <div class="tab">Workflows</div>
+      <div class="tab active">Department packs</div>
+      <div class="tab">Knowledge</div>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-icon teal">🎧</div>
+        <div class="card-title">Customer Success Pack</div>
+        <div class="card-meta">3 workflows · CS agent</div>
+        <div class="card-desc">Health monitoring, QBR prep, and account risk workflows bundled for CSM teams.</div>
+        <div class="card-footer">
+          <span class="pill free">Free</span>
+          <span class="install-btn">Install</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon blue">📈</div>
+        <div class="card-title">Revenue Operations Pack</div>
+        <div class="card-meta">RevOps + Sales agents</div>
+        <div class="card-desc">Pipeline review, executive summaries, and CRM-connected RevOps rituals.</div>
+        <div class="card-footer">
+          <span class="pill free">Free</span>
+          <span class="install-btn">Install</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon purple">💬</div>
+        <div class="card-title">Support Operations Pack</div>
+        <div class="card-meta">Zendesk triage agent</div>
+        <div class="card-desc">Ticket triage, support knowledge, and optional SLA escalation workflow.</div>
+        <div class="card-footer">
+          <span class="pill">$49</span>
+          <span class="install-btn">Install</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon amber">📣</div>
+        <div class="card-title">Marketing Operations Pack</div>
+        <div class="card-meta">Campaign production</div>
+        <div class="card-desc">Multi-agent marketing production, attribution analysis, and campaign digests.</div>
+        <div class="card-footer">
+          <span class="pill free">Free</span>
+          <span class="install-btn">Install</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-label">Browse</div>
+          <div class="step-desc">Filter by department</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-label">Connect</div>
+          <div class="step-desc">Readiness check first</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-label">Install</div>
+          <div class="step-desc">Deploy in minutes</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

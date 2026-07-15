@@ -46,13 +46,13 @@ export const workflowTemplatesPost: BlogPost = {
   category: "Product",
   author: GRAVITRE_BLOG_AUTHOR,
   datePublished: "2026-03-21",
-  dateModified: "2026-07-15",
+  dateModified: "2026-07-16",
   displayDate: "March 21, 2026",
   readTime: "12 min read",
   heroImage: "/images/blog/workflow-templates-hero.jpg",
   heroGradient: "from-amber-50 via-white to-emerald-50",
   heroAlt:
-    "Gravitre Marketplace department packs grid showing Customer Success, Support Operations, and other installable packs with connector readiness.",
+    "Stylized Gravitre Marketplace illustration with department pack cards for Customer Success, RevOps, Support, and Marketing, plus Browse, Connect, and Install steps.",
   keywords: [
     "workflow templates",
     "automation marketplace",
