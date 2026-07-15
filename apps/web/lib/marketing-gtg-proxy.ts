@@ -16,6 +16,26 @@ export function resolveTagGatewaySearch(request: NextRequest): string {
   return ""
 }
 
+/**
+ * Drop Next.js catch-all echoes like ?path=healthy that are not real
+ * measurement query params (they can appear on nextUrl for [...path] routes).
+ */
+export function sanitizeTagGatewaySearch(
+  search: string,
+  pathSegments?: string[] | null
+): string {
+  if (!search) return ""
+  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search)
+  if (pathSegments?.length) {
+    const joined = pathSegments.join("/")
+    if (params.get("path") === joined) {
+      params.delete("path")
+    }
+  }
+  const qs = params.toString()
+  return qs ? `?${qs}` : ""
+}
+
 /** Build the FPS upstream URL, preserving the first-party path + query string. */
 export function buildTagGatewayUpstreamUrl(
   search: string,
@@ -25,8 +45,9 @@ export function buildTagGatewayUpstreamUrl(
     ? `${MARKETING_GTG_PATH}/${pathSegments.join("/")}`
     : `${MARKETING_GTG_PATH}/`
   const target = new URL(`https://${MARKETING_GTG_FPS_HOST}${pathSuffix}`)
-  if (search) {
-    target.search = search.startsWith("?") ? search.slice(1) : search
+  const cleaned = sanitizeTagGatewaySearch(search, pathSegments)
+  if (cleaned) {
+    target.search = cleaned.startsWith("?") ? cleaned.slice(1) : cleaned
   }
   return target
 }
@@ -123,15 +144,6 @@ export async function proxyTagGatewayRequest(
   if (request.method !== "GET" && request.method !== "HEAD") {
     responseHeaders.set("Cache-Control", "no-store")
   }
-
-  // Temporary diagnostics for Tag Gateway verification (safe; no secrets).
-  responseHeaders.set("X-Gtg-Upstream", `${target.pathname}${target.search}`)
-  responseHeaders.set(
-    "X-Gtg-Geo",
-    headers.has("X-Forwarded-CountryRegion") || headers.has("X-Forwarded-Country")
-      ? "1"
-      : "0"
-  )
 
   return new Response(upstream.body, {
     status: upstream.status,

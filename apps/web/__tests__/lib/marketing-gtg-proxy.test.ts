@@ -22,6 +22,11 @@ describe("buildTagGatewayUpstreamUrl", () => {
     const url = buildTagGatewayUpstreamUrl("?id=GTM-P9TXQF82", [])
     expect(url.searchParams.get("id")).toBe("GTM-P9TXQF82")
   })
+
+  it("strips catch-all path echo from the query string", () => {
+    const url = buildTagGatewayUpstreamUrl("?path=healthy", ["healthy"])
+    expect(url.toString()).toBe("https://gtm-p9txqf82.fps.goog/gtg/healthy")
+  })
 })
 
 describe("applyTagGatewayGeoHeaders", () => {
