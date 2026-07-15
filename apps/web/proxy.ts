@@ -41,6 +41,8 @@ export async function proxy(request: NextRequest) {
     "/favicon",
     "/robots.txt",
     "/sitemap",
+    // First-party Google Tag Gateway (must be anonymous; browsers load /gtg without a session)
+    "/gtg",
     // Playwright ExecutionResult harness (page itself 404s unless PLAYWRIGHT_E2E=1)
     "/e2e",
   ]

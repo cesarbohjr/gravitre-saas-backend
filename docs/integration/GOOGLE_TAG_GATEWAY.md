@@ -10,6 +10,7 @@ Implements Google’s [manual Tag Gateway setup](https://developers.google.com/t
 | Serving path | `/gtg` |
 | FPS origin | `gtm-p9txqf82.fps.goog` |
 | Proxy | `apps/web/app/gtg/[[...path]]/route.ts` |
+| Public path | `/gtg` allowlisted in `apps/web/proxy.ts` (auth middleware) |
 | Snippet | `apps/web/components/marketing/google-tag-manager.tsx` |
 
 ## Post-deploy verification
