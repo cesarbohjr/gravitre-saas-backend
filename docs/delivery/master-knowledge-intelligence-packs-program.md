@@ -274,7 +274,7 @@ API accounts/keys for FRED, SEC_USER_AGENT, OpenCorporates commercial token, NVD
 | 4 | Customer Success | **DONE** — `docs/delivery/phase4-customer-success-pack-live.json` (internal HubSpot; Zendesk staged) |
 | 5 | Prospecting & Lead Scouting | **DONE** — `docs/delivery/phase4-prospecting-pack-live.json` (Apollo/HubSpot lists; search plan-limited) |
 | 6 | Marketing | **DONE** — GSC OAuth PASS; SEMrush/Ahrefs BYO v1–v3 write executors + schemas; PackSignal + PackKpiPanel; install tip `docs/delivery/phase4-marketing-pack-live.json` (tip `0db6ddf0`); raw-query Memory/KG stop-line held |
-| 7 | RevOps | **IN PROGRESS** — catalog + install scaffold (`revops-intelligence-pack`); HubSpot KPI tab; after Sales+Marketing+CS (Finance when live) |
+| 7 | RevOps | **DONE** — catalog + install (`revops-intelligence-pack`); HubSpot pipelines/deals tip; Salesforce stub; Finance gated; PackKpiPanel Reports tab; tip `docs/delivery/phase4-revops-pack-live.json` |
 | 8 | AI Search | **Research spike only** — no scrape |
 | 9 | Finance | Cesar sign-off before live banking/QB/Xero/NetSuite |
 | 10 | HR & Talent | Cesar sign-off before live HRIS/ATS/Payroll |
