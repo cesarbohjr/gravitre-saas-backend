@@ -59,7 +59,30 @@ AHREFS = {
     "requirementNote": (
         "Ahrefs requires your own Ahrefs API subscription (BYO). "
         "Gravitre never uses a shared platform key. "
-        "v1 reads: domain rating, organic keywords, backlinks."
+        "v1 reads: domain rating, organic keywords, backlinks; "
+        "Brand Radar overview for AI Search pack."
+    ),
+}
+FINSEO = {
+    "connectorType": "finseo",
+    "label": "Finseo",
+    "required": False,
+    "connectPath": "/connectors?type=finseo",
+    "requirementNote": (
+        "Finseo requires your own Finseo API subscription (BYO). "
+        "Gravitre never uses a shared platform key. "
+        "AI visibility metrics, prompts, and competitors."
+    ),
+}
+AI_VISIBILITY_UI = {
+    "connectorType": "ai_visibility_ui",
+    "label": "AI Visibility UI",
+    "required": False,
+    "connectPath": "/connectors?type=ai_visibility_ui",
+    "requirementNote": (
+        "S2 consumer-UI scrape connector (ChatGPT / Perplexity / Gemini / Copilot / Claude). "
+        "Action tiers v1–v3; provenance required; LinkedIn scrape forbidden; "
+        "raw answer text Memory/KG gated."
     ),
 }
 PDL = {
@@ -832,6 +855,74 @@ def _intelligence_packs() -> list[CatalogAsset]:
                     "label": "Salesforce",
                     "required": False,
                     "connectPath": "/connectors?type=salesforce",
+                },
+            ]
+        elif spec.pack_id == "ai-search-intelligence-pack":
+            required = [
+                {**AHREFS, "required": False},
+                {**FINSEO, "required": False},
+                {**AI_VISIBILITY_UI, "required": False},
+            ]
+        elif spec.pack_id == "finance-intelligence-pack":
+            required = [
+                {
+                    "connectorType": "quickbooks",
+                    "label": "QuickBooks",
+                    "required": False,
+                    "connectPath": "/connectors?type=quickbooks",
+                },
+                {
+                    "connectorType": "xero",
+                    "label": "Xero",
+                    "required": False,
+                    "connectPath": "/connectors?type=xero",
+                },
+                {
+                    "connectorType": "netsuite",
+                    "label": "NetSuite",
+                    "required": False,
+                    "connectPath": "/connectors?type=netsuite",
+                },
+                {
+                    "connectorType": "plaid",
+                    "label": "Plaid (if entitled)",
+                    "required": False,
+                    "connectPath": "/connectors?type=plaid",
+                    "requirementNote": (
+                        "Plaid Link public_token exchange — not generic OAuth. "
+                        "Accounts/balances/transactions only after exchange."
+                    ),
+                },
+            ]
+        elif spec.pack_id == "hr-talent-intelligence-pack":
+            required = [
+                {
+                    "connectorType": "workday",
+                    "label": "Workday",
+                    "required": False,
+                    "connectPath": "/connectors?type=workday",
+                },
+                {
+                    "connectorType": "bamboohr",
+                    "label": "BambooHR",
+                    "required": False,
+                    "connectPath": "/connectors?type=bamboohr",
+                },
+                {
+                    "connectorType": "greenhouse",
+                    "label": "Greenhouse",
+                    "required": False,
+                    "connectPath": "/connectors?type=greenhouse",
+                },
+                {
+                    "connectorType": "gusto",
+                    "label": "Gusto (partner OAuth)",
+                    "required": False,
+                    "connectPath": "/connectors?type=gusto",
+                    "requirementNote": (
+                        "Gusto requires partner OAuth approval before connect. "
+                        "Payroll/compensation Memory/KG writes remain gated."
+                    ),
                 },
             ]
         elif spec.demo_systems:

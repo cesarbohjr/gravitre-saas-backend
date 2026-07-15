@@ -128,6 +128,9 @@ export default function IntelligenceReportsPage() {
             <TabsTrigger value="prospecting">{reportsCopy.tabProspecting}</TabsTrigger>
             <TabsTrigger value="marketing">{reportsCopy.tabMarketing}</TabsTrigger>
             <TabsTrigger value="revops">{reportsCopy.tabRevOps}</TabsTrigger>
+            <TabsTrigger value="ai-search">{reportsCopy.tabAiSearch}</TabsTrigger>
+            <TabsTrigger value="finance">{reportsCopy.tabFinance}</TabsTrigger>
+            <TabsTrigger value="hr-talent">{reportsCopy.tabHrTalent}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="roi" className="mt-6 space-y-4">
@@ -238,6 +241,27 @@ export default function IntelligenceReportsPage() {
             <PackKpiPanel
               packId="revops-intelligence-pack"
               packTitle="RevOps Intelligence Pack"
+            />
+          </TabsContent>
+
+          <TabsContent value="ai-search" className="mt-6 space-y-4">
+            <PackKpiPanel
+              packId="ai-search-intelligence-pack"
+              packTitle="AI Search Intelligence Pack"
+            />
+          </TabsContent>
+
+          <TabsContent value="finance" className="mt-6 space-y-4">
+            <PackKpiPanel
+              packId="finance-intelligence-pack"
+              packTitle="Finance Intelligence Pack"
+            />
+          </TabsContent>
+
+          <TabsContent value="hr-talent" className="mt-6 space-y-4">
+            <PackKpiPanel
+              packId="hr-talent-intelligence-pack"
+              packTitle="HR & Talent Intelligence Pack"
             />
           </TabsContent>
         </Tabs>

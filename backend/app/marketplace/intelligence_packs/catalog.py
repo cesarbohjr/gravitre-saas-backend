@@ -127,7 +127,8 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             description=(
                 "Revenue operations rollup across Sales + Marketing + CS CRM signals. "
                 "Reuses HubSpot/Salesforce connectors; heuristic forecasting OK. "
-                "Finance banking/QB/Xero/NetSuite stay gated until Cesar sign-off."
+                "Finance pack F3 unlocked (QB + Xero + NetSuite + Plaid if entitled) — "
+                "install finance-intelligence-pack for Cash Flow Analyst; RevOps stays CRM-only."
             ),
             marketplace_tags=["revops", "starter", "intelligence-pack", "revenue"],
             assignments=[
@@ -167,6 +168,202 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
                     "name": "List HubSpot Pipelines",
                     "type": "invoke_tool",
                     "config": {"action": "hubspot.pipelines.list", "params": {}},
+                },
+            ],
+        ),
+        IntelligencePackSpec(
+            pack_id="ai-search-intelligence-pack",
+            name="AI Search Intelligence Pack",
+            department="marketing",
+            default_subdomain="ai_visibility",
+            description=(
+                "Answer-engine visibility (path C + S2): Ahrefs Brand Radar + Finseo dual BYO "
+                "(use whichever is connected), plus ai_visibility_ui consumer-UI scrape v1–v3. "
+                "Raw AI answer text Memory/KG gated; LinkedIn scrape forbidden."
+            ),
+            marketplace_tags=["ai-search", "starter", "intelligence-pack", "geo", "brand-radar"],
+            assignments=[
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "ahrefs-brand-radar",
+                    "Ahrefs Brand Radar",
+                    "marketing",
+                    "ai_visibility",
+                    reference_summary=(
+                        "BYO Ahrefs Brand Radar overview via ahrefs.brand_radar.overview "
+                        "(impressions/mentions/SoV across ChatGPT, Gemini, Perplexity, Copilot, Claude, Grok)."
+                    ),
+                    external_url="https://docs.ahrefs.com/api/reference/brand-radar",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "finseo-ai-metrics",
+                    "Finseo AI Visibility",
+                    "marketing",
+                    "ai_visibility",
+                    reference_summary=(
+                        "BYO Finseo metrics/prompts via finseo.metrics.overview "
+                        "(https://www.finseo.ai/developers/api)."
+                    ),
+                    external_url="https://www.finseo.ai/developers/api",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "ai-visibility-ui-scrape",
+                    "AI Visibility UI Scrape",
+                    "marketing",
+                    "ai_visibility",
+                    reference_summary=(
+                        "S2 consumer-UI capture (ChatGPT/Perplexity/Gemini/Copilot/Claude) via "
+                        "ai_visibility_ui.mentions.check — provenance required; raw answers Memory/KG blocked."
+                    ),
+                ),
+            ],
+            demo_agent_name="AI Visibility Analyst",
+            demo_systems=["ahrefs", "finseo", "ai_visibility_ui"],
+            connector_template_id="ai-search-intelligence-sources",
+            workflow_name="AI Search Brand Radar Overview",
+            workflow_description=(
+                "Read-only: Ahrefs Brand Radar overview via invoke_tool. "
+                "Finseo / UI scrape available when those connectors are connected."
+            ),
+            workflow_steps=[
+                {
+                    "id": "brand-radar-overview",
+                    "name": "Brand Radar Overview",
+                    "type": "invoke_tool",
+                    "config": {
+                        "action": "ahrefs.brand_radar.overview",
+                        "params": {"brand": "Gravitree", "country": "us"},
+                    },
+                },
+            ],
+        ),
+        IntelligencePackSpec(
+            pack_id="finance-intelligence-pack",
+            name="Finance Intelligence Pack",
+            department="finance",
+            default_subdomain="cash_flow",
+            description=(
+                "Finance pack F3: QuickBooks + Xero + NetSuite + Plaid (if entitled). "
+                "Cash Flow Analyst demo agent; read-only accounting/banking tip. "
+                "Raw payroll/banking → Memory/KG blocked; reuse existing connectors when active."
+            ),
+            marketplace_tags=["finance", "starter", "intelligence-pack", "cash-flow"],
+            assignments=[
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "quickbooks-company",
+                    "QuickBooks Company",
+                    "finance",
+                    "cash_flow",
+                    reference_summary="Customer QuickBooks company info / invoices (read-only).",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "xero-ledger",
+                    "Xero Ledger",
+                    "finance",
+                    "cash_flow",
+                    reference_summary="Customer Xero contacts/invoices/accounts (read-only).",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "netsuite-erp",
+                    "NetSuite ERP",
+                    "finance",
+                    "cash_flow",
+                    reference_summary="Customer NetSuite invoices/customers (read-only).",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "plaid-balances",
+                    "Plaid Balances",
+                    "finance",
+                    "cash_flow",
+                    reference_summary=(
+                        "Plaid accounts/balances/transactions if entitled — "
+                        "requires public_token exchange; not generic OAuth."
+                    ),
+                ),
+            ],
+            demo_agent_name="Cash Flow Analyst",
+            demo_systems=["quickbooks", "xero", "netsuite", "plaid"],
+            connector_template_id="finance-intelligence-sources",
+            workflow_name="Finance QuickBooks Company Snapshot",
+            workflow_description=(
+                "Read-only: QuickBooks company info via invoke_tool "
+                "(falls back to invoices.list when companyinfo unavailable)."
+            ),
+            workflow_steps=[
+                {
+                    "id": "qb-company",
+                    "name": "QuickBooks Company Info",
+                    "type": "invoke_tool",
+                    "config": {"action": "quickbooks.companyinfo.get", "params": {}},
+                },
+            ],
+        ),
+        IntelligencePackSpec(
+            pack_id="hr-talent-intelligence-pack",
+            name="HR & Talent Intelligence Pack",
+            department="hr",
+            default_subdomain="recruiting",
+            description=(
+                "HR pack H3: Workday + BambooHR + Greenhouse + Gusto. "
+                "Recruiting Talent Analyst demo agent; Greenhouse jobs tip. "
+                "Employee/compensation PII → Memory/KG blocked; no LinkedIn scrape; "
+                "Gusto remains partner-OAuth gated until connected."
+            ),
+            marketplace_tags=["hr", "talent", "starter", "intelligence-pack", "recruiting"],
+            assignments=[
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "greenhouse-jobs",
+                    "Greenhouse Jobs",
+                    "hr",
+                    "recruiting",
+                    reference_summary="Open jobs via greenhouse.jobs.list (read-only ATS).",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "workday-workers",
+                    "Workday Workers",
+                    "hr",
+                    "workforce",
+                    reference_summary="Workday workers/org units (read-only HRIS).",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "bamboohr-employees",
+                    "BambooHR Employees",
+                    "hr",
+                    "workforce",
+                    reference_summary="BambooHR employee directory (read-only; PII Memory/KG gated).",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "gusto-payroll",
+                    "Gusto Payroll",
+                    "hr",
+                    "payroll",
+                    reference_summary=(
+                        "Gusto companies/employees/payrolls when partner OAuth connected; "
+                        "compensation Memory/KG blocked."
+                    ),
+                ),
+            ],
+            demo_agent_name="Recruiting Talent Analyst",
+            demo_systems=["workday", "bamboohr", "greenhouse", "gusto"],
+            connector_template_id="hr-talent-intelligence-sources",
+            workflow_name="HR Greenhouse Jobs Snapshot",
+            workflow_description="Read-only: list Greenhouse open jobs via invoke_tool.",
+            workflow_steps=[
+                {
+                    "id": "greenhouse-jobs",
+                    "name": "List Greenhouse Jobs",
+                    "type": "invoke_tool",
+                    "config": {"action": "greenhouse.jobs.list", "params": {}},
                 },
             ],
         ),

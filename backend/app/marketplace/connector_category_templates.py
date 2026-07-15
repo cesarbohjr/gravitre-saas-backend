@@ -142,8 +142,35 @@ CONNECTOR_CATEGORY_TEMPLATES: dict[str, dict[str, Any]] = {
     },
     "revops-intelligence-sources": {
         "name": "RevOps Intelligence Sources",
-        "description": "CRM rollup stubs (HubSpot; Salesforce optional). No Finance connectors without Cesar sign-off.",
+        "description": (
+            "CRM rollup stubs (HubSpot; Salesforce optional). "
+            "Finance pack F3 unlocked separately (finance-intelligence-sources)."
+        ),
         "connectors": ["hubspot", "salesforce"],
+    },
+    "ai-search-intelligence-sources": {
+        "name": "AI Search Intelligence Sources",
+        "description": (
+            "Finseo + AI Visibility UI stubs. Ahrefs is BYO via Connectors "
+            "(reuse Marketing Ahrefs when already connected)."
+        ),
+        "connectors": ["finseo", "ai_visibility_ui", "ahrefs"],
+    },
+    "finance-intelligence-sources": {
+        "name": "Finance Intelligence Sources",
+        "description": (
+            "F3 stubs: QuickBooks, Xero, NetSuite, Plaid (if entitled). "
+            "Staged needs_connection only — no live secrets at install."
+        ),
+        "connectors": ["quickbooks", "xero", "netsuite", "plaid"],
+    },
+    "hr-talent-intelligence-sources": {
+        "name": "HR & Talent Intelligence Sources",
+        "description": (
+            "H3 stubs: Workday, BambooHR, Greenhouse, Gusto. "
+            "Gusto stays partner-OAuth gated until approved."
+        ),
+        "connectors": ["workday", "bamboohr", "greenhouse", "gusto"],
     },
     "byo-premium-prospecting": {
         "name": "BYO Premium Prospecting",

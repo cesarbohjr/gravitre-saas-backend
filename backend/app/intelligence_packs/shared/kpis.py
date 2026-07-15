@@ -15,6 +15,9 @@ PACK_VENDOR_MAP: dict[str, tuple[str, ...]] = {
     "prospecting-intelligence-pack": (),  # Apollo/HubSpot outbound; no gravitree shared vendors
     "marketing-intelligence-pack": ("google_search_console",),
     "revops-intelligence-pack": (),  # CRM rollup (HubSpot); no gravitree shared vendors
+    "ai-search-intelligence-pack": ("ahrefs", "finseo", "ai_visibility_ui"),
+    "finance-intelligence-pack": (),  # customer-owned QB/Xero/NetSuite/Plaid; no gravitree shared vendors
+    "hr-talent-intelligence-pack": (),  # customer-owned HRIS/ATS/payroll; no gravitree shared vendors
     "support-intelligence-pack": (),
 }
 

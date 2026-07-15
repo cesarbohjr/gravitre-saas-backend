@@ -187,6 +187,9 @@ export const SURFACE_COPY = {
       tabProspecting: "Prospecting",
       tabMarketing: "Marketing",
       tabRevOps: "RevOps",
+      tabAiSearch: "AI Search",
+      tabFinance: "Finance",
+      tabHrTalent: "HR & Talent",
     },
     predictive: {
       title: "Predictive ops",

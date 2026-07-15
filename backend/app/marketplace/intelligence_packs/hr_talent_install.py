@@ -1,7 +1,7 @@
-"""RevOps Intelligence Pack — demo agent + CRM pipeline workflow.
+"""HR & Talent Intelligence Pack — Recruiting Talent Analyst + HRIS/ATS stubs (H3).
 
-Stop-lines: reuse existing CRM connectors; no Finance connectors without Cesar
-sign-off; heuristic forecast OK (ML deferred).
+Stop-lines: no LinkedIn scrape; employee/compensation PII Memory/KG blocked;
+HR read-only tip; path H3 all HR live (Gusto partner OAuth when approved).
 """
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ def _active_connector_id(client: Any, org_id: str, connector_type: str) -> str |
     return None
 
 
-def install_revops_pack_demo_bundle(
+def install_hr_talent_pack_demo_bundle(
     client: Any,
     org_id: str,
     asset: dict[str, Any],
@@ -49,16 +49,12 @@ def install_revops_pack_demo_bundle(
     environment_name: str = "production",
     settings: Any | None = None,
 ) -> dict[str, Any]:
-    """Create Revenue Operations Analyst + assignments + HubSpot pipeline workflow + stubs.
-
-    Reuses the REVENUE_OPS persona (department Revenue Operations). Finance
-    banking/QB/Xero/NetSuite are not staged without Cesar sign-off.
-    """
+    """Create Recruiting Talent Analyst + assignments + Greenhouse workflow + stage stubs."""
     _ = settings
     asset_id = str(asset["id"])
-    agent_id = _marketplace_entity_id(org_id, asset_id, "revenue-ops-analyst")
-    agent_name = spec.demo_agent_name or "Revenue Operations Analyst"
-    demo_systems = list(spec.demo_systems) or ["hubspot"]
+    agent_id = _marketplace_entity_id(org_id, asset_id, "recruiting-talent-analyst")
+    agent_name = spec.demo_agent_name or "Recruiting Talent Analyst"
+    demo_systems = list(spec.demo_systems) or ["workday", "bamboohr", "greenhouse", "gusto"]
 
     from app.operators.repository import create_operator
 
@@ -69,17 +65,23 @@ def install_revops_pack_demo_bundle(
             "id": agent_id,
             "name": agent_name,
             "description": (
-                "Reads CRM pipelines (HubSpot; Salesforce when present) for RevOps rollups. "
-                "Heuristic forecasting OK; Finance connectors gated until Cesar sign-off."
+                "Reads Workday, BambooHR, Greenhouse, and Gusto (when partner OAuth connected) "
+                "for recruiting / talent briefings. Employee and compensation PII stay Memory/KG gated; "
+                "LinkedIn scrape forbidden."
             ),
-            "role": "Revenue Operations",
-            "capabilities": ["pipeline_hygiene", "forecasting", "hubspot_read"],
+            "role": "analyst",
+            "capabilities": [
+                "recruiting",
+                "greenhouse_read",
+                "workday_read",
+                "bamboohr_read",
+                "gusto_read",
+            ],
             "config": {
                 "marketplaceAssetId": asset_id,
                 "permitted_tools": demo_systems,
                 "pack_id": spec.pack_id,
-                "department": "Revenue Operations",
-                "persona_key": "REVENUE_OPS",
+                "department": "hr",
             },
             "allowed_environments": [environment_name],
             "status": "active",
@@ -91,22 +93,29 @@ def install_revops_pack_demo_bundle(
             "id": agent_id,
             "org_id": org_id,
             "name": agent_name,
-            "purpose": "RevOps CRM rollup from HubSpot (Salesforce optional; read-only demo)",
-            "role": "Revenue Operations",
-            "department": "Revenue Operations",
+            "purpose": "HR & talent intelligence (Workday/BambooHR/Greenhouse/Gusto read-only)",
+            "role": "analyst",
+            "department": "hr",
             "model": "default",
-            "capabilities": ["pipeline_hygiene", "forecasting", "hubspot_read"],
+            "capabilities": [
+                "recruiting",
+                "greenhouse_read",
+                "workday_read",
+                "bamboohr_read",
+                "gusto_read",
+            ],
             "systems": demo_systems,
             "guardrails": [
-                "reuse_existing_crm",
-                "no_finance_connectors_without_cesar_signoff",
-                "heuristic_forecast_ok",
+                "no_linkedin_scrape",
+                "employee_pii_memory_kg_blocked",
+                "compensation_memory_kg_blocked",
+                "hr_read_only_tip",
+                "path_h3_all_hr_live",
             ],
             "config": {
                 "marketplaceAssetId": asset_id,
                 "permitted_tools": demo_systems,
                 "pack_id": spec.pack_id,
-                "persona_key": "REVENUE_OPS",
             },
             "status": "active",
         },
@@ -144,17 +153,17 @@ def install_revops_pack_demo_bundle(
                 environment_name=environment_name,
             )
         except Exception as exc:  # noqa: BLE001
-            logger.warning("revops_pack_stub_stage_failed err=%s", exc)
+            logger.warning("hr_talent_pack_stub_stage_failed err=%s", exc)
             staged = {"error": str(exc), "created": [], "stagedCount": 0, "skipped": []}
 
-    hubspot_connector_id = _active_connector_id(client, org_id, "hubspot")
-    salesforce_connector_id = None
-    if "salesforce" in demo_systems:
-        salesforce_connector_id = _active_connector_id(client, org_id, "salesforce")
+    workday_id = _active_connector_id(client, org_id, "workday")
+    bamboo_id = _active_connector_id(client, org_id, "bamboohr")
+    greenhouse_id = _active_connector_id(client, org_id, "greenhouse")
+    gusto_id = _active_connector_id(client, org_id, "gusto")
 
     workflow_id = None
     if spec.workflow_name and spec.workflow_steps:
-        workflow_id = _marketplace_entity_id(org_id, asset_id, "revops-hubspot-workflow")
+        workflow_id = _marketplace_entity_id(org_id, asset_id, "hr-talent-recruiting-workflow")
         steps = list(spec.workflow_steps)
         definition = {"schema_version": SCHEMA_VERSION, "steps": steps}
         workflow_config = {"marketplaceAssetId": asset_id, "pack_id": spec.pack_id}
@@ -203,22 +212,24 @@ def install_revops_pack_demo_bundle(
                 actor_id=actor_id,
             )
         except Exception as exc:  # noqa: BLE001
-            logger.debug("revops_pack_workflow_version_skipped err=%s", exc)
+            logger.debug("hr_talent_pack_workflow_version_skipped err=%s", exc)
 
-    result: dict[str, Any] = {
+    return {
         "pack_id": spec.pack_id,
         "agentId": agent_id,
         "workflowId": workflow_id,
         "assignmentCount": assignments.get("count") or 0,
         "assignmentIds": [row.get("id") for row in assignments.get("assignments") or [] if row.get("id")],
         "connectorStubs": staged,
-        "hubspotConnectorId": hubspot_connector_id,
+        "workdayConnectorId": workday_id,
+        "bamboohrConnectorId": bamboo_id,
+        "greenhouseConnectorId": greenhouse_id,
+        "gustoConnectorId": gusto_id,
         "stopLinesHonored": [
-            "reuse_existing_crm",
-            "finance_pack_f3_unlocked_separately",
-            "heuristic_forecast_ok",
+            "no_linkedin_scrape",
+            "employee_pii_memory_kg_blocked",
+            "compensation_memory_kg_blocked",
+            "hr_read_only_tip",
+            "path_h3_all_hr_live",
         ],
     }
-    if salesforce_connector_id is not None or "salesforce" in demo_systems:
-        result["salesforceConnectorId"] = salesforce_connector_id
-    return result

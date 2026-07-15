@@ -1,7 +1,7 @@
-"""RevOps Intelligence Pack — demo agent + CRM pipeline workflow.
+"""Finance Intelligence Pack — Cash Flow Analyst + QB/Xero/NetSuite/Plaid stubs (F3).
 
-Stop-lines: reuse existing CRM connectors; no Finance connectors without Cesar
-sign-off; heuristic forecast OK (ML deferred).
+Stop-lines: reuse existing connectors; finance read-only tip; raw payroll/banking
+Memory/KG blocked; path F3 all finance live (Plaid if entitled).
 """
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ def _active_connector_id(client: Any, org_id: str, connector_type: str) -> str |
     return None
 
 
-def install_revops_pack_demo_bundle(
+def install_finance_pack_demo_bundle(
     client: Any,
     org_id: str,
     asset: dict[str, Any],
@@ -49,16 +49,12 @@ def install_revops_pack_demo_bundle(
     environment_name: str = "production",
     settings: Any | None = None,
 ) -> dict[str, Any]:
-    """Create Revenue Operations Analyst + assignments + HubSpot pipeline workflow + stubs.
-
-    Reuses the REVENUE_OPS persona (department Revenue Operations). Finance
-    banking/QB/Xero/NetSuite are not staged without Cesar sign-off.
-    """
+    """Create Cash Flow Analyst + assignments + QB workflow + stage stubs."""
     _ = settings
     asset_id = str(asset["id"])
-    agent_id = _marketplace_entity_id(org_id, asset_id, "revenue-ops-analyst")
-    agent_name = spec.demo_agent_name or "Revenue Operations Analyst"
-    demo_systems = list(spec.demo_systems) or ["hubspot"]
+    agent_id = _marketplace_entity_id(org_id, asset_id, "cash-flow-analyst")
+    agent_name = spec.demo_agent_name or "Cash Flow Analyst"
+    demo_systems = list(spec.demo_systems) or ["quickbooks", "xero", "netsuite", "plaid"]
 
     from app.operators.repository import create_operator
 
@@ -69,17 +65,22 @@ def install_revops_pack_demo_bundle(
             "id": agent_id,
             "name": agent_name,
             "description": (
-                "Reads CRM pipelines (HubSpot; Salesforce when present) for RevOps rollups. "
-                "Heuristic forecasting OK; Finance connectors gated until Cesar sign-off."
+                "Reads QuickBooks, Xero, NetSuite, and Plaid (if entitled) for cash-flow briefings. "
+                "Read-only tip; raw payroll/banking stay Memory/KG gated."
             ),
-            "role": "Revenue Operations",
-            "capabilities": ["pipeline_hygiene", "forecasting", "hubspot_read"],
+            "role": "analyst",
+            "capabilities": [
+                "cash_flow",
+                "quickbooks_read",
+                "xero_read",
+                "netsuite_read",
+                "plaid_read",
+            ],
             "config": {
                 "marketplaceAssetId": asset_id,
                 "permitted_tools": demo_systems,
                 "pack_id": spec.pack_id,
-                "department": "Revenue Operations",
-                "persona_key": "REVENUE_OPS",
+                "department": "finance",
             },
             "allowed_environments": [environment_name],
             "status": "active",
@@ -91,22 +92,28 @@ def install_revops_pack_demo_bundle(
             "id": agent_id,
             "org_id": org_id,
             "name": agent_name,
-            "purpose": "RevOps CRM rollup from HubSpot (Salesforce optional; read-only demo)",
-            "role": "Revenue Operations",
-            "department": "Revenue Operations",
+            "purpose": "Finance cash-flow intelligence (QB/Xero/NetSuite/Plaid read-only)",
+            "role": "analyst",
+            "department": "finance",
             "model": "default",
-            "capabilities": ["pipeline_hygiene", "forecasting", "hubspot_read"],
+            "capabilities": [
+                "cash_flow",
+                "quickbooks_read",
+                "xero_read",
+                "netsuite_read",
+                "plaid_read",
+            ],
             "systems": demo_systems,
             "guardrails": [
-                "reuse_existing_crm",
-                "no_finance_connectors_without_cesar_signoff",
-                "heuristic_forecast_ok",
+                "reuse_existing_connectors",
+                "finance_read_only_tip",
+                "raw_payroll_banking_memory_kg_blocked",
+                "path_f3_all_finance_live",
             ],
             "config": {
                 "marketplaceAssetId": asset_id,
                 "permitted_tools": demo_systems,
                 "pack_id": spec.pack_id,
-                "persona_key": "REVENUE_OPS",
             },
             "status": "active",
         },
@@ -144,17 +151,17 @@ def install_revops_pack_demo_bundle(
                 environment_name=environment_name,
             )
         except Exception as exc:  # noqa: BLE001
-            logger.warning("revops_pack_stub_stage_failed err=%s", exc)
+            logger.warning("finance_pack_stub_stage_failed err=%s", exc)
             staged = {"error": str(exc), "created": [], "stagedCount": 0, "skipped": []}
 
-    hubspot_connector_id = _active_connector_id(client, org_id, "hubspot")
-    salesforce_connector_id = None
-    if "salesforce" in demo_systems:
-        salesforce_connector_id = _active_connector_id(client, org_id, "salesforce")
+    qb_id = _active_connector_id(client, org_id, "quickbooks")
+    xero_id = _active_connector_id(client, org_id, "xero")
+    netsuite_id = _active_connector_id(client, org_id, "netsuite")
+    plaid_id = _active_connector_id(client, org_id, "plaid")
 
     workflow_id = None
     if spec.workflow_name and spec.workflow_steps:
-        workflow_id = _marketplace_entity_id(org_id, asset_id, "revops-hubspot-workflow")
+        workflow_id = _marketplace_entity_id(org_id, asset_id, "finance-cash-flow-workflow")
         steps = list(spec.workflow_steps)
         definition = {"schema_version": SCHEMA_VERSION, "steps": steps}
         workflow_config = {"marketplaceAssetId": asset_id, "pack_id": spec.pack_id}
@@ -203,22 +210,23 @@ def install_revops_pack_demo_bundle(
                 actor_id=actor_id,
             )
         except Exception as exc:  # noqa: BLE001
-            logger.debug("revops_pack_workflow_version_skipped err=%s", exc)
+            logger.debug("finance_pack_workflow_version_skipped err=%s", exc)
 
-    result: dict[str, Any] = {
+    return {
         "pack_id": spec.pack_id,
         "agentId": agent_id,
         "workflowId": workflow_id,
         "assignmentCount": assignments.get("count") or 0,
         "assignmentIds": [row.get("id") for row in assignments.get("assignments") or [] if row.get("id")],
         "connectorStubs": staged,
-        "hubspotConnectorId": hubspot_connector_id,
+        "quickbooksConnectorId": qb_id,
+        "xeroConnectorId": xero_id,
+        "netsuiteConnectorId": netsuite_id,
+        "plaidConnectorId": plaid_id,
         "stopLinesHonored": [
-            "reuse_existing_crm",
-            "finance_pack_f3_unlocked_separately",
-            "heuristic_forecast_ok",
+            "reuse_existing_connectors",
+            "finance_read_only_tip",
+            "raw_payroll_banking_memory_kg_blocked",
+            "path_f3_all_finance_live",
         ],
     }
-    if salesforce_connector_id is not None or "salesforce" in demo_systems:
-        result["salesforceConnectorId"] = salesforce_connector_id
-    return result

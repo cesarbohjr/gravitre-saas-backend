@@ -1,4 +1,4 @@
-"""Ahrefs agent tool executors (BYO API key — v1 reads + Management writes + v3 reads)."""
+"""Ahrefs agent tool executors (BYO API key — Site Explorer + Brand Radar)."""
 from __future__ import annotations
 
 from typing import Any
@@ -7,6 +7,11 @@ from app.connectors.ahrefs_api import (
     AhrefsAPIError,
     add_rank_tracker_keywords,
     backlinks_list,
+    brand_radar_competitors_compare,
+    brand_radar_exports_run,
+    brand_radar_overview,
+    brand_radar_prompts_list,
+    brand_radar_prompts_track,
     competitors_compare,
     create_project,
     domain_rating,
@@ -172,6 +177,155 @@ def _exec_top_pages_list(ctx: ToolContext, params: dict[str, Any]) -> Normalized
     return NormalizedResult(success=True, action="ahrefs.top_pages.list", connector_id=cid, data=data)
 
 
+def _data_sources_param(params: dict[str, Any]) -> list[str] | None:
+    raw = params.get("data_sources") or params.get("data_source")
+    if isinstance(raw, str) and raw.strip():
+        return [raw.strip()]
+    if isinstance(raw, list):
+        return [str(s).strip() for s in raw if str(s).strip()]
+    return None
+
+
+def _exec_brand_radar_overview(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, api_key = _session(ctx, params)
+    brand = str(params.get("brand") or params.get("name") or "").strip()
+    report_id = str(params.get("report_id") or params.get("report") or "").strip() or None
+    country = str(params.get("country") or "us").strip() or "us"
+    domain = str(params.get("domain") or params.get("target") or "").strip() or None
+    competitors = params.get("competitors")
+    if isinstance(competitors, str) and competitors.strip():
+        competitors = [competitors.strip()]
+    if not isinstance(competitors, list):
+        competitors = None
+    if not brand and not report_id:
+        raise ToolValidationError("ahrefs.brand_radar.overview requires brand or report_id")
+    try:
+        data = brand_radar_overview(
+            api_key,
+            brand=brand,
+            report_id=report_id,
+            country=country,
+            domain=domain,
+            competitors=competitors,
+            data_sources=_data_sources_param(params),
+        )
+    except AhrefsAPIError as exc:
+        raise _handle_error(exc) from exc
+    return NormalizedResult(
+        success=True, action="ahrefs.brand_radar.overview", connector_id=cid, data=data
+    )
+
+
+def _exec_brand_radar_prompts_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, api_key = _session(ctx, params)
+    report_id = str(params.get("report_id") or params.get("report") or "").strip()
+    if not report_id:
+        raise ToolValidationError("ahrefs.brand_radar.prompts.list requires report_id")
+    brand = str(params.get("brand") or params.get("name") or "").strip() or None
+    country = str(params.get("country") or "us").strip() or "us"
+    prompts = str(params.get("prompts") or "custom").strip() or "custom"
+    try:
+        data = brand_radar_prompts_list(
+            api_key,
+            report_id=report_id,
+            brand=brand,
+            country=country,
+            data_sources=_data_sources_param(params),
+            prompts=prompts,
+        )
+    except AhrefsAPIError as exc:
+        raise _handle_error(exc) from exc
+    return NormalizedResult(
+        success=True, action="ahrefs.brand_radar.prompts.list", connector_id=cid, data=data
+    )
+
+
+def _exec_brand_radar_prompts_track(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, api_key = _session(ctx, params)
+    report_id = str(params.get("report_id") or params.get("report") or "").strip()
+    prompts = params.get("prompts")
+    if isinstance(prompts, str) and prompts.strip():
+        prompts = [prompts.strip()]
+    if not isinstance(prompts, list):
+        single = str(params.get("prompt") or "").strip()
+        prompts = [single] if single else []
+    countries = params.get("countries")
+    if isinstance(countries, str) and countries.strip():
+        countries = [countries.strip()]
+    if not isinstance(countries, list):
+        countries = None
+    if not report_id:
+        raise ToolValidationError("ahrefs.brand_radar.prompts.track requires report_id")
+    if not prompts:
+        raise ToolValidationError("ahrefs.brand_radar.prompts.track requires prompts")
+    try:
+        data = brand_radar_prompts_track(
+            api_key, report_id=report_id, prompts=[str(p) for p in prompts], countries=countries
+        )
+    except AhrefsAPIError as exc:
+        raise _handle_error(exc) from exc
+    return NormalizedResult(
+        success=True, action="ahrefs.brand_radar.prompts.track", connector_id=cid, data=data
+    )
+
+
+def _exec_brand_radar_competitors_compare(
+    ctx: ToolContext, params: dict[str, Any]
+) -> NormalizedResult:
+    cid, api_key = _session(ctx, params)
+    brand = str(params.get("brand") or params.get("name") or "").strip()
+    report_id = str(params.get("report_id") or params.get("report") or "").strip() or None
+    competitors = params.get("competitors")
+    if isinstance(competitors, str) and competitors.strip():
+        competitors = [competitors.strip()]
+    if not isinstance(competitors, list):
+        competitors = []
+    country = str(params.get("country") or "us").strip() or "us"
+    domain = str(params.get("domain") or params.get("target") or "").strip() or None
+    if not brand and not report_id:
+        raise ToolValidationError(
+            "ahrefs.brand_radar.competitors.compare requires brand or report_id"
+        )
+    try:
+        data = brand_radar_competitors_compare(
+            api_key,
+            brand=brand,
+            competitors=[str(c) for c in competitors],
+            report_id=report_id,
+            country=country,
+            domain=domain,
+            data_sources=_data_sources_param(params),
+        )
+    except AhrefsAPIError as exc:
+        raise _handle_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="ahrefs.brand_radar.competitors.compare",
+        connector_id=cid,
+        data=data,
+    )
+
+
+def _exec_brand_radar_exports_run(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, api_key = _session(ctx, params)
+    report_id = str(params.get("report_id") or params.get("report") or "").strip()
+    if not report_id:
+        raise ToolValidationError("ahrefs.brand_radar.exports.run requires report_id")
+    country = str(params.get("country") or "us").strip() or "us"
+    try:
+        data = brand_radar_exports_run(
+            api_key,
+            report_id=report_id,
+            country=country,
+            data_sources=_data_sources_param(params),
+        )
+    except AhrefsAPIError as exc:
+        raise _handle_error(exc) from exc
+    return NormalizedResult(
+        success=True, action="ahrefs.brand_radar.exports.run", connector_id=cid, data=data
+    )
+
+
 AHREFS_TOOL_EXECUTORS: dict[str, Any] = {
     "ahrefs.backlinks.list": _exec_backlinks_list,
     "ahrefs.keywords.list": _exec_keywords_list,
@@ -180,4 +334,9 @@ AHREFS_TOOL_EXECUTORS: dict[str, Any] = {
     "ahrefs.rank_tracker.add": _exec_rank_tracker_add,
     "ahrefs.competitors.compare": _exec_competitors_compare,
     "ahrefs.top_pages.list": _exec_top_pages_list,
+    "ahrefs.brand_radar.overview": _exec_brand_radar_overview,
+    "ahrefs.brand_radar.prompts.list": _exec_brand_radar_prompts_list,
+    "ahrefs.brand_radar.prompts.track": _exec_brand_radar_prompts_track,
+    "ahrefs.brand_radar.competitors.compare": _exec_brand_radar_competitors_compare,
+    "ahrefs.brand_radar.exports.run": _exec_brand_radar_exports_run,
 }

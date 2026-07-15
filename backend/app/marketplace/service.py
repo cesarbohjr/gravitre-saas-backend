@@ -699,8 +699,11 @@ def _install_intelligence_pack_asset(
     Dispatch by pack_id — Executive activates FRED; MSP activates NVD; Sales stages CRM only.
     Other packs still require installVariables.agentId.
     """
+    from app.marketplace.intelligence_packs.ai_search_install import install_ai_search_pack_demo_bundle
     from app.marketplace.intelligence_packs.catalog import get_intelligence_pack_spec
     from app.marketplace.intelligence_packs.executive_install import install_executive_pack_demo_bundle
+    from app.marketplace.intelligence_packs.finance_install import install_finance_pack_demo_bundle
+    from app.marketplace.intelligence_packs.hr_talent_install import install_hr_talent_pack_demo_bundle
     from app.marketplace.intelligence_packs.install import install_intelligence_pack
     from app.marketplace.intelligence_packs.msp_install import install_msp_pack_demo_bundle
     from app.marketplace.intelligence_packs.cs_install import install_cs_pack_demo_bundle
@@ -860,6 +863,86 @@ def _install_intelligence_pack_asset(
                 "connectorStubs": bundle.get("connectorStubs"),
                 "hubspotConnectorId": bundle.get("hubspotConnectorId"),
                 "salesforceConnectorId": bundle.get("salesforceConnectorId"),
+                "stopLinesHonored": bundle.get("stopLinesHonored"),
+                "demoBundle": True,
+            }
+
+        if pack_id == "ai-search-intelligence-pack":
+            bundle = install_ai_search_pack_demo_bundle(
+                client,
+                org_id,
+                asset,
+                spec,
+                actor_id=actor_id,
+                environment_name=environment_name,
+                settings=settings,
+            )
+            return {
+                "entityType": "intelligence_pack",
+                "entityId": str(asset["id"]),
+                "agentId": bundle.get("agentId"),
+                "workflowId": bundle.get("workflowId"),
+                "packId": pack_id,
+                "assignmentIds": bundle.get("assignmentIds") or [],
+                "assignmentCount": bundle.get("assignmentCount") or 0,
+                "connectorStubs": bundle.get("connectorStubs"),
+                "ahrefsConnectorId": bundle.get("ahrefsConnectorId"),
+                "finseoConnectorId": bundle.get("finseoConnectorId"),
+                "aiVisibilityUiConnectorId": bundle.get("aiVisibilityUiConnectorId"),
+                "stopLinesHonored": bundle.get("stopLinesHonored"),
+                "demoBundle": True,
+            }
+
+        if pack_id == "finance-intelligence-pack":
+            bundle = install_finance_pack_demo_bundle(
+                client,
+                org_id,
+                asset,
+                spec,
+                actor_id=actor_id,
+                environment_name=environment_name,
+                settings=settings,
+            )
+            return {
+                "entityType": "intelligence_pack",
+                "entityId": str(asset["id"]),
+                "agentId": bundle.get("agentId"),
+                "workflowId": bundle.get("workflowId"),
+                "packId": pack_id,
+                "assignmentIds": bundle.get("assignmentIds") or [],
+                "assignmentCount": bundle.get("assignmentCount") or 0,
+                "connectorStubs": bundle.get("connectorStubs"),
+                "quickbooksConnectorId": bundle.get("quickbooksConnectorId"),
+                "xeroConnectorId": bundle.get("xeroConnectorId"),
+                "netsuiteConnectorId": bundle.get("netsuiteConnectorId"),
+                "plaidConnectorId": bundle.get("plaidConnectorId"),
+                "stopLinesHonored": bundle.get("stopLinesHonored"),
+                "demoBundle": True,
+            }
+
+        if pack_id == "hr-talent-intelligence-pack":
+            bundle = install_hr_talent_pack_demo_bundle(
+                client,
+                org_id,
+                asset,
+                spec,
+                actor_id=actor_id,
+                environment_name=environment_name,
+                settings=settings,
+            )
+            return {
+                "entityType": "intelligence_pack",
+                "entityId": str(asset["id"]),
+                "agentId": bundle.get("agentId"),
+                "workflowId": bundle.get("workflowId"),
+                "packId": pack_id,
+                "assignmentIds": bundle.get("assignmentIds") or [],
+                "assignmentCount": bundle.get("assignmentCount") or 0,
+                "connectorStubs": bundle.get("connectorStubs"),
+                "workdayConnectorId": bundle.get("workdayConnectorId"),
+                "bamboohrConnectorId": bundle.get("bamboohrConnectorId"),
+                "greenhouseConnectorId": bundle.get("greenhouseConnectorId"),
+                "gustoConnectorId": bundle.get("gustoConnectorId"),
                 "stopLinesHonored": bundle.get("stopLinesHonored"),
                 "demoBundle": True,
             }

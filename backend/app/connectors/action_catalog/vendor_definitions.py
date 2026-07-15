@@ -321,15 +321,58 @@ VENDOR_DEFINITIONS: tuple = (
             action("ahrefs", "backlinks.list", "Backlinks report", tier="v1", kind="read", scope_suffix="backlinks:read", idempotent=True),
             action("ahrefs", "keywords.list", "Keyword overview", tier="v1", kind="read", scope_suffix="keywords:read", idempotent=True),
             action("ahrefs", "domain.rating", "Domain rating", tier="v1", kind="read", scope_suffix="domain:read", idempotent=True),
+            action("ahrefs", "brand_radar.overview", "Brand Radar mentions overview", tier="v1", kind="read", scope_suffix="brand_radar:read", idempotent=True),
+            action("ahrefs", "brand_radar.prompts.list", "Brand Radar AI responses / prompts", tier="v1", kind="read", scope_suffix="brand_radar:read", idempotent=True),
         ),
-        # v2 Management writes + v3 Site Explorer advanced reads
+        # v2 Management writes + Brand Radar prompt tracking
         v2=(
             action("ahrefs", "projects.create", "Create project", tier="v2", kind="write", scope_suffix="projects:write", destructive=True),
             action("ahrefs", "rank_tracker.add", "Add keywords to rank tracker", tier="v2", kind="write", scope_suffix="tracking:write", destructive=True),
+            action("ahrefs", "brand_radar.prompts.track", "Track Brand Radar custom prompts", tier="v2", kind="write", scope_suffix="brand_radar:write", destructive=True),
         ),
         v3=(
             action("ahrefs", "competitors.compare", "Competitor comparison", tier="v3", kind="read", scope_suffix="domain:read", idempotent=True),
             action("ahrefs", "top_pages.list", "Top pages by traffic", tier="v3", kind="read", scope_suffix="pages:read", idempotent=True),
+            action("ahrefs", "brand_radar.competitors.compare", "Brand Radar competitor SoV", tier="v3", kind="read", scope_suffix="brand_radar:read", idempotent=True),
+            action("ahrefs", "brand_radar.exports.run", "Brand Radar export / AI responses dump", tier="v3", kind="advanced", scope_suffix="brand_radar:read"),
+        ),
+    ),
+    build_vendor(
+        "finseo",
+        "Finseo",
+        "CRM / Marketing",
+        "https://www.finseo.ai/developers/api",
+        shipped=True,
+        department="marketing",
+        v1=(
+            action("finseo", "projects.list", "List Finseo projects", tier="v1", kind="read", scope_suffix="projects:read", idempotent=True),
+            action("finseo", "metrics.overview", "AI visibility metrics overview", tier="v1", kind="read", scope_suffix="metrics:read", idempotent=True),
+            action("finseo", "prompts.list", "List tracked prompts", tier="v1", kind="read", scope_suffix="prompts:read", idempotent=True),
+        ),
+        v2=(
+            action("finseo", "prompts.track", "Track prompts", tier="v2", kind="write", scope_suffix="prompts:write", destructive=True),
+            action("finseo", "competitors.compare", "Competitor visibility compare", tier="v2", kind="read", scope_suffix="competitors:read", idempotent=True),
+        ),
+        v3=(
+            action("finseo", "exports.run", "Run project export", tier="v3", kind="advanced", scope_suffix="exports:read"),
+        ),
+    ),
+    build_vendor(
+        "ai_visibility_ui",
+        "AI Visibility UI",
+        "CRM / Marketing",
+        "https://gravitre.app/docs/delivery/phase8-ai-search-research-spike",
+        shipped=True,
+        department="marketing",
+        v1=(
+            action("ai_visibility_ui", "surfaces.list", "List allowlisted consumer UI surfaces", tier="v1", kind="read", scope_suffix="surfaces:read", idempotent=True),
+            action("ai_visibility_ui", "mentions.check", "Check brand mention on one surface", tier="v1", kind="read", scope_suffix="mentions:read"),
+        ),
+        v2=(
+            action("ai_visibility_ui", "prompts.batch", "Batch prompt checks across surfaces", tier="v2", kind="write", scope_suffix="prompts:write", destructive=True),
+        ),
+        v3=(
+            action("ai_visibility_ui", "captures.export", "Export capture provenance bundle", tier="v3", kind="advanced", scope_suffix="captures:read"),
         ),
     ),
     build_vendor(

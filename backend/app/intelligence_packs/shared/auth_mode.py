@@ -36,6 +36,16 @@ CONNECTOR_AUTH_MODES: dict[str, AuthMode] = {
     "linkedin": AuthMode.CUSTOMER_OWNED,  # distinct from Sales Navigator BYO
     "google_search_console": AuthMode.CUSTOMER_OWNED,
     "google_analytics": AuthMode.CUSTOMER_OWNED,
+    # Finance F3 — customer-owned accounting / banking
+    "quickbooks": AuthMode.CUSTOMER_OWNED,
+    "xero": AuthMode.CUSTOMER_OWNED,
+    "netsuite": AuthMode.CUSTOMER_OWNED,
+    "plaid": AuthMode.CUSTOMER_OWNED,
+    # HR H3 — customer-owned HRIS / ATS / payroll
+    "workday": AuthMode.CUSTOMER_OWNED,
+    "bamboohr": AuthMode.CUSTOMER_OWNED,
+    "greenhouse": AuthMode.CUSTOMER_OWNED,
+    "gusto": AuthMode.CUSTOMER_OWNED,
     # Gravitree intelligence sources (public / aggregate first)
     "fred": AuthMode.GRAVITREE_MANAGED,
     "sec_edgar": AuthMode.GRAVITREE_MANAGED,
@@ -52,6 +62,8 @@ CONNECTOR_AUTH_MODES: dict[str, AuthMode] = {
     "linkedin_sales_navigator": AuthMode.BYO_REQUIRED,
     "semrush": AuthMode.BYO_REQUIRED,
     "ahrefs": AuthMode.BYO_REQUIRED,
+    "finseo": AuthMode.BYO_REQUIRED,
+    "ai_visibility_ui": AuthMode.BYO_REQUIRED,  # S2 scrape path — tenant runner/key, never shared
 }
 
 ACTIVATION_GATES: dict[str, ActivationGate] = {

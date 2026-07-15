@@ -31,7 +31,10 @@ def test_fred_is_gravitree_managed():
     assert get_auth_mode("fred") == AuthMode.GRAVITREE_MANAGED
 
 
-@pytest.mark.parametrize("vendor", ["zoominfo", "linkedin_sales_navigator", "pdl", "semrush", "ahrefs"])
+@pytest.mark.parametrize(
+    "vendor",
+    ["zoominfo", "linkedin_sales_navigator", "pdl", "semrush", "ahrefs", "finseo", "ai_visibility_ui"],
+)
 def test_byo_vendors_fail_closed_without_org_secret(vendor: str):
     result = resolve_credential_source(
         vendor,

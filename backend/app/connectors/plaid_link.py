@@ -8,6 +8,11 @@ Per-org flow:
   4. Backend exchanges public_token via /item/public_token/exchange
 
 Do not register Plaid in oauth_provider_registry or /api/connectors/oauth/plaid/*.
+
+Finance F3: `plaid_tools` registers accounts/balances/transactions reads.
+If no connector `access_token` (post-exchange), tools raise ToolValidationError
+"Plaid not connected / exchange public_token first". Vendor stays shipped=False
+until the Link connect path is fully wired in UI (if entitled).
 """
 
 PLAID_LINK_ARCHITECTURE = "public_token_exchange"

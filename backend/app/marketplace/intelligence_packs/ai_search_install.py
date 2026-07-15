@@ -1,7 +1,7 @@
-"""RevOps Intelligence Pack — demo agent + CRM pipeline workflow.
+"""AI Search Intelligence Pack — demo agent + Ahrefs/Finseo/UI stubs.
 
-Stop-lines: reuse existing CRM connectors; no Finance connectors without Cesar
-sign-off; heuristic forecast OK (ML deferred).
+Locked path C + S2 (2026-07-15): Ahrefs + Finseo dual BYO (use whichever connected);
+UI scrape ai_visibility_ui v1–v3. Raw AI answer text Memory/KG blocked; no LinkedIn scrape.
 """
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ def _active_connector_id(client: Any, org_id: str, connector_type: str) -> str |
     return None
 
 
-def install_revops_pack_demo_bundle(
+def install_ai_search_pack_demo_bundle(
     client: Any,
     org_id: str,
     asset: dict[str, Any],
@@ -49,16 +49,12 @@ def install_revops_pack_demo_bundle(
     environment_name: str = "production",
     settings: Any | None = None,
 ) -> dict[str, Any]:
-    """Create Revenue Operations Analyst + assignments + HubSpot pipeline workflow + stubs.
-
-    Reuses the REVENUE_OPS persona (department Revenue Operations). Finance
-    banking/QB/Xero/NetSuite are not staged without Cesar sign-off.
-    """
+    """Create AI Visibility Analyst + assignments + Brand Radar workflow + stage stubs."""
     _ = settings
     asset_id = str(asset["id"])
-    agent_id = _marketplace_entity_id(org_id, asset_id, "revenue-ops-analyst")
-    agent_name = spec.demo_agent_name or "Revenue Operations Analyst"
-    demo_systems = list(spec.demo_systems) or ["hubspot"]
+    agent_id = _marketplace_entity_id(org_id, asset_id, "ai-visibility-analyst")
+    agent_name = spec.demo_agent_name or "AI Visibility Analyst"
+    demo_systems = list(spec.demo_systems) or ["ahrefs", "finseo", "ai_visibility_ui"]
 
     from app.operators.repository import create_operator
 
@@ -69,17 +65,22 @@ def install_revops_pack_demo_bundle(
             "id": agent_id,
             "name": agent_name,
             "description": (
-                "Reads CRM pipelines (HubSpot; Salesforce when present) for RevOps rollups. "
-                "Heuristic forecasting OK; Finance connectors gated until Cesar sign-off."
+                "Tracks answer-engine visibility via Ahrefs Brand Radar and/or Finseo BYO, "
+                "plus optional consumer-UI scrape (ai_visibility_ui). "
+                "Raw AI answers stay Memory/KG gated; LinkedIn scrape forbidden."
             ),
-            "role": "Revenue Operations",
-            "capabilities": ["pipeline_hygiene", "forecasting", "hubspot_read"],
+            "role": "analyst",
+            "capabilities": [
+                "ai_visibility",
+                "ahrefs_brand_radar",
+                "finseo_read",
+                "ui_visibility_scrape",
+            ],
             "config": {
                 "marketplaceAssetId": asset_id,
                 "permitted_tools": demo_systems,
                 "pack_id": spec.pack_id,
-                "department": "Revenue Operations",
-                "persona_key": "REVENUE_OPS",
+                "department": "marketing",
             },
             "allowed_environments": [environment_name],
             "status": "active",
@@ -91,22 +92,28 @@ def install_revops_pack_demo_bundle(
             "id": agent_id,
             "org_id": org_id,
             "name": agent_name,
-            "purpose": "RevOps CRM rollup from HubSpot (Salesforce optional; read-only demo)",
-            "role": "Revenue Operations",
-            "department": "Revenue Operations",
+            "purpose": "AI answer-engine visibility (Ahrefs/Finseo BYO + UI scrape)",
+            "role": "analyst",
+            "department": "marketing",
             "model": "default",
-            "capabilities": ["pipeline_hygiene", "forecasting", "hubspot_read"],
+            "capabilities": [
+                "ai_visibility",
+                "ahrefs_brand_radar",
+                "finseo_read",
+                "ui_visibility_scrape",
+            ],
             "systems": demo_systems,
             "guardrails": [
-                "reuse_existing_crm",
-                "no_finance_connectors_without_cesar_signoff",
-                "heuristic_forecast_ok",
+                "ahrefs_finseo_byo_only",
+                "raw_ai_answer_memory_kg_blocked",
+                "no_linkedin_scrape",
+                "ui_scrape_provenance_required",
+                "reuse_existing_connectors",
             ],
             "config": {
                 "marketplaceAssetId": asset_id,
                 "permitted_tools": demo_systems,
                 "pack_id": spec.pack_id,
-                "persona_key": "REVENUE_OPS",
             },
             "status": "active",
         },
@@ -144,17 +151,16 @@ def install_revops_pack_demo_bundle(
                 environment_name=environment_name,
             )
         except Exception as exc:  # noqa: BLE001
-            logger.warning("revops_pack_stub_stage_failed err=%s", exc)
+            logger.warning("ai_search_pack_stub_stage_failed err=%s", exc)
             staged = {"error": str(exc), "created": [], "stagedCount": 0, "skipped": []}
 
-    hubspot_connector_id = _active_connector_id(client, org_id, "hubspot")
-    salesforce_connector_id = None
-    if "salesforce" in demo_systems:
-        salesforce_connector_id = _active_connector_id(client, org_id, "salesforce")
+    ahrefs_connector_id = _active_connector_id(client, org_id, "ahrefs")
+    finseo_connector_id = _active_connector_id(client, org_id, "finseo")
+    ui_connector_id = _active_connector_id(client, org_id, "ai_visibility_ui")
 
     workflow_id = None
     if spec.workflow_name and spec.workflow_steps:
-        workflow_id = _marketplace_entity_id(org_id, asset_id, "revops-hubspot-workflow")
+        workflow_id = _marketplace_entity_id(org_id, asset_id, "ai-search-visibility-workflow")
         steps = list(spec.workflow_steps)
         definition = {"schema_version": SCHEMA_VERSION, "steps": steps}
         workflow_config = {"marketplaceAssetId": asset_id, "pack_id": spec.pack_id}
@@ -203,22 +209,25 @@ def install_revops_pack_demo_bundle(
                 actor_id=actor_id,
             )
         except Exception as exc:  # noqa: BLE001
-            logger.debug("revops_pack_workflow_version_skipped err=%s", exc)
+            logger.debug("ai_search_pack_workflow_version_skipped err=%s", exc)
 
-    result: dict[str, Any] = {
+    return {
         "pack_id": spec.pack_id,
         "agentId": agent_id,
         "workflowId": workflow_id,
         "assignmentCount": assignments.get("count") or 0,
         "assignmentIds": [row.get("id") for row in assignments.get("assignments") or [] if row.get("id")],
         "connectorStubs": staged,
-        "hubspotConnectorId": hubspot_connector_id,
+        "ahrefsConnectorId": ahrefs_connector_id,
+        "finseoConnectorId": finseo_connector_id,
+        "aiVisibilityUiConnectorId": ui_connector_id,
         "stopLinesHonored": [
-            "reuse_existing_crm",
-            "finance_pack_f3_unlocked_separately",
-            "heuristic_forecast_ok",
+            "ahrefs_finseo_byo_only",
+            "raw_ai_answer_memory_kg_blocked",
+            "no_linkedin_scrape",
+            "ui_scrape_provenance_required",
+            "reuse_existing_connectors",
+            "path_c_dual_byo",
+            "path_s2_ui_scrape_v1_v2_v3",
         ],
     }
-    if salesforce_connector_id is not None or "salesforce" in demo_systems:
-        result["salesforceConnectorId"] = salesforce_connector_id
-    return result

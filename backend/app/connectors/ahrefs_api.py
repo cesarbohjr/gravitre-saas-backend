@@ -326,3 +326,213 @@ def top_pages_list(
         "limit": display_limit,
         "raw": data if isinstance(data, dict) else {"value": data},
     }
+
+
+# --- Brand Radar (AI Search pack) — https://api.ahrefs.com/v3/brand-radar ---
+
+_DEFAULT_BRAND_RADAR_SOURCES = [
+    "chatgpt",
+    "gemini",
+    "perplexity",
+    "copilot",
+    "claude",
+    "grok",
+]
+
+
+def _brand_entity(name: str, domain: str | None = None) -> dict[str, Any]:
+    entity: dict[str, Any] = {"names": [name]}
+    if domain:
+        entity["url_groups"] = [{"target": domain, "scope": "domain"}]
+    return entity
+
+
+def brand_radar_overview(
+    api_key: str,
+    *,
+    brand: str,
+    report_id: str | None = None,
+    country: str = "us",
+    domain: str | None = None,
+    competitors: list[str] | None = None,
+    data_sources: list[str] | None = None,
+) -> dict[str, Any]:
+    """POST /brand-radar/mentions-overview — Brand Radar mentions / visibility overview."""
+    brand_name = str(brand or "").strip()
+    rid = str(report_id or "").strip() or None
+    if not brand_name and not rid:
+        raise AhrefsAPIError("brand or report_id is required", status_code=400)
+    sources = list(data_sources) if data_sources else list(_DEFAULT_BRAND_RADAR_SOURCES)
+    body: dict[str, Any] = {
+        "select": [
+            "brand",
+            "total",
+            "only_target_brand",
+            "target_and_competitors_brands",
+            "only_competitors_brands",
+        ],
+        "data_source": sources,
+        "country": [(country or "us").lower()],
+    }
+    if rid:
+        body["report_id"] = rid
+    if brand_name:
+        body["brands"] = [_brand_entity(brand_name, domain)]
+    if competitors:
+        body["competitors"] = [_brand_entity(str(c).strip()) for c in competitors if str(c).strip()]
+    data = _request(api_key, "/brand-radar/mentions-overview", method="POST", json_body=body)
+    return {
+        "brand": brand_name or None,
+        "report_id": rid,
+        "country": (country or "us").lower(),
+        "data_sources": sources,
+        "data": data,
+        "result_url": (
+            f"https://app.ahrefs.com/brand-radar/reports/{rid}" if rid else "https://app.ahrefs.com/brand-radar"
+        ),
+    }
+
+
+def brand_radar_prompts_list(
+    api_key: str,
+    *,
+    report_id: str,
+    brand: str | None = None,
+    country: str = "us",
+    data_sources: list[str] | None = None,
+    prompts: str = "custom",
+) -> dict[str, Any]:
+    """POST /brand-radar/ai-responses — list AI responses / prompt rows for a report."""
+    rid = str(report_id or "").strip()
+    if not rid:
+        raise AhrefsAPIError("report_id is required", status_code=400)
+    sources = list(data_sources) if data_sources else list(_DEFAULT_BRAND_RADAR_SOURCES)
+    body: dict[str, Any] = {
+        "report_id": rid,
+        "data_source": sources,
+        "country": [(country or "us").lower()],
+        "prompts": prompts or "custom",
+        "select": ["prompt", "brand", "mentioned", "citations"],
+    }
+    if brand:
+        body["brands"] = [_brand_entity(str(brand).strip())]
+    data = _request(api_key, "/brand-radar/ai-responses", method="POST", json_body=body)
+    rows = data.get("responses") if isinstance(data, dict) else None
+    if not isinstance(rows, list):
+        rows = data.get("rows") if isinstance(data, dict) else []
+    if not isinstance(rows, list):
+        rows = []
+    return {
+        "report_id": rid,
+        "country": (country or "us").lower(),
+        "rows": rows,
+        "row_count": len(rows),
+        "result_url": f"https://app.ahrefs.com/brand-radar/reports/{rid}",
+        "raw": data if isinstance(data, dict) else {"value": data},
+    }
+
+
+def brand_radar_prompts_track(
+    api_key: str,
+    *,
+    report_id: str,
+    prompts: list[str],
+    countries: list[str] | None = None,
+) -> dict[str, Any]:
+    """POST /management/brand-radar-prompts — add custom prompts to a Brand Radar report."""
+    rid = str(report_id or "").strip()
+    if not rid:
+        raise AhrefsAPIError("report_id is required", status_code=400)
+    prompt_list = [str(p).strip() for p in (prompts or []) if str(p).strip()]
+    if not prompt_list:
+        raise AhrefsAPIError("prompts is required", status_code=400)
+    country_list = [str(c).strip().lower() for c in (countries or ["us"]) if str(c).strip()]
+    if not country_list:
+        country_list = ["us"]
+    body = {"countries": country_list, "prompts": prompt_list}
+    data = _request(
+        api_key,
+        "/management/brand-radar-prompts",
+        method="POST",
+        params={"report_id": rid},
+        json_body=body,
+    )
+    return {
+        "report_id": rid,
+        "prompt_count": len(prompt_list),
+        "countries": country_list,
+        "data": data,
+        "result_url": f"https://app.ahrefs.com/brand-radar/reports/{rid}",
+    }
+
+
+def brand_radar_competitors_compare(
+    api_key: str,
+    *,
+    brand: str,
+    competitors: list[str],
+    report_id: str | None = None,
+    country: str = "us",
+    domain: str | None = None,
+    data_sources: list[str] | None = None,
+) -> dict[str, Any]:
+    """POST /brand-radar/sov-overview — share-of-voice vs competitors."""
+    brand_name = str(brand or "").strip()
+    rid = str(report_id or "").strip() or None
+    comp = [str(c).strip() for c in (competitors or []) if str(c).strip()]
+    if not brand_name and not rid:
+        raise AhrefsAPIError("brand or report_id is required", status_code=400)
+    if not comp and not rid:
+        raise AhrefsAPIError("competitors is required when report_id is omitted", status_code=400)
+    sources = list(data_sources) if data_sources else list(_DEFAULT_BRAND_RADAR_SOURCES)
+    body: dict[str, Any] = {
+        "select": ["brand", "sov", "mentions", "impressions"],
+        "data_source": sources,
+        "country": [(country or "us").lower()],
+    }
+    if rid:
+        body["report_id"] = rid
+    if brand_name:
+        body["brands"] = [_brand_entity(brand_name, domain)]
+    if comp:
+        body["competitors"] = [_brand_entity(c) for c in comp]
+    data = _request(api_key, "/brand-radar/sov-overview", method="POST", json_body=body)
+    return {
+        "brand": brand_name or None,
+        "competitors": comp,
+        "report_id": rid,
+        "country": (country or "us").lower(),
+        "data": data,
+        "result_url": (
+            f"https://app.ahrefs.com/brand-radar/reports/{rid}" if rid else "https://app.ahrefs.com/brand-radar"
+        ),
+    }
+
+
+def brand_radar_exports_run(
+    api_key: str,
+    *,
+    report_id: str,
+    country: str = "us",
+    data_sources: list[str] | None = None,
+) -> dict[str, Any]:
+    """POST /brand-radar/ai-responses — export-style dump of AI responses for a report."""
+    rid = str(report_id or "").strip()
+    if not rid:
+        raise AhrefsAPIError("report_id is required", status_code=400)
+    sources = list(data_sources) if data_sources else list(_DEFAULT_BRAND_RADAR_SOURCES)
+    body: dict[str, Any] = {
+        "report_id": rid,
+        "data_source": sources,
+        "country": [(country or "us").lower()],
+        "prompts": "ahrefs",
+        "select": ["prompt", "brand", "mentioned", "citations", "response_preview"],
+        "output": "json",
+    }
+    data = _request(api_key, "/brand-radar/ai-responses", method="POST", json_body=body)
+    return {
+        "report_id": rid,
+        "country": (country or "us").lower(),
+        "data": data,
+        "result_url": f"https://app.ahrefs.com/brand-radar/reports/{rid}",
+    }
