@@ -219,9 +219,11 @@ export function getFeaturedBlogPost(): BlogPost {
 }
 
 export function getBlogListingPosts(): BlogPost[] {
-  return blogPosts.filter(
-    (post) => post.slug !== FEATURED_BLOG_SLUG && !BLOG_LISTING_EXCLUDED_SLUGS.has(post.slug),
-  )
+  return blogPosts
+    .filter(
+      (post) => post.slug !== FEATURED_BLOG_SLUG && !BLOG_LISTING_EXCLUDED_SLUGS.has(post.slug),
+    )
+    .sort((a, b) => b.datePublished.localeCompare(a.datePublished))
 }
 
 export function getBlogCategories(): string[] {

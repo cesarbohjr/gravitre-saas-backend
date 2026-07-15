@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import type { BlogPost } from "../types"
+import { createBlogDates } from "../blog-dates"
 import { GRAVITRE_BLOG_AUTHOR } from "../authors"
 import Link from "next/link"
 
@@ -45,9 +46,7 @@ export const workflowTemplatesPost: BlogPost = {
     "Most automation projects die before they ship. Not because the tech is wrong. Because the starting point is. Gravitre's Marketplace template library fixes that.",
   category: "Product",
   author: GRAVITRE_BLOG_AUTHOR,
-  datePublished: "2026-03-21",
-  dateModified: "2026-07-16",
-  displayDate: "March 21, 2026",
+  ...createBlogDates("2026-07-15"),
   readTime: "12 min read",
   heroImage: "/images/blog/workflow-templates-hero.jpg",
   heroGradient: "from-amber-50 via-white to-emerald-50",

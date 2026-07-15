@@ -25,10 +25,11 @@ export type BlogPost = {
   excerpt: string
   category: string
   author: BlogAuthor
-  /** ISO 8601 for schema + <time>. */
+  /** ISO 8601 for schema + <time>. Use createBlogDates() with the go-live day when publishing. */
   datePublished: string
+  /** ISO 8601; bump when article content changes after publish. */
   dateModified: string
-  /** Human-readable display date. */
+  /** Human-readable display date (derived from datePublished). */
   displayDate: string
   readTime: string
   heroImage: string
