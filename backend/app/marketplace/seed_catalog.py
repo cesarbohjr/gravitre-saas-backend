@@ -62,6 +62,18 @@ AHREFS = {
         "v1 reads: domain rating, organic keywords, backlinks."
     ),
 }
+PDL = {
+    "connectorType": "pdl",
+    "label": "People Data Labs",
+    "required": False,
+    "connectPath": "/connectors?type=pdl",
+    "requirementNote": (
+        "People Data Labs requires your own PDL API subscription (BYO). "
+        "Gravitre never uses a shared platform key. "
+        "Connect your API key from https://dashboard.peopledatalabs.com/ "
+        "for person/company enrich. Contact-level Memory/KG writes remain gated."
+    ),
+}
 APOLLO = {
     "connectorType": "apollo",
     "label": "Apollo.io",
@@ -801,6 +813,7 @@ def _intelligence_packs() -> list[CatalogAsset]:
                     "required": True if spec.pack_id == "prospecting-intelligence-pack" else False,
                     "label": "Apollo.io (discovery = BYO search plan)",
                 },
+                {**PDL, "required": False},
             ]
         elif spec.pack_id == "marketing-intelligence-pack":
             required = [
@@ -809,6 +822,7 @@ def _intelligence_packs() -> list[CatalogAsset]:
                 {**HUBSPOT, "required": False, "label": "HubSpot CRM"},
                 {**SEMRUSH, "required": False},
                 {**AHREFS, "required": False},
+                {**PDL, "required": False},
             ]
         elif spec.pack_id == "revops-intelligence-pack":
             required = [

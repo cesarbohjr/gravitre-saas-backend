@@ -46,8 +46,8 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             description=(
                 "Brand, campaign, HubSpot, GA4, Google Search Console, and creative knowledge. "
                 "GSC page/URL aggregates may feed pack signals; raw search-query strings are "
-                "gated from Memory/KG (STA-312 pattern). SEMrush/Ahrefs are BYO API keys only "
-                "(no shared Gravitree key; v1–v3 domain/keyword/backlink + project tools live)."
+                "gated from Memory/KG (STA-312 pattern). SEMrush/Ahrefs/People Data Labs are BYO "
+                "API keys only (no shared Gravitree key)."
             ),
             marketplace_tags=["marketing", "starter", "intelligence-pack", "seo"],
             assignments=[
@@ -87,6 +87,19 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
                     "marketing",
                     "brand_marketing",
                     reference_summary="Canva brand asset folder references.",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "pdl-company-enrichment",
+                    "People Data Labs Company Enrichment",
+                    "marketing",
+                    "analytics",
+                    reference_summary=(
+                        "BYO PDL company enrich via pdl.company.enrich "
+                        "(https://dashboard.peopledatalabs.com/). "
+                        "Contact-level Memory/KG writes remain STA-312 gated."
+                    ),
+                    external_url="https://dashboard.peopledatalabs.com/",
                 ),
             ],
             demo_agent_name="SEO Marketing Analyst",
@@ -168,7 +181,8 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
                 "Apollo company/contact discovery requires your own Apollo plan with search API access "
                 "(BYO-tier — same transparency as ZoomInfo / LinkedIn Sales Navigator). "
                 "HubSpot pipeline reads work without Apollo search. "
-                "Crunchbase/PDL → Memory/KG gated; CIS/hiring deferred."
+                "People Data Labs is BYO API key (dashboard.peopledatalabs.com); "
+                "contact-level Memory/KG writes remain gated. CIS/hiring deferred."
             ),
             marketplace_tags=["sales", "starter", "intelligence-pack", "crm"],
             assignments=[
@@ -198,14 +212,17 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
                 ),
                 IntelligencePackAssignment(
                     "knowledge_pack",
-                    "account-research-notes",
-                    "Account Research Notes",
+                    "pdl-account-enrichment",
+                    "People Data Labs Account Enrichment",
                     "sales",
                     "enterprise_sales",
                     reference_summary=(
-                        "Account research placeholders. Crunchbase/PDL enrichment not enabled "
-                        "(governance stop-line)."
+                        "BYO People Data Labs person/company enrich "
+                        "(https://dashboard.peopledatalabs.com/). "
+                        "Live tools OK with tenant API key; contact-level Memory/KG writes remain STA-312 gated. "
+                        "Crunchbase stays activation-gated."
                     ),
+                    external_url="https://dashboard.peopledatalabs.com/",
                 ),
             ],
             demo_agent_name="Sales Pipeline Analyst",
@@ -233,7 +250,8 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
                 "Build ICP and Create list work with any connected Apollo account; "
                 "company/contact discovery specifically requires a paid Apollo plan with search API access "
                 "(BYO-tier — same as ZoomInfo / LinkedIn Sales Navigator). "
-                "Crunchbase/PDL → Memory/KG gated (STA-312)."
+                "People Data Labs is BYO API key (dashboard.peopledatalabs.com); "
+                "contact-level Memory/KG writes remain STA-312 gated. Crunchbase stays activation-gated."
             ),
             marketplace_tags=["prospecting", "starter", "intelligence-pack", "outbound", "apollo"],
             assignments=[
@@ -282,14 +300,17 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
                 ),
                 IntelligencePackAssignment(
                     "knowledge_pack",
-                    "account-enrichment-gated",
-                    "Account Enrichment (gated)",
+                    "pdl-account-enrichment",
+                    "People Data Labs Account Enrichment",
                     "sales",
                     "outbound_prospecting",
                     reference_summary=(
-                        "Crunchbase/PDL enrichment placeholders. Not enabled — STA-312 "
-                        "governance stop-line (no Memory/KG path)."
+                        "BYO People Data Labs person/company enrich "
+                        "(https://dashboard.peopledatalabs.com/). "
+                        "Live tools OK with tenant API key; contact-level Memory/KG writes remain STA-312 gated. "
+                        "Crunchbase stays activation-gated."
                     ),
+                    external_url="https://dashboard.peopledatalabs.com/",
                 ),
             ],
             demo_agent_name="Lead Scouting Analyst",
@@ -298,7 +319,7 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             workflow_name="Prospecting Apollo Lead Scout",
             workflow_description=(
                 "Outbound: Apollo org search → people search → Apollo list create → HubSpot list create. "
-                "No Crunchbase/PDL/KG writes."
+                "PDL BYO enrich available via Connectors; no Memory/KG contact writes."
             ),
             workflow_steps=[
                 {

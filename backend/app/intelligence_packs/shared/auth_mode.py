@@ -46,8 +46,8 @@ CONNECTOR_AUTH_MODES: dict[str, AuthMode] = {
     "cisa_kev": AuthMode.GRAVITREE_MANAGED,
     # Contact-level gravitree sources — activation gated
     "crunchbase": AuthMode.GRAVITREE_MANAGED,
-    "pdl": AuthMode.GRAVITREE_MANAGED,
     # BYO premium — fail closed, no shared key path
+    "pdl": AuthMode.BYO_REQUIRED,  # Cesar clear 2026-07-15: tenant API key (dashboard.peopledatalabs.com)
     "zoominfo": AuthMode.BYO_REQUIRED,
     "linkedin_sales_navigator": AuthMode.BYO_REQUIRED,
     "semrush": AuthMode.BYO_REQUIRED,
@@ -57,7 +57,7 @@ CONNECTOR_AUTH_MODES: dict[str, AuthMode] = {
 ACTIVATION_GATES: dict[str, ActivationGate] = {
     "opencorporates": ActivationGate.COMMERCIAL_LICENSE_PENDING,
     "crunchbase": ActivationGate.GOVERNANCE_STOP_LINE,
-    "pdl": ActivationGate.GOVERNANCE_STOP_LINE,
+    # PDL: BYO connector allowed; Memory/KG contact persistence remains pack-guardrailed.
 }
 
 # Platform env var names for gravitree_managed sources (never used for BYO).
@@ -70,7 +70,6 @@ GRAVITREE_ENV_KEYS: dict[str, tuple[str, ...]] = {
     "nvd": ("NVD_API_KEY",),
     "cisa_kev": (),  # public feed
     "crunchbase": ("CRUNCHBASE_API_KEY",),
-    "pdl": ("PDL_API_KEY",),
 }
 
 LIVE_CONNECTOR_STATUSES = frozenset({"active", "connected", "healthy"})

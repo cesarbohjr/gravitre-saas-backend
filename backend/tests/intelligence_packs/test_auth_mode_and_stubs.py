@@ -31,7 +31,7 @@ def test_fred_is_gravitree_managed():
     assert get_auth_mode("fred") == AuthMode.GRAVITREE_MANAGED
 
 
-@pytest.mark.parametrize("vendor", ["zoominfo", "linkedin_sales_navigator"])
+@pytest.mark.parametrize("vendor", ["zoominfo", "linkedin_sales_navigator", "pdl", "semrush", "ahrefs"])
 def test_byo_vendors_fail_closed_without_org_secret(vendor: str):
     result = resolve_credential_source(
         vendor,
@@ -43,7 +43,7 @@ def test_byo_vendors_fail_closed_without_org_secret(vendor: str):
     assert result["source"] is None
 
 
-@pytest.mark.parametrize("vendor", ["zoominfo", "linkedin_sales_navigator"])
+@pytest.mark.parametrize("vendor", ["zoominfo", "linkedin_sales_navigator", "pdl"])
 def test_byo_never_accepts_platform_resolution(vendor: str):
     with pytest.raises(AuthModeError) as exc:
         assert_byo_never_uses_platform_key(vendor, resolved_from="platform_env")
@@ -75,11 +75,15 @@ def test_opencorporates_activation_blocked_until_license():
     assert blocked["error_code"] == "SOURCE_ACTIVATION_BLOCKED"
 
 
-def test_crunchbase_pdl_governance_stop_line():
+def test_crunchbase_governance_stop_line_pdl_is_byo():
     assert get_activation_gate("crunchbase") == ActivationGate.GOVERNANCE_STOP_LINE
-    assert get_activation_gate("pdl") == ActivationGate.GOVERNANCE_STOP_LINE
     assert is_activation_allowed("crunchbase") is False
-    assert is_activation_allowed("pdl") is False
+    assert get_auth_mode("pdl") == AuthMode.BYO_REQUIRED
+    assert get_activation_gate("pdl") == ActivationGate.NONE
+    assert is_activation_allowed("pdl") is True
+    ok = resolve_credential_source("pdl", org_has_secret=True, platform_env_present=True)
+    assert ok["ok"] is True
+    assert ok["source"] == "org_secret"
 
 
 def test_stage_connector_stubs_creates_needs_connection_only(monkeypatch):

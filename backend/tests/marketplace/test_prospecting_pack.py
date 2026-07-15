@@ -20,9 +20,10 @@ def test_prospecting_pack_demo_in_catalog():
     assert "apollo.lists.create" in actions
     assert "hubspot.lists.create" in actions
     assert "prospecting-intelligence-pack" in {s.pack_id for s in list_intelligence_pack_specs()}
-    # STA-312: enrichment assignment is gated knowledge, not a live Crunchbase/PDL source
-    gated = [a for a in spec.assignments if a.source_id == "account-enrichment-gated"]
-    assert gated and "STA-312" in (gated[0].reference_summary or "")
+    # PDL BYO knowledge assignment; Memory/KG contact writes still STA-312 gated
+    pdl = [a for a in spec.assignments if a.source_id == "pdl-account-enrichment"]
+    assert pdl and "STA-312" in (pdl[0].reference_summary or "")
+    assert "dashboard.peopledatalabs.com" in (pdl[0].external_url or "")
 
 
 def test_prospecting_sources_template_excludes_governance_vendors():

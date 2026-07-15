@@ -40,10 +40,14 @@ Rollup: `docs/delivery/foundation-five-gates-tip-resmoke.json`
 ## Phase 1 commitments (2026-07-13)
 
 - **`needs_connection` stubs are in Phase 1** — not deferred. Template install must show staged connectors before OAuth/API-key; Phase 1 is not Done without this.
-- **OpenCorporates:** build shared `gravitree_managed` client + catalog plumbing; **activation blocked** until Cesar confirms commercial license (`OPENCORPORATES_LICENSE_CONFIRMED` / equivalent). Same pattern as Crunchbase/PDL stop-line: code may exist, **live tenant enablement may not**.
-- **Contact-level stop-line:** Crunchbase + PDL stay behind governance/activation gates; no KG/Memory writes.
+- **OpenCorporates:** build shared `gravitree_managed` client + catalog plumbing; **activation blocked** until Cesar confirms commercial license (`OPENCORPORATES_LICENSE_CONFIRMED` / equivalent). Same pattern as Crunchbase stop-line: code may exist, **live tenant enablement may not**.
+- **Contact-level stop-line:** Crunchbase stays behind governance/activation gates. **PDL (2026-07-15 Cesar clear):** BYO tenant API key allowed on Sales/Prospecting/Marketing packs (`auth_mode=byo_required`); **no** contact-level Memory/KG writes without a separate clear.
 - **GSC query stop-line (Marketing #6):** raw Search Console query strings (`searchAnalytics.query` row-level query text) must **not** be written to Organizational Memory / Knowledge Graph without Cesar governance sign-off (STA-312 pattern, applied preemptively). Aggregate/rollup metrics (clicks, impressions, position by URL) are **not** gated and may flow through the pack signal pipeline. See `docs/delivery/marketing-phase0-gsc-oauth.md`.
 - **Scope this pass:** public gravitree sources (FRED, SEC, World Bank, OECD) + `auth_mode` + BYO fail-closed tests + stub template install + gated OC/NVD/CISA scaffolding.
+
+### PDL BYO packaging (2026-07-15)
+
+Cesar authorized People Data Labs as **BYO** on Sales, Prospecting, and Marketing intelligence packs (dashboard.peopledatalabs.com). Live `pdl.person.enrich` / `pdl.company.enrich` use the org API key only. Memory/KG contact persistence remains gated.
 
 ### Phase 1 closure evidence (DONE)
 

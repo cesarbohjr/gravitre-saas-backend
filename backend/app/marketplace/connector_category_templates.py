@@ -112,7 +112,7 @@ CONNECTOR_CATEGORY_TEMPLATES: dict[str, dict[str, Any]] = {
         "name": "Sales Intelligence Sources",
         "description": (
             "Customer CRM + discovery stubs (HubSpot, Apollo). "
-            "Does not stage Crunchbase/PDL or BYO ZoomInfo/LI Sales Nav."
+            "PDL/SEMrush-style BYO and Crunchbase are not auto-staged — connect via Connectors."
         ),
         "connectors": ["hubspot", "apollo"],
     },
@@ -120,7 +120,8 @@ CONNECTOR_CATEGORY_TEMPLATES: dict[str, dict[str, Any]] = {
         "name": "Prospecting Intelligence Sources",
         "description": (
             "Outbound discovery stubs (Apollo + HubSpot for list sync). "
-            "Does not stage Crunchbase/PDL (STA-312). BYO ZoomInfo/LI Sales Nav via separate template."
+            "PDL is BYO via Connectors (not auto-staged). Crunchbase stays activation-gated. "
+            "BYO ZoomInfo/LI Sales Nav via separate template."
         ),
         "connectors": ["apollo", "hubspot"],
     },
@@ -134,7 +135,9 @@ CONNECTOR_CATEGORY_TEMPLATES: dict[str, dict[str, Any]] = {
     },
     "marketing-intelligence-sources": {
         "name": "Marketing Intelligence Sources",
-        "description": "GSC + GA4 + HubSpot stubs. SEMrush/Ahrefs are BYO via Connectors (not auto-staged).",
+        "description": (
+            "GSC + GA4 + HubSpot stubs. SEMrush/Ahrefs/PDL are BYO via Connectors (not auto-staged)."
+        ),
         "connectors": ["google_search_console", "google_analytics", "hubspot"],
     },
     "revops-intelligence-sources": {

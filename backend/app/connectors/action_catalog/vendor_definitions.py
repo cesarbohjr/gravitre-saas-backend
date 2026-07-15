@@ -333,6 +333,25 @@ VENDOR_DEFINITIONS: tuple = (
         ),
     ),
     build_vendor(
+        "pdl",
+        "People Data Labs",
+        "CRM / Sales",
+        "https://docs.peopledatalabs.com/",
+        shipped=True,
+        department="sales",
+        v1=(
+            action("pdl", "person.enrich", "Enrich person", tier="v1", kind="read", scope_suffix="person:read", idempotent=True),
+            action("pdl", "company.enrich", "Enrich company", tier="v1", kind="read", scope_suffix="company:read", idempotent=True),
+        ),
+        # Catalog tiers require non-empty v2/v3; keep as reads until bulk/identify executors ship.
+        v2=(
+            action("pdl", "person.identify", "Identify person", tier="v2", kind="read", scope_suffix="person:read", idempotent=True),
+        ),
+        v3=(
+            action("pdl", "person.prefetch", "Person prefetch (catalog)", tier="v3", kind="read", scope_suffix="person:read", idempotent=True),
+        ),
+    ),
+    build_vendor(
         "stackadapt",
         "StackAdapt",
         "CRM / Marketing",
