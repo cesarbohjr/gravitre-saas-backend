@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { createElement, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import useSWR from "swr"
@@ -73,7 +73,6 @@ function ProfileHeroSkeleton() {
 
 function ProfileHero({ agent }: { agent: Agent }) {
   const { item } = useMotionPrefs()
-  const RoleIcon = resolveAgentRoleIcon(agent.role, agent.name)
   const personality =
     agent.personality?.gradient
       ? agent.personality
@@ -128,7 +127,10 @@ function ProfileHero({ agent }: { agent: Agent }) {
             </h1>
             <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
-                <RoleIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                {createElement(resolveAgentRoleIcon(agent.role, agent.name), {
+                  className: "h-3.5 w-3.5 shrink-0",
+                  "aria-hidden": true,
+                })}
                 {agent.role || "Agent"}
               </span>
               {agent.department ? (

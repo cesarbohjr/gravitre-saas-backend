@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { createElement, useMemo, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -69,7 +69,6 @@ function AgentCardSkeleton() {
 
 function AgentProfileCard({ agent, index }: { agent: Agent; index: number }) {
   const { item } = useMotionPrefs()
-  const RoleIcon = resolveAgentRoleIcon(agent.role, agent.name)
   const personality =
     agent.personality?.gradient
       ? agent.personality
@@ -126,7 +125,10 @@ function AgentProfileCard({ agent, index }: { agent: Agent; index: number }) {
               />
             </div>
             <p className="mt-0.5 flex items-center gap-1.5 truncate text-sm text-muted-foreground">
-              <RoleIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              {createElement(resolveAgentRoleIcon(agent.role, agent.name), {
+                className: "h-3.5 w-3.5 shrink-0",
+                "aria-hidden": true,
+              })}
               <span className="truncate">{agent.role || "Agent"}</span>
             </p>
             <p className="mt-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
