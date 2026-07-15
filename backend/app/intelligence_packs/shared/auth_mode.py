@@ -50,6 +50,8 @@ CONNECTOR_AUTH_MODES: dict[str, AuthMode] = {
     # BYO premium — fail closed, no shared key path
     "zoominfo": AuthMode.BYO_REQUIRED,
     "linkedin_sales_navigator": AuthMode.BYO_REQUIRED,
+    "semrush": AuthMode.BYO_REQUIRED,
+    "ahrefs": AuthMode.BYO_REQUIRED,
 }
 
 ACTIVATION_GATES: dict[str, ActivationGate] = {

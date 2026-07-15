@@ -3422,6 +3422,8 @@ from app.services.apollo_tools import APOLLO_TOOL_EXECUTORS
 from app.services.clay_tools import CLAY_TOOL_EXECUTORS
 from app.services.engagebay_tools import ENGAGEBAY_TOOL_EXECUTORS
 from app.services.pipedrive_tools import PIPEDRIVE_TOOL_EXECUTORS
+from app.services.semrush_tools import SEMRUSH_TOOL_EXECUTORS
+from app.services.ahrefs_tools import AHREFS_TOOL_EXECUTORS
 
 _TOOL_REGISTRY.update(NETSUITE_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(WORKDAY_TOOL_EXECUTORS)
@@ -3447,6 +3449,8 @@ _TOOL_REGISTRY.update(APOLLO_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(CLAY_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(ENGAGEBAY_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(PIPEDRIVE_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(SEMRUSH_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(AHREFS_TOOL_EXECUTORS)
 
 from app.services.priority_connector_tools import PRIORITY_CONNECTOR_TOOLS
 from app.services.intelligence_pack_tools import INTELLIGENCE_PACK_TOOL_EXECUTORS

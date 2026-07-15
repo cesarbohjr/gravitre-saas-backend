@@ -269,7 +269,7 @@ API accounts/keys for FRED, SEC_USER_AGENT, OpenCorporates commercial token, NVD
 | **3.5** | Shared Pack KPI + notify/result_url cohesion smoke on Executive | **DONE** — `docs/delivery/phase35-executive-cohesion-live.json` |
 | 4 | Customer Success | **DONE** — `docs/delivery/phase4-customer-success-pack-live.json` (internal HubSpot; Zendesk staged) |
 | 5 | Prospecting & Lead Scouting | **DONE** — `docs/delivery/phase4-prospecting-pack-live.json` (Apollo/HubSpot lists; search plan-limited) |
-| 6 | Marketing | GSC OAuth **NEW** (Verdict B — blocked on GCP human setup); SEMrush/Ahrefs BYO; **GSC raw-query → Memory/KG stop-line** |
+| 6 | Marketing | GSC OAuth **PASS**; SEMrush/Ahrefs **BYO + v1 executors**; GSC **PackSignal** `gsc.page_performance_rollup` + PackKpiPanel tab; raw-query Memory/KG stop-line held |
 | 7 | RevOps | After Sales+Marketing+CS (Finance when live) |
 | 8 | AI Search | **Research spike only** — no scrape |
 | 9 | Finance | Cesar sign-off before live banking/QB/Xero/NetSuite |
