@@ -426,6 +426,25 @@ class TransformHandler(StepHandler):
         raise ValueError(f"Invalid step type for execute: {context.step_type}")
 
 
+class ApprovalStepHandler(StepHandler):
+    """Linear-path Quality Gate — pauses the run (graph path uses execution_engine)."""
+
+    step_type = "approval"
+
+    def simulate(self, context: StepContext) -> dict[str, Any]:
+        return _truncate_output_snapshot(
+            {"simulated": True, "message": "Approval gate (dry-run)", "pending_approval": True}
+        )
+
+    def execute(self, context: StepContext) -> dict[str, Any]:
+        # Linear execute cannot mid-pause the same way as the graph engine; fail closed
+        # so a human_approval that only exists as a step cannot be skipped as a noop.
+        raise PermissionError(
+            "approval step requires graph execution pause (awaiting_approval); "
+            "refusing to skip Quality Gate on linear path"
+        )
+
+
 def register_handlers() -> None:
     register_handler(RagRetrieveHandler())
     register_handler(AgentStepHandler())
@@ -437,6 +456,7 @@ def register_handlers() -> None:
     register_handler(WebhookPostHandler())
     register_handler(ConditionHandler())
     register_handler(TransformHandler())
+    register_handler(ApprovalStepHandler())
 
 
 register_handlers()

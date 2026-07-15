@@ -82,12 +82,20 @@ def validate_definition(definition: dict[str, Any]) -> dict[str, Any]:
                 f"step {step_id!r} must have non-empty string 'name'",
                 errors=[f"step_{i}_missing_name"],
             )
-        step_type = raw_step.get("type")
+        from app.workflows.definition_resolver import normalize_legacy_node_type
+
+        raw_type = raw_step.get("type")
+        step_type = normalize_legacy_node_type(str(raw_type) if raw_type is not None else "")
         if step_type not in ALLOWED_STEP_TYPES:
             raise WorkflowValidationError(
-                f"step {step_id!r} has unsupported type: {step_type!r}",
+                f"step {step_id!r} has unsupported type: {raw_type!r}",
                 errors=[f"step_{i}_invalid_type"],
             )
+        # Persist normalized type (human_approval → approval) so execute never sees aliases.
+        raw_step["type"] = step_type
+        if step_type == "approval":
+            metadata = raw_step.get("metadata") if isinstance(raw_step.get("metadata"), dict) else {}
+            raw_step["metadata"] = {**metadata, "has_approval_gate": True}
         config = raw_step.get("config")
         if config is not None and not isinstance(config, dict):
             raise WorkflowValidationError(

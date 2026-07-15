@@ -20,6 +20,7 @@ ALLOWED_STEP_TYPES = frozenset({
     "webhook_post",
     "invoke_tool",
     "council",
+    "approval",  # canvas Quality Gate (human_approval normalizes here)
 })
 
 RUN_TYPE_DRY_RUN = "dry_run"
@@ -43,6 +44,7 @@ EXECUTE_ALLOWED_STEP_TYPES = frozenset({
     "webhook_post",
     "invoke_tool",
     "council",
+    "approval",
 })
 
 # BE-20: closed role set for approver_roles (owner may approve/reject like admin)

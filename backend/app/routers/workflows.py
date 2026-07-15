@@ -1655,6 +1655,11 @@ async def execute_workflow(
         )
     workflow_version_id = str(active["id"])
     try:
+        from app.workflows.definition_resolver import resolve_executable_definition
+
+        definition = resolve_executable_definition(
+            client, org_id, workflow_id, definition, environment_name
+        )
         definition = validate_definition(definition)
     except WorkflowValidationError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message) from e
@@ -1939,6 +1944,11 @@ def _execute_workflow_with_context(
         )
     workflow_version_id = str(active["id"])
     try:
+        from app.workflows.definition_resolver import resolve_executable_definition
+
+        definition = resolve_executable_definition(
+            client, org_id, workflow_id, definition, environment_name
+        )
         definition = validate_definition(definition)
     except WorkflowValidationError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message) from e
