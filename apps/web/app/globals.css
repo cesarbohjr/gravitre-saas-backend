@@ -378,7 +378,10 @@
       radial-gradient(circle at 50% 40%, color-mix(in oklch, var(--chart-4) 5%, transparent), transparent 55%),
       radial-gradient(color-mix(in oklch, var(--primary) 7%, transparent) 1px, transparent 1px);
     background-size: 100% 100%, 100% 100%, 100% 100%, 24px 24px;
-    background-attachment: fixed, fixed, fixed, local;
+    /* `local` (not `fixed`) so the tints + dot-grid scroll with the canvas and
+       paint correctly on iOS Safari, which cannot repaint `fixed` backgrounds
+       during scroll and leaves blank white bands in their place. */
+    background-attachment: local, local, local, local;
   }
 
   .ai-surface-shell {
