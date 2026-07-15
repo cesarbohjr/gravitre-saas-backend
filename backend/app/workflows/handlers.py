@@ -117,6 +117,26 @@ class NoopHandler(StepHandler):
         return _truncate_output_snapshot({"executed": True, "message": "No-op"})
 
 
+def _enforce_canvas_write_authority(context: StepContext) -> None:
+    """Block catalog write steps unless the run required human approval (P1 canvas gate)."""
+    from app.services.canvas_write_gate import (
+        CANVAS_WRITE_AUTHORITY_BLOCKED,
+        block_canvas_write_step,
+        load_run_for_write_gate,
+    )
+
+    run_row = load_run_for_write_gate(context.client, context.org_id, context.run_id)
+    blocked = block_canvas_write_step(
+        step_type=context.step_type,
+        config=context.config,
+        run_row=run_row,
+    )
+    if blocked:
+        raise PermissionError(
+            f"{CANVAS_WRITE_AUTHORITY_BLOCKED}: {blocked.get('error')}"
+        )
+
+
 class InvokeToolHandler(StepHandler):
     """STA-39: run a registered connector tool action from workflow config."""
 
@@ -138,6 +158,7 @@ class InvokeToolHandler(StepHandler):
         action = cfg.get("action")
         if not action:
             raise ValueError("invoke_tool requires config.action")
+        _enforce_canvas_write_authority(context)
         result = invoke_tool(
             tool_context_from_step(context),
             str(action),
@@ -167,6 +188,7 @@ class SlackPostMessageHandler(StepHandler):
         })
 
     def execute(self, context: StepContext) -> dict[str, Any]:
+        _enforce_canvas_write_authority(context)
         action = STEP_TYPE_TO_ACTION[self.step_type]
         result = invoke_tool(
             tool_context_from_step(context),
@@ -223,6 +245,7 @@ class EmailSendHandler(StepHandler):
         })
 
     def execute(self, context: StepContext) -> dict[str, Any]:
+        _enforce_canvas_write_authority(context)
         action = STEP_TYPE_TO_ACTION[self.step_type]
         result = invoke_tool(
             tool_context_from_step(context),
@@ -274,6 +297,7 @@ class WebhookPostHandler(StepHandler):
         })
 
     def execute(self, context: StepContext) -> dict[str, Any]:
+        _enforce_canvas_write_authority(context)
         action = STEP_TYPE_TO_ACTION[self.step_type]
         result = invoke_tool(
             tool_context_from_step(context),
