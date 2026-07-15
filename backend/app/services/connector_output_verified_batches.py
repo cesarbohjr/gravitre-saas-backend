@@ -210,6 +210,13 @@ VERIFIED_OUTPUT_BATCH_07: frozenset[str] = frozenset(
     }
 )
 
+VERIFIED_OUTPUT_BATCH_08: frozenset[str] = frozenset(
+    {
+        "ahrefs.projects.create",
+        "ahrefs.rank_tracker.add",
+    }
+)
+
 VERIFIED_OUTPUT_BATCHES: tuple[frozenset[str], ...] = (
     VERIFIED_OUTPUT_BATCH_01,
     VERIFIED_OUTPUT_BATCH_02,
@@ -218,6 +225,7 @@ VERIFIED_OUTPUT_BATCHES: tuple[frozenset[str], ...] = (
     VERIFIED_OUTPUT_BATCH_05,
     VERIFIED_OUTPUT_BATCH_06,
     VERIFIED_OUTPUT_BATCH_07,
+    VERIFIED_OUTPUT_BATCH_08,
 )
 
 CLEARED_OUTPUT_SCHEMA_ACTIONS: frozenset[str] = frozenset().union(*VERIFIED_OUTPUT_BATCHES)

@@ -127,6 +127,7 @@ export default function IntelligenceReportsPage() {
             <TabsTrigger value="customer-success">{reportsCopy.tabCustomerSuccess}</TabsTrigger>
             <TabsTrigger value="prospecting">{reportsCopy.tabProspecting}</TabsTrigger>
             <TabsTrigger value="marketing">{reportsCopy.tabMarketing}</TabsTrigger>
+            <TabsTrigger value="revops">{reportsCopy.tabRevOps}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="roi" className="mt-6 space-y-4">
@@ -230,6 +231,13 @@ export default function IntelligenceReportsPage() {
             <PackKpiPanel
               packId="marketing-intelligence-pack"
               packTitle="Marketing Intelligence Pack"
+            />
+          </TabsContent>
+
+          <TabsContent value="revops" className="mt-6 space-y-4">
+            <PackKpiPanel
+              packId="revops-intelligence-pack"
+              packTitle="RevOps Intelligence Pack"
             />
           </TabsContent>
         </Tabs>

@@ -47,7 +47,7 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
                 "Brand, campaign, HubSpot, GA4, Google Search Console, and creative knowledge. "
                 "GSC page/URL aggregates may feed pack signals; raw search-query strings are "
                 "gated from Memory/KG (STA-312 pattern). SEMrush/Ahrefs are BYO API keys only "
-                "(no shared Gravitree key; v1 domain/keyword/backlink reads live)."
+                "(no shared Gravitree key; v1–v3 domain/keyword/backlink + project tools live)."
             ),
             marketplace_tags=["marketing", "starter", "intelligence-pack", "seo"],
             assignments=[
@@ -68,7 +68,73 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
                 ),
                 IntelligencePackAssignment("canva", "brand-assets", "Canva Brand Assets", "marketing", "brand_marketing"),
             ],
+            demo_agent_name="SEO Marketing Analyst",
             demo_systems=["google_search_console", "google_analytics", "hubspot"],
+            connector_template_id="marketing-intelligence-sources",
+            workflow_name="Marketing GSC Site Snapshot",
+            workflow_description=(
+                "Read-only: list Google Search Console sites via invoke_tool. "
+                "Page aggregates may feed PackSignal; raw query strings stay Memory/KG gated."
+            ),
+            workflow_steps=[
+                {
+                    "id": "gsc-sites",
+                    "name": "List GSC Sites",
+                    "type": "invoke_tool",
+                    "config": {"action": "searchconsole.sites.list", "params": {}},
+                },
+            ],
+        ),
+        IntelligencePackSpec(
+            pack_id="revops-intelligence-pack",
+            name="RevOps Intelligence Pack",
+            department="sales",
+            default_subdomain="revenue_operations",
+            description=(
+                "Revenue operations rollup across Sales + Marketing + CS CRM signals. "
+                "Reuses HubSpot/Salesforce connectors; heuristic forecasting OK. "
+                "Finance banking/QB/Xero/NetSuite stay gated until Cesar sign-off."
+            ),
+            marketplace_tags=["revops", "starter", "intelligence-pack", "revenue"],
+            assignments=[
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "hubspot-pipeline",
+                    "HubSpot Pipeline",
+                    "sales",
+                    "revenue_operations",
+                    reference_summary="Customer HubSpot CRM pipelines for RevOps rollups (read-only).",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "stage-definitions",
+                    "Stage Definitions",
+                    "sales",
+                    "revenue_operations",
+                    reference_summary="Shared funnel stage definitions across Sales/Marketing/CS.",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "forecast-rollup",
+                    "Forecast Rollup",
+                    "sales",
+                    "forecasting",
+                    reference_summary="Heuristic revenue forecast rollup references (ML deferred).",
+                ),
+            ],
+            demo_agent_name="Revenue Operations Analyst",
+            demo_systems=["hubspot"],
+            connector_template_id="revops-intelligence-sources",
+            workflow_name="RevOps HubSpot Pipeline Snapshot",
+            workflow_description="Read-only: list HubSpot deal pipelines for RevOps rollup.",
+            workflow_steps=[
+                {
+                    "id": "hubspot-pipelines",
+                    "name": "List HubSpot Pipelines",
+                    "type": "invoke_tool",
+                    "config": {"action": "hubspot.pipelines.list", "params": {}},
+                },
+            ],
         ),
         IntelligencePackSpec(
             pack_id="sales-intelligence-pack",

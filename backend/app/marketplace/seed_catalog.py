@@ -810,6 +810,16 @@ def _intelligence_packs() -> list[CatalogAsset]:
                 {**SEMRUSH, "required": False},
                 {**AHREFS, "required": False},
             ]
+        elif spec.pack_id == "revops-intelligence-pack":
+            required = [
+                {**HUBSPOT, "required": False, "label": "HubSpot CRM"},
+                {
+                    "connectorType": "salesforce",
+                    "label": "Salesforce",
+                    "required": False,
+                    "connectPath": "/connectors?type=salesforce",
+                },
+            ]
         elif spec.demo_systems:
             for system in spec.demo_systems:
                 required.append(

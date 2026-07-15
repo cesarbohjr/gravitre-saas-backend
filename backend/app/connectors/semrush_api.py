@@ -18,6 +18,8 @@ from app.connectors.repository import get_connector, get_connector_by_type, get_
 
 SEMRUSH_API_BASE = "https://api.semrush.com/"
 SEMRUSH_ANALYTICS_V1 = "https://api.semrush.com/analytics/v1/"
+SEMRUSH_PROJECTS_V1 = "https://api.semrush.com/apis/v4/projects/v1"
+SEMRUSH_MANAGEMENT_V1 = "https://api.semrush.com/management/v1"
 TIMEOUT_SEC = 45.0
 
 DOMAIN_OVERVIEW_COLUMNS = "Db,Dn,Rk,Or,Ot,Oc,Ad,At,Ac,Sh,Sv"
@@ -188,4 +190,188 @@ def backlinks_list(
         "rows": rows,
         "row_count": len(rows),
         "limit": display_limit,
+    }
+
+
+def _projects_request(
+    api_key: str,
+    method: str,
+    path: str,
+    *,
+    json_body: dict[str, Any] | None = None,
+    params: dict[str, Any] | None = None,
+) -> Any:
+    url = f"{SEMRUSH_PROJECTS_V1}{path}"
+    headers = {
+        "Authorization": f"Apikey {api_key}",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
+    with httpx.Client(timeout=TIMEOUT_SEC) as http:
+        response = http.request(method, url, headers=headers, json=json_body, params=params)
+    body = response.text or ""
+    if response.status_code >= 400:
+        raise SemrushAPIError(
+            body[:500] or f"SEMrush Projects API error {response.status_code}",
+            status_code=response.status_code,
+            details=body,
+        )
+    if not response.content:
+        return {}
+    try:
+        return response.json()
+    except Exception:  # noqa: BLE001
+        return {"raw": body}
+
+
+def create_project(
+    api_key: str,
+    *,
+    name: str,
+    url: str | None = None,
+    properties: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    project_name = str(name or "").strip()
+    if not project_name and isinstance(properties, dict):
+        project_name = str(properties.get("name") or properties.get("project_name") or "").strip()
+    if not project_name:
+        raise SemrushAPIError("project name is required", status_code=400)
+    body: dict[str, Any] = {"project_name": project_name}
+    project_url = str(url or (properties or {}).get("url") or (properties or {}).get("project_url") or "").strip()
+    if project_url:
+        body["url"] = project_url
+    data = _projects_request(api_key, "POST", "/projects", json_body=body)
+    return {"project_name": project_name, "url": project_url or None, "data": data}
+
+
+def add_position_tracking_keywords(
+    api_key: str,
+    *,
+    project_id: str,
+    keywords: list[Any] | dict[str, Any],
+) -> dict[str, Any]:
+    pid = str(project_id or "").strip()
+    if not pid:
+        raise SemrushAPIError("project_id is required", status_code=400)
+    if isinstance(keywords, dict):
+        keyword_rows = keywords.get("keywords") if isinstance(keywords.get("keywords"), list) else [keywords]
+    else:
+        keyword_rows = list(keywords or [])
+    normalized: list[dict[str, Any]] = []
+    for item in keyword_rows:
+        if isinstance(item, str) and item.strip():
+            normalized.append({"keyword": item.strip()})
+        elif isinstance(item, dict) and (item.get("keyword") or item.get("name")):
+            normalized.append(
+                {
+                    "keyword": str(item.get("keyword") or item.get("name")).strip(),
+                    **({k: v for k, v in item.items() if k not in {"keyword", "name"}}),
+                }
+            )
+    if not normalized:
+        raise SemrushAPIError("keywords list is required", status_code=400)
+    url = f"{SEMRUSH_MANAGEMENT_V1}/projects/{pid}/keywords"
+    with httpx.Client(timeout=TIMEOUT_SEC) as http:
+        response = http.put(
+            url,
+            params={"key": api_key},
+            headers={"Accept": "application/json", "Content-Type": "application/json"},
+            json={"keywords": normalized},
+        )
+    body = response.text or ""
+    if response.status_code >= 400:
+        raise SemrushAPIError(
+            body[:500] or f"SEMrush position tracking error {response.status_code}",
+            status_code=response.status_code,
+            details=body,
+        )
+    try:
+        data = response.json() if response.content else {}
+    except Exception:  # noqa: BLE001
+        data = {"raw": body}
+    return {"project_id": pid, "keyword_count": len(normalized), "data": data}
+
+
+def competitors_compare(
+    api_key: str,
+    *,
+    domain: str,
+    database: str = "us",
+    limit: int = 10,
+) -> dict[str, Any]:
+    domain = str(domain or "").strip().lower()
+    if not domain:
+        raise SemrushAPIError("domain is required", status_code=400)
+    display_limit = max(1, min(int(limit or 10), 50))
+    rows = _get(
+        SEMRUSH_API_BASE,
+        api_key=api_key,
+        params={
+            "type": "domain_domains",
+            "domain": domain,
+            "database": database or "us",
+            "display_limit": display_limit,
+            "export_columns": "Dn,Cr,Np,Or,Ot,Oc,Ad",
+        },
+    )
+    return {
+        "domain": domain,
+        "database": database or "us",
+        "rows": rows,
+        "row_count": len(rows),
+        "limit": display_limit,
+    }
+
+
+def batch_domain(
+    api_key: str,
+    *,
+    domains: list[str],
+    database: str = "us",
+) -> dict[str, Any]:
+    cleaned = [str(d or "").strip().lower() for d in domains if str(d or "").strip()]
+    if not cleaned:
+        raise SemrushAPIError("domains list is required", status_code=400)
+    results = []
+    errors = []
+    for domain in cleaned[:25]:
+        try:
+            results.append(domain_overview(api_key, domain=domain, database=database))
+        except SemrushAPIError as exc:
+            errors.append({"domain": domain, "error": str(exc), "status_code": exc.status_code})
+    return {
+        "database": database or "us",
+        "requested": len(cleaned),
+        "completed": len(results),
+        "results": results,
+        "errors": errors,
+    }
+
+
+def exports_run(
+    api_key: str,
+    *,
+    domain: str,
+    database: str = "us",
+    report_type: str = "domain_organic",
+    limit: int = 100,
+) -> dict[str, Any]:
+    """Sync Analytics export (no async SEMrush export job API)."""
+    domain = str(domain or "").strip().lower()
+    if not domain:
+        raise SemrushAPIError("domain is required", status_code=400)
+    rtype = str(report_type or "domain_organic").strip() or "domain_organic"
+    if rtype in {"domain_organic", "keywords"}:
+        payload = keywords_list(api_key, domain=domain, database=database, limit=limit)
+    elif rtype in {"domain_ranks", "overview"}:
+        payload = domain_overview(api_key, domain=domain, database=database)
+    else:
+        payload = keywords_list(api_key, domain=domain, database=database, limit=limit)
+        rtype = "domain_organic"
+    return {
+        "export_mode": "sync_analytics",
+        "report_type": rtype,
+        "domain": domain,
+        "database": database or "us",
+        "payload": payload,
     }

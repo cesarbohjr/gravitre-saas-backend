@@ -8,23 +8,23 @@ from __future__ import annotations
 SEMRUSH_REQUIREMENT_NOTE = (
     "SEMrush requires your own SEMrush API subscription (BYO). "
     "Gravitre never uses a shared platform key. "
-    "Connect your API key to run domain overview, organic keywords, and backlinks."
+    "Connect your API key for domain/keyword/backlink reads plus projects and position tracking."
 )
 
 AHREFS_REQUIREMENT_NOTE = (
     "Ahrefs requires your own Ahrefs API subscription (BYO). "
     "Gravitre never uses a shared platform key. "
-    "Connect your API key to run domain rating, organic keywords, and backlinks."
+    "Connect your API key for domain rating/keywords/backlinks plus projects and rank tracker."
 )
 
 SEMRUSH_CAPABILITY_NOTES = (
     "Can run SEO reports? requires: your own SEMrush API plan (BYO — no shared Gravitree key)",
-    "Executor status: v1 reads live — domain.overview, keywords.list, backlinks.list",
+    "Executor status: v1–v3 live — domain/keywords/backlinks + projects/tracking + competitors/exports",
 )
 
 AHREFS_CAPABILITY_NOTES = (
     "Can run SEO reports? requires: your own Ahrefs API plan (BYO — no shared Gravitree key)",
-    "Executor status: v1 reads live — domain.rating, keywords.list, backlinks.list",
+    "Executor status: v1–v3 live — DR/keywords/backlinks + projects/rank tracker + competitors/top pages",
 )
 
 BYO_SEO_REQUIREMENT_NOTES: dict[str, str] = {

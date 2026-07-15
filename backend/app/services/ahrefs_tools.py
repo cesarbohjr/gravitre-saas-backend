@@ -1,14 +1,18 @@
-"""Ahrefs agent tool executors (BYO API key — v1 reads)."""
+"""Ahrefs agent tool executors (BYO API key — v1 reads + Management writes + v3 reads)."""
 from __future__ import annotations
 
 from typing import Any
 
 from app.connectors.ahrefs_api import (
     AhrefsAPIError,
+    add_rank_tracker_keywords,
     backlinks_list,
+    competitors_compare,
+    create_project,
     domain_rating,
     keywords_list,
     resolve_ahrefs_connector,
+    top_pages_list,
 )
 from app.connectors.rate_limit import enforce_rate_limit
 from app.services.tool_types import (
@@ -98,8 +102,82 @@ def _exec_backlinks_list(ctx: ToolContext, params: dict[str, Any]) -> Normalized
     return NormalizedResult(success=True, action="ahrefs.backlinks.list", connector_id=cid, data=data)
 
 
+def _exec_projects_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, api_key = _session(ctx, params)
+    name = str(params.get("name") or params.get("title") or "").strip()
+    url = str(params.get("url") or params.get("project_url") or "").strip()
+    properties = params.get("properties") if isinstance(params.get("properties"), dict) else None
+    protocol = str(params.get("protocol") or "both").strip() or "both"
+    mode = str(params.get("mode") or "subdomains").strip() or "subdomains"
+    try:
+        data = create_project(
+            api_key, name=name, url=url, protocol=protocol, mode=mode, properties=properties
+        )
+    except AhrefsAPIError as exc:
+        raise _handle_error(exc) from exc
+    return NormalizedResult(success=True, action="ahrefs.projects.create", connector_id=cid, data=data)
+
+
+def _exec_rank_tracker_add(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, api_key = _session(ctx, params)
+    project_id = str(params.get("project_id") or params.get("project") or "").strip()
+    keywords = params.get("keywords")
+    if keywords is None:
+        keywords = params.get("payload")
+    locations = params.get("locations") if isinstance(params.get("locations"), list) else None
+    if not project_id:
+        raise ToolValidationError("ahrefs.rank_tracker.add requires project_id")
+    if keywords is None:
+        raise ToolValidationError("ahrefs.rank_tracker.add requires keywords")
+    try:
+        data = add_rank_tracker_keywords(
+            api_key, project_id=project_id, keywords=keywords, locations=locations
+        )
+    except AhrefsAPIError as exc:
+        raise _handle_error(exc) from exc
+    return NormalizedResult(success=True, action="ahrefs.rank_tracker.add", connector_id=cid, data=data)
+
+
+def _exec_competitors_compare(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, api_key = _session(ctx, params)
+    target = _target_param(params)
+    if not target:
+        raise ToolValidationError("ahrefs.competitors.compare requires target or domain")
+    country = str(params.get("country") or "us").strip() or "us"
+    limit = int(params.get("limit") or 10)
+    report_date = str(params.get("date") or params.get("report_date") or "").strip() or None
+    try:
+        data = competitors_compare(
+            api_key, target=target, country=country, limit=limit, report_date=report_date
+        )
+    except AhrefsAPIError as exc:
+        raise _handle_error(exc) from exc
+    return NormalizedResult(success=True, action="ahrefs.competitors.compare", connector_id=cid, data=data)
+
+
+def _exec_top_pages_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, api_key = _session(ctx, params)
+    target = _target_param(params)
+    if not target:
+        raise ToolValidationError("ahrefs.top_pages.list requires target or domain")
+    country = str(params.get("country") or "us").strip() or "us"
+    limit = int(params.get("limit") or 20)
+    report_date = str(params.get("date") or params.get("report_date") or "").strip() or None
+    try:
+        data = top_pages_list(
+            api_key, target=target, country=country, limit=limit, report_date=report_date
+        )
+    except AhrefsAPIError as exc:
+        raise _handle_error(exc) from exc
+    return NormalizedResult(success=True, action="ahrefs.top_pages.list", connector_id=cid, data=data)
+
+
 AHREFS_TOOL_EXECUTORS: dict[str, Any] = {
     "ahrefs.backlinks.list": _exec_backlinks_list,
     "ahrefs.keywords.list": _exec_keywords_list,
     "ahrefs.domain.rating": _exec_domain_rating,
+    "ahrefs.projects.create": _exec_projects_create,
+    "ahrefs.rank_tracker.add": _exec_rank_tracker_add,
+    "ahrefs.competitors.compare": _exec_competitors_compare,
+    "ahrefs.top_pages.list": _exec_top_pages_list,
 }

@@ -1,4 +1,4 @@
-"""SEMrush agent tool executors (BYO API key — v1 reads)."""
+"""SEMrush agent tool executors (BYO API key — v1 reads + v2/v3)."""
 from __future__ import annotations
 
 from typing import Any
@@ -6,8 +6,13 @@ from typing import Any
 from app.connectors.rate_limit import enforce_rate_limit
 from app.connectors.semrush_api import (
     SemrushAPIError,
+    add_position_tracking_keywords,
     backlinks_list,
+    batch_domain,
+    competitors_compare,
+    create_project,
     domain_overview,
+    exports_run,
     keywords_list,
     resolve_semrush_connector,
 )
@@ -91,8 +96,89 @@ def _exec_backlinks_list(ctx: ToolContext, params: dict[str, Any]) -> Normalized
     return NormalizedResult(success=True, action="semrush.backlinks.list", connector_id=cid, data=data)
 
 
+def _exec_projects_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, api_key = _session(ctx, params)
+    name = str(params.get("name") or params.get("title") or "").strip()
+    properties = params.get("properties") if isinstance(params.get("properties"), dict) else None
+    url = str(params.get("project_url") or params.get("url") or "").strip() or None
+    try:
+        data = create_project(api_key, name=name, url=url, properties=properties)
+    except SemrushAPIError as exc:
+        raise _handle_error(exc) from exc
+    return NormalizedResult(success=True, action="semrush.projects.create", connector_id=cid, data=data)
+
+
+def _exec_position_tracking_add(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, api_key = _session(ctx, params)
+    project_id = str(params.get("project_id") or params.get("project") or "").strip()
+    keywords = params.get("keywords")
+    if keywords is None:
+        keywords = params.get("payload")
+    if not project_id:
+        raise ToolValidationError("semrush.position_tracking.add requires project_id")
+    if keywords is None:
+        raise ToolValidationError("semrush.position_tracking.add requires keywords")
+    try:
+        data = add_position_tracking_keywords(api_key, project_id=project_id, keywords=keywords)
+    except SemrushAPIError as exc:
+        raise _handle_error(exc) from exc
+    return NormalizedResult(
+        success=True, action="semrush.position_tracking.add", connector_id=cid, data=data
+    )
+
+
+def _exec_batch_domain(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, api_key = _session(ctx, params)
+    domains = params.get("domains")
+    if not isinstance(domains, list):
+        single = _domain_param(params)
+        domains = [single] if single else []
+    database = str(params.get("database") or "us").strip() or "us"
+    try:
+        data = batch_domain(api_key, domains=[str(d) for d in domains], database=database)
+    except SemrushAPIError as exc:
+        raise _handle_error(exc) from exc
+    return NormalizedResult(success=True, action="semrush.batch.domain", connector_id=cid, data=data)
+
+
+def _exec_competitors_compare(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, api_key = _session(ctx, params)
+    domain = _domain_param(params)
+    if not domain:
+        raise ToolValidationError("semrush.competitors.compare requires domain")
+    database = str(params.get("database") or "us").strip() or "us"
+    limit = int(params.get("limit") or 10)
+    try:
+        data = competitors_compare(api_key, domain=domain, database=database, limit=limit)
+    except SemrushAPIError as exc:
+        raise _handle_error(exc) from exc
+    return NormalizedResult(success=True, action="semrush.competitors.compare", connector_id=cid, data=data)
+
+
+def _exec_exports_run(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, api_key = _session(ctx, params)
+    domain = _domain_param(params)
+    if not domain:
+        raise ToolValidationError("semrush.exports.run requires domain")
+    database = str(params.get("database") or "us").strip() or "us"
+    report_type = str(params.get("report_type") or params.get("type") or "domain_organic").strip()
+    limit = int(params.get("limit") or 100)
+    try:
+        data = exports_run(
+            api_key, domain=domain, database=database, report_type=report_type, limit=limit
+        )
+    except SemrushAPIError as exc:
+        raise _handle_error(exc) from exc
+    return NormalizedResult(success=True, action="semrush.exports.run", connector_id=cid, data=data)
+
+
 SEMRUSH_TOOL_EXECUTORS: dict[str, Any] = {
     "semrush.domain.overview": _exec_domain_overview,
     "semrush.keywords.list": _exec_keywords_list,
     "semrush.backlinks.list": _exec_backlinks_list,
+    "semrush.projects.create": _exec_projects_create,
+    "semrush.position_tracking.add": _exec_position_tracking_add,
+    "semrush.batch.domain": _exec_batch_domain,
+    "semrush.competitors.compare": _exec_competitors_compare,
+    "semrush.exports.run": _exec_exports_run,
 }

@@ -132,6 +132,16 @@ CONNECTOR_CATEGORY_TEMPLATES: dict[str, dict[str, Any]] = {
         ),
         "connectors": ["hubspot", "zendesk"],
     },
+    "marketing-intelligence-sources": {
+        "name": "Marketing Intelligence Sources",
+        "description": "GSC + GA4 + HubSpot stubs. SEMrush/Ahrefs are BYO via Connectors (not auto-staged).",
+        "connectors": ["google_search_console", "google_analytics", "hubspot"],
+    },
+    "revops-intelligence-sources": {
+        "name": "RevOps Intelligence Sources",
+        "description": "CRM rollup stubs (HubSpot; Salesforce optional). No Finance connectors without Cesar sign-off.",
+        "connectors": ["hubspot", "salesforce"],
+    },
     "byo-premium-prospecting": {
         "name": "BYO Premium Prospecting",
         "description": "Customer-subscription providers — fail closed without your own keys.",

@@ -37,12 +37,34 @@ def test_semrush_domain_overview(mock_api, mock_session, _rate):
     mock_api.assert_called_once()
 
 
-@patch("app.services.ahrefs_tools.enforce_rate_limit")
-@patch("app.services.ahrefs_tools.resolve_ahrefs_connector")
-@patch("app.services.ahrefs_tools.domain_rating")
-def test_ahrefs_domain_rating(mock_api, mock_session, _rate):
-    mock_session.return_value = ("conn-ahrefs", "key")
-    mock_api.return_value = {"data": {"domain_rating": 70}}
-    result = AHREFS_TOOL_EXECUTORS["ahrefs.domain.rating"](_ctx("ahrefs"), {"target": "example.com"})
+@patch("app.services.semrush_tools.enforce_rate_limit")
+@patch("app.services.semrush_tools.resolve_semrush_connector")
+@patch("app.services.semrush_tools.create_project")
+def test_semrush_projects_create(mock_api, mock_session, _rate):
+    mock_session.return_value = ("conn-semrush", "key")
+    mock_api.return_value = {"project_name": "Demo"}
+    result = SEMRUSH_TOOL_EXECUTORS["semrush.projects.create"](
+        _ctx(), {"name": "Demo", "url": "https://example.com"}
+    )
     assert result.success
     mock_api.assert_called_once()
+
+
+@patch("app.services.ahrefs_tools.enforce_rate_limit")
+@patch("app.services.ahrefs_tools.resolve_ahrefs_connector")
+@patch("app.services.ahrefs_tools.create_project")
+def test_ahrefs_projects_create(mock_api, mock_session, _rate):
+    mock_session.return_value = ("conn-ahrefs", "key")
+    mock_api.return_value = {"project_name": "Demo"}
+    result = AHREFS_TOOL_EXECUTORS["ahrefs.projects.create"](
+        _ctx("ahrefs"), {"name": "Demo", "url": "https://example.com"}
+    )
+    assert result.success
+    mock_api.assert_called_once()
+
+
+def test_ahrefs_workflow_schemas_registered():
+    from app.connectors.action_catalog.action_workflow_schema import get_workflow_schema
+
+    assert get_workflow_schema("ahrefs.projects.create") is not None
+    assert get_workflow_schema("ahrefs.rank_tracker.add") is not None
