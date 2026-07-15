@@ -1,8 +1,4 @@
-import {
-  MARKETING_GTG_FPS_HOST,
-  MARKETING_GTG_PATH,
-  MARKETING_GTM_ID,
-} from "@/lib/marketing-gtm"
+import { MARKETING_GTG_FPS_HOST, MARKETING_GTG_PATH } from "@/lib/marketing-gtm"
 
 export const runtime = "edge"
 
@@ -39,8 +35,9 @@ async function proxyToTagGateway(request: Request, context: RouteContext): Promi
     if (HOP_BY_HOP.has(key.toLowerCase())) return
     headers.set(key, value)
   })
+  // Tag ID is conveyed via the Host subdomain (gtm-….fps.goog). Do not also set
+  // X-Gtg-Tag-Id — FPS returns "Tag ID is in both Header and Host subdomain."
   headers.set("Host", MARKETING_GTG_FPS_HOST)
-  headers.set("X-Gtg-Tag-Id", MARKETING_GTM_ID)
   applyGeoHeaders(request, headers)
 
   const init: RequestInit = {
