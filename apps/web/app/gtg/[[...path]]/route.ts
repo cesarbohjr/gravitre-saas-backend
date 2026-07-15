@@ -1,6 +1,13 @@
-import { MARKETING_GTG_FPS_HOST, MARKETING_GTG_PATH } from "@/lib/marketing-gtm"
+import type { NextRequest } from "next/server"
+
+import { MARKETING_GTG_FPS_HOST } from "@/lib/marketing-gtm"
+import {
+  applyTagGatewayGeoHeaders,
+  buildTagGatewayUpstreamUrl,
+} from "@/lib/marketing-gtg-proxy"
 
 export const runtime = "edge"
+export const dynamic = "force-dynamic"
 
 const HOP_BY_HOP = new Set([
   "connection",
@@ -13,22 +20,27 @@ const HOP_BY_HOP = new Set([
   "upgrade",
   "host",
   "content-length",
+  // Do not forward browser/session cookies or client-spoofable forwarded headers to FPS.
+  "cookie",
+  "authorization",
+  "x-forwarded-host",
+  "x-forwarded-proto",
+  "x-forwarded-for",
+  "x-forwarded-country",
+  "x-forwarded-region",
+  "x-forwarded-countryregion",
+  "x-forwarded-geolocation",
+  "x-real-ip",
 ])
 
 type RouteContext = {
   params: Promise<{ path?: string[] }>
 }
 
-async function proxyToTagGateway(request: Request, context: RouteContext): Promise<Response> {
+async function proxyToTagGateway(request: NextRequest, context: RouteContext): Promise<Response> {
   const { path: segments } = await context.params
-  const incoming = new URL(request.url)
-  // Preserve the first-party measurement path prefix on the FPS origin
-  // (Google expects /gtg/healthy, not /healthy).
-  const pathSuffix = segments?.length
-    ? `${MARKETING_GTG_PATH}/${segments.join("/")}`
-    : `${MARKETING_GTG_PATH}/`
-  const target = new URL(`https://${MARKETING_GTG_FPS_HOST}${pathSuffix}`)
-  target.search = incoming.search
+  // nextUrl keeps query params reliable on Vercel Edge (request.url alone can drop them).
+  const target = buildTagGatewayUpstreamUrl(request.nextUrl, segments)
 
   const headers = new Headers()
   request.headers.forEach((value, key) => {
@@ -38,12 +50,13 @@ async function proxyToTagGateway(request: Request, context: RouteContext): Promi
   // Tag ID is conveyed via the Host subdomain (gtm-….fps.goog). Do not also set
   // X-Gtg-Tag-Id — FPS returns "Tag ID is in both Header and Host subdomain."
   headers.set("Host", MARKETING_GTG_FPS_HOST)
-  applyGeoHeaders(request, headers)
+  applyTagGatewayGeoHeaders(request.headers, headers)
 
   const init: RequestInit = {
     method: request.method,
     headers,
     redirect: "manual",
+    cache: "no-store",
   }
   if (request.method !== "GET" && request.method !== "HEAD") {
     init.body = request.body
@@ -68,31 +81,6 @@ async function proxyToTagGateway(request: Request, context: RouteContext): Promi
     statusText: upstream.statusText,
     headers: responseHeaders,
   })
-}
-
-function applyGeoHeaders(request: Request, headers: Headers): void {
-  const country = (request.headers.get("x-vercel-ip-country") || "").trim().toUpperCase()
-  const region = (request.headers.get("x-vercel-ip-country-region") || "").trim().toUpperCase()
-  const city = (request.headers.get("x-vercel-ip-city") || "").trim()
-  const lat = (request.headers.get("x-vercel-ip-latitude") || "").trim()
-  const lng = (request.headers.get("x-vercel-ip-longitude") || "").trim()
-
-  if (country) {
-    headers.set("X-Forwarded-Country", country)
-  }
-  if (region) {
-    headers.set("X-Forwarded-Region", region)
-  }
-  if (country && region) {
-    headers.set("X-Forwarded-CountryRegion", `${country}-${region}`)
-  } else if (country) {
-    headers.set("X-Forwarded-CountryRegion", country)
-  }
-
-  if (lat && lng) {
-    const cityPart = city ? `;city=${city}` : ""
-    headers.set("X-Forwarded-Geolocation", `latlong=${lat},${lng}${cityPart}`)
-  }
 }
 
 export const GET = proxyToTagGateway

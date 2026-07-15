@@ -16,7 +16,7 @@ Implements Google’s [manual Tag Gateway setup](https://developers.google.com/t
 ## Post-deploy verification
 
 1. **Routing:** open `https://gravitre.app/gtg/healthy` — response body should be `ok`.
-2. **Geo headers:** open `https://gravitre.app/gtg/?validate_geo=healthy` — response body should be `ok`.
+2. **Geo headers:** open `https://gravitre.app/gtg?validate_geo=healthy` (no trailing slash — Next redirects `/gtg/` → `/gtg`) — response body should be `ok`. Prefer `curl.exe -sS "https://gravitre.app/gtg?validate_geo=healthy"`.
 3. **Tag Assistant:** preview the container, browse marketing pages, and confirm Hits Sent use `/gtg` (not `googletagmanager.com`).
 
 ## Notes
