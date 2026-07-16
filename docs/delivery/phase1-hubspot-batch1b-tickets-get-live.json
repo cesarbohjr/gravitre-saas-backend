@@ -1,0 +1,31 @@
+{
+  "pass": true,
+  "status": "PASS",
+  "ran_at": "2026-07-16T09:20:00.387518+00:00",
+  "prod_git_sha": "6ff978ca020556c78406d11196d46f1f84ad4436",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "batch": "phase1-hubspot-batch1b-tickets-get-confirm",
+  "clarification": "Prior tip recorded tickets.get as smoke-script skip (no ticket id from search). This run creates a real ticket then invokes hubspot.tickets.get via tool_service.",
+  "ticket_id": "203092799418",
+  "create_via": "hubspot.create_ticket CRM API (fixture only)",
+  "invoke": {
+    "action": "hubspot.tickets.get",
+    "success": true,
+    "error_code": null,
+    "error_message": null,
+    "result_url": "https://app.hubspot.com/contacts/record/0-5/203092799418",
+    "summary": "Fetched HubSpot ticket 203092799418",
+    "ticket_keys": [
+      "id",
+      "properties",
+      "createdAt",
+      "updatedAt",
+      "archived",
+      "url"
+    ]
+  },
+  "governance": {
+    "chat_access_granted": false,
+    "finance_hr_excluded": true
+  }
+}

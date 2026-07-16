@@ -160,7 +160,8 @@ def main() -> int:
         invokes["hubspot.owners.list"] = _rec(owners)
         time.sleep(0.8)
 
-        # Prefer an existing ticket id from search; else skip get with note
+        # Prefer an existing ticket id from search; else create a disposable fixture
+        # via CRM API so tickets.get is always a real executor tip (not a skip).
         search = _invoke_retry(
             invoke_tool,
             ctx,
@@ -179,6 +180,36 @@ def main() -> int:
             results = (search.data or {}).get("results") or []
             if results and isinstance(results[0], dict):
                 ticket_id = str(results[0].get("id") or "")
+        if not ticket_id:
+            from app.connectors.hubspot import create_ticket
+            from app.connectors.hubspot_oauth import ensure_hubspot_access_token
+
+            token, tok_err = ensure_hubspot_access_token(
+                sb, ORG, hub_id, settings, environment_name="production"
+            )
+            if token and not tok_err:
+                created = create_ticket(
+                    token,
+                    {
+                        "subject": f"Gravitre Batch1b tip fixture {suffix}",
+                        "content": "Disposable tip ticket for hubspot.tickets.get.",
+                        "hs_pipeline": "0",
+                        "hs_pipeline_stage": "1",
+                    },
+                )
+                ticket_id = str((created or {}).get("id") or "") or None
+                invokes["hubspot.tickets.create_fixture"] = {
+                    "success": bool(ticket_id),
+                    "error_code": None if ticket_id else "create_failed",
+                    "error_message": None if ticket_id else "create_ticket returned no id",
+                    "result_url": (
+                        f"https://app.hubspot.com/contacts/record/0-5/{ticket_id}"
+                        if ticket_id
+                        else None
+                    ),
+                    "summary": f"Fixture ticket {ticket_id}" if ticket_id else None,
+                    "data_keys": ["ticket_id"] if ticket_id else [],
+                }
         if ticket_id:
             got = _invoke_retry(
                 invoke_tool,
@@ -191,7 +222,7 @@ def main() -> int:
             invokes["hubspot.tickets.get"] = {
                 "success": False,
                 "error_code": "skipped",
-                "error_message": "no ticket id from search to tip tickets.get",
+                "error_message": "no ticket id after search + fixture create",
                 "result_url": None,
                 "summary": None,
                 "data_keys": [],

@@ -16,11 +16,14 @@ Live evidence: [`phase1-hubspot-batch1b-live.json`](./phase1-hubspot-batch1b-liv
 
 | Check | Result |
 |-------|--------|
-| Prod tip | `f82774f4` (#149) |
+| Prod tip | `6ff978ca` (#150) |
 | Scopes | companies.read/write, owners.read, tickets granted |
 | `companies.create` | success + result_url |
 | `owners.list` | success + result_url |
-| `tickets.get` | skipped (no ticket rows); `tickets` scope present |
+| `tickets.get` (initial) | **smoke-script skip** — search returned zero rows; executor not called |
+| `tickets.get` (confirm) | **PASS** — fixture ticket `203092799418` created, then `hubspot.tickets.get` invoked with result_url — see [`phase1-hubspot-batch1b-tickets-get-live.json`](./phase1-hubspot-batch1b-tickets-get-live.json) |
+
+Clarification: the first tip’s “skipped (no tickets; scope present)” was the **latter** class (short-circuit), not an empty-dataset get. Confirm run closes that gap.
 
 ## Governance
 
