@@ -19,17 +19,15 @@ This PR aligns `app-hsmeta.json` + optional OAuth scopes for Batch 1b; live comp
 
 ## Batch 1b external dependency (named 2026-07-16)
 
-**Status: APP PUBLISHED — waiting on smoke-org HubSpot reconnect.**
+**Status: waiting on prod oauth deploy + smoke reconnect.**
 
 | Check | Result |
 |-------|--------|
-| Repo hsmeta scopes (valid names) | Yes — `companies.read` + `tickets` required; `companies.write` + `owners.read` optional |
-| Scope fix at upload | Replaced invalid `crm.objects.tickets.write` / `crm.objects.tickets.read` / `crm.objects.notes.write` (2026 platform rejects those; tickets = single `tickets` scope; notes via contacts.write) |
-| `hs project upload` | **Build #7** SUCCESS (2026-07-16) |
-| Deployed build on HubSpot | **#7** (auto-deploy + `hs project deploy --deploy-latest-build`) — was #5 from 2026-06-23 |
-| Live smoke after reconnect | **Not yet** — existing smoke connector still authorized under old scope set |
+| App build #8 (live) | `tickets` **optional**; companies.write / owners.read optional; companies.read required |
+| #144 prod tip | Put `tickets` in **required** `scope` → HubSpot: “mismatch between the scopes in the install URL and the app's configured scopes” |
+| Fix | Backend `optional_scope` must include `tickets` (match build #8); hsmeta synced the same |
 
-**Your step:** disconnect/reconnect HubSpot on smoke org `cbbf993b-…` in Gravitre Connectors (fresh OAuth consent). Then say go and Batch 1b tip (`companies.create` / `owners.list` / `tickets.get`) can run.
+**Your step:** after this oauth fix ships to Railway, reconnect HubSpot on smoke org (grant companies.write / owners.read / tickets). Then Batch 1b tip.
 
 ## Evidence
 
