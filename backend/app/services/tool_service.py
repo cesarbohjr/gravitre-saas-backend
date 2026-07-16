@@ -3518,6 +3518,7 @@ from app.services.ai_visibility_ui_tools import AI_VISIBILITY_UI_TOOL_EXECUTORS
 from app.services.pdl_tools import PDL_TOOL_EXECUTORS
 from app.services.plaid_tools import PLAID_TOOL_EXECUTORS
 from app.services.gusto_tools import GUSTO_TOOL_EXECUTORS
+from app.services.platform_health_tools import PLATFORM_HEALTH_TOOL_EXECUTORS
 
 _TOOL_REGISTRY.update(NETSUITE_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(WORKDAY_TOOL_EXECUTORS)
@@ -3550,6 +3551,7 @@ _TOOL_REGISTRY.update(AI_VISIBILITY_UI_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(PDL_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(PLAID_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(GUSTO_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(PLATFORM_HEALTH_TOOL_EXECUTORS)
 
 from app.services.priority_connector_tools import PRIORITY_CONNECTOR_TOOLS
 from app.services.intelligence_pack_tools import INTELLIGENCE_PACK_TOOL_EXECUTORS

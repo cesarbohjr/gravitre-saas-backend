@@ -1901,4 +1901,51 @@ VENDOR_DEFINITIONS: tuple = (
             ),
         ),
     ),
+    build_vendor(
+        "platform",
+        "Gravitre Platform",
+        "Operations",
+        "https://docs.gravitre.app",
+        shipped=True,
+        department="operations",
+        v1=(
+            action(
+                "platform",
+                "health.snapshot",
+                "Platform health snapshot",
+                tier="v1",
+                kind="read",
+                scope_suffix="health:read",
+                idempotent=True,
+                description=(
+                    "Org-local platform health KPIs from audit_events + workflow runs "
+                    "(approval latency, failures, stalled runs). No external connectors."
+                ),
+            ),
+        ),
+        v2=(
+            action(
+                "platform",
+                "connector_ops.summary",
+                "Connector ops summary",
+                tier="v2",
+                kind="read",
+                scope_suffix="health:read",
+                idempotent=True,
+                description="Scaffold: flaky-connector / auth-churn aggregates (catalog reserved).",
+            ),
+        ),
+        v3=(
+            action(
+                "platform",
+                "approval.latency.report",
+                "Approval latency report",
+                tier="v3",
+                kind="advanced",
+                scope_suffix="health:read",
+                idempotent=True,
+                description="Scaffold: detailed approval latency breakdown (catalog reserved).",
+            ),
+        ),
+    ),
 )

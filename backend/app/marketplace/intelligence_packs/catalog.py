@@ -772,6 +772,74 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
                 },
             ],
         ),
+        IntelligencePackSpec(
+            pack_id="platform-health-intelligence-pack",
+            name="Platform Health / Workflow Intelligence Pack",
+            department="platform",
+            default_subdomain="workflow_reliability",
+            description=(
+                "Self-signal pack: approval latency, step failures, flaky connectors, and stalled "
+                "workflows from org-local audit_events + run history. Zero new external connectors; "
+                "reuses STA-124 integration health scoring."
+            ),
+            marketplace_tags=[
+                "platform",
+                "ops",
+                "self-signal",
+                "starter",
+                "intelligence-pack",
+                "workflow-health",
+            ],
+            assignments=[
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "audit-events-telemetry",
+                    "Audit Events Telemetry",
+                    "platform",
+                    "workflow_reliability",
+                    reference_summary="Org audit_events for tool.invoke / workflow.execute / connector.auth signals.",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "workflow-run-history",
+                    "Workflow Run History",
+                    "platform",
+                    "workflow_reliability",
+                    reference_summary="workflow_runs status and age for stalled / pending_approval detection.",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "approval-latency-rubric",
+                    "Approval Latency Rubric",
+                    "platform",
+                    "governance",
+                    reference_summary="STA-124 approval latency bands (p95 minutes → days) for recommendations.",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "connector-ops-playbook",
+                    "Connector Ops Playbook",
+                    "platform",
+                    "connector_ops",
+                    reference_summary="Flaky connector and auth-churn playbook references (internal only).",
+                ),
+            ],
+            demo_agent_name="Platform Reliability Analyst",
+            demo_systems=["platform"],
+            connector_template_id=None,
+            workflow_name="Platform Health Snapshot",
+            workflow_description=(
+                "Read-only: compute org platform health KPIs + recommendations via platform.health.snapshot."
+            ),
+            workflow_steps=[
+                {
+                    "id": "platform-health-snapshot",
+                    "name": "Platform Health Snapshot",
+                    "type": "invoke_tool",
+                    "config": {"action": "platform.health.snapshot", "params": {}},
+                },
+            ],
+        ),
     ]
 
 

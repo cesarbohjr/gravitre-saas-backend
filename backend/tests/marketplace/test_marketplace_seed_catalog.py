@@ -16,9 +16,9 @@ def test_catalog_asset_counts():
     assert by_type["workflow"] == 19
     assert by_type["knowledge_pack"] == 14
     assert by_type["department_pack"] == 6
-    # 8 original packs + AI Search + Finance + HR Talent
-    assert by_type.get("intelligence_pack", 0) == 11
-    assert len(assets) == 69
+    # 8 original packs + AI Search + Finance + HR Talent + Platform Health
+    assert by_type.get("intelligence_pack", 0) == 12
+    assert len(assets) == 70
 
 
 @pytest.mark.parametrize("asset_slug", sorted(catalog_assets_by_slug()))
