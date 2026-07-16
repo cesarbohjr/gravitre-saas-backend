@@ -34,7 +34,7 @@ export function AiLayoutPanelPicker({
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className={cn("h-8 gap-1.5 text-xs", className)}>
           <LayoutGrid className="h-3.5 w-3.5" />
-          Layout panels
+          <span>Layout panels</span>
           <Plus className="h-3 w-3 opacity-60" />
         </Button>
       </DropdownMenuTrigger>

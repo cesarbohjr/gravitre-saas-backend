@@ -1355,24 +1355,24 @@ export function AiWorkspace({
 
       <div className="ai-surface-shell flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="shrink-0 border-b border-emerald-500/15 bg-card/80 backdrop-blur-md">
-          <div className="flex min-h-12 items-center gap-2 overflow-x-auto px-3 py-2 md:px-4">
+          <div className="flex h-9 items-center gap-1.5 overflow-x-auto px-2 md:gap-2 md:px-3">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setSidebarOpen((open) => !open)}
-              className="h-8 w-8 shrink-0 text-muted-foreground"
+              className="h-7 w-7 shrink-0 text-muted-foreground"
               aria-label={sidebarOpen ? "Hide history" : "Show history"}
             >
-              {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
+              {sidebarOpen ? <PanelLeftClose className="h-3.5 w-3.5" /> : <PanelLeft className="h-3.5 w-3.5" />}
             </Button>
 
             <div className="min-w-0 shrink">
-              <p className="truncate text-sm font-semibold text-foreground">
+              <p className="truncate text-xs font-semibold text-foreground md:text-[13px]">
                 {conversationTitle}
               </p>
             </div>
 
-            <div className="hidden h-4 w-px shrink-0 bg-border sm:block" />
+            <div className="hidden h-3.5 w-px shrink-0 bg-border sm:block" />
 
             <div className="flex shrink-0 items-center gap-1">
               {AI_MODES.length > 1
@@ -1382,7 +1382,7 @@ export function AiWorkspace({
                       type="button"
                       onClick={() => setMode(m.id)}
                       className={cn(
-                        "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide transition-colors",
+                        "shrink-0 rounded-full border px-1.5 py-px text-[9px] font-medium uppercase tracking-wide transition-colors",
                         mode === m.id
                           ? cn("ring-1", m.ring, "text-foreground")
                           : "border-border text-muted-foreground hover:text-foreground",
@@ -1392,13 +1392,13 @@ export function AiWorkspace({
                     </button>
                   ))
                 : (
-                  <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <span className="hidden shrink-0 text-[9px] font-medium uppercase tracking-wide text-muted-foreground md:inline">
                     {activeMode.badge}
                   </span>
                 )}
             </div>
 
-            <div className="ml-auto flex shrink-0 items-center gap-1.5">
+            <div className="ml-auto flex shrink-0 items-center gap-1">
               <a
                 href="/ai/help/control"
                 className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -1416,7 +1416,7 @@ export function AiWorkspace({
               >
                 <SelectTrigger
                   size="sm"
-                  className="hidden h-7 w-[128px] border-border bg-background text-[11px] sm:flex"
+                  className="hidden h-7 w-[108px] border-border bg-background text-[11px] sm:flex"
                   aria-label="Department context"
                 >
                   <SelectValue placeholder="Department" />
@@ -1439,7 +1439,7 @@ export function AiWorkspace({
                     : "Fast mode — lighter reasoning, fewer tool iterations"
                 }
                 className={cn(
-                  "h-7 rounded-md border px-2 text-[10px] font-medium uppercase tracking-wide",
+                  "h-7 rounded-md border px-1.5 text-[10px] font-medium uppercase tracking-wide",
                   chatMode === "deep"
                     ? "border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400"
                     : "border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300",
@@ -1453,6 +1453,8 @@ export function AiWorkspace({
                   value={preferredPersona}
                   onChange={handlePersonaChange}
                   disabled={!user}
+                  compact
+                  className="hidden sm:inline-flex"
                 />
               ) : null}
 
@@ -1460,17 +1462,18 @@ export function AiWorkspace({
                 <AiLayoutPanelPicker
                   enabledBlocks={layoutEnabledBlocks}
                   onToggleBlock={handleToggleLayoutBlock}
+                  className="h-7 gap-1 px-2 text-[11px] max-md:[&>span]:sr-only"
                 />
               ) : null}
 
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 shrink-0 text-muted-foreground"
+                className="h-7 w-7 shrink-0 text-muted-foreground"
                 aria-label={activityRailOpen ? "Hide activity panel" : "Show activity panel"}
                 onClick={() => setActivityRailOpen((open) => !open)}
               >
-                <PanelRight className={cn("h-4 w-4", activityRailOpen && "text-emerald-600 dark:text-emerald-400")} />
+                <PanelRight className={cn("h-3.5 w-3.5", activityRailOpen && "text-emerald-600 dark:text-emerald-400")} />
               </Button>
             </div>
           </div>
