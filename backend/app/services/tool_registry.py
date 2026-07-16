@@ -139,7 +139,7 @@ def _salesforce_update_record(args: dict[str, Any]) -> dict[str, Any]:
 
 def _slack_message(args: dict[str, Any]) -> dict[str, Any]:
     channel = args.get("channel")
-    message = args.get("message")
+    message = args.get("message") or args.get("text")
     if not channel or not message:
         raise ValueError("channel and message are required")
     mapped: dict[str, Any] = {"channel": channel, "message": message}

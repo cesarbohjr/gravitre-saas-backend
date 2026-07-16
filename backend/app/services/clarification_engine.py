@@ -345,6 +345,9 @@ class ClarificationEngine:
         return "general"
 
     def _slack_message_body(self, request: str) -> str | None:
+        from app.services.chat_message_normalize import strip_assistant_scope_prefix
+
+        request = strip_assistant_scope_prefix(request)
         quoted = self.QUOTED.findall(request)
         if quoted:
             return quoted[-1].strip()

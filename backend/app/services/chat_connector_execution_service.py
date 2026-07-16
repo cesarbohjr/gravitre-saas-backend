@@ -584,16 +584,17 @@ class ChatConnectorExecutionService:
                     args["channel"] = str(channel).lstrip("#")
                     args["message"] = body
                     args.setdefault("text", body)
+                    channel_label = args["channel"]
                     params = {
                         **params,
-                        "channel": args["channel"],
+                        "channel": channel_label,
                         "message": body,
                         "args": args,
                         "tool_name": params.get("tool_name") or "slack_send_message",
                         "invoke_action": params.get("invoke_action") or "slack.post_message",
                         "integration": params.get("integration") or "slack",
                         "kind": params.get("kind") or "write",
-                        "label": params.get("label") or "Send Slack message",
+                        "label": params.get("label") or f"Post to Slack #{channel_label}",
                     }
             tool_name = str(params.get("tool_name") or "")
             spec = self._registry.get_spec(tool_name)
@@ -606,7 +607,8 @@ class ChatConnectorExecutionService:
                 params["integration"] = spec.integration
             if not params.get("label"):
                 params["label"] = tool_name
-            return self.plan_from_dict(params)
+            plan = self.plan_from_dict(params)
+            return self._sanitize_plan_message_bodies(plan) if plan else None
 
         mapper = get_chat_action_mapper()
         match = mapper.match_segment(message, connected_integrations=connected_integrations)
@@ -779,6 +781,25 @@ class ChatConnectorExecutionService:
             inference_sources=dict(payload.get("inference_sources") or {}),
         )
 
+    @staticmethod
+    def _sanitize_plan_message_bodies(plan: ConnectorActionPlan) -> ConnectorActionPlan:
+        """Strip scope banners that may already be stuck in staged Slack args."""
+        from app.services.chat_message_normalize import strip_assistant_scope_prefix
+
+        args = dict(plan.args or {})
+        dirty = False
+        for key in ("message", "text", "body"):
+            raw = args.get(key)
+            if not isinstance(raw, str) or not raw.strip():
+                continue
+            cleaned = strip_assistant_scope_prefix(raw)
+            if cleaned != raw:
+                args[key] = cleaned
+                dirty = True
+        if not dirty:
+            return plan
+        return replace(plan, args=args)
+
     async def process_turn(
         self,
         *,
@@ -793,6 +814,10 @@ class ChatConnectorExecutionService:
         environment_name: str = "production",
         structured_plan: ConnectorActionPlan | None = None,
     ) -> dict[str, Any] | None:
+        from app.services.chat_message_normalize import strip_assistant_scope_prefix
+
+        # Scope banners belong in the system prompt, not connector task text.
+        message = strip_assistant_scope_prefix(message)
         if structured_plan is None and not self.is_connector_intent(message, task_state):
             return None
 
@@ -808,6 +833,8 @@ class ChatConnectorExecutionService:
             task_state=task_state,
             structured_plan=structured_plan,
         )
+        if plan is not None:
+            plan = self._sanitize_plan_message_bodies(plan)
         # Wave 6–7 claim 4 — omit-name "create a contact list" must reach the Apollo
         # auto-plan producer (inferred_fields → assumption_notes). plan_action otherwise
         # shadows it with apollo.lists.list / contacts.create when lists.create cannot
@@ -1735,7 +1762,9 @@ class ChatConnectorExecutionService:
     @staticmethod
     def _followup_message_body(message: str) -> str | None:
         """Treat a short follow-up as Slack message body (strip sure/ok/yes lead-ins)."""
-        text = (message or "").strip()
+        from app.services.chat_message_normalize import strip_assistant_scope_prefix
+
+        text = strip_assistant_scope_prefix(message)
         if not text:
             return None
         cleaned = re.sub(

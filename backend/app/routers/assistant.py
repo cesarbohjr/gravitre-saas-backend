@@ -846,14 +846,11 @@ async def assistant_chat(
     if not last_user.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No user message found")
 
+    # Keep department/cross-department as system guidance only.
+    # Never prepend onto last_user — that string is also connector task text
+    # (Slack bodies, confirm matching, param inference).
     department_scope = (body.department or "").strip() or None
-    if body.cross_department:
-        last_user = (
-            f"[Cross-department cowork — coordinate handoffs across teams. "
-            f"Primary department: {department_scope or 'all'}]\n{last_user}"
-        )
-    elif department_scope:
-        last_user = f"[Department context: {department_scope}]\n{last_user}"
+    cross_department = bool(body.cross_department)
 
     explicit_tools = body.tools
     resolved_tools = resolve_assistant_tool_names(body.mode, explicit_tools)
@@ -889,6 +886,19 @@ async def assistant_chat(
         query=last_user,
         environment_name=environment_name,
     )
+    if cross_department:
+        system_prompt = (
+            f"{system_prompt}\n\nOperator scope: cross-department cowork. "
+            f"Primary department: {department_scope or 'all'}. "
+            "Coordinate handoffs across teams. Do not put this scope label into "
+            "tool arguments or outbound message bodies."
+        )
+    elif department_scope:
+        system_prompt = (
+            f"{system_prompt}\n\nOperator department context: {department_scope}. "
+            "Use this for prioritization and handoffs only — never copy this label "
+            "into tool arguments or outbound message bodies."
+        )
 
     user_id = str(current_user.get("user_id") or "")
     conversation_id = (body.conversation_id or "").strip() or None
