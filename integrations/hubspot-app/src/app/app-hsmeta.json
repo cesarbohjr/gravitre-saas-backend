@@ -17,7 +17,6 @@
         "crm.objects.deals.read",
         "crm.objects.deals.write",
         "crm.objects.companies.read",
-        "tickets",
         "crm.lists.read",
         "crm.lists.write",
         "oauth"
@@ -25,7 +24,8 @@
       "optionalScopes": [
         "automation",
         "crm.objects.companies.write",
-        "crm.objects.owners.read"
+        "crm.objects.owners.read",
+        "tickets"
       ],
       "conditionallyRequiredScopes": []
     },
