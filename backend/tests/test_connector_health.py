@@ -138,3 +138,14 @@ def test_resolve_display_connector_status_prefers_auth_connected():
     assert connector_is_connected_for_assistant("error", "connected") is True
     assert resolve_display_connector_status("healthy", None) == "connected"
     assert resolve_display_connector_status("error", "auth_expired") == "error"
+
+
+def test_resolve_display_pending_auth_wins_over_stale_token_auth():
+    from app.connectors.connection_health import (
+        connector_is_connected_for_assistant,
+        resolve_display_connector_status,
+    )
+
+    assert resolve_display_connector_status("pending_auth", "connected") == "disconnected"
+    assert connector_is_connected_for_assistant("pending_auth", "connected") is False
+    assert resolve_display_connector_status("disconnected", "connected") == "disconnected"
