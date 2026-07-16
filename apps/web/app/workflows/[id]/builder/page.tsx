@@ -39,6 +39,7 @@ import {
   marketplaceApi,
   mesonApi,
   runsApi,
+  sourcesApi,
   workflowsApi,
   type MesonAlert,
   type MesonInsight,
@@ -91,6 +92,9 @@ import {
   Activity,
   Link2,
   GitBranch,
+  GitMerge,
+  Split,
+  Repeat,
   Brain,
   MessageSquare,
   ThumbsUp,
@@ -150,7 +154,19 @@ import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 
 // Node types
-type NodeType = "agent" | "task" | "connector" | "tool" | "source" | "approval" | "decision" | "council"
+type NodeType =
+  | "agent"
+  | "task"
+  | "connector"
+  | "tool"
+  | "source"
+  | "approval"
+  | "decision"
+  | "council"
+  | "if"
+  | "switch"
+  | "merge"
+  | "loop"
 type DecisionStrategy = DecisionConfig["strategy"]
 type DebateMode = NonNullable<CouncilConfig["debateMode"]>
 
@@ -429,12 +445,6 @@ function getConnectorValidationIssues(nodes: WorkflowNode[]): ConnectorValidatio
   return issues
 }
 
-const sourceLibrary = [
-  { id: "src-1", name: "CRM Records", type: "database" },
-  { id: "src-2", name: "Internal Docs", type: "documents" },
-  { id: "src-3", name: "API Endpoints", type: "api" },
-]
-
 const toolLibrary = [
   { id: "tool-1", name: "SQL Query", description: "Execute SQL" },
   { id: "tool-2", name: "Webhook", description: "HTTP calls" },
@@ -451,6 +461,10 @@ const nodeTypeConfig: Record<NodeType, { icon: typeof Bot; color: string; label:
   approval: { icon: Shield, color: "bg-destructive/20 border-destructive/40 text-destructive", label: "Approval" },
   decision: { icon: GitBranch, color: "bg-violet-500/20 border-violet-500/40 text-violet-400", label: "Decision" },
   council: { icon: Users, color: "bg-amber-500/20 border-amber-500/40 text-amber-400", label: "Agent Council" },
+  if: { icon: Split, color: "bg-sky-500/20 border-sky-500/40 text-sky-400", label: "IF" },
+  switch: { icon: GitBranch, color: "bg-indigo-500/20 border-indigo-500/40 text-indigo-400", label: "Switch" },
+  merge: { icon: GitMerge, color: "bg-teal-500/20 border-teal-500/40 text-teal-400", label: "Merge" },
+  loop: { icon: Repeat, color: "bg-cyan-500/20 border-cyan-500/40 text-cyan-400", label: "Loop" },
   }
 
 function getNodeTypeConfig(type: string) {
@@ -2893,6 +2907,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [activeLibrary, setActiveLibrary] = useState<"agents" | "connectors" | "sources" | "tools" | "decisions">("agents")
   const [searchQuery, setSearchQuery] = useState("")
+  const { data: registeredSourcesData } = useSWR("/api/sources", () => sourcesApi.list())
+  const registeredSources = registeredSourcesData?.sources ?? []
   const [libraryPanelOpen, setLibraryPanelOpen] = useState(false)
   const libraryPanelTimerRef = useRef<NodeJS.Timeout | null>(null)
   
@@ -3019,6 +3035,41 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       ])
       toast.success(`Added ${vendorLabel} step`, {
         description: selectedAction ? `Action: ${selectedAction}` : "Configure the action to continue",
+      })
+    }, 0)
+  }, [isLoadingGraph, searchParams])
+
+  // Deep-link seeding from Data Sources "Use" — ?sourceId=&sourceName= drops a source node.
+  const sourceDeepLinkAppliedRef = useRef(false)
+  useEffect(() => {
+    if (sourceDeepLinkAppliedRef.current) return
+    if (isLoadingGraph) return
+    const sourceId = searchParams?.get("sourceId")?.trim()
+    if (!sourceId) return
+    sourceDeepLinkAppliedRef.current = true
+
+    const sourceName = searchParams?.get("sourceName")?.trim() || "Data Source"
+    const sourceType = searchParams?.get("sourceType")?.trim() || "source"
+
+    window.setTimeout(() => {
+      setActiveLibrary("sources")
+      setLibraryPanelOpen(true)
+      setNodes((prev) => [
+        ...prev,
+        {
+          id: nextGeneratedNodeId(),
+          type: "source",
+          name: sourceName,
+          description: `Registered ${sourceType} source`,
+          config: { source_id: sourceId, source_type: sourceType },
+          position: { x: 240, y: 160 + prev.length * 40 },
+          connections: [],
+          state: "idle",
+          dataLabel: sourceName.toLowerCase().replace(/\s+/g, "_"),
+        },
+      ])
+      toast.success(`Added ${sourceName}`, {
+        description: "Wire downstream agents or tools to extract scoped data",
       })
     }, 0)
   }, [isLoadingGraph, searchParams])
@@ -3233,6 +3284,24 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       config: {},
       position: { x: 200 + Math.random() * 200, y: 100 + Math.random() * 200 },
       connections: [],
+    }
+    setNodes((prev) => [...prev, newNode])
+    setSelectedNodeId(newNode.id)
+  }, [])
+
+  const addSourceNode = useCallback((source: { id: string; name: string; type?: string }) => {
+    const newNode: WorkflowNode = {
+      id: nextGeneratedNodeId(),
+      type: "source",
+      name: source.name,
+      description: source.type || "Data source",
+      config: {
+        source_id: source.id,
+        ...(source.type ? { source_type: source.type } : {}),
+      },
+      position: { x: 200 + Math.random() * 200, y: 100 + Math.random() * 200 },
+      connections: [],
+      state: "idle",
     }
     setNodes((prev) => [...prev, newNode])
     setSelectedNodeId(newNode.id)
@@ -4239,16 +4308,28 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
               {activeLibrary === "sources" && (
                 <div className="space-y-0.5">
-                  {sourceLibrary.map((src) => (
-                    <LibraryItem
-                      key={src.id}
-                      name={src.name}
-                      description={src.type}
-                      icon={Database}
-                      nodeType="source"
-                      onAdd={() => addNode("source", src.name, src.type)}
-                    />
-                  ))}
+                  {registeredSources.length === 0 ? (
+                    <p className="px-2 py-3 text-xs text-muted-foreground">
+                      No registered sources yet. Connect one from Sources, then add it here.
+                    </p>
+                  ) : (
+                    registeredSources.map((src) => (
+                      <LibraryItem
+                        key={src.id}
+                        name={src.name}
+                        description={src.type}
+                        icon={Database}
+                        nodeType="source"
+                        onAdd={() =>
+                          addSourceNode({
+                            id: String(src.id),
+                            name: String(src.name),
+                            type: String(src.type ?? ""),
+                          })
+                        }
+                      />
+                    ))
+                  )}
                 </div>
               )}
 
@@ -4419,6 +4500,83 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                     <GitBranch className="h-3.5 w-3.5 text-violet-400" />
                     <span className="text-xs text-violet-400">Create custom decision</span>
                   </button>
+
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide pt-3 pb-1">
+                    Logic nodes
+                  </p>
+                  <LibraryItem
+                    name="IF"
+                    description="True/false branch on expression"
+                    icon={Split}
+                    nodeType="if"
+                    onAdd={() => {
+                      const newNode: WorkflowNode = {
+                        id: `node-${Date.now()}`,
+                        type: "if",
+                        name: "IF",
+                        description: "Branch on a simple expression",
+                        config: { expression: "$ready == true" },
+                        position: { x: 300 + Math.random() * 100, y: 150 + Math.random() * 100 },
+                        connections: [],
+                        decisionConfig: {
+                          strategy: "rule-based",
+                          conditions: "$ready == true",
+                        },
+                        outputPaths: [
+                          { id: "true", label: "True" },
+                          { id: "false", label: "False", isDefault: true },
+                        ],
+                      }
+                      setNodes((prev) => [...prev, newNode])
+                      setSelectedNodeId(newNode.id)
+                    }}
+                  />
+                  <LibraryItem
+                    name="Switch"
+                    description="Multi-path route by value"
+                    icon={GitBranch}
+                    nodeType="switch"
+                    onAdd={() => {
+                      const newNode: WorkflowNode = {
+                        id: `node-${Date.now()}`,
+                        type: "switch",
+                        name: "Switch",
+                        description: "Route by matching expression branches",
+                        config: { expression: "$status" },
+                        position: { x: 300 + Math.random() * 100, y: 150 + Math.random() * 100 },
+                        connections: [],
+                        decisionConfig: {
+                          strategy: "rule-based",
+                          conditions: "$status",
+                        },
+                        outputPaths: [
+                          { id: "a", label: "Case A", condition: "$status == a" },
+                          { id: "b", label: "Case B", condition: "$status == b" },
+                          { id: "default", label: "Default", isDefault: true },
+                        ],
+                      }
+                      setNodes((prev) => [...prev, newNode])
+                      setSelectedNodeId(newNode.id)
+                    }}
+                  />
+                  <LibraryItem
+                    name="Merge"
+                    description="Join parallel paths"
+                    icon={GitMerge}
+                    nodeType="merge"
+                    onAdd={() =>
+                      addNode("merge", "Merge", "Wait for upstream paths then continue")
+                    }
+                  />
+                  <LibraryItem
+                    name="Loop"
+                    description="Iterate a collection"
+                    icon={Repeat}
+                    nodeType="loop"
+                    onAdd={() =>
+                      addNode("loop", "Loop", "Iterate items (max iterations guarded)")
+                    }
+                  />
                 </div>
               )}
             </div>

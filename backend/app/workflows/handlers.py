@@ -398,15 +398,83 @@ class CouncilStepHandler(StepHandler):
         return _truncate_output_snapshot(output)
 
 
+def _eval_simple_condition(expression: Any, parameters: dict[str, Any] | None) -> tuple[bool, str]:
+    """Safe, intentionally limited condition eval for IF/Switch dry-run + execute.
+
+    Supports:
+    - empty → True (default branch)
+    - literal true/false / 1/0
+    - param key presence: ``$foo`` / ``params.foo`` truthiness
+    - equality: ``$status == closed`` / ``params.stage == won``
+    """
+    text = str(expression or "").strip()
+    if not text:
+        return True, "default"
+    params = parameters or {}
+    lower = text.lower()
+    if lower in {"true", "1", "yes"}:
+        return True, "true"
+    if lower in {"false", "0", "no"}:
+        return False, "false"
+
+    # equality: left == right
+    if "==" in text:
+        left, right = [p.strip() for p in text.split("==", 1)]
+        left_val = _resolve_condition_operand(left, params)
+        right_val = _resolve_condition_operand(right, params)
+        ok = str(left_val).strip().lower() == str(right_val).strip().lower()
+        return ok, "true" if ok else "false"
+
+    # bare param / $param truthiness
+    val = _resolve_condition_operand(text, params)
+    ok = bool(val) and str(val).strip().lower() not in {"false", "0", "none", "null", ""}
+    return ok, "true" if ok else "false"
+
+
+def _resolve_condition_operand(token: str, params: dict[str, Any]) -> Any:
+    raw = token.strip().strip("'\"")
+    if raw.startswith("$"):
+        return params.get(raw[1:])
+    if raw.startswith("params."):
+        return params.get(raw[len("params.") :])
+    if raw in params:
+        return params.get(raw)
+    return raw
+
+
 class ConditionHandler(StepHandler):
     step_type = "condition"
-    supports_execute = False
+    supports_execute = True
 
     def simulate(self, context: StepContext) -> dict[str, Any]:
-        return _truncate_output_snapshot({"simulated": True, "branch": "default"})
+        cfg = context.config or {}
+        ok, branch = _eval_simple_condition(cfg.get("expression") or cfg.get("condition"), context.parameters)
+        default = str(cfg.get("default_branch") or "default")
+        chosen = branch if ok or branch in {"true", "false"} else default
+        if not ok and branch == "false":
+            chosen = "false"
+        return _truncate_output_snapshot(
+            {
+                "simulated": True,
+                "branch": chosen,
+                "matched": ok,
+                "expression": cfg.get("expression") or cfg.get("condition"),
+                "builder_node_type": cfg.get("builder_node_type"),
+            }
+        )
 
     def execute(self, context: StepContext) -> dict[str, Any]:
-        raise ValueError(f"Invalid step type for execute: {context.step_type}")
+        cfg = context.config or {}
+        ok, branch = _eval_simple_condition(cfg.get("expression") or cfg.get("condition"), context.parameters)
+        return _truncate_output_snapshot(
+            {
+                "branch": branch,
+                "matched": ok,
+                "expression": cfg.get("expression") or cfg.get("condition"),
+                "builder_node_type": cfg.get("builder_node_type"),
+                "when_branch": branch,
+            }
+        )
 
 
 class TransformHandler(StepHandler):

@@ -41,7 +41,9 @@ def _segment_connector_and_key(ctx: ToolContext, params: dict[str, Any]) -> tupl
     else:
         conn = get_connector_by_type(ctx.client, ctx.org_id, "segment", environment_name=ctx.environment_name)
     if not conn:
-        raise ToolValidationError("No active Segment connector found for org")
+        from app.services.tool_types import ToolConnectorNotConnectedError
+
+        raise ToolConnectorNotConnectedError("No active Segment connector found for org")
     cid = str(conn["id"])
     enforce_rate_limit(ctx.client, ctx.org_id, "segment", "segment", cid)
     try:

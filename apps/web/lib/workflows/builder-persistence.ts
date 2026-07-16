@@ -13,6 +13,10 @@ export type CanvasNodeType =
   | "approval"
   | "decision"
   | "council"
+  | "if"
+  | "switch"
+  | "merge"
+  | "loop"
 
 export type NodeState =
   | "idle"
@@ -161,7 +165,6 @@ const LEGACY_NODE_TYPE_MAP: Record<string, CanvasNodeType> = {
   action: "tool",
   end: "task",
   human_approval: "approval",
-  loop: "task",
   parallel: "task",
   delay: "task",
 }
@@ -175,6 +178,10 @@ const CANVAS_NODE_TYPES = new Set<CanvasNodeType>([
   "approval",
   "decision",
   "council",
+  "if",
+  "switch",
+  "merge",
+  "loop",
 ])
 
 export function normalizeCanvasNodeType(rawType: unknown): CanvasNodeType {
@@ -231,7 +238,12 @@ export function apiGraphToCanvasNodes(
   const nodes = apiNodes.map((node) => {
     const id = String(node.id)
     const metadata = (node.metadata as Record<string, unknown>) || {}
-    const config = (node.config as Record<string, unknown>) || {}
+    const rawConfig = (node.config as Record<string, unknown>) || {}
+    const sourceId = node.source_id as string | undefined
+    const config = {
+      ...rawConfig,
+      ...(sourceId && !rawConfig.source_id ? { source_id: sourceId } : {}),
+    }
     const position = resolveNodePosition(node)
     return {
       id,
@@ -268,6 +280,9 @@ export function canvasToSavePayload(nodes: CanvasWorkflowNode[]) {
       description: node.description,
       config: node.config,
       position: node.position,
+      ...(node.type === "source" && node.config?.source_id
+        ? { source_id: String(node.config.source_id) }
+        : {}),
       metadata: {
         ...(node.decisionConfig ? { decisionConfig: node.decisionConfig } : {}),
         ...(node.outputPaths ? { outputPaths: node.outputPaths } : {}),

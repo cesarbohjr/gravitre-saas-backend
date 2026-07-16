@@ -39,7 +39,9 @@ def _m365_session(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str]:
     else:
         conn = get_connector_by_type(ctx.client, ctx.org_id, "microsoft365", environment_name=ctx.environment_name)
     if not conn:
-        raise ToolValidationError("No active Microsoft 365 connector found for org")
+        from app.services.tool_types import ToolConnectorNotConnectedError
+
+        raise ToolConnectorNotConnectedError("No active Microsoft 365 connector found for org")
     cid = str(conn["id"])
     enforce_rate_limit(ctx.client, ctx.org_id, "microsoft365", "microsoft365", cid)
     token = resolve_microsoft365_access_token(

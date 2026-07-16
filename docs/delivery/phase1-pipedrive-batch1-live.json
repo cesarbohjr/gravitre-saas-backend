@@ -1,0 +1,23 @@
+{
+  "pass": true,
+  "status": "PASS",
+  "ran_at": "2026-07-16T18:55:30.643996+00:00",
+  "prod_git_sha": "8aafb30c2a9a75f8b8adbb8db8e1370a44a7a125",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "batch": "phase1-pipedrive-batch1",
+  "connector_id": "e6aa92f6-8cfa-49fc-a7ba-a7049c3a9ebe",
+  "invoke": {
+    "action": "pipedrive.pipelines.list",
+    "success": true,
+    "error_code": null,
+    "error_message": null
+  },
+  "attempts": [
+    {
+      "action": "pipedrive.pipelines.list",
+      "success": true,
+      "error_code": null,
+      "error_message": null
+    }
+  ]
+}

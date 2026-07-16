@@ -45,6 +45,7 @@ EXECUTE_ALLOWED_STEP_TYPES = frozenset({
     "invoke_tool",
     "council",
     "approval",
+    "condition",  # IF/Switch/decision compile here — branch select only, no external side effects
 })
 
 # BE-20: closed role set for approver_roles (owner may approve/reject like admin)

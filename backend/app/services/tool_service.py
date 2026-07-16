@@ -72,6 +72,7 @@ from app.connectors.salesforce import (
     get_account,
     get_lead,
     get_opportunity,
+    query_soql,
     search_leads,
     update_account,
     update_lead,
@@ -193,14 +194,28 @@ _MAX_RETRIES = 2
 _RETRY_BACKOFF_SEC = (0.5, 1.0)
 
 _AUTH_HINTS = ("unauthorized", "invalid_auth", "token", "expired", "authentication", "401", "403")
+_CHANNEL_HINTS = ("channel_not_found", "not_in_channel", "is_archived")
+_SCOPE_HINTS = ("missing_scope", "insufficient scope", "required scope", "missing scopes", "oauth_scopes")
 
 
 def _classify_error(exc: Exception) -> ToolError:
+    from app.services.tool_types import (
+        ToolChannelNotFoundError,
+        ToolConnectorNotConnectedError,
+        ToolMissingScopeError,
+    )
+
     if isinstance(exc, ToolError):
         return exc
     if isinstance(exc, RateLimitError):
         return ToolRateLimitedError(str(exc))
     msg = str(exc).lower()
+    if any(h in msg for h in _CHANNEL_HINTS):
+        return ToolChannelNotFoundError(str(exc))
+    if any(h in msg for h in _SCOPE_HINTS):
+        return ToolMissingScopeError(str(exc))
+    if "no active" in msg and "connector" in msg:
+        return ToolConnectorNotConnectedError(str(exc))
     if any(h in msg for h in _AUTH_HINTS):
         return ToolAuthExpiredError(str(exc))
     return ToolValidationError(str(exc))
@@ -274,7 +289,9 @@ def _hubspot_connector_and_token(ctx: ToolContext, params: dict[str, Any]) -> tu
     else:
         conn = get_connector_by_type(ctx.client, ctx.org_id, "hubspot", environment_name=ctx.environment_name)
     if not conn:
-        raise ToolValidationError("No active HubSpot connector found for org")
+        from app.services.tool_types import ToolConnectorNotConnectedError
+
+        raise ToolConnectorNotConnectedError("No active HubSpot connector found for org")
     cid = str(conn["id"])
     _enforce_tool_rate_limit(ctx, "hubspot", cid)
     token, err = ensure_hubspot_access_token(
@@ -945,7 +962,9 @@ def _salesforce_connector_and_session(ctx: ToolContext, params: dict[str, Any]) 
     else:
         conn = get_connector_by_type(ctx.client, ctx.org_id, "salesforce", environment_name=ctx.environment_name)
     if not conn:
-        raise ToolValidationError("No active Salesforce connector found for org")
+        from app.services.tool_types import ToolConnectorNotConnectedError
+
+        raise ToolConnectorNotConnectedError("No active Salesforce connector found for org")
     cid = str(conn["id"])
     _enforce_tool_rate_limit(ctx, "salesforce", cid)
     token, instance_url, err = ensure_salesforce_session(
@@ -1143,6 +1162,30 @@ def _exec_salesforce_leads_search(ctx: ToolContext, params: dict[str, Any]) -> N
     )
 
 
+def _exec_salesforce_query(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    """Arbitrary SOQL via Salesforce /query — Phase 1 Batch 1 read primitive."""
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    soql = params.get("soql") or params.get("q") or params.get("query")
+    if not soql or not isinstance(soql, str) or not soql.strip():
+        raise ToolValidationError("salesforce.query requires soql (SOQL string)")
+    try:
+        data = query_soql(instance_url, token, soql.strip())
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    records = data.get("records") if isinstance(data, dict) else None
+    count = len(records) if isinstance(records, list) else data.get("totalSize") if isinstance(data, dict) else None
+    return NormalizedResult(
+        success=True,
+        action="salesforce.query",
+        connector_id=cid,
+        data={
+            "results": data,
+            "total_size": count,
+            "summary": f"Salesforce SOQL returned {count if count is not None else 'n/a'} record(s)",
+        },
+    )
+
+
 def _exec_salesforce_opportunities_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
     opportunity_id = params.get("opportunity_id") or params.get("opportunityId")
@@ -1229,7 +1272,9 @@ def _quickbooks_connector_and_session(ctx: ToolContext, params: dict[str, Any]) 
     else:
         conn = get_connector_by_type(ctx.client, ctx.org_id, "quickbooks", environment_name=ctx.environment_name)
     if not conn:
-        raise ToolValidationError("No active QuickBooks connector found for org")
+        from app.services.tool_types import ToolConnectorNotConnectedError
+
+        raise ToolConnectorNotConnectedError("No active QuickBooks connector found for org")
     cid = str(conn["id"])
     _enforce_tool_rate_limit(ctx, "quickbooks", cid)
     token, _realm, api_base, err = ensure_quickbooks_session(
@@ -1571,7 +1616,9 @@ def _stripe_connector_and_key(ctx: ToolContext, params: dict[str, Any]) -> tuple
     else:
         conn = get_connector_by_type(ctx.client, ctx.org_id, "stripe", environment_name=ctx.environment_name)
     if not conn:
-        raise ToolValidationError("No active Stripe connector found for org")
+        from app.services.tool_types import ToolConnectorNotConnectedError
+
+        raise ToolConnectorNotConnectedError("No active Stripe connector found for org")
     cid = str(conn["id"])
     _enforce_tool_rate_limit(ctx, "stripe", cid)
     try:
@@ -1705,7 +1752,9 @@ def _pagerduty_connector_session(
     else:
         conn = get_connector_by_type(ctx.client, ctx.org_id, "pagerduty", environment_name=ctx.environment_name)
     if not conn:
-        raise ToolValidationError("No active PagerDuty connector found for org")
+        from app.services.tool_types import ToolConnectorNotConnectedError
+
+        raise ToolConnectorNotConnectedError("No active PagerDuty connector found for org")
     cid = str(conn["id"])
     _enforce_tool_rate_limit(ctx, "pagerduty", cid)
     token, err = ensure_pagerduty_session(
@@ -1964,7 +2013,9 @@ def _jira_connector_and_session(ctx: ToolContext, params: dict[str, Any]) -> tup
     else:
         conn = get_connector_by_type(ctx.client, ctx.org_id, "jira", environment_name=ctx.environment_name)
     if not conn:
-        raise ToolValidationError("No active Jira connector found for org")
+        from app.services.tool_types import ToolConnectorNotConnectedError
+
+        raise ToolConnectorNotConnectedError("No active Jira connector found for org")
     cid = str(conn["id"])
     _enforce_tool_rate_limit(ctx, "jira", cid)
     token, cloud_id, err = ensure_jira_session(
@@ -2617,7 +2668,11 @@ def _connector_by_type(ctx: ToolContext, connector_type: str, params: dict[str, 
     else:
         conn = get_connector_by_type(ctx.client, ctx.org_id, connector_type, environment_name=ctx.environment_name)
     if not conn:
-        raise ToolValidationError(f"No active {connector_type} connector found for org")
+        from app.services.tool_types import ToolConnectorNotConnectedError
+
+        raise ToolConnectorNotConnectedError(
+            f"No active {connector_type} connector found for org"
+        )
     return conn
 
 
@@ -3682,6 +3737,7 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "salesforce.tasks.create": _exec_salesforce_tasks_create,
     "salesforce.leads.create": _exec_salesforce_leads_create,
     "salesforce.leads.search": _exec_salesforce_leads_search,
+    "salesforce.query": _exec_salesforce_query,
     "salesforce.opportunities.get": _exec_salesforce_opportunities_get,
     "salesforce.opportunities.update": _exec_salesforce_opportunities_update,
     "salesforce.accounts.create": _exec_salesforce_accounts_create,

@@ -1,0 +1,27 @@
+{
+  "pass": true,
+  "status": "PASS",
+  "ran_at": "2026-07-16T18:55:22.609053+00:00",
+  "prod_git_sha": "8aafb30c2a9a75f8b8adbb8db8e1370a44a7a125",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "batch": "phase1-nvd-cisa-batch1",
+  "invokes": {
+    "nvd.cve.get": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "https://nvd.nist.gov/vuln/detail/CVE-2024-21762",
+      "cve_id": "CVE-2024-21762"
+    },
+    "cisa_kev.feed.get": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "count": 1647
+    }
+  },
+  "governance": {
+    "chat_access_granted": false,
+    "finance_hr_excluded": true
+  }
+}

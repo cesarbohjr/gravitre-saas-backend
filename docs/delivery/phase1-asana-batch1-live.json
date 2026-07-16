@@ -1,0 +1,9 @@
+{
+  "pass": false,
+  "status": "BLOCKED_EXTERNAL",
+  "ran_at": "2026-07-16T18:54:40.233015+00:00",
+  "prod_git_sha": "8aafb30c2a9a75f8b8adbb8db8e1370a44a7a125",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "batch": "phase1-asana-batch1",
+  "error": "No active Asana connector on smoke org \u2014 connect Asana in UI then re-run."
+}

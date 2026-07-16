@@ -419,7 +419,13 @@ def error_code_for_unavailable_integration(
     if auth == "auth_expired" or reason == "token_expired":
         return "auth_expired"
     if reason == "missing_scope":
-        return "permission_denied"
+        return "missing_scope"
+    if auth in {"not_connected", "pending_auth", "disconnected", "inactive"} or reason in {
+        "pending_auth",
+        "not_connected",
+        "no_connector",
+    }:
+        return "connector_not_connected"
     return "tool_not_available"
 
 

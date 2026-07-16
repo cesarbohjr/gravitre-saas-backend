@@ -29,15 +29,32 @@ from app.connectors.zendesk import (
     merge_tickets,
 )
 from app.connectors.connector_tool_auth import resolve_microsoft365_access_token, resolve_zendesk_auth
-from app.services.tool_types import NormalizedResult, ToolAuthExpiredError, ToolContext, ToolValidationError
+from app.services.tool_types import (
+    NormalizedResult,
+    ToolAuthExpiredError,
+    ToolChannelNotFoundError,
+    ToolConnectorNotConnectedError,
+    ToolContext,
+    ToolError,
+    ToolMissingScopeError,
+    ToolValidationError,
+)
 
 ToolExecutor = Any
 
 
-def _vendor_api_error(exc: Exception, vendor: str) -> ToolValidationError:
+def _vendor_api_error(exc: Exception, vendor: str) -> ToolError:
+    msg = str(exc)
+    lower = msg.lower()
+    if "channel_not_found" in lower or "not_in_channel" in lower:
+        return ToolChannelNotFoundError(msg)
+    if "missing_scope" in lower or "insufficient scope" in lower or "required scope" in lower:
+        return ToolMissingScopeError(msg)
+    if "no active" in lower and "connector" in lower:
+        return ToolConnectorNotConnectedError(msg)
     if hasattr(exc, "status_code") and getattr(exc, "status_code") in {401, 403}:
-        return ToolAuthExpiredError(str(exc))
-    return ToolValidationError(str(exc))
+        return ToolAuthExpiredError(msg)
+    return ToolValidationError(msg)
 
 
 def _connector_by_type(ctx: ToolContext, connector_type: str, params: dict[str, Any]) -> dict[str, Any]:
@@ -48,7 +65,7 @@ def _connector_by_type(ctx: ToolContext, connector_type: str, params: dict[str, 
     else:
         conn = get_connector_by_type(ctx.client, ctx.org_id, connector_type, environment_name=ctx.environment_name)
     if not conn:
-        raise ToolValidationError(f"No active {connector_type} connector found for org")
+        raise ToolConnectorNotConnectedError(f"No active {connector_type} connector found for org")
     return conn
 
 

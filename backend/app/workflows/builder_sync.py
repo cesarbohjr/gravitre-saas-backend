@@ -26,9 +26,23 @@ from app.workflows.schema_sync import (
 logger = logging.getLogger(__name__)
 
 PERSISTED_GRAPH_NODE_TYPES = frozenset(
-    {"agent", "task", "connector", "tool", "source", "approval", "council", "decision"}
+    {
+        "agent",
+        "task",
+        "connector",
+        "tool",
+        "source",
+        "approval",
+        "council",
+        "decision",
+        "if",
+        "switch",
+        "merge",
+        "loop",
+    }
 )
-BUILDER_ONLY_NODE_TYPES = frozenset({"council", "decision"})
+# Canvas-only types stored as task + builder_node_type until DB enum expands.
+BUILDER_ONLY_NODE_TYPES = frozenset({"council", "decision", "if", "switch", "merge", "loop"})
 LEGACY_PERSISTED_NODE_TYPES = frozenset({"agent", "task", "connector", "tool", "source", "approval"})
 
 
@@ -230,7 +244,66 @@ def _node_to_step(node: dict[str, Any], nodes_by_id: dict[str, dict], edges: lis
             },
             "metadata": metadata or {},
         }
-    if node_type in {"approval", "decision", "task"}:
+    if node_type in {"decision", "if", "switch"}:
+        decision_cfg = metadata.get("decisionConfig") if isinstance(metadata.get("decisionConfig"), dict) else {}
+        if not decision_cfg and isinstance(config.get("decisionConfig"), dict):
+            decision_cfg = config.get("decisionConfig")
+        expression = (
+            decision_cfg.get("conditions")
+            or decision_cfg.get("expression")
+            or config.get("expression")
+            or config.get("condition")
+            or ""
+        )
+        branches = decision_cfg.get("outputPaths") or decision_cfg.get("output_paths") or config.get("branches") or {}
+        return {
+            "id": step_id,
+            "name": name,
+            "type": "condition",
+            "config": {
+                "builder_node_type": node_type,
+                "expression": expression,
+                "strategy": decision_cfg.get("strategy") or config.get("strategy") or "rule-based",
+                "branches": branches,
+                "default_branch": decision_cfg.get("defaultPath")
+                or decision_cfg.get("default_branch")
+                or config.get("default_branch")
+                or "default",
+            },
+            "metadata": metadata or {},
+        }
+    if node_type == "merge":
+        return {
+            "id": step_id,
+            "name": name,
+            "type": "noop",
+            "config": {
+                "builder_node_type": "merge",
+                "merge_mode": config.get("merge_mode") or metadata.get("merge_mode") or "wait_all",
+            },
+            "metadata": {**(metadata or {}), "logic_node": "merge"},
+        }
+    if node_type == "loop":
+        return {
+            "id": step_id,
+            "name": name,
+            "type": "noop",
+            "config": {
+                "builder_node_type": "loop",
+                "collection": config.get("collection") or metadata.get("collection"),
+                "max_iterations": config.get("max_iterations") or metadata.get("max_iterations") or 10,
+            },
+            "metadata": {**(metadata or {}), "logic_node": "loop"},
+        }
+    if node_type in {"approval", "task"}:
+        if node_type == "approval":
+            return {
+                "id": step_id,
+                "name": name,
+                "type": "approval",
+                "config": dict(config),
+                "metadata": metadata or {},
+            }
         return {
             "id": step_id,
             "name": name,

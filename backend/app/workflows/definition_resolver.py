@@ -13,7 +13,7 @@ LEGACY_NODE_TYPE_MAP = {
     "action": "tool",
     "end": "task",
     "human_approval": "approval",
-    "loop": "task",
+    # Keep loop/if/switch/merge as first-class canvas types (builder_sync compiles them).
     "parallel": "task",
     "delay": "task",
 }

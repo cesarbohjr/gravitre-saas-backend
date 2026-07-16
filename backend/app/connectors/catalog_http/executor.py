@@ -186,7 +186,11 @@ def make_catalog_http_executor(action: str) -> Any:
                 ctx.client, ctx.org_id, profile.connector_type, environment_name=ctx.environment_name
             )
         if not conn:
-            raise ToolValidationError(f"No active {profile.display_name if hasattr(profile, 'display_name') else vendor} connector")
+            from app.services.tool_types import ToolConnectorNotConnectedError
+
+            raise ToolConnectorNotConnectedError(
+                f"No active {profile.display_name if hasattr(profile, 'display_name') else vendor} connector"
+            )
         cid = str(conn["id"])
         enforce_rate_limit(ctx.client, ctx.org_id, profile.vendor, profile.connector_type, cid)
         headers, _ = _resolve_auth(ctx, profile, conn)

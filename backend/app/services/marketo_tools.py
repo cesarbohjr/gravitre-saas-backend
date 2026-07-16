@@ -43,7 +43,9 @@ def _marketo_connector_and_session(ctx: ToolContext, params: dict[str, Any]) -> 
     else:
         conn = get_connector_by_type(ctx.client, ctx.org_id, "marketo", environment_name=ctx.environment_name)
     if not conn:
-        raise ToolValidationError("No active Marketo connector found for org")
+        from app.services.tool_types import ToolConnectorNotConnectedError
+
+        raise ToolConnectorNotConnectedError("No active Marketo connector found for org")
     cid = str(conn["id"])
     enforce_rate_limit(ctx.client, ctx.org_id, "marketo", "marketo", cid)
     token, munchkin_id, err = ensure_marketo_session(

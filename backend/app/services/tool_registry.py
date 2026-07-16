@@ -342,7 +342,7 @@ def _build_agent_tool_specs() -> dict[str, AgentToolSpec]:
                 },
                 "required": ["soql"],
             },
-            invoke_action="salesforce.leads.search",
+            invoke_action="salesforce.query",
             integration="salesforce",
             map_params=_salesforce_soql_query,
         ),

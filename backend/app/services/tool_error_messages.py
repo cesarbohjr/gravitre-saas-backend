@@ -12,6 +12,9 @@ REACT_SHORT_CIRCUIT_ERROR_CODES = frozenset(
         "auth_expired",
         "permission_denied",
         "validation_error",
+        "connector_not_connected",
+        "channel_not_found",
+        "missing_scope",
         "rate_limited",
         "connector_timeout",
         "tool_not_available",
@@ -28,6 +31,18 @@ _TOOL_ERROR_USER_MESSAGES: dict[str, str] = {
     "permission_denied": (
         "You don't have permission to run this action"
         "{action_suffix}. Ask an admin to grant access, or pick a different tool."
+    ),
+    "connector_not_connected": (
+        "{integration} is not connected for this organization. "
+        "Connect it at /connectors, then try again."
+    ),
+    "channel_not_found": (
+        "That Slack channel was not found (or the bot is not a member). "
+        "Use a public channel name/id the bot can access, invite the bot, then try again."
+    ),
+    "missing_scope": (
+        "{integration} is connected but missing required permissions"
+        "{action_suffix}. Reconnect it at /connectors and approve the requested scopes."
     ),
     "validation_error": (
         "Invalid parameters for this {integration} action{action_suffix}. "

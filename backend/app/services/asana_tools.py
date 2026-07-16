@@ -23,7 +23,9 @@ from app.connectors.rate_limit import enforce_rate_limit
 from app.services.tool_types import (
     NormalizedResult,
     ToolAuthExpiredError,
+    ToolConnectorNotConnectedError,
     ToolContext,
+    ToolMissingScopeError,
     ToolRateLimitedError,
     ToolValidationError,
 )
@@ -48,11 +50,17 @@ _RESERVED_BODY_KEYS = frozenset(
 
 
 def _handle_error(exc: AsanaAPIError) -> Exception:
+    msg = str(exc)
+    lower = msg.lower()
+    if "no active" in lower and "connector" in lower:
+        return ToolConnectorNotConnectedError(msg)
+    if "missing_scope" in lower or "insufficient scope" in lower:
+        return ToolMissingScopeError(msg)
     if exc.status_code == 429:
-        return ToolRateLimitedError(str(exc))
+        return ToolRateLimitedError(msg)
     if exc.status_code in {401, 403}:
-        return ToolAuthExpiredError(str(exc))
-    return ToolValidationError(str(exc))
+        return ToolAuthExpiredError(msg)
+    return ToolValidationError(msg)
 
 
 def _session(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str]:

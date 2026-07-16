@@ -712,7 +712,7 @@ class ChatConnectorExecutionService:
             if args:
                 return ConnectorActionPlan(
                     tool_name="salesforce_query",
-                    invoke_action="salesforce.leads.search",
+                    invoke_action="salesforce.query",
                     integration="salesforce",
                     kind="read",
                     label="Query Salesforce",

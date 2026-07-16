@@ -71,13 +71,13 @@ def test_error_code_for_unavailable_integration_prefers_auth_expired():
         error_code_for_unavailable_integration(
             {"auth_status": "connected", "blocking_reason": "missing_scope"}
         )
-        == "permission_denied"
+        == "missing_scope"
     )
     assert (
         error_code_for_unavailable_integration(
             {"auth_status": "not_connected", "blocking_reason": "pending_auth"}
         )
-        == "tool_not_available"
+        == "connector_not_connected"
     )
 
 

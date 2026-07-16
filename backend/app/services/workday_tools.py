@@ -33,7 +33,9 @@ def _workday_connector_and_session(ctx: ToolContext, params: dict[str, Any]) -> 
     else:
         conn = get_connector_by_type(ctx.client, ctx.org_id, "workday", environment_name=ctx.environment_name)
     if not conn:
-        raise ToolValidationError("No active Workday connector found for org")
+        from app.services.tool_types import ToolConnectorNotConnectedError
+
+        raise ToolConnectorNotConnectedError("No active Workday connector found for org")
     cid = str(conn["id"])
     enforce_rate_limit(ctx.client, ctx.org_id, ctx.step_type or "workday", "workday", cid)
     token, _tenant_url, _tenant, api_base, err = ensure_workday_session(

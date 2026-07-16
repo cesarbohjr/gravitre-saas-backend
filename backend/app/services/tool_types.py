@@ -35,6 +35,24 @@ class ToolPermissionDeniedError(ToolValidationError):
     code = "permission_denied"
 
 
+class ToolConnectorNotConnectedError(ToolError):
+    """Org has no usable connector row (inactive / missing / not connected)."""
+
+    code = "connector_not_connected"
+
+
+class ToolChannelNotFoundError(ToolValidationError):
+    """Slack (or similar) channel id/name is invalid or bot not in channel."""
+
+    code = "channel_not_found"
+
+
+class ToolMissingScopeError(ToolError):
+    """Connector is connected but OAuth scopes are insufficient."""
+
+    code = "missing_scope"
+
+
 class ToolNotFoundError(ToolError):
     code = "action_not_found"
 
@@ -83,6 +101,12 @@ class NormalizedResult:
             return ToolAuthExpiredError(msg, details={"action": self.action})
         if code == "rate_limited":
             return ToolRateLimitedError(msg, details={"action": self.action})
+        if code == "connector_not_connected":
+            return ToolConnectorNotConnectedError(msg, details={"action": self.action})
+        if code == "channel_not_found":
+            return ToolChannelNotFoundError(msg, details={"action": self.action})
+        if code == "missing_scope":
+            return ToolMissingScopeError(msg, details={"action": self.action})
         if code == "validation_error":
             return ToolValidationError(msg, details={"action": self.action})
         return ToolError(msg, code=code, details={"action": self.action})

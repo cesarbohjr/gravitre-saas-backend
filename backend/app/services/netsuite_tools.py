@@ -43,7 +43,9 @@ def _netsuite_connector_and_session(ctx: ToolContext, params: dict[str, Any]) ->
     else:
         conn = get_connector_by_type(ctx.client, ctx.org_id, "netsuite", environment_name=ctx.environment_name)
     if not conn:
-        raise ToolValidationError("No active NetSuite connector found for org")
+        from app.services.tool_types import ToolConnectorNotConnectedError
+
+        raise ToolConnectorNotConnectedError("No active NetSuite connector found for org")
     cid = str(conn["id"])
     _enforce_tool_rate_limit(ctx, "netsuite", cid)
     token, _account_id, api_base, err = ensure_netsuite_session(
