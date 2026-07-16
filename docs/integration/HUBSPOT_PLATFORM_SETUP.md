@@ -99,12 +99,12 @@ https://api.gravitre.com/api/connectors/oauth/hubspot/callback
 - `crm.objects.deals.read`
 - `crm.objects.deals.write`
 - `crm.objects.companies.read`
-- `crm.objects.tickets.write`
-- `crm.objects.notes.write`
+- `tickets` (single HubSpot scope — read+write; not `crm.objects.tickets.*`)
 - `crm.lists.read`
 - `crm.lists.write`
 - `oauth`
-- `automation`
+- Optional: `automation`, `crm.objects.companies.write`, `crm.objects.owners.read`
+- Notes: covered by `contacts.write` (do not use `crm.objects.notes.write` — rejected by 2026 platform)
 
 For webhooks, HubSpot may also require **developer/webhook-related scopes** on the app when you create subscriptions in the UI. If subscription API calls fail with a scope error, add the scopes HubSpot lists in the error (often `developers-write` / webhook-related).
 
