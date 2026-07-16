@@ -1,0 +1,79 @@
+{
+  "pass": true,
+  "ran_at": "2026-07-16T06:29:49.245797+00:00",
+  "prod_git_sha": "95b3f3dd2328e8f9b986be45f285d2c7360db171",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "batch": "phase1-hubspot-batch1",
+  "api_version": "CRM v3 + associations v4 (unchanged \u2014 no bump)",
+  "new_actions": [
+    "hubspot.contacts.list",
+    "hubspot.associations.create"
+  ],
+  "deferred_pending_reauth": [
+    "hubspot.companies.create",
+    "hubspot.owners.list",
+    "hubspot.tickets.get"
+  ],
+  "hubspot_connector_id": "547cdda5-2637-4a2b-b087-d5ea89486575",
+  "invokes": {
+    "hubspot.contacts.list": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "https://app.hubspot.com/contacts/objects/0-1/views/all/list",
+      "summary": "Listed 2 HubSpot contact(s)",
+      "data_keys": [
+        "contacts",
+        "total",
+        "paging",
+        "result_url",
+        "summary"
+      ]
+    },
+    "hubspot.deals.list": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "https://app.hubspot.com/contacts/objects/0-3/views/all/list",
+      "summary": null,
+      "data_keys": [
+        "results",
+        "paging",
+        "result_url"
+      ]
+    },
+    "hubspot.associations.create": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "https://app.hubspot.com/contacts/record/0-3/216498558961",
+      "summary": "Associated contacts/260973960172 \u2192 deals/216498558961",
+      "data_keys": [
+        "association",
+        "from_type",
+        "from_id",
+        "to_type",
+        "to_id",
+        "result_url",
+        "summary"
+      ]
+    },
+    "hubspot.companies.search_scope_probe": {
+      "success": false,
+      "error_code": "auth_expired",
+      "error_message": "HubSpot API 403: /crm/v3/objects/companies/search",
+      "result_url": null,
+      "summary": null,
+      "data_keys": []
+    }
+  },
+  "governance": {
+    "contacts_delete_requires_approval": true,
+    "associations_create_is_write_gated": true,
+    "contacts_list_is_read": true,
+    "finance_hr_excluded": true,
+    "chat_access_granted": false,
+    "scope_note": "Smoke token currently contacts/deals/lists. hsmeta + oauth optional scopes updated in-repo for companies.write/owners.read/tickets.read \u2014 needs HubSpot app publish + connector re-auth before Batch 1b."
+  },
+  "note": "HubSpot Batch 1: contacts.list + associations.create with result_url. Companies/owners/tickets deferred (live 403 without re-auth)."
+}

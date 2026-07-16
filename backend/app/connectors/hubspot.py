@@ -176,9 +176,41 @@ def _associate(
     to_type: str,
     to_id: str,
 ) -> dict[str, Any]:
+    return create_association(
+        access_token,
+        from_type=from_type,
+        from_id=from_id,
+        to_type=to_type,
+        to_id=to_id,
+    )
+
+
+def create_association(
+    access_token: str,
+    *,
+    from_type: str,
+    from_id: str,
+    to_type: str,
+    to_id: str,
+) -> dict[str, Any]:
+    """Associate two CRM objects — PUT /crm/v4/objects/.../associations/default/..."""
+    if not from_type or not from_id or not to_type or not to_id:
+        raise HubSpotAPIError("from_type, from_id, to_type, and to_id are required")
+    ft = str(from_type).strip().lower()
+    tt = str(to_type).strip().lower()
+    # Accept singular catalog names (contact) and HubSpot object plurals (contacts).
+    aliases = {
+        "contact": "contacts",
+        "company": "companies",
+        "deal": "deals",
+        "ticket": "tickets",
+        "note": "notes",
+    }
+    ft = aliases.get(ft, ft)
+    tt = aliases.get(tt, tt)
     return _request(
         "PUT",
-        f"/crm/v4/objects/{from_type}/{from_id}/associations/default/{to_type}/{to_id}",
+        f"/crm/v4/objects/{ft}/{from_id}/associations/default/{tt}/{to_id}",
         access_token,
     )
 

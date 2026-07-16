@@ -24,7 +24,9 @@ HUBSPOT_REQUIRED_SCOPES = (
     "crm.objects.notes.write "
     "crm.lists.read crm.lists.write oauth"
 )
-HUBSPOT_OPTIONAL_SCOPES = "automation"
+HUBSPOT_OPTIONAL_SCOPES = (
+    "automation crm.objects.companies.write crm.objects.owners.read crm.objects.tickets.read"
+)
 # Backward-compatible alias for callers/tests that expect a single scope string.
 HUBSPOT_SCOPES = f"{HUBSPOT_REQUIRED_SCOPES} {HUBSPOT_OPTIONAL_SCOPES}".strip()
 TOKEN_REFRESH_BUFFER_SEC = 300

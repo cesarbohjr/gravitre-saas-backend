@@ -35,6 +35,7 @@ from app.connectors.crypto import decrypt_secret
 from app.connectors.hubspot import (
     HubSpotAPIError,
     add_contact_to_list,
+    create_association,
     create_contact,
     create_deal,
     create_note,
@@ -46,6 +47,7 @@ from app.connectors.hubspot import (
     get_company,
     get_contact,
     get_deal,
+    list_contacts,
     list_deal_pipelines,
     list_deals,
     search_companies,
@@ -426,8 +428,6 @@ def _exec_hubspot_contacts_search(ctx: ToolContext, params: dict[str, Any]) -> N
     filter_groups = params.get("filter_groups") or params.get("filterGroups")
     try:
         if list_all:
-            from app.connectors.hubspot import list_contacts
-
             data = list_contacts(token, properties=params.get("properties"), limit=limit)
         else:
             if not isinstance(filter_groups, list) or not filter_groups:
@@ -449,6 +449,7 @@ def _exec_hubspot_contacts_search(ctx: ToolContext, params: dict[str, Any]) -> N
         for row in contacts
         if isinstance(row, dict)
     ]
+    result_url = "https://app.hubspot.com/contacts/objects/0-1/views/all/list"
     return NormalizedResult(
         success=True,
         action="hubspot.contacts.search",
@@ -457,6 +458,92 @@ def _exec_hubspot_contacts_search(ctx: ToolContext, params: dict[str, Any]) -> N
             "contacts": normalized,
             "total": data.get("total", len(normalized)),
             "search": data,
+            "result_url": result_url,
+            "summary": f"Found {len(normalized)} HubSpot contact(s)",
+        },
+    )
+
+
+def _exec_hubspot_contacts_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    """List recent contacts (GET /crm/v3/objects/contacts) — Batch 1 expansion."""
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    limit = int(params.get("limit") or 10)
+    try:
+        data = list_contacts(token, properties=params.get("properties"), limit=limit)
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    contacts = data.get("results") or []
+    normalized = [
+        {"id": row.get("id"), "properties": row.get("properties") or {}}
+        for row in contacts
+        if isinstance(row, dict)
+    ]
+    result_url = "https://app.hubspot.com/contacts/objects/0-1/views/all/list"
+    return NormalizedResult(
+        success=True,
+        action="hubspot.contacts.list",
+        connector_id=cid,
+        data={
+            "contacts": normalized,
+            "total": len(normalized),
+            "paging": data.get("paging"),
+            "result_url": result_url,
+            "summary": f"Listed {len(normalized)} HubSpot contact(s)",
+        },
+    )
+
+
+def _exec_hubspot_associations_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    """Associate two CRM objects (PUT associations/default) — Batch 1 expansion."""
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    from_type = str(params.get("from_type") or params.get("fromType") or "").strip()
+    from_id = str(params.get("from_id") or params.get("fromId") or "").strip()
+    to_type = str(params.get("to_type") or params.get("toType") or "").strip()
+    to_id = str(params.get("to_id") or params.get("toId") or "").strip()
+    if not from_type or not from_id or not to_type or not to_id:
+        raise ToolValidationError(
+            "hubspot.associations.create requires from_type, from_id, to_type, to_id"
+        )
+    try:
+        data = create_association(
+            token,
+            from_type=from_type,
+            from_id=from_id,
+            to_type=to_type,
+            to_id=to_id,
+        )
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    # Prefer the "to" object deep link when it is a primary CRM object.
+    portal_paths = {
+        "contacts": "0-1",
+        "contact": "0-1",
+        "companies": "0-2",
+        "company": "0-2",
+        "deals": "0-3",
+        "deal": "0-3",
+        "tickets": "0-5",
+        "ticket": "0-5",
+    }
+    obj_key = to_type.lower()
+    object_type_id = portal_paths.get(obj_key)
+    result_url = (
+        f"https://app.hubspot.com/contacts/record/{object_type_id}/{to_id}"
+        if object_type_id
+        else "https://app.hubspot.com/contacts"
+    )
+    return NormalizedResult(
+        success=True,
+        action="hubspot.associations.create",
+        connector_id=cid,
+        data={
+            "association": data if isinstance(data, dict) else {"raw": data},
+            "from_type": from_type,
+            "from_id": from_id,
+            "to_type": to_type,
+            "to_id": to_id,
+            "result_url": result_url,
+            "summary": f"Associated {from_type}/{from_id} → {to_type}/{to_id}",
         },
     )
 
@@ -3289,6 +3376,8 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "hubspot.contacts.create": _exec_hubspot_contacts_create,
     "hubspot.contacts.delete": _exec_hubspot_contacts_delete,
     "hubspot.contacts.search": _exec_hubspot_contacts_search,
+    "hubspot.contacts.list": _exec_hubspot_contacts_list,
+    "hubspot.associations.create": _exec_hubspot_associations_create,
     "hubspot.deals.get": _exec_hubspot_deals_get,
     "hubspot.deals.create": _exec_hubspot_deals_create,
     "hubspot.deals.delete": _exec_hubspot_deals_delete,

@@ -214,6 +214,18 @@ VERIFIED_OUTPUT_BATCH_08: frozenset[str] = frozenset(
     {
         "ahrefs.projects.create",
         "ahrefs.rank_tracker.add",
+        "ahrefs.brand_radar.prompts.track",
+        "ai_visibility_ui.prompts.batch",
+        "finseo.prompts.track",
+        "hubspot.associations.create",
+    }
+)
+
+VERIFIED_ADVANCED_OUTPUT_BATCH_14: frozenset[str] = frozenset(
+    {
+        "ahrefs.brand_radar.exports.run",
+        "ai_visibility_ui.captures.export",
+        "finseo.exports.run",
     }
 )
 
@@ -414,6 +426,7 @@ VERIFIED_ADVANCED_OUTPUT_BATCHES: tuple[frozenset[str], ...] = (
     VERIFIED_ADVANCED_OUTPUT_BATCH_11,
     VERIFIED_ADVANCED_OUTPUT_BATCH_12,
     VERIFIED_ADVANCED_OUTPUT_BATCH_13,
+    VERIFIED_ADVANCED_OUTPUT_BATCH_14,
 )
 
 CLEARED_ADVANCED_OUTPUT_SCHEMA_ACTIONS: frozenset[str] = frozenset().union(

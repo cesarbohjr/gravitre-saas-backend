@@ -124,11 +124,11 @@ def test_apply_source_score_unassigned_penalty():
     assert score < 0.8
 
 
-def test_intelligence_pack_catalog_has_eight_packs():
+def test_intelligence_pack_catalog_has_eleven_packs():
     from app.marketplace.intelligence_packs.catalog import list_intelligence_pack_specs
 
     specs = list_intelligence_pack_specs()
-    assert len(specs) == 8
+    assert len(specs) == 11
     assert {spec.pack_id for spec in specs} == {
         "marketing-intelligence-pack",
         "sales-intelligence-pack",
@@ -138,6 +138,9 @@ def test_intelligence_pack_catalog_has_eight_packs():
         "customer-success-intelligence-pack",
         "prospecting-intelligence-pack",
         "revops-intelligence-pack",
+        "ai-search-intelligence-pack",
+        "finance-intelligence-pack",
+        "hr-talent-intelligence-pack",
     }
 
 
