@@ -221,6 +221,7 @@ VERIFIED_OUTPUT_BATCH_08: frozenset[str] = frozenset(
         "hubspot.companies.create",
         "hubspot.owners.list",
         "hubspot.tickets.get",
+        "slack.conversations.join",
     }
 )
 

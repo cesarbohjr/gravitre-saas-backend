@@ -118,6 +118,22 @@ def list_users(
     return slack_api_call(token, "users.list", params=params)
 
 
+def get_user(token: str, user: str) -> dict[str, Any]:
+    """Single user — users.info."""
+    user = (user or "").strip()
+    if not user:
+        raise ValueError("Slack user id is required")
+    return slack_api_call(token, "users.info", params={"user": user})
+
+
+def join_conversation(token: str, channel: str) -> dict[str, Any]:
+    """Join a public channel — conversations.join (channels:join)."""
+    channel = (channel or "").strip()
+    if not channel:
+        raise ValueError("Slack channel is required")
+    return slack_api_call(token, "conversations.join", json_body={"channel": channel})
+
+
 def create_conversation(
     token: str,
     name: str,

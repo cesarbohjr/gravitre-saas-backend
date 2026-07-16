@@ -1,0 +1,97 @@
+{
+  "pass": true,
+  "ran_at": "2026-07-16T07:29:28.861451+00:00",
+  "prod_git_sha": "27bf09768a3f07248556e710120588f9036d3b12",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "batch": "phase1-slack-batch1",
+  "api_version": "Slack Web API methods (no version bump)",
+  "new_actions": [
+    "slack.conversations.join",
+    "slack.users.info"
+  ],
+  "enriched_result_url": [
+    "slack.conversations.list",
+    "slack.conversations.history",
+    "slack.users.list",
+    "slack.post_message"
+  ],
+  "deferred": [
+    "slack.workflows.trigger (missing workflows:write scope)",
+    "slack.files.upload (deprecated API path)"
+  ],
+  "slack_connector_id": "fe7433c3-6475-474a-863f-91b98d17a0b8",
+  "invokes": {
+    "slack.conversations.list": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "https://app.slack.com/archives/C0B8M69FWCB",
+      "summary": "Listed 3 Slack channel(s)",
+      "data_keys": [
+        "channels",
+        "response_metadata",
+        "result_url",
+        "summary"
+      ]
+    },
+    "slack.users.list": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "https://app.slack.com",
+      "summary": "Listed 4 Slack user(s)",
+      "data_keys": [
+        "members",
+        "response_metadata",
+        "result_url",
+        "summary"
+      ]
+    },
+    "slack.users.info": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "https://app.slack.com/team/USLACKBOT",
+      "summary": "Got Slack user Slackbot",
+      "data_keys": [
+        "user",
+        "result_url",
+        "summary"
+      ]
+    },
+    "slack.conversations.join": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "https://app.slack.com/archives/C0B8M69FWCB",
+      "summary": "Joined Slack channel C0B8M69FWCB",
+      "data_keys": [
+        "channel",
+        "result_url",
+        "summary"
+      ]
+    },
+    "slack.conversations.history": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "https://app.slack.com/archives/C0B8M69FWCB",
+      "summary": "Read 3 message(s) from C0B8M69FWCB",
+      "data_keys": [
+        "messages",
+        "response_metadata",
+        "result_url",
+        "summary"
+      ]
+    }
+  },
+  "governance": {
+    "finance_hr_excluded": true,
+    "chat_access_granted": false,
+    "hubspot_batch1b_blocked_on_app_republish": true,
+    "hubspot_batch1b_note": "PENDING \u2014 last HubSpot app build #5 (2026-06-23); hsmeta scopes in-repo only until portal upload + re-auth"
+  },
+  "status": "PASS",
+  "blocker": null,
+  "note": "Slack Batch 1: conversations.join + users.info with result_url; core list/history/users enriched. Chat access deferred."
+}
