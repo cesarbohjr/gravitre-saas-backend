@@ -20,7 +20,10 @@ from app.services.tool_types import (
     ToolValidationError,
 )
 
-PLAID_API_BASE = "https://production.plaid.com"
+PLAID_SANDBOX_BASE = "https://sandbox.plaid.com"
+PLAID_PRODUCTION_BASE = "https://production.plaid.com"
+# Legacy alias — prefer resolve_plaid_api_base().
+PLAID_API_BASE = PLAID_SANDBOX_BASE
 TIMEOUT_SEC = 45.0
 
 
@@ -28,6 +31,30 @@ class PlaidAPIError(Exception):
     def __init__(self, message: str, *, status_code: int | None = None) -> None:
         super().__init__(message)
         self.status_code = status_code
+
+
+def resolve_plaid_api_base(
+    *,
+    settings: Any | None = None,
+    connector_config: dict[str, Any] | None = None,
+    params: dict[str, Any] | None = None,
+) -> tuple[str, str]:
+    """Return (api_base, env_name). Defaults to sandbox — never silent production."""
+    cfg = connector_config if isinstance(connector_config, dict) else {}
+    p = params if isinstance(params, dict) else {}
+    raw = (
+        p.get("plaid_env")
+        or p.get("env")
+        or cfg.get("plaid_env")
+        or cfg.get("env")
+        or cfg.get("environment")
+        or getattr(settings, "plaid_env", None)
+        or "sandbox"
+    )
+    env_name = str(raw).strip().lower() or "sandbox"
+    if env_name in {"production", "prod"}:
+        return PLAID_PRODUCTION_BASE, "production"
+    return PLAID_SANDBOX_BASE, "sandbox"
 
 
 def _handle_http(exc: Exception) -> Exception:
@@ -42,8 +69,8 @@ def _handle_http(exc: Exception) -> Exception:
 
 def _resolve_plaid_access(
     ctx: ToolContext, params: dict[str, Any]
-) -> tuple[str, str, str | None, str | None]:
-    """Return (connector_id, access_token, client_id, secret)."""
+) -> tuple[str, str, str | None, str | None, str, str]:
+    """Return (connector_id, access_token, client_id, secret, api_base, plaid_env)."""
     if ctx.settings.disable_connectors:
         raise ToolValidationError("Connectors are disabled")
     connector_id = params.get("connector_id") or ctx.connector_id
@@ -77,9 +104,18 @@ def _resolve_plaid_access(
     secret = get_decrypted_secret(ctx.client, cid, "secret", ctx.settings) or getattr(
         ctx.settings, "plaid_secret", None
     )
+    conn_cfg = conn.get("config") if isinstance(conn.get("config"), dict) else {}
+    api_base, plaid_env = resolve_plaid_api_base(
+        settings=ctx.settings, connector_config=conn_cfg, params=params
+    )
     enforce_rate_limit(ctx.client, ctx.org_id, "plaid", "plaid", cid)
-    return cid, access_token.strip(), (str(client_id).strip() if client_id else None), (
-        str(secret).strip() if secret else None
+    return (
+        cid,
+        access_token.strip(),
+        (str(client_id).strip() if client_id else None),
+        (str(secret).strip() if secret else None),
+        api_base,
+        plaid_env,
     )
 
 
@@ -89,6 +125,7 @@ def _plaid_post(
     access_token: str,
     client_id: str | None,
     secret: str | None,
+    api_base: str,
     extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if not client_id or not secret:
@@ -103,7 +140,7 @@ def _plaid_post(
     }
     if extra:
         body.update(extra)
-    url = f"{PLAID_API_BASE}{path}"
+    url = f"{api_base.rstrip('/')}{path}"
     with httpx.Client(timeout=TIMEOUT_SEC) as http:
         response = http.post(url, json=body, headers={"Content-Type": "application/json"})
     if response.status_code >= 400:
@@ -120,36 +157,57 @@ def _plaid_post(
 
 def _exec_accounts_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     try:
-        cid, access_token, client_id, secret = _resolve_plaid_access(ctx, params)
+        cid, access_token, client_id, secret, api_base, plaid_env = _resolve_plaid_access(
+            ctx, params
+        )
         data = _plaid_post(
-            "/accounts/get", access_token=access_token, client_id=client_id, secret=secret
+            "/accounts/get",
+            access_token=access_token,
+            client_id=client_id,
+            secret=secret,
+            api_base=api_base,
         )
     except ToolValidationError:
         raise
     except Exception as exc:  # noqa: BLE001
         raise _handle_http(exc) from exc
-    return NormalizedResult(success=True, action="plaid.accounts.get", connector_id=cid, data=data)
+    return NormalizedResult(
+        success=True,
+        action="plaid.accounts.get",
+        connector_id=cid,
+        data={**data, "api_base": api_base, "plaid_env": plaid_env},
+    )
 
 
 def _exec_balances_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     try:
-        cid, access_token, client_id, secret = _resolve_plaid_access(ctx, params)
+        cid, access_token, client_id, secret, api_base, plaid_env = _resolve_plaid_access(
+            ctx, params
+        )
         data = _plaid_post(
             "/accounts/balance/get",
             access_token=access_token,
             client_id=client_id,
             secret=secret,
+            api_base=api_base,
         )
     except ToolValidationError:
         raise
     except Exception as exc:  # noqa: BLE001
         raise _handle_http(exc) from exc
-    return NormalizedResult(success=True, action="plaid.balances.get", connector_id=cid, data=data)
+    return NormalizedResult(
+        success=True,
+        action="plaid.balances.get",
+        connector_id=cid,
+        data={**data, "api_base": api_base, "plaid_env": plaid_env},
+    )
 
 
 def _exec_transactions_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     try:
-        cid, access_token, client_id, secret = _resolve_plaid_access(ctx, params)
+        cid, access_token, client_id, secret, api_base, plaid_env = _resolve_plaid_access(
+            ctx, params
+        )
         start = str(params.get("start_date") or params.get("startDate") or "2024-01-01").strip()
         end = str(params.get("end_date") or params.get("endDate") or "2026-12-31").strip()
         data = _plaid_post(
@@ -157,6 +215,7 @@ def _exec_transactions_list(ctx: ToolContext, params: dict[str, Any]) -> Normali
             access_token=access_token,
             client_id=client_id,
             secret=secret,
+            api_base=api_base,
             extra={"start_date": start, "end_date": end},
         )
     except ToolValidationError:
@@ -164,7 +223,10 @@ def _exec_transactions_list(ctx: ToolContext, params: dict[str, Any]) -> Normali
     except Exception as exc:  # noqa: BLE001
         raise _handle_http(exc) from exc
     return NormalizedResult(
-        success=True, action="plaid.transactions.list", connector_id=cid, data=data
+        success=True,
+        action="plaid.transactions.list",
+        connector_id=cid,
+        data={**data, "api_base": api_base, "plaid_env": plaid_env},
     )
 
 

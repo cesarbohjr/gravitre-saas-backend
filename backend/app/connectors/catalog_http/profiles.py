@@ -47,7 +47,8 @@ VENDOR_HTTP_PROFILES: dict[str, VendorHttpProfile] = {
     "aws_s3": VendorHttpProfile("aws_s3", "aws_s3", "https://s3.{region}.amazonaws.com", "api_token"),
     "canva": VendorHttpProfile("canva", "canva", "https://api.canva.com/rest/v1", "generic_oauth"),
     "figma": VendorHttpProfile("figma", "figma", "https://api.figma.com/v1", "generic_oauth"),
-    "gusto": VendorHttpProfile("gusto", "gusto", "https://api.gusto.com/v1", "generic_oauth"),
+    # Default to Gusto Demo (sandbox). Production requires explicit connector override.
+    "gusto": VendorHttpProfile("gusto", "gusto", "https://api.gusto-demo.com/v1", "generic_oauth"),
     "adp": VendorHttpProfile("adp", "adp", "https://api.adp.com", "generic_oauth"),
     "absorb_lms": VendorHttpProfile("absorb_lms", "absorb_lms", "https://{domain}.myabsorb.com/api/rest/v2", "api_token"),
     "confluence": VendorHttpProfile(
@@ -69,7 +70,8 @@ VENDOR_HTTP_PROFILES: dict[str, VendorHttpProfile] = {
     "greenhouse": VendorHttpProfile("greenhouse", "greenhouse", "https://harvest.greenhouse.io/v1", "api_token"),
     "motion": VendorHttpProfile("motion", "motion", "https://api.usemotion.com/v1", "generic_oauth"),
     "n8n": VendorHttpProfile("n8n", "n8n", "{instance_url}/api/v1", "api_token"),
-    "plaid": VendorHttpProfile("plaid", "plaid", "https://production.plaid.com", "api_token"),
+    # Default to Plaid Sandbox. Production requires explicit connector override.
+    "plaid": VendorHttpProfile("plaid", "plaid", "https://sandbox.plaid.com", "api_token"),
     "snowflake": VendorHttpProfile("snowflake", "snowflake", "https://{account}.snowflakecomputing.com", "api_token"),
     "shopify": VendorHttpProfile("shopify", "shopify", "https://{shop}.myshopify.com/admin/api/2024-01", "generic_oauth"),
     "twilio": VendorHttpProfile("twilio", "twilio", "https://api.twilio.com/2010-04-01", "api_token"),

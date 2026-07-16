@@ -199,6 +199,15 @@ class Settings(BaseSettings):
     workday_client_secret: str = ""
     workday_sandbox_client_id: str = ""
     workday_sandbox_client_secret: str = ""
+    # Finance F3 — Plaid Link (sandbox vs production). Default sandbox so smoke
+    # never silently hits production.plaid.com without an explicit env choice.
+    plaid_client_id: str = ""
+    plaid_secret: str = ""
+    plaid_env: str = "sandbox"  # sandbox | production
+    # HR H3 — Gusto partner OAuth. Default demo domain (api.gusto-demo.com).
+    gusto_client_id: str = ""
+    gusto_client_secret: str = ""
+    gusto_env: str = "demo"  # demo | production
     # Google OAuth — shared "Gravitre OAuth" app (Calendar, GA4, future Gmail/Drive)
     google_oauth_client_id: str = ""
     google_oauth_client_secret: str = ""

@@ -1,0 +1,44 @@
+{
+  "pass": false,
+  "status": "BLOCKED_EXTERNAL",
+  "ran_at": "2026-07-16T19:11:26.227534+00:00",
+  "prod_git_sha": "8aafb30c2a9a75f8b8adbb8db8e1370a44a7a125",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "batch": "f3-h3-sandbox-demo-live",
+  "endpoint_confirmation": {
+    "plaid_env": "sandbox",
+    "plaid_api_base": "https://sandbox.plaid.com",
+    "plaid_is_sandbox": true,
+    "gusto_env": "demo",
+    "gusto_api_base": "https://api.gusto-demo.com/v1",
+    "gusto_is_demo": true,
+    "production_hosts_refused": [
+      "production.plaid.com",
+      "api.gusto.com"
+    ],
+    "authorized_scope": "sandbox_demo_live_invoke_only",
+    "not_authorized": "production_real_account_activation"
+  },
+  "governance": {
+    "authorized": "plaid_sandbox_and_gusto_demo_live_invoke",
+    "not_authorized": "production_real_account_activation",
+    "signoff": "Cesar 2026-07-16 F3/H3 sandbox synthetic confirmation"
+  },
+  "plaid": {
+    "connector_id": "62b6a3cf-d63d-4432-b807-c604cf85dfc8",
+    "connector_status": "needs_connection",
+    "success": false,
+    "status": "BLOCKED_EXTERNAL",
+    "error": "Plaid connector is staged (needs_connection) and no sandbox PLAID_CLIENT_ID/PLAID_SECRET available to create a sandbox Item. Connect Plaid Link against Sandbox or set sandbox credentials.",
+    "api_base_confirmed": "https://sandbox.plaid.com"
+  },
+  "gusto": {
+    "connector_id": "38c67b8c-783f-40d0-8854-4e7ce50281e0",
+    "connector_status": "needs_connection",
+    "success": false,
+    "status": "BLOCKED_EXTERNAL",
+    "error": "Gusto connector is staged (needs_connection) with no OAuth token. Connect via Gusto Demo OAuth (api.gusto-demo.com) then re-run.",
+    "api_base_confirmed": "https://api.gusto-demo.com/v1",
+    "oauth_authorize_confirmed": "https://api.gusto-demo.com/oauth/authorize"
+  }
+}

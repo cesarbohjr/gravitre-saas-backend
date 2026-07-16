@@ -136,10 +136,11 @@ def _specs() -> dict[str, OAuthProviderSpec]:
         ),
         OAuthProviderSpec(
             vendor="gusto",
-            authorize_url="https://api.gusto.com/oauth/authorize",
-            token_url="https://api.gusto.com/oauth/token",
+            # Demo-first: new integrations are hard-locked to gusto-demo until prod approval.
+            authorize_url="https://api.gusto-demo.com/oauth/authorize",
+            token_url="https://api.gusto-demo.com/oauth/token",
             partner_gated=True,
-            notes="Gusto partner / developer approval required",
+            notes="Gusto Demo (api.gusto-demo.com) by default; production requires Gusto approval",
         ),
         OAuthProviderSpec(
             vendor="canva",
