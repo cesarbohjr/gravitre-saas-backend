@@ -19,16 +19,17 @@ This PR aligns `app-hsmeta.json` + optional OAuth scopes for Batch 1b; live comp
 
 ## Batch 1b external dependency (named 2026-07-16)
 
-**Status: PENDING — not submitted/approved on HubSpot’s side.**
+**Status: APP PUBLISHED — waiting on smoke-org HubSpot reconnect.**
 
 | Check | Result |
 |-------|--------|
-| Repo hsmeta scopes updated | Yes (this PR) |
-| `hs project upload` / new build after scope change | **No** |
-| Deployed build on HubSpot | **#5** (SUCCESS, **2026-06-23**) — last deploy predates Batch 1 scope edit |
-| Live smoke `companies.search` | Still **403** on smoke token |
+| Repo hsmeta scopes (valid names) | Yes — `companies.read` + `tickets` required; `companies.write` + `owners.read` optional |
+| Scope fix at upload | Replaced invalid `crm.objects.tickets.write` / `crm.objects.tickets.read` / `crm.objects.notes.write` (2026 platform rejects those; tickets = single `tickets` scope; notes via contacts.write) |
+| `hs project upload` | **Build #7** SUCCESS (2026-07-16) |
+| Deployed build on HubSpot | **#7** (auto-deploy + `hs project deploy --deploy-latest-build`) — was #5 from 2026-06-23 |
+| Live smoke after reconnect | **Not yet** — existing smoke connector still authorized under old scope set |
 
-Batch 1b (`companies.create` / `owners.list` / `tickets.get`) is blocked on an **external app-publish timeline** (upload → deploy → smoke connector re-auth), not engineering. Same class as earlier FRED_API_KEY / Apollo plan-tier waits — do not schedule as “next coding PR” until Cesar (or operator) completes HubSpot portal republish.
+**Your step:** disconnect/reconnect HubSpot on smoke org `cbbf993b-…` in Gravitre Connectors (fresh OAuth consent). Then say go and Batch 1b tip (`companies.create` / `owners.list` / `tickets.get`) can run.
 
 ## Evidence
 

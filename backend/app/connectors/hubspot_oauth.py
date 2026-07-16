@@ -17,15 +17,17 @@ logger = logging.getLogger(__name__)
 OAUTH_TOKEN_KEY = "oauth_tokens"
 HUBSPOT_AUTHORIZE_URL = "https://app.hubspot.com/oauth/authorize"
 HUBSPOT_TOKEN_URL = "https://api.hubapi.com/oauth/v1/token"
+# Scopes must match HubSpot Developer Platform recognized names (hs project upload validates).
+# Tickets use the single `tickets` scope (no crm.objects.tickets.read/write).
+# Notes are covered by contacts.write (crm.objects.notes.write is rejected by 2026 platform).
 HUBSPOT_REQUIRED_SCOPES = (
     "crm.objects.contacts.read crm.objects.contacts.write "
     "crm.objects.deals.read crm.objects.deals.write "
-    "crm.objects.companies.read crm.objects.tickets.write "
-    "crm.objects.notes.write "
+    "crm.objects.companies.read tickets "
     "crm.lists.read crm.lists.write oauth"
 )
 HUBSPOT_OPTIONAL_SCOPES = (
-    "automation crm.objects.companies.write crm.objects.owners.read crm.objects.tickets.read"
+    "automation crm.objects.companies.write crm.objects.owners.read"
 )
 # Backward-compatible alias for callers/tests that expect a single scope string.
 HUBSPOT_SCOPES = f"{HUBSPOT_REQUIRED_SCOPES} {HUBSPOT_OPTIONAL_SCOPES}".strip()
