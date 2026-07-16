@@ -62,6 +62,20 @@ HUBSPOT_ASSOCIATIONS_CREATE_SCHEMA = ActionWorkflowSchema(
     ),
 )
 
+HUBSPOT_COMPANIES_CREATE_SCHEMA = ActionWorkflowSchema(
+    intent_label="Create HubSpot company",
+    required_fields=(
+        WorkflowFieldSpec(
+            "company name or domain",
+            ("name", "domain", "properties"),
+        ),
+    ),
+    optional_fields=(
+        WorkflowFieldSpec("Domain", ("domain",)),
+        WorkflowFieldSpec("Industry", ("industry",)),
+    ),
+)
+
 SLACK_POST_MESSAGE_SCHEMA = ActionWorkflowSchema(
     intent_label="Post Slack message",
     required_fields=(
