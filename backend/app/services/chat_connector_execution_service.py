@@ -781,14 +781,27 @@ class ChatConnectorExecutionService:
             inference_sources=dict(payload.get("inference_sources") or {}),
         )
 
-    @staticmethod
-    def _sanitize_plan_message_bodies(plan: ConnectorActionPlan) -> ConnectorActionPlan:
-        """Strip scope banners that may already be stuck in staged Slack args."""
+    # Free-text write args that can inherit a leaked scope banner from task text.
+    _FREE_TEXT_ARG_KEYS = (
+        "message",
+        "text",
+        "body",
+        "description",
+        "content",
+        "note",
+        "html_body",
+        "comment",
+        "subject",
+    )
+
+    @classmethod
+    def _sanitize_plan_message_bodies(cls, plan: ConnectorActionPlan) -> ConnectorActionPlan:
+        """Strip scope banners from staged free-text write args (Slack and other connectors)."""
         from app.services.chat_message_normalize import strip_assistant_scope_prefix
 
         args = dict(plan.args or {})
         dirty = False
-        for key in ("message", "text", "body"):
+        for key in cls._FREE_TEXT_ARG_KEYS:
             raw = args.get(key)
             if not isinstance(raw, str) or not raw.strip():
                 continue

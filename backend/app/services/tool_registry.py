@@ -139,7 +139,16 @@ def _salesforce_update_record(args: dict[str, Any]) -> dict[str, Any]:
 
 def _slack_message(args: dict[str, Any]) -> dict[str, Any]:
     channel = args.get("channel")
-    message = args.get("message") or args.get("text")
+    # Deterministic: prefer explicit `message`; only fall back to `text` when
+    # message is missing/blank. If both differ, `message` always wins.
+    message_raw = args.get("message")
+    text_raw = args.get("text")
+    if isinstance(message_raw, str) and message_raw.strip():
+        message = message_raw
+    elif isinstance(text_raw, str) and text_raw.strip():
+        message = text_raw
+    else:
+        message = message_raw or text_raw
     if not channel or not message:
         raise ValueError("channel and message are required")
     mapped: dict[str, Any] = {"channel": channel, "message": message}
