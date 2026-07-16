@@ -1272,7 +1272,7 @@ async def execute_conversation_task(
     pending = task_state.get("pending_task") if isinstance(task_state.get("pending_task"), dict) else {}
     pending_type = str(pending.get("type") or "")
     pending_status = str(pending.get("status") or "")
-    # Connector writes: only org admins/owners may confirm from chat.
+    # Connector writes: only configured HITL approvers (default admin/owner) may confirm.
     if pending_type in {"connector_action", "connector_orchestration"} and pending_status in {
         "awaiting_confirm",
         "awaiting_admin_approval",
@@ -1280,13 +1280,35 @@ async def execute_conversation_task(
         "awaiting_step_confirm",
     }:
         from app.auth.platform_admin import is_org_admin_role
+        from app.services.hitl_policy_service import classify_action_kind, get_hitl_policy_service
         from app.workflows.policy import PolicyResolutionError, get_user_role
 
         try:
             role = get_user_role(client, org_id, user_id)
         except PolicyResolutionError as exc:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-        if not is_org_admin_role(role):
+
+        params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
+        action_kind = str(params.get("hitl_action_kind") or "").strip().lower()
+        if action_kind not in {"read", "write", "delete"}:
+            action_kind = classify_action_kind(
+                kind=str(params.get("kind") or ""),
+                destructive=bool(params.get("destructive")),
+                invoke_action=str(params.get("invoke_action") or ""),
+                tool_name=str(params.get("tool_name") or ""),
+                label=str(params.get("label") or ""),
+            )
+        try:
+            hitl = get_hitl_policy_service(settings).resolve(
+                client,
+                org_id=org_id,
+                user_id=user_id,
+                action_kind=action_kind,
+            )
+            can_approve = hitl.can_approve(role=role, user_id=user_id)
+        except Exception:  # noqa: BLE001
+            can_approve = is_org_admin_role(role)
+        if not can_approve:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Your request will be sent for approval.",

@@ -66,6 +66,30 @@ class MemoryEntityEmbeddingsUpdateRequest(BaseModel):
     connectors: list[str] = Field(default_factory=list)
 
 
+class HitlPolicyCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    enabled: bool = True
+    scope_type: str = Field(..., pattern="^(org|department|user)$")
+    department_id: str | None = None
+    subject_user_id: str | None = None
+    action_kinds: list[str] = Field(default_factory=lambda: ["write", "delete"])
+    approver_roles: list[str] = Field(default_factory=lambda: ["admin", "owner"])
+    approver_user_ids: list[str] = Field(default_factory=list)
+    required_approvals: int = Field(default=1, ge=1)
+
+
+class HitlPolicyUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    enabled: bool | None = None
+    scope_type: str | None = Field(default=None, pattern="^(org|department|user)$")
+    department_id: str | None = None
+    subject_user_id: str | None = None
+    action_kinds: list[str] | None = None
+    approver_roles: list[str] | None = None
+    approver_user_ids: list[str] | None = None
+    required_approvals: int | None = Field(default=None, ge=1)
+
+
 def _is_missing_table_error(error: Exception | None) -> bool:
     if error is None:
         return False
@@ -691,3 +715,137 @@ async def get_billing_usage_route(
         "overage_outputs": overage_outputs,
         "overage_cost_usd": overage_cost_usd,
     }
+
+
+@router.get("/hitl-policies")
+async def list_hitl_policies_route(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    from app.services.hitl_policy_service import get_hitl_policy_service
+
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    policies = get_hitl_policy_service(settings).list_policies(client, org_id)
+    return {"policies": policies}
+
+
+@router.post("/hitl-policies")
+async def create_hitl_policy_route(
+    body: HitlPolicyCreateRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    from app.services.hitl_policy_service import get_hitl_policy_service
+
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        policy = get_hitl_policy_service(settings).create_policy(
+            client,
+            org_id=org_id,
+            created_by=str(user.get("user_id") or "") or None,
+            payload=body.model_dump(),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        if _is_missing_table_error(exc):
+            raise HTTPException(
+                status_code=503,
+                detail="HITL policies table is not available yet. Apply the hitl_policies migration.",
+            ) from exc
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=user["user_id"],
+        action="hitl_policy.created",
+        resource_type="hitl_policy",
+        resource_id=str(policy.get("id") or org_id),
+        metadata={"name": policy.get("name"), "scope_type": policy.get("scope_type")},
+    )
+    return {"policy": policy}
+
+
+@router.patch("/hitl-policies/{policy_id}")
+async def update_hitl_policy_route(
+    policy_id: str,
+    body: HitlPolicyUpdateRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    from app.services.hitl_policy_service import get_hitl_policy_service
+
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    payload = {k: v for k, v in body.model_dump().items() if v is not None}
+    # Allow clearing optional UUID fields when scope changes via explicit nulls in JSON —
+    # model_dump already drops None; accept empty strings as clear for department/user.
+    raw = body.model_dump(exclude_unset=True)
+    for key in ("department_id", "subject_user_id"):
+        if key in raw:
+            payload[key] = raw[key]
+    try:
+        policy = get_hitl_policy_service(settings).update_policy(
+            client,
+            org_id=org_id,
+            policy_id=policy_id,
+            payload=payload,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        if _is_missing_table_error(exc):
+            raise HTTPException(
+                status_code=503,
+                detail="HITL policies table is not available yet. Apply the hitl_policies migration.",
+            ) from exc
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=user["user_id"],
+        action="hitl_policy.updated",
+        resource_type="hitl_policy",
+        resource_id=str(policy_id),
+        metadata={"name": policy.get("name"), "scope_type": policy.get("scope_type")},
+    )
+    return {"policy": policy}
+
+
+@router.delete("/hitl-policies/{policy_id}")
+async def delete_hitl_policy_route(
+    policy_id: str,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    from app.services.hitl_policy_service import get_hitl_policy_service
+
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        get_hitl_policy_service(settings).delete_policy(
+            client, org_id=org_id, policy_id=policy_id
+        )
+    except Exception as exc:  # noqa: BLE001
+        if _is_missing_table_error(exc):
+            raise HTTPException(
+                status_code=503,
+                detail="HITL policies table is not available yet. Apply the hitl_policies migration.",
+            ) from exc
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=user["user_id"],
+        action="hitl_policy.deleted",
+        resource_type="hitl_policy",
+        resource_id=str(policy_id),
+        metadata={},
+    )
+    return {"ok": True}

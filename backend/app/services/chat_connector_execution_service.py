@@ -957,15 +957,26 @@ class ChatConnectorExecutionService:
                 }
 
         risk = await self._evaluate_risk(org_id, user_id, plan, classification)
+        hitl = self._resolve_hitl_decision(client, org_id=org_id, user_id=user_id, plan=plan)
+        approval_reason = risk.get("approval_reason") or (
+            hitl.reason if hitl.requires_approval else None
+        )
         plan = replace(
             plan,
-            requires_approval=bool(risk.get("requires_approval") or plan.kind == "write"),
-            approval_reason=risk.get("approval_reason"),
+            requires_approval=bool(
+                risk.get("requires_approval")
+                or hitl.requires_approval
+                or plan.kind == "write"
+                or plan.destructive
+            ),
+            approval_reason=approval_reason,
         )
 
         pending_params = {
             **self.plan_to_dict(plan),
             "status": "awaiting_confirm",
+            "hitl_action_kind": hitl.action_kind,
+            "hitl_policy_id": hitl.matched_policy_id,
         }
 
         if DECLINE_PATTERN.match(message.strip()):
@@ -985,7 +996,9 @@ class ChatConnectorExecutionService:
         confirmed = CONFIRM_PATTERN.match(message.strip()) or (
             awaiting and message.strip().lower() in {"confirm", "run", "execute"}
         )
-        user_can_approve = self._user_can_approve_writes(client, org_id, user_id)
+        user_can_approve = self._user_can_approve_writes(
+            client, org_id, user_id, plan=plan, hitl=hitl
+        )
 
         if confirmed and plan.requires_approval:
             if not user_can_approve:
@@ -1032,6 +1045,7 @@ class ChatConnectorExecutionService:
                 conversation_id=conversation_id,
                 plan=plan,
                 pending_params=pending_params,
+                hitl=hitl,
             )
             if approval_id:
                 pending_params = {**pending_params, "approval_id": approval_id}
@@ -1521,17 +1535,72 @@ class ChatConnectorExecutionService:
             return None
         return None
 
-    @staticmethod
-    def _user_can_approve_writes(client: Any, org_id: str, user_id: str) -> bool:
-        from app.auth.platform_admin import is_org_admin_role
+    def _resolve_hitl_decision(
+        self,
+        client: Any,
+        *,
+        org_id: str,
+        user_id: str,
+        plan: ConnectorActionPlan,
+    ) -> Any:
+        from app.services.hitl_policy_service import (
+            HitlDecision,
+            classify_action_kind,
+            get_hitl_policy_service,
+        )
+
+        kind = classify_action_kind(
+            kind=plan.kind,
+            destructive=bool(plan.destructive),
+            invoke_action=plan.invoke_action,
+            tool_name=plan.tool_name,
+            label=plan.label,
+        )
+        try:
+            return get_hitl_policy_service(self.settings).resolve(
+                client,
+                org_id=org_id,
+                user_id=user_id,
+                action_kind=kind,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("HITL resolve failed org=%s error=%s", org_id, exc)
+            return HitlDecision(
+                requires_approval=kind in {"write", "delete"},
+                matched_policy_id=None,
+                matched_policy_name=None,
+                action_kind=kind,
+                required_approvals=1,
+                approver_roles=["admin", "owner"],
+                approver_user_ids=[],
+                reason="HITL resolve failed; defaulting to write/delete approval",
+            )
+
+    def _user_can_approve_writes(
+        self,
+        client: Any,
+        org_id: str,
+        user_id: str,
+        plan: ConnectorActionPlan | None = None,
+        hitl: Any | None = None,
+    ) -> bool:
         from app.workflows.policy import PolicyResolutionError, get_user_role
 
+        decision = hitl
+        if decision is None and plan is not None:
+            decision = self._resolve_hitl_decision(
+                client, org_id=org_id, user_id=user_id, plan=plan
+            )
         try:
             role = get_user_role(client, org_id, user_id)
         except PolicyResolutionError:
-            return False
+            role = None
         except Exception:  # noqa: BLE001
-            return False
+            role = None
+        if decision is not None:
+            return bool(decision.can_approve(role=role, user_id=user_id))
+        from app.auth.platform_admin import is_org_admin_role
+
         return is_org_admin_role(role)
 
     def _queue_chat_write_for_admins(
@@ -1543,13 +1612,15 @@ class ChatConnectorExecutionService:
         conversation_id: str,
         plan: ConnectorActionPlan,
         pending_params: dict[str, Any],
+        hitl: Any | None = None,
     ) -> str | None:
-        """Persist a Decision Queue row and notify org admins — not a polite no-op."""
+        """Persist a Decision Queue row and notify configured approvers — not a polite no-op."""
         from app.services.approval_record_service import create_contract_approval
 
         vendor = (plan.integration or "connector").replace("_", " ").title()
         label = plan.label or plan.invoke_action or "connector write"
-        title = f"Approve chat write: {label}"
+        action_kind = str(getattr(hitl, "action_kind", None) or "write")
+        title = f"Approve chat {action_kind}: {label}"
         description = (
             f"Member requested {label} in {vendor} from chat. "
             "Approve in the Decision Queue to execute."
@@ -1566,6 +1637,8 @@ class ChatConnectorExecutionService:
             context={
                 "conversation_id": conversation_id,
                 "gate_type": "chat_connector_write",
+                "hitl_action_kind": action_kind,
+                "hitl_policy_id": getattr(hitl, "matched_policy_id", None),
                 "integration": plan.integration,
                 "invoke_action": plan.invoke_action,
                 "tool_name": plan.tool_name,
@@ -1599,15 +1672,15 @@ class ChatConnectorExecutionService:
         except Exception as exc:  # noqa: BLE001
             logger.warning("chat write requester notify failed: %s", exc)
 
-        # Admin inbox — the other end of "sent for approval"
-        for admin_id in self._org_approver_user_ids(client, org_id):
-            if admin_id == user_id:
+        # Approver inbox — configured HITL roles/users, else org admins
+        for approver_id in self._org_approver_user_ids(client, org_id, hitl=hitl):
+            if approver_id == user_id:
                 continue
             try:
                 emit_notification(
                     client,
                     org_id=org_id,
-                    user_id=admin_id,
+                    user_id=approver_id,
                     event_type="approval_needed",
                     title=title,
                     body=description,
@@ -1622,30 +1695,40 @@ class ChatConnectorExecutionService:
                 logger.warning(
                     "chat write admin notify failed org=%s admin=%s error=%s",
                     org_id,
-                    admin_id,
+                    approver_id,
                     exc,
                 )
         return approval_id
 
     @staticmethod
-    def _org_approver_user_ids(client: Any, org_id: str) -> list[str]:
+    def _org_approver_user_ids(
+        client: Any, org_id: str, hitl: Any | None = None
+    ) -> list[str]:
+        roles = list(getattr(hitl, "approver_roles", None) or ["admin", "owner"])
+        explicit = [str(u).strip() for u in (getattr(hitl, "approver_user_ids", None) or []) if u]
+        out: list[str] = []
+        seen: set[str] = set()
+        for uid in explicit:
+            if uid and uid not in seen:
+                seen.add(uid)
+                out.append(uid)
         try:
             rows = (
                 client.table("organization_members")
                 .select("user_id, role")
                 .eq("org_id", org_id)
-                .in_("role", ["admin", "owner"])
+                .in_("role", roles or ["admin", "owner"])
                 .execute()
                 .data
                 or []
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("org approver lookup failed org=%s error=%s", org_id, exc)
-            return []
-        out: list[str] = []
+            rows = []
         for row in rows:
             uid = str(row.get("user_id") or "").strip()
-            if uid:
+            if uid and uid not in seen:
+                seen.add(uid)
                 out.append(uid)
         return out
 

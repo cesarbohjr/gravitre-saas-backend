@@ -2202,6 +2202,28 @@ export const settingsApi = {
       apiUrl("/api/settings/memory-entity-embeddings"),
       data,
     ),
+
+  // Human-in-the-loop policies (admin)
+  listHitlPolicies: () =>
+    fetcher<{ policies: Array<Record<string, unknown>> }>(apiUrl("/api/settings/hitl-policies")),
+  createHitlPolicy: (data: {
+    name: string
+    enabled?: boolean
+    scope_type: "org" | "department" | "user"
+    department_id?: string | null
+    subject_user_id?: string | null
+    action_kinds: Array<"read" | "write" | "delete">
+    approver_roles?: string[]
+    approver_user_ids?: string[]
+    required_approvals?: number
+  }) => postJson<{ policy: Record<string, unknown> }>(apiUrl("/api/settings/hitl-policies"), data),
+  updateHitlPolicy: (policyId: string, data: Record<string, unknown>) =>
+    patchJson<{ policy: Record<string, unknown> }>(
+      apiUrl(`/api/settings/hitl-policies/${policyId}`),
+      data,
+    ),
+  deleteHitlPolicy: (policyId: string) =>
+    deleteJson<{ ok: boolean }>(apiUrl(`/api/settings/hitl-policies/${policyId}`)),
 }
 
 // ============ Environments ============

@@ -294,10 +294,12 @@ export function ChatExecutionPanel({
     const isConnector = pendingTask.type === "connector_action"
     const isOrchestration = pendingTask.type === "connector_orchestration"
     const needsApproval = isConnector || isOrchestration
+    // Trust server dialogue_mode: "confirm" means this user may approve (HITL roles/users).
+    // "awaiting_approval" means the request was queued for configured approvers.
     const queuedForApprover =
-      !canApprove ||
       dialogueMode === "awaiting_approval" ||
-      pendingTask.status === "awaiting_admin_approval"
+      pendingTask.status === "awaiting_admin_approval" ||
+      (dialogueMode === "confirm" && !canApprove && pendingTask.status !== "awaiting_confirm")
     return (
       <div
         className={cn(
