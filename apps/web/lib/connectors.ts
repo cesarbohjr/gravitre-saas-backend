@@ -522,7 +522,13 @@ export function supportsDualPatAuth(
 }
 
 export function isPlaidLinkConnector(
-  entry: Pick<CatalogConnectorEntry, "vendorKey" | "credentialModel"> | null | undefined
+  entry:
+    | {
+        vendorKey?: string | null
+        credentialModel?: ConnectorCredentialModel | string | null
+      }
+    | null
+    | undefined
 ): boolean {
   if (!entry) return false
   return entry.vendorKey === "plaid" || entry.credentialModel === "plaid_link"
