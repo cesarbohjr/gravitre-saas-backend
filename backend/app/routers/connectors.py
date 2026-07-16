@@ -1180,7 +1180,7 @@ async def _delete_connector_impl(
     deleted_at = datetime.now(timezone.utc).isoformat()
     updated = (
         client.table("connectors")
-        .update({"deleted_at": deleted_at})
+        .update({"deleted_at": deleted_at, "status": "disconnected"})
         .eq("id", str(connector_id))
         .eq("org_id", org_id)
         .is_("deleted_at", "null")
@@ -1188,6 +1188,14 @@ async def _delete_connector_impl(
     )
     if not updated.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
+    # Soft-delete must drop OAuth tokens; otherwise "Add connector" resurrects the row
+    # and auth health still reports connected even if HubSpot authorize fails.
+    try:
+        from app.connectors.platform import clear_connector_oauth_tokens
+
+        clear_connector_oauth_tokens(client, str(connector_id))
+    except Exception:  # noqa: BLE001
+        pass
     write_audit_event(
         client,
         org_id=org_id,
