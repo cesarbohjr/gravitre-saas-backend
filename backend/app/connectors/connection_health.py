@@ -146,6 +146,14 @@ def map_auth_status_to_connector_status(auth_status: str | None, current_status:
 def resolve_display_connector_status(raw_status: str, auth_status: str | None) -> str:
     """Match connectors UI status labels (connected / error / disconnected / syncing)."""
     auth = auth_status or ""
+    normalized = str(raw_status or "disconnected").lower()
+    # Explicit pending/disconnected row status wins over leftover token health. Otherwise
+    # soft-delete + OAuth start can resurrect a row as pending_auth while stale oauth_tokens
+    # still resolve as auth=connected and the UI lies.
+    if normalized in {"pending_auth", "pending", "disconnected", "inactive"}:
+        if auth in {"auth_expired", "misconfigured"}:
+            return "error"
+        return "disconnected"
     if auth == "connected":
         return "connected"
     if auth in {"auth_expired", "misconfigured"}:
@@ -153,17 +161,12 @@ def resolve_display_connector_status(raw_status: str, auth_status: str | None) -
     if auth in {"pending_auth", "pending_property", "pending_site"}:
         return "disconnected"
 
-    normalized = str(raw_status or "disconnected").lower()
     if normalized in {"connected", "syncing", "error", "disconnected"}:
         return normalized
     if normalized in {"healthy", "active"}:
         return "connected"
-    if normalized in {"pending_auth", "pending"}:
-        return "disconnected"
     if normalized == "error":
         return "error"
-    if normalized == "inactive":
-        return "disconnected"
     return "disconnected"
 
 

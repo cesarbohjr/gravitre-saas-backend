@@ -38,10 +38,11 @@ from app.connectors.hubspot import (
     HubSpotAPIError,
     add_contact_to_list,
     create_association,
+    create_company,
     create_contact,
     create_deal,
     create_note,
-    create_ticket,
+    create_ticket as hubspot_create_ticket,
     delete_contact,
     delete_deal,
     delete_note,
@@ -49,9 +50,11 @@ from app.connectors.hubspot import (
     get_company,
     get_contact,
     get_deal,
+    get_ticket as hubspot_get_ticket,
     list_contacts,
     list_deal_pipelines,
     list_deals,
+    list_owners,
     search_companies,
     search_contacts,
     search_deals,
@@ -770,7 +773,7 @@ def _exec_hubspot_tickets_create(ctx: ToolContext, params: dict[str, Any]) -> No
     if not isinstance(properties, dict) or not properties:
         raise ToolValidationError("hubspot.tickets.create requires properties object")
     try:
-        data = create_ticket(token, properties)
+        data = hubspot_create_ticket(token, properties)
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
     return NormalizedResult(
@@ -844,6 +847,89 @@ def _exec_hubspot_tickets_search(ctx: ToolContext, params: dict[str, Any]) -> No
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
     return NormalizedResult(success=True, action="hubspot.tickets.search", connector_id=cid, data=data)
+
+
+def _exec_hubspot_companies_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    """Create a company (POST /crm/v3/objects/companies) — Batch 1b."""
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    properties = params.get("properties")
+    if not isinstance(properties, dict) or not properties:
+        properties = {}
+        for key in ("name", "domain", "website", "industry", "phone", "city", "state", "country"):
+            if params.get(key) is not None:
+                properties[key] = params[key]
+    if not properties:
+        raise ToolValidationError("hubspot.companies.create requires properties (e.g. name/domain)")
+    try:
+        data = create_company(token, properties)
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    company_id = str((data or {}).get("id") or "")
+    result_url = (
+        f"https://app.hubspot.com/contacts/record/0-2/{company_id}" if company_id else None
+    )
+    return NormalizedResult(
+        success=True,
+        action="hubspot.companies.create",
+        connector_id=cid,
+        data={
+            "company": data,
+            "company_id": company_id or None,
+            "result_url": result_url,
+            "summary": f"Created HubSpot company {company_id or properties.get('name') or ''}".strip(),
+        },
+    )
+
+
+def _exec_hubspot_owners_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    """List CRM owners (GET /crm/v3/owners) — Batch 1b."""
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    try:
+        data = list_owners(
+            token,
+            limit=int(params.get("limit") or 100),
+            archived=bool(params.get("archived") or False),
+        )
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    results = (data or {}).get("results") if isinstance(data, dict) else data
+    owners = results if isinstance(results, list) else []
+    result_url = "https://app.hubspot.com/settings/user-preferences/users"
+    return NormalizedResult(
+        success=True,
+        action="hubspot.owners.list",
+        connector_id=cid,
+        data={
+            "owners": owners,
+            "total": len(owners),
+            "result_url": result_url,
+            "summary": f"Listed {len(owners)} HubSpot owner(s)",
+        },
+    )
+
+
+def _exec_hubspot_tickets_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    """Get a ticket (GET /crm/v3/objects/tickets/{id}) — Batch 1b."""
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    ticket_id = params.get("ticket_id") or params.get("ticketId")
+    if not ticket_id:
+        raise ToolValidationError("hubspot.tickets.get requires ticket_id")
+    try:
+        data = hubspot_get_ticket(token, str(ticket_id), properties=params.get("properties"))
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    result_url = f"https://app.hubspot.com/contacts/record/0-5/{ticket_id}"
+    return NormalizedResult(
+        success=True,
+        action="hubspot.tickets.get",
+        connector_id=cid,
+        data={
+            "ticket": data,
+            "ticket_id": str(ticket_id),
+            "result_url": result_url,
+            "summary": f"Fetched HubSpot ticket {ticket_id}",
+        },
+    )
 
 
 def _salesforce_connector_and_session(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str, str]:
@@ -3477,8 +3563,11 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "hubspot.lists.add_contact": _exec_hubspot_lists_add_contact,
     "hubspot.lists.create": _exec_hubspot_lists_create,
     "hubspot.companies.search": _exec_hubspot_companies_search,
+    "hubspot.companies.create": _exec_hubspot_companies_create,
     "hubspot.pipelines.list": _exec_hubspot_pipelines_list,
     "hubspot.tickets.create": _exec_hubspot_tickets_create,
+    "hubspot.tickets.get": _exec_hubspot_tickets_get,
+    "hubspot.owners.list": _exec_hubspot_owners_list,
     "hubspot.deals.search": _exec_hubspot_deals_search,
     "hubspot.deals.list": _exec_hubspot_deals_list,
     "hubspot.companies.get": _exec_hubspot_companies_get,
@@ -3610,6 +3699,7 @@ from app.services.ai_visibility_ui_tools import AI_VISIBILITY_UI_TOOL_EXECUTORS
 from app.services.pdl_tools import PDL_TOOL_EXECUTORS
 from app.services.plaid_tools import PLAID_TOOL_EXECUTORS
 from app.services.gusto_tools import GUSTO_TOOL_EXECUTORS
+from app.services.platform_health_tools import PLATFORM_HEALTH_TOOL_EXECUTORS
 
 _TOOL_REGISTRY.update(NETSUITE_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(WORKDAY_TOOL_EXECUTORS)
@@ -3642,6 +3732,7 @@ _TOOL_REGISTRY.update(AI_VISIBILITY_UI_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(PDL_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(PLAID_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(GUSTO_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(PLATFORM_HEALTH_TOOL_EXECUTORS)
 
 from app.services.priority_connector_tools import PRIORITY_CONNECTOR_TOOLS
 from app.services.intelligence_pack_tools import INTELLIGENCE_PACK_TOOL_EXECUTORS

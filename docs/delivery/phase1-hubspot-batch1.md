@@ -19,16 +19,15 @@ This PR aligns `app-hsmeta.json` + optional OAuth scopes for Batch 1b; live comp
 
 ## Batch 1b external dependency (named 2026-07-16)
 
-**Status: PENDING — not submitted/approved on HubSpot’s side.**
+**Status: waiting on prod oauth deploy + smoke reconnect.**
 
 | Check | Result |
 |-------|--------|
-| Repo hsmeta scopes updated | Yes (this PR) |
-| `hs project upload` / new build after scope change | **No** |
-| Deployed build on HubSpot | **#5** (SUCCESS, **2026-06-23**) — last deploy predates Batch 1 scope edit |
-| Live smoke `companies.search` | Still **403** on smoke token |
+| App build #8 (live) | `tickets` **optional**; companies.write / owners.read optional; companies.read required |
+| #144 prod tip | Put `tickets` in **required** `scope` → HubSpot: “mismatch between the scopes in the install URL and the app's configured scopes” |
+| Fix | Backend `optional_scope` must include `tickets` (match build #8); hsmeta synced the same |
 
-Batch 1b (`companies.create` / `owners.list` / `tickets.get`) is blocked on an **external app-publish timeline** (upload → deploy → smoke connector re-auth), not engineering. Same class as earlier FRED_API_KEY / Apollo plan-tier waits — do not schedule as “next coding PR” until Cesar (or operator) completes HubSpot portal republish.
+**Your step:** after this oauth fix ships to Railway, reconnect HubSpot on smoke org (grant companies.write / owners.read / tickets). Then Batch 1b tip.
 
 ## Evidence
 
