@@ -276,8 +276,8 @@ API accounts/keys for FRED, SEC_USER_AGENT, OpenCorporates commercial token, NVD
 | 6 | Marketing | **DONE** — GSC OAuth PASS; SEMrush/Ahrefs BYO v1–v3 write executors + schemas; PackSignal + PackKpiPanel; install tip `docs/delivery/phase4-marketing-pack-live.json` (tip `0db6ddf0`); raw-query Memory/KG stop-line held |
 | 7 | RevOps | **DONE** — catalog + install (`revops-intelligence-pack`); HubSpot pipelines/deals tip; Salesforce stub; Finance pack F3 unlocked separately; PackKpiPanel Reports tab; tip `docs/delivery/phase4-revops-pack-live.json` |
 | 8 | AI Search | **IN PROGRESS** — scaffold **C + S2** (Ahrefs + Finseo dual BYO + UI scrape v1–v3); tip smoke pending |
-| 9 | Finance | **IN PROGRESS** — **F3** (QB + Xero + NetSuite + Plaid if entitled); catalog/install/PackKpiPanel; tip smoke pending |
-| 10 | HR & Talent | **IN PROGRESS** — **H3** (Workday + BambooHR + Greenhouse + Gusto); catalog/install/PackKpiPanel; tip smoke pending |
+| 9 | Finance | **DONE** — **F3** (QB + Xero + NetSuite + Plaid); catalog/install/PackKpiPanel; tip `docs/delivery/phase4-finance-pack-live.json` |
+| 10 | HR & Talent | **DONE** — **H3** (Workday + BambooHR + Greenhouse + Gusto); catalog/install/PackKpiPanel; tip `docs/delivery/phase4-hr-talent-pack-live.json` |
 | 11 | Compliance | Guidance docs only; PHI → stop |
 | 12 | Business Operating System | **Last** — rollup only |
 
@@ -290,10 +290,10 @@ API accounts/keys for FRED, SEC_USER_AGENT, OpenCorporates commercial token, NVD
 
 **Manual agent pick (not pack-ordered):** [STA-321](https://linear.app/staqbot/issue/STA-321) — Assignments / Workflow builder / Swarm.
 
-**Finance/HR connectors:** Cesar locked **F3** + **H3** (2026-07-15). Pack scaffold + stub tools on `main`; tip smokes and deep API clients (Plaid Link exchange UX, Gusto partner OAuth client) still pending. Raw payroll/banking/employee PII → Memory/KG remain STA-312 gated.
+**Finance/HR connectors:** Cesar locked **F3** + **H3** (2026-07-15). Tip smokes PASS on health tip `1379293b` — `docs/delivery/phase4-finance-pack-live.json`, `docs/delivery/phase4-hr-talent-pack-live.json`. Deep API clients (Plaid Link exchange UX, Gusto partner OAuth client) still pending. Raw payroll/banking/employee PII → Memory/KG remain STA-312 gated.
 
 **Sales + Prospecting:** Both ship; Prospecting reuses Apollo/PDL/Crunchbase/BYO wiring — no duplicate clients.  
 
 ### Out of scope this pass
 
-Compliance PHI → stop; Business OS; new CF/churn ML. AI Search / Finance / HR tip smokes after scaffold.
+Compliance PHI → stop; Business OS; new CF/churn ML. AI Search tip smoke after scaffold.

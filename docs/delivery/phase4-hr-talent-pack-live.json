@@ -1,0 +1,55 @@
+{
+  "pass": true,
+  "ran_at": "2026-07-16T05:10:53.746755+00:00",
+  "prod_git_sha": "1379293bba4f572971d68321815939cd1015d751",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "pack_slug": "hr-talent-intelligence-pack",
+  "asset_id": "4524bc84-5049-4106-b73d-3babd2bf714e",
+  "h3_unlocked": true,
+  "bundle": {
+    "agentId": "dd1db2d7-e34f-5213-92b0-4d7e4edc8dac",
+    "workflowId": "8d2d11c9-e85a-53b8-bf76-5880c91e0b64",
+    "assignmentCount": 4,
+    "workdayConnectorId": null,
+    "bamboohrConnectorId": null,
+    "greenhouseConnectorId": null,
+    "gustoConnectorId": null,
+    "stubCount": 0,
+    "skippedCount": 0,
+    "stopLinesHonored": [
+      "no_linkedin_scrape",
+      "employee_pii_memory_kg_blocked",
+      "compensation_memory_kg_blocked",
+      "hr_read_only_tip",
+      "path_h3_all_hr_live"
+    ]
+  },
+  "invokes": {},
+  "live_invoke_ok": false,
+  "any_active_connector": false,
+  "kpis": {
+    "packId": "hr-talent-intelligence-pack",
+    "installed": false,
+    "installId": null,
+    "assetId": "4524bc84-5049-4106-b73d-3babd2bf714e",
+    "agentCount": 0,
+    "workflowCount": 0,
+    "signalsCount": 0,
+    "entitiesCount": 0,
+    "cacheTouches": 0,
+    "assignmentsCount": 4,
+    "vendors": {}
+  },
+  "cohesion": {
+    "kpi_panel_ui_ok": true,
+    "h3_unlock_stop_line_ok": true
+  },
+  "governance": {
+    "h3_all_hr_live": true,
+    "hr_read_only_tip": true,
+    "employee_pii_memory_kg_blocked": true,
+    "compensation_memory_kg_blocked": true,
+    "no_linkedin_scrape": true
+  },
+  "note": "HR & Talent #10 H3: Workday+BambooHR+Greenhouse+Gusto unlocked. Live invoke required only when an active connector exists on smoke org."
+}

@@ -1,0 +1,53 @@
+{
+  "pass": true,
+  "ran_at": "2026-07-16T05:09:38.989838+00:00",
+  "prod_git_sha": "1379293bba4f572971d68321815939cd1015d751",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "pack_slug": "finance-intelligence-pack",
+  "asset_id": "8e80e188-4ae5-462a-a4c3-752dfc649899",
+  "f3_unlocked": true,
+  "bundle": {
+    "agentId": "dd2275cc-8cae-5096-8000-76713d624a27",
+    "workflowId": "41530281-5fb0-5d2a-b025-83df230ca1f4",
+    "assignmentCount": 4,
+    "quickbooksConnectorId": null,
+    "xeroConnectorId": null,
+    "netsuiteConnectorId": null,
+    "plaidConnectorId": null,
+    "stubCount": 4,
+    "skippedCount": 0,
+    "stopLinesHonored": [
+      "reuse_existing_connectors",
+      "finance_read_only_tip",
+      "raw_payroll_banking_memory_kg_blocked",
+      "path_f3_all_finance_live"
+    ]
+  },
+  "invokes": {},
+  "live_invoke_ok": false,
+  "any_active_connector": false,
+  "kpis": {
+    "packId": "finance-intelligence-pack",
+    "installed": false,
+    "installId": null,
+    "assetId": "8e80e188-4ae5-462a-a4c3-752dfc649899",
+    "agentCount": 0,
+    "workflowCount": 0,
+    "signalsCount": 0,
+    "entitiesCount": 0,
+    "cacheTouches": 0,
+    "assignmentsCount": 4,
+    "vendors": {}
+  },
+  "cohesion": {
+    "kpi_panel_ui_ok": true,
+    "f3_unlock_stop_line_ok": true
+  },
+  "governance": {
+    "f3_all_finance_live": true,
+    "finance_read_only_tip": true,
+    "raw_banking_memory_kg_blocked": true,
+    "plaid_if_entitled": true
+  },
+  "note": "Finance #9 F3: QB+Xero+NetSuite+Plaid unlocked. Live invoke required only when an active connector exists on smoke org."
+}
