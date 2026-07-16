@@ -62,12 +62,33 @@ HUBSPOT_ASSOCIATIONS_CREATE_SCHEMA = ActionWorkflowSchema(
     ),
 )
 
+HUBSPOT_COMPANIES_CREATE_SCHEMA = ActionWorkflowSchema(
+    intent_label="Create HubSpot company",
+    required_fields=(
+        WorkflowFieldSpec(
+            "company name or domain",
+            ("name", "domain", "properties"),
+        ),
+    ),
+    optional_fields=(
+        WorkflowFieldSpec("Domain", ("domain",)),
+        WorkflowFieldSpec("Industry", ("industry",)),
+    ),
+)
+
 SLACK_POST_MESSAGE_SCHEMA = ActionWorkflowSchema(
     intent_label="Post Slack message",
     required_fields=(
         # Channel is Slack's entity-resolution target (assignee/email analogue for Memory).
         WorkflowFieldSpec("channel", ("channel",), sensitive=True),
         WorkflowFieldSpec("message", ("text", "message")),
+    ),
+)
+
+SLACK_CONVERSATIONS_JOIN_SCHEMA = ActionWorkflowSchema(
+    intent_label="Join Slack channel",
+    required_fields=(
+        WorkflowFieldSpec("channel", ("channel", "channel_id"), sensitive=True),
     ),
 )
 

@@ -19,15 +19,14 @@ This PR aligns `app-hsmeta.json` + optional OAuth scopes for Batch 1b; live comp
 
 ## Batch 1b external dependency (named 2026-07-16)
 
-**Status: waiting on prod oauth deploy + smoke reconnect.**
+**Status: Batch 1b shipped (#150).** Build #8 + oauth optional `tickets` alignment are on tip.
 
 | Check | Result |
 |-------|--------|
 | App build #8 (live) | `tickets` **optional**; companies.write / owners.read optional; companies.read required |
-| #144 prod tip | Put `tickets` in **required** `scope` → HubSpot: “mismatch between the scopes in the install URL and the app's configured scopes” |
-| Fix | Backend `optional_scope` must include `tickets` (match build #8); hsmeta synced the same |
-
-**Your step:** after this oauth fix ships to Railway, reconnect HubSpot on smoke org (grant companies.write / owners.read / tickets). Then Batch 1b tip.
+| Build #7 failure mode | `tickets` as **required** → reconnect failed (“missing [tickets]”) while tip still sent `crm.objects.tickets.write` |
+| #144 / tip fix | Backend `optional_scope` includes `tickets` (match build #8); hsmeta synced the same |
+| Batch 1b | `companies.create` / `owners.list` / `tickets.get` merged via #150 |
 
 ## Evidence
 

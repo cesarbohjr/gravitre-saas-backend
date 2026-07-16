@@ -14,6 +14,8 @@ from app.connectors.rate_limit import RateLimitError, enforce_rate_limit
 from app.connectors.repository import get_connector, get_connector_by_type, get_decrypted_secret
 from app.connectors.slack import (
     conversation_history,
+    get_user,
+    join_conversation,
     list_conversations,
     list_users,
     message_hash,
@@ -36,10 +38,11 @@ from app.connectors.hubspot import (
     HubSpotAPIError,
     add_contact_to_list,
     create_association,
+    create_company,
     create_contact,
     create_deal,
     create_note,
-    create_ticket,
+    create_ticket as hubspot_create_ticket,
     delete_contact,
     delete_deal,
     delete_note,
@@ -47,9 +50,11 @@ from app.connectors.hubspot import (
     get_company,
     get_contact,
     get_deal,
+    get_ticket as hubspot_get_ticket,
     list_contacts,
     list_deal_pipelines,
     list_deals,
+    list_owners,
     search_companies,
     search_contacts,
     search_deals,
@@ -771,7 +776,7 @@ def _exec_hubspot_tickets_create(ctx: ToolContext, params: dict[str, Any]) -> No
     if not isinstance(properties, dict) or not properties:
         raise ToolValidationError("hubspot.tickets.create requires properties object")
     try:
-        data = create_ticket(token, properties)
+        data = hubspot_create_ticket(token, properties)
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
     return NormalizedResult(
@@ -845,6 +850,89 @@ def _exec_hubspot_tickets_search(ctx: ToolContext, params: dict[str, Any]) -> No
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
     return NormalizedResult(success=True, action="hubspot.tickets.search", connector_id=cid, data=data)
+
+
+def _exec_hubspot_companies_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    """Create a company (POST /crm/v3/objects/companies) — Batch 1b."""
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    properties = params.get("properties")
+    if not isinstance(properties, dict) or not properties:
+        properties = {}
+        for key in ("name", "domain", "website", "industry", "phone", "city", "state", "country"):
+            if params.get(key) is not None:
+                properties[key] = params[key]
+    if not properties:
+        raise ToolValidationError("hubspot.companies.create requires properties (e.g. name/domain)")
+    try:
+        data = create_company(token, properties)
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    company_id = str((data or {}).get("id") or "")
+    result_url = (
+        f"https://app.hubspot.com/contacts/record/0-2/{company_id}" if company_id else None
+    )
+    return NormalizedResult(
+        success=True,
+        action="hubspot.companies.create",
+        connector_id=cid,
+        data={
+            "company": data,
+            "company_id": company_id or None,
+            "result_url": result_url,
+            "summary": f"Created HubSpot company {company_id or properties.get('name') or ''}".strip(),
+        },
+    )
+
+
+def _exec_hubspot_owners_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    """List CRM owners (GET /crm/v3/owners) — Batch 1b."""
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    try:
+        data = list_owners(
+            token,
+            limit=int(params.get("limit") or 100),
+            archived=bool(params.get("archived") or False),
+        )
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    results = (data or {}).get("results") if isinstance(data, dict) else data
+    owners = results if isinstance(results, list) else []
+    result_url = "https://app.hubspot.com/settings/user-preferences/users"
+    return NormalizedResult(
+        success=True,
+        action="hubspot.owners.list",
+        connector_id=cid,
+        data={
+            "owners": owners,
+            "total": len(owners),
+            "result_url": result_url,
+            "summary": f"Listed {len(owners)} HubSpot owner(s)",
+        },
+    )
+
+
+def _exec_hubspot_tickets_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    """Get a ticket (GET /crm/v3/objects/tickets/{id}) — Batch 1b."""
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    ticket_id = params.get("ticket_id") or params.get("ticketId")
+    if not ticket_id:
+        raise ToolValidationError("hubspot.tickets.get requires ticket_id")
+    try:
+        data = hubspot_get_ticket(token, str(ticket_id), properties=params.get("properties"))
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    result_url = f"https://app.hubspot.com/contacts/record/0-5/{ticket_id}"
+    return NormalizedResult(
+        success=True,
+        action="hubspot.tickets.get",
+        connector_id=cid,
+        data={
+            "ticket": data,
+            "ticket_id": str(ticket_id),
+            "result_url": result_url,
+            "summary": f"Fetched HubSpot ticket {ticket_id}",
+        },
+    )
 
 
 def _salesforce_connector_and_session(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str, str]:
@@ -2155,12 +2243,25 @@ def _exec_slack_post_message(ctx: ToolContext, params: dict[str, Any]) -> Normal
     if not text:
         raise ToolValidationError("Slack message is required")
     result = send_slack_message(token, channel, text)
+    ts = result.get("ts")
+    result_url = (
+        f"https://app.slack.com/archives/{channel}/p{str(ts).replace('.', '')}"
+        if ts
+        else f"https://app.slack.com/archives/{channel}"
+    )
     return NormalizedResult(
         success=True,
         action="slack.post_message",
         connector_id=cid,
         latency_ms=int(result.get("_latency_ms", 0) or 0),
-        data={"executed": True, "channel": channel, "ts": result.get("ts"), "ok": True},
+        data={
+            "executed": True,
+            "channel": channel,
+            "ts": ts,
+            "ok": True,
+            "result_url": result_url,
+            "summary": f"Posted message to {channel}",
+        },
     )
 
 
@@ -2175,12 +2276,24 @@ def _exec_slack_conversations_list(ctx: ToolContext, params: dict[str, Any]) -> 
         )
     except ValueError as exc:
         raise ToolValidationError(str(exc)) from exc
+    channels = data.get("channels") or []
+    first_id = None
+    if isinstance(channels, list) and channels and isinstance(channels[0], dict):
+        first_id = channels[0].get("id")
+    result_url = (
+        f"https://app.slack.com/archives/{first_id}" if first_id else "https://app.slack.com"
+    )
     return NormalizedResult(
         success=True,
         action="slack.conversations.list",
         connector_id=cid,
         latency_ms=int(data.get("_latency_ms", 0) or 0),
-        data={"channels": data.get("channels") or [], "response_metadata": data.get("response_metadata")},
+        data={
+            "channels": channels,
+            "response_metadata": data.get("response_metadata"),
+            "result_url": result_url,
+            "summary": f"Listed {len(channels) if isinstance(channels, list) else 0} Slack channel(s)",
+        },
     )
 
 
@@ -2198,12 +2311,19 @@ def _exec_slack_conversations_history(ctx: ToolContext, params: dict[str, Any]) 
         )
     except ValueError as exc:
         raise ToolValidationError(str(exc)) from exc
+    messages = data.get("messages") or []
+    result_url = f"https://app.slack.com/archives/{channel}"
     return NormalizedResult(
         success=True,
         action="slack.conversations.history",
         connector_id=cid,
         latency_ms=int(data.get("_latency_ms", 0) or 0),
-        data={"messages": data.get("messages") or [], "response_metadata": data.get("response_metadata")},
+        data={
+            "messages": messages,
+            "response_metadata": data.get("response_metadata"),
+            "result_url": result_url,
+            "summary": f"Read {len(messages) if isinstance(messages, list) else 0} message(s) from {channel}",
+        },
     )
 
 
@@ -2217,12 +2337,68 @@ def _exec_slack_users_list(ctx: ToolContext, params: dict[str, Any]) -> Normaliz
         )
     except ValueError as exc:
         raise ToolValidationError(str(exc)) from exc
+    members = data.get("members") or []
     return NormalizedResult(
         success=True,
         action="slack.users.list",
         connector_id=cid,
         latency_ms=int(data.get("_latency_ms", 0) or 0),
-        data={"members": data.get("members") or [], "response_metadata": data.get("response_metadata")},
+        data={
+            "members": members,
+            "response_metadata": data.get("response_metadata"),
+            "result_url": "https://app.slack.com",
+            "summary": f"Listed {len(members) if isinstance(members, list) else 0} Slack user(s)",
+        },
+    )
+
+
+def _exec_slack_users_info(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _slack_connector_and_token(ctx, params)
+    user = str(params.get("user") or params.get("user_id") or "").strip()
+    if not user:
+        raise ToolValidationError("slack.users.info requires user")
+    try:
+        data = get_user(token, user)
+    except ValueError as exc:
+        raise ToolValidationError(str(exc)) from exc
+    profile = (data.get("user") or {}) if isinstance(data, dict) else {}
+    name = None
+    if isinstance(profile, dict):
+        name = (profile.get("profile") or {}).get("real_name") or profile.get("name")
+    return NormalizedResult(
+        success=True,
+        action="slack.users.info",
+        connector_id=cid,
+        latency_ms=int(data.get("_latency_ms", 0) or 0) if isinstance(data, dict) else 0,
+        data={
+            "user": profile,
+            "result_url": f"https://app.slack.com/team/{user}",
+            "summary": f"Got Slack user {name or user}",
+        },
+    )
+
+
+def _exec_slack_conversations_join(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _slack_connector_and_token(ctx, params)
+    channel = str(params.get("channel") or params.get("channel_id") or "").strip()
+    if not channel:
+        raise ToolValidationError("slack.conversations.join requires channel")
+    try:
+        data = join_conversation(token, channel)
+    except ValueError as exc:
+        raise ToolValidationError(str(exc)) from exc
+    ch = data.get("channel") if isinstance(data, dict) else None
+    channel_id = (ch.get("id") if isinstance(ch, dict) else None) or channel
+    return NormalizedResult(
+        success=True,
+        action="slack.conversations.join",
+        connector_id=cid,
+        latency_ms=int(data.get("_latency_ms", 0) or 0) if isinstance(data, dict) else 0,
+        data={
+            "channel": ch or {"id": channel_id},
+            "result_url": f"https://app.slack.com/archives/{channel_id}",
+            "summary": f"Joined Slack channel {channel_id}",
+        },
     )
 
 
@@ -3463,6 +3639,8 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "slack.conversations.list": _exec_slack_conversations_list,
     "slack.conversations.history": _exec_slack_conversations_history,
     "slack.users.list": _exec_slack_users_list,
+    "slack.users.info": _exec_slack_users_info,
+    "slack.conversations.join": _exec_slack_conversations_join,
     "email.send": _exec_email_send,
     "email.messages.queue": _exec_email_messages_queue,
     "email.delivery.status": _exec_email_delivery_status,
@@ -3487,8 +3665,11 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "hubspot.lists.add_contact": _exec_hubspot_lists_add_contact,
     "hubspot.lists.create": _exec_hubspot_lists_create,
     "hubspot.companies.search": _exec_hubspot_companies_search,
+    "hubspot.companies.create": _exec_hubspot_companies_create,
     "hubspot.pipelines.list": _exec_hubspot_pipelines_list,
     "hubspot.tickets.create": _exec_hubspot_tickets_create,
+    "hubspot.tickets.get": _exec_hubspot_tickets_get,
+    "hubspot.owners.list": _exec_hubspot_owners_list,
     "hubspot.deals.search": _exec_hubspot_deals_search,
     "hubspot.deals.list": _exec_hubspot_deals_list,
     "hubspot.companies.get": _exec_hubspot_companies_get,

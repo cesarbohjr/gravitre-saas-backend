@@ -607,3 +607,49 @@ def search_tickets(
         access_token,
         json_body={"filterGroups": filter_groups, "properties": props, "limit": lim},
     )
+
+
+def create_company(access_token: str, properties: dict[str, Any]) -> dict[str, Any]:
+    """Create a company — POST /crm/v3/objects/companies (Batch 1b)."""
+    if not properties:
+        raise HubSpotAPIError("properties are required")
+    return _request(
+        "POST",
+        "/crm/v3/objects/companies",
+        access_token,
+        json_body={"properties": {str(k): str(v) for k, v in properties.items()}},
+    )
+
+
+def list_owners(
+    access_token: str,
+    *,
+    limit: int = 100,
+    archived: bool = False,
+) -> dict[str, Any]:
+    """List CRM owners — GET /crm/v3/owners (Batch 1b)."""
+    lim = min(max(int(limit), 1), 500)
+    return _request(
+        "GET",
+        "/crm/v3/owners",
+        access_token,
+        params={"limit": lim, "archived": str(archived).lower()},
+    )
+
+
+def get_ticket(
+    access_token: str,
+    ticket_id: str,
+    *,
+    properties: list[str] | None = None,
+) -> dict[str, Any]:
+    """Get a ticket — GET /crm/v3/objects/tickets/{id} (Batch 1b)."""
+    if not ticket_id:
+        raise HubSpotAPIError("ticket_id is required")
+    props = properties or ["subject", "content", "hs_pipeline_stage", "hs_ticket_priority"]
+    return _request(
+        "GET",
+        f"/crm/v3/objects/tickets/{ticket_id}",
+        access_token,
+        params={"properties": ",".join(props)},
+    )
