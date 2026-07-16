@@ -247,6 +247,16 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
         },
         "required": ["series_id"],
     },
+    "platform.health.snapshot": {
+        "type": "object",
+        "properties": {
+            "lookback_days": {
+                "type": "integer",
+                "description": "Optional lookback window in days (default 30).",
+            },
+        },
+        "required": [],
+    },
     "nvd.cve.get": {
         "type": "object",
         "properties": {
