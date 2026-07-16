@@ -1,0 +1,83 @@
+{
+  "pass": true,
+  "status": "PASS",
+  "ran_at": "2026-07-16T08:55:00.969618+00:00",
+  "prod_git_sha": "f82774f41f6f5910ddc0b3b543abdf4fe7481064",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "batch": "phase1-hubspot-batch1b",
+  "api_version": "CRM v3 (no bump)",
+  "new_actions": [
+    "hubspot.companies.create",
+    "hubspot.owners.list",
+    "hubspot.tickets.get"
+  ],
+  "hubspot_connector_id": "547cdda5-2637-4a2b-b087-d5ea89486575",
+  "granted_scopes": [
+    "automation",
+    "oauth",
+    "tickets",
+    "crm.lists.read",
+    "crm.objects.contacts.read",
+    "crm.objects.contacts.write",
+    "crm.objects.companies.write",
+    "crm.lists.write",
+    "crm.objects.companies.read",
+    "crm.objects.deals.read",
+    "crm.objects.deals.write",
+    "crm.objects.owners.read"
+  ],
+  "missing_scopes_for_batch1b": [],
+  "invokes": {
+    "hubspot.companies.create": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "https://app.hubspot.com/contacts/record/0-2/211983862722",
+      "summary": "Created HubSpot company 211983862722",
+      "data_keys": [
+        "company",
+        "company_id",
+        "result_url",
+        "summary"
+      ]
+    },
+    "hubspot.owners.list": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "https://app.hubspot.com/settings/user-preferences/users",
+      "summary": "Listed 1 HubSpot owner(s)",
+      "data_keys": [
+        "owners",
+        "total",
+        "result_url",
+        "summary"
+      ]
+    },
+    "hubspot.tickets.search": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": null,
+      "summary": null,
+      "data_keys": [
+        "total",
+        "results"
+      ]
+    },
+    "hubspot.tickets.get": {
+      "success": false,
+      "error_code": "skipped",
+      "error_message": "no ticket id from search to tip tickets.get",
+      "result_url": null,
+      "summary": null,
+      "data_keys": []
+    }
+  },
+  "blocker": null,
+  "governance": {
+    "finance_hr_excluded": true,
+    "chat_access_granted": false
+  },
+  "note": "HubSpot Batch 1b tip PASS."
+}
