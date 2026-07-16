@@ -12,24 +12,21 @@ Third connector in approved Batch 1 order (after Apollo, HubSpot).
 | Deferred | `workflows.trigger` (needs `workflows:write`), `files.upload` (deprecated API path) |
 | Chat / ReAct / canvas | **Not granted** |
 
-## Live tip status: BLOCKED (external reconnect)
+## Live tip: PASS (after reconnect)
 
 | Check | Result |
 |-------|--------|
-| Unit / executor wiring | Pass |
-| Smoke org Slack connector | `fe7433c3-…` status=`error` |
-| `auth.test` | Slack API **`token_expired`** (token prefix `xoxe.`) |
-| Live invoke of new actions | **Blocked** — cannot tip green until Cesar reconnects Slack on smoke org |
+| Smoke Slack connector | `fe7433c3-…` status=`healthy` |
+| `auth.test` | ok (team Gravitre) |
+| Tip artifact | [`phase1-slack-batch1-live.json`](./phase1-slack-batch1-live.json) — **pass: true** |
 
-This is the same class of external dependency as HubSpot Batch 1b app republish / Apollo plan-tier / FRED_API_KEY — **not an engineering defect in Batch 1 code**.
-
-Re-run after reconnect: `python scripts/smoke-phase1-slack-batch1-live.py`
+Earlier tip was BLOCKED solely on `token_expired`; reconnect cleared it. Not a code defect.
 
 ## HubSpot Batch 1b (cross-reference)
 
-**Still PENDING** — repo hsmeta updated; last HubSpot deployed build **#5 (2026-06-23)**; no `hs project upload` after scope change. Do not schedule companies/owners/tickets tips until portal republish + smoke HubSpot re-auth.
+**Still PENDING** — repo hsmeta updated; last HubSpot deployed build **#5 (2026-06-23)**; no portal upload after scope change.
 
 ## Governance
 
 - Finance/HR live-activation **HOLD** — unchanged
-- Chat access deferred until tip PASS after Slack reconnect
+- Chat access deferred until tip review

@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -64,6 +65,27 @@ def _rec(invoke) -> dict:
     }
 
 
+def _invoke_retry(invoke_tool, ctx, action: str, params: dict, *, attempts: int = 4):
+    """Retry transient WinError 10035 / connection drops between invokes."""
+    last_exc: Exception | None = None
+    for i in range(attempts):
+        try:
+            return invoke_tool(ctx, action, params)
+        except Exception as exc:  # noqa: BLE001
+            last_exc = exc
+            msg = str(exc)
+            transient = (
+                "10035" in msg
+                or "ConnectionTerminated" in msg
+                or "ReadError" in msg
+                or "RemoteProtocolError" in type(exc).__name__
+            )
+            if not transient or i + 1 >= attempts:
+                raise
+            time.sleep(1.5 * (i + 1))
+    raise RuntimeError(str(last_exc or "invoke failed"))
+
+
 def main() -> int:
     _load_env()
     from app.config import get_settings
@@ -105,12 +127,14 @@ def main() -> int:
             actor_id=ACTOR,
             connector_id=slack_id,
         )
-        listed = invoke_tool(
+        listed = _invoke_retry(
+            invoke_tool,
             ctx,
             "slack.conversations.list",
             {"connector_id": slack_id, "types": "public_channel", "limit": 10},
         )
         invokes["slack.conversations.list"] = _rec(listed)
+        time.sleep(0.8)
 
         channel_id = None
         if listed.success:
@@ -122,8 +146,11 @@ def main() -> int:
                         break
                     channel_id = channel_id or str(ch["id"])
 
-        users = invoke_tool(ctx, "slack.users.list", {"connector_id": slack_id, "limit": 5})
+        users = _invoke_retry(
+            invoke_tool, ctx, "slack.users.list", {"connector_id": slack_id, "limit": 5}
+        )
         invokes["slack.users.list"] = _rec(users)
+        time.sleep(0.8)
         user_id = None
         if users.success:
             for m in (users.data or {}).get("members") or []:
@@ -132,19 +159,26 @@ def main() -> int:
                     break
 
         if user_id:
-            info = invoke_tool(
-                ctx, "slack.users.info", {"connector_id": slack_id, "user": user_id}
+            info = _invoke_retry(
+                invoke_tool,
+                ctx,
+                "slack.users.info",
+                {"connector_id": slack_id, "user": user_id},
             )
             invokes["slack.users.info"] = _rec(info)
+            time.sleep(0.8)
 
         if channel_id:
-            join = invoke_tool(
+            join = _invoke_retry(
+                invoke_tool,
                 ctx,
                 "slack.conversations.join",
                 {"connector_id": slack_id, "channel": channel_id},
             )
             invokes["slack.conversations.join"] = _rec(join)
-            hist = invoke_tool(
+            time.sleep(0.8)
+            hist = _invoke_retry(
+                invoke_tool,
                 ctx,
                 "slack.conversations.history",
                 {"connector_id": slack_id, "channel": channel_id, "limit": 5},
