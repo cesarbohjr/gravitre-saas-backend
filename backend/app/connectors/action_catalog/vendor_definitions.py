@@ -7,6 +7,7 @@ from app.connectors.action_catalog.action_workflow_schema import (
     ASANA_TASKS_CREATE_SCHEMA,
     HUBSPOT_ASSOCIATIONS_CREATE_SCHEMA,
     HUBSPOT_CONTACTS_CREATE_SCHEMA,
+    SLACK_CONVERSATIONS_JOIN_SCHEMA,
     SLACK_POST_MESSAGE_SCHEMA,
 )
 
@@ -703,6 +704,7 @@ VENDOR_DEFINITIONS: tuple = (
             action("slack", "conversations.list", "List channels", tier="v1", kind="read", scope_suffix="channels:read", idempotent=True),
             action("slack", "conversations.history", "Read channel messages", tier="v1", kind="read", scope_suffix="messages:read", idempotent=True),
             action("slack", "users.list", "List workspace users", tier="v1", kind="read", scope_suffix="users:read", idempotent=True),
+            action("slack", "users.info", "Get user profile", tier="v1", kind="read", scope_suffix="users:read", idempotent=True),
         ),
         v2=(
             action(
@@ -717,6 +719,16 @@ VENDOR_DEFINITIONS: tuple = (
             ),
             action("slack", "conversations.create", "Create channel", tier="v2", kind="write", scope_suffix="channels:write", destructive=True),
             action("slack", "chat.update", "Update message", tier="v2", kind="write", scope_suffix="messages:write", destructive=True),
+            action(
+                "slack",
+                "conversations.join",
+                "Join a public channel",
+                tier="v2",
+                kind="write",
+                scope_suffix="channels:join",
+                destructive=False,
+                workflow_schema=SLACK_CONVERSATIONS_JOIN_SCHEMA,
+            ),
         ),
         v3=(
             action("slack", "files.upload", "Upload file", tier="v3", kind="advanced", scope_suffix="files:write"),

@@ -1,0 +1,54 @@
+{
+  "pass": false,
+  "status": "BLOCKED_EXTERNAL",
+  "blocker": {
+    "kind": "slack_reconnect",
+    "class": "external_dependency",
+    "same_as": ["hubspot_batch1b_app_republish", "apollo_plan_tier", "fred_api_key"],
+    "detail": "Smoke Slack connector fe7433c3 auth.test returns token_expired (xoxe. token). Code complete; live tip waits on Cesar reconnect.",
+    "connector_id": "fe7433c3-6475-474a-863f-91b98d17a0b8",
+    "connector_status": "error",
+    "auth_test": "token_expired"
+  },
+  "ran_at": "2026-07-16T07:13:30+00:00",
+  "prod_git_sha": "27bf09768a3f07248556e710120588f9036d3b12",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "batch": "phase1-slack-batch1",
+  "api_version": "Slack Web API methods (no version bump)",
+  "new_actions": [
+    "slack.conversations.join",
+    "slack.users.info"
+  ],
+  "enriched_result_url": [
+    "slack.conversations.list",
+    "slack.conversations.history",
+    "slack.users.list",
+    "slack.post_message"
+  ],
+  "deferred": [
+    "slack.workflows.trigger (missing workflows:write scope)",
+    "slack.files.upload (deprecated API path)"
+  ],
+  "slack_connector_id": "fe7433c3-6475-474a-863f-91b98d17a0b8",
+  "invokes": {
+    "auth.test": {
+      "success": false,
+      "error_message": "token_expired"
+    },
+    "slack.conversations.list": {
+      "success": false,
+      "error_code": "validation_error",
+      "error_message": "token_expired",
+      "result_url": null,
+      "summary": null,
+      "data_keys": []
+    }
+  },
+  "governance": {
+    "finance_hr_excluded": true,
+    "chat_access_granted": false,
+    "hubspot_batch1b_blocked_on_app_republish": true,
+    "hubspot_batch1b_note": "PENDING — last HubSpot app build #5 (2026-06-23); hsmeta scopes in-repo only until portal upload + re-auth"
+  },
+  "note": "Slack Batch 1 code ready (join + users.info + result_url enrichment). Live tip BLOCKED on Slack reconnect — not a code bug."
+}

@@ -71,6 +71,13 @@ SLACK_POST_MESSAGE_SCHEMA = ActionWorkflowSchema(
     ),
 )
 
+SLACK_CONVERSATIONS_JOIN_SCHEMA = ActionWorkflowSchema(
+    intent_label="Join Slack channel",
+    required_fields=(
+        WorkflowFieldSpec("channel", ("channel", "channel_id"), sensitive=True),
+    ),
+)
+
 _TEST_SCHEMA_REGISTRY: dict[str, ActionWorkflowSchema] = {}
 
 

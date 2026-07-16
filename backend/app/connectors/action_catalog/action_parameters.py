@@ -305,6 +305,43 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
         "properties": {**_COMMON_READ},
         "required": [],
     },
+    "slack.conversations.history": {
+        "type": "object",
+        "properties": {
+            "channel": {"type": "string", "description": "Channel id (C…)."},
+            "limit": {"type": "integer", "default": 50},
+            "cursor": {"type": "string"},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": ["channel"],
+    },
+    "slack.users.list": {
+        "type": "object",
+        "properties": {
+            "limit": {"type": "integer", "default": 100},
+            "cursor": {"type": "string"},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
+    "slack.users.info": {
+        "type": "object",
+        "properties": {
+            "user": {"type": "string", "description": "Slack user id (U…)."},
+            "user_id": {"type": "string", "description": "Alias for user."},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": ["user"],
+    },
+    "slack.conversations.join": {
+        "type": "object",
+        "properties": {
+            "channel": {"type": "string", "description": "Public channel id to join."},
+            "channel_id": {"type": "string", "description": "Alias for channel."},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": ["channel"],
+    },
     "google_drive.files.list": {
         "type": "object",
         "properties": {

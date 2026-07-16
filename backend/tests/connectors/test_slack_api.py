@@ -6,6 +6,8 @@ import pytest
 
 from app.connectors.slack import (
     conversation_history,
+    get_user,
+    join_conversation,
     list_conversations,
     list_users,
     slack_api_call,
@@ -45,3 +47,23 @@ def test_slack_api_call_ok_false():
         response.json.return_value = {"ok": False, "error": "invalid_auth"}
         with pytest.raises(ValueError, match="invalid_auth"):
             slack_api_call("bad-token", "users.list")
+
+
+def test_get_user():
+    with patch("app.connectors.slack.httpx.Client") as client_cls:
+        response = client_cls.return_value.__enter__.return_value.get.return_value
+        response.is_success = True
+        response.text = '{"ok": true, "user": {"id": "U1"}}'
+        response.json.return_value = {"ok": True, "user": {"id": "U1"}}
+        data = get_user("xoxb-test", "U1")
+    assert data["user"]["id"] == "U1"
+
+
+def test_join_conversation():
+    with patch("app.connectors.slack.httpx.Client") as client_cls:
+        response = client_cls.return_value.__enter__.return_value.post.return_value
+        response.is_success = True
+        response.text = '{"ok": true, "channel": {"id": "C1"}}'
+        response.json.return_value = {"ok": True, "channel": {"id": "C1"}}
+        data = join_conversation("xoxb-test", "C1")
+    assert data["channel"]["id"] == "C1"

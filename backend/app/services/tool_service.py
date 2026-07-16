@@ -14,6 +14,8 @@ from app.connectors.rate_limit import RateLimitError, enforce_rate_limit
 from app.connectors.repository import get_connector, get_connector_by_type, get_decrypted_secret
 from app.connectors.slack import (
     conversation_history,
+    get_user,
+    join_conversation,
     list_conversations,
     list_users,
     message_hash,
@@ -2152,12 +2154,25 @@ def _exec_slack_post_message(ctx: ToolContext, params: dict[str, Any]) -> Normal
     if not text:
         raise ToolValidationError("Slack message is required")
     result = send_slack_message(token, channel, text)
+    ts = result.get("ts")
+    result_url = (
+        f"https://app.slack.com/archives/{channel}/p{str(ts).replace('.', '')}"
+        if ts
+        else f"https://app.slack.com/archives/{channel}"
+    )
     return NormalizedResult(
         success=True,
         action="slack.post_message",
         connector_id=cid,
         latency_ms=int(result.get("_latency_ms", 0) or 0),
-        data={"executed": True, "channel": channel, "ts": result.get("ts"), "ok": True},
+        data={
+            "executed": True,
+            "channel": channel,
+            "ts": ts,
+            "ok": True,
+            "result_url": result_url,
+            "summary": f"Posted message to {channel}",
+        },
     )
 
 
@@ -2172,12 +2187,24 @@ def _exec_slack_conversations_list(ctx: ToolContext, params: dict[str, Any]) -> 
         )
     except ValueError as exc:
         raise ToolValidationError(str(exc)) from exc
+    channels = data.get("channels") or []
+    first_id = None
+    if isinstance(channels, list) and channels and isinstance(channels[0], dict):
+        first_id = channels[0].get("id")
+    result_url = (
+        f"https://app.slack.com/archives/{first_id}" if first_id else "https://app.slack.com"
+    )
     return NormalizedResult(
         success=True,
         action="slack.conversations.list",
         connector_id=cid,
         latency_ms=int(data.get("_latency_ms", 0) or 0),
-        data={"channels": data.get("channels") or [], "response_metadata": data.get("response_metadata")},
+        data={
+            "channels": channels,
+            "response_metadata": data.get("response_metadata"),
+            "result_url": result_url,
+            "summary": f"Listed {len(channels) if isinstance(channels, list) else 0} Slack channel(s)",
+        },
     )
 
 
@@ -2195,12 +2222,19 @@ def _exec_slack_conversations_history(ctx: ToolContext, params: dict[str, Any]) 
         )
     except ValueError as exc:
         raise ToolValidationError(str(exc)) from exc
+    messages = data.get("messages") or []
+    result_url = f"https://app.slack.com/archives/{channel}"
     return NormalizedResult(
         success=True,
         action="slack.conversations.history",
         connector_id=cid,
         latency_ms=int(data.get("_latency_ms", 0) or 0),
-        data={"messages": data.get("messages") or [], "response_metadata": data.get("response_metadata")},
+        data={
+            "messages": messages,
+            "response_metadata": data.get("response_metadata"),
+            "result_url": result_url,
+            "summary": f"Read {len(messages) if isinstance(messages, list) else 0} message(s) from {channel}",
+        },
     )
 
 
@@ -2214,12 +2248,68 @@ def _exec_slack_users_list(ctx: ToolContext, params: dict[str, Any]) -> Normaliz
         )
     except ValueError as exc:
         raise ToolValidationError(str(exc)) from exc
+    members = data.get("members") or []
     return NormalizedResult(
         success=True,
         action="slack.users.list",
         connector_id=cid,
         latency_ms=int(data.get("_latency_ms", 0) or 0),
-        data={"members": data.get("members") or [], "response_metadata": data.get("response_metadata")},
+        data={
+            "members": members,
+            "response_metadata": data.get("response_metadata"),
+            "result_url": "https://app.slack.com",
+            "summary": f"Listed {len(members) if isinstance(members, list) else 0} Slack user(s)",
+        },
+    )
+
+
+def _exec_slack_users_info(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _slack_connector_and_token(ctx, params)
+    user = str(params.get("user") or params.get("user_id") or "").strip()
+    if not user:
+        raise ToolValidationError("slack.users.info requires user")
+    try:
+        data = get_user(token, user)
+    except ValueError as exc:
+        raise ToolValidationError(str(exc)) from exc
+    profile = (data.get("user") or {}) if isinstance(data, dict) else {}
+    name = None
+    if isinstance(profile, dict):
+        name = (profile.get("profile") or {}).get("real_name") or profile.get("name")
+    return NormalizedResult(
+        success=True,
+        action="slack.users.info",
+        connector_id=cid,
+        latency_ms=int(data.get("_latency_ms", 0) or 0) if isinstance(data, dict) else 0,
+        data={
+            "user": profile,
+            "result_url": f"https://app.slack.com/team/{user}",
+            "summary": f"Got Slack user {name or user}",
+        },
+    )
+
+
+def _exec_slack_conversations_join(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _slack_connector_and_token(ctx, params)
+    channel = str(params.get("channel") or params.get("channel_id") or "").strip()
+    if not channel:
+        raise ToolValidationError("slack.conversations.join requires channel")
+    try:
+        data = join_conversation(token, channel)
+    except ValueError as exc:
+        raise ToolValidationError(str(exc)) from exc
+    ch = data.get("channel") if isinstance(data, dict) else None
+    channel_id = (ch.get("id") if isinstance(ch, dict) else None) or channel
+    return NormalizedResult(
+        success=True,
+        action="slack.conversations.join",
+        connector_id=cid,
+        latency_ms=int(data.get("_latency_ms", 0) or 0) if isinstance(data, dict) else 0,
+        data={
+            "channel": ch or {"id": channel_id},
+            "result_url": f"https://app.slack.com/archives/{channel_id}",
+            "summary": f"Joined Slack channel {channel_id}",
+        },
     )
 
 
@@ -3361,6 +3451,8 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "slack.conversations.list": _exec_slack_conversations_list,
     "slack.conversations.history": _exec_slack_conversations_history,
     "slack.users.list": _exec_slack_users_list,
+    "slack.users.info": _exec_slack_users_info,
+    "slack.conversations.join": _exec_slack_conversations_join,
     "email.send": _exec_email_send,
     "email.messages.queue": _exec_email_messages_queue,
     "email.delivery.status": _exec_email_delivery_status,
