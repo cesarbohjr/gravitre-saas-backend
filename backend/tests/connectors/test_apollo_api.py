@@ -175,3 +175,30 @@ def test_list_labels_gets_labels():
         out = list_labels({"Authorization": "Bearer token"})
     assert out == {"labels": []}
     assert client_cls.return_value.__enter__.return_value.request.call_args[0][0] == "GET"
+
+
+def test_match_person_posts_payload():
+    from app.connectors.apollo_api import match_person
+
+    with patch("app.connectors.apollo_api._request") as mock_request:
+        mock_request.return_value = {"person": {"id": "p1"}}
+        out = match_person({"X-Api-Key": "k"}, payload={"email": "a@b.com"})
+    assert out["person"]["id"] == "p1"
+    mock_request.assert_called_once_with(
+        {"X-Api-Key": "k"}, "POST", "/people/match", json_body={"email": "a@b.com"}
+    )
+
+
+def test_enrich_organization_gets_domain():
+    from app.connectors.apollo_api import enrich_organization
+
+    with patch("app.connectors.apollo_api._request") as mock_request:
+        mock_request.return_value = {"organization": {"id": "o1"}}
+        out = enrich_organization({"X-Api-Key": "k"}, domain="apollo.io")
+    assert out["organization"]["id"] == "o1"
+    mock_request.assert_called_once_with(
+        {"X-Api-Key": "k"},
+        "GET",
+        "/organizations/enrich",
+        params={"domain": "apollo.io"},
+    )

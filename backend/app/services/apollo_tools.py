@@ -12,9 +12,11 @@ from app.connectors.apollo_api import (
     create_label,
     create_task,
     delete_contact,
+    enrich_organization,
     get_contact,
     is_apollo_plan_limit_error,
     list_labels,
+    match_person,
     remove_contacts_from_sequence,
     resolve_apollo_connector,
     search_organizations,
@@ -287,6 +289,96 @@ def _exec_enrichment_bulk(ctx: ToolContext, params: dict[str, Any]) -> Normalize
     return NormalizedResult(success=True, action="apollo.enrichment.bulk", connector_id=cid, data=data)
 
 
+def _exec_people_match(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    """Single-person enrichment (POST /people/match) — Batch 1 expansion."""
+    cid, headers = _session(ctx, params)
+    payload = params.get("payload") if isinstance(params.get("payload"), dict) else None
+    if payload is None:
+        payload = {
+            k: v
+            for k, v in params.items()
+            if k
+            in {
+                "email",
+                "first_name",
+                "last_name",
+                "name",
+                "organization_name",
+                "domain",
+                "linkedin_url",
+                "id",
+            }
+            and v not in (None, "")
+        }
+    if not payload:
+        raise ToolValidationError(
+            "apollo.people.match requires email and/or name+domain (or payload{})"
+        )
+    try:
+        data = match_person(headers, payload=payload)
+    except ApolloAPIError as exc:
+        raise _handle_error(exc) from exc
+    person = data.get("person") if isinstance(data, dict) else None
+    person_id = person.get("id") if isinstance(person, dict) else None
+    result_url = (
+        f"https://app.apollo.io/#/people/{person_id}" if person_id else "https://app.apollo.io/#/people"
+    )
+    return NormalizedResult(
+        success=True,
+        action="apollo.people.match",
+        connector_id=cid,
+        data={
+            **(data if isinstance(data, dict) else {"raw": data}),
+            "result_url": result_url,
+            "summary": (
+                f"Matched person {person.get('name') or person_id}"
+                if isinstance(person, dict)
+                else "Apollo people.match completed"
+            ),
+        },
+    )
+
+
+def _exec_organizations_enrich(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    """Single-org enrichment (GET /organizations/enrich) — Batch 1 expansion."""
+    cid, headers = _session(ctx, params)
+    domain = str(params.get("domain") or params.get("organization_domain") or "").strip() or None
+    name = str(params.get("name") or params.get("organization_name") or "").strip() or None
+    linkedin_url = str(params.get("linkedin_url") or "").strip() or None
+    website_url = str(params.get("website_url") or params.get("website") or "").strip() or None
+    try:
+        data = enrich_organization(
+            headers,
+            domain=domain,
+            name=name,
+            linkedin_url=linkedin_url,
+            website_url=website_url,
+        )
+    except ApolloAPIError as exc:
+        raise _handle_error(exc) from exc
+    org = data.get("organization") if isinstance(data, dict) else None
+    org_id = org.get("id") if isinstance(org, dict) else None
+    result_url = (
+        f"https://app.apollo.io/#/organizations/{org_id}"
+        if org_id
+        else "https://app.apollo.io/#/companies"
+    )
+    return NormalizedResult(
+        success=True,
+        action="apollo.organizations.enrich",
+        connector_id=cid,
+        data={
+            **(data if isinstance(data, dict) else {"raw": data}),
+            "result_url": result_url,
+            "summary": (
+                f"Enriched org {org.get('name') or org_id}"
+                if isinstance(org, dict)
+                else "Apollo organizations.enrich completed"
+            ),
+        },
+    )
+
+
 def _exec_tasks_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, headers = _session(ctx, params)
     body = _body_params(params)
@@ -456,6 +548,8 @@ APOLLO_TOOL_EXECUTORS: dict[str, Any] = {
     "apollo.organizations.search": _exec_organizations_search,
     "apollo.contacts.get": _exec_contacts_get,
     "apollo.lists.list": _exec_lists_list,
+    "apollo.people.match": _exec_people_match,
+    "apollo.organizations.enrich": _exec_organizations_enrich,
     "apollo.contacts.create": _exec_contacts_create,
     "apollo.lists.create": _exec_lists_create,
     "apollo.sequences.add": _exec_sequences_add,

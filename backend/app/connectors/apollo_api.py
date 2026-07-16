@@ -411,6 +411,27 @@ def bulk_enrich_people(auth_headers: dict[str, str], *, details: list[dict[str, 
     return _request(auth_headers, "POST", "/people/bulk_match", json_body={"details": details})
 
 
+def match_person(auth_headers: dict[str, str], *, payload: dict[str, Any]) -> dict[str, Any]:
+    """Single-person enrichment — POST /people/match (Apollo People Enrichment)."""
+    if not payload:
+        raise ApolloAPIError("person match fields are required")
+    return _request(auth_headers, "POST", "/people/match", json_body=payload)
+
+
+def enrich_organization(auth_headers: dict[str, str], *, domain: str | None = None, **params: Any) -> dict[str, Any]:
+    """Single-org enrichment — GET /organizations/enrich."""
+    query: dict[str, Any] = {}
+    if domain:
+        query["domain"] = str(domain).strip().lower()
+    for key in ("name", "linkedin_url", "website_url"):
+        val = params.get(key)
+        if val:
+            query[key] = str(val).strip()
+    if not query:
+        raise ApolloAPIError("domain, name, linkedin_url, or website_url is required")
+    return _request(auth_headers, "GET", "/organizations/enrich", params=query)
+
+
 def create_task(auth_headers: dict[str, str], *, payload: dict[str, Any]) -> dict[str, Any]:
     if not payload:
         raise ApolloAPIError("task payload is required")

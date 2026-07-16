@@ -93,3 +93,31 @@ def test_apollo_lists_create(mock_create_label, mock_session, _rate):
     assert result.success
     assert result.action == "apollo.lists.create"
     mock_create_label.assert_called_once()
+
+
+@patch("app.services.apollo_tools.enforce_rate_limit")
+@patch("app.services.apollo_tools.resolve_apollo_connector")
+@patch("app.services.apollo_tools.match_person")
+def test_apollo_people_match(mock_match, mock_session, _rate):
+    mock_session.return_value = ("conn-apollo", {"Authorization": "Bearer token"})
+    mock_match.return_value = {"person": {"id": "p1", "name": "Tim Zheng"}}
+    result = APOLLO_TOOL_EXECUTORS["apollo.people.match"](
+        _ctx(), {"email": "tim@apollo.io", "domain": "apollo.io"}
+    )
+    assert result.success
+    assert result.action == "apollo.people.match"
+    assert result.data["result_url"] == "https://app.apollo.io/#/people/p1"
+    mock_match.assert_called_once()
+
+
+@patch("app.services.apollo_tools.enforce_rate_limit")
+@patch("app.services.apollo_tools.resolve_apollo_connector")
+@patch("app.services.apollo_tools.enrich_organization")
+def test_apollo_organizations_enrich(mock_enrich, mock_session, _rate):
+    mock_session.return_value = ("conn-apollo", {"Authorization": "Bearer token"})
+    mock_enrich.return_value = {"organization": {"id": "o1", "name": "Apollo"}}
+    result = APOLLO_TOOL_EXECUTORS["apollo.organizations.enrich"](_ctx(), {"domain": "apollo.io"})
+    assert result.success
+    assert result.action == "apollo.organizations.enrich"
+    assert result.data["result_url"] == "https://app.apollo.io/#/organizations/o1"
+    mock_enrich.assert_called_once()

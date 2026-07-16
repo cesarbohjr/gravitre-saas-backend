@@ -1,7 +1,7 @@
 {
   "pass": true,
-  "ran_at": "2026-07-16T05:10:53.746755+00:00",
-  "prod_git_sha": "1379293bba4f572971d68321815939cd1015d751",
+  "ran_at": "2026-07-16T05:44:43.739205+00:00",
+  "prod_git_sha": "cd056edfc7a61bd574e7bf22f77854ab1768d68b",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "pack_slug": "hr-talent-intelligence-pack",
   "asset_id": "4524bc84-5049-4106-b73d-3babd2bf714e",
@@ -51,5 +51,30 @@
     "compensation_memory_kg_blocked": true,
     "no_linkedin_scrape": true
   },
-  "note": "HR & Talent #10 H3: Workday+BambooHR+Greenhouse+Gusto unlocked. Live invoke required only when an active connector exists on smoke org."
+  "status": "PARTIAL",
+  "note": "HR #10 H3: unlock + pack scaffold tip only. Not live HRIS/ATS/Payroll proven.",
+  "greenhouse_stub": {
+    "verdict": "FIXED",
+    "was": "REAL_GAP",
+    "not": "accepted_not_yet_like_zendesk",
+    "reason_was": "Postgres connectors_type_check never listed greenhouse; stub insert failed.",
+    "fix_applied": "Additive migration 20260716120000_add_missing_connector_types_greenhouse_ahrefs.sql (also ahrefs, ai_visibility_ui, clay, finseo)",
+    "verified_at": "2026-07-16T06:08:06+00:00",
+    "greenhouse_connector_id": "47ed6670-9847-4212-acd4-892f4812d75e",
+    "status": "needs_connection",
+    "note": "HR template stages needs_connection (same as Workday/BambooHR). Zendesk/CS uses pending_auth — same staged-awaiting-auth class, different status label. Insert now succeeds; no live Greenhouse API invoke (F3/H3 live-activation HOLD)."
+  },
+  "reassessment": {
+    "at": "2026-07-16T06:08:06+00:00",
+    "prod_git_sha": "cd056edfc7a61bd574e7bf22f77854ab1768d68b",
+    "verdict": "PARTIAL — not DONE",
+    "live_invoke_ok": false,
+    "any_active_connector": false,
+    "greenhouse_stub": "FIXED — inserts needs_connection",
+    "live_connection_test": "HOLD — Cesar STA-312 sign-off required before Plaid/Gusto/QB/etc. smoke-org connects",
+    "governance_signoff": {
+      "h3_unlock": "YES (Cesar 2026-07-15)",
+      "live_oauth_api_test": "HOLD — explicit separate sign-off not given 2026-07-16; do not connect yet"
+    }
+  }
 }

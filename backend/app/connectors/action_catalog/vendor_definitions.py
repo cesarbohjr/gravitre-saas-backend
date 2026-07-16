@@ -450,6 +450,8 @@ VENDOR_DEFINITIONS: tuple = (
             action("apollo", "organizations.search", "Search companies", tier="v1", kind="read", scope_suffix="organizations:read", idempotent=True),
             action("apollo", "contacts.get", "Get contact", tier="v1", kind="read", scope_suffix="contacts:read", idempotent=True),
             action("apollo", "lists.list", "List contact lists", tier="v1", kind="read", scope_suffix="labels:read", idempotent=True),
+            action("apollo", "people.match", "Enrich one person", tier="v1", kind="read", scope_suffix="enrichment:read", idempotent=True),
+            action("apollo", "organizations.enrich", "Enrich one organization", tier="v1", kind="read", scope_suffix="enrichment:read", idempotent=True),
         ),
         v2=(
             action("apollo", "contacts.create", "Create contact", tier="v2", kind="write", scope_suffix="contacts:write", destructive=True),

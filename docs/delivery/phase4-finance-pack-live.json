@@ -1,7 +1,7 @@
 {
   "pass": true,
-  "ran_at": "2026-07-16T05:09:38.989838+00:00",
-  "prod_git_sha": "1379293bba4f572971d68321815939cd1015d751",
+  "ran_at": "2026-07-16T05:44:14.312882+00:00",
+  "prod_git_sha": "cd056edfc7a61bd574e7bf22f77854ab1768d68b",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "pack_slug": "finance-intelligence-pack",
   "asset_id": "8e80e188-4ae5-462a-a4c3-752dfc649899",
@@ -14,8 +14,8 @@
     "xeroConnectorId": null,
     "netsuiteConnectorId": null,
     "plaidConnectorId": null,
-    "stubCount": 4,
-    "skippedCount": 0,
+    "stubCount": 0,
+    "skippedCount": 4,
     "stopLinesHonored": [
       "reuse_existing_connectors",
       "finance_read_only_tip",
@@ -49,5 +49,18 @@
     "raw_banking_memory_kg_blocked": true,
     "plaid_if_entitled": true
   },
-  "note": "Finance #9 F3: QB+Xero+NetSuite+Plaid unlocked. Live invoke required only when an active connector exists on smoke org."
+  "status": "PARTIAL",
+  "note": "Finance #9 F3: unlock + pack scaffold tip only. Not live Plaid/Gusto/QB proven.",
+  "reassessment": {
+    "at": "2026-07-16T05:44:14+00:00",
+    "prod_git_sha": "cd056edfc7a61bd574e7bf22f77854ab1768d68b",
+    "verdict": "PARTIAL — not DONE",
+    "live_invoke_ok": false,
+    "any_active_connector": false,
+    "live_connection_test": "BLOCKED pending Cesar confirmation of smoke-org live activation (even sandboxed)",
+    "governance_signoff": {
+      "f3_unlock": "YES (Cesar 2026-07-15)",
+      "live_oauth_link_test": "NOT CONFIRMED — do not connect yet"
+    }
+  }
 }

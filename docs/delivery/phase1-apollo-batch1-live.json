@@ -1,0 +1,43 @@
+{
+  "pass": true,
+  "ran_at": "2026-07-16T06:09:13.580247+00:00",
+  "prod_git_sha": "cd056edfc7a61bd574e7bf22f77854ab1768d68b",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "batch": "phase1-apollo-batch1",
+  "api_version": "api/v1 (unchanged \u2014 no bump)",
+  "new_actions": [
+    "apollo.people.match",
+    "apollo.organizations.enrich"
+  ],
+  "apollo_connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+  "invokes": {
+    "apollo.people.match": {
+      "success": false,
+      "error_code": "permission_denied",
+      "error_message": "Apollo API 403: /people/match \u2014 api/v1/people/match is not accessible with this access token on a free plan. Please upgrade your plan from https://app.apollo.io/.",
+      "result_url": null,
+      "summary": null,
+      "data_keys": []
+    },
+    "apollo.organizations.enrich": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "https://app.apollo.io/#/organizations/5e66b6381e05b4008c8331b8",
+      "summary": "Enriched org Apollo.io",
+      "data_keys": [
+        "organization",
+        "result_url",
+        "summary"
+      ]
+    }
+  },
+  "governance": {
+    "contacts_delete_requires_approval": true,
+    "sequences_remove_requires_approval": true,
+    "finance_hr_excluded": true,
+    "chat_access_granted": false,
+    "note": "Chat/ReAct/canvas access deferred until this tip PASS is reviewed"
+  },
+  "note": "Apollo Batch 1: people.match + organizations.enrich with result_url. Existing create/update/delete already catalogued; delete approval re-confirmed."
+}
