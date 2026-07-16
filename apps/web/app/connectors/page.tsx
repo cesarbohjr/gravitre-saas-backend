@@ -84,12 +84,14 @@ import {
   connectorVendorKey,
   formatVendorLabel,
   isPartnerGatedConnector,
+  isPlaidLinkConnector,
   isShippedConnector,
   listAvailableConnectors,
   lookupConnectorCategory,
   resolveConnectorDisplayStatus,
   supportsDualPatAuth,
 } from "@/lib/connectors"
+import { openPlaidLink } from "@/lib/plaid-link"
 import type { Connector as ApiConnector, ConnectorStatus } from "@/types/api"
 
 interface ConnectorAvailability {
@@ -795,6 +797,7 @@ type CatalogConnector = (typeof availableConnectors)[number] & {
   vendorKey?: string
   shipped?: boolean
   oauthReady?: boolean
+  credentialModel?: string
   requiresSubdomain?: boolean
   requiresInstanceUrl?: boolean
   requiresPartnerApproval?: boolean
@@ -933,12 +936,67 @@ function AddConnectorModal({
 
   const handleOAuthConnect = async () => {
     if (!selectedType || !canStartOAuth()) return
-    const provider = resolveVendor(getSelectedConnector(), selectedType)
+    const selected = getSelectedConnector()
+    const provider = resolveVendor(selected, selectedType)
     const existing = existingConnectors.find(
       (c) =>
         connectorVendorKey(c.type) === provider ||
         c.name.trim().toLowerCase() === name.trim().toLowerCase()
     )
+
+    // Plaid uses Link (platform PLAID_* keys), not /oauth/{provider}/start.
+    if (isPlaidLinkConnector(selected) || provider === "plaid") {
+      setOauthStatus("redirecting")
+      try {
+        const { linkToken } = await connectorsApi.plaidCreateLinkToken({
+          name: name.trim() || existing?.name || "plaid-sandbox",
+          connectorId: existing?.id,
+          redirectUri: "https://gravitre.app/connectors",
+        })
+        if (!linkToken) throw new Error("Plaid did not return a link token")
+        await openPlaidLink({
+          linkToken,
+          onSuccess: async (publicToken, metadata) => {
+            try {
+              await connectorsApi.plaidExchangePublicToken({
+                publicToken,
+                name: name.trim() || existing?.name || "plaid-sandbox",
+                connectorId: existing?.id,
+                metadata,
+              })
+              setOauthStatus("success")
+              toast.success("Plaid connected (Sandbox)")
+              // Refresh connector list after Link closes.
+              window.setTimeout(() => {
+                window.location.assign("/connectors?oauth=success&provider=plaid")
+              }, 600)
+            } catch (err) {
+              console.error("[connectors] Plaid exchange failed:", err)
+              setOauthStatus("error")
+              toast.error("Failed to save Plaid connection", {
+                description: oauthErrorMessage(err, "Plaid"),
+              })
+            }
+          },
+          onExit: (err) => {
+            if (err) {
+              setOauthStatus("error")
+              toast.error("Plaid Link closed with an error")
+            } else {
+              setOauthStatus("idle")
+            }
+          },
+        })
+      } catch (err) {
+        console.error("[connectors] Plaid Link start failed:", err)
+        setOauthStatus("error")
+        toast.error("Failed to start Plaid Link", {
+          description: oauthErrorMessage(err, "Plaid"),
+        })
+      }
+      return
+    }
+
     const extra = oauthExtraFields()
     setOauthStatus("redirecting")
     try {
@@ -1413,7 +1471,9 @@ function AddConnectorModal({
                     </div>
                     <Button onClick={handleOAuthConnect} className="gap-2" disabled={!canStartOAuth()}>
                       <ExternalLink className="h-4 w-4" />
-                      Connect with {selectedType}
+                      {isPlaidLinkConnector(getSelectedConnector())
+                        ? "Connect with Plaid Link"
+                        : `Connect with ${selectedType}`}
                     </Button>
                     {selectedSupportsDualPat() && (
                       <button

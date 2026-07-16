@@ -1257,3 +1257,135 @@ async def get_connector_docs(
     vendor = row.data[0].get("vendor") or ""
     docs_url = row.data[0].get("docs_url") or _docs_url(vendor)
     return {"docsUrl": docs_url}
+
+
+class PlaidLinkTokenRequest(BaseModel):
+    name: str | None = None
+    redirect_uri: str | None = Field(default=None, alias="redirectUri")
+    connector_id: str | None = Field(default=None, alias="connectorId")
+
+    model_config = {"populate_by_name": True}
+
+
+class PlaidExchangeRequest(BaseModel):
+    public_token: str = Field(..., alias="publicToken", min_length=1)
+    name: str | None = None
+    connector_id: str | None = Field(default=None, alias="connectorId")
+    metadata: dict[str, Any] | None = None
+
+    model_config = {"populate_by_name": True}
+
+
+@connectors_router.post("/plaid/link-token")
+async def plaid_create_link_token(
+    body: PlaidLinkTokenRequest,
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Create a Plaid Link token (Sandbox). Uses Railway PLAID_CLIENT_ID / PLAID_SECRET."""
+    from app.connectors.plaid_link import PlaidLinkError, create_link_token, plaid_link_configured
+
+    user, org_id = _admin
+    if not plaid_link_configured(settings):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=error_detail(
+                "Plaid is not configured on this deployment (PLAID_CLIENT_ID / PLAID_SECRET)",
+                "PLAID_NOT_CONFIGURED",
+            ),
+        )
+    try:
+        result = create_link_token(
+            settings,
+            client_user_id=f"{org_id}:{user['user_id']}",
+            redirect_uri=body.redirect_uri,
+        )
+    except PlaidLinkError as exc:
+        raise HTTPException(
+            status_code=exc.status_code or status.HTTP_502_BAD_GATEWAY,
+            detail=error_detail(str(exc), "PLAID_LINK_TOKEN_FAILED"),
+        ) from exc
+    return {
+        "linkToken": result.get("link_token"),
+        "expiration": result.get("expiration"),
+        "plaidEnv": result.get("plaid_env"),
+        "apiBase": result.get("api_base"),
+        "redirectUri": result.get("redirect_uri"),
+    }
+
+
+@connectors_router.post("/plaid/exchange")
+async def plaid_exchange_public_token(
+    body: PlaidExchangeRequest,
+    _admin: Annotated[tuple, Depends(require_admin)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Exchange Plaid Link public_token and persist access_token on the org connector."""
+    from app.connectors.plaid_link import (
+        PlaidLinkError,
+        exchange_public_token,
+        persist_plaid_connection,
+        plaid_link_configured,
+    )
+
+    user, org_id = _admin
+    if not plaid_link_configured(settings):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=error_detail(
+                "Plaid is not configured on this deployment (PLAID_CLIENT_ID / PLAID_SECRET)",
+                "PLAID_NOT_CONFIGURED",
+            ),
+        )
+    try:
+        exchanged = exchange_public_token(settings, public_token=body.public_token)
+    except PlaidLinkError as exc:
+        raise HTTPException(
+            status_code=exc.status_code or status.HTTP_502_BAD_GATEWAY,
+            detail=error_detail(str(exc), "PLAID_EXCHANGE_FAILED"),
+        ) from exc
+    access_token = exchanged.get("access_token")
+    if not access_token:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=error_detail("Plaid exchange returned no access_token", "PLAID_EXCHANGE_EMPTY"),
+        )
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        persisted = persist_plaid_connection(
+            client,
+            org_id=org_id,
+            user_id=user["user_id"],
+            settings=settings,
+            access_token=str(access_token),
+            item_id=exchanged.get("item_id"),
+            plaid_env=str(exchanged.get("plaid_env") or "sandbox"),
+            connector_id=body.connector_id,
+            connector_name=body.name,
+            environment_name=environment_name,
+        )
+    except PlaidLinkError as exc:
+        raise HTTPException(
+            status_code=exc.status_code or status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_detail(str(exc), "PLAID_PERSIST_FAILED"),
+        ) from exc
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=user["user_id"],
+        action="connector.plaid.link.completed",
+        resource_type="connector",
+        resource_id=persisted["connector_id"],
+        metadata={
+            "plaid_env": persisted.get("plaid_env"),
+            "item_id": persisted.get("item_id"),
+            "environment": environment_name,
+        },
+    )
+    return {
+        "success": True,
+        "connectorId": persisted["connector_id"],
+        "plaidEnv": persisted.get("plaid_env"),
+        "itemId": persisted.get("item_id"),
+    }

@@ -94,6 +94,8 @@ export const SHIPPED_OAUTH_CONNECTOR_TYPES = [
   "Canva",
   "Figma",
   "Apollo",
+  "Gusto",
+  "Plaid",
 ] as const
 
 /** Generic OAuth providers that require PKCE (RFC 7636). Salesforce uses backend PKCE too. */
@@ -137,6 +139,8 @@ export const OAUTH_VENDOR_KEYS = new Set([
   "canva",
   "figma",
   "apollo",
+  "gusto",
+  "plaid",
 ])
 
 /** OAuth + optional PAT/API-token fallback at connect time. */
@@ -179,7 +183,6 @@ export const IAM_VENDOR_KEYS = new Set(["aws_s3"])
 /** Partner program / sales approval required before self-serve connect. */
 export const PARTNER_GATED_CONNECTOR_KEYS = new Set([
   "adp",
-  "gusto",
   "hootsuite",
   "zapier",
 ])
@@ -187,12 +190,10 @@ export const PARTNER_GATED_CONNECTOR_KEYS = new Set([
 /** Partner-gated or requires non-standard integration (not generic OAuth callback). */
 export const PARTNER_OR_CUSTOM_VENDOR_KEYS = new Set([
   "adp",
-  "plaid",
   "workday",
   "marketo",
   "netsuite",
   "hootsuite",
-  "gusto",
   "zapier",
 ])
 
@@ -285,7 +286,7 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "QuickBooks", vendorKey: "quickbooks", description: "Accounting software", authType: "oauth", credentialModel: "oauth2", category: "Payments / Finance", shipped: true },
   { type: "NetSuite", vendorKey: "netsuite", description: "Enterprise ERP", authType: "oauth", credentialModel: "oauth2_custom", category: "Payments / Finance", shipped: true },
   { type: "Xero", vendorKey: "xero", description: "Cloud accounting", authType: "oauth", credentialModel: "oauth2_custom", category: "Payments / Finance", oauthReady: true, shipped: true },
-  { type: "Plaid", vendorKey: "plaid", description: "Financial data via Plaid Link (F3 unlocked) — not generic OAuth callback", authType: "apiKey", credentialModel: "plaid_link", category: "Payments / Finance", shipped: true, setupComplexity: "high", authMode: "customer_owned" },
+  { type: "Plaid", vendorKey: "plaid", description: "Financial data via Plaid Link (Sandbox) — connect with platform Plaid keys", authType: "oauth", credentialModel: "plaid_link", category: "Payments / Finance", shipped: true, oauthReady: true, setupComplexity: "high", authMode: "customer_owned" },
   // Communication
   { type: "Slack", vendorKey: "slack", description: "Team messaging", authType: "oauth", credentialModel: "oauth2", category: "Communication", shipped: true, oauthReady: true },
   { type: "Microsoft Teams", vendorKey: "microsoft_teams", description: "Collaboration hub", authType: "oauth", credentialModel: "oauth2_custom", category: "Communication" },
@@ -320,7 +321,7 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "Workday", vendorKey: "workday", description: "HR management", authType: "oauth", credentialModel: "oauth2_custom", category: "HR / People", shipped: true },
   { type: "BambooHR", vendorKey: "bamboohr", description: "HR software", authType: "apiKey", credentialModel: "api_key", category: "HR / People", requiresSubdomain: true, shipped: true },
   { type: "Greenhouse", vendorKey: "greenhouse", description: "Recruiting and applicant tracking", authType: "apiKey", credentialModel: "api_key", category: "HR / People", shipped: true },
-  { type: "Gusto", vendorKey: "gusto", description: "Payroll and benefits (H3 unlocked) — partner OAuth when approved", authType: "oauth", credentialModel: "partner_oauth", category: "HR / People", shipped: true, requiresPartnerApproval: true, setupComplexity: "enterprise", authMode: "customer_owned" },
+  { type: "Gusto", vendorKey: "gusto", description: "Payroll and benefits (Gusto Demo OAuth)", authType: "oauth", credentialModel: "oauth2", category: "HR / People", shipped: true, oauthReady: true, setupComplexity: "medium", authMode: "customer_owned" },
   { type: "ADP", vendorKey: "adp", description: "HR and payroll", authType: "apiKey", credentialModel: "partner_oauth", category: "HR / People", requiresPartnerApproval: true, setupComplexity: "enterprise" },
   // Storage / Dev / Infra
   { type: "AWS S3", vendorKey: "aws_s3", description: "Cloud object storage", authType: "apiKey", credentialModel: "iam", category: "Storage / Dev / Infra" },
@@ -351,6 +352,7 @@ export const CONNECTOR_CATEGORIES = Object.fromEntries(
           vendorKey,
           shipped,
           oauthReady,
+          credentialModel,
           requiresSubdomain,
           requiresInstanceUrl,
           requiresPartnerApproval,
@@ -362,6 +364,7 @@ export const CONNECTOR_CATEGORIES = Object.fromEntries(
           vendorKey,
           shipped,
           oauthReady,
+          credentialModel,
           requiresSubdomain,
           requiresInstanceUrl,
           requiresPartnerApproval,
@@ -381,6 +384,7 @@ export const CONNECTOR_CATEGORIES = Object.fromEntries(
       vendorKey: string
       shipped?: boolean
       oauthReady?: boolean
+      credentialModel?: ConnectorCredentialModel
       requiresSubdomain?: boolean
       requiresInstanceUrl?: boolean
     }>
@@ -517,13 +521,29 @@ export function supportsDualPatAuth(
   return entry.dualPatAuth === true || DUAL_AUTH_VENDOR_KEYS.has(entry.vendorKey)
 }
 
+export function isPlaidLinkConnector(
+  entry: Pick<CatalogConnectorEntry, "vendorKey" | "credentialModel"> | null | undefined
+): boolean {
+  if (!entry) return false
+  return entry.vendorKey === "plaid" || entry.credentialModel === "plaid_link"
+}
+
 export function isOAuthConnectable(
   entry: Pick<
     CatalogConnectorEntry,
-    "authType" | "shipped" | "oauthReady" | "vendorKey" | "requiresPartnerApproval" | "dualPatAuth"
+    | "authType"
+    | "shipped"
+    | "oauthReady"
+    | "vendorKey"
+    | "requiresPartnerApproval"
+    | "dualPatAuth"
+    | "credentialModel"
   >
 ): boolean {
   if (isPartnerGatedConnector(entry)) return false
+  if (isPlaidLinkConnector(entry) && (entry.shipped === true || entry.oauthReady === true)) {
+    return true
+  }
   if (entry.authType === "oauth" && (entry.shipped === true || entry.oauthReady === true)) {
     return true
   }

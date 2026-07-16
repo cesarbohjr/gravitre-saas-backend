@@ -1232,6 +1232,26 @@ export const connectorsApi = {
       apiUrl(`/api/connectors/oauth/${provider}/start`),
       { name, connectorId, redirectPath: "/connectors", ...extra }
     ),
+  plaidCreateLinkToken: (data?: { name?: string; connectorId?: string; redirectUri?: string }) =>
+    postJson<{
+      linkToken: string
+      expiration?: string
+      plaidEnv?: string
+      apiBase?: string
+      redirectUri?: string
+    }>(apiUrl("/api/connectors/plaid/link-token"), data || {}),
+  plaidExchangePublicToken: (data: {
+    publicToken: string
+    name?: string
+    connectorId?: string
+    metadata?: Record<string, unknown>
+  }) =>
+    postJson<{
+      success: boolean
+      connectorId: string
+      plaidEnv?: string
+      itemId?: string
+    }>(apiUrl("/api/connectors/plaid/exchange"), data),
   listGoogleAnalyticsProperties: (connectorId: string) =>
     fetcher<{
       connectorId: string

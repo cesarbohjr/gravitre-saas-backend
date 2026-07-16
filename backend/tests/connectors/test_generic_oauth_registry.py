@@ -53,9 +53,16 @@ def test_registry_size():
 def test_partner_gated_vendors():
     from app.connectors.oauth_provider_registry import PARTNER_GATED_OAUTH_VENDORS
 
-    assert PARTNER_GATED_OAUTH_VENDORS == frozenset({"zapier", "hootsuite", "gusto"})
+    # Gusto Demo is self-serve (ungated); Zapier/Hootsuite remain partner-gated.
+    assert PARTNER_GATED_OAUTH_VENDORS == frozenset({"zapier", "hootsuite"})
     for vendor in PARTNER_GATED_OAUTH_VENDORS:
         assert OAUTH_PROVIDER_REGISTRY[vendor].partner_gated is True
+    assert OAUTH_PROVIDER_REGISTRY["gusto"].partner_gated is False
+
+
+def test_gusto_is_generic_oauth_vendor():
+    assert "gusto" in GENERIC_OAUTH_VENDORS
+    assert normalize_generic_vendor("gusto") == "gusto"
 
 
 def test_generic_redirect_uri_uses_public_app_url():
