@@ -139,6 +139,10 @@ async def test_omit_name_lists_create_empty_args_enriched_before_validate():
         service,
         "_evaluate_risk",
         new=AsyncMock(return_value={"requires_approval": True}),
+    ), patch.object(
+        service,
+        "_user_can_approve_writes",
+        return_value=True,
     ):
         result = await service.process_turn(
             org_id="org-1",

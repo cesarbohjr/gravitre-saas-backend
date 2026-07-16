@@ -284,6 +284,10 @@ async def test_write_action_requires_approval_before_execute():
     ), patch(
         "app.services.connector_action_workflows.resolve_assignee_disambiguation",
         AsyncMock(return_value=None),
+    ), patch.object(
+        service,
+        "_user_can_approve_writes",
+        return_value=True,
     ), patch.object(service, "execute_plan", AsyncMock()) as mock_execute:
         result = await service.process_turn(
             org_id="org-1",
@@ -298,7 +302,7 @@ async def test_write_action_requires_approval_before_execute():
 
     assert result is not None
     assert result["dialogue_mode"] == "confirm"
-    assert "Reply" in result["message"] and "yes" in result["message"].lower()
+    assert "approve" in result["message"].lower()
     mock_execute.assert_not_called()
 
 
