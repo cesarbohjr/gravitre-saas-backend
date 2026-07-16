@@ -1,0 +1,19 @@
+{
+  "ticket": "STA-321",
+  "at": "2026-07-16T07:49:23.360724+00:00",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "api_base": "https://api.gravitre.app",
+  "installs_http": 200,
+  "agents_http": 200,
+  "active_install_count": 0,
+  "agent_count": 14,
+  "installed_agent_ids": [],
+  "resolved_agent_id": "dd1db2d7-e34f-5213-92b0-4d7e4edc8dac",
+  "resolved_agent_name": "Recruiting Talent Analyst",
+  "resolved_pack_backed": true,
+  "assignment_http": 202,
+  "assignment_id": "8c0de40b-09cf-4176-a25c-0dd9f9e72e32",
+  "assignment_status": "queued",
+  "pass": true,
+  "notes": "UI skips Assignments choose-agent when resolveDefaultAgentId succeeds; this smoke proves the same resolve + assignment create path on prod."
+}

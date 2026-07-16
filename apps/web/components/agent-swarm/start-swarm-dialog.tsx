@@ -1,9 +1,9 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import useSWR from "swr"
 import { toast } from "sonner"
-import { Loader2, Network, Plus, Trash2 } from "lucide-react"
+import { ChevronDown, ChevronRight, Loader2, Network, Plus, Trash2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -23,8 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { agentSwarmApi, agentsApi } from "@/lib/api"
+import { agentSwarmApi, agentsApi, marketplaceApi } from "@/lib/api"
 import { ensureSelectedOrg } from "@/lib/org-context"
+import {
+  collectInstalledAgentIds,
+  resolveSwarmAgentDefaults,
+} from "@/lib/resolve-default-agent"
 import type { AgentSwarmDecisionMethod } from "@/types/api"
 
 type SubtaskDraft = { agentId: string; task: string }
@@ -52,13 +56,40 @@ export function StartSwarmDialog({
   const [decisionMethod, setDecisionMethod] = useState<AgentSwarmDecisionMethod>("majority_vote")
   const [subtasks, setSubtasks] = useState<SubtaskDraft[]>([{ ...EMPTY_SUBTASK }])
   const [submitting, setSubmitting] = useState(false)
+  const [showAdvancedAgents, setShowAdvancedAgents] = useState(false)
+  const [agentsAutoResolved, setAgentsAutoResolved] = useState(false)
+  const autoResolvedRef = useRef(false)
 
   const { data: agentsData, isLoading: loadingAgents } = useSWR(
     open ? "agent-swarm/start/agents" : null,
     () => agentsApi.list(),
   )
+  const { data: installsData } = useSWR(
+    open ? "agent-swarm/start/installs" : null,
+    () => marketplaceApi.listInstalls({ status: "active", limit: 100 }),
+  )
 
   const agents = useMemo(() => agentsData?.agents ?? [], [agentsData])
+  const installedAgentIds = useMemo(
+    () => collectInstalledAgentIds(installsData?.installs ?? []),
+    [installsData?.installs],
+  )
+
+  useEffect(() => {
+    if (!open || autoResolvedRef.current || loadingAgents || agents.length === 0) return
+    const defaults = resolveSwarmAgentDefaults({ agents, installedAgentIds })
+    if (!defaults) return
+    autoResolvedRef.current = true
+    setParentAgentId(defaults.parentAgentId)
+    setSubtasks(
+      defaults.subtaskAgentIds.map((agentId) => ({
+        agentId,
+        task: "",
+      })),
+    )
+    setAgentsAutoResolved(true)
+    setShowAdvancedAgents(false)
+  }, [open, loadingAgents, agents, installedAgentIds])
 
   function reset() {
     setParentAgentId("")
@@ -66,6 +97,9 @@ export function StartSwarmDialog({
     setDecisionMethod("majority_vote")
     setSubtasks([{ ...EMPTY_SUBTASK }])
     setSubmitting(false)
+    setShowAdvancedAgents(false)
+    setAgentsAutoResolved(false)
+    autoResolvedRef.current = false
   }
 
   function handleOpenChange(next: boolean) {
@@ -87,6 +121,7 @@ export function StartSwarmDialog({
   function addSubtask() {
     if (subtasks.length >= 10) return
     setSubtasks((prev) => [...prev, { ...EMPTY_SUBTASK }])
+    setShowAdvancedAgents(true)
   }
 
   function removeSubtask(index: number) {
@@ -117,6 +152,11 @@ export function StartSwarmDialog({
     }
   }
 
+  const parentAgent = agents.find((agent) => agent.id === parentAgentId)
+  const workerNames = subtasks
+    .map((s) => agents.find((agent) => agent.id === s.agentId)?.name)
+    .filter(Boolean)
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -131,21 +171,17 @@ export function StartSwarmDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label htmlFor="swarm-parent">Parent agent</Label>
-            <Select value={parentAgentId} onValueChange={setParentAgentId} disabled={loadingAgents}>
-              <SelectTrigger id="swarm-parent">
-                <SelectValue placeholder={loadingAgents ? "Loading agents…" : "Select coordinator agent"} />
-              </SelectTrigger>
-              <SelectContent>
-                {agents.map((agent) => (
-                  <SelectItem key={agent.id} value={agent.id}>
-                    {agent.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {agentsAutoResolved && parentAgent ? (
+            <div className="rounded-lg border border-border bg-secondary/40 px-3 py-2.5 text-sm">
+              <p className="font-medium text-foreground">
+                Auto-selected from your packs · {parentAgent.name}
+                {workerNames.length > 0 ? ` + ${workerNames.length} worker${workerNames.length === 1 ? "" : "s"}` : ""}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Add subtask prompts below. Change agents only if you need a different roster.
+              </p>
+            </div>
+          ) : null}
 
           <div className="space-y-2">
             <Label htmlFor="swarm-objective">Objective</Label>
@@ -155,6 +191,7 @@ export function StartSwarmDialog({
               onChange={(e) => setObjective(e.target.value)}
               placeholder="What should this multi-agent run accomplish?"
               rows={3}
+              autoFocus
             />
           </div>
 
@@ -202,22 +239,31 @@ export function StartSwarmDialog({
                     </Button>
                   )}
                 </div>
-                <Select
-                  value={subtask.agentId}
-                  onValueChange={(v) => updateSubtask(index, { agentId: v })}
-                  disabled={loadingAgents}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Assign agent" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {agents.map((agent) => (
-                      <SelectItem key={agent.id} value={agent.id}>
-                        {agent.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {showAdvancedAgents || !agentsAutoResolved ? (
+                  <Select
+                    value={subtask.agentId}
+                    onValueChange={(v) => {
+                      updateSubtask(index, { agentId: v })
+                      setAgentsAutoResolved(false)
+                    }}
+                    disabled={loadingAgents}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Assign agent" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {agents.map((agent) => (
+                        <SelectItem key={agent.id} value={agent.id}>
+                          {agent.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Agent: {agents.find((a) => a.id === subtask.agentId)?.name || "Auto-selected"}
+                  </p>
+                )}
                 <Input
                   value={subtask.task}
                   onChange={(e) => updateSubtask(index, { task: e.target.value })}
@@ -225,6 +271,50 @@ export function StartSwarmDialog({
                 />
               </div>
             ))}
+          </div>
+
+          <div className="rounded-lg border border-border">
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-muted-foreground hover:bg-secondary/40"
+              onClick={() => setShowAdvancedAgents((v) => !v)}
+            >
+              {showAdvancedAgents ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+              Advanced: choose agents
+            </button>
+            {showAdvancedAgents ? (
+              <div className="space-y-3 border-t border-border px-3 py-3">
+                <div className="space-y-2">
+                  <Label htmlFor="swarm-parent">Parent agent</Label>
+                  <Select
+                    value={parentAgentId}
+                    onValueChange={(v) => {
+                      setParentAgentId(v)
+                      setAgentsAutoResolved(false)
+                    }}
+                    disabled={loadingAgents}
+                  >
+                    <SelectTrigger id="swarm-parent">
+                      <SelectValue placeholder={loadingAgents ? "Loading agents…" : "Select coordinator agent"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {agents.map((agent) => (
+                        <SelectItem key={agent.id} value={agent.id}>
+                          {agent.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Subtask agent dropdowns are shown above when advanced is open.
+                </p>
+              </div>
+            ) : null}
           </div>
         </div>
 
