@@ -55,10 +55,7 @@ VERIFIED_OUTPUT_BATCH_02: frozenset[str] = frozenset(
         "freshdesk.tickets.create",
         "freshdesk.tickets.update",
         "github.issues.comment",
-        "github.issues.update",
-        "github.pulls.create",
         "github.pulls.request_reviewer",
-        "github.actions.runs.list",
         "gmail.drafts.create",
         "gmail.labels.create",
         "google_analytics.audiences.create",
@@ -224,6 +221,9 @@ VERIFIED_OUTPUT_BATCH_08: frozenset[str] = frozenset(
         "hubspot.companies.create",
         "hubspot.owners.list",
         "hubspot.tickets.get",
+        "github.actions.runs.list",
+        "github.issues.update",
+        "github.pulls.create",
         "slack.conversations.join",
     }
 )
