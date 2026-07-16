@@ -23,13 +23,12 @@ This PR aligns `app-hsmeta.json` + optional OAuth scopes for Batch 1b; live comp
 
 | Check | Result |
 |-------|--------|
-| Repo hsmeta scopes (valid names) | Yes — `companies.read` + `tickets` required; `companies.write` + `owners.read` optional |
-| Scope fix at upload | Replaced invalid `crm.objects.tickets.write` / `crm.objects.tickets.read` / `crm.objects.notes.write` (2026 platform rejects those; tickets = single `tickets` scope; notes via contacts.write) |
-| `hs project upload` | **Build #7** SUCCESS (2026-07-16) |
-| Deployed build on HubSpot | **#7** (auto-deploy + `hs project deploy --deploy-latest-build`) — was #5 from 2026-06-23 |
-| Live smoke after reconnect | **Not yet** — existing smoke connector still authorized under old scope set |
+| Scope fix | Invalid `crm.objects.tickets.*` / `notes.write` → `tickets` + companies/owners |
+| Build #7 | `tickets` as **required** → reconnect failed (“missing [tickets]”) because prod OAuth still sends `crm.objects.tickets.write` |
+| Build #8 **deployed** | `tickets` moved to **optional** so reconnect works with current prod tip; companies.write / owners.read optional |
+| Backend | PR #144 — authorize URL must request `tickets` (not `crm.objects.tickets.write`) |
 
-**Your step:** disconnect/reconnect HubSpot on smoke org `cbbf993b-…` in Gravitre Connectors (fresh OAuth consent). Then say go and Batch 1b tip (`companies.create` / `owners.list` / `tickets.get`) can run.
+**Your step:** retry HubSpot connect on smoke org now (build #8). Then say go for Batch 1b tip.
 
 ## Evidence
 
