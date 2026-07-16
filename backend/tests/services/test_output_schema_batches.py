@@ -55,7 +55,7 @@ def test_verified_batches_are_size_at_most_25_and_cover_cleared_set():
 
 
 def test_advanced_batches_are_size_at_most_25_and_cover_cleared_set():
-    assert len(VERIFIED_ADVANCED_OUTPUT_BATCHES) == 6
+    assert len(VERIFIED_ADVANCED_OUTPUT_BATCHES) == 7
     for index, batch in enumerate(VERIFIED_ADVANCED_OUTPUT_BATCHES, start=8):
         assert 1 <= len(batch) <= 25, f"advanced batch {index} size={len(batch)}"
         assert batch <= CLEARED_ADVANCED_OUTPUT_SCHEMA_ACTIONS
