@@ -25,6 +25,8 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     "pending_task": None,
     "connector_session": {},
     "resolved_entities": {},
+    # Recent user turns for multi-turn param fill (Slack channel → body, etc.).
+    "recent_user_messages": [],
 }
 
 
@@ -116,6 +118,9 @@ class ConversationStateService:
                         **(merged.get("resolved_entities") or {}),
                         **value,
                     }
+                elif key == "recent_user_messages" and isinstance(value, list):
+                    existing = list(merged.get("recent_user_messages") or [])
+                    merged["recent_user_messages"] = (existing + list(value))[-12:]
                 else:
                     merged[key] = value
             self._client(client).table("conversations").update(

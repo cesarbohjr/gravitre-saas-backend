@@ -2258,11 +2258,12 @@ class AgentIntelligence:
             yield sse_text_end(text_id)
         elif text_id is not None:
             if full_content.strip() and full_content.strip() != streamed_content.strip():
-                suffix = full_content[len(streamed_content) :] if full_content.startswith(streamed_content) else (
-                    f"\n\n(Revised after verification)\n{full_content}"
-                )
-                if suffix.strip():
-                    yield sse_text_delta(text_id, suffix)
+                if full_content.startswith(streamed_content):
+                    suffix = full_content[len(streamed_content) :]
+                    if suffix.strip():
+                        yield sse_text_delta(text_id, suffix)
+                # Wholesale rewrite after streaming: do not append the full answer again
+                # (that duplicated paragraphs mid-bubble). Keep what was already streamed.
             yield sse_text_end(text_id)
 
         yield sse_intelligence_metadata(

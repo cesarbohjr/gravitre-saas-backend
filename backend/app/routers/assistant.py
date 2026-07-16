@@ -1269,7 +1269,28 @@ async def execute_conversation_task(
     user_id = str(current_user.get("user_id") or "")
     state_service = get_conversation_state_service(settings)
     task_state = await state_service.get_task_state(conversation_id, org_id, client=client)
-    pending_type = str((task_state.get("pending_task") or {}).get("type") or "")
+    pending = task_state.get("pending_task") if isinstance(task_state.get("pending_task"), dict) else {}
+    pending_type = str(pending.get("type") or "")
+    pending_status = str(pending.get("status") or "")
+    # Connector writes: only org admins/owners may confirm from chat.
+    if pending_type in {"connector_action", "connector_orchestration"} and pending_status in {
+        "awaiting_confirm",
+        "awaiting_admin_approval",
+        "awaiting_plan_confirm",
+        "awaiting_step_confirm",
+    }:
+        from app.auth.platform_admin import is_org_admin_role
+        from app.workflows.policy import PolicyResolutionError, get_user_role
+
+        try:
+            role = get_user_role(client, org_id, user_id)
+        except PolicyResolutionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        if not is_org_admin_role(role):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your request will be sent for approval.",
+            )
     if pending_type == "connector_orchestration":
         execution = await get_chat_orchestration_service(settings).execute_confirmed_task(
             org_id=org_id,

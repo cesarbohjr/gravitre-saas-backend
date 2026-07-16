@@ -273,7 +273,7 @@ export function ConversationSidebar({
 
       <aside
         className={cn(
-          "fixed md:static inset-y-0 left-0 z-50 w-72 flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-300",
+          "fixed md:static inset-y-0 left-0 z-50 flex h-full w-72 min-h-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-300",
           isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0 md:w-0 md:border-0 md:overflow-hidden",
         )}
       >
@@ -467,7 +467,7 @@ export function ConversationSidebar({
         )}
 
         {/* List */}
-        <ScrollArea className="flex-1">
+        <ScrollArea className="min-h-0 flex-1 overflow-hidden">
           {isLoading ? (
             <ConversationListSkeleton />
           ) : loadError ? (

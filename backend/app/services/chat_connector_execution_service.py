@@ -570,6 +570,31 @@ class ChatConnectorExecutionService:
         pending = task_state.get("pending_task") or {}
         if isinstance(pending, dict) and pending.get("type") == "connector_action":
             params = dict(pending.get("params") or task_state.get("clarified_params") or {})
+            clarified = task_state.get("clarified_params") if isinstance(task_state.get("clarified_params"), dict) else {}
+            # Multi-turn Slack: channel staged as awaiting_params — this message is the body.
+            if str(pending.get("status") or "") == "awaiting_params":
+                channel = (
+                    params.get("channel")
+                    or (params.get("args") or {}).get("channel")
+                    or clarified.get("slack_channel")
+                )
+                body = self._followup_message_body(message)
+                if channel and body:
+                    args = dict(params.get("args") or {})
+                    args["channel"] = str(channel).lstrip("#")
+                    args["message"] = body
+                    args.setdefault("text", body)
+                    params = {
+                        **params,
+                        "channel": args["channel"],
+                        "message": body,
+                        "args": args,
+                        "tool_name": params.get("tool_name") or "slack_send_message",
+                        "invoke_action": params.get("invoke_action") or "slack.post_message",
+                        "integration": params.get("integration") or "slack",
+                        "kind": params.get("kind") or "write",
+                        "label": params.get("label") or "Send Slack message",
+                    }
             tool_name = str(params.get("tool_name") or "")
             spec = self._registry.get_spec(tool_name)
             if not spec:
@@ -960,8 +985,17 @@ class ChatConnectorExecutionService:
         confirmed = CONFIRM_PATTERN.match(message.strip()) or (
             awaiting and message.strip().lower() in {"confirm", "run", "execute"}
         )
+        user_can_approve = self._user_can_approve_writes(client, org_id, user_id)
 
         if confirmed and plan.requires_approval:
+            if not user_can_approve:
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": "awaiting_approval",
+                    "message": "Your request will be sent for approval.",
+                    "task_state": task_state,
+                    "pending_task": (task_state or {}).get("pending_task"),
+                }
             execution = await self.execute_plan(
                 org_id=org_id,
                 user_id=user_id,
@@ -987,6 +1021,8 @@ class ChatConnectorExecutionService:
             refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
             return self._turn_from_execution(execution, refreshed, plan)
 
+        pending_status = "awaiting_confirm" if user_can_approve else "awaiting_admin_approval"
+        pending_params = {**pending_params, "status": pending_status}
         await self._state.update_task_state(
             conversation_id,
             org_id,
@@ -994,19 +1030,44 @@ class ChatConnectorExecutionService:
                 "clarified_params": pending_params,
                 "pending_task": {
                     "type": "connector_action",
-                    "status": "awaiting_confirm",
+                    "status": pending_status,
                     "params": pending_params,
                 },
+                "recent_user_messages": [message],
                 **self._session_updates_for_pending(task_state, plan),
             },
         )
         refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
+        if user_can_approve:
+            approval_message = format_write_approval_message(plan)
+            # Prefer in-chat Approve button over "reply yes" for admins.
+            approval_message = approval_message.replace(
+                "Reply **yes** to proceed, or tell me what to change.",
+                "Approve below to proceed, or tell me what to change.",
+            ).replace(
+                "Reply **yes** to create it, or tell me what to change "
+                "(name, modality, or follow-up criteria to populate it).",
+                "Approve below to create it, or tell me what to change "
+                "(name, modality, or follow-up criteria to populate it).",
+            )
+            dialogue_mode = "confirm"
+        else:
+            approval_message = (
+                f"I've prepared **{plan.label or plan.invoke_action}** in "
+                f"{(plan.integration or 'the connected app').replace('_', ' ').title()}. "
+                "Your request will be sent for approval."
+            )
+            dialogue_mode = "awaiting_approval"
         return {
             "stop_pipeline": True,
-            "dialogue_mode": "confirm",
-            "message": format_write_approval_message(plan),
+            "dialogue_mode": dialogue_mode,
+            "message": approval_message,
             "task_state": refreshed,
-            "pending_task": {"type": "connector_action", "params": pending_params},
+            "pending_task": {
+                "type": "connector_action",
+                "status": pending_status,
+                "params": pending_params,
+            },
         }
 
     async def execute_confirmed_task(
@@ -1446,6 +1507,44 @@ class ChatConnectorExecutionService:
         except (TypeError, ValueError):
             return None
         return None
+
+    @staticmethod
+    def _user_can_approve_writes(client: Any, org_id: str, user_id: str) -> bool:
+        from app.auth.platform_admin import is_org_admin_role
+        from app.workflows.policy import PolicyResolutionError, get_user_role
+
+        try:
+            role = get_user_role(client, org_id, user_id)
+        except PolicyResolutionError:
+            return False
+        except Exception:  # noqa: BLE001
+            return False
+        return is_org_admin_role(role)
+
+    @staticmethod
+    def _followup_message_body(message: str) -> str | None:
+        """Treat a short follow-up as Slack message body (strip sure/ok/yes lead-ins)."""
+        text = (message or "").strip()
+        if not text:
+            return None
+        cleaned = re.sub(
+            r"^(?:sure|ok|okay|yes|yep|yeah|please)[,!.]?\s+",
+            "",
+            text,
+            flags=re.I,
+        ).strip()
+        cleaned = re.sub(
+            r"^(?:say|post|send|write)\s+",
+            "",
+            cleaned,
+            flags=re.I,
+        ).strip(" \"'")
+        if not cleaned or len(cleaned) < 2:
+            return None
+        # Avoid treating a new connector ask as a body.
+        if CONNECTOR_MENTION.search(cleaned) and ACTION_VERB.search(cleaned):
+            return None
+        return cleaned[:3000]
 
     @staticmethod
     def _search_query(message: str) -> str | None:

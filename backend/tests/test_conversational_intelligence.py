@@ -149,6 +149,62 @@ async def test_slack_send_with_body_and_channel_does_not_over_clarify(clarificat
 
 
 @pytest.mark.asyncio
+async def test_slack_send_persists_channel_when_asking_for_body(clarification_engine):
+    clarification_engine._polish_question = AsyncMock(return_value=None)
+    persist = AsyncMock()
+    clarification_engine._state.update_task_state = persist
+    clarification_engine._state.get_task_state = AsyncMock(
+        return_value={"clarified_params": {}, "pending_task": None}
+    )
+    result = await clarification_engine.should_clarify(
+        {
+            "request": "send a message in slack general channel",
+            "classification_confidence": 0.85,
+            "requires_action": True,
+            "intent": "workflow_execution",
+        },
+        {"connected_integrations": ["slack"]},
+        [],
+        conversation_id="conv-1",
+        org_id="org-1",
+    )
+    assert result["should_clarify"] is True
+    persist.assert_awaited()
+    updates = persist.await_args.args[2]
+    assert updates["clarified_params"]["slack_channel"] == "general"
+    assert updates["pending_task"]["status"] == "awaiting_params"
+
+
+@pytest.mark.asyncio
+async def test_slack_followup_body_skips_reclarify(clarification_engine):
+    clarification_engine._polish_question = AsyncMock(return_value=None)
+    clarification_engine._state.get_task_state = AsyncMock(
+        return_value={
+            "clarified_params": {"slack_channel": "general", "intent": "slack_send"},
+            "pending_task": {
+                "type": "connector_action",
+                "status": "awaiting_params",
+                "params": {"integration": "slack", "channel": "general"},
+            },
+        }
+    )
+    result = await clarification_engine.should_clarify(
+        {
+            "request": "Sure, say hi everyone at Gravitre",
+            "classification_confidence": 0.5,
+            "requires_action": False,
+            "intent": "question",
+        },
+        {"connected_integrations": ["slack"]},
+        [],
+        conversation_id="conv-1",
+        org_id="org-1",
+    )
+    assert result["should_clarify"] is False
+    assert "Resuming Slack" in (result.get("reason") or "")
+
+
+@pytest.mark.asyncio
 async def test_generic_action_clarify_humanizes_intent(clarification_engine):
     clarification_engine._polish_question = AsyncMock(return_value=None)
     result = await clarification_engine.should_clarify(

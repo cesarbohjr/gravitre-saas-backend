@@ -51,6 +51,8 @@ type ChatExecutionPanelProps = {
   pendingTask?: ChatPendingTask | null
   confirming?: boolean
   onConfirm?: () => void
+  /** Admin/owner (or policy approver) — show Approve button; others see queued copy. */
+  canApprove?: boolean
   className?: string
 }
 
@@ -175,6 +177,7 @@ export function ChatExecutionPanel({
   pendingTask,
   confirming = false,
   onConfirm,
+  canApprove = false,
   className,
 }: ChatExecutionPanelProps) {
   if (executionResult && executionResult.success === false) {
@@ -284,10 +287,17 @@ export function ChatExecutionPanel({
     )
   }
 
-  if (dialogueMode === "confirm" && pendingTask?.type && onConfirm) {
+  if (
+    (dialogueMode === "confirm" || dialogueMode === "awaiting_approval") &&
+    pendingTask?.type
+  ) {
     const isConnector = pendingTask.type === "connector_action"
     const isOrchestration = pendingTask.type === "connector_orchestration"
     const needsApproval = isConnector || isOrchestration
+    const queuedForApprover =
+      !canApprove ||
+      dialogueMode === "awaiting_approval" ||
+      pendingTask.status === "awaiting_admin_approval"
     return (
       <div
         className={cn(
@@ -307,13 +317,15 @@ export function ChatExecutionPanel({
                 needsApproval ? "text-amber-700 dark:text-amber-400" : "text-info",
               )}
             >
-              {isOrchestration
-                ? pendingTask.status === "awaiting_step_confirm"
-                  ? "Step approval required"
-                  : "Orchestration plan"
-                : isConnector
-                  ? "Approval required"
-                  : "Ready to execute"}
+              {queuedForApprover
+                ? "Pending approval"
+                : isOrchestration
+                  ? pendingTask.status === "awaiting_step_confirm"
+                    ? "Step approval required"
+                    : "Orchestration plan"
+                  : isConnector
+                    ? "Approval required"
+                    : "Ready to execute"}
             </p>
             {(isConnector || pendingTask.status === "awaiting_step_confirm") && (
               <p className="mt-1 text-sm font-medium text-foreground">{pendingLabel(pendingTask)}</p>
@@ -330,21 +342,27 @@ export function ChatExecutionPanel({
             {isOrchestration && pendingTask.status === "awaiting_plan_confirm" ? (
               <OrchestrationStepList steps={pendingTask.params?.steps ?? []} />
             ) : null}
-            <Button
-              size="sm"
-              className="mt-3 h-8"
-              disabled={confirming}
-              onClick={onConfirm}
-            >
-              {confirming ? (
-                <>
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                  {confirmButtonLabel(pendingTask, true)}
-                </>
-              ) : (
-                confirmButtonLabel(pendingTask, false)
-              )}
-            </Button>
+            {queuedForApprover ? (
+              <p className="mt-3 text-sm text-foreground">
+                Your request will be sent for approval.
+              </p>
+            ) : onConfirm ? (
+              <Button
+                size="sm"
+                className="mt-3 h-8"
+                disabled={confirming}
+                onClick={onConfirm}
+              >
+                {confirming ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    {confirmButtonLabel(pendingTask, true)}
+                  </>
+                ) : (
+                  confirmButtonLabel(pendingTask, false)
+                )}
+              </Button>
+            ) : null}
           </div>
         </div>
       </div>

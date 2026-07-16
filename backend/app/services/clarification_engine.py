@@ -109,9 +109,20 @@ class ClarificationEngine:
         )
         request = str(classification.get("request") or "")
         clarified: dict[str, Any] = {}
+        pending: dict[str, Any] = {}
         if conversation_id and org_id:
-            state = await self.load_clarification_state(conversation_id, org_id)
+            state = await self._state.get_task_state(conversation_id, org_id)
             clarified = state.get("clarified_params") or {}
+            pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
+
+        # Multi-turn Slack: channel already staged — treat this turn as the message body.
+        if self._is_slack_awaiting_body(pending, clarified):
+            return {
+                "should_clarify": False,
+                "trigger_type": None,
+                "question": None,
+                "reason": "Resuming Slack send with previously clarified channel.",
+            }
 
         rule_result = self._rule_based_trigger(
             classification,
@@ -119,6 +130,7 @@ class ClarificationEngine:
             understanding or {},
             clarified,
             confidence,
+            pending=pending,
         )
         if rule_result:
             question = await self.generate_clarification_question(
@@ -128,6 +140,15 @@ class ClarificationEngine:
                 conversation_history or [],
                 rule_result.get("template_vars") or {},
             )
+            if conversation_id and org_id and rule_result.get("persist_updates"):
+                try:
+                    await self._state.update_task_state(
+                        conversation_id,
+                        org_id,
+                        rule_result["persist_updates"],
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("clarification persist failed: %s", exc)
             return {
                 "should_clarify": True,
                 "trigger_type": rule_result["trigger_type"],
@@ -161,6 +182,17 @@ class ClarificationEngine:
             "reason": "Sufficient context and confidence.",
         }
 
+    @staticmethod
+    def _is_slack_awaiting_body(pending: dict[str, Any], clarified: dict[str, Any]) -> bool:
+        if str(pending.get("status") or "") != "awaiting_params":
+            return False
+        params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
+        if str(params.get("integration") or "").lower() == "slack":
+            return bool(params.get("channel") or clarified.get("slack_channel"))
+        return str(clarified.get("intent") or "") == "slack_send" and bool(
+            clarified.get("slack_channel")
+        )
+
     def _rule_based_trigger(
         self,
         classification: dict[str, Any],
@@ -168,9 +200,12 @@ class ClarificationEngine:
         understanding: dict[str, Any],
         clarified: dict[str, Any],
         confidence: float,
+        *,
+        pending: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         request = str(classification.get("request") or "")
         lowered = request.lower()
+        pending = pending or {}
 
         if understanding.get("conversational_create") or self.AGENT_CREATE_PATTERN.search(request):
             if not clarified.get("agent_name") and not clarified.get("agent_purpose"):
@@ -238,6 +273,10 @@ class ClarificationEngine:
             if slack_trigger is not None:
                 return slack_trigger
             # Channel + body present (or already clarified) — let mapper/execution proceed.
+            return None
+
+        # Follow-up body for a staged Slack send should not hit generic "missing target".
+        if self._is_slack_awaiting_body(pending, clarified):
             return None
 
         if classification.get("requires_action") and self.ACTION_VERBS.search(request):
@@ -334,13 +373,17 @@ class ClarificationEngine:
     ) -> dict[str, Any] | None:
         if clarified.get("slack_message") or clarified.get("action_target"):
             return None
-        channel = self._slack_channel_label(request)
+        channel = self._slack_channel_label(request) or clarified.get("slack_channel")
+        if isinstance(channel, str):
+            channel = channel.lstrip("#").strip() or None
+        else:
+            channel = None
         body = self._slack_message_body(request)
         if body and channel:
             return None
         if not body:
             where = f"#{channel}" if channel else "Slack"
-            return {
+            result: dict[str, Any] = {
                 "trigger_type": "missing_required_param",
                 "reason": "Slack send missing message body.",
                 "template_vars": {
@@ -348,6 +391,29 @@ class ClarificationEngine:
                     "missing_param": "what the message should say",
                 },
             }
+            # Persist channel so the next turn ("sure, say hi…") can resume.
+            if channel:
+                result["persist_updates"] = {
+                    "clarified_params": {
+                        "slack_channel": channel,
+                        "intent": "slack_send",
+                    },
+                    "pending_task": {
+                        "type": "connector_action",
+                        "status": "awaiting_params",
+                        "params": {
+                            "tool_name": "slack_send_message",
+                            "invoke_action": "slack.post_message",
+                            "integration": "slack",
+                            "kind": "write",
+                            "label": "Send Slack message",
+                            "channel": channel,
+                            "args": {"channel": channel},
+                        },
+                    },
+                    "recent_user_messages": [request],
+                }
+            return result
         # Body present but no channel cue.
         return {
             "trigger_type": "missing_required_param",

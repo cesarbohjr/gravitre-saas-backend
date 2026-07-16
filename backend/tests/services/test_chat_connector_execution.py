@@ -83,6 +83,10 @@ async def test_write_action_returns_confirm(connector_service):
         connector_service,
         "_verify_plan_executable",
         return_value=None,
+    ), patch.object(
+        connector_service,
+        "_user_can_approve_writes",
+        return_value=True,
     ):
         result = await connector_service.process_turn(
             org_id="org-1",
@@ -97,8 +101,77 @@ async def test_write_action_returns_confirm(connector_service):
 
     assert result is not None
     assert result["dialogue_mode"] == "confirm"
-    assert "Reply" in result["message"] and "yes" in result["message"].lower()
+    assert "approve" in result["message"].lower()
     assert result["pending_task"]["type"] == "connector_action"
+
+
+@pytest.mark.asyncio
+async def test_write_action_queues_for_non_approver(connector_service):
+    with patch.object(
+        connector_service,
+        "plan_action",
+        return_value=ConnectorActionPlan(
+            tool_name="slack_send_message",
+            invoke_action="slack.post_message",
+            integration="slack",
+            kind="write",
+            label="Post to Slack #sales",
+            args={"channel": "sales", "message": "Hello"},
+            requires_approval=True,
+        ),
+    ), patch.object(
+        connector_service,
+        "_evaluate_risk",
+        AsyncMock(return_value={"requires_approval": True, "approval_reason": "Write action"}),
+    ), patch.object(
+        connector_service,
+        "_verify_plan_executable",
+        return_value=None,
+    ), patch.object(
+        connector_service,
+        "_user_can_approve_writes",
+        return_value=False,
+    ):
+        result = await connector_service.process_turn(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            message='Post "Hello" to #sales in Slack',
+            classification={"intent": "workflow_execution", "risk_level": "medium"},
+            task_state={},
+            connected_integrations=["slack"],
+            client=MagicMock(),
+        )
+
+    assert result is not None
+    assert result["dialogue_mode"] == "awaiting_approval"
+    assert "sent for approval" in result["message"].lower()
+    assert result["pending_task"]["status"] == "awaiting_admin_approval"
+
+
+def test_plan_slack_followup_uses_staged_channel(connector_service):
+    plan = connector_service.plan_action(
+        "Sure, say hi everyone at Gravitre",
+        connected_integrations=["slack"],
+        task_state={
+            "clarified_params": {"slack_channel": "general", "intent": "slack_send"},
+            "pending_task": {
+                "type": "connector_action",
+                "status": "awaiting_params",
+                "params": {
+                    "tool_name": "slack_send_message",
+                    "invoke_action": "slack.post_message",
+                    "integration": "slack",
+                    "kind": "write",
+                    "channel": "general",
+                    "args": {"channel": "general"},
+                },
+            },
+        },
+    )
+    assert plan is not None
+    assert plan.args["channel"].lower() == "general"
+    assert "hi everyone" in plan.args["message"].lower()
 
 
 @pytest.mark.asyncio
@@ -197,6 +270,10 @@ async def test_confirmation_executes_write_action(connector_service):
         connector_service,
         "execute_plan",
         mock_execute := AsyncMock(return_value=mock_execution),
+    ), patch.object(
+        connector_service,
+        "_user_can_approve_writes",
+        return_value=True,
     ):
         result = await connector_service.process_turn(
             org_id="org-1",
@@ -280,6 +357,10 @@ async def test_apollo_list_create_plans_action(connector_service):
         connector_service,
         "_evaluate_risk",
         AsyncMock(return_value={"requires_approval": True}),
+    ), patch.object(
+        connector_service,
+        "_user_can_approve_writes",
+        return_value=True,
     ), patch(
         "app.services.connector_action_workflows.resolve_assignee_disambiguation",
         AsyncMock(return_value=None),
@@ -297,7 +378,7 @@ async def test_apollo_list_create_plans_action(connector_service):
 
     assert result is not None
     assert result["dialogue_mode"] == "confirm"
-    assert "MSP Prospects" in result["message"] or "Approve?" in result["message"]
+    assert "MSP Prospects" in result["message"] or "Approve" in result["message"]
 
 
 @pytest.mark.asyncio

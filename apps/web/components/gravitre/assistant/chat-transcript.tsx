@@ -73,6 +73,7 @@ type ChatTranscriptProps = {
   pendingTask?: ChatPendingTask | null
   confirmExecuting?: boolean
   onConfirmExecution?: () => void
+  canApprove?: boolean
 }
 
 export function ChatTranscript({
@@ -85,6 +86,7 @@ export function ChatTranscript({
   pendingTask,
   confirmExecuting = false,
   onConfirmExecution,
+  canApprove = false,
 }: ChatTranscriptProps) {
   const lastAssistantId = [...messages].reverse().find((row) => row.role === "assistant")?.id
 
@@ -145,6 +147,7 @@ export function ChatTranscript({
                           pendingTask={pendingTask}
                           confirming={confirmExecuting}
                           onConfirm={onConfirmExecution}
+                          canApprove={canApprove}
                         />
                         <ExplainabilityPanel
                           explanation={explainability}

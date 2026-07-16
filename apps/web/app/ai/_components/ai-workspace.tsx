@@ -22,7 +22,7 @@ import {
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { useAuth, getAccessToken } from "@/lib/auth-context"
-import { ensureSelectedOrg, buildChatOrgPayload } from "@/lib/org-context"
+import { ensureSelectedOrg, buildChatOrgPayload, getSelectedOrgFromStorage } from "@/lib/org-context"
 import { getEnvironmentHeader } from "@/lib/environment-context"
 import {
   DEPARTMENT_OPTIONS,
@@ -43,7 +43,7 @@ import {
   splitConversationMessages,
   type PersistedInlineTurn,
 } from "@/lib/ai-inline-turn-persistence"
-import { conversationsApi, searchApi, assistantApi } from "@/lib/api"
+import { conversationsApi, searchApi, assistantApi, authApi } from "@/lib/api"
 import {
   deriveConversationTitle,
   shouldRefreshConversationTitle,
@@ -96,7 +96,6 @@ import {
   writeStoredConversationId,
 } from "@/lib/ai-conversation-storage"
 import type { AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief-panel"
-import { PlanProgressIndicator } from "@/components/gravitre/assistant/plan-progress-indicator"
 import type { BusinessSignal } from "@/components/gravitre/assistant/business-signals-banner"
 import {
   DEFAULT_RESULT_BLOCK_ORDER,
@@ -146,6 +145,24 @@ export function AiWorkspace({
   initialConversationId = null,
 }: AiWorkspaceProps) {
   const { user } = useAuth()
+  const { data: authMe } = useSWR(user ? "auth-me-chat-approver" : null, () => authApi.me())
+  const canApproveWrites = (() => {
+    const selectedId = getSelectedOrgFromStorage()?.id
+    const orgs = (authMe as { organizations?: Array<{ id?: string; role?: string }> } | undefined)
+      ?.organizations
+    const matched = selectedId
+      ? orgs?.find((org) => org.id === selectedId)?.role
+      : undefined
+    const role = (
+      matched ||
+      (authMe as { role?: string } | undefined)?.role ||
+      authMe?.user?.role ||
+      ""
+    )
+      .toString()
+      .toLowerCase()
+    return role === "admin" || role === "owner"
+  })()
   const { preferredPersona, preferredPersonaRef, handlePersonaChange } = usePreferredPersona({
     enabled: Boolean(user),
   })
@@ -523,7 +540,13 @@ export function AiWorkspace({
   }, [])
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    // Keep auto-scroll inside the chat canvas so the history sidebar is not yanked.
+    const canvas = document.querySelector(".ai-chat-canvas") as HTMLElement | null
+    if (canvas) {
+      canvas.scrollTo({ top: canvas.scrollHeight, behavior: "smooth" })
+      return
+    }
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
   }, [messages, inlineTurns, status, conversationLoading])
 
   const resolveEngine = useCallback(
@@ -619,11 +642,20 @@ export function AiWorkspace({
   )
 
   const applyConversationMessages = useCallback(
-    (id: string, generation: number, nextMessages: UIMessage[], options?: { allowEmpty?: boolean }) => {
+    (
+      id: string,
+      generation: number,
+      nextMessages: UIMessage[],
+      options?: { allowEmpty?: boolean; replace?: boolean },
+    ) => {
       if (messagesLoadGenerationRef.current !== generation) return
       if (activeConversationIdRef.current !== id) return
 
       setMessages((live) => {
+        // Hard replace on conversation switch — never merge the previous thread.
+        if (options?.replace) {
+          return nextMessages
+        }
         const chatBusy =
           chatStatusRef.current === "submitted" || chatStatusRef.current === "streaming"
         if (chatBusy || sessionBusyRef.current) {
@@ -758,7 +790,7 @@ export function AiWorkspace({
       }
       if ((cached?.length || cachedTurns?.length) && !options?.silent) {
         if (cached?.length && activeConversationIdRef.current === id) {
-          applyConversationMessages(id, generation, cached)
+          applyConversationMessages(id, generation, cached, { replace: true })
         }
         if (cachedTurns?.length && activeConversationIdRef.current === id) setInlineTurns(cachedTurns)
       }
@@ -784,7 +816,7 @@ export function AiWorkspace({
           const uiMessages = buildConversationTranscript(stored, {
             conversationTitle: conversationMeta?.title ?? conversationTitle,
           })
-          applyConversationMessages(id, generation, uiMessages)
+          applyConversationMessages(id, generation, uiMessages, { replace: true })
           for (let i = 1; i < stored.length; i += 1) {
             const prev = stored[i - 1]
             const current = stored[i]
@@ -803,23 +835,23 @@ export function AiWorkspace({
           messagesLoadResolvedRef.current = { conversationId: id, resolved: true }
         } else if (!options?.preferApi) {
           if (cached?.length || cachedTurns?.length) {
-            if (cached?.length) applyConversationMessages(id, generation, cached)
+            if (cached?.length) applyConversationMessages(id, generation, cached, { replace: true })
             if (cachedTurns?.length) setInlineTurns(cachedTurns)
             setThreadRestoreStale(false)
             messagesLoadResolvedRef.current = { conversationId: id, resolved: true }
           } else {
-            applyConversationMessages(id, generation, [], { allowEmpty: true })
+            applyConversationMessages(id, generation, [], { allowEmpty: true, replace: true })
             setInlineTurns([])
           }
         } else if (!cached?.length && !cachedTurns?.length) {
-          applyConversationMessages(id, generation, [], { allowEmpty: true })
+          applyConversationMessages(id, generation, [], { allowEmpty: true, replace: true })
           setInlineTurns([])
         }
       } catch (error) {
         if (activeConversationIdRef.current !== id) return
         if (messagesLoadGenerationRef.current !== generation) return
         if (cached?.length || cachedTurns?.length) {
-          if (cached?.length) applyConversationMessages(id, generation, cached)
+          if (cached?.length) applyConversationMessages(id, generation, cached, { replace: true })
           if (cachedTurns?.length) setInlineTurns(cachedTurns)
           setThreadRestoreStale(false)
           messagesLoadResolvedRef.current = { conversationId: id, resolved: true }
@@ -827,7 +859,7 @@ export function AiWorkspace({
           writeStoredConversationId(null)
           setActiveConversationId(null)
           activeConversationIdRef.current = null
-          applyConversationMessages(id, generation, [], { allowEmpty: true })
+          applyConversationMessages(id, generation, [], { allowEmpty: true, replace: true })
           setInlineTurns([])
           setConversationTitle("Chat")
           setThreadRestoreStale(false)
@@ -1069,12 +1101,20 @@ export function AiWorkspace({
       }
       setOrgReady(true)
 
+      // Clear busy flags synchronously so apply/replace is never forced into merge.
+      sessionBusyRef.current = false
+      chatStatusRef.current = "ready"
       setSessionBusy(false)
       submitLockRef.current = false
       setSidebarOpen(false)
       stop()
       setThreadRestoreStale(false)
       setMessagesHydrated(false)
+      setDialogueMode(null)
+      setPendingTask(null)
+      setExecutionResult(null)
+      setExecutionGate(null)
+      setTaskState(null)
       messagesLoadGenerationRef.current += 1
       const generation = messagesLoadGenerationRef.current
       messagesLoadResolvedRef.current = null
@@ -1087,12 +1127,16 @@ export function AiWorkspace({
       operatorSessionRef.current = null
       resetExecuteJob()
 
+      // Drop previous thread immediately so the UI cannot keep showing it.
+      setMessages([])
+      setInlineTurns([])
+
       const cached = readCachedConversationMessages(id)
       const cachedTurns = readCachedInlineTurns<InlineTurn>(id)
       if (cached?.length) {
-        applyConversationMessages(id, generation, cached)
+        applyConversationMessages(id, generation, cached, { replace: true })
       } else {
-        applyConversationMessages(id, generation, [], { allowEmpty: true })
+        applyConversationMessages(id, generation, [], { allowEmpty: true, replace: true })
       }
       setInlineTurns(cachedTurns ?? [])
 
@@ -1237,9 +1281,9 @@ export function AiWorkspace({
   }, [inlineTurns, persistInlineTurn])
 
   useEffect(() => {
-    if (!activeConversationId || messages.length === 0) return
+    if (!activeConversationId || !messagesHydrated || messages.length === 0) return
     writeCachedConversationMessages(activeConversationId, messages)
-  }, [activeConversationId, messages])
+  }, [activeConversationId, messages, messagesHydrated])
 
   useEffect(() => {
     if (!activeConversationId) return
@@ -1479,15 +1523,6 @@ export function AiWorkspace({
           </div>
         </div>
 
-        {taskState?.current_plan?.steps?.length ? (
-          <PlanProgressIndicator taskState={taskState} />
-        ) : null}
-        {executionGate && (executionGate.requires_approval || executionGate.can_proceed === false) ? (
-          <div className="shrink-0 border-b border-amber-200/60 bg-amber-50/50 px-4 py-1.5 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
-            {executionGate.reason ?? "Execution requires review before proceeding."}
-          </div>
-        ) : null}
-
         <div className="flex min-h-0 flex-1 flex-col">
         <div className="ai-chat-canvas min-h-0 flex-1 overflow-y-auto px-3 py-3 md:px-5 md:py-4">
           <div className="mx-auto w-full">
@@ -1526,6 +1561,7 @@ export function AiWorkspace({
                 pendingTask={pendingTask}
                 confirmExecuting={confirmExecuting}
                 onConfirmExecution={() => void handleConfirmExecution()}
+                canApprove={canApproveWrites}
               />
             ) : null}
 
