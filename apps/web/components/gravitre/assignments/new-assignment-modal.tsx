@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Icon } from "@/lib/icons"
-import { agentsApi } from "@/lib/api"
+import { agentsApi, marketplaceApi } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { hoverLift, pressScale } from "@/lib/animations"
 import {
@@ -26,9 +26,13 @@ import {
   type AssignmentPriority,
 } from "@/lib/assignments"
 import type { DemoAssignment } from "@/lib/demo-assignments"
+import {
+  collectInstalledAgentIds,
+  resolveDefaultAgentId,
+} from "@/lib/resolve-default-agent"
 
 const MODAL_STEPS = [
-  { id: 1, title: "Choose agent", description: "Select who will run this task" },
+  { id: 1, title: "Agent", description: "Optional — change who will run this task" },
   { id: 2, title: "Describe the task", description: "Tell your agent what to do" },
   { id: 3, title: "Confirm", description: "Review and assign" },
 ] as const
@@ -100,17 +104,24 @@ export function NewAssignmentModal({
   onCreated: (assignment: DemoAssignment) => void
 }) {
   const reduced = useReducedMotion()
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState(2)
   const [direction, setDirection] = useState(1)
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
+  const [agentAutoResolved, setAgentAutoResolved] = useState(false)
   const [taskBrief, setTaskBrief] = useState("")
   const [priority, setPriority] = useState<AssignmentPriority>("normal")
   const [dueDate, setDueDate] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const autoResolvedRef = useRef(false)
 
   const { data: agentsResponse, isLoading: agentsLoading, error: agentsError, mutate } = useSWR(
     open ? "new-assignment-agents" : null,
     () => agentsApi.list(),
+    { revalidateOnFocus: false },
+  )
+  const { data: installsResponse } = useSWR(
+    open ? "new-assignment-installs" : null,
+    () => marketplaceApi.listInstalls({ status: "active", limit: 100 }),
     { revalidateOnFocus: false },
   )
 
@@ -127,12 +138,32 @@ export function NewAssignmentModal({
     })
   }, [agentsResponse?.agents])
 
+  const installedAgentIds = useMemo(
+    () => collectInstalledAgentIds(installsResponse?.installs ?? []),
+    [installsResponse?.installs],
+  )
+
   const selectedAgent = agents.find((agent) => agent.id === selectedAgentId)
 
+  useEffect(() => {
+    if (!open || autoResolvedRef.current || agentsLoading || agents.length === 0) return
+    const resolved = resolveDefaultAgentId({
+      agents: agentsResponse?.agents ?? [],
+      installedAgentIds,
+    })
+    if (!resolved) return
+    autoResolvedRef.current = true
+    setSelectedAgentId(resolved)
+    setAgentAutoResolved(true)
+    setStep(2)
+  }, [open, agentsLoading, agents.length, agentsResponse?.agents, installedAgentIds])
+
   const resetForm = () => {
-    setStep(1)
+    setStep(2)
     setDirection(1)
     setSelectedAgentId(null)
+    setAgentAutoResolved(false)
+    autoResolvedRef.current = false
     setTaskBrief("")
     setPriority("normal")
     setDueDate("")
@@ -140,7 +171,7 @@ export function NewAssignmentModal({
 
   const canContinue = () => {
     if (step === 1) return selectedAgentId !== null
-    if (step === 2) return taskBrief.trim().length >= 10
+    if (step === 2) return selectedAgentId !== null && taskBrief.trim().length >= 10
     return true
   }
 
@@ -151,6 +182,12 @@ export function NewAssignmentModal({
   }
 
   const goBack = () => {
+    if (step === 1) {
+      if (!selectedAgentId) return
+      setDirection(1)
+      setStep(2)
+      return
+    }
     if (step <= 1) return
     setDirection(-1)
     setStep((current) => current - 1)
@@ -249,7 +286,10 @@ export function NewAssignmentModal({
                         transition={reduced ? { duration: 0 } : { delay: index * 0.04 }}
                         whileHover={reduced ? undefined : hoverLift}
                         whileTap={reduced ? undefined : pressScale}
-                        onClick={() => setSelectedAgentId(agent.id)}
+                        onClick={() => {
+                          setSelectedAgentId(agent.id)
+                          setAgentAutoResolved(false)
+                        }}
                         className={cn(
                           "relative flex items-center gap-3 rounded-xl border p-4 text-left transition-colors",
                           selectedAgentId === agent.id
@@ -300,6 +340,56 @@ export function NewAssignmentModal({
                 transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 360, damping: 32 }}
                 className="mx-auto max-w-xl space-y-5"
               >
+                {agentsLoading ? (
+                  <Skeleton className="h-14 w-full rounded-xl" />
+                ) : selectedAgent ? (
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary/40 px-4 py-3">
+                    <div className="min-w-0 flex items-center gap-3">
+                      <div
+                        className={cn(
+                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-white",
+                          selectedAgent.gradient,
+                        )}
+                      >
+                        <Icon name="ai" size="sm" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {agentAutoResolved ? "Auto-selected" : "Assigned to"} {selectedAgent.name}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">{selectedAgent.role}</p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0 text-xs text-muted-foreground"
+                      onClick={() => {
+                        setDirection(-1)
+                        setStep(1)
+                      }}
+                    >
+                      Change
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm">
+                    <p className="text-foreground">No agent selected yet.</p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => {
+                        setDirection(-1)
+                        setStep(1)
+                      }}
+                    >
+                      Choose agent
+                    </Button>
+                  </div>
+                )}
                 <div>
                   <label htmlFor="assignment-task" className="mb-2 block text-sm font-medium text-foreground">
                     Describe the task for your agent…
@@ -409,7 +499,11 @@ export function NewAssignmentModal({
             <Link href="/assignments/new">Open full wizard</Link>
           </Button>
           <div className="flex w-full flex-col-reverse gap-2 sm:w-auto sm:flex-row">
-            {step > 1 ? (
+            {step === 1 ? (
+              <Button variant="outline" onClick={goBack} disabled={isSubmitting || !selectedAgentId}>
+                Back to task
+              </Button>
+            ) : step === 3 ? (
               <Button variant="outline" onClick={goBack} disabled={isSubmitting}>
                 Back
               </Button>

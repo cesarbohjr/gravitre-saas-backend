@@ -34,7 +34,20 @@ import {
   type DebateContribution,
 } from "@/lib/workflows/builder-persistence"
 import type { WorkflowDryRunResponse } from "@/types/api"
-import { mesonApi, runsApi, workflowsApi, type MesonAlert, type MesonInsight, type MesonSuggestion } from "@/lib/api"
+import {
+  agentsApi,
+  marketplaceApi,
+  mesonApi,
+  runsApi,
+  workflowsApi,
+  type MesonAlert,
+  type MesonInsight,
+  type MesonSuggestion,
+} from "@/lib/api"
+import {
+  collectInstalledAgentIds,
+  resolveCouncilAgentDefaults,
+} from "@/lib/resolve-default-agent"
 import { interruptRequestedDescription, interruptRequestedMessage } from "@/lib/agent-interrupts"
 import {
   applyRunStepsToNodes,
@@ -1950,14 +1963,27 @@ function DebateViewDialog({
 }
 
 // Config Panel - Sheet-based with connector intelligence
+const FALLBACK_COUNCIL_PERSONAS = [
+  { id: "analyst", name: "Research Analyst", role: "Data analysis & insights", style: "analytical" },
+  { id: "validator", name: "Data Validator", role: "Quality & accuracy", style: "cautious" },
+  { id: "compliance", name: "Compliance Reviewer", role: "Risk & policy", style: "cautious" },
+  { id: "content", name: "Content Writer", role: "Communication", style: "creative" },
+  { id: "sales", name: "Sales Strategist", role: "Revenue & engagement", style: "fast" },
+  { id: "finance", name: "Finance Reviewer", role: "Cost & ROI", style: "analytical" },
+  { id: "support", name: "Customer Support", role: "Customer satisfaction", style: "cautious" },
+  { id: "legal", name: "Legal/Risk Reviewer", role: "Compliance & risk", style: "cautious" },
+] as const
+
 function ConfigPanel({
   node,
   onClose,
   onUpdate,
+  orgAgents = [],
 }: {
   node: WorkflowNode | null
   onClose: () => void
   onUpdate: (updates: Partial<WorkflowNode>) => void
+  orgAgents?: Array<{ id: string; name: string; role?: string }>
 }) {
   const [formValues, setFormValues] = useState<Record<string, string>>({})
   
@@ -2548,7 +2574,7 @@ node.type === "approval" && "bg-red-500",
       />
     </div>
 
-    {/* Participating Agents */}
+    {/* Participating Agents — org/pack agents first (STA-321); mock personas as advanced */}
     <div>
       <div className="flex items-center justify-between mb-1.5">
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -2558,17 +2584,30 @@ node.type === "approval" && "bg-red-500",
           {node.councilConfig?.participatingAgents?.length || 0} selected
         </span>
       </div>
+      {orgAgents.length > 0 ? (
+        <p className="mb-2 text-[11px] text-muted-foreground">
+          Auto-filled from your installed packs. Leave as-is for pack consumers; tweak only if needed.
+        </p>
+      ) : (
+        <p className="mb-2 text-[11px] text-muted-foreground">
+          No org agents loaded — empty selection uses org defaults at run time.
+        </p>
+      )}
       <div className="space-y-2">
-        {[
-          { id: "analyst", name: "Research Analyst", role: "Data analysis & insights", style: "analytical" },
-          { id: "validator", name: "Data Validator", role: "Quality & accuracy", style: "cautious" },
-          { id: "compliance", name: "Compliance Reviewer", role: "Risk & policy", style: "cautious" },
-          { id: "content", name: "Content Writer", role: "Communication", style: "creative" },
-          { id: "sales", name: "Sales Strategist", role: "Revenue & engagement", style: "fast" },
-          { id: "finance", name: "Finance Reviewer", role: "Cost & ROI", style: "analytical" },
-          { id: "support", name: "Customer Support", role: "Customer satisfaction", style: "cautious" },
-          { id: "legal", name: "Legal/Risk Reviewer", role: "Compliance & risk", style: "cautious" },
-        ].map((agent) => {
+        {(orgAgents.length > 0
+          ? orgAgents.map((agent) => ({
+              id: agent.id,
+              name: agent.name,
+              role: agent.role || "Contributor",
+              style: "analytical" as const,
+            }))
+          : FALLBACK_COUNCIL_PERSONAS.map((agent) => ({
+              id: agent.id,
+              name: agent.name,
+              role: agent.role,
+              style: agent.style,
+            }))
+        ).map((agent) => {
           const isSelected = node.councilConfig?.participatingAgents?.some(a => a.id === agent.id) || false
           return (
             <label 
@@ -2594,7 +2633,11 @@ node.type === "approval" && "bg-red-500",
                         confidenceStyle: agent.style as "cautious" | "fast" | "analytical" | "creative"
                       }]
                     : current.filter(a => a.id !== agent.id)
-                  onUpdate({ councilConfig: { ...node.councilConfig, participatingAgents: updated } })
+                  const agentIds = updated.map((a) => a.id)
+                  onUpdate({
+                    councilConfig: { ...node.councilConfig, participatingAgents: updated },
+                    config: { ...node.config, agentIds, agent_ids: agentIds },
+                  })
                 }}
                 className="rounded border-border"
               />
@@ -2808,6 +2851,21 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     canPersist ? "workflow-builder-recent" : null,
     () => workflowsApi.list(),
     { revalidateOnFocus: false },
+  )
+  const { data: orgAgentsData } = useSWR(
+    "workflow-builder-org-agents",
+    () => agentsApi.list(),
+    { revalidateOnFocus: false },
+  )
+  const { data: orgInstallsData } = useSWR(
+    "workflow-builder-org-installs",
+    () => marketplaceApi.listInstalls({ status: "active", limit: 100 }),
+    { revalidateOnFocus: false },
+  )
+  const orgAgents = useMemo(() => orgAgentsData?.agents ?? [], [orgAgentsData?.agents])
+  const installedAgentIds = useMemo(
+    () => collectInstalledAgentIds(orgInstallsData?.installs ?? []),
+    [orgInstallsData?.installs],
   )
   const recentWorkflows = useMemo(() => {
     const rows = workflowListData?.workflows ?? []
@@ -4410,17 +4468,14 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 <button
   onClick={() => {
     try {
-      const defaultAgents = [
-        { id: "agent-1", name: "Analyst", role: "Research Analyst", expertise: "Data analysis", confidenceStyle: "analytical" as const },
-        { id: "agent-2", name: "Reviewer", role: "Compliance Reviewer", expertise: "Risk assessment", confidenceStyle: "cautious" as const },
-        { id: "agent-3", name: "Strategist", role: "Sales Strategist", expertise: "Customer engagement", confidenceStyle: "fast" as const },
-      ]
+      const defaultAgents = resolveCouncilAgentDefaults(orgAgents, installedAgentIds, 3)
+      const agentIds = defaultAgents.map((agent) => agent.id)
       const newNode: WorkflowNode = {
         id: `node-${Date.now()}`,
         type: "council",
         name: "Agent Council",
         description: "Multi-agent decision making",
-        config: {},
+        config: agentIds.length > 0 ? { agentIds, agent_ids: agentIds } : {},
         position: { x: 300 + Math.random() * 100, y: 150 + Math.random() * 100 },
         connections: [],
         councilConfig: {
@@ -5243,6 +5298,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             node={selectedNode}
             onClose={() => setSelectedNodeId(null)}
             onUpdate={handleUpdateNode}
+            orgAgents={orgAgents}
           />
 
           {/* Debate View Dialog */}
