@@ -19,6 +19,7 @@ PACK_VENDOR_MAP: dict[str, tuple[str, ...]] = {
     "finance-intelligence-pack": (),  # customer-owned QB/Xero/NetSuite/Plaid; no gravitree shared vendors
     "hr-talent-intelligence-pack": (),  # customer-owned HRIS/ATS/payroll; no gravitree shared vendors
     "support-intelligence-pack": (),
+    "platform-health-intelligence-pack": ("gravitre_platform",),
 }
 
 
@@ -93,7 +94,7 @@ def pack_kpi_summary(client: Any, *, org_id: str, pack_id: str) -> dict[str, Any
             "entities": _count_table(client, "external_entities", org_id=org_id, vendors=[vendor]),
         }
 
-    return {
+    summary: dict[str, Any] = {
         "packId": pid,
         "installed": installed,
         "installId": install_id,
@@ -106,6 +107,24 @@ def pack_kpi_summary(client: Any, *, org_id: str, pack_id: str) -> dict[str, Any
         "assignmentsCount": assignments_count,
         "vendors": by_vendor,
     }
+
+    if pid == "platform-health-intelligence-pack" and installed:
+        try:
+            from app.services.integration_health_score_service import get_integration_health_score
+
+            health = get_integration_health_score(client, org_id, lookback_days=30)
+            approval = (health.get("dimensions") or {}).get("approvalLatency") or {}
+            p95_min = float(approval.get("p95LatencyMinutes") or 0)
+            summary["platformHealth"] = {
+                "overallScore": health.get("score"),
+                "grade": health.get("grade"),
+                "approvalP95Days": round(p95_min / (60 * 24), 3) if p95_min else 0.0,
+                "pendingApprovals": int(approval.get("pendingApprovals") or 0),
+            }
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("platform_health_kpi_enrich_skipped err=%s", exc)
+
+    return summary
 
 
 def _count_table(

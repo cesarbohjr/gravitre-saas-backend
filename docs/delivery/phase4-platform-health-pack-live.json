@@ -1,0 +1,88 @@
+{
+  "pass": true,
+  "ran_at": "2026-07-16T08:12:06.738293+00:00",
+  "prod_git_sha": "2fec8639106a4023da0a16ebeb627327fe952033",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "pack_slug": "platform-health-intelligence-pack",
+  "asset_id": "cc190e3b-08be-4824-9049-5af95d8e9d71",
+  "bundle": {
+    "agentId": "0e62394d-7157-5b3d-be80-072de33a13ff",
+    "workflowId": "9fac1490-df23-5514-a96c-ca1735662316",
+    "assignmentCount": 4,
+    "stopLinesHonored": [
+      "internal_data_only",
+      "zero_new_external_connectors",
+      "no_new_external_governance",
+      "reuse_sta124_integration_health"
+    ]
+  },
+  "invokes": {
+    "platform.health.snapshot": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "/intelligence/reports?tab=platform-health&snapshot=356174d5-e764-401b-bc89-237b9193fbf5",
+      "kpis": {
+        "approvalP95Days": 0.0,
+        "pendingApprovals": 0,
+        "stalledRunCount": 0,
+        "stepFailedAudits": 7,
+        "toolFailedAudits": 62,
+        "authFailedAudits": 0,
+        "overallScore": 58,
+        "grade": "critical"
+      },
+      "recommendation_ids": [
+        "rec.step_failures"
+      ],
+      "data_keys": [
+        "snapshotId",
+        "packId",
+        "vendor",
+        "lookbackDays",
+        "computedAt",
+        "score",
+        "grade",
+        "dimensions",
+        "kpis",
+        "recommendations",
+        "result_url",
+        "stopLinesHonored"
+      ]
+    }
+  },
+  "kpis": {
+    "packId": "platform-health-intelligence-pack",
+    "installed": false,
+    "installId": null,
+    "assetId": "cc190e3b-08be-4824-9049-5af95d8e9d71",
+    "agentCount": 0,
+    "workflowCount": 0,
+    "signalsCount": 0,
+    "entitiesCount": 0,
+    "cacheTouches": 0,
+    "assignmentsCount": 4,
+    "vendors": {
+      "gravitre_platform": {
+        "signals": 0,
+        "entities": 0
+      }
+    }
+  },
+  "tied_to_smoke_actions": [
+    {
+      "notification_id": "e5af2ea0-433a-4e65-a7ab-56aef1658b98",
+      "action": "platform.health.snapshot",
+      "title": "Workflow success depressed",
+      "result_url": "/intelligence/reports?tab=platform-health&snapshot=356174d5-e764-401b-bc89-237b9193fbf5",
+      "created_at": "2026-07-16T08:12:05.273127+00:00",
+      "matches_invoke_url": true
+    }
+  ],
+  "cohesion": {
+    "result_url_ok": true,
+    "notification_id_tie_ok": true,
+    "kpi_panel_ui_ok": true
+  },
+  "note": "Platform Health self-signal pack: zero external connectors. Snapshot reuses STA-124 integration health + audit/run counts; notification tied by url match to invoke result_url."
+}
