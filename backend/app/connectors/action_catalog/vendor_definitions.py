@@ -5,6 +5,7 @@ from app.connectors.action_catalog.builder import action, build_vendor
 from app.connectors.action_catalog.action_workflow_schema import (
     APOLLO_LISTS_CREATE_SCHEMA,
     ASANA_TASKS_CREATE_SCHEMA,
+    HUBSPOT_ASSOCIATIONS_CREATE_SCHEMA,
     HUBSPOT_CONTACTS_CREATE_SCHEMA,
     SLACK_POST_MESSAGE_SCHEMA,
 )
@@ -53,6 +54,7 @@ VENDOR_DEFINITIONS: tuple = (
             action("hubspot", "companies.get", "Get company", tier="v1", kind="read", scope_suffix="companies:read", idempotent=True),
             action("hubspot", "tickets.search", "Search tickets", tier="v1", kind="read", scope_suffix="tickets:read", idempotent=True),
             action("hubspot", "pipelines.list", "List deal pipelines", tier="v1", kind="read", scope_suffix="pipelines:read", idempotent=True),
+            action("hubspot", "contacts.list", "List recent contacts", tier="v1", kind="read", scope_suffix="contacts:read", idempotent=True),
         ),
         v2=(
             action(
@@ -72,6 +74,16 @@ VENDOR_DEFINITIONS: tuple = (
             action("hubspot", "deals.delete", "Delete deal", tier="v2", kind="write", scope_suffix="deals:write", destructive=True, requires_approval=True),
             action("hubspot", "notes.create", "Create note", tier="v2", kind="write", scope_suffix="notes:write", destructive=True),
             action("hubspot", "notes.delete", "Delete note", tier="v2", kind="write", scope_suffix="notes:write", destructive=True, requires_approval=True),
+            action(
+                "hubspot",
+                "associations.create",
+                "Associate two CRM objects",
+                tier="v2",
+                kind="write",
+                scope_suffix="associations:write",
+                destructive=False,
+                workflow_schema=HUBSPOT_ASSOCIATIONS_CREATE_SCHEMA,
+            ),
         ),
         v3=(
             action("hubspot", "deals.update_stage", "Update deal stage", tier="v3", kind="advanced", scope_suffix="deals:write"),

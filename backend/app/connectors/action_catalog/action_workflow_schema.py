@@ -52,6 +52,16 @@ HUBSPOT_CONTACTS_CREATE_SCHEMA = ActionWorkflowSchema(
     ),
 )
 
+HUBSPOT_ASSOCIATIONS_CREATE_SCHEMA = ActionWorkflowSchema(
+    intent_label="Associate HubSpot CRM objects",
+    required_fields=(
+        WorkflowFieldSpec("from object type", ("from_type", "fromType")),
+        WorkflowFieldSpec("from object id", ("from_id", "fromId")),
+        WorkflowFieldSpec("to object type", ("to_type", "toType")),
+        WorkflowFieldSpec("to object id", ("to_id", "toId")),
+    ),
+)
+
 SLACK_POST_MESSAGE_SCHEMA = ActionWorkflowSchema(
     intent_label="Post Slack message",
     required_fields=(

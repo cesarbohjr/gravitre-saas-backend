@@ -214,6 +214,7 @@ VERIFIED_OUTPUT_BATCH_08: frozenset[str] = frozenset(
     {
         "ahrefs.projects.create",
         "ahrefs.rank_tracker.add",
+        "hubspot.associations.create",
     }
 )
 

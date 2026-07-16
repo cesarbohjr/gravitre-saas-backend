@@ -47,6 +47,36 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
         },
         "required": [],
     },
+    "hubspot.contacts.list": {
+        "type": "object",
+        "properties": {
+            "limit": {"type": "integer", "default": 10, "description": "Max contacts to return (1–100)."},
+            "properties": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "HubSpot contact property names to include.",
+            },
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
+    "hubspot.associations.create": {
+        "type": "object",
+        "properties": {
+            "from_type": {
+                "type": "string",
+                "description": "Source object type (contacts, deals, companies, tickets, notes).",
+            },
+            "from_id": {"type": "string", "description": "Source HubSpot object id."},
+            "to_type": {
+                "type": "string",
+                "description": "Target object type (contacts, deals, companies, tickets, notes).",
+            },
+            "to_id": {"type": "string", "description": "Target HubSpot object id."},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": ["from_type", "from_id", "to_type", "to_id"],
+    },
     "hubspot.contacts.create": {
         "type": "object",
         "properties": {
