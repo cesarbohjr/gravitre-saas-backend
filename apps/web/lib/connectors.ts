@@ -238,7 +238,6 @@ const VENDOR_LABELS: Record<string, string> = {
   plaid: "Plaid",
   bamboohr: "BambooHR",
   xero: "Xero",
-  netsuite: "NetSuite",
   pdl: "People Data Labs",
   absorb_lms: "Absorb LMS",
   apollo: "Apollo",
