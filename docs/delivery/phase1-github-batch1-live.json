@@ -1,0 +1,28 @@
+{
+  "pass": false,
+  "status": "BLOCKED_EXTERNAL",
+  "ran_at": "2026-07-16T09:08:26.437270+00:00",
+  "prod_git_sha": "f82774f41f6f5910ddc0b3b543abdf4fe7481064",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "batch": "phase1-github-batch1",
+  "api_version": "GitHub REST 2022-11-28 (no bump)",
+  "new_actions": [
+    "github.pulls.create",
+    "github.actions.runs.list",
+    "github.issues.update"
+  ],
+  "github_connector_id": null,
+  "owner": null,
+  "repo": null,
+  "invokes": {},
+  "blocker": {
+    "kind": "github_connector_missing_or_incomplete",
+    "class": "external_dependency",
+    "detail": "Smoke org has no healthy GitHub connector with owner/repo configured. Connect GitHub on org cbbf993b-\u2026 (OAuth scopes repo read:user), set owner/repo, optionally GITHUB_SMOKE_HEAD for pulls.create tip, then re-run."
+  },
+  "governance": {
+    "finance_hr_excluded": true,
+    "chat_access_granted": false
+  },
+  "note": "GitHub Batch 1 code ready; tip blocked until smoke GitHub connector exists."
+}

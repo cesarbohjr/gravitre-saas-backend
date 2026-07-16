@@ -24,6 +24,8 @@ BATCH_25_ACTION_KEYS: tuple[str, ...] = (
     "salesforce.tasks.create",
     "apollo.contacts.create",
     "github.issues.create",
+    "github.pulls.create",
+    "github.issues.update",
     "clickup.tasks.create",
     "pipedrive.deals.create",
     "pipedrive.persons.create",
@@ -192,6 +194,23 @@ WORKFLOW_SCHEMAS_BATCH_25: dict[str, ActionWorkflowSchema] = {
         intent_label="Create GitHub issue",
         required_fields=(_req("issue title", "title"),),
         optional_fields=(_opt("Body", "body"), _opt("Repository", "repo", "repository")),
+    ),
+    "github.pulls.create": ActionWorkflowSchema(
+        intent_label="Create GitHub pull request",
+        required_fields=(
+            _req("PR title", "title"),
+            _req("head branch", "head"),
+            _req("base branch", "base"),
+        ),
+        optional_fields=(_opt("Body", "body"), _opt("Repository", "repo", "repository")),
+    ),
+    "github.issues.update": ActionWorkflowSchema(
+        intent_label="Update GitHub issue",
+        required_fields=(
+            _req("issue number", "issue_number", "issueNumber"),
+            _req("update fields", "title", "body", "state", "labels", validator="named_or_payload"),
+        ),
+        optional_fields=(_opt("Repository", "repo", "repository")),
     ),
     "clickup.tasks.create": ActionWorkflowSchema(
         intent_label="Create ClickUp task",

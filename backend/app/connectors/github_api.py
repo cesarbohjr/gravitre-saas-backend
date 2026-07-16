@@ -135,6 +135,82 @@ def create_issue(
     return _request(token, "POST", f"/repos/{owner}/{repo}/issues", json_body=payload)
 
 
+def create_pull_request(
+    token: str,
+    owner: str,
+    repo: str,
+    *,
+    title: str,
+    head: str,
+    base: str,
+    body: str | None = None,
+    draft: bool = False,
+) -> dict[str, Any]:
+    """Create a pull request — POST /repos/{owner}/{repo}/pulls (Batch 1)."""
+    if not title or not head or not base:
+        raise GitHubAPIError("title, head, and base are required")
+    payload: dict[str, Any] = {
+        "title": title,
+        "head": head,
+        "base": base,
+        "draft": bool(draft),
+    }
+    if body:
+        payload["body"] = body
+    return _request(token, "POST", f"/repos/{owner}/{repo}/pulls", json_body=payload)
+
+
+def list_workflow_runs(
+    token: str,
+    owner: str,
+    repo: str,
+    *,
+    per_page: int = 10,
+    status: str | None = None,
+    branch: str | None = None,
+) -> dict[str, Any]:
+    """List workflow runs — GET /repos/{owner}/{repo}/actions/runs (Batch 1)."""
+    params: dict[str, Any] = {"per_page": min(max(int(per_page), 1), 100)}
+    if status:
+        params["status"] = status
+    if branch:
+        params["branch"] = branch
+    return _request(token, "GET", f"/repos/{owner}/{repo}/actions/runs", params=params)
+
+
+def update_issue(
+    token: str,
+    owner: str,
+    repo: str,
+    issue_number: int,
+    *,
+    title: str | None = None,
+    body: str | None = None,
+    state: str | None = None,
+    labels: list[str] | None = None,
+) -> dict[str, Any]:
+    """Update an issue — PATCH /repos/{owner}/{repo}/issues/{number} (Batch 1)."""
+    if not issue_number:
+        raise GitHubAPIError("issue_number is required")
+    payload: dict[str, Any] = {}
+    if title is not None:
+        payload["title"] = title
+    if body is not None:
+        payload["body"] = body
+    if state is not None:
+        payload["state"] = state
+    if labels is not None:
+        payload["labels"] = labels
+    if not payload:
+        raise GitHubAPIError("at least one update field is required")
+    return _request(
+        token,
+        "PATCH",
+        f"/repos/{owner}/{repo}/issues/{int(issue_number)}",
+        json_body=payload,
+    )
+
+
 def create_issue_comment(
     token: str,
     owner: str,

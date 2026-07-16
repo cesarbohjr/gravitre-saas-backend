@@ -975,10 +975,13 @@ VENDOR_DEFINITIONS: tuple = (
             action("github", "pulls.list", "List pull requests", tier="v1", kind="read", scope_suffix="pulls:read", idempotent=True),
             action("github", "issues.get", "Get issue", tier="v1", kind="read", scope_suffix="issues:read", idempotent=True),
             action("github", "repos.get", "Get repository", tier="v1", kind="read", scope_suffix="repos:read", idempotent=True),
+            action("github", "actions.runs.list", "List workflow runs", tier="v1", kind="read", scope_suffix="actions:read", idempotent=True),
         ),
         v2=(
             action("github", "issues.create", "Create issue", tier="v2", kind="write", scope_suffix="issues:write", destructive=True),
             action("github", "issues.comment", "Comment on issue", tier="v2", kind="write", scope_suffix="issues:write", destructive=True),
+            action("github", "issues.update", "Update issue", tier="v2", kind="write", scope_suffix="issues:write", destructive=True),
+            action("github", "pulls.create", "Create pull request", tier="v2", kind="write", scope_suffix="pulls:write", destructive=True),
             action("github", "pulls.request_reviewer", "Request PR reviewer", tier="v2", kind="write", scope_suffix="pulls:write", destructive=True),
         ),
         v3=(
