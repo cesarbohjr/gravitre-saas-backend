@@ -6,7 +6,9 @@ import pytest
 from fastapi import HTTPException
 
 from app.connectors.platform import (
+    clear_connector_oauth_tokens,
     find_existing_oauth_connector,
+    mark_connector_pending_oauth,
     oauth_docs_url,
     prepare_oauth_connector,
     store_connector_api_key,
@@ -49,6 +51,30 @@ def test_prepare_oauth_reuses_existing():
     assert reconnect is True  # prior connected state
     assert is_new is False
     mark.assert_called_once()
+
+
+def test_mark_pending_oauth_clears_stale_tokens():
+    client = MagicMock()
+    with patch("app.connectors.platform.clear_connector_oauth_tokens") as clear:
+        mark_connector_pending_oauth(
+            client,
+            org_id="org-1",
+            connector_id="c1",
+            vendor="hubspot",
+            environment_name="production",
+        )
+    clear.assert_called_once_with(client, "c1")
+    client.table.return_value.update.assert_called_once()
+    payload = client.table.return_value.update.call_args.args[0]
+    assert payload["status"] == "pending_auth"
+    assert payload["deleted_at"] is None
+
+
+def test_clear_connector_oauth_tokens_deletes_secret_row():
+    client = MagicMock()
+    clear_connector_oauth_tokens(client, "c1")
+    client.table.assert_called_with("connector_secrets")
+    client.table.return_value.delete.assert_called_once()
 
 
 def test_prepare_oauth_recovers_soft_deleted_name_conflict():
