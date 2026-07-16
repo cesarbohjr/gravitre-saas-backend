@@ -66,12 +66,17 @@
       ]
     },
     "hubspot.tickets.get": {
-      "success": false,
-      "error_code": "skipped",
-      "error_message": "no ticket id from search to tip tickets.get",
-      "result_url": null,
-      "summary": null,
-      "data_keys": []
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": "https://app.hubspot.com/contacts/record/0-5/203092799418",
+      "summary": "Fetched HubSpot ticket 203092799418",
+      "data_keys": [
+        "ticket",
+        "ticket_id",
+        "result_url",
+        "summary"
+      ]
     }
   },
   "blocker": null,
@@ -79,5 +84,11 @@
     "finance_hr_excluded": true,
     "chat_access_granted": false
   },
-  "note": "HubSpot Batch 1b tip PASS."
+  "note": "HubSpot Batch 1b tip PASS \u2014 companies.create, owners.list, and tickets.get (confirmed with real ticket id).",
+  "tickets_get_confirm": {
+    "ran_at": "2026-07-16T09:20:00.393833+00:00",
+    "ticket_id": "203092799418",
+    "evidence": "docs/delivery/phase1-hubspot-batch1b-tickets-get-live.json",
+    "note": "Genuine live tip after fixture ticket create (not smoke skip)."
+  }
 }
