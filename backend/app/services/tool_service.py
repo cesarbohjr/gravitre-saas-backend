@@ -136,6 +136,7 @@ from app.connectors.github_api import (
     close_pull_request,
     create_issue,
     create_issue_comment,
+    create_pull_request,
     create_release,
     dispatch_workflow,
     get_issue,
@@ -143,8 +144,10 @@ from app.connectors.github_api import (
     get_repository,
     list_issues,
     list_pull_requests,
+    list_workflow_runs,
     merge_pull_request,
     request_pull_request_reviewer,
+    update_issue,
 )
 from app.connectors.google_calendar import (
     GoogleCalendarAPIError,
@@ -2884,7 +2887,106 @@ def _exec_github_issues_create(ctx: ToolContext, params: dict[str, Any]) -> Norm
         issue = create_issue(token, owner, repo, title=str(title), body=params.get("body"), labels=params.get("labels"))
     except GitHubAPIError as exc:
         raise _vendor_api_error(exc, "github") from exc
-    return NormalizedResult(success=True, action="github.issues.create", connector_id=cid, data={"issue": issue})
+    result_url = (issue or {}).get("html_url") if isinstance(issue, dict) else None
+    return NormalizedResult(
+        success=True,
+        action="github.issues.create",
+        connector_id=cid,
+        data={"issue": issue, "result_url": result_url},
+    )
+
+
+def _exec_github_pulls_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    """Create a pull request — Batch 1 expansion."""
+    cid, token = _github_token(ctx, params)
+    owner, repo = _github_owner_repo(ctx, cid, params)
+    title = params.get("title")
+    head = params.get("head")
+    base = params.get("base")
+    if not title or not head or not base:
+        raise ToolValidationError("github.pulls.create requires title, head, and base")
+    try:
+        pull = create_pull_request(
+            token,
+            owner,
+            repo,
+            title=str(title),
+            head=str(head),
+            base=str(base),
+            body=params.get("body"),
+            draft=bool(params.get("draft") or False),
+        )
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    result_url = (pull or {}).get("html_url") if isinstance(pull, dict) else None
+    return NormalizedResult(
+        success=True,
+        action="github.pulls.create",
+        connector_id=cid,
+        data={"pull_request": pull, "result_url": result_url},
+    )
+
+
+def _exec_github_actions_runs_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    """List workflow runs — Batch 1 expansion."""
+    cid, token = _github_token(ctx, params)
+    owner, repo = _github_owner_repo(ctx, cid, params)
+    try:
+        data = list_workflow_runs(
+            token,
+            owner,
+            repo,
+            per_page=int(params.get("per_page") or params.get("limit") or 10),
+            status=params.get("status"),
+            branch=params.get("branch"),
+        )
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    runs = (data or {}).get("workflow_runs") if isinstance(data, dict) else []
+    if not isinstance(runs, list):
+        runs = []
+    first_url = runs[0].get("html_url") if runs and isinstance(runs[0], dict) else None
+    result_url = first_url or f"https://github.com/{owner}/{repo}/actions"
+    return NormalizedResult(
+        success=True,
+        action="github.actions.runs.list",
+        connector_id=cid,
+        data={
+            "workflow_runs": runs,
+            "total_count": (data or {}).get("total_count") if isinstance(data, dict) else len(runs),
+            "result_url": result_url,
+            "summary": f"Listed {len(runs)} GitHub workflow run(s)",
+        },
+    )
+
+
+def _exec_github_issues_update(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    """Update an issue — Batch 1 expansion."""
+    cid, token = _github_token(ctx, params)
+    owner, repo = _github_owner_repo(ctx, cid, params)
+    issue_number = params.get("issue_number") or params.get("issueNumber")
+    if not issue_number:
+        raise ToolValidationError("github.issues.update requires issue_number")
+    try:
+        issue = update_issue(
+            token,
+            owner,
+            repo,
+            int(issue_number),
+            title=params.get("title"),
+            body=params.get("body"),
+            state=params.get("state"),
+            labels=params.get("labels"),
+        )
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    result_url = (issue or {}).get("html_url") if isinstance(issue, dict) else None
+    return NormalizedResult(
+        success=True,
+        action="github.issues.update",
+        connector_id=cid,
+        data={"issue": issue, "result_url": result_url},
+    )
 
 
 def _exec_github_issues_comment(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
@@ -3456,9 +3558,12 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "github.issues.get": _exec_github_issues_get,
     "github.repos.get": _exec_github_repos_get,
     "github.issues.create": _exec_github_issues_create,
+    "github.issues.update": _exec_github_issues_update,
     "github.issues.comment": _exec_github_issues_comment,
+    "github.pulls.create": _exec_github_pulls_create,
     "github.pulls.request_reviewer": _exec_github_pulls_request_reviewer,
     "github.actions.dispatch": _exec_github_actions_dispatch,
+    "github.actions.runs.list": _exec_github_actions_runs_list,
     "github.pulls.merge": _exec_github_pulls_merge,
     "github.releases.create": _exec_github_releases_create,
     "github.issues.list": _exec_github_issues_list,
