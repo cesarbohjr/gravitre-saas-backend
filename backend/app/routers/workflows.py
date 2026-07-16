@@ -3143,6 +3143,90 @@ async def list_approvals_alias(
                 "sla_breached": sla["sla_breached"],
             }
         )
+    # Chat connector writes queued for org admins (not workflow_runs).
+    if not type or type in {"connector", "connector_chat"}:
+        try:
+            chat_rows = (
+                client.table("approvals")
+                .select(
+                    "id, title, description, type, priority, status, requested_by, "
+                    "requested_at, context"
+                )
+                .eq("org_id", org_id)
+                .eq("type", "connector_chat")
+                .eq("status", "pending")
+                .order("requested_at", desc=True)
+                .limit(50)
+                .execute()
+                .data
+                or []
+            )
+        except Exception:  # noqa: BLE001
+            chat_rows = []
+        chat_requesters = {
+            str(row.get("requested_by"))
+            for row in chat_rows
+            if row.get("requested_by")
+        }
+        for uid in chat_requesters - user_ids:
+            try:
+                users = (
+                    client.table("users")
+                    .select("id, email, full_name")
+                    .eq("id", uid)
+                    .limit(1)
+                    .execute()
+                    .data
+                    or []
+                )
+                if users:
+                    full_name = str(users[0].get("full_name") or "").strip()
+                    email = str(users[0].get("email") or "").strip()
+                    if full_name:
+                        user_labels[uid] = full_name
+                    elif email:
+                        user_labels[uid] = (
+                            email.split("@")[0].replace(".", " ").replace("_", " ").title()
+                        )
+            except Exception:  # noqa: BLE001
+                pass
+        for row in chat_rows:
+            pri = str(row.get("priority") or "medium")
+            if priority and pri != priority:
+                continue
+            if status and str(row.get("status") or "") != status and status != "pending_approval":
+                continue
+            ctx = row.get("context") if isinstance(row.get("context"), dict) else {}
+            sla = _sla_fields(row.get("requested_at"), pri)
+            triggered_by = str(row.get("requested_by") or "")
+            approvals.append(
+                {
+                    "id": str(row["id"]),
+                    "title": row.get("title") or "Chat connector write",
+                    "description": row.get("description") or "Chat write awaiting approval",
+                    "type": "connector",
+                    "priority": pri,
+                    "status": "pending",
+                    "gate_type": "chat_connector_write",
+                    "requested_by": triggered_by,
+                    "requested_by_name": user_labels.get(triggered_by, "Member"),
+                    "requested_at": row.get("requested_at"),
+                    "reviewed_by": None,
+                    "reviewed_at": None,
+                    "context": {
+                        **ctx,
+                        "entity": ctx.get("entity") or ctx.get("integration") or "Connector",
+                        "action": ctx.get("action") or ctx.get("label") or "Execute write",
+                        "approval_id": str(row["id"]),
+                        "conversation_id": ctx.get("conversation_id"),
+                    },
+                    "environment": environment_name,
+                    "sla_deadline": sla["sla_deadline"],
+                    "sla_minutes_remaining": sla["sla_minutes_remaining"],
+                    "sla_breached": sla["sla_breached"],
+                }
+            )
+
     approvals.sort(key=lambda item: item["requested_at"] or "", reverse=True)
     approvals.sort(key=lambda item: 0 if item["priority"] == "high" else 1)
     return {"approvals": approvals}
@@ -3161,6 +3245,85 @@ async def approve_run_alias(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = get_supabase_client(settings)
     require_feature(get_plan_for_org(client, org_id), "approvals")
+
+    # Chat connector_chat approvals use the same /approve URL shape as workflow runs.
+    chat_rows = (
+        client.table("approvals")
+        .select("id, type, status, context, parameters, requested_by")
+        .eq("id", str(run_id))
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if chat_rows and str(chat_rows[0].get("type") or "") == "connector_chat":
+        from app.auth.platform_admin import is_org_admin_role
+        from app.services.chat_connector_execution_service import (
+            get_chat_connector_execution_service,
+        )
+        from app.workflows.policy import PolicyResolutionError, get_user_role
+
+        if str(chat_rows[0].get("status") or "") != "pending":
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Approval already resolved")
+        try:
+            role = get_user_role(client, org_id, str(current_user.get("user_id") or ""))
+        except PolicyResolutionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        if not is_org_admin_role(role):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin approval required")
+
+        ctx = chat_rows[0].get("context") if isinstance(chat_rows[0].get("context"), dict) else {}
+        params = (
+            chat_rows[0].get("parameters")
+            if isinstance(chat_rows[0].get("parameters"), dict)
+            else {}
+        )
+        conversation_id = str(ctx.get("conversation_id") or "")
+        if not conversation_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing conversation")
+        service = get_chat_connector_execution_service(settings)
+        task_state = {
+            "pending_task": {
+                "type": "connector_action",
+                "status": "awaiting_admin_approval",
+                "params": params,
+            },
+            "clarified_params": params,
+        }
+        plan = service.plan_action("", connected_integrations=[], task_state=task_state)
+        if not plan:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Pending write is incomplete")
+        execution = await service.execute_plan(
+            org_id=org_id,
+            user_id=str(chat_rows[0].get("requested_by") or current_user.get("user_id") or ""),
+            conversation_id=conversation_id,
+            plan=plan,
+            client=client,
+            classification={},
+            environment_name=environment_name,
+        )
+        client.table("approvals").update(
+            {
+                "status": "approved" if execution.success else "rejected",
+                "reviewed_by": str(current_user.get("user_id") or ""),
+                "reviewed_at": datetime.now(timezone.utc).isoformat(),
+            }
+        ).eq("id", str(run_id)).eq("org_id", org_id).execute()
+        from app.services.conversation_state_service import get_conversation_state_service
+
+        await get_conversation_state_service(settings).update_task_state(
+            conversation_id,
+            org_id,
+            {"pending_task": None},
+            client=client,
+        )
+        return {
+            "success": execution.success,
+            "approval_id": str(run_id),
+            "execution_result": execution.__dict__,
+            "message": execution.body if not execution.success else f"Approved and ran {execution.title}.",
+        }
     return await approve_run(run_id, body, current_user, org_id, environment_name, settings)
 
 

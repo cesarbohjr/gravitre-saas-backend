@@ -265,6 +265,8 @@ def _dry_run_patches(service: ChatConnectorExecutionService, connected: list[str
         patch.object(service, "_live_connected_integrations", return_value=connected),
         patch.object(service, "_verify_plan_executable", return_value=None),
         patch.object(service, "_evaluate_risk", side_effect=_fake_risk),
+        # Scenario actors are treated as approvers so confirm-path gating still exercises.
+        patch.object(service, "_user_can_approve_writes", return_value=True),
         patch.object(service._registry, "execute_tool", side_effect=_fake_execute_tool),
         patch("app.services.chat_connector_execution_service.emit_notification"),
     ):
@@ -286,6 +288,7 @@ def _live_patches(service: ChatConnectorExecutionService, connected: list[str]):
         patch.object(service, "_live_connected_integrations", return_value=connected),
         patch.object(service, "_verify_plan_executable", return_value=None),
         patch.object(service, "_evaluate_risk", side_effect=_fake_risk),
+        patch.object(service, "_user_can_approve_writes", return_value=True),
         patch("app.services.chat_connector_execution_service.emit_notification"),
     ):
         yield

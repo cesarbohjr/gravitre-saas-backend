@@ -1023,6 +1023,18 @@ class ChatConnectorExecutionService:
 
         pending_status = "awaiting_confirm" if user_can_approve else "awaiting_admin_approval"
         pending_params = {**pending_params, "status": pending_status}
+        approval_id: str | None = None
+        if not user_can_approve:
+            approval_id = self._queue_chat_write_for_admins(
+                client,
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                plan=plan,
+                pending_params=pending_params,
+            )
+            if approval_id:
+                pending_params = {**pending_params, "approval_id": approval_id}
         await self._state.update_task_state(
             conversation_id,
             org_id,
@@ -1068,6 +1080,7 @@ class ChatConnectorExecutionService:
                 "status": pending_status,
                 "params": pending_params,
             },
+            "approval_id": approval_id,
         }
 
     async def execute_confirmed_task(
@@ -1520,6 +1533,121 @@ class ChatConnectorExecutionService:
         except Exception:  # noqa: BLE001
             return False
         return is_org_admin_role(role)
+
+    def _queue_chat_write_for_admins(
+        self,
+        client: Any,
+        *,
+        org_id: str,
+        user_id: str,
+        conversation_id: str,
+        plan: ConnectorActionPlan,
+        pending_params: dict[str, Any],
+    ) -> str | None:
+        """Persist a Decision Queue row and notify org admins — not a polite no-op."""
+        from app.services.approval_record_service import create_contract_approval
+
+        vendor = (plan.integration or "connector").replace("_", " ").title()
+        label = plan.label or plan.invoke_action or "connector write"
+        title = f"Approve chat write: {label}"
+        description = (
+            f"Member requested {label} in {vendor} from chat. "
+            "Approve in the Decision Queue to execute."
+        )
+        row = create_contract_approval(
+            client,
+            org_id=org_id,
+            title=title,
+            description=description,
+            approval_type="connector_chat",
+            priority="medium",
+            status="pending",
+            requested_by=user_id,
+            context={
+                "conversation_id": conversation_id,
+                "gate_type": "chat_connector_write",
+                "integration": plan.integration,
+                "invoke_action": plan.invoke_action,
+                "tool_name": plan.tool_name,
+                "label": label,
+                "entity": vendor,
+                "action": label,
+            },
+            parameters=dict(pending_params),
+            payload={"args": dict(plan.args or {})},
+        )
+        approval_id = str((row or {}).get("id") or "") or None
+        result_url = (
+            f"/approvals?id={approval_id}" if approval_id else "/approvals"
+        )
+        # Requester acknowledgment
+        try:
+            emit_notification(
+                client,
+                org_id=org_id,
+                user_id=user_id,
+                event_type="approval_needed",
+                title="Request sent for approval",
+                body=f"{label} is waiting in the Decision Queue.",
+                entity_ref={
+                    "entity_type": "approval",
+                    "entity_id": approval_id or conversation_id,
+                    "result_url": result_url,
+                },
+                channel_hints={"bell": True, "email": False},
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("chat write requester notify failed: %s", exc)
+
+        # Admin inbox — the other end of "sent for approval"
+        for admin_id in self._org_approver_user_ids(client, org_id):
+            if admin_id == user_id:
+                continue
+            try:
+                emit_notification(
+                    client,
+                    org_id=org_id,
+                    user_id=admin_id,
+                    event_type="approval_needed",
+                    title=title,
+                    body=description,
+                    entity_ref={
+                        "entity_type": "approval",
+                        "entity_id": approval_id or conversation_id,
+                        "result_url": result_url,
+                    },
+                    channel_hints={"bell": True, "email": False},
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "chat write admin notify failed org=%s admin=%s error=%s",
+                    org_id,
+                    admin_id,
+                    exc,
+                )
+        return approval_id
+
+    @staticmethod
+    def _org_approver_user_ids(client: Any, org_id: str) -> list[str]:
+        try:
+            rows = (
+                client.table("organization_members")
+                .select("user_id, role")
+                .eq("org_id", org_id)
+                .in_("role", ["admin", "owner"])
+                .execute()
+                .data
+                or []
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("org approver lookup failed org=%s error=%s", org_id, exc)
+            return []
+        out: list[str] = []
+        for row in rows:
+            uid = str(row.get("user_id") or "").strip()
+            if uid:
+                out.append(uid)
+        return out
 
     @staticmethod
     def _followup_message_body(message: str) -> str | None:

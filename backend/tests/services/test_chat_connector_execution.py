@@ -131,7 +131,11 @@ async def test_write_action_queues_for_non_approver(connector_service):
         connector_service,
         "_user_can_approve_writes",
         return_value=False,
-    ):
+    ), patch.object(
+        connector_service,
+        "_queue_chat_write_for_admins",
+        return_value="approval-row-1",
+    ) as mock_queue:
         result = await connector_service.process_turn(
             org_id="org-1",
             user_id="user-1",
@@ -147,6 +151,8 @@ async def test_write_action_queues_for_non_approver(connector_service):
     assert result["dialogue_mode"] == "awaiting_approval"
     assert "sent for approval" in result["message"].lower()
     assert result["pending_task"]["status"] == "awaiting_admin_approval"
+    assert result["pending_task"]["params"]["approval_id"] == "approval-row-1"
+    mock_queue.assert_called_once()
 
 
 def test_plan_slack_followup_uses_staged_channel(connector_service):
