@@ -19,16 +19,14 @@ This PR aligns `app-hsmeta.json` + optional OAuth scopes for Batch 1b; live comp
 
 ## Batch 1b external dependency (named 2026-07-16)
 
-**Status: APP PUBLISHED — waiting on smoke-org HubSpot reconnect.**
+**Status: Batch 1b shipped (#150).** Build #8 + oauth optional `tickets` alignment are on tip.
 
 | Check | Result |
 |-------|--------|
-| Scope fix | Invalid `crm.objects.tickets.*` / `notes.write` → `tickets` + companies/owners |
-| Build #7 | `tickets` as **required** → reconnect failed (“missing [tickets]”) because prod OAuth still sends `crm.objects.tickets.write` |
-| Build #8 **deployed** | `tickets` moved to **optional** so reconnect works with current prod tip; companies.write / owners.read optional |
-| Backend | PR #144 — authorize URL must request `tickets` (not `crm.objects.tickets.write`) |
-
-**Your step:** retry HubSpot connect on smoke org now (build #8). Then say go for Batch 1b tip.
+| App build #8 (live) | `tickets` **optional**; companies.write / owners.read optional; companies.read required |
+| Build #7 failure mode | `tickets` as **required** → reconnect failed (“missing [tickets]”) while tip still sent `crm.objects.tickets.write` |
+| #144 / tip fix | Backend `optional_scope` includes `tickets` (match build #8); hsmeta synced the same |
+| Batch 1b | `companies.create` / `owners.list` / `tickets.get` merged via #150 |
 
 ## Evidence
 

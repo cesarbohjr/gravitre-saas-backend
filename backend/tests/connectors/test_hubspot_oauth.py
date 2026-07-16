@@ -12,14 +12,19 @@ def test_normalize_vendor_hubspot():
 
 
 def test_hubspot_authorize_url_contains_params():
+    from urllib.parse import parse_qs, urlparse
+
     url = hubspot_authorize_url("client-id", "https://api.example.com/callback", "state-xyz")
     assert "app.hubspot.com/oauth/authorize" in url
     assert "client-id" in url
     assert "state-xyz" in url
-    assert "crm.objects.contacts.read" in url.replace("+", " ")
-    assert "tickets" in url.replace("+", " ")
-    assert "crm.objects.companies.read" in url.replace("+", " ")
-    assert "optional_scope=" in url
-    assert "automation" in url
-    assert "crm.objects.companies.write" in url.replace("+", " ")
-    assert "crm.objects.owners.read" in url.replace("+", " ")
+    qs = parse_qs(urlparse(url).query)
+    required = (qs.get("scope") or [""])[0]
+    optional = (qs.get("optional_scope") or [""])[0]
+    assert "crm.objects.contacts.read" in required
+    assert "crm.objects.companies.read" in required
+    assert "tickets" not in required.split()
+    assert "tickets" in optional.split()
+    assert "automation" in optional
+    assert "crm.objects.companies.write" in optional
+    assert "crm.objects.owners.read" in optional

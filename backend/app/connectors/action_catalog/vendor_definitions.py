@@ -6,7 +6,9 @@ from app.connectors.action_catalog.action_workflow_schema import (
     APOLLO_LISTS_CREATE_SCHEMA,
     ASANA_TASKS_CREATE_SCHEMA,
     HUBSPOT_ASSOCIATIONS_CREATE_SCHEMA,
+    HUBSPOT_COMPANIES_CREATE_SCHEMA,
     HUBSPOT_CONTACTS_CREATE_SCHEMA,
+    SLACK_CONVERSATIONS_JOIN_SCHEMA,
     SLACK_POST_MESSAGE_SCHEMA,
 )
 
@@ -53,6 +55,8 @@ VENDOR_DEFINITIONS: tuple = (
             action("hubspot", "companies.search", "Search companies", tier="v1", kind="read", scope_suffix="companies:read", idempotent=True),
             action("hubspot", "companies.get", "Get company", tier="v1", kind="read", scope_suffix="companies:read", idempotent=True),
             action("hubspot", "tickets.search", "Search tickets", tier="v1", kind="read", scope_suffix="tickets:read", idempotent=True),
+            action("hubspot", "tickets.get", "Get ticket", tier="v1", kind="read", scope_suffix="tickets:read", idempotent=True),
+            action("hubspot", "owners.list", "List owners", tier="v1", kind="read", scope_suffix="owners:read", idempotent=True),
             action("hubspot", "pipelines.list", "List deal pipelines", tier="v1", kind="read", scope_suffix="pipelines:read", idempotent=True),
             action("hubspot", "contacts.list", "List recent contacts", tier="v1", kind="read", scope_suffix="contacts:read", idempotent=True),
         ),
@@ -83,6 +87,16 @@ VENDOR_DEFINITIONS: tuple = (
                 scope_suffix="associations:write",
                 destructive=False,
                 workflow_schema=HUBSPOT_ASSOCIATIONS_CREATE_SCHEMA,
+            ),
+            action(
+                "hubspot",
+                "companies.create",
+                "Create company",
+                tier="v2",
+                kind="write",
+                scope_suffix="companies:write",
+                destructive=True,
+                workflow_schema=HUBSPOT_COMPANIES_CREATE_SCHEMA,
             ),
         ),
         v3=(
@@ -703,6 +717,7 @@ VENDOR_DEFINITIONS: tuple = (
             action("slack", "conversations.list", "List channels", tier="v1", kind="read", scope_suffix="channels:read", idempotent=True),
             action("slack", "conversations.history", "Read channel messages", tier="v1", kind="read", scope_suffix="messages:read", idempotent=True),
             action("slack", "users.list", "List workspace users", tier="v1", kind="read", scope_suffix="users:read", idempotent=True),
+            action("slack", "users.info", "Get user profile", tier="v1", kind="read", scope_suffix="users:read", idempotent=True),
         ),
         v2=(
             action(
@@ -717,6 +732,16 @@ VENDOR_DEFINITIONS: tuple = (
             ),
             action("slack", "conversations.create", "Create channel", tier="v2", kind="write", scope_suffix="channels:write", destructive=True),
             action("slack", "chat.update", "Update message", tier="v2", kind="write", scope_suffix="messages:write", destructive=True),
+            action(
+                "slack",
+                "conversations.join",
+                "Join a public channel",
+                tier="v2",
+                kind="write",
+                scope_suffix="channels:join",
+                destructive=False,
+                workflow_schema=SLACK_CONVERSATIONS_JOIN_SCHEMA,
+            ),
         ),
         v3=(
             action("slack", "files.upload", "Upload file", tier="v3", kind="advanced", scope_suffix="files:write"),
@@ -1898,6 +1923,53 @@ VENDOR_DEFINITIONS: tuple = (
                 kind="advanced",
                 scope_suffix="filings:read",
                 idempotent=True,
+            ),
+        ),
+    ),
+    build_vendor(
+        "platform",
+        "Gravitre Platform",
+        "Operations",
+        "https://docs.gravitre.app",
+        shipped=True,
+        department="operations",
+        v1=(
+            action(
+                "platform",
+                "health.snapshot",
+                "Platform health snapshot",
+                tier="v1",
+                kind="read",
+                scope_suffix="health:read",
+                idempotent=True,
+                description=(
+                    "Org-local platform health KPIs from audit_events + workflow runs "
+                    "(approval latency, failures, stalled runs). No external connectors."
+                ),
+            ),
+        ),
+        v2=(
+            action(
+                "platform",
+                "connector_ops.summary",
+                "Connector ops summary",
+                tier="v2",
+                kind="read",
+                scope_suffix="health:read",
+                idempotent=True,
+                description="Scaffold: flaky-connector / auth-churn aggregates (catalog reserved).",
+            ),
+        ),
+        v3=(
+            action(
+                "platform",
+                "approval.latency.report",
+                "Approval latency report",
+                tier="v3",
+                kind="advanced",
+                scope_suffix="health:read",
+                idempotent=True,
+                description="Scaffold: detailed approval latency breakdown (catalog reserved).",
             ),
         ),
     ),

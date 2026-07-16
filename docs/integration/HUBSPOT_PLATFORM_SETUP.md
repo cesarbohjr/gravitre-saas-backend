@@ -92,19 +92,22 @@ Example redirect (production):
 https://api.gravitre.com/api/connectors/oauth/hubspot/callback
 ```
 
-**Scopes** — align with `backend/app/connectors/hubspot_oauth.py` (`HUBSPOT_SCOPES`):
+**Scopes** — must match published app hsmeta **and** `hubspot_oauth.py` (`scope` vs `optional_scope`):
 
-- `crm.objects.contacts.read`
-- `crm.objects.contacts.write`
-- `crm.objects.deals.read`
-- `crm.objects.deals.write`
+Required (`scope`):
+- `crm.objects.contacts.read` / `crm.objects.contacts.write`
+- `crm.objects.deals.read` / `crm.objects.deals.write`
 - `crm.objects.companies.read`
-- `tickets` (single HubSpot scope — read+write; not `crm.objects.tickets.*`)
-- `crm.lists.read`
-- `crm.lists.write`
+- `crm.lists.read` / `crm.lists.write`
 - `oauth`
-- Optional: `automation`, `crm.objects.companies.write`, `crm.objects.owners.read`
-- Notes: covered by `contacts.write` (do not use `crm.objects.notes.write` — rejected by 2026 platform)
+
+Optional (`optional_scope` — build #8+):
+- `automation`
+- `crm.objects.companies.write`
+- `crm.objects.owners.read`
+- `tickets` (single HubSpot scope — read+write; not `crm.objects.tickets.*`)
+
+Notes: covered by `contacts.write` (do not use `crm.objects.notes.write` — rejected by 2026 platform). Putting a required install-URL scope that the app only lists as optional causes HubSpot’s “scope mismatch” authorize error.
 
 For webhooks, HubSpot may also require **developer/webhook-related scopes** on the app when you create subscriptions in the UI. If subscription API calls fail with a scope error, add the scopes HubSpot lists in the error (often `developers-write` / webhook-related).
 

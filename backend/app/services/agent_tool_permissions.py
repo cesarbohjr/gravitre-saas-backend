@@ -320,6 +320,8 @@ def assert_agent_tool_permission(
 
 def default_demo_scopes_for_system(system: str) -> list[str]:
     """Scopes granted to demo seed agents by declared systems[]."""
+    if system == "platform":
+        return ["platform:health:read", "platform:*"]
     if system == "fred":
         return ["fred:series:read", "fred:*"]
     if system == "nvd":

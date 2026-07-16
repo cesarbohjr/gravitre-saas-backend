@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
@@ -9,9 +9,13 @@ import { Button } from "@/components/ui/button"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import { hoverLift, pressScale } from "@/lib/animations"
-import { agentsApi } from "@/lib/api"
+import { agentsApi, marketplaceApi } from "@/lib/api"
 import { useAsyncJob } from "@/hooks/use-async-job"
 import { toast } from "sonner"
+import {
+  collectInstalledAgentIds,
+  resolveDefaultAgentId,
+} from "@/lib/resolve-default-agent"
 
 interface AssignableAgent {
   id: string
@@ -61,7 +65,7 @@ const stepVariants = {
 const stepTransition = { type: "spring" as const, stiffness: 360, damping: 32 }
 
 const steps = [
-  { id: 1, title: "Select Agent", description: "Choose which AI agent to assign" },
+  { id: 1, title: "Agent", description: "Optional — change which AI agent to assign" },
   { id: 2, title: "Task Brief", description: "Describe what you need done" },
   { id: 3, title: "Context", description: "Select data sources" },
   { id: 4, title: "Outputs", description: "Choose deliverables" },
@@ -89,6 +93,11 @@ function NewAssignmentPageContent() {
     () => agentsApi.list(),
     { revalidateOnFocus: false },
   )
+  const { data: installsResponse } = useSWR(
+    "assignment-installs",
+    () => marketplaceApi.listInstalls({ status: "active", limit: 100 }),
+    { revalidateOnFocus: false },
+  )
 
   const agents: AssignableAgent[] = useMemo(() => {
     return (agentsResponse?.agents ?? []).map((item) => {
@@ -103,6 +112,11 @@ function NewAssignmentPageContent() {
     })
   }, [agentsResponse?.agents])
 
+  const installedAgentIds = useMemo(
+    () => collectInstalledAgentIds(installsResponse?.installs ?? []),
+    [installsResponse?.installs],
+  )
+
   const { submitJob, isWorking } = useAsyncJob({
     onCompleted: (job) => {
       toast.success("Task assigned — agent is working")
@@ -114,9 +128,11 @@ function NewAssignmentPageContent() {
   })
   
   const reduced = useReducedMotion()
-  const [currentStep, setCurrentStep] = useState(1)
+  const [currentStep, setCurrentStep] = useState(2)
   const [direction, setDirection] = useState(1)
   const [selectedAgent, setSelectedAgent] = useState<string | null>(preselectedAgent)
+  const [agentAutoResolved, setAgentAutoResolved] = useState(Boolean(preselectedAgent))
+  const autoResolvedRef = useRef(Boolean(preselectedAgent))
   const [taskBrief, setTaskBrief] = useState("")
   const [taskPriority, setTaskPriority] = useState<TaskPriority>("normal")
   const [selectedSources, setSelectedSources] = useState<string[]>([])
@@ -125,12 +141,26 @@ function NewAssignmentPageContent() {
   const [selectedDestinations, setSelectedDestinations] = useState<string[]>([])
   const [requireApproval, setRequireApproval] = useState(true)
 
+  useEffect(() => {
+    if (autoResolvedRef.current || agentsLoading || agents.length === 0) return
+    const resolved = resolveDefaultAgentId({
+      agents: agentsResponse?.agents ?? [],
+      preferredAgentId: preselectedAgent,
+      installedAgentIds,
+    })
+    if (!resolved) return
+    autoResolvedRef.current = true
+    setSelectedAgent(resolved)
+    setAgentAutoResolved(true)
+    setCurrentStep(2)
+  }, [agentsLoading, agents.length, agentsResponse?.agents, installedAgentIds, preselectedAgent])
+
   const agent = agents.find(a => a.id === selectedAgent)
 
   const canProceed = () => {
     switch (currentStep) {
       case 1: return selectedAgent !== null
-      case 2: return taskBrief.length >= 10
+      case 2: return selectedAgent !== null && taskBrief.length >= 10
       case 3: return true
       case 4: return selectedOutputs.length > 0
       case 5: return selectedDestinations.length > 0
@@ -362,7 +392,10 @@ function NewAssignmentPageContent() {
                       transition={reduced ? { duration: 0 } : { delay: index * 0.05, type: "spring", stiffness: 380, damping: 30 }}
                       whileHover={reduced ? undefined : hoverLift}
                       whileTap={reduced ? undefined : pressScale}
-                      onClick={() => setSelectedAgent(a.id)}
+                      onClick={() => {
+                        setSelectedAgent(a.id)
+                        setAgentAutoResolved(false)
+                      }}
                       className={cn(
                         "relative flex items-center gap-4 p-5 rounded-xl border text-left transition-colors",
                         selectedAgent === a.id
@@ -424,8 +457,27 @@ function NewAssignmentPageContent() {
                   animate="center"
                   exit="exit"
                   transition={reduced ? { duration: 0 } : stepTransition}
-                  className="max-w-2xl"
+                  className="max-w-2xl space-y-4"
                 >
+                  {agent ? (
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary/40 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {agentAutoResolved ? "Auto-selected" : "Assigned to"} {agent.name}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">{agent.role}</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="shrink-0 text-xs text-muted-foreground"
+                        onClick={() => goToStep(1)}
+                      >
+                        Change agent
+                      </Button>
+                    </div>
+                  ) : null}
                   <div className="rounded-xl border border-border bg-card overflow-hidden">
                     <div className="px-6 py-4 border-b border-border bg-gradient-to-r from-emerald-500/5 to-transparent">
                       <h3 className="font-semibold text-foreground">What do you need done?</h3>

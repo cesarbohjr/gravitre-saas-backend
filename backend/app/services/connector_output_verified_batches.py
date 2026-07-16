@@ -218,6 +218,10 @@ VERIFIED_OUTPUT_BATCH_08: frozenset[str] = frozenset(
         "ai_visibility_ui.prompts.batch",
         "finseo.prompts.track",
         "hubspot.associations.create",
+        "hubspot.companies.create",
+        "hubspot.owners.list",
+        "hubspot.tickets.get",
+        "slack.conversations.join",
     }
 )
 
