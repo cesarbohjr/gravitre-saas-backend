@@ -240,7 +240,7 @@ export function apiGraphToCanvasNodes(
     const metadata = (node.metadata as Record<string, unknown>) || {}
     const rawConfig = (node.config as Record<string, unknown>) || {}
     const sourceId = node.source_id as string | undefined
-    const config = {
+    const config: Record<string, unknown> = {
       ...rawConfig,
       ...(sourceId && !rawConfig.source_id ? { source_id: sourceId } : {}),
     }
