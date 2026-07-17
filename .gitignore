@@ -18,6 +18,7 @@ supabase/supabase/
 # OS and IDE
 .DS_Store
 Thumbs.db
+.cursor-tmp/
 *.swp
 *.swo
 .idea/
