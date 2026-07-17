@@ -1999,9 +1999,32 @@ class ChatConnectorExecutionService:
                     name = " ".join(bit for bit in name_bits if bit) or str(props.get("email") or "contact")
                     if count == 1:
                         return f"Found 1 HubSpot contact: {name}."
+                # Pattern 11 — large list reads → compact insights (not 500 raw records).
+                if count > 12:
+                    try:
+                        from app.services.tool_result_summarizer import summarize_tool_payload
+
+                        summarized = summarize_tool_payload(
+                            {"contacts": contacts},
+                            action=plan.invoke_action or "hubspot.contacts",
+                        )
+                        return str(summarized.get("summary") or f"Found {count} HubSpot contact(s).")
+                    except Exception:  # noqa: BLE001
+                        pass
                 return f"Found {count} HubSpot contact(s)."
             if "records" in result_data:
                 count = len(result_data.get("records") or [])
+                if count > 12:
+                    try:
+                        from app.services.tool_result_summarizer import summarize_tool_payload
+
+                        summarized = summarize_tool_payload(
+                            result_data,
+                            action=plan.invoke_action or "salesforce.query",
+                        )
+                        return str(summarized.get("summary") or f"Salesforce returned {count} record(s).")
+                    except Exception:  # noqa: BLE001
+                        pass
                 return f"Salesforce returned {count} record(s)."
             if "channels" in result_data:
                 count = len(result_data.get("channels") or [])
@@ -2010,6 +2033,18 @@ class ChatConnectorExecutionService:
                 ticket = result_data["ticket"]
                 if isinstance(ticket, dict):
                     return f"Zendesk ticket #{ticket.get('id', '')} — {ticket.get('subject', 'loaded')}."
+            # Generic large-list fallback for other read actions.
+            try:
+                from app.services.tool_result_summarizer import summarize_tool_payload
+
+                summarized = summarize_tool_payload(
+                    result_data if isinstance(result_data, dict) else {},
+                    action=plan.invoke_action,
+                )
+                if summarized.get("truncated") and summarized.get("record_count", 0) > 12:
+                    return str(summarized.get("summary") or "")
+            except Exception:  # noqa: BLE001
+                pass
         if plan.invoke_action == "slack.post_message":
             channel = (result_data or {}).get("channel") or plan.args.get("channel")
             return f"Message posted to Slack #{channel}."

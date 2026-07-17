@@ -115,3 +115,7 @@ async def test_intelligence_orchestrator_prepare_turn():
     assert turn.context_explanation
     assert isinstance(turn.explainability, dict)
     assert isinstance(turn.execution_gate, dict)
+    assert isinstance(turn.working_memory, dict)
+    assert "long_term" in turn.working_memory
+    assert isinstance(turn.operational_envelope, dict)
+    assert turn.operational_envelope.get("whatHappened")

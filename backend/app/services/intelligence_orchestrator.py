@@ -52,6 +52,7 @@ from app.services.specialist_reasoning_engine import (
 from app.services.org_context_service import get_org_context_service
 from app.services.unified_retrieval_service import UnifiedRetrievalBundle, UnifiedRetrievalService, get_unified_retrieval_service
 from app.services.tool_registry import get_tool_registry
+from app.services.operational_intelligence_layer import get_operational_intelligence_layer
 
 logger = get_logger(__name__)
 
@@ -83,6 +84,9 @@ class AssistantTurnContext:
     execution_gate: dict[str, Any] = field(default_factory=dict)
     advisor_brief: dict[str, Any] | None = None
     explainability: dict[str, Any] = field(default_factory=dict)
+    working_memory: dict[str, Any] = field(default_factory=dict)
+    distillation_meta: dict[str, Any] = field(default_factory=dict)
+    operational_envelope: dict[str, Any] = field(default_factory=dict)
 
 
 class IntelligenceOrchestrator:
@@ -105,6 +109,7 @@ class IntelligenceOrchestrator:
         self._advisor: AdvisorModeEngine = get_advisor_mode_engine(self.settings)
         self._explainability: ExplainabilityEngine = get_explainability_engine()
         self._registry = get_tool_registry()
+        self._oil = get_operational_intelligence_layer()
 
     async def prepare_assistant_turn(
         self,
@@ -133,6 +138,12 @@ class IntelligenceOrchestrator:
             task_state=task_state,
             routing_tier=routing_tier,
             mode=mode,
+        )
+        # Pattern 7 — predictive context preload (intent/confidence-driven slices).
+        registry_plan = self._oil.predict_context_plan(
+            registry_plan,
+            classification=classification,
+            query=query,
         )
         connected_labels = ", ".join(sorted(connected)) if connected else "none connected"
         if registry_plan.connector_names:
@@ -302,6 +313,8 @@ class IntelligenceOrchestrator:
             pack_state_section=pack_state_section,
         )
         raw_sources = filter_context_sources(raw_sources, registry_plan)
+        # Pattern 9 — distill oversized context before ranking/token budget.
+        raw_sources, distillation_meta = self._oil.distill_sources(raw_sources)
         profile = self._context_engine.build_context_profile(
             raw_sources=raw_sources,
             classification=classification,
@@ -370,11 +383,48 @@ class IntelligenceOrchestrator:
             except Exception as exc:  # noqa: BLE001
                 logger.debug("orchestrator strategic plan skipped org_id=%s error=%s", org_id, exc)
 
+        # Pattern 8 — human-like working memory (LTM / STM / scratchpad).
+        working_memory_profile = self._oil.build_working_memory(
+            conversation_memory=memory_ctx,
+            task_state=task_state,
+            org_context_block=org_context_block,
+            query=query,
+        )
+        working_memory = working_memory_profile.to_dict()
+        wm_section = working_memory_profile.prompt_section()
+        memory_block = (
+            sections.get("conversation_memory")
+            or sections.get("agent_memory")
+            or memory_ctx.get("prompt_section")
+            or retrieval.memory_section
+        )
+        if wm_section and wm_section not in (memory_block or ""):
+            memory_block = f"{(memory_block or '').rstrip()}\n\n{wm_section}".strip()
+
+        operational_envelope = self._oil.build_operational_envelope(
+            what_happened="assistant_turn_prepared",
+            why=context_explanation,
+            action={"connectedIntegrations": connected, "strategicPlan": bool(strategic_plan)},
+            outcome={},
+            confidence=pre_confidence,
+            working_memory=working_memory_profile,
+            patterns_invoked=[
+                "intent_classification_before_llm",
+                "retrieval_before_generation",
+                "predictive_context_loading",
+                "human_like_working_memory",
+                "context_distillation",
+                "confidence_scoring",
+                "multi_stage_retrieval",
+                "hierarchical_planning" if strategic_plan else "retrieval_before_generation",
+            ],
+        )
+
         return AssistantTurnContext(
             retrieval=retrieval,
             agent=agent,
             org_context_block=sections.get("org_context") or org_context_block,
-            memory_block=sections.get("conversation_memory") or sections.get("agent_memory") or memory_ctx.get("prompt_section") or retrieval.memory_section,
+            memory_block=memory_block,
             company_block=sections.get("company_intelligence") or company_block,
             entity_block=sections.get("entity_graph") or entity_block,
             task_state_section=sections.get("task_state") or task_state_section,
@@ -382,6 +432,7 @@ class IntelligenceOrchestrator:
             context_profile={
                 **profile.to_explanation_dict(),
                 "contextRegistry": registry_plan.to_explanation_dict(),
+                "distillation": distillation_meta,
             },
             context_registry=registry_plan.to_explanation_dict(),
             context_explanation=context_explanation,
@@ -403,6 +454,9 @@ class IntelligenceOrchestrator:
             execution_gate=execution_gate,
             advisor_brief=advisor_brief,
             explainability=explainability,
+            working_memory=working_memory,
+            distillation_meta=distillation_meta,
+            operational_envelope=operational_envelope,
         )
 
     def finalize_confidence(

@@ -160,4 +160,49 @@ ORCHESTRATION_REGISTRY: dict[str, dict[str, Any]] = {
         "service": "ExplainabilityEngine",
         "note": "Structured explanation envelope without chain-of-thought leakage.",
     },
+    "operational_intelligence_layer": {
+        "status": "live",
+        "module": "app.services.operational_intelligence_layer",
+        "service": "OperationalIntelligenceLayer",
+        "note": (
+            "Compound what/why/action/outcome facade — predictive context, working memory, "
+            "distillation, reflection, tool summarization, self-heal (advisory)."
+        ),
+    },
+    "predictive_context_loader": {
+        "status": "live",
+        "module": "app.services.predictive_context_loader",
+        "service": "adjust_registry_plan_for_prediction",
+        "note": "Intent/confidence-driven context slice and rag_top_k preload.",
+    },
+    "working_memory_profile": {
+        "status": "live",
+        "module": "app.services.working_memory_profile",
+        "service": "WorkingMemoryProfile",
+        "note": "LTM / STM / scratchpad adapter over conversation + task state.",
+    },
+    "context_distiller": {
+        "status": "live",
+        "module": "app.services.context_distiller",
+        "service": "distill_context_sources",
+        "note": "Compress oversized context into summary + entities + key findings.",
+    },
+    "tool_result_summarizer": {
+        "status": "live",
+        "module": "app.services.tool_result_summarizer",
+        "service": "summarize_tool_payload",
+        "note": "Aggregate large connector payloads before LLM re-entry.",
+    },
+    "reflection_loop_service": {
+        "status": "live",
+        "module": "app.services.reflection_loop_service",
+        "service": "ReflectionLoopService",
+        "note": "Plan → critique → revise coordination before delivery.",
+    },
+    "self_healing_advisor": {
+        "status": "live",
+        "module": "app.services.self_healing_advisor",
+        "service": "advise_self_heal",
+        "note": "Advisory retry / reconnect / backup-connector suggestions — no auto graph rewrite.",
+    },
 }
