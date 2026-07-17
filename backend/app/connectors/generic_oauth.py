@@ -35,8 +35,15 @@ TOKEN_REFRESH_BUFFER_SEC = 300
 def generic_credentials(settings: Settings, vendor: str) -> tuple[str, str]:
     key = vendor.strip().lower().replace("-", "_")
     env_prefix = key.upper()
-    client_id = (os.environ.get(f"{env_prefix}_CLIENT_ID") or "").strip()
-    client_secret = (os.environ.get(f"{env_prefix}_CLIENT_SECRET") or "").strip()
+    client_id = (
+        (os.environ.get(f"{env_prefix}_CLIENT_ID") or "").strip()
+        or (os.environ.get(f"{env_prefix}_CLIENT_ID_KEY") or "").strip()
+    )
+    client_secret = (
+        (os.environ.get(f"{env_prefix}_CLIENT_SECRET") or "").strip()
+        or (os.environ.get(f"{env_prefix}_SECRET_KEY") or "").strip()
+        or (os.environ.get(f"{env_prefix}_CLIENT_SECRET_KEY") or "").strip()
+    )
     if not client_id:
         client_id = (getattr(settings, f"{key}_client_id", None) or "").strip()
     if not client_secret:

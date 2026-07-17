@@ -45,11 +45,13 @@ def plaid_platform_credentials(settings: Settings) -> tuple[str, str]:
 
     client_id = (
         (os.environ.get("PLAID_CLIENT_ID") or "").strip()
+        or (os.environ.get("PLAID_CLIENT_ID_KEY") or "").strip()
         or (settings.plaid_client_id or "").strip()
     )
     secret = (
         (os.environ.get("PLAID_SECRET") or "").strip()
         or (os.environ.get("PLAID_CLIENT_SECRET") or "").strip()
+        or (os.environ.get("PLAID_SECRET_KEY") or "").strip()
         or (settings.plaid_secret or "").strip()
     )
     return client_id, secret

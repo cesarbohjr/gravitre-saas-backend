@@ -203,11 +203,20 @@ class Settings(BaseSettings):
     # never silently hits production.plaid.com without an explicit env choice.
     plaid_client_id: str = Field(
         default="",
-        validation_alias=AliasChoices("PLAID_CLIENT_ID", "plaid_client_id"),
+        validation_alias=AliasChoices(
+            "PLAID_CLIENT_ID",
+            "PLAID_CLIENT_ID_KEY",
+            "plaid_client_id",
+        ),
     )
     plaid_secret: str = Field(
         default="",
-        validation_alias=AliasChoices("PLAID_SECRET", "PLAID_CLIENT_SECRET", "plaid_secret"),
+        validation_alias=AliasChoices(
+            "PLAID_SECRET",
+            "PLAID_CLIENT_SECRET",
+            "PLAID_SECRET_KEY",
+            "plaid_secret",
+        ),
     )
     plaid_env: str = Field(
         default="sandbox",
@@ -216,11 +225,20 @@ class Settings(BaseSettings):
     # HR H3 — Gusto Demo OAuth (api.gusto-demo.com).
     gusto_client_id: str = Field(
         default="",
-        validation_alias=AliasChoices("GUSTO_CLIENT_ID", "gusto_client_id"),
+        validation_alias=AliasChoices(
+            "GUSTO_CLIENT_ID",
+            "GUSTO_CLIENT_ID_KEY",
+            "gusto_client_id",
+        ),
     )
     gusto_client_secret: str = Field(
         default="",
-        validation_alias=AliasChoices("GUSTO_CLIENT_SECRET", "gusto_client_secret"),
+        validation_alias=AliasChoices(
+            "GUSTO_CLIENT_SECRET",
+            "GUSTO_SECRET_KEY",
+            "GUSTO_CLIENT_SECRET_KEY",
+            "gusto_client_secret",
+        ),
     )
     gusto_env: str = Field(
         default="demo",
