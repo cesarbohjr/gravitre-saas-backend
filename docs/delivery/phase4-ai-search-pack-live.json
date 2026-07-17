@@ -1,0 +1,77 @@
+{
+  "pass": true,
+  "checked_at": "2026-07-17T08:14:03.868983+00:00",
+  "prod_git_sha": "9e825d021c140bddb25102c04f68733d56ccd402",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "pack_id": "ai-search-intelligence-pack",
+  "path": {
+    "api": "C",
+    "scrape": "S2"
+  },
+  "smoke_brand": "Gravitre",
+  "bundle": {
+    "agentId": "17049358-ac9b-51da-9e8f-4ae13b664eca",
+    "workflowId": "64330339-4afc-54ae-8916-c1d690e25591",
+    "assignmentCount": 3,
+    "ahrefsConnectorId": null,
+    "finseoConnectorId": null,
+    "aiVisibilityUiConnectorId": null,
+    "stubCount": 3,
+    "skippedCount": 0,
+    "stopLinesHonored": [
+      "ahrefs_finseo_byo_only",
+      "raw_ai_answer_memory_kg_blocked",
+      "no_linkedin_scrape",
+      "ui_scrape_provenance_required",
+      "reuse_existing_connectors",
+      "path_c_dual_byo",
+      "path_s2_ui_scrape_v1_v2_v3"
+    ]
+  },
+  "invokes": {},
+  "live_invoke_ok": false,
+  "api_live_ok": false,
+  "ui_live_ok": false,
+  "any_active_connector": false,
+  "any_api_connector": false,
+  "kpis": {
+    "packId": "ai-search-intelligence-pack",
+    "installed": false,
+    "installId": null,
+    "assetId": "4aa1563d-0833-48d2-857a-ff3a68927442",
+    "agentCount": 0,
+    "workflowCount": 0,
+    "signalsCount": 0,
+    "entitiesCount": 0,
+    "cacheTouches": 0,
+    "assignmentsCount": 3,
+    "vendors": {
+      "ahrefs": {
+        "signals": 0,
+        "entities": 0
+      },
+      "finseo": {
+        "signals": 0,
+        "entities": 0
+      },
+      "ai_visibility_ui": {
+        "signals": 0,
+        "entities": 0
+      }
+    }
+  },
+  "cohesion": {
+    "kpi_panel_ui_ok": true,
+    "path_c_s2_unlock_ok": true,
+    "install_ok": true
+  },
+  "governance": {
+    "ahrefs_finseo_byo_only": true,
+    "raw_ai_answer_memory_kg_blocked": true,
+    "no_linkedin_scrape": true,
+    "ui_scrape_provenance_required": true,
+    "path_c_dual_byo": true,
+    "path_s2_ui_scrape_v1_v2_v3": true
+  },
+  "note": "AI Search #8 C+S2: Ahrefs+Finseo dual BYO + UI scrape tiers. Live API invoke required when an active ahrefs/finseo connector exists; UI scrape flakiness must not fail tip when API succeeds."
+}
