@@ -118,8 +118,19 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   )
 
   const addNotification = useCallback((notification: Omit<Notification, "id" | "timestamp" | "read">) => {
+    // Ignore chat bounce-back links — they look like a "workflow detail" toast but
+    // only reopen /ai. Prefer /runs/... or an external vendor URL.
+    const rawLink = notification.link?.trim() || undefined
+    const link =
+      rawLink &&
+      rawLink !== "/ai" &&
+      !rawLink.startsWith("/ai?") &&
+      !rawLink.startsWith("/ai#")
+        ? rawLink
+        : undefined
     const newNotification: Notification = {
       ...notification,
+      link,
       id: `local-${Date.now()}`,
       timestamp: new Date(),
       read: false,
@@ -127,7 +138,21 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     if (notification.type === "task_complete") {
       toast.success(notification.title, {
         description: notification.message,
-        ...(notification.link ? { action: { label: "View", onClick: () => window.open(notification.link, "_self") } } : {}),
+        duration: 12_000,
+        ...(link
+          ? {
+              action: {
+                label: "View",
+                onClick: () => {
+                  if (link.startsWith("http://") || link.startsWith("https://")) {
+                    window.open(link, "_blank", "noopener,noreferrer")
+                  } else {
+                    window.location.assign(link)
+                  }
+                },
+              },
+            }
+          : {}),
       })
     }
     void mutate(
@@ -143,11 +168,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
             is_archived: false,
             created_at: newNotification.timestamp.toISOString(),
           },
-          ...(prev?.notifications ?? []),
+          ...(prev?.notifications ?? []).filter((row) => !String(row.id).startsWith("local-")),
         ],
         unread_count: (prev?.unread_count ?? 0) + 1,
       }),
-      { revalidate: false }
+      // Revalidate so the durable server notification (bell) replaces the local toast entry.
+      { revalidate: true }
     )
   }, [mutate])
 

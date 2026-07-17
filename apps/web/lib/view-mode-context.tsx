@@ -42,13 +42,16 @@ export function ViewModeProvider({ children }: { children: ReactNode }) {
   })
 
   useEffect(() => {
-    if (serverLite) {
+    // Only force Lite when the user is not an org admin. Command owners/admins
+    // must keep the Admin toggle even if they also sit in a department.
+    if (serverLite && !serverAdmin) {
       setManualOverride("lite")
       localStorage.setItem("gravitre-view-mode", "lite")
     }
-  }, [serverLite])
+  }, [serverLite, serverAdmin])
 
-  const mode: ViewMode = serverLite ? "lite" : manualOverride ?? "admin"
+  const mode: ViewMode =
+    serverLite && !serverAdmin ? "lite" : manualOverride ?? "admin"
 
   const setMode = (newMode: ViewMode) => {
     if (serverLite && newMode === "admin" && !serverAdmin) {

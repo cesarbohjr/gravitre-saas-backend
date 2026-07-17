@@ -116,7 +116,13 @@ const statusConfig = {
 function getSummaryStats(runs: Run[]) {
   return {
     active: runs.filter(r => r.status === "running").length,
-    needsApproval: runs.filter(r => r.approvalStatus === "pending").length,
+    // Count both approval_status=pending and run status pending/paused (awaiting human).
+    needsApproval: runs.filter(
+      (r) =>
+        r.approvalStatus === "pending" ||
+        r.status === "pending" ||
+        r.status === "paused",
+    ).length,
     failed: runs.filter(r => r.status === "failed").length,
     completed: runs.filter(r => r.status === "completed").length,
   }

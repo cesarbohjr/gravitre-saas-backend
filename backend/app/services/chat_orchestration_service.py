@@ -21,6 +21,12 @@ from app.services.conversational_execution_service import (
     ExecutionResult,
 )
 from app.services.notification_emitter import emit_notification
+from app.services.chat_orchestration_runs import (
+    finalize_orchestration_run,
+    resolve_orchestration_result_url,
+    start_orchestration_run,
+    sync_orchestration_step,
+)
 from app.services.connector_session_state import (
     bind_plan_from_session,
     build_session_summary,
@@ -231,7 +237,7 @@ class ChatOrchestrationService:
                 success=False,
                 entity_type="conversation",
                 entity_id=conversation_id,
-                result_url="/ai",
+                result_url=f"/ai?conversation={conversation_id}",
                 title="No orchestration",
                 body="No pending multi-step orchestration to execute.",
             )
@@ -261,7 +267,7 @@ class ChatOrchestrationService:
                 success=False,
                 entity_type="conversation",
                 entity_id=conversation_id,
-                result_url="/ai",
+                result_url=f"/ai?conversation={conversation_id}",
                 title="Orchestration idle",
                 body="Nothing is waiting for approval right now.",
             )
@@ -270,11 +276,17 @@ class ChatOrchestrationService:
             return ExecutionResult.from_dict(execution)
         if isinstance(execution, dict):
             return ExecutionResult.from_dict(execution)
+        params = ((task_state or {}).get("clarified_params") or {}) if isinstance(task_state, dict) else {}
+        run_id = str(params.get("orchestration_run_id") or "") or None
         return ExecutionResult(
             success=True,
             entity_type="orchestration",
-            entity_id=conversation_id,
-            result_url="/ai",
+            entity_id=run_id or conversation_id,
+            result_url=resolve_orchestration_result_url(
+                run_id=run_id,
+                step_results=list(params.get("step_results") or []),
+                conversation_id=conversation_id,
+            ),
             title="Orchestration in progress",
             body=str((turn or {}).get("message") or "Continuing orchestration."),
             task_label="Multi-step orchestration",
@@ -562,6 +574,17 @@ class ChatOrchestrationService:
             )
         params["current_step_index"] = 0
         params["step_results"] = []
+        run_id = start_orchestration_run(
+            client,
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            goal=str(params.get("goal") or "Chat orchestration"),
+            steps=[step.to_dict() for step in steps],
+            environment_name=environment_name,
+        )
+        if run_id:
+            params["orchestration_run_id"] = run_id
         await self._state.update_task_state(
             conversation_id,
             org_id,
@@ -656,6 +679,17 @@ class ChatOrchestrationService:
         )
         params["step_results"] = step_results
         params["current_step_index"] = idx + 1
+        run_id = str(params.get("orchestration_run_id") or "") or None
+        if run_id:
+            sync_orchestration_step(
+                client,
+                org_id=org_id,
+                run_id=run_id,
+                step_id=step.step_id,
+                success=bool(result.success),
+                summary=result.body,
+                result_url=result.result_url,
+            )
         session_updates = self._orchestration_session_updates(
             task_state,
             step,
@@ -681,11 +715,26 @@ class ChatOrchestrationService:
         )
         refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
         if not result.success:
+            if run_id:
+                finalize_orchestration_run(
+                    client,
+                    org_id=org_id,
+                    run_id=run_id,
+                    success=False,
+                    summary=result.body,
+                )
             return {
                 "stop_pipeline": True,
                 "dialogue_mode": "answer",
                 "message": f"Step **{step.label}** failed: {result.body}",
-                "execution_result": result.__dict__,
+                "execution_result": {
+                    **result.__dict__,
+                    "result_url": resolve_orchestration_result_url(
+                        run_id=run_id,
+                        step_results=step_results,
+                        conversation_id=conversation_id,
+                    ),
+                },
                 "task_state": refreshed,
             }
         return await self._advance_orchestration(
@@ -713,6 +762,8 @@ class ChatOrchestrationService:
         steps = [OrchestrationStep.from_dict(item) for item in params.get("steps") or []]
         idx = int(params.get("current_step_index") or 0)
 
+        run_id = str(params.get("orchestration_run_id") or "") or None
+
         while idx < len(steps):
             step = steps[idx]
             if not step.supported or not step.plan:
@@ -728,6 +779,17 @@ class ChatOrchestrationService:
                 )
                 params["step_results"] = skipped
                 params["current_step_index"] = idx + 1
+                if run_id:
+                    sync_orchestration_step(
+                        client,
+                        org_id=org_id,
+                        run_id=run_id,
+                        step_id=step.step_id,
+                        success=False,
+                        skipped=True,
+                        summary=step.skip_reason or "Skipped — connector not connected.",
+                        result_url="/connectors",
+                    )
                 idx += 1
                 continue
 
@@ -758,6 +820,19 @@ class ChatOrchestrationService:
                     ),
                     "task_state": refreshed,
                     "pending_task": self._pending_task_payload(refreshed),
+                    "execution_result": {
+                        "success": True,
+                        "entity_type": "orchestration",
+                        "entity_id": run_id or conversation_id,
+                        "result_url": resolve_orchestration_result_url(
+                            run_id=run_id,
+                            step_results=list(params.get("step_results") or []),
+                            conversation_id=conversation_id,
+                        ),
+                        "title": "Orchestration waiting on step approval",
+                        "body": f"Approve step: {step.label}",
+                        "task_label": "Multi-step orchestration",
+                    },
                 }
 
             plan = self._enrich_plan_with_context(step.plan, params.get("step_results") or [])
@@ -771,11 +846,35 @@ class ChatOrchestrationService:
                 environment_name=environment_name,
             )
             if not result.success:
+                if run_id:
+                    sync_orchestration_step(
+                        client,
+                        org_id=org_id,
+                        run_id=run_id,
+                        step_id=step.step_id,
+                        success=False,
+                        summary=result.body,
+                        result_url=result.result_url,
+                    )
+                    finalize_orchestration_run(
+                        client,
+                        org_id=org_id,
+                        run_id=run_id,
+                        success=False,
+                        summary=result.body,
+                    )
                 return {
                     "stop_pipeline": True,
                     "dialogue_mode": "answer",
                     "message": f"Step **{step.label}** failed: {result.body}",
-                    "execution_result": result.__dict__,
+                    "execution_result": {
+                        **result.__dict__,
+                        "result_url": resolve_orchestration_result_url(
+                            run_id=run_id,
+                            step_results=list(params.get("step_results") or []),
+                            conversation_id=conversation_id,
+                        ),
+                    },
                     "task_state": task_state,
                 }
             step_results = list(params.get("step_results") or [])
@@ -791,6 +890,16 @@ class ChatOrchestrationService:
                 }
             )
             params["step_results"] = step_results
+            if run_id:
+                sync_orchestration_step(
+                    client,
+                    org_id=org_id,
+                    run_id=run_id,
+                    step_id=step.step_id,
+                    success=True,
+                    summary=result.body,
+                    result_url=result.result_url,
+                )
             idx += 1
             params["current_step_index"] = idx
 
@@ -811,12 +920,25 @@ class ChatOrchestrationService:
             mark = "✓" if row.get("success") else "○"
             lines.append(f"- {mark} {row.get('label')}: {row.get('summary')}")
         summary_body = "\n".join(lines) if lines else "Orchestration finished."
-        primary_url = next((str(r.get("url")) for r in reversed(step_results) if r.get("url")), None)
+        run_id = str(params.get("orchestration_run_id") or "") or None
+        if run_id:
+            finalize_orchestration_run(
+                client,
+                org_id=org_id,
+                run_id=run_id,
+                success=successes > 0,
+                summary=summary_body,
+            )
+        primary_url = resolve_orchestration_result_url(
+            run_id=run_id,
+            step_results=step_results,
+            conversation_id=conversation_id,
+        )
 
         result = ExecutionResult(
             success=successes > 0,
-            entity_type="orchestration",
-            entity_id=conversation_id,
+            entity_type="workflow_run" if run_id else "orchestration",
+            entity_id=run_id or conversation_id,
             result_url=primary_url,
             title=f"Orchestration complete ({successes}/{len(step_results)} steps)",
             body=summary_body,
@@ -841,6 +963,7 @@ class ChatOrchestrationService:
             conversation_id,
             org_id,
             {
+                "clarified_params": params,
                 "pending_task": {
                     "type": "connector_orchestration",
                     "status": "completed",
@@ -856,7 +979,7 @@ class ChatOrchestrationService:
             "message": (
                 f"**Orchestration complete** ({successes}/{len(step_results)} steps succeeded).\n\n"
                 f"{summary_body}"
-                + (f"\n\n[View results]({primary_url})" if primary_url else "")
+                + (f"\n\n[View run details]({primary_url})" if primary_url else "")
             ),
             "execution_result": result.__dict__,
             "task_state": refreshed,

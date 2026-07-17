@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -412,6 +412,27 @@ def _resolve_org_user_id(client, org_id: str, email: str) -> str | None:
     return candidates[0] if candidates else None
 
 
+def _org_membership_role(client: Any, org_id: str, user_id: str) -> str | None:
+    """Return organization_members.role when present (owner/admin/member/viewer)."""
+    try:
+        admin_resp = (
+            client.table("organization_members")
+            .select("role")
+            .eq("org_id", org_id)
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+    except Exception as exc:  # noqa: BLE001
+        if _is_missing_table_error(exc):
+            return None
+        raise
+    rows = admin_resp.data or []
+    if not rows:
+        return None
+    return str((rows[0] or {}).get("role") or "").strip().lower() or None
+
+
 @router.get("/lite-membership")
 async def get_lite_membership_route(
     current_user: Annotated[dict, Depends(get_current_user)],
@@ -422,6 +443,12 @@ async def get_lite_membership_route(
         raise HTTPException(status_code=403, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     user_id = str(current_user.get("user_id") or "")
+
+    # Org owner/admin (Command purchaser, billing owner) always keep admin access —
+    # department_members must not force them into Lite-only mode.
+    org_role = _org_membership_role(client, org_id, user_id)
+    org_is_admin = org_role in {"owner", "admin"}
+
     member_resp = (
         client.table("department_members")
         .select("id, department_id, role, departments(id, name, org_id)")
@@ -437,27 +464,18 @@ async def get_lite_membership_route(
         and str((row.get("departments") or {}).get("org_id")) == org_id
     ]
     if not rows:
-        try:
-            admin_resp = (
-                client.table("organization_members")
-                .select("role")
-                .eq("org_id", org_id)
-                .eq("user_id", user_id)
-                .limit(1)
-                .execute()
-            )
-        except Exception as exc:  # noqa: BLE001
-            if _is_missing_table_error(exc):
-                return {"is_lite": False, "is_admin": True, "department": None}
-            raise
-        role = str((admin_resp.data or [{}])[0].get("role") or "member").lower()
-        is_admin = role in {"owner", "admin"}
-        return {"is_lite": False, "is_admin": is_admin, "department": None}
+        if org_role is None:
+            # Missing membership table/row — fail open for the org purchaser path.
+            return {"is_lite": False, "is_admin": True, "department": None}
+        return {"is_lite": False, "is_admin": org_is_admin, "department": None}
+
     row = rows[0]
     dept = row.get("departments") or {}
+    dept_is_admin = str(row.get("role") or "").strip().lower() == "admin"
+    # Department seat alone is Lite UX; org owner/admin can still switch to Admin.
     return {
-        "is_lite": True,
-        "is_admin": str(row.get("role") or "") == "admin",
+        "is_lite": False if org_is_admin else True,
+        "is_admin": org_is_admin or dept_is_admin,
         "department": {
             "id": str(dept.get("id") or row.get("department_id")),
             "name": dept.get("name") or "Department",

@@ -3055,19 +3055,26 @@ async def list_approvals_alias(
 
     q = (
         client.table("workflow_runs")
-        .select("id, workflow_id, created_at, required_approvals, approval_status, triggered_by")
+        .select(
+            "id, workflow_id, created_at, required_approvals, approval_status, triggered_by, "
+            "parameters, definition_snapshot"
+        )
         .eq("org_id", org_id)
         .eq("environment", environment_name)
         .eq("run_type", RUN_TYPE_EXECUTE)
         .order("created_at", desc=True)
     )
-    if status:
+    # status=history → approved/rejected (past). Default remains pending-only.
+    history_mode = str(status or "").lower() in {"history", "past", "resolved", "all"}
+    if history_mode:
+        q = q.in_("approval_status", ["approved", "rejected"])
+    elif status:
         q = q.eq("approval_status", status)
         if status == RUN_STATUS_PENDING_APPROVAL:
             q = q.eq("status", RUN_STATUS_PENDING_APPROVAL)
     else:
         q = q.eq("approval_status", RUN_STATUS_PENDING_APPROVAL).eq("status", RUN_STATUS_PENDING_APPROVAL)
-    runs = list(q.execute().data or [])
+    runs = list(q.limit(100).execute().data or [])
     workflow_ids = [str(run["workflow_id"]) for run in runs if run.get("workflow_id")]
     workflow_names: dict[str, str] = {}
     if workflow_ids:
@@ -3114,28 +3121,57 @@ async def list_approvals_alias(
             continue
         sla = _sla_fields(run.get("created_at"), pri)
         workflow_id = str(run.get("workflow_id")) if run.get("workflow_id") else None
-        workflow_name = workflow_names.get(str(run.get("workflow_id")), "Workflow approval")
+        params = run.get("parameters") if isinstance(run.get("parameters"), dict) else {}
+        snapshot = (
+            run.get("definition_snapshot")
+            if isinstance(run.get("definition_snapshot"), dict)
+            else {}
+        )
+        chat_label = (
+            str(params.get("label") or snapshot.get("name") or "").strip()
+            if params.get("source") == "chat_orchestration" or snapshot.get("source") == "chat_orchestration"
+            else ""
+        )
+        workflow_name = (
+            chat_label
+            or workflow_names.get(str(run.get("workflow_id") or ""), "")
+            or "Workflow approval"
+        )
         triggered_by = str(run.get("triggered_by") or "")
+        run_status = str(run.get("approval_status") or "pending")
+        # Normalize pending_approval → pending for the Decision Queue UI.
+        if run_status == RUN_STATUS_PENDING_APPROVAL:
+            run_status = "pending"
         approvals.append(
             {
                 "id": str(run["id"]),
                 "title": workflow_name,
-                "description": "Workflow execution approval",
-                "type": "workflow",
+                "description": (
+                    "Chat orchestration plan"
+                    if chat_label
+                    else "Workflow execution approval"
+                ),
+                "type": "connector" if chat_label else "workflow",
                 "priority": pri,
-                "status": run.get("approval_status") or "pending",
-                "gate_type": "execute",
+                "status": run_status,
+                "gate_type": "chat_orchestration_plan" if chat_label else "execute",
                 "requested_by": triggered_by,
                 "requested_by_name": user_labels.get(triggered_by, "System"),
                 "requested_at": run.get("created_at"),
-                "reviewed_by": None,
-                "reviewed_at": None,
+                "reviewed_by": triggered_by if run_status == "approved" and chat_label else None,
+                "reviewed_by_name": (
+                    user_labels.get(triggered_by)
+                    if run_status == "approved" and chat_label
+                    else None
+                ),
+                "reviewed_at": run.get("created_at") if run_status != "pending" else None,
                 "context": {
                     "workflow_id": workflow_id,
                     "workflow_name": workflow_name,
                     "entity": workflow_name,
-                    "action": "Execute workflow",
+                    "action": "Execute chat plan" if chat_label else "Execute workflow",
                     "run_id": str(run["id"]),
+                    "conversation_id": params.get("conversation_id"),
                 },
                 "environment": environment_name,
                 "sla_deadline": sla["sla_deadline"],
@@ -3146,27 +3182,34 @@ async def list_approvals_alias(
     # Chat connector writes queued for org admins (not workflow_runs).
     if not type or type in {"connector", "connector_chat"}:
         try:
-            chat_rows = (
+            chat_q = (
                 client.table("approvals")
                 .select(
                     "id, title, description, type, priority, status, requested_by, "
-                    "requested_at, context"
+                    "requested_at, reviewed_by, reviewed_at, context, run_id"
                 )
                 .eq("org_id", org_id)
                 .eq("type", "connector_chat")
-                .eq("status", "pending")
                 .order("requested_at", desc=True)
                 .limit(50)
-                .execute()
-                .data
-                or []
             )
+            if history_mode:
+                chat_q = chat_q.in_("status", ["approved", "rejected"])
+            elif not status or status in {RUN_STATUS_PENDING_APPROVAL, "pending"}:
+                chat_q = chat_q.eq("status", "pending")
+            else:
+                chat_q = chat_q.eq("status", status)
+            chat_rows = chat_q.execute().data or []
         except Exception:  # noqa: BLE001
             chat_rows = []
         chat_requesters = {
             str(row.get("requested_by"))
             for row in chat_rows
             if row.get("requested_by")
+        } | {
+            str(row.get("reviewed_by"))
+            for row in chat_rows
+            if row.get("reviewed_by")
         }
         for uid in chat_requesters - user_ids:
             try:
@@ -3194,11 +3237,19 @@ async def list_approvals_alias(
             pri = str(row.get("priority") or "medium")
             if priority and pri != priority:
                 continue
-            if status and str(row.get("status") or "") != status and status != "pending_approval":
+            row_status = str(row.get("status") or "pending")
+            if (
+                not history_mode
+                and status
+                and row_status != status
+                and status not in {RUN_STATUS_PENDING_APPROVAL, "pending"}
+            ):
                 continue
             ctx = row.get("context") if isinstance(row.get("context"), dict) else {}
             sla = _sla_fields(row.get("requested_at"), pri)
             triggered_by = str(row.get("requested_by") or "")
+            reviewed_by = str(row.get("reviewed_by") or "") or None
+            run_link = str(row.get("run_id") or ctx.get("run_id") or "")
             approvals.append(
                 {
                     "id": str(row["id"]),
@@ -3206,19 +3257,21 @@ async def list_approvals_alias(
                     "description": row.get("description") or "Chat write awaiting approval",
                     "type": "connector",
                     "priority": pri,
-                    "status": "pending",
-                    "gate_type": "chat_connector_write",
+                    "status": row_status,
+                    "gate_type": str(ctx.get("gate_type") or "chat_connector_write"),
                     "requested_by": triggered_by,
                     "requested_by_name": user_labels.get(triggered_by, "Member"),
                     "requested_at": row.get("requested_at"),
-                    "reviewed_by": None,
-                    "reviewed_at": None,
+                    "reviewed_by": reviewed_by,
+                    "reviewed_by_name": user_labels.get(reviewed_by) if reviewed_by else None,
+                    "reviewed_at": row.get("reviewed_at"),
                     "context": {
                         **ctx,
                         "entity": ctx.get("entity") or ctx.get("integration") or "Connector",
                         "action": ctx.get("action") or ctx.get("label") or "Execute write",
                         "approval_id": str(row["id"]),
                         "conversation_id": ctx.get("conversation_id"),
+                        "run_id": run_link or ctx.get("run_id"),
                     },
                     "environment": environment_name,
                     "sla_deadline": sla["sla_deadline"],
@@ -3226,6 +3279,22 @@ async def list_approvals_alias(
                     "sla_breached": sla["sla_breached"],
                 }
             )
+
+    # Prefer the workflow-run row when a chat approval also stamps the same run_id.
+    seen_run_ids = {
+        str((item.get("context") or {}).get("run_id") or item.get("id") or "")
+        for item in approvals
+        if item.get("gate_type") in {"execute", "chat_orchestration_plan"}
+    }
+    if seen_run_ids:
+        approvals = [
+            item
+            for item in approvals
+            if not (
+                item.get("gate_type") == "chat_connector_write"
+                and str((item.get("context") or {}).get("run_id") or "") in seen_run_ids
+            )
+        ]
 
     approvals.sort(key=lambda item: item["requested_at"] or "", reverse=True)
     approvals.sort(key=lambda item: 0 if item["priority"] == "high" else 1)
@@ -3371,7 +3440,9 @@ async def list_runs(
     q = (
         client.table("workflow_runs")
         .select(
-            "id, workflow_id, run_type, status, approval_status, required_approvals, created_at, completed_at, environment, triggered_by, trigger_type, schedule_id, rollback_of_run_id"
+            "id, workflow_id, run_type, status, approval_status, required_approvals, created_at, "
+            "completed_at, environment, triggered_by, trigger_type, schedule_id, rollback_of_run_id, "
+            "parameters, definition_snapshot"
         )
         .eq("org_id", org_id)
         .eq("environment", environment_name)
@@ -3397,11 +3468,18 @@ async def list_runs(
     items = []
     for run in runs:
         workflow_id_value = str(run["workflow_id"]) if run.get("workflow_id") else None
+        params = run.get("parameters") if isinstance(run.get("parameters"), dict) else {}
+        snapshot = (
+            run.get("definition_snapshot")
+            if isinstance(run.get("definition_snapshot"), dict)
+            else {}
+        )
+        chat_name = str(params.get("label") or snapshot.get("name") or "").strip() or None
         items.append(
             {
                 "id": str(run["id"]),
                 "workflow_id": workflow_id_value,
-                "workflow_name": workflow_names.get(workflow_id_value or "", "") or None,
+                "workflow_name": workflow_names.get(workflow_id_value or "", "") or chat_name,
                 "run_type": run.get("run_type"),
                 "status": run.get("status"),
                 "approval_status": run.get("approval_status"),
@@ -3444,9 +3522,23 @@ async def get_run(
     required = run.get("required_approvals")
     approval_required = (required or 0) > 0
     approved_count, _ = get_approval_counts(client, run_id_str)
+    params = run.get("parameters") if isinstance(run.get("parameters"), dict) else {}
+    snapshot = (
+        run.get("definition_snapshot")
+        if isinstance(run.get("definition_snapshot"), dict)
+        else {}
+    )
+    chat_name = str(params.get("label") or snapshot.get("name") or "").strip() or None
+    workflow_id_value = str(run.get("workflow_id")) if run.get("workflow_id") else None
+    workflow_name = None
+    if workflow_id_value:
+        workflow_name = _workflow_names_for_ids(client, org_id, [workflow_id_value]).get(
+            workflow_id_value
+        )
     run_out = {
         "id": str(run["id"]),
-        "workflowId": str(run.get("workflow_id")) if run.get("workflow_id") else None,
+        "workflowId": workflow_id_value,
+        "workflowName": workflow_name or chat_name,
         "status": run.get("status"),
         "approvalStatus": run.get("approval_status") or "not_required",
         "environment": run.get("environment") or environment_name,
@@ -3458,6 +3550,8 @@ async def get_run(
         "approvalRequired": approval_required,
         "requiredApprovals": required,
         "approvalsReceived": approved_count,
+        "triggerType": run.get("trigger_type"),
+        "parameters": params,
     }
     return {"run": run_out, "steps": [_run_step_out(s) for s in steps]}
 
@@ -3490,7 +3584,8 @@ async def list_runs_alias(
         .select(
             "id, workflow_id, run_type, status, approval_status, required_approvals, "
             "created_at, completed_at, duration_ms, error_message, "
-            "environment, triggered_by, trigger_type, schedule_id, rollback_of_run_id",
+            "environment, triggered_by, trigger_type, schedule_id, rollback_of_run_id, "
+            "parameters, definition_snapshot",
             count="exact",
         )
         .eq("org_id", org_id)
@@ -3518,11 +3613,18 @@ async def list_runs_alias(
     items = []
     for run in rows:
         workflow_id_value = str(run["workflow_id"]) if run.get("workflow_id") else None
+        params = run.get("parameters") if isinstance(run.get("parameters"), dict) else {}
+        snapshot = (
+            run.get("definition_snapshot")
+            if isinstance(run.get("definition_snapshot"), dict)
+            else {}
+        )
+        chat_name = str(params.get("label") or snapshot.get("name") or "").strip() or None
         items.append(
             {
                 "id": str(run["id"]),
                 "workflowId": workflow_id_value,
-                "workflowName": workflow_names.get(workflow_id_value or "", "") or None,
+                "workflowName": workflow_names.get(workflow_id_value or "", "") or chat_name,
                 "status": run.get("status"),
                 "approvalStatus": run.get("approval_status") or "not_required",
                 "environment": run.get("environment") or environment_name,
