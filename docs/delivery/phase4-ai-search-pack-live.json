@@ -1,7 +1,7 @@
 {
   "pass": true,
-  "checked_at": "2026-07-17T08:14:03.868983+00:00",
-  "prod_git_sha": "9e825d021c140bddb25102c04f68733d56ccd402",
+  "checked_at": "2026-07-17T08:51:05.691292+00:00",
+  "prod_git_sha": "7b12c69fd814b37f95e7f5e5dddaba05cc1173bc",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "pack_id": "ai-search-intelligence-pack",
   "path": {
@@ -15,9 +15,9 @@
     "assignmentCount": 3,
     "ahrefsConnectorId": null,
     "finseoConnectorId": null,
-    "aiVisibilityUiConnectorId": null,
-    "stubCount": 3,
-    "skippedCount": 0,
+    "aiVisibilityUiConnectorId": "4075f376-14e1-48ec-9b02-8c25117069d7",
+    "stubCount": 0,
+    "skippedCount": 3,
     "stopLinesHonored": [
       "ahrefs_finseo_byo_only",
       "raw_ai_answer_memory_kg_blocked",
@@ -28,11 +28,22 @@
       "path_s2_ui_scrape_v1_v2_v3"
     ]
   },
-  "invokes": {},
-  "live_invoke_ok": false,
+  "invokes": {
+    "ai_visibility_ui.surfaces.list": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "result_url": null,
+      "data_keys": [
+        "surfaces",
+        "result_url"
+      ]
+    }
+  },
+  "live_invoke_ok": true,
   "api_live_ok": false,
-  "ui_live_ok": false,
-  "any_active_connector": false,
+  "ui_live_ok": true,
+  "any_active_connector": true,
   "any_api_connector": false,
   "kpis": {
     "packId": "ai-search-intelligence-pack",
