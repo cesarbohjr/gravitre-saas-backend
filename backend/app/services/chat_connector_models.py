@@ -6,7 +6,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 LIST_CREATE_INTENT = re.compile(
-    r"\b(create|new|add|make)\s+(?:a\s+)?(?:contact\s+)?(?:list|group|segment)\b",
+    # Allow a short vendor/adj span: "create an Apollo contact list", "make a new list".
+    r"\b(create|new|add|make)\s+(?:(?:a|an)\s+)?(?:[\w.-]+\s+){0,3}(?:contact\s+)?(?:list|group|segment)\b",
     re.I,
 )
 

@@ -388,6 +388,97 @@ async def test_apollo_list_create_plans_action(connector_service):
 
 
 @pytest.mark.asyncio
+async def test_list_create_ignores_react_structured_read_plan(connector_service):
+    """ReAct lists.list must not shadow Apollo list-create write staging."""
+    read_plan = ConnectorActionPlan(
+        tool_name="apollo_lists_list",
+        invoke_action="apollo.lists.list",
+        integration="apollo",
+        kind="read",
+        label="List contact lists",
+        args={"limit": 10},
+        requires_approval=False,
+    )
+    write_plan = ConnectorActionPlan(
+        tool_name="apollo_lists_create",
+        invoke_action="apollo.lists.create",
+        integration="apollo",
+        kind="write",
+        label="Create contact list",
+        args={"name": "gravitre-planforce", "modality": "contacts"},
+        requires_approval=True,
+    )
+
+    def _plan_action(message, *, connected_integrations, task_state, structured_plan=None):
+        if structured_plan is not None:
+            return structured_plan
+        return write_plan
+
+    with patch.object(
+        connector_service,
+        "_live_connected_integrations",
+        return_value=["apollo"],
+    ), patch.object(
+        connector_service,
+        "plan_action",
+        side_effect=_plan_action,
+    ), patch(
+        "app.services.chat_connector_execution_service.find_integration_availability",
+        return_value={"execution_available": True},
+    ), patch.object(
+        connector_service,
+        "_build_unresolved_turn",
+        return_value={
+            "stop_pipeline": True,
+            "dialogue_mode": "confirm",
+            "message": "Approve create list",
+            "task_state": {
+                "pending_task": {
+                    "type": "connector_action",
+                    "status": "awaiting_confirm",
+                    "params": {
+                        **connector_service.plan_to_dict(write_plan),
+                        "status": "awaiting_confirm",
+                        "source": "apollo_list_create_autoplan",
+                    },
+                }
+            },
+            "pending_task": {
+                "type": "connector_action",
+                "status": "awaiting_confirm",
+                "params": {
+                    **connector_service.plan_to_dict(write_plan),
+                    "status": "awaiting_confirm",
+                    "source": "apollo_list_create_autoplan",
+                },
+            },
+            "persist_pending_task": False,
+        },
+    ) as build_unresolved:
+        result = await connector_service.process_turn(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            message=(
+                "Create an Apollo contact list named exactly 'gravitre-planforce'. "
+                "Please plan the steps before executing."
+            ),
+            classification={"intent": "workflow_execution", "risk_level": "medium"},
+            task_state={},
+            connected_integrations=["apollo"],
+            client=MagicMock(),
+            structured_plan=read_plan,
+        )
+
+    assert build_unresolved.called, "structured read plan must be cleared so autoplan runs"
+    assert result is not None
+    assert result.get("stop_pipeline") is True
+    pending = result.get("pending_task") or {}
+    assert pending.get("status") == "awaiting_confirm"
+    assert "lists.create" in str((pending.get("params") or {}).get("invoke_action") or "")
+
+
+@pytest.mark.asyncio
 async def test_hubspot_token_expired_returns_reconnect_message(connector_service):
     with patch(
         "app.services.chat_connector_execution_service.find_integration_availability",

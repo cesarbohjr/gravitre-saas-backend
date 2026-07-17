@@ -159,6 +159,14 @@ async def run_connector_fallback_turn(
         react_result,
         get_tool_registry(),
     )
+    # List-create intents must not inherit a ReAct read tool (lists.list / people.search)
+    # as structured_plan — that bypasses write-gate staging.
+    if (
+        prefer_connector
+        and structured_plan is not None
+        and "lists.create" not in str(getattr(structured_plan, "invoke_action", "") or "").lower()
+    ):
+        structured_plan = None
     connector = get_chat_connector_execution_service(settings)
     turn = await connector.process_turn(
         org_id=org_id,
