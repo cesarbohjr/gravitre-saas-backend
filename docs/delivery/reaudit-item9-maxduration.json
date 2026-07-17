@@ -1,0 +1,22 @@
+{
+  "kind": "reaudit-item9-maxduration",
+  "ran_at": "2026-07-13T01:33:23.929116+00:00",
+  "prod_health": {
+    "status_code": 200,
+    "git_sha": "8fc29454de466e975bad4dc0066a21da310b1ff5",
+    "timestamp": "2026-07-13T01:33:22.684261+00:00"
+  },
+  "local_source_sha": "8fc29454de466e975bad4dc0066a21da310b1ff5",
+  "source_parity": true,
+  "scope": "Code-level proxy ceiling verification on the exact source SHA deployed to production.",
+  "code": {
+    "file": "apps/web/app/api/chat/route.ts",
+    "maxDuration": 300
+  },
+  "vitest": {
+    "command": "npm test -- --run __tests__/lib/chat-proxy-max-duration.test.ts",
+    "working_directory": "apps/web",
+    "result": "2 passed"
+  },
+  "verdict": "PASS_LOCAL_PARITY"
+}

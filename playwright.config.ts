@@ -5,6 +5,7 @@ import { mergeE2eProcessEnv } from "./e2e/load-env"
 
 const e2eEnv = mergeE2eProcessEnv()
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3001"
+const webPort = new URL(baseURL).port || "3001"
 const backendURL = (e2eEnv.FASTAPI_BASE_URL ?? "http://127.0.0.1:8000").replace(/\/+$/, "")
 
 const backendCwd = join(process.cwd(), "backend")
@@ -44,7 +45,7 @@ export default defineConfig({
       },
     },
     {
-      command: "pnpm dev --port 3001",
+      command: `pnpm dev --port ${webPort}`,
       cwd: "apps/web",
       url: baseURL,
       reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === "1",
@@ -52,7 +53,7 @@ export default defineConfig({
       env: {
         ...e2eEnv,
         FASTAPI_BASE_URL: backendURL,
-        PORT: "3001",
+        PORT: webPort,
         NEXT_PUBLIC_PLAYWRIGHT_E2E: "1",
         PLAYWRIGHT_E2E: "1",
       },

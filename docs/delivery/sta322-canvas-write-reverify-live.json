@@ -1,0 +1,86 @@
+{
+  "claim": "sta322_canvas_write_authority_live_reverify",
+  "started_at": "2026-07-15T18:59:41.192944+00:00",
+  "api_base": "https://api.gravitre.app",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "workflow_id": "8ea32dce-7f6a-4fdf-be0d-c3097ff5b095",
+  "expected_sha_prefix": "092238c5",
+  "authority_design": "canvas_write_gate is an adapter: classification via catalog_write_authority.invoke_action_requires_write_approval (same SoT as chat/ReAct)",
+  "prod_health": {
+    "http": 200,
+    "status": "ok",
+    "timestamp": "2026-07-15T18:59:40.947772+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "092238c5d77333025d9902834133cda2a41aad37",
+    "ai_disabled": false,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "prod_sha_ok": true,
+  "test_a": {
+    "label": "A",
+    "required_approvals_policy": 1,
+    "list_name": "STA322Reverify A 185943 22abf0",
+    "http": 200,
+    "execute_response": {
+      "run_id": "f1816c36-bac9-4cdc-a94f-e3b23fb49854",
+      "status": "pending_approval",
+      "approval_status": "pending_approval",
+      "approval_required": true,
+      "required_approvals": 1,
+      "approvals_received": 0
+    },
+    "run_id": "f1816c36-bac9-4cdc-a94f-e3b23fb49854",
+    "execute_status": "pending_approval",
+    "approval_required": true,
+    "run_row": {
+      "id": "f1816c36-bac9-4cdc-a94f-e3b23fb49854",
+      "status": "pending_approval",
+      "approval_status": "pending_approval",
+      "required_approvals": 1,
+      "error_message": null
+    },
+    "tool_invoke_requested": [],
+    "tool_invoke_completed": [],
+    "tool_invoke_failed": [],
+    "write_leaked": false,
+    "blocked_ok": true
+  },
+  "test_b": {
+    "label": "B",
+    "required_approvals_policy": 0,
+    "list_name": "STA322Reverify B 185948 ade973",
+    "http": 200,
+    "execute_response": {
+      "run_id": "c9352144-a81b-4f91-a6dd-e6cda0236d56",
+      "status": "pending_approval",
+      "approval_status": "pending_approval",
+      "approval_required": true,
+      "required_approvals": 1,
+      "approvals_received": 0
+    },
+    "run_id": "c9352144-a81b-4f91-a6dd-e6cda0236d56",
+    "execute_status": "pending_approval",
+    "approval_required": true,
+    "run_row": {
+      "id": "c9352144-a81b-4f91-a6dd-e6cda0236d56",
+      "status": "pending_approval",
+      "approval_status": "pending_approval",
+      "required_approvals": 1,
+      "error_message": null
+    },
+    "tool_invoke_requested": [],
+    "tool_invoke_completed": [],
+    "tool_invoke_failed": [],
+    "write_leaked": false,
+    "blocked_ok": true
+  },
+  "verdict": "CLOSED_LIVE_VERIFIED",
+  "severity": "resolved",
+  "finished_at": "2026-07-15T18:59:51.531582+00:00"
+}

@@ -1,0 +1,54 @@
+{
+  "runId": "c1d0b08c-64dd-4b33-adf4-98178e1a957c",
+  "startedAt": "2026-07-12T18:57:41.650102+00:00",
+  "orgId": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "environment": "sandbox",
+  "vendors": [
+    "apollo"
+  ],
+  "enableWrites": true,
+  "allowDestructive": false,
+  "summary": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "missing_scopes": 0,
+    "invalid_schema": 0,
+    "auth_failure": 0,
+    "api_error": 0
+  },
+  "byVendor": {
+    "apollo": {
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "missing_scopes": 0,
+      "invalid_schema": 0,
+      "auth_failure": 0,
+      "api_error": 0
+    }
+  },
+  "results": [
+    {
+      "vendor": "apollo",
+      "connectorType": "apollo",
+      "actionId": "apollo.lists.create",
+      "kind": "write",
+      "status": "passed",
+      "connectorId": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+      "requestPayload": {
+        "name": "Gravitre Smoke MSP c1d0b08c64dd4b",
+        "modality": "contacts",
+        "connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451"
+      },
+      "httpStatusCode": null,
+      "errorCode": null,
+      "errorMessage": null,
+      "suggestedFix": null,
+      "latencyMs": 2626,
+      "toolResultOk": true,
+      "vendorShapeOk": true,
+      "detail": "Live invoke succeeded."
+    }
+  ]
+}

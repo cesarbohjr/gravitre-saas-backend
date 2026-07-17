@@ -1,0 +1,43 @@
+{
+  "probe": "reaudit-item6-omit-name",
+  "ran_at": "2026-07-13T04:10:34.876634+00:00",
+  "prod_sha": "716e9f4476dab25a4f12863f549929594c02ccaf",
+  "conversation_id": "98d5c09d-3890-47a8-a84a-430097fe24eb",
+  "http": 200,
+  "text_head": "Apollo is connected, so I can create the contact list once I have the list name.\n\nWhat should the new Apollo contact list be called?I can create a contact list named **MSP Prospects** in Apollo.\n\nReply **yes** to create it, or tell me what to change (name, modality, or follow-up criteria to populate it).",
+  "pending_task": {
+    "type": "connector_action",
+    "params": {
+      "args": {
+        "name": "MSP Prospects",
+        "modality": "contacts"
+      },
+      "kind": "write",
+      "label": "Create contact list",
+      "status": "awaiting_confirm",
+      "tool_name": "apollo_lists_create",
+      "destructive": true,
+      "integration": "apollo",
+      "invoke_action": "apollo.lists.create",
+      "approval_reason": "Action type 'apollo.lists.create' requires approval per policy",
+      "inferred_fields": [
+        "name"
+      ],
+      "inference_sources": {
+        "name": "message_or_default_hint"
+      },
+      "requires_approval": true
+    },
+    "status": "awaiting_confirm"
+  },
+  "action": "apollo.lists.create",
+  "args": {
+    "name": "MSP Prospects",
+    "modality": "contacts"
+  },
+  "inferred_fields": [
+    "name"
+  ],
+  "status": "awaiting_confirm",
+  "pass": true
+}

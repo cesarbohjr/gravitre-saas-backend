@@ -1,0 +1,2 @@
+vendor,connectorType,actionId,kind,status,connectorId,requestPayload,httpStatusCode,errorCode,errorMessage,suggestedFix,latencyMs,toolResultOk,vendorShapeOk,detail
+apollo,apollo,apollo.lists.create,write,passed,30f734a2-dbdb-45aa-9112-19c6d604d451,"{""connector_id"": ""30f734a2-dbdb-45aa-9112-19c6d604d451"", ""modality"": ""contacts"", ""name"": ""Gravitre Smoke MSP c1d0b08c64dd4b""}",,,,,2626,True,True,Live invoke succeeded.

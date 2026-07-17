@@ -1,0 +1,188 @@
+{
+  "probe": "sta317_apply_confirm_live",
+  "ran_at": "2026-07-13T04:14:31.650867+00:00",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+  "gate_model": "both",
+  "prod_sha": "716e9f4476dab25a4f12863f549929594c02ccaf",
+  "tls_note": "verify=False (prod cert expired)",
+  "suggestion_id": "44f2e663-e2d9-4861-be13-905a4accf0c8",
+  "title": "STA-317 tip resmoke 716e9f44 8b644026",
+  "apply_http": 200,
+  "apply_body": {
+    "workflowId": null,
+    "redirectPath": null,
+    "installResult": null,
+    "requiresApproval": true,
+    "pendingTask": {
+      "type": "create_workflow",
+      "params": {
+        "source": "integration_suggestion_apply",
+        "tool_name": "assistant_create_workflow",
+        "invoke_action": "assistant.create_workflow",
+        "suggestion_id": "44f2e663-e2d9-4861-be13-905a4accf0c8",
+        "workflow_goal": "Gate probe 8b644026: should stage awaiting_confirm",
+        "workflow_name": "STA-317 tip resmoke 716e9f44 8b644026"
+      },
+      "status": "awaiting_confirm"
+    },
+    "confirmPath": "/api/enterprise/integration-suggestions/44f2e663-e2d9-4861-be13-905a4accf0c8/confirm",
+    "suggestion": {
+      "id": "44f2e663-e2d9-4861-be13-905a4accf0c8",
+      "orgId": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "suggestionType": "automate_workflow",
+      "connectorType": null,
+      "packId": null,
+      "workflowTemplateId": null,
+      "title": "STA-317 tip resmoke 716e9f44 8b644026",
+      "message": "Gate probe 8b644026: should stage awaiting_confirm",
+      "evidence": {
+        "tip": "716e9f44",
+        "uniq": "8b644026",
+        "probe": true,
+        "reaudit": true,
+        "pending_approval": {
+          "type": "create_workflow",
+          "params": {
+            "source": "integration_suggestion_apply",
+            "tool_name": "assistant_create_workflow",
+            "invoke_action": "assistant.create_workflow",
+            "suggestion_id": "44f2e663-e2d9-4861-be13-905a4accf0c8",
+            "workflow_goal": "Gate probe 8b644026: should stage awaiting_confirm",
+            "workflow_name": "STA-317 tip resmoke 716e9f44 8b644026"
+          },
+          "status": "awaiting_confirm"
+        }
+      },
+      "confidence": 0.99,
+      "priority": 1,
+      "status": "awaiting_confirm",
+      "suggestedAt": "2026-07-13T04:14:32.14692+00:00",
+      "dismissedAt": null,
+      "createdAt": "2026-07-13T04:14:32.14692+00:00",
+      "updatedAt": "2026-07-13T04:14:32.455408+00:00"
+    },
+    "applySummary": {
+      "suggestionType": "automate_workflow",
+      "title": "STA-317 tip resmoke 716e9f44 8b644026",
+      "entities": [],
+      "evidenceHighlights": [
+        "Approval required before this write can run"
+      ],
+      "redirectPath": null
+    }
+  },
+  "suggestion_after_apply": {
+    "id": "44f2e663-e2d9-4861-be13-905a4accf0c8",
+    "status": "applied",
+    "title": "STA-317 tip resmoke 716e9f44 8b644026"
+  },
+  "requires_approval": true,
+  "apply_staged_ok": true,
+  "confirm_http": 200,
+  "confirm_body": {
+    "workflowId": "88c3340c-45e0-4973-a178-fd341b04d516",
+    "redirectPath": "/workflows/88c3340c-45e0-4973-a178-fd341b04d516/builder",
+    "installResult": null,
+    "requiresApproval": false,
+    "pendingTask": null,
+    "confirmPath": null,
+    "suggestion": {
+      "id": "44f2e663-e2d9-4861-be13-905a4accf0c8",
+      "orgId": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "suggestionType": "automate_workflow",
+      "connectorType": null,
+      "packId": null,
+      "workflowTemplateId": null,
+      "title": "STA-317 tip resmoke 716e9f44 8b644026",
+      "message": "Gate probe 8b644026: should stage awaiting_confirm",
+      "evidence": {
+        "tip": "716e9f44",
+        "uniq": "8b644026",
+        "probe": true,
+        "reaudit": true
+      },
+      "confidence": 0.99,
+      "priority": 1,
+      "status": "applied",
+      "suggestedAt": "2026-07-13T04:14:32.14692+00:00",
+      "dismissedAt": null,
+      "createdAt": "2026-07-13T04:14:32.14692+00:00",
+      "updatedAt": "2026-07-13T04:14:35.663911+00:00"
+    },
+    "applySummary": {
+      "suggestionType": "automate_workflow",
+      "title": "STA-317 tip resmoke 716e9f44 8b644026",
+      "entities": [
+        {
+          "type": "workflow",
+          "id": "88c3340c-45e0-4973-a178-fd341b04d516",
+          "label": "STA-317 tip resmoke 716e9f44 8b644026"
+        }
+      ],
+      "evidenceHighlights": [
+        "tip: 716e9f44",
+        "uniq: 8b644026",
+        "probe: True",
+        "reaudit: True"
+      ],
+      "redirectPath": "/workflows/88c3340c-45e0-4973-a178-fd341b04d516/builder"
+    }
+  },
+  "suggestion_after_confirm": {
+    "id": "44f2e663-e2d9-4861-be13-905a4accf0c8",
+    "status": "applied"
+  },
+  "audits": [
+    {
+      "id": "84ded392-d99f-4239-aa49-c91198e85653",
+      "action": "integration.suggestion.applied",
+      "meta_action": null,
+      "created_at": "2026-07-13T04:14:35.681304+00:00",
+      "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "error": null
+    },
+    {
+      "id": "62691df5-a917-4830-a1f7-54dc0b8cc970",
+      "action": "tool.invoke.completed",
+      "meta_action": "assistant.create_workflow",
+      "created_at": "2026-07-13T04:14:35.579644+00:00",
+      "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "error": null
+    },
+    {
+      "id": "2a459b42-5178-43f7-bb03-e7122fcc94de",
+      "action": "tool.invoke.requested",
+      "meta_action": "assistant.create_workflow",
+      "created_at": "2026-07-13T04:14:35.412118+00:00",
+      "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "error": null
+    },
+    {
+      "id": "4e1a8622-bcec-4b72-ab68-fca95406151e",
+      "action": "tool.invoke.failed",
+      "meta_action": "assistant.create_workflow",
+      "created_at": "2026-07-13T04:14:32.906559+00:00",
+      "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "error": "exception"
+    },
+    {
+      "id": "96b34ffe-1376-4466-b581-d6b58c791fba",
+      "action": "tool.invoke.requested",
+      "meta_action": "assistant.create_workflow",
+      "created_at": "2026-07-13T04:14:32.843949+00:00",
+      "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "error": null
+    },
+    {
+      "id": "bec514eb-99da-4884-b4c3-bbcda7c80941",
+      "action": "integration.suggestion.approval_required",
+      "meta_action": "assistant.create_workflow",
+      "created_at": "2026-07-13T04:14:32.490442+00:00",
+      "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "error": null
+    }
+  ],
+  "confirm_has_tool_invoke": true,
+  "pass": true
+}
