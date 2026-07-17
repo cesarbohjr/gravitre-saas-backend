@@ -275,7 +275,7 @@ API accounts/keys for FRED, SEC_USER_AGENT, OpenCorporates commercial token, NVD
 | 5 | Prospecting & Lead Scouting | **DONE** — `docs/delivery/phase4-prospecting-pack-live.json` (Apollo/HubSpot lists; search plan-limited) |
 | 6 | Marketing | **DONE** — GSC OAuth PASS; SEMrush/Ahrefs BYO v1–v3 write executors + schemas; PackSignal + PackKpiPanel; install tip `docs/delivery/phase4-marketing-pack-live.json` (tip `0db6ddf0`); raw-query Memory/KG stop-line held |
 | 7 | RevOps | **DONE** — catalog + install (`revops-intelligence-pack`); HubSpot pipelines/deals tip; Salesforce stub; Finance pack F3 unlocked separately; PackKpiPanel Reports tab; tip `docs/delivery/phase4-revops-pack-live.json` |
-| 8 | AI Search | **IN PROGRESS** — scaffold **C + S2** (Ahrefs + Finseo dual BYO + UI scrape v1–v3); tip smoke pending |
+| 8 | AI Search | **Research DONE** (2026-07-17) — `docs/delivery/phase8-ai-search-research-spike.md`; path **C + S2** locked; scaffold on `main`; **tip smoke pending** (build) |
 | 9 | Finance | **PARTIAL** — **F3 unlock + pack scaffold tip only**; `live_invoke_ok: false` / `any_active_connector: false` — not live Plaid/Gusto/QB proven. Evidence `docs/delivery/phase4-finance-pack-live.json`. Governance: Cesar F3 sign-off for unlock; **live connection test still requires confirmed activation before real OAuth/Link** |
 | 10 | HR & Talent | **PARTIAL** — **H3 unlock + pack scaffold tip only**; `live_invoke_ok: false` / `any_active_connector: false` — not live Workday/BambooHR/Greenhouse/Gusto proven. Evidence `docs/delivery/phase4-hr-talent-pack-live.json`. Greenhouse stub: see tip reassessment |
 | 11 | Compliance | Guidance docs only; PHI → stop |
@@ -306,4 +306,4 @@ F3/H3 remain: scaffolded, correctly gated, not live-tested, **PARTIAL**.
 
 ### Out of scope this pass
 
-Compliance PHI → stop; Business OS; new CF/churn ML. AI Search tip smoke after scaffold.
+Compliance PHI → stop; Business OS; new CF/churn ML. AI Search research closed; tip smoke is the remaining Pack #8 build gate.

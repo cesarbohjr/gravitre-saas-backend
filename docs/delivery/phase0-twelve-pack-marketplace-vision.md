@@ -56,7 +56,7 @@ Gravitree already has the Marketplace Pack Framework, `auth_mode` catalog, Phase
 | Prospecting | ICP Builder | EXTEND | `product-icp-strategist` |
 | Marketing | SEO Agent | EXTEND | `seo-analyst` |
 | Marketing | Campaign Planning | EXTEND | Campaign Coordinator / Marketing Ops |
-| AI Search | AI Visibility Agent | **NEW** | No code |
+| AI Search | AI Visibility Agent | **NEW** | Research DONE — path C + S2; see `phase8-ai-search-research-spike.md` |
 | MSP | Security Agent | EXTEND | `MSP Vulnerability Analyst` |
 | CS | QBR Agent | EXTEND | QBR workflow → CS agent step |
 | CS | Health Score Agent | EXTEND | CS Agent `health-scoring` capability |
@@ -188,7 +188,7 @@ Pack definitions / mocked agents OK before sign-off. Live activation gated.
 5. Prospecting  
 6. Marketing (GSC)  
 7. RevOps (after Sales+Marketing+CS; Finance when live)  
-8. AI Search — **research spike only**  
+8. AI Search — **research spike DONE** (C + S2); tip smoke = build follow-on  
 9–11. Finance / HR / Compliance — held on governance  
 12. Business Operating System — **last**
 
