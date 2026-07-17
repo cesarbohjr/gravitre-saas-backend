@@ -853,9 +853,11 @@ class ChatConnectorExecutionService:
         # auto-plan producer (inferred_fields → assumption_notes). plan_action otherwise
         # shadows it with apollo.lists.list / contacts.create when lists.create cannot
         # extract a name from the message.
+        # Also applies when ReAct supplied a structured *read* plan (lists.list): that
+        # used to skip this guard via ``structured_plan is None`` and dead-end creates
+        # that said "plan the steps before executing" into a list/read fallback.
         if (
             plan is not None
-            and structured_plan is None
             and LIST_CREATE_INTENT.search(message)
             and str(plan.integration or "").lower() == "apollo"
             and "lists.create" not in str(plan.invoke_action or "").lower()
