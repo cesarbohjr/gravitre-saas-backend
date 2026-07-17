@@ -1,6 +1,7 @@
 """Multi-connector chat orchestration with plan confirm and step-by-step approval."""
 from __future__ import annotations
 
+import asyncio
 import re
 from dataclasses import dataclass, replace
 from typing import Any
@@ -50,6 +51,14 @@ SEGMENT_COMMA = re.compile(
 )
 MULTI_STEP_HINT = re.compile(
     r"\b(then|and then|after that|followed by|next,|also notify|and notify)\b",
+    re.I,
+)
+REPORT_ORCHESTRATION = re.compile(
+    r"\b(report|spreadsheet|enrich|categorize|summarize|compile|build a list|deliverable)\b",
+    re.I,
+)
+MULTI_ACTION = re.compile(
+    r"\b(create|find|search|notify|post|send|update|add|log|draft)\b",
     re.I,
 )
 GOOGLE_WORKSPACE_FAMILY = frozenset({"google_drive", "google_sheets", "google_docs"})
@@ -113,6 +122,7 @@ class ChatOrchestrationService:
         message: str,
         task_state: dict[str, Any],
         connected_integrations: list[str],
+        routing_tier: str | None = None,
     ) -> bool:
         pending = task_state.get("pending_task") or {}
         if str(pending.get("type") or "") == "connector_orchestration":
@@ -126,7 +136,15 @@ class ChatOrchestrationService:
         if len(integrations) >= 1 and MULTI_STEP_HINT.search(text):
             return True
         segments = ChatOrchestrationService._split_segments(text)
-        return len(segments) >= 2 and len(integrations) >= 1
+        if len(segments) >= 2 and len(integrations) >= 1:
+            return True
+        if connected_integrations and REPORT_ORCHESTRATION.search(text) and MULTI_STEP_HINT.search(text):
+            return True
+        if connected_integrations and len(segments) >= 2 and len(MULTI_ACTION.findall(text)) >= 2:
+            return True
+        if routing_tier in {"multi_step", "research"} and len(segments) >= 2 and connected_integrations:
+            return True
+        return False
 
     async def process_turn(
         self,
@@ -530,6 +548,17 @@ class ChatOrchestrationService:
         )
         refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
         lines = [self._format_step_line(idx, step) for idx, step in enumerate(steps, start=1)]
+        memory_hint = ""
+        try:
+            from app.services.execution_memory_service import get_execution_memory_service
+
+            patterns = await get_execution_memory_service(self.settings).find_similar_patterns(
+                org_id, goal, limit=1
+            )
+            memory_hint = get_execution_memory_service(self.settings).format_hint_for_plan(patterns)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("orchestration_execution_memory_skipped org_id=%s error=%s", org_id, exc)
+        hint_block = f"\n\n_{memory_hint}_" if memory_hint else ""
         return {
             "stop_pipeline": True,
             "dialogue_mode": "confirm",
@@ -538,6 +567,7 @@ class ChatOrchestrationService:
                 + "\n".join(lines)
                 + "\n\nRead steps run automatically. Write steps require approval one at a time.\n\n"
                 "Reply **yes** to approve the plan, or tell me what to change."
+                + hint_block
             ),
             "task_state": refreshed,
             "pending_task": self._pending_task_payload(refreshed),
@@ -747,6 +777,114 @@ class ChatOrchestrationService:
             environment_name=environment_name,
         )
 
+    async def _maybe_run_parallel_read_batch(
+        self,
+        *,
+        org_id: str,
+        user_id: str,
+        conversation_id: str,
+        steps: list[OrchestrationStep],
+        params: dict[str, Any],
+        idx: int,
+        classification: dict[str, Any],
+        client: Any,
+        environment_name: str,
+        run_id: str | None,
+    ) -> dict[str, Any] | None:
+        """Execute consecutive read-only steps in parallel (Tier 2)."""
+        if idx >= len(steps):
+            return None
+        batch: list[tuple[int, OrchestrationStep]] = []
+        cursor = idx
+        while cursor < len(steps):
+            step = steps[cursor]
+            if (
+                not step.supported
+                or not step.plan
+                or step.requires_approval
+                or (step.kind or "read") != "read"
+            ):
+                break
+            batch.append((cursor, step))
+            cursor += 1
+        if len(batch) < 2:
+            return None
+
+        async def _run_one(step: OrchestrationStep) -> ExecutionResult:
+            plan = self._enrich_plan_with_context(step.plan, params.get("step_results") or [])
+            return await self._connector.execute_plan(
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                plan=plan,
+                client=client,
+                classification=classification,
+                environment_name=environment_name,
+            )
+
+        results = await asyncio.gather(*[_run_one(step) for _, step in batch])
+        step_results = list(params.get("step_results") or [])
+        for (step_idx, step), result in zip(batch, results, strict=True):
+            step_results.append(
+                {
+                    "step_id": step.step_id,
+                    "label": step.label,
+                    "invoke_action": step.plan.invoke_action if step.plan else "",
+                    "success": result.success,
+                    "summary": result.body,
+                    "url": result.result_url,
+                    "structured": dict(result.structured or {}),
+                }
+            )
+            if run_id:
+                sync_orchestration_step(
+                    client,
+                    org_id=org_id,
+                    run_id=run_id,
+                    step_id=step.step_id,
+                    success=bool(result.success),
+                    summary=result.body,
+                    result_url=result.result_url,
+                )
+            if not result.success:
+                if run_id:
+                    finalize_orchestration_run(
+                        client,
+                        org_id=org_id,
+                        run_id=run_id,
+                        success=False,
+                        summary=result.body,
+                    )
+                params["step_results"] = step_results
+                params["current_step_index"] = step_idx + 1
+                return {
+                    "params": params,
+                    "return_turn": {
+                        "stop_pipeline": True,
+                        "dialogue_mode": "answer",
+                        "message": f"Step **{step.label}** failed: {result.body}",
+                        "execution_result": result.__dict__,
+                        "task_state": {"clarified_params": params},
+                    },
+                }
+
+        params["step_results"] = step_results
+        params["current_step_index"] = cursor
+        await self._state.update_task_state(
+            conversation_id,
+            org_id,
+            {
+                "clarified_params": params,
+                "pending_task": {
+                    "type": "connector_orchestration",
+                    "status": "running",
+                    "params": params,
+                },
+            },
+        )
+        refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
+        return {"params": params, "task_state": refreshed}
+
     async def _advance_orchestration(
         self,
         *,
@@ -763,6 +901,25 @@ class ChatOrchestrationService:
         idx = int(params.get("current_step_index") or 0)
 
         run_id = str(params.get("orchestration_run_id") or "") or None
+
+        batch_result = await self._maybe_run_parallel_read_batch(
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            steps=steps,
+            params=params,
+            idx=idx,
+            classification=classification,
+            client=client,
+            environment_name=environment_name,
+            run_id=run_id,
+        )
+        if batch_result is not None:
+            params = batch_result["params"]
+            idx = int(params.get("current_step_index") or 0)
+            task_state = batch_result.get("task_state") or task_state
+            if batch_result.get("return_turn"):
+                return batch_result["return_turn"]
 
         while idx < len(steps):
             step = steps[idx]
@@ -959,6 +1116,18 @@ class ChatOrchestrationService:
             },
             channel_hints={"bell": True, "email": False},
         )
+        try:
+            from app.services.execution_memory_service import get_execution_memory_service
+
+            await get_execution_memory_service(self.settings).record_orchestration_pattern(
+                org_id=org_id,
+                goal=str(params.get("goal") or "orchestration"),
+                steps=list(params.get("steps") or []),
+                success=successes > 0,
+                run_id=run_id,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("orchestration_memory_record_skipped org_id=%s error=%s", org_id, exc)
         await self._state.update_task_state(
             conversation_id,
             org_id,

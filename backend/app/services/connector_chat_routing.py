@@ -65,6 +65,7 @@ def should_run_connector_preflight(
     *,
     message: str = "",
     connected_integrations: list[str] | None = None,
+    routing_tier: str | None = None,
 ) -> bool:
     """Run governed connector/orchestration resolution before clarification + ReAct.
 
@@ -96,6 +97,7 @@ def should_run_connector_preflight(
         message,
         task_state or {},
         list(connected_integrations or []),
+        routing_tier=routing_tier,
     )
 
 

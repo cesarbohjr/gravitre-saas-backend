@@ -1361,6 +1361,7 @@ class AgentIntelligence:
             task_state,
             message=task_text,
             connected_integrations=list(connected_early or []),
+            routing_tier=routing_control.tier,
         ):
             from app.services.chat_orchestration_service import get_chat_orchestration_service
 
@@ -1529,6 +1530,8 @@ class AgentIntelligence:
             task_state=task_state,
             persona=persona,
             conversation_history=conversation_history,
+            routing_tier=routing_control.tier,
+            mode=requested_mode,
         )
         agent = turn_ctx.agent
         retrieval = turn_ctx.retrieval
@@ -2195,6 +2198,20 @@ class AgentIntelligence:
         )
         if consensus_result.get("consensus_used"):
             full_content = str(consensus_result.get("response") or full_content)
+
+        from app.services.verification_critic_service import get_verification_critic_service
+
+        critic = await get_verification_critic_service(active_settings).verify_before_delivery(
+            query=task_text,
+            answer=full_content,
+            classification=pipeline_classification,
+            routing_tier=routing_control.tier,
+            rag_sources=rag_sources,
+            tool_results=tool_results,
+            org_id=org_id,
+        )
+        if not critic.get("passed") and critic.get("revised_answer"):
+            full_content = str(critic.get("revised_answer") or full_content)
 
         proactive_suggestions = await get_proactive_guidance_service(active_settings).get_suggestions(
             org_id,

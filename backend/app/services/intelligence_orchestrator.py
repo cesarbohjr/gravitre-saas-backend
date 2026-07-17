@@ -16,6 +16,7 @@ from app.services.context_prioritization_engine import (
     ContextSource,
     get_context_prioritization_engine,
 )
+from app.services.context_registry import filter_context_sources, plan_context_registry
 from app.services.conversation_memory_engine import (
     ConversationMemoryEngine,
     get_conversation_memory_engine,
@@ -62,6 +63,7 @@ class AssistantTurnContext:
     task_state_section: str = ""
     connected_integrations: list[str] = field(default_factory=list)
     context_profile: dict[str, Any] = field(default_factory=dict)
+    context_registry: dict[str, Any] = field(default_factory=dict)
     context_explanation: str = ""
     conversation_memory: dict[str, Any] = field(default_factory=dict)
     business_signals: list[dict[str, Any]] = field(default_factory=list)
@@ -115,10 +117,24 @@ class IntelligenceOrchestrator:
         task_state: dict[str, Any],
         persona: dict[str, Any],
         conversation_history: list[dict[str, Any]] | None = None,
+        routing_tier: str | None = None,
+        mode: str | None = None,
     ) -> AssistantTurnContext:
         _ = conversation_history, persona
         connected = self._registry.list_connected_integrations(client, org_id, environment_name=environment_name)
+        registry_plan = plan_context_registry(
+            query=query,
+            classification=classification,
+            connected_integrations=connected,
+            task_state=task_state,
+            routing_tier=routing_tier,
+            mode=mode,
+        )
         connected_labels = ", ".join(sorted(connected)) if connected else "none connected"
+        if registry_plan.connector_names:
+            focused = [c for c in connected if c in registry_plan.connector_names]
+            if focused:
+                connected_labels = ", ".join(sorted(focused))
 
         memory_ctx = await self._memory_engine.build_context_profile(
             org_id=org_id,
@@ -151,6 +167,15 @@ class IntelligenceOrchestrator:
         knowledge_section = self._knowledge.build_prompt_section(knowledge_assignments)
         knowledge_gap_message = self._knowledge.assigned_knowledge_gap_message(knowledge_assignments, query)
 
+        async def _empty_org_bundle() -> tuple[Any, str]:
+            return None, ""
+
+        async def _empty_text() -> str:
+            return ""
+
+        async def _empty_signals() -> dict[str, Any]:
+            return {"signals": []}
+
         retrieval, org_bundle, company_block, entity_block, signals_payload = await asyncio.gather(
             self._retrieval.retrieve(
                 org_id=org_id,
@@ -160,8 +185,8 @@ class IntelligenceOrchestrator:
                 parameters={
                     "surface": "assistant",
                     "include_task_history": False,
-                    "rag_top_k": getattr(engine_settings, "max_chunks", 8),
-                    "knowledge_assignments": knowledge_assignments,
+                    "rag_top_k": registry_plan.rag_top_k if registry_plan.slice_enabled("rag") else 0,
+                    "knowledge_assignments": knowledge_assignments if registry_plan.slice_enabled("rag") else [],
                     "classification": classification,
                 },
                 environment_name=environment_name,
@@ -174,15 +199,23 @@ class IntelligenceOrchestrator:
                 user_id=user_id,
                 depth="standard",
                 environment_name=environment_name,
-            ),
-            get_company_intelligence_orchestrator().get_context_for_prompt(org_id),
-            build_entity_context_section(org_id, query, settings=self.settings, client=client),
+            )
+            if registry_plan.slice_enabled("company")
+            else _empty_org_bundle(),
+            get_company_intelligence_orchestrator().get_context_for_prompt(org_id)
+            if registry_plan.slice_enabled("company")
+            else _empty_text(),
+            build_entity_context_section(org_id, query, settings=self.settings, client=client)
+            if registry_plan.slice_enabled("graph")
+            else _empty_text(),
             self._signals.collect_signals(
                 org_id,
                 department=str(classification.get("department") or ""),
                 query=query if classification.get("requires_graph") else None,
                 client=client,
-            ),
+            )
+            if registry_plan.slice_enabled("signals")
+            else _empty_signals(),
         )
         try:
             _, org_context_block = org_bundle
@@ -249,11 +282,13 @@ class IntelligenceOrchestrator:
             knowledge_gap_message=knowledge_gap_message,
             memory_conflicts=memory_conflicts,
         )
+        raw_sources = filter_context_sources(raw_sources, registry_plan)
         profile = self._context_engine.build_context_profile(
             raw_sources=raw_sources,
             classification=classification,
             department=str(classification.get("department") or ""),
             retrieval_plan=retrieval.retrieval_plan,
+            token_budget=registry_plan.token_budget,
         )
         explanation = self._context_engine.explain_context_used(profile)
         sections = profile.prompt_sections
@@ -325,7 +360,11 @@ class IntelligenceOrchestrator:
             entity_block=sections.get("entity_graph") or entity_block,
             task_state_section=sections.get("task_state") or task_state_section,
             connected_integrations=connected,
-            context_profile=profile.to_explanation_dict(),
+            context_profile={
+                **profile.to_explanation_dict(),
+                "contextRegistry": registry_plan.to_explanation_dict(),
+            },
+            context_registry=registry_plan.to_explanation_dict(),
             context_explanation=context_explanation,
             conversation_memory=memory_ctx,
             business_signals=await self._quality.rank_recommendations(

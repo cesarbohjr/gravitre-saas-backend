@@ -634,6 +634,10 @@ async def run_agent_task_job(settings: Settings, job: dict[str, Any]) -> dict[st
     client = get_supabase_client(settings)
     await asyncio.to_thread(_assert_job_runnable, client, org_id, str(job["id"]))
 
+    from app.services.job_workspace_service import get_job_workspace_service
+
+    await get_job_workspace_service(settings).ensure_workspace(str(job["id"]), org_id)
+
     agent = resolve_agent_record(client, org_id, agent_id, environment_name=environment)
     if not agent:
         raise ValueError(f"Agent not found: {agent_id}")

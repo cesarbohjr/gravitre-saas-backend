@@ -14,6 +14,29 @@ from app.config import MODEL_TIERS
 from app.services.model_router import TaskType
 
 ROUTING_TIERS = ("simple", "multi_step", "research")
+ROUTING_PHASES = ("classification", "planning", "synthesis", "verification")
+
+# Tier 1 model cascade — cheapest capable model per phase.
+_PHASE_MODEL_TIER: dict[str, dict[str, str]] = {
+    "simple": {
+        "classification": "low",
+        "planning": "low",
+        "synthesis": "medium",
+        "verification": "low",
+    },
+    "multi_step": {
+        "classification": "low",
+        "planning": "medium",
+        "synthesis": "medium",
+        "verification": "low",
+    },
+    "research": {
+        "classification": "low",
+        "planning": "medium",
+        "synthesis": "high",
+        "verification": "low",
+    },
+}
 
 LATENCY_BUDGETS: dict[str, dict[str, int]] = {
     "simple": {"ttft_ms": 800, "total_ms": 8000, "max_tool_rounds": 2},
@@ -125,12 +148,28 @@ def _normalize_tier(tier: str) -> str:
 
 
 def default_model_for_tier(tier: str) -> str:
-    model_tier = {
-        "simple": "low",
-        "multi_step": "medium",
-        "research": "high",
-    }.get(_normalize_tier(tier), "medium")
+    return model_for_routing_phase("synthesis", tier)
+
+
+def model_for_routing_phase(phase: str, routing_tier: str) -> str:
+    """Return OpenAI model id for a pipeline phase (escalate-only cascade)."""
+    tier = _normalize_tier(routing_tier)
+    phase_key = str(phase or "synthesis").strip().lower()
+    if phase_key not in ROUTING_PHASES:
+        phase_key = "synthesis"
+    model_tier = _PHASE_MODEL_TIER.get(tier, _PHASE_MODEL_TIER["multi_step"]).get(
+        phase_key, "medium"
+    )
     return MODEL_TIERS.get(model_tier, MODEL_TIERS["medium"])["openai"]
+
+
+def task_type_for_phase(phase: str) -> TaskType:
+    return {
+        "classification": TaskType.CLASSIFICATION,
+        "planning": TaskType.WORKFLOW_PLANNING,
+        "synthesis": TaskType.RAG_ANSWERING,
+        "verification": TaskType.SUMMARIZATION,
+    }.get(str(phase or "").strip().lower(), TaskType.RAG_ANSWERING)
 
 
 def task_type_for_routing_tier(tier: str) -> TaskType:
