@@ -67,6 +67,7 @@ import {
   type LucideIcon
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { AgentSurfaceSwitch } from "@/components/agents/agent-surface-switch"
 import { MesonWizard } from "@/components/gravitre/meson-wizard"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
@@ -1136,6 +1137,9 @@ export default function AgentsPage() {
 
   {/* Left - Agent Roster with Orbs */}
   <div className="relative z-10 flex-1 flex flex-col lg:border-r border-border/50 backdrop-blur-sm">
+          <div className="relative z-10 px-4 pt-4 md:px-6">
+            <AgentSurfaceSwitch surface="operate" />
+          </div>
           {/* Collapse only hides overview title/stats — primary CTAs stay reachable. */}
           {!headerCollapsed ? (
             <PageHeader

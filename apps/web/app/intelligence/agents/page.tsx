@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
 import { inferAgentPersonality, resolveAgentRoleIcon } from "@/lib/agent-display"
 import type { Agent, AgentStatus } from "@/types/api"
+import { AgentSurfaceSwitch } from "@/components/agents/agent-surface-switch"
 import { ArrowRight, Brain, Plus, Search, Sparkles } from "lucide-react"
 import { Robot } from "@phosphor-icons/react"
 
@@ -208,8 +209,8 @@ export default function IntelligenceAgentsPage() {
 
   return (
     <AppShell title={copy.title}>
-      <div className="relative flex min-h-full flex-col overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 z-0">
+      <div className="relative flex min-h-full flex-col">
+        <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
           <MorphingBackground colors={["emerald", "violet", "blue"]} />
           <div className="absolute inset-0 bg-background/88 backdrop-blur-3xl" />
           <GridPattern size={56} color="emerald" animated={!reduced} className="opacity-25" />
@@ -222,9 +223,10 @@ export default function IntelligenceAgentsPage() {
         </div>
 
         <div className="relative z-10 space-y-6 p-4 md:p-6">
+          <AgentSurfaceSwitch surface="insights" />
           <PageHeader
             title={copy.title}
-            description={`${copy.summary} Open a profile for health, performance, learning, and outcomes — or jump to the live constellation.`}
+            description={`${copy.summary} Open a profile for health, performance, learning, and outcomes.`}
             icon={Brain}
             iconColor="from-emerald-500/20 to-violet-500/20"
             actions={
@@ -232,7 +234,7 @@ export default function IntelligenceAgentsPage() {
                 <Button variant="outline" asChild className="gap-2">
                   <Link href={APP_ROUTES.agents}>
                     <Sparkles className="h-4 w-4" aria-hidden />
-                    Team constellation
+                    AI Team constellation
                   </Link>
                 </Button>
                 <Button asChild className="gap-2 bg-zinc-900 text-white hover:bg-zinc-800">

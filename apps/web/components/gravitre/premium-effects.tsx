@@ -481,11 +481,11 @@ function MorphingBackgroundImpl({
   }
 
   return (
-    <div className={cn("absolute inset-0 overflow-hidden", className)}>
+    <div className={cn("absolute inset-0 overflow-hidden pointer-events-none", className)}>
       {colors.map((color, i) => (
         <motion.div
           key={i}
-          className="absolute rounded-full"
+          className="pointer-events-none absolute rounded-full"
           style={{
             width: "60%",
             height: "60%",
