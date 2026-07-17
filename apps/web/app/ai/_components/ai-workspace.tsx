@@ -335,13 +335,14 @@ export function AiWorkspace({
       if (payload.executionResult) {
         setExecutionResult(payload.executionResult)
         if (payload.executionResult.success && notifications) {
+          const resultUrl = payload.executionResult.result_url ?? undefined
           notifications.addNotification({
             type: "task_complete",
             title: payload.executionResult.task_label || payload.executionResult.title || "Task completed",
             message:
               polishAssistantText(payload.executionResult.body || "") ||
               "Your request was executed in Gravitre.",
-            link: payload.executionResult.result_url ?? undefined,
+            link: resultUrl && resultUrl !== "/ai" ? resultUrl : "/runs",
           })
         }
       }
@@ -397,11 +398,12 @@ export function AiWorkspace({
         setDialogueMode("answer")
         setPendingTask(null)
         if (result.execution_result.success && notifications) {
+          const resultUrl = result.execution_result.result_url ?? undefined
           notifications.addNotification({
             type: "task_complete",
             title: result.execution_result.task_label || result.execution_result.title || "Task completed",
             message: result.execution_result.body || result.message,
-            link: result.execution_result.result_url ?? undefined,
+            link: resultUrl && resultUrl !== "/ai" ? resultUrl : "/runs",
           })
         }
       }

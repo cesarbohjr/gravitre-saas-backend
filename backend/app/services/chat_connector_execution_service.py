@@ -1837,17 +1837,19 @@ class ChatConnectorExecutionService:
         observation: dict[str, Any],
     ) -> str | None:
         candidates: list[Any] = [result_data, observation.get("result")]
+        # Tools (HubSpot/Slack/etc.) often stamp deep links as result_url — include it.
+        url_keys = ("result_url", "url", "html_url", "link", "permalink", "web_url")
         for container in candidates:
             if not isinstance(container, dict):
                 continue
-            for key in ("url", "html_url", "link", "permalink", "web_url"):
+            for key in url_keys:
                 value = container.get(key)
                 if isinstance(value, str) and value.startswith(("http://", "https://")):
                     return value
             for nested_key in ("contact", "deal", "issue", "ticket", "data", "message"):
                 nested = container.get(nested_key)
                 if isinstance(nested, dict):
-                    for key in ("url", "html_url", "link", "permalink"):
+                    for key in url_keys:
                         value = nested.get(key)
                         if isinstance(value, str) and value.startswith(("http://", "https://")):
                             return value

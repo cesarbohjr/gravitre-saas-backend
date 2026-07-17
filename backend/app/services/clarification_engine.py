@@ -66,6 +66,16 @@ class ClarificationEngine:
         r"|(?:\bslack\b.+\b(?:post|send|message|notify|draft|compose)\b)",
         re.I,
     )
+    EMAIL_SEND_PATTERN = re.compile(
+        r"(?:\b(?:send|compose|draft|email)\b.+\b(?:email|outlook|microsoft\s*365|o365|gmail)\b)"
+        r"|(?:\b(?:outlook|microsoft\s*365|o365|gmail)\b.+\b(?:send|compose|draft|email)\b)"
+        r"|(?:\bsend\s+(?:an?\s+)?email\b)",
+        re.I,
+    )
+    AUTONOMY_HINT = re.compile(
+        r"\b(you decide|any record|pick one|choose for me|use any|surprise me|just pick)\b",
+        re.I,
+    )
     SLACK_CHANNEL_TOKEN = re.compile(
         r"(#[\w-]+)"
         r"|(?:\bin|to)\s+(?:the\s+)?([a-z0-9_-]+)\s+channel\b"
@@ -281,12 +291,31 @@ class ClarificationEngine:
 
         if classification.get("requires_action") and self.ACTION_VERBS.search(request):
             if not clarified.get("action_target") and not understanding.get("entities"):
+                # Email / Outlook: ask for concrete fields, not a vague "which record".
+                if self.EMAIL_SEND_PATTERN.search(request):
+                    return {
+                        "trigger_type": "missing_required_param",
+                        "reason": "Email send missing recipient/subject/body.",
+                        "template_vars": {
+                            "action": "send that email",
+                            "missing_param": (
+                                "the recipient email, subject, and body "
+                                "(or say “use my last HubSpot contact” / paste an address)"
+                            ),
+                        },
+                    }
+                # User explicitly deferred choice — do not block with a blank target ask.
+                if self.AUTONOMY_HINT.search(request):
+                    return None
                 return {
                     "trigger_type": "missing_required_param",
                     "reason": "Action request missing target.",
                     "template_vars": {
                         "action": self._humanize_action(classification.get("intent") or "complete this"),
-                        "missing_param": "which record, workflow, or resource to act on",
+                        "missing_param": (
+                            "a specific target — reply with a name, ID, or link, "
+                            "or ask me to search HubSpot/contacts first and pick from results"
+                        ),
                     },
                 }
 

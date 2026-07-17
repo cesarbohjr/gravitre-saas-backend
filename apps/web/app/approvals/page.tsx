@@ -1,6 +1,7 @@
 "use client"
 
 import { Suspense, useEffect, useState } from "react"
+import Link from "next/link"
 import useSWR from "swr"
 import { useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
@@ -52,6 +53,8 @@ interface Approval {
   environment: "production" | "staging"
   requestedBy: string
   requestedAt: string
+  reviewedBy?: string | null
+  reviewedAt?: string | null
   priority: "high" | "medium" | "low"
   status: "pending" | "approved" | "rejected"
   aiRecommendation?: {
@@ -66,6 +69,7 @@ interface Approval {
     entity: string
     action: string
     impact?: string
+    runId?: string
   }
 }
 
@@ -129,6 +133,19 @@ function normalizeApproval(input: Record<string, unknown>): Approval {
       ),
     ),
     requestedAt: formatRelativeTime(String(input.requestedAt ?? input.requested_at ?? "recently")),
+    reviewedBy: (() => {
+      const raw = String(
+        input.reviewedByName ??
+          input.reviewed_by_name ??
+          input.reviewedBy ??
+          input.reviewed_by ??
+          "",
+      ).trim()
+      return raw ? formatRequestedBy(raw) : null
+    })(),
+    reviewedAt: input.reviewedAt ?? input.reviewed_at
+      ? formatRelativeTime(String(input.reviewedAt ?? input.reviewed_at))
+      : null,
     priority: priority === "high" || priority === "low" ? priority : "medium",
     status: status === "approved" || status === "rejected" ? status : "pending",
     aiRecommendation,
@@ -153,6 +170,10 @@ function normalizeApproval(input: Record<string, unknown>): Approval {
               (rawContext as Record<string, unknown>).impact !== undefined
                 ? String((rawContext as Record<string, unknown>).impact)
                 : undefined,
+            runId: (() => {
+              const rid = (rawContext as Record<string, unknown>).run_id ?? (rawContext as Record<string, unknown>).runId
+              return rid ? String(rid) : undefined
+            })(),
           }
         : {
             entity: "unknown",
@@ -198,6 +219,7 @@ function DecisionCard({
   onReject,
   isSubmitting,
   pendingActionId,
+  readOnly = false,
 }: { 
   approval: Approval
   isSelected: boolean
@@ -206,6 +228,7 @@ function DecisionCard({
   onReject: (id: string) => void
   isSubmitting?: boolean
   pendingActionId?: string | null
+  readOnly?: boolean
 }) {
   const TypeIcon = typeIcons[approval.type]
   const config = priorityConfig[approval.priority]
@@ -301,41 +324,75 @@ function DecisionCard({
         )}
 
         {/* Context */}
-        <div className="text-xs text-muted-foreground mb-3">
-          <span>Requested by </span>
-          <span className="text-foreground">{approval.requestedBy}</span>
-          <span className="mx-1">&middot;</span>
-          <span>{approval.requestedAt}</span>
+        <div className="text-xs text-muted-foreground mb-3 space-y-1">
+          <div>
+            <span>Requested by </span>
+            <span className="text-foreground">{approval.requestedBy}</span>
+            <span className="mx-1">&middot;</span>
+            <span>{approval.requestedAt}</span>
+          </div>
+          {approval.status !== "pending" && (
+            <div>
+              <span className="capitalize">{approval.status}</span>
+              {approval.reviewedBy ? (
+                <>
+                  <span> by </span>
+                  <span className="text-foreground">{approval.reviewedBy}</span>
+                </>
+              ) : null}
+              {approval.reviewedAt ? (
+                <>
+                  <span className="mx-1">&middot;</span>
+                  <span>{approval.reviewedAt}</span>
+                </>
+              ) : null}
+            </div>
+          )}
         </div>
 
         {/* Quick Actions */}
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="h-8 gap-1.5 text-xs flex-1 cursor-pointer hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30"
-            disabled={actionBusy}
-            onClick={(e) => {
-              e.stopPropagation()
-              onReject(approval.id)
-            }}
+        {!readOnly && approval.status === "pending" ? (
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8 gap-1.5 text-xs flex-1 cursor-pointer hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30"
+              disabled={actionBusy}
+              onClick={(e) => {
+                e.stopPropagation()
+                onReject(approval.id)
+              }}
+            >
+              <X className="h-3.5 w-3.5" />
+              {actionBusy ? "Rejecting…" : "Reject"}
+            </Button>
+            <Button 
+              size="sm" 
+              className="h-8 gap-1.5 text-xs flex-1 cursor-pointer"
+              disabled={actionBusy}
+              onClick={(e) => {
+                e.stopPropagation()
+                onApprove(approval.id)
+              }}
+            >
+              <Check className="h-3.5 w-3.5" />
+              {actionBusy ? "Approving…" : "Approve"}
+            </Button>
+          </div>
+        ) : approval.context.runId ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 w-full gap-1.5 text-xs"
+            asChild
+            onClick={(e) => e.stopPropagation()}
           >
-            <X className="h-3.5 w-3.5" />
-            {actionBusy ? "Rejecting…" : "Reject"}
+            <Link href={`/runs/${approval.context.runId}`}>
+              View run details
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </Button>
-          <Button 
-            size="sm" 
-            className="h-8 gap-1.5 text-xs flex-1 cursor-pointer"
-            disabled={actionBusy}
-            onClick={(e) => {
-              e.stopPropagation()
-              onApprove(approval.id)
-            }}
-          >
-            <Check className="h-3.5 w-3.5" />
-            {actionBusy ? "Approving…" : "Approve"}
-          </Button>
-        </div>
+        ) : null}
       </div>
     </motion.div>
   )
@@ -473,6 +530,25 @@ function DetailPanel({ approval, onApprove, onReject, onBack, isSubmitting, pend
               <span className="text-sm text-muted-foreground">Requested by</span>
               <span className="text-sm font-medium text-foreground">{approval.requestedBy}</span>
             </div>
+            {approval.reviewedBy ? (
+              <div className="flex items-center justify-between py-2 border-t border-border/50">
+                <span className="text-sm text-muted-foreground">
+                  {approval.status === "rejected" ? "Rejected by" : "Approved by"}
+                </span>
+                <span className="text-sm font-medium text-foreground">{approval.reviewedBy}</span>
+              </div>
+            ) : null}
+            {approval.context.runId ? (
+              <div className="flex items-center justify-between py-2 border-t border-border/50">
+                <span className="text-sm text-muted-foreground">Run</span>
+                <Link
+                  href={`/runs/${approval.context.runId}`}
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  Open execution details
+                </Link>
+              </div>
+            ) : null}
             <div className="flex items-center justify-between py-2 border-t border-border/50 pt-3">
               <span className="text-sm text-muted-foreground">SLA</span>
               <ApprovalSlaCountdown
@@ -487,7 +563,15 @@ function DetailPanel({ approval, onApprove, onReject, onBack, isSubmitting, pend
 
       {/* Footer Actions */}
       <div className="p-6 border-t border-border bg-card/50">
-        <div className="flex items-center gap-3">
+        {approval.status !== "pending" ? (
+          <Button variant="outline" size="lg" className="w-full gap-2 h-11" asChild>
+            <Link href={approval.context.runId ? `/runs/${approval.context.runId}` : "/runs"}>
+              <ArrowRight className="h-4 w-4" />
+              View on execution timeline
+            </Link>
+          </Button>
+        ) : null}
+        <div className={cn("flex items-center gap-3", approval.status !== "pending" && "hidden")}>
           <Button 
             variant="outline" 
             size="lg" 
@@ -530,16 +614,23 @@ function ApprovalsContent() {
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [pendingActionId, setPendingActionId] = useState<string | null>(null)
+  const [queueTab, setQueueTab] = useState<"pending" | "history">("pending")
   
-  const { data, error, isLoading, isValidating, mutate } = useSWR(user ? "/api/approvals" : null, apiFetcher, {
-    fallbackData: { approvals: [] as Approval[] },
-    revalidateOnFocus: true,
-    refreshInterval: 30000,
-    onError: (err) => console.error("[v0] Approvals fetch error:", err),
-  })
+  const { data, error, isLoading, isValidating, mutate } = useSWR(
+    user ? (queueTab === "history" ? "/api/approvals?status=history" : "/api/approvals") : null,
+    apiFetcher,
+    {
+      fallbackData: { approvals: [] as Approval[] },
+      revalidateOnFocus: true,
+      refreshInterval: 30000,
+      onError: (err) => console.error("[v0] Approvals fetch error:", err),
+    },
+  )
 
   const approvals = normalizeApprovalsResponse(data)
-  const pendingApprovals = approvals.filter(a => a.status === "pending")
+  const pendingApprovals = approvals.filter((a) => a.status === "pending")
+  const historyApprovals = approvals.filter((a) => a.status === "approved" || a.status === "rejected")
+  const visibleApprovals = queueTab === "pending" ? pendingApprovals : historyApprovals
   const selectedApproval = approvals.find(a => a.id === selectedId) || null
 
   useEffect(() => {
@@ -660,7 +751,9 @@ function ApprovalsContent() {
               <div>
                 <h1 className="text-base sm:text-lg font-semibold text-foreground">Decision Queue</h1>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {pendingApprovals.length} pending request{pendingApprovals.length !== 1 ? "s" : ""}
+                  {queueTab === "pending"
+                    ? `${pendingApprovals.length} pending request${pendingApprovals.length !== 1 ? "s" : ""}`
+                    : `${historyApprovals.length} past decision${historyApprovals.length !== 1 ? "s" : ""}`}
                 </p>
               </div>
               <DataFreshness
@@ -670,15 +763,48 @@ function ApprovalsContent() {
               />
             </div>
 
+            <div className="mb-3 flex gap-1 rounded-lg border border-border bg-muted/40 p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setQueueTab("pending")
+                  setSelectedId(null)
+                }}
+                className={cn(
+                  "flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition",
+                  queueTab === "pending"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Pending
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setQueueTab("history")
+                  setSelectedId(null)
+                }}
+                className={cn(
+                  "flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition",
+                  queueTab === "history"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Past
+              </button>
+            </div>
+
             {/* Quick stats */}
             <div className="flex items-center gap-2 flex-wrap">
-              {highPriorityCount > 0 && (
+              {queueTab === "pending" && highPriorityCount > 0 && (
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-500/10 border border-red-500/20">
                   <AlertTriangle className="h-3 w-3 text-red-400" />
                   <span className="text-xs font-medium text-red-400">{highPriorityCount} urgent</span>
                 </div>
               )}
-              {aiRecommendedCount > 0 && (
+              {queueTab === "pending" && aiRecommendedCount > 0 && (
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
                   <Sparkles className="h-3 w-3 text-emerald-400" />
                   <span className="text-xs font-medium text-emerald-400">{aiRecommendedCount} AI-approved</span>
@@ -698,7 +824,7 @@ function ApprovalsContent() {
           {/* Queue list */}
           <div className="flex-1 overflow-auto p-3 sm:p-4 space-y-3">
             <AnimatePresence>
-              {pendingApprovals.map((approval) => (
+              {visibleApprovals.map((approval) => (
                 <DecisionCard
                   key={approval.id}
                   approval={approval}
@@ -708,17 +834,24 @@ function ApprovalsContent() {
                   onReject={handleRejectWithPrompt}
                   isSubmitting={isSubmitting}
                   pendingActionId={pendingActionId}
+                  readOnly={queueTab === "history"}
                 />
               ))}
             </AnimatePresence>
 
-            {pendingApprovals.length === 0 && (
+            {visibleApprovals.length === 0 && (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 mb-3">
                   <CheckCircle2 className="h-6 w-6 text-emerald-400" />
                 </div>
-                <p className="text-sm font-medium text-foreground">All caught up!</p>
-                <p className="text-xs text-muted-foreground mt-1">No pending approvals</p>
+                <p className="text-sm font-medium text-foreground">
+                  {queueTab === "pending" ? "All caught up!" : "No past decisions yet"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {queueTab === "pending"
+                    ? "No pending approvals"
+                    : "Approved and rejected requests will appear here"}
+                </p>
               </div>
             )}
           </div>
