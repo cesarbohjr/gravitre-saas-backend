@@ -81,6 +81,22 @@ AI_ARCHITECTURE_REGISTRY: dict[str, dict[str, Any]] = {
         "approval_required": False,
         "advisory_only": True,
     },
+    "operational_intelligence_layer": {
+        "status": "live",
+        "service": "OperationalIntelligenceLayer",
+        "module": "app.services.operational_intelligence_layer",
+        "backed_by": (
+            "IntelligenceOrchestrator + OutcomeTracker + EventIntelligence + "
+            "predictive context / working memory / distillation / reflection / self-heal"
+        ),
+        "new_capability": (
+            "15-pattern operational stack: intent->retrieve->summarize->route->verify->generate "
+            "with compounding what/why/action/outcome learning across connectors"
+        ),
+        "risk_level": "low",
+        "approval_required": False,
+        "advisory_only": True,
+    },
     "digital_twin": {
         "status": "partial",
         "service": "DigitalTwinService",

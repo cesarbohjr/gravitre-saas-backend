@@ -2272,6 +2272,46 @@ class AgentIntelligence:
         if not critic.get("passed") and critic.get("revised_answer"):
             full_content = str(critic.get("revised_answer") or full_content)
 
+        # Patterns 4 + 14 — reflection loop + advisory self-heal (fail-open).
+        reflection_meta: dict[str, Any] = {}
+        heal_meta: dict[str, Any] = {}
+        try:
+            from app.services.operational_intelligence_layer import get_operational_intelligence_layer
+
+            oil = get_operational_intelligence_layer()
+            reflection_meta = oil.reflect(
+                critic=critic,
+                confidence=finalized.get("confidence") if isinstance(finalized, dict) else None,
+                tool_results=tool_results,
+                strategic_plan=turn_ctx.strategic_plan if turn_ctx else None,
+            )
+            if reflection_meta.get("revised_answer") and reflection_meta.get("should_revise"):
+                full_content = str(reflection_meta.get("revised_answer") or full_content)
+            heal_meta = oil.heal_suggestions(
+                tool_results=tool_results,
+                connected_integrations=connected_list,
+            )
+            if turn_ctx is not None:
+                turn_ctx.operational_envelope = oil.build_operational_envelope(
+                    what_happened="assistant_response_ready",
+                    why=str(finalized.get("explanation") or turn_ctx.context_explanation or ""),
+                    action=tool_results,
+                    outcome={"delivered": True, "reflectionPhase": reflection_meta.get("phase")},
+                    confidence=finalized.get("confidence") if isinstance(finalized, dict) else None,
+                    reflection=reflection_meta,
+                    heal=heal_meta,
+                    working_memory=turn_ctx.working_memory,
+                    patterns_invoked=[
+                        "reflection_loops",
+                        "confidence_scoring",
+                        "self_healing_workflows",
+                        "outcome_based_learning",
+                        "model_ensembles",
+                    ],
+                )
+        except Exception as oil_exc:  # noqa: BLE001
+            logger.debug("operational intelligence post-delivery skipped error=%s", oil_exc)
+
         proactive_suggestions = await get_proactive_guidance_service(active_settings).get_suggestions(
             org_id,
             user_id,
