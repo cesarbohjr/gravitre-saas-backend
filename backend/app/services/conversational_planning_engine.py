@@ -1,14 +1,60 @@
 """Strategic conversational planning — goals, risks, dependencies, approvals."""
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.services.chat_connector_models import LIST_CREATE_INTENT
 from app.services.decision_intelligence_service import get_decision_intelligence_service
 from app.services.reasoning_planner_service import get_reasoning_planner_service
 
 logger = get_logger(__name__)
+
+# Concrete single-action connector writes already have a governed path
+# (ReAct write gate / chat connector awaiting_confirm). Advisory strategic
+# scaffolding for these intents dead-ends: create_plan writes current_plan
+# with "Clarify → Gather → Draft → Execute after approval" steps, ReAct never
+# calls the write tool, and pending_task stays null.
+_DIRECT_CONNECTOR_WRITE_INTENT = re.compile(
+    r"(?:"
+    r"\b(?:create|add|update|delete|remove)\s+(?:a\s+|an\s+|the\s+)?(?:hubspot\s+|salesforce\s+|apollo\s+)?"
+    r"(?:contact|deal|company|ticket|issue|page|event|task|note)\b"
+    r"|\b(?:send|post)\s+(?:a\s+|an\s+|the\s+)?(?:slack\s+)?(?:message|email|dm)\b"
+    r"|\b(?:invite|add)\s+(?:\w+\s+){0,4}(?:to|into)\s+(?:a\s+|the\s+)?(?:channel|slack|list)\b"
+    r")",
+    re.I,
+)
+
+# Multi-step advisory planning — keep specific phrases; bare "plan"/"strategy"
+# false-trigger concrete writes ("please plan the steps before executing").
+_STRATEGIC_PLAN_PHRASES = (
+    "improve",
+    "increase",
+    "reduce",
+    "optimize",
+    "strategic plan",
+    "make a plan",
+    "draft a plan",
+    "build a plan",
+    "create a plan",
+    "planning roadmap",
+    "how can we",
+    "what should we",
+    "roadmap",
+    "prioritize",
+)
+
+
+def is_direct_connector_write_intent(query: str) -> bool:
+    """True when the query is a concrete connector write, not multi-step strategy."""
+    text = (query or "").strip()
+    if not text:
+        return False
+    if LIST_CREATE_INTENT.search(text):
+        return True
+    return bool(_DIRECT_CONNECTOR_WRITE_INTENT.search(text))
 
 
 class ConversationalPlanningEngine:
@@ -20,25 +66,14 @@ class ConversationalPlanningEngine:
         self._decision = get_decision_intelligence_service(self.settings)
 
     async def should_plan(self, classification: dict[str, Any], query: str) -> bool:
+        # Shape (b): do not detour governed writes into advisory scaffolding.
+        if is_direct_connector_write_intent(query):
+            return False
         intent = str(classification.get("intent") or "")
         if classification.get("requires_action") and intent in {"workflow_execution", "optimization"}:
             return True
         lowered = query.lower()
-        return any(
-            phrase in lowered
-            for phrase in (
-                "improve",
-                "increase",
-                "reduce",
-                "optimize",
-                "strategy",
-                "plan",
-                "how can we",
-                "what should we",
-                "roadmap",
-                "prioritize",
-            )
-        )
+        return any(phrase in lowered for phrase in _STRATEGIC_PLAN_PHRASES)
 
     async def create_plan(
         self,
