@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import asyncio
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from app.config import Settings, get_settings
@@ -31,6 +31,10 @@ from app.services.explainability_engine import ExplainabilityEngine, get_explain
 from app.services.agent_knowledge_assignment_service import (
     AgentKnowledgeAssignmentService,
     get_agent_knowledge_assignment_service,
+)
+from app.services.pack_operational_state_service import (
+    build_pack_operational_section,
+    extract_pack_ids,
 )
 from app.services.business_signals_engine import BusinessSignalsEngine, get_business_signals_engine
 from app.services.conversational_planning_engine import (
@@ -167,6 +171,20 @@ class IntelligenceOrchestrator:
         knowledge_section = self._knowledge.build_prompt_section(knowledge_assignments)
         knowledge_gap_message = self._knowledge.assigned_knowledge_gap_message(knowledge_assignments, query)
 
+        pack_state_section = ""
+        if extract_pack_ids(knowledge_assignments):
+            if not registry_plan.slice_enabled("pack_state"):
+                registry_plan = replace(
+                    registry_plan,
+                    enabled_slices=frozenset(set(registry_plan.enabled_slices) | {"pack_state"}),
+                )
+            if registry_plan.slice_enabled("pack_state"):
+                pack_state_section = build_pack_operational_section(
+                    client,
+                    org_id=org_id,
+                    knowledge_assignments=knowledge_assignments,
+                )
+
         async def _empty_org_bundle() -> tuple[Any, str]:
             return None, ""
 
@@ -281,6 +299,7 @@ class IntelligenceOrchestrator:
             knowledge_section=knowledge_section,
             knowledge_gap_message=knowledge_gap_message,
             memory_conflicts=memory_conflicts,
+            pack_state_section=pack_state_section,
         )
         raw_sources = filter_context_sources(raw_sources, registry_plan)
         profile = self._context_engine.build_context_profile(
@@ -421,6 +440,7 @@ class IntelligenceOrchestrator:
         knowledge_section: str = "",
         knowledge_gap_message: str | None = None,
         memory_conflicts: list[dict[str, Any]] | None = None,
+        pack_state_section: str = "",
     ) -> list[ContextSource]:
         sources: list[ContextSource] = []
         if org_context_block.strip():
@@ -518,6 +538,16 @@ class IntelligenceOrchestrator:
                     label="Agent knowledge sources",
                     score=0.0,
                     content=f"<knowledge_assignments>\n{knowledge_section}\n</knowledge_assignments>",
+                )
+            )
+        if pack_state_section.strip():
+            sources.append(
+                ContextSource(
+                    source_id="pack_state",
+                    source_type="pack_state",
+                    label="Intelligence pack operational state",
+                    score=0.0,
+                    content=pack_state_section,
                 )
             )
         if knowledge_gap_message:

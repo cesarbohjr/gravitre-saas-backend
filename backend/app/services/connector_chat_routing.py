@@ -16,6 +16,7 @@ _ASSISTANT_ONLY_TOOLS = frozenset(
         "assistant_create_workflow",
         "assistant_execute_workflow",
         "assistant_dependency_impact",
+        "assistant_code_transform",
         "web_search",
         "knowledge_base",
     }

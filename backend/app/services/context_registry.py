@@ -22,10 +22,21 @@ ContextSlice = Literal[
     "rag",
     "graph",
     "signals",
+    "pack_state",
 ]
 
 _ALL_SLICES: frozenset[str] = frozenset(
-    {"connector", "department", "company", "user", "workflow", "rag", "graph", "signals"}
+    {
+        "connector",
+        "department",
+        "company",
+        "user",
+        "workflow",
+        "rag",
+        "graph",
+        "signals",
+        "pack_state",
+    }
 )
 
 _CONNECTOR_HINT = re.compile(
@@ -74,6 +85,16 @@ def _mentioned_connectors(text: str, connected: list[str]) -> list[str]:
     return []
 
 
+def _has_intelligence_pack_assignments(knowledge_assignments: list[dict[str, Any]] | None) -> bool:
+    for row in knowledge_assignments or []:
+        if not isinstance(row, dict):
+            continue
+        meta = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        if meta.get("intelligence_pack_id") or meta.get("intelligencePackId"):
+            return True
+    return False
+
+
 def plan_context_registry(
     *,
     query: str,
@@ -82,6 +103,7 @@ def plan_context_registry(
     task_state: dict[str, Any] | None = None,
     routing_tier: str | None = None,
     mode: str | None = None,
+    knowledge_assignments: list[dict[str, Any]] | None = None,
 ) -> ContextRegistryPlan:
     """Build a slice plan from classification, routing tier, and task signals."""
     text = (query or "").strip()
@@ -138,6 +160,9 @@ def plan_context_registry(
     if _ACTION_HINT.search(text) and connected:
         enabled.add("connector")
         reasons.append("action_with_connectors")
+    if _has_intelligence_pack_assignments(knowledge_assignments):
+        enabled.add("pack_state")
+        reasons.append("intelligence_pack_assignments")
 
     # Never load graph/company on pure fast lookups.
     if tier == "simple" and not requires_graph and intent == "knowledge_lookup":
@@ -173,6 +198,7 @@ def filter_context_sources(
         "entity_graph": "graph",
         "connector_context": "connector",
         "task_state": "workflow",
+        "pack_state": "pack_state",
     }
     kept: list[Any] = []
     for source in raw_sources:

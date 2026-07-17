@@ -58,6 +58,7 @@ class ExecutionResult:
     notification_type: str = "task_completed"
     task_label: str = ""
     structured: dict[str, Any] | None = None
+    artifacts: list[dict[str, Any]] | None = None
     error_code: str | None = None
     # Wave 7 — calibrated uncertainty notes for verify/relay UI.
     assumption_notes: list[str] | None = None
@@ -74,6 +75,12 @@ class ExecutionResult:
         data.pop("external_url", None)
         allowed = set(cls.__dataclass_fields__)
         return cls(**{key: value for key, value in data.items() if key in allowed})
+
+
+def _serialize_execution_result(result: ExecutionResult) -> dict[str, Any]:
+    from app.services.artifact_registry_service import serialize_execution_result
+
+    return serialize_execution_result(result)
 
 
 class ConversationalExecutionService:
@@ -285,14 +292,14 @@ class ConversationalExecutionService:
                     "stop_pipeline": True,
                     "dialogue_mode": "answer",
                     "message": done,
-                    "execution_result": execution.__dict__,
+                    "execution_result": _serialize_execution_result(execution),
                     "task_state": refreshed,
                 }
             return {
                 "stop_pipeline": True,
                 "dialogue_mode": "answer",
                 "message": f"I couldn't complete that request: {execution.body}",
-                "execution_result": execution.__dict__,
+                "execution_result": _serialize_execution_result(execution),
                 "task_state": refreshed,
             }
 

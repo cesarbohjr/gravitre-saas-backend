@@ -51,6 +51,7 @@ TOOL_DISPLAY_NAMES: dict[str, str] = {
     "execute_workflow": "executeWorkflow",
     "create_agent": "createAgent",
     "dependency_impact": "estimateDependencyImpact",
+    "code_transform": "codeTransform",
 }
 
 DEFAULT_ASSISTANT_TOOLS = ["knowledge_base", "agent_status", "connector_status"]
@@ -710,6 +711,25 @@ async def tool_dependency_impact(
     if not question.strip():
         return {"error": "question or entity_type/entity_id is required", "scopeNote": SCOPE_NOTE}
     return await service.answer_dependency_question(org_id, question)
+
+
+def tool_code_transform(
+    *,
+    code: str,
+    inputs: dict[str, Any] | None = None,
+    description: str | None = None,
+) -> dict[str, Any]:
+    """Tier 3 governed CodeAct transform over JSON inputs."""
+    from app.services.governed_codeact_service import GovernedCodeActError, get_governed_codeact_service
+
+    try:
+        return get_governed_codeact_service().execute_transform(
+            code=code,
+            inputs=inputs,
+            description=description,
+        )
+    except GovernedCodeActError as exc:
+        return {"success": False, "error": str(exc)}
 
 
 async def run_assistant_tools(

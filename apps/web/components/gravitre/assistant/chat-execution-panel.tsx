@@ -5,6 +5,20 @@ import { ArrowRight, CheckCircle2, Loader2, ShieldAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
+export type ChatArtifact = {
+  artifact_id?: string
+  artifactId?: string
+  kind?: string
+  title?: string
+  preview?: string | null
+  result_url?: string | null
+  resultUrl?: string | null
+  mime_type?: string | null
+  mimeType?: string | null
+  source?: string | null
+  integration?: string | null
+}
+
 export type ChatExecutionResult = {
   success?: boolean
   entity_type?: string
@@ -15,6 +29,7 @@ export type ChatExecutionResult = {
   title?: string
   body?: string
   task_label?: string
+  artifacts?: ChatArtifact[] | null
   /** Wave 7 — structured failure code (e.g. unverifiable_output). */
   error_code?: string | null
   /** Wave 7 — calibrated uncertainty notes from trust envelope. */
@@ -171,6 +186,57 @@ function resultLinkLabel(executionResult: ChatExecutionResult): string {
   return "View in Gravitre"
 }
 
+function artifactHref(artifact: ChatArtifact): string | null {
+  return artifact.result_url || artifact.resultUrl || null
+}
+
+function ArtifactCards({ artifacts }: { artifacts: ChatArtifact[] }) {
+  if (!artifacts.length) return null
+  return (
+    <div className="mt-3 space-y-2">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Artifacts</p>
+      {artifacts.slice(0, 6).map((artifact) => {
+        const href = artifactHref(artifact)
+        const title = artifact.title || artifact.kind || "Artifact"
+        const preview = artifact.preview?.trim()
+        return (
+          <div
+            key={artifact.artifact_id || artifact.artifactId || title}
+            className="rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-xs"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-medium text-foreground">{title}</span>
+              {artifact.kind ? (
+                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {artifact.kind}
+                </span>
+              ) : null}
+            </div>
+            {preview ? <p className="mt-1 line-clamp-3 text-muted-foreground">{preview}</p> : null}
+            {href ? (
+              <div className="mt-2">
+                <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+                  {isExternalUrl(href) ? (
+                    <a href={href} target="_blank" rel="noopener noreferrer">
+                      Open artifact
+                      <ArrowRight className="ml-1.5 h-3 w-3" />
+                    </a>
+                  ) : (
+                    <Link href={href}>
+                      Open artifact
+                      <ArrowRight className="ml-1.5 h-3 w-3" />
+                    </Link>
+                  )}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export function ChatExecutionPanel({
   dialogueMode,
   executionResult,
@@ -230,6 +296,9 @@ export function ChatExecutionPanel({
 
   if (executionResult?.success) {
     const resultUrl = executionResult.result_url
+    const artifacts = (executionResult.artifacts || []).filter(
+      (row) => row && (row.title || row.preview || row.result_url || row.resultUrl),
+    )
     const assumptions = (executionResult.assumption_notes || []).filter(
       (note) => typeof note === "string" && note.trim(),
     )
@@ -264,6 +333,7 @@ export function ChatExecutionPanel({
                 </ul>
               </div>
             ) : null}
+            <ArtifactCards artifacts={artifacts} />
             {resultUrl ? (
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button asChild size="sm" className="h-8">

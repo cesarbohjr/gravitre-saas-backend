@@ -8,6 +8,7 @@ from typing import Any
 from app.config import Settings, get_settings
 from app.connectors.action_catalog.registry import get_vendor_spec
 from app.core.logging import get_logger
+from app.services.artifact_registry_service import serialize_execution_result
 from app.services.conversation_state_service import get_conversation_state_service
 from app.services.conversational_execution_service import (
     CONFIRM_PATTERN,
@@ -1382,7 +1383,7 @@ class ChatConnectorExecutionService:
                 "stop_pipeline": True,
                 "dialogue_mode": "answer",
                 "message": f"Done — **{execution.title}**.\n\n{execution.body}{link_line}",
-                "execution_result": execution.__dict__,
+                "execution_result": serialize_execution_result(execution),
                 "connector_tool": connector_tool,
                 "task_state": task_state,
             }
@@ -1390,7 +1391,7 @@ class ChatConnectorExecutionService:
             "stop_pipeline": True,
             "dialogue_mode": "answer",
             "message": f"I couldn't complete that: {execution.body}",
-            "execution_result": execution.__dict__,
+            "execution_result": serialize_execution_result(execution),
             "connector_tool": connector_tool,
             "task_state": task_state,
         }

@@ -8,6 +8,7 @@ from typing import Any
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.services.artifact_registry_service import serialize_execution_result
 from app.services.chat_action_mapper import get_chat_action_mapper
 from app.services.chat_connector_models import INTEGRATION_ALIASES, ConnectorActionPlan
 from app.services.chat_connector_execution_service import (
@@ -758,7 +759,7 @@ class ChatOrchestrationService:
                 "dialogue_mode": "answer",
                 "message": f"Step **{step.label}** failed: {result.body}",
                 "execution_result": {
-                    **result.__dict__,
+                    **serialize_execution_result(result),
                     "result_url": resolve_orchestration_result_url(
                         run_id=run_id,
                         step_results=step_results,
@@ -863,7 +864,7 @@ class ChatOrchestrationService:
                         "stop_pipeline": True,
                         "dialogue_mode": "answer",
                         "message": f"Step **{step.label}** failed: {result.body}",
-                        "execution_result": result.__dict__,
+                        "execution_result": serialize_execution_result(result),
                         "task_state": {"clarified_params": params},
                     },
                 }
@@ -1025,7 +1026,7 @@ class ChatOrchestrationService:
                     "dialogue_mode": "answer",
                     "message": f"Step **{step.label}** failed: {result.body}",
                     "execution_result": {
-                        **result.__dict__,
+                        **serialize_execution_result(result),
                         "result_url": resolve_orchestration_result_url(
                             run_id=run_id,
                             step_results=list(params.get("step_results") or []),
@@ -1136,7 +1137,7 @@ class ChatOrchestrationService:
                 "pending_task": {
                     "type": "connector_orchestration",
                     "status": "completed",
-                    "result": result.__dict__,
+                    "result": serialize_execution_result(result),
                 },
                 "pending_steps": [],
             },
@@ -1150,7 +1151,7 @@ class ChatOrchestrationService:
                 f"{summary_body}"
                 + (f"\n\n[View run details]({primary_url})" if primary_url else "")
             ),
-            "execution_result": result.__dict__,
+            "execution_result": serialize_execution_result(result),
             "task_state": refreshed,
         }
 

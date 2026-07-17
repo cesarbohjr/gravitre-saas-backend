@@ -18,6 +18,10 @@ SourceType = Literal[
     "entity_graph",
     "connector_context",
     "task_state",
+    "pack_state",
+    "knowledge_assignments",
+    "knowledge_gap",
+    "memory_conflicts",
 ]
 
 _DEFAULT_TOKEN_BUDGET = 14_000
@@ -76,6 +80,10 @@ class ContextPrioritizationEngine:
         "entity_graph": 0.7,
         "connector_context": 0.68,
         "task_state": 0.6,
+        "pack_state": 0.82,
+        "knowledge_assignments": 0.74,
+        "knowledge_gap": 0.55,
+        "memory_conflicts": 0.7,
     }
 
     def build_context_profile(
@@ -137,6 +145,13 @@ class ContextPrioritizationEngine:
                 score += 0.15
             if source.source_type == "graph" and requires_graph:
                 score += 0.14
+            if source.source_type == "pack_state" and intent in {
+                "analytics",
+                "risk_analysis",
+                "knowledge_lookup",
+                "workflow_execution",
+            }:
+                score += 0.1
             if source.source_type == "conversation_memory":
                 score += 0.08
             if dept and dept in source.label.lower():

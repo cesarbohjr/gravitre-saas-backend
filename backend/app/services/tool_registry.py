@@ -741,6 +741,25 @@ def _build_agent_tool_specs() -> dict[str, AgentToolSpec]:
             integration="platform",
             always_available=False,
         ),
+        AgentToolSpec(
+            name="assistant_code_transform",
+            description=(
+                "Run a short governed Python transform over JSON inputs. "
+                "Code must assign a `result` variable; imports and file I/O are blocked."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "code": {"type": "string"},
+                    "inputs": {"type": "object"},
+                    "description": {"type": "string"},
+                },
+                "required": ["code"],
+            },
+            invoke_action="assistant.code_transform",
+            integration="platform",
+            always_available=False,
+        ),
     ]
     return {spec.name: spec for spec in specs}
 
@@ -1246,6 +1265,12 @@ class ToolRegistry:
                     question=str(args.get("question") or args.get("query") or "").strip(),
                     entity_type=str(args.get("entity_type") or args.get("entityType") or "").strip() or None,
                     entity_id=str(args.get("entity_id") or args.get("entityId") or "").strip() or None,
+                )
+            elif tool_name == "assistant_code_transform":
+                payload = assistant_tools_module.tool_code_transform(
+                    code=str(args.get("code") or "").strip(),
+                    inputs=args.get("inputs") if isinstance(args.get("inputs"), dict) else {},
+                    description=str(args.get("description") or "").strip() or None,
                 )
             else:
                 return {"success": False, "tool": tool_name, "error": f"Unknown assistant tool: {tool_name}"}
