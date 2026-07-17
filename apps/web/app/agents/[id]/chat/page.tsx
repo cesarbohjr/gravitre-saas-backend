@@ -21,8 +21,17 @@ import {
   Database,
   Check,
   ChevronDown,
+  ChevronUp,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { polishAssistantText } from "@/lib/plain-english"
+import {
+  CHAT_BUBBLE_BASE_CLASS,
+  CHAT_BODY_TEXT_CLASS,
+  CHAT_COMPOSER_CLASS,
+  CHAT_PROSE_CLASS,
+  CHAT_ROLE_LABEL_CLASS,
+} from "@/lib/chat-typography"
 import { Button } from "@/components/ui/button"
 import { useAuth, getAccessToken } from "@/lib/auth-context"
 import { toast } from "sonner"
@@ -36,6 +45,7 @@ import { usePreferredPersona } from "@/hooks/use-preferred-persona"
 
 // localStorage key for agent chat persistence
 const getStorageKey = (agentId: string) => `gravitre_agent_chat_${agentId}`
+const AGENT_CHAT_HEADER_COLLAPSED_KEY = "gravitre:agent-chat-header-collapsed"
 
 // Role-aware starter prompts for agent chat (STA-163)
 function getAgentSuggestions(agent: Agent): string[] {
@@ -160,6 +170,7 @@ function ChatMessage({
 }) {
   const { text, tools, sources } = normalizeMessage(message)
   const [showActions, setShowActions] = useState(false)
+  const displayText = isUser ? text : polishAssistantText(text)
 
   const handleCopyMessage = async () => {
     await navigator.clipboard.writeText(text)
@@ -190,10 +201,11 @@ function ChatMessage({
 
       <div
         className={cn(
-          "max-w-[80%] rounded-2xl px-4 py-3",
+          "max-w-[min(760px,88%)]",
+          CHAT_BUBBLE_BASE_CLASS,
           isUser
-            ? "bg-emerald-600 text-white"
-            : "bg-white border border-zinc-200 shadow-sm"
+            ? "rounded-tr-md bg-emerald-600 text-white"
+            : "rounded-tl-md border border-zinc-200 bg-white shadow-sm",
         )}
       >
         {/* Tool activity */}
@@ -212,10 +224,7 @@ function ChatMessage({
         )}
 
         {/* Message content */}
-        <div className={cn(
-          "prose prose-sm max-w-none",
-          isUser ? "prose-invert" : "prose-zinc"
-        )}>
+        <div className={cn(CHAT_PROSE_CLASS, isUser ? "prose-invert" : "dark:prose-invert")}>
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeHighlight]}
@@ -224,12 +233,12 @@ function ChatMessage({
                 const match = /language-(\w+)/.exec(className || "")
                 const isInline = !match
                 return isInline ? (
-                  <code className={cn("px-1 py-0.5 rounded text-xs font-mono", isUser ? "bg-emerald-700" : "bg-zinc-100")} {...props}>
+                  <code className={cn("rounded px-1 py-0.5 font-mono text-xs", isUser ? "bg-emerald-700" : "bg-zinc-100")} {...props}>
                     {children}
                   </code>
                 ) : (
-                  <div className="relative group/code my-2">
-                    <pre className="rounded-lg overflow-x-auto text-xs">
+                  <div className="group/code relative my-2">
+                    <pre className="overflow-x-auto rounded-lg text-xs">
                       <code className={className} {...props}>
                         {children}
                       </code>
@@ -239,7 +248,7 @@ function ChatMessage({
                 )
               },
               p({ children }) {
-                return <p className="mb-2 last:mb-0 text-sm leading-relaxed">{children}</p>
+                return <p className={cn("mb-2 last:mb-0", CHAT_BODY_TEXT_CLASS)}>{children}</p>
               },
               ul({ children }) {
                 return <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>
@@ -249,7 +258,7 @@ function ChatMessage({
               },
             }}
           >
-            {text}
+            {displayText}
           </ReactMarkdown>
           {streaming && text && !isUser && (
             <motion.span
@@ -325,6 +334,10 @@ export default function AgentChatPage({
     enabled: Boolean(user),
   })
   const [input, setInput] = useState("")
+  const [headerCollapsed, setHeaderCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false
+    return window.localStorage.getItem(AGENT_CHAT_HEADER_COLLAPSED_KEY) === "1"
+  })
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -340,6 +353,14 @@ export default function AgentChatPage({
   }, [agent?.personality?.gradient, agent?.personality?.glow])
   const agentName = agent?.name ?? "Agent"
   const agentInitials = agentName.slice(0, 2).toUpperCase()
+
+  const toggleHeaderCollapsed = () => {
+    setHeaderCollapsed((collapsed) => {
+      const next = !collapsed
+      window.localStorage.setItem(AGENT_CHAT_HEADER_COLLAPSED_KEY, next ? "1" : "0")
+      return next
+    })
+  }
 
   // Hydrate messages from localStorage
   const [initialMessages] = useState<UIMessage[]>(() => {
@@ -479,30 +500,91 @@ export default function AgentChatPage({
   }
 
   return (
-    <AppShell title={`Chat with ${agentName}`}>
+    <AppShell title="Chat">
       <div className="flex h-full flex-col bg-zinc-50">
-        {/* Header */}
-        <div className="border-b border-zinc-200 px-6 py-4 bg-white">
-          <div className="flex items-center justify-between max-w-4xl mx-auto">
-            <div className="flex items-center gap-4">
-              {/* Breadcrumb */}
-              <div className="flex items-center gap-2 text-sm">
-                <Link
-                  href="/agents"
-                  className="text-zinc-500 hover:text-zinc-700 transition-colors"
-                >
-                  AI Team
-                </Link>
-                <span className="text-zinc-300">/</span>
-                <Link
-                  href={`/agents/${agentId}`}
-                  className="text-zinc-500 hover:text-zinc-700 transition-colors"
-                >
-                  {agent.name}
-                </Link>
-                <span className="text-zinc-300">/</span>
-                <span className="text-zinc-900 font-medium">Chat</span>
+        {!headerCollapsed ? (
+          <>
+            <div className="border-b border-zinc-200 bg-white px-4 py-3 sm:px-6">
+              <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2 text-sm text-zinc-500">
+                  <Link href="/agents" className="hover:text-zinc-700 transition-colors">
+                    AI Team
+                  </Link>
+                  <span className="text-zinc-300">/</span>
+                  <Link href={`/agents/${agentId}`} className="truncate hover:text-zinc-700 transition-colors">
+                    {agent.name}
+                  </Link>
+                  <span className="text-zinc-300">/</span>
+                  <span className="font-medium text-zinc-900">Chat</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <PersonaSelector
+                    value={preferredPersona}
+                    onChange={handlePersonaChange}
+                    disabled={!user}
+                    surface="light"
+                    label="Response style"
+                  />
+                  <Link href={`/agents/${agentId}/knowledge`}>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Database className="h-4 w-4" />
+                      <span className="hidden sm:inline">Knowledge</span>
+                    </Button>
+                  </Link>
+                  <Button variant="outline" size="sm" onClick={handleNewConversation} className="gap-2">
+                    <MessageSquarePlus className="h-4 w-4" />
+                    <span className="hidden sm:inline">New Chat</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={toggleHeaderCollapsed}
+                    aria-label="Hide chat overview for more space"
+                    className="h-9 w-9 shrink-0"
+                  >
+                    <ChevronUp className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
+            </div>
+
+            <div className="border-b border-zinc-200 bg-white/50 px-4 py-3 sm:px-6">
+              <div className="mx-auto flex max-w-4xl items-center gap-3">
+                <div
+                  className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br text-sm font-bold text-white shadow-lg",
+                    agentColor.gradient,
+                    `shadow-${agentColor.glow}`,
+                  )}
+                >
+                  {agentInitials}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-base font-semibold text-zinc-900">{agent.name}</h1>
+                  <p className="truncate text-xs text-zinc-500">
+                    {agent.role} — {agent.description}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={cn(
+                      "h-2 w-2 rounded-full",
+                      agent.status === "active" ? "bg-emerald-500" : "bg-amber-500",
+                    )}
+                  />
+                  <span className="text-xs capitalize text-zinc-500">{agent.status}</span>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 bg-white px-3 py-2.5 sm:px-4">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-zinc-900">{agent.name}</p>
+              <p className="text-xs text-zinc-500">
+                {agent.role} · {agent.status}
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <PersonaSelector
@@ -512,48 +594,19 @@ export default function AgentChatPage({
                 surface="light"
                 label="Response style"
               />
-              <Link href={`/agents/${agentId}/knowledge`}>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Database className="h-4 w-4" />
-                  Knowledge
-                </Button>
-              </Link>
               <Button
+                type="button"
                 variant="outline"
-                size="sm"
-                onClick={handleNewConversation}
-                className="gap-2"
+                size="icon"
+                onClick={toggleHeaderCollapsed}
+                aria-label="Show chat overview"
+                className="h-9 w-9 shrink-0"
               >
-                <MessageSquarePlus className="h-4 w-4" />
-                New Chat
+                <ChevronDown className="h-4 w-4" />
               </Button>
             </div>
           </div>
-        </div>
-
-        {/* Agent Info Bar */}
-        <div className="border-b border-zinc-200 px-6 py-3 bg-white/50">
-          <div className="max-w-4xl mx-auto flex items-center gap-3">
-            <div className={cn(
-              "h-10 w-10 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-lg",
-              agentColor.gradient,
-              `shadow-${agentColor.glow}`
-            )}>
-              <span className="text-sm font-bold text-white">{agent.name.slice(0, 2).toUpperCase()}</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-base font-semibold text-zinc-900">{agent.name}</h1>
-              <p className="text-xs text-zinc-500 truncate">{agent.role} - {agent.description}</p>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className={cn(
-                "h-2 w-2 rounded-full",
-                agent.status === "active" ? "bg-emerald-500" : "bg-amber-500"
-              )} />
-              <span className="text-xs text-zinc-500 capitalize">{agent.status}</span>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto p-6">
@@ -654,7 +707,7 @@ export default function AgentChatPage({
                 placeholder={user ? `Message ${agent.name}...` : "Sign in to chat"}
                 disabled={!user || isLoading}
                 rows={1}
-                className="flex-1 bg-transparent text-zinc-900 placeholder:text-zinc-400 focus:outline-none text-sm resize-none min-h-[24px] max-h-[120px]"
+                className={cn("flex-1 resize-none bg-transparent text-zinc-900 placeholder:text-zinc-400 focus:outline-none min-h-[24px] max-h-[120px]", CHAT_COMPOSER_CLASS)}
                 style={{ height: "24px" }}
                 onInput={(e) => {
                   const target = e.target as HTMLTextAreaElement

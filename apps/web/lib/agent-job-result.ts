@@ -1,4 +1,5 @@
 import type { AgentJob, JobStatus } from "@/hooks/use-async-job"
+import { formatAssignmentOutput } from "@/lib/plain-english"
 
 export interface AgentJobHandoffResult {
   agent_id?: string
@@ -92,7 +93,8 @@ export function buildExecutionSteps(
       else if (!isLast) stepStatus = "completed"
 
       const label = step.action ? `Tool: ${step.action}` : "Reasoning"
-      const details = step.thought || step.observation || undefined
+      const rawDetails = step.thought || step.observation || undefined
+      const details = rawDetails ? formatAssignmentOutput(rawDetails) : undefined
       return {
         id: `trace-${index}`,
         name: label,
@@ -139,7 +141,8 @@ export function buildDeliverables(result: AgentJobHandoffResult | null): Deliver
     .map((s) => s.source)
     .filter((s): s is string => Boolean(s))
 
-  const answer = (result.answer || result.summary || "").trim()
+  const rawAnswer = result.answer || result.summary || ""
+  const answer = formatAssignmentOutput(rawAnswer)
   if (answer) {
     items.push({
       id: "primary-answer",
@@ -153,13 +156,14 @@ export function buildDeliverables(result: AgentJobHandoffResult | null): Deliver
   }
 
   for (const [index, action] of (result.recommended_actions ?? []).entries()) {
+    const formattedAction = formatAssignmentOutput(action) || String(action).trim()
     items.push({
       id: `action-${index}`,
-      title: action.length > 48 ? `${action.slice(0, 45)}…` : action,
+      title: formattedAction.length > 48 ? `${formattedAction.slice(0, 45)}…` : formattedAction,
       type: "workflow",
       status: "ready",
       confidence: Math.max(0, confidence - index * 3),
-      preview: action,
+      preview: formattedAction,
       sourceRefs: sources.slice(0, 2),
     })
   }
@@ -171,7 +175,7 @@ export function buildDeliverables(result: AgentJobHandoffResult | null): Deliver
       type: "report",
       status: "pending",
       confidence: 0,
-      preview: result.human_input_prompt,
+      preview: formatAssignmentOutput(result.human_input_prompt),
       sourceRefs: [],
     })
   }

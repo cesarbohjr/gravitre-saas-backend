@@ -35,6 +35,11 @@ import { resolveOperatorActiveContext } from "@/lib/operator-context"
 import { parseChatError } from "@/lib/chat-errors"
 import dynamic from "next/dynamic"
 import { polishAssistantText } from "@/lib/plain-english"
+import {
+  CHAT_BUBBLE_BASE_CLASS,
+  CHAT_COMPOSER_CLASS,
+  CHAT_USER_BUBBLE_CLASS,
+} from "@/lib/chat-typography"
 import { endChatPerf, startChatPerf } from "@/lib/chat-performance"
 import { buildConversationTranscript, mergeTranscriptWithLiveMessages } from "@/lib/conversation-transcript"
 import { uiMessageText } from "@/lib/chat-messages"
@@ -1588,7 +1593,7 @@ export function AiWorkspace({
               ? inlineTurns.map((turn) => (
               <div key={turn.id} className="space-y-4">
                 <div className="flex justify-end">
-                  <div className="max-w-[min(720px,92%)] rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-500 px-4 py-3.5 text-sm leading-relaxed text-primary-foreground shadow-sm dark:from-emerald-500 dark:to-emerald-400">
+                  <div className={cn("max-w-[min(720px,92%)] rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-500 px-4 py-3.5 text-primary-foreground shadow-sm dark:from-emerald-500 dark:to-emerald-400", CHAT_BUBBLE_BASE_CLASS, CHAT_USER_BUBBLE_CLASS)}>
                     <p className="whitespace-pre-wrap">{turn.prompt}</p>
                     <p className="mt-1 text-[10px] uppercase tracking-wide opacity-70">
                       {getModeMeta(turn.engine).badge}
@@ -1691,7 +1696,7 @@ export function AiWorkspace({
                   rows={1}
                   disabled={routing}
                   placeholder="Ask, delegate, or search…"
-                  className="max-h-[160px] min-h-[44px] flex-1 resize-none bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground/70"
+                  className={cn("max-h-[160px] min-h-[44px] flex-1 resize-none bg-transparent px-2 outline-none placeholder:text-muted-foreground/70", CHAT_COMPOSER_CLASS)}
                   onInput={(event) => {
                     const target = event.target as HTMLTextAreaElement
                     target.style.height = "44px"

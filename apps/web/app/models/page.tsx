@@ -267,7 +267,11 @@ export default function ModelsPage() {
       await mutate()
       router.push(`/models/${created.id}`)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create model")
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to create model"
+      toast.error(message.includes("Upgrade required") ? "Upgrade to Control or Command to register models" : message)
     } finally {
       setIsCreating(false)
     }

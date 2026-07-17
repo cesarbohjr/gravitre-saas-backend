@@ -15,6 +15,19 @@ from app.workflows.repository import get_supabase_client
 logger = get_logger(__name__)
 
 
+def _resolve_created_by(client, user_id: str | None) -> str | None:
+    """Only persist created_by when the user row exists (avoids FK 500s)."""
+    if not user_id:
+        return None
+    try:
+        result = client.table("users").select("id").eq("id", user_id).limit(1).execute()
+        if result.data:
+            return user_id
+    except Exception as exc:
+        logger.warning("created_by_lookup_failed user_id=%s error=%s", user_id, exc)
+    return None
+
+
 class ModelRegistry:
     """Manages model storage, versioning, and deployment."""
 
@@ -54,24 +67,29 @@ class ModelRegistry:
             task_type=task_type,
             created_by=created_by,
         )
-        client.table("trained_models").insert(
-            {
-                "id": model.id,
-                "org_id": org_id,
-                "name": name,
-                "description": description,
-                "model_type": model_type.value,
-                "status": model.status.value,
-                "current_version": 0,
-                "deployed_version": None,
-                "dataset_id": dataset_id,
-                "base_model": base_model,
-                "task_type": task_type,
-                "created_by": created_by,
-                "created_at": model.created_at.isoformat(),
-                "updated_at": model.updated_at.isoformat(),
-            }
-        ).execute()
+        payload: dict[str, Any] = {
+            "id": model.id,
+            "org_id": org_id,
+            "name": name,
+            "description": description,
+            "model_type": model_type.value,
+            "status": model.status.value,
+            "current_version": 0,
+            "deployed_version": None,
+            "dataset_id": dataset_id,
+            "base_model": base_model,
+            "task_type": task_type,
+            "created_at": model.created_at.isoformat(),
+            "updated_at": model.updated_at.isoformat(),
+        }
+        created_by_safe = _resolve_created_by(client, created_by)
+        if created_by_safe:
+            payload["created_by"] = created_by_safe
+        try:
+            client.table("trained_models").insert(payload).execute()
+        except Exception as exc:
+            logger.error("model_insert_failed org_id=%s name=%s error=%s", org_id, name, exc)
+            raise ValueError(f"Database could not save the model registry entry: {exc}") from exc
         logger.info("model_created model_id=%s name=%s type=%s", model.id, name, model_type.value)
         return model
 

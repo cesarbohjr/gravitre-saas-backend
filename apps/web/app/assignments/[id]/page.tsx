@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { ExecutionModeBadge } from "@/components/intelligence/execution-mode-badge"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
+import { formatAssignmentOutput } from "@/lib/plain-english"
 import { approveAssignment, fetchAssignmentJob, pushAssignmentDeliverable, rejectAssignment, updateAssignmentDeliverable } from "@/lib/demo-assignments"
 import type { AgentJob } from "@/hooks/use-async-job"
 import { toast } from "sonner"
@@ -388,9 +389,9 @@ function PreviewPanel({ deliverable, isApproved, onApprove, onPush, onEdit, jobE
       {/* Preview Content */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="rounded-xl bg-secondary/50 p-4">
-          <pre className="text-sm text-foreground whitespace-pre-wrap font-sans leading-relaxed">
+          <div className="whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
             {deliverable.preview}
-          </pre>
+          </div>
         </div>
       </div>
 
@@ -541,9 +542,9 @@ function AssignmentApprovalDialog({
         </DialogHeader>
 
         <div className="max-h-[42vh] overflow-y-auto px-6 py-4">
-          <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">
+          <div className="whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
             {reportContent}
-          </pre>
+          </div>
         </div>
 
         <div className="border-t border-border px-6 py-4">
@@ -675,11 +676,12 @@ export default function AssignmentDetailPage({
       : "") ||
     "Agent assignment"
 
-  const taskBrief =
+  const taskBrief = formatAssignmentOutput(
     handoff?.finding_description?.trim() ||
-    handoff?.summary?.trim() ||
-    handoff?.task?.description?.trim() ||
-    ""
+      handoff?.summary?.trim() ||
+      handoff?.task?.description?.trim() ||
+      "",
+  )
 
   const agentName = handoff?.agent_name || "Agent"
   const agentInitials = agentName.slice(0, 2).toUpperCase()
@@ -720,11 +722,12 @@ export default function AssignmentDetailPage({
     return checks
   }, [handoff?.rag_sources, confidencePercent])
 
-  const reportContent =
+  const reportContent = formatAssignmentOutput(
     handoff?.answer?.trim() ||
-    handoff?.summary?.trim() ||
-    deliverables[0]?.preview ||
-    taskTitle
+      handoff?.summary?.trim() ||
+      deliverables[0]?.preview ||
+      taskTitle,
+  )
 
   const selectedItem = deliverables.find((d) => d.id === selectedDeliverable) ?? deliverables[0] ?? null
   const readyCount = deliverables.filter((d) => d.status === "ready").length
@@ -845,7 +848,7 @@ export default function AssignmentDetailPage({
   }
 
   return (
-    <AppShell title={taskTitle.slice(0, 60)}>
+    <AppShell title="Assignment">
       <AssignmentApprovalDialog
         open={approvalOpen}
         onOpenChange={(open) => {

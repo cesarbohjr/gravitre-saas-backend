@@ -28,6 +28,7 @@ import {
   Layers,
   CircleDot,
   ChevronDown,
+  ChevronUp,
   Loader2,
   ExternalLink,
   Zap,
@@ -39,6 +40,7 @@ import {
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { sourcesApi } from "@/lib/api"
+import { buildWorkflowFromSourceUrl } from "@/lib/source-workflow-handoff"
 import type { CreateSourceRequest } from "@/types/api"
 import { AddDataSourceModal } from "@/components/gravitre/add-data-source-modal"
 import { EmptyState, NoResultsState } from "@/components/gravitre/empty-state"
@@ -411,7 +413,7 @@ function SourceTile({
                   variant="outline" 
                   size="sm" 
                   className="h-7 gap-1.5 text-xs flex-1"
-                  onClick={() => router.push("/workflows/new")}
+                  onClick={() => router.push(buildWorkflowFromSourceUrl({ id: source.id, name: source.name, type: source.type }))}
                 >
                   <Workflow className="h-3 w-3" />
                   Use
@@ -445,6 +447,8 @@ function SourceTile({
 
 // Add Source Modal — see components/gravitre/add-data-source-modal.tsx
 
+const SOURCES_HEADER_COLLAPSED_KEY = "gravitre:sources-header-collapsed"
+
 export default function SourcesPage() {
   const { user } = useAuth()
   const [expandedSource, setExpandedSource] = useState<string | null>(null)
@@ -452,6 +456,10 @@ export default function SourcesPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [mutatingSourceId, setMutatingSourceId] = useState<string | null>(null)
   const [isCreatingSource, setIsCreatingSource] = useState(false)
+  const [headerCollapsed, setHeaderCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false
+    return window.localStorage.getItem(SOURCES_HEADER_COLLAPSED_KEY) === "1"
+  })
   const { data, error, isLoading, isValidating, mutate } = useSWR(user ? "/api/sources" : null, apiFetcher, {
     fallbackData: { sources: [] as Source[] },
     revalidateOnFocus: false,
@@ -506,6 +514,14 @@ export default function SourcesPage() {
     }
   }
 
+  const toggleHeaderCollapsed = () => {
+    setHeaderCollapsed((collapsed) => {
+      const next = !collapsed
+      window.localStorage.setItem(SOURCES_HEADER_COLLAPSED_KEY, next ? "1" : "0")
+      return next
+    })
+  }
+
   // Group sources by category
   const groupedSources = sources.reduce((acc, source) => {
     if (!acc[source.category]) acc[source.category] = []
@@ -522,6 +538,36 @@ export default function SourcesPage() {
     const multiplier = s.records.includes("M") ? 1000000 : s.records.includes("K") ? 1000 : 1
     return acc + num * multiplier
   }, 0)
+
+  const categoryFilterButtons = (
+    <>
+      <button
+        onClick={() => setSelectedCategory(null)}
+        className={cn(
+          "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+          selectedCategory === null
+            ? "bg-primary text-primary-foreground"
+            : "bg-secondary text-muted-foreground hover:text-foreground",
+        )}
+      >
+        All
+      </button>
+      {categories.map((cat) => (
+        <button
+          key={cat}
+          onClick={() => setSelectedCategory(cat)}
+          className={cn(
+            "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+            selectedCategory === cat
+              ? "bg-primary text-primary-foreground"
+              : "bg-secondary text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {categoryLabels[cat]}
+        </button>
+      ))}
+    </>
+  )
 
   return (
     <AppShell title="Sources">
@@ -546,114 +592,134 @@ export default function SourcesPage() {
         </div>
 
         {/* Header */}
-        <div className="relative z-10 flex-shrink-0 px-6 pt-6 pb-4 border-b border-border/50 bg-card/30 backdrop-blur-sm">
+        <div className="relative z-10 flex-shrink-0 border-b border-border/50 bg-card/30 backdrop-blur-sm">
           {error && (
-            <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+            <div className="mx-6 mt-3 mb-0 flex items-center justify-between gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
               <span>{error instanceof Error ? error.message : "Failed to load sources"}</span>
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => mutate()}>
                 Retry
               </Button>
             </div>
           )}
-          <div className="flex items-center justify-between mb-6">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-            >
-              <h1 className="text-2xl font-bold text-foreground">Data Landscape</h1>
-              <p className="text-sm text-muted-foreground mt-1">Your connected data ecosystem</p>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Button
-                size="sm"
-                className="h-9 gap-2 shadow-lg"
-                onClick={() => setAddModalOpen(true)}
-                disabled={isLoading}
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                Add Source
-              </Button>
-            </motion.div>
-          </div>
+          {!headerCollapsed ? (
+            <div className="px-6 pt-4 pb-4">
+              <div className="flex items-center justify-between mb-4">
+                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+                  <h1 className="text-2xl font-bold text-foreground">Data Landscape</h1>
+                  <p className="text-sm text-muted-foreground mt-1">Your connected data ecosystem</p>
+                </motion.div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={toggleHeaderCollapsed}
+                    aria-label="Hide overview for a clearer source canvas"
+                    aria-expanded
+                    title="Clear canvas"
+                    className="h-9 w-9 shrink-0"
+                  >
+                    <ChevronUp className="h-4 w-4" />
+                  </Button>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Button
+                      size="sm"
+                      className="h-9 gap-2 shadow-lg"
+                      onClick={() => setAddModalOpen(true)}
+                      disabled={isLoading}
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Add Source
+                    </Button>
+                  </motion.div>
+                </div>
+              </div>
 
-          {/* Ecosystem stats - Premium */}
-          <motion.div 
-            className="flex items-center gap-4"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <motion.div 
-              className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border border-emerald-500/20 shadow-lg shadow-emerald-500/5"
-              whileHover={{ scale: 1.02, y: -2 }}
-            >
-              <div className="h-9 w-9 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                <Database className="h-4 w-4 text-emerald-400" />
-              </div>
-              <div>
-                <span className="text-xl font-bold text-emerald-400"><AnimatedCounter value={connectedCount} duration={1} /></span>
-                <span className="text-xs text-muted-foreground ml-1.5">connected</span>
-              </div>
-            </motion.div>
-            <motion.div 
-              className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-gradient-to-br from-blue-500/15 to-blue-500/5 border border-blue-500/20 shadow-lg shadow-blue-500/5"
-              whileHover={{ scale: 1.02, y: -2 }}
-            >
-              <div className="h-9 w-9 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                <CircleDot className="h-4 w-4 text-blue-400" />
-              </div>
-              <div>
-                <span className="text-xl font-bold text-blue-400">{(totalRecords / 1000000).toFixed(1)}M</span>
-                <span className="text-xs text-muted-foreground ml-1.5">records</span>
-              </div>
-            </motion.div>
-            <motion.div 
-              className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-gradient-to-br from-violet-500/15 to-violet-500/5 border border-violet-500/20 shadow-lg shadow-violet-500/5"
-              whileHover={{ scale: 1.02, y: -2 }}
-            >
-              <div className="h-9 w-9 rounded-lg bg-violet-500/20 flex items-center justify-center">
-                <Layers className="h-4 w-4 text-violet-400" />
-              </div>
-              <div>
-                <span className="text-xl font-bold text-violet-400"><AnimatedCounter value={sources.reduce((a, s) => a + s.tables, 0)} duration={1.5} /></span>
-                <span className="text-xs text-muted-foreground ml-1.5">tables</span>
-              </div>
-            </motion.div>
-
-            {/* Category filters */}
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                onClick={() => setSelectedCategory(null)}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-                  selectedCategory === null 
-                    ? "bg-primary text-primary-foreground" 
-                    : "bg-secondary text-muted-foreground hover:text-foreground"
-                )}
+              <motion.div
+                className="flex flex-wrap items-center gap-4"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
               >
-                All
-              </button>
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-                    selectedCategory === cat 
-                      ? "bg-primary text-primary-foreground" 
-                      : "bg-secondary text-muted-foreground hover:text-foreground"
-                  )}
+                <motion.div
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border border-emerald-500/20 shadow-lg shadow-emerald-500/5"
+                  whileHover={{ scale: 1.02, y: -2 }}
                 >
-                  {categoryLabels[cat]}
-                </button>
-              ))}
+                  <div className="h-9 w-9 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                    <Database className="h-4 w-4 text-emerald-400" />
+                  </div>
+                  <div>
+                    <span className="text-xl font-bold text-emerald-400">
+                      <AnimatedCounter value={connectedCount} duration={1} />
+                    </span>
+                    <span className="text-xs text-muted-foreground ml-1.5">connected</span>
+                  </div>
+                </motion.div>
+                <motion.div
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-gradient-to-br from-blue-500/15 to-blue-500/5 border border-blue-500/20 shadow-lg shadow-blue-500/5"
+                  whileHover={{ scale: 1.02, y: -2 }}
+                >
+                  <div className="h-9 w-9 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                    <CircleDot className="h-4 w-4 text-blue-400" />
+                  </div>
+                  <div>
+                    <span className="text-xl font-bold text-blue-400">{(totalRecords / 1000000).toFixed(1)}M</span>
+                    <span className="text-xs text-muted-foreground ml-1.5">records</span>
+                  </div>
+                </motion.div>
+                <motion.div
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-gradient-to-br from-violet-500/15 to-violet-500/5 border border-violet-500/20 shadow-lg shadow-violet-500/5"
+                  whileHover={{ scale: 1.02, y: -2 }}
+                >
+                  <div className="h-9 w-9 rounded-lg bg-violet-500/20 flex items-center justify-center">
+                    <Layers className="h-4 w-4 text-violet-400" />
+                  </div>
+                  <div>
+                    <span className="text-xl font-bold text-violet-400">
+                      <AnimatedCounter value={sources.reduce((a, s) => a + s.tables, 0)} duration={1.5} />
+                    </span>
+                    <span className="text-xs text-muted-foreground ml-1.5">tables</span>
+                  </div>
+                </motion.div>
+
+                <div className="ml-auto flex flex-wrap items-center gap-2">{categoryFilterButtons}</div>
+              </motion.div>
             </div>
-          </motion.div>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-4">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold tracking-tight text-foreground">Data Landscape</p>
+                <p className="text-xs text-muted-foreground">
+                  {connectedCount} connected · {(totalRecords / 1000000).toFixed(1)}M records ·{" "}
+                  {sources.reduce((a, s) => a + s.tables, 0)} tables
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <div className="hidden md:flex flex-wrap items-center gap-2">{categoryFilterButtons}</div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={toggleHeaderCollapsed}
+                  aria-label="Show data landscape overview"
+                  aria-expanded={false}
+                  title="Show overview"
+                  className="h-9 w-9 shrink-0"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+                <Button size="sm" className="h-9 gap-2" onClick={() => setAddModalOpen(true)} disabled={isLoading}>
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Add Source
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Data landscape grid - Premium */}

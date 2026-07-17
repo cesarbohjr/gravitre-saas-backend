@@ -8,6 +8,14 @@ import { Loader2 } from "lucide-react"
 import type { UIMessage } from "ai"
 import { cn } from "@/lib/utils"
 import { polishAssistantText } from "@/lib/plain-english"
+import {
+  CHAT_ASSISTANT_BUBBLE_CLASS,
+  CHAT_BUBBLE_BASE_CLASS,
+  CHAT_PROSE_CLASS,
+  CHAT_ROLE_LABEL_CLASS,
+  CHAT_USER_BUBBLE_CLASS,
+  CHAT_WAITING_CLASS,
+} from "@/lib/chat-typography"
 import { AssistantSourceLinks } from "@/components/gravitre/assistant/assistant-source-links"
 import { ExplainabilityPanel } from "@/components/gravitre/assistant/explainability-panel"
 import {
@@ -113,21 +121,19 @@ export function ChatTranscript({
             {isUser ? <UserAccountAvatar useCurrentUser size="lg" /> : <GravitreAvatar />}
 
             <div className={cn("flex min-w-0 max-w-[min(760px,88%)] flex-col", isUser ? "items-end" : "items-start")}>
-              <p className="mb-1.5 px-1 text-[11px] font-medium text-muted-foreground">
+              <p className={CHAT_ROLE_LABEL_CLASS}>
                 {isUser ? "You" : "Gravitre AI"}
               </p>
               <div
                 className={cn(
-                  "w-full rounded-[1.25rem] px-4 py-3.5 text-[15px] leading-relaxed shadow-sm",
-                  isUser
-                    ? "rounded-tr-md bg-emerald-600 text-white"
-                    : "rounded-tl-md border border-border/60 bg-white text-foreground dark:bg-card",
+                  CHAT_BUBBLE_BASE_CLASS,
+                  isUser ? CHAT_USER_BUBBLE_CLASS : CHAT_ASSISTANT_BUBBLE_CLASS,
                 )}
               >
                 {isUser ? (
                   <p className="whitespace-pre-wrap">{text}</p>
                 ) : (
-                  <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-li:my-0.5 prose-headings:mb-2 prose-headings:mt-3">
+                  <div className={CHAT_PROSE_CLASS}>
                     {toolInvocations.length > 0 ? (
                       <div className="not-prose mb-2 space-y-1">
                         {toolInvocations.map((invocation) => (
@@ -168,8 +174,8 @@ export function ChatTranscript({
         <div className="flex gap-3">
           <GravitreAvatar />
           <div className="flex min-w-0 max-w-[min(760px,88%)] flex-col items-start">
-            <p className="mb-1.5 px-1 text-[11px] font-medium text-muted-foreground">Gravitre AI</p>
-            <div className="flex items-center gap-2 rounded-[1.25rem] rounded-tl-md border border-border/60 bg-white px-4 py-3.5 text-sm text-muted-foreground shadow-sm dark:bg-card">
+            <p className={CHAT_ROLE_LABEL_CLASS}>Gravitre AI</p>
+            <div className={cn(CHAT_BUBBLE_BASE_CLASS, CHAT_ASSISTANT_BUBBLE_CLASS, "flex items-center gap-2", CHAT_WAITING_CLASS)}>
               <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
               Gravitre is thinking…
             </div>

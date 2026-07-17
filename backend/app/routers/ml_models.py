@@ -16,8 +16,10 @@ from app.workers.training_worker import create_training_worker
 router = APIRouter(
     prefix="/api/ml",
     tags=["ml-models"],
-    dependencies=[Depends(require_tier("command"))],
 )
+
+_CONTROL_TIER = [Depends(require_tier("control"))]
+_COMMAND_TIER = [Depends(require_tier("command"))]
 
 
 class ModelCreateRequest(BaseModel):
@@ -39,7 +41,7 @@ class DeployRequest(BaseModel):
     version: int | None = None
 
 
-@router.get("/models")
+@router.get("/models", dependencies=_CONTROL_TIER)
 async def list_models(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -72,7 +74,7 @@ async def list_models(
     }
 
 
-@router.get("/models/{model_id}")
+@router.get("/models/{model_id}", dependencies=_CONTROL_TIER)
 async def get_model(
     model_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
@@ -109,7 +111,7 @@ async def get_model(
     }
 
 
-@router.post("/models", status_code=status.HTTP_201_CREATED)
+@router.post("/models", status_code=status.HTTP_201_CREATED, dependencies=_CONTROL_TIER)
 async def create_model(
     body: ModelCreateRequest,
     user: Annotated[dict, Depends(get_current_user)],
@@ -118,20 +120,28 @@ async def create_model(
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
     registry = get_model_registry()
-    model = await registry.create_model(
-        org_id=org_id,
-        name=body.name,
-        model_type=ModelType(body.model_type),
-        description=body.description,
-        dataset_id=body.dataset_id,
-        base_model=body.base_model,
-        task_type=body.task_type,
-        created_by=user["user_id"],
-    )
+    try:
+        model = await registry.create_model(
+            org_id=org_id,
+            name=body.name,
+            model_type=ModelType(body.model_type),
+            description=body.description,
+            dataset_id=body.dataset_id,
+            base_model=body.base_model,
+            task_type=body.task_type,
+            created_by=user.get("user_id"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Could not register model: {exc}",
+        ) from exc
     return {"id": model.id, "name": model.name, "model_type": model.model_type.value, "status": model.status.value}
 
 
-@router.post("/models/{model_id}/deploy")
+@router.post("/models/{model_id}/deploy", dependencies=_COMMAND_TIER)
 async def deploy_model(
     model_id: str,
     body: DeployRequest,
@@ -148,7 +158,7 @@ async def deploy_model(
     return {"ok": True, "deployed_version": body.version or model.current_version}
 
 
-@router.post("/models/{model_id}/predict")
+@router.post("/models/{model_id}/predict", dependencies=_COMMAND_TIER)
 async def predict(
     model_id: str,
     body: PredictRequest,
@@ -174,7 +184,7 @@ async def predict(
     }
 
 
-@router.post("/train/start")
+@router.post("/train/start", dependencies=_COMMAND_TIER)
 async def start_training(
     job_id: str,
     background_tasks: BackgroundTasks,

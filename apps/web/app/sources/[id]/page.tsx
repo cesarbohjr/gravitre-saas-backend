@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { sourcesApi } from "@/lib/api"
+import { buildWorkflowFromSourceUrl } from "@/lib/source-workflow-handoff"
 import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
 import {
@@ -369,7 +370,14 @@ export default function SourceDetailPage() {
               <h2 className="text-sm font-semibold text-foreground mb-4">Actions</h2>
               <div className="space-y-2">
                 <Button variant="outline" size="sm" className="w-full h-9 justify-start gap-2" asChild>
-                  <Link href="/workflows/new">
+                  <Link
+                    href={buildWorkflowFromSourceUrl({
+                      id: String(source.id),
+                      name,
+                      type: String(source.type ?? ""),
+                      connectorId: source.connectorId ? String(source.connectorId) : undefined,
+                    })}
+                  >
                     <ExternalLink className="h-4 w-4" />
                     Use in new Workflow
                   </Link>

@@ -86,6 +86,13 @@ export function humanizePlainEnglish(value: unknown, fallback = ""): string {
   return text
 }
 
+/** Format assignment deliverables, handoffs, and execution traces for operators. */
+export function formatAssignmentOutput(value: unknown): string {
+  const humanized = humanizePlainEnglish(value, "")
+  if (!humanized) return ""
+  return polishAssistantText(humanized)
+}
+
 /** Polish assistant/operator copy for chat and insight panels. */
 export function polishAssistantText(text: string): string {
   const normalized = humanizePlainEnglish(text, text).trim()

@@ -9,7 +9,6 @@ import { CommandPalette } from "./command-palette"
 import { GoalWorkflowWizard } from "./goal-workflow-wizard"
 import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
-import { useEnterpriseBranding } from "@/lib/enterprise-branding-context"
 import { clearAuthTransition } from "@/lib/auth-transition"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useGlobalWorkShortcuts } from "@/hooks/use-global-work-shortcuts"
@@ -18,7 +17,6 @@ import { APP_ROUTES } from "@/lib/app-routes"
 import { Loader2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { AppBreadcrumbs } from "./app-breadcrumbs"
 import type { OnboardingProgress } from "@/types/api"
 import { TrialExpiredBanner } from "@/components/billing/trial-expired-banner"
 import { UpgradeModal } from "@/components/billing/upgrade-modal"
@@ -80,7 +78,7 @@ function readNavExpandedPreference(): boolean {
   return localStorage.getItem(NAV_EXPANDED_STORAGE_KEY) === "true"
 }
 
-export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
+export function AppShell({ children, title }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [navExpanded, setNavExpanded] = useState(false)
   const [goalWizardOpen, setGoalWizardOpen] = useState(false)
@@ -104,8 +102,12 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
     pathname.startsWith("/ai/") ||
     (pathname.startsWith("/agents/") && pathname.endsWith("/chat")) ||
     pathname === "/connectors"
+  const isAssignmentDetail =
+    pathname.startsWith("/assignments/") &&
+    pathname !== "/assignments" &&
+    !pathname.startsWith("/assignments/new")
+  const useCompactTopBar = isImmersiveChat || isAssignmentDetail
   const { user, loading } = useAuth()
-  const { effectiveHidePoweredBy } = useEnterpriseBranding()
 
   useGlobalWorkShortcuts()
 
@@ -333,7 +335,7 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
           onToggleNavExpanded={handleToggleNavExpanded}
         />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <TopBar title={title} onMenuClick={handleMenuClick} />
+          <TopBar title={title} onMenuClick={handleMenuClick} compact={useCompactTopBar} />
 
           {showTrialExpiredBanner && (
             <TrialExpiredBanner
@@ -425,33 +427,11 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
               // flex rows, charts) from forcing the whole viewport wider than
               // the screen on mobile. Wide data views own their own x-scroll.
               "flex min-h-0 min-w-0 flex-1 flex-col",
-              isImmersiveChat ? "overflow-hidden pb-0" : "overflow-y-auto overflow-x-hidden pb-20",
+              isImmersiveChat ? "overflow-hidden pb-0" : "overflow-y-auto overflow-x-hidden pb-4",
             )}
           >
-            {!isImmersiveChat ? (
-              <div className="px-4 pt-3 md:px-6">
-                <AppBreadcrumbs entityLabel={title} entityVendor={breadcrumbVendor} />
-              </div>
-            ) : null}
             {children}
           </main>
-
-          {/* White-label footer - hidden when org sets hidePoweredBy or on immersive chat */}
-          {!effectiveHidePoweredBy && !isImmersiveChat && (
-            <footer className="border-t border-border px-4 py-2 text-center">
-              <span className="text-[11px] text-muted-foreground/60">
-                Powered by{" "}
-                <a
-                  href="https://gravitre.ai"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-medium text-muted-foreground/80 hover:text-foreground transition-colors"
-                >
-                  Gravitre
-                </a>
-              </span>
-            </footer>
-          )}
         </div>
       
       {/* Command Palette - accessible via Cmd+K */}

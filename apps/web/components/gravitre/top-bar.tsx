@@ -45,9 +45,11 @@ import {
 interface TopBarProps {
   title?: string
   onMenuClick?: () => void
+  /** Slim bar for chat, assignments, and other work surfaces. */
+  compact?: boolean
 }
 
-export function TopBar({ title, onMenuClick }: TopBarProps) {
+export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
   const [environment, setEnvironment] = useState<AppEnvironment>(() => getSelectedEnvironmentFromStorage())
   const [org, setOrg] = useState(() => getSelectedOrgFromStorage()?.name ?? "Acme Corp")
   const { mode, setMode, isLite } = useViewMode()
@@ -123,9 +125,14 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <header className="flex h-12 sm:h-14 items-center justify-between border-b border-border bg-background px-3 sm:px-4">
+      <header
+        className={cn(
+          "flex items-center justify-between border-b border-border bg-background px-3 sm:px-4",
+          compact ? "h-10" : "h-12 sm:h-14",
+        )}
+      >
         {/* Left side - Menu + Org + Environment + Page title */}
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           {/* Nav toggle — mobile drawer; tablet+ expands icon rail to labels */}
           <Button
             variant="ghost"
@@ -137,6 +144,8 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
             <span className="sr-only">Toggle navigation</span>
           </Button>
 
+          {!compact ? (
+            <>
           {/* Org Selector */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -207,12 +216,14 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {title && (
+          {title && !compact ? (
             <>
               <span className="text-muted-foreground/40 hidden md:inline">/</span>
-              <span className="text-sm font-medium text-foreground hidden md:block" aria-current="page">{title}</span>
+              <span className="text-sm font-medium text-foreground hidden md:block truncate max-w-[240px]" aria-current="page">{title}</span>
             </>
-          )}
+          ) : null}
+            </>
+          ) : null}
         </div>
 
         {/* Right side - Controls */}
@@ -221,6 +232,7 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
           <GlobalCommandBar />
 
           {/* Admin/Lite Mode Toggle */}
+          {!compact ? (
           <div className="hidden sm:flex items-center gap-0.5 p-0.5 rounded-lg bg-secondary/50 border border-border/50">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -259,11 +271,12 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
               </TooltipContent>
             </Tooltip>
           </div>
+          ) : null}
 
           {/* Theme Toggle */}
           <ThemeToggle />
 
-          <MesonToolbarTrigger />
+          {!compact ? <MesonToolbarTrigger /> : null}
 
           {/* Notifications */}
           <NotificationCenter />
