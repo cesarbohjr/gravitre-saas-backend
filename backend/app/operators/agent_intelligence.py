@@ -1256,6 +1256,44 @@ class AgentIntelligence:
         from app.services.conversational_consensus_service import get_conversational_consensus_service
         from app.services.proactive_guidance_service import get_proactive_guidance_service
         from app.services.risk_approval_evaluator import get_risk_approval_evaluator
+        from app.services.conversational_execution_service import CONFIRM_PATTERN
+        from app.services.conversational_planning_engine import is_direct_connector_write_intent
+
+        # Orphan strategic-plan handoff: confirm/"yes" with current_plan but no
+        # pending_task used to narrate into a void. Resume the plan goal so ReAct
+        # can stage a real write gate (same path as a fresh create request).
+        if conversation_id and CONFIRM_PATTERN.match((task_text or "").strip()):
+            early_state = await get_conversation_state_service(active_settings).get_task_state(
+                conversation_id,
+                org_id,
+                client=client,
+            )
+            early_pending = early_state.get("pending_task")
+            early_plan = early_state.get("current_plan")
+            if (
+                isinstance(early_plan, dict)
+                and early_plan.get("goal")
+                and not (isinstance(early_pending, dict) and early_pending)
+            ):
+                resume_goal = str(early_plan.get("goal") or "").strip()
+                if resume_goal and is_direct_connector_write_intent(resume_goal):
+                    await get_conversation_state_service(active_settings).update_task_state(
+                        conversation_id,
+                        org_id,
+                        {
+                            "current_plan": None,
+                            "pending_steps": [],
+                            "completed_steps": [],
+                        },
+                        client=client,
+                    )
+                    task_text = resume_goal
+                    logger.info(
+                        "orphan_strategic_plan_resumed conversation_id=%s org_id=%s goal=%s",
+                        conversation_id,
+                        org_id,
+                        resume_goal[:120],
+                    )
 
         dialogue_settings = await load_chat_dialogue_settings(org_id, active_settings, client=client)
         sentiment = (

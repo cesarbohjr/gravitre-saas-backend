@@ -5,7 +5,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.services.conversational_planning_engine import ConversationalPlanningEngine
+from app.services.conversational_planning_engine import (
+    ConversationalPlanningEngine,
+    is_direct_connector_write_intent,
+)
 
 
 @pytest.mark.asyncio
@@ -47,3 +50,51 @@ def test_format_plan_section_includes_goal_and_risks():
     assert "Improve retention" in section
     assert "Data gap" in section
     assert "0.72" in section
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("query", "classification", "expected"),
+    [
+        (
+            "Create an Apollo contact list named exactly 'MSP Prospects'. Please plan the steps before executing.",
+            {"requires_action": True, "intent": "workflow_execution"},
+            False,
+        ),
+        (
+            "Create an Apollo contact list named exactly 'MSP Prospects'. Do not invent a different name.",
+            {"requires_action": True, "intent": "workflow_execution"},
+            False,
+        ),
+        (
+            "Send a Slack message to #general saying hello",
+            {"requires_action": True, "intent": "workflow_execution"},
+            False,
+        ),
+        (
+            "How can we improve our outbound pipeline this quarter?",
+            {"requires_action": False, "intent": "research"},
+            True,
+        ),
+        (
+            "Draft a plan to prioritize marketing channels",
+            {"requires_action": False, "intent": "research"},
+            True,
+        ),
+        (
+            "Please plan the steps before executing the contact review",
+            {"requires_action": False, "intent": "research"},
+            False,  # bare "plan" no longer triggers; no strategic phrase hit
+        ),
+    ],
+)
+async def test_should_plan_skips_direct_writes_and_bare_plan(query, classification, expected):
+    engine = ConversationalPlanningEngine(settings=MagicMock())
+    assert await engine.should_plan(classification, query) is expected
+
+
+def test_is_direct_connector_write_intent_list_create():
+    assert is_direct_connector_write_intent(
+        "Create an Apollo contact list named exactly 'x'. Please plan the steps before executing."
+    )
+    assert not is_direct_connector_write_intent("How can we improve retention?")
