@@ -181,6 +181,9 @@ class ReActEngine:
         audit_resource_type: str = "agent_job",
         audit_resource_id: str | None = None,
         routing_control: Any | None = None,
+        tool_query: str | None = None,
+        tool_classification: dict[str, Any] | None = None,
+        connector_focus: tuple[str, ...] | list[str] | None = None,
     ) -> AsyncIterator[ReActStreamEvent]:
         """Streaming variant — same reasoning loop as run(), yields progress events."""
         async for event in self._react_loop(
@@ -196,6 +199,9 @@ class ReActEngine:
             audit_resource_id=audit_resource_id,
             emit_text_deltas=True,
             routing_control=routing_control,
+            tool_query=tool_query,
+            tool_classification=tool_classification,
+            connector_focus=connector_focus,
         ):
             yield event
 
@@ -214,6 +220,9 @@ class ReActEngine:
         audit_resource_id: str | None = None,
         emit_text_deltas: bool,
         routing_control: Any | None = None,
+        tool_query: str | None = None,
+        tool_classification: dict[str, Any] | None = None,
+        connector_focus: tuple[str, ...] | list[str] | None = None,
     ) -> AsyncIterator[ReActStreamEvent]:
         """Shared ReAct implementation for run() and run_streaming()."""
         import uuid
@@ -266,7 +275,16 @@ class ReActEngine:
         )
         audit_id = audit_resource_id or ctx.task_id or ctx.agent_id or ctx.actor_id
 
-        tools = await self.registry.get_available_tools(ctx.org_id, allowed, connected)
+        all_tools = await self.registry.get_available_tools(ctx.org_id, allowed, connected)
+        from app.services.agent_platform_optimizer import narrow_tools_for_turn
+
+        tools, tool_visibility = narrow_tools_for_turn(
+            all_tools,
+            query=tool_query or task,
+            classification=tool_classification,
+            connector_names=tuple(connector_focus or ()),
+            connected_integrations=list(connected or []),
+        )
         if not tools:
             result = await self._run_reasoning_only(
                 ctx=ctx,
@@ -305,7 +323,12 @@ class ReActEngine:
             if iteration >= effective_max:
                 break
             iteration += 1
-            if routing_control is not None and getattr(routing_control, "model", None):
+            routing_tier = getattr(routing_control, "tier", "multi_step") if routing_control else "multi_step"
+            from app.services.assistant_routing_tier import model_for_routing_phase
+
+            phase = "synthesis" if iteration == effective_max else "planning"
+            resolved_model = model_for_routing_phase(phase, routing_tier)
+            if routing_control is not None and phase == "synthesis":
                 resolved_model = routing_control.model
             try:
                 response = await self._chat_with_tools(messages, tools, resolved_model)

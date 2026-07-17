@@ -63,9 +63,13 @@ def _disable_api_rate_limits():
 @pytest.fixture(autouse=True)
 def _clear_assistant_tool_caches():
     import app.services.assistant_tools as assistant_tools_module
+    from app.services.connector_snapshot_cache import clear_connector_snapshot_cache
+    from app.services.read_action_result_cache import clear_read_action_result_cache
 
     assistant_tools_module._CONNECTOR_STATUS_CACHE.clear()
     assistant_tools_module._ANALYTICS_CACHE.clear()
+    clear_connector_snapshot_cache()
+    clear_read_action_result_cache()
     yield
 
 

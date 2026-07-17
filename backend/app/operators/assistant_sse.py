@@ -76,6 +76,8 @@ def sse_intelligence_metadata(
     pipeline_tier: str | None = None,
     routing_tier: str | None = None,
     routing: dict[str, Any] | None = None,
+    progress_steps: list[str] | None = None,
+    tool_visibility: dict[str, Any] | None = None,
 ) -> AssistantStreamEvent:
     return _sse(
         {
@@ -111,6 +113,8 @@ def sse_intelligence_metadata(
                 "pipelineTier": pipeline_tier,
                 "routingTier": routing_tier,
                 "routing": routing,
+                "progressSteps": progress_steps or [],
+                "toolVisibility": tool_visibility or {},
             },
         }
     )

@@ -826,12 +826,11 @@ class ToolRegistry:
         action_key: str | None = None,
     ) -> list[str]:
         """Return connector types with an active, executable connection for the org."""
-        from app.connectors.connector_availability_service import list_executable_integrations
+        from app.services.connector_snapshot_cache import list_connected_integrations_cached
 
-        return list_executable_integrations(
+        return list_connected_integrations_cached(
             client,
             org_id,
-            get_settings(),
             environment_name=environment_name,
             force_live=force_live,
             action_key=action_key,
@@ -1084,6 +1083,15 @@ class ToolRegistry:
                     "error": "Missing required 'query' argument",
                 }
             try:
+                from app.services.read_action_result_cache import (
+                    get_cached_read_result,
+                    set_cached_read_result,
+                )
+
+                cache_key_action = f"web_search:{query[:120]}"
+                cached = get_cached_read_result(ctx.org_id, cache_key_action, {"query": query})
+                if cached is not None:
+                    return cached
                 payload = await search_web(query, settings=ctx.settings, max_results=5)
             except TavilyNotConfiguredError:
                 return {
@@ -1109,7 +1117,7 @@ class ToolRegistry:
                     "error": str(payload["error"]),
                     "query": query,
                 }
-            return {
+            success_payload = {
                 "success": True,
                 "tool": tool_name,
                 "query": query,
@@ -1117,6 +1125,14 @@ class ToolRegistry:
                 "sources": payload.get("sources") or [],
                 "totalResults": payload.get("totalResults", 0),
             }
+            set_cached_read_result(
+                ctx.org_id,
+                cache_key_action,
+                {"query": query},
+                success_payload,
+                ttl_seconds=120,
+            )
+            return success_payload
 
         if tool_name.startswith("assistant_"):
             return await self._execute_assistant_platform_tool(ctx, tool_name, args or {})
@@ -1140,6 +1156,17 @@ class ToolRegistry:
                 "tool": tool_name,
                 "error": f"Backend action not implemented: {invoke_action}",
             }
+
+        from app.services.read_action_result_cache import (
+            get_cached_read_result,
+            is_read_invoke_action,
+            set_cached_read_result,
+        )
+
+        if is_read_invoke_action(invoke_action):
+            cached = get_cached_read_result(ctx.org_id, invoke_action, invoke_params)
+            if cached is not None:
+                return cached
 
         try:
             timeout_s = int(ctx.connector_timeout_seconds or 30)
@@ -1182,13 +1209,16 @@ class ToolRegistry:
             return {"success": False, "tool": tool_name, "error": str(exc)}
 
         if result.success:
-            return {
+            payload = {
                 "success": True,
                 "tool": tool_name,
                 "action": invoke_action,
                 "result": result.data,
                 "connector_id": result.connector_id,
             }
+            if is_read_invoke_action(invoke_action):
+                set_cached_read_result(ctx.org_id, invoke_action, invoke_params, payload)
+            return payload
         return {
             "success": False,
             "tool": tool_name,

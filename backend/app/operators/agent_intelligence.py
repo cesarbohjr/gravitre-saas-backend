@@ -1176,6 +1176,23 @@ class AgentIntelligence:
             "maxToolRounds": routing_control.max_iterations,
         }
 
+        from app.services.agent_platform_optimizer import build_progress_steps
+
+        yield sse_intelligence_metadata(
+            message_id=message_id,
+            confidence={"score": 0.0, "needs_clarification": False},
+            answer_explanation="Analyzing your request…",
+            effective_mode=mode_key,
+            pipeline_tier=pipeline_tier,
+            routing_tier=routing_control.tier,
+            routing=routing_sse,
+            progress_steps=build_progress_steps(
+                routing_tier=routing_control.tier,
+                connected_integrations=list(connected_early or []),
+                phase="context",
+            ),
+        )
+
         tier0_started = time.monotonic()
         if tier0_enabled(engine_settings):
             tier0_hit = await get_tier0_answer(
@@ -1517,6 +1534,21 @@ class AgentIntelligence:
 
         from app.services.intelligence_orchestrator import get_intelligence_orchestrator
 
+        yield sse_intelligence_metadata(
+            message_id=message_id,
+            confidence={"score": classification_confidence, "needs_clarification": False},
+            answer_explanation="Reviewing connected systems and knowledge…",
+            effective_mode=mode_key,
+            pipeline_tier=pipeline_tier,
+            routing_tier=routing_control.tier,
+            routing=routing_sse,
+            progress_steps=build_progress_steps(
+                routing_tier=routing_control.tier,
+                connected_integrations=list(connected_early or []),
+                phase="context",
+            ),
+        )
+
         turn_ctx = await get_intelligence_orchestrator(active_settings).prepare_assistant_turn(
             org_id=org_id,
             user_id=user_id,
@@ -1538,6 +1570,11 @@ class AgentIntelligence:
         org_context = retrieval.org_context
         connected_list = list(turn_ctx.connected_integrations)
         connected_list = await self.tool_registry.enrich_connected_integrations(client, org_id, connected_list)
+        from app.services.connector_snapshot_cache import prefetch_connected_integrations
+
+        prefetch_connected_integrations(client, org_id, environment_name=environment_name)
+        registry_meta = turn_ctx.context_registry if isinstance(turn_ctx.context_registry, dict) else {}
+        connector_focus = tuple(registry_meta.get("connectorNames") or [])
         if permitted_registry and "platform" not in {str(c).lower() for c in connected_list}:
             connected_list.append("platform")
         permitted_registry = expand_registry_with_connected_integrations(permitted_registry, connected_list)
@@ -1773,6 +1810,19 @@ class AgentIntelligence:
         if history_lines:
             task_prompt = f"{task_prompt}\n<conversation_history>\n" + "\n".join(history_lines) + "\n</conversation_history>"
 
+        from app.services.execution_memory_service import get_execution_memory_service
+
+        try:
+            memory_patterns = await get_execution_memory_service(active_settings).find_similar_patterns(
+                org_id,
+                task_text,
+            )
+            memory_hint = get_execution_memory_service(active_settings).format_hint_for_plan(memory_patterns)
+            if memory_hint:
+                task_prompt = f"{task_prompt}\n<execution_memory_hint>\n{memory_hint}\n</execution_memory_hint>"
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("execution_memory_hint_skipped org_id=%s error=%s", org_id, exc)
+
         # Wave 6 — stream plan / task state before tools so the UI can show progress live.
         # Routing wave — emit named product tier + latency budget before tools.
         yield sse_intelligence_metadata(
@@ -1787,6 +1837,12 @@ class AgentIntelligence:
             pipeline_tier=pipeline_tier,
             routing_tier=routing_control.tier,
             routing=routing_sse,
+            progress_steps=build_progress_steps(
+                routing_tier=routing_control.tier,
+                connected_integrations=connected_list,
+                connector_names=connector_focus,
+                phase="tools",
+            ),
         )
         if turn_ctx.strategic_plan or (
             isinstance(task_state, dict) and task_state.get("current_plan")
@@ -1922,6 +1978,9 @@ class AgentIntelligence:
             audit_resource_type="assistant",
             audit_resource_id=agent_id or user_id or org_id,
             routing_control=routing_control,
+            tool_query=task_text,
+            tool_classification=pipeline_classification,
+            connector_focus=connector_focus,
         ):
             if event.kind == "routing_escalation":
                 esc = event.result if isinstance(event.result, dict) else {}
