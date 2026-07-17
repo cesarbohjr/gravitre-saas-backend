@@ -31,6 +31,7 @@ import { PerformanceTab } from "./_components/performance-tab"
 import { LearningTab } from "./_components/learning-tab"
 import { OutcomesTab } from "./_components/outcomes-tab"
 import { AgentReferenceFoldersPanel } from "@/components/agents/agent-reference-folders-panel"
+import { AgentSurfaceSwitch } from "@/components/agents/agent-surface-switch"
 import { AgentIntelligenceVisibilitySection } from "@/components/intelligence/agent-intelligence-visibility-section"
 import { ArrowLeft, MessageSquare, Sparkles } from "lucide-react"
 import { Robot } from "@phosphor-icons/react"
@@ -166,9 +167,9 @@ function ProfileHero({ agent }: { agent: Agent }) {
             </Link>
           </Button>
           <Button variant="outline" size="sm" asChild className="gap-2">
-            <Link href={APP_ROUTES.agents}>
+            <Link href={`${APP_ROUTES.agents}/${agent.id}`}>
               <Sparkles className="h-4 w-4" aria-hidden />
-              Constellation
+              AI Team profile
             </Link>
           </Button>
           <Button size="sm" asChild className="gap-2 bg-zinc-900 text-white hover:bg-zinc-800">
@@ -238,8 +239,8 @@ export default function AgentProfilePage() {
 
   return (
     <AppShell title={shellTitle}>
-      <div className="relative flex min-h-full flex-col overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 z-0">
+      <div className="relative flex min-h-full flex-col">
+        <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
           <MorphingBackground colors={["emerald", "violet", "blue"]} />
           <div className="absolute inset-0 bg-background/88 backdrop-blur-3xl" />
           <GridPattern size={56} color="violet" animated={!reduced} className="opacity-20" />
@@ -252,6 +253,7 @@ export default function AgentProfilePage() {
         </div>
 
         <div className="relative z-10 space-y-6 p-4 md:p-6">
+          <AgentSurfaceSwitch surface="insights" agentId={id} />
           {agentLoading ? (
             <>
               <ProfileHeroSkeleton />

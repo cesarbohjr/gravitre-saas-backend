@@ -68,8 +68,8 @@ export const SURFACE_COPY = {
   },
   hubLinks: {
     agents: {
-      title: "Agent profiles",
-      summary: "Health, performance, and outcomes per agent.",
+      title: "Agent intelligence",
+      summary: "Health, performance, learning, and outcomes — not the live team roster.",
       route: APP_ROUTES.intelligenceAgents,
     },
     builtIn: {
@@ -130,8 +130,10 @@ export const SURFACE_COPY = {
       rosterTitle: "AI Team",
       description: "Agents that run workflows, answer chat, and act on your connectors.",
       profileTitle: "Agent profile",
-      profileListHint: "Pick an agent to see health, performance, and outcomes.",
-      profileEmpty: "Create an agent to see its profile.",
+      profileListHint: "Pick an agent to review measured health, performance, learning, and outcomes.",
+      profileEmpty: "Create an agent to see its intelligence profile.",
+      operateHint: "Chat, knowledge, and assignments live on the AI Team surface.",
+      insightsHint: "Measured health and outcomes live on Agent intelligence.",
     },
     workflows: {
       title: "Workflows",

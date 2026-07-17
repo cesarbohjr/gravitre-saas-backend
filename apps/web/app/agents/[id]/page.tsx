@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import useSWR from "swr"
 import { AgentCapabilitiesCard } from "@/components/gravitre/agent-capabilities-card"
 import { AgentReferenceFoldersPanel } from "@/components/agents/agent-reference-folders-panel"
+import { AgentSurfaceSwitch } from "@/components/agents/agent-surface-switch"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { Icon, type IconName } from "@/lib/icons"
@@ -326,6 +327,9 @@ export default function AgentProfilePage({
   return (
     <AppShell title={agent.name}>
       <div className="flex min-h-full flex-col">
+        <div className="border-b border-border px-4 py-3 sm:px-8">
+          <AgentSurfaceSwitch surface="operate" agentId={agent.id} />
+        </div>
         {/* Hero Header */}
         <div className="relative overflow-hidden border-b border-border">
           {/* Background effects */}
