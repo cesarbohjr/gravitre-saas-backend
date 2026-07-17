@@ -2,6 +2,8 @@ import type { ReactNode } from "react"
 import { GRAVITRE_BLOG_AUTHOR } from "./authors"
 import { securityFirstPost } from "./content/security-first"
 import { workflowTemplatesPost } from "./content/workflow-templates"
+import { aiTransparencyApprovalPost } from "./content/ai-transparency-approval"
+import { measuringAiRoiPost } from "./content/measuring-ai-roi"
 import { enterpriseAiGovernancePost } from "./content/enterprise-ai-governance"
 import { aiAgentBestPracticesPost } from "./content/ai-agent-best-practices"
 import { SITE_URL, type BlogFAQ, type BlogPost } from "./types"
@@ -208,6 +210,8 @@ export const BLOG_LISTING_EXCLUDED_SLUGS = new Set([
 
 export const blogPosts: BlogPost[] = [
   aiWontTakeYourJob,
+  aiTransparencyApprovalPost,
+  measuringAiRoiPost,
   securityFirstPost,
   workflowTemplatesPost,
   enterpriseAiGovernancePost,
