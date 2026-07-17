@@ -1882,22 +1882,23 @@ class AgentIntelligence:
                 phase="tools",
             ),
         )
-        if turn_ctx.strategic_plan or (
-            isinstance(task_state, dict) and task_state.get("current_plan")
-        ):
-            yield sse_intelligence_metadata(
-                message_id=message_id,
-                confidence={"score": classification_confidence, "needs_clarification": False},
-                answer_explanation="Plan ready — running tools",
-                dialogue_mode=dialogue_mode,
-                persona_key=str(persona.get("persona_key") or ""),
-                task_state=task_state,
-                strategic_plan=turn_ctx.strategic_plan,
-                effective_mode=mode_key,
-                pipeline_tier=pipeline_tier,
-                routing_tier=routing_control.tier,
-                routing=routing_sse,
-            )
+        # Wave 6 / STA-325 — always emit plan-before-tools before tool SSE so the UI
+        # (and spotcheck claim 1) can order plan → tool-start even when there is no
+        # advisory current_plan (e.g. "list Apollo… then outline a plan before tools"
+        # after meta-plan segments are stripped from orchestration).
+        yield sse_intelligence_metadata(
+            message_id=message_id,
+            confidence={"score": classification_confidence, "needs_clarification": False},
+            answer_explanation="Plan ready — running tools",
+            dialogue_mode=dialogue_mode,
+            persona_key=str(persona.get("persona_key") or ""),
+            task_state=task_state,
+            strategic_plan=turn_ctx.strategic_plan,
+            effective_mode=mode_key,
+            pipeline_tier=pipeline_tier,
+            routing_tier=routing_control.tier,
+            routing=routing_sse,
+        )
 
         tool_results: list[dict[str, Any]] = []
         if "knowledge_base" in tool_names:
