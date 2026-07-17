@@ -25,6 +25,7 @@ VENDOR_DEFINITIONS: tuple = (
             action("salesforce", "leads.search", "Search leads", tier="v1", kind="read", scope_suffix="leads:read", idempotent=True),
             action("salesforce", "accounts.get", "Get account", tier="v1", kind="read", scope_suffix="accounts:read", idempotent=True),
             action("salesforce", "opportunities.get", "Get opportunity", tier="v1", kind="read", scope_suffix="opportunities:read", idempotent=True),
+            action("salesforce", "query", "Run SOQL query", tier="v1", kind="read", scope_suffix="query:read", idempotent=True),
         ),
         v2=(
             action("salesforce", "leads.create", "Create lead", tier="v2", kind="write", scope_suffix="leads:write", destructive=True),

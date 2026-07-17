@@ -64,10 +64,12 @@ def test_invoke_slack_success(tool_ctx: ToolContext):
 
 
 def test_invoke_validation_error_no_retry(tool_ctx: ToolContext):
-    with patch("app.services.tool_service._exec_slack_post_message", side_effect=ToolValidationError("bad channel")):
-        with patch("app.services.tool_service.write_audit_event"):
-            with patch("app.services.tool_service.time.sleep") as sleep_mock:
-                result = invoke_tool(tool_ctx, "slack.post_message", {"channel": "", "message": "x"})
+    conn = {"id": "conn-slack", "type": "slack", "status": "active"}
+    with patch("app.services.tool_service.get_connector_by_type", return_value=conn):
+        with patch("app.connectors.connector_tool_auth.resolve_slack_bot_token", return_value="xoxb-test"):
+            with patch("app.services.tool_service.write_audit_event"):
+                with patch("app.services.tool_service.time.sleep") as sleep_mock:
+                    result = invoke_tool(tool_ctx, "slack.post_message", {"channel": "", "message": "x"})
     assert result.success is False
     assert result.error_code == "validation_error"
     sleep_mock.assert_not_called()
