@@ -1,48 +1,52 @@
 # Memory fuzzy-match — product decision (Item 5 / STA-320)
 
-**Status:** Decision ticket only — **no code** until a named choice after real usage evidence.
+**Status:** **Option B chosen and implemented** (2026-07-18).
 
 **Linear:** [STA-320](https://linear.app/staqbot/issue/STA-320/decision-memory-fuzzy-match-reopen-criteria-item-5)
 
 ## Current state
 
-STA-316 Option B shipped: opaque-token / exact-match (HMAC on normalized mentions) for entity disambiguation. Fuzzy “which Sarah?” matching is **not** implemented.
+- STA-316 opaque-token / exact HMAC Memory path remains opt-in (unchanged).
+- **STA-320 Option B shipped:** non-PII role/title cue heuristic against `org_entity_resolution_records` with `entity_type=role`.
+- Exact alias + role heuristic run **without** Memory opt-in. Opaque Memory search still requires opt-in.
+- Option C (embeddings/fuzzy person names) is **not** authorized.
 
-## Proposed reopen criteria (for review — not approved)
+## Proposed reopen criteria (historical — amended)
 
-Reopen **only** when **all** of the following are true:
+Originally: reopen B/C only when ≥5 distinct prod “which X?” chats / 30 days + named choice.
 
-1. **Live volume:** ≥ **5** distinct production chats (different `conversation_id`s) in a rolling 30-day window where the user had to clarify an ambiguous person/entity mention after exact-match failed or asked “which X?”.
-2. **Evidence pointers:** Each instance cited with `conversation_messages` id + timestamp (or chat run id), not synthetic prompts alone.
-3. **False-positive risk acknowledged:** At least one example where exact-match correctly refused to guess (preserving safety) vs pain from over-clarifying.
-4. **Named option chosen** in Linear after evidence review (A / B / C below) — a general “complete STA-320” is not authorization to implement B or C.
+**Amendment (2026-07-18):** Cesar named **Option B** explicitly; the volume bar was **waived** for B only so implementation could proceed. Option C remains gated on governance + evidence.
 
-Until then: keep **Option A** (exact-match only).
-
-## Soft signals (insufficient alone)
+## Soft signals (insufficient alone for Option C)
 
 - Internal demo friction
 - “It would be nicer if…” without live traces
-- Single-org anecdotal request without the volume bar above
+- Single-org anecdotal request without a volume bar / governance sign-off
 
-## Options (named choice required)
+## Options
 
-| Option | Meaning | Governance |
-|--------|---------|------------|
-| **A — Keep exact-match** | Leave STA-316 as-is; clarify via chat when ambiguous | No new risk — **default until evidence** |
-| **B — Non-PII heuristic** | Match on already-known org role/title/department context only — no raw email/name embeddings | Does **not** reopen third-party ML PII governance; still needs explicit named choice |
-| **C — Embeddings / fuzzy** | Soft-match via embeddings | **Gated** on STA-312-style governance sign-off (same territory as Memory Phase 1 pause) |
+| Option | Meaning | Status |
+|--------|---------|--------|
+| **A — Keep exact-match** | Leave STA-316 as-is | Superseded for role cues by B |
+| **B — Non-PII heuristic** | Match already-known org role/title/department aliases only | **Chosen + shipped** |
+| **C — Embeddings / fuzzy** | Soft-match via embeddings | **Not authorized** — gated |
 
-## Explicit non-goals until reopen
+## Explicit non-goals (still in force)
 
 - No silent fuzzy resolve of person names
 - No third-party ML on PII for “which Sarah?”
 - No auto-pick of closest string match without user confirmation
+- No lowering Memory `min_score` / softening HMAC (Option C territory)
 
 ## Decision
 
-**Deferred.** Default until evidence: **Option A**. Do not implement B or C without an explicit named choice in Linear after live usage evidence meeting the reopen bar above.
+**Option B** (2026-07-18). Volume bar waived for this named choice only.
 
-## Review ask (Cesar)
+### Implementation map
 
-Confirm or amend the volume bar (5 chats / 30 days) and whether Option B would ever be acceptable without Option C’s governance path.
+- `backend/app/services/memory_role_title_heuristic.py` — cue extract, match, learn
+- `backend/app/services/memory_field_resolver.py` — order: exact → role → Memory (opt-in)
+- `backend/app/services/connector_action_workflows.py` — learn role aliases on unique bind
+- Tests: `backend/tests/services/test_memory_role_title_heuristic.py`
+
+Ship SHA: fill on merge to main / prod tip.

@@ -73,7 +73,8 @@ def test_assert_provider_safe_rejects_raw_email_and_names():
 
 
 @pytest.mark.asyncio
-async def test_resolver_skips_when_org_opt_in_off():
+async def test_resolver_skips_memory_when_org_opt_in_off():
+    """Memory opaque path stays gated; exact+role still run (STA-320)."""
     from app.services.memory_field_resolver import resolve_sensitive_field_mention
 
     client = MagicMock()
@@ -83,10 +84,16 @@ async def test_resolver_skips_when_org_opt_in_off():
     field = WorkflowFieldSpec("Assignee", ("assignee_hint", "assignee"), sensitive=True)
     settings = SimpleNamespace(disable_ai=False, openai_api_key="sk-test", supabase_jwt_secret="sec")
 
-    with patch(
-        "app.services.memory_field_resolver.search_memory_by_mention",
-        new_callable=MagicMock,
-    ) as search:
+    with (
+        patch(
+            "app.services.memory_field_resolver.lookup_resolutions",
+            return_value=[],
+        ),
+        patch(
+            "app.services.memory_field_resolver.search_memory_by_mention",
+            new_callable=MagicMock,
+        ) as search,
+    ):
         result = await resolve_sensitive_field_mention(
             client=client,
             settings=settings,
@@ -96,8 +103,8 @@ async def test_resolver_skips_when_org_opt_in_off():
             mention="Sarah",
             entity_type="employee",
         )
-        assert result.status == "skipped"
-        assert result.reason == "org_opt_in_off"
+        assert result.status == "miss"
+        assert result.reason == "memory_opt_in_off"
         search.assert_not_called()
 
 
