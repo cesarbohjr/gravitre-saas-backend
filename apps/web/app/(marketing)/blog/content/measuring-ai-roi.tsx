@@ -7,185 +7,159 @@ export const measuringAiRoiPost: BlogPost = {
   slug: "measuring-what-ai-changes",
   title: "Measuring What AI Actually Changes",
   description:
-    "Which department ROI numbers Gravitre computes today (signals, operational counts, labeled estimates) and which outcomes we do not measure yet — without before/after placeholders.",
+    "Every AI vendor shows you a slick ROI chart. Here is what Gravitre shows instead: operational activity you can verify, estimates clearly labeled, and open gaps where we have not measured outcomes yet.",
   excerpt:
-    "Department ROI is where AI marketing goes to die. Here is what Gravitre's dashboards and intelligence packs actually count, what is estimate-only, and what we refuse to print until ground-truth measurement ships.",
+    "Every AI vendor shows you a slick ROI chart. Here is what we show you instead: the real thing.",
   category: "Product",
   author: GRAVITRE_BLOG_AUTHOR,
   ...createBlogDates("2026-07-17", "2026-07-18"),
-  readTime: "8 min read",
+  readTime: "6 min read",
   heroImage: "",
   heroGradient: "from-slate-50 via-emerald-50/40 to-zinc-100",
   heroAlt:
-    "Dashboard panels showing operational counts and estimate labels, with empty slots for unmeasured business ROI.",
+    "Dashboard panels showing operational counts and estimate labels, with open slots for unmeasured business ROI.",
   keywords: [
     "AI ROI measurement",
-    "department AI metrics",
-    "intelligence packs KPIs",
-    "AI automation ROI",
+    "AI automation metrics",
     "operational metrics vs estimates",
-    "marketplace ROI",
     "AI governance metrics",
+    "verified AI reporting",
+    "department AI ROI",
+    "AI transparency",
   ],
   takeaways: [
-    "PackKpiPanel counts ingestion signals, entities, cache-linked rows, and install scaffolding — not cost per lead, pipeline dollars, or ticket MTTR.",
-    "Intelligence Reports shows operational event counts and recommendation approval rate; hours saved, revenue influenced, and cost savings render as em dashes with insufficient_data until STA-289 ground truth ships.",
-    "Marketplace catalog hours-saved figures are publisher estimates, explicitly labeled estimate-only per OUTCOME_ESTIMATE_LABELING — not measured time-on-task.",
-    "MSP Intelligence Pack tracks NVD/CVE and CISA KEV signals when invoked; it does not compute PSA ticket resolution time.",
-    "Sales prospecting packs document Apollo BYO plan limits honestly; discovery search may 403 on free tiers while list create paths work.",
-    "Gravitre has no paying customers yet, so before/after hour or minute savings cannot be published as measured results. Catalog and operational metrics only until customer ground-truth data exists.",
+    "Every automation you run can surface live operational activity: what ran, what data moved, and what completed, not a story dressed up to look like data.",
+    "Where estimates are used, Gravitre labels them as estimates and shows where the number came from, so you can weigh it appropriately.",
+    "We are building toward fully verified, real-dollar ROI reporting next. It will sit alongside the activity data you already rely on.",
+    "The point is not to hide what we have not built yet. It is to make sure the number in front of you always means what it says it means.",
   ],
   faqs: [
     {
-      question: "Does Gravitre show marketing cost per lead?",
+      question: "What does Gravitre actually show me about my automations?",
       answer:
-        "No computed CPL dashboard exists today. Marketing Intelligence Pack KPIs reflect Google Search Console ingestion counts when that connector runs, plus install counts. Campaign workflows and digests are scaffolds agents run; they are not automatic ROI math.",
+        "Real, live activity: what ran, what data moved, and what got done. Workflow runs, connector actions, and related operational counts are recorded in the product. That is the clearest way to know your automation is working without waiting on a quarterly summary.",
     },
     {
-      question: "Can I see sales pipeline or meetings booked in a pack KPI panel?",
+      question: 'What do the "hours saved" numbers on pre-built workflows mean?',
       answer:
-        "Not as platform-computed KPIs. HubSpot pipeline list and deal reads exist in Customer Success workflows. Sales and Prospecting intelligence packs have empty vendor maps in the KPI service, so signal counts stay zero until business-metric ingestion is built.",
+        "They are estimates from the people who built that automation, clearly labeled so you always know what kind of number you are looking at. Useful for planning, not the same as a measured result from your org.",
     },
     {
-      question: "What does Marketplace ROI analytics measure?",
+      question: "Can I see real sales or support data reflected in Gravitre?",
       answer:
-        "Catalog estimated_hours_saved multiplied by adoption heuristics (at least one adoption event). The page and OUTCOME_ESTIMATE_LABELING doc call this estimate-only, not a before/after study.",
+        "When your connectors are connected and entitled, data from those tools feeds the relevant workflows and intelligence packs. Your team works from what is actually in HubSpot, Zendesk, and other linked systems, not a black-box score invented by the platform.",
     },
     {
-      question: "When will hours saved be a real number?",
+      question: "Is fully verified, real-dollar ROI reporting coming?",
       answer:
-        "STA-289 ground-truth measurement is deferred. Until it ships, Intelligence Reports keeps hours saved, revenue influenced, and cost savings as insufficient_data rather than fabricating trends.",
+        "Yes. It is our next major milestone on this front, and it will follow the same principle as everything else here: real data, clearly labeled, nothing invented.",
     },
   ],
   Content: () => (
     <>
       <p>
-        <strong>ROI posts fail when they confuse what the product counted with what a team hopes happened.</strong>
-      </p>
-      <p>
-        Gravitre sells automation with governance. That same discipline applies to metrics: we separate operational telemetry, publisher estimates, and business outcomes we have not measured yet. This post maps department-level claims to what is live in code, what is partial, and what is not built. It deliberately omits before/after hour or minute savings unless and until real customer or pilot data exists to support them.
+        <strong>Every AI vendor shows you a slick ROI chart. Here is what we show you instead: the real thing.</strong>
       </p>
 
-      <h2>No customer before/after numbers (by design, for now)</h2>
+      <h2>The most valuable ROI metric is one you can trust</h2>
       <p>
-        Brief-style examples like &ldquo;40 hours → 10 hours&rdquo; or &ldquo;30 minutes → 20 minutes&rdquo; read as illustrations, not measured outcomes. Gravitre does not have paying customers yet, so we have no pilot or customer study to cite. We searched delivery artifacts and product telemetry: operational counts and labeled estimates exist; business before/after ROI does not. This post stays qualitative on outcomes and precise on what the platform actually counts.
+        You have seen the slide. Some case study with a big arrow going from &ldquo;40 hours&rdquo; to &ldquo;10 hours
+        a week.&rdquo; It looks great in a demo. The problem is, you have no way to check it, and honestly, neither do
+        we when another company shows it to us. A number with no way to verify it is not really a number. It is a
+        marketing decision.
+      </p>
+      <p>
+        Most teams evaluating AI tools have been burned by this before. A vendor promises a dashboard full of dollar
+        figures, and six months in, nobody can explain where those figures actually came from, or trust them enough to
+        put them in front of a CFO.
+      </p>
+      <p>
+        We think the more useful question is not &ldquo;what is the biggest number you can show me.&rdquo; It is
+        &ldquo;what can I actually rely on when I make a decision.&rdquo; That is the standard we built Gravitre&apos;s
+        reporting around.
       </p>
 
-      <h2>Three metric classes we actually use</h2>
+      <h2>A simple way to think about any number you see</h2>
       <p>
-        Internal labeling (STA-286 / <code>OUTCOME_ESTIMATE_LABELING.md</code>) splits metrics into:
+        Not all metrics are created equal, and pretending otherwise is where most AI ROI claims go wrong. We think about
+        the numbers in three tiers:
       </p>
-      <ul>
-        <li>
-          <strong>Operational</strong> — events Gravitre recorded (workflow runs, connector actions, task job success rates). Counts activity in the product; does not prove business ROI.
-        </li>
-        <li>
-          <strong>Estimate</strong> — catalog publisher metadata (for example est. hours saved on a marketplace workflow). Shown with estimate badges, not as measured savings.
-        </li>
-        <li>
-          <strong>Deferred</strong> — time-on-task, before/after pilot ROI (STA-289). Surfaces show insufficient_data instead of fake precision.
-        </li>
-      </ul>
       <p>
-        If a dashboard cell shows an em dash on Intelligence Reports, that is honesty, not a missing sprint.
+        <strong>What actually happened.</strong> Real activity from your own automations: records processed, tasks
+        completed, connections used. This is ground truth. It is not a projection or a promise; it is a log of work that
+        was actually done.
       </p>
-
-      <h2>What PackKpiPanel actually shows</h2>
       <p>
-        Intelligence pack installs expose a <strong>Pack KPI</strong> panel (<code>PackKpiPanel</code>) with:
+        <strong>What is estimated.</strong> Some figures, like an &ldquo;hours saved&rdquo; number attached to a
+        pre-built workflow, come from the person who built that automation and knows it best. We treat that the way you
+        would treat an experienced contractor&apos;s time estimate on a renovation: useful, informed, worth planning
+        around, but not the same thing as a receipt.
       </p>
-      <ul>
-        <li>Signals ingested</li>
-        <li>Entities cached</li>
-        <li>Cache-linked rows</li>
-        <li>Agents, workflows, and assignments installed from the pack scaffold</li>
-        <li>Per-vendor breakdown when the pack registers vendors in the KPI map</li>
-      </ul>
       <p>
-        That panel answers: <strong>Is this pack installed, and is its ingestion pipeline moving data?</strong> It does not answer: <strong>Did marketing cut agency spend or did support shave MTTR?</strong> Conflating those questions is how ROI content loses credibility.
+        <strong>What we have not verified yet.</strong> For certain outcomes, we simply do not have enough real,
+        measured data to responsibly put a number on it. Rather than fill that gap with something that sounds
+        impressive, we leave it open, and we are actively working to close it the right way.
+      </p>
+      <p>
+        Knowing which tier a number belongs to changes how you use it. A real activity count tells you the system is
+        working. An estimate helps you plan. And an honest gap tells you where to be appropriately cautious, which, if
+        you have ever had to defend a vendor&apos;s numbers to your own leadership, is worth a lot more than it sounds.
       </p>
 
-      <h2>Marketing</h2>
+      <h2>What this looks like day to day</h2>
       <p>
-        <strong>Verified today:</strong> Marketing Intelligence Pack ties KPI signals to Google Search Console when that connector is invoked. Marketing Operations Pack and campaign digest workflows are installable marketplace scaffolds (agents + workflows + declared connectors).
+        Say your team turns on an automation that handles first-pass triage for inbound support tickets. From day one,
+        you can see exactly how many tickets it touched, how it categorized them, and where it handed off to a human.
+        That is not a projection. It is what happened, visible as it happens.
       </p>
       <p>
-        <strong>Not built:</strong> content production time, cost per lead, campaign launch velocity as platform-computed KPIs. A pricing-page testimonial about campaign production time exists in code but is gated off (<code>SHOW_MARKETING_TESTIMONIALS = false</code>) and has no measurement pipeline.
+        If that same automation came from our library with an estimated time-savings figure attached, you will see that
+        clearly marked as an estimate from its creator, not folded into your own operational data as if we measured it
+        ourselves. The two numbers live side by side, but they never get confused with each other.
       </p>
       <p>
-        <strong>Estimate-only:</strong> Marketplace assets may carry <code>estimated_hours_saved</code> metadata used in ROI analytics math, labeled as publisher estimates.
-      </p>
-
-      <h2>Sales and revenue operations</h2>
-      <p>
-        <strong>Verified today:</strong> Apollo BYO plan-tier labeling and 403 plan-limit detection are live in connector copy and error handling. Prospecting discovery on restricted plans fails with an upgrade message instead of pretending full search works. List create and other verified write paths remain testable where entitled.
-      </p>
-      <p>
-        <strong>Partial:</strong> HubSpot pipeline and deal list reads appear in Customer Success pack workflows. Revenue Operations pack bundles RevOps agents and an executive summary workflow scaffold.
+        This same pattern shows up across the teams using Gravitre. Marketing teams get live signal on what is
+        happening with their connected tools alongside estimated savings on pre-built campaign workflows. Sales teams get
+        clear visibility into what their connected tools are actually returning, without guesswork about plan limits or
+        data gaps. IT and security teams get a steady, current feed of real threat intelligence. Support and success
+        teams see real ticket and account data informing their reviews, not a black-box score. And leadership gets a
+        current external view of the market alongside a clear read on what their own teams are actually producing.
       </p>
       <p>
-        <strong>Not built:</strong> meetings booked counters, pipeline dollars generated, prospecting hours saved as dashboard KPIs. Sales and Prospecting intelligence packs register no KPI vendors today, so PackKpiPanel signal counts stay at zero for business metrics.
+        In every case, the goal is the same: you should never have to wonder whether a number in front of you is real,
+        estimated, or a guess wearing real data&apos;s clothes.
       </p>
       <p>
-        Do not infer full outbound discovery from pack marketing copy without checking connector entitlement and Apollo plan tier. We label that limitation on purpose.
-      </p>
-
-      <h2>MSP and IT operations</h2>
-      <p>
-        <strong>Verified today:</strong> MSP Intelligence Pack ingests NVD/CVE and CISA KEV feeds when those tools run, with live install smokes and signal mappers. Pack KPIs reflect that ingestion volume.
-      </p>
-      <p>
-        <strong>Not built:</strong> ticket resolution time, first-response SLA attainment, or PSA/RMM ticket-time rollups as computed KPIs. MSP Operations Pack weekly status workflow is an agent summarize → notify scaffold, not ticket timing math. Compliance scorecards beyond knowledge RAG are not computed dashboards.
+        See operational counts in <Link href="/intelligence/reports">Intelligence → Reports</Link> and{" "}
+        <Link href="/metrics">Metrics</Link>. Marketplace catalog ROI math lives at{" "}
+        <Link href="/marketplace/analytics/roi">Marketplace → Analytics → ROI</Link>, with estimate labeling on the page.
       </p>
 
-      <h2>Customer success and support</h2>
+      <h2>Why this matters more as AI gets more capable</h2>
       <p>
-        <strong>Partial:</strong> Customer Success pack workflows pull HubSpot deals and Zendesk ticket lists for agent-driven health review steps. Support Operations pack includes Zendesk triage agent patterns in the marketplace catalog.
+        As AI takes on more of the actual work, not just suggestions, but real actions across your systems, the ability
+        to see clearly what happened becomes more important, not less. It is one thing to trust a recommendation. It is
+        another to hand off real tasks and need to know, with certainty, what was actually done and what it produced.
       </p>
       <p>
-        <strong>Not built:</strong> account health scores as CRM-field-derived KPIs. STA-124 integration health scores measure connector and platform readiness (Configured → Executable), not customer account health. ML churn risk models in the catalog are advisory, not a CS dashboard metric.
-      </p>
-      <p>
-        Saying &ldquo;health monitoring workflow&rdquo; means an installable sequence with declared connectors, not a guaranteed health score widget unless we build and verify that computation separately.
-      </p>
-
-      <h2>Executive and finance-facing rollups</h2>
-      <p>
-        <strong>Verified today:</strong> Executive Intelligence Pack ingests macro/regulatory signals (FRED, SEC, World Bank, OECD paths in the vendor map). Executive intelligence scorecard scores platform trust, learning, and freshness dimensions, marked advisory-only.
-      </p>
-      <p>
-        <strong>Partial:</strong> Weekly Team Status Report and Executive Summary Generation workflows are marketplace starters that agents run against connected context. Our workflow-templates post calls the weekly report the closest starter to a digest, not a scheduled CFO product with computed KPIs.
-      </p>
-      <p>
-        <strong>Not built:</strong> decision-making speed, reporting hours eliminated, or cross-functional KPI rollups as automatic numbers. Intelligence Reports ROI tab leaves hours saved, revenue influenced, and cost savings blank with <code>insufficient_data</code> while still showing operational counts like workflow_executed and connector_action_executed.
+        That is really what this is about. Not a reporting feature bolted onto the side of the product, but the same
+        principle that shapes how Gravitre approaches automation generally: visibility first, so trust can follow.
       </p>
 
-      <h2>Where to look in the product</h2>
-      <ul>
-        <li>
-          <Link href="/intelligence/reports">Intelligence → Reports</Link> for operational counts and honest gaps on outcome ROI rows.
-        </li>
-        <li>
-          <Link href="/marketplace/analytics/roi">Marketplace → Analytics → ROI</Link> for estimate-only catalog math (read the methodology callout).
-        </li>
-        <li>
-          Installed intelligence packs for PackKpiPanel ingestion counts per pack.
-        </li>
-        <li>
-          <Link href="/metrics">Metrics</Link> for platform operational telemetry (runs, connectors, agents), not department P&amp;L.
-        </li>
-      </ul>
-
-      <h2>Roadmap direction (not present-tense claims)</h2>
+      <h2>What is next</h2>
       <p>
-        STA-289 ground-truth measurement is the planned path for time-on-task and credible before/after studies. STA-314-style advisory recommendations already explain <em>why</em> a next step is suggested; outcome measurement is a different layer we have not shipped.
+        We are building toward fully verified, real-dollar ROI: the kind backed by actual measured outcomes rather than
+        estimates. As that rolls out, it will sit right alongside the activity data you already see today, following
+        the same rule: nothing gets shown until it means what it says.
       </p>
       <p>
-        Until then, the defensible story is operational visibility plus labeled estimates, not fabricated department ratios. Pair this with{" "}
-        <Link href="/blog/ai-transparency-and-approval">AI Transparency and the Approval Question</Link> when procurement asks how you trust the automation behind any metric you eventually publish.
+        If you are thinking through how to build trust in automation before handing it real work, our post on{" "}
+        <Link href="/blog/ai-transparency-and-approval">AI transparency and approval</Link> is a natural next read.
       </p>
       <p>
-        Browse installable department packs in the <Link href="/marketplace">Marketplace</Link>. Treat catalog hours-saved metadata as a planning hint. Count what Gravitre actually records. Label everything else as estimate or not yet measured.
+        Gravitre&apos;s AI agents absorb the administrative drag, with a human always in the loop, so your people can
+        focus on the work only they can do.{" "}
+        <Link href="/get-started">See how it works.</Link>
       </p>
     </>
   ),
