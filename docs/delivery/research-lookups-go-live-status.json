@@ -12,6 +12,7 @@
     "NEXT_PUBLIC_INTERNET_RESEARCH_ENABLED=true (Vercel)"
   ],
   "deferred_follow_up": "outputs/mesons auto-billing parity (pre-existing gap — docs/delivery/outputs-meson-billing-mechanism-audit.json)",
+  "local_handoff": "docs/delivery/research-lookups-local-handoff.md",
   "steps": {
     "1_migration_prod_staging": {
       "status": "NOT_RUN",
