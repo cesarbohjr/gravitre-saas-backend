@@ -328,7 +328,6 @@ def run_smoke(args: argparse.Namespace) -> dict[str, Any]:
     org_id = (args.org_id or env.get("OAUTH_SMOKE_ORG_ID") or ORG_DEFAULT).strip()
     actor, email = resolve_smoke_actor_and_email(client, org_id=org_id, env=env)
     token = _mint_token(env, actor, email)
-    report["actor_id"] = actor
     base_url = (args.base_url or PROD_DEFAULT).rstrip("/")
     tag = datetime.now(timezone.utc).strftime("%Y%m%d%H%M")
 

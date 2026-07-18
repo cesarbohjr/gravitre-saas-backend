@@ -256,12 +256,9 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any]:
     settings = get_settings()
     client = get_supabase_client(settings)
     org_id = (args.org_id or env.get("OAUTH_SMOKE_ORG_ID") or ORG_DEFAULT).strip()
-    actor = (env.get("OAUTH_SMOKE_USER_ID") or "").strip()
-    if not actor:
-        rows = client.table("organization_members").select("user_id").eq("org_id", org_id).limit(1).execute()
-        actor = str((rows.data or [{}])[0].get("user_id") or "")
-    users = client.auth.admin.get_user_by_id(actor)
-    email = (users.user.email if users and users.user else None) or f"{actor}@gravitre.local"
+    from scripts._smoke_auth import resolve_smoke_actor_and_email
+
+    actor, email = resolve_smoke_actor_and_email(client, org_id=org_id, env=env)
     token = _mint_token(env, actor, email)
     day = datetime.now(timezone.utc).strftime("%Y%m%d")
     list_name = f"gravitre-wave67-spotcheck-{day}"

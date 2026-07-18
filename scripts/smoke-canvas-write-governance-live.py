@@ -454,21 +454,9 @@ def main() -> int:
 
     client = _supabase(env)
     org_id = (env.get("OAUTH_SMOKE_ORG_ID") or env.get("SMOKE_ORG_ID") or SMOKE_ORG).strip()
-    actor = (env.get("OAUTH_SMOKE_USER_ID") or env.get("SMOKE_USER_ID") or "").strip()
-    if not actor:
-        members = (
-            client.table("organization_members")
-            .select("user_id")
-            .eq("org_id", org_id)
-            .limit(1)
-            .execute()
-        )
-        actor = str((members.data or [{}])[0].get("user_id") or "")
-    if not actor:
-        raise SystemExit("No actor user_id for smoke org")
+    from scripts._smoke_auth import resolve_smoke_actor_and_email
 
-    user = client.auth.admin.get_user_by_id(actor)
-    email = (user.user.email if user and user.user else None) or f"{actor}@gravitre.local"
+    actor, email = resolve_smoke_actor_and_email(client, org_id=org_id, env=env)
     token = _mint_token(env, actor, email)
 
     list_name = f"CanvasGovProbe {datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')} {uuid.uuid4().hex[:6]}"

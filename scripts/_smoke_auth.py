@@ -29,8 +29,8 @@ def resolve_smoke_actor_and_email(
             email = users.user.email if users and users.user else None
             if email:
                 return actor, email
+            return actor, f"{actor}@gravitre.local"
         except Exception:
-            pass
-        return actor, f"{actor}@gravitre.local"
+            continue
 
-    raise SystemExit("Unable to resolve smoke actor")
+    raise SystemExit("Unable to resolve smoke actor with a live Supabase auth user")

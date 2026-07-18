@@ -27,6 +27,8 @@ from httpx import AsyncClient
 
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
+sys.path.insert(0, str(BACKEND))
+sys.path.insert(0, str(ROOT))
 OUT = Path(
     os.environ.get(
         "ROUTING_WAVE_JSON_OUT",
