@@ -22,6 +22,7 @@ export type ResearchTopSource = {
   assignment_id?: string | null
   score?: number | null
   match_tier?: string | null
+  url?: string | null
 }
 
 export type ResearchActionSuggestion = {

@@ -328,6 +328,31 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("INTERNET_RESEARCH_ENABLED", "internet_research_enabled"),
     )
+    # Internet research provider: google (Grounded Generation) | tavily
+    web_research_provider: str = Field(
+        default="google",
+        validation_alias=AliasChoices("WEB_RESEARCH_PROVIDER", "web_research_provider"),
+    )
+    web_research_fallback_tavily: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("WEB_RESEARCH_FALLBACK_TAVILY", "web_research_fallback_tavily"),
+    )
+    web_research_google_model: str = Field(
+        default="gemini-2.5-flash",
+        validation_alias=AliasChoices("WEB_RESEARCH_GOOGLE_MODEL", "web_research_google_model"),
+    )
+    google_cloud_project: str = Field(
+        default="",
+        validation_alias=AliasChoices("GOOGLE_CLOUD_PROJECT", "google_cloud_project"),
+    )
+    google_cloud_location: str = Field(
+        default="us-central1",
+        validation_alias=AliasChoices("GOOGLE_CLOUD_LOCATION", "google_cloud_location"),
+    )
+    google_genai_use_vertexai: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("GOOGLE_GENAI_USE_VERTEXAI", "google_genai_use_vertexai"),
+    )
     # Browser agent for connector API gaps (read-only fetch + optional Playwright interact).
     browser_agent_enabled: bool = True
     browser_agent_interact_enabled: bool = False

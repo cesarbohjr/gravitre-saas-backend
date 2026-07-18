@@ -89,13 +89,28 @@ export function ResearchCascadePanel({ cascade, className }: ResearchCascadePane
 
           {(cascade.top_sources?.length ?? 0) > 0 ? (
             <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-              {cascade.top_sources!.slice(0, 4).map((source, index) => (
-                <li key={`${source.source_name}-${index}`} className="truncate">
-                  <span className="text-foreground">{source.source_name ?? "Source"}</span>
-                  {source.score != null ? ` · ${formatRetrievalScore(source.score)}` : ""}
-                  {source.source_type ? ` · ${kindLabel(String(source.source_type))}` : ""}
-                </li>
-              ))}
+              {cascade.top_sources!.slice(0, 4).map((source, index) => {
+                const url = source.url?.trim()
+                const isExternal = url?.startsWith("http://") || url?.startsWith("https://")
+                return (
+                  <li key={`${source.source_name}-${index}`} className="truncate">
+                    {isExternal ? (
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-foreground underline-offset-2 hover:underline"
+                      >
+                        {source.source_name ?? "Source"}
+                      </a>
+                    ) : (
+                      <span className="text-foreground">{source.source_name ?? "Source"}</span>
+                    )}
+                    {source.score != null ? ` · ${formatRetrievalScore(source.score)}` : ""}
+                    {source.source_type ? ` · ${kindLabel(String(source.source_type))}` : ""}
+                  </li>
+                )
+              })}
             </ul>
           ) : null}
         </>

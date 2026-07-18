@@ -14,10 +14,17 @@ from app.services.adaptive_research_cascade import (
 )
 
 
-def _settings(*, internet_enabled: bool = False, tavily: str = "") -> SimpleNamespace:
+def _settings(*, internet_enabled: bool = False, tavily: str = "", gemini: str = "") -> SimpleNamespace:
+    key = gemini or ("test-gemini-key" if internet_enabled and not tavily else "")
     return SimpleNamespace(
         internet_research_enabled=internet_enabled,
         tavily_api_key=tavily,
+        gemini_api_key=key,
+        web_research_provider="tavily" if tavily and not key else "google",
+        web_research_fallback_tavily=True,
+        google_genai_use_vertexai=False,
+        google_cloud_project="",
+        google_cloud_location="us-central1",
     )
 
 

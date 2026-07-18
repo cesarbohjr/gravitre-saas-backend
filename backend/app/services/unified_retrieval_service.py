@@ -399,6 +399,8 @@ class UnifiedRetrievalService:
                     query,
                     settings=self.settings,
                     max_results=int(params.get("internet_max_results") or 5),
+                    org_id=org_id,
+                    client=client,
                 )
                 internet_rows = normalize_internet_results(internet_payload)
                 if internet_rows:

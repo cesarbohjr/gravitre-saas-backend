@@ -249,5 +249,5 @@ Nothing is broken. One specific performance question (RM latency delta on intern
 |------|--------|
 | Milestone 1 — Research Manager + cascade | **PASS** (live-verified) |
 | Milestone 2 — Performance audit | **INCONCLUSIVE, closed by decision** |
-| Internet research enablement | **OFF** — governance **CLOSED**; pricing **proposal recorded**; gate 2 + metering **NOT RUN / NOT BUILT** |
+| Internet research enablement | **SHIPPED (code)** — flip `INTERNET_RESEARCH_ENABLED=true` + live smoke pending |
 | Retrieval-layer program | **Closed** |

@@ -317,12 +317,19 @@ def tool_analytics(
         return {"error": "analytics unavailable"}
 
 
-async def tool_search_web(query: str, settings: Settings) -> dict[str, Any]:
-    from app.services.web_research import TavilyNotConfiguredError, search_web
+async def tool_search_web(query: str, settings: Settings, *, org_id: str | None = None, client: Any | None = None) -> dict[str, Any]:
+    from app.services.adaptive_research_cascade import _internet_research_allowed
+    from app.services.web_research import WebResearchNotConfiguredError, search_web
 
+    if not _internet_research_allowed(settings):
+        return {
+            "results": [],
+            "totalResults": 0,
+            "error": "Internet research is not enabled for this environment",
+        }
     try:
-        return await search_web(query, settings=settings, max_results=5)
-    except TavilyNotConfiguredError:
+        return await search_web(query, settings=settings, max_results=5, org_id=org_id, client=client)
+    except WebResearchNotConfiguredError:
         return {"results": [], "totalResults": 0, "error": "web search not configured"}
 
 
@@ -770,7 +777,10 @@ async def run_assistant_tools(
             output = tool_analytics(org_id, settings, user_id=user_id)
             tool_input = {"windowDays": 7}
         elif name == "search_web":
-            output = await tool_search_web(query, settings)
+            from app.billing.service import get_supabase_client
+
+            client = get_supabase_client(settings)
+            output = await tool_search_web(query, settings, org_id=org_id, client=client)
             tool_input = {"query": query}
         elif name == "generate_document":
             output = await tool_generate_document(org_id, query, settings)

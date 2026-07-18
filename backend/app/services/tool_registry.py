@@ -1073,7 +1073,15 @@ class ToolRegistry:
             return {"success": True, "tool": tool_name, "result": payload}
 
         if spec.always_available and tool_name == "web_search":
-            from app.services.web_research import TavilyNotConfiguredError, search_web
+            from app.services.adaptive_research_cascade import _internet_research_allowed
+            from app.services.web_research import WebResearchNotConfiguredError, search_web
+
+            if not _internet_research_allowed(ctx.settings):
+                return {
+                    "success": False,
+                    "tool": tool_name,
+                    "error": "Internet research is not enabled for this environment (INTERNET_RESEARCH_ENABLED).",
+                }
 
             query = str((args or {}).get("query") or "").strip()
             if not query:
@@ -1092,13 +1100,20 @@ class ToolRegistry:
                 cached = get_cached_read_result(ctx.org_id, cache_key_action, {"query": query})
                 if cached is not None:
                     return cached
-                payload = await search_web(query, settings=ctx.settings, max_results=5)
-            except TavilyNotConfiguredError:
+                payload = await search_web(
+                    query,
+                    settings=ctx.settings,
+                    max_results=5,
+                    org_id=ctx.org_id,
+                    client=ctx.client,
+                )
+            except WebResearchNotConfiguredError:
                 return {
                     "success": False,
                     "tool": tool_name,
                     "error": (
-                        "Web search is not configured for this environment. Set TAVILY_API_KEY."
+                        "Web search is not configured. Enable Google grounding (GEMINI_API_KEY) "
+                        "or TAVILY_API_KEY fallback."
                     ),
                     "query": query,
                 }

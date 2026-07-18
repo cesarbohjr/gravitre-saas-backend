@@ -708,7 +708,7 @@ async def get_billing_usage_route(
     if usage_resp.error:
         raise HTTPException(status_code=500, detail=str(usage_resp.error))
 
-    totals = {"outputs": 0, "workflow_runs": 0, "api_calls": 0, "ai_tokens": 0}
+    totals = {"outputs": 0, "workflow_runs": 0, "api_calls": 0, "ai_tokens": 0, "research_lookups": 0}
     for row in usage_resp.data or []:
         metric = str(row.get("metric_type") or "")
         quantity = int(row.get("quantity") or 0)
@@ -725,6 +725,17 @@ async def get_billing_usage_route(
     if included_outputs is not None:
         overage_outputs = max(output_total - included_outputs, 0)
     overage_cost_usd = round(overage_outputs * 0.01, 2)
+
+    from app.services.research_lookup_metering import (
+        OVERAGE_USD_PER_LOOKUP,
+        included_lookups_for_plan_code,
+    )
+
+    included_research = included_lookups_for_plan_code(tier)
+    research_total = totals["research_lookups"]
+    overage_research = max(research_total - included_research, 0)
+    overage_research_usd = round(overage_research * OVERAGE_USD_PER_LOOKUP, 2)
+
     return {
         "period_start": month_start,
         "tier": tier,
@@ -732,6 +743,55 @@ async def get_billing_usage_route(
         "included_outputs": included_outputs,
         "overage_outputs": overage_outputs,
         "overage_cost_usd": overage_cost_usd,
+        "included_research_lookups": included_research,
+        "overage_research_lookups": overage_research,
+        "overage_research_cost_usd": overage_research_usd,
+    }
+
+
+@router.get("/grounding-volume")
+async def get_grounding_volume_route(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Platform + org grounding lookup volume vs Google 10k/day free tier (gate 2 live monitor)."""
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    from app.services.grounding_volume_monitor import get_platform_grounding_status
+
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    platform = get_platform_grounding_status(client, settings)
+    org_daily = 0
+    try:
+        from datetime import datetime, timezone
+
+        today = datetime.now(timezone.utc).date().isoformat()
+        rows = (
+            client.table("org_research_lookup_daily")
+            .select("lookup_count")
+            .eq("org_id", org_id)
+            .eq("usage_date", today)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if rows:
+            org_daily = int(rows[0].get("lookup_count") or 0)
+    except Exception:  # noqa: BLE001
+        pass
+    from app.services.research_lookup_metering import included_lookups_for_plan_code
+    from app.billing.service import get_plan_for_org
+
+    plan = get_plan_for_org(client, org_id)
+    tier = str(plan.get("code") or "node")
+    return {
+        **platform,
+        "org_id": org_id,
+        "org_lookup_count_today": org_daily,
+        "included_research_lookups_per_month": included_lookups_for_plan_code(tier),
+        "tier": tier,
     }
 
 

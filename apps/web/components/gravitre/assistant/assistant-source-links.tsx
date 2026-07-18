@@ -94,8 +94,15 @@ export function AssistantSourceLinks({ invocations }: { invocations: ToolInvocat
         add("Workflow runs", "/workflows")
         break
       case "searchWeb":
-        add("Web sources", "#why-this-answer")
+      case "web_search": {
+        const found = knowledgeCitations(invocation.result)
+        if (found.length) {
+          citations.push(...found)
+        } else {
+          add("Web sources", "#why-this-answer")
+        }
         break
+      }
       default:
         break
     }

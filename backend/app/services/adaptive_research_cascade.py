@@ -38,9 +38,11 @@ ADAPTIVE_RESEARCH_LEAD = (
 
 def _internet_research_allowed(settings: Settings) -> bool:
     """Governance gate: internet research stays off until explicitly enabled."""
-    enabled_flag = bool(getattr(settings, "internet_research_enabled", False))
-    configured = bool((getattr(settings, "tavily_api_key", None) or "").strip())
-    return enabled_flag and configured
+    if not bool(getattr(settings, "internet_research_enabled", False)):
+        return False
+    from app.services.web_research import is_web_research_provider_configured
+
+    return is_web_research_provider_configured(settings)
 
 
 def assess_internal_retrieval_thinness(
@@ -174,7 +176,7 @@ def normalize_internet_results(payload: dict[str, Any]) -> list[dict[str, Any]]:
                 "title": title,
                 "url": url,
                 "kind": "internet",
-                "metadata": {"provider": "tavily", "url": url},
+                "metadata": {"provider": payload.get("provider") or "tavily", "url": url},
             }
         )
     return rows
@@ -209,12 +211,13 @@ def attach_internet_research_to_cascade(
     """Merge internet stage outcome into research_cascade metadata."""
     updated = dict(cascade)
     result_count = int((payload or {}).get("totalResults") or 0)
+    provider = (payload or {}).get("provider") if payload else None
     updated["internet_research"] = {
         "ran": ran,
         "skipped_reason": skipped_reason,
         "result_count": result_count,
         "error": (payload or {}).get("error"),
-        "provider": "tavily" if ran else None,
+        "provider": provider if ran else None,
     }
     return updated
 

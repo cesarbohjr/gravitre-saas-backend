@@ -133,6 +133,11 @@ async def test_unified_retrieval_internet_stage_when_scope_enabled():
         rag_top_k=5,
         internet_research_enabled=True,
         tavily_api_key="tvly-test",
+        gemini_api_key="",
+        web_research_provider="tavily",
+        web_research_fallback_tavily=True,
+        google_genai_use_vertexai=False,
+        google_cloud_project="",
         domain_adaptive_learning_enabled=False,
     )
     rag = MagicMock()

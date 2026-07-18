@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.config import Settings
-from app.services.web_research import TavilyNotConfiguredError, search_web
+from app.services.web_research import TavilyNotConfiguredError, WebResearchNotConfiguredError, search_web
 
 
 def _settings(**overrides) -> Settings:
@@ -23,9 +23,9 @@ def _settings(**overrides) -> Settings:
 
 
 @pytest.mark.asyncio
-async def test_search_web_requires_api_key():
-    with pytest.raises(TavilyNotConfiguredError):
-        await search_web("latest AI news", settings=_settings())
+async def test_search_web_requires_api_key_when_no_provider():
+    with pytest.raises(WebResearchNotConfiguredError):
+        await search_web("latest AI news", settings=_settings(), org_id=None, client=None)
 
 
 @pytest.mark.asyncio

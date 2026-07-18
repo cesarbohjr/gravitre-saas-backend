@@ -21,7 +21,16 @@ _WEB_TOOL_NAMES = frozenset({"searchWeb", "search_web", "web_search"})
 
 
 def is_web_search_configured(settings: Settings) -> bool:
-    return bool((getattr(settings, "tavily_api_key", None) or "").strip())
+    """True when a web research provider is configured (respects governance when flag off for cascade)."""
+    from app.services.web_research import is_web_research_provider_configured
+
+    return is_web_research_provider_configured(settings)
+
+
+def is_internet_research_governed_and_available(settings: Settings) -> bool:
+    from app.services.adaptive_research_cascade import _internet_research_allowed
+
+    return _internet_research_allowed(settings)
 
 
 def rag_sources_effectively_empty(rag_sources: list[dict[str, Any]] | None) -> bool:
@@ -83,11 +92,13 @@ def build_bounded_unavailable_answer(
             lines.append("Web search ran but did not return usable results.")
         else:
             lines.append(
-                "Web search is not configured in this environment (set TAVILY_API_KEY on the backend)."
+                "Web search is not configured in this environment (enable INTERNET_RESEARCH_ENABLED "
+                "and configure Google grounding or TAVILY_API_KEY on the backend)."
             )
     elif not web_configured:
         lines.append(
-            "Web search is not configured in this environment (set TAVILY_API_KEY on the backend)."
+            "Web search is not configured in this environment (enable INTERNET_RESEARCH_ENABLED "
+            "and configure Google grounding or TAVILY_API_KEY on the backend)."
         )
 
     if not _real_connectors(connected_integrations):

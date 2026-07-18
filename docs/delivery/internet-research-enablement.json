@@ -1,0 +1,37 @@
+{
+  "record": "internet_research_enablement",
+  "updated_at": "2026-07-18",
+  "status": "SHIPPED_PENDING_LIVE_VERIFICATION",
+  "vendor": {
+    "primary": "google_grounding",
+    "fallback": "tavily_when_WEB_RESEARCH_FALLBACK_TAVILY=true",
+    "rationale": "Governance closed on Grounded Generation; Tavily retained as optional fallback only"
+  },
+  "env_to_enable": {
+    "INTERNET_RESEARCH_ENABLED": "true",
+    "WEB_RESEARCH_PROVIDER": "google",
+    "GEMINI_API_KEY": "required_unless_vertex",
+    "GOOGLE_GENAI_USE_VERTEXAI": "optional_true_with_GOOGLE_CLOUD_PROJECT",
+    "WEB_RESEARCH_FALLBACK_TAVILY": "true_default"
+  },
+  "rollback": "Set INTERNET_RESEARCH_ENABLED=false and redeploy — immediate off-switch",
+  "metering": {
+    "customer_unit": "research_lookups",
+    "included_per_month": {"node": 10, "control": 60, "command": 200},
+    "overage_usd_per_lookup": 0.35,
+    "internal_cogs": "app/services/research_lookup_metering.py estimate_internal_cogs_usd",
+    "billing_api": "GET /api/settings/billing-usage includes research_lookups"
+  },
+  "volume_monitor": {
+    "api": "GET /api/settings/grounding-volume",
+    "free_tier_daily": 10000,
+    "alert_threshold_pct": 75,
+    "tables": ["platform_grounding_daily", "org_research_lookup_daily"]
+  },
+  "verification": {
+    "canonical": "scripts/smoke-milestone1-live-reverify.py",
+    "internet_smoke": "scripts/smoke-internet-research-live.py",
+    "live_evidence_required": true
+  },
+  "migration": "supabase/migrations/20260718120000_internet_research_metering.sql"
+}

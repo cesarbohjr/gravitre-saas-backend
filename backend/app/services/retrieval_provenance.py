@@ -121,6 +121,7 @@ def summarize_retrieval_effectiveness(
                 "assignment_id": prov.get("assignment_id"),
                 "score": row.get("score"),
                 "match_tier": prov.get("match_tier"),
+                "url": row.get("url") or (row.get("metadata") or {}).get("url"),
             }
         )
         aid = prov.get("assignment_id")
