@@ -44,10 +44,10 @@ import { MARKETING_COPY } from "@/lib/marketing-copy"
 import { SHOW_MARKETING_TESTIMONIALS } from "@/lib/marketing-flags"
 import type { FeaturesSectionId } from "@/lib/features-nav"
 
-function showSection(active: FeaturesSectionId | "all", ...ids: FeaturesSectionId[]) {
+ function showSection(active: FeaturesSectionId | "all", ...ids: (FeaturesSectionId | "all")[]) {
   if (active === "all") return true
   return ids.includes(active)
-}
+  }
 
 // Bento card component - Light theme
 function BentoCard({ 
