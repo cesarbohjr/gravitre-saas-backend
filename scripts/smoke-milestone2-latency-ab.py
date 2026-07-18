@@ -42,6 +42,7 @@ from scripts.milestone2_perf_common import (  # noqa: E402
     fetch_health,
     run_latency_probe,
 )
+from scripts.railway_prod_deploy import wait_for_health  # noqa: E402
 
 
 def _load_env() -> dict[str, str]:
@@ -149,6 +150,83 @@ def run_compare(path_a: Path, path_b: Path) -> dict[str, Any]:
     }
 
 
+def _finalize_ab_report(
+    report: dict[str, Any],
+    *,
+    pre_probe: dict[str, Any],
+    post_probe: dict[str, Any],
+) -> dict[str, Any]:
+    delta = compare_latency(
+        pre_probe.get("latency_summary") or {},
+        post_probe.get("latency_summary") or {},
+    )
+    report["delta"] = delta
+    report["before_latency"] = pre_probe.get("latency_summary")
+    report["after_latency"] = post_probe.get("latency_summary")
+    report["before_git_sha"] = pre_probe.get("health_git_sha")
+    report["after_git_sha"] = post_probe.get("health_git_sha")
+    report["finished_at"] = datetime.now(timezone.utc).isoformat()
+    report["verdict"] = "PASS" if delta.get("latency_guardrail_pass") else "FAIL"
+    report["milestone2_latency_guardrail"] = delta.get("direction")
+    return report
+
+
+def run_manual_wait_ab(args: argparse.Namespace) -> dict[str, Any]:
+    """Poll prod /health while operator briefly rollbacks/restores via Railway UI."""
+    base_url = (args.base_url or PROD_DEFAULT).rstrip("/")
+    started = datetime.now(timezone.utc).isoformat()
+    tip_health = fetch_health(base_url)
+    tip_sha = str(tip_health.get("git_sha") or "")
+
+    report: dict[str, Any] = {
+        "probe": "milestone2_latency_manual_wait_ab",
+        "started_at": started,
+        "base_url": base_url,
+        "pre_rm_sha_target": PRE_RM_SHA,
+        "rm_merge_commit": RM_MERGE_COMMIT,
+        "tip_sha_at_start": tip_sha,
+        "mode": "manual_railway_rollback",
+        "phases": {},
+    }
+
+    print(
+        "\n=== MANUAL ROLLBACK REQUIRED ===\n"
+        f"In Railway dashboard: deploy gravitre-saas-backend @ commit {PRE_RM_SHA}\n"
+        "(Project → service → Deployments → redeploy that SHA, or API with project token.)\n"
+        f"CI will poll /health until git_sha starts with {PRE_RM_SHA[:8]} (up to 25 min).\n",
+        flush=True,
+    )
+    report["phases"]["wait_pre_rm"] = wait_for_health(
+        f"{base_url}/health",
+        sha_prefix=PRE_RM_SHA[:8],
+        timeout_s=1500,
+        poll_s=15,
+    )
+
+    print("phase: probe pre-RM", flush=True)
+    args_pre = argparse.Namespace(**{**vars(args), "expected_sha_prefix": PRE_RM_SHA[:8], "tag": None})
+    pre_probe = run_probe_only(args_pre)
+    report["phases"]["probe_pre_rm"] = pre_probe
+
+    print(
+        "\n=== RESTORE PROD TIP NOW ===\n"
+        "Redeploy latest main on Railway (Deploy Latest Commit / restore current tip).\n"
+        f"CI will poll until git_sha is no longer {PRE_RM_SHA[:8]} prefix (up to 25 min).\n",
+        flush=True,
+    )
+    report["phases"]["wait_tip_restore"] = wait_for_health(
+        f"{base_url}/health",
+        exclude_sha_prefix=PRE_RM_SHA[:8],
+        timeout_s=1500,
+        poll_s=15,
+    )
+
+    print("phase: probe post-RM (current tip)", flush=True)
+    post_probe = run_probe_only(args)
+    report["phases"]["probe_post_rm"] = post_probe
+    return _finalize_ab_report(report, pre_probe=pre_probe, post_probe=post_probe)
+
+
 def run_full_ab(args: argparse.Namespace) -> dict[str, Any]:
     if not __import__("os").environ.get("RAILWAY_TOKEN"):
         raise SystemExit("RAILWAY_TOKEN required for --full-ab")
@@ -182,20 +260,7 @@ def run_full_ab(args: argparse.Namespace) -> dict[str, Any]:
     print("phase: probe post-RM (current tip)", flush=True)
     post_probe = run_probe_only(args)
     report["phases"]["probe_post_rm"] = post_probe
-
-    delta = compare_latency(
-        pre_probe.get("latency_summary") or {},
-        post_probe.get("latency_summary") or {},
-    )
-    report["delta"] = delta
-    report["before_latency"] = pre_probe.get("latency_summary")
-    report["after_latency"] = post_probe.get("latency_summary")
-    report["before_git_sha"] = pre_probe.get("health_git_sha")
-    report["after_git_sha"] = post_probe.get("health_git_sha")
-    report["finished_at"] = datetime.now(timezone.utc).isoformat()
-    report["verdict"] = "PASS" if delta.get("latency_guardrail_pass") else "FAIL"
-    report["milestone2_latency_guardrail"] = delta.get("direction")
-    return report
+    return _finalize_ab_report(report, pre_probe=pre_probe, post_probe=post_probe)
 
 
 def main() -> int:
@@ -207,6 +272,11 @@ def main() -> int:
     parser.add_argument("--include-metrics", action="store_true")
     parser.add_argument("--probe-only", action="store_true")
     parser.add_argument("--full-ab", action="store_true")
+    parser.add_argument(
+        "--manual-wait-ab",
+        action="store_true",
+        help="Poll /health while operator rollbacks/restores via Railway UI (no RAILWAY_TOKEN)",
+    )
     parser.add_argument("--compare", nargs=2, metavar=("BEFORE_JSON", "AFTER_JSON"))
     parser.add_argument(
         "--json",
@@ -219,6 +289,8 @@ def main() -> int:
         report = run_compare(Path(args.compare[0]), Path(args.compare[1]))
     elif args.full_ab:
         report = run_full_ab(args)
+    elif args.manual_wait_ab:
+        report = run_manual_wait_ab(args)
     else:
         report = run_probe_only(args)
 
