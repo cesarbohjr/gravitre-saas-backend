@@ -33,10 +33,9 @@ function authorInitials(name: string): string {
 function PostCard({ post, index }: { post: BlogCard; index: number }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ delay: index * 0.08 }}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.06, duration: 0.35 }}
     >
       <Link
         href={`/blog/${post.slug}`}
@@ -47,11 +46,15 @@ function PostCard({ post, index }: { post: BlogCard; index: number }) {
           {post.title}
         </h3>
         <p className="mt-2 line-clamp-2 flex-1 text-sm text-zinc-500">{post.excerpt}</p>
-        <div className="mt-4 flex items-center justify-between">
+        <div className="mt-4 flex items-center justify-between gap-2">
           <span className="text-xs text-zinc-500">{post.author.name}</span>
-          <span className="flex items-center gap-1 text-xs text-zinc-400">
-            <Clock className="h-3 w-3" />
-            {post.readTime}
+          <span className="flex shrink-0 items-center gap-2 text-xs text-zinc-400">
+            <span>{post.displayDate}</span>
+            <span aria-hidden>·</span>
+            <span className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {post.readTime}
+            </span>
           </span>
         </div>
       </Link>

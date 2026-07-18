@@ -200,8 +200,6 @@ const aiWontTakeYourJob: BlogPost = {
   ),
 }
 
-export const FEATURED_BLOG_SLUG = aiWontTakeYourJob.slug
-
 /** Placeholder entries removed from index — no published article yet. */
 export const BLOG_LISTING_EXCLUDED_SLUGS = new Set([
   "case-study-acme-corp",
@@ -219,13 +217,14 @@ export const blogPosts: BlogPost[] = [
 ]
 
 export function getFeaturedBlogPost(): BlogPost {
-  return aiWontTakeYourJob
+  return [...blogPosts].sort((a, b) => b.datePublished.localeCompare(a.datePublished))[0]
 }
 
 export function getBlogListingPosts(): BlogPost[] {
+  const featuredSlug = getFeaturedBlogPost().slug
   return blogPosts
     .filter(
-      (post) => post.slug !== FEATURED_BLOG_SLUG && !BLOG_LISTING_EXCLUDED_SLUGS.has(post.slug),
+      (post) => post.slug !== featuredSlug && !BLOG_LISTING_EXCLUDED_SLUGS.has(post.slug),
     )
     .sort((a, b) => b.datePublished.localeCompare(a.datePublished))
 }
