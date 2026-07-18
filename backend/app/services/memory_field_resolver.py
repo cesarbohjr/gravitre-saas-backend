@@ -1,15 +1,16 @@
-"""STA-316 — WorkflowFieldSpec-backed Memory resolver (Option B).
+"""Sensitive-field mention resolver (STA-316 opaque Memory + STA-320 role heuristic).
 
-Runs only when:
-- org memoryEntityEmbeddings.enabled is true
-- field.sensitive is true
-- connector allowlisted (if configured)
-Falls back to rule-based / clarification; never embeds raw PII.
+Resolve order for sensitive WorkflowFieldSpec mentions:
+1. Exact/normalized durable alias (`org_entity_resolution_records`) — no Memory opt-in
+2. STA-320 Option B role/title cue heuristic (`entity_type=role`) — no Memory opt-in
+3. STA-316 opaque-token Memory search — only when memoryEntityEmbeddings opted in
 
-Capability caveat (do not misread as fuzzy disambiguation):
+Naming note: STA-316 “Option B” meant opaque-token embeddings. STA-320 “Option B”
+means the non-PII role/title heuristic. They are unrelated product choices.
+
+Capability caveat (do not misread as fuzzy person-name disambiguation):
 opaque-alias vectors match previously indexed *normalized* mentions via exact
 HMAC tokens (e.g. "sarah"↔"sarah"). They do NOT fuzzy-resolve "Sarah"↔"Sarah Smith".
-Fuzzy / multi-alias expansion stays on rule-based + org_entity_resolution_records.
 """
 from __future__ import annotations
 
@@ -24,6 +25,10 @@ from app.services.memory_entity_embeddings_service import search_memory_by_menti
 from app.services.memory_entity_embeddings_settings import (
     load_memory_entity_embeddings_settings,
     memory_embeddings_enabled_for,
+)
+from app.services.memory_role_title_heuristic import (
+    extract_role_title_cues,
+    match_by_role_cues,
 )
 
 logger = get_logger(__name__)
@@ -48,22 +53,18 @@ async def resolve_sensitive_field_mention(
     entity_type: str = "entity",
     primary_arg_key: str | None = None,
 ) -> MemoryResolveResult:
-    """Resolve a mention for a sensitive WorkflowFieldSpec (exact HMAC alias match)."""
+    """Resolve a sensitive-field mention: exact → role heuristic → optional Memory."""
     if not field.sensitive:
         return MemoryResolveResult(status="skipped", reason="field_not_sensitive")
 
     if getattr(settings, "disable_ai", False):
         return MemoryResolveResult(status="skipped", reason="disable_ai")
 
-    policy = load_memory_entity_embeddings_settings(client, org_id)
-    if not memory_embeddings_enabled_for(policy, integration=integration):
-        return MemoryResolveResult(status="skipped", reason="org_opt_in_off")
-
     hint = (mention or "").strip()
     if not hint:
         return MemoryResolveResult(status="miss", reason="empty_mention")
 
-    # 1) Exact/normalized durable alias (no embedding).
+    # 1) Exact/normalized durable alias (no embedding, no Memory opt-in).
     hits = lookup_resolutions(
         client,
         org_id,
@@ -85,7 +86,34 @@ async def resolve_sensitive_field_mention(
             reason="entity_resolution_ambiguous",
         )
 
-    # 2) Opaque-token Memory search (HMAC(redacted mention) only).
+    # 2) STA-320 Option B — role/title cues (no embedding, no Memory opt-in).
+    cues = extract_role_title_cues(hint)
+    if cues:
+        role = match_by_role_cues(
+            client,
+            org_id=org_id,
+            integration=integration,
+            cues=cues,
+        )
+        if role.status == "bound":
+            return MemoryResolveResult(
+                status="bound",
+                entity_id=role.entity_id,
+                candidates=role.candidates,
+                reason=role.reason,
+            )
+        if role.status == "ambiguous":
+            return MemoryResolveResult(
+                status="ambiguous",
+                candidates=role.candidates,
+                reason=role.reason,
+            )
+
+    # 3) Opaque-token Memory search — STA-316 opt-in only.
+    policy = load_memory_entity_embeddings_settings(client, org_id)
+    if not memory_embeddings_enabled_for(policy, integration=integration):
+        return MemoryResolveResult(status="miss", reason="memory_opt_in_off")
+
     rows = await search_memory_by_mention(
         client,
         settings,

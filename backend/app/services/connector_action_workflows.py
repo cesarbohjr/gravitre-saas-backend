@@ -252,6 +252,7 @@ async def _try_memory_assignee_resolve(
         updated_args["assignee"] = result.entity_id
         try:
             from app.services.entity_resolution_store import upsert_resolution
+            from app.services.memory_role_title_heuristic import learn_role_aliases
 
             upsert_resolution(
                 client,
@@ -260,8 +261,18 @@ async def _try_memory_assignee_resolve(
                 entity_type="employee",
                 entity_id=result.entity_id,
                 integration=plan.integration or "",
-                source="memory_opaque",
+                source="memory_opaque"
+                if result.reason == "memory_opaque_match"
+                else result.reason or "memory_resolve",
                 confidence=0.85,
+            )
+            # STA-320 Option B: persist role cues so next "the AE" binds without Memory.
+            learn_role_aliases(
+                client,
+                org_id=org_id,
+                integration=plan.integration or "",
+                entity_id=result.entity_id,
+                mention=hint,
             )
         except Exception:  # noqa: BLE001
             pass
@@ -326,6 +337,7 @@ async def _resolve_asana_assignee(
         updated_args["assignee"] = matches[0][1]
         try:
             from app.services.entity_resolution_store import upsert_resolution
+            from app.services.memory_role_title_heuristic import learn_role_aliases
 
             upsert_resolution(
                 client,
@@ -348,6 +360,15 @@ async def _resolve_asana_assignee(
                     source="disambiguation",
                     confidence=0.9,
                 )
+            # STA-320 Option B: if hint was a role cue, learn role→entity aliases.
+            learn_role_aliases(
+                client,
+                org_id=org_id,
+                integration="asana",
+                entity_id=matches[0][1],
+                mention=hint,
+                confidence=0.9,
+            )
         except Exception:  # noqa: BLE001
             pass
         # Best-effort: index opaque tokens when Memory opt-in is enabled.
