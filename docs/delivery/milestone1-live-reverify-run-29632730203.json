@@ -1,0 +1,3103 @@
+{
+  "probe": "milestone1_live_reverify",
+  "started_at": "2026-07-18T05:45:48.889582+00:00",
+  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "health_at_start": {
+    "status": "ok",
+    "timestamp": "2026-07-18T05:45:49.101216+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "9d1ae05105f066b07bda00d575204afb4cd91f95",
+    "ai_disabled": false,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "min_sha_prefix": "4eb6adbe",
+  "checks": {
+    "react_write_gate": {
+      "pass": true,
+      "exit_code": 0,
+      "artifact": "docs/delivery/react-write-live-milestone1.json",
+      "summary": {
+        "claim": null,
+        "conversation_id": "daa0767c-8646-4c73-aff4-2091c8b94da6",
+        "result_url": "https://app.apollo.io/#/lists/6a5b0c8ec74d1d00207af2e8",
+        "audit_action": null
+      },
+      "tail_output": "_fkey\"', 'code': '23503', 'hint': None, 'details': 'Key (user_id)=(22255b58-719c-4496-9e6f-dfb620f5052b) is not present in table \"users\".'}\n2026-07-18 05:45:56,380 [WARNING] app.workflows.audit request_id= user_id= org_id= audit_events insert failed action=tool.invoke.completed: {'message': 'insert or update on table \"audit_events\" violates foreign key constraint \"audit_events_actor_id_fkey\"', 'code': '23503', 'hint': None, 'details': 'Key (actor_id)=(22255b58-719c-4496-9e6f-dfb620f5052b) is not present in table \"users\".'}\n2026-07-18 05:45:56,895 [WARNING] app.services.notification_emitter request_id= user_id= org_id= notification insert failed org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea user_id=22255b58-719c-4496-9e6f-dfb620f5052b event_type=task_completed: {'message': 'insert or update on table \"notifications\" violates foreign key constraint \"notifications_user_id_fkey\"', 'code': '23503', 'hint': None, 'details': 'Key (user_id)=(22255b58-719c-4496-9e6f-dfb620f5052b) is not present in table \"users\".'}\n2026-07-18 05:45:58,034 [WARNING] app.services.clickhouse_service request_id= user_id= org_id= CLICKHOUSE_HOST not set \u2014 analytics events will not be written to ClickHouse. Dashboards fall back to Postgres.\nEXECUTION {\n  \"at\": \"2026-07-18T05:45:58.059693+00:00\",\n  \"latency_ms\": 4101,\n  \"success\": true,\n  \"error_code\": null,\n  \"entity_id\": \"30f734a2-dbdb-45aa-9112-19c6d604d451\",\n  \"result_url\": \"https://app.apollo.io/#/lists/6a5b0c8ec74d1d00207af2e8\",\n  \"body\": \"Found existing contact list \\\"gravitre-react-gate-probe-20260718\\\" (id: 6a5b0c8ec74d1d00207af2e8).\",\n  \"integration\": \"apollo\",\n  \"task_label\": \"Create contact list\"\n}\nWROTE docs/delivery/react-write-live-milestone1.json\nPASS react write chain completed\n/home/runner/work/gravitre-saas-backend/gravitre-saas-backend/backend/app/billing/service.py:12: StarletteDeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.\n  from app.core.errors import error_detail\n"
+    },
+    "canvas_write_authority": {
+      "pass": true,
+      "exit_code": 0,
+      "artifact": "docs/delivery/canvas-write-governance-milestone1.json",
+      "summary": {
+        "claim": "canvas_write_governance_step1",
+        "test_a_blocked": null,
+        "test_b_result_url": null
+      },
+      "tail_output": "{\n  \"verdict\": \"ALTERNATE_BLOCKER_BE20_ALWAYS\",\n  \"severity\": \"lower_but_unify\",\n  \"test_a_status\": \"pending_approval\",\n  \"test_b_final\": \"pending_approval\",\n  \"write_unblocked\": false,\n  \"completed_audit_ids\": [],\n  \"out\": \"docs/delivery/canvas-write-governance-milestone1.json\"\n}\n"
+    },
+    "wave67_spotcheck": {
+      "pass": true,
+      "exit_code": 0,
+      "artifact": "docs/delivery/wave67-spotcheck-milestone1.json",
+      "summary": {
+        "conversation_id": "b296e64b-6b55-4f79-9f6b-3041752a7c4d",
+        "claims": {
+          "1_plan_before_tools": {
+            "status": "PASS",
+            "evidence": {
+              "first_plan_sse": {
+                "i": 5,
+                "type": "data-intelligence",
+                "answerExplanation": "Plan ready \u2014 running tools",
+                "dialogueMode": "guide",
+                "has_current_plan": false,
+                "has_execution_result": false,
+                "has_pending_task": false,
+                "wall_start": "2026-07-18T05:46:18.169682+00:00"
+              },
+              "first_tool_start_sse": {
+                "i": 6,
+                "type": "tool-input-available",
+                "toolName": "searchKnowledgeBase"
+              },
+              "plan_before_tools": true,
+              "plan_only_in_final": false,
+              "wall_start": "2026-07-18T05:46:18.169682+00:00"
+            }
+          },
+          "2_tool_chips_error_code": {
+            "status": "PASS",
+            "evidence": {
+              "success_chip": {
+                "i": 9,
+                "type": "tool-output-available",
+                "toolName": null,
+                "errorCode": null,
+                "success": true,
+                "error": ""
+              },
+              "failure_chip": {
+                "i": 5,
+                "type": "tool-output-available",
+                "toolName": null,
+                "errorCode": "auth_expired",
+                "success": false,
+                "error": "Authentication expired for Slack. Reconnect it at /connectors, then try again."
+              },
+              "success_before_text": true,
+              "slack_wall_start": "2026-07-18T05:46:36.086909+00:00"
+            }
+          },
+          "3_approval_panel_result_url": {
+            "status": "PASS",
+            "evidence": {
+              "react_gate": null,
+              "approved_execution": {
+                "user_approval_at": "2026-07-18T05:47:09.136034+00:00",
+                "completed_at": "2026-07-18T05:47:16.296015+00:00",
+                "success": true,
+                "error_code": null,
+                "result_url": "https://app.apollo.io/#/lists/6a5af7675fa81d00106f7d97",
+                "assumption_notes": null,
+                "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260718\" (id: 6a5af7675fa81d00106f7d97).",
+                "via": "chat_yes"
+              },
+              "result_url_is_deep_link": true,
+              "not_connector_conflation": true
+            }
+          },
+          "4_assumption_notes_ui": {
+            "status": "PASS",
+            "evidence": {
+              "omit_name_pending": true,
+              "claim4_execution": {
+                "i": 7,
+                "success": true,
+                "result_url": "https://app.apollo.io/#/lists/6a4d6a98461b000010c5ae7b",
+                "error_code": null,
+                "assumption_notes": [
+                  "Assumed name=MSP Prospects (from message_or_default_hint)"
+                ],
+                "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
+              },
+              "execution_result_assumption_notes": [
+                "Assumed name=MSP Prospects (from message_or_default_hint)"
+              ],
+              "sse_execution_results_with_notes": [
+                {
+                  "i": 3,
+                  "success": true,
+                  "result_url": "https://app.apollo.io/#/lists/6a4d6a98461b000010c5ae7b",
+                  "error_code": null,
+                  "assumption_notes": [
+                    "Assumed name=MSP Prospects (from message_or_default_hint)"
+                  ],
+                  "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
+                },
+                {
+                  "i": 7,
+                  "success": true,
+                  "result_url": "https://app.apollo.io/#/lists/6a4d6a98461b000010c5ae7b",
+                  "error_code": null,
+                  "assumption_notes": [
+                    "Assumed name=MSP Prospects (from message_or_default_hint)"
+                  ],
+                  "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
+                }
+              ],
+              "note": "PASS requires omit-name turn \u2192 inferred plan and/or assumption_notes on prod SSE. PARTIAL if only non-causal notes or gate without notes."
+            }
+          }
+        },
+        "approved_result_url": "https://app.apollo.io/#/lists/6a5af7675fa81d00106f7d97"
+      },
+      "tail_output": "rror_code\": null,\n        \"result_url\": \"https://app.apollo.io/#/lists/6a5af7675fa81d00106f7d97\",\n        \"assumption_notes\": null,\n        \"body\": \"Found existing contact list \\\"gravitre-wave67-spotcheck-20260718\\\" (id: 6a5af7675fa81d00106f7d97).\",\n        \"via\": \"chat_yes\"\n      },\n      \"result_url_is_deep_link\": true,\n      \"not_connector_conflation\": true\n    }\n  },\n  \"4_assumption_notes_ui\": {\n    \"status\": \"PASS\",\n    \"evidence\": {\n      \"omit_name_pending\": true,\n      \"claim4_execution\": {\n        \"i\": 7,\n        \"success\": true,\n        \"result_url\": \"https://app.apollo.io/#/lists/6a4d6a98461b000010c5ae7b\",\n        \"error_code\": null,\n        \"assumption_notes\": [\n          \"Assumed name=MSP Prospects (from message_or_default_hint)\"\n        ],\n        \"body\": \"Found existing contact list \\\"MSP Prospects\\\" (id: 6a4d6a98461b000010c5ae7b).\"\n      },\n      \"execution_result_assumption_notes\": [\n        \"Assumed name=MSP Prospects (from message_or_default_hint)\"\n      ],\n      \"sse_execution_results_with_notes\": [\n        {\n          \"i\": 3,\n          \"success\": true,\n          \"result_url\": \"https://app.apollo.io/#/lists/6a4d6a98461b000010c5ae7b\",\n          \"error_code\": null,\n          \"assumption_notes\": [\n            \"Assumed name=MSP Prospects (from message_or_default_hint)\"\n          ],\n          \"body\": \"Found existing contact list \\\"MSP Prospects\\\" (id: 6a4d6a98461b000010c5ae7b).\"\n        },\n        {\n          \"i\": 7,\n          \"success\": true,\n          \"result_url\": \"https://app.apollo.io/#/lists/6a4d6a98461b000010c5ae7b\",\n          \"error_code\": null,\n          \"assumption_notes\": [\n            \"Assumed name=MSP Prospects (from message_or_default_hint)\"\n          ],\n          \"body\": \"Found existing contact list \\\"MSP Prospects\\\" (id: 6a4d6a98461b000010c5ae7b).\"\n        }\n      ],\n      \"note\": \"PASS requires omit-name turn \\u2192 inferred plan and/or assumption_notes on prod SSE. PARTIAL if only non-causal notes or gate without notes.\"\n    }\n  }\n}\n"
+    },
+    "routing_wave_abcd": {
+      "pass": true,
+      "exit_code": 0,
+      "artifact": "docs/delivery/routing-wave-milestone1-live.json",
+      "summary": {
+        "A": true,
+        "B": true,
+        "C": true,
+        "D_escalation_count": 0,
+        "prod_sha": "9d1ae05105f066b07bda00d575204afb4cd91f95",
+        "verdict": "PASS",
+        "evidence": {
+          "A_effectiveMode": "fast",
+          "A_routingTier": "simple",
+          "A_conversation_id": "57ec14a4-655b-4512-ae58-ca08b8f05722",
+          "B_routingTier": "multi_step",
+          "B_tiers_seen": [
+            "multi_step",
+            "multi_step",
+            "multi_step",
+            "multi_step",
+            "multi_step"
+          ],
+          "B_pending": true,
+          "B_conversation_id": "d6908989-0db7-430d-ac5d-319241b29dde",
+          "C_routingTier": "research",
+          "C_tiers_seen": [
+            "research",
+            "research",
+            "research"
+          ],
+          "C_conversation_id": "b5fe6aa9-da18-4ee0-b82a-530afe946afa"
+        }
+      },
+      "tail_output": "{\n  \"A\": true,\n  \"B\": true,\n  \"C\": true,\n  \"D_escalation_count\": 0,\n  \"prod_sha\": \"9d1ae05105f066b07bda00d575204afb4cd91f95\",\n  \"verdict\": \"PASS\",\n  \"evidence\": {\n    \"A_effectiveMode\": \"fast\",\n    \"A_routingTier\": \"simple\",\n    \"A_conversation_id\": \"57ec14a4-655b-4512-ae58-ca08b8f05722\",\n    \"B_routingTier\": \"multi_step\",\n    \"B_tiers_seen\": [\n      \"multi_step\",\n      \"multi_step\",\n      \"multi_step\",\n      \"multi_step\",\n      \"multi_step\"\n    ],\n    \"B_pending\": true,\n    \"B_conversation_id\": \"d6908989-0db7-430d-ac5d-319241b29dde\",\n    \"C_routingTier\": \"research\",\n    \"C_tiers_seen\": [\n      \"research\",\n      \"research\",\n      \"research\"\n    ],\n    \"C_conversation_id\": \"b5fe6aa9-da18-4ee0-b82a-530afe946afa\"\n  }\n}\n{\n  \"verdict\": \"PASS\",\n  \"prod_sha\": \"9d1ae05105f066b07bda00d575204afb4cd91f95\",\n  \"wrote\": \"/home/runner/work/gravitre-saas-backend/gravitre-saas-backend/docs/delivery/routing-wave-milestone1-live.json\"\n}\nWROTE /home/runner/work/gravitre-saas-backend/gravitre-saas-backend/docs/delivery/routing-wave-milestone1-live.json\n"
+    },
+    "retrieval_ab": {
+      "pass": true,
+      "exit_code": 0,
+      "artifact": "docs/delivery/retrieval-ab-live-latest.json",
+      "summary": {
+        "git_sha": "9d1ae05105f066b07bda00d575204afb4cd91f95",
+        "queries": {
+          "A_fast_connectors": true,
+          "B_write_intent_gate": true,
+          "C_org_kb": true,
+          "D_thin_broaden": true,
+          "E_fast_honesty": true
+        }
+      },
+      "tail_output": "status\": \"completed\",\n              \"detail\": null\n            },\n            {\n              \"stage\": \"connectors\",\n              \"label\": \"Connectors\",\n              \"status\": \"completed\",\n              \"detail\": null\n            },\n            {\n              \"stage\": \"reasoning\",\n              \"label\": \"Reasoning\",\n              \"status\": \"pending\",\n              \"detail\": null\n            }\n          ],\n          \"progress_steps\": [\n            \"Conversation Memory complete\",\n            \"Internal Rag complete\",\n            \"Knowledge Graph complete\",\n            \"Connectors complete\",\n            \"Reasoning\\u2026\"\n          ],\n          \"research_manager\": true,\n          \"cascade_stopped_at\": null,\n          \"confidence_sufficient\": false,\n          \"skip_graph\": false,\n          \"skip_external\": false,\n          \"planned_stages\": [\n            \"conversation_memory\",\n            \"internal_rag\",\n            \"knowledge_graph\",\n            \"connectors\",\n            \"reasoning\"\n          ]\n        },\n        \"text_head\": \"I\\u2019m in retrieval-ab E mode.\",\n        \"event_types\": [\n          \"data-intelligence\",\n          \"data-suggestions\",\n          \"finish\",\n          \"finish-step\",\n          \"start\",\n          \"start-step\",\n          \"text-delta\",\n          \"text-end\",\n          \"text-start\",\n          \"tool-input-available\",\n          \"tool-output-available\"\n        ]\n      },\n      \"reasons\": [],\n      \"message\": \"Reply with one sentence: what mode are you in? (retrieval-ab E 202607180548)\"\n    }\n  },\n  \"pass\": true,\n  \"health\": {\n    \"status\": \"ok\",\n    \"timestamp\": \"2026-07-18T05:48:35.265196+00:00\",\n    \"version\": \"0.1.0\",\n    \"environment\": \"prod\",\n    \"git_sha\": \"9d1ae05105f066b07bda00d575204afb4cd91f95\",\n    \"ai_disabled\": false,\n    \"checks\": {\n      \"database\": \"healthy\",\n      \"cache\": \"healthy\",\n      \"temporal\": \"configured\",\n      \"clickhouse\": \"configured\"\n    }\n  },\n  \"deploy_sha_ok\": true,\n  \"finished_at\": \"2026-07-18T05:49:53.560266+00:00\"\n}\n"
+    },
+    "research_cascade": {
+      "pass": false,
+      "exit_code": 1,
+      "artifact": "docs/delivery/smoke-research-cascade-prod-latest.json",
+      "summary": {
+        "git_sha": "9d1ae05105f066b07bda00d575204afb4cd91f95",
+        "checks": {
+          "deploy_sha": {
+            "pass": true,
+            "git_sha": "9d1ae05105f066b07bda00d575204afb4cd91f95",
+            "required_prefix": "716864e6"
+          },
+          "thin_suggest_broaden": {
+            "pass": false,
+            "detail": "suggest_broaden or internal_thin in researchCascade SSE"
+          },
+          "scoped_enrichment": {
+            "pass": false,
+            "detail": "confidence_band/source_breakdown/stage_progress in final researchCascade"
+          },
+          "progress_steps_sse": {
+            "pass": true,
+            "detail": "progressSteps in mid/final SSE"
+          }
+        },
+        "conversation_id": "c99e9005-db05-4af4-886d-6233ac401da4"
+      },
+      "tail_output": "{\n  \"started_at\": \"2026-07-18T05:49:54.704074+00:00\",\n  \"base_url\": \"https://gravitre-saas-backend-production.up.railway.app\",\n  \"org_id\": \"cbbf993b-b22f-41ce-964b-1fc25e0dd9ea\",\n  \"conversation_id\": \"c99e9005-db05-4af4-886d-6233ac401da4\",\n  \"min_sha_prefix\": \"716864e6\",\n  \"checks\": {\n    \"deploy_sha\": {\n      \"pass\": true,\n      \"git_sha\": \"9d1ae05105f066b07bda00d575204afb4cd91f95\",\n      \"required_prefix\": \"716864e6\"\n    },\n    \"thin_suggest_broaden\": {\n      \"pass\": false,\n      \"detail\": \"suggest_broaden or internal_thin in researchCascade SSE\"\n    },\n    \"scoped_enrichment\": {\n      \"pass\": false,\n      \"detail\": \"confidence_band/source_breakdown/stage_progress in final researchCascade\"\n    },\n    \"progress_steps_sse\": {\n      \"pass\": true,\n      \"detail\": \"progressSteps in mid/final SSE\"\n    }\n  },\n  \"pass\": false,\n  \"health\": {\n    \"status\": \"ok\",\n    \"timestamp\": \"2026-07-18T05:49:54.930021+00:00\",\n    \"version\": \"0.1.0\",\n    \"environment\": \"prod\",\n    \"git_sha\": \"9d1ae05105f066b07bda00d575204afb4cd91f95\",\n    \"ai_disabled\": false,\n    \"checks\": {\n      \"database\": \"healthy\",\n      \"cache\": \"healthy\",\n      \"temporal\": \"configured\",\n      \"clickhouse\": \"configured\"\n    }\n  },\n  \"trace_thin\": {\n    \"http_status\": 200,\n    \"cascade_count\": 0,\n    \"cascade\": {},\n    \"event_count\": 10\n  },\n  \"trace_scoped\": {\n    \"http_status\": 200,\n    \"cascade_count\": 0,\n    \"cascade\": {},\n    \"event_count\": 10\n  },\n  \"finished_at\": \"2026-07-18T05:50:01.568677+00:00\"\n}\n"
+    }
+  },
+  "artifacts": {
+    "react_write_gate": {
+      "probe_started_at": "2026-07-18T05:45:53.376176+00:00",
+      "list_name": "gravitre-react-gate-probe-20260718",
+      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "conversation_id": "daa0767c-8646-4c73-aff4-2091c8b94da6",
+      "actor_id": "22255b58-719c-4496-9e6f-dfb620f5052b",
+      "path": "react_write_gate -> awaiting_confirm -> execute_plan",
+      "agent_id": "synthetic-default",
+      "react_gate": {
+        "at": "2026-07-18T05:45:53.402932+00:00",
+        "latency_ms": 0,
+        "success": false,
+        "error_code": "write_approval_required",
+        "pending_approval": true,
+        "action": "apollo.lists.create",
+        "tool": "apollo_lists_create"
+      },
+      "approval_plan": {
+        "at": "2026-07-18T05:45:53.403020+00:00",
+        "invoke_action": "apollo.lists.create",
+        "requires_approval": true,
+        "label": "Create contact list",
+        "args": {
+          "name": "gravitre-react-gate-probe-20260718",
+          "modality": "contacts"
+        },
+        "source": "react_write_gate",
+        "dialogue_mode": "confirm",
+        "ci_auto_approve": true
+      },
+      "pending_persisted_at": "2026-07-18T05:45:53.958222+00:00",
+      "user_approval_at": "2026-07-18T05:45:53.958238+00:00",
+      "execution": {
+        "at": "2026-07-18T05:45:58.059693+00:00",
+        "latency_ms": 4101,
+        "success": true,
+        "error_code": null,
+        "entity_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+        "result_url": "https://app.apollo.io/#/lists/6a5b0c8ec74d1d00207af2e8",
+        "body": "Found existing contact list \"gravitre-react-gate-probe-20260718\" (id: 6a5b0c8ec74d1d00207af2e8).",
+        "integration": "apollo",
+        "task_label": "Create contact list"
+      }
+    },
+    "canvas_write_authority": {
+      "claim": "canvas_write_governance_step1",
+      "started_at": "2026-07-18T05:46:05.251096+00:00",
+      "api_base": "https://gravitre-saas-backend-production.up.railway.app",
+      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "list_name": "CanvasGovProbe 20260718-054605 7f1399",
+      "apollo_connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+      "graph": {
+        "has_approval_node": false,
+        "write_action": "apollo.lists.create",
+        "note": "Single invoke_tool step; deliberately no human_approval/approval node"
+      },
+      "prod_health": {
+        "http": 200,
+        "status": "ok",
+        "timestamp": "2026-07-18T05:46:05.450012+00:00",
+        "version": "0.1.0",
+        "environment": "prod",
+        "git_sha": "9d1ae05105f066b07bda00d575204afb4cd91f95",
+        "ai_disabled": false,
+        "checks": {
+          "database": "healthy",
+          "cache": "healthy",
+          "temporal": "configured",
+          "clickhouse": "configured"
+        }
+      },
+      "workflow_id": "8ea32dce-7f6a-4fdf-be0d-c3097ff5b095",
+      "definition_steps": [
+        {
+          "id": "apollo_list_create",
+          "name": "Apollo create list (write)",
+          "type": "invoke_tool",
+          "config": {
+            "action": "apollo.lists.create",
+            "connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+            "name": "CanvasGovProbe 20260718-054605 7f1399"
+          }
+        }
+      ],
+      "cleared_active_runs": [
+        "cf011b5f-78fb-4321-aa71-67200ee36c03"
+      ],
+      "test_a_be20_required_approvals_1": {
+        "http": 200,
+        "run_id": "c8018397-7831-403a-8827-af51297fec07",
+        "status": "pending_approval",
+        "response_keys": [
+          "approval_required",
+          "approval_status",
+          "approvals_received",
+          "required_approvals",
+          "run_id",
+          "status"
+        ],
+        "detail": null,
+        "tool_invoke_completed_count": 0,
+        "audit_sample": [],
+        "interpretation": "pending_approval before any tool.invoke.completed \u2192 BE-20 run-level policy is an alternate blocker (not catalog_write_authority; not an in-graph approval node)"
+      },
+      "cleared_before_test_b": [],
+      "step_table_errors": [
+        {
+          "workflow_steps": "{'message': 'column workflow_steps.output does not exist', 'code': '42703', 'hint': None, 'details': None}"
+        },
+        {
+          "run_steps": "{'message': 'column run_steps.step_id does not exist', 'code': '42703', 'hint': 'Perhaps you meant to reference the column \"run_steps.step_index\".', 'details': None}"
+        },
+        {
+          "workflow_run_steps": "{'message': \"Could not find the table 'public.workflow_run_steps' in the schema cache\", 'code': 'PGRST205', 'hint': \"Perhaps you meant the table 'public.workflow_steps'\", 'details': None}"
+        }
+      ],
+      "test_b_required_approvals_0": {
+        "http": 200,
+        "run_id": "b16cfed1-0e65-4398-96ca-f8f9b3f6722a",
+        "execute_status": "pending_approval",
+        "final_status": "pending_approval",
+        "steps_api_count": 0,
+        "step_rows": [],
+        "tool_invoke_requested": [],
+        "tool_invoke_completed": [],
+        "tool_invoke_failed": [],
+        "vendor_payload_or_step_output": null,
+        "audit_sample": [],
+        "write_executed_unblocked": false,
+        "interpretation": "(b) blocked by alternate mechanism"
+      },
+      "verdict": "ALTERNATE_BLOCKER_BE20_ALWAYS",
+      "severity": "lower_but_unify",
+      "severity_rationale": "Even with required_approvals=0, execute stayed pending_approval \u2014 unexpected; investigate.",
+      "finished_at": "2026-07-18T05:46:16.704565+00:00"
+    },
+    "wave67_spotcheck": {
+      "started_at": "2026-07-18T05:46:17.667602+00:00",
+      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "conversation_id": "b296e64b-6b55-4f79-9f6b-3041752a7c4d",
+      "list_name": "gravitre-wave67-spotcheck-20260718",
+      "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+      "branch_note": "production API https://gravitre-saas-backend-production.up.railway.app",
+      "claims": {
+        "1_plan_before_tools": {
+          "status": "PASS",
+          "evidence": {
+            "first_plan_sse": {
+              "i": 5,
+              "type": "data-intelligence",
+              "answerExplanation": "Plan ready \u2014 running tools",
+              "dialogueMode": "guide",
+              "has_current_plan": false,
+              "has_execution_result": false,
+              "has_pending_task": false,
+              "wall_start": "2026-07-18T05:46:18.169682+00:00"
+            },
+            "first_tool_start_sse": {
+              "i": 6,
+              "type": "tool-input-available",
+              "toolName": "searchKnowledgeBase"
+            },
+            "plan_before_tools": true,
+            "plan_only_in_final": false,
+            "wall_start": "2026-07-18T05:46:18.169682+00:00"
+          }
+        },
+        "2_tool_chips_error_code": {
+          "status": "PASS",
+          "evidence": {
+            "success_chip": {
+              "i": 9,
+              "type": "tool-output-available",
+              "toolName": null,
+              "errorCode": null,
+              "success": true,
+              "error": ""
+            },
+            "failure_chip": {
+              "i": 5,
+              "type": "tool-output-available",
+              "toolName": null,
+              "errorCode": "auth_expired",
+              "success": false,
+              "error": "Authentication expired for Slack. Reconnect it at /connectors, then try again."
+            },
+            "success_before_text": true,
+            "slack_wall_start": "2026-07-18T05:46:36.086909+00:00"
+          }
+        },
+        "3_approval_panel_result_url": {
+          "status": "PASS",
+          "evidence": {
+            "react_gate": null,
+            "approved_execution": {
+              "user_approval_at": "2026-07-18T05:47:09.136034+00:00",
+              "completed_at": "2026-07-18T05:47:16.296015+00:00",
+              "success": true,
+              "error_code": null,
+              "result_url": "https://app.apollo.io/#/lists/6a5af7675fa81d00106f7d97",
+              "assumption_notes": null,
+              "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260718\" (id: 6a5af7675fa81d00106f7d97).",
+              "via": "chat_yes"
+            },
+            "result_url_is_deep_link": true,
+            "not_connector_conflation": true
+          }
+        },
+        "4_assumption_notes_ui": {
+          "status": "PASS",
+          "evidence": {
+            "omit_name_pending": true,
+            "claim4_execution": {
+              "i": 7,
+              "success": true,
+              "result_url": "https://app.apollo.io/#/lists/6a4d6a98461b000010c5ae7b",
+              "error_code": null,
+              "assumption_notes": [
+                "Assumed name=MSP Prospects (from message_or_default_hint)"
+              ],
+              "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
+            },
+            "execution_result_assumption_notes": [
+              "Assumed name=MSP Prospects (from message_or_default_hint)"
+            ],
+            "sse_execution_results_with_notes": [
+              {
+                "i": 3,
+                "success": true,
+                "result_url": "https://app.apollo.io/#/lists/6a4d6a98461b000010c5ae7b",
+                "error_code": null,
+                "assumption_notes": [
+                  "Assumed name=MSP Prospects (from message_or_default_hint)"
+                ],
+                "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
+              },
+              {
+                "i": 7,
+                "success": true,
+                "result_url": "https://app.apollo.io/#/lists/6a4d6a98461b000010c5ae7b",
+                "error_code": null,
+                "assumption_notes": [
+                  "Assumed name=MSP Prospects (from message_or_default_hint)"
+                ],
+                "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
+              }
+            ],
+            "note": "PASS requires omit-name turn \u2192 inferred plan and/or assumption_notes on prod SSE. PARTIAL if only non-causal notes or gate without notes."
+          }
+        }
+      },
+      "prod_health": {
+        "status": "ok",
+        "timestamp": "2026-07-18T05:46:18.099453+00:00",
+        "version": "0.1.0",
+        "environment": "prod",
+        "git_sha": "9d1ae05105f066b07bda00d575204afb4cd91f95",
+        "ai_disabled": false,
+        "checks": {
+          "database": "healthy",
+          "cache": "healthy",
+          "temporal": "configured",
+          "clickhouse": "configured"
+        }
+      },
+      "turn_plan_read": {
+        "http": "http_200",
+        "summary": {
+          "wall_start": "2026-07-18T05:46:18.169682+00:00",
+          "event_count": 58,
+          "first_plan_sse": {
+            "i": 5,
+            "type": "data-intelligence",
+            "answerExplanation": "Plan ready \u2014 running tools",
+            "dialogueMode": "guide",
+            "has_current_plan": false,
+            "has_execution_result": false,
+            "has_pending_task": false,
+            "wall_start": "2026-07-18T05:46:18.169682+00:00"
+          },
+          "first_tool_start_sse": {
+            "i": 6,
+            "type": "tool-input-available",
+            "toolName": "searchKnowledgeBase"
+          },
+          "first_tool_complete_sse": {
+            "i": 7,
+            "type": "tool-output-available",
+            "toolName": null,
+            "errorCode": null,
+            "success": null,
+            "error": ""
+          },
+          "first_text_sse": {
+            "i": 10,
+            "type": "text-start"
+          },
+          "final_meta_sse": {
+            "i": 5,
+            "type": "data-intelligence",
+            "answerExplanation": "Plan ready \u2014 running tools",
+            "dialogueMode": "guide",
+            "has_current_plan": false,
+            "has_execution_result": false,
+            "has_pending_task": false
+          },
+          "tool_completes": [
+            {
+              "i": 7,
+              "type": "tool-output-available",
+              "toolName": null,
+              "errorCode": null,
+              "success": null,
+              "error": ""
+            },
+            {
+              "i": 9,
+              "type": "tool-output-available",
+              "toolName": null,
+              "errorCode": null,
+              "success": true,
+              "error": ""
+            }
+          ],
+          "execution_results": [],
+          "pending_tasks": [],
+          "plan_before_tools": true,
+          "plan_only_in_final": false,
+          "timeline_abbrev": [
+            {
+              "i": 0,
+              "type": "start"
+            },
+            {
+              "i": 1,
+              "type": "start-step"
+            },
+            {
+              "i": 2,
+              "type": "data-intelligence",
+              "answerExplanation": "Analyzing your request\u2026",
+              "dialogueMode": null,
+              "has_current_plan": false,
+              "has_execution_result": false,
+              "has_pending_task": false
+            },
+            {
+              "i": 3,
+              "type": "data-intelligence",
+              "answerExplanation": "Reviewing connected systems and knowledge\u2026",
+              "dialogueMode": null,
+              "has_current_plan": false,
+              "has_execution_result": false,
+              "has_pending_task": false
+            },
+            {
+              "i": 4,
+              "type": "data-intelligence",
+              "answerExplanation": "Routing classified",
+              "dialogueMode": "guide",
+              "has_current_plan": false,
+              "has_execution_result": false,
+              "has_pending_task": false
+            },
+            {
+              "i": 5,
+              "type": "data-intelligence",
+              "answerExplanation": "Plan ready \u2014 running tools",
+              "dialogueMode": "guide",
+              "has_current_plan": false,
+              "has_execution_result": false,
+              "has_pending_task": false
+            },
+            {
+              "i": 6,
+              "type": "tool-input-available",
+              "toolName": "searchKnowledgeBase"
+            },
+            {
+              "i": 7,
+              "type": "tool-output-available",
+              "toolName": null,
+              "errorCode": null,
+              "success": null,
+              "error": ""
+            },
+            {
+              "i": 8,
+              "type": "tool-input-available",
+              "toolName": "apollo_lists_list"
+            },
+            {
+              "i": 9,
+              "type": "tool-output-available",
+              "toolName": null,
+              "errorCode": null,
+              "success": true,
+              "error": ""
+            },
+            {
+              "i": 10,
+              "type": "text-start"
+            },
+            {
+              "i": 11,
+              "type": "text-delta"
+            },
+            {
+              "i": 12,
+              "type": "text-delta"
+            },
+            {
+              "i": 13,
+              "type": "text-delta"
+            },
+            {
+              "i": 14,
+              "type": "text-delta"
+            },
+            {
+              "i": 15,
+              "type": "text-delta"
+            },
+            {
+              "i": 16,
+              "type": "text-delta"
+            },
+            {
+              "i": 17,
+              "type": "text-delta"
+            },
+            {
+              "i": 18,
+              "type": "text-delta"
+            },
+            {
+              "i": 19,
+              "type": "text-delta"
+            },
+            {
+              "i": 20,
+              "type": "text-delta"
+            },
+            {
+              "i": 21,
+              "type": "text-delta"
+            },
+            {
+              "i": 22,
+              "type": "text-delta"
+            },
+            {
+              "i": 23,
+              "type": "text-delta"
+            },
+            {
+              "i": 24,
+              "type": "text-delta"
+            },
+            {
+              "i": 25,
+              "type": "text-delta"
+            },
+            {
+              "i": 26,
+              "type": "text-delta"
+            },
+            {
+              "i": 27,
+              "type": "text-delta"
+            },
+            {
+              "i": 28,
+              "type": "text-delta"
+            },
+            {
+              "i": 29,
+              "type": "text-delta"
+            },
+            {
+              "i": 30,
+              "type": "text-delta"
+            },
+            {
+              "i": 31,
+              "type": "text-delta"
+            },
+            {
+              "i": 32,
+              "type": "text-delta"
+            },
+            {
+              "i": 33,
+              "type": "text-delta"
+            },
+            {
+              "i": 34,
+              "type": "text-delta"
+            },
+            {
+              "i": 35,
+              "type": "text-delta"
+            },
+            {
+              "i": 36,
+              "type": "text-delta"
+            },
+            {
+              "i": 37,
+              "type": "text-delta"
+            },
+            {
+              "i": 38,
+              "type": "text-delta"
+            },
+            {
+              "i": 39,
+              "type": "text-delta"
+            },
+            {
+              "i": 40,
+              "type": "text-delta"
+            },
+            {
+              "i": 41,
+              "type": "text-delta"
+            },
+            {
+              "i": 42,
+              "type": "text-delta"
+            },
+            {
+              "i": 43,
+              "type": "text-delta"
+            },
+            {
+              "i": 44,
+              "type": "text-delta"
+            },
+            {
+              "i": 45,
+              "type": "text-delta"
+            },
+            {
+              "i": 46,
+              "type": "text-delta"
+            },
+            {
+              "i": 47,
+              "type": "text-delta"
+            },
+            {
+              "i": 48,
+              "type": "text-delta"
+            },
+            {
+              "i": 49,
+              "type": "text-delta"
+            },
+            {
+              "i": 50,
+              "type": "text-delta"
+            },
+            {
+              "i": 51,
+              "type": "text-delta"
+            },
+            {
+              "i": 52,
+              "type": "text-delta"
+            },
+            {
+              "i": 53,
+              "type": "text-delta"
+            },
+            {
+              "i": 54,
+              "type": "text-delta"
+            },
+            {
+              "i": 55,
+              "type": "finish-step"
+            },
+            {
+              "i": 56,
+              "type": "finish"
+            },
+            {
+              "i": 57,
+              "type": "data-suggestions"
+            }
+          ]
+        }
+      },
+      "turn_slack_fail": {
+        "http": "http_200",
+        "summary": {
+          "wall_start": "2026-07-18T05:46:36.086909+00:00",
+          "event_count": 13,
+          "first_plan_sse": null,
+          "first_tool_start_sse": {
+            "i": 4,
+            "type": "tool-input-available",
+            "toolName": "slack_post_message"
+          },
+          "first_tool_complete_sse": {
+            "i": 5,
+            "type": "tool-output-available",
+            "toolName": null,
+            "errorCode": "auth_expired",
+            "success": false,
+            "error": "Authentication expired for Slack. Reconnect it at /connectors, then try again."
+          },
+          "first_text_sse": {
+            "i": 6,
+            "type": "text-start"
+          },
+          "final_meta_sse": {
+            "i": 9,
+            "type": "data-intelligence",
+            "answerExplanation": "Clarification needed: Required connector slack is not connected.",
+            "dialogueMode": "clarify",
+            "has_current_plan": false,
+            "has_execution_result": false,
+            "has_pending_task": false
+          },
+          "tool_completes": [
+            {
+              "i": 5,
+              "type": "tool-output-available",
+              "toolName": null,
+              "errorCode": "auth_expired",
+              "success": false,
+              "error": "Authentication expired for Slack. Reconnect it at /connectors, then try again."
+            }
+          ],
+          "execution_results": [],
+          "pending_tasks": [],
+          "plan_before_tools": false,
+          "plan_only_in_final": false,
+          "timeline_abbrev": [
+            {
+              "i": 0,
+              "type": "start"
+            },
+            {
+              "i": 1,
+              "type": "start-step"
+            },
+            {
+              "i": 2,
+              "type": "data-intelligence",
+              "answerExplanation": "Analyzing your request\u2026",
+              "dialogueMode": null,
+              "has_current_plan": false,
+              "has_execution_result": false,
+              "has_pending_task": false
+            },
+            {
+              "i": 3,
+              "type": "data-intelligence",
+              "answerExplanation": "Reviewing connected systems and knowledge\u2026",
+              "dialogueMode": null,
+              "has_current_plan": false,
+              "has_execution_result": false,
+              "has_pending_task": false
+            },
+            {
+              "i": 4,
+              "type": "tool-input-available",
+              "toolName": "slack_post_message"
+            },
+            {
+              "i": 5,
+              "type": "tool-output-available",
+              "toolName": null,
+              "errorCode": "auth_expired",
+              "success": false,
+              "error": "Authentication expired for Slack. Reconnect it at /connectors, then try again."
+            },
+            {
+              "i": 6,
+              "type": "text-start"
+            },
+            {
+              "i": 7,
+              "type": "text-delta"
+            },
+            {
+              "i": 8,
+              "type": "text-end"
+            },
+            {
+              "i": 9,
+              "type": "data-intelligence",
+              "answerExplanation": "Clarification needed: Required connector slack is not connected.",
+              "dialogueMode": "clarify",
+              "has_current_plan": false,
+              "has_execution_result": false,
+              "has_pending_task": false
+            },
+            {
+              "i": 10,
+              "type": "finish-step"
+            },
+            {
+              "i": 11,
+              "type": "finish"
+            },
+            {
+              "i": 12,
+              "type": "data-suggestions"
+            }
+          ]
+        }
+      },
+      "turn_apollo_write_gate": {
+        "http": "http_200",
+        "summary": {
+          "wall_start": "2026-07-18T05:46:51.045782+00:00",
+          "event_count": 17,
+          "first_plan_sse": {
+            "i": 5,
+            "type": "data-intelligence",
+            "answerExplanation": "Plan ready \u2014 running tools",
+            "dialogueMode": "answer",
+            "has_current_plan": false,
+            "has_execution_result": false,
+            "has_pending_task": false,
+            "wall_start": "2026-07-18T05:46:51.045782+00:00"
+          },
+          "first_tool_start_sse": {
+            "i": 6,
+            "type": "tool-input-available",
+            "toolName": "searchKnowledgeBase"
+          },
+          "first_tool_complete_sse": {
+            "i": 7,
+            "type": "tool-output-available",
+            "toolName": null,
+            "errorCode": null,
+            "success": null,
+            "error": ""
+          },
+          "first_text_sse": {
+            "i": 10,
+            "type": "text-start"
+          },
+          "final_meta_sse": {
+            "i": 13,
+            "type": "data-intelligence",
+            "answerExplanation": "ReAct write gated for user approval",
+            "dialogueMode": "confirm",
+            "has_current_plan": false,
+            "has_execution_result": false,
+            "has_pending_task": true
+          },
+          "tool_completes": [
+            {
+              "i": 7,
+              "type": "tool-output-available",
+              "toolName": null,
+              "errorCode": null,
+              "success": null,
+              "error": ""
+            },
+            {
+              "i": 9,
+              "type": "tool-output-available",
+              "toolName": null,
+              "errorCode": "write_approval_required",
+              "success": false,
+              "error": "This write needs your approval before it runs."
+            }
+          ],
+          "execution_results": [],
+          "pending_tasks": [
+            {
+              "i": 13,
+              "pending": {
+                "type": "connector_action",
+                "params": {
+                  "args": {
+                    "name": "gravitre-wave67-spotcheck-20260718",
+                    "list_name": "gravitre-wave67-spotcheck-20260718"
+                  },
+                  "kind": "write",
+                  "label": "Create contact list",
+                  "source": "react_write_gate",
+                  "status": "awaiting_confirm",
+                  "tool_name": "apollo_lists_create",
+                  "destructive": false,
+                  "integration": "apollo",
+                  "invoke_action": "apollo.lists.create",
+                  "approval_reason": "react_write_gate",
+                  "inferred_fields": [],
+                  "inference_sources": {},
+                  "requires_approval": true
+                },
+                "status": "awaiting_confirm"
+              }
+            }
+          ],
+          "plan_before_tools": true,
+          "plan_only_in_final": false,
+          "timeline_abbrev": [
+            {
+              "i": 0,
+              "type": "start"
+            },
+            {
+              "i": 1,
+              "type": "start-step"
+            },
+            {
+              "i": 2,
+              "type": "data-intelligence",
+              "answerExplanation": "Analyzing your request\u2026",
+              "dialogueMode": null,
+              "has_current_plan": false,
+              "has_execution_result": false,
+              "has_pending_task": false
+            },
+            {
+              "i": 3,
+              "type": "data-intelligence",
+              "answerExplanation": "Reviewing connected systems and knowledge\u2026",
+              "dialogueMode": null,
+              "has_current_plan": false,
+              "has_execution_result": false,
+              "has_pending_task": false
+            },
+            {
+              "i": 4,
+              "type": "data-intelligence",
+              "answerExplanation": "Routing classified",
+              "dialogueMode": "answer",
+              "has_current_plan": false,
+              "has_execution_result": false,
+              "has_pending_task": false
+            },
+            {
+              "i": 5,
+              "type": "data-intelligence",
+              "answerExplanation": "Plan ready \u2014 running tools",
+              "dialogueMode": "answer",
+              "has_current_plan": false,
+              "has_execution_result": false,
+              "has_pending_task": false
+            },
+            {
+              "i": 6,
+              "type": "tool-input-available",
+              "toolName": "searchKnowledgeBase"
+            },
+            {
+              "i": 7,
+              "type": "tool-output-available",
+              "toolName": null,
+              "errorCode": null,
+              "success": null,
+              "error": ""
+            },
+            {
+              "i": 8,
+              "type": "tool-input-available",
+              "toolName": "apollo_lists_create"
+            },
+            {
+              "i": 9,
+              "type": "tool-output-available",
+              "toolName": null,
+              "errorCode": "write_approval_required",
+              "success": false,
+              "error": "This write needs your approval before it runs."
+            },
+            {
+              "i": 10,
+              "type": "text-start"
+            },
+            {
+              "i": 11,
+              "type": "text-delta"
+            },
+            {
+              "i": 12,
+              "type": "text-end"
+            },
+            {
+              "i": 13,
+              "type": "data-intelligence",
+              "answerExplanation": "ReAct write gated for user approval",
+              "dialogueMode": "confirm",
+              "has_current_plan": false,
+              "has_execution_result": false,
+              "has_pending_task": true
+            },
+            {
+              "i": 14,
+              "type": "finish-step"
+            },
+            {
+              "i": 15,
+              "type": "finish"
+            },
+            {
+              "i": 16,
+              "type": "data-suggestions"
+            }
+          ]
+        }
+      },
+      "turn_apollo_approve": {
+        "http": "http_200",
+        "summary": {
+          "wall_start": "2026-07-18T05:47:09.136034+00:00",
+          "event_count": 11,
+          "first_plan_sse": null,
+          "first_tool_start_sse": null,
+          "first_tool_complete_sse": null,
+          "first_text_sse": {
+            "i": 4,
+            "type": "text-start"
+          },
+          "final_meta_sse": {
+            "i": 7,
+            "type": "data-intelligence",
+            "answerExplanation": "Governed connector execution",
+            "dialogueMode": "answer",
+            "has_current_plan": false,
+            "has_execution_result": true,
+            "has_pending_task": false
+          },
+          "tool_completes": [],
+          "execution_results": [
+            {
+              "i": 3,
+              "success": true,
+              "result_url": "https://app.apollo.io/#/lists/6a5af7675fa81d00106f7d97",
+              "error_code": null,
+              "assumption_notes": null,
+              "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260718\" (id: 6a5af7675fa81d00106f7d97)."
+            },
+            {
+              "i": 7,
+              "success": true,
+              "result_url": "https://app.apollo.io/#/lists/6a5af7675fa81d00106f7d97",
+              "error_code": null,
+              "assumption_notes": null,
+              "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260718\" (id: 6a5af7675fa81d00106f7d97)."
+            }
+          ],
+          "pending_tasks": [],
+          "plan_before_tools": false,
+          "plan_only_in_final": false,
+          "timeline_abbrev": [
+            {
+              "i": 0,
+              "type": "start"
+            },
+            {
+              "i": 1,
+              "type": "start-step"
+            },
+            {
+              "i": 2,
+              "type": "data-intelligence",
+              "answerExplanation": "Analyzing your request\u2026",
+              "dialogueMode": null,
+              "has_current_plan": false,
+              "has_execution_result": false,
+              "has_pending_task": false
+            },
+            {
+              "i": 3,
+              "type": "data-intelligence",
+              "answerExplanation": "Governed connector execution",
+              "dialogueMode": "answer",
+              "has_current_plan": false,
+              "has_execution_result": true,
+              "has_pending_task": false
+            },
+            {
+              "i": 4,
+              "type": "text-start"
+            },
+            {
+              "i": 5,
+              "type": "text-delta"
+            },
+            {
+              "i": 6,
+              "type": "text-end"
+            },
+            {
+              "i": 7,
+              "type": "data-intelligence",
+              "answerExplanation": "Governed connector execution",
+              "dialogueMode": "answer",
+              "has_current_plan": false,
+              "has_execution_result": true,
+              "has_pending_task": false
+            },
+            {
+              "i": 8,
+              "type": "finish-step"
+            },
+            {
+              "i": 9,
+              "type": "finish"
+            },
+            {
+              "i": 10,
+              "type": "data-suggestions"
+            }
+          ]
+        }
+      },
+      "approved_execution": {
+        "user_approval_at": "2026-07-18T05:47:09.136034+00:00",
+        "completed_at": "2026-07-18T05:47:16.296015+00:00",
+        "success": true,
+        "error_code": null,
+        "result_url": "https://app.apollo.io/#/lists/6a5af7675fa81d00106f7d97",
+        "assumption_notes": null,
+        "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260718\" (id: 6a5af7675fa81d00106f7d97).",
+        "via": "chat_yes"
+      },
+      "turn_claim4_omit_name": {
+        "http": "http_200",
+        "summary": {
+          "wall_start": "2026-07-18T05:47:16.296061+00:00",
+          "event_count": 21,
+          "first_plan_sse": {
+            "i": 5,
+            "type": "data-intelligence",
+            "answerExplanation": "Plan ready \u2014 running tools",
+            "dialogueMode": "answer",
+            "has_current_plan": false,
+            "has_execution_result": false,
+            "has_pending_task": false,
+            "wall_start": "2026-07-18T05:47:16.296061+00:00"
+          },
+          "first_tool_start_sse": {
+            "i": 6,
+            "type": "tool-input-available",
+            "toolName": "searchKnowledgeBase"
+          },
+          "first_tool_complete_sse": {
+            "i": 7,
+            "type": "tool-output-available",
+            "toolName": null,
+            "errorCode": null,
+            "success": null,
+            "error": ""
+          },
+          "first_text_sse": {
+            "i": 8,
+            "type": "text-start"
+          },
+          "final_meta_sse": {
+            "i": 17,
+            "type": "data-intelligence",
+            "answerExplanation": "Connector fallback after ReAct",
+            "dialogueMode": "confirm",
+            "has_current_plan": false,
+            "has_execution_result": false,
+            "has_pending_task": true
+          },
+          "tool_completes": [
+            {
+              "i": 7,
+              "type": "tool-output-available",
+              "toolName": null,
+              "errorCode": null,
+              "success": null,
+              "error": ""
+            }
+          ],
+          "execution_results": [],
+          "pending_tasks": [
+            {
+              "i": 17,
+              "pending": {
+                "type": "connector_action",
+                "status": "awaiting_confirm",
+                "params": {
+                  "tool_name": "apollo_lists_create",
+                  "invoke_action": "apollo.lists.create",
+                  "integration": "apollo",
+                  "kind": "write",
+                  "label": "Create contact list",
+                  "args": {
+                    "name": "MSP Prospects",
+                    "modality": "contacts"
+                  },
+                  "requires_approval": true,
+                  "approval_reason": "Action type 'apollo.lists.create' requires approval per policy",
+                  "destructive": true,
+                  "inferred_fields": [
+                    "name"
+                  ],
+                  "inference_sources": {
+                    "name": "message_or_default_hint"
+                  },
+                  "status": "awaiting_confirm",
+                  "hitl_action_kind": "delete",
+                  "hitl_policy_id": null
+                }
+              }
+            }
+          ],
+          "plan_before_tools": true,
+          "plan_only_in_final": false,
+          "timeline_abbrev": [
+            {
+              "i": 0,
+              "type": "start"
+            },
+            {
+              "i": 1,
+              "type": "start-step"
+            },
+            {
+              "i": 2,
+              "type": "data-intelligence",
+              "answerExplanation": "Analyzing your request\u2026",
+              "dialogueMode": null,
+              "has_current_plan": false,
+              "has_execution_result": false,
+              "has_pending_task": false
+            },
+            {
+              "i": 3,
+              "type": "data-intelligence",
+              "answerExplanation": "Reviewing connected systems and knowledge\u2026",
+              "dialogueMode": null,
+              "has_current_plan": false,
+              "has_execution_result": false,
+              "has_pending_task": false
+            },
+            {
+              "i": 4,
+              "type": "data-intelligence",
+              "answerExplanation": "Routing classified",
+              "dialogueMode": "answer",
+              "has_current_plan": false,
+              "has_execution_result": false,
+              "has_pending_task": false
+            },
+            {
+              "i": 5,
+              "type": "data-intelligence",
+              "answerExplanation": "Plan ready \u2014 running tools",
+              "dialogueMode": "answer",
+              "has_current_plan": false,
+              "has_execution_result": false,
+              "has_pending_task": false
+            },
+            {
+              "i": 6,
+              "type": "tool-input-available",
+              "toolName": "searchKnowledgeBase"
+            },
+            {
+              "i": 7,
+              "type": "tool-output-available",
+              "toolName": null,
+              "errorCode": null,
+              "success": null,
+              "error": ""
+            },
+            {
+              "i": 8,
+              "type": "text-start"
+            },
+            {
+              "i": 9,
+              "type": "text-delta"
+            },
+            {
+              "i": 10,
+              "type": "text-delta"
+            },
+            {
+              "i": 11,
+              "type": "text-delta"
+            },
+            {
+              "i": 12,
+              "type": "text-delta"
+            },
+            {
+              "i": 13,
+              "type": "text-delta"
+            },
+            {
+              "i": 14,
+              "type": "text-start"
+            },
+            {
+              "i": 15,
+              "type": "text-delta"
+            },
+            {
+              "i": 16,
+              "type": "text-end"
+            },
+            {
+              "i": 17,
+              "type": "data-intelligence",
+              "answerExplanation": "Connector fallback after ReAct",
+              "dialogueMode": "confirm",
+              "has_current_plan": false,
+              "has_execution_result": false,
+              "has_pending_task": true
+            },
+            {
+              "i": 18,
+              "type": "finish-step"
+            },
+            {
+              "i": 19,
+              "type": "finish"
+            },
+            {
+              "i": 20,
+              "type": "data-suggestions"
+            }
+          ]
+        },
+        "user_message": "In Apollo, create a contact list."
+      },
+      "turn_claim4_approve": {
+        "http": "http_200",
+        "summary": {
+          "wall_start": "2026-07-18T05:47:38.008212+00:00",
+          "event_count": 11,
+          "first_plan_sse": null,
+          "first_tool_start_sse": null,
+          "first_tool_complete_sse": null,
+          "first_text_sse": {
+            "i": 4,
+            "type": "text-start"
+          },
+          "final_meta_sse": {
+            "i": 7,
+            "type": "data-intelligence",
+            "answerExplanation": "Governed connector execution",
+            "dialogueMode": "answer",
+            "has_current_plan": false,
+            "has_execution_result": true,
+            "has_pending_task": false
+          },
+          "tool_completes": [],
+          "execution_results": [
+            {
+              "i": 3,
+              "success": true,
+              "result_url": "https://app.apollo.io/#/lists/6a4d6a98461b000010c5ae7b",
+              "error_code": null,
+              "assumption_notes": [
+                "Assumed name=MSP Prospects (from message_or_default_hint)"
+              ],
+              "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
+            },
+            {
+              "i": 7,
+              "success": true,
+              "result_url": "https://app.apollo.io/#/lists/6a4d6a98461b000010c5ae7b",
+              "error_code": null,
+              "assumption_notes": [
+                "Assumed name=MSP Prospects (from message_or_default_hint)"
+              ],
+              "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
+            }
+          ],
+          "pending_tasks": [],
+          "plan_before_tools": false,
+          "plan_only_in_final": false,
+          "timeline_abbrev": [
+            {
+              "i": 0,
+              "type": "start"
+            },
+            {
+              "i": 1,
+              "type": "start-step"
+            },
+            {
+              "i": 2,
+              "type": "data-intelligence",
+              "answerExplanation": "Analyzing your request\u2026",
+              "dialogueMode": null,
+              "has_current_plan": false,
+              "has_execution_result": false,
+              "has_pending_task": false
+            },
+            {
+              "i": 3,
+              "type": "data-intelligence",
+              "answerExplanation": "Governed connector execution",
+              "dialogueMode": "answer",
+              "has_current_plan": false,
+              "has_execution_result": true,
+              "has_pending_task": false
+            },
+            {
+              "i": 4,
+              "type": "text-start"
+            },
+            {
+              "i": 5,
+              "type": "text-delta"
+            },
+            {
+              "i": 6,
+              "type": "text-end"
+            },
+            {
+              "i": 7,
+              "type": "data-intelligence",
+              "answerExplanation": "Governed connector execution",
+              "dialogueMode": "answer",
+              "has_current_plan": false,
+              "has_execution_result": true,
+              "has_pending_task": false
+            },
+            {
+              "i": 8,
+              "type": "finish-step"
+            },
+            {
+              "i": 9,
+              "type": "finish"
+            },
+            {
+              "i": 10,
+              "type": "data-suggestions"
+            }
+          ]
+        }
+      },
+      "claim4_execution": {
+        "i": 7,
+        "success": true,
+        "result_url": "https://app.apollo.io/#/lists/6a4d6a98461b000010c5ae7b",
+        "error_code": null,
+        "assumption_notes": [
+          "Assumed name=MSP Prospects (from message_or_default_hint)"
+        ],
+        "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
+      },
+      "finished_at": "2026-07-18T05:47:45.076639+00:00"
+    },
+    "routing_wave_abcd": {
+      "probe": "routing_wave_prod_live",
+      "pr": 97,
+      "expected_sha_prefix": "65998eb7",
+      "started_at": "2026-07-18T05:47:46.411237+00:00",
+      "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "traces": {
+        "A_fast_honesty": {
+          "pass": true,
+          "criteria": "effectiveMode=fast AND routingTier=simple; must NOT upgrade to agent",
+          "conversation_id": "57ec14a4-655b-4512-ae58-ca08b8f05722",
+          "result": {
+            "http": 200,
+            "conversation_id": "57ec14a4-655b-4512-ae58-ca08b8f05722",
+            "mode_requested": "fast",
+            "message": "What connectors are connected? (routing-wave A 6cbf9c9e)",
+            "text": "The connected integrations are Apollo, Google Search Console, HubSpot, Microsoft 365, and Pipedrive.\n\nI also checked the live connector health, and only AI Visibility UI is showing as connected right now in the connector service. Several others are blocked, most commonly because authentication has expired or OAuth is still pending. The one best next move is to reconnect the expired/auth-pending connectors on the Connectors page, starting with the critical ones.",
+            "tools_seen": [
+              {
+                "type": "tool-input-available",
+                "toolName": "searchKnowledgeBase",
+                "toolCallId": "call-4db027b42bf9"
+              },
+              {
+                "type": "tool-output-available",
+                "toolCallId": "call-4db027b42bf9"
+              },
+              {
+                "type": "tool-input-available",
+                "toolName": "getConnectorStatus",
+                "toolCallId": "call-2bf586bd5f9b"
+              },
+              {
+                "type": "tool-output-available",
+                "toolCallId": "call-2bf586bd5f9b"
+              },
+              {
+                "type": "tool-input-available",
+                "toolName": "getConnectorStatus",
+                "toolCallId": "call-1f6e991a0a4d"
+              },
+              {
+                "type": "tool-output-available",
+                "toolCallId": "call-1f6e991a0a4d"
+              },
+              {
+                "type": "tool-input-available",
+                "toolName": "getAgentStatus",
+                "toolCallId": "call-afe4e09d1308"
+              },
+              {
+                "type": "tool-output-available",
+                "toolCallId": "call-afe4e09d1308"
+              }
+            ],
+            "intel_count": 5,
+            "sse_pending": null,
+            "db_pending": null,
+            "task_state_keys": [
+              "clarified_params",
+              "rejected_options",
+              "approved_actions",
+              "current_plan",
+              "completed_steps",
+              "pending_steps",
+              "persona_override",
+              "preferred_tone",
+              "unresolved_tasks",
+              "suppressed_suggestions",
+              "pending_task",
+              "connector_session",
+              "resolved_entities",
+              "recent_user_messages"
+            ],
+            "routing_tiers_seen": [
+              "simple",
+              "simple",
+              "simple",
+              "simple",
+              "simple"
+            ],
+            "effective_modes_seen": [
+              "fast",
+              "fast",
+              "fast",
+              "fast",
+              "fast"
+            ],
+            "pipeline_tiers_seen": [
+              "tier_1",
+              "tier_1",
+              "tier_1",
+              "tier_1",
+              "tier_1"
+            ],
+            "final_routingTier": "simple",
+            "final_effectiveMode": "fast",
+            "final_pipelineTier": "tier_1",
+            "last_intel": {
+              "effectiveMode": "fast",
+              "pipelineTier": "tier_1",
+              "routingTier": "simple",
+              "routing": {
+                "routingTier": "simple",
+                "modelTier": "low",
+                "latencyBudgetMs": {
+                  "ttft": 800,
+                  "total": 8000
+                },
+                "maxToolRounds": 3,
+                "pinnedFast": true,
+                "reasons": [
+                  "fast_or_explicit_simple"
+                ],
+                "escalations": []
+              },
+              "expl": "Live data came from assistant_connector_status (1 call).\n\nThis answer drew on 3 internal sources, including Business signals and Organization snapshot.",
+              "pending": null
+            },
+            "attempt": 1
+          },
+          "upgraded_away_from_fast": false
+        },
+        "B_write_intent": {
+          "pass": true,
+          "criteria": "routingTier multi_step OR research (not simple); pending approval OK (not confirmed)",
+          "conversation_id": "d6908989-0db7-430d-ac5d-319241b29dde",
+          "result": {
+            "http": 200,
+            "conversation_id": "d6908989-0db7-430d-ac5d-319241b29dde",
+            "mode_requested": "standard",
+            "message": "In Apollo, create a contact list named Routing Wave Live.",
+            "text": "I can create a contact list named **Routing Wave Live** in Apollo.\n\nReply **yes** to create it, or tell me what to change (name, modality, or follow-up criteria to populate it).",
+            "tools_seen": [
+              {
+                "type": "tool-input-available",
+                "toolName": "searchKnowledgeBase",
+                "toolCallId": "call-151b9eff7833"
+              },
+              {
+                "type": "tool-output-available",
+                "toolCallId": "call-151b9eff7833"
+              },
+              {
+                "type": "tool-input-available",
+                "toolName": "apollo_lists_create",
+                "toolCallId": "call-4d9881dce840"
+              },
+              {
+                "type": "tool-output-available",
+                "toolCallId": "call-4d9881dce840"
+              }
+            ],
+            "intel_count": 5,
+            "sse_pending": {
+              "type": "connector_action",
+              "params": {
+                "args": {
+                  "name": "Routing Wave Live",
+                  "list_name": "Routing Wave Live"
+                },
+                "kind": "write",
+                "label": "Create contact list",
+                "source": "react_write_gate",
+                "status": "awaiting_confirm",
+                "tool_name": "apollo_lists_create",
+                "destructive": false,
+                "integration": "apollo",
+                "invoke_action": "apollo.lists.create",
+                "approval_reason": "react_write_gate",
+                "inferred_fields": [],
+                "inference_sources": {},
+                "requires_approval": true
+              },
+              "status": "awaiting_confirm"
+            },
+            "db_pending": {
+              "type": "connector_action",
+              "params": {
+                "args": {
+                  "name": "Routing Wave Live",
+                  "list_name": "Routing Wave Live"
+                },
+                "kind": "write",
+                "label": "Create contact list",
+                "source": "react_write_gate",
+                "status": "awaiting_confirm",
+                "tool_name": "apollo_lists_create",
+                "destructive": false,
+                "integration": "apollo",
+                "invoke_action": "apollo.lists.create",
+                "approval_reason": "react_write_gate",
+                "inferred_fields": [],
+                "inference_sources": {},
+                "requires_approval": true
+              },
+              "status": "awaiting_confirm"
+            },
+            "task_state_keys": [
+              "clarified_params",
+              "rejected_options",
+              "approved_actions",
+              "current_plan",
+              "completed_steps",
+              "pending_steps",
+              "persona_override",
+              "preferred_tone",
+              "unresolved_tasks",
+              "suppressed_suggestions",
+              "pending_task",
+              "connector_session",
+              "resolved_entities",
+              "recent_user_messages"
+            ],
+            "routing_tiers_seen": [
+              "multi_step",
+              "multi_step",
+              "multi_step",
+              "multi_step",
+              "multi_step"
+            ],
+            "effective_modes_seen": [
+              "agent",
+              "agent",
+              "agent",
+              "agent",
+              "agent"
+            ],
+            "pipeline_tiers_seen": [
+              "tier_3",
+              "tier_3",
+              "tier_3",
+              "tier_3",
+              "tier_3"
+            ],
+            "final_routingTier": "multi_step",
+            "final_effectiveMode": "agent",
+            "final_pipelineTier": "tier_3",
+            "last_intel": {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "multi_step",
+              "routing": {
+                "routingTier": "multi_step",
+                "modelTier": "medium",
+                "latencyBudgetMs": {
+                  "ttft": 1500,
+                  "total": 20000
+                },
+                "maxToolRounds": 15,
+                "pinnedFast": false,
+                "reasons": [
+                  "write_intent_with_connector"
+                ]
+              },
+              "expl": "ReAct write gated for user approval",
+              "pending": {
+                "type": "connector_action",
+                "params": {
+                  "args": {
+                    "name": "Routing Wave Live",
+                    "list_name": "Routing Wave Live"
+                  },
+                  "kind": "write",
+                  "label": "Create contact list",
+                  "source": "react_write_gate",
+                  "status": "awaiting_confirm",
+                  "tool_name": "apollo_lists_create",
+                  "destructive": false,
+                  "integration": "apollo",
+                  "invoke_action": "apollo.lists.create",
+                  "approval_reason": "react_write_gate",
+                  "inferred_fields": [],
+                  "inference_sources": {},
+                  "requires_approval": true
+                },
+                "status": "awaiting_confirm"
+              }
+            }
+          },
+          "pending_gate": {
+            "type": "connector_action",
+            "params": {
+              "args": {
+                "name": "Routing Wave Live",
+                "list_name": "Routing Wave Live"
+              },
+              "kind": "write",
+              "label": "Create contact list",
+              "source": "react_write_gate",
+              "status": "awaiting_confirm",
+              "tool_name": "apollo_lists_create",
+              "destructive": false,
+              "integration": "apollo",
+              "invoke_action": "apollo.lists.create",
+              "approval_reason": "react_write_gate",
+              "inferred_fields": [],
+              "inference_sources": {},
+              "requires_approval": true
+            },
+            "status": "awaiting_confirm"
+          },
+          "stopped_at_pending": true,
+          "note": "Did not confirm write \u2014 prefer stop at pending approval"
+        },
+        "C_deepen_research": {
+          "pass": true,
+          "criteria": "routingTier=research OR escalation to research",
+          "conversation_id": "b5fe6aa9-da18-4ee0-b82a-530afe946afa",
+          "attempts": [
+            {
+              "attempt": 1,
+              "mode": "standard",
+              "conversation_id": "b5fe6aa9-da18-4ee0-b82a-530afe946afa",
+              "final_routingTier": "research",
+              "tiers_seen": [
+                "research",
+                "research",
+                "research"
+              ],
+              "effectiveMode": "agent",
+              "http": 200,
+              "text_head": "I planned a **2-step orchestration**:\n\n1. **Search people** (read, auto-run)\n2. **List deals** (read, auto-run)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes*",
+              "expl": "Multi-step connector orchestration"
+            }
+          ],
+          "result": {
+            "http": 200,
+            "conversation_id": "b5fe6aa9-da18-4ee0-b82a-530afe946afa",
+            "mode_requested": "standard",
+            "message": "go deeper with a full analysis comparing our Apollo and Pipedrive pipeline health [routing-wave C 2a3d9565]",
+            "text": "I planned a **2-step orchestration**:\n\n1. **Search people** (read, auto-run)\n2. **List deals** (read, auto-run)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change.",
+            "tools_seen": [],
+            "intel_count": 3,
+            "sse_pending": {
+              "type": "connector_orchestration",
+              "params": {
+                "goal": "go deeper with a full analysis comparing our Apollo and Pipedrive pipeline health [routing-wave C 2a3d9565]",
+                "steps": [
+                  {
+                    "kind": "read",
+                    "plan": {
+                      "args": {
+                        "limit": 10,
+                        "query": "go deeper with a full analysis comparing our Apollo"
+                      },
+                      "kind": "read",
+                      "label": "Search people",
+                      "tool_name": "apollo_people_search",
+                      "destructive": false,
+                      "integration": "apollo",
+                      "invoke_action": "apollo.people.search",
+                      "approval_reason": null,
+                      "inferred_fields": [],
+                      "inference_sources": {},
+                      "requires_approval": false
+                    },
+                    "label": "Search people",
+                    "segment": "go deeper with a full analysis comparing our Apollo",
+                    "step_id": "step_1",
+                    "supported": true,
+                    "skip_reason": null,
+                    "requires_approval": false
+                  },
+                  {
+                    "kind": "read",
+                    "plan": {
+                      "args": {
+                        "limit": 10,
+                        "query": "Pipedrive pipeline health [routing-wave C 2a3d9565]"
+                      },
+                      "kind": "read",
+                      "label": "List deals",
+                      "tool_name": "pipedrive_deals_list",
+                      "destructive": false,
+                      "integration": "pipedrive",
+                      "invoke_action": "pipedrive.deals.list",
+                      "approval_reason": null,
+                      "inferred_fields": [],
+                      "inference_sources": {},
+                      "requires_approval": false
+                    },
+                    "label": "List deals",
+                    "segment": "Pipedrive pipeline health [routing-wave C 2a3d9565]",
+                    "step_id": "step_2",
+                    "supported": true,
+                    "skip_reason": null,
+                    "requires_approval": false
+                  }
+                ],
+                "total_steps": 2,
+                "step_results": [],
+                "current_step_index": 0
+              },
+              "status": "awaiting_plan_confirm"
+            },
+            "db_pending": {
+              "type": "connector_orchestration",
+              "params": {
+                "goal": "go deeper with a full analysis comparing our Apollo and Pipedrive pipeline health [routing-wave C 2a3d9565]",
+                "steps": [
+                  {
+                    "kind": "read",
+                    "plan": {
+                      "args": {
+                        "limit": 10,
+                        "query": "go deeper with a full analysis comparing our Apollo"
+                      },
+                      "kind": "read",
+                      "label": "Search people",
+                      "tool_name": "apollo_people_search",
+                      "destructive": false,
+                      "integration": "apollo",
+                      "invoke_action": "apollo.people.search",
+                      "approval_reason": null,
+                      "inferred_fields": [],
+                      "inference_sources": {},
+                      "requires_approval": false
+                    },
+                    "label": "Search people",
+                    "segment": "go deeper with a full analysis comparing our Apollo",
+                    "step_id": "step_1",
+                    "supported": true,
+                    "skip_reason": null,
+                    "requires_approval": false
+                  },
+                  {
+                    "kind": "read",
+                    "plan": {
+                      "args": {
+                        "limit": 10,
+                        "query": "Pipedrive pipeline health [routing-wave C 2a3d9565]"
+                      },
+                      "kind": "read",
+                      "label": "List deals",
+                      "tool_name": "pipedrive_deals_list",
+                      "destructive": false,
+                      "integration": "pipedrive",
+                      "invoke_action": "pipedrive.deals.list",
+                      "approval_reason": null,
+                      "inferred_fields": [],
+                      "inference_sources": {},
+                      "requires_approval": false
+                    },
+                    "label": "List deals",
+                    "segment": "Pipedrive pipeline health [routing-wave C 2a3d9565]",
+                    "step_id": "step_2",
+                    "supported": true,
+                    "skip_reason": null,
+                    "requires_approval": false
+                  }
+                ],
+                "total_steps": 2,
+                "step_results": [],
+                "current_step_index": 0
+              },
+              "status": "awaiting_plan_confirm"
+            },
+            "task_state_keys": [
+              "clarified_params",
+              "rejected_options",
+              "approved_actions",
+              "current_plan",
+              "completed_steps",
+              "pending_steps",
+              "persona_override",
+              "preferred_tone",
+              "unresolved_tasks",
+              "suppressed_suggestions",
+              "pending_task",
+              "connector_session",
+              "resolved_entities",
+              "recent_user_messages"
+            ],
+            "routing_tiers_seen": [
+              "research",
+              "research",
+              "research"
+            ],
+            "effective_modes_seen": [
+              "agent",
+              "agent",
+              "agent"
+            ],
+            "pipeline_tiers_seen": [
+              "tier_3",
+              "tier_3",
+              "tier_3"
+            ],
+            "final_routingTier": "research",
+            "final_effectiveMode": "agent",
+            "final_pipelineTier": "tier_3",
+            "last_intel": {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "routing": {
+                "routingTier": "research",
+                "modelTier": "high",
+                "latencyBudgetMs": {
+                  "ttft": 2500,
+                  "total": 60000
+                },
+                "maxToolRounds": 15,
+                "pinnedFast": false,
+                "reasons": [
+                  "research_signal"
+                ]
+              },
+              "expl": "Multi-step connector orchestration",
+              "pending": {
+                "type": "connector_orchestration",
+                "params": {
+                  "goal": "go deeper with a full analysis comparing our Apollo and Pipedrive pipeline health [routing-wave C 2a3d9565]",
+                  "steps": [
+                    {
+                      "kind": "read",
+                      "plan": {
+                        "args": {
+                          "limit": 10,
+                          "query": "go deeper with a full analysis comparing our Apollo"
+                        },
+                        "kind": "read",
+                        "label": "Search people",
+                        "tool_name": "apollo_people_search",
+                        "destructive": false,
+                        "integration": "apollo",
+                        "invoke_action": "apollo.people.search",
+                        "approval_reason": null,
+                        "inferred_fields": [],
+                        "inference_sources": {},
+                        "requires_approval": false
+                      },
+                      "label": "Search people",
+                      "segment": "go deeper with a full analysis comparing our Apollo",
+                      "step_id": "step_1",
+                      "supported": true,
+                      "skip_reason": null,
+                      "requires_approval": false
+                    },
+                    {
+                      "kind": "read",
+                      "plan": {
+                        "args": {
+                          "limit": 10,
+                          "query": "Pipedrive pipeline health [routing-wave C 2a3d9565]"
+                        },
+                        "kind": "read",
+                        "label": "List deals",
+                        "tool_name": "pipedrive_deals_list",
+                        "destructive": false,
+                        "integration": "pipedrive",
+                        "invoke_action": "pipedrive.deals.list",
+                        "approval_reason": null,
+                        "inferred_fields": [],
+                        "inference_sources": {},
+                        "requires_approval": false
+                      },
+                      "label": "List deals",
+                      "segment": "Pipedrive pipeline health [routing-wave C 2a3d9565]",
+                      "step_id": "step_2",
+                      "supported": true,
+                      "skip_reason": null,
+                      "requires_approval": false
+                    }
+                  ],
+                  "total_steps": 2,
+                  "step_results": [],
+                  "current_step_index": 0
+                },
+                "status": "awaiting_plan_confirm"
+              }
+            },
+            "attempt": 1
+          }
+        }
+      },
+      "trace_d": {
+        "informational": true,
+        "pass": true,
+        "criteria": "count assistant.routing.escalated since script start (>=0 always; ideal >=1 if B/C escalated)",
+        "count": 0,
+        "events": [],
+        "note": "zero assistant.routing.escalated rows since script start (may classify at research/multi_step without mid-turn escalate)"
+      },
+      "prod_health": {
+        "status": "ok",
+        "timestamp": "2026-07-18T05:47:46.620085+00:00",
+        "version": "0.1.0",
+        "environment": "prod",
+        "git_sha": "9d1ae05105f066b07bda00d575204afb4cd91f95",
+        "ai_disabled": false,
+        "checks": {
+          "database": "healthy",
+          "cache": "healthy",
+          "temporal": "configured",
+          "clickhouse": "configured"
+        }
+      },
+      "prod_sha": "9d1ae05105f066b07bda00d575204afb4cd91f95",
+      "prod_sha_ok": true,
+      "accept_sha_prefixes": [
+        "65998eb7",
+        "3aff41ad"
+      ],
+      "allow_any_prod_sha": true,
+      "contains_pr97_note": "3aff41ad merges main after 65998eb7 (#97); follow-up clarify-SSE fix may supersede",
+      "finished_at": "2026-07-18T05:48:33.974254+00:00",
+      "verdict": "PASS",
+      "summary": {
+        "A": true,
+        "B": true,
+        "C": true,
+        "D_escalation_count": 0,
+        "prod_sha": "9d1ae05105f066b07bda00d575204afb4cd91f95",
+        "verdict": "PASS",
+        "evidence": {
+          "A_effectiveMode": "fast",
+          "A_routingTier": "simple",
+          "A_conversation_id": "57ec14a4-655b-4512-ae58-ca08b8f05722",
+          "B_routingTier": "multi_step",
+          "B_tiers_seen": [
+            "multi_step",
+            "multi_step",
+            "multi_step",
+            "multi_step",
+            "multi_step"
+          ],
+          "B_pending": true,
+          "B_conversation_id": "d6908989-0db7-430d-ac5d-319241b29dde",
+          "C_routingTier": "research",
+          "C_tiers_seen": [
+            "research",
+            "research",
+            "research"
+          ],
+          "C_conversation_id": "b5fe6aa9-da18-4ee0-b82a-530afe946afa"
+        }
+      }
+    },
+    "retrieval_ab": {
+      "probe": "retrieval_ab_live",
+      "started_at": "2026-07-18T05:48:35.026578+00:00",
+      "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "min_sha_prefix": "4eb6adbe",
+      "queries": {
+        "A_fast_connectors": {
+          "pass": true,
+          "http": 200,
+          "conversation_fingerprint": {
+            "tool_names": [
+              "searchKnowledgeBase",
+              "getConnectorStatus"
+            ],
+            "error_codes": [],
+            "routing_tiers": [
+              "simple",
+              "simple",
+              "simple",
+              "simple",
+              "simple"
+            ],
+            "effective_modes": [
+              "fast",
+              "fast",
+              "fast",
+              "fast",
+              "fast"
+            ],
+            "final_routingTier": "simple",
+            "final_effectiveMode": "fast",
+            "pending_seen": false,
+            "research_cascade_final": {
+              "internal_thin": true,
+              "suggest_broaden": true,
+              "prompt_message": "I found limited information within your organization's connected knowledge. I can broaden my research.",
+              "options": [
+                {
+                  "scope": "internal_only",
+                  "label": "Internal only",
+                  "description": "Stay with your connected knowledge, memory, and graph.",
+                  "enabled": true
+                },
+                {
+                  "scope": "intelligence_packs",
+                  "label": "+ Intelligence Packs",
+                  "description": "Add curated pack signals and external source hints.",
+                  "enabled": true
+                },
+                {
+                  "scope": "internet_research",
+                  "label": "+ Live Internet Research",
+                  "description": "Search the public web when governance allows.",
+                  "enabled": false,
+                  "disabled_reason": "Pending governance approval \u2014 internet research is not enabled for this environment."
+                },
+                {
+                  "scope": "everything",
+                  "label": "Everything available",
+                  "description": "Use all enabled internal and pack sources.",
+                  "enabled": true
+                }
+              ],
+              "research_scope": "internal_only",
+              "active_stages": [
+                "conversation_memory",
+                "internal_rag",
+                "knowledge_graph",
+                "connectors",
+                "reasoning"
+              ],
+              "stage_order": [
+                "conversation_memory",
+                "internal_rag",
+                "knowledge_graph",
+                "connectors",
+                "intelligence_packs",
+                "internet_research",
+                "reasoning"
+              ],
+              "internet_research_enabled": false,
+              "retrieval_score": null,
+              "source_count": 0,
+              "confidence_band": "unknown",
+              "top_sources": [],
+              "source_breakdown": {},
+              "stage_progress": [
+                {
+                  "stage": "conversation_memory",
+                  "label": "Conversation Memory",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "internal_rag",
+                  "label": "Internal Rag",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "knowledge_graph",
+                  "label": "Knowledge Graph",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "connectors",
+                  "label": "Connectors",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "reasoning",
+                  "label": "Reasoning",
+                  "status": "pending",
+                  "detail": null
+                }
+              ],
+              "progress_steps": [
+                "Conversation Memory complete",
+                "Internal Rag complete",
+                "Knowledge Graph complete",
+                "Connectors complete",
+                "Reasoning\u2026"
+              ],
+              "research_manager": true,
+              "cascade_stopped_at": null,
+              "confidence_sufficient": false,
+              "skip_graph": false,
+              "skip_external": false,
+              "planned_stages": [
+                "conversation_memory",
+                "internal_rag",
+                "knowledge_graph",
+                "connectors",
+                "reasoning"
+              ]
+            },
+            "text_head": "The connected connectors are Apollo, Google Search Console, HubSpot, Microsoft 365, Pipedrive, and AI Visibility UI.\n\nEverything else in the snapshot is disconnected or in an auth/error state. The most urgent issues are the expired or missing auth on several connectors, plus missing Fred, CISA KEV, NVD, and Zendesk.\n\nIf you want, I can also break this into:\n- fully connected and usable,\n- connecte",
+            "event_types": [
+              "data-intelligence",
+              "data-suggestions",
+              "finish",
+              "finish-step",
+              "start",
+              "start-step",
+              "text-delta",
+              "text-end",
+              "text-start",
+              "tool-input-available",
+              "tool-output-available"
+            ]
+          },
+          "reasons": [],
+          "message": "What connectors are connected? (retrieval-ab A 202607180548)"
+        },
+        "B_write_intent_gate": {
+          "pass": true,
+          "http": 200,
+          "conversation_fingerprint": {
+            "tool_names": [
+              "searchKnowledgeBase",
+              "apollo_lists_create"
+            ],
+            "error_codes": [
+              "write_approval_required"
+            ],
+            "routing_tiers": [
+              "simple",
+              "simple",
+              "simple",
+              "simple",
+              "simple"
+            ],
+            "effective_modes": [
+              "fast",
+              "fast",
+              "fast",
+              "fast",
+              "fast"
+            ],
+            "final_routingTier": "simple",
+            "final_effectiveMode": "fast",
+            "pending_seen": true,
+            "research_cascade_final": {
+              "internal_thin": true,
+              "suggest_broaden": true,
+              "prompt_message": "I found limited information within your organization's connected knowledge. I can broaden my research.",
+              "options": [
+                {
+                  "scope": "internal_only",
+                  "label": "Internal only",
+                  "description": "Stay with your connected knowledge, memory, and graph.",
+                  "enabled": true
+                },
+                {
+                  "scope": "intelligence_packs",
+                  "label": "+ Intelligence Packs",
+                  "description": "Add curated pack signals and external source hints.",
+                  "enabled": true
+                },
+                {
+                  "scope": "internet_research",
+                  "label": "+ Live Internet Research",
+                  "description": "Search the public web when governance allows.",
+                  "enabled": false,
+                  "disabled_reason": "Pending governance approval \u2014 internet research is not enabled for this environment."
+                },
+                {
+                  "scope": "everything",
+                  "label": "Everything available",
+                  "description": "Use all enabled internal and pack sources.",
+                  "enabled": true
+                }
+              ],
+              "research_scope": "internal_only",
+              "active_stages": [
+                "conversation_memory",
+                "internal_rag",
+                "knowledge_graph",
+                "connectors",
+                "reasoning"
+              ],
+              "stage_order": [
+                "conversation_memory",
+                "internal_rag",
+                "knowledge_graph",
+                "connectors",
+                "intelligence_packs",
+                "internet_research",
+                "reasoning"
+              ],
+              "internet_research_enabled": false,
+              "retrieval_score": null,
+              "source_count": 1,
+              "confidence_band": "unknown",
+              "top_sources": [
+                {
+                  "source_name": "Knowledge graph",
+                  "source_type": "knowledge_graph",
+                  "assignment_id": null,
+                  "score": null,
+                  "match_tier": "graph"
+                }
+              ],
+              "source_breakdown": {
+                "graph": 1
+              },
+              "stage_progress": [
+                {
+                  "stage": "conversation_memory",
+                  "label": "Conversation Memory",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "internal_rag",
+                  "label": "Internal Rag",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "knowledge_graph",
+                  "label": "Knowledge Graph",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "connectors",
+                  "label": "Connectors",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "reasoning",
+                  "label": "Reasoning",
+                  "status": "pending",
+                  "detail": null
+                }
+              ],
+              "progress_steps": [
+                "Conversation Memory complete",
+                "Internal Rag complete",
+                "Knowledge Graph complete",
+                "Connectors complete",
+                "Reasoning\u2026"
+              ],
+              "research_manager": true,
+              "cascade_stopped_at": null,
+              "confidence_sufficient": false,
+              "skip_graph": false,
+              "skip_external": false,
+              "planned_stages": [
+                "conversation_memory",
+                "internal_rag",
+                "knowledge_graph",
+                "connectors",
+                "reasoning"
+              ]
+            },
+            "text_head": "I can create a contact list named **gravitre-retrieval-ab-202607180548** in Apollo.\n\nReply **yes** to create it, or tell me what to change (name, modality, or follow-up criteria to populate it).",
+            "event_types": [
+              "data-intelligence",
+              "data-suggestions",
+              "finish",
+              "finish-step",
+              "start",
+              "start-step",
+              "text-delta",
+              "text-end",
+              "text-start",
+              "tool-input-available",
+              "tool-output-available"
+            ]
+          },
+          "reasons": [],
+          "message": "Create an Apollo contact list named exactly 'gravitre-retrieval-ab-202607180548' with no contacts. Use Apollo only."
+        },
+        "C_org_kb": {
+          "pass": true,
+          "http": 200,
+          "conversation_fingerprint": {
+            "tool_names": [
+              "searchKnowledgeBase",
+              "getConnectorStatus",
+              "searchWeb"
+            ],
+            "error_codes": [],
+            "routing_tiers": [
+              "simple",
+              "simple",
+              "simple",
+              "simple",
+              "simple"
+            ],
+            "effective_modes": [
+              "fast",
+              "fast",
+              "fast",
+              "fast",
+              "fast"
+            ],
+            "final_routingTier": "simple",
+            "final_effectiveMode": "fast",
+            "pending_seen": false,
+            "research_cascade_final": {
+              "internal_thin": true,
+              "suggest_broaden": true,
+              "prompt_message": "I found limited information within your organization's connected knowledge. I can broaden my research.",
+              "options": [
+                {
+                  "scope": "internal_only",
+                  "label": "Internal only",
+                  "description": "Stay with your connected knowledge, memory, and graph.",
+                  "enabled": true
+                },
+                {
+                  "scope": "intelligence_packs",
+                  "label": "+ Intelligence Packs",
+                  "description": "Add curated pack signals and external source hints.",
+                  "enabled": true
+                },
+                {
+                  "scope": "internet_research",
+                  "label": "+ Live Internet Research",
+                  "description": "Search the public web when governance allows.",
+                  "enabled": false,
+                  "disabled_reason": "Pending governance approval \u2014 internet research is not enabled for this environment."
+                },
+                {
+                  "scope": "everything",
+                  "label": "Everything available",
+                  "description": "Use all enabled internal and pack sources.",
+                  "enabled": true
+                }
+              ],
+              "research_scope": "internal_only",
+              "active_stages": [
+                "conversation_memory",
+                "internal_rag",
+                "knowledge_graph",
+                "connectors",
+                "reasoning"
+              ],
+              "stage_order": [
+                "conversation_memory",
+                "internal_rag",
+                "knowledge_graph",
+                "connectors",
+                "intelligence_packs",
+                "internet_research",
+                "reasoning"
+              ],
+              "internet_research_enabled": false,
+              "retrieval_score": null,
+              "source_count": 0,
+              "confidence_band": "unknown",
+              "top_sources": [],
+              "source_breakdown": {},
+              "stage_progress": [
+                {
+                  "stage": "conversation_memory",
+                  "label": "Conversation Memory",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "internal_rag",
+                  "label": "Internal Rag",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "knowledge_graph",
+                  "label": "Knowledge Graph",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "connectors",
+                  "label": "Connectors",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "reasoning",
+                  "label": "Reasoning",
+                  "status": "pending",
+                  "detail": null
+                }
+              ],
+              "progress_steps": [
+                "Conversation Memory complete",
+                "Internal Rag complete",
+                "Knowledge Graph complete",
+                "Connectors complete",
+                "Reasoning\u2026"
+              ],
+              "research_manager": true,
+              "cascade_stopped_at": null,
+              "confidence_sufficient": false,
+              "skip_graph": false,
+              "skip_external": false,
+              "planned_stages": [
+                "conversation_memory",
+                "internal_rag",
+                "knowledge_graph",
+                "connectors",
+                "reasoning"
+              ]
+            },
+            "text_head": "I couldn\u2019t find an internal refund policy in your connected knowledge, so I can\u2019t answer that from internal sources alone.\n\nThe only related hit I found was an external Google Workspace thread saying domain purchases are non-refundable and free trials aren\u2019t charged, but that isn\u2019t your organization\u2019s policy, so I\u2019m not treating it as authoritative here.\n\nIf you want, I can help you locate the pol",
+            "event_types": [
+              "data-intelligence",
+              "data-suggestions",
+              "finish",
+              "finish-step",
+              "start",
+              "start-step",
+              "text-delta",
+              "text-end",
+              "text-start",
+              "tool-input-available",
+              "tool-output-available"
+            ]
+          },
+          "reasons": [],
+          "message": "What is our refund policy? Answer from internal knowledge only. (retrieval-ab C 202607180548)"
+        },
+        "D_thin_broaden": {
+          "pass": true,
+          "http": 200,
+          "conversation_fingerprint": {
+            "tool_names": [
+              "searchKnowledgeBase"
+            ],
+            "error_codes": [],
+            "routing_tiers": [
+              "simple",
+              "simple",
+              "simple",
+              "simple",
+              "simple"
+            ],
+            "effective_modes": [
+              "fast",
+              "fast",
+              "fast",
+              "fast",
+              "fast"
+            ],
+            "final_routingTier": "simple",
+            "final_effectiveMode": "fast",
+            "pending_seen": false,
+            "research_cascade_final": {
+              "internal_thin": true,
+              "suggest_broaden": true,
+              "prompt_message": "I found limited information within your organization's connected knowledge. I can broaden my research.",
+              "options": [
+                {
+                  "scope": "internal_only",
+                  "label": "Internal only",
+                  "description": "Stay with your connected knowledge, memory, and graph.",
+                  "enabled": true
+                },
+                {
+                  "scope": "intelligence_packs",
+                  "label": "+ Intelligence Packs",
+                  "description": "Add curated pack signals and external source hints.",
+                  "enabled": true
+                },
+                {
+                  "scope": "internet_research",
+                  "label": "+ Live Internet Research",
+                  "description": "Search the public web when governance allows.",
+                  "enabled": false,
+                  "disabled_reason": "Pending governance approval \u2014 internet research is not enabled for this environment."
+                },
+                {
+                  "scope": "everything",
+                  "label": "Everything available",
+                  "description": "Use all enabled internal and pack sources.",
+                  "enabled": true
+                }
+              ],
+              "research_scope": "internal_only",
+              "active_stages": [
+                "conversation_memory",
+                "internal_rag",
+                "knowledge_graph",
+                "connectors",
+                "reasoning"
+              ],
+              "stage_order": [
+                "conversation_memory",
+                "internal_rag",
+                "knowledge_graph",
+                "connectors",
+                "intelligence_packs",
+                "internet_research",
+                "reasoning"
+              ],
+              "internet_research_enabled": false,
+              "retrieval_score": null,
+              "source_count": 0,
+              "confidence_band": "unknown",
+              "top_sources": [],
+              "source_breakdown": {},
+              "stage_progress": [
+                {
+                  "stage": "conversation_memory",
+                  "label": "Conversation Memory",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "internal_rag",
+                  "label": "Internal Rag",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "knowledge_graph",
+                  "label": "Knowledge Graph",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "connectors",
+                  "label": "Connectors",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "reasoning",
+                  "label": "Reasoning",
+                  "status": "pending",
+                  "detail": null
+                }
+              ],
+              "progress_steps": [
+                "Conversation Memory complete",
+                "Internal Rag complete",
+                "Knowledge Graph complete",
+                "Connectors complete",
+                "Reasoning\u2026"
+              ],
+              "research_manager": true,
+              "cascade_stopped_at": null,
+              "confidence_sufficient": false,
+              "skip_graph": false,
+              "skip_external": false,
+              "planned_stages": [
+                "conversation_memory",
+                "internal_rag",
+                "knowledge_graph",
+                "connectors",
+                "reasoning"
+              ]
+            },
+            "text_head": "I can\u2019t give you an exact Q3 2027 revenue forecast for \u201cZephyr Dynamics in Antarctica\u201d because there\u2019s no internal record or connected data for that subsidiary in the context I have. It looks like a fictional entity, and I don\u2019t have any retrieved knowledge to verify a forecast.\n\nIf you want, I can still help in one of two ways:\n- look for any internal mention of Zephyr Dynamics across your connec",
+            "event_types": [
+              "data-intelligence",
+              "data-suggestions",
+              "finish",
+              "finish-step",
+              "start",
+              "start-step",
+              "text-delta",
+              "text-end",
+              "text-start",
+              "tool-input-available",
+              "tool-output-available"
+            ]
+          },
+          "reasons": [],
+          "message": "What is the exact Q3 2027 revenue forecast for our fictional subsidiary Zephyr Dynamics in Antarctica? Use only internal org knowledge. (retrieval-ab D 202607180548)"
+        },
+        "E_fast_honesty": {
+          "pass": true,
+          "http": 200,
+          "conversation_fingerprint": {
+            "tool_names": [
+              "searchKnowledgeBase"
+            ],
+            "error_codes": [],
+            "routing_tiers": [
+              "simple",
+              "simple",
+              "simple",
+              "simple",
+              "simple"
+            ],
+            "effective_modes": [
+              "fast",
+              "fast",
+              "fast",
+              "fast",
+              "fast"
+            ],
+            "final_routingTier": "simple",
+            "final_effectiveMode": "fast",
+            "pending_seen": false,
+            "research_cascade_final": {
+              "internal_thin": true,
+              "suggest_broaden": true,
+              "prompt_message": "I found limited information within your organization's connected knowledge. I can broaden my research.",
+              "options": [
+                {
+                  "scope": "internal_only",
+                  "label": "Internal only",
+                  "description": "Stay with your connected knowledge, memory, and graph.",
+                  "enabled": true
+                },
+                {
+                  "scope": "intelligence_packs",
+                  "label": "+ Intelligence Packs",
+                  "description": "Add curated pack signals and external source hints.",
+                  "enabled": true
+                },
+                {
+                  "scope": "internet_research",
+                  "label": "+ Live Internet Research",
+                  "description": "Search the public web when governance allows.",
+                  "enabled": false,
+                  "disabled_reason": "Pending governance approval \u2014 internet research is not enabled for this environment."
+                },
+                {
+                  "scope": "everything",
+                  "label": "Everything available",
+                  "description": "Use all enabled internal and pack sources.",
+                  "enabled": true
+                }
+              ],
+              "research_scope": "internal_only",
+              "active_stages": [
+                "conversation_memory",
+                "internal_rag",
+                "knowledge_graph",
+                "connectors",
+                "reasoning"
+              ],
+              "stage_order": [
+                "conversation_memory",
+                "internal_rag",
+                "knowledge_graph",
+                "connectors",
+                "intelligence_packs",
+                "internet_research",
+                "reasoning"
+              ],
+              "internet_research_enabled": false,
+              "retrieval_score": null,
+              "source_count": 0,
+              "confidence_band": "unknown",
+              "top_sources": [],
+              "source_breakdown": {},
+              "stage_progress": [
+                {
+                  "stage": "conversation_memory",
+                  "label": "Conversation Memory",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "internal_rag",
+                  "label": "Internal Rag",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "knowledge_graph",
+                  "label": "Knowledge Graph",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "connectors",
+                  "label": "Connectors",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "reasoning",
+                  "label": "Reasoning",
+                  "status": "pending",
+                  "detail": null
+                }
+              ],
+              "progress_steps": [
+                "Conversation Memory complete",
+                "Internal Rag complete",
+                "Knowledge Graph complete",
+                "Connectors complete",
+                "Reasoning\u2026"
+              ],
+              "research_manager": true,
+              "cascade_stopped_at": null,
+              "confidence_sufficient": false,
+              "skip_graph": false,
+              "skip_external": false,
+              "planned_stages": [
+                "conversation_memory",
+                "internal_rag",
+                "knowledge_graph",
+                "connectors",
+                "reasoning"
+              ]
+            },
+            "text_head": "I\u2019m in retrieval-ab E mode.",
+            "event_types": [
+              "data-intelligence",
+              "data-suggestions",
+              "finish",
+              "finish-step",
+              "start",
+              "start-step",
+              "text-delta",
+              "text-end",
+              "text-start",
+              "tool-input-available",
+              "tool-output-available"
+            ]
+          },
+          "reasons": [],
+          "message": "Reply with one sentence: what mode are you in? (retrieval-ab E 202607180548)"
+        }
+      },
+      "pass": true,
+      "health": {
+        "status": "ok",
+        "timestamp": "2026-07-18T05:48:35.265196+00:00",
+        "version": "0.1.0",
+        "environment": "prod",
+        "git_sha": "9d1ae05105f066b07bda00d575204afb4cd91f95",
+        "ai_disabled": false,
+        "checks": {
+          "database": "healthy",
+          "cache": "healthy",
+          "temporal": "configured",
+          "clickhouse": "configured"
+        }
+      },
+      "deploy_sha_ok": true,
+      "finished_at": "2026-07-18T05:49:53.560266+00:00"
+    },
+    "research_cascade": {
+      "started_at": "2026-07-18T05:49:54.704074+00:00",
+      "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "conversation_id": "c99e9005-db05-4af4-886d-6233ac401da4",
+      "min_sha_prefix": "716864e6",
+      "checks": {
+        "deploy_sha": {
+          "pass": true,
+          "git_sha": "9d1ae05105f066b07bda00d575204afb4cd91f95",
+          "required_prefix": "716864e6"
+        },
+        "thin_suggest_broaden": {
+          "pass": false,
+          "detail": "suggest_broaden or internal_thin in researchCascade SSE"
+        },
+        "scoped_enrichment": {
+          "pass": false,
+          "detail": "confidence_band/source_breakdown/stage_progress in final researchCascade"
+        },
+        "progress_steps_sse": {
+          "pass": true,
+          "detail": "progressSteps in mid/final SSE"
+        }
+      },
+      "pass": false,
+      "health": {
+        "status": "ok",
+        "timestamp": "2026-07-18T05:49:54.930021+00:00",
+        "version": "0.1.0",
+        "environment": "prod",
+        "git_sha": "9d1ae05105f066b07bda00d575204afb4cd91f95",
+        "ai_disabled": false,
+        "checks": {
+          "database": "healthy",
+          "cache": "healthy",
+          "temporal": "configured",
+          "clickhouse": "configured"
+        }
+      },
+      "trace_thin": {
+        "http_status": 200,
+        "cascade_count": 0,
+        "cascade": {},
+        "event_count": 10
+      },
+      "trace_scoped": {
+        "http_status": 200,
+        "cascade_count": 0,
+        "cascade": {},
+        "event_count": 10
+      },
+      "finished_at": "2026-07-18T05:50:01.568677+00:00"
+    }
+  },
+  "pass": false,
+  "health_at_end": {
+    "status": "ok",
+    "timestamp": "2026-07-18T05:50:01.830649+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "9d1ae05105f066b07bda00d575204afb4cd91f95",
+    "ai_disabled": false,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "finished_at": "2026-07-18T05:50:01.886141+00:00"
+}

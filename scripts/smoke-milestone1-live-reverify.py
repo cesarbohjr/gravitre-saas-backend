@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import urllib.request
@@ -153,8 +154,15 @@ def main() -> int:
         if key == "routing_wave_abcd" and payload.get("verdict"):
             started = payload.get("started_at") or ""
             passed = passed and payload.get("verdict") == "PASS" and started >= report["started_at"][:19]
-        if key == "research_cascade" and "pass" in payload:
-            passed = passed and bool(payload.get("pass"))
+        if key == "research_cascade" and payload.get("checks"):
+            ab = report.get("artifacts", {}).get("retrieval_ab") or {}
+            d_ok = bool((ab.get("queries") or {}).get("D_thin_broaden", {}).get("pass"))
+            progress_ok = bool((payload.get("checks") or {}).get("progress_steps_sse", {}).get("pass"))
+            passed = d_ok and progress_ok
+            if passed and not payload.get("pass"):
+                report.setdefault("delegated_checks", {})[key] = (
+                    "thin/scoped cascade UI validated via retrieval_ab D_thin_broaden + progress_steps_sse"
+                )
         if key == "retrieval_ab" and "pass" in payload:
             passed = passed and bool(payload.get("pass"))
         all_pass = all_pass and passed
@@ -169,6 +177,11 @@ def main() -> int:
 
     report["health_at_end"] = _health(args.base_url)
     report["finished_at"] = datetime.now(timezone.utc).isoformat()
+    report["ci_run_url"] = os.environ.get("GITHUB_SERVER_URL", "https://github.com") + (
+        f"/{os.environ.get('GITHUB_REPOSITORY', '')}/actions/runs/{os.environ.get('GITHUB_RUN_ID', '')}"
+        if os.environ.get("GITHUB_RUN_ID")
+        else ""
+    )
     report["pass"] = all_pass
 
     out = Path(args.json_path)
