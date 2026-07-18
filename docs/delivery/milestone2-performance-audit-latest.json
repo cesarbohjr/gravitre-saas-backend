@@ -737,10 +737,13 @@
     "internet_violations": [],
     "stop_early_observed_on_kb_query": false,
     "stop_early_hits": [],
-    "latency_p95_under_120s": true,
+    "stop_early_sse_gap": true,
+    "latency_delta_verified": false,
+    "latency_delta_direction": "INCONCLUSIVE",
+    "availability_p95_under_120s": true,
     "all_queries_http_200": true
   },
-  "pass": true,
+  "pass": false,
   "health": {
     "status": "ok",
     "timestamp": "2026-07-18T07:32:13.261402+00:00",
@@ -781,7 +784,13 @@
     ],
     "p50_ms": 21752,
     "p95_ms": 25930,
-    "max_ms": 25930
+    "max_ms": 25930,
+    "mean_ms": 18813.8
+  },
+  "latency_delta": {
+    "direction": "INCONCLUSIVE",
+    "latency_guardrail_pass": false,
+    "note": "No pre-RM latency baseline on same prod tip. Required: smoke-milestone2-latency-ab.py --full-ab @ pre-RM SHA 09e57595."
   },
   "token_comparison": {
     "before_rm_total_tokens": 0,
@@ -790,5 +799,5 @@
     "after_rm_window": "2026-07-18T05:05:29+00:00 .. 2026-07-18T07:33:47.343533+00:00",
     "note": "Org-wide aggregates \u2014 not isolated to audit queries. Use for trend only; live query latencies are the primary guardrail signal."
   },
-  "verdict": "PASS"
+  "verdict": "INCONCLUSIVE — latency before/after not verified (run milestone2-latency-ab workflow)"
 }
