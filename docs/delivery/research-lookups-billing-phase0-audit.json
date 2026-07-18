@@ -1,0 +1,146 @@
+{
+  "record": "research_lookups_billing_phase0_audit",
+  "updated_at": "2026-07-18",
+  "status": "PHASE_0_COMPLETE_AWAITING_SEQUENCING_SIGN_OFF",
+  "sequencing_recommendation": {
+    "default": "gate_customer_visible_surfaces",
+    "rationale": "INTERNET_RESEARCH_ENABLED is false; live verification steps 2-7 not run. Showing billable Research Lookups before the feature works advertises a capability customers cannot use.",
+    "proposed_split": {
+      "build_now_no_customer_visibility": [
+        "Stripe meter + metered price spec (human creates in Dashboard)",
+        "Railway env vars (backend only)",
+        "backend stripe reporting module (parallel to ai_credits)",
+        "shared pricing constants in codebase",
+        "billing_plans.overage_rates migration",
+        "in-app UI components (hidden until flag on)"
+      ],
+      "publish_only_after_technical_go_live": [
+        "gravitre.app/pricing Need more? line",
+        "tier card included allotment copy",
+        "in-app billing/usage Research Lookups row",
+        "Stripe live-mode charges to real customers"
+      ],
+      "alternative_if_marketing_wants_teaser": "Coming soon label on pricing page only; still no billable Stripe attachment to prod subs until flag on"
+    },
+    "cesar_confirmation_required": "Choose (a) flag-gated invisible, (b) Coming soon on marketing only, or (c) fully live pricing now — agent will not publish customer-visible copy without explicit choice"
+  },
+  "confirmed_numbers": {
+    "included_per_month": { "node": 10, "control": 60, "command": 200 },
+    "overage_usd_per_lookup": 0.35,
+    "tier_prices_unchanged": { "node": 49, "control": 129, "command": 299 },
+    "metric_type": "research_lookups",
+    "separate_from": "ai_credits LLM token ledger"
+  },
+  "phase0_findings": {
+    "1_live_pricing_page": {
+      "url": "https://gravitre.app/pricing",
+      "fetched_at": "2026-07-18",
+      "need_more_section": {
+        "layout": "3-column grid inside rounded-2xl border card; HelpCircle + 'Need more?' header",
+        "existing_items": [
+          { "name": "Additional Core Users", "price": "$29/month each", "icon": "Users" },
+          { "name": "Additional Outputs", "price": "$2-$3 each", "icon": "Zap", "price_color": "text-emerald-600" },
+          { "name": "Additional Mesons", "price": "$2-$4 each", "icon": "Blocks", "price_color": "text-violet-600" }
+        ],
+        "research_lookups_today": "NOT PRESENT on live site"
+      },
+      "tier_included_display_pattern": {
+        "outputs": "Highlighted box: 'Up to N complete outputs / month' + subtitle 'Campaigns, email sequences...'",
+        "meson": "Separate violet/zinc bordered box with count or 'Not included'",
+        "research_lookups_today": "NOT PRESENT in tier cards or comparison table"
+      },
+      "source_code": "apps/web/app/(marketing)/pricing/page.tsx — static hardcoded `addOns` array and `tiers` objects; NOT fetched from API",
+      "drift_risk": "HIGH — numbers also in apps/web/lib/plans.ts, backend research_lookup_metering.py, supabase billing_plans seed; no shared marketing pricing module today"
+    },
+    "2_stripe_configuration": {
+      "pattern_in_use_today": {
+        "subscriptions": "Flat recurring Prices via STRIPE_PRICE_ID_{NODE,CONTROL,COMMAND}_{MONTHLY,ANNUAL}; seeded by backend/scripts/stripe_seed_prices.py",
+        "usage_metered": "ONLY ai_credits — Stripe Billing Meter events (STRIPE_METER_EVENT_NAME=ai_credits_used) + per-plan metered Price IDs (STRIPE_METERED_PRICE_ID_{NODE,CONTROL,COMMAND}) via backend/app/billing/stripe_metering.py",
+        "outputs_overage": "NOT on Stripe — pricing-page copy + internal usage_records only; no STRIPE_*OUTPUT* env vars",
+        "mesons_overage": "NOT on Stripe — same as outputs; meson addons may be separate catalog but no metered overage price IDs in config"
+      },
+      "research_lookups_backend_today": "usage_records.metric_type=research_lookups via research_lookup_metering.py; NO Stripe reporting path exists yet",
+      "implication": "Research Lookups should follow the OUTPUTS/MESONS customer-facing family (pricing copy + internal metering). For automatic Stripe billing, the closest existing *implementation* pattern is ai_credits meter — but that conflates currencies; recommend a SEPARATE meter event research_lookups_used at $0.35/unit, not reuse ai_credits_used"
+    },
+    "3_env_vars": {
+      "railway_backend_existing_stripe": [
+        "STRIPE_SECRET_KEY",
+        "STRIPE_WEBHOOK_SECRET",
+        "STRIPE_PRICE_ID_NODE_MONTHLY",
+        "STRIPE_PRICE_ID_NODE_ANNUAL",
+        "STRIPE_PRICE_ID_CONTROL_MONTHLY",
+        "STRIPE_PRICE_ID_CONTROL_ANNUAL",
+        "STRIPE_PRICE_ID_COMMAND_MONTHLY",
+        "STRIPE_PRICE_ID_COMMAND_ANNUAL",
+        "STRIPE_METER_EVENT_NAME",
+        "STRIPE_METERED_PRICE_ID_NODE",
+        "STRIPE_METERED_PRICE_ID_CONTROL",
+        "STRIPE_METERED_PRICE_ID_COMMAND"
+      ],
+      "research_lookups_env_to_add": [
+        "STRIPE_RESEARCH_LOOKUP_METER_EVENT_NAME=research_lookups_used",
+        "STRIPE_RESEARCH_LOOKUP_METERED_PRICE_ID (single shared metered price at $0.35/unit, OR per-plan if tier-specific rates needed — proposal is flat $0.35 all tiers)"
+      ],
+      "vercel_frontend": "No Stripe overage price IDs on Vercel today; optional NEXT_PUBLIC_* only for checkout base plans. Marketing pricing is static — no env needed unless we add a feature flag NEXT_PUBLIC_SHOW_RESEARCH_LOOKUPS_PRICING"
+    },
+    "4_in_app_billing_surfaces": {
+      "backend_api_ready": {
+        "GET /api/settings/billing-usage": "Returns included_research_lookups, overage_research_lookups, overage_research_cost_usd, totals.research_lookups — backend/app/routers/settings.py",
+        "GET /api/settings/grounding-volume": "Org daily lookup count + circuit breaker — separate ops/monitor surface"
+      },
+      "backend_api_gap": {
+        "GET /api/billing/overview usage mapper": "_map_usage_for_billing_status and _usage_from_records in backend/app/routers/billing.py do NOT pass through research_lookups fields"
+      },
+      "frontend_gaps": [
+        {
+          "path": "apps/web/app/settings/page.tsx",
+          "component": "BillingUsageSettings",
+          "shows": "outputs, workflow_runs, api_calls, ai_tokens, estimated overage (outputs only)",
+          "missing": "Research Lookups row; types omit research fields"
+        },
+        {
+          "path": "apps/web/app/settings/billing/page.tsx",
+          "component": "BillingPageInner",
+          "shows": "Workflow Runs + AI Credits metrics via buildUsageForecast",
+          "missing": "Research Lookups metric; conflates ai_tokens display as 'AI Credits'"
+        },
+        {
+          "path": "apps/web/types/api.ts",
+          "type": "BillingUsageResponse",
+          "missing": "included_research_lookups, overage_research_lookups, overage_research_cost_usd, totals.research_lookups"
+        },
+        {
+          "path": "apps/web/lib/billing-usage-forecast.ts",
+          "missing": "Research overage in projected cost total"
+        }
+      ],
+      "frontend_research_lookup_refs": "ZERO matches for research_lookup / Research Lookup / grounding-volume in apps/web"
+    },
+    "5_db_billing_plans": {
+      "overage_rates_today": "output + meson keys only in supabase/migrations/20260729120000_seed_all_billing_plans.sql",
+      "research_lookup_key": "NOT in billing_plans.overage_rates yet — hardcoded in research_lookup_metering.py OVERAGE_USD_PER_LOOKUP=0.35"
+    }
+  },
+  "phase1_stripe_spec_preview": {
+    "human_action_required": true,
+    "recommended_approach": "New Stripe Billing Meter (separate from ai_credits_used)",
+    "dashboard_steps": [
+      "Products → create product 'Research Lookup Overage' (or add metered Price to existing Gravitre Usage product if one exists)",
+      "Billing → Meters → Create meter: event_name research_lookups_used, aggregation sum, value settings integer",
+      "Prices → Create metered Price: $0.35 USD per unit, billing meter research_lookups_used, usage type metered",
+      "Optional: attach metered price to checkout/subscription alongside flat plan price (mirror attach_metered_price_to_subscription pattern in stripe_metering.py)"
+    ],
+    "env_after_creation": {
+      "STRIPE_RESEARCH_LOOKUP_METER_EVENT_NAME": "research_lookups_used",
+      "STRIPE_RESEARCH_LOOKUP_METERED_PRICE_ID": "price_..."
+    },
+    "code_follow_up": "Extend stripe_metering.py OR new research_lookup_stripe_metering.py to report usage_records research_lookups overage quantities; only after meter + price exist",
+    "test_mode_gate": "Stripe test-mode overage charge verification required before calling billing phase done — NOT RUN"
+  },
+  "verification_status": {
+    "pricing_page_live": "NOT RUN — no Research Lookups copy deployed (correct given flag off)",
+    "billing_ui": "NOT RUN — API fields exist but no UI consumer",
+    "stripe_test_charge": "NOT RUN — no meter/price/reporting path",
+    "sequencing_decision": "PENDING_CESAR"
+  }
+}
