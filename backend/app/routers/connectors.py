@@ -1276,6 +1276,27 @@ class PlaidExchangeRequest(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+@connectors_router.get("/plaid/status")
+async def plaid_status(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Public readiness check for platform Plaid Link keys (no secrets)."""
+    from app.connectors.plaid_link import plaid_link_configured, plaid_platform_credentials
+    from app.services.plaid_tools import resolve_plaid_api_base
+
+    client_id, secret = plaid_platform_credentials(settings)
+    api_base, plaid_env = resolve_plaid_api_base(settings=settings, params={"plaid_env": "sandbox"})
+    return {
+        "provider": "plaid",
+        "configured": plaid_link_configured(settings),
+        "clientIdPresent": bool(client_id),
+        "clientSecretPresent": bool(secret),
+        "plaidEnv": plaid_env,
+        "apiBase": api_base,
+        "redirectUri": "https://gravitre.app/connectors",
+    }
+
+
 @connectors_router.post("/plaid/link-token")
 async def plaid_create_link_token(
     body: PlaidLinkTokenRequest,

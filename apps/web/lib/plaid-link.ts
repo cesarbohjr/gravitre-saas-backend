@@ -32,18 +32,50 @@ export function loadPlaidLinkScript(): Promise<void> {
   if (window.Plaid) return Promise.resolve()
   if (scriptPromise) return scriptPromise
   scriptPromise = new Promise((resolve, reject) => {
+    const finish = () => {
+      if (window.Plaid) {
+        resolve()
+        return
+      }
+      scriptPromise = null
+      reject(new Error("Failed to load Plaid Link (script loaded but Plaid global missing)"))
+    }
+    const fail = () => {
+      scriptPromise = null
+      reject(
+        new Error(
+          "Failed to load Plaid Link — check Content-Security-Policy allows https://cdn.plaid.com"
+        )
+      )
+    }
+
     const existing = document.querySelector<HTMLScriptElement>(`script[src="${PLAID_SCRIPT_SRC}"]`)
     if (existing) {
-      existing.addEventListener("load", () => resolve())
-      existing.addEventListener("error", () => reject(new Error("Failed to load Plaid Link")))
-      if (window.Plaid) resolve()
+      if (window.Plaid) {
+        resolve()
+        return
+      }
+      existing.addEventListener("load", finish, { once: true })
+      existing.addEventListener("error", fail, { once: true })
+      // If the prior attempt already failed/completed without Plaid, retry with a fresh tag.
+      window.setTimeout(() => {
+        if (!window.Plaid) {
+          existing.remove()
+          const script = document.createElement("script")
+          script.src = PLAID_SCRIPT_SRC
+          script.async = true
+          script.onload = finish
+          script.onerror = fail
+          document.body.appendChild(script)
+        }
+      }, 0)
       return
     }
     const script = document.createElement("script")
     script.src = PLAID_SCRIPT_SRC
     script.async = true
-    script.onload = () => resolve()
-    script.onerror = () => reject(new Error("Failed to load Plaid Link"))
+    script.onload = finish
+    script.onerror = fail
     document.body.appendChild(script)
   })
   return scriptPromise

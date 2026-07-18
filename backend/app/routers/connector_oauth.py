@@ -229,6 +229,9 @@ class OAuthProviderStatusResponse(BaseModel):
     configured: bool
     encryption_configured: bool = Field(alias="encryptionConfigured")
     redirect_uri: str | None = Field(default=None, alias="redirectUri")
+    # Presence-only flags (no secret values) so Railway mis-wiring is diagnosable.
+    client_id_present: bool | None = Field(default=None, alias="clientIdPresent")
+    client_secret_present: bool | None = Field(default=None, alias="clientSecretPresent")
 
     model_config = {"populate_by_name": True}
 
@@ -263,6 +266,8 @@ async def oauth_provider_status(
 
     configured = False
     redirect_uri: str | None = None
+    client_id_present: bool | None = None
+    client_secret_present: bool | None = None
     if vendor in GOOGLE_OAUTH_VENDORS:
         configured = google_oauth_configured(settings, environment_name)
         redirect_uri = google_vendor_redirect_uri(settings, vendor)
@@ -300,7 +305,12 @@ async def oauth_provider_status(
         configured = marketo_oauth_configured(settings, environment_name)
         redirect_uri = None
     elif vendor in GENERIC_OAUTH_VENDORS:
-        configured = generic_oauth_configured(settings, vendor, environment_name)
+        from app.connectors.generic_oauth import generic_credentials
+
+        client_id, client_secret = generic_credentials(settings, vendor)
+        client_id_present = bool(client_id)
+        client_secret_present = bool(client_secret)
+        configured = bool(client_id and client_secret)
         redirect_uri = generic_redirect_uri(settings, vendor)
 
     return OAuthProviderStatusResponse(
@@ -308,6 +318,8 @@ async def oauth_provider_status(
         configured=configured,
         encryption_configured=bool((settings.connector_secrets_encryption_key or "").strip()),
         redirect_uri=redirect_uri,
+        client_id_present=client_id_present,
+        client_secret_present=client_secret_present,
     )
 
 

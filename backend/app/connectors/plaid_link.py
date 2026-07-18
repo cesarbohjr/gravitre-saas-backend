@@ -39,20 +39,28 @@ class PlaidLinkError(Exception):
         self.status_code = status_code
 
 
+def _clean_env(value: str | None) -> str:
+    """Strip whitespace and accidental surrounding quotes from Railway/env values."""
+    text = (value or "").strip()
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in {"'", '"'}:
+        text = text[1:-1].strip()
+    return text
+
+
 def plaid_platform_credentials(settings: Settings) -> tuple[str, str]:
     """Return (client_id, secret) from platform env / settings."""
     import os
 
     client_id = (
-        (os.environ.get("PLAID_CLIENT_ID") or "").strip()
-        or (os.environ.get("PLAID_CLIENT_ID_KEY") or "").strip()
-        or (settings.plaid_client_id or "").strip()
+        _clean_env(os.environ.get("PLAID_CLIENT_ID"))
+        or _clean_env(os.environ.get("PLAID_CLIENT_ID_KEY"))
+        or _clean_env(settings.plaid_client_id)
     )
     secret = (
-        (os.environ.get("PLAID_SECRET") or "").strip()
-        or (os.environ.get("PLAID_CLIENT_SECRET") or "").strip()
-        or (os.environ.get("PLAID_SECRET_KEY") or "").strip()
-        or (settings.plaid_secret or "").strip()
+        _clean_env(os.environ.get("PLAID_SECRET"))
+        or _clean_env(os.environ.get("PLAID_CLIENT_SECRET"))
+        or _clean_env(os.environ.get("PLAID_SECRET_KEY"))
+        or _clean_env(settings.plaid_secret)
     )
     return client_id, secret
 

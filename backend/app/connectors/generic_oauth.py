@@ -32,22 +32,30 @@ logger = logging.getLogger(__name__)
 TOKEN_REFRESH_BUFFER_SEC = 300
 
 
+def _clean_env(value: str | None) -> str:
+    """Strip whitespace and accidental surrounding quotes from Railway/env values."""
+    text = (value or "").strip()
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in {"'", '"'}:
+        text = text[1:-1].strip()
+    return text
+
+
 def generic_credentials(settings: Settings, vendor: str) -> tuple[str, str]:
     key = vendor.strip().lower().replace("-", "_")
     env_prefix = key.upper()
     client_id = (
-        (os.environ.get(f"{env_prefix}_CLIENT_ID") or "").strip()
-        or (os.environ.get(f"{env_prefix}_CLIENT_ID_KEY") or "").strip()
+        _clean_env(os.environ.get(f"{env_prefix}_CLIENT_ID"))
+        or _clean_env(os.environ.get(f"{env_prefix}_CLIENT_ID_KEY"))
     )
     client_secret = (
-        (os.environ.get(f"{env_prefix}_CLIENT_SECRET") or "").strip()
-        or (os.environ.get(f"{env_prefix}_SECRET_KEY") or "").strip()
-        or (os.environ.get(f"{env_prefix}_CLIENT_SECRET_KEY") or "").strip()
+        _clean_env(os.environ.get(f"{env_prefix}_CLIENT_SECRET"))
+        or _clean_env(os.environ.get(f"{env_prefix}_SECRET_KEY"))
+        or _clean_env(os.environ.get(f"{env_prefix}_CLIENT_SECRET_KEY"))
     )
     if not client_id:
-        client_id = (getattr(settings, f"{key}_client_id", None) or "").strip()
+        client_id = _clean_env(getattr(settings, f"{key}_client_id", None))
     if not client_secret:
-        client_secret = (getattr(settings, f"{key}_client_secret", None) or "").strip()
+        client_secret = _clean_env(getattr(settings, f"{key}_client_secret", None))
     return client_id, client_secret
 
 
