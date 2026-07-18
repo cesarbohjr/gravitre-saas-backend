@@ -62,6 +62,19 @@ MULTI_ACTION = re.compile(
     r"\b(create|find|search|notify|post|send|update|add|log|draft)\b",
     re.I,
 )
+# Wave 6–7 / STA-325 — meta "outline a plan before tools" is not an orchestration step.
+META_PLAN_SEGMENT = re.compile(
+    r"\b(?:outline|draft|share|show|give\s+me|write)\s+(?:a\s+|an\s+|the\s+|my\s+)?"
+    r"(?:short\s+|brief\s+|quick\s+)?plan\b|"
+    r"\bplan\s+before\s+(?:calling\s+)?tools\b|"
+    r"\bbefore\s+(?:calling\s+)?tools\b",
+    re.I,
+)
+PLAN_TWEAK = re.compile(
+    r"\b(change|adjust|modify|instead|skip|swap|remove\s+step|add\s+step|"
+    r"wait|hold\s+on|different\s+plan|revise)\b",
+    re.I,
+)
 GOOGLE_WORKSPACE_FAMILY = frozenset({"google_drive", "google_sheets", "google_docs"})
 
 
@@ -134,16 +147,33 @@ class ChatOrchestrationService:
         integrations = ChatOrchestrationService._mentioned_integrations(text, connected_integrations)
         if len(integrations) >= 2:
             return True
-        if len(integrations) >= 1 and MULTI_STEP_HINT.search(text):
-            return True
         segments = ChatOrchestrationService._split_segments(text)
-        if len(segments) >= 2 and len(integrations) >= 1:
+        actionable = [
+            segment
+            for segment in segments
+            if not ChatOrchestrationService._is_meta_plan_segment(segment)
+        ]
+        # STA-325 — "do X, then outline a plan before tools" is a single ReAct turn,
+        # not multi-step connector orchestration awaiting_plan_confirm.
+        if len(integrations) >= 1 and MULTI_STEP_HINT.search(text):
+            if len(actionable) >= 2 or len(integrations) >= 2:
+                return True
+        if len(actionable) >= 2 and len(integrations) >= 1:
             return True
-        if connected_integrations and REPORT_ORCHESTRATION.search(text) and MULTI_STEP_HINT.search(text):
+        if (
+            connected_integrations
+            and REPORT_ORCHESTRATION.search(text)
+            and MULTI_STEP_HINT.search(text)
+            and len(actionable) >= 2
+        ):
             return True
-        if connected_integrations and len(segments) >= 2 and len(MULTI_ACTION.findall(text)) >= 2:
+        if connected_integrations and len(actionable) >= 2 and len(MULTI_ACTION.findall(text)) >= 2:
             return True
-        if routing_tier in {"multi_step", "research"} and len(segments) >= 2 and connected_integrations:
+        if (
+            routing_tier in {"multi_step", "research"}
+            and len(actionable) >= 2
+            and connected_integrations
+        ):
             return True
         return False
 
@@ -228,6 +258,43 @@ class ChatOrchestrationService:
             )
 
         if status in {"awaiting_plan_confirm", "awaiting_step_confirm"}:
+            # STA-304 — unrelated new asks (e.g. Slack post after Apollo orch confirm)
+            # must not trap the pipeline in a "reply yes" reminder. Clear and let
+            # clarification / ReAct run (connector_unavailable ToolChip path).
+            if self._should_supersede_pending_orchestration(
+                message,
+                task_state,
+                connected_integrations,
+            ):
+                await self._clear_orchestration(conversation_id, org_id)
+                cleared = await self._state.get_task_state(
+                    conversation_id, org_id, client=client
+                )
+                if not self.is_orchestration_intent(
+                    message, cleared, connected_integrations
+                ):
+                    return None
+                steps = await self._build_plan(
+                    message, connected_integrations, org_id, user_id, classification
+                )
+                if len(steps) < 2:
+                    return None
+                if not any(step.supported for step in steps):
+                    return await self._present_all_blocked_plan(
+                        conversation_id,
+                        org_id,
+                        message,
+                        steps,
+                        client,
+                    )
+                return await self._present_plan_confirm(
+                    conversation_id,
+                    org_id,
+                    user_id,
+                    message,
+                    steps,
+                    client,
+                )
             refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
             return {
                 "stop_pipeline": True,
@@ -1230,6 +1297,66 @@ class ChatOrchestrationService:
             alias = INTEGRATION_ALIASES.get(goal_vendors[0], (goal_vendors[0],))[0]
             return f"{text} in {alias}"
         return text
+
+    @staticmethod
+    def _is_meta_plan_segment(segment: str) -> bool:
+        """True when the clause is only 'show a plan / plan before tools' meta-instruction."""
+        text = (segment or "").strip()
+        if not text:
+            return True
+        if not META_PLAN_SEGMENT.search(text):
+            return False
+        # Keep real work that happens to mention planning ("plan a Slack post…").
+        if MULTI_ACTION.search(text) and not re.search(
+            r"\bplan\s+before\s+(?:calling\s+)?tools\b", text, re.I
+        ):
+            # "outline a plan to create X" still has create — treat as actionable.
+            if re.search(
+                r"\b(?:create|find|search|notify|post|send|update|add|log)\b",
+                text,
+                re.I,
+            ):
+                return False
+        return True
+
+    @staticmethod
+    def _should_supersede_pending_orchestration(
+        message: str,
+        task_state: dict[str, Any],
+        connected_integrations: list[str],
+    ) -> bool:
+        """Drop stale awaiting_* orch when the user starts a clearly new task."""
+        text = (message or "").strip()
+        if len(text) < 12:
+            return False
+        if PLAN_TWEAK.search(text) and len(text) < 160:
+            return False
+        params = dict(
+            (task_state.get("clarified_params") or {})
+            or ((task_state.get("pending_task") or {}).get("params") or {})
+        )
+        goal = str(params.get("goal") or "")
+        pending_integrations = set(
+            ChatOrchestrationService._mentioned_integrations(goal, connected_integrations)
+        )
+        message_integrations = set(
+            ChatOrchestrationService._mentioned_integrations(text, connected_integrations)
+        )
+        if (
+            message_integrations
+            and pending_integrations
+            and message_integrations.isdisjoint(pending_integrations)
+        ):
+            return True
+        # Same vendor family but a fresh imperative that doesn't reference the plan.
+        if MULTI_ACTION.search(text) and not re.search(
+            r"\b(plan|step|orchestration|approve|confirm)\b", text, re.I
+        ):
+            goal_l = goal.lower()
+            text_l = text.lower()
+            if goal_l and text_l[:48] not in goal_l and goal_l[:48] not in text_l:
+                return True
+        return False
 
     @staticmethod
     def _split_segments(message: str) -> list[str]:

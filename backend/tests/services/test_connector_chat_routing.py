@@ -62,6 +62,22 @@ def test_preflight_runs_for_fresh_multi_connector_orchestration():
     )
 
 
+def test_preflight_skips_wave67_plan_before_tools_meta():
+    """STA-325 — single-connector + meta plan clause must reach ReAct, not orch preflight."""
+    message = (
+        "Using Apollo, list my contact lists and summarize the first few names. "
+        "Then outline a short plan before calling tools."
+    )
+    assert (
+        should_run_connector_preflight(
+            {},
+            message=message,
+            connected_integrations=["apollo", "slack"],
+        )
+        is False
+    )
+
+
 def test_preflight_skips_omit_name_list_create_despite_apollo_comma():
     """STA-305 parallel-path: omit-name create must not preflight as orchestration.
 

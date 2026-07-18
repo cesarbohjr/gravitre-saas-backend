@@ -37,6 +37,104 @@ def test_detects_multi_integration_prompt(orchestration_service):
     )
 
 
+def test_wave67_plan_before_tools_is_not_orchestration(orchestration_service):
+    """STA-325 — meta 'outline a plan before tools' must not open awaiting_plan_confirm."""
+    message = (
+        "Using Apollo, list my contact lists and summarize the first few names. "
+        "Then outline a short plan before calling tools."
+    )
+    assert (
+        orchestration_service.is_orchestration_intent(
+            message,
+            {},
+            ["apollo", "slack"],
+        )
+        is False
+    )
+
+
+def test_meta_plan_segment_detection(orchestration_service):
+    assert orchestration_service._is_meta_plan_segment(
+        "outline a short plan before calling tools"
+    )
+    assert orchestration_service._is_meta_plan_segment("plan before calling tools")
+    assert not orchestration_service._is_meta_plan_segment(
+        "create a Slack post summarizing the plan"
+    )
+
+
+@pytest.mark.asyncio
+async def test_supersede_stale_orch_for_unrelated_slack(orchestration_service):
+    """STA-304 — awaiting Apollo orch must not trap a later Slack post."""
+    params = {
+        "goal": "Using Apollo, list my contact lists",
+        "steps": [],
+        "current_step_index": 0,
+        "step_results": [],
+        "total_steps": 2,
+    }
+    task_state = {
+        "clarified_params": params,
+        "pending_task": {
+            "type": "connector_orchestration",
+            "status": "awaiting_plan_confirm",
+            "params": params,
+        },
+    }
+    cleared = {
+        "clarified_params": {},
+        "pending_task": None,
+        "completed_steps": [],
+        "current_plan": None,
+        "pending_steps": [],
+    }
+    orchestration_service._state.get_task_state = AsyncMock(return_value=cleared)
+    orchestration_service._state.update_task_state = AsyncMock()
+
+    result = await orchestration_service.process_turn(
+        org_id="org-1",
+        user_id="user-1",
+        conversation_id="conv-1",
+        message=(
+            "Post a Slack message to the default channel saying "
+            "'gravitre-wave67-spotcheck failure probe — ignore'. Use the Slack connector."
+        ),
+        classification={"intent": "workflow_execution"},
+        task_state=task_state,
+        connected_integrations=["apollo", "slack"],
+        client=MagicMock(),
+    )
+
+    assert result is None
+    orchestration_service._state.update_task_state.assert_awaited()
+    # Cleared pending_task so clarify / ReAct can emit connector_unavailable chips.
+    clear_patch = orchestration_service._state.update_task_state.await_args.args[2]
+    assert clear_patch.get("pending_task") is None
+
+
+def test_should_not_supersede_plan_tweak(orchestration_service):
+    params = {
+        "goal": "Find HubSpot deals then notify Slack",
+        "steps": [],
+    }
+    task_state = {
+        "clarified_params": params,
+        "pending_task": {
+            "type": "connector_orchestration",
+            "status": "awaiting_plan_confirm",
+            "params": params,
+        },
+    }
+    assert (
+        orchestration_service._should_supersede_pending_orchestration(
+            "change step 2 to use #sales instead",
+            task_state,
+            ["hubspot", "slack"],
+        )
+        is False
+    )
+
+
 def test_split_segments_for_hubspot_monday_slack(orchestration_service):
     message = "Find stale HubSpot deals, create follow-up tasks in Monday, and notify Slack"
     segments = orchestration_service._split_segments(message)

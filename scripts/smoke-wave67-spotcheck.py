@@ -143,11 +143,20 @@ def _summarize_stream(events: list[dict[str, Any]], wall_start: str) -> dict[str
             if idx == len(events) - 1 or dialogue:
                 final_meta = entry
         elif "tool-input" in et or et.endswith("tool-input-start") or "tool-call" in et:
+            # Flat SSE: {type, toolCallId, toolName, input} — not nested under data.
+            tool_name = data.get("toolName") or ev.get("toolName")
             if first_tool_start is None:
-                first_tool_start = {"i": idx, "type": et, "toolName": data.get("toolName") or ev.get("toolName")}
-            entry["toolName"] = data.get("toolName") or ev.get("toolName")
+                first_tool_start = {"i": idx, "type": et, "toolName": tool_name}
+            entry["toolName"] = tool_name
         elif "tool-output" in et or "tool-result" in et or et.endswith("tool-output-available"):
-            output = data.get("output") if isinstance(data.get("output"), dict) else data
+            # Flat SSE: {type, toolCallId, output:{errorCode,success,...}}
+            output = data.get("output") if isinstance(data.get("output"), dict) else None
+            if output is None and isinstance(ev.get("output"), dict):
+                output = ev.get("output")
+            if output is None and isinstance(data, dict) and (
+                "errorCode" in data or "error_code" in data or "success" in data
+            ):
+                output = data
             shaped = {
                 "i": idx,
                 "type": et,
