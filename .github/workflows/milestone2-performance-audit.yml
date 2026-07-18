@@ -1,0 +1,57 @@
+name: Milestone 2 Performance Audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Reason for manual trigger"
+        required: false
+  push:
+    branches: [main]
+    paths:
+      - "scripts/smoke-milestone2-performance-audit.py"
+      - ".github/workflows/milestone2-performance-audit.yml"
+
+concurrency:
+  group: milestone2-performance-audit
+  cancel-in-progress: false
+
+jobs:
+  performance-audit:
+    name: Milestone 2 prod performance audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run Milestone 2 performance audit (prod)
+        env:
+          BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+          OAUTH_SMOKE_ORG_ID: ${{ secrets.OAUTH_SMOKE_ORG_ID }}
+        run: |
+          python3 scripts/smoke-milestone2-performance-audit.py \
+            --json docs/delivery/milestone2-performance-audit-latest.json
+
+      - name: Upload performance audit artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: milestone2-performance-audit
+          path: docs/delivery/milestone2-performance-audit-latest.json
+          if-no-files-found: ignore
