@@ -60,7 +60,8 @@ import {
   Shield,
   ChevronRight,
   X,
-  Loader2
+  Loader2,
+  Globe,
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -188,6 +189,7 @@ function BillingPageInner() {
     })) ?? []
   const invoiceRows = liveInvoices.length > 0 ? liveInvoices : []
   const usageFromApi = overview?.usage
+  const showResearchBilling = Boolean(usageFromApi?.research_lookups_billing_visible)
   const usageForecast = useMemo(
     () =>
       buildUsageForecast({
@@ -243,8 +245,24 @@ function BillingPageInner() {
           color: "purple" as const,
           trend: "",
           trendUp: true,
-          unit: undefined as string | undefined,
+          unit: "LLM tokens — not Research Lookups",
         },
+        ...(showResearchBilling
+          ? [
+              {
+                name: "Research Lookups",
+                used: usageFromApi.totals.research_lookups ?? 0,
+                limit: usageFromApi.included_research_lookups ?? 0,
+                icon: Globe,
+                color: "emerald" as const,
+                trend: usageFromApi.overage_research_lookups
+                  ? `${usageFromApi.overage_research_lookups} overage`
+                  : "",
+                trendUp: false,
+                unit: "live internet research",
+              },
+            ]
+          : []),
       ]
     : [...emptyUsageMetrics]
 

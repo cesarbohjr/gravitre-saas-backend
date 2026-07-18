@@ -362,6 +362,20 @@ class Settings(BaseSettings):
             "grounding_org_hourly_circuit_limit",
         ),
     )
+    stripe_research_lookup_meter_event_name: str = Field(
+        default="research_lookups_used",
+        validation_alias=AliasChoices(
+            "STRIPE_RESEARCH_LOOKUP_METER_EVENT_NAME",
+            "stripe_research_lookup_meter_event_name",
+        ),
+    )
+    stripe_research_lookup_metered_price_id: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "STRIPE_RESEARCH_LOOKUP_METERED_PRICE_ID",
+            "stripe_research_lookup_metered_price_id",
+        ),
+    )
     # Browser agent for connector API gaps (read-only fetch + optional Playwright interact).
     browser_agent_enabled: bool = True
     browser_agent_interact_enabled: bool = False

@@ -18,6 +18,7 @@ import asyncio
 
 from app.billing.service import get_current_period
 from app.billing.stripe_metering import report_usage_for_active_orgs
+from app.billing.stripe_research_lookup_metering import report_research_lookup_overage_for_active_orgs
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 
@@ -26,16 +27,27 @@ logger = get_logger(__name__)
 _INITIAL_DELAY_S = 60  # report shortly after boot, then every interval
 
 
+def _sync_all_usage(period_start, period_end, settings: Settings) -> dict:
+    ai_summary = report_usage_for_active_orgs(period_start, period_end, settings)
+    research_summary = report_research_lookup_overage_for_active_orgs(period_start, period_end, settings)
+    return {
+        "ai_credits": ai_summary,
+        "research_lookups": research_summary,
+        "error": ai_summary.get("error") or research_summary.get("error"),
+    }
+
+
 async def _run_once(settings: Settings) -> None:
     try:
         period_start, period_end = get_current_period()
         summary = await asyncio.to_thread(
-            report_usage_for_active_orgs, period_start, period_end, settings
+            _sync_all_usage, period_start, period_end, settings
         )
         logger.info(
-            "usage_sync_tick orgs=%s reported_rows=%s error=%s",
-            summary.get("orgs"),
-            summary.get("reported_rows"),
+            "usage_sync_tick orgs=%s ai_reported_rows=%s research_reported_orgs=%s error=%s",
+            summary.get("ai_credits", {}).get("orgs"),
+            summary.get("ai_credits", {}).get("reported_rows"),
+            summary.get("research_lookups", {}).get("reported_orgs"),
             summary.get("error"),
         )
     except Exception as exc:  # noqa: BLE001 - never let a tick kill the loop

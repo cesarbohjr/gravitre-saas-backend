@@ -687,66 +687,28 @@ async def get_billing_usage_route(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
+    from app.billing.usage_records_summary import summarize_usage_records_billing
+
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        summary = summarize_usage_records_billing(client, org_id, settings=settings)
+    except RuntimeError as exc:
+        if "usage_records" in str(exc).lower():
+            month_start = _current_month_start_iso()
+            return {
+                "period_start": month_start,
+                "totals": {"outputs": 0, "workflow_runs": 0, "api_calls": 0, "ai_tokens": 0},
+                "included_outputs": 0,
+                "overage_outputs": 0,
+                "overage_cost_usd": 0,
+                "internet_research_enabled": bool(settings.internet_research_enabled),
+                "research_lookups_billing_visible": False,
+            }
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    month_start = _current_month_start_iso()
-    usage_resp = (
-        client.table("usage_records")
-        .select("metric_type, quantity, recorded_at")
-        .eq("org_id", org_id)
-        .gte("recorded_at", month_start)
-        .execute()
-    )
-    if _is_missing_table_error(usage_resp.error):
-        return {
-            "period_start": month_start,
-            "totals": {"outputs": 0, "workflow_runs": 0, "api_calls": 0, "ai_tokens": 0},
-            "included_outputs": 0,
-            "overage_outputs": 0,
-            "overage_cost_usd": 0,
-        }
-    if usage_resp.error:
-        raise HTTPException(status_code=500, detail=str(usage_resp.error))
-
-    totals = {"outputs": 0, "workflow_runs": 0, "api_calls": 0, "ai_tokens": 0, "research_lookups": 0}
-    for row in usage_resp.data or []:
-        metric = str(row.get("metric_type") or "")
-        quantity = int(row.get("quantity") or 0)
-        if metric in totals:
-            totals[metric] += quantity
-
-    sub_resp = client.table("subscriptions").select("tier").eq("org_id", org_id).limit(1).execute()
-    tier = "free"
-    if not _is_missing_table_error(sub_resp.error):
-        tier = str((sub_resp.data or [{}])[0].get("tier") or "free")
-    included_outputs = _included_outputs_for_tier(tier)
-    output_total = totals["outputs"]
-    overage_outputs = 0
-    if included_outputs is not None:
-        overage_outputs = max(output_total - included_outputs, 0)
-    overage_cost_usd = round(overage_outputs * 0.01, 2)
-
-    from app.services.research_lookup_metering import (
-        OVERAGE_USD_PER_LOOKUP,
-        included_lookups_for_plan_code,
-    )
-
-    included_research = included_lookups_for_plan_code(tier)
-    research_total = totals["research_lookups"]
-    overage_research = max(research_total - included_research, 0)
-    overage_research_usd = round(overage_research * OVERAGE_USD_PER_LOOKUP, 2)
-
-    return {
-        "period_start": month_start,
-        "tier": tier,
-        "totals": totals,
-        "included_outputs": included_outputs,
-        "overage_outputs": overage_outputs,
-        "overage_cost_usd": overage_cost_usd,
-        "included_research_lookups": included_research,
-        "overage_research_lookups": overage_research,
-        "overage_research_cost_usd": overage_research_usd,
-    }
+    plan = summary.pop("plan", None)
+    _ = plan
+    return summary
 
 
 @router.get("/grounding-volume")

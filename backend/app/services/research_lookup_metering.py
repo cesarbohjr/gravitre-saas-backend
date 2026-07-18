@@ -10,33 +10,27 @@ from typing import Any
 
 from supabase import Client
 
+from app.billing.research_lookup_plan_rates import (
+    included_research_lookups_for_plan,
+    overage_usd_per_research_lookup,
+)
 from app.billing.service import derive_idempotency_key, get_plan_for_org
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-# Proposal @ docs/delivery/internet-research-pricing-proposal.json — launch, no tier price increase.
-INCLUDED_RESEARCH_LOOKUPS_PER_MONTH: dict[str, int] = {
-    "node": 10,
-    "control": 60,
-    "command": 200,
-    "enterprise": 200,
-    "free": 0,
-    "starter": 10,
-    "growth": 60,
-    "scale": 200,
-}
-
-OVERAGE_USD_PER_LOOKUP = 0.35  # mid of $0.25–0.50 proposal band
-
-# Internal COGS estimate (USD) — expected scale: tokens primary, grounding $0 under 10k/day/account.
+# Allotments and overage rate: billing_plans.features.research_lookups_per_month +
+# billing_plans.overage_rates.research_lookup (see research_lookup_plan_rates.py).
 ESTIMATED_GROUNDING_COGS_USD_PER_LOOKUP_AT_FREE_TIER = 0.0
 ESTIMATED_GROUNDING_COGS_USD_PER_LOOKUP_AT_PAID_TIER = 0.035  # $35/1k worst-case safety reference
 
 
-def included_lookups_for_plan_code(plan_code: str | None) -> int:
-    code = (plan_code or "node").strip().lower()
-    return int(INCLUDED_RESEARCH_LOOKUPS_PER_MONTH.get(code, INCLUDED_RESEARCH_LOOKUPS_PER_MONTH["node"]))
+def included_lookups_for_plan_code(plan_code: str | None, plan: dict | None = None) -> int:
+    return included_research_lookups_for_plan(plan, plan_code=plan_code)
+
+
+def overage_usd_per_lookup_for_plan(plan: dict | None) -> float:
+    return overage_usd_per_research_lookup(plan)
 
 
 def _month_start() -> date:
@@ -128,7 +122,8 @@ def record_research_lookup(
 
     plan = get_plan_for_org(client, org_id)
     plan_code = str(plan.get("code") or "node")
-    included = included_lookups_for_plan_code(plan_code)
+    included = included_research_lookups_for_plan(plan, plan_code=plan_code)
+    overage_rate = overage_usd_per_research_lookup(plan)
 
     month_total = 0
     try:
@@ -154,7 +149,8 @@ def record_research_lookup(
         "included_lookups_per_month": included,
         "month_total_lookups": month_total,
         "overage_lookups": overage,
-        "overage_usd_estimate": round(overage * OVERAGE_USD_PER_LOOKUP, 2) if overage else 0.0,
+        "overage_usd_estimate": round(overage * overage_rate, 2) if overage else 0.0,
+        "overage_rate_usd": overage_rate,
         "internal_cogs": cogs,
         "period_start": period_start.isoformat(),
         "period_end": period_end.isoformat(),

@@ -68,6 +68,8 @@ export function buildUsageForecast(params: {
   forecastSeries: ForecastPoint[]
   forecastStatus: { label: string; accent: string; soft: string; dot: string }
   weeksInPeriod: number
+  researchOverageUsd: number
+  totalEstimatedOverageUsd: number
 } {
   const workflowLimit = params.workflowLimit ?? params.overview?.usage?.included_outputs ?? 50000
   const weeksInPeriod = 4.345
@@ -126,6 +128,12 @@ export function buildUsageForecast(params: {
       ? { label: "Approaching limit", accent: "text-warning", soft: "bg-warning/10", dot: "bg-warning" }
       : { label: "On track", accent: "text-success", soft: "bg-success/10", dot: "bg-success" }
 
+  const usage = params.overview?.usage
+  const showResearch = Boolean(usage?.research_lookups_billing_visible)
+  const researchOverageUsd = showResearch ? Number(usage?.overage_research_cost_usd ?? 0) : 0
+  const outputOverageUsd = Number(usage?.overage_cost_usd ?? 0)
+  const totalEstimatedOverageUsd = outputOverageUsd + researchOverageUsd
+
   return {
     weeklyData,
     workflowUsed,
@@ -136,5 +144,7 @@ export function buildUsageForecast(params: {
     forecastSeries,
     forecastStatus,
     weeksInPeriod,
+    researchOverageUsd,
+    totalEstimatedOverageUsd,
   }
 }

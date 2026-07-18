@@ -1488,7 +1488,14 @@ function BillingUsageSettings() {
     refreshInterval: 30000,
   })
   const usage = (data ?? {}) as BillingUsageResponse
-  const totals = usage.totals ?? { outputs: 0, workflow_runs: 0, api_calls: 0, ai_tokens: 0 }
+  const totals = usage.totals ?? { outputs: 0, workflow_runs: 0, api_calls: 0, ai_tokens: 0, research_lookups: 0 }
+  const showResearch = Boolean(usage.research_lookups_billing_visible)
+  const researchUsed = totals.research_lookups ?? 0
+  const researchIncluded = usage.included_research_lookups ?? 0
+  const researchOverage = usage.overage_research_lookups ?? 0
+  const outputOverageUsd = Number(usage.overage_cost_usd ?? 0)
+  const researchOverageUsd = Number(usage.overage_research_cost_usd ?? 0)
+  const totalEstimatedOverage = outputOverageUsd + (showResearch ? researchOverageUsd : 0)
 
   return (
     <div className="space-y-6">
@@ -1503,6 +1510,18 @@ function BillingUsageSettings() {
           Refresh
         </Button>
       </div>
+      {showResearch ? (
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="text-sm font-medium text-foreground">Research Lookups this cycle</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {researchUsed} of {researchIncluded} included · {researchOverage} overage @ $
+            {(usage.research_lookup_overage_rate_usd ?? 0.35).toFixed(2)}/lookup
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Separate from AI Credits (LLM token usage). Research Lookups bill live internet grounding only.
+          </p>
+        </div>
+      ) : null}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="rounded-lg border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground uppercase">Outputs</p>
@@ -1519,11 +1538,23 @@ function BillingUsageSettings() {
         <div className="rounded-lg border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground uppercase">AI Tokens</p>
           <p className="text-xl font-semibold mt-1">{totals.ai_tokens.toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground mt-1">LLM usage — not Research Lookups</p>
         </div>
+        {showResearch ? (
+          <div className="rounded-lg border border-border bg-card p-4 md:col-span-2">
+            <p className="text-xs text-muted-foreground uppercase">Research Lookups</p>
+            <p className="text-xl font-semibold mt-1">{researchUsed.toLocaleString()}</p>
+          </div>
+        ) : null}
       </div>
       <div className="rounded-lg border border-border bg-card p-4">
         <p className="text-xs text-muted-foreground uppercase">Estimated overage charge</p>
-        <p className="text-2xl font-semibold mt-1">${Number(usage.overage_cost_usd ?? 0).toFixed(2)}</p>
+        <p className="text-2xl font-semibold mt-1">${totalEstimatedOverage.toFixed(2)}</p>
+        {showResearch && researchOverageUsd > 0 ? (
+          <p className="text-xs text-muted-foreground mt-1">
+            Includes ${researchOverageUsd.toFixed(2)} research lookup overage
+          </p>
+        ) : null}
         {isLoading && <p className="text-xs text-muted-foreground mt-2">Loading usage...</p>}
       </div>
     </div>

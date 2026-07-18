@@ -3,9 +3,13 @@
 import { useState } from "react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
-import { Check, ArrowRight, HelpCircle, Zap, Play, Mail, FileText, Send, ChevronRight, Users, Crown, Smartphone, Monitor, Building2, Rocket, Info, Shield, Cpu, Sparkles, X, Blocks, Star, Clock, BadgeCheck, RefreshCcw, Minus } from "lucide-react"
+import { Check, ArrowRight, HelpCircle, Zap, Play, Mail, FileText, Send, ChevronRight, Users, Crown, Smartphone, Monitor, Building2, Rocket, Info, Shield, Cpu, Sparkles, X, Blocks, Star, Clock, BadgeCheck, RefreshCcw, Minus, Globe } from "lucide-react"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
-import { SHOW_MARKETING_TESTIMONIALS } from "@/lib/marketing-flags"
+import { SHOW_MARKETING_TESTIMONIALS, SHOW_RESEARCH_LOOKUPS_PRICING } from "@/lib/marketing-flags"
+import {
+  formatResearchLookupOveragePrice,
+  researchLookupsIncludedLabel,
+} from "@/lib/internet-research-pricing"
 import { PLAN_CATALOG, type PlanCode } from "@/lib/plans"
 import {
   Tooltip,
@@ -186,6 +190,16 @@ const addOns = [
     description: "Build more systems on demand (Control + Command only)",
     icon: Blocks,
   },
+  ...(SHOW_RESEARCH_LOOKUPS_PRICING
+    ? [
+        {
+          name: "Additional Research Lookups",
+          price: formatResearchLookupOveragePrice(),
+          description: "Live internet research lookups above your plan allotment",
+          icon: Globe,
+        },
+      ]
+    : []),
 ]
 
 const faqs = [
@@ -419,6 +433,19 @@ function PricingCard({ tier, isAnnual, index }: { tier: typeof tiers[0]; isAnnua
             </>
           )}
         </div>
+
+        {SHOW_RESEARCH_LOOKUPS_PRICING && researchLookupsIncludedLabel(tier.planCode) ? (
+          <div className="mb-6 p-4 rounded-2xl border border-sky-200 bg-sky-50">
+            <div className="flex items-center gap-2 mb-2">
+              <Globe className="h-4 w-4 text-sky-600" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-sky-600">
+                Research Lookups
+              </span>
+            </div>
+            <p className="text-sm font-medium text-zinc-900">{researchLookupsIncludedLabel(tier.planCode)}</p>
+            <p className="mt-1 text-xs text-zinc-500">Live internet research when enabled for your workspace</p>
+          </div>
+        ) : null}
         
         {/* Features */}
         <ul className="mb-8 space-y-3">
@@ -695,17 +722,19 @@ export default function PricingPage() {
             <div className="grid sm:grid-cols-3 gap-6">
               {addOns.map((addon, i) => {
                 const AddonIcon = addon.icon
+                const isMeson = addon.name.includes("Meson")
+                const isResearch = addon.name.includes("Research")
                 return (
                   <div key={i} className="flex items-start gap-4">
                     <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
-                      addon.name.includes('Meson') ? 'bg-violet-100' : 'bg-zinc-100'
+                      isMeson ? 'bg-violet-100' : isResearch ? 'bg-sky-100' : 'bg-zinc-100'
                     }`}>
-                      <AddonIcon className={`h-5 w-5 ${addon.name.includes('Meson') ? 'text-violet-600' : 'text-zinc-500'}`} />
+                      <AddonIcon className={`h-5 w-5 ${isMeson ? 'text-violet-600' : isResearch ? 'text-sky-600' : 'text-zinc-500'}`} />
                     </div>
                     <div>
                       <div className="flex items-center gap-3 flex-wrap">
                         <p className="font-medium text-zinc-900">{addon.name}</p>
-                        <span className={`text-sm font-medium ${addon.name.includes('Meson') ? 'text-violet-600' : 'text-emerald-600'}`}>
+                        <span className={`text-sm font-medium ${isMeson ? 'text-violet-600' : isResearch ? 'text-sky-600' : 'text-emerald-600'}`}>
                           {addon.price}
                         </span>
                       </div>
@@ -1086,6 +1115,15 @@ export default function PricingPage() {
                 </div>
                 {[
                   { feature: "Monthly outputs", node: "10", control: "40", command: "120", tooltip: "Complete deliverables per month" },
+                  ...(SHOW_RESEARCH_LOOKUPS_PRICING
+                    ? [{
+                        feature: "Research lookups",
+                        node: "10",
+                        control: "60",
+                        command: "200",
+                        tooltip: "Live internet research lookups per month",
+                      }]
+                    : []),
                   { feature: "AI Agents", node: "1", control: "2-3", command: "5-8", tooltip: "Concurrent AI workers" },
                   { feature: "Core Users", node: "1", control: "2", command: "5", tooltip: "Full access team members" },
                   { feature: "Lite Users", node: "2", control: "5", command: "Unlimited", tooltip: "View-only access" },

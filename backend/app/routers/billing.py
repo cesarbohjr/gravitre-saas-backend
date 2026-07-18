@@ -236,7 +236,7 @@ def _map_usage_for_billing_status(usage_payload: dict, *, weekly_totals: list[in
     tier = usage_payload.get("tier")
     totals = usage_payload.get("totals") or {}
     plan = usage_payload.get("plan") or {}
-    return {
+    mapped = {
         "period_start": period_start,
         "tier": tier,
         "totals": {
@@ -244,6 +244,7 @@ def _map_usage_for_billing_status(usage_payload: dict, *, weekly_totals: list[in
             "workflow_runs": int(totals.get("workflow_runs") or 0),
             "api_calls": int(totals.get("api_calls") or 0),
             "ai_tokens": int(totals.get("ai_tokens") or 0),
+            "research_lookups": int(totals.get("research_lookups") or 0),
         },
         "included_outputs": usage_payload.get("included_outputs"),
         "workflow_runs_included": int(plan.get("workflow_runs_included") or usage_payload.get("included_outputs") or 0),
@@ -251,7 +252,14 @@ def _map_usage_for_billing_status(usage_payload: dict, *, weekly_totals: list[in
         "weekly_totals": weekly_totals or [],
         "overage_outputs": int(usage_payload.get("overage_outputs") or 0),
         "overage_cost_usd": float(usage_payload.get("overage_cost_usd") or 0),
+        "included_research_lookups": int(usage_payload.get("included_research_lookups") or 0),
+        "overage_research_lookups": int(usage_payload.get("overage_research_lookups") or 0),
+        "overage_research_cost_usd": float(usage_payload.get("overage_research_cost_usd") or 0),
+        "research_lookup_overage_rate_usd": float(usage_payload.get("research_lookup_overage_rate_usd") or 0),
+        "internet_research_enabled": bool(usage_payload.get("internet_research_enabled")),
+        "research_lookups_billing_visible": bool(usage_payload.get("research_lookups_billing_visible")),
     }
+    return mapped
 @router.get("/plans")
 async def list_billing_plans(
     _user: Annotated[dict, Depends(get_current_user)],
@@ -297,33 +305,29 @@ def _resolve_org_id_from_checkout_metadata(client, metadata: dict) -> str | None
     return resolve_org_id_from_checkout_metadata(client, metadata)
 
 
-def _usage_from_records(client, org_id: str, tier: str | None) -> dict:
-    now = datetime.now(timezone.utc)
-    period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    usage_rows = (
-        client.table("usage_records")
-        .select("metric_type, quantity")
-        .eq("org_id", org_id)
-        .gte("recorded_at", period_start.isoformat())
-        .execute()
-    )
-    totals = {"outputs": 0, "workflow_runs": 0, "api_calls": 0, "ai_tokens": 0}
-    for row in usage_rows.data or []:
-        metric_type = str(row.get("metric_type") or "")
-        quantity = int(row.get("quantity") or 0)
-        if metric_type in totals:
-            totals[metric_type] += quantity
-    included_outputs_map = {"free": 1000, "node": 10000, "control": 50000, "command": 200000}
-    included_outputs = included_outputs_map.get((tier or "free").lower(), 1000)
-    overage_outputs = max(totals["outputs"] - included_outputs, 0)
-    return {
-        "period_start": period_start.isoformat(),
-        "tier": tier,
-        "totals": totals,
-        "included_outputs": included_outputs,
-        "overage_outputs": overage_outputs,
-        "overage_cost_usd": round(overage_outputs * 0.0002, 4),
-    }
+def _usage_from_records(client, org_id: str, tier: str | None, *, settings: Settings | None = None) -> dict:
+    from app.billing.usage_records_summary import summarize_usage_records_billing
+
+    try:
+        return summarize_usage_records_billing(client, org_id, tier=tier, settings=settings)
+    except RuntimeError:
+        now = datetime.now(timezone.utc)
+        period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        return {
+            "period_start": period_start.isoformat(),
+            "tier": tier,
+            "totals": {"outputs": 0, "workflow_runs": 0, "api_calls": 0, "ai_tokens": 0, "research_lookups": 0},
+            "included_outputs": 1000,
+            "overage_outputs": 0,
+            "overage_cost_usd": 0.0,
+            "included_research_lookups": 0,
+            "overage_research_lookups": 0,
+            "overage_research_cost_usd": 0.0,
+            "research_lookup_overage_rate_usd": 0.35,
+            "internet_research_enabled": bool(settings and settings.internet_research_enabled),
+            "research_lookups_billing_visible": False,
+            "plan": {},
+        }
 
 
 def _fetch_invoices_and_payment_methods(settings: Settings, customer_id: str | None) -> tuple[list[dict], list[dict]]:
@@ -401,7 +405,7 @@ async def billing_overview(
         )
         subscription_row = (insert_resp.data or [None])[0]
     subscription = _normalize_subscription(subscription_row, org_id)
-    usage = _usage_from_records(client, org_id, subscription.get("tier"))
+    usage = _usage_from_records(client, org_id, subscription.get("tier"), settings=settings)
     plan = get_plan_for_org(client, org_id)
     usage["plan"] = plan
     period_start = str(usage.get("period_start") or datetime.now(timezone.utc).isoformat())

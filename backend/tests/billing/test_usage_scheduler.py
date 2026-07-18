@@ -14,12 +14,12 @@ from app.billing.usage_scheduler import (
 async def test_run_once_invokes_reporter(mock_settings, monkeypatch):
     called = {}
 
-    def fake_report(ps, pe, settings):
+    def fake_sync(ps, pe, settings):
         called["ps"] = ps
         called["pe"] = pe
-        return {"orgs": 2, "reported_rows": 5}
+        return {"ai_credits": {"orgs": 2, "reported_rows": 5}, "research_lookups": {"orgs": 2}}
 
-    monkeypatch.setattr(scheduler, "report_usage_for_active_orgs", fake_report)
+    monkeypatch.setattr(scheduler, "_sync_all_usage", fake_sync)
     await _run_once(mock_settings)
     assert "ps" in called and "pe" in called
 
@@ -28,7 +28,7 @@ async def test_run_once_swallows_errors(mock_settings, monkeypatch):
     def boom(ps, pe, settings):
         raise RuntimeError("db down")
 
-    monkeypatch.setattr(scheduler, "report_usage_for_active_orgs", boom)
+    monkeypatch.setattr(scheduler, "_sync_all_usage", boom)
     # Must not raise — a failed tick should never kill the loop.
     await _run_once(mock_settings)
 
@@ -44,7 +44,7 @@ async def test_start_returns_task_when_enabled(mock_settings, monkeypatch):
     settings = mock_settings.model_copy(update={"usage_sync_interval_seconds": 3600})
     monkeypatch.setattr(scheduler, "get_settings", lambda: settings)
     # Avoid any real work if the loop ticked.
-    monkeypatch.setattr(scheduler, "report_usage_for_active_orgs", lambda *a, **k: {"orgs": 0, "reported_rows": 0})
+    monkeypatch.setattr(scheduler, "_sync_all_usage", lambda *a, **k: {"ai_credits": {"orgs": 0, "reported_rows": 0}, "research_lookups": {"orgs": 0}})
     task = start_usage_sync_scheduler()
     assert task is not None
     await stop_usage_sync_scheduler(task)  # clean cancel

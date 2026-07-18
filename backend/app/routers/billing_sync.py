@@ -18,6 +18,10 @@ from pydantic import BaseModel
 
 from app.auth.dependencies import require_admin
 from app.billing.service import get_current_period, get_supabase_client
+from app.billing.stripe_research_lookup_metering import (
+    report_research_lookup_overage_for_active_orgs,
+    report_research_lookup_overage_to_stripe,
+)
 from app.billing.stripe_metering import (
     StripeAttachmentError,
     attach_metered_price_to_subscription,
@@ -148,13 +152,16 @@ async def sync_usage_cron(
 ) -> dict[str, Any]:
     """Report metered usage for all active orgs for the current period."""
     period_start, period_end = get_current_period()
-    summary = report_usage_for_active_orgs(period_start, period_end, settings)
+    ai_summary = report_usage_for_active_orgs(period_start, period_end, settings)
+    research_summary = report_research_lookup_overage_for_active_orgs(period_start, period_end, settings)
     logger.info(
-        "billing usage sync orgs=%s reported_rows=%s",
-        summary.get("orgs"),
-        summary.get("reported_rows"),
+        "billing usage sync ai_orgs=%s ai_rows=%s research_orgs=%s research_reported=%s",
+        ai_summary.get("orgs"),
+        ai_summary.get("reported_rows"),
+        research_summary.get("orgs"),
+        research_summary.get("reported_orgs"),
     )
-    return summary
+    return {"ai_credits": ai_summary, "research_lookups": research_summary}
 
 
 @admin_router.post("/sync-usage")
