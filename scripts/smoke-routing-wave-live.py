@@ -248,9 +248,14 @@ async def main() -> int:
 
     settings = get_settings()
     client = get_supabase_client(settings)
-    from scripts.smoke_auth import resolve_smoke_actor_and_email
+    import importlib.util
 
-    actor, email = resolve_smoke_actor_and_email(client, org_id=ORG, env=dict(os.environ))
+    auth_path = ROOT / "scripts" / "smoke_auth.py"
+    spec = importlib.util.spec_from_file_location("smoke_auth", auth_path)
+    smoke_auth = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(smoke_auth)
+    actor, email = smoke_auth.resolve_smoke_actor_and_email(client, org_id=ORG, env=dict(os.environ))
     url = os.environ["SUPABASE_URL"].rstrip("/")
     now = int(time.time())
     tok = jwt.encode(

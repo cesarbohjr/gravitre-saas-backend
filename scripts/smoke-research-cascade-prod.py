@@ -222,15 +222,15 @@ def run_smoke(args: argparse.Namespace) -> dict[str, Any]:
             "Zephyr Dynamics in Antarctica? Use only internal org knowledge."
         ),
     )
-    thin_cascade = cascades1[-1] if cascades1 else {}
+    thin_cascade = _latest_cascade_from_events(events1)
     report["trace_thin"] = {
         "http_status": status1,
-        "cascade_count": len(cascades1),
+        "cascade_count": 1 if thin_cascade else 0,
         "cascade": thin_cascade,
         "event_count": len(events1),
     }
     report["checks"]["thin_suggest_broaden"] = {
-        "pass": bool(thin_cascade.get("suggest_broaden")) or bool(thin_cascade.get("internal_thin")),
+        "pass": bool(thin_cascade.get("suggest_broaden") or thin_cascade.get("internal_thin")),
         "detail": "suggest_broaden or internal_thin in researchCascade SSE",
     }
 
