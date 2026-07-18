@@ -738,7 +738,7 @@ export function FeaturesLegacyContent({
       </>
       ) : null}
 
-      {showSection(section, "intelligence", "all") ? (
+      {showSection(section, "intelligence") ? (
       <>
       <IntelligenceEngineSection variant="compact" />
 
@@ -746,7 +746,7 @@ export function FeaturesLegacyContent({
       </>
       ) : null}
 
-      {showSection(section, "how-it-works", "all") ? (
+      {showSection(section, "how-it-works") ? (
       <>
       {/* How Gravitre Works - Architecture Diagram */}
       <section className="relative pb-32">
@@ -1047,7 +1047,7 @@ export function FeaturesLegacyContent({
       </>
       ) : null}
 
-      {showSection(section, "gravitre-ai", "agents", "workflows", "integrations", "governance", "meson", "all") ? (
+      {showSection(section, "gravitre-ai", "agents", "workflows", "integrations", "governance", "meson") ? (
       <>
       {/* 5 Key Features - Light Theme Screens */}
       <section className="relative py-32 border-t border-zinc-200 bg-white">
@@ -1068,7 +1068,7 @@ export function FeaturesLegacyContent({
 
           <div className={section === "all" ? "space-y-32" : ""}>
             {/* Feature 1: Gravitre AI */}
-            {showSection(section, "gravitre-ai", "all") ? (
+            {showSection(section, "gravitre-ai") ? (
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1150,7 +1150,7 @@ export function FeaturesLegacyContent({
             ) : null}
 
             {/* Feature 2: Smart Agents */}
-            {showSection(section, "agents", "all") ? (
+            {showSection(section, "agents") ? (
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1230,7 +1230,7 @@ export function FeaturesLegacyContent({
             ) : null}
 
             {/* Feature 3: Visual Workflow Builder */}
-            {showSection(section, "workflows", "all") ? (
+            {showSection(section, "workflows") ? (
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1324,7 +1324,7 @@ export function FeaturesLegacyContent({
             ) : null}
 
             {/* Feature 4: Connected Integrations */}
-            {showSection(section, "integrations", "all") ? (
+            {showSection(section, "integrations") ? (
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1402,7 +1402,7 @@ export function FeaturesLegacyContent({
             ) : null}
 
             {/* Feature 5: Enterprise Security */}
-            {showSection(section, "governance", "all") ? (
+            {showSection(section, "governance") ? (
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1477,7 +1477,7 @@ export function FeaturesLegacyContent({
             ) : null}
 
             {/* Feature 6: Meson - The AI System Builder */}
-            {showSection(section, "meson", "all") ? (
+            {showSection(section, "meson") ? (
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1598,7 +1598,7 @@ export function FeaturesLegacyContent({
       </>
       ) : null}
 
-      {showSection(section, "integrations", "all") ? (
+      {showSection(section, "integrations") ? (
       <>
       {/* Detailed Features */}
       <section className="relative py-32 border-t border-zinc-200 bg-zinc-50">
@@ -1670,13 +1670,13 @@ export function FeaturesLegacyContent({
       </>
       ) : null}
 
-      {showSection(section, "insights", "all") ? <TransparencyMetricsSection /> : null}
+      {showSection(section, "insights") ? <TransparencyMetricsSection /> : null}
 
-      {showSection(section, "marketplace", "all") ? <MarketplaceHighlightsSection /> : null}
+      {showSection(section, "marketplace") ? <MarketplaceHighlightsSection /> : null}
 
-      {showSection(section, "insights", "all") ? <UseCasesSection /> : null}
+      {showSection(section, "insights") ? <UseCasesSection /> : null}
 
-      {showSection(section, "governance", "all") ? <GovernanceAiStackSection /> : null}
+      {showSection(section, "governance") ? <GovernanceAiStackSection /> : null}
 
       {section === "all" && SHOW_MARKETING_TESTIMONIALS ? (
       <section className="relative py-32 border-t border-zinc-200 bg-zinc-50">
