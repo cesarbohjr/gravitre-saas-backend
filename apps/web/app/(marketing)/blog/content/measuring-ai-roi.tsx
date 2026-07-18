@@ -7,7 +7,7 @@ export const measuringAiRoiPost: BlogPost = {
   slug: "measuring-what-ai-changes",
   title: "Measuring What AI Actually Changes",
   description:
-    "Every AI vendor shows you a slick ROI chart. Here is what Gravitre shows instead: operational activity you can verify, estimates clearly labeled, and open gaps where we have not measured outcomes yet.",
+    "See exactly what Gravitre measures today, what's an estimate, and what's coming next, so you always know what a number actually means.",
   excerpt:
     "Every AI vendor shows you a slick ROI chart. Here is what we show you instead: the real thing.",
   category: "Product",
@@ -17,37 +17,36 @@ export const measuringAiRoiPost: BlogPost = {
   heroImage: "",
   heroGradient: "from-slate-50 via-emerald-50/40 to-zinc-100",
   heroAlt:
-    "Dashboard panels showing operational counts and estimate labels, with open slots for unmeasured business ROI.",
+    "Dashboard showing real automation activity alongside a clearly labeled estimate figure",
   keywords: [
     "AI ROI measurement",
     "AI automation metrics",
-    "operational metrics vs estimates",
     "AI governance metrics",
-    "verified AI reporting",
     "department AI ROI",
+    "verified AI outcomes",
     "AI transparency",
   ],
   takeaways: [
-    "Every automation you run can surface live operational activity: what ran, what data moved, and what completed, not a story dressed up to look like data.",
-    "Where estimates are used, Gravitre labels them as estimates and shows where the number came from, so you can weigh it appropriately.",
-    "We are building toward fully verified, real-dollar ROI reporting next. It will sit alongside the activity data you already rely on.",
+    "Every automation you run gives you a live, honest picture of what is actually happening, not a story dressed up to look like data.",
+    "Where estimates are used, we show you exactly where that number came from and what it is based on, so you can weigh it appropriately.",
+    "We are building toward fully verified, real-dollar ROI reporting next, and it will show up alongside the activity data you already rely on.",
     "The point is not to hide what we have not built yet. It is to make sure the number in front of you always means what it says it means.",
   ],
   faqs: [
     {
       question: "What does Gravitre actually show me about my automations?",
       answer:
-        "Real, live activity: what ran, what data moved, and what got done. Workflow runs, connector actions, and related operational counts are recorded in the product. That is the clearest way to know your automation is working without waiting on a quarterly summary.",
+        "Real, live activity: what ran, what data moved, and what got done. It is the clearest way to know your AI is actually doing the work, without waiting on a quarterly summary.",
     },
     {
       question: 'What do the "hours saved" numbers on pre-built workflows mean?',
       answer:
-        "They are estimates from the people who built that automation, clearly labeled so you always know what kind of number you are looking at. Useful for planning, not the same as a measured result from your org.",
+        "They are estimates from the people who built that automation, clearly labeled so you always know what kind of number you are looking at: useful for planning, not the same as a measured result.",
     },
     {
       question: "Can I see real sales or support data reflected in Gravitre?",
       answer:
-        "When your connectors are connected and entitled, data from those tools feeds the relevant workflows and intelligence packs. Your team works from what is actually in HubSpot, Zendesk, and other linked systems, not a black-box score invented by the platform.",
+        "Yes. Data from your connected tools feeds directly into the relevant workflows, so your team is always working from what is actually there, not a summary layered on top of it.",
     },
     {
       question: "Is fully verified, real-dollar ROI reporting coming?",
@@ -61,7 +60,19 @@ export const measuringAiRoiPost: BlogPost = {
         <strong>Every AI vendor shows you a slick ROI chart. Here is what we show you instead: the real thing.</strong>
       </p>
 
-      <h2>The most valuable ROI metric is one you can trust</h2>
+      <aside
+        aria-label="Quick answer"
+        className="not-prose mt-8 rounded-2xl border border-zinc-200 bg-zinc-50 p-6"
+      >
+        <p className="text-sm font-semibold uppercase tracking-wider text-zinc-500">Quick answer</p>
+        <p className="mt-3 text-base leading-relaxed text-zinc-700">
+          Gravitre shows you real, live activity from every automation you run, clearly labels any estimated figures with
+          their source, and openly says &ldquo;not enough data yet&rdquo; rather than inventing an outcome it has not
+          measured. Fully verified, real-dollar ROI reporting is on the roadmap next.
+        </p>
+      </aside>
+
+      <h2>Does Gravitre publish before and after ROI numbers?</h2>
       <p>
         You have seen the slide. Some case study with a big arrow going from &ldquo;40 hours&rdquo; to &ldquo;10 hours
         a week.&rdquo; It looks great in a demo. The problem is, you have no way to check it, and honestly, neither do
@@ -79,7 +90,7 @@ export const measuringAiRoiPost: BlogPost = {
         reporting around.
       </p>
 
-      <h2>A simple way to think about any number you see</h2>
+      <h2>What kinds of numbers does Gravitre actually show?</h2>
       <p>
         Not all metrics are created equal, and pretending otherwise is where most AI ROI claims go wrong. We think about
         the numbers in three tiers:
@@ -102,8 +113,8 @@ export const measuringAiRoiPost: BlogPost = {
       </p>
       <p>
         Knowing which tier a number belongs to changes how you use it. A real activity count tells you the system is
-        working. An estimate helps you plan. And an honest gap tells you where to be appropriately cautious, which, if
-        you have ever had to defend a vendor&apos;s numbers to your own leadership, is worth a lot more than it sounds.
+        working. An estimate helps you plan. And an honest gap tells you where to be appropriately cautious. If you have
+        ever had to defend a vendor&apos;s numbers to your own leadership, you know that is worth more than it sounds.
       </p>
 
       <h2>What this looks like day to day</h2>
@@ -120,8 +131,8 @@ export const measuringAiRoiPost: BlogPost = {
       <p>
         This same pattern shows up across the teams using Gravitre. Marketing teams get live signal on what is
         happening with their connected tools alongside estimated savings on pre-built campaign workflows. Sales teams get
-        clear visibility into what their connected tools are actually returning, without guesswork about plan limits or
-        data gaps. IT and security teams get a steady, current feed of real threat intelligence. Support and success
+        clear visibility into what their connected tools are actually returning, without any guesswork about plan limits
+        or data gaps. IT and security teams get a steady, current feed of real threat intelligence. Support and success
         teams see real ticket and account data informing their reviews, not a black-box score. And leadership gets a
         current external view of the market alongside a clear read on what their own teams are actually producing.
       </p>
@@ -129,15 +140,10 @@ export const measuringAiRoiPost: BlogPost = {
         In every case, the goal is the same: you should never have to wonder whether a number in front of you is real,
         estimated, or a guess wearing real data&apos;s clothes.
       </p>
-      <p>
-        See operational counts in <Link href="/intelligence/reports">Intelligence → Reports</Link> and{" "}
-        <Link href="/metrics">Metrics</Link>. Marketplace catalog ROI math lives at{" "}
-        <Link href="/marketplace/analytics/roi">Marketplace → Analytics → ROI</Link>, with estimate labeling on the page.
-      </p>
 
       <h2>Why this matters more as AI gets more capable</h2>
       <p>
-        As AI takes on more of the actual work, not just suggestions, but real actions across your systems, the ability
+        As AI takes on more of the actual work, not just suggestions but real actions across your systems, the ability
         to see clearly what happened becomes more important, not less. It is one thing to trust a recommendation. It is
         another to hand off real tasks and need to know, with certainty, what was actually done and what it produced.
       </p>
@@ -155,11 +161,6 @@ export const measuringAiRoiPost: BlogPost = {
       <p>
         If you are thinking through how to build trust in automation before handing it real work, our post on{" "}
         <Link href="/blog/ai-transparency-and-approval">AI transparency and approval</Link> is a natural next read.
-      </p>
-      <p>
-        Gravitre&apos;s AI agents absorb the administrative drag, with a human always in the loop, so your people can
-        focus on the work only they can do.{" "}
-        <Link href="/get-started">See how it works.</Link>
       </p>
     </>
   ),
