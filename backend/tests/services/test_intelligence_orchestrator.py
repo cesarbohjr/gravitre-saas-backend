@@ -68,6 +68,7 @@ async def test_intelligence_orchestrator_prepare_turn():
         org_context={"connectedIntegrations": ["hubspot"]},
         sources=[],
         graph_context={},
+        research_cascade={"research_scope": "internal_only", "active_stages": ["internal_rag", "reasoning"]},
     )
 
     with patch.object(orchestrator._memory_engine, "build_context_profile", AsyncMock(return_value={"prompt_section": "", "memory": {}, "relevant": {}, "suppressed_suggestion_keys": []})), patch.object(
