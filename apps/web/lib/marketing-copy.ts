@@ -158,6 +158,177 @@ export const MARKETING_COPY = {
       "Ships to review — you approve before go-live",
     ],
   },
+  heroPills: [
+    { label: "Approval before writes" },
+    { label: "Verified run outcomes" },
+    { label: "Org-scoped learning" },
+  ],
+  gibeDataFlow: {
+    badge: "How GIBE uses your data",
+    title: "From your stack to audited action",
+    subtitle:
+      "Connectors, runs, and queries feed the Gravitre Intelligent Business Engine — scoped to your org, never pooled across customers.",
+    steps: [
+      {
+        title: "Ingest",
+        description:
+          "Connected tools, RAG sources, workflow runs, and chat queries enter GIBE as org-scoped signals — not generic internet noise.",
+      },
+      {
+        title: "Learn",
+        description:
+          "Perception normalizes events. Memory stores promoted facts and entities. Reasoning trains rankers and ML models only when data gates pass.",
+      },
+      {
+        title: "Recommend",
+        description:
+          "Insights, failure predictions, and proactive suggestions surface with confidence scores, routing traces, and plain-language reasons.",
+      },
+      {
+        title: "Execute",
+        description:
+          "Writes route through approval policy. You get verified links, honest summaries, or a clear failure — every step logged.",
+      },
+    ],
+  },
+  transparencyMetrics: {
+    badge: "Honest reporting",
+    title: "Three tiers. No mixed signals.",
+    subtitle:
+      "Show what happened, label estimates, and leave gaps open until measured — the same discipline as our transparency blog.",
+    tiers: [
+      {
+        title: "What actually happened",
+        description: "Live workflow runs, connector actions, agent tasks, and operational counts from your org.",
+        examples: ["Run volume and duration", "Steps completed vs failed", "Approval queue status"],
+      },
+      {
+        title: "What is estimated",
+        description:
+          "Marketplace time-savings figures and builder projections — labeled at source, never folded into your operational data.",
+        examples: ["Hours saved on a template", "Catalog ROI notes from pack authors"],
+      },
+      {
+        title: "What we have not verified yet",
+        description:
+          "Real-dollar ROI rollups when measurement is not ready — we say so instead of inventing an outcome.",
+        examples: ["Cross-department savings totals", "Before/after hour comparisons"],
+      },
+    ],
+    blogLink: {
+      label: "Read how we measure",
+      href: "/blog/measuring-what-ai-changes",
+    },
+  },
+  marketplace: {
+    badge: "Gravitre Marketplace",
+    title: "60+ installable assets — not blank canvases",
+    subtitle:
+      "Workflow templates, department packs, agents, and knowledge — connector checks before install, human approval on writes.",
+    stats: [
+      { value: "60+", label: "Catalog assets" },
+      { value: "19", label: "Workflow templates" },
+      { value: "6", label: "Department packs" },
+    ],
+    packs: [
+      { name: "RevOps", description: "Pipeline hygiene, deal routing, and CRM sync workflows" },
+      { name: "Support", description: "Ticket triage, escalation, and CSAT follow-up" },
+      { name: "Marketing", description: "Campaign workflows, lead routing, and content ops" },
+      { name: "Finance", description: "Invoice processing, expense review, and close tasks" },
+      { name: "HR", description: "Onboarding checklists and employee request routing" },
+      { name: "Operations", description: "Cross-team handoffs and incident response playbooks" },
+    ],
+    bullets: [
+      "Readiness check before install — missing connectors show upfront",
+      "Same approval gates as chat and custom workflows",
+      "Org-owned publishes support version history and rollback",
+    ],
+    cta: { label: "Browse Marketplace", href: "/marketplace" },
+    blogLink: { label: "See the template library", href: "/blog/workflow-templates-library" },
+  },
+  useCases: {
+    badge: "Use cases",
+    title: "Where teams start",
+    subtitle: "Patterns from the product and catalog — not hypothetical case studies with invented ROI.",
+    cases: [
+      {
+        department: "Support",
+        title: "First-pass ticket triage",
+        description:
+          "Route and categorize inbound tickets, hand off to humans with context. See live run counts — not projected savings dressed as data.",
+        surfaces: ["Workflows", "Agents", "Approvals"],
+      },
+      {
+        department: "Sales",
+        title: "CRM enrichment and follow-up",
+        description:
+          "Pull connected tool data into agents and workflows. Verified links to records created or updated when a write succeeds.",
+        surfaces: ["Gravitre AI", "Connectors", "Intelligence"],
+      },
+      {
+        department: "IT and Security",
+        title: "Threat intel monitoring",
+        description:
+          "Steady feed from connected sources with routing traces, confidence scores, and audit history.",
+        surfaces: ["Agents", "Audit", "Sources"],
+      },
+      {
+        department: "Leadership",
+        title: "Operational visibility",
+        description:
+          "Activity metrics, Insights confidence scores, and honest dashes where dollar ROI is not measured yet.",
+        surfaces: ["Metrics", "Insights", "Reports"],
+      },
+    ],
+  },
+  governanceStack: {
+    badge: "Governance and AI stack",
+    title: "How Gravitre thinks before it acts",
+    subtitle:
+      "Human approval, org-scoped models, and security controls built into execution — not bolted on after the fact.",
+    governance: [
+      {
+        title: "Human-in-the-loop approval",
+        description:
+          "Every write waits on your policy. Chat, guided tasks, Marketplace installs, and workflows use the same gate.",
+      },
+      {
+        title: "Audit trail",
+        description:
+          "Approvals, connector writes, and run outcomes — reviewable and exportable from your audit page.",
+      },
+      {
+        title: "Role-based access",
+        description:
+          "Who can approve, run agents, or publish to Marketplace — controlled from Settings and org roles.",
+      },
+    ],
+    aiStack: [
+      {
+        title: "Org-scoped LLM routing",
+        description:
+          "Gravitre AI routes execute, chat, and search with live connector checks — MCP-native, not pooled customer training.",
+      },
+      {
+        title: "Built-in ML catalog",
+        description:
+          "Intent classifiers, anomaly detectors, rankers, and predictive ops — each with TRAINED / data-gate status per org.",
+      },
+      {
+        title: "Memory and retrieval",
+        description:
+          "Vector search, promoted memories, entity graph, and glossary — ranked with confidence, not hidden chain-of-thought.",
+      },
+    ],
+    links: [
+      { label: "AI transparency and approval", href: "/blog/ai-transparency-and-approval" },
+      { label: "Security", href: "/security" },
+    ],
+  },
+  integrationStrip: {
+    label: "Connector catalog includes",
+    note: "Live Configured → Executable checks on every integration you connect.",
+  },
   differentiators: [
     {
       title: "Evidence over hype",

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ChevronLeft, ChevronRight, Star, Quote } from "lucide-react"
 import { SHOW_MARKETING_TESTIMONIALS } from "@/lib/marketing-flags"
+import { PlatformTruthBanner } from "@/components/marketing/platform-truth-banner"
 
 interface Testimonial {
   quote: string
@@ -150,35 +151,10 @@ export function TestimonialsGrid({ testimonials = defaultTestimonials }: { testi
   )
 }
 
-// Social proof stats banner
+// Product-truth stats — no invented customer counts or ROI figures
 export function SocialProofBanner() {
-  const stats = [
-    { value: "10,000+", label: "Businesses worldwide" },
-    { value: "50M+", label: "Tasks automated" },
-    { value: "99.9%", label: "Uptime SLA" },
-    { value: "4.9/5", label: "Customer rating" },
-  ]
-
   return (
-    <div className="py-12 border-y border-zinc-200 bg-zinc-50">
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          {stats.map((stat, i) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-              className="text-center"
-            >
-              <div className="text-3xl md:text-4xl font-bold text-zinc-900">{stat.value}</div>
-              <div className="mt-1 text-sm text-zinc-500">{stat.label}</div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </div>
+    <PlatformTruthBanner note="Product mechanics we ship today — not customer counts or invented ROI." />
   )
 }
 

@@ -33,6 +33,13 @@ import { VendorLogo } from "@/components/gravitre/vendor-logo"
 import { MARKETING_INTEGRATION_APPS } from "@/lib/connectors"
 import { TestimonialsCarouselFull, SocialProofBanner } from "@/components/marketing/testimonials"
 import { IntelligenceEngineSection } from "@/components/marketing/intelligence-engine-section"
+import {
+  GibeDataFlowSection,
+  TransparencyMetricsSection,
+  MarketplaceHighlightsSection,
+  UseCasesSection,
+  GovernanceAiStackSection,
+} from "@/components/marketing/platform-sections"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
 import { SHOW_MARKETING_TESTIMONIALS } from "@/lib/marketing-flags"
 
@@ -717,6 +724,8 @@ export default function FeaturesPage() {
 
       <IntelligenceEngineSection variant="compact" />
 
+      <GibeDataFlowSection compact />
+
       {/* How Gravitre Works - Architecture Diagram */}
       <section className="relative pb-32">
         <div className="mx-auto max-w-7xl px-6">
@@ -923,7 +932,7 @@ export default function FeaturesPage() {
                     ))}
                   </div>
                   <span className="mt-3 text-sm font-semibold text-zinc-900">Your Tools</span>
-                  <span className="text-xs text-zinc-500">100+ integrations</span>
+                  <span className="text-xs text-zinc-500">50+ integrations when configured</span>
                 </motion.div>
               </div>
 
@@ -984,8 +993,8 @@ export default function FeaturesPage() {
               },
               { 
                 icon: BarChart3, 
-                title: "Measurable ROI", 
-                desc: "Track estimated time saved, activity counts, and productivity signals with built-in analytics",
+                title: "Honest metrics", 
+                desc: "Live activity counts, labeled estimates, and open gaps where dollar ROI is not measured yet — same three-tier reporting as our blog",
                 color: "purple"
               },
             ].map((item, i) => (
@@ -1292,7 +1301,7 @@ export default function FeaturesPage() {
                   <Zap className="h-3.5 w-3.5 text-amber-600" />
                   <span className="text-xs font-medium text-amber-700">Integrations</span>
                 </div>
-                <h3 className="text-3xl font-bold text-zinc-900 mb-4">100+ integrations when configured</h3>
+                <h3 className="text-3xl font-bold text-zinc-900 mb-4">50+ integrations when configured</h3>
                 <p className="text-zinc-600 mb-6 leading-relaxed text-lg">
                   One-click integrations with Salesforce, HubSpot, Slack, Google Workspace, and more. 
                   When integrations are connected, agents can read, write, and take actions across your linked tools. Each run reflects what was executed—not every action is guaranteed without a connected integration.
@@ -1570,7 +1579,7 @@ export default function FeaturesPage() {
               { icon: Eye, title: "Routing traces", description: "See how Gravitre picked an answer — stages, not hidden reasoning" },
               { icon: Bell, title: "Failure predictions", description: "Alerts before workflows fail on auth, scopes, or rate limits" },
               { icon: Clock, title: "Predictive ops", description: "SLA, capacity, and deal-risk models with honest readiness gates" },
-              { icon: Database, title: "100+ integrations", description: "Live Configured → Executable checks on every connector" },
+              { icon: Database, title: "50+ integrations", description: "Live Configured → Executable checks on every connector" },
               { icon: GitBranch, title: "Version Control", description: "Track and rollback changes" },
               { icon: Lock, title: "SSO & SAML", description: "Enterprise authentication" },
               { icon: BarChart3, title: "Analytics", description: "Deep insights into performance" },
@@ -1607,13 +1616,21 @@ export default function FeaturesPage() {
               Connects to your entire stack
             </h2>
             <p className="mt-4 text-zinc-600">
-              100+ pre-built integrations with the tools you already use.
+              50+ pre-built integrations when configured — with live health and executability checks.
             </p>
           </motion.div>
 
           <IntegrationsGrid theme="light" />
         </div>
       </section>
+
+      <TransparencyMetricsSection />
+
+      <MarketplaceHighlightsSection />
+
+      <UseCasesSection />
+
+      <GovernanceAiStackSection />
 
       {SHOW_MARKETING_TESTIMONIALS ? (
       <section className="relative py-32 border-t border-zinc-200 bg-zinc-50">

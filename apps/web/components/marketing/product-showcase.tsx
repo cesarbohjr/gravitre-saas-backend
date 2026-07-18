@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { SHOW_MARKETING_TESTIMONIALS } from "@/lib/marketing-flags"
+import { MARKETING_COPY } from "@/lib/marketing-copy"
 import { 
   Bot, 
   Users, 
@@ -616,15 +617,14 @@ function TestimonialsCarouselActive({ testimonials }: { testimonials: Testimonia
   )
 }
 
-// Stats Counter Component
+// Stats Counter Component — product-truth metrics only
 export function AnimatedStats() {
   const [inView, setInView] = useState(false)
-  const stats = [
-    { value: 10000, suffix: "+", label: "Businesses trust Gravitre" },
-    { value: 50, suffix: "M+", label: "Tasks automated monthly" },
-    { value: 99.9, suffix: "%", label: "Uptime guaranteed" },
-    { value: 4.9, suffix: "/5", label: "Customer satisfaction" },
-  ]
+  const stats = MARKETING_COPY.stats.map((stat) => ({
+    value: stat.value,
+    suffix: "suffix" in stat ? stat.suffix : "",
+    label: stat.label,
+  }))
 
   return (
     <motion.div
@@ -650,7 +650,8 @@ export function AnimatedStats() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
               >
-                {stat.value.toLocaleString()}{stat.suffix}
+                {typeof stat.value === "number" ? stat.value.toLocaleString() : stat.value}
+                {stat.suffix}
               </motion.span>
             )}
           </motion.div>

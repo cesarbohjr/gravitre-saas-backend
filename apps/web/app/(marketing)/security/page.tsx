@@ -15,10 +15,10 @@ import {
 } from "lucide-react"
 
 const certifications = [
-  { name: "GDPR Compliant", description: "Full compliance with EU data protection" },
-  { name: "CCPA Compliant", description: "California consumer privacy rights" },
-  { name: "AES-256 Encryption", description: "Industry-standard data encryption" },
-  { name: "Role-based Access", description: "Fine-grained permission controls" },
+  { name: "Encryption in transit and at rest", description: "TLS for data in motion; AES-256 at rest on eligible infrastructure" },
+  { name: "Role-based access", description: "RBAC, MFA, and SSO/SAML on eligible plans" },
+  { name: "Audit logging", description: "Connector writes and approvals logged for operator review" },
+  { name: "Responsible disclosure", description: "Security issues reported through our disclosure process" },
 ]
 
 const features = [
@@ -40,17 +40,20 @@ const features = [
   {
     icon: Server,
     title: "Infrastructure",
-    description: "Hosted on enterprise-grade cloud infrastructure with 99.9% uptime SLA. Multi-region deployment with automatic failover.",
+    description:
+      "Hosted on enterprise-grade cloud infrastructure. Availability targets and failover posture depend on your plan and contract — ask us for specifics.",
   },
   {
     icon: FileCheck,
-    title: "Vulnerability Management",
-    description: "Regular penetration testing, automated vulnerability scanning, and a responsible disclosure program keep our systems secure.",
+    title: "Vulnerability management",
+    description:
+      "Regular security testing and automated scanning. We maintain a responsible disclosure program for reported issues.",
   },
   {
     icon: Users,
-    title: "Security Team",
-    description: "Dedicated security team monitoring 24/7. Incident response procedures tested quarterly with tabletop exercises.",
+    title: "Security practices",
+    description:
+      "Documented incident response procedures and security-aware engineering practices. Enterprise support options vary by plan.",
   },
 ]
 
@@ -86,8 +89,8 @@ export default function SecurityPage() {
               Enterprise-grade security
             </h1>
             <p className="mt-6 text-lg text-zinc-600 max-w-2xl mx-auto">
-              Your data security is our top priority. Gravitre is built with security-first architecture 
-              and maintains the highest compliance standards.
+              Your data security is our priority. Gravitre is built with security-first architecture,
+              human approval on writes, and audit trails you can review — with plan-specific details available on request.
             </p>
           </motion.div>
         </div>
@@ -102,9 +105,9 @@ export default function SecurityPage() {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-2xl font-semibold text-zinc-900 mb-4">Certifications & Compliance</h2>
+            <h2 className="text-2xl font-semibold text-zinc-900 mb-4">Security controls</h2>
           </motion.div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {certifications.map((cert, i) => (
               <motion.div
                 key={cert.name}
@@ -217,30 +220,23 @@ export default function SecurityPage() {
             className="text-center mb-12"
           >
             <Globe className="h-8 w-8 text-emerald-600 mx-auto mb-4" />
-            <h2 className="text-3xl font-semibold text-zinc-900 mb-4">Global Infrastructure</h2>
+            <h2 className="text-3xl font-semibold text-zinc-900 mb-4">Data residency</h2>
             <p className="text-zinc-600 max-w-2xl mx-auto">
-              Your data is hosted in enterprise-grade data centers with geographic redundancy 
-              and data residency options.
+              Hosting regions and data residency options depend on your plan and contract. Contact us for
+              current availability — we do not publish specific region lists without confirming your deployment.
             </p>
           </motion.div>
-          <div className="grid gap-6 sm:grid-cols-3">
-            {[
-              { region: "North America", locations: "US-East, US-West" },
-              { region: "Europe", locations: "Frankfurt, London" },
-              { region: "Asia Pacific", locations: "Singapore, Sydney" },
-            ].map((region, i) => (
-              <motion.div
-                key={region.region}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="rounded-xl border border-zinc-200 bg-white p-5 text-center shadow-sm"
-              >
-                <div className="font-medium text-zinc-900 mb-1">{region.region}</div>
-                <div className="text-sm text-zinc-500">{region.locations}</div>
-              </motion.div>
-            ))}
+          <div className="mx-auto max-w-xl rounded-xl border border-zinc-200 bg-white p-6 text-center shadow-sm">
+            <p className="text-sm text-zinc-600">
+              Enterprise customers can request deployment details, subprocessors, and DPA terms through our Trust Center.
+            </p>
+            <Link
+              href="/contact?subject=trust-center"
+              className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-emerald-600 hover:text-emerald-500"
+            >
+              Request Trust Center access
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
         </div>
       </section>

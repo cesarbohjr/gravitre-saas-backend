@@ -3,11 +3,20 @@
 import Link from "next/link"
 import { motion, useScroll, useTransform, useMotionValue, useSpring, AnimatePresence } from "framer-motion"
 import { useRef, useEffect, useState } from "react"
-import { ArrowRight, Bot, Workflow, Shield, Zap, Users, BarChart3, Sparkles, Play, ChevronRight, Activity, Cpu, Globe } from "lucide-react"
+import { ArrowRight, Bot, Workflow, Shield, Zap, Users, BarChart3, Sparkles, Play, ChevronRight } from "lucide-react"
 import { AppShowcase } from "@/components/gravitre/app-showcase"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
-import { ProductShowcase, HowItWorks, TestimonialsCarousel, AnimatedStats } from "@/components/marketing/product-showcase"
+import { ProductShowcase, HowItWorks, TestimonialsCarousel } from "@/components/marketing/product-showcase"
 import { IntelligenceEngineSection } from "@/components/marketing/intelligence-engine-section"
+import { ProductTruthPills } from "@/components/marketing/platform-truth-banner"
+import { IntegrationStrip } from "@/components/marketing/integration-strip"
+import {
+  GibeDataFlowSection,
+  TransparencyMetricsSection,
+  MarketplaceHighlightsSection,
+  UseCasesSection,
+  GovernanceAiStackSection,
+} from "@/components/marketing/platform-sections"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
 import { SHOW_MARKETING_TESTIMONIALS } from "@/lib/marketing-flags"
 
@@ -99,62 +108,7 @@ function NeuralLines() {
   )
 }
 
-// Live system metrics display
-function LiveMetrics() {
-  const [metrics, setMetrics] = useState({
-    tasks: 1247,
-    agents: 4,
-    uptime: 99.9,
-  })
-  
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMetrics(prev => ({
-        tasks: prev.tasks + Math.floor(Math.random() * 3),
-        agents: prev.agents,
-        uptime: 99.9,
-      }))
-    }, 2000)
-    return () => clearInterval(interval)
-  }, [])
-  
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 1.2 }}
-      className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 lg:gap-8 mt-10 sm:mt-16 px-4"
-    >
-      {[
-        { icon: Activity, label: "Tasks/day", value: metrics.tasks.toLocaleString(), color: "emerald" },
-        { icon: Cpu, label: "Active agents", value: metrics.agents, color: "blue" },
-        { icon: Globe, label: "Uptime", value: `${metrics.uptime}%`, color: "purple" },
-      ].map((metric, i) => (
-        <motion.div
-          key={metric.label}
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 1.3 + i * 0.1 }}
-          className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 rounded-full bg-white/80 backdrop-blur-sm border border-zinc-200 shadow-sm"
-        >
-          <div className={`p-1 sm:p-1.5 rounded-full ${
-            metric.color === 'emerald' ? 'bg-emerald-100' :
-            metric.color === 'blue' ? 'bg-blue-100' : 'bg-purple-100'
-          }`}>
-            <metric.icon strokeWidth={1.5} className={`h-3 w-3 sm:h-3.5 sm:w-3.5 ${
-              metric.color === 'emerald' ? 'text-emerald-600' :
-              metric.color === 'blue' ? 'text-blue-600' : 'text-purple-600'
-            }`} />
-          </div>
-          <div className="text-left">
-            <div className="text-xs sm:text-sm font-semibold text-zinc-900">{metric.value}</div>
-            <div className="text-[9px] sm:text-[10px] text-zinc-500 uppercase tracking-wide">{metric.label}</div>
-          </div>
-        </motion.div>
-      ))}
-    </motion.div>
-  )
-}
+// Live system metrics display — removed; use ProductTruthPills for honest product mechanics
 
 // Animated grid background - Light theme with enhanced effects
 function GridBackground() {
@@ -522,8 +476,7 @@ export default function HomePage() {
               </Link>
             </motion.div>
             
-            {/* Live Metrics */}
-            <LiveMetrics />
+            <ProductTruthPills />
           </div>
           
           {/* Product Preview */}
@@ -555,34 +508,7 @@ export default function HomePage() {
         </motion.div>
       </section>
 
-      {/* Logo Cloud - Light theme */}
-      <section className="relative border-y border-zinc-200 bg-zinc-50 py-16">
-        <div className="mx-auto max-w-7xl px-6">
-          <motion.p 
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="text-center text-sm text-zinc-500 mb-10"
-          >
-            Trusted by innovative teams worldwide
-          </motion.p>
-          <div className="flex flex-wrap items-center justify-center gap-x-16 gap-y-8">
-            {["Acme Corp", "TechFlow", "DataSync", "CloudBase", "Quantum", "Nexus"].map((name, i) => (
-              <motion.span
-                key={name}
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 0.4, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                whileHover={{ opacity: 0.8 }}
-                className="text-xl font-semibold text-zinc-500 transition-opacity cursor-default"
-              >
-                {name}
-              </motion.span>
-            ))}
-          </div>
-        </div>
-      </section>
+      <IntegrationStrip />
 
       {/* Stats Section */}
       <section className="relative py-32 bg-white">
@@ -639,6 +565,16 @@ export default function HomePage() {
 
       <IntelligenceEngineSection />
 
+      <GibeDataFlowSection compact />
+
+      <TransparencyMetricsSection />
+
+      <MarketplaceHighlightsSection />
+
+      <UseCasesSection />
+
+      <GovernanceAiStackSection />
+
       {/* Integrations Section - With real logos */}
       <section className="relative py-32 border-t border-zinc-200 bg-white">
         <div className="mx-auto max-w-7xl px-6">
@@ -652,7 +588,7 @@ export default function HomePage() {
               Connects to your entire stack
             </h2>
             <p className="mt-4 text-zinc-600">
-              100+ pre-built integrations with the tools you already use.
+              50+ pre-built integrations when configured — with live health and executability checks.
             </p>
           </motion.div>
 
