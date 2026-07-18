@@ -1,0 +1,32 @@
+{
+  "kind": "sta303-never-connected-live",
+  "ran_at": "2026-07-18T03:27:52.906115+00:00",
+  "prod_git_sha": "91f785db13144da67c79ff5d97095d22a21e8736",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "probe_vendor": "asana",
+  "vendors_present": [
+    "",
+    "apollo",
+    "google_search_console",
+    "hubspot",
+    "mailchimp",
+    "microsoft365",
+    "pipedrive",
+    "slack"
+  ],
+  "vendor_present": false,
+  "path": "react_tool_invoke",
+  "tool": "asana_workspaces_list",
+  "observation": {
+    "success": false,
+    "error_code": "connector_not_connected",
+    "error": "No active Asana connector found"
+  },
+  "shaped_chip": {
+    "error": "the connector is not connected for this organization. Connect it at /connectors, then try again.",
+    "success": false,
+    "errorCode": "connector_not_connected"
+  },
+  "pass": true,
+  "note": "PASS = never-connected vendor tool returns error_code/errorCode connector_not_connected (not validation_error). Smoke-org Slack is auth_expired \u2014 use a vendor with no connector row (Asana)."
+}
