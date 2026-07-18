@@ -463,6 +463,32 @@ function ExecutionStepRow({
                 label="Output"
                 value={invokeMeta.isInvokeTool ? redactSecrets(step.outputSnapshot) : step.outputSnapshot}
               />
+              {(() => {
+                const out = step.outputSnapshot ?? {}
+                const external = firstString(out.external_url, out.externalUrl)
+                const resultUrl = firstString(out.result_url, out.resultUrl)
+                const href =
+                  external ||
+                  (resultUrl && resultUrl.startsWith("http") ? resultUrl : undefined)
+                if (!href) return null
+                if (
+                  href.includes("app.hubspot.com/contacts/objects/") &&
+                  !/^https:\/\/app\.hubspot\.com\/contacts\/\d+\//.test(href)
+                ) {
+                  return null
+                }
+                return (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-info hover:underline"
+                  >
+                    Open in source system
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                )
+              })()}
               {(step.stepType === "condition" || step.stepType === "decision") && (
                 <BranchVisualization output={step.outputSnapshot} />
               )}

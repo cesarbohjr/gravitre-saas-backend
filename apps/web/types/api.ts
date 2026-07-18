@@ -318,6 +318,8 @@ export interface Run {
   status: RunStatus
   run_type?: string
   parameters?: Record<string, unknown>
+  definitionSnapshot?: Record<string, unknown>
+  definition_snapshot?: Record<string, unknown>
   result?: Record<string, unknown>
   error?: string
   errorMessage?: string

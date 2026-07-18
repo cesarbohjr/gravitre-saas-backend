@@ -3552,6 +3552,7 @@ async def get_run(
         "approvalsReceived": approved_count,
         "triggerType": run.get("trigger_type"),
         "parameters": params,
+        "definitionSnapshot": snapshot,
     }
     return {"run": run_out, "steps": [_run_step_out(s) for s in steps]}
 

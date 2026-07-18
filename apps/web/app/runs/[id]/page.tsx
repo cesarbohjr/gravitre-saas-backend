@@ -46,6 +46,10 @@ interface RunView {
   stepsTotal: number
   errorMessage?: string
   startedAt: string
+  /** Chat orchestration durable overview fields */
+  isChatOrchestration?: boolean
+  goal?: string
+  conversationId?: string
 }
 
 function formatDurationMs(ms: number | null | undefined): string {
@@ -110,12 +114,24 @@ function normalizeRunDetail(payload: RunDetailResponse, runId: string): { run: R
 
   const stepsCompleted = steps.filter((s) => s.status === "completed" || s.status === "skipped").length
   const durationMs = rawRun.durationMs ?? rawRun.duration_ms ?? null
+  const parameters = (rawRun.parameters ?? {}) as Record<string, unknown>
+  const definition = (rawRun.definitionSnapshot ?? rawRun.definition_snapshot ?? {}) as Record<
+    string,
+    unknown
+  >
+  const isChatOrchestration =
+    parameters.source === "chat_orchestration" || definition.source === "chat_orchestration"
+  const goal = String(parameters.goal || parameters.label || definition.name || "").trim() || undefined
+  const conversationId =
+    String(
+      parameters.conversation_id || parameters.conversationId || definition.conversation_id || "",
+    ).trim() || undefined
 
   return {
     run: {
       id: String(rawRun.id ?? runId),
       workflowId: String(rawRun.workflowId ?? rawRun.workflow_id ?? ""),
-      workflowName: String(rawRun.workflowName ?? rawRun.workflow_name ?? "Workflow run"),
+      workflowName: String(rawRun.workflowName ?? rawRun.workflow_name ?? goal ?? "Workflow run"),
       status: String(rawRun.status ?? "pending") as RunStatus,
       environment: String(rawRun.environment ?? "staging"),
       triggeredBy: String(rawRun.triggeredBy ?? rawRun.triggered_by ?? "Unknown"),
@@ -125,6 +141,9 @@ function normalizeRunDetail(payload: RunDetailResponse, runId: string): { run: R
       stepsTotal: steps.length,
       errorMessage: String(rawRun.errorMessage ?? rawRun.error ?? rawRun.error_message ?? "") || undefined,
       startedAt: formatTimestamp(rawRun.startedAt ?? rawRun.started_at ?? rawRun.created_at),
+      isChatOrchestration,
+      goal,
+      conversationId,
     },
     steps,
   }
@@ -467,7 +486,23 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
                 <EnvironmentBadge environment={run.environment === "production" ? "production" : "staging"} />
               </div>
               <p className="text-sm text-muted-foreground">
-                Workflow: <span className="text-foreground">{run.workflowName || run.workflowId || "—"}</span> ·
+                {run.isChatOrchestration ? (
+                  <>
+                    Chat orchestration
+                    {run.goal ? (
+                      <>
+                        : <span className="text-foreground">{run.goal}</span>
+                      </>
+                    ) : null}
+                    {" · "}
+                  </>
+                ) : (
+                  <>
+                    Workflow:{" "}
+                    <span className="text-foreground">{run.workflowName || run.workflowId || "—"}</span>
+                    {" · "}
+                  </>
+                )}
                 Triggered by: <span className="text-foreground">{run.triggeredBy}</span>
               </p>
             </div>
@@ -585,6 +620,79 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
             <p className="truncate text-sm font-medium text-foreground">{run.startedAt}</p>
           </div>
         </div>
+
+        {run.isChatOrchestration ? (
+          <div className="mb-6 rounded-lg border border-border bg-card p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Execution overview</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Durable record of what Gravitre chat executed — available even if the toast or chat
+                  thread is gone.
+                </p>
+              </div>
+              {run.conversationId ? (
+                <Button asChild size="sm" variant="outline" className="h-8">
+                  <Link href={`/ai?conversation=${encodeURIComponent(run.conversationId)}`}>
+                    Open conversation
+                  </Link>
+                </Button>
+              ) : null}
+            </div>
+            {run.goal ? (
+              <p className="mb-3 text-sm text-foreground">
+                <span className="text-muted-foreground">Goal: </span>
+                {run.goal}
+              </p>
+            ) : null}
+            <ol className="space-y-2">
+              {steps.map((step, index) => {
+                const summary =
+                  typeof step.outputSnapshot?.summary === "string"
+                    ? step.outputSnapshot.summary
+                    : step.errorMessage || null
+                const external =
+                  typeof step.outputSnapshot?.external_url === "string"
+                    ? step.outputSnapshot.external_url
+                    : typeof step.outputSnapshot?.result_url === "string" &&
+                        String(step.outputSnapshot.result_url).startsWith("http")
+                      ? String(step.outputSnapshot.result_url)
+                      : null
+                const portalOk =
+                  !external ||
+                  !external.includes("app.hubspot.com") ||
+                  /^https:\/\/app\.hubspot\.com\/contacts\/\d+\//.test(external)
+                return (
+                  <li
+                    key={step.id}
+                    className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-border/60 bg-background/60 px-3 py-2 text-sm"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-foreground">
+                        {index + 1}. {step.name}
+                        <span className="ml-2 text-xs font-normal capitalize text-muted-foreground">
+                          {step.status.replace(/_/g, " ")}
+                        </span>
+                      </p>
+                      {summary ? (
+                        <p className="mt-0.5 whitespace-pre-wrap text-xs text-muted-foreground">
+                          {summary}
+                        </p>
+                      ) : null}
+                    </div>
+                    {external && portalOk ? (
+                      <Button asChild size="sm" variant="ghost" className="h-7 shrink-0 text-xs">
+                        <a href={external} target="_blank" rel="noopener noreferrer">
+                          Open in source
+                        </a>
+                      </Button>
+                    ) : null}
+                  </li>
+                )
+              })}
+            </ol>
+          </div>
+        ) : null}
 
         {runErrorSummary ? (
           <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
