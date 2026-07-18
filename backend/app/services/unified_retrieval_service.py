@@ -285,6 +285,7 @@ class UnifiedRetrievalService:
         from app.services.retrieval_provenance import summarize_retrieval_effectiveness
 
         internet_payload: dict[str, Any] | None = None
+        pack_payload: dict[str, Any] | None = None
         research_scope = str(params.get("research_scope") or "").strip() or None
         from app.services.adaptive_research_cascade import (
             attach_internet_research_to_cascade,
@@ -292,7 +293,44 @@ class UnifiedRetrievalService:
             format_internet_research_section,
             normalize_internet_results,
             should_run_internet_research,
+            should_run_intelligence_packs_stage,
         )
+        from app.services.pack_aware_source_selection import (
+            attach_intelligence_packs_to_cascade,
+            format_intelligence_pack_sources_section,
+            retrieve_pack_sources,
+        )
+
+        if should_run_intelligence_packs_stage(
+            research_scope,
+            settings=self.settings,
+            knowledge_assignments=assignments if isinstance(assignments, list) else [],
+        ):
+            try:
+                pack_payload = await retrieve_pack_sources(
+                    client=client,
+                    org_id=org_id,
+                    query=query,
+                    knowledge_assignments=assignments if isinstance(assignments, list) else [],
+                )
+                pack_rows = pack_payload.get("rows") or []
+                if pack_rows:
+                    rag_sources = [*rag_sources, *pack_rows]
+                    for row in pack_rows:
+                        sources.append({"kind": "intelligence_pack", **row})
+                    pack_section = format_intelligence_pack_sources_section(pack_rows)
+                    if pack_section:
+                        rag_section = (
+                            f"{rag_section}\n{pack_section}".strip()
+                            if rag_section
+                            else pack_section
+                        )
+                    metrics = dict(metrics or {})
+                    metrics["intelligence_pack_sources"] = True
+                    metrics["intelligence_pack_result_count"] = len(pack_rows)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("unified_retrieval_pack_sources_skipped org_id=%s error=%s", org_id, exc)
+                pack_payload = {"rows": [], "pack_ids": [], "error": str(exc)}
 
         if should_run_internet_research(research_scope, settings=self.settings):
             try:
@@ -340,6 +378,12 @@ class UnifiedRetrievalService:
             research_cascade = attach_internet_research_to_cascade(
                 research_cascade,
                 payload=internet_payload,
+                ran=True,
+            )
+        if pack_payload is not None:
+            research_cascade = attach_intelligence_packs_to_cascade(
+                research_cascade,
+                payload=pack_payload,
                 ran=True,
             )
 

@@ -140,6 +140,20 @@ def should_run_internet_research(
     return "internet_research" in resolve_active_stages(research_scope, settings=settings)
 
 
+def should_run_intelligence_packs_stage(
+    research_scope: str | None,
+    *,
+    settings: Settings,
+    knowledge_assignments: list[dict[str, Any]] | None = None,
+) -> bool:
+    """True when scope includes intelligence packs and the agent has pack assignments."""
+    if "intelligence_packs" not in resolve_active_stages(research_scope, settings=settings):
+        return False
+    from app.services.pack_operational_state_service import extract_pack_ids
+
+    return bool(extract_pack_ids(knowledge_assignments))
+
+
 def normalize_internet_results(payload: dict[str, Any]) -> list[dict[str, Any]]:
     """Map Tavily search_web output into rag_sources-compatible rows."""
     rows: list[dict[str, Any]] = []
@@ -217,10 +231,21 @@ def build_research_policy_extension(
         else {}
     )
     scope = str(research_scope or ResearchScope.INTERNAL_ONLY.value)
+    pack_meta = (
+        cascade_state.get("intelligence_packs")
+        if isinstance(cascade_state.get("intelligence_packs"), dict)
+        else {}
+    )
     include = (
         cascade_state.get("internal_thin")
         or internet_meta.get("ran")
-        or scope in {ResearchScope.INTERNET_RESEARCH.value, ResearchScope.EVERYTHING.value}
+        or pack_meta.get("ran")
+        or scope
+        in {
+            ResearchScope.INTELLIGENCE_PACKS.value,
+            ResearchScope.INTERNET_RESEARCH.value,
+            ResearchScope.EVERYTHING.value,
+        }
     )
     if not include:
         return ""
@@ -256,6 +281,13 @@ def build_research_policy_extension(
         lines.append("Live internet research ran but returned no usable results.")
     elif not cascade_state.get("internet_research_enabled"):
         lines.append("Live internet research is disabled pending governance approval.")
+    if pack_meta.get("ran") and int(pack_meta.get("result_count") or 0) > 0:
+        lines.append(
+            "Intelligence pack sources are included below. Treat them as curated external signals "
+            "distinct from internal organizational documents."
+        )
+    elif pack_meta.get("ran") and int(pack_meta.get("result_count") or 0) == 0:
+        lines.append("Intelligence pack research ran but returned no matching pack sources.")
     return "\n".join(lines)
 
 

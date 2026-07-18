@@ -115,6 +115,34 @@ def test_should_run_internet_research_when_governance_allows():
     )
 
 
+def test_should_run_intelligence_packs_stage():
+    from app.services.adaptive_research_cascade import should_run_intelligence_packs_stage
+
+    assignment = {"metadata": {"intelligence_pack_id": "executive-intelligence-pack"}}
+    assert should_run_intelligence_packs_stage(
+        ResearchScope.INTELLIGENCE_PACKS.value,
+        settings=_settings(),
+        knowledge_assignments=[assignment],
+    )
+    assert not should_run_intelligence_packs_stage(
+        ResearchScope.INTERNAL_ONLY.value,
+        settings=_settings(),
+        knowledge_assignments=[assignment],
+    )
+
+
+def test_build_research_policy_extension_mentions_pack_sources():
+    section = build_research_policy_extension(
+        research_scope=ResearchScope.INTELLIGENCE_PACKS.value,
+        cascade_state={
+            "internal_thin": False,
+            "active_stages": ["intelligence_packs"],
+            "intelligence_packs": {"ran": True, "result_count": 2},
+        },
+    )
+    assert "Intelligence pack sources" in section
+
+
 def test_attach_internet_research_to_cascade():
     from app.services.adaptive_research_cascade import attach_internet_research_to_cascade
 

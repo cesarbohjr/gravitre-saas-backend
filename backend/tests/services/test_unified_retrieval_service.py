@@ -177,3 +177,72 @@ async def test_unified_retrieval_internet_stage_when_scope_enabled():
     assert bundle.research_cascade["internet_research"]["ran"] is True
     assert bundle.research_cascade["internet_research"]["result_count"] == 1
     assert "<internet_research>" in bundle.rag_section
+
+
+@pytest.mark.asyncio
+async def test_unified_retrieval_pack_stage_when_scope_enabled():
+    settings = SimpleNamespace(
+        rag_top_k=5,
+        internet_research_enabled=False,
+        tavily_api_key="",
+        domain_adaptive_learning_enabled=False,
+    )
+    rag = MagicMock()
+    rag.retrieve_hybrid_rows = AsyncMock(return_value=([], {}))
+    service = UnifiedRetrievalService(settings=settings, rag_service=rag)
+
+    pack_rows = [
+        {
+            "id": "pack-signal-1",
+            "content": "GDP rose 2.1%",
+            "score": 0.72,
+            "source": "GDP growth signal",
+            "title": "GDP growth signal",
+            "kind": "intelligence_pack",
+            "metadata": {"pack_id": "executive-intelligence-pack", "vendor": "fred", "origin": "external_signals"},
+        }
+    ]
+
+    with patch("app.services.unified_retrieval_service.get_org_context_service") as mock_org_svc:
+        mock_org_svc.return_value.get_snapshot.return_value = {"connectedIntegrations": [], "orgName": "Acme"}
+        with patch(
+            "app.services.unified_retrieval_service.build_task_retrieval_context",
+            return_value={},
+        ):
+            with patch(
+                "app.services.unified_retrieval_service.format_retrieval_prompt_section",
+                return_value="",
+            ):
+                with patch(
+                    "app.services.pack_aware_source_selection.retrieve_pack_sources",
+                    AsyncMock(
+                        return_value={
+                            "rows": pack_rows,
+                            "pack_ids": ["executive-intelligence-pack"],
+                            "catalog_matches": 2,
+                            "signal_count": 1,
+                            "entity_count": 0,
+                            "vendors": ["fred"],
+                        }
+                    ),
+                ):
+                    bundle = await service.retrieve(
+                        org_id="org-1",
+                        query="macro GDP outlook",
+                        client=MagicMock(),
+                        agent={"id": "assistant", "name": "Assistant"},
+                        parameters={
+                            "research_scope": "intelligence_packs",
+                            "knowledge_assignments": [
+                                {
+                                    "label": "Executive Intelligence Pack",
+                                    "metadata": {"intelligence_pack_id": "executive-intelligence-pack"},
+                                }
+                            ],
+                        },
+                    )
+
+    assert any(source.get("kind") == "intelligence_pack" for source in bundle.sources)
+    assert bundle.research_cascade["intelligence_packs"]["ran"] is True
+    assert bundle.research_cascade["intelligence_packs"]["result_count"] == 1
+    assert "<intelligence_pack_sources>" in bundle.rag_section
