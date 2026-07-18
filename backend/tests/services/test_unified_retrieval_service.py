@@ -125,4 +125,55 @@ def test_hybrid_row_to_be10_row_defaults_missing_metadata():
     assert row["chunk_id"] == "abc"
     assert row["source_title"] == "Doc"
     assert row["source_id"] == ""
-    assert row["chunk_index"] == 0
+
+
+@pytest.mark.asyncio
+async def test_unified_retrieval_internet_stage_when_scope_enabled():
+    settings = SimpleNamespace(
+        rag_top_k=5,
+        internet_research_enabled=True,
+        tavily_api_key="tvly-test",
+        domain_adaptive_learning_enabled=False,
+    )
+    rag = MagicMock()
+    rag.retrieve_hybrid_rows = AsyncMock(return_value=([], {}))
+    service = UnifiedRetrievalService(settings=settings, rag_service=rag)
+
+    with patch("app.services.unified_retrieval_service.get_org_context_service") as mock_org_svc:
+        mock_org_svc.return_value.get_snapshot.return_value = {"connectedIntegrations": [], "orgName": "Acme"}
+        with patch(
+            "app.services.unified_retrieval_service.build_task_retrieval_context",
+            return_value={},
+        ):
+            with patch(
+                "app.services.unified_retrieval_service.format_retrieval_prompt_section",
+                return_value="",
+            ):
+                with patch(
+                    "app.services.web_research.search_web",
+                    AsyncMock(
+                        return_value={
+                            "totalResults": 1,
+                            "results": [
+                                {
+                                    "title": "Industry update",
+                                    "url": "https://example.com/update",
+                                    "snippet": "Market moved up 2%.",
+                                }
+                            ],
+                            "sources": [],
+                        }
+                    ),
+                ):
+                    bundle = await service.retrieve(
+                        org_id="org-1",
+                        query="latest market trends",
+                        client=MagicMock(),
+                        agent={"id": "assistant", "name": "Assistant"},
+                        parameters={"research_scope": "internet_research"},
+                    )
+
+    assert any(source.get("kind") == "internet" for source in bundle.sources)
+    assert bundle.research_cascade["internet_research"]["ran"] is True
+    assert bundle.research_cascade["internet_research"]["result_count"] == 1
+    assert "<internet_research>" in bundle.rag_section

@@ -284,15 +284,50 @@ class UnifiedRetrievalService:
 
         from app.services.retrieval_provenance import summarize_retrieval_effectiveness
 
+        internet_payload: dict[str, Any] | None = None
+        research_scope = str(params.get("research_scope") or "").strip() or None
+        from app.services.adaptive_research_cascade import (
+            attach_internet_research_to_cascade,
+            evaluate_research_cascade,
+            format_internet_research_section,
+            normalize_internet_results,
+            should_run_internet_research,
+        )
+
+        if should_run_internet_research(research_scope, settings=self.settings):
+            try:
+                from app.services.web_research import search_web
+
+                internet_payload = await search_web(
+                    query,
+                    settings=self.settings,
+                    max_results=int(params.get("internet_max_results") or 5),
+                )
+                internet_rows = normalize_internet_results(internet_payload)
+                if internet_rows:
+                    rag_sources = [*rag_sources, *internet_rows]
+                    for row in internet_rows:
+                        sources.append({"kind": "internet", **row})
+                    internet_section = format_internet_research_section(internet_payload)
+                    if internet_section:
+                        rag_section = (
+                            f"{rag_section}\n{internet_section}".strip()
+                            if rag_section
+                            else internet_section
+                        )
+                    metrics = dict(metrics or {})
+                    metrics["internet_research"] = True
+                    metrics["internet_result_count"] = len(internet_rows)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("unified_retrieval_internet_skipped org_id=%s error=%s", org_id, exc)
+                internet_payload = {"results": [], "sources": [], "totalResults": 0, "error": str(exc)}
+
         retrieval_effectiveness = summarize_retrieval_effectiveness(
             sources,
             plan=retrieval_plan,
             classification=classification,
         )
 
-        from app.services.adaptive_research_cascade import evaluate_research_cascade
-
-        research_scope = str(params.get("research_scope") or "").strip() or None
         research_cascade = evaluate_research_cascade(
             retrieval_effectiveness=retrieval_effectiveness,
             rag_sources=rag_sources,
@@ -301,6 +336,12 @@ class UnifiedRetrievalService:
             research_scope=research_scope,
             settings=self.settings,
         )
+        if internet_payload is not None:
+            research_cascade = attach_internet_research_to_cascade(
+                research_cascade,
+                payload=internet_payload,
+                ran=True,
+            )
 
         return UnifiedRetrievalBundle(
             rag_sources=rag_sources,

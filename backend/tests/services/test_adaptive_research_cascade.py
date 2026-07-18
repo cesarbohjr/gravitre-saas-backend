@@ -86,3 +86,42 @@ def test_build_research_policy_extension_for_thin_retrieval():
     )
     assert ADAPTIVE_RESEARCH_LEAD in section
     assert "internet research is disabled" in section.lower()
+
+
+def test_normalize_internet_results():
+    from app.services.adaptive_research_cascade import normalize_internet_results
+
+    rows = normalize_internet_results(
+        {
+            "totalResults": 1,
+            "results": [{"title": "Example", "url": "https://example.com", "snippet": "Hello world"}],
+        }
+    )
+    assert len(rows) == 1
+    assert rows[0]["kind"] == "internet"
+    assert rows[0]["url"] == "https://example.com"
+
+
+def test_should_run_internet_research_when_governance_allows():
+    from app.services.adaptive_research_cascade import should_run_internet_research
+
+    assert should_run_internet_research(
+        ResearchScope.INTERNET_RESEARCH.value,
+        settings=_settings(internet_enabled=True, tavily="tvly-test"),
+    )
+    assert not should_run_internet_research(
+        ResearchScope.INTERNET_RESEARCH.value,
+        settings=_settings(),
+    )
+
+
+def test_attach_internet_research_to_cascade():
+    from app.services.adaptive_research_cascade import attach_internet_research_to_cascade
+
+    merged = attach_internet_research_to_cascade(
+        {"internal_thin": True},
+        payload={"totalResults": 2, "results": [{}, {}]},
+        ran=True,
+    )
+    assert merged["internet_research"]["ran"] is True
+    assert merged["internet_research"]["result_count"] == 2

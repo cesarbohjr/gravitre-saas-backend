@@ -1,6 +1,7 @@
 """Adaptive research cascade — internal retrieval breadth before external research."""
 from __future__ import annotations
 
+import json
 from enum import StrEnum
 from typing import Any
 
@@ -128,33 +129,132 @@ def resolve_active_stages(
     return base
 
 
+def should_run_internet_research(
+    research_scope: str | None,
+    *,
+    settings: Settings,
+) -> bool:
+    """True when governance allows and the selected scope includes internet research."""
+    if not _internet_research_allowed(settings):
+        return False
+    return "internet_research" in resolve_active_stages(research_scope, settings=settings)
+
+
+def normalize_internet_results(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map Tavily search_web output into rag_sources-compatible rows."""
+    rows: list[dict[str, Any]] = []
+    for index, item in enumerate(payload.get("results") or []):
+        if not isinstance(item, dict):
+            continue
+        title = str(item.get("title") or "Web result")
+        url = str(item.get("url") or "")
+        snippet = str(item.get("snippet") or item.get("content") or "").strip()
+        if not snippet and not url:
+            continue
+        rows.append(
+            {
+                "id": f"internet-{index}",
+                "content": snippet,
+                "score": 0.55,
+                "source": title,
+                "title": title,
+                "url": url,
+                "kind": "internet",
+                "metadata": {"provider": "tavily", "url": url},
+            }
+        )
+    return rows
+
+
+def format_internet_research_section(payload: dict[str, Any]) -> str:
+    """Prompt block for cascade-injected internet results."""
+    rows = normalize_internet_results(payload)
+    if not rows:
+        return ""
+    body = json.dumps(
+        [
+            {
+                "title": row.get("title"),
+                "url": row.get("url"),
+                "snippet": row.get("content"),
+            }
+            for row in rows
+        ],
+        default=str,
+    )[:8000]
+    return f"<internet_research>\n{body}\n</internet_research>\n"
+
+
+def attach_internet_research_to_cascade(
+    cascade: dict[str, Any],
+    *,
+    payload: dict[str, Any] | None,
+    ran: bool,
+    skipped_reason: str | None = None,
+) -> dict[str, Any]:
+    """Merge internet stage outcome into research_cascade metadata."""
+    updated = dict(cascade)
+    result_count = int((payload or {}).get("totalResults") or 0)
+    updated["internet_research"] = {
+        "ran": ran,
+        "skipped_reason": skipped_reason,
+        "result_count": result_count,
+        "error": (payload or {}).get("error"),
+        "provider": "tavily" if ran else None,
+    }
+    return updated
+
+
 def build_research_policy_extension(
     *,
     research_scope: str | None,
     cascade_state: dict[str, Any],
 ) -> str:
-    """Prompt section injected when internal retrieval is thin."""
-    if not cascade_state.get("internal_thin"):
+    """Prompt section for adaptive / internet-augmented research."""
+    internet_meta = (
+        cascade_state.get("internet_research")
+        if isinstance(cascade_state.get("internet_research"), dict)
+        else {}
+    )
+    scope = str(research_scope or ResearchScope.INTERNAL_ONLY.value)
+    include = (
+        cascade_state.get("internal_thin")
+        or internet_meta.get("ran")
+        or scope in {ResearchScope.INTERNET_RESEARCH.value, ResearchScope.EVERYTHING.value}
+    )
+    if not include:
         return ""
 
-    scope = str(research_scope or ResearchScope.INTERNAL_ONLY.value)
     active_stages = cascade_state.get("active_stages") or []
     lines = [
         "## Adaptive Research",
-        ADAPTIVE_RESEARCH_LEAD,
-        f"Active research scope: {scope.replace('_', ' ')}.",
-        f"Cascade stages in use: {', '.join(active_stages)}.",
-        (
-            "Prefer verified internal sources first. If context remains thin, say plainly "
-            "what is missing — do not invent facts."
-        ),
     ]
+    if cascade_state.get("internal_thin"):
+        lines.append(ADAPTIVE_RESEARCH_LEAD)
+    lines.extend(
+        [
+            f"Active research scope: {scope.replace('_', ' ')}.",
+            f"Cascade stages in use: {', '.join(active_stages)}.",
+            (
+                "Prefer verified internal sources first. If context remains thin, say plainly "
+                "what is missing — do not invent facts."
+            ),
+        ]
+    )
     if cascade_state.get("suggest_broaden") and not research_scope:
         lines.append(
             "The user has not chosen a broader research scope yet. Answer with what you have, "
             "then invite them to pick a research option if they want you to go further."
         )
-    if not cascade_state.get("internet_research_enabled"):
+    internet_meta = cascade_state.get("internet_research") if isinstance(cascade_state.get("internet_research"), dict) else {}
+    if internet_meta.get("ran") and int(internet_meta.get("result_count") or 0) > 0:
+        lines.append(
+            "Live internet research results are included below. Cite them naturally and distinguish "
+            "them from internal organizational knowledge."
+        )
+    elif internet_meta.get("ran") and internet_meta.get("error"):
+        lines.append("Live internet research ran but returned no usable results.")
+    elif not cascade_state.get("internet_research_enabled"):
         lines.append("Live internet research is disabled pending governance approval.")
     return "\n".join(lines)
 
