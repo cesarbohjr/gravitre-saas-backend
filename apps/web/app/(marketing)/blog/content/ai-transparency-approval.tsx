@@ -7,182 +7,195 @@ export const aiTransparencyApprovalPost: BlogPost = {
   slug: "ai-transparency-and-approval",
   title: "AI Transparency and the Approval Question",
   description:
-    "What Gravitre actually shows before a write runs: catalog-backed approval gates across chat, ReAct, and canvas, verified outputs, audit links, and honest limits on citations and assumptions.",
+    "See exactly how Gravitre approves AI actions, verifies results, and logs every write, so you always know who approved what and why.",
   excerpt:
-    "Transparency in AI automation is not a values slide. It is whether a write can run without a human, whether you can open the record it created, and whether the product tells you when it inferred something instead of knowing it.",
+    "Transparency is not a values slide. It is whether you can always answer three questions: who approved this, what did the AI assume, and where is the record?",
   category: "Product",
   author: GRAVITRE_BLOG_AUTHOR,
-  ...createBlogDates("2026-07-17"),
-  readTime: "9 min read",
+  ...createBlogDates("2026-07-17", "2026-07-18"),
+  readTime: "6 min read",
   heroImage: "",
   heroGradient: "from-emerald-50 via-white to-slate-100",
   heroAlt:
-    "Layered diagram of approval gates, verified outputs, and audit links in an AI automation workflow.",
+    "Diagram showing an AI action moving through an approval step, a verification check, and an audit log entry",
   keywords: [
     "AI transparency",
-    "explainable AI automation",
-    "human in the loop approvals",
+    "human in the loop approval",
     "AI audit trail",
-    "verified AI output",
+    "explainable AI automation",
+    "verified AI actions",
     "AI governance",
-    "write approval gate",
   ],
   takeaways: [
-    "Write actions in chat, ReAct, and canvas workflow runs are checked against the same catalog-derived write authority, not per-template toggles.",
-    "Members can request writes; admins (or HITL approvers) must approve before execution. The UI says so explicitly when your request is queued.",
-    "Successful chat writes must return a verifiable body or deep link, or the run fails with unverifiable_output instead of a silent success.",
-    "Assumption notes surface inferred connector plan values (for example a default list name), distinct from stated facts, on a narrow set of paths today.",
-    "Sources checked in chat shows real knowledge citations when search returns hits. When it does not, the product links to Sources rather than inventing citations.",
-    "Audit export and the /audit page exist, but the UI reads audit_logs; high-volume events also land in audit_events with dual-write gap logging.",
+    "Any action that changes something in your systems goes through the same approval standard, whether it starts in chat, a guided task, or an automated workflow.",
+    "If someone without approval rights asks the AI to do something, it queues the request and tells them plainly that it is waiting on approval.",
+    "When a write succeeds, you get real proof: a link to the record it created or changed, or a summary of what happened. If neither is available, we tell you it failed rather than showing a false success.",
+    "When the AI has to guess at a detail instead of reading it directly from what you said, it tells you that too.",
+    "Suggestions from Gravitre always come with a plain-language reason and the evidence behind it. Nothing executes on its own.",
+    "Every approval and action is logged and reviewable, so you are never left guessing after the fact.",
   ],
   faqs: [
     {
-      question: "Does every write require approval?",
+      question: "Does every AI action that changes something need approval?",
       answer:
-        "Every catalog-classified write goes through write authority derived from the action schema. Org HITL policy and role (admin/owner vs member) determine whether you confirm locally or the request queues for an approver. Reads do not use the same gate.",
+        "Any action classified as a write goes through approval logic based on your company's policy and your role. Depending on your permissions, you may approve it yourself in the moment, or it queues for someone who can. Actions that just read information do not require this step.",
     },
     {
-      question: "Do canvas workflows bypass chat governance?",
+      question: "Can automated workflows skip the approval rules that apply to chat?",
       answer:
-        "No. Canvas execute uses canvas_write_gate with the same catalog write floor as chat and ReAct. Production re-verification (STA-322) showed a canvas write stopping at pending_approval with zero tool.invoke.completed events before approval.",
+        "No. Every path, whether chat, guided steps, or automated workflows, is held to the same approval standard. If a workflow step requires approval, it stops and waits, with nothing executed until a human signs off.",
     },
     {
-      question: "Can I see why Gravitre suggested an action?",
+      question: "Can I see why Gravitre suggested something?",
       answer:
-        "Heuristic recommendations on Intelligence show kind, a plain-language reason, and an evidence object. They are advisory only (no Execute button). That is not the same as a formal reason-code taxonomy, but it is live and inspectable.",
+        "Yes. Every suggestion comes with a plain-language reason and supporting evidence. They are advisory only. Nothing executes without a person choosing to act on it.",
     },
     {
-      question: "What happens if a connector returns no deep link?",
+      question: "What happens if an AI action does not return clear proof it worked?",
       answer:
-        "On the chat write path, Gravitre requires a non-empty summary body or result_url. If neither is present, the run fails with error_code unverifiable_output and the panel explains the gap. Many read actions and some verified-write batches allow null result_url by design; we do not claim universal deep links.",
+        "If Gravitre cannot provide a link to the result or a clear summary, the action is marked as failed rather than shown as a false success. Some read-only actions may not include a direct link by design, since there is nothing new created to link to.",
     },
   ],
   Content: () => (
     <>
       <p>
-        <strong>If you cannot answer who approved a write, what was inferred, and where the record lives, you do not have transparency. You have a chatbot with API keys.</strong>
-      </p>
-      <p>
-        This post lists what Gravitre ships today for explainability and approval. Where something is partial or still hardening, we say so. That discipline is the point: a claim does not belong in customer-facing copy unless it maps to a feature, a trace, or a mechanism already in production.
-      </p>
-
-      <h2>One write gate, three paths</h2>
-      <p>
-        High-impact automation arrives through chat, through ReAct tool routing, and through canvas workflow execution. Those paths used to be easy to treat as separate products. They are not separate trust boundaries.
-      </p>
-      <p>
-        Gravitre derives write authority from the connector action catalog, not from string-matching action names in a blog post or a single workflow template. Chat and ReAct use{" "}
-        <code>react_write_gate</code> and <code>chat_connector_execution_service</code>. Canvas runs use{" "}
-        <code>canvas_write_gate</code> with the same catalog floor.
-      </p>
-      <p>
-        Production re-verification for canvas (STA-322, July 2026) exercised a write with org policy requiring one approval. Execute returned{" "}
-        <strong>pending_approval</strong>, the run row matched, and audit showed <strong>zero</strong>{" "}
-        <code>tool.invoke.completed</code> events before approval. That is the bar we hold ourselves to: a gated write must not leak execution because the path was canvas instead of chat.
-      </p>
-      <p>
-        In-graph human approval nodes (STA-323) normalize <code>human_approval</code> in workflow definitions so builder templates pause for approval instead of completing silently. Unit tests and live smokes cover hydration; async worker timing can still mean HTTP execute returns <code>running</code> before the local process reaches <code>awaiting_approval</code>. The guarantee is in the gate and run state, not in instant UI polish.
-      </p>
-      <p>
-        For the full security framing (least privilege, OAuth, when we found our own gap), see our{" "}
-        <Link href="/blog/security-first-approach">security-first write-authority post</Link>.
+        <strong>
+          Transparency is not a values slide. It is whether you can always answer three questions: who approved
+          this, what did the AI assume, and where is the record?
+        </strong>
       </p>
 
-      <h2>Who approves, and what members see</h2>
+      <aside
+        aria-label="Quick answer"
+        className="not-prose mt-8 rounded-2xl border border-zinc-200 bg-zinc-50 p-6"
+      >
+        <p className="text-sm font-semibold uppercase tracking-wider text-zinc-500">Quick answer</p>
+        <p className="mt-3 text-base leading-relaxed text-zinc-700">
+          Gravitre requires human approval before any AI action that changes your data, shows verifiable proof when
+          that action succeeds, tells you when it had to guess at a detail, and logs every approval and result so you
+          can review it later. This applies the same way whether the request comes from chat, a guided task, or an
+          automated workflow.
+        </p>
+      </aside>
+
+      <h2>Trust is not a feeling. It is something you can check.</h2>
       <p>
-        Write approval is not a settings toggle a power user can disable for one template. It is structural.
+        A lot of AI products talk about &ldquo;trust&rdquo; and &ldquo;transparency&rdquo; as a tone: reassuring
+        language, a friendly explanation, a badge on the pricing page. We think that is the wrong test. The real
+        question is much simpler. <strong>When this thing takes an action on your behalf, can you actually verify what
+        happened?</strong>
       </p>
+      <p>
+        That is the standard we hold Gravitre to. Not a promise. A mechanism you can go check yourself.
+      </p>
+
+      <h2>Does every AI action need approval?</h2>
+      <p>
+        You might ask Gravitre to do something directly in a chat message. You might be stepping through a guided task.
+        Or you might have a full automated workflow running in the background. However the request comes in, it hits
+        the exact same approval standard. There is no side door where a workflow gets to skip the rules a chat message
+        would follow.
+      </p>
+      <p>
+        That is the bar we hold ourselves to. It should not matter which path a request comes through. If it needs
+        approval, it waits for approval, every time.
+      </p>
+
+      <h2>Who approves AI actions, and what everyone sees</h2>
+      <p>Approval is not a setting someone can quietly switch off for convenience. It is built into how every write action works:</p>
       <ul>
         <li>
-          <strong>Admin or owner (or an HITL policy approver)</strong> sees a confirm step in chat when policy allows them to approve the write locally.
+          If you have approval rights and your company&apos;s policy allows it, you will see a confirmation step right
+          in the moment, and can approve it yourself.
         </li>
         <li>
-          <strong>Members without approve permission</strong> still initiate requests. The panel shows: &ldquo;Your request will be sent for approval.&rdquo; The write queues in the Decision Queue at{" "}
-          <Link href="/approvals">/approvals</Link>.
+          If you do not have approval rights, your request does not just vanish or run anyway. You will see a clear
+          message that it has been sent for approval, and it lands in a queue an approver can review at{" "}
+          <Link href="/approvals">Approvals</Link>.
         </li>
         <li>
-          <strong>Org policy</strong> is configurable at <Link href="/settings/approvals">Settings → Approvals</Link> (scope, action kinds, approver roles and named users).
+          Your company controls all of this from one place: who can approve what, and for which kinds of actions, in{" "}
+          <Link href="/settings/approvals">Settings → Approvals</Link>.
         </li>
       </ul>
       <p>
-        Orchestrated multi-step runs label each step as read (auto) or needs approval (write) before execution. That is visible in the pending task preview, not hidden until something breaks in a connected app.
+        For multi-step automated runs, each step is labeled up front as something that just reads information, or
+        something that changes it and needs approval. That way you know exactly what is coming before it happens, not
+        after something has already changed.
       </p>
 
-      <h2>Verified output, not performative success</h2>
+      <h2>Real proof it worked, not just a checkmark</h2>
       <p>
-        A green checkmark that links nowhere teaches users to distrust the product. On the chat write path, Gravitre enforces{" "}
-        <code>assert_execution_result_verifiable</code>: a successful write must include a non-empty summary body or a{" "}
-        <code>result_url</code> deep link to the created or updated record.
-      </p>
-      <p>
-        The execution panel states which case you got:
+        A green checkmark that does not lead anywhere is not proof of anything. When a write action succeeds, Gravitre
+        shows you one of a few honest outcomes:
       </p>
       <ul>
         <li>
-          <strong>Verified</strong> when a deep link is present (open the result link).
+          <strong>Verified</strong>: a direct link to the record that was created or updated, so you can go look at it
+          yourself.
         </li>
         <li>
-          <strong>Completed with inline summary only</strong> when the connector returned text but no URL (allowed on some verified batches by design).
+          <strong>Completed, with a summary</strong>: a direct link is not available, but you still get a clear
+          description of what happened.
         </li>
         <li>
-          <strong>Failed with unverifiable_output</strong> when neither is present. No silent success.
+          <strong>Failed</strong>: neither a link nor a clear result is available. We would rather tell you it failed
+          than show you a success we cannot back up.
         </li>
       </ul>
+
+      <h2>When Gravitre guesses, it tells you</h2>
       <p>
-        We do not claim every connector action in the catalog returns a deep link. Read actions and a large verified-write allowlist may legitimately omit <code>result_url</code>. The guarantee applies to the chat write enforcement path we test and expand batch by batch, not to a hand-wave that every integration behaves like Apollo list create or HubSpot record update.
+        Sometimes completing a task means filling in a small detail you did not explicitly provide, like a default name
+        for something you asked to create. When that happens, Gravitre shows you an <strong>Assumptions</strong> note,
+        separate from the summary of what it did, so you always know what came directly from you and what the AI filled
+        in on its own.
+      </p>
+      <p>
+        This is still expanding to cover more situations over time, and we would rather be upfront that it is not
+        everywhere yet than pretend every judgment call the AI makes is spelled out today.
       </p>
 
-      <h2>Assumptions, labeled narrowly today</h2>
+      <h2>Suggestions you can trust, not a black box</h2>
       <p>
-        When Gravitre infers a connector plan field instead of reading it from your message, successful runs can include an <strong>Assumptions</strong> block in the execution panel. Backend code builds <code>assumption_notes</code> from <code>inferred_fields</code> and inference sources on the plan.
+        Gravitre also surfaces proactive suggestions on <Link href="/intelligence">Intelligence</Link>, like recommending
+        you connect a tool you have not set up yet, or pointing out a useful next step. Every one of these comes with a
+        plain-language reason and the evidence behind it, so you are never just told to trust it.
       </p>
       <p>
-        The best-tested path today is omit-name creates (for example Apollo list create defaulting a list name). That is real, user-visible, and distinct from the success summary. It is not yet a full map of every model assumption on every action. We would rather show a narrow label honestly than imply full chain-of-thought exposition we have not built.
-      </p>
-
-      <h2>Recommendations with reasons, not execute buttons</h2>
-      <p>
-        The heuristic recommendation engine (STA-314) on <Link href="/intelligence">Intelligence</Link> suggests next steps such as connecting an unused integration or installing a pack prerequisite. Each card carries a <code>kind</code>, a human-readable <code>reason</code>, an <code>evidence</code> object, and <code>advisoryOnly: true</code>. There is no Execute surface on those cards by design (enforced in tests).
-      </p>
-      <p>
-        We do not expose a formal <code>reason_code</code> enum in the API. If you need audit-friendly taxonomy, use <code>kind</code> plus the evidence payload today. Black-box scores without explanation are what we refused to ship.
+        And importantly, these suggestions are just that: suggestions. There is no button that lets a recommendation
+        execute itself. A human decides.
       </p>
 
-      <h2>Sources checked: real citations or an honest fallback</h2>
+      <h2>Real citations, or an honest &ldquo;here is where to look&rdquo;</h2>
       <p>
-        After knowledge-base tool runs, chat renders numbered citations with titles and links when <code>searchKnowledgeBase</code> returns results. When search returns nothing, the UI shows a <strong>Sources checked</strong> link to <Link href="/sources">/sources</Link>, not a fabricated citation list.
-      </p>
-      <p>
-        That gap is intentional honesty. Claiming source attribution is solved would contradict the product behavior on empty search hits. Tool runs also append <strong>View audit trail</strong> and a control help link on every invocation block so operators know where to inspect events.
-      </p>
-
-      <h2>Audit trails: present, with known seams</h2>
-      <p>
-        Gravitre writes audit events server-side and exposes <Link href="/audit">/audit</Link> with filters plus CSV and JSON export. Chat links operators to that page after tool activity.
-      </p>
-      <p>
-        Three seams worth knowing for incident review:
-      </p>
-      <ol className="mt-4 list-decimal space-y-2 pl-6">
-        <li>The UI list/export path reads <code>audit_logs</code>; high-volume tool events also land in <code>audit_events</code>. Dual-write failures are logged as gaps, not silently dropped from ops awareness.</li>
-        <li>Full audit log access is a plan-gated feature (<code>audit_logs</code> entitlement).</li>
-        <li>Export capability in permissions is admin-oriented; the page UI does not hide export buttons by role today.</li>
-      </ol>
-      <p>
-        We describe audit as <strong>partial but real</strong>, not as a perfect immutable ledger across every table and tier.
+        When Gravitre answers a question using your connected knowledge sources, you will see real, numbered citations
+        you can click through to the source. If a search does not turn up a good match, we do not invent a citation to
+        look complete. You will see a clear link to check your sources directly at{" "}
+        <Link href="/sources">Sources</Link>.
       </p>
 
-      <h2>What we are still building toward</h2>
+      <h2>Is there an audit trail for every AI action?</h2>
       <p>
-        Broader assumption labeling across all write types, tighter audit read unification, and richer citation coverage when knowledge search misses are on the roadmap. They are not in this post as present-tense promises.
+        Every approval and every action is logged, and you can review, filter, and export that history any time from
+        your <Link href="/audit">audit page</Link>. If you are investigating something after the fact, whether that is
+        a change you did not expect or confirming a policy was followed, the record is there.
       </p>
       <p>
-        Transparency, for us, is provable mechanics: catalog-backed approval, verifiable outputs on the write paths we enforce, explicit queue copy for members, advisory recommendations with evidence objects, and honest gaps where the product still falls short. That is the standard we use before any sentence reaches the marketing site.
+        We will be upfront that this is an area we are continuing to strengthen. Some advanced audit features are tied
+        to specific plans today, and we are working toward an even more unified view. But the core principle holds:
+        nothing important happens without a trace you can go find.
+      </p>
+
+      <h2>What is next</h2>
+      <p>
+        We are expanding assumption labeling to cover more situations, broadening citation coverage, and tightening
+        the audit experience even further. As always, we will tell you plainly what is shipped versus what is still on
+        the way. That is the same discipline that shapes every claim on this page.
       </p>
       <p>
-        Configure approvals in <Link href="/settings/approvals">Settings</Link>, review queued writes in{" "}
-        <Link href="/approvals">Approvals</Link>, and inspect events in <Link href="/audit">Audit</Link>. If you want the department-level metrics story (what we measure vs what we do not), read{" "}
-        <Link href="/blog/measuring-what-ai-changes">Measuring What AI Actually Changes</Link>.
+        If you are also curious about how we think about measuring the actual impact of automation, our post on{" "}
+        <Link href="/blog/measuring-what-ai-changes">measuring what AI actually changes</Link> is a natural next read.
       </p>
     </>
   ),
