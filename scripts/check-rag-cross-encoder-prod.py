@@ -50,8 +50,16 @@ LOG_PATTERNS: dict[str, re.Pattern[str]] = {
 def _load_env() -> dict[str, str]:
     merged: dict[str, str] = {}
     for path in (ENV_BACKEND, ENV_FILE):
-        if path.is_file():
-            merged.update({k: v for k, v in dotenv_values(path).items() if v})
+        if not path.is_file():
+            continue
+        for enc in ("utf-8", "utf-8-sig", "cp1252", "latin-1"):
+            try:
+                merged.update(
+                    {k: v for k, v in dotenv_values(path, encoding=enc).items() if v}
+                )
+                break
+            except UnicodeDecodeError:
+                continue
     merged.update({k: v for k, v in os.environ.items() if v})
     return merged
 

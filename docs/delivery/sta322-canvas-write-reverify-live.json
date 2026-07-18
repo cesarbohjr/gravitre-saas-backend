@@ -1,18 +1,18 @@
 {
   "claim": "sta322_canvas_write_authority_live_reverify",
-  "started_at": "2026-07-15T18:59:41.192944+00:00",
+  "started_at": "2026-07-17T22:04:41.047548+00:00",
   "api_base": "https://api.gravitre.app",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "workflow_id": "8ea32dce-7f6a-4fdf-be0d-c3097ff5b095",
-  "expected_sha_prefix": "092238c5",
+  "expected_sha_prefix": "6273db19",
   "authority_design": "canvas_write_gate is an adapter: classification via catalog_write_authority.invoke_action_requires_write_approval (same SoT as chat/ReAct)",
   "prod_health": {
     "http": 200,
     "status": "ok",
-    "timestamp": "2026-07-15T18:59:40.947772+00:00",
+    "timestamp": "2026-07-17T22:04:40.632792+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "092238c5d77333025d9902834133cda2a41aad37",
+    "git_sha": "6273db19809db57916540d04957d8c75315aa9e5",
     "ai_disabled": false,
     "checks": {
       "database": "healthy",
@@ -25,21 +25,21 @@
   "test_a": {
     "label": "A",
     "required_approvals_policy": 1,
-    "list_name": "STA322Reverify A 185943 22abf0",
+    "list_name": "STA322Reverify A 220443 61ed03",
     "http": 200,
     "execute_response": {
-      "run_id": "f1816c36-bac9-4cdc-a94f-e3b23fb49854",
+      "run_id": "aefa7d5e-97de-472e-b741-9a4e6c67cfaa",
       "status": "pending_approval",
       "approval_status": "pending_approval",
       "approval_required": true,
       "required_approvals": 1,
       "approvals_received": 0
     },
-    "run_id": "f1816c36-bac9-4cdc-a94f-e3b23fb49854",
+    "run_id": "aefa7d5e-97de-472e-b741-9a4e6c67cfaa",
     "execute_status": "pending_approval",
     "approval_required": true,
     "run_row": {
-      "id": "f1816c36-bac9-4cdc-a94f-e3b23fb49854",
+      "id": "aefa7d5e-97de-472e-b741-9a4e6c67cfaa",
       "status": "pending_approval",
       "approval_status": "pending_approval",
       "required_approvals": 1,
@@ -54,21 +54,21 @@
   "test_b": {
     "label": "B",
     "required_approvals_policy": 0,
-    "list_name": "STA322Reverify B 185948 ade973",
+    "list_name": "STA322Reverify B 220451 de6805",
     "http": 200,
     "execute_response": {
-      "run_id": "c9352144-a81b-4f91-a6dd-e6cda0236d56",
+      "run_id": "acda38f3-7ce8-4721-8186-74f98e8274c8",
       "status": "pending_approval",
       "approval_status": "pending_approval",
       "approval_required": true,
       "required_approvals": 1,
       "approvals_received": 0
     },
-    "run_id": "c9352144-a81b-4f91-a6dd-e6cda0236d56",
+    "run_id": "acda38f3-7ce8-4721-8186-74f98e8274c8",
     "execute_status": "pending_approval",
     "approval_required": true,
     "run_row": {
-      "id": "c9352144-a81b-4f91-a6dd-e6cda0236d56",
+      "id": "acda38f3-7ce8-4721-8186-74f98e8274c8",
       "status": "pending_approval",
       "approval_status": "pending_approval",
       "required_approvals": 1,
@@ -82,5 +82,5 @@
   },
   "verdict": "CLOSED_LIVE_VERIFIED",
   "severity": "resolved",
-  "finished_at": "2026-07-15T18:59:51.531582+00:00"
+  "finished_at": "2026-07-17T22:04:57.133543+00:00"
 }

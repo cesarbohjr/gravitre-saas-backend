@@ -1,13 +1,13 @@
 {
   "summary": {
-    "totalActions": 590,
-    "implemented": 590,
-    "chatExposed": 590,
-    "executeExposed": 590,
+    "totalActions": 666,
+    "implemented": 664,
+    "chatExposed": 664,
+    "executeExposed": 664,
     "schemaMissing": 0,
     "scopeUnregistered": 0,
-    "noTests": 238,
-    "multiStepReady": 590,
+    "noTests": 228,
+    "multiStepReady": 664,
     "registryViolations": {
       "totalViolations": 0,
       "errors": 0,
@@ -17,22 +17,22 @@
     },
     "byVendor": {
       "salesforce": {
-        "total": 11,
-        "implemented": 11,
-        "chat": 11,
-        "execute": 11,
+        "total": 13,
+        "implemented": 13,
+        "chat": 13,
+        "execute": 13,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 4
+        "high_risk": 8
       },
       "hubspot": {
-        "total": 21,
-        "implemented": 21,
-        "chat": 21,
-        "execute": 21,
+        "total": 27,
+        "implemented": 27,
+        "chat": 27,
+        "execute": 27,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 9
+        "high_risk": 15
       },
       "pipedrive": {
         "total": 11,
@@ -41,7 +41,7 @@
         "execute": 11,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 4
+        "high_risk": 5
       },
       "marketo": {
         "total": 9,
@@ -50,7 +50,7 @@
         "execute": 9,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 3
+        "high_risk": 6
       },
       "segment": {
         "total": 9,
@@ -59,7 +59,7 @@
         "execute": 9,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 3
+        "high_risk": 6
       },
       "google_analytics": {
         "total": 8,
@@ -70,6 +70,15 @@
         "no_tests": 0,
         "high_risk": 2
       },
+      "google_search_console": {
+        "total": 4,
+        "implemented": 4,
+        "chat": 4,
+        "execute": 4,
+        "missing_schema": 0,
+        "no_tests": 0,
+        "high_risk": 0
+      },
       "mailchimp": {
         "total": 9,
         "implemented": 9,
@@ -77,7 +86,7 @@
         "execute": 9,
         "missing_schema": 0,
         "no_tests": 9,
-        "high_risk": 3
+        "high_risk": 6
       },
       "mixpanel": {
         "total": 8,
@@ -85,8 +94,8 @@
         "chat": 8,
         "execute": 8,
         "missing_schema": 0,
-        "no_tests": 8,
-        "high_risk": 2
+        "no_tests": 7,
+        "high_risk": 3
       },
       "constant_contact": {
         "total": 12,
@@ -95,7 +104,7 @@
         "execute": 12,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 4
+        "high_risk": 7
       },
       "hootsuite": {
         "total": 8,
@@ -104,7 +113,7 @@
         "execute": 8,
         "missing_schema": 0,
         "no_tests": 8,
-        "high_risk": 2
+        "high_risk": 5
       },
       "semrush": {
         "total": 8,
@@ -112,8 +121,44 @@
         "chat": 8,
         "execute": 8,
         "missing_schema": 0,
-        "no_tests": 8,
-        "high_risk": 2
+        "no_tests": 0,
+        "high_risk": 3
+      },
+      "ahrefs": {
+        "total": 12,
+        "implemented": 12,
+        "chat": 12,
+        "execute": 12,
+        "missing_schema": 0,
+        "no_tests": 0,
+        "high_risk": 3
+      },
+      "finseo": {
+        "total": 6,
+        "implemented": 6,
+        "chat": 6,
+        "execute": 6,
+        "missing_schema": 0,
+        "no_tests": 6,
+        "high_risk": 1
+      },
+      "ai_visibility_ui": {
+        "total": 4,
+        "implemented": 4,
+        "chat": 4,
+        "execute": 4,
+        "missing_schema": 0,
+        "no_tests": 0,
+        "high_risk": 1
+      },
+      "pdl": {
+        "total": 4,
+        "implemented": 4,
+        "chat": 4,
+        "execute": 4,
+        "missing_schema": 0,
+        "no_tests": 0,
+        "high_risk": 0
       },
       "stackadapt": {
         "total": 8,
@@ -121,8 +166,8 @@
         "chat": 8,
         "execute": 8,
         "missing_schema": 0,
-        "no_tests": 8,
-        "high_risk": 2
+        "no_tests": 7,
+        "high_risk": 4
       },
       "linkedin": {
         "total": 8,
@@ -131,16 +176,16 @@
         "execute": 8,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 2
+        "high_risk": 4
       },
       "apollo": {
-        "total": 13,
-        "implemented": 13,
-        "chat": 13,
-        "execute": 13,
+        "total": 15,
+        "implemented": 15,
+        "chat": 15,
+        "execute": 15,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 6
+        "high_risk": 8
       },
       "clay": {
         "total": 7,
@@ -149,7 +194,7 @@
         "execute": 7,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 2
+        "high_risk": 3
       },
       "engagebay": {
         "total": 6,
@@ -157,8 +202,8 @@
         "chat": 6,
         "execute": 6,
         "missing_schema": 0,
-        "no_tests": 6,
-        "high_risk": 2
+        "no_tests": 4,
+        "high_risk": 3
       },
       "stripe": {
         "total": 9,
@@ -167,16 +212,16 @@
         "execute": 9,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 3
+        "high_risk": 6
       },
       "quickbooks": {
-        "total": 10,
-        "implemented": 10,
-        "chat": 10,
-        "execute": 10,
+        "total": 16,
+        "implemented": 16,
+        "chat": 16,
+        "execute": 16,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 3
+        "high_risk": 4
       },
       "netsuite": {
         "total": 9,
@@ -185,7 +230,7 @@
         "execute": 9,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 3
+        "high_risk": 4
       },
       "xero": {
         "total": 9,
@@ -193,8 +238,8 @@
         "chat": 9,
         "execute": 9,
         "missing_schema": 0,
-        "no_tests": 9,
-        "high_risk": 3
+        "no_tests": 8,
+        "high_risk": 5
       },
       "clio": {
         "total": 8,
@@ -220,17 +265,17 @@
         "chat": 8,
         "execute": 8,
         "missing_schema": 0,
-        "no_tests": 8,
+        "no_tests": 7,
         "high_risk": 2
       },
       "slack": {
-        "total": 9,
-        "implemented": 9,
-        "chat": 9,
-        "execute": 9,
+        "total": 11,
+        "implemented": 11,
+        "chat": 11,
+        "execute": 11,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 3
+        "high_risk": 7
       },
       "microsoft_teams": {
         "total": 8,
@@ -239,7 +284,7 @@
         "execute": 8,
         "missing_schema": 0,
         "no_tests": 6,
-        "high_risk": 2
+        "high_risk": 5
       },
       "microsoft365": {
         "total": 22,
@@ -248,7 +293,7 @@
         "execute": 22,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 7
+        "high_risk": 13
       },
       "gmail": {
         "total": 9,
@@ -256,8 +301,8 @@
         "chat": 9,
         "execute": 9,
         "missing_schema": 0,
-        "no_tests": 8,
-        "high_risk": 3
+        "no_tests": 7,
+        "high_risk": 6
       },
       "google_calendar": {
         "total": 9,
@@ -266,7 +311,7 @@
         "execute": 9,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 3
+        "high_risk": 5
       },
       "outlook": {
         "total": 8,
@@ -274,8 +319,8 @@
         "chat": 8,
         "execute": 8,
         "missing_schema": 0,
-        "no_tests": 8,
-        "high_risk": 2
+        "no_tests": 7,
+        "high_risk": 5
       },
       "twilio": {
         "total": 8,
@@ -284,7 +329,7 @@
         "execute": 8,
         "missing_schema": 0,
         "no_tests": 8,
-        "high_risk": 2
+        "high_risk": 5
       },
       "sendgrid": {
         "total": 8,
@@ -292,8 +337,8 @@
         "chat": 8,
         "execute": 8,
         "missing_schema": 0,
-        "no_tests": 8,
-        "high_risk": 2
+        "no_tests": 7,
+        "high_risk": 5
       },
       "email": {
         "total": 5,
@@ -302,7 +347,7 @@
         "execute": 5,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 1
+        "high_risk": 3
       },
       "pagerduty": {
         "total": 10,
@@ -311,16 +356,16 @@
         "execute": 10,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 3
+        "high_risk": 5
       },
       "github": {
-        "total": 12,
-        "implemented": 12,
-        "chat": 12,
-        "execute": 12,
+        "total": 15,
+        "implemented": 15,
+        "chat": 15,
+        "execute": 15,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 4
+        "high_risk": 9
       },
       "notion": {
         "total": 9,
@@ -329,7 +374,7 @@
         "execute": 9,
         "missing_schema": 0,
         "no_tests": 8,
-        "high_risk": 3
+        "high_risk": 5
       },
       "confluence": {
         "total": 9,
@@ -338,16 +383,16 @@
         "execute": 9,
         "missing_schema": 0,
         "no_tests": 9,
-        "high_risk": 3
+        "high_risk": 5
       },
       "jira": {
-        "total": 9,
-        "implemented": 9,
-        "chat": 9,
-        "execute": 9,
+        "total": 10,
+        "implemented": 10,
+        "chat": 10,
+        "execute": 10,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 3
+        "high_risk": 5
       },
       "airtable": {
         "total": 8,
@@ -355,8 +400,8 @@
         "chat": 8,
         "execute": 8,
         "missing_schema": 0,
-        "no_tests": 8,
-        "high_risk": 2
+        "no_tests": 7,
+        "high_risk": 5
       },
       "asana": {
         "total": 12,
@@ -365,7 +410,7 @@
         "execute": 12,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 4
+        "high_risk": 7
       },
       "monday": {
         "total": 11,
@@ -374,7 +419,7 @@
         "execute": 11,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 3
+        "high_risk": 6
       },
       "clickup": {
         "total": 12,
@@ -383,7 +428,7 @@
         "execute": 12,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 5
+        "high_risk": 8
       },
       "zapier": {
         "total": 8,
@@ -391,8 +436,8 @@
         "chat": 8,
         "execute": 8,
         "missing_schema": 0,
-        "no_tests": 8,
-        "high_risk": 2
+        "no_tests": 7,
+        "high_risk": 5
       },
       "n8n": {
         "total": 8,
@@ -401,7 +446,7 @@
         "execute": 8,
         "missing_schema": 0,
         "no_tests": 8,
-        "high_risk": 2
+        "high_risk": 5
       },
       "motion": {
         "total": 8,
@@ -410,7 +455,7 @@
         "execute": 8,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 2
+        "high_risk": 5
       },
       "odoo": {
         "total": 12,
@@ -419,16 +464,16 @@
         "execute": 12,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 6
+        "high_risk": 9
       },
       "zendesk": {
-        "total": 9,
-        "implemented": 9,
-        "chat": 9,
-        "execute": 9,
+        "total": 10,
+        "implemented": 10,
+        "chat": 10,
+        "execute": 10,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 3
+        "high_risk": 7
       },
       "intercom": {
         "total": 12,
@@ -437,7 +482,7 @@
         "execute": 12,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 4
+        "high_risk": 7
       },
       "freshdesk": {
         "total": 9,
@@ -446,7 +491,7 @@
         "execute": 9,
         "missing_schema": 0,
         "no_tests": 9,
-        "high_risk": 3
+        "high_risk": 6
       },
       "gorgias": {
         "total": 9,
@@ -455,7 +500,7 @@
         "execute": 9,
         "missing_schema": 0,
         "no_tests": 9,
-        "high_risk": 3
+        "high_risk": 6
       },
       "workday": {
         "total": 8,
@@ -464,7 +509,7 @@
         "execute": 8,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 2
+        "high_risk": 3
       },
       "bamboohr": {
         "total": 8,
@@ -472,8 +517,8 @@
         "chat": 8,
         "execute": 8,
         "missing_schema": 0,
-        "no_tests": 8,
-        "high_risk": 2
+        "no_tests": 7,
+        "high_risk": 4
       },
       "greenhouse": {
         "total": 5,
@@ -482,7 +527,7 @@
         "execute": 5,
         "missing_schema": 0,
         "no_tests": 5,
-        "high_risk": 1
+        "high_risk": 2
       },
       "gusto": {
         "total": 8,
@@ -491,7 +536,7 @@
         "execute": 8,
         "missing_schema": 0,
         "no_tests": 8,
-        "high_risk": 2
+        "high_risk": 4
       },
       "adp": {
         "total": 8,
@@ -500,7 +545,7 @@
         "execute": 8,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 2
+        "high_risk": 4
       },
       "aws_s3": {
         "total": 8,
@@ -509,7 +554,7 @@
         "execute": 8,
         "missing_schema": 0,
         "no_tests": 8,
-        "high_risk": 2
+        "high_risk": 4
       },
       "postgresql": {
         "total": 8,
@@ -517,8 +562,8 @@
         "chat": 8,
         "execute": 8,
         "missing_schema": 0,
-        "no_tests": 8,
-        "high_risk": 2
+        "no_tests": 7,
+        "high_risk": 4
       },
       "mongodb": {
         "total": 8,
@@ -526,8 +571,8 @@
         "chat": 8,
         "execute": 8,
         "missing_schema": 0,
-        "no_tests": 8,
-        "high_risk": 2
+        "no_tests": 7,
+        "high_risk": 3
       },
       "snowflake": {
         "total": 8,
@@ -536,7 +581,7 @@
         "execute": 8,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 2
+        "high_risk": 5
       },
       "google_drive": {
         "total": 9,
@@ -544,8 +589,8 @@
         "chat": 9,
         "execute": 9,
         "missing_schema": 0,
-        "no_tests": 8,
-        "high_risk": 3
+        "no_tests": 7,
+        "high_risk": 4
       },
       "google_docs": {
         "total": 7,
@@ -554,7 +599,7 @@
         "execute": 7,
         "missing_schema": 0,
         "no_tests": 7,
-        "high_risk": 2
+        "high_risk": 4
       },
       "google_sheets": {
         "total": 9,
@@ -562,8 +607,8 @@
         "chat": 9,
         "execute": 9,
         "missing_schema": 0,
-        "no_tests": 9,
-        "high_risk": 3
+        "no_tests": 8,
+        "high_risk": 6
       },
       "absorb_lms": {
         "total": 8,
@@ -572,7 +617,7 @@
         "execute": 8,
         "missing_schema": 0,
         "no_tests": 8,
-        "high_risk": 2
+        "high_risk": 4
       },
       "canva": {
         "total": 11,
@@ -581,7 +626,7 @@
         "execute": 11,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 3
+        "high_risk": 5
       },
       "figma": {
         "total": 11,
@@ -591,6 +636,69 @@
         "missing_schema": 0,
         "no_tests": 0,
         "high_risk": 3
+      },
+      "fhir": {
+        "total": 5,
+        "implemented": 5,
+        "chat": 5,
+        "execute": 5,
+        "missing_schema": 0,
+        "no_tests": 0,
+        "high_risk": 1
+      },
+      "webhook": {
+        "total": 3,
+        "implemented": 1,
+        "chat": 1,
+        "execute": 1,
+        "missing_schema": 0,
+        "no_tests": 0,
+        "high_risk": 2
+      },
+      "fred": {
+        "total": 3,
+        "implemented": 3,
+        "chat": 3,
+        "execute": 3,
+        "missing_schema": 0,
+        "no_tests": 2,
+        "high_risk": 0
+      },
+      "nvd": {
+        "total": 3,
+        "implemented": 3,
+        "chat": 3,
+        "execute": 3,
+        "missing_schema": 0,
+        "no_tests": 2,
+        "high_risk": 0
+      },
+      "cisa_kev": {
+        "total": 3,
+        "implemented": 3,
+        "chat": 3,
+        "execute": 3,
+        "missing_schema": 0,
+        "no_tests": 2,
+        "high_risk": 0
+      },
+      "sec_edgar": {
+        "total": 3,
+        "implemented": 3,
+        "chat": 3,
+        "execute": 3,
+        "missing_schema": 0,
+        "no_tests": 2,
+        "high_risk": 0
+      },
+      "platform": {
+        "total": 3,
+        "implemented": 3,
+        "chat": 3,
+        "execute": 3,
+        "missing_schema": 0,
+        "no_tests": 0,
+        "high_risk": 0
       }
     }
   },
@@ -669,6 +777,24 @@
     },
     {
       "vendor": "salesforce",
+      "action_id": "salesforce.query",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "salesforce:query:read",
+        "salesforce:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "salesforce",
       "action_id": "salesforce.leads.create",
       "inputSchemaStatus": "inferred",
       "implementationStatus": "requires_approval",
@@ -694,6 +820,24 @@
       "executeExposure": true,
       "oauthScopes": [
         "salesforce:leads:write",
+        "salesforce:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "salesforce",
+      "action_id": "salesforce.accounts.create",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "requires_approval",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "salesforce:accounts:write",
         "salesforce:*"
       ],
       "scopeRegistered": true,
@@ -743,7 +887,7 @@
       "vendor": "salesforce",
       "action_id": "salesforce.opportunities.update_stage",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -751,8 +895,8 @@
         "salesforce:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -761,7 +905,7 @@
       "vendor": "salesforce",
       "action_id": "salesforce.accounts.update",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -769,8 +913,8 @@
         "salesforce:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -779,7 +923,7 @@
       "vendor": "salesforce",
       "action_id": "salesforce.opportunities.update",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -787,8 +931,8 @@
         "salesforce:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -939,6 +1083,42 @@
     },
     {
       "vendor": "hubspot",
+      "action_id": "hubspot.tickets.get",
+      "inputSchemaStatus": "override",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "hubspot:tickets:read",
+        "hubspot:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "hubspot",
+      "action_id": "hubspot.owners.list",
+      "inputSchemaStatus": "override",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "hubspot:owners:read",
+        "hubspot:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "hubspot",
       "action_id": "hubspot.pipelines.list",
       "inputSchemaStatus": "override",
       "implementationStatus": "executable",
@@ -946,6 +1126,24 @@
       "executeExposure": true,
       "oauthScopes": [
         "hubspot:pipelines:read",
+        "hubspot:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "hubspot",
+      "action_id": "hubspot.contacts.list",
+      "inputSchemaStatus": "override",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "hubspot:contacts:read",
         "hubspot:*"
       ],
       "scopeRegistered": true,
@@ -1101,9 +1299,45 @@
     },
     {
       "vendor": "hubspot",
+      "action_id": "hubspot.associations.create",
+      "inputSchemaStatus": "override",
+      "implementationStatus": "requires_approval",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "hubspot:associations:write",
+        "hubspot:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "hubspot",
+      "action_id": "hubspot.companies.create",
+      "inputSchemaStatus": "override",
+      "implementationStatus": "requires_approval",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "hubspot:companies:write",
+        "hubspot:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "hubspot",
       "action_id": "hubspot.deals.update_stage",
       "inputSchemaStatus": "override",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -1111,8 +1345,8 @@
         "hubspot:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -1121,7 +1355,7 @@
       "vendor": "hubspot",
       "action_id": "hubspot.sequences.enroll",
       "inputSchemaStatus": "override",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -1129,8 +1363,8 @@
         "hubspot:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -1139,7 +1373,7 @@
       "vendor": "hubspot",
       "action_id": "hubspot.lists.add_contact",
       "inputSchemaStatus": "override",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -1147,8 +1381,26 @@
         "hubspot:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "hubspot",
+      "action_id": "hubspot.lists.create",
+      "inputSchemaStatus": "override",
+      "implementationStatus": "requires_approval",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "hubspot:lists:write",
+        "hubspot:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -1355,7 +1607,7 @@
       "vendor": "pipedrive",
       "action_id": "pipedrive.deals.update_stage",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -1363,8 +1615,8 @@
         "pipedrive:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -1481,7 +1733,7 @@
       "vendor": "marketo",
       "action_id": "marketo.lists.add_to_static_list",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -1489,8 +1741,8 @@
         "marketo:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -1499,7 +1751,7 @@
       "vendor": "marketo",
       "action_id": "marketo.leads.merge",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -1507,8 +1759,8 @@
         "marketo:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -1517,7 +1769,7 @@
       "vendor": "marketo",
       "action_id": "marketo.programs.members.add",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -1525,8 +1777,8 @@
         "marketo:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -1643,7 +1895,7 @@
       "vendor": "segment",
       "action_id": "segment.alias",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -1651,8 +1903,8 @@
         "segment:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -1661,7 +1913,7 @@
       "vendor": "segment",
       "action_id": "segment.page",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -1669,8 +1921,8 @@
         "segment:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -1679,7 +1931,7 @@
       "vendor": "segment",
       "action_id": "segment.batch",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -1687,8 +1939,8 @@
         "segment:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -1838,6 +2090,78 @@
       "testStatus": "live"
     },
     {
+      "vendor": "google_search_console",
+      "action_id": "google_search_console.sites.list",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "google_search_console:read",
+        "google_search_console:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "google_search_console",
+      "action_id": "google_search_console.searchAnalytics.query",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "google_search_console:read",
+        "google_search_console:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "google_search_console",
+      "action_id": "google_search_console.sites.get",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "google_search_console:read",
+        "google_search_console:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "google_search_console",
+      "action_id": "google_search_console.sitemaps.list",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "google_search_console:read",
+        "google_search_console:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "medium",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
       "vendor": "mailchimp",
       "action_id": "mailchimp.audiences.list",
       "inputSchemaStatus": "inferred",
@@ -1949,7 +2273,7 @@
       "vendor": "mailchimp",
       "action_id": "mailchimp.automations.trigger",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -1957,8 +2281,8 @@
         "mailchimp:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -1967,7 +2291,7 @@
       "vendor": "mailchimp",
       "action_id": "mailchimp.segments.add_member",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -1975,8 +2299,8 @@
         "mailchimp:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -1985,7 +2309,7 @@
       "vendor": "mailchimp",
       "action_id": "mailchimp.batch.subscribe",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -1993,8 +2317,8 @@
         "mailchimp:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -2087,7 +2411,7 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "live"
     },
     {
       "vendor": "mixpanel",
@@ -2111,7 +2435,7 @@
       "vendor": "mixpanel",
       "action_id": "mixpanel.annotations.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -2119,8 +2443,8 @@
         "mixpanel:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -2255,7 +2579,7 @@
       "vendor": "constant_contact",
       "action_id": "constant_contact.lists.add_contacts",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -2263,8 +2587,8 @@
         "constant_contact:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -2273,7 +2597,7 @@
       "vendor": "constant_contact",
       "action_id": "constant_contact.tags.apply",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -2281,8 +2605,8 @@
         "constant_contact:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -2291,7 +2615,7 @@
       "vendor": "constant_contact",
       "action_id": "constant_contact.campaigns.schedule",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -2299,8 +2623,8 @@
         "constant_contact:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -2453,7 +2777,7 @@
       "vendor": "hootsuite",
       "action_id": "hootsuite.inbox.reply",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -2461,8 +2785,8 @@
         "hootsuite:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -2471,7 +2795,7 @@
       "vendor": "hootsuite",
       "action_id": "hootsuite.approvals.submit",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -2479,8 +2803,8 @@
         "hootsuite:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -2489,7 +2813,7 @@
       "vendor": "hootsuite",
       "action_id": "hootsuite.bulk.schedule",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -2497,8 +2821,8 @@
         "hootsuite:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -2519,7 +2843,7 @@
       "approvalRequired": false,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "live"
     },
     {
       "vendor": "semrush",
@@ -2537,7 +2861,7 @@
       "approvalRequired": false,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "mock"
     },
     {
       "vendor": "semrush",
@@ -2555,7 +2879,7 @@
       "approvalRequired": false,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "mock"
     },
     {
       "vendor": "semrush",
@@ -2573,7 +2897,7 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "live"
     },
     {
       "vendor": "semrush",
@@ -2591,7 +2915,7 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "mock"
     },
     {
       "vendor": "semrush",
@@ -2609,7 +2933,7 @@
       "approvalRequired": false,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "mock"
     },
     {
       "vendor": "semrush",
@@ -2627,13 +2951,13 @@
       "approvalRequired": false,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "mock"
     },
     {
       "vendor": "semrush",
       "action_id": "semrush.exports.run",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -2641,11 +2965,479 @@
         "semrush:*"
       ],
       "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "ahrefs",
+      "action_id": "ahrefs.backlinks.list",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "ahrefs:backlinks:read",
+        "ahrefs:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "ahrefs",
+      "action_id": "ahrefs.keywords.list",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "ahrefs:keywords:read",
+        "ahrefs:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "ahrefs",
+      "action_id": "ahrefs.domain.rating",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "ahrefs:domain:read",
+        "ahrefs:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "ahrefs",
+      "action_id": "ahrefs.brand_radar.overview",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "ahrefs:brand_radar:read",
+        "ahrefs:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "ahrefs",
+      "action_id": "ahrefs.brand_radar.prompts.list",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "ahrefs:brand_radar:read",
+        "ahrefs:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "ahrefs",
+      "action_id": "ahrefs.projects.create",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "requires_approval",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "ahrefs:projects:write",
+        "ahrefs:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "ahrefs",
+      "action_id": "ahrefs.rank_tracker.add",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "requires_approval",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "ahrefs:tracking:write",
+        "ahrefs:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "ahrefs",
+      "action_id": "ahrefs.brand_radar.prompts.track",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "requires_approval",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "ahrefs:brand_radar:write",
+        "ahrefs:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "ahrefs",
+      "action_id": "ahrefs.competitors.compare",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "ahrefs:domain:read",
+        "ahrefs:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "ahrefs",
+      "action_id": "ahrefs.top_pages.list",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "ahrefs:pages:read",
+        "ahrefs:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "ahrefs",
+      "action_id": "ahrefs.brand_radar.competitors.compare",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "ahrefs:brand_radar:read",
+        "ahrefs:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "ahrefs",
+      "action_id": "ahrefs.brand_radar.exports.run",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "ahrefs:brand_radar:read",
+        "ahrefs:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "medium",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "finseo",
+      "action_id": "finseo.projects.list",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "finseo:projects:read",
+        "finseo:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "none"
+    },
+    {
+      "vendor": "finseo",
+      "action_id": "finseo.metrics.overview",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "finseo:metrics:read",
+        "finseo:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "none"
+    },
+    {
+      "vendor": "finseo",
+      "action_id": "finseo.prompts.list",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "finseo:prompts:read",
+        "finseo:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "none"
+    },
+    {
+      "vendor": "finseo",
+      "action_id": "finseo.prompts.track",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "requires_approval",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "finseo:prompts:write",
+        "finseo:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "none"
+    },
+    {
+      "vendor": "finseo",
+      "action_id": "finseo.competitors.compare",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "finseo:competitors:read",
+        "finseo:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "none"
+    },
+    {
+      "vendor": "finseo",
+      "action_id": "finseo.exports.run",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "finseo:exports:read",
+        "finseo:*"
+      ],
+      "scopeRegistered": true,
       "riskLevel": "medium",
       "approvalRequired": false,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
+    },
+    {
+      "vendor": "ai_visibility_ui",
+      "action_id": "ai_visibility_ui.surfaces.list",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "ai_visibility_ui:surfaces:read",
+        "ai_visibility_ui:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "ai_visibility_ui",
+      "action_id": "ai_visibility_ui.mentions.check",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "ai_visibility_ui:mentions:read",
+        "ai_visibility_ui:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "ai_visibility_ui",
+      "action_id": "ai_visibility_ui.prompts.batch",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "requires_approval",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "ai_visibility_ui:prompts:write",
+        "ai_visibility_ui:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "ai_visibility_ui",
+      "action_id": "ai_visibility_ui.captures.export",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "ai_visibility_ui:captures:read",
+        "ai_visibility_ui:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "medium",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "pdl",
+      "action_id": "pdl.person.enrich",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "pdl:person:read",
+        "pdl:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "pdl",
+      "action_id": "pdl.company.enrich",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "pdl:company:read",
+        "pdl:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "pdl",
+      "action_id": "pdl.person.identify",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "pdl:person:read",
+        "pdl:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "pdl",
+      "action_id": "pdl.person.prefetch",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "pdl:person:read",
+        "pdl:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
     },
     {
       "vendor": "stackadapt",
@@ -2717,7 +3509,7 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "live"
     },
     {
       "vendor": "stackadapt",
@@ -2741,7 +3533,7 @@
       "vendor": "stackadapt",
       "action_id": "stackadapt.audiences.sync",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -2749,8 +3541,8 @@
         "stackadapt:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -2759,7 +3551,7 @@
       "vendor": "stackadapt",
       "action_id": "stackadapt.creatives.upload",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -2767,8 +3559,8 @@
         "stackadapt:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -2885,7 +3677,7 @@
       "vendor": "linkedin",
       "action_id": "linkedin.campaigns.optimize",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -2893,8 +3685,8 @@
         "linkedin:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -2903,7 +3695,7 @@
       "vendor": "linkedin",
       "action_id": "linkedin.conversions.track",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -2911,8 +3703,8 @@
         "linkedin:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -2969,7 +3761,7 @@
       "approvalRequired": false,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "live"
+      "testStatus": "mock"
     },
     {
       "vendor": "apollo",
@@ -2998,6 +3790,42 @@
       "executeExposure": true,
       "oauthScopes": [
         "apollo:labels:read",
+        "apollo:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "apollo",
+      "action_id": "apollo.people.match",
+      "inputSchemaStatus": "override",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "apollo:enrichment:read",
+        "apollo:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "apollo",
+      "action_id": "apollo.organizations.enrich",
+      "inputSchemaStatus": "override",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "apollo:enrichment:read",
         "apollo:*"
       ],
       "scopeRegistered": true,
@@ -3065,7 +3893,7 @@
       "vendor": "apollo",
       "action_id": "apollo.enrichment.bulk",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -3073,8 +3901,8 @@
         "apollo:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -3083,7 +3911,7 @@
       "vendor": "apollo",
       "action_id": "apollo.tasks.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -3091,8 +3919,8 @@
         "apollo:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -3281,7 +4109,7 @@
       "vendor": "clay",
       "action_id": "clay.crm.sync",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -3289,8 +4117,8 @@
         "clay:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -3365,7 +4193,7 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "live"
     },
     {
       "vendor": "engagebay",
@@ -3383,13 +4211,13 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "live"
     },
     {
       "vendor": "engagebay",
       "action_id": "engagebay.tasks.create",
       "inputSchemaStatus": "override",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -3397,8 +4225,8 @@
         "engagebay:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -3515,7 +4343,7 @@
       "vendor": "stripe",
       "action_id": "stripe.subscriptions.update",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -3523,8 +4351,8 @@
         "stripe:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -3533,7 +4361,7 @@
       "vendor": "stripe",
       "action_id": "stripe.payment_intents.confirm",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -3541,8 +4369,8 @@
         "stripe:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -3551,7 +4379,7 @@
       "vendor": "stripe",
       "action_id": "stripe.checkout.sessions.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -3559,8 +4387,8 @@
         "stripe:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -3621,6 +4449,78 @@
     },
     {
       "vendor": "quickbooks",
+      "action_id": "quickbooks.customers.get",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "quickbooks:customers:read",
+        "quickbooks:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "quickbooks",
+      "action_id": "quickbooks.vendors.list",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "quickbooks:vendors:read",
+        "quickbooks:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "quickbooks",
+      "action_id": "quickbooks.accounts.list",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "quickbooks:accounts:read",
+        "quickbooks:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "quickbooks",
+      "action_id": "quickbooks.payments.list",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "quickbooks:payments:read",
+        "quickbooks:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "quickbooks",
       "action_id": "quickbooks.companyinfo.get",
       "inputSchemaStatus": "inferred",
       "implementationStatus": "executable",
@@ -3653,7 +4553,7 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "mock"
+      "testStatus": "live"
     },
     {
       "vendor": "quickbooks",
@@ -3729,9 +4629,45 @@
     },
     {
       "vendor": "quickbooks",
-      "action_id": "quickbooks.journalentries.create",
+      "action_id": "quickbooks.bills.get",
       "inputSchemaStatus": "inferred",
       "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "quickbooks:bills:read",
+        "quickbooks:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "medium",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "quickbooks",
+      "action_id": "quickbooks.vendors.get",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "quickbooks:vendors:read",
+        "quickbooks:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "medium",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "quickbooks",
+      "action_id": "quickbooks.journalentries.create",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -3739,8 +4675,8 @@
         "quickbooks:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -3893,7 +4829,7 @@
       "vendor": "netsuite",
       "action_id": "netsuite.fulfillment.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -3901,8 +4837,8 @@
         "netsuite:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -3995,7 +4931,7 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "live"
     },
     {
       "vendor": "xero",
@@ -4019,7 +4955,7 @@
       "vendor": "xero",
       "action_id": "xero.banktransactions.import",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -4027,8 +4963,8 @@
         "xero:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -4055,7 +4991,7 @@
       "vendor": "xero",
       "action_id": "xero.batch.invoices",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -4063,8 +4999,8 @@
         "xero:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -4175,7 +5111,7 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "mock"
+      "testStatus": "live"
     },
     {
       "vendor": "clio",
@@ -4373,7 +5309,7 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "live"
     },
     {
       "vendor": "plaid",
@@ -4450,7 +5386,7 @@
     {
       "vendor": "slack",
       "action_id": "slack.conversations.history",
-      "inputSchemaStatus": "inferred",
+      "inputSchemaStatus": "override",
       "implementationStatus": "executable",
       "chatExposure": true,
       "executeExposure": true,
@@ -4468,7 +5404,7 @@
     {
       "vendor": "slack",
       "action_id": "slack.users.list",
-      "inputSchemaStatus": "inferred",
+      "inputSchemaStatus": "override",
       "implementationStatus": "executable",
       "chatExposure": true,
       "executeExposure": true,
@@ -4482,6 +5418,24 @@
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
+    },
+    {
+      "vendor": "slack",
+      "action_id": "slack.users.info",
+      "inputSchemaStatus": "override",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "slack:users:read",
+        "slack:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
     },
     {
       "vendor": "slack",
@@ -4517,7 +5471,7 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "mock"
+      "testStatus": "live"
     },
     {
       "vendor": "slack",
@@ -4539,9 +5493,27 @@
     },
     {
       "vendor": "slack",
+      "action_id": "slack.conversations.join",
+      "inputSchemaStatus": "override",
+      "implementationStatus": "requires_approval",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "slack:channels:join",
+        "slack:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "slack",
       "action_id": "slack.files.upload",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -4549,8 +5521,8 @@
         "slack:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -4559,7 +5531,7 @@
       "vendor": "slack",
       "action_id": "slack.reactions.add",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -4567,8 +5539,8 @@
         "slack:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -4577,7 +5549,7 @@
       "vendor": "slack",
       "action_id": "slack.workflows.trigger",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -4585,8 +5557,8 @@
         "slack:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -4685,7 +5657,7 @@
       "vendor": "microsoft_teams",
       "action_id": "microsoft_teams.tabs.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -4693,8 +5665,8 @@
         "microsoft_teams:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -4703,7 +5675,7 @@
       "vendor": "microsoft_teams",
       "action_id": "microsoft_teams.members.add",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -4711,8 +5683,8 @@
         "microsoft_teams:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -4721,7 +5693,7 @@
       "vendor": "microsoft_teams",
       "action_id": "microsoft_teams.presence.set",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -4729,8 +5701,8 @@
         "microsoft_teams:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -4937,7 +5909,7 @@
       "vendor": "microsoft365",
       "action_id": "microsoft365.excel.workbook.update",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -4945,8 +5917,8 @@
         "microsoft365:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -4955,7 +5927,7 @@
       "vendor": "microsoft365",
       "action_id": "microsoft365.teams.notify",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -4963,8 +5935,8 @@
         "microsoft365:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -4973,7 +5945,7 @@
       "vendor": "microsoft365",
       "action_id": "microsoft365.batch.mail",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -4981,8 +5953,8 @@
         "microsoft365:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -4991,7 +5963,7 @@
       "vendor": "microsoft365",
       "action_id": "microsoft365.teams.tabs.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -4999,8 +5971,8 @@
         "microsoft365:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -5009,7 +5981,7 @@
       "vendor": "microsoft365",
       "action_id": "microsoft365.teams.members.add",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -5017,8 +5989,8 @@
         "microsoft365:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -5027,7 +5999,7 @@
       "vendor": "microsoft365",
       "action_id": "microsoft365.teams.presence.set",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -5035,8 +6007,8 @@
         "microsoft365:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -5219,7 +6191,7 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "live"
     },
     {
       "vendor": "gmail",
@@ -5243,7 +6215,7 @@
       "vendor": "gmail",
       "action_id": "gmail.threads.modify",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -5251,8 +6223,8 @@
         "gmail:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -5261,7 +6233,7 @@
       "vendor": "gmail",
       "action_id": "gmail.messages.batch",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -5269,8 +6241,8 @@
         "gmail:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -5279,7 +6251,7 @@
       "vendor": "gmail",
       "action_id": "gmail.watch.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -5287,8 +6259,8 @@
         "gmail:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -5405,7 +6377,7 @@
       "vendor": "google_calendar",
       "action_id": "google_calendar.events.quick_add",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -5413,8 +6385,8 @@
         "google_calendar:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -5441,7 +6413,7 @@
       "vendor": "google_calendar",
       "action_id": "google_calendar.batch.events",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -5449,8 +6421,8 @@
         "google_calendar:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -5525,7 +6497,7 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "live"
     },
     {
       "vendor": "outlook",
@@ -5549,7 +6521,7 @@
       "vendor": "outlook",
       "action_id": "outlook.rules.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -5557,8 +6529,8 @@
         "outlook:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -5567,7 +6539,7 @@
       "vendor": "outlook",
       "action_id": "outlook.categories.apply",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -5575,8 +6547,8 @@
         "outlook:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -5585,7 +6557,7 @@
       "vendor": "outlook",
       "action_id": "outlook.batch.send",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -5593,8 +6565,8 @@
         "outlook:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -5693,7 +6665,7 @@
       "vendor": "twilio",
       "action_id": "twilio.verify.check",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -5701,8 +6673,8 @@
         "twilio:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -5711,7 +6683,7 @@
       "vendor": "twilio",
       "action_id": "twilio.conversations.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -5719,8 +6691,8 @@
         "twilio:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -5729,7 +6701,7 @@
       "vendor": "twilio",
       "action_id": "twilio.studio.flows.execute",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -5737,8 +6709,8 @@
         "twilio:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -5813,7 +6785,7 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "live"
     },
     {
       "vendor": "sendgrid",
@@ -5837,7 +6809,7 @@
       "vendor": "sendgrid",
       "action_id": "sendgrid.campaigns.schedule",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -5845,8 +6817,8 @@
         "sendgrid:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -5855,7 +6827,7 @@
       "vendor": "sendgrid",
       "action_id": "sendgrid.suppressions.add",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -5863,8 +6835,8 @@
         "sendgrid:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -5873,7 +6845,7 @@
       "vendor": "sendgrid",
       "action_id": "sendgrid.batch.send",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -5881,8 +6853,8 @@
         "sendgrid:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -5939,13 +6911,13 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "mock"
+      "testStatus": "live"
     },
     {
       "vendor": "email",
       "action_id": "email.send.template",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -5953,8 +6925,8 @@
         "email:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -5963,7 +6935,7 @@
       "vendor": "email",
       "action_id": "email.batch.send",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -5971,8 +6943,8 @@
         "email:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -6107,7 +7079,7 @@
       "vendor": "pagerduty",
       "action_id": "pagerduty.incidents.escalate",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -6115,8 +7087,8 @@
         "pagerduty:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -6125,7 +7097,7 @@
       "vendor": "pagerduty",
       "action_id": "pagerduty.incidents.reassign",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -6133,8 +7105,8 @@
         "pagerduty:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -6213,6 +7185,24 @@
     },
     {
       "vendor": "github",
+      "action_id": "github.actions.runs.list",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "github:actions:read",
+        "github:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "github",
       "action_id": "github.issues.create",
       "inputSchemaStatus": "inferred",
       "implementationStatus": "requires_approval",
@@ -6249,6 +7239,42 @@
     },
     {
       "vendor": "github",
+      "action_id": "github.issues.update",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "requires_approval",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "github:issues:write",
+        "github:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "github",
+      "action_id": "github.pulls.create",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "requires_approval",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "github:pulls:write",
+        "github:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "github",
       "action_id": "github.pulls.request_reviewer",
       "inputSchemaStatus": "inferred",
       "implementationStatus": "requires_approval",
@@ -6269,7 +7295,7 @@
       "vendor": "github",
       "action_id": "github.actions.dispatch",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -6277,8 +7303,8 @@
         "github:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -6287,7 +7313,7 @@
       "vendor": "github",
       "action_id": "github.pulls.merge",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -6295,8 +7321,8 @@
         "github:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -6305,7 +7331,7 @@
       "vendor": "github",
       "action_id": "github.releases.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -6313,8 +7339,8 @@
         "github:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -6485,7 +7511,7 @@
       "vendor": "notion",
       "action_id": "notion.databases.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -6493,8 +7519,8 @@
         "notion:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -6521,7 +7547,7 @@
       "vendor": "notion",
       "action_id": "notion.comments.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -6529,8 +7555,8 @@
         "notion:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -6647,7 +7673,7 @@
       "vendor": "confluence",
       "action_id": "confluence.attachments.upload",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -6655,8 +7681,8 @@
         "confluence:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -6665,7 +7691,7 @@
       "vendor": "confluence",
       "action_id": "confluence.pages.move",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -6673,8 +7699,8 @@
         "confluence:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -6753,6 +7779,24 @@
     },
     {
       "vendor": "jira",
+      "action_id": "jira.users.search",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "jira:users:read",
+        "jira:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "jira",
       "action_id": "jira.issues.create",
       "inputSchemaStatus": "inferred",
       "implementationStatus": "requires_approval",
@@ -6809,7 +7853,7 @@
       "vendor": "jira",
       "action_id": "jira.issues.transition",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -6817,8 +7861,8 @@
         "jira:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -6827,7 +7871,7 @@
       "vendor": "jira",
       "action_id": "jira.issues.assign",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -6835,8 +7879,8 @@
         "jira:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -6929,7 +7973,7 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "live"
     },
     {
       "vendor": "airtable",
@@ -6953,7 +7997,7 @@
       "vendor": "airtable",
       "action_id": "airtable.records.delete",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -6961,8 +8005,8 @@
         "airtable:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -6971,7 +8015,7 @@
       "vendor": "airtable",
       "action_id": "airtable.webhooks.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -6979,8 +8023,8 @@
         "airtable:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -6989,7 +8033,7 @@
       "vendor": "airtable",
       "action_id": "airtable.batch.records",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -6997,8 +8041,8 @@
         "airtable:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -7115,7 +8159,7 @@
       "vendor": "asana",
       "action_id": "asana.tasks.add_project",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -7123,8 +8167,8 @@
         "asana:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -7133,7 +8177,7 @@
       "vendor": "asana",
       "action_id": "asana.sections.move",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -7141,8 +8185,8 @@
         "asana:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -7151,7 +8195,7 @@
       "vendor": "asana",
       "action_id": "asana.batch.tasks",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -7159,8 +8203,8 @@
         "asana:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -7313,7 +8357,7 @@
       "vendor": "monday",
       "action_id": "monday.automations.trigger",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -7321,8 +8365,8 @@
         "monday:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -7331,7 +8375,7 @@
       "vendor": "monday",
       "action_id": "monday.updates.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -7339,8 +8383,8 @@
         "monday:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -7349,7 +8393,7 @@
       "vendor": "monday",
       "action_id": "monday.batch.items",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -7357,8 +8401,8 @@
         "monday:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -7529,7 +8573,7 @@
       "vendor": "clickup",
       "action_id": "clickup.time_entries.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -7537,8 +8581,8 @@
         "clickup:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -7547,7 +8591,7 @@
       "vendor": "clickup",
       "action_id": "clickup.goals.update",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -7555,8 +8599,8 @@
         "clickup:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -7565,7 +8609,7 @@
       "vendor": "clickup",
       "action_id": "clickup.webhooks.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -7573,8 +8617,8 @@
         "clickup:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -7721,13 +8765,13 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "live"
     },
     {
       "vendor": "zapier",
       "action_id": "zapier.tables.rows.upsert",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -7735,8 +8779,8 @@
         "zapier:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -7745,7 +8789,7 @@
       "vendor": "zapier",
       "action_id": "zapier.batch.trigger",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -7753,8 +8797,8 @@
         "zapier:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -7763,7 +8807,7 @@
       "vendor": "zapier",
       "action_id": "zapier.interfaces.submit",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -7771,8 +8815,8 @@
         "zapier:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -7871,7 +8915,7 @@
       "vendor": "n8n",
       "action_id": "n8n.executions.retry",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -7879,8 +8923,8 @@
         "n8n:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -7889,7 +8933,7 @@
       "vendor": "n8n",
       "action_id": "n8n.webhooks.trigger",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -7897,8 +8941,8 @@
         "n8n:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -7907,7 +8951,7 @@
       "vendor": "n8n",
       "action_id": "n8n.batch.executions",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -7915,8 +8959,8 @@
         "n8n:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -8015,7 +9059,7 @@
       "vendor": "motion",
       "action_id": "motion.calendar.optimize",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -8023,8 +9067,8 @@
         "motion:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -8033,7 +9077,7 @@
       "vendor": "motion",
       "action_id": "motion.batch.reschedule",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -8041,8 +9085,8 @@
         "motion:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -8051,7 +9095,7 @@
       "vendor": "motion",
       "action_id": "motion.focus.block",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -8059,8 +9103,8 @@
         "motion:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -8177,7 +9221,7 @@
       "vendor": "odoo",
       "action_id": "odoo.manufacturing.orders.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -8185,8 +9229,8 @@
         "odoo:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -8195,7 +9239,7 @@
       "vendor": "odoo",
       "action_id": "odoo.crm.leads.convert",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -8203,8 +9247,8 @@
         "odoo:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -8213,7 +9257,7 @@
       "vendor": "odoo",
       "action_id": "odoo.batch.partners",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -8221,8 +9265,8 @@
         "odoo:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -8315,7 +9359,7 @@
       "approvalRequired": false,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "live"
+      "testStatus": "mock"
     },
     {
       "vendor": "zendesk",
@@ -8373,6 +9417,24 @@
     },
     {
       "vendor": "zendesk",
+      "action_id": "zendesk.tickets.close",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "requires_approval",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "zendesk:tickets:write",
+        "zendesk:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "zendesk",
       "action_id": "zendesk.tickets.add_tags",
       "inputSchemaStatus": "inferred",
       "implementationStatus": "requires_approval",
@@ -8393,7 +9455,7 @@
       "vendor": "zendesk",
       "action_id": "zendesk.tickets.merge",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -8401,8 +9463,8 @@
         "zendesk:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -8411,7 +9473,7 @@
       "vendor": "zendesk",
       "action_id": "zendesk.macros.apply",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -8419,8 +9481,8 @@
         "zendesk:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -8429,7 +9491,7 @@
       "vendor": "zendesk",
       "action_id": "zendesk.side_conversations.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -8437,8 +9499,8 @@
         "zendesk:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -8555,7 +9617,7 @@
       "vendor": "intercom",
       "action_id": "intercom.tags.apply",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -8563,8 +9625,8 @@
         "intercom:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -8573,7 +9635,7 @@
       "vendor": "intercom",
       "action_id": "intercom.series.trigger",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -8581,8 +9643,8 @@
         "intercom:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -8591,7 +9653,7 @@
       "vendor": "intercom",
       "action_id": "intercom.notes.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -8599,8 +9661,8 @@
         "intercom:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -8771,7 +9833,7 @@
       "vendor": "freshdesk",
       "action_id": "freshdesk.tickets.merge",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -8779,8 +9841,8 @@
         "freshdesk:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -8789,7 +9851,7 @@
       "vendor": "freshdesk",
       "action_id": "freshdesk.automations.trigger",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -8797,8 +9859,8 @@
         "freshdesk:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -8807,7 +9869,7 @@
       "vendor": "freshdesk",
       "action_id": "freshdesk.satisfaction.send",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -8815,8 +9877,8 @@
         "freshdesk:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -8933,7 +9995,7 @@
       "vendor": "gorgias",
       "action_id": "gorgias.rules.trigger",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -8941,8 +10003,8 @@
         "gorgias:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -8951,7 +10013,7 @@
       "vendor": "gorgias",
       "action_id": "gorgias.tags.apply",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -8959,8 +10021,8 @@
         "gorgias:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -8969,7 +10031,7 @@
       "vendor": "gorgias",
       "action_id": "gorgias.satisfaction.request",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -8977,8 +10039,8 @@
         "gorgias:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -9095,7 +10157,7 @@
       "vendor": "workday",
       "action_id": "workday.learning.enroll",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -9103,8 +10165,8 @@
         "workday:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -9197,7 +10259,7 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "live"
     },
     {
       "vendor": "bamboohr",
@@ -9221,7 +10283,7 @@
       "vendor": "bamboohr",
       "action_id": "bamboohr.onboarding.tasks.assign",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -9229,8 +10291,8 @@
         "bamboohr:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -9257,7 +10319,7 @@
       "vendor": "bamboohr",
       "action_id": "bamboohr.webhooks.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -9265,8 +10327,8 @@
         "bamboohr:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -9347,7 +10409,7 @@
       "vendor": "greenhouse",
       "action_id": "greenhouse.offers.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -9355,8 +10417,8 @@
         "greenhouse:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -9455,7 +10517,7 @@
       "vendor": "gusto",
       "action_id": "gusto.benefits.enroll",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -9463,8 +10525,8 @@
         "gusto:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -9473,7 +10535,7 @@
       "vendor": "gusto",
       "action_id": "gusto.contractors.pay",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -9481,8 +10543,8 @@
         "gusto:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -9599,7 +10661,7 @@
       "vendor": "adp",
       "action_id": "adp.payroll.preview",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -9607,8 +10669,8 @@
         "adp:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -9617,7 +10679,7 @@
       "vendor": "adp",
       "action_id": "adp.benefits.elect",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -9625,8 +10687,8 @@
         "adp:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "mock"
@@ -9761,7 +10823,7 @@
       "vendor": "aws_s3",
       "action_id": "aws_s3.multipart.upload",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -9769,8 +10831,8 @@
         "aws_s3:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -9779,7 +10841,7 @@
       "vendor": "aws_s3",
       "action_id": "aws_s3.batch.delete",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -9787,8 +10849,8 @@
         "aws_s3:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -9881,7 +10943,7 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "live"
     },
     {
       "vendor": "postgresql",
@@ -9905,7 +10967,7 @@
       "vendor": "postgresql",
       "action_id": "postgresql.batch.upsert",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -9913,8 +10975,8 @@
         "postgresql:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -9923,7 +10985,7 @@
       "vendor": "postgresql",
       "action_id": "postgresql.migrations.apply",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -9931,8 +10993,8 @@
         "postgresql:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -10007,7 +11069,7 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "live"
     },
     {
       "vendor": "mongodb",
@@ -10067,7 +11129,7 @@
       "vendor": "mongodb",
       "action_id": "mongodb.batch.bulk_write",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -10075,8 +11137,8 @@
         "mongodb:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -10175,7 +11237,7 @@
       "vendor": "snowflake",
       "action_id": "snowflake.tasks.run",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -10183,8 +11245,8 @@
         "snowflake:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -10193,7 +11255,7 @@
       "vendor": "snowflake",
       "action_id": "snowflake.pipes.refresh",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -10201,8 +11263,8 @@
         "snowflake:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -10211,7 +11273,7 @@
       "vendor": "snowflake",
       "action_id": "snowflake.batch.copy",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -10219,8 +11281,8 @@
         "snowflake:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -10331,7 +11393,7 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "live"
     },
     {
       "vendor": "google_drive",
@@ -10373,7 +11435,7 @@
       "vendor": "google_drive",
       "action_id": "google_drive.batch.permissions",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -10381,8 +11443,8 @@
         "google_drive:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -10463,7 +11525,7 @@
       "vendor": "google_docs",
       "action_id": "google_docs.documents.replace_text",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -10471,8 +11533,8 @@
         "google_docs:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -10481,7 +11543,7 @@
       "vendor": "google_docs",
       "action_id": "google_docs.documents.insert_table",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -10489,8 +11551,8 @@
         "google_docs:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -10583,7 +11645,7 @@
       "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "none"
+      "testStatus": "live"
     },
     {
       "vendor": "google_sheets",
@@ -10625,7 +11687,7 @@
       "vendor": "google_sheets",
       "action_id": "google_sheets.values.batch_update",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -10633,8 +11695,8 @@
         "google_sheets:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -10643,7 +11705,7 @@
       "vendor": "google_sheets",
       "action_id": "google_sheets.charts.add",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -10651,8 +11713,8 @@
         "google_sheets:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -10661,7 +11723,7 @@
       "vendor": "google_sheets",
       "action_id": "google_sheets.pivot.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -10669,8 +11731,8 @@
         "google_sheets:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -10769,7 +11831,7 @@
       "vendor": "absorb_lms",
       "action_id": "absorb_lms.certificates.issue",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -10777,8 +11839,8 @@
         "absorb_lms:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -10805,7 +11867,7 @@
       "vendor": "absorb_lms",
       "action_id": "absorb_lms.batch.enroll",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -10813,8 +11875,8 @@
         "absorb_lms:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "none"
@@ -10913,7 +11975,7 @@
       "vendor": "canva",
       "action_id": "canva.autofill.create",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -10921,8 +11983,8 @@
         "canva:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -10949,7 +12011,7 @@
       "vendor": "canva",
       "action_id": "canva.batch.exports",
       "inputSchemaStatus": "inferred",
-      "implementationStatus": "executable",
+      "implementationStatus": "requires_approval",
       "chatExposure": true,
       "executeExposure": true,
       "oauthScopes": [
@@ -10957,8 +12019,8 @@
         "canva:*"
       ],
       "scopeRegistered": true,
-      "riskLevel": "medium",
-      "approvalRequired": false,
+      "riskLevel": "high",
+      "approvalRequired": true,
       "multiStepPlans": true,
       "structuredResults": true,
       "testStatus": "live"
@@ -11207,6 +12269,420 @@
       "oauthScopes": [
         "figma:users:read",
         "figma:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "medium",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "fhir",
+      "action_id": "fhir.patients.get",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "fhir:patients:read",
+        "fhir:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "fhir",
+      "action_id": "fhir.patients.search",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "fhir:patients:read",
+        "fhir:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "fhir",
+      "action_id": "fhir.appointments.search",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "fhir:appointments:read",
+        "fhir:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "fhir",
+      "action_id": "fhir.prior_auth.checklist",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "requires_approval",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "fhir:prior_auth:write",
+        "fhir:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "fhir",
+      "action_id": "fhir.coverage.eligibility",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "fhir:coverage:read",
+        "fhir:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "medium",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "webhook",
+      "action_id": "webhook.connectors.get",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "not_implemented",
+      "chatExposure": false,
+      "executeExposure": false,
+      "oauthScopes": [
+        "webhook:connectors:read",
+        "webhook:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": false,
+      "structuredResults": false,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "webhook",
+      "action_id": "webhook.post",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "requires_approval",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "webhook:post:write",
+        "webhook:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "webhook",
+      "action_id": "webhook.post.replay",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "not_implemented",
+      "chatExposure": false,
+      "executeExposure": false,
+      "oauthScopes": [
+        "webhook:post:write",
+        "webhook:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": false,
+      "structuredResults": false,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "fred",
+      "action_id": "fred.series.get",
+      "inputSchemaStatus": "override",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "fred:series:read",
+        "fred:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "fred",
+      "action_id": "fred.series.search",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "fred:series:read",
+        "fred:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "none"
+    },
+    {
+      "vendor": "fred",
+      "action_id": "fred.series.observations.get",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "fred:series:read",
+        "fred:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "medium",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "none"
+    },
+    {
+      "vendor": "nvd",
+      "action_id": "nvd.cve.get",
+      "inputSchemaStatus": "override",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "nvd:cve:read",
+        "nvd:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "nvd",
+      "action_id": "nvd.cve.search",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "nvd:cve:read",
+        "nvd:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "none"
+    },
+    {
+      "vendor": "nvd",
+      "action_id": "nvd.cve.recent",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "nvd:cve:read",
+        "nvd:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "medium",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "none"
+    },
+    {
+      "vendor": "cisa_kev",
+      "action_id": "cisa_kev.feed.get",
+      "inputSchemaStatus": "override",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "cisa_kev:feed:read",
+        "cisa_kev:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "cisa_kev",
+      "action_id": "cisa_kev.cve.lookup",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "cisa_kev:feed:read",
+        "cisa_kev:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "none"
+    },
+    {
+      "vendor": "cisa_kev",
+      "action_id": "cisa_kev.feed.diff",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "cisa_kev:feed:read",
+        "cisa_kev:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "medium",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "none"
+    },
+    {
+      "vendor": "sec_edgar",
+      "action_id": "sec_edgar.filings.search",
+      "inputSchemaStatus": "override",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "sec_edgar:filings:read",
+        "sec_edgar:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock"
+    },
+    {
+      "vendor": "sec_edgar",
+      "action_id": "sec_edgar.company.get",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "sec_edgar:filings:read",
+        "sec_edgar:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "none"
+    },
+    {
+      "vendor": "sec_edgar",
+      "action_id": "sec_edgar.filings.recent",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "sec_edgar:filings:read",
+        "sec_edgar:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "medium",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "none"
+    },
+    {
+      "vendor": "platform",
+      "action_id": "platform.health.snapshot",
+      "inputSchemaStatus": "override",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "platform:health:read",
+        "platform:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "platform",
+      "action_id": "platform.connector_ops.summary",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "platform:health:read",
+        "platform:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live"
+    },
+    {
+      "vendor": "platform",
+      "action_id": "platform.approval.latency.report",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "platform:health:read",
+        "platform:*"
       ],
       "scopeRegistered": true,
       "riskLevel": "medium",
