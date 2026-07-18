@@ -85,16 +85,21 @@ def _parse_sse(raw: str) -> list[dict[str, Any]]:
     return events
 
 
-def _cascade_from_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    for ev in events:
+def _latest_cascade_from_events(events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Match retrieval-ab fingerprint: last researchCascade blob in SSE stream."""
+    for ev in reversed(events):
         for container in (ev, ev.get("data") if isinstance(ev.get("data"), dict) else {}):
             if not isinstance(container, dict):
                 continue
             cascade = container.get("researchCascade") or container.get("research_cascade")
-            if isinstance(cascade, dict):
-                rows.append(cascade)
-    return rows
+            if isinstance(cascade, dict) and cascade:
+                return cascade
+    return {}
+
+
+def _cascade_from_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    latest = _latest_cascade_from_events(events)
+    return [latest] if latest else []
 
 
 def _request_sse(

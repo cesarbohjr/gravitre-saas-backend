@@ -241,6 +241,7 @@ def audit_escalations(client, *, since_iso: str, limit: int = 80) -> list[dict]:
 
 async def main() -> int:
     load_env()
+    sys.path.insert(0, str(ROOT))
     sys.path.insert(0, str(BACKEND))
     from app.config import get_settings
     from app.workflows.repository import get_supabase_client

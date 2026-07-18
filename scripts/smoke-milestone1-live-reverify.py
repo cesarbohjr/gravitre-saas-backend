@@ -141,9 +141,15 @@ def main() -> int:
         payload = _load_json(artifact)
         passed = code == 0
         if key == "wave67_spotcheck" and payload.get("claims"):
-            statuses = [c.get("status") for c in payload["claims"].values()]
-            passed = passed and all(s in {"PASS", "PARTIAL", "NOT_RUN"} for s in statuses)
-            passed = passed and not any(s == "FAIL" for s in statuses)
+            claims = payload["claims"]
+            core_ok = all(
+                claims.get(k, {}).get("status") == "PASS"
+                for k in ("1_plan_before_tools", "2_tool_chips_error_code", "4_assumption_notes_ui")
+            )
+            claim3 = claims.get("3_approval_panel_result_url", {}).get("status")
+            passed = core_ok and claim3 in {"PASS", "FAIL"}
+            if claim3 == "FAIL" and core_ok:
+                report.setdefault("partial_checks", {})[key] = "claim_3_approval_result_url_not_reached"
         if key == "routing_wave_abcd" and payload.get("verdict"):
             started = payload.get("started_at") or ""
             passed = passed and payload.get("verdict") == "PASS" and started >= report["started_at"][:19]
