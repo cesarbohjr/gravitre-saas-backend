@@ -4,7 +4,22 @@
 
 Research Lookups overage uses a **separate** Billing Meter from `ai_credits_used`.
 
-## Dashboard steps (Cesar / Stripe admin)
+## CLI alternative (preferred when `STRIPE_SECRET_KEY` is set)
+
+```bash
+export STRIPE_SECRET_KEY=sk_test_...   # staging first; sk_live_... for prod after live PASS
+python backend/scripts/stripe_seed_research_lookup_meter.py
+```
+
+Or run the full ordered prep (migration + Stripe + Railway hints):
+
+```bash
+bash scripts/apply-research-lookups-billing-go-live.sh
+```
+
+Requires `SUPABASE_ACCESS_TOKEN` (or `supabase login`) for `db push`, and `railway login` to auto-set Railway vars.
+
+## Dashboard steps (manual fallback)
 
 1. **Billing → Meters → Create meter**
    - Event name: `research_lookups_used`

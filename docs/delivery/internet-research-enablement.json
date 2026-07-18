@@ -50,16 +50,20 @@
     "live_evidence_required": true,
     "go_live_sequence": [
       "confirm circuit breaker + governance query tests green",
-      "apply migrations to prod",
+      "apply migrations to prod (includes 20260719120000_billing_plans_research_lookups.sql)",
+      "create Stripe research_lookups_used meter + $0.35 price; set Railway STRIPE_RESEARCH_LOOKUP_* vars",
       "set Railway env vars + redeploy",
       "run four canonical checks live",
       "run smoke-internet-research-live.py as one end-to-end trace",
       "run smoke-milestone1-live-reverify.py — confirm stop-early live",
+      "flip INTERNET_RESEARCH_ENABLED (Railway) and NEXT_PUBLIC_INTERNET_RESEARCH_ENABLED (Vercel) together in same release",
       "INTERNET_RESEARCH_ENABLED=true with rollback confirmed"
     ]
   },
   "migration": [
     "supabase/migrations/20260718120000_internet_research_metering.sql",
-    "supabase/migrations/20260718130000_internet_research_circuit_breaker.sql"
-  ]
+    "supabase/migrations/20260718130000_internet_research_circuit_breaker.sql",
+    "supabase/migrations/20260719120000_billing_plans_research_lookups.sql"
+  ],
+  "go_live_status": "docs/delivery/research-lookups-go-live-status.json"
 }

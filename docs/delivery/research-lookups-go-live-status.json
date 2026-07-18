@@ -1,0 +1,34 @@
+{
+  "record": "research_lookups_go_live_status",
+  "updated_at": "2026-07-18T10:25:08Z",
+  "sequencing": "flag_gated \u2014 do not flip INTERNET_RESEARCH_ENABLED or NEXT_PUBLIC_INTERNET_RESEARCH_ENABLED until live verification PASS",
+  "do_not_before_live_pass": [
+    "attach STRIPE_RESEARCH_LOOKUP_METERED_PRICE_ID to production subscriptions",
+    "INTERNET_RESEARCH_ENABLED=true on Railway",
+    "NEXT_PUBLIC_INTERNET_RESEARCH_ENABLED=true on Vercel"
+  ],
+  "go_live_together": [
+    "INTERNET_RESEARCH_ENABLED=true (Railway)",
+    "NEXT_PUBLIC_INTERNET_RESEARCH_ENABLED=true (Vercel)"
+  ],
+  "deferred_follow_up": "outputs/mesons auto-billing parity (pre-existing gap \u2014 docs/delivery/outputs-meson-billing-mechanism-audit.json)",
+  "steps": {
+    "1_migration_prod_staging": {
+      "status": "NOT_RUN",
+      "detail": "missing SUPABASE_ACCESS_TOKEN \u2014 run: supabase login or set token in backend/.env.operator.local"
+    },
+    "2_stripe_meter_price": {
+      "status": "NOT_RUN",
+      "detail": "missing STRIPE_SECRET_KEY \u2014 Dashboard steps in docs/delivery/stripe-research-lookups-meter-spec.md"
+    },
+    "3_railway_env_vars": {
+      "status": "NOT_RUN",
+      "detail": "no Price ID from Stripe step \u2014 set Railway vars after Dashboard/API seed"
+    }
+  },
+  "migration_files": [
+    "supabase/migrations/20260718120000_internet_research_metering.sql",
+    "supabase/migrations/20260718130000_internet_research_circuit_breaker.sql",
+    "supabase/migrations/20260719120000_billing_plans_research_lookups.sql"
+  ]
+}
