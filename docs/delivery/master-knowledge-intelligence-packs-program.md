@@ -32,7 +32,7 @@ Rollup: `docs/delivery/foundation-five-gates-tip-resmoke.json`
 |----------|--------|
 | Monetization | **LOCKED (b)** — standalone pack subscriptions |
 | Licensing / data-governance owner | **LOCKED — Cesar Bohorquez Jr.** (sole owner, same as STA-312). Covers PII-embedding **and** Crunchbase / PDL / OpenCorporates-commercial / CIS Controls **and** Finance banking/QB/Xero/NetSuite, HR HRIS/ATS/Payroll, Compliance PHI-vs-guidance scope **and** GSC raw search-query → Memory/KG (Marketing stop-line). |
-| Phase 5 ML | **UNHELD** — v1 shipped (CRM outcomes + ranked heuristics; no CF). Pack vision pass does **not** add churn/CF ML. |
+| Phase 5 ML | **UNHELD** — v1 shipped (CRM outcomes + ranked heuristics). **CF/churn STARTED** 2026-07-18 (both sequenced: churn first) — `phase0-cf-churn-ml.md` |
 | 12-pack vision | **Phase 0 DONE** — `docs/delivery/phase0-twelve-pack-marketplace-vision.md`. Build order below. |
 
 ---
@@ -275,11 +275,11 @@ API accounts/keys for FRED, SEC_USER_AGENT, OpenCorporates commercial token, NVD
 | 5 | Prospecting & Lead Scouting | **DONE** — `docs/delivery/phase4-prospecting-pack-live.json` (Apollo/HubSpot lists; search plan-limited) |
 | 6 | Marketing | **DONE** — GSC OAuth PASS; SEMrush/Ahrefs BYO v1–v3 write executors + schemas; PackSignal + PackKpiPanel; install tip `docs/delivery/phase4-marketing-pack-live.json` (tip `0db6ddf0`); raw-query Memory/KG stop-line held |
 | 7 | RevOps | **DONE** — catalog + install (`revops-intelligence-pack`); HubSpot pipelines/deals tip; Salesforce stub; Finance pack F3 unlocked separately; PackKpiPanel Reports tab; tip `docs/delivery/phase4-revops-pack-live.json` |
-| 8 | AI Search | **Research DONE** + **tip smoke PASS** (2026-07-17) — tip `phase4-ai-search-pack-live.json` (C+S2; **UI scrape live OK**; Ahrefs/Finseo live invoke blocked on missing smoke-org BYO keys) |
-| 9 | Finance | **PARTIAL** — **F3 unlock + pack scaffold tip only**; `live_invoke_ok: false` / `any_active_connector: false` — not live Plaid/Gusto/QB proven. Evidence `docs/delivery/phase4-finance-pack-live.json`. Governance: Cesar F3 sign-off for unlock; **live connection test still requires confirmed activation before real OAuth/Link** |
-| 10 | HR & Talent | **PARTIAL** — **H3 unlock + pack scaffold tip only**; `live_invoke_ok: false` / `any_active_connector: false` — not live Workday/BambooHR/Greenhouse/Gusto proven. Evidence `docs/delivery/phase4-hr-talent-pack-live.json`. Greenhouse stub: see tip reassessment |
-| 11 | Compliance | Guidance docs only; PHI → stop |
-| 12 | Business Operating System | **Last** — rollup only |
+| 8 | AI Search | **DONE (UI-only)** — Cesar skip API (2026-07-18). Tip `phase4-ai-search-pack-live.json` (C+S2; UI scrape live OK @ 2026-07-17). Dual-BYO Ahrefs/Finseo API invoke **NOT RUN** (optional follow-on if keys provided) |
+| 9 | Finance | **PARTIAL** — F3 unlock + scaffold; tip now asserts **4× staged stubs** (`stubCoverage`). `live_invoke_ok: false` — live Plaid/QB/Xero/NS **HOLD**. Evidence `docs/delivery/phase4-finance-pack-live.json` |
+| 10 | HR & Talent | **PARTIAL** — H3 unlock + scaffold; tip asserts **4× staged stubs**. `live_invoke_ok: false` — live Workday/BambooHR/Greenhouse/Gusto **HOLD**. Evidence `docs/delivery/phase4-hr-talent-pack-live.json` |
+| 11 | Compliance | **DONE (guidance only)** — `docs/delivery/phase0-compliance-intelligence-pack.md` + tip `phase4-compliance-pack-guidance.json`. PHI → **STOP**; no catalog/install/connectors this pass |
+| 12 | Business Operating System | **DONE (rollup only)** — `docs/delivery/phase0-business-os-intelligence-pack.md` + `phase4-business-os-pack-rollup.json`. No new connectors; live UI rollup = Reports `PackKpiPanel` tabs |
 
 ### Cross-cutting UX (every pack from #4 onward)
 
@@ -306,4 +306,29 @@ F3/H3 remain: scaffolded, correctly gated, not live-tested, **PARTIAL**.
 
 ### Out of scope this pass
 
-Compliance PHI → stop; Business OS; new CF/churn ML. AI Search tip closed with UI live; set `AHREFS_API_KEY` / `FINSEO_API_KEY` then `scripts/upsert-smoke-ai-search-byo-connectors.py` for dual-BYO API invoke.
+Compliance PHI live sources remain **STOP**. Finance/HR live OAuth remain **HOLD**. Business OS catalog install / Daily Briefing workflow optional follow-on (rollup closed 2026-07-18).
+
+### Pack #8 closure (2026-07-18)
+
+Cesar chose **skip API** — Pack #8 closed on UI tip evidence only. Dual-BYO live invoke remains optional: set `AHREFS_API_KEY` / `FINSEO_API_KEY` then `scripts/upsert-smoke-ai-search-byo-connectors.py`.
+
+### Pack #9 / #10 scaffold hardening (2026-07-18)
+
+No live OAuth. Install bundles return `stubCoverage` + stub IDs; tip smokes require 4× staged connectors (`needs_connection` / `pending_auth` class). Unit tests: `test_finance_pack.py`, `test_hr_talent_pack.py`, F3/H3 template cases in `test_auth_mode_and_stubs.py`. Live-activation HOLD unchanged.
+
+**Tip re-smoke (2026-07-18):** Finance + HR both `pass: true`, `stub_coverage_ok: true`, `live_invoke_ok: false` against prod tip `9d1ae051…` — evidence in `phase4-finance-pack-live.json` / `phase4-hr-talent-pack-live.json`.
+
+### Pack #11 Compliance guidance (2026-07-18)
+
+Guidance + PHI stop-line locked in `docs/delivery/phase0-compliance-intelligence-pack.md`. Artifact `docs/delivery/phase4-compliance-pack-guidance.json` (`DONE_GUIDANCE_ONLY`). No `compliance-intelligence-pack` catalog/install. Build requires Cesar named clear; EHR/PHI sources stay **STOP**.
+
+### Pack #12 Business OS rollup (2026-07-18)
+
+Locked sequence **closed**. Spec `docs/delivery/phase0-business-os-intelligence-pack.md`; artifact `docs/delivery/phase4-business-os-pack-rollup.json` (`DONE_ROLLUP_ONLY`). No new connectors / no catalog install. Live rollup UX = Intelligence Reports multi-pack `PackKpiPanel`. Open holds (Finance/HR live, Compliance PHI, AI Search dual-BYO API) unchanged — not cleared by #12.
+
+### CF / Churn ML start (2026-07-18)
+
+**Both sequenced — churn first.** Spec `docs/delivery/phase0-cf-churn-ml.md`; artifact `docs/delivery/phase5-cf-churn-ml-start.json` (`STARTED`).
+
+- Churn: labeled `churn_customer_signal` contract, strict ≥30 gate, `GET/POST /api/intelligence/churn-risk/*`, CS predictive domain, predictive UI dict fix. Advisory-only; no auto-contact. Live train tip **NOT RUN**.
+- CF: Phase 0 design only (re-rank heuristics after volume gate); no CF ranker code until churn advisory evidence.

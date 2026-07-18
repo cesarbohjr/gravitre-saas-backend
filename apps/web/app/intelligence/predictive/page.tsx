@@ -7,11 +7,12 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { intelligenceApi } from "@/lib/api"
+import { normalizeDomainPredictions } from "@/lib/intelligence/normalize-domain-predictions"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 
 const copy = SURFACE_COPY.pages.predictive
 
-const DOMAINS = ["sales", "support", "operations", "finance", "marketing"] as const
+const DOMAINS = ["sales", "support", "operations", "finance", "marketing", "customer_success"] as const
 
 export default function PredictiveOpsPage() {
   const [domain, setDomain] = useState<(typeof DOMAINS)[number]>("support")
@@ -20,7 +21,7 @@ export default function PredictiveOpsPage() {
     () => intelligenceApi.predictiveOpsDomain(domain),
     { refreshInterval: 60_000 },
   )
-  const predictions = (data?.predictions as Array<Record<string, unknown>>) || []
+  const predictions = normalizeDomainPredictions(data?.predictions)
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">

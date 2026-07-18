@@ -84,5 +84,13 @@
     "path_c_dual_byo": true,
     "path_s2_ui_scrape_v1_v2_v3": true
   },
-  "note": "AI Search #8 C+S2: Ahrefs+Finseo dual BYO + UI scrape tiers. Live API invoke required when an active ahrefs/finseo connector exists; UI scrape flakiness must not fail tip when API succeeds."
+  "note": "AI Search #8 C+S2: Ahrefs+Finseo dual BYO + UI scrape tiers. Live API invoke required when an active ahrefs/finseo connector exists; UI scrape flakiness must not fail tip when API succeeds.",
+  "closure": {
+    "at": "2026-07-18T09:16:00+00:00",
+    "decision": "UI-only close — Cesar skip API (2026-07-18)",
+    "ui_live_ok": true,
+    "api_live_ok": false,
+    "dual_byo_api_invoke": "NOT RUN — skipped; optional follow-on if AHREFS_API_KEY / FINSEO_API_KEY provided",
+    "verdict": "DONE (UI tip evidence); dual-BYO API remains NOT RUN"
+  }
 }

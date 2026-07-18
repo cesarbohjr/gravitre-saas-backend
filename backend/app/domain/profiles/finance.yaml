@@ -3,7 +3,7 @@ department: finance
 label: Finance
 kpis: [variance_to_budget, dso, gross_margin, cash_runway]
 terminology: [budget, forecast, reconciliation, accrual, variance]
-connector_preferences: [stripe, quickbooks, slack]
+connector_preferences: [quickbooks, xero, netsuite, plaid, stripe, slack]
 retrieval_preferences: [financial_statements, budget_models, audit_trails]
 memory_priorities: [forecast_history, variance_explanations, close_checklists]
 workflow_priorities: [monthly_close, budget_approval, invoice_processing]

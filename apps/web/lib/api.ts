@@ -1793,6 +1793,23 @@ export const intelligenceApi = {
   },
   trainingReadiness: () =>
     fetcher<Record<string, unknown>>(apiUrl("/api/intelligence/training-readiness")),
+  churnRiskAdvisory: (params?: { limit?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.limit != null) query.set("limit", String(params.limit))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<{
+      recommendations: Array<Record<string, unknown>>
+      gate: Record<string, unknown>
+      trained: boolean
+      advisory_only: boolean
+    }>(apiUrl(`/api/intelligence/churn-risk/advisory${suffix}`))
+  },
+  upsertChurnRiskLabel: (body: {
+    customer_id: string
+    features: Record<string, number>
+    churned?: boolean
+    label_reason?: string
+  }) => postJson<Record<string, unknown>>(apiUrl("/api/intelligence/churn-risk/labels"), body),
   banditStatus: () =>
     fetcher<Record<string, unknown>>(apiUrl("/api/admin/intelligence/learning/bandit-status")),
   memoryConflicts: () =>

@@ -17,6 +17,13 @@ export type ChatArtifact = {
   mimeType?: string | null
   source?: string | null
   integration?: string | null
+  metadata?: {
+    external_url?: string | null
+    externalUrl?: string | null
+    runId?: string | null
+    conversationId?: string | null
+    goal?: string | null
+  } | null
 }
 
 export type ChatExecutionResult = {
@@ -25,11 +32,21 @@ export type ChatExecutionResult = {
   entity_id?: string
   connector_management_url?: string | null
   result_url?: string | null
+  /** Vendor deep link — secondary CTA only when portal-valid. */
+  external_url?: string | null
+  externalUrl?: string | null
   integration?: string | null
   title?: string
   body?: string
   task_label?: string
   artifacts?: ChatArtifact[] | null
+  structured?: {
+    external_url?: string | null
+    externalUrl?: string | null
+    runId?: string | null
+    conversationId?: string | null
+    goal?: string | null
+  } | null
   /** Wave 7 — structured failure code (e.g. unverifiable_output). */
   error_code?: string | null
   /** Wave 7 — calibrated uncertainty notes from trust envelope. */
@@ -171,19 +188,46 @@ function isExternalUrl(url: string): boolean {
   return url.startsWith("http://") || url.startsWith("https://")
 }
 
-function resultLinkLabel(executionResult: ChatExecutionResult): string {
-  if (executionResult.integration) {
-    const normalized = executionResult.integration.trim()
-    if (normalized) {
-      return `View in ${normalized.charAt(0).toUpperCase()}${normalized.slice(1)}`
-    }
-  }
+function isPortalScopedHubspotUrl(url: string): boolean {
+  if (!url.startsWith("https://app.hubspot.com/contacts/")) return false
+  const hub = url.slice("https://app.hubspot.com/contacts/".length).split("/")[0]
+  return /^\d+$/.test(hub || "")
+}
+
+function resultLinkLabel(executionResult: ChatExecutionResult, href?: string | null): string {
+  const url = (href || executionResult.result_url || "").trim()
+  if (url.startsWith("/runs/")) return "View run"
+  if (url.startsWith("/ai")) return "View in Gravitre"
   if (executionResult.entity_type === "agent") return "Open agent"
   if (executionResult.entity_type === "workflow") return "Open in builder"
   if (executionResult.entity_type === "run" || executionResult.entity_type === "workflow_run") {
     return "View run"
   }
+  if (executionResult.integration && isExternalUrl(url)) {
+    const normalized = executionResult.integration.trim()
+    if (normalized) {
+      return `Open in ${normalized.charAt(0).toUpperCase()}${normalized.slice(1)}`
+    }
+  }
   return "View in Gravitre"
+}
+
+function resolveExternalUrl(executionResult: ChatExecutionResult, artifact?: ChatArtifact): string | null {
+  const candidates = [
+    executionResult.external_url,
+    executionResult.externalUrl,
+    executionResult.structured?.external_url,
+    executionResult.structured?.externalUrl,
+    artifact?.metadata?.external_url,
+    artifact?.metadata?.externalUrl,
+  ]
+  for (const value of candidates) {
+    const url = (value || "").trim()
+    if (!url || !isExternalUrl(url)) continue
+    if (url.includes("app.hubspot.com") && !isPortalScopedHubspotUrl(url)) continue
+    return url
+  }
+  return null
 }
 
 function artifactHref(artifact: ChatArtifact): string | null {
@@ -214,7 +258,7 @@ function ArtifactCards({ artifacts }: { artifacts: ChatArtifact[] }) {
             </div>
             {preview ? <p className="mt-1 line-clamp-3 text-muted-foreground">{preview}</p> : null}
             {href ? (
-              <div className="mt-2">
+              <div className="mt-2 flex flex-wrap gap-2">
                 <Button asChild size="sm" variant="outline" className="h-7 text-xs">
                   {isExternalUrl(href) ? (
                     <a href={href} target="_blank" rel="noopener noreferrer">
@@ -320,7 +364,7 @@ export function ChatExecutionPanel({
             ) : null}
             <p className="mt-2 text-[11px] text-muted-foreground">
               {resultUrl
-                ? "Verified — open the result link to confirm in the source system."
+                ? "Verified — open the run overview for a durable audit trail."
                 : "Completed with inline summary only (no deep link returned)."}
             </p>
             {assumptions.length > 0 ? (
@@ -334,21 +378,39 @@ export function ChatExecutionPanel({
               </div>
             ) : null}
             <ArtifactCards artifacts={artifacts} />
-            {resultUrl ? (
+            {resultUrl || resolveExternalUrl(executionResult) ? (
               <div className="mt-3 flex flex-wrap gap-2">
-                <Button asChild size="sm" className="h-8">
-                  {isExternalUrl(resultUrl) ? (
-                    <a href={resultUrl} target="_blank" rel="noopener noreferrer">
-                      {resultLinkLabel(executionResult)}
-                      <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                    </a>
-                  ) : (
-                    <Link href={resultUrl}>
-                      {resultLinkLabel(executionResult)}
-                      <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                    </Link>
-                  )}
-                </Button>
+                {resultUrl ? (
+                  <Button asChild size="sm" className="h-8">
+                    {isExternalUrl(resultUrl) ? (
+                      <a href={resultUrl} target="_blank" rel="noopener noreferrer">
+                        {resultLinkLabel(executionResult, resultUrl)}
+                        <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                      </a>
+                    ) : (
+                      <Link href={resultUrl}>
+                        {resultLinkLabel(executionResult, resultUrl)}
+                        <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                      </Link>
+                    )}
+                  </Button>
+                ) : null}
+                {(() => {
+                  const external = resolveExternalUrl(executionResult)
+                  if (!external) return null
+                  const vendor = (executionResult.integration || "source").trim()
+                  const label = vendor
+                    ? `Open in ${vendor.charAt(0).toUpperCase()}${vendor.slice(1)}`
+                    : "Open in source"
+                  return (
+                    <Button asChild size="sm" variant="outline" className="h-8">
+                      <a href={external} target="_blank" rel="noopener noreferrer">
+                        {label}
+                        <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                      </a>
+                    </Button>
+                  )
+                })()}
               </div>
             ) : null}
           </div>

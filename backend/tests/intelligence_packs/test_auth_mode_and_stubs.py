@@ -172,3 +172,84 @@ def test_executive_template_lists_public_sources():
     assert "sec_edgar" in spec["connectors"]
     assert "world_bank" in spec["connectors"]
     assert "oecd" in spec["connectors"]
+
+
+@pytest.mark.parametrize(
+    "template_id,expected",
+    [
+        ("finance-intelligence-sources", ["quickbooks", "xero", "netsuite", "plaid"]),
+        ("hr-talent-intelligence-sources", ["workday", "bamboohr", "greenhouse", "gusto"]),
+    ],
+)
+def test_f3_h3_template_install_stages_needs_connection_only(monkeypatch, template_id, expected):
+    client = MagicMock()
+    created_rows: list[dict] = []
+
+    def fake_list(_client, _org, environment_name="production"):
+        _ = environment_name
+        return []
+
+    def fake_create(
+        _client,
+        org_id,
+        connector_type,
+        config,
+        created_by,
+        environment_name="production",
+        *,
+        status="active",
+    ):
+        row = {
+            "id": f"id-{connector_type}",
+            "org_id": org_id,
+            "type": connector_type,
+            "status": status,
+            "config": config,
+            "created_by": created_by,
+            "environment": environment_name,
+        }
+        created_rows.append(row)
+        return row
+
+    monkeypatch.setattr(
+        "app.marketplace.connector_category_templates.list_connectors",
+        fake_list,
+    )
+    monkeypatch.setattr(
+        "app.marketplace.connector_category_templates.create_connector",
+        fake_create,
+    )
+
+    result = install_connector_category_template(
+        client,
+        "org-1",
+        template_id,
+        created_by="user-1",
+    )
+    assert result["stagedCount"] == len(expected)
+    assert {r["connectorType"] for r in result["created"]} == set(expected)
+    assert all(r["status"] == "needs_connection" for r in result["created"])
+    assert all(r["status"] == "needs_connection" for r in created_rows)
+    assert all(r["config"]["auth_mode"] == "customer_owned" for r in created_rows)
+
+
+def test_connector_stub_coverage_reports_existing_stubs(monkeypatch):
+    from app.marketplace.connector_category_templates import connector_stub_coverage
+
+    monkeypatch.setattr(
+        "app.marketplace.connector_category_templates.list_connectors",
+        lambda *_a, **_k: [
+            {"id": "qb-1", "type": "quickbooks", "status": "needs_connection"},
+            {"id": "x-1", "type": "xero", "status": "needs_connection"},
+            {"id": "ns-1", "type": "netsuite", "status": "pending_auth"},
+            {"id": "p-1", "type": "plaid", "status": "needs_connection"},
+        ],
+    )
+    cov = connector_stub_coverage(
+        MagicMock(),
+        "org-1",
+        ["quickbooks", "xero", "netsuite", "plaid"],
+    )
+    assert cov["coverageOk"] is True
+    assert cov["coveredCount"] == 4
+    assert cov["byType"]["netsuite"]["status"] == "pending_auth"

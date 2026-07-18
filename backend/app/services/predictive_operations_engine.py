@@ -52,6 +52,10 @@ class PredictiveOperationsEngine:
             "churn_risk_scorer",
             "revenue_forecaster",
         ],
+        "customer_success": [
+            "churn_risk_scorer",
+            "sla_breach_predictor",
+        ],
     }
 
     RISK_THRESHOLD = 0.65

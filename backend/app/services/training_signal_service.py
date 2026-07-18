@@ -28,7 +28,7 @@ class TrainingSignalService:
         "workflow_anomaly_detector": {"min_workflow_runs": 30},
         "retrieval_ranker": {"min_evaluation_examples": 100},
         "revenue_forecaster": {"min_history_points": 14},
-        "churn_risk_scorer": {"min_customer_signals": 30},
+        "churn_risk_scorer": {"min_labeled_churn_examples": 30},
         "sla_breach_predictor": {"min_ticket_volume_rows": 60},
         "deal_loss_scorer": {"min_measured_deal_outcomes": 25},
         "capacity_forecaster": {"min_capacity_observations": 21},
@@ -93,10 +93,20 @@ class TrainingSignalService:
             elif "min_evaluation_examples" in thresholds:
                 signals_available = await count_training_examples(org_id, client)
                 min_required = thresholds["min_evaluation_examples"]
-            elif "min_history_points" in thresholds or "min_customer_signals" in thresholds:
+            elif "min_history_points" in thresholds:
                 candidates = await self._outcomes.get_training_signal_candidates(org_id)
                 signals_available = len(candidates)
-                min_required = thresholds.get("min_history_points") or thresholds.get("min_customer_signals") or 10
+                min_required = thresholds.get("min_history_points") or 10
+            elif "min_labeled_churn_examples" in thresholds:
+                try:
+                    from app.ml.model_catalog import _count_org_data_points
+
+                    counts = _count_org_data_points(org_id, model_name, self.settings).get("data_counts") or {}
+                    signals_available = int(counts.get("labeled_churn_examples") or 0)
+                    min_required = thresholds["min_labeled_churn_examples"]
+                except Exception:  # noqa: BLE001
+                    signals_available = 0
+                    min_required = thresholds["min_labeled_churn_examples"]
             elif "min_ticket_volume_rows" in thresholds or "min_capacity_observations" in thresholds:
                 try:
                     from app.ml.model_catalog import _count_org_data_points
@@ -172,8 +182,13 @@ class TrainingSignalService:
             "sla_breach_predictor",
             "deal_loss_scorer",
             "capacity_forecaster",
+            "churn_risk_scorer",
         }
-        if model_name in predictive_ops_models or "min_ticket_volume_rows" in threshold:
+        if (
+            model_name in predictive_ops_models
+            or "min_ticket_volume_rows" in threshold
+            or "min_labeled_churn_examples" in threshold
+        ):
             readiness = await self.get_training_readiness(org_id)
             info = readiness.get("by_model", {}).get(model_name, {})
             signals_available = int(info.get("signals_available") or 0)

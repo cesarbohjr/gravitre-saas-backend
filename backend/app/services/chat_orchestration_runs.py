@@ -172,14 +172,16 @@ def sync_orchestration_step(
         step_uuid = str(rows[0]["id"])
         now = _now_iso()
         status = "skipped" if skipped else ("completed" if success else "failed")
+        snapshot: dict[str, Any] = {"summary": summary}
+        if result_url:
+            snapshot["result_url"] = result_url
+            if str(result_url).startswith(("http://", "https://")):
+                snapshot["external_url"] = result_url
         update_step(
             client,
             step_uuid,
             status=status,
-            output_snapshot={
-                "summary": summary,
-                "result_url": result_url,
-            },
+            output_snapshot=snapshot,
             started_at=now,
             completed_at=now,
             error_message=None if (success or skipped) else (summary or "Step failed"),
@@ -217,19 +219,26 @@ def resolve_orchestration_result_url(
     step_results: list[dict[str, Any]],
     conversation_id: str,
 ) -> str:
-    """Never bounce successful orchestration back to /ai alone."""
-    for row in reversed(step_results or []):
-        url = str(row.get("url") or "").strip()
-        if not url or url in {"/ai", "/connectors"}:
-            continue
-        if url.startswith("http://") or url.startswith("https://") or url.startswith("/"):
-            # Prefer durable Gravitre run page when we have one; keep external vendor links
-            # as secondary via the run detail page.
-            if run_id and not url.startswith("http"):
-                return f"/runs/{run_id}"
-            if run_id and url.startswith("http"):
-                return f"/runs/{run_id}"
-            return url
+    """Primary CTA is always Gravitre — vendor URLs live on the run detail page."""
     if run_id:
         return f"/runs/{run_id}"
+    for row in reversed(step_results or []):
+        url = str(row.get("primary_url") or row.get("url") or "").strip()
+        if not url or url in {"/ai", "/connectors"}:
+            continue
+        # Never use raw vendor http(s) as the orchestration primary CTA.
+        if url.startswith("http://") or url.startswith("https://"):
+            continue
+        if url.startswith("/"):
+            return url
     return f"/ai?conversation={conversation_id}"
+
+
+def first_external_step_url(step_results: list[dict[str, Any]] | None) -> str | None:
+    """First portal/vendor http URL from step snapshots (secondary CTA)."""
+    for row in reversed(step_results or []):
+        for key in ("external_url", "url"):
+            url = str(row.get(key) or "").strip()
+            if url.startswith("http://") or url.startswith("https://"):
+                return url
+    return None

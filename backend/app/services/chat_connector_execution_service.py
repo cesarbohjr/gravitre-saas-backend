@@ -114,7 +114,12 @@ def enrich_plan_inference_metadata(
     return plan
 
 
-def _result_link_label(integration: str | None) -> str:
+def _result_link_label(integration: str | None, *, result_url: str | None = None) -> str:
+    url = str(result_url or "").strip()
+    if url.startswith("/runs/"):
+        return "View run"
+    if url.startswith("/ai"):
+        return "View in Gravitre"
     normalized = str(integration or "").strip()
     if not normalized:
         return "View result"
@@ -1227,8 +1232,17 @@ class ChatConnectorExecutionService:
         connector_id = str(observation.get("connector_id") or "")
         result_data = observation.get("result") if isinstance(observation.get("result"), dict) else {}
         external_url = self._external_url(plan.integration, plan.invoke_action, result_data, observation)
+        if plan.integration == "hubspot" and external_url:
+            from app.services.hubspot_urls import is_portal_scoped_hubspot_url
+
+            if not is_portal_scoped_hubspot_url(external_url):
+                external_url = None
         connector_management_url = build_connector_management_url(connector_id)
-        result_url = external_url
+        # Primary CTA stays in Gravitre; vendor links are secondary only.
+        primary_url = f"/ai?conversation={conversation_id}" if conversation_id else "/ai"
+        structured_payload = dict(result_data or {})
+        if external_url:
+            structured_payload["external_url"] = external_url
 
         if not success:
             from app.services.tool_error_messages import format_tool_error_for_user
@@ -1247,12 +1261,14 @@ class ChatConnectorExecutionService:
                 entity_type="connector",
                 entity_id=connector_id,
                 connector_management_url=connector_management_url,
-                result_url=result_url,
+                result_url=primary_url,
+                external_url=external_url,
                 integration=plan.integration,
                 title=plan.label,
                 body=body,
                 task_label=plan.label,
                 error_code=error_code,
+                structured=structured_payload or None,
             )
 
         summary = self._summarize_result(plan, result_data, observation)
@@ -1261,13 +1277,14 @@ class ChatConnectorExecutionService:
             entity_type="connector",
             entity_id=connector_id,
             connector_management_url=connector_management_url,
-            result_url=result_url,
+            result_url=primary_url,
+            external_url=external_url,
             integration=plan.integration,
             title=plan.label,
             body=summary,
             notification_type="task_completed",
             task_label=plan.label,
-            structured=result_data,
+            structured=structured_payload or None,
             assumption_notes=_assumption_notes_from_plan(plan),
         )
         if plan.kind == "write":
@@ -1289,7 +1306,8 @@ class ChatConnectorExecutionService:
                     entity_type="connector",
                     entity_id=connector_id,
                     connector_management_url=connector_management_url,
-                    result_url=result_url,
+                    result_url=primary_url,
+                    external_url=external_url,
                     integration=plan.integration,
                     title=plan.label,
                     body=format_tool_error_for_user(
@@ -1299,7 +1317,7 @@ class ChatConnectorExecutionService:
                         action=plan.invoke_action,
                     ),
                     task_label=plan.label,
-                    structured=result_data,
+                    structured=structured_payload or None,
                     error_code="unverifiable_output",
                 )
 
@@ -1314,6 +1332,7 @@ class ChatConnectorExecutionService:
                 "entity_type": result.entity_type,
                 "entity_id": result.entity_id or None,
                 "result_url": result.result_url,
+                "external_url": result.external_url,
                 "integration": result.integration,
             },
             channel_hints={"bell": True, "email": False},
@@ -1334,6 +1353,7 @@ class ChatConnectorExecutionService:
                         "step_id": f"connector_{plan.invoke_action}",
                         "label": plan.label,
                         "url": result.result_url,
+                        "external_url": result.external_url,
                         "entity_type": "connector",
                         "entity_id": connector_id,
                     }
@@ -1344,6 +1364,7 @@ class ChatConnectorExecutionService:
                         "tool_name": plan.tool_name,
                         "entity_id": connector_id,
                         "url": result.result_url,
+                        "external_url": result.external_url,
                     }
                 ],
                 **self._session_updates_after_execution(
@@ -1379,8 +1400,11 @@ class ChatConnectorExecutionService:
         if execution.success:
             link_line = ""
             if execution.result_url:
-                label = _result_link_label(execution.integration)
+                label = _result_link_label(execution.integration, result_url=execution.result_url)
                 link_line = f"\n\n[{label}]({execution.result_url})"
+            if execution.external_url:
+                vendor = _result_link_label(execution.integration, result_url=execution.external_url)
+                link_line += f"\n\n[{vendor}]({execution.external_url})"
             return {
                 "stop_pipeline": True,
                 "dialogue_mode": "answer",

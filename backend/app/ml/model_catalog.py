@@ -101,7 +101,7 @@ GRAVITRE_ML_CATALOG: dict[str, dict[str, Any]] = {
     "churn_risk_scorer": {
         "status": ModelStatus.TRAINED,
         "use_cases": ["customer_risk_scoring"],
-        "activation": "30+ customer engagement data points",
+        "activation": "30+ labeled churn_customer_signal rows (FEATURE_KEYS + cancel/non_renew/closed_lost)",
         "fallback": "rule_based_risk_signals",
         "advisory_only": True,
     },
@@ -289,8 +289,11 @@ def _count_org_data_points(org_id: str, model_name: str, settings: Settings) -> 
             )
             counts["outcome_rows"] = int(rows.count or 0)
         elif model_name == "churn_risk_scorer":
-            rows = client.table("agent_action_outcomes").select("id", count="exact").eq("org_id", org_id).execute()
-            counts["outcome_rows"] = int(rows.count or 0)
+            from app.ml.churn_feature_ingest import count_labeled_churn_examples
+
+            labeled = count_labeled_churn_examples(client, org_id)
+            counts["labeled_churn_examples"] = labeled
+            counts["outcome_rows"] = labeled  # backward-compatible key; strict = labeled only
         elif model_name == "sla_breach_predictor":
             rows = (
                 client.table("agent_action_outcomes")

@@ -1,0 +1,33 @@
+{
+  "pass": true,
+  "status": "STARTED",
+  "sequence": "both_sequenced_churn_first",
+  "ran_at": "2026-07-18T10:00:00+00:00",
+  "phase0": "docs/delivery/phase0-cf-churn-ml.md",
+  "churn": {
+    "slice": "feature_label_contract_advisory_api_ui_fix",
+    "model": "churn_risk_scorer",
+    "metric_name": "churn_customer_signal",
+    "min_labeled_examples": 30,
+    "endpoints": [
+      "GET /api/intelligence/churn-risk/advisory",
+      "POST /api/intelligence/churn-risk/labels"
+    ],
+    "predictive_domain": "customer_success",
+    "advisory_only": true,
+    "auto_contact": false,
+    "live_train_tip": "NOT RUN — needs ≥30 labeled rows on smoke org after deploy"
+  },
+  "cf": {
+    "slice": "phase0_design_only",
+    "code": false,
+    "gate_proposed": "≥50 scored interactions / org / 30d",
+    "contract": "STA-314 suggest-only; never auto-execute",
+    "follows": "churn advisory evidence"
+  },
+  "tests": {
+    "backend": "backend/tests/ml/test_churn_feature_ingest.py",
+    "frontend": "apps/web/__tests__/intelligence/normalize-domain-predictions.test.ts"
+  },
+  "note": "CF/churn ML hold lifted to STARTED. Churn first build slice landed locally; CF waits. Live train/advisory tip still required before churn DONE."
+}

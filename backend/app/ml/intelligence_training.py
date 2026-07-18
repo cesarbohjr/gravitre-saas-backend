@@ -449,30 +449,15 @@ async def train_churn_risk_scorer(
     settings: Settings | None = None,
     client: Any | None = None,
 ) -> dict[str, Any]:
-    from app.ml.churn_scoring import ChurnRiskScorer, FEATURE_KEYS
+    from app.ml.churn_feature_ingest import list_churn_training_rows
+    from app.ml.churn_scoring import ChurnRiskScorer
 
     active = settings or get_settings()
     db = client or get_supabase_client(active)
-    rows = (
-        db.table("agent_action_outcomes")
-        .select("outcome_payload, outcome_success")
-        .eq("org_id", org_id)
-        .not_.is_("outcome_success", "null")
-        .execute()
-        .data
-        or []
-    )
-    features: list[dict[str, float]] = []
-    labels: list[int] = []
-    for row in rows:
-        payload = row.get("outcome_payload") or {}
-        if not isinstance(payload, dict):
-            continue
-        feature_row = {key: float(payload.get(key) or 0.0) for key in FEATURE_KEYS}
-        if not any(feature_row.values()):
-            continue
-        features.append(feature_row)
-        labels.append(0 if row.get("outcome_success") else 1)
+    # Prefer explicit churn_customer_signal rows (FEATURE_KEYS + label contract).
+    labeled = list_churn_training_rows(db, org_id)
+    features = [row["features"] for row in labeled]
+    labels = [1 if row["churned"] else 0 for row in labeled]
     scorer = ChurnRiskScorer()
     if len(features) < scorer.MIN_TRAINING_EXAMPLES:
         return {
@@ -480,6 +465,8 @@ async def train_churn_risk_scorer(
             "reason": "insufficient_data",
             "training_examples": len(features),
             "required": scorer.MIN_TRAINING_EXAMPLES,
+            "metric_name": "churn_customer_signal",
+            "note": "Need labeled churn_customer_signal rows via churn_feature_ingest.",
         }
     metrics = await scorer.train(features, labels)
     model_id = await register_trained_artifact(

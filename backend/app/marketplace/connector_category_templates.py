@@ -96,6 +96,56 @@ def stage_connector_stubs(
     }
 
 
+# Acceptable statuses for tip stub coverage (staged awaiting auth OR already live).
+_STAGED_OK_STATUSES = frozenset(
+    {"needs_connection", "pending_auth", "pending", "active", "connected", "healthy"}
+)
+_ACTIVE_STATUSES = frozenset({"active", "connected", "healthy"})
+
+
+def connector_stub_coverage(
+    client: Any,
+    org_id: str,
+    connector_types: list[str],
+    *,
+    environment_name: str = "production",
+) -> dict[str, Any]:
+    """Per-type connector snapshot for pack tip evidence (no OAuth).
+
+    Returns ids/statuses for each requested type. ``coverageOk`` is true when every
+    type has a non-deleted row in a staged-or-active status.
+    """
+    existing = _existing_types(client, org_id, environment_name=environment_name)
+    by_type: dict[str, dict[str, Any]] = {}
+    missing: list[str] = []
+    for raw in connector_types:
+        ctype = str(raw or "").strip().lower()
+        if not ctype:
+            continue
+        row = existing.get(ctype)
+        if not row:
+            missing.append(ctype)
+            by_type[ctype] = {"id": None, "status": None, "stagedOk": False, "active": False}
+            continue
+        status = str(row.get("status") or "").lower()
+        by_type[ctype] = {
+            "id": str(row["id"]) if row.get("id") else None,
+            "status": status or None,
+            "stagedOk": status in _STAGED_OK_STATUSES,
+            "active": status in _ACTIVE_STATUSES,
+        }
+    covered = [t for t, info in by_type.items() if info.get("stagedOk")]
+    return {
+        "byType": by_type,
+        "required": [str(t).strip().lower() for t in connector_types if str(t or "").strip()],
+        "coveredCount": len(covered),
+        "requiredCount": len(by_type),
+        "missing": missing,
+        "notStagedOk": [t for t, info in by_type.items() if not info.get("stagedOk")],
+        "coverageOk": len(missing) == 0 and all(info.get("stagedOk") for info in by_type.values()),
+    }
+
+
 # Demo category templates for marketplace install (Phase 1).
 CONNECTOR_CATEGORY_TEMPLATES: dict[str, dict[str, Any]] = {
     "executive-intelligence-sources": {

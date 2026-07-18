@@ -53,7 +53,10 @@ class ExecutionResult:
     title: str
     body: str
     connector_management_url: str | None = None
+    # Primary CTA — prefer Gravitre (/runs/{id} or /ai?conversation=…).
     result_url: str | None = None
+    # Optional vendor deep link (secondary CTA only when portal-valid).
+    external_url: str | None = None
     integration: str | None = None
     notification_type: str = "task_completed"
     task_label: str = ""
@@ -72,7 +75,10 @@ class ExecutionResult:
                 data.setdefault("connector_management_url", legacy_url)
             else:
                 data.setdefault("result_url", legacy_url)
-        data.pop("external_url", None)
+        if not data.get("external_url") and isinstance(data.get("structured"), dict):
+            nested = data["structured"].get("external_url")
+            if nested:
+                data["external_url"] = nested
         allowed = set(cls.__dataclass_fields__)
         return cls(**{key: value for key, value in data.items() if key in allowed})
 
