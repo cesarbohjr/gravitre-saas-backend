@@ -1,10 +1,12 @@
 # Internet research — governance: Google Cloud path vs Tavily
 
 **Date:** 2026-07-18  
-**Status:** Recommendation recorded — **`INTERNET_RESEARCH_ENABLED` stays OFF** until owner sign-off + pricing estimate + integration work  
+**Status:** **CLOSED (governance track)** — recommendation recorded; **`INTERNET_RESEARCH_ENABLED` stays OFF** until owner go/no-go + integration  
 **Program context:** [`adaptive-retrieval-layer-program.md`](./adaptive-retrieval-layer-program.md)
 
 This document captures the cost-effective governance path for live internet research in Gravitree assistant retrieval. It supersedes “wait for Tavily Enterprise only” as the sole viable option, without authorizing enablement in production.
+
+**Closure artifact:** [`internet-research-governance-closure.json`](./internet-research-governance-closure.json)
 
 ---
 
@@ -43,6 +45,22 @@ Do **not** wire the deprecated Custom Search JSON API.
 
 ---
 
+## Which Google product replaces Tavily? (read this before pricing)
+
+Gravitree’s internet-research use case is **“answer using current web information”** — live retrieval from the public web, like Tavily today. That is **not** the same as querying a Vertex AI Search **data store** you indexed yourself.
+
+| Google product | What it does | Replaces Tavily? |
+|----------------|--------------|------------------|
+| **Grounded Generation — grounding on Google Search** | Live public-web search + grounded answer generation (Vertex/Gemini Grounded Generation API) | **Yes — this is the Tavily-equivalent** |
+| Agent Search — Standard / Enterprise edition queries | Semantic search over **your** indexed documents, website crawl, or structured data in a data store | **No** — internal/corpus RAG, not live open web |
+| Custom Search JSON API | Legacy programmable search | **No** — ruled out (EOL) |
+
+**Do not** use Agent Search **$4 / 1k** (Enterprise) or **$1.50 / 1k** (Standard) data-store query pricing when estimating Tavily replacement cost. Those SKUs bill **retrieval from indexed content**, not live web grounding.
+
+Tavily today: `backend/app/services/web_research.py` posts the user query to Tavily and returns titles/URLs/snippets. The Google analogue is **Grounding with Google Search** under [Grounded Generation API pricing](https://cloud.google.com/generative-ai-app-builder/pricing) (Example #2 on that page).
+
+---
+
 ## Why this matters for governance (the Tavily/Exa comparison)
 
 The due-diligence question for any vendor is unchanged:
@@ -69,28 +87,42 @@ The due-diligence question for any vendor is unchanged:
 
 ## Practical path for Gravitree
 
-1. **Reuse GCP footprint.** GSC OAuth work ([`marketing-phase0-gsc-oauth.md`](./marketing-phase0-gsc-oauth.md)) already uses shared `GOOGLE_OAUTH_CLIENT_ID` / Google Cloud project patterns. Vertex grounding likely extends an existing GCP project rather than a net-new vendor relationship.
+1. **Reuse GCP footprint — same project, not just same vendor.**
 
-2. **Use correct product names** when provisioning (see Option 2 above). Reject Custom Search JSON API references in older docs.
+   Gravitree uses **one Google Cloud project** hosting the **“Gravitre OAuth”** OAuth 2.0 client (`GOOGLE_OAUTH_CLIENT_ID` / `SECRET`) for login (Supabase) and all Google connectors — see [`docs/integration/GOOGLE_OAUTH.md`](../integration/GOOGLE_OAUTH.md) and [`CONNECTOR_IMPLEMENTATION_MATRIX.md`](../CONNECTOR_IMPLEMENTATION_MATRIX.md) (“One Google Cloud project → one OAuth 2.0 Client ID”).
+
+   GSC OAuth (Search Console API, `webmasters.readonly`, redirect on that client) was enabled on **that same project/client** — [`marketing-phase0-gsc-oauth.md`](./marketing-phase0-gsc-oauth.md).
+
+   Vertex / Discovery Engine / Grounding with Google Search should be provisioned in **the same GCP project** (identify via OAuth client ID → APIs & Services → Credentials in console). That is literally the same project and billing account, not a separate GCP org — unless Gravitree deliberately chooses a second project later (not the current architecture).
+
+   Additional work in that project: enable Vertex AI / Discovery Engine / grounding APIs + service account or workload identity for server-side calls (distinct from user OAuth tokens used for GSC connector reads).
+
+2. **Use correct product names** when provisioning (see product table above). Reject Custom Search JSON API references in older docs.
 
 3. **Know standard-tier guarantees before enablement:**
    - No training without permission (Training Restriction).
    - ~30-day debug retention (not indefinite; not for training).
    - SOC 2 / standard Cloud DPA — not “call sales for basic DPA.”
 
-4. **Pricing — open item (not yet a go/no-go PASS):** Pull **current** list prices and estimate against realistic assistant internet-query volume. List prices move; verify on [Agent Search / Vertex AI App Builder pricing](https://cloud.google.com/generative-ai-app-builder/pricing) at decision time.
+4. **Pricing — Tavily-equivalent product (VERIFIED list price; volume estimate NOT RUN)**
 
-   **Indicative reference only (verify before commit):**
+   **Source:** [Agent Search / Grounded Generation pricing](https://cloud.google.com/generative-ai-app-builder/pricing), **Grounded Generation — Example #2: Grounding on Google Search**, fetched **2026-07-18**.
 
-   | Path | Approx. list (USD) | Notes |
-   |------|-------------------|--------|
-   | Vertex AI Search — data store query | ~$4 / 1k queries | Customer-indexed RAG, not live open web |
-   | Grounding with Google Search (Gemini 2.x) | ~$35 / 1k grounded queries; first 10k/day/account sometimes free | Live web — closest Tavily replacement |
-   | Grounding with Google Search (Gemini 3) | Per **search query** model generates (multi-query prompts bill multiple) | See [Gemini grounding docs](https://ai.google.dev/gemini-api/docs/google-search) |
+   | Line item | List price (USD) | Applies to Tavily replacement? |
+   |-----------|------------------|--------------------------------|
+   | **Grounded Generation for grounding on Google Search** | **$0.00 / 1k count** for counts **0–10,000 per day per account**; **$35.00 / 1k count** for counts **above 10,000 per day per account** | **Yes — this line item** |
+   | Agent Search Enterprise edition query | $4.00 / 1k query | **No** — indexed data store |
+   | Agent Search Standard edition query | $1.50 / 1k query | **No** — indexed data store |
 
-   Structural win: **usage-based API billing**, not a flat ~$49k/yr enterprise search contract — but **real dollars depend on volume and which grounding SKU is chosen**.
+   **Additional costs (not in table above):** Gemini model input/output tokens for the grounded generation call are billed separately at the selected model’s rate. Example #2 on the pricing page totals ~**$35.14 / 1k requests** at volume **above** the daily free grounding tier, mostly from the Google Search grounding line item plus Flash token charges.
 
-5. **Engineering follow-up (when authorized):** Abstract `web_research.py` behind a provider interface; add Google grounding provider; keep Tavily as fallback or remove after cutover; gate on `INTERNET_RESEARCH_ENABLED` + governance sign-off.
+   **Free tier (verified):** First **10,000** grounding-on-Google-Search **counts per day per account** are **$0** for the grounding surcharge. This is **per day**, not per month.
+
+   **Volume calculus at Gravitree expected query volume: NOT RUN.** No documented forecast of daily `internet_research` / `search_web` invocations when the flag is enabled. Qualitative note only: early prod with `INTERNET_RESEARCH_ENABLED` off and internet stage gated would likely sit **under 10k grounding counts/day** initially → **$0 grounding surcharge** on that line item, but Gemini token costs still apply. Above 10k/day/account, marginal grounding cost is **$35 per additional 1,000 counts per day**. Owner should model volume before go/no-go.
+
+   **Pricing go/no-go:** List price for the **correct** product is verified; **cost PASS for enablement** still requires owner volume estimate — explicitly **NOT RUN** here.
+
+5. **Engineering follow-up (when authorized):** Abstract `web_research.py` behind a provider interface; add Google **Grounding with Google Search** provider; keep Tavily as fallback or remove after cutover; gate on `INTERNET_RESEARCH_ENABLED` + governance sign-off.
 
 ---
 
@@ -102,13 +134,29 @@ The due-diligence question for any vendor is unchanged:
 | **Tavily Enterprise** | Stronger (zero-retention marketed) | High flat enterprise | **Out of budget** — not pursued |
 | **Exa standard** | Weak (same enterprise upsell pattern) | Self-serve | Not integrated |
 | **Perplexity Sonar** | Separate review needed | Paid API | Not integrated |
-| **Google Cloud — Vertex / Search grounding** | **Stronger baseline (no training on paid standard)**; 30-day debug retention; zero-retention via DPA add-on | Usage-based GCP | **Recommended replacement candidate** — pricing + integration TBD |
+| **Google Cloud — Grounding with Google Search** | **Stronger baseline (no training on paid standard)**; 30-day debug retention; zero-retention via DPA add-on | Usage-based; **$35/1k grounding counts/day above 10k free tier** (+ model tokens) | **Recommended Tavily replacement** — governance closed; enablement not authorized |
 
-**Recommendation:** Treat **Google Cloud Vertex / Search grounding** as the **likely replacement** (or parallel) for Tavily for internet research — **better governance default on standard paid terms**, **without** requiring Tavily Enterprise — subject to:
+**Recommendation:** Treat **Grounding with Google Search** (Grounded Generation API) as the **likely replacement** for Tavily — **not** Agent Search data-store query SKUs. Better governance default on standard paid terms, without Tavily Enterprise pricing — subject to:
 
-- [ ] Named owner written sign-off (same bar as STA-312 / Memory Option B — schema-ready ≠ authorized).
-- [ ] Pricing estimate vs expected query volume on the **specific** grounding SKU.
-- [ ] Integration + prod smoke with `INTERNET_RESEARCH_ENABLED` still gated.
+- [ ] Named owner written sign-off at enablement time (STA-312 bar — this governance close ≠ authorization to turn flag on).
+- [ ] **Volume-based cost estimate** at enablement time (**NOT RUN** in this closure).
+- [ ] Integration + prod smoke before `INTERNET_RESEARCH_ENABLED=true`.
+
+---
+
+## Governance track closure (2026-07-18)
+
+| Item | Status |
+|------|--------|
+| Candidates evaluated | Tavily default, Tavily Enterprise, Google Vertex/Grounding, Custom Search JSON (ruled out) |
+| Recommended path | Grounding with Google Search on existing Gravitre GCP project |
+| Training / retention posture | Documented; no-training ≠ zero-retention caveat preserved |
+| Tavily-equivalent list pricing | **VERIFIED** @ 2026-07-18 from Google pricing page (see §4) |
+| Gravitree volume cost model | **NOT RUN** |
+| `INTERNET_RESEARCH_ENABLED` | **OFF** |
+| Retrieval-layer program | **Separate; closed** — does not block this governance close |
+
+**Verdict:** Governance track **closed**. Enablement remains a **future go/no-go** when owner has volume estimate + integration ready.
 
 ---
 

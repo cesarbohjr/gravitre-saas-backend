@@ -1,0 +1,80 @@
+{
+  "record": "internet_research_governance_closure",
+  "closed_at": "2026-07-18T12:00:00+00:00",
+  "verdict": "CLOSED",
+  "internet_research_enabled_prod": false,
+  "enablement_authorized": false,
+  "candidates_evaluated": [
+    "tavily_default",
+    "tavily_enterprise",
+    "google_grounding_with_google_search",
+    "google_agent_search_data_store",
+    "google_custom_search_json_api"
+  ],
+  "ruled_out": [
+    {
+      "option": "google_custom_search_json_api",
+      "reason": "Closed to new customers; discontinued 2027-01-01"
+    },
+    {
+      "option": "google_agent_search_data_store_queries",
+      "reason": "Indexed corpus RAG — not live open-web search; do not use $4/1k or $1.50/1k SKUs for Tavily replacement estimates"
+    },
+    {
+      "option": "tavily_default_api",
+      "reason": "Training/retention governance insufficient; stays off"
+    },
+    {
+      "option": "tavily_enterprise",
+      "reason": "Strong governance but flat enterprise cost out of budget"
+    }
+  ],
+  "recommended_replacement": {
+    "product": "Grounded Generation — grounding on Google Search",
+    "api_family": "Grounded Generation API (Vertex AI / Gemini grounding)",
+    "replaces_tavily_function": "live public web search + extraction/grounded results",
+    "not_this_product": "Agent Search Standard/Enterprise data-store queries ($1.50–$4/1k)"
+  },
+  "gcp_project_footprint": {
+    "same_project_as_gsc_oauth": true,
+    "oauth_client": "Gravitre OAuth (GOOGLE_OAUTH_CLIENT_ID)",
+    "note": "GSC connector and Vertex/Discovery Engine grounding should live in the same GCP project and billing account per docs/integration/GOOGLE_OAUTH.md — not merely same vendor family",
+    "server_side_auth": "service account or workload identity for grounding calls; distinct from user OAuth tokens for GSC reads"
+  },
+  "governance_posture_google_cloud_standard_paid": {
+    "no_training_without_permission": true,
+    "retention_debug_days": 30,
+    "zero_retention": "requires_dpa_add_on_via_sales",
+    "caveat_preserved": "no_training_neq_zero_retention"
+  },
+  "pricing": {
+    "source_url": "https://cloud.google.com/generative-ai-app-builder/pricing",
+    "source_section": "Grounded Generation API pricing — Example #2: Grounding on Google Search",
+    "fetched_at": "2026-07-18",
+    "list_price_verified": true,
+    "tavily_equivalent_line_item": {
+      "sku": "Grounded Generation for grounding on Google Search",
+      "free_tier": "0–10,000 counts per day per account at $0.00/1k",
+      "above_free_tier": "$35.00 per 1,000 counts per day per account above 10,000/day",
+      "free_tier_scope": "per_day_per_account_not_per_month"
+    },
+    "explicitly_not_tavily_replacement": {
+      "agent_search_enterprise_query_usd_per_1k": 4.0,
+      "agent_search_standard_query_usd_per_1k": 1.5
+    },
+    "additional_costs": "Gemini model input/output tokens billed separately",
+    "example_2_total_above_free_tier_usd_per_1k_requests": 35.1375,
+    "gravitree_volume_cost_model": {
+      "status": "NOT_RUN",
+      "note": "List price verified; owner must forecast daily internet_research/search_web volume before enablement go/no-go. Qualitative: early prod likely under 10k grounding counts/day → $0 grounding surcharge but token costs still apply."
+    }
+  },
+  "retrieval_layer_program": "separate_closed_does_not_block",
+  "program_doc": "docs/delivery/internet-research-governance-google-vertex.md",
+  "next_when_authorized": [
+    "Owner volume-based cost estimate",
+    "Named owner written sign-off (STA-312 bar)",
+    "Integrate Grounding with Google Search provider in web_research.py",
+    "Prod smoke before INTERNET_RESEARCH_ENABLED=true"
+  ]
+}

@@ -76,7 +76,7 @@ Pre-RM SHA for comparison: `09e57595` (parent of `4eb6adbe`).
 
 ## Internet research governance
 
-**Status: OFF — recommendation updated, enablement not authorized**
+**Status: CLOSED (governance track)** — **`INTERNET_RESEARCH_ENABLED` stays OFF**; enablement not authorized
 
 `INTERNET_RESEARCH_ENABLED` remains **off**. Milestone 2 confirmed internal probes do not invoke internet research while the flag is off.
 
@@ -84,20 +84,22 @@ Pre-RM SHA for comparison: `09e57595` (parent of `4eb6adbe`).
 
 Standard Tavily API tier: governance insufficient (training/retention); Enterprise tier: stronger but **out of budget**. No enablement on default Tavily.
 
-### Recommended path (2026-07-18)
+### Recommended path (2026-07-18, governance closed)
 
-**Google Cloud Vertex AI Search / Grounding with Google Search** — likely **replacement** (or parallel) for Tavily:
+**Grounding with Google Search** (Grounded Generation API) — **Tavily-equivalent** live web search, **not** Agent Search data-store queries:
 
 - **Not** Custom Search JSON API (closed to new customers; EOL 2027-01-01).
-- **Yes** `discoveryengine.googleapis.com` / Vertex grounding — standard paid GCP API, not a special enterprise-only product.
-- **Governance win:** Google Cloud Service Specific Terms **Training Restriction** (no training without permission) on **standard paid** projects — vs Tavily/Exa where that typically requires enterprise upsell.
-- **Honest caveat:** ~30-day debug retention on standard tier; true zero-retention still needs DPA add-on via sales.
-- **Open item:** Confirm **current** per-query pricing vs expected volume before lock-in (indicative: ~$4/1k data-store search queries; ~$35/1k live Google Search grounding on Gemini 2.x — verify on pricing page).
+- **Not** Agent Search $1.50–$4/1k data-store SKUs — indexed corpus RAG, not live open web.
+- **Yes** Grounded Generation — grounding on Google Search — standard paid GCP API.
+- **Same GCP project** as GSC OAuth / Gravitre OAuth client (not just “same vendor”).
+- **Governance win:** Training Restriction on standard paid GCP; **caveat preserved:** no-training ≠ zero-retention (~30-day debug retention; zero-retention via DPA add-on).
+- **List pricing (verified 2026-07-18):** $0/1k for first **10k grounding counts/day/account**; **$35/1k** above that (+ Gemini tokens). Source: [Google pricing — Example #2](https://cloud.google.com/generative-ai-app-builder/pricing).
+- **Volume cost model at Gravitree scale:** **NOT RUN** — owner go/no-go still required before enablement.
 
 Full analysis: [`internet-research-governance-google-vertex.md`](./internet-research-governance-google-vertex.md)  
-Artifact: [`internet-research-governance-latest.json`](./internet-research-governance-latest.json)
+Artifacts: [`internet-research-governance-latest.json`](./internet-research-governance-latest.json), [`internet-research-governance-closure.json`](./internet-research-governance-closure.json)
 
-**Current code:** Tavily-only (`backend/app/services/web_research.py`). No integration change until owner sign-off + pricing estimate.
+**Current code:** Tavily-only (`backend/app/services/web_research.py`). No integration change until owner sign-off + volume estimate.
 
 ---
 
