@@ -71,6 +71,7 @@ def main() -> int:
     env = dict(__import__("os").environ)
     env.setdefault("BACKEND_URL", args.base_url)
     env.setdefault("ROUTING_WAVE_ALLOW_ANY_SHA", "1")
+    env["ROUTING_WAVE_JSON_OUT"] = str(REPO / "docs/delivery/routing-wave-milestone1-live.json")
 
     steps: list[tuple[str, list[str], Path]] = [
         (
@@ -104,7 +105,7 @@ def main() -> int:
         (
             "routing_wave_abcd",
             ["python3", "scripts/smoke-routing-wave-live.py"],
-            REPO / "docs/delivery/routing-wave-prod-live.json",
+            REPO / "docs/delivery/routing-wave-milestone1-live.json",
         ),
         (
             "retrieval_ab",
@@ -144,7 +145,8 @@ def main() -> int:
             passed = passed and all(s in {"PASS", "PARTIAL", "NOT_RUN"} for s in statuses)
             passed = passed and not any(s == "FAIL" for s in statuses)
         if key == "routing_wave_abcd" and payload.get("verdict"):
-            passed = passed and payload.get("verdict") == "PASS"
+            started = payload.get("started_at") or ""
+            passed = passed and payload.get("verdict") == "PASS" and started >= report["started_at"][:19]
         if key == "research_cascade" and "pass" in payload:
             passed = passed and bool(payload.get("pass"))
         if key == "retrieval_ab" and "pass" in payload:

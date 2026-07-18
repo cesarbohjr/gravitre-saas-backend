@@ -27,7 +27,12 @@ from httpx import AsyncClient
 
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
-OUT = ROOT / "docs" / "delivery" / "routing-wave-prod-live.json"
+OUT = Path(
+    os.environ.get(
+        "ROUTING_WAVE_JSON_OUT",
+        str(ROOT / "docs" / "delivery" / "routing-wave-prod-live.json"),
+    )
+)
 ORG = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
 BASE = "https://gravitre-saas-backend-production.up.railway.app"
 EXPECTED_SHA_PREFIX = "65998eb7"

@@ -19,6 +19,9 @@ on:
       - "backend/app/services/unified_retrieval_service.py"
       - "scripts/smoke-milestone1-live-reverify.py"
       - "scripts/smoke-retrieval-ab-live.py"
+      - "scripts/_smoke_auth.py"
+      - "scripts/smoke-routing-wave-live.py"
+      - "scripts/smoke-research-cascade-prod.py"
       - ".github/workflows/milestone1-live-reverify.yml"
 
 concurrency:
@@ -80,7 +83,9 @@ jobs:
           BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+          CONNECTOR_SECRETS_ENCRYPTION_KEY: ${{ secrets.CONNECTOR_SECRETS_ENCRYPTION_KEY }}
           OAUTH_SMOKE_USER_ID: ${{ secrets.OAUTH_SMOKE_USER_ID }}
           OAUTH_SMOKE_ORG_ID: ${{ secrets.OAUTH_SMOKE_ORG_ID }}
           ROUTING_WAVE_ALLOW_ANY_SHA: "1"

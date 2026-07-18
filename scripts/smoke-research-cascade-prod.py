@@ -27,6 +27,7 @@ from dotenv import dotenv_values
 REPO = Path(__file__).resolve().parent.parent
 BACKEND = REPO / "backend"
 sys.path.insert(0, str(BACKEND))
+sys.path.insert(0, str(REPO))
 
 PROD_DEFAULT = os.environ.get(
     "BACKEND_URL",
@@ -178,14 +179,11 @@ def run_smoke(args: argparse.Namespace) -> dict[str, Any]:
 
     from supabase import create_client
 
+    from scripts._smoke_auth import resolve_smoke_actor_and_email
+
     client = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
     org_id = (args.org_id or env.get("OAUTH_SMOKE_ORG_ID") or ORG_DEFAULT).strip()
-    actor = (env.get("OAUTH_SMOKE_USER_ID") or "").strip()
-    if not actor:
-        rows = client.table("organization_members").select("user_id").eq("org_id", org_id).limit(1).execute()
-        actor = str((rows.data or [{}])[0].get("user_id") or "")
-    users = client.auth.admin.get_user_by_id(actor)
-    email = (users.user.email if users and users.user else None) or f"{actor}@gravitre.local"
+    actor, email = resolve_smoke_actor_and_email(client, org_id=org_id, env=env)
     token = _mint_token(env, actor, email)
     base_url = (args.base_url or PROD_DEFAULT).rstrip("/")
     conv = str(uuid.uuid4())
