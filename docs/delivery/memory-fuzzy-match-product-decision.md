@@ -49,4 +49,4 @@ Originally: reopen B/C only when ≥5 distinct prod “which X?” chats / 30 da
 - `backend/app/services/connector_action_workflows.py` — learn role aliases on unique bind
 - Tests: `backend/tests/services/test_memory_role_title_heuristic.py`
 
-Ship SHA: fill on merge to main / prod tip.
+Ship SHA: `09e57595` (PR [#164](https://github.com/cesarbohjr/gravitre-saas-backend/pull/164); prod health confirmed 2026-07-18).

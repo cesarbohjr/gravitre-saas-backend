@@ -1,0 +1,238 @@
+{
+  "kind": "claim3_pending_trace",
+  "started_at": "2026-07-17T21:05:09.822280+00:00",
+  "base_url": "https://api.gravitre.app",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+  "conversation_id": "a0c673de-7c0b-4c4b-8067-097623a19dd8",
+  "list_name": "gravitre-claim3-trace-20260717210509",
+  "gate_text": "Create an Apollo contact list named exactly 'gravitre-claim3-trace-20260717210509'. Do not invent a different name.",
+  "mode": "reasoning",
+  "tools": [
+    "apollo_lists_create",
+    "apollo_lists_list",
+    "connector_status",
+    "knowledge_base"
+  ],
+  "prod_health": {
+    "status": "ok",
+    "timestamp": "2026-07-17T21:05:10.441189+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "272e597fe4b917f14aa3f97e83c3037feff82c9e",
+    "ai_disabled": false,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "db_before": {
+    "row_found": false
+  },
+  "turn_gate": {
+    "wall_start": "2026-07-17T21:05:12.250218+00:00",
+    "http": 200,
+    "timeline": [
+      {
+        "i": 0,
+        "type": "start"
+      },
+      {
+        "i": 1,
+        "type": "start-step"
+      },
+      {
+        "i": 2,
+        "type": "data-intelligence",
+        "answerExplanation": "Analyzing your request\u2026",
+        "dialogueMode": null,
+        "has_pending_task": false,
+        "pending_source": null,
+        "pending_status": null,
+        "has_task_state_current_plan": false,
+        "has_strategic_plan_field": false,
+        "has_execution_result": false
+      },
+      {
+        "i": 3,
+        "type": "data-intelligence",
+        "answerExplanation": "Reviewing connected systems and knowledge\u2026",
+        "dialogueMode": null,
+        "has_pending_task": false,
+        "pending_source": null,
+        "pending_status": null,
+        "has_task_state_current_plan": false,
+        "has_strategic_plan_field": false,
+        "has_execution_result": false
+      },
+      {
+        "i": 4,
+        "type": "data-intelligence",
+        "answerExplanation": "Routing classified",
+        "dialogueMode": "answer",
+        "has_pending_task": false,
+        "pending_source": null,
+        "pending_status": null,
+        "has_task_state_current_plan": false,
+        "has_strategic_plan_field": false,
+        "has_execution_result": false
+      },
+      {
+        "i": 5,
+        "type": "tool-input-available",
+        "toolName": "searchKnowledgeBase",
+        "inputPreview": ""
+      },
+      {
+        "i": 6,
+        "type": "tool-output-available",
+        "toolName": null,
+        "errorCode": null,
+        "success": null
+      },
+      {
+        "i": 7,
+        "type": "tool-input-available",
+        "toolName": "apollo_lists_create",
+        "inputPreview": ""
+      },
+      {
+        "i": 8,
+        "type": "tool-output-available",
+        "toolName": null,
+        "errorCode": null,
+        "success": null
+      },
+      {
+        "i": 9,
+        "type": "text-start"
+      },
+      {
+        "i": 11,
+        "type": "text-end"
+      },
+      {
+        "i": 12,
+        "type": "data-intelligence",
+        "answerExplanation": "ReAct write gated for user approval",
+        "dialogueMode": "confirm",
+        "has_pending_task": true,
+        "pending_source": "react_write_gate",
+        "pending_status": "awaiting_confirm",
+        "has_task_state_current_plan": false,
+        "has_strategic_plan_field": false,
+        "has_execution_result": false
+      },
+      {
+        "i": 13,
+        "type": "finish-step"
+      },
+      {
+        "i": 14,
+        "type": "finish"
+      },
+      {
+        "i": 15,
+        "type": "data-suggestions"
+      }
+    ],
+    "text_preview": "",
+    "tool_inputs": [
+      {
+        "i": 5,
+        "type": "tool-input-available",
+        "toolName": "searchKnowledgeBase",
+        "inputPreview": ""
+      },
+      {
+        "i": 7,
+        "type": "tool-input-available",
+        "toolName": "apollo_lists_create",
+        "inputPreview": ""
+      }
+    ],
+    "intel_with_pending": [
+      {
+        "i": 12,
+        "type": "data-intelligence",
+        "answerExplanation": "ReAct write gated for user approval",
+        "dialogueMode": "confirm",
+        "has_pending_task": true,
+        "pending_source": "react_write_gate",
+        "pending_status": "awaiting_confirm",
+        "has_task_state_current_plan": false,
+        "has_strategic_plan_field": false,
+        "has_execution_result": false
+      }
+    ],
+    "intel_with_plan": [],
+    "final_intel": {
+      "i": 12,
+      "type": "data-intelligence",
+      "answerExplanation": "ReAct write gated for user approval",
+      "dialogueMode": "confirm",
+      "has_pending_task": true,
+      "pending_source": "react_write_gate",
+      "pending_status": "awaiting_confirm",
+      "has_task_state_current_plan": false,
+      "has_strategic_plan_field": false,
+      "has_execution_result": false
+    }
+  },
+  "db_after_gate": {
+    "row_found": true,
+    "pending_task_present": true,
+    "pending_task": {
+      "type": "connector_action",
+      "params": {
+        "args": {
+          "name": "gravitre-claim3-trace-20260717210509",
+          "list_name": "gravitre-claim3-trace-20260717210509"
+        },
+        "kind": "write",
+        "label": "Create contact list",
+        "source": "react_write_gate",
+        "status": "awaiting_confirm",
+        "tool_name": "apollo_lists_create",
+        "destructive": false,
+        "integration": "apollo",
+        "invoke_action": "apollo.lists.create",
+        "approval_reason": "react_write_gate",
+        "inferred_fields": [],
+        "inference_sources": {},
+        "requires_approval": true
+      },
+      "status": "awaiting_confirm"
+    },
+    "current_plan_present": false,
+    "current_plan_goal": null,
+    "current_plan_step1": null,
+    "pending_steps_count": 0,
+    "task_state_keys": [
+      "current_plan",
+      "pending_task",
+      "pending_steps",
+      "preferred_tone",
+      "completed_steps",
+      "approved_actions",
+      "clarified_params",
+      "persona_override",
+      "rejected_options",
+      "unresolved_tasks",
+      "connector_session",
+      "resolved_entities",
+      "recent_user_messages",
+      "suppressed_suggestions"
+    ]
+  },
+  "mechanism_observed": {
+    "label": "pending_staged_ok",
+    "pending_sse": true,
+    "pending_db": true,
+    "plan_db": false,
+    "write_tool_called": true,
+    "write_gated_meta": true
+  }
+}

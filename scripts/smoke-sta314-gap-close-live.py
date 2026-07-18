@@ -14,8 +14,17 @@ from dotenv import dotenv_values
 
 ROOT = Path(__file__).resolve().parents[1]
 for p in [ROOT / "backend" / ".env", ROOT / "backend" / ".env.operator.local"]:
-    if p.is_file():
-        for k, v in dotenv_values(p).items():
+    if not p.is_file():
+        continue
+    loaded = None
+    for enc in ("utf-8", "utf-8-sig", "cp1252", "latin-1"):
+        try:
+            loaded = dotenv_values(p, encoding=enc)
+            break
+        except UnicodeDecodeError:
+            continue
+    if loaded:
+        for k, v in loaded.items():
             if v:
                 os.environ.setdefault(k, v)
 
@@ -32,7 +41,7 @@ from app.workflows.repository import get_supabase_client
 
 ORG = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
 ACTOR = "f7e32f06-49df-4e73-8962-f41c21850762"
-BASE = "https://gravitre-saas-backend-production.up.railway.app"
+BASE = os.environ.get("STA314_BASE_URL", "https://api.gravitre.app").rstrip("/")
 OUT = ROOT / "docs" / "delivery" / "sta314-gap-close-live.json"
 UI_COMPONENT = (
     ROOT

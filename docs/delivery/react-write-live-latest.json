@@ -1,13 +1,13 @@
 {
-  "probe_started_at": "2026-07-13T01:35:54.380823+00:00",
-  "list_name": "gravitre-react-gate-probe-20260713",
+  "probe_started_at": "2026-07-17T22:13:41.572687+00:00",
+  "list_name": "gravitre-react-gate-probe-20260717",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
-  "conversation_id": "b0ad33d1-c301-46d7-a08e-b1324b2f4d79",
+  "conversation_id": "2ecea17f-e838-42ae-a89e-42914ae506ac",
   "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
   "path": "react_write_gate -> awaiting_confirm -> execute_plan",
   "agent_id": "synthetic-default",
   "react_gate": {
-    "at": "2026-07-13T01:35:55.107122+00:00",
+    "at": "2026-07-17T22:13:42.439399+00:00",
     "latency_ms": 0,
     "success": false,
     "error_code": "write_approval_required",
@@ -16,28 +16,28 @@
     "tool": "apollo_lists_create"
   },
   "approval_plan": {
-    "at": "2026-07-13T01:35:55.107405+00:00",
+    "at": "2026-07-17T22:13:42.439551+00:00",
     "invoke_action": "apollo.lists.create",
     "requires_approval": true,
     "label": "Create contact list",
     "args": {
-      "name": "gravitre-react-gate-probe-20260713",
+      "name": "gravitre-react-gate-probe-20260717",
       "modality": "contacts"
     },
     "source": "react_write_gate",
     "dialogue_mode": "confirm",
     "ci_auto_approve": true
   },
-  "pending_persisted_at": "2026-07-13T01:35:56.071142+00:00",
-  "user_approval_at": "2026-07-13T01:35:56.071179+00:00",
+  "pending_persisted_at": "2026-07-17T22:13:43.513437+00:00",
+  "user_approval_at": "2026-07-17T22:13:43.513452+00:00",
   "execution": {
-    "at": "2026-07-13T01:36:02.694354+00:00",
-    "latency_ms": 6623,
+    "at": "2026-07-17T22:13:54.783389+00:00",
+    "latency_ms": 11269,
     "success": true,
     "error_code": null,
     "entity_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
-    "result_url": "https://app.apollo.io/#/lists/6a5440fc29a3300018089518",
-    "body": "Created contact list \"gravitre-react-gate-probe-20260713\" (id: 6a5440fc29a3300018089518).",
+    "result_url": "https://app.apollo.io/#/lists/6a5a89998de4df0014362ea5",
+    "body": "Found existing contact list \"gravitre-react-gate-probe-20260717\" (id: 6a5a89998de4df0014362ea5).",
     "integration": "apollo",
     "task_label": "Create contact list"
   }

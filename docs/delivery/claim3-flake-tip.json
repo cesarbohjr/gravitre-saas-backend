@@ -1,0 +1,90 @@
+{
+  "kind": "claim3_flake",
+  "prod_sha": "6273db19809db57916540d04957d8c75315aa9e5",
+  "started_at": "2026-07-17T22:23:53.465171+00:00",
+  "summary": {
+    "n": 5,
+    "pending_db_rate": 1.0,
+    "plan_db_rate": 0.0,
+    "write_tool_rate": 1.0,
+    "fail_plan_no_pending": 0,
+    "fail_no_plan_no_pending": 0
+  },
+  "rows": [
+    {
+      "i": 0,
+      "conversation_id": "c308a9b2-58d1-480e-a0fb-c0a411b705c6",
+      "list_name": "gravitre-flake-0-222159",
+      "tools": [
+        "searchKnowledgeBase",
+        "apollo_lists_create"
+      ],
+      "pending_sse": true,
+      "pending_db": true,
+      "plan_db": false,
+      "write_tool": true,
+      "write_gated": true,
+      "text_preview": ""
+    },
+    {
+      "i": 1,
+      "conversation_id": "7d445ab0-0792-46ac-a168-cfe5777ebac8",
+      "list_name": "gravitre-flake-1-222224",
+      "tools": [
+        "searchKnowledgeBase",
+        "apollo_lists_create"
+      ],
+      "pending_sse": true,
+      "pending_db": true,
+      "plan_db": false,
+      "write_tool": true,
+      "write_gated": true,
+      "text_preview": ""
+    },
+    {
+      "i": 2,
+      "conversation_id": "f98dc1f1-a771-41a1-a800-417af4f333a4",
+      "list_name": "gravitre-flake-2-222246",
+      "tools": [
+        "searchKnowledgeBase",
+        "apollo_lists_create"
+      ],
+      "pending_sse": true,
+      "pending_db": true,
+      "plan_db": false,
+      "write_tool": true,
+      "write_gated": true,
+      "text_preview": ""
+    },
+    {
+      "i": 3,
+      "conversation_id": "24c49e36-380b-48d9-96f1-d1e1b62880bf",
+      "list_name": "gravitre-flake-3-222309",
+      "tools": [
+        "searchKnowledgeBase",
+        "apollo_lists_create"
+      ],
+      "pending_sse": true,
+      "pending_db": true,
+      "plan_db": false,
+      "write_tool": true,
+      "write_gated": true,
+      "text_preview": ""
+    },
+    {
+      "i": 4,
+      "conversation_id": "ec2789d2-153f-4d23-b5ec-fb0ec1ee18f0",
+      "list_name": "gravitre-flake-4-222332",
+      "tools": [
+        "searchKnowledgeBase",
+        "apollo_lists_create"
+      ],
+      "pending_sse": true,
+      "pending_db": true,
+      "plan_db": false,
+      "write_tool": true,
+      "write_gated": true,
+      "text_preview": ""
+    }
+  ]
+}

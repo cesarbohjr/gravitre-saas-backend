@@ -1,0 +1,45 @@
+{
+  "ticket": "STA-328",
+  "kind": "read-only-ml-lineage-reverify",
+  "ran_at": "2026-07-18T04:09:55Z",
+  "tip_sha": "9c5368e3",
+  "lineage": {
+    "STA-313": {
+      "status": "Done",
+      "human_decision": "keep-ms-marco",
+      "production_model_expected": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+      "code_default": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+      "fresh_check": {
+        "script": "scripts/check-rag-cross-encoder-prod.py",
+        "artifact": "docs/delivery/rag-cross-encoder-prod-latest.json",
+        "target": "https://api.gravitre.app",
+        "status": "pass",
+        "rerank_method": "cross_encoder",
+        "cross_encoder_enabled": true,
+        "log_model_prefix": "cross-encoder/ms-m",
+        "cross_encoder_failures": 0
+      }
+    },
+    "STA-314": {
+      "status": "Done",
+      "fresh_check": {
+        "script": "scripts/smoke-sta314-gap-close-live.py",
+        "artifact": "docs/delivery/sta314-gap-close-live.json",
+        "base_url": "https://api.gravitre.app",
+        "ran_at": "2026-07-18T04:09:55.773200+00:00",
+        "pass": {
+          "localSignalsLoaded": true,
+          "localNoExecute": true,
+          "httpGet200": true,
+          "httpAdvisoryOnly": true,
+          "uiNavAndDismissOnly": true
+        }
+      }
+    }
+  },
+  "non_goals_unchanged": [
+    "No bge/Cohere prod swap without new human choice",
+    "STA-320 fuzzy-match still Backlog (named A/B/C required)"
+  ],
+  "verdict": "pass"
+}

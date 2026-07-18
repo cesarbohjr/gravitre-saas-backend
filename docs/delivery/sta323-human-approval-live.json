@@ -1,6 +1,6 @@
 {
   "claim": "sta323_human_approval_hydration_live",
-  "started_at": "2026-07-15T19:42:28.461946+00:00",
+  "started_at": "2026-07-17T20:00:31.921400+00:00",
   "api_base": "https://api.gravitre.app",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "definition_emits": "human_approval",
@@ -8,10 +8,10 @@
   "prod_health": {
     "http": 200,
     "status": "ok",
-    "timestamp": "2026-07-15T19:42:28.290638+00:00",
+    "timestamp": "2026-07-17T20:00:31.534636+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "fa01540248810e0a33053950292079be9aae1eac",
+    "git_sha": "272e597fe4b917f14aa3f97e83c3037feff82c9e",
     "ai_disabled": false,
     "checks": {
       "database": "healthy",
@@ -24,7 +24,7 @@
   "execute": {
     "http": 200,
     "body": {
-      "run_id": "1d855554-4ac0-4a6a-b834-b040b9dfc05e",
+      "run_id": "48b3358e-fefd-4871-a0ea-8cf3ee00ce92",
       "status": "running",
       "approval_required": false,
       "queued": true,
@@ -33,26 +33,13 @@
     }
   },
   "run_row": {
-    "id": "1d855554-4ac0-4a6a-b834-b040b9dfc05e",
+    "id": "48b3358e-fefd-4871-a0ea-8cf3ee00ce92",
     "status": "running",
     "approval_status": "approved",
     "required_approvals": 0,
     "error_message": null
   },
   "steps": [],
-  "verdict": "CLOSED_LIVE_VERIFIED",
-  "finished_at": "2026-07-15T19:45:25.958130+00:00",
-  "worker_idle_processed_locally": true,
-  "local_process": {
-    "final_status": "awaiting_approval",
-    "errors": [],
-    "steps": [],
-    "run_after": {
-      "id": "1d855554-4ac0-4a6a-b834-b040b9dfc05e",
-      "status": "awaiting_approval",
-      "approval_status": "approved",
-      "required_approvals": 0,
-      "error_message": null
-    }
-  }
+  "verdict": "INCONCLUSIVE",
+  "finished_at": "2026-07-17T20:02:39.998490+00:00"
 }

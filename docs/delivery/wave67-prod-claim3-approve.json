@@ -1,17 +1,17 @@
 {
-  "started_at": "2026-07-11T17:02:45.067106+00:00",
+  "started_at": "2026-07-17T22:20:35.168854+00:00",
   "base_url": "https://gravitre-saas-backend-production.up.railway.app",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
-  "conversation_id": "5106065c-74cf-4d38-a6fd-b7f8c625fca8",
-  "list_name": "gravitre-wave67-prod-approve-202607111702",
+  "conversation_id": "a78e939e-a561-4b9c-b34d-dc49e5db3228",
+  "list_name": "gravitre-wave67-prod-approve-202607172220",
   "claim": "3_approval_panel_result_url",
   "prod_health": {
     "status": "ok",
-    "timestamp": "2026-07-11T17:02:45.990496+00:00",
+    "timestamp": "2026-07-17T22:20:36.041569+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "749caca8820b43bf19ab70ac55b4394ce8bf44d5",
+    "git_sha": "6273db19809db57916540d04957d8c75315aa9e5",
     "ai_disabled": false,
     "checks": {
       "database": "healthy",
@@ -21,145 +21,18 @@
     }
   },
   "turn_gate": {
-    "wall_start": "2026-07-11T17:02:46.408537+00:00",
+    "wall_start": "2026-07-17T22:20:36.856978+00:00",
     "http": 200,
     "summary": {
-      "event_count": 27,
-      "execution_results": [],
-      "pending_tasks_sse": [],
-      "has_pending_task_sse": false,
-      "text_preview": "Apollo is connected, and I checked the existing contact lists. I don\u2019t see a list named exactly `gravitre-wave67-prod-approve-202607111702`.\n\nMy plan is simple: create one Apollo contact list with that exact name, as a contacts list, and make no other changes.\n\nPlease reply \u201cApprove\u201d and I\u2019ll create it.\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document?",
-      "last_execution": null
-    },
-    "raw_head": "data: {\"type\":\"start\"}\n\ndata: {\"type\":\"start-step\"}\n\ndata: {\"type\":\"data-intelligence\",\"data\":{\"messageId\":\"67708622-cae1-435a-a5b2-7ad095aa3f78\",\"confidence\":{\"score\":0.7,\"needs_clarification\":false},\"answerExplanation\":\"Plan ready \\u2014 running tools\",\"conflicts\":[],\"refinedQuery\":null,\"validation\":null,\"dialogueMode\":\"confirm\",\"personaKey\":\"friendly_assistant\",\"proactiveSuggestions\":[],\"taskState\":{\"clarified_params\":{},\"rejected_options\":[],\"approved_actions\":[],\"current_plan\":{\"goal\":\"Create an Apollo contact list named exactly 'gravitre-wave67-prod-approve-202607111702'. Do not invent a different name.\",\"status\":\"ok\",\"requires_human_review\":true,\"steps\":[{\"step_id\":\"step_1\",\"description\":\"Clarify success criteria and constraints\",\"dependencies\":[],\"requires_approval\":false,\"estimate"
-  },
-  "db_task_state_after_gate": {
-    "row_found": true,
-    "task_state_keys": [
-      "current_plan",
-      "pending_task",
-      "pending_steps",
-      "preferred_tone",
-      "completed_steps",
-      "approved_actions",
-      "clarified_params",
-      "persona_override",
-      "rejected_options",
-      "unresolved_tasks",
-      "connector_session",
-      "resolved_entities",
-      "suppressed_suggestions"
-    ],
-    "pending_task": null,
-    "task_state_preview": {
-      "current_plan": {
-        "goal": "Create an Apollo contact list named exactly 'gravitre-wave67-prod-approve-202607111702'. Do not invent a different name.",
-        "steps": [
-          {
-            "step_id": "step_1",
-            "description": "Clarify success criteria and constraints",
-            "dependencies": [],
-            "requires_approval": false,
-            "estimated_complexity": "low",
-            "connector_requirements": []
-          },
-          {
-            "step_id": "step_2",
-            "description": "Gather evidence from RAG and connectors",
-            "dependencies": [
-              "step_1"
-            ],
-            "requires_approval": false,
-            "estimated_complexity": "medium",
-            "connector_requirements": []
-          },
-          {
-            "step_id": "step_3",
-            "description": "Draft plan for human review",
-            "dependencies": [
-              "step_2"
-            ],
-            "requires_approval": true,
-            "estimated_complexity": "medium",
-            "connector_requirements": []
-          },
-          {
-            "step_id": "step_4",
-            "description": "Execute only after explicit approval",
-            "dependencies": [
-              "step_3"
-            ],
-            "requires_approval": true,
-            "estimated_complexity": "medium",
-            "connector_requirements": []
-          }
-        ],
-        "status": "ok",
-        "requires_human_review": true
-      },
-      "pending_task": null,
-      "pending_steps": [
-        {
-          "step_id": "step_1",
-          "description": "Clarify success criteria and constraints",
-          "dependencies": [],
-          "requires_approval": false,
-          "estimated_complexity": "low",
-          "connector_requirements": []
-        },
-        {
-          "step_id": "step_2",
-          "description": "Gather evidence from RAG and connectors",
-          "dependencies": [
-            "step_1"
-          ],
-          "requires_approval": false,
-          "estimated_complexity": "medium",
-          "connector_requirements": []
-        },
-        {
-          "step_id": "step_3",
-          "description": "Draft plan for human review",
-          "dependencies": [
-            "step_2"
-          ],
-          "requires_approval": true,
-          "estimated_complexity": "medium",
-          "connector_requirements": []
-        },
-        {
-          "step_id": "step_4",
-          "description": "Execute only after explicit approval",
-          "dependencies": [
-            "step_3"
-          ],
-          "requires_approval": true,
-          "estimated_complexity": "medium",
-          "connector_requirements": []
-        }
-      ],
-      "preferred_tone": null,
-      "completed_steps": [],
-      "approved_actions": [],
-      "clarified_params": {},
-      "persona_override": null
-    }
-  },
-  "pending_task_present_in_db_after_step4": false,
-  "turn_approve": {
-    "wall_start": "2026-07-11T17:03:06.021762+00:00",
-    "http": 200,
-    "summary": {
-      "event_count": 14,
+      "event_count": 16,
       "execution_results": [],
       "pending_tasks_sse": [
         {
           "type": "connector_action",
           "params": {
             "args": {
-              "name": "gravitre-wave67-prod-approve-202607111702",
-              "modality": "contacts",
-              "list_name": "gravitre-wave67-prod-approve-202607111702"
+              "name": "gravitre-wave67-prod-approve-202607172220",
+              "list_name": "gravitre-wave67-prod-approve-202607172220"
             },
             "kind": "write",
             "label": "Create contact list",
@@ -178,12 +51,12 @@
         }
       ],
       "has_pending_task_sse": true,
-      "text_preview": "I can create a contact list named **gravitre-wave67-prod-approve-202607111702** in Apollo.\n\nReply **yes** to create it, or tell me what to change (name, modality, or follow-up criteria to populate it).",
+      "text_preview": "I can create a contact list named **gravitre-wave67-prod-approve-202607172220** in Apollo.\n\nReply **yes** to create it, or tell me what to change (name, modality, or follow-up criteria to populate it).",
       "last_execution": null
     },
-    "raw_head": "data: {\"type\":\"start\"}\n\ndata: {\"type\":\"start-step\"}\n\ndata: {\"type\":\"data-intelligence\",\"data\":{\"messageId\":\"a77e4ae3-0f63-4d5e-88a4-f522e7613d5a\",\"confidence\":{\"score\":0.7,\"needs_clarification\":false},\"answerExplanation\":\"Plan ready \\u2014 running tools\",\"conflicts\":[],\"refinedQuery\":null,\"validation\":null,\"dialogueMode\":\"answer\",\"personaKey\":\"friendly_assistant\",\"proactiveSuggestions\":[],\"taskState\":{\"clarified_params\":{},\"rejected_options\":[],\"approved_actions\":[],\"current_plan\":{\"goal\":\"Create an Apollo contact list named exactly 'gravitre-wave67-prod-approve-202607111702'. Do not invent a different name.\",\"steps\":[{\"step_id\":\"step_1\",\"description\":\"Clarify success criteria and constraints\",\"dependencies\":[],\"requires_approval\":false,\"estimated_complexity\":\"low\",\"connector_requirements\""
+    "raw_head": "data: {\"type\":\"start\"}\n\ndata: {\"type\":\"start-step\"}\n\ndata: {\"type\":\"data-intelligence\",\"data\":{\"messageId\":\"fc44a20e-d08c-4ed4-bfdd-e8f8aa15aa8d\",\"confidence\":{\"score\":0.0,\"needs_clarification\":false},\"answerExplanation\":\"Analyzing your request\\u2026\",\"conflicts\":[],\"refinedQuery\":null,\"validation\":null,\"dialogueMode\":null,\"personaKey\":null,\"proactiveSuggestions\":[],\"taskState\":null,\"simulationSummary\":null,\"executionResult\":null,\"pendingTask\":null,\"contextProfile\":null,\"contextExplanation\":null,\"businessSignals\":[],\"strategicPlan\":null,\"knowledgeAssignments\":[],\"assignedSourcesUsed\":[],\"knowledgeGapMessage\":null,\"missingAssignmentLabels\":[],\"memoryConflicts\":[],\"advisorBrief\":null,\"explainability\":{},\"executionGate\":{},\"trustEnvelope\":{},\"effectiveMode\":\"agent\",\"pipelineTier\":\"tier_3\",\"ro"
   },
-  "db_task_state_after_approve": {
+  "db_task_state_after_gate": {
     "row_found": true,
     "task_state_keys": [
       "current_plan",
@@ -198,15 +71,15 @@
       "unresolved_tasks",
       "connector_session",
       "resolved_entities",
+      "recent_user_messages",
       "suppressed_suggestions"
     ],
     "pending_task": {
       "type": "connector_action",
       "params": {
         "args": {
-          "name": "gravitre-wave67-prod-approve-202607111702",
-          "modality": "contacts",
-          "list_name": "gravitre-wave67-prod-approve-202607111702"
+          "name": "gravitre-wave67-prod-approve-202607172220",
+          "list_name": "gravitre-wave67-prod-approve-202607172220"
         },
         "kind": "write",
         "label": "Create contact list",
@@ -224,58 +97,13 @@
       "status": "awaiting_confirm"
     },
     "task_state_preview": {
-      "current_plan": {
-        "goal": "Create an Apollo contact list named exactly 'gravitre-wave67-prod-approve-202607111702'. Do not invent a different name.",
-        "steps": [
-          {
-            "step_id": "step_1",
-            "description": "Clarify success criteria and constraints",
-            "dependencies": [],
-            "requires_approval": false,
-            "estimated_complexity": "low",
-            "connector_requirements": []
-          },
-          {
-            "step_id": "step_2",
-            "description": "Gather evidence from RAG and connectors",
-            "dependencies": [
-              "step_1"
-            ],
-            "requires_approval": false,
-            "estimated_complexity": "medium",
-            "connector_requirements": []
-          },
-          {
-            "step_id": "step_3",
-            "description": "Draft plan for human review",
-            "dependencies": [
-              "step_2"
-            ],
-            "requires_approval": true,
-            "estimated_complexity": "medium",
-            "connector_requirements": []
-          },
-          {
-            "step_id": "step_4",
-            "description": "Execute only after explicit approval",
-            "dependencies": [
-              "step_3"
-            ],
-            "requires_approval": true,
-            "estimated_complexity": "medium",
-            "connector_requirements": []
-          }
-        ],
-        "status": "ok",
-        "requires_human_review": true
-      },
+      "current_plan": null,
       "pending_task": {
         "type": "connector_action",
         "params": {
           "args": {
-            "name": "gravitre-wave67-prod-approve-202607111702",
-            "modality": "contacts",
-            "list_name": "gravitre-wave67-prod-approve-202607111702"
+            "name": "gravitre-wave67-prod-approve-202607172220",
+            "list_name": "gravitre-wave67-prod-approve-202607172220"
           },
           "kind": "write",
           "label": "Create contact list",
@@ -292,46 +120,7 @@
         },
         "status": "awaiting_confirm"
       },
-      "pending_steps": [
-        {
-          "step_id": "step_1",
-          "description": "Clarify success criteria and constraints",
-          "dependencies": [],
-          "requires_approval": false,
-          "estimated_complexity": "low",
-          "connector_requirements": []
-        },
-        {
-          "step_id": "step_2",
-          "description": "Gather evidence from RAG and connectors",
-          "dependencies": [
-            "step_1"
-          ],
-          "requires_approval": false,
-          "estimated_complexity": "medium",
-          "connector_requirements": []
-        },
-        {
-          "step_id": "step_3",
-          "description": "Draft plan for human review",
-          "dependencies": [
-            "step_2"
-          ],
-          "requires_approval": true,
-          "estimated_complexity": "medium",
-          "connector_requirements": []
-        },
-        {
-          "step_id": "step_4",
-          "description": "Execute only after explicit approval",
-          "dependencies": [
-            "step_3"
-          ],
-          "requires_approval": true,
-          "estimated_complexity": "medium",
-          "connector_requirements": []
-        }
-      ],
+      "pending_steps": [],
       "preferred_tone": null,
       "completed_steps": [],
       "approved_actions": [],
@@ -339,10 +128,193 @@
       "persona_override": null
     }
   },
+  "pending_task_present_in_db_after_step4": true,
+  "turn_approve": {
+    "wall_start": "2026-07-17T22:21:00.240990+00:00",
+    "http": 200,
+    "summary": {
+      "event_count": 11,
+      "execution_results": [
+        {
+          "i": 3,
+          "success": true,
+          "result_url": "https://app.apollo.io/#/lists/6a5aaad1086021000c561c91",
+          "error_code": null,
+          "assumption_notes": null,
+          "body": "Created contact list \"gravitre-wave67-prod-approve-202607172220\" (id: 6a5aaad1086021000c561c91)."
+        },
+        {
+          "i": 7,
+          "success": true,
+          "result_url": "https://app.apollo.io/#/lists/6a5aaad1086021000c561c91",
+          "error_code": null,
+          "assumption_notes": null,
+          "body": "Created contact list \"gravitre-wave67-prod-approve-202607172220\" (id: 6a5aaad1086021000c561c91)."
+        }
+      ],
+      "pending_tasks_sse": [],
+      "has_pending_task_sse": false,
+      "text_preview": "Done \u2014 **Create contact list**.\n\nCreated contact list \"gravitre-wave67-prod-approve-202607172220\" (id: 6a5aaad1086021000c561c91).\n\n[View in Apollo](https://app.apollo.io/#/lists/6a5aaad1086021000c561c91)",
+      "last_execution": {
+        "i": 7,
+        "success": true,
+        "result_url": "https://app.apollo.io/#/lists/6a5aaad1086021000c561c91",
+        "error_code": null,
+        "assumption_notes": null,
+        "body": "Created contact list \"gravitre-wave67-prod-approve-202607172220\" (id: 6a5aaad1086021000c561c91)."
+      }
+    },
+    "raw_head": "data: {\"type\":\"start\"}\n\ndata: {\"type\":\"start-step\"}\n\ndata: {\"type\":\"data-intelligence\",\"data\":{\"messageId\":\"6a459a19-57a1-4d4a-bbb6-0b55b45a76b4\",\"confidence\":{\"score\":0.0,\"needs_clarification\":false},\"answerExplanation\":\"Analyzing your request\\u2026\",\"conflicts\":[],\"refinedQuery\":null,\"validation\":null,\"dialogueMode\":null,\"personaKey\":null,\"proactiveSuggestions\":[],\"taskState\":null,\"simulationSummary\":null,\"executionResult\":null,\"pendingTask\":null,\"contextProfile\":null,\"contextExplanation\":null,\"businessSignals\":[],\"strategicPlan\":null,\"knowledgeAssignments\":[],\"assignedSourcesUsed\":[],\"knowledgeGapMessage\":null,\"missingAssignmentLabels\":[],\"memoryConflicts\":[],\"advisorBrief\":null,\"explainability\":{},\"executionGate\":{},\"trustEnvelope\":{},\"effectiveMode\":\"agent\",\"pipelineTier\":\"tier_3\",\"ro"
+  },
+  "db_task_state_after_approve": {
+    "row_found": true,
+    "task_state_keys": [
+      "current_plan",
+      "pending_task",
+      "pending_steps",
+      "preferred_tone",
+      "completed_steps",
+      "approved_actions",
+      "clarified_params",
+      "persona_override",
+      "rejected_options",
+      "unresolved_tasks",
+      "connector_session",
+      "resolved_entities",
+      "recent_user_messages",
+      "suppressed_suggestions"
+    ],
+    "pending_task": {
+      "type": "connector_action",
+      "result": {
+        "body": "Created contact list \"gravitre-wave67-prod-approve-202607172220\" (id: 6a5aaad1086021000c561c91).",
+        "title": "Create contact list",
+        "success": true,
+        "artifacts": null,
+        "entity_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+        "error_code": null,
+        "result_url": "https://app.apollo.io/#/lists/6a5aaad1086021000c561c91",
+        "structured": {
+          "label": {
+            "id": "6a5aaad1086021000c561c91",
+            "name": "gravitre-wave67-prod-approve-202607172220",
+            "user_id": "6a20f3cf0cb1120020d333df",
+            "modality": "contacts",
+            "sub_type": null,
+            "created_at": "2026-07-17T22:21:05.319Z",
+            "updated_at": "2026-07-17T22:21:05.319Z",
+            "cached_count": 0,
+            "book_of_business": null
+          },
+          "list_id": "6a5aaad1086021000c561c91",
+          "result_url": "https://app.apollo.io/#/lists/6a5aaad1086021000c561c91"
+        },
+        "task_label": "Create contact list",
+        "entity_type": "connector",
+        "integration": "apollo",
+        "assumption_notes": null,
+        "notification_type": "task_completed",
+        "connector_management_url": "/connectors/30f734a2-dbdb-45aa-9112-19c6d604d451"
+      },
+      "status": "executed"
+    },
+    "task_state_preview": {
+      "current_plan": null,
+      "pending_task": {
+        "type": "connector_action",
+        "result": {
+          "body": "Created contact list \"gravitre-wave67-prod-approve-202607172220\" (id: 6a5aaad1086021000c561c91).",
+          "title": "Create contact list",
+          "success": true,
+          "artifacts": null,
+          "entity_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+          "error_code": null,
+          "result_url": "https://app.apollo.io/#/lists/6a5aaad1086021000c561c91",
+          "structured": {
+            "label": {
+              "id": "6a5aaad1086021000c561c91",
+              "name": "gravitre-wave67-prod-approve-202607172220",
+              "user_id": "6a20f3cf0cb1120020d333df",
+              "modality": "contacts",
+              "sub_type": null,
+              "created_at": "2026-07-17T22:21:05.319Z",
+              "updated_at": "2026-07-17T22:21:05.319Z",
+              "cached_count": 0,
+              "book_of_business": null
+            },
+            "list_id": "6a5aaad1086021000c561c91",
+            "result_url": "https://app.apollo.io/#/lists/6a5aaad1086021000c561c91"
+          },
+          "task_label": "Create contact list",
+          "entity_type": "connector",
+          "integration": "apollo",
+          "assumption_notes": null,
+          "notification_type": "task_completed",
+          "connector_management_url": "/connectors/30f734a2-dbdb-45aa-9112-19c6d604d451"
+        },
+        "status": "executed"
+      },
+      "pending_steps": [],
+      "preferred_tone": null,
+      "completed_steps": [
+        {
+          "url": "https://app.apollo.io/#/lists/6a5aaad1086021000c561c91",
+          "label": "Create contact list",
+          "step_id": "connector_apollo.lists.create",
+          "entity_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+          "entity_type": "connector"
+        }
+      ],
+      "approved_actions": [
+        {
+          "url": "https://app.apollo.io/#/lists/6a5aaad1086021000c561c91",
+          "type": "apollo.lists.create",
+          "entity_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+          "tool_name": "apollo_lists_create"
+        }
+      ],
+      "clarified_params": {},
+      "persona_override": null
+    }
+  },
   "audit_events_last_10m": [
     {
-      "id": "3b65567d-ec6c-4504-ad1d-05d7a45aefd9",
-      "created_at": "2026-07-11T17:03:13.764265+00:00",
+      "id": "0f5cc2d6-68b7-4ad6-b64d-66f9deb407bb",
+      "created_at": "2026-07-17T22:21:05.482195+00:00",
+      "action": "tool.invoke.completed",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "attempt",
+        "step_id",
+        "latency_ms",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.create",
+      "result_url": null,
+      "error_code": null
+    },
+    {
+      "id": "5ef21513-1571-4cf9-a6e2-c0706fde698e",
+      "created_at": "2026-07-17T22:21:04.98441+00:00",
+      "action": "tool.invoke.requested",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "step_id",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.create",
+      "result_url": null,
+      "error_code": null
+    },
+    {
+      "id": "e386a3bf-5f6d-4e44-9b8f-fbf5ca387a7f",
+      "created_at": "2026-07-17T22:20:55.913918+00:00",
       "action": "agent.react.iteration",
       "status": "tool_call",
       "resource_type": "assistant",
@@ -365,8 +337,8 @@
       "error_code": null
     },
     {
-      "id": "ed4f7ce2-1fff-4095-8da6-0ecb899c56b8",
-      "created_at": "2026-07-11T17:03:00.19868+00:00",
+      "id": "f2b47a9d-73ed-4719-a43a-f114fbec2207",
+      "created_at": "2026-07-17T22:20:22.919757+00:00",
       "action": "tool.invoke.completed",
       "status": null,
       "resource_type": "workflow_run",
@@ -378,13 +350,13 @@
         "latency_ms",
         "connector_id"
       ],
-      "tool": "apollo.lists.list",
+      "tool": "apollo.lists.create",
       "result_url": null,
       "error_code": null
     },
     {
-      "id": "878bd715-afae-4af4-b287-1ae99eaf802e",
-      "created_at": "2026-07-11T17:02:59.868699+00:00",
+      "id": "c23fd816-bb3b-4334-836b-2e118ec48afb",
+      "created_at": "2026-07-17T22:20:22.453231+00:00",
       "action": "tool.invoke.requested",
       "status": null,
       "resource_type": "workflow_run",
@@ -394,26 +366,326 @@
         "step_id",
         "connector_id"
       ],
-      "tool": "apollo.lists.list",
+      "tool": "apollo.lists.create",
+      "result_url": null,
+      "error_code": null
+    },
+    {
+      "id": "b62796d8-4f3f-44df-824b-aa805cc1733a",
+      "created_at": "2026-07-17T22:20:15.924622+00:00",
+      "action": "agent.react.iteration",
+      "status": "tool_call",
+      "resource_type": "assistant",
+      "resource_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "metadata_keys": [
+        "error",
+        "status",
+        "taskId",
+        "agentId",
+        "toolArgs",
+        "toolName",
+        "errorCode",
+        "iteration",
+        "observation",
+        "toolSuccess",
+        "thoughtPreview"
+      ],
+      "tool": null,
+      "result_url": null,
+      "error_code": null
+    },
+    {
+      "id": "095871bb-b17f-42aa-b153-33c2b0a5ef08",
+      "created_at": "2026-07-17T22:20:00.898975+00:00",
+      "action": "tool.invoke.completed",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "attempt",
+        "step_id",
+        "latency_ms",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.create",
+      "result_url": null,
+      "error_code": null
+    },
+    {
+      "id": "af5f7d02-4246-4dcc-87c8-cf833291e485",
+      "created_at": "2026-07-17T22:20:00.389559+00:00",
+      "action": "tool.invoke.requested",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "step_id",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.create",
+      "result_url": null,
+      "error_code": null
+    },
+    {
+      "id": "69d74094-13bb-4adf-815f-3fc0deb919a0",
+      "created_at": "2026-07-17T22:19:53.426154+00:00",
+      "action": "agent.react.iteration",
+      "status": "tool_call",
+      "resource_type": "assistant",
+      "resource_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "metadata_keys": [
+        "error",
+        "status",
+        "taskId",
+        "agentId",
+        "toolArgs",
+        "toolName",
+        "errorCode",
+        "iteration",
+        "observation",
+        "toolSuccess",
+        "thoughtPreview"
+      ],
+      "tool": null,
+      "result_url": null,
+      "error_code": null
+    },
+    {
+      "id": "475aad15-d795-4e83-8440-29c40e142189",
+      "created_at": "2026-07-17T22:18:12.845953+00:00",
+      "action": "tool.invoke.completed",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "attempt",
+        "step_id",
+        "latency_ms",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.create",
+      "result_url": null,
+      "error_code": null
+    },
+    {
+      "id": "ac50f1b7-105e-4838-818b-33eeee45c72e",
+      "created_at": "2026-07-17T22:18:12.241895+00:00",
+      "action": "tool.invoke.requested",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "step_id",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.create",
+      "result_url": null,
+      "error_code": null
+    },
+    {
+      "id": "ae51fe4c-191f-4a92-9751-d289b7f933c0",
+      "created_at": "2026-07-17T22:18:05.886938+00:00",
+      "action": "agent.react.iteration",
+      "status": "tool_call",
+      "resource_type": "assistant",
+      "resource_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "metadata_keys": [
+        "error",
+        "status",
+        "taskId",
+        "agentId",
+        "toolArgs",
+        "toolName",
+        "errorCode",
+        "iteration",
+        "observation",
+        "toolSuccess",
+        "thoughtPreview"
+      ],
+      "tool": null,
+      "result_url": null,
+      "error_code": null
+    },
+    {
+      "id": "f5f42f2b-524f-482a-8433-eb3089106fb3",
+      "created_at": "2026-07-17T22:17:52.878763+00:00",
+      "action": "tool.invoke.failed",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "error",
+        "action",
+        "step_id",
+        "error_code",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.create",
+      "result_url": null,
+      "error_code": "validation_error"
+    },
+    {
+      "id": "53b3e477-f67c-4d8b-83b6-a89ef1860554",
+      "created_at": "2026-07-17T22:17:52.7833+00:00",
+      "action": "tool.invoke.requested",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "step_id",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.create",
+      "result_url": null,
+      "error_code": null
+    },
+    {
+      "id": "4d3656e6-fdcc-48f2-af91-1030a5d03de6",
+      "created_at": "2026-07-17T22:17:45.789348+00:00",
+      "action": "agent.react.iteration",
+      "status": "tool_call",
+      "resource_type": "assistant",
+      "resource_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "metadata_keys": [
+        "error",
+        "status",
+        "taskId",
+        "agentId",
+        "toolArgs",
+        "toolName",
+        "errorCode",
+        "iteration",
+        "observation",
+        "toolSuccess",
+        "thoughtPreview"
+      ],
+      "tool": null,
+      "result_url": null,
+      "error_code": null
+    },
+    {
+      "id": "2b553368-5139-4ad3-a556-cd08a17c4d24",
+      "created_at": "2026-07-17T22:16:27.995867+00:00",
+      "action": "tool.invoke.completed",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "attempt",
+        "step_id",
+        "latency_ms",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.create",
+      "result_url": null,
+      "error_code": null
+    },
+    {
+      "id": "886a980f-d850-4442-a433-c90edcd142d7",
+      "created_at": "2026-07-17T22:16:27.403127+00:00",
+      "action": "tool.invoke.requested",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "step_id",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.create",
+      "result_url": null,
+      "error_code": null
+    },
+    {
+      "id": "1cbfebe9-2092-4c3b-9d0b-8a18e51b51ac",
+      "created_at": "2026-07-17T22:14:19.505743+00:00",
+      "action": "tool.invoke.completed",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "attempt",
+        "step_id",
+        "latency_ms",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.create",
+      "result_url": null,
+      "error_code": null
+    },
+    {
+      "id": "61f54d01-48bf-4315-8707-248eb9f45b43",
+      "created_at": "2026-07-17T22:14:16.800076+00:00",
+      "action": "tool.invoke.requested",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "step_id",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.create",
+      "result_url": null,
+      "error_code": null
+    },
+    {
+      "id": "8bf82909-6f95-4e60-ac1b-4d955dd4cdb1",
+      "created_at": "2026-07-17T22:13:47.528069+00:00",
+      "action": "tool.invoke.completed",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "attempt",
+        "step_id",
+        "latency_ms",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.create",
+      "result_url": null,
+      "error_code": null
+    },
+    {
+      "id": "2d67793c-17f4-46db-9a73-0066f2863c36",
+      "created_at": "2026-07-17T22:13:43.126009+00:00",
+      "action": "tool.invoke.requested",
+      "status": null,
+      "resource_type": "workflow_run",
+      "resource_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "metadata_keys": [
+        "action",
+        "step_id",
+        "connector_id"
+      ],
+      "tool": "apollo.lists.create",
       "result_url": null,
       "error_code": null
     }
   ],
   "approved_execution": {
-    "success": null,
-    "result_url": null,
+    "success": true,
+    "result_url": "https://app.apollo.io/#/lists/6a5aaad1086021000c561c91",
     "assumption_notes": null,
     "error_code": null,
-    "body": null,
-    "text_preview": "I can create a contact list named **gravitre-wave67-prod-approve-202607111702** in Apollo.\n\nReply **yes** to create it, or tell me what to change (name, modality, or follow-up criteria to populate it)."
+    "body": "Created contact list \"gravitre-wave67-prod-approve-202607172220\" (id: 6a5aaad1086021000c561c91).",
+    "text_preview": "Done \u2014 **Create contact list**.\n\nCreated contact list \"gravitre-wave67-prod-approve-202607172220\" (id: 6a5aaad1086021000c561c91).\n\n[View in Apollo](https://app.apollo.io/#/lists/6a5aaad1086021000c561c91)"
   },
   "verdict": {
-    "claim3_deep_link_result_url_after_approve": false,
-    "result_url": null,
-    "result_url_is_deep_link": false,
-    "success": null,
-    "pending_task_in_db_after_gate": false,
+    "claim3_deep_link_result_url_after_approve": true,
+    "result_url": "https://app.apollo.io/#/lists/6a5aaad1086021000c561c91",
+    "result_url_is_deep_link": true,
+    "success": true,
+    "pending_task_in_db_after_gate": true,
     "note": "PASS if chat yes yielded executionResult.success with http deep-link result_url (not /connectors/)."
   },
-  "finished_at": "2026-07-11T17:03:16.333624+00:00"
+  "finished_at": "2026-07-17T22:21:08.896454+00:00"
 }

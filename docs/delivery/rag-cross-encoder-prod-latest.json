@@ -1,46 +1,53 @@
 {
-  "target": "https://gravitre-saas-backend-production.up.railway.app",
+  "target": "https://api.gravitre.app",
   "orgId": "00000000-0000-0000-0000-000000000001",
-  "startedAt": "2026-06-16T20:42:17.626082+00:00",
-  "finishedAt": "2026-06-16T20:42:24.033341+00:00",
+  "startedAt": "2026-07-18T04:07:43.136345+00:00",
+  "finishedAt": "2026-07-18T04:07:59.125245+00:00",
   "status": "pass",
   "notes": [
-    "no indexed chunks; rerank path not exercised (probe still reachable)",
-    "log scan: no cross-encoder activity in recent window (cold or no RAG traffic)"
+    "live probe rerank_method=cross_encoder chunks=1",
+    "log scan: 1 successful model load(s) seen"
   ],
   "probe": {
     "endpoint": "/api/rag-enhanced/query",
     "query": "workflow failure predictions and overdue invoices",
     "answerPresent": true,
-    "chunkCount": 0,
+    "chunkCount": 1,
     "metrics": {
       "top_k": 5,
-      "semantic_candidates": 0,
-      "keyword_candidates": 0,
-      "reranked": 0,
+      "semantic_candidates": 1,
+      "keyword_candidates": 1,
+      "reranked": 1,
       "embedding_method": "openai",
       "hybrid_candidate_k": 20,
-      "rerank_method": "none",
+      "rerank_method": "cross_encoder",
       "cross_encoder_enabled": true,
-      "rerank_threshold": 0.3
+      "rerank_threshold": 0.3,
+      "reliability_sources_scored": 0,
+      "reliability_weight": 0.15,
+      "retrieval_latency_ms": 7881
     },
-    "rerankMethod": "none",
+    "rerankMethod": "cross_encoder",
     "crossEncoderEnabled": true,
     "embeddingMethod": "openai"
   },
   "logs": {
     "available": true,
     "service": "gravitre-saas-backend",
-    "linesScanned": 1500,
+    "linesScanned": 1504,
     "counts": {
       "cross_encoder_load_failed": 0,
       "cross_encoder_predict_failed": 0,
       "cross_encoder_unavailable": 0,
-      "cross_encoder_loading": 0,
-      "rag_rerank_method": 0
+      "cross_encoder_loading": 1,
+      "rag_rerank_method": 1
     },
     "recentFailures": [],
-    "recentLoads": [],
-    "recentRerankInfo": []
+    "recentLoads": [
+      "2026-07-18 04:07:49,154 [INFO] app.rag.hybrid_rerank request_id=c8920f7e-4029-4d65-a5b5-13c1ea6fe51f user_id=09c29672-beff-4a65-b525-261fa3de5923 org_id=00000000-0000-0000-0000-000000000001 rag_cross_encoder_loading model=cross-encoder/ms-m"
+    ],
+    "recentRerankInfo": [
+      "2026-07-18 04:07:51,129 [INFO] app.services.rag_service request_id=c8920f7e-4029-4d65-a5b5-13c1ea6fe51f user_id=09c29672-beff-4a65-b525-261fa3de5923 org_id=00000000-0000-0000-0000-000000000001 rag_rerank org_id=00000000-0000-0000-0000-00000"
+    ]
   }
 }

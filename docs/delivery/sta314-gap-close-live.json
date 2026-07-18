@@ -1,22 +1,82 @@
 {
   "ticket": "STA-314",
   "kind": "gap-close-live",
-  "ran_at": "2026-07-12T17:34:11.414408+00:00",
+  "ran_at": "2026-07-18T04:09:55.773200+00:00",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
-  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "base_url": "https://api.gravitre.app",
   "signals": {
-    "connectorCount": 5,
+    "connectorCount": 22,
     "connectors": [
       {
-        "vendor": "pipedrive",
-        "label": "pipedrive-staging",
-        "status": "healthy",
+        "vendor": "pdl",
+        "label": "pdl",
+        "status": "active",
         "executable": true
       },
       {
-        "vendor": "apollo",
-        "label": "apollo-production",
+        "vendor": "finseo",
+        "label": "finseo",
+        "status": "needs_connection",
+        "executable": false
+      },
+      {
+        "vendor": "salesforce",
+        "label": "salesforce",
+        "status": "needs_connection",
+        "executable": false
+      },
+      {
+        "vendor": "quickbooks",
+        "label": "quickbooks",
+        "status": "needs_connection",
+        "executable": false
+      },
+      {
+        "vendor": "netsuite",
+        "label": "netsuite",
+        "status": "needs_connection",
+        "executable": false
+      },
+      {
+        "vendor": "greenhouse",
+        "label": "greenhouse",
+        "status": "needs_connection",
+        "executable": false
+      },
+      {
+        "vendor": "google_analytics",
+        "label": "google_analytics",
+        "status": "needs_connection",
+        "executable": false
+      },
+      {
+        "vendor": "xero",
+        "label": "xero",
+        "status": "needs_connection",
+        "executable": false
+      },
+      {
+        "vendor": "ai_visibility_ui",
+        "label": "ai_visibility_ui",
+        "status": "active",
+        "executable": true
+      },
+      {
+        "vendor": "plaid",
+        "label": "plaid",
+        "status": "needs_connection",
+        "executable": false
+      },
+      {
+        "vendor": "gusto",
+        "label": "gusto",
+        "status": "needs_connection",
+        "executable": false
+      },
+      {
+        "vendor": "google_search_console",
+        "label": "Google Search Console",
         "status": "healthy",
         "executable": true
       },
@@ -27,23 +87,64 @@
         "executable": true
       },
       {
-        "vendor": "hubspot",
-        "label": "hubspot",
+        "vendor": "ahrefs",
+        "label": "ahrefs",
+        "status": "needs_connection",
+        "executable": false
+      },
+      {
+        "vendor": "apollo",
+        "label": "apollo-production",
+        "status": "healthy",
+        "executable": true
+      },
+      {
+        "vendor": "pipedrive",
+        "label": "pipedrive-staging",
         "status": "healthy",
         "executable": true
       },
       {
         "vendor": "slack",
         "label": "slack",
-        "status": "healthy",
-        "executable": true
+        "status": "error",
+        "executable": false
+      },
+      {
+        "vendor": "mailchimp",
+        "label": "mailchimp-production",
+        "status": "pending_auth",
+        "executable": false
+      },
+      {
+        "vendor": "zendesk",
+        "label": "Zendesk Support (smoke)",
+        "status": "pending_auth",
+        "executable": false
+      },
+      {
+        "vendor": "bamboohr",
+        "label": "bamboohr",
+        "status": "needs_connection",
+        "executable": false
       }
     ],
     "usageByConnector": {
-      "apollo": 42,
-      "assistant": 16,
-      "pipedrive": 8,
-      "slack": 6
+      "apollo": 178,
+      "hubspot": 82,
+      "assistant": 38,
+      "slack": 36,
+      "searchconsole": 14,
+      "pipedrive": 10,
+      "nvd": 8,
+      "cisa_kev": 6,
+      "sec_edgar": 6,
+      "fred": 6,
+      "asana": 4,
+      "platform": 4,
+      "zendesk": 4,
+      "ai_visibility_ui": 2,
+      "pdl": 2
     },
     "installedPackCount": 0,
     "installedPacksSample": [],
@@ -52,8 +153,23 @@
   "local_builder": {
     "advisoryOnly": true,
     "actionsTaken": [],
-    "count": 5,
+    "count": 20,
     "kinds": [
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
       "connector_missing_pack",
       "connector_missing_pack",
       "connector_missing_pack",
@@ -67,8 +183,23 @@
     "advisoryOnly": true,
     "actionsTakenEmpty": true,
     "noExecuteSurface": true,
-    "count": 5,
+    "count": 20,
     "kinds": [
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
+      "connector_non_executable",
       "connector_missing_pack",
       "connector_missing_pack",
       "connector_missing_pack",
@@ -80,52 +211,364 @@
       "actionsTaken": [],
       "recommendations": [
         {
-          "id": "pack-pipedrive-sales-ops",
-          "kind": "connector_missing_pack",
-          "title": "Add a pack for pipedrive-staging",
-          "reason": "pipedrive-staging has recent usage (8 invocations) but pack 'sales-ops' is not installed.",
+          "id": "nonexec-finseo",
+          "kind": "connector_non_executable",
+          "title": "finseo is connected but not executable",
+          "reason": "finseo appears connected yet cannot run actions. Open Connectors to repair auth or permissions.",
           "evidence": {
-            "vendor": "pipedrive",
-            "invocations": 8,
-            "suggestedPackId": "sales-ops",
+            "vendor": "finseo",
+            "status": "needs_connection",
+            "executable": false,
             "lookbackDays": 30
           },
-          "confidence": 0.8,
-          "priority": 80,
+          "confidence": 0.9,
+          "priority": 95,
           "advisoryOnly": true,
-          "href": "/marketplace"
+          "href": "/connectors",
+          "quality_score": 0.7057,
+          "historical_success_rate": 0.5,
+          "department_outcome_score": 0.4286
+        },
+        {
+          "id": "nonexec-salesforce",
+          "kind": "connector_non_executable",
+          "title": "salesforce is connected but not executable",
+          "reason": "salesforce appears connected yet cannot run actions. Open Connectors to repair auth or permissions.",
+          "evidence": {
+            "vendor": "salesforce",
+            "status": "needs_connection",
+            "executable": false,
+            "lookbackDays": 30
+          },
+          "confidence": 0.9,
+          "priority": 95,
+          "advisoryOnly": true,
+          "href": "/connectors",
+          "quality_score": 0.7057,
+          "historical_success_rate": 0.5,
+          "department_outcome_score": 0.4286
+        },
+        {
+          "id": "nonexec-quickbooks",
+          "kind": "connector_non_executable",
+          "title": "quickbooks is connected but not executable",
+          "reason": "quickbooks appears connected yet cannot run actions. Open Connectors to repair auth or permissions.",
+          "evidence": {
+            "vendor": "quickbooks",
+            "status": "needs_connection",
+            "executable": false,
+            "lookbackDays": 30
+          },
+          "confidence": 0.9,
+          "priority": 95,
+          "advisoryOnly": true,
+          "href": "/connectors",
+          "quality_score": 0.7057,
+          "historical_success_rate": 0.5,
+          "department_outcome_score": 0.4286
+        },
+        {
+          "id": "nonexec-netsuite",
+          "kind": "connector_non_executable",
+          "title": "netsuite is connected but not executable",
+          "reason": "netsuite appears connected yet cannot run actions. Open Connectors to repair auth or permissions.",
+          "evidence": {
+            "vendor": "netsuite",
+            "status": "needs_connection",
+            "executable": false,
+            "lookbackDays": 30
+          },
+          "confidence": 0.9,
+          "priority": 95,
+          "advisoryOnly": true,
+          "href": "/connectors",
+          "quality_score": 0.7057,
+          "historical_success_rate": 0.5,
+          "department_outcome_score": 0.4286
+        },
+        {
+          "id": "nonexec-greenhouse",
+          "kind": "connector_non_executable",
+          "title": "greenhouse is connected but not executable",
+          "reason": "greenhouse appears connected yet cannot run actions. Open Connectors to repair auth or permissions.",
+          "evidence": {
+            "vendor": "greenhouse",
+            "status": "needs_connection",
+            "executable": false,
+            "lookbackDays": 30
+          },
+          "confidence": 0.9,
+          "priority": 95,
+          "advisoryOnly": true,
+          "href": "/connectors",
+          "quality_score": 0.7057,
+          "historical_success_rate": 0.5,
+          "department_outcome_score": 0.4286
+        },
+        {
+          "id": "nonexec-google_analytics",
+          "kind": "connector_non_executable",
+          "title": "google_analytics is connected but not executable",
+          "reason": "google_analytics appears connected yet cannot run actions. Open Connectors to repair auth or permissions.",
+          "evidence": {
+            "vendor": "google_analytics",
+            "status": "needs_connection",
+            "executable": false,
+            "lookbackDays": 30
+          },
+          "confidence": 0.9,
+          "priority": 95,
+          "advisoryOnly": true,
+          "href": "/connectors",
+          "quality_score": 0.7057,
+          "historical_success_rate": 0.5,
+          "department_outcome_score": 0.4286
+        },
+        {
+          "id": "nonexec-xero",
+          "kind": "connector_non_executable",
+          "title": "xero is connected but not executable",
+          "reason": "xero appears connected yet cannot run actions. Open Connectors to repair auth or permissions.",
+          "evidence": {
+            "vendor": "xero",
+            "status": "needs_connection",
+            "executable": false,
+            "lookbackDays": 30
+          },
+          "confidence": 0.9,
+          "priority": 95,
+          "advisoryOnly": true,
+          "href": "/connectors",
+          "quality_score": 0.7057,
+          "historical_success_rate": 0.5,
+          "department_outcome_score": 0.4286
+        },
+        {
+          "id": "nonexec-plaid",
+          "kind": "connector_non_executable",
+          "title": "plaid is connected but not executable",
+          "reason": "plaid appears connected yet cannot run actions. Open Connectors to repair auth or permissions.",
+          "evidence": {
+            "vendor": "plaid",
+            "status": "needs_connection",
+            "executable": false,
+            "lookbackDays": 30
+          },
+          "confidence": 0.9,
+          "priority": 95,
+          "advisoryOnly": true,
+          "href": "/connectors",
+          "quality_score": 0.7057,
+          "historical_success_rate": 0.5,
+          "department_outcome_score": 0.4286
+        },
+        {
+          "id": "nonexec-gusto",
+          "kind": "connector_non_executable",
+          "title": "gusto is connected but not executable",
+          "reason": "gusto appears connected yet cannot run actions. Open Connectors to repair auth or permissions.",
+          "evidence": {
+            "vendor": "gusto",
+            "status": "needs_connection",
+            "executable": false,
+            "lookbackDays": 30
+          },
+          "confidence": 0.9,
+          "priority": 95,
+          "advisoryOnly": true,
+          "href": "/connectors",
+          "quality_score": 0.7057,
+          "historical_success_rate": 0.5,
+          "department_outcome_score": 0.4286
+        },
+        {
+          "id": "nonexec-ahrefs",
+          "kind": "connector_non_executable",
+          "title": "ahrefs is connected but not executable",
+          "reason": "ahrefs appears connected yet cannot run actions. Open Connectors to repair auth or permissions.",
+          "evidence": {
+            "vendor": "ahrefs",
+            "status": "needs_connection",
+            "executable": false,
+            "lookbackDays": 30
+          },
+          "confidence": 0.9,
+          "priority": 95,
+          "advisoryOnly": true,
+          "href": "/connectors",
+          "quality_score": 0.7057,
+          "historical_success_rate": 0.5,
+          "department_outcome_score": 0.4286
+        },
+        {
+          "id": "nonexec-slack",
+          "kind": "connector_non_executable",
+          "title": "slack is connected but not executable",
+          "reason": "slack appears connected yet cannot run actions. Open Connectors to repair auth or permissions.",
+          "evidence": {
+            "vendor": "slack",
+            "status": "error",
+            "executable": false,
+            "lookbackDays": 30
+          },
+          "confidence": 0.9,
+          "priority": 95,
+          "advisoryOnly": true,
+          "href": "/connectors",
+          "quality_score": 0.7057,
+          "historical_success_rate": 0.5,
+          "department_outcome_score": 0.4286
+        },
+        {
+          "id": "nonexec-mailchimp",
+          "kind": "connector_non_executable",
+          "title": "mailchimp-production is connected but not executable",
+          "reason": "mailchimp-production appears connected yet cannot run actions. Open Connectors to repair auth or permissions.",
+          "evidence": {
+            "vendor": "mailchimp",
+            "status": "pending_auth",
+            "executable": false,
+            "lookbackDays": 30
+          },
+          "confidence": 0.9,
+          "priority": 95,
+          "advisoryOnly": true,
+          "href": "/connectors",
+          "quality_score": 0.7057,
+          "historical_success_rate": 0.5,
+          "department_outcome_score": 0.4286
+        },
+        {
+          "id": "nonexec-zendesk",
+          "kind": "connector_non_executable",
+          "title": "Zendesk Support (smoke) is connected but not executable",
+          "reason": "Zendesk Support (smoke) appears connected yet cannot run actions. Open Connectors to repair auth or permissions.",
+          "evidence": {
+            "vendor": "zendesk",
+            "status": "pending_auth",
+            "executable": false,
+            "lookbackDays": 30
+          },
+          "confidence": 0.9,
+          "priority": 95,
+          "advisoryOnly": true,
+          "href": "/connectors",
+          "quality_score": 0.7057,
+          "historical_success_rate": 0.5,
+          "department_outcome_score": 0.4286
+        },
+        {
+          "id": "nonexec-bamboohr",
+          "kind": "connector_non_executable",
+          "title": "bamboohr is connected but not executable",
+          "reason": "bamboohr appears connected yet cannot run actions. Open Connectors to repair auth or permissions.",
+          "evidence": {
+            "vendor": "bamboohr",
+            "status": "needs_connection",
+            "executable": false,
+            "lookbackDays": 30
+          },
+          "confidence": 0.9,
+          "priority": 95,
+          "advisoryOnly": true,
+          "href": "/connectors",
+          "quality_score": 0.7057,
+          "historical_success_rate": 0.5,
+          "department_outcome_score": 0.4286
+        },
+        {
+          "id": "nonexec-workday",
+          "kind": "connector_non_executable",
+          "title": "workday is connected but not executable",
+          "reason": "workday appears connected yet cannot run actions. Open Connectors to repair auth or permissions.",
+          "evidence": {
+            "vendor": "workday",
+            "status": "needs_connection",
+            "executable": false,
+            "lookbackDays": 30
+          },
+          "confidence": 0.9,
+          "priority": 95,
+          "advisoryOnly": true,
+          "href": "/connectors",
+          "quality_score": 0.7057,
+          "historical_success_rate": 0.5,
+          "department_outcome_score": 0.4286
         },
         {
           "id": "pack-apollo-sales-ops",
           "kind": "connector_missing_pack",
           "title": "Add a pack for apollo-production",
-          "reason": "apollo-production has recent usage (42 invocations) but pack 'sales-ops' is not installed.",
+          "reason": "apollo-production has recent usage (178 invocations) but pack 'sales-ops' is not installed.",
           "evidence": {
             "vendor": "apollo",
-            "invocations": 42,
+            "invocations": 178,
             "suggestedPackId": "sales-ops",
             "lookbackDays": 30
           },
           "confidence": 0.8,
           "priority": 80,
           "advisoryOnly": true,
-          "href": "/marketplace"
+          "href": "/marketplace",
+          "quality_score": 0.6507,
+          "historical_success_rate": 0.5,
+          "department_outcome_score": 0.4286
         },
         {
-          "id": "pack-slack-support-ops",
+          "id": "pack-pipedrive-sales-ops",
           "kind": "connector_missing_pack",
-          "title": "Add a pack for slack",
-          "reason": "slack has recent usage (6 invocations) but pack 'support-ops' is not installed.",
+          "title": "Add a pack for pipedrive-staging",
+          "reason": "pipedrive-staging has recent usage (10 invocations) but pack 'sales-ops' is not installed.",
           "evidence": {
-            "vendor": "slack",
-            "invocations": 6,
-            "suggestedPackId": "support-ops",
+            "vendor": "pipedrive",
+            "invocations": 10,
+            "suggestedPackId": "sales-ops",
             "lookbackDays": 30
           },
           "confidence": 0.8,
           "priority": 80,
           "advisoryOnly": true,
-          "href": "/marketplace"
+          "href": "/marketplace",
+          "quality_score": 0.6507,
+          "historical_success_rate": 0.5,
+          "department_outcome_score": 0.4286
+        },
+        {
+          "id": "pack-hubspot-sales-ops",
+          "kind": "connector_missing_pack",
+          "title": "Add a pack for hubspot",
+          "reason": "hubspot has recent usage (82 invocations) but pack 'sales-ops' is not installed.",
+          "evidence": {
+            "vendor": "hubspot",
+            "invocations": 82,
+            "suggestedPackId": "sales-ops",
+            "lookbackDays": 30
+          },
+          "confidence": 0.8,
+          "priority": 80,
+          "advisoryOnly": true,
+          "href": "/marketplace",
+          "quality_score": 0.6507,
+          "historical_success_rate": 0.5,
+          "department_outcome_score": 0.4286
+        },
+        {
+          "id": "unused-google_search_console",
+          "kind": "connector_connected_unused",
+          "title": "Google Search Console is connected but unused",
+          "reason": "Google Search Console is connected with no tool usage in the last 30 days. Try it from chat or a workflow.",
+          "evidence": {
+            "vendor": "google_search_console",
+            "invocations": 0,
+            "lookbackDays": 30
+          },
+          "confidence": 0.75,
+          "priority": 70,
+          "advisoryOnly": true,
+          "href": "/connectors",
+          "quality_score": 0.6232,
+          "historical_success_rate": 0.5,
+          "department_outcome_score": 0.4286
         },
         {
           "id": "unused-microsoft365",
@@ -140,25 +583,14 @@
           "confidence": 0.75,
           "priority": 70,
           "advisoryOnly": true,
-          "href": "/connectors"
-        },
-        {
-          "id": "unused-hubspot",
-          "kind": "connector_connected_unused",
-          "title": "hubspot is connected but unused",
-          "reason": "hubspot is connected with no tool usage in the last 30 days. Try it from chat or a workflow.",
-          "evidence": {
-            "vendor": "hubspot",
-            "invocations": 0,
-            "lookbackDays": 30
-          },
-          "confidence": 0.75,
-          "priority": 70,
-          "advisoryOnly": true,
-          "href": "/connectors"
+          "href": "/connectors",
+          "quality_score": 0.6232,
+          "historical_success_rate": 0.5,
+          "department_outcome_score": 0.4286
         }
       ],
-      "count": 5
+      "count": 20,
+      "outcomeRanked": true
     },
     "note": "HTTP reflects currently deployed Railway revision; local_builder uses gap-close signal wiring against prod DB."
   },

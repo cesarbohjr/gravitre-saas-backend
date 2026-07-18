@@ -1,0 +1,13 @@
+{
+  "tool": "asana_batch_tasks",
+  "observation": {
+    "success": false,
+    "error_code": "write_approval_required",
+    "error": "Write actions require explicit user approval before execution. Do not retry this tool; the user will confirm or edit the plan."
+  },
+  "shaped_chip": {
+    "error": "This write needs your approval before it runs.",
+    "success": false,
+    "errorCode": "write_approval_required"
+  }
+}

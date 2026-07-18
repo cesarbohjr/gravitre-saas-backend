@@ -1,0 +1,251 @@
+{
+  "kind": "claim3_planforce",
+  "prod_sha": "6273db19809db57916540d04957d8c75315aa9e5",
+  "started_at": "2026-07-17T22:20:26.211322+00:00",
+  "results": [
+    {
+      "label": "baseline",
+      "conversation_id": "218ae5bc-841a-47bb-8d21-6815edbe41a1",
+      "list_name": "gravitre-planforce-baseline-221930",
+      "message": "Create an Apollo contact list named exactly 'gravitre-planforce-baseline-221930'. Do not invent a different name.",
+      "gate": {
+        "http": 200,
+        "tools": [
+          "searchKnowledgeBase",
+          "apollo_lists_create"
+        ],
+        "pending_sse": true,
+        "plan_sse": false,
+        "write_gated": true,
+        "explanations": [
+          "Analyzing your request\u2026",
+          "Reviewing connected systems and knowledge\u2026",
+          "Routing classified",
+          "ReAct write gated for user approval"
+        ],
+        "text_preview": "",
+        "last_execution": null,
+        "result_url": null,
+        "success": null,
+        "result_url_is_deep_link": false,
+        "pending_db": true,
+        "plan_db": false,
+        "pending_source": "react_write_gate",
+        "pending_status": "awaiting_confirm"
+      },
+      "approve": {
+        "http": 200,
+        "tools": [],
+        "pending_sse": false,
+        "plan_sse": false,
+        "write_gated": false,
+        "explanations": [
+          "Analyzing your request\u2026",
+          "Governed connector execution",
+          "Governed connector execution"
+        ],
+        "text_preview": "",
+        "last_execution": {
+          "success": true,
+          "entity_type": "connector",
+          "entity_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+          "title": "Create contact list",
+          "body": "Created contact list \"gravitre-planforce-baseline-221930\" (id: 6a5aaa900397e4002030792c).",
+          "connector_management_url": "/connectors/30f734a2-dbdb-45aa-9112-19c6d604d451",
+          "result_url": "https://app.apollo.io/#/lists/6a5aaa900397e4002030792c",
+          "integration": "apollo",
+          "notification_type": "task_completed",
+          "task_label": "Create contact list",
+          "structured": {
+            "label": {
+              "id": "6a5aaa900397e4002030792c",
+              "modality": "contacts",
+              "cached_count": 0,
+              "name": "gravitre-planforce-baseline-221930",
+              "created_at": "2026-07-17T22:20:00.749Z",
+              "updated_at": "2026-07-17T22:20:00.749Z",
+              "user_id": "6a20f3cf0cb1120020d333df",
+              "book_of_business": null,
+              "sub_type": null
+            },
+            "result_url": "https://app.apollo.io/#/lists/6a5aaa900397e4002030792c",
+            "list_id": "6a5aaa900397e4002030792c",
+            "artifacts": [
+              {
+                "artifact_id": "link:30f734a2-dbdb-45aa-9112-19c6d604d451",
+                "kind": "link",
+                "title": "Create contact list",
+                "preview": "Created contact list \"gravitre-planforce-baseline-221930\" (id: 6a5aaa900397e4002030792c).",
+                "result_url": "https://app.apollo.io/#/lists/6a5aaa900397e4002030792c",
+                "source": "connector",
+                "integration": "apollo"
+              },
+              {
+                "artifact_id": "record:30f734a2-dbdb-45aa-9112-19c6d604d451",
+                "kind": "record",
+                "title": "Create contact list",
+                "preview": "Created contact list \"gravitre-planforce-baseline-221930\" (id: 6a5aaa900397e4002030792c).",
+                "result_url": "https://app.apollo.io/#/lists/6a5aaa900397e4002030792c",
+                "source": "connector",
+                "integration": "apollo"
+              }
+            ]
+          },
+          "artifacts": [
+            {
+              "artifact_id": "link:30f734a2-dbdb-45aa-9112-19c6d604d451",
+              "kind": "link",
+              "title": "Create contact list",
+              "preview": "Created contact list \"gravitre-planforce-baseline-221930\" (id: 6a5aaa900397e4002030792c).",
+              "result_url": "https://app.apollo.io/#/lists/6a5aaa900397e4002030792c",
+              "source": "connector",
+              "integration": "apollo"
+            },
+            {
+              "artifact_id": "record:30f734a2-dbdb-45aa-9112-19c6d604d451",
+              "kind": "record",
+              "title": "Create contact list",
+              "preview": "Created contact list \"gravitre-planforce-baseline-221930\" (id: 6a5aaa900397e4002030792c).",
+              "result_url": "https://app.apollo.io/#/lists/6a5aaa900397e4002030792c",
+              "source": "connector",
+              "integration": "apollo"
+            }
+          ],
+          "error_code": null,
+          "assumption_notes": null
+        },
+        "result_url": "https://app.apollo.io/#/lists/6a5aaa900397e4002030792c",
+        "success": true,
+        "result_url_is_deep_link": true,
+        "pending_db": true,
+        "plan_db": false,
+        "pending_source": null,
+        "pending_status": "executed"
+      },
+      "passed": true
+    },
+    {
+      "label": "plan_word",
+      "conversation_id": "5c82a19c-812a-4e25-be1c-1474e7e0f963",
+      "list_name": "gravitre-planforce-plan_word-222004",
+      "message": "Create an Apollo contact list named exactly 'gravitre-planforce-plan_word-222004'. Please plan the steps before executing. Do not invent a different name.",
+      "gate": {
+        "http": 200,
+        "tools": [
+          "searchKnowledgeBase",
+          "apollo_lists_create"
+        ],
+        "pending_sse": true,
+        "plan_sse": false,
+        "write_gated": true,
+        "explanations": [
+          "Analyzing your request\u2026",
+          "Reviewing connected systems and knowledge\u2026",
+          "Routing classified",
+          "ReAct write gated for user approval"
+        ],
+        "text_preview": "",
+        "last_execution": null,
+        "result_url": null,
+        "success": null,
+        "result_url_is_deep_link": false,
+        "pending_db": true,
+        "plan_db": false,
+        "pending_source": "react_write_gate",
+        "pending_status": "awaiting_confirm"
+      },
+      "approve": {
+        "http": 200,
+        "tools": [],
+        "pending_sse": false,
+        "plan_sse": false,
+        "write_gated": false,
+        "explanations": [
+          "Analyzing your request\u2026",
+          "Governed connector execution",
+          "Governed connector execution"
+        ],
+        "text_preview": "",
+        "last_execution": {
+          "success": true,
+          "entity_type": "connector",
+          "entity_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+          "title": "Create contact list",
+          "body": "Created contact list \"gravitre-planforce-plan_word-222004\" (id: 6a5aaaa677d58200207b1708).",
+          "connector_management_url": "/connectors/30f734a2-dbdb-45aa-9112-19c6d604d451",
+          "result_url": "https://app.apollo.io/#/lists/6a5aaaa677d58200207b1708",
+          "integration": "apollo",
+          "notification_type": "task_completed",
+          "task_label": "Create contact list",
+          "structured": {
+            "label": {
+              "id": "6a5aaaa677d58200207b1708",
+              "modality": "contacts",
+              "cached_count": 0,
+              "name": "gravitre-planforce-plan_word-222004",
+              "created_at": "2026-07-17T22:20:22.738Z",
+              "updated_at": "2026-07-17T22:20:22.738Z",
+              "user_id": "6a20f3cf0cb1120020d333df",
+              "book_of_business": null,
+              "sub_type": null
+            },
+            "result_url": "https://app.apollo.io/#/lists/6a5aaaa677d58200207b1708",
+            "list_id": "6a5aaaa677d58200207b1708",
+            "artifacts": [
+              {
+                "artifact_id": "link:30f734a2-dbdb-45aa-9112-19c6d604d451",
+                "kind": "link",
+                "title": "Create contact list",
+                "preview": "Created contact list \"gravitre-planforce-plan_word-222004\" (id: 6a5aaaa677d58200207b1708).",
+                "result_url": "https://app.apollo.io/#/lists/6a5aaaa677d58200207b1708",
+                "source": "connector",
+                "integration": "apollo"
+              },
+              {
+                "artifact_id": "record:30f734a2-dbdb-45aa-9112-19c6d604d451",
+                "kind": "record",
+                "title": "Create contact list",
+                "preview": "Created contact list \"gravitre-planforce-plan_word-222004\" (id: 6a5aaaa677d58200207b1708).",
+                "result_url": "https://app.apollo.io/#/lists/6a5aaaa677d58200207b1708",
+                "source": "connector",
+                "integration": "apollo"
+              }
+            ]
+          },
+          "artifacts": [
+            {
+              "artifact_id": "link:30f734a2-dbdb-45aa-9112-19c6d604d451",
+              "kind": "link",
+              "title": "Create contact list",
+              "preview": "Created contact list \"gravitre-planforce-plan_word-222004\" (id: 6a5aaaa677d58200207b1708).",
+              "result_url": "https://app.apollo.io/#/lists/6a5aaaa677d58200207b1708",
+              "source": "connector",
+              "integration": "apollo"
+            },
+            {
+              "artifact_id": "record:30f734a2-dbdb-45aa-9112-19c6d604d451",
+              "kind": "record",
+              "title": "Create contact list",
+              "preview": "Created contact list \"gravitre-planforce-plan_word-222004\" (id: 6a5aaaa677d58200207b1708).",
+              "result_url": "https://app.apollo.io/#/lists/6a5aaaa677d58200207b1708",
+              "source": "connector",
+              "integration": "apollo"
+            }
+          ],
+          "error_code": null,
+          "assumption_notes": null
+        },
+        "result_url": "https://app.apollo.io/#/lists/6a5aaaa677d58200207b1708",
+        "success": true,
+        "result_url_is_deep_link": true,
+        "pending_db": true,
+        "plan_db": false,
+        "pending_source": null,
+        "pending_status": "executed"
+      },
+      "passed": true
+    }
+  ],
+  "all_passed": true,
+  "fix_shape": "b_tighten_should_plan_plus_orphan_confirm_handoff"
+}

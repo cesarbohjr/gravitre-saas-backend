@@ -29,11 +29,11 @@ ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
 OUT = ROOT / "docs" / "delivery" / "routing-wave-prod-live.json"
 ORG = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
-BASE = "https://gravitre-saas-backend-production.up.railway.app"
+BASE = os.environ.get("ROUTING_WAVE_BASE_URL", "https://api.gravitre.app").rstrip("/")
 EXPECTED_SHA_PREFIX = "65998eb7"
 # Prod may roll forward; accept known descendants that contain PR #97 merge.
 # Update when follow-up routing fixes land (clarify SSE / dynamic iterations).
-ACCEPT_SHA_PREFIXES = ("65998eb7", "3aff41ad")
+ACCEPT_SHA_PREFIXES = ("65998eb7", "3aff41ad", "b8c13fa0", "9c5368e3", "91f785db")
 CHAT_TIMEOUT = 600.0
 # When set, allow any prod SHA (use after merge while waiting to pin the new prefix).
 ALLOW_ANY_PROD_SHA = os.environ.get("ROUTING_WAVE_ALLOW_ANY_SHA", "").strip() in {
@@ -170,8 +170,22 @@ async def chat(
         "mode": mode,
         "conversation_id": conversation_id,
     }
-    r = await ac.post("/api/assistant/chat", json=body, headers=hdr, timeout=CHAT_TIMEOUT)
-    parsed = parse_sse(r.text)
+    # Stream-accumulate — prod sometimes closes chunked SSE early.
+    chunks: list[bytes] = []
+    status = 0
+    try:
+        async with ac.stream(
+            "POST", "/api/assistant/chat", json=body, headers=hdr, timeout=CHAT_TIMEOUT
+        ) as r:
+            status = r.status_code
+            async for part in r.aiter_bytes():
+                chunks.append(part)
+    except Exception as exc:  # noqa: BLE001
+        if not chunks:
+            raise
+        print(f"WARN chat stream truncated ({exc}); using {sum(len(c) for c in chunks)} bytes")
+    raw = b"".join(chunks).decode("utf-8", errors="replace")
+    parsed = parse_sse(raw)
     routing = extract_routing(parsed["intel"])
     state_hdr = {k: v for k, v in hdr.items() if k != "Accept"}
     pending = None
@@ -188,7 +202,7 @@ async def chat(
     except Exception as e:
         task_state = {"state_error": str(e)}
     return {
-        "http": r.status_code,
+        "http": status,
         "conversation_id": conversation_id,
         "mode_requested": mode,
         "message": text,
