@@ -6,6 +6,21 @@ Research Lookups overage uses a **separate** Billing Meter from `ai_credits_used
 
 ## CLI alternative (preferred when `STRIPE_SECRET_KEY` is set)
 
+**Staging first (`sk_test_*` only):**
+
+```bash
+export STRIPE_SECRET_KEY=sk_test_...
+npm run billing:stripe-research-lookup-meter:staging
+```
+
+Pull test key from Railway and push Price ID back (requires `railway login` or `RAILWAY_TOKEN`):
+
+```bash
+bash scripts/stripe-seed-research-lookup-staging.sh --from-railway --push-railway
+```
+
+Generic (test or live key):
+
 ```bash
 export STRIPE_SECRET_KEY=sk_test_...   # staging first; sk_live_... for prod after live PASS
 python backend/scripts/stripe_seed_research_lookup_meter.py

@@ -103,6 +103,7 @@
     "db:connector-types": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/apply-connector-types-migration.ps1",
     "billing:research-lookups-go-live": "bash scripts/apply-research-lookups-billing-go-live.sh",
     "billing:stripe-research-lookup-meter": "python backend/scripts/stripe_seed_research_lookup_meter.py",
+    "billing:stripe-research-lookup-meter:staging": "bash scripts/stripe-seed-research-lookup-staging.sh --push-railway",
     "netsuite:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-netsuite-operator-env.ps1",
     "netsuite:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-netsuite-oauth.ps1",
     "workday:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-workday-operator-env.ps1",
