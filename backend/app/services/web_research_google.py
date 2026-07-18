@@ -93,7 +93,8 @@ def _extract_results_from_response(response: Any, *, max_results: int) -> tuple[
 def _search_sync(query: str, settings: Settings, max_results: int) -> dict[str, Any]:
     from google.genai import types
 
-    cleaned = (query or "").strip()
+    # Query is already governance-sanitized by search_web(); defense-in-depth only here.
+    cleaned = (query or "").strip()[:2000]
     if not cleaned:
         return {"results": [], "sources": [], "totalResults": 0, "error": "Missing query"}
 
@@ -103,7 +104,7 @@ def _search_sync(query: str, settings: Settings, max_results: int) -> dict[str, 
     prompt = (
         "Retrieve current public web information for this search query only. "
         "Do not include private or conversational context.\n\n"
-        f"Query: {cleaned[:2000]}"
+        f"Query: {cleaned}"
     )
 
     config = types.GenerateContentConfig(

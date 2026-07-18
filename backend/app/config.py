@@ -353,6 +353,15 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("GOOGLE_GENAI_USE_VERTEXAI", "google_genai_use_vertexai"),
     )
+    # Hard per-org hourly circuit breaker on grounding calls (0 disables). Independent of
+    # the 75% platform daily alert — prevents runaway cascade loops before humans respond.
+    grounding_org_hourly_circuit_limit: int = Field(
+        default=500,
+        validation_alias=AliasChoices(
+            "GROUNDING_ORG_HOURLY_CIRCUIT_LIMIT",
+            "grounding_org_hourly_circuit_limit",
+        ),
+    )
     # Browser agent for connector API gaps (read-only fetch + optional Playwright interact).
     browser_agent_enabled: bool = True
     browser_agent_interact_enabled: bool = False

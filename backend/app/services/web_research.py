@@ -120,7 +120,35 @@ async def search_web(
     When org_id + Supabase client provided, records Research Lookup metering
     and platform grounding volume after a successful query with results.
     """
+    from app.services.grounding_volume_monitor import check_org_grounding_circuit
+    from app.services.internet_research_query import prepare_internet_research_query
+
     active_settings = settings or get_settings()
+    prepared = prepare_internet_research_query(query)
+    governed_query = prepared.query
+    query_meta = prepared.to_metadata()
+
+    if not governed_query:
+        return {
+            "results": [],
+            "sources": [],
+            "totalResults": 0,
+            "error": "Missing query",
+            **query_meta,
+        }
+
+    if org_id and client is not None:
+        circuit = check_org_grounding_circuit(client, org_id, active_settings)
+        if circuit.get("blocked"):
+            return {
+                "results": [],
+                "sources": [],
+                "totalResults": 0,
+                "error": "internet research temporarily paused for this organization (hourly circuit breaker)",
+                "circuit_breaker": circuit,
+                **query_meta,
+            }
+
     provider = (getattr(active_settings, "web_research_provider", None) or "google").strip().lower()
     capped = max(1, min(int(max_results), 10))
 
@@ -134,7 +162,9 @@ async def search_web(
         )
 
         try:
-            payload = await search_google_grounding(query, settings=active_settings, max_results=capped)
+            payload = await search_google_grounding(
+                governed_query, settings=active_settings, max_results=capped
+            )
             if payload.get("totalResults", 0) > 0:
                 pass
             elif payload.get("error") and getattr(active_settings, "web_research_fallback_tavily", True):
@@ -147,7 +177,7 @@ async def search_web(
     if payload is None:
         if provider == "tavily" or getattr(active_settings, "web_research_fallback_tavily", True):
             try:
-                payload = await _search_tavily(query, settings=active_settings, max_results=capped)
+                payload = await _search_tavily(governed_query, settings=active_settings, max_results=capped)
             except TavilyNotConfiguredError:
                 if not errors:
                     raise WebResearchNotConfiguredError(
@@ -156,6 +186,9 @@ async def search_web(
                 raise WebResearchNotConfiguredError("; ".join(errors))
         else:
             raise WebResearchNotConfiguredError(errors[0] if errors else "Internet research provider unavailable")
+
+    if payload is not None:
+        payload.update(query_meta)
 
     if (
         payload
@@ -166,11 +199,12 @@ async def search_web(
         await _record_usage_after_search(
             client,
             org_id=org_id,
-            query=query,
+            query=governed_query,
             payload=payload,
+            settings=active_settings,
         )
 
-    return payload or {"results": [], "sources": [], "totalResults": 0, "error": "no results"}
+    return payload or {"results": [], "sources": [], "totalResults": 0, "error": "no results", **query_meta}
 
 
 async def _record_usage_after_search(
@@ -179,6 +213,7 @@ async def _record_usage_after_search(
     org_id: str,
     query: str,
     payload: dict[str, Any],
+    settings: Settings | None = None,
 ) -> None:
     usage = payload.get("usage") if isinstance(payload.get("usage"), dict) else {}
     provider = str(payload.get("provider") or "unknown")
@@ -193,6 +228,7 @@ async def _record_usage_after_search(
                 client,
                 org_id=org_id,
                 count=int(usage.get("grounding_count") or 1),
+                settings=settings,
             )
         record_research_lookup(
             client,

@@ -12,9 +12,25 @@
     "WEB_RESEARCH_PROVIDER": "google",
     "GEMINI_API_KEY": "required_unless_vertex",
     "GOOGLE_GENAI_USE_VERTEXAI": "optional_true_with_GOOGLE_CLOUD_PROJECT",
-    "WEB_RESEARCH_FALLBACK_TAVILY": "true_default"
+    "WEB_RESEARCH_FALLBACK_TAVILY": "true_default",
+    "GROUNDING_ORG_HOURLY_CIRCUIT_LIMIT": "500_default_hard_block_not_alert_only"
   },
   "rollback": "Set INTERNET_RESEARCH_ENABLED=false and redeploy — immediate off-switch",
+  "governance_query": {
+    "chokepoint": "backend/app/services/internet_research_query.py prepare_internet_research_query",
+    "max_chars": 2000,
+    "scope": "search query only — strips knowledge_base/conversation blocks before vendor call",
+    "tests": "backend/tests/services/test_internet_research_query.py"
+  },
+  "circuit_breaker": {
+    "type": "hard_per_org_hourly_limit",
+    "default_limit": 500,
+    "env": "GROUNDING_ORG_HOURLY_CIRCUIT_LIMIT",
+    "table": "org_grounding_hourly",
+    "check_point": "search_web before external provider call",
+    "independent_of": "platform_grounding_daily 75% alert",
+    "api": "GET /api/settings/grounding-volume includes org_hourly_circuit"
+  },
   "metering": {
     "customer_unit": "research_lookups",
     "included_per_month": {"node": 10, "control": 60, "command": 200},
@@ -26,12 +42,24 @@
     "api": "GET /api/settings/grounding-volume",
     "free_tier_daily": 10000,
     "alert_threshold_pct": 75,
-    "tables": ["platform_grounding_daily", "org_research_lookup_daily"]
+    "tables": ["platform_grounding_daily", "org_research_lookup_daily", "org_grounding_hourly"]
   },
   "verification": {
     "canonical": "scripts/smoke-milestone1-live-reverify.py",
     "internet_smoke": "scripts/smoke-internet-research-live.py",
-    "live_evidence_required": true
+    "live_evidence_required": true,
+    "go_live_sequence": [
+      "confirm circuit breaker + governance query tests green",
+      "apply migrations to prod",
+      "set Railway env vars + redeploy",
+      "run four canonical checks live",
+      "run smoke-internet-research-live.py as one end-to-end trace",
+      "run smoke-milestone1-live-reverify.py — confirm stop-early live",
+      "INTERNET_RESEARCH_ENABLED=true with rollback confirmed"
+    ]
   },
-  "migration": "supabase/migrations/20260718120000_internet_research_metering.sql"
+  "migration": [
+    "supabase/migrations/20260718120000_internet_research_metering.sql",
+    "supabase/migrations/20260718130000_internet_research_circuit_breaker.sql"
+  ]
 }

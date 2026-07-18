@@ -758,10 +758,11 @@ async def get_grounding_volume_route(
     """Platform + org grounding lookup volume vs Google 10k/day free tier (gate 2 live monitor)."""
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    from app.services.grounding_volume_monitor import get_platform_grounding_status
+    from app.services.grounding_volume_monitor import get_platform_grounding_status, check_org_grounding_circuit
 
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     platform = get_platform_grounding_status(client, settings)
+    org_circuit = check_org_grounding_circuit(client, org_id, settings)
     org_daily = 0
     try:
         from datetime import datetime, timezone
@@ -792,6 +793,7 @@ async def get_grounding_volume_route(
         "org_lookup_count_today": org_daily,
         "included_research_lookups_per_month": included_lookups_for_plan_code(tier),
         "tier": tier,
+        "org_hourly_circuit": org_circuit,
     }
 
 

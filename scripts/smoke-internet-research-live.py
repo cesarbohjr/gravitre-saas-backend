@@ -35,7 +35,11 @@ async def _main() -> int:
     from app.config import get_settings
     from app.services.web_research import search_web
     from app.billing.service import get_supabase_client
-    from app.services.grounding_volume_monitor import get_platform_grounding_status
+    from app.services.grounding_volume_monitor import (
+        check_org_grounding_circuit,
+        get_platform_grounding_status,
+        org_hourly_circuit_limit,
+    )
 
     settings = get_settings()
     client = get_supabase_client(settings)
@@ -49,7 +53,11 @@ async def _main() -> int:
         "started_at": datetime.now(timezone.utc).isoformat(),
         "internet_research_enabled": bool(settings.internet_research_enabled),
         "web_research_provider": settings.web_research_provider,
+        "grounding_org_hourly_circuit_limit": org_hourly_circuit_limit(settings),
     }
+
+    circuit_before = check_org_grounding_circuit(client, org_id, settings)
+    report["org_hourly_circuit_before"] = circuit_before
 
     # External query (should run internet when flag on + scope)
     ext = await search_web(
@@ -64,10 +72,27 @@ async def _main() -> int:
         "provider": ext.get("provider"),
         "has_urls": any(r.get("url") for r in (ext.get("results") or [])),
         "error": ext.get("error"),
+        "query_sent": ext.get("query_sent"),
+        "context_stripped": ext.get("context_stripped"),
+        "was_truncated": ext.get("was_truncated"),
+        "circuit_breaker": ext.get("circuit_breaker"),
     }
 
     platform = get_platform_grounding_status(client, settings)
     report["grounding_volume"] = platform
+    report["org_hourly_circuit_after"] = check_org_grounding_circuit(client, org_id, settings)
+
+    org_daily = (
+        client.table("org_research_lookup_daily")
+        .select("lookup_count, usage_date")
+        .eq("org_id", org_id)
+        .order("usage_date", desc=True)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    report["org_research_lookup_daily_latest"] = org_daily
 
     usage = (
         client.table("usage_records")

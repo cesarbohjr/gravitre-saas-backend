@@ -1,0 +1,56 @@
+{
+  "record": "internet_research_pre_go_live_verification",
+  "updated_at": "2026-07-18T00:00:00Z",
+  "deployed_tip": "pending — agent environment lacks prod credentials",
+  "overall_verdict": "NOT RUN — live sequence blocked; code gates added locally",
+  "steps": {
+    "1_circuit_breaker": {
+      "verdict": "PARTIAL — implemented locally, not live-verified",
+      "answer": "Previously alert-only (75% platform daily). Now hard per-org hourly circuit breaker at search_web chokepoint.",
+      "default_limit": 500,
+      "env": "GROUNDING_ORG_HOURLY_CIRCUIT_LIMIT",
+      "migration": "supabase/migrations/20260718130000_internet_research_circuit_breaker.sql",
+      "code": "backend/app/services/grounding_volume_monitor.py check_org_grounding_circuit",
+      "local_evidence": "pytest tests/services/test_grounding_circuit_breaker.py + test_search_web_blocks_when_org_hourly_circuit_open — 47 passed @ agent run"
+    },
+    "2_governance_query_scope": {
+      "verdict": "PARTIAL — explicit tests green locally, not live-verified",
+      "chokepoint": "backend/app/services/internet_research_query.py prepare_internet_research_query",
+      "max_chars": 2000,
+      "local_evidence": "pytest tests/services/test_internet_research_query.py (context strip, explicit Query: line, 2k cap)"
+    },
+    "3_apply_migration_prod": {
+      "verdict": "NOT RUN",
+      "reason": "No prod Supabase/Railway credentials in agent environment"
+    },
+    "4_railway_env_redeploy": {
+      "verdict": "NOT RUN",
+      "reason": "No Railway token / operator env"
+    },
+    "5_four_canonical_checks_live": {
+      "verdict": "NOT RUN",
+      "script": "scripts/smoke-milestone1-live-reverify.py",
+      "reason": "Missing API_PUBLIC_URL, operator JWT, prod Supabase"
+    },
+    "6_smoke_internet_research_live_e2e": {
+      "verdict": "NOT RUN",
+      "script": "scripts/smoke-internet-research-live.py",
+      "reason": "SettingsNotConfiguredError — missing supabase_* and OAUTH_SMOKE_ORG_ID"
+    },
+    "7_stop_early_live": {
+      "verdict": "NOT RUN",
+      "script": "scripts/smoke-milestone1-live-reverify.py (internal-only probe)",
+      "reason": "Same credential gap as step 5"
+    },
+    "8_flip_internet_research_enabled": {
+      "verdict": "NOT RUN — blocked until steps 3–7 PASS with live evidence",
+      "current_flag": "INTERNET_RESEARCH_ENABLED=false (unchanged)",
+      "rollback": "Set INTERNET_RESEARCH_ENABLED=false and redeploy"
+    }
+  },
+  "local_pytest": {
+    "command": "python3 -m pytest tests/services/test_internet_research_query.py tests/services/test_grounding_circuit_breaker.py tests/services/test_web_research.py ... -q",
+    "result": "47 passed",
+    "note": "Local pytest is necessary but not sufficient per program gate"
+  }
+}

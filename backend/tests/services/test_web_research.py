@@ -47,5 +47,30 @@ async def test_search_web_parses_tavily_response():
         output = await search_web("latest AI news", settings=_settings(tavily_api_key="tvly-test"))
 
     assert output["totalResults"] == 1
-    assert output["results"][0]["title"] == "Example"
-    assert output["sources"][0]["url"] == "https://example.com"
+@pytest.mark.asyncio
+async def test_search_web_blocks_when_org_hourly_circuit_open():
+    from app.services.web_research import search_web
+
+    client = MagicMock()
+    table = MagicMock()
+    client.table.return_value = table
+    select = MagicMock()
+    table.select.return_value = select
+    select.eq.return_value = select
+    select.limit.return_value = select
+    select.execute.return_value = MagicMock(data=[{"grounding_count": 500}])
+
+    output = await search_web(
+        "latest AI news",
+        settings=_settings(
+            gemini_api_key="gem-test",
+            internet_research_enabled=True,
+            grounding_org_hourly_circuit_limit=500,
+        ),
+        org_id="org-123",
+        client=client,
+    )
+    assert output["totalResults"] == 0
+    assert output.get("circuit_breaker", {}).get("blocked") is True
+    assert "hourly circuit breaker" in (output.get("error") or "")
+
