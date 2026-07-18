@@ -85,12 +85,17 @@
   "metering_build_authorized": false,
   "metering_sequencing": "named_precondition_on_canvas_only_do_not_build_until_enablement_seriously_considered",
   "pricing_model_decision": {
-    "status": "NOT_DECIDED",
-    "owner": "product",
-    "engineering_vs_pricing_separate": true,
-    "engineering_recommendation": "ai_credits_primitive_no_third_unit",
-    "weaker_option": "flat_per_plan_monthly_inclusion",
-    "likely_answer_when_gate_opens": "included_ai_credits_allotment_per_tier_plus_margin_plus_shared_pool_not_flat_35_month"
+    "status": "DIRECTION_RECORDED_NUMBERS_PENDING_GATE_2",
+    "recorded_at": "2026-07-18",
+    "allotment_mechanism": "plan_tier_included_not_signup_bonus",
+    "rejected_signup_free_credit_pool": true,
+    "tier_direction": {
+      "node": "none_or_minimal_taste",
+      "control": "modest_included_post_volume_estimate",
+      "command": "larger_included",
+      "overage": "general_ai_credits_pool_all_tiers"
+    },
+    "numeric_allotments": "NOT_SET_UNTIL_GATE_2_VOLUME_ESTIMATE"
   },
   "retrieval_layer_program": "separate_closed_does_not_block",
   "program_doc": "docs/delivery/internet-research-governance-google-vertex.md",

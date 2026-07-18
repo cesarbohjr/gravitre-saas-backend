@@ -159,38 +159,39 @@ Grounding costs scale with usage ($35/1k above Google’s 10k/day/account free t
 
 **Engineering recommendation (Decision A — when gate 3 opens):** Extend existing `usage_tracking` / **`ai_credits`** spine; record each grounding call (count + token metadata); map Google cost → credits with margin; wire to Stripe meter. **Do not invent a third customer-facing unit.**
 
-### Pricing model (Decision B — owner, NOT DECIDED)
+### Pricing model (Decision B — direction recorded; numbers pending gate 2)
 
-Separate from the engineering primitive choice. How each plan tier covers research cost is a **product/pricing** decision — not something to default in code.
+Separate from the engineering primitive choice. **Direction recorded 2026-07-18** — specific allotments sized only after gate 2 (volume estimate).
 
-**Weaker option — flat per-plan inclusion (e.g. $35/month baked into tier price):**
+**Rejected — flat per-plan dollar inclusion, signup free-credit pool:**
 
-- Breaks under skewed usage: internal-only customers vs heavy research users (e.g. MSP/CVE/advisory lookups).
-- Light users subsidize heavy users; research features tend toward heavy skew.
-- Margin risk inverted: Google’s $35/1k is overage-tier; a flat fee Gravitree absorbs regardless of volume means one heavy customer can exceed what the fee recovers.
-- Variable cloud cost priced as fixed fee — architecturally mismatched even if simpler at signup.
+- Flat $35/month baked into tier: skewed usage, inverted margin (see prior section).
+- **Signup-triggered free credits** (e.g. “500 free API calls”): second allotment mechanism alongside plan-tier `ai_credits` — overlaps the one-concept rule; not used here.
 
-**Better fit — usage-based `ai_credits`:**
+**Recorded direction — plan-tier included allotment (not signup):**
 
-- Variable Google cost → existing usage-based primitive (included quotas per Node/Control/Command, overage pool, Stripe meter).
-- Matches cost structure underneath.
+Framing: **“how much research is included in what you’re already paying for”** — not a free-trial research pool.
 
-**Middle path — likely recommendation when gate opens (not decided, not built):**
+| Tier | Direction |
+|------|-----------|
+| **Node** | None or very small taste (handful/month) — discoverable, limits exposure on entry tier |
+| **Control** | Modest included allotment — sized post–volume estimate; “included with your plan” |
+| **Command** | Larger allotment — aligned with Command’s broader Intelligence Pack access |
+| **Overage** | General **`ai_credits` pool** on any tier — same as all other usage |
 
-1. **Included allotment per tier** — baseline research/grounding expressed as **`ai_credits`** at documented conversion + margin over $35/1k Google cost (not a hard-coded dollar line).
-2. **Overage** — beyond included allotment debits **general `ai_credits` balance** (same pool as LLM) or existing top-up/overage UX.
-3. **Optional:** research as separate **usage line item in UI** for transparency while still using the **same credit currency**.
+Avoids: first-try hard wall (something at every tier) **and** unbounded free usage before data to size responsibly.
 
-**Owner must decide before build:**
+**Still open until gate 2:** Numeric allotments per tier, conversion rate + margin over Google $35/1k, optional research line item in usage UI (same currency).
 
-1. Included research allotment per tier (Node / Control / Command).
-2. Grounding → `ai_credits` conversion rate and margin over Google cost.
-3. Single shared `ai_credits` pool vs separate research balance (display-only separation is OK).
-4. Boundary behavior at quota (stop / throttle / charge with notice).
+**Owner still must decide before build:**
+
+1. ~~Tier allotment shape~~ — **recorded**; numbers TBD after volume estimate.
+2. Grounding → `ai_credits` conversion rate and margin.
+3. Boundary UX when included allotment exhausted (charge from general pool with notice — align with existing overage).
 
 ### Sequencing
 
-**Do not build metering infrastructure now.** Flag stays off; volume estimate is NOT RUN. Gate 3 is scoped only when seriously considering enablement. **When the gate opens**, the likely pricing answer is **included credits per tier + margin + shared metered pool** — not flat $35/month — but that remains a recommendation until owner decides.
+**Do not build metering infrastructure now.** Flag stays off; volume estimate is NOT RUN. Gate 3 scoped only when seriously considering enablement. Pricing direction is recorded; **committing to specific numbers waits on gate 2**.
 
 ---
 

@@ -129,7 +129,7 @@ Google bills Gravitree **~$35/1k grounding counts/day above 10k free tier per ac
 | Decision | Owner | Status |
 |----------|-------|--------|
 | **A. Engineering / metering primitive** | Engineering (when gate 3 opens) | **Recommendation recorded:** fold grounding into existing **`ai_credits`** — do not invent a third customer-facing unit |
-| **B. Pricing model** | Product / owner | **NOT DECIDED** — how plan tiers cover research cost (flat inclusion vs usage-based vs hybrid) |
+| **B. Pricing model** | Product / owner | **DIRECTION RECORDED** — plan-tier included allotment (not signup bonus); **specific numbers pending gate 2** |
 
 Decision A (which primitive) and Decision B (how plans price it) are related but **not the same**. A flat “$35/month baked into each plan” is a **pricing-model** choice that could still be implemented via included credits — or wrongly implemented as a hard-coded dollar line disconnected from usage.
 
@@ -147,24 +147,33 @@ Decision A (which primitive) and Decision B (how plans price it) are related but
 - Variable Google cost → variable customer metering through a primitive that already exists: plan-tier included quotas, overage via same pool, Stripe Billing Meter when configured.
 - Architecturally coherent: usage-based cost through usage-based billing.
 
-**Middle path (likely answer when gate 3 opens — recommendation only, not decided)**
+**Middle path — recorded direction (numbers pending volume estimate)**
 
-Combines tier generosity with usage alignment without a third unit:
+Tie research to **plan tier**, not signup. This is **“how much research is included in what you’re already paying for”** — not a separate “free trial of research.” One allotment concept (plan-tier included amount), not two overlapping ones (signup bonus + plan tier).
 
-1. Each plan tier (Node / Control / Command) gets a **baseline included allotment** of research/grounding usage, expressed as **`ai_credits`** at a documented conversion rate **with margin** over Google’s $35/1k grounding cost (+ token costs). This is the “included research” idea done as **included credits**, consistent with how the rest of the platform meters — not a hard-coded dollar line item.
-2. Usage **beyond** the included allotment draws from the customer’s **general `ai_credits` balance** (same pool as LLM usage), or triggers top-up / overage flow — consistent with whatever `ai_credits` already does at quota today.
-3. Reuses existing Stripe metering; avoids overcharging light users and undercharging heavy ones; no third customer-facing unit.
+| Tier | Included research allotment (direction) |
+|------|----------------------------------------|
+| **Node** | **None or very small taste** (e.g. handful of queries/month) — discoverable, not a real research budget; limits exposure on least-committed customers |
+| **Control** | **Modest real allotment** — sized after volume estimate; framed as **“included with your plan,”** not “free credits” |
+| **Command** | **Larger allotment** — consistent with Command already including the most Intelligence Pack access |
+| **Overage (any tier)** | Debits **general `ai_credits` pool** — same mechanism as everything else |
 
-**Optional product exception:** Keep research visible as its own **line item in UI/usage reports** for transparency while still debiting the **same underlying `ai_credits` currency** — distinct display, shared pool.
+**Why not signup-triggered free credits:** A separate “500 free API calls at signup” pool would be a **second allotment mechanism** alongside plan-tier `ai_credits` — the third-thing problem the engineering recommendation avoids. Exactly one allotment concept: plan-tier included amount.
 
-#### Owner decisions required (before metering is built)
+**What this avoids:** (1) hard wall on first try — something included at every tier; (2) unbounded free usage before volume data exists to size responsibly.
 
-1. **Included research allotment per tier** — e.g. Node none/limited, Control X, Command Y (in `ai_credits` terms).
+**Still open (cannot size without gate 2):** Specific credit counts per tier, grounding → `ai_credits` conversion rate + margin, optional UI line-item separation. Guessing numbers now risks stingy (defeats “included”) or generous (recreates unbounded-cost risk).
+
+**Honest answer to “free or billed immediately”:** Plan-tier included allotment, **sized from real data once gate 2 runs**, overage through existing `ai_credits` pool from day one, **no** separate unconditional free-credit grant at signup.
+
+#### Owner decisions still required (before metering is built)
+
+1. ~~**Included research allotment per tier**~~ — **direction recorded** (Node minimal / Control modest / Command larger); **numeric values pending gate 2**.
 2. **Conversion rate + margin** — grounding count (+ associated tokens) → `ai_credits`, with margin over Google’s verified $35/1k overage rate.
-3. **Single pool vs separate balance** — default lean: **reuse existing `ai_credits` pool** unless product wants a separate research balance for transparency (same currency, optional separate reporting).
-4. **Boundary behavior** — at included allotment / platform limits: stop, throttle, or charge from general balance with transparent notice (align with existing overage UX).
+3. **Single pool** — **direction recorded:** reuse **general `ai_credits` pool** for overage; optional separate **UI line item**, same currency.
+4. **Boundary behavior** — at included allotment exhausted: charge from general balance with transparent notice (align with existing overage UX).
 
-**Metering build status:** **NOT STARTED** — Gate 3 remains a documented precondition. When seriously considering enablement (after gate 2 volume estimate), the **likely** pricing answer is: **included `ai_credits` allotment per tier + margin + shared Stripe-metered pool** — not a flat $35/month line item. That is a **recommendation for when the gate opens**, not authorization to build now against an unverified volume estimate.
+**Metering build status:** **NOT STARTED** — direction recorded; numeric sizing and implementation wait on **gate 2** (volume estimate), then **gate 3** build.
 
 Full analysis: [`internet-research-governance-google-vertex.md`](./internet-research-governance-google-vertex.md)  
 Artifacts: [`internet-research-governance-latest.json`](./internet-research-governance-latest.json), [`internet-research-governance-closure.json`](./internet-research-governance-closure.json)

@@ -84,25 +84,30 @@
     "boundary_behavior_at_quota_stop_throttle_or_charge_with_notice"
   ],
   "pricing_model_decision": {
-    "status": "NOT_DECIDED",
+    "status": "DIRECTION_RECORDED_NUMBERS_PENDING_GATE_2",
     "owner": "product",
+    "recorded_at": "2026-07-18",
     "separate_from_engineering_primitive": true,
     "engineering_recommendation": "fold_grounding_into_ai_credits_no_third_unit",
-    "weaker_option": "flat_per_plan_monthly_surcharge_e_g_35_usd_baked_in",
-    "weaker_option_risks": [
-      "skewed_usage_light_subsidizes_heavy",
-      "margin_inverted_heavy_customer_can_exceed_flat_fee",
-      "variable_cost_priced_as_fixed_fee"
+    "allotment_mechanism": "plan_tier_included_only_not_signup_bonus",
+    "rejected": [
+      "flat_per_plan_monthly_surcharge_e_g_35_usd_baked_in",
+      "signup_triggered_free_credit_pool"
     ],
-    "preferred_fit": "usage_based_ai_credits_matches_existing_stripe_meter_stack",
-    "middle_path_recommendation_when_gate_opens_not_decided": {
-      "included_allotment_per_tier_in_ai_credits_with_margin": true,
-      "overage_from_general_ai_credits_pool": true,
-      "optional_separate_ui_line_item_same_currency": true,
-      "not_flat_35_usd_month_line_item": true
+    "tier_direction": {
+      "node": "none_or_very_small_taste_handful_per_month_discoverability_only",
+      "control": "modest_included_allotment_sized_after_volume_estimate",
+      "command": "larger_included_allotment_aligned_with_intelligence_pack_access",
+      "overage_any_tier": "general_ai_credits_pool"
     },
+    "framing": "included_in_plan_not_free_trial_research",
+    "numeric_allotments_status": "NOT_SET_PENDING_VOLUME_ESTIMATE_GATE_2",
+    "still_open": [
+      "grounding_to_ai_credits_conversion_rate_and_margin",
+      "optional_research_line_item_in_usage_ui"
+    ],
     "build_authorized": false,
-    "note": "Recommendation for when gate 3 opens; requires gate 2 volume estimate first"
+    "note": "Direction recorded; specific numbers and metering build wait on gate 2 volume estimate"
   },
   "pricing": {
     "list_price_verified": true,
