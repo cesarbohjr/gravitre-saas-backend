@@ -790,7 +790,21 @@
   "latency_delta": {
     "direction": "INCONCLUSIVE",
     "latency_guardrail_pass": false,
-    "note": "No pre-RM latency baseline on same prod tip. Required: smoke-milestone2-latency-ab.py --full-ab @ pre-RM SHA 09e57595."
+    "closure": "closed_by_decision_2026-07-18",
+    "note": "Pre-RM before/after A/B not run; accepted named gap per docs/delivery/adaptive-retrieval-layer-program.md. Post-only latencies are context only, not a performance verdict."
+  },
+  "closure": {
+    "status": "INCONCLUSIVE",
+    "closed_at": "2026-07-18T08:30:00+00:00",
+    "closed_by_decision": true,
+    "not_pursued_further": true,
+    "program_doc": "docs/delivery/adaptive-retrieval-layer-program.md",
+    "closure_artifact": "docs/delivery/milestone2-performance-audit-closure.json"
+  },
+  "latency_summary_context_only": {
+    "p50_ms": 21752,
+    "p95_ms": 25930,
+    "warning": "NOT a valid pass/fail signal without pre-RM baseline — context only"
   },
   "token_comparison": {
     "before_rm_total_tokens": 0,
@@ -799,5 +813,5 @@
     "after_rm_window": "2026-07-18T05:05:29+00:00 .. 2026-07-18T07:33:47.343533+00:00",
     "note": "Org-wide aggregates \u2014 not isolated to audit queries. Use for trend only; live query latencies are the primary guardrail signal."
   },
-  "verdict": "INCONCLUSIVE — latency before/after not verified (run milestone2-latency-ab workflow)"
+  "verdict": "INCONCLUSIVE — closed by decision, not pursued further"
 }

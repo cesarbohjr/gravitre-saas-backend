@@ -1,0 +1,53 @@
+{
+  "record": "milestone2_performance_audit_closure",
+  "closed_at": "2026-07-18T08:30:00+00:00",
+  "status": "INCONCLUSIVE",
+  "closure": "closed_by_decision_not_pursued_further",
+  "decision_by": "program_owner",
+  "decision_note": "Latency before/after A/B on prod will not be run as part of this program. Accepted named gap, not an open audit loop.",
+  "milestone1_unchanged": "PASS — live-verified @ prod 9d1ae051 (docs/delivery/milestone1-live-reverify-latest.json, CI run 29632954299)",
+  "guardrails_measured": {
+    "internet_search_on_internal_queries": {
+      "result": "PASS",
+      "evidence": "internet_ran false on all internal probes; INTERNET_RESEARCH_ENABLED off",
+      "artifact": "docs/delivery/milestone2-performance-audit-latest.json"
+    },
+    "no_write_tool_leakage": {
+      "result": "PASS",
+      "evidence": "no_write_tools true on all five internal read-only probes"
+    },
+    "all_queries_http_200": {
+      "result": "PASS",
+      "prod_git_sha": "9d1ae05105f066b07bda00d575204afb4cd91f95"
+    }
+  },
+  "guardrails_not_measured": {
+    "latency_before_after_delta": {
+      "result": "NOT_MEASURED",
+      "reason": "Pre-RM prod A/B never executed; decision not to pursue",
+      "tooling_ready": [
+        "scripts/smoke-milestone2-latency-ab.py",
+        "scripts/railway_prod_deploy.py",
+        "scripts/run-milestone2-option-b.sh",
+        ".github/workflows/milestone2-latency-ab.yml",
+        "scripts/smoke-milestone2-performance-audit.py"
+      ],
+      "pre_rm_sha": "09e57595"
+    },
+    "token_cache_delta": {
+      "result": "NOT_MEASURED",
+      "reason": "Same as latency; task_type filter corrected in audit script for future runs"
+    }
+  },
+  "context_only_not_verdict": {
+    "post_only_latency_ms": {
+      "p50": 21752,
+      "p95": 25930,
+      "prod_git_sha": "9d1ae05105f066b07bda00d575204afb4cd91f95",
+      "warning": "Do not cite as performance PASS/FAIL — no pre-RM baseline on same queries"
+    }
+  },
+  "follow_up_if_prod_complaint": "Run smoke-milestone2-latency-ab.py --full-ab with RAILWAY_TOKEN + Supabase smoke secrets",
+  "program_doc": "docs/delivery/adaptive-retrieval-layer-program.md",
+  "verdict": "INCONCLUSIVE — closed by decision, not pursued further"
+}
