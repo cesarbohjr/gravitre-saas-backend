@@ -46,6 +46,42 @@
     "no_training_typically": "enterprise_upsell",
     "zero_retention_typically": "enterprise_upsell"
   },
+  "enablement_gates": {
+    "all_required_before_flag_on_for_customers": true,
+    "gates": [
+      {
+        "id": "governance_sign_off",
+        "status": "CLOSED",
+        "note": "Governance track closed 2026-07-18; close does not authorize flag flip"
+      },
+      {
+        "id": "volume_cost_forecast",
+        "status": "NOT_RUN",
+        "note": "Owner forecast of daily grounding counts + token spend"
+      },
+      {
+        "id": "metering_credit_passthrough_with_margin",
+        "status": "NOT_BUILT",
+        "note": "Named precondition; do not build until seriously considering enablement"
+      }
+    ]
+  },
+  "metering_audit_2026_07_18": {
+    "usage_tracking_live": true,
+    "metric_types": ["ai_credits", "workflow_runs", "operator_usage", "rag_usage"],
+    "ai_credits_stripe_meter_live_when_configured": true,
+    "plan_tiers": ["node", "control", "command"],
+    "web_research_records_usage": false,
+    "grounding_surcharge_in_ai_credits": false,
+    "intelligence_usage_logs_built": false,
+    "intelligence_usage_logs_scope": "pack_specific_proposed_not_in_repo",
+    "preferred_extension_path": "extend_usage_tracking_ai_credits_with_grounding_conversion_and_margin"
+  },
+  "metering_product_decisions_open": [
+    "customer_facing_unit_align_with_ai_credits_if_possible",
+    "margin_over_google_cost",
+    "boundary_behavior_at_quota_stop_throttle_or_charge_with_notice"
+  ],
   "pricing": {
     "list_price_verified": true,
     "verified_at": "2026-07-18",
@@ -62,7 +98,8 @@
     "volume_cost_model_status": "NOT_RUN"
   },
   "next_when_authorized": [
-    "Owner volume-based cost estimate",
+    "Owner volume-based cost estimate (gate 2)",
+    "Scope and build metering pass-through with margin (gate 3)",
     "Named owner written sign-off",
     "Integrate Grounding with Google Search provider",
     "Prod smoke before INTERNET_RESEARCH_ENABLED=true"

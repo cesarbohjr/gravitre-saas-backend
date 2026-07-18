@@ -136,11 +136,38 @@ The due-diligence question for any vendor is unchanged:
 | **Perplexity Sonar** | Separate review needed | Paid API | Not integrated |
 | **Google Cloud — Grounding with Google Search** | **Stronger baseline (no training on paid standard)**; 30-day debug retention; zero-retention via DPA add-on | Usage-based; **$35/1k grounding counts/day above 10k free tier** (+ model tokens) | **Recommended Tavily replacement** — governance closed; enablement not authorized |
 
-**Recommendation:** Treat **Grounding with Google Search** (Grounded Generation API) as the **likely replacement** for Tavily — **not** Agent Search data-store query SKUs. Better governance default on standard paid terms, without Tavily Enterprise pricing — subject to:
+**Recommendation:** Treat **Grounding with Google Search** (Grounded Generation API) as the **likely replacement** for Tavily — **not** Agent Search data-store query SKUs. Better governance default on standard paid terms, without Tavily Enterprise pricing — subject to **all three enablement gates** (governance, volume, metering):
 
-- [ ] Named owner written sign-off at enablement time (STA-312 bar — this governance close ≠ authorization to turn flag on).
+- [x] Governance track closed (2026-07-18) — **not** the same as flipping the flag.
 - [ ] **Volume-based cost estimate** at enablement time (**NOT RUN** in this closure).
+- [ ] **Metering / credit pass-through with margin** tied to existing plan-tier usage infrastructure (**NOT BUILT** — named precondition; see § below).
 - [ ] Integration + prod smoke before `INTERNET_RESEARCH_ENABLED=true`.
+
+---
+
+## Metering — separate enablement gate (NOT BUILT)
+
+Grounding costs scale with usage ($35/1k above Google’s 10k/day/account free tier, plus Gemini tokens). **“Governance says this is safe” ≠ “we will not lose money on it.”** Internet research must not ship to real customers without a pass-through mechanism.
+
+### What exists today (repo audit 2026-07-18)
+
+| Primitive | Status | Internet research? |
+|-----------|--------|--------------------|
+| `usage_tracking` — `ai_credits`, `workflow_runs`, `operator_usage`, `rag_usage` | **Live** (`backend/app/billing/service.py`) | **No** — `web_research.py` does not call `record_usage` |
+| `ai_credits` on Node / Control / Command + Stripe Billing Meter | **Live** when metered price IDs configured (`stripe_metering.py`) | **Partial** — LLM tokens only; **grounding surcharge is a separate Google line item** |
+| `intelligence_usage_logs` (Intelligence Pack per-request logging) | **Not built** — scoped in Phase 0 MSP docs, **no table in repo** | Pack-specific; would need extension for non-pack grounding calls |
+
+**Engineering path (when authorized):** Extend existing `usage_tracking` / `ai_credits` spine (preferred — one customer-facing unit) or add a dedicated metric; record each grounding call (count + token metadata); map Google cost → customer credits **with margin**; wire to Stripe meter if overages bill through existing plans.
+
+### Product decisions (owner — not engineering)
+
+1. **Customer-facing unit** — align with existing **`ai_credits`** on plan tiers if possible; avoid a third metering concept unless product requires it.
+2. **Margin** — customer price = Google cost + margin (unless deliberate pass-through positioning).
+3. **Boundary behavior** — at quota / free-tier limits: stop, throttle, or charge credits with transparent overage notice?
+
+### Sequencing
+
+**Do not build metering infrastructure now.** Flag stays off; volume estimate is NOT RUN. Metering is a **named precondition** on the canvas, to be scoped and built only when seriously considering enablement — consistent with this program’s discipline about not building ahead of need.
 
 ---
 
@@ -153,10 +180,11 @@ The due-diligence question for any vendor is unchanged:
 | Training / retention posture | Documented; no-training ≠ zero-retention caveat preserved |
 | Tavily-equivalent list pricing | **VERIFIED** @ 2026-07-18 from Google pricing page (see §4) |
 | Gravitree volume cost model | **NOT RUN** |
+| Metering / credit pass-through | **NOT BUILT** — named enablement precondition (see Metering section) |
 | `INTERNET_RESEARCH_ENABLED` | **OFF** |
 | Retrieval-layer program | **Separate; closed** — does not block this governance close |
 
-**Verdict:** Governance track **closed**. Enablement remains a **future go/no-go** when owner has volume estimate + integration ready.
+**Verdict:** Governance track **closed**. Enablement requires **three gates:** (1) governance ✓, (2) volume estimate, (3) metering with margin — only (1) is done.
 
 ---
 

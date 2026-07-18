@@ -69,11 +69,28 @@
       "note": "List price verified; owner must forecast daily internet_research/search_web volume before enablement go/no-go. Qualitative: early prod likely under 10k grounding counts/day → $0 grounding surcharge but token costs still apply."
     }
   },
+  "enablement_gates": {
+    "all_required_before_customers": true,
+    "governance_sign_off": "CLOSED",
+    "volume_cost_forecast": "NOT_RUN",
+    "metering_credit_passthrough_with_margin": "NOT_BUILT"
+  },
+  "metering_audit_2026_07_18": {
+    "usage_tracking_live": true,
+    "ai_credits_and_stripe_meter": "live_when_metered_price_ids_configured",
+    "web_research_records_usage": false,
+    "intelligence_usage_logs": "not_built_pack_specific_proposal",
+    "grounding_surcharge_separate_from_token_ai_credits": true
+  },
+  "metering_build_authorized": false,
+  "metering_sequencing": "named_precondition_on_canvas_only_do_not_build_until_enablement_seriously_considered",
   "retrieval_layer_program": "separate_closed_does_not_block",
   "program_doc": "docs/delivery/internet-research-governance-google-vertex.md",
   "next_when_authorized": [
     "Owner volume-based cost estimate",
-    "Named owner written sign-off (STA-312 bar)",
+    "Metering/credit pass-through with margin (extend usage_tracking / ai_credits preferred)",
+    "Product decisions: unit, margin, boundary behavior",
+    "Named owner written sign-off",
     "Integrate Grounding with Google Search provider in web_research.py",
     "Prod smoke before INTERNET_RESEARCH_ENABLED=true"
   ]

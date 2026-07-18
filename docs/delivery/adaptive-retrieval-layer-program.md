@@ -96,10 +96,46 @@ Standard Tavily API tier: governance insufficient (training/retention); Enterpri
 - **List pricing (verified 2026-07-18):** $0/1k for first **10k grounding counts/day/account**; **$35/1k** above that (+ Gemini tokens). Source: [Google pricing — Example #2](https://cloud.google.com/generative-ai-app-builder/pricing).
 - **Volume cost model at Gravitree scale:** **NOT RUN** — owner go/no-go still required before enablement.
 
+**Current code:** Tavily-only (`backend/app/services/web_research.py`). No integration change until all enablement gates below are satisfied.
+
+### Enablement go/no-go — three separate gates
+
+Governance (“safe to use”) and economics (“safe to offer”) are **different** decisions. **`INTERNET_RESEARCH_ENABLED` must not go on for real customers until all three are satisfied:**
+
+| # | Gate | Status | Notes |
+|---|------|--------|-------|
+| 1 | **Governance sign-off** | **CLOSED** | Grounding with Google Search recommended; no-training ≠ zero-retention caveat preserved. This close ≠ authorization to flip the flag. |
+| 2 | **Volume estimate for cost forecasting** | **NOT RUN** | Owner must forecast daily grounding counts + token spend before go/no-go. |
+| 3 | **Metering / credit pass-through with margin** | **NOT BUILT — named precondition** | Grounding + token costs scale with customer usage; must not be absorbed on Gravitree’s books without a revenue lever. See below. |
+
+**Sequencing (2026-07-18):** Gate 3 is a **real, named blocker** on the canvas but **not built now** — same discipline as not building capability before it is needed. Pick up metering work only when seriously considering flipping the flag (after gate 2).
+
+#### Why metering is required (not optional)
+
+Google bills Gravitree **~$35/1k grounding counts/day above 10k free tier per account**, plus **Gemini tokens** on top. If internet research becomes popular, Gravitree’s cloud bill scales linearly with customer demand. Without pass-through (with margin), that is unbounded demand-driven cost with no corresponding revenue — fine in a pilot, problematic at scale.
+
+#### Existing usage-billing primitives (repo audit, 2026-07-18)
+
+| Mechanism | Status | Covers internet research today? |
+|-----------|--------|----------------------------------|
+| **`usage_tracking`** (`ai_credits`, `workflow_runs`, `operator_usage`, `rag_usage`) | **Live** — `backend/app/billing/service.py`, migrations under `supabase/migrations/` | **No** — `web_research.py` records nothing; no metric for grounding surcharges |
+| **`ai_credits` + Node/Control/Command plans** | **Live** — token-derived credits from `model_calls`; included quotas per plan; Stripe Billing Meter reporting via `backend/app/billing/stripe_metering.py` when metered price IDs configured | **Partial** — grounded-generation **Gemini tokens** might map to existing `ai_credits`; **Google Search grounding surcharge** ($35/1k above free tier) is a **separate cost line** not represented in token math |
+| **`intelligence_usage_logs`** (Intelligence Pack per-request cost logging) | **Not built** — proposed in Phase 0 MSP docs; **absent from repo** (`docs/delivery/phase0-executive-sales-msp-intelligence-packs.md`) | N/A — pack-specific future table; would need **extension or parallel path** for non-pack actions like internet research |
+
+**Conclusion:** Gravitree has a **general org-level metering spine** (`usage_tracking` → Stripe meter for `ai_credits`), but **nothing today meters or bills internet-research / grounding calls**. Enabling the flag for customers requires extending that spine (or an equivalent) — not just adding a Google provider.
+
+#### Product decisions still open (not engineering)
+
+These must be decided **before** metering is built; tie to existing plan-tier language where possible — do not invent a third customer-facing unit if **`ai_credits`** can absorb grounding cost with a conversion rule:
+
+1. **Customer-facing unit** — “AI credits,” “research credits,” “queries,” etc. Default lean: extend **`ai_credits`** with a documented grounding→credit conversion unless product wants a separate line item.
+2. **Margin** — Google’s $35/1k + tokens is Gravitree’s cost; customer price should include margin unless deliberate cost-pass-through positioning.
+3. **Free-tier boundary behavior** — At Gravitree’s 10k/day Google free tier (platform account) vs per-org quotas: does research **stop**, **throttle**, or **charge credits transparently** with upfront overage notice?
+
+**Metering build status:** **NOT STARTED** — documented precondition only; no billing infrastructure work authorized while flag stays off and volume estimate is NOT RUN.
+
 Full analysis: [`internet-research-governance-google-vertex.md`](./internet-research-governance-google-vertex.md)  
 Artifacts: [`internet-research-governance-latest.json`](./internet-research-governance-latest.json), [`internet-research-governance-closure.json`](./internet-research-governance-closure.json)
-
-**Current code:** Tavily-only (`backend/app/services/web_research.py`). No integration change until owner sign-off + volume estimate.
 
 ---
 
@@ -122,5 +158,5 @@ Nothing is broken. One specific performance question (RM latency delta on intern
 |------|--------|
 | Milestone 1 — Research Manager + cascade | **PASS** (live-verified) |
 | Milestone 2 — Performance audit | **INCONCLUSIVE, closed by decision** |
-| Internet research enablement | **OFF** — Google Vertex/grounding recommended; pricing + sign-off pending |
+| Internet research enablement | **OFF** — governance **CLOSED**; volume estimate + metering **NOT RUN / NOT BUILT** |
 | Retrieval-layer program | **Closed** |
