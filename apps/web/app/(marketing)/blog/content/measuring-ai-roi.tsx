@@ -12,7 +12,7 @@ export const measuringAiRoiPost: BlogPost = {
     "Department ROI is where AI marketing goes to die. Here is what Gravitre's dashboards and intelligence packs actually count, what is estimate-only, and what we refuse to print until ground-truth measurement ships.",
   category: "Product",
   author: GRAVITRE_BLOG_AUTHOR,
-  ...createBlogDates("2026-07-17"),
+  ...createBlogDates("2026-07-17", "2026-07-18"),
   readTime: "8 min read",
   heroImage: "",
   heroGradient: "from-slate-50 via-emerald-50/40 to-zinc-100",
@@ -33,7 +33,7 @@ export const measuringAiRoiPost: BlogPost = {
     "Marketplace catalog hours-saved figures are publisher estimates, explicitly labeled estimate-only per OUTCOME_ESTIMATE_LABELING — not measured time-on-task.",
     "MSP Intelligence Pack tracks NVD/CVE and CISA KEV signals when invoked; it does not compute PSA ticket resolution time.",
     "Sales prospecting packs document Apollo BYO plan limits honestly; discovery search may 403 on free tiers while list create paths work.",
-    "Brief-style before/after hour or minute savings (40→10 hours, 30→20 minutes) have no customer pilot backing in this repo and must not be published as measured results without Cesar confirming real data.",
+    "Gravitre has no paying customers yet, so before/after hour or minute savings cannot be published as measured results. Catalog and operational metrics only until customer ground-truth data exists.",
   ],
   faqs: [
     {
@@ -66,9 +66,9 @@ export const measuringAiRoiPost: BlogPost = {
         Gravitre sells automation with governance. That same discipline applies to metrics: we separate operational telemetry, publisher estimates, and business outcomes we have not measured yet. This post maps department-level claims to what is live in code, what is partial, and what is not built. It deliberately omits before/after hour or minute savings unless and until real customer or pilot data exists to support them.
       </p>
 
-      <h2>Open question for operators (before you trust any vendor’s ratios)</h2>
+      <h2>No customer before/after numbers (by design, for now)</h2>
       <p>
-        Brief-style examples like &ldquo;40 hours → 10 hours&rdquo; or &ldquo;30 minutes → 20 minutes&rdquo; read as illustrations, not measured Gravitre customer outcomes. We searched delivery artifacts, catalog metadata, and production telemetry hooks. <strong>No backing data exists in this repository.</strong> If you have pilot numbers, name the study before we ever print them on the marketing site. Until then, this post uses qualitative, mechanism-level framing only.
+        Brief-style examples like &ldquo;40 hours → 10 hours&rdquo; or &ldquo;30 minutes → 20 minutes&rdquo; read as illustrations, not measured outcomes. Gravitre does not have paying customers yet, so we have no pilot or customer study to cite. We searched delivery artifacts and product telemetry: operational counts and labeled estimates exist; business before/after ROI does not. This post stays qualitative on outcomes and precise on what the platform actually counts.
       </p>
 
       <h2>Three metric classes we actually use</h2>

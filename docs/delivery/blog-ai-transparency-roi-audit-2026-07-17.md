@@ -24,9 +24,11 @@ Phase 0/1 findings for customer-facing copy. Status: **VERIFIED** = shippable as
 | 11 | Support KPIs (health scores, Zendesk metrics) | **PARTIAL** | Customer Success pack workflows list Zendesk tickets / HubSpot deals (`seed_catalog.py`). **STA-124 integration health score ≠ account health.** `churn_risk_scorer` is advisory ML, not a CS dashboard KPI. |
 | 12 | Executive KPIs (decision speed, reporting effort) | **PARTIAL** | Executive Intelligence Pack: macro/regulatory signal ingestion + advisory platform scorecard (`executive_intelligence_scoring_service.py`). Intelligence Reports ROI tab shows **"—"** for hours saved, revenue, cost (`intelligence/reports/page.tsx:93–95`). Weekly digest = workflow scaffold, not measured rollup. |
 
-## Numeric examples flag (awaiting Cesar)
+## Numeric examples flag — CLOSED (2026-07-18)
 
-Brief placeholders ("40 hours → 10 hours", "20 hours → 5 hours", "30 min → 20 min") have **no** backing in code, delivery JSON, or customer pilot data in this repo. Pricing testimonial "2 days → 20 minutes" exists but is gated off (`SHOW_MARKETING_TESTIMONIALS = false`). **Do not publish as measured outcomes** until Cesar confirms real customer/pilot data.
+**Cesar confirmation:** no customers yet. Therefore no customer or pilot before/after data exists to support brief placeholders ("40 hours → 10 hours", "20 hours → 5 hours", "30 min → 20 min") or similar ratios.
+
+Brief placeholders have **no** backing in code, delivery JSON, or customer data. Pricing testimonial "2 days → 20 minutes" exists but is gated off (`SHOW_MARKETING_TESTIMONIALS = false`). **Policy:** do not publish before/after outcome numbers as measured Gravitre results until paying customers exist and STA-289 (or equivalent) records ground-truth measurement.
 
 ## Cut from brief (not verified)
 
