@@ -29,6 +29,7 @@ from httpx import ASGITransport, AsyncClient
 REPO = Path(__file__).resolve().parent.parent
 BACKEND = REPO / "backend"
 sys.path.insert(0, str(BACKEND))
+sys.path.insert(0, str(REPO))
 
 ORG_DEFAULT = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
 PROD_DEFAULT = "https://gravitre-saas-backend-production.up.railway.app"
@@ -256,7 +257,7 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any]:
     settings = get_settings()
     client = get_supabase_client(settings)
     org_id = (args.org_id or env.get("OAUTH_SMOKE_ORG_ID") or ORG_DEFAULT).strip()
-    from scripts._smoke_auth import resolve_smoke_actor_and_email
+    from scripts.smoke_auth import resolve_smoke_actor_and_email
 
     actor, email = resolve_smoke_actor_and_email(client, org_id=org_id, env=env)
     token = _mint_token(env, actor, email)

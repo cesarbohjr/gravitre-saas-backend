@@ -19,7 +19,7 @@ on:
       - "backend/app/services/unified_retrieval_service.py"
       - "scripts/smoke-milestone1-live-reverify.py"
       - "scripts/smoke-retrieval-ab-live.py"
-      - "scripts/_smoke_auth.py"
+      - "scripts/smoke_auth.py"
       - "scripts/smoke-routing-wave-live.py"
       - "scripts/smoke-research-cascade-prod.py"
       - "scripts/smoke-wave67-spotcheck.py"

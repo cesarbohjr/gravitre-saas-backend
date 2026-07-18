@@ -247,15 +247,9 @@ async def main() -> int:
 
     settings = get_settings()
     client = get_supabase_client(settings)
-    actor = os.environ.get("OAUTH_SMOKE_USER_ID") or (
-        client.table("organization_members")
-        .select("user_id")
-        .eq("org_id", ORG)
-        .limit(1)
-        .execute()
-        .data[0]["user_id"]
-    )
-    email = (client.auth.admin.get_user_by_id(actor).user.email) or f"{actor}@gravitre.local"
+    from scripts.smoke_auth import resolve_smoke_actor_and_email
+
+    actor, email = resolve_smoke_actor_and_email(client, org_id=ORG, env=dict(os.environ))
     url = os.environ["SUPABASE_URL"].rstrip("/")
     now = int(time.time())
     tok = jwt.encode(

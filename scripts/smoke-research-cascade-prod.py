@@ -88,12 +88,12 @@ def _parse_sse(raw: str) -> list[dict[str, Any]]:
 def _cascade_from_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for ev in events:
-        if str(ev.get("type") or "") != "data-intelligence":
-            continue
-        data = ev.get("data") if isinstance(ev.get("data"), dict) else {}
-        cascade = data.get("researchCascade") or data.get("research_cascade")
-        if isinstance(cascade, dict):
-            rows.append(cascade)
+        for container in (ev, ev.get("data") if isinstance(ev.get("data"), dict) else {}):
+            if not isinstance(container, dict):
+                continue
+            cascade = container.get("researchCascade") or container.get("research_cascade")
+            if isinstance(cascade, dict):
+                rows.append(cascade)
     return rows
 
 
@@ -179,7 +179,7 @@ def run_smoke(args: argparse.Namespace) -> dict[str, Any]:
 
     from supabase import create_client
 
-    from scripts._smoke_auth import resolve_smoke_actor_and_email
+    from scripts.smoke_auth import resolve_smoke_actor_and_email
 
     client = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
     org_id = (args.org_id or env.get("OAUTH_SMOKE_ORG_ID") or ORG_DEFAULT).strip()

@@ -36,6 +36,7 @@ from dotenv import dotenv_values
 REPO = Path(__file__).resolve().parent.parent
 BACKEND = REPO / "backend"
 sys.path.insert(0, str(BACKEND))
+sys.path.insert(0, str(REPO))
 
 API_BASE = os.environ.get("BACKEND_URL", "https://api.gravitre.app").rstrip("/")
 ENV_NAME = "production"
@@ -454,7 +455,7 @@ def main() -> int:
 
     client = _supabase(env)
     org_id = (env.get("OAUTH_SMOKE_ORG_ID") or env.get("SMOKE_ORG_ID") or SMOKE_ORG).strip()
-    from scripts._smoke_auth import resolve_smoke_actor_and_email
+    from scripts.smoke_auth import resolve_smoke_actor_and_email
 
     actor, email = resolve_smoke_actor_and_email(client, org_id=org_id, env=env)
     token = _mint_token(env, actor, email)

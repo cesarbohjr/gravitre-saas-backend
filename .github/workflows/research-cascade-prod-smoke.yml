@@ -11,7 +11,7 @@ on:
     paths:
       - "scripts/smoke-research-cascade-prod.py"
       - "scripts/smoke-retrieval-ab-live.py"
-      - "scripts/_smoke_auth.py"
+      - "scripts/smoke_auth.py"
       - ".github/workflows/research-cascade-prod-smoke.yml"
       - "backend/app/services/adaptive_research_cascade.py"
       - "backend/app/services/research_action_bridge.py"

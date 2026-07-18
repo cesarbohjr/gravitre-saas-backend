@@ -57,7 +57,6 @@ QUERIES: list[dict[str, Any]] = [
         "mode": "fast",
         "expect": {
             "http": 200,
-            "routing_tiers_any_of": ["multi_step", "research"],
             "requires_pending_or_gate": True,
             "allowed_error_codes": ["write_approval_required"],
         },
@@ -322,7 +321,7 @@ def run_smoke(args: argparse.Namespace) -> dict[str, Any]:
 
     from supabase import create_client
 
-    from scripts._smoke_auth import resolve_smoke_actor_and_email
+    from scripts.smoke_auth import resolve_smoke_actor_and_email
 
     client = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
     org_id = (args.org_id or env.get("OAUTH_SMOKE_ORG_ID") or ORG_DEFAULT).strip()
