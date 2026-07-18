@@ -568,9 +568,11 @@ function FeatureVisual({ type }: { type: string }) {
 export function FeaturesLegacyContent({
   section = "all",
   showHero = true,
+  showTail = true,
 }: {
   section?: FeaturesSectionId | "all"
   showHero?: boolean
+  showTail?: boolean
 }) {
   return (
     <div className="relative overflow-hidden bg-white">
@@ -1004,19 +1006,19 @@ export function FeaturesLegacyContent({
               { 
                 icon: Zap, 
                 title: "Accelerated execution", 
-                desc: "AI agents work around the clock, completing routine tasks faster than manual work when integrations are connected",
+                desc: "Agents run routine work around the clock once your tools are connected.",
                 color: "emerald"
               },
               { 
                 icon: Shield, 
                 title: "Full control", 
-                desc: "Asks before it acts, shows its work, and never guesses silently — approvals, audit trails, and labeled assumptions",
+                desc: "Asks before it acts, shows its work, and never guesses silently.",
                 color: "blue"
               },
               { 
                 icon: BarChart3, 
                 title: "Honest metrics", 
-                desc: "Live activity counts, labeled estimates, and open gaps where dollar ROI is not measured yet — same three-tier reporting as our blog",
+                desc: "Live counts and labeled estimates — with open gaps named, not faked.",
                 color: "purple"
               },
             ].map((item, i) => (
@@ -1082,8 +1084,8 @@ export function FeaturesLegacyContent({
                 </div>
                 <h3 className="text-3xl font-bold text-zinc-900 mb-4">Natural language command center</h3>
                 <p className="text-zinc-600 mb-6 leading-relaxed text-lg">
-                  Talk to your AI workforce like you would a colleague. Ask questions, request analysis, 
-                  trigger workflows, and get instant responses - all through natural conversation.
+                  Talk to your AI workforce like a colleague — ask, analyze, and trigger
+                  workflows through natural conversation.
                 </p>
                 <ul className="space-y-3">
                   {['Conversational AI interface', 'Context-aware responses', 'Multi-agent workflows (when configured)', 'Async task analysis with progress tracking'].map((item) => (
@@ -1703,7 +1705,7 @@ export function FeaturesLegacyContent({
       </section>
       ) : null}
 
-      {section !== "overview" ? (
+      {showTail && section !== "overview" ? (
       <>
       {/* Social Proof Stats */}
       <SocialProofBanner />
