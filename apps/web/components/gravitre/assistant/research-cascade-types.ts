@@ -1,4 +1,4 @@
-"""Adaptive research cascade — shared payload types for chat UI."""
+/** Adaptive research cascade — shared payload types for chat UI. */
 "use client"
 
 export type ResearchScopeOption = {

@@ -1,4 +1,4 @@
-"""Phase 4 — confidence and sources display for adaptive research cascade."""
+/** Phase 4 — confidence and sources display for adaptive research cascade. */
 "use client"
 
 import { ShieldAlert } from "lucide-react"

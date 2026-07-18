@@ -1,4 +1,4 @@
-"""Phase 5 — research plan visualization for adaptive cascade stages."""
+/** Phase 5 — research plan visualization for adaptive cascade stages. */
 "use client"
 
 import { CheckCircle2, Circle, MinusCircle, SkipForward } from "lucide-react"

@@ -1,4 +1,4 @@
-"""Adaptive research scope prompt when internal retrieval is thin."""
+/** Adaptive research scope prompt when internal retrieval is thin. */
 "use client"
 
 import { cn } from "@/lib/utils"
