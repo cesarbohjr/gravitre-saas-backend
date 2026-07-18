@@ -1,0 +1,62 @@
+name: Research Cascade Prod Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Reason for manual trigger"
+        required: false
+  push:
+    branches: [main]
+    paths:
+      - "scripts/smoke-research-cascade-prod.py"
+      - ".github/workflows/research-cascade-prod-smoke.yml"
+      - "backend/app/services/adaptive_research_cascade.py"
+      - "backend/app/services/research_action_bridge.py"
+      - "backend/app/services/pack_aware_source_selection.py"
+      - "backend/app/services/unified_retrieval_service.py"
+      - "apps/web/components/gravitre/assistant/research-*.tsx"
+
+concurrency:
+  group: research-cascade-prod-smoke
+  cancel-in-progress: false
+
+jobs:
+  prod-smoke:
+    name: Research cascade prod SSE smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run research cascade production smoke
+        env:
+          BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: |
+          python scripts/smoke-research-cascade-prod.py \
+            --json docs/delivery/smoke-research-cascade-prod-latest.json
+
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-research-cascade-prod
+          path: docs/delivery/smoke-research-cascade-prod-latest.json
+          if-no-files-found: ignore
