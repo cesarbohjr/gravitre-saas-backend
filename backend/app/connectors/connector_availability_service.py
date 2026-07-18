@@ -412,8 +412,11 @@ def error_code_for_unavailable_integration(
     ``tool_not_available`` (which implies the connector was never connected /
     not permitted for the agent).
     """
+    # STA-303 — no availability row means never connected / not configured.
+    # Map to connector_not_connected (reconnect/connect copy), not tool_not_available
+    # (which implies agent permission / tool registry short-circuit).
     if not availability:
-        return "tool_not_available"
+        return "connector_not_connected"
     auth = str(availability.get("auth_status") or "").strip().lower()
     reason = str(availability.get("blocking_reason") or "").strip().lower()
     if auth == "auth_expired" or reason == "token_expired":

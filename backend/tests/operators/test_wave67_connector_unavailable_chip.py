@@ -60,7 +60,8 @@ def test_error_code_for_unavailable_integration_prefers_auth_expired():
         error_code_for_unavailable_integration,
     )
 
-    assert error_code_for_unavailable_integration(None) == "tool_not_available"
+    # STA-303 — missing availability row = never connected, not tool-permission miss.
+    assert error_code_for_unavailable_integration(None) == "connector_not_connected"
     assert (
         error_code_for_unavailable_integration(
             {"auth_status": "auth_expired", "blocking_reason": "token_expired"}
