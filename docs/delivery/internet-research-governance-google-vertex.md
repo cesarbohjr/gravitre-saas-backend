@@ -157,17 +157,40 @@ Grounding costs scale with usage ($35/1k above Google’s 10k/day/account free t
 | `ai_credits` on Node / Control / Command + Stripe Billing Meter | **Live** when metered price IDs configured (`stripe_metering.py`) | **Partial** — LLM tokens only; **grounding surcharge is a separate Google line item** |
 | `intelligence_usage_logs` (Intelligence Pack per-request logging) | **Not built** — scoped in Phase 0 MSP docs, **no table in repo** | Pack-specific; would need extension for non-pack grounding calls |
 
-**Engineering path (when authorized):** Extend existing `usage_tracking` / `ai_credits` spine (preferred — one customer-facing unit) or add a dedicated metric; record each grounding call (count + token metadata); map Google cost → customer credits **with margin**; wire to Stripe meter if overages bill through existing plans.
+**Engineering recommendation (Decision A — when gate 3 opens):** Extend existing `usage_tracking` / **`ai_credits`** spine; record each grounding call (count + token metadata); map Google cost → credits with margin; wire to Stripe meter. **Do not invent a third customer-facing unit.**
 
-### Product decisions (owner — not engineering)
+### Pricing model (Decision B — owner, NOT DECIDED)
 
-1. **Customer-facing unit** — align with existing **`ai_credits`** on plan tiers if possible; avoid a third metering concept unless product requires it.
-2. **Margin** — customer price = Google cost + margin (unless deliberate pass-through positioning).
-3. **Boundary behavior** — at quota / free-tier limits: stop, throttle, or charge credits with transparent overage notice?
+Separate from the engineering primitive choice. How each plan tier covers research cost is a **product/pricing** decision — not something to default in code.
+
+**Weaker option — flat per-plan inclusion (e.g. $35/month baked into tier price):**
+
+- Breaks under skewed usage: internal-only customers vs heavy research users (e.g. MSP/CVE/advisory lookups).
+- Light users subsidize heavy users; research features tend toward heavy skew.
+- Margin risk inverted: Google’s $35/1k is overage-tier; a flat fee Gravitree absorbs regardless of volume means one heavy customer can exceed what the fee recovers.
+- Variable cloud cost priced as fixed fee — architecturally mismatched even if simpler at signup.
+
+**Better fit — usage-based `ai_credits`:**
+
+- Variable Google cost → existing usage-based primitive (included quotas per Node/Control/Command, overage pool, Stripe meter).
+- Matches cost structure underneath.
+
+**Middle path — likely recommendation when gate opens (not decided, not built):**
+
+1. **Included allotment per tier** — baseline research/grounding expressed as **`ai_credits`** at documented conversion + margin over $35/1k Google cost (not a hard-coded dollar line).
+2. **Overage** — beyond included allotment debits **general `ai_credits` balance** (same pool as LLM) or existing top-up/overage UX.
+3. **Optional:** research as separate **usage line item in UI** for transparency while still using the **same credit currency**.
+
+**Owner must decide before build:**
+
+1. Included research allotment per tier (Node / Control / Command).
+2. Grounding → `ai_credits` conversion rate and margin over Google cost.
+3. Single shared `ai_credits` pool vs separate research balance (display-only separation is OK).
+4. Boundary behavior at quota (stop / throttle / charge with notice).
 
 ### Sequencing
 
-**Do not build metering infrastructure now.** Flag stays off; volume estimate is NOT RUN. Metering is a **named precondition** on the canvas, to be scoped and built only when seriously considering enablement — consistent with this program’s discipline about not building ahead of need.
+**Do not build metering infrastructure now.** Flag stays off; volume estimate is NOT RUN. Gate 3 is scoped only when seriously considering enablement. **When the gate opens**, the likely pricing answer is **included credits per tier + margin + shared metered pool** — not flat $35/month — but that remains a recommendation until owner decides.
 
 ---
 

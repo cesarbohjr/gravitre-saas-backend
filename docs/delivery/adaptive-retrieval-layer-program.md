@@ -122,17 +122,49 @@ Google bills Gravitree **~$35/1k grounding counts/day above 10k free tier per ac
 | **`ai_credits` + Node/Control/Command plans** | **Live** — token-derived credits from `model_calls`; included quotas per plan; Stripe Billing Meter reporting via `backend/app/billing/stripe_metering.py` when metered price IDs configured | **Partial** — grounded-generation **Gemini tokens** might map to existing `ai_credits`; **Google Search grounding surcharge** ($35/1k above free tier) is a **separate cost line** not represented in token math |
 | **`intelligence_usage_logs`** (Intelligence Pack per-request cost logging) | **Not built** — proposed in Phase 0 MSP docs; **absent from repo** (`docs/delivery/phase0-executive-sales-msp-intelligence-packs.md`) | N/A — pack-specific future table; would need **extension or parallel path** for non-pack actions like internet research |
 
-**Conclusion:** Gravitree has a **general org-level metering spine** (`usage_tracking` → Stripe meter for `ai_credits`), but **nothing today meters or bills internet-research / grounding calls**. Enabling the flag for customers requires extending that spine (or an equivalent) — not just adding a Google provider.
+**Conclusion:** Gravitree has a **general org-level metering spine** (`usage_tracking` → Stripe meter for `ai_credits`), but **nothing today meters or bills internet-research / grounding calls**. Enabling the flag for customers requires extending that spine — not just adding a Google provider.
 
-#### Product decisions still open (not engineering)
+#### Two decisions — do not collapse them
 
-These must be decided **before** metering is built; tie to existing plan-tier language where possible — do not invent a third customer-facing unit if **`ai_credits`** can absorb grounding cost with a conversion rule:
+| Decision | Owner | Status |
+|----------|-------|--------|
+| **A. Engineering / metering primitive** | Engineering (when gate 3 opens) | **Recommendation recorded:** fold grounding into existing **`ai_credits`** — do not invent a third customer-facing unit |
+| **B. Pricing model** | Product / owner | **NOT DECIDED** — how plan tiers cover research cost (flat inclusion vs usage-based vs hybrid) |
 
-1. **Customer-facing unit** — “AI credits,” “research credits,” “queries,” etc. Default lean: extend **`ai_credits`** with a documented grounding→credit conversion unless product wants a separate line item.
-2. **Margin** — Google’s $35/1k + tokens is Gravitree’s cost; customer price should include margin unless deliberate cost-pass-through positioning.
-3. **Free-tier boundary behavior** — At Gravitree’s 10k/day Google free tier (platform account) vs per-org quotas: does research **stop**, **throttle**, or **charge credits transparently** with upfront overage notice?
+Decision A (which primitive) and Decision B (how plans price it) are related but **not the same**. A flat “$35/month baked into each plan” is a **pricing-model** choice that could still be implemented via included credits — or wrongly implemented as a hard-coded dollar line disconnected from usage.
 
-**Metering build status:** **NOT STARTED** — documented precondition only; no billing infrastructure work authorized while flag stays off and volume estimate is NOT RUN.
+#### Pricing-model options (owner decision — not built)
+
+**Weaker: flat per-plan surcharge (e.g. “$35/month included in tier price”)**
+
+- Assumes uniform usage across customers on a tier — breaks when usage is skewed (internal-only shops vs MSP pack customers hammering CVE/advisory lookups).
+- Light users subsidize heavy users; research/lookup features tend toward heavy skew.
+- **Margin risk in the wrong direction:** Google’s $35/1k is overage-tier pricing; if Gravitree eats a flat monthly cost regardless of actual grounding volume, one heavy customer past Google’s free tier can cost more than the flat fee recovers, while low-use customers are pure margin — inverted vs how variable cloud costs should be priced.
+- Architecturally mismatched: variable-cost feature priced as fixed fee.
+
+**Better fit: usage-based via `ai_credits` (matches existing stack)**
+
+- Variable Google cost → variable customer metering through a primitive that already exists: plan-tier included quotas, overage via same pool, Stripe Billing Meter when configured.
+- Architecturally coherent: usage-based cost through usage-based billing.
+
+**Middle path (likely answer when gate 3 opens — recommendation only, not decided)**
+
+Combines tier generosity with usage alignment without a third unit:
+
+1. Each plan tier (Node / Control / Command) gets a **baseline included allotment** of research/grounding usage, expressed as **`ai_credits`** at a documented conversion rate **with margin** over Google’s $35/1k grounding cost (+ token costs). This is the “included research” idea done as **included credits**, consistent with how the rest of the platform meters — not a hard-coded dollar line item.
+2. Usage **beyond** the included allotment draws from the customer’s **general `ai_credits` balance** (same pool as LLM usage), or triggers top-up / overage flow — consistent with whatever `ai_credits` already does at quota today.
+3. Reuses existing Stripe metering; avoids overcharging light users and undercharging heavy ones; no third customer-facing unit.
+
+**Optional product exception:** Keep research visible as its own **line item in UI/usage reports** for transparency while still debiting the **same underlying `ai_credits` currency** — distinct display, shared pool.
+
+#### Owner decisions required (before metering is built)
+
+1. **Included research allotment per tier** — e.g. Node none/limited, Control X, Command Y (in `ai_credits` terms).
+2. **Conversion rate + margin** — grounding count (+ associated tokens) → `ai_credits`, with margin over Google’s verified $35/1k overage rate.
+3. **Single pool vs separate balance** — default lean: **reuse existing `ai_credits` pool** unless product wants a separate research balance for transparency (same currency, optional separate reporting).
+4. **Boundary behavior** — at included allotment / platform limits: stop, throttle, or charge from general balance with transparent notice (align with existing overage UX).
+
+**Metering build status:** **NOT STARTED** — Gate 3 remains a documented precondition. When seriously considering enablement (after gate 2 volume estimate), the **likely** pricing answer is: **included `ai_credits` allotment per tier + margin + shared Stripe-metered pool** — not a flat $35/month line item. That is a **recommendation for when the gate opens**, not authorization to build now against an unverified volume estimate.
 
 Full analysis: [`internet-research-governance-google-vertex.md`](./internet-research-governance-google-vertex.md)  
 Artifacts: [`internet-research-governance-latest.json`](./internet-research-governance-latest.json), [`internet-research-governance-closure.json`](./internet-research-governance-closure.json)
