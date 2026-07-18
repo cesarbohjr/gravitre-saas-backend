@@ -1,4 +1,5 @@
 import { marketingMetadata } from "@/lib/seo"
+import { FeaturesShell } from "@/components/marketing/features/features-shell"
 
 export const metadata = marketingMetadata({
   title: "Features",
@@ -9,5 +10,5 @@ export const metadata = marketingMetadata({
 })
 
 export default function FeaturesLayout({ children }: { children: React.ReactNode }) {
-  return children
+  return <FeaturesShell>{children}</FeaturesShell>
 }

@@ -6,9 +6,18 @@ import { usePathname } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { ArrowRight, Menu, X, ChevronDown } from "lucide-react"
 import { openMarketingConsentSettings } from "@/lib/marketing-consent"
+import { FEATURES_NAV } from "@/lib/features-nav"
+
+const featuresNavChildren = FEATURES_NAV.map((item) => ({
+  href: item.href,
+  label: item.label,
+}))
 
 const navLinks = [
-  { href: "/features", label: "Features" },
+  {
+    label: "Features",
+    children: featuresNavChildren,
+  },
   { href: "/pricing", label: "Pricing" },
   { href: "/docs", label: "Docs" },
   {
@@ -29,6 +38,7 @@ export function MarketingChrome({
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [companyDropdownOpen, setCompanyDropdownOpen] = useState(false)
+  const [featuresDropdownOpen, setFeaturesDropdownOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const pathname = usePathname()
 
@@ -45,6 +55,7 @@ export function MarketingChrome({
   useEffect(() => {
     setMobileMenuOpen(false)
     setCompanyDropdownOpen(false)
+    setFeaturesDropdownOpen(false)
   }, [pathname])
 
   // Lock background scroll while the mobile menu overlay is open.
@@ -79,35 +90,62 @@ export function MarketingChrome({
               />
             </Link>
             <div className="hidden md:flex items-center gap-1">
-              {navLinks.map((link) => (
+              {navLinks.map((link) =>
                 link.children ? (
                   <div key={link.label} className="relative">
                     <button
-                      onClick={() => setCompanyDropdownOpen((open) => !open)}
+                      onClick={() => {
+                        if (link.label === "Features") {
+                          setFeaturesDropdownOpen((open) => !open)
+                          setCompanyDropdownOpen(false)
+                        } else {
+                          setCompanyDropdownOpen((open) => !open)
+                          setFeaturesDropdownOpen(false)
+                        }
+                      }}
                       className={`flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition-all ${
-                        companyDropdownOpen 
-                          ? "text-zinc-900 bg-zinc-100" 
-                          : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
+                        (link.label === "Features" && featuresDropdownOpen) ||
+                        (link.label === "Company" && companyDropdownOpen)
+                          ? "text-zinc-900 bg-zinc-100"
+                          : link.label === "Features" && pathname.startsWith("/features")
+                            ? "text-zinc-900 bg-zinc-100"
+                            : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
                       }`}
                     >
                       {link.label}
-                      <ChevronDown className={`h-3 w-3 transition-transform ${companyDropdownOpen ? "rotate-180" : ""}`} />
+                      <ChevronDown
+                        className={`h-3 w-3 transition-transform ${
+                          (link.label === "Features" && featuresDropdownOpen) ||
+                          (link.label === "Company" && companyDropdownOpen)
+                            ? "rotate-180"
+                            : ""
+                        }`}
+                      />
                     </button>
                     <AnimatePresence>
-                      {companyDropdownOpen && (
+                      {(link.label === "Features" ? featuresDropdownOpen : companyDropdownOpen) && (
                         <motion.div
                           initial={{ opacity: 0, y: 10, scale: 0.95 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: 10, scale: 0.95 }}
                           transition={{ duration: 0.15 }}
-                          className="absolute top-full left-0 mt-2 w-48 rounded-xl border border-zinc-200 bg-white p-2 shadow-xl"
+                          className={`absolute top-full left-0 mt-2 rounded-xl border border-zinc-200 bg-white p-2 shadow-xl ${
+                            link.label === "Features" ? "w-56 max-h-[70vh] overflow-y-auto" : "w-48"
+                          }`}
                         >
                           {link.children.map((child) => (
                             <Link
                               key={child.href}
                               href={child.href}
-                              onClick={() => setCompanyDropdownOpen(false)}
-                              className="block rounded-lg px-4 py-2.5 text-sm text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 transition-colors"
+                              onClick={() => {
+                                setFeaturesDropdownOpen(false)
+                                setCompanyDropdownOpen(false)
+                              }}
+                              className={`block rounded-lg px-4 py-2.5 text-sm transition-colors ${
+                                pathname === child.href
+                                  ? "bg-emerald-50 text-emerald-900"
+                                  : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
+                              }`}
                             >
                               {child.label}
                             </Link>
@@ -129,7 +167,7 @@ export function MarketingChrome({
                     {link.label}
                   </Link>
                 )
-              ))}
+              )}
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -227,10 +265,13 @@ export function MarketingChrome({
       </header>
 
       {/* Click outside handler for dropdown */}
-      {companyDropdownOpen && (
+      {(companyDropdownOpen || featuresDropdownOpen) && (
         <div 
           className="fixed inset-0 z-40" 
-          onClick={() => setCompanyDropdownOpen(false)}
+          onClick={() => {
+            setCompanyDropdownOpen(false)
+            setFeaturesDropdownOpen(false)
+          }}
         />
       )}
 
