@@ -22,6 +22,9 @@ on:
       - "scripts/_smoke_auth.py"
       - "scripts/smoke-routing-wave-live.py"
       - "scripts/smoke-research-cascade-prod.py"
+      - "scripts/smoke-wave67-spotcheck.py"
+      - "scripts/smoke-canvas-write-governance-live.py"
+      - "scripts/smoke-react-write-live.py"
       - ".github/workflows/milestone1-live-reverify.yml"
 
 concurrency:
