@@ -14,6 +14,8 @@ import re
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.request
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,8 +23,6 @@ from typing import Any
 
 import jwt
 from dotenv import dotenv_values
-from httpx import AsyncClient
-import asyncio
 
 REPO = Path(__file__).resolve().parent.parent
 BACKEND = REPO / "backend"
@@ -96,9 +96,32 @@ def _cascade_from_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return rows
 
 
-async def _chat(
-    ac: AsyncClient,
+def _request_sse(
     *,
+    base_url: str,
+    org_id: str,
+    token: str,
+    body: dict[str, Any],
+    timeout: int = 180,
+) -> tuple[int, str]:
+    url = f"{base_url.rstrip('/')}/api/assistant/chat"
+    data = json.dumps(body).encode("utf-8")
+    req = urllib.request.Request(url, data=data, method="POST")
+    req.add_header("Authorization", f"Bearer {token}")
+    req.add_header("X-Org-Id", org_id)
+    req.add_header("X-Environment", "production")
+    req.add_header("Content-Type", "application/json")
+    req.add_header("Accept", "text/event-stream")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return int(resp.status), resp.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as exc:
+        return exc.code, exc.read().decode("utf-8", errors="replace")
+
+
+def _chat(
+    *,
+    base_url: str,
     org_id: str,
     token: str,
     text: str,
@@ -106,27 +129,17 @@ async def _chat(
     research_scope: str | None = None,
 ) -> tuple[int, list[dict[str, Any]], list[dict[str, Any]]]:
     body: dict[str, Any] = {
-        "messages": [{"role": "user", "parts": [{"type": "text", "text": text}]}],
+        "messages": [{"role": "user", "content": text}],
         "org_id": org_id,
         "tools": ["knowledge_base", "agent_status", "connector_status"],
-        "mode": "reasoning",
+        "mode": "fast",
         "conversation_id": conversation_id,
     }
     if research_scope:
         body["research_scope"] = research_scope
-    r = await ac.post(
-        "/api/assistant/chat",
-        json=body,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "X-Org-Id": org_id,
-            "X-Environment": "production",
-            "Accept": "text/event-stream",
-        },
-        timeout=180.0,
-    )
-    events = _parse_sse(r.text)
-    return r.status_code, events, _cascade_from_events(events)
+    status, raw = _request_sse(base_url=base_url, org_id=org_id, token=token, body=body)
+    events = _parse_sse(raw)
+    return status, events, _cascade_from_events(events)
 
 
 def _sha_at_least(deployed: str, minimum: str) -> bool:
@@ -148,7 +161,16 @@ def _sha_at_least(deployed: str, minimum: str) -> bool:
         return deployed >= minimum
 
 
-async def main_async(args: argparse.Namespace) -> dict[str, Any]:
+def _fetch_health(base_url: str) -> dict[str, Any]:
+    req = urllib.request.Request(f"{base_url.rstrip('/')}/health", method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        return {"http": exc.code}
+
+
+def run_smoke(args: argparse.Namespace) -> dict[str, Any]:
     env = _load_env()
     for key in ("SUPABASE_URL", "SUPABASE_JWT_SECRET", "SUPABASE_SERVICE_ROLE_KEY"):
         if not env.get(key):
@@ -178,85 +200,82 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any]:
         "pass": False,
     }
 
-    async with AsyncClient(base_url=base_url, timeout=180.0) as ac:
-        hr = await ac.get("/health")
-        health = hr.json() if hr.status_code == 200 else {"http": hr.status_code}
-        report["health"] = health
-        git_sha = str(health.get("git_sha") or "")
-        report["checks"]["deploy_sha"] = {
-            "pass": _sha_at_least(git_sha, MIN_SHA_PREFIX),
-            "git_sha": git_sha,
-            "required_prefix": MIN_SHA_PREFIX,
-        }
+    health = _fetch_health(base_url)
+    report["health"] = health
+    git_sha = str(health.get("git_sha") or "")
+    report["checks"]["deploy_sha"] = {
+        "pass": _sha_at_least(git_sha, MIN_SHA_PREFIX),
+        "git_sha": git_sha,
+        "required_prefix": MIN_SHA_PREFIX,
+    }
 
-        # Trace 1 — thin internal retrieval should surface broaden prompt metadata
-        status1, events1, cascades1 = await _chat(
-            ac,
-            org_id=org_id,
-            token=token,
-            conversation_id=conv,
-            text=(
-                "What is the exact Q3 2027 revenue forecast for our fictional subsidiary "
-                "Zephyr Dynamics in Antarctica? Use only internal org knowledge."
-            ),
-        )
-        thin_cascade = cascades1[-1] if cascades1 else {}
-        report["trace_thin"] = {
-            "http_status": status1,
-            "cascade_count": len(cascades1),
-            "cascade": thin_cascade,
-        }
-        report["checks"]["thin_suggest_broaden"] = {
-            "pass": bool(thin_cascade.get("suggest_broaden")) or bool(thin_cascade.get("internal_thin")),
-            "detail": "suggest_broaden or internal_thin in researchCascade SSE",
-        }
+    status1, events1, cascades1 = _chat(
+        base_url=base_url,
+        org_id=org_id,
+        token=token,
+        conversation_id=conv,
+        text=(
+            "What is the exact Q3 2027 revenue forecast for our fictional subsidiary "
+            "Zephyr Dynamics in Antarctica? Use only internal org knowledge."
+        ),
+    )
+    thin_cascade = cascades1[-1] if cascades1 else {}
+    report["trace_thin"] = {
+        "http_status": status1,
+        "cascade_count": len(cascades1),
+        "cascade": thin_cascade,
+        "event_count": len(events1),
+    }
+    report["checks"]["thin_suggest_broaden"] = {
+        "pass": bool(thin_cascade.get("suggest_broaden")) or bool(thin_cascade.get("internal_thin")),
+        "detail": "suggest_broaden or internal_thin in researchCascade SSE",
+    }
 
-        # Trace 2 — explicit scope should emit enriched cascade (Phase 4–5 fields)
-        status2, events2, cascades2 = await _chat(
-            ac,
-            org_id=org_id,
-            token=token,
-            conversation_id=conv,
-            research_scope="everything",
-            text=(
-                "Summarize what you can find about our refund policy. "
-                "Include research confidence and sources used."
-            ),
+    status2, events2, cascades2 = _chat(
+        base_url=base_url,
+        org_id=org_id,
+        token=token,
+        conversation_id=conv,
+        research_scope="everything",
+        text=(
+            "Summarize what you can find about our refund policy. "
+            "Include research confidence and sources used."
+        ),
+    )
+    scoped_cascade = cascades2[-1] if cascades2 else {}
+    report["trace_scoped"] = {
+        "http_status": status2,
+        "cascade_count": len(cascades2),
+        "cascade": scoped_cascade,
+        "event_count": len(events2),
+    }
+    has_enrichment = any(
+        scoped_cascade.get(key) is not None
+        for key in (
+            "confidence_band",
+            "source_breakdown",
+            "stage_progress",
+            "progress_steps",
+            "active_stages",
         )
-        scoped_cascade = cascades2[-1] if cascades2 else {}
-        report["trace_scoped"] = {
-            "http_status": status2,
-            "cascade_count": len(cascades2),
-            "cascade": scoped_cascade,
-        }
-        has_enrichment = any(
-            scoped_cascade.get(key) is not None
-            for key in (
-                "confidence_band",
-                "source_breakdown",
-                "stage_progress",
-                "progress_steps",
-                "active_stages",
-            )
-        )
-        report["checks"]["scoped_enrichment"] = {
-            "pass": has_enrichment,
-            "detail": "confidence_band/source_breakdown/stage_progress in final researchCascade",
-        }
-        progress_in_sse = any(
-            isinstance(ev.get("data"), dict) and (ev.get("data") or {}).get("progressSteps")
-            for ev in events2
-            if ev.get("type") == "data-intelligence"
-        )
-        report["checks"]["progress_steps_sse"] = {
-            "pass": progress_in_sse or bool(scoped_cascade.get("progress_steps")),
-            "detail": "progressSteps in mid/final SSE",
-        }
+    )
+    report["checks"]["scoped_enrichment"] = {
+        "pass": has_enrichment,
+        "detail": "confidence_band/source_breakdown/stage_progress in final researchCascade",
+    }
+    progress_in_sse = any(
+        isinstance(ev.get("data"), dict) and (ev.get("data") or {}).get("progressSteps")
+        for ev in events2
+        if ev.get("type") == "data-intelligence"
+    )
+    report["checks"]["progress_steps_sse"] = {
+        "pass": progress_in_sse or bool(scoped_cascade.get("progress_steps")),
+        "detail": "progressSteps in mid/final SSE",
+    }
 
     deploy_ok = report["checks"]["deploy_sha"]["pass"]
     thin_ok = report["checks"]["thin_suggest_broaden"]["pass"]
     enrich_ok = report["checks"]["scoped_enrichment"]["pass"]
-    progress_ok = report["checks"]["progress_steps_sse"]["pass"]
     report["pass"] = deploy_ok and status1 == 200 and status2 == 200 and thin_ok and enrich_ok
     report["finished_at"] = datetime.now(timezone.utc).isoformat()
     return report
@@ -268,7 +287,7 @@ def main() -> int:
     parser.add_argument("--org-id", default=None)
     parser.add_argument("--json", dest="json_path", default=None)
     args = parser.parse_args()
-    report = asyncio.run(main_async(args))
+    report = run_smoke(args)
     text = json.dumps(report, indent=2, default=str)
     print(text)
     if args.json_path:
