@@ -650,7 +650,7 @@ export function AnimatedStats() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
               >
-                {typeof stat.value === "number" ? stat.value.toLocaleString() : stat.value}
+                {stat.value}
                 {stat.suffix}
               </motion.span>
             )}
