@@ -229,20 +229,33 @@ async def _chat(
     if conversation_id:
         body["conversation_id"] = conversation_id
     wall = datetime.now(timezone.utc).isoformat()
-    r = await ac.post(
-        "/api/assistant/chat",
-        json=body,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "X-Org-Id": org_id,
-            "X-Environment": "production",
-            "Accept": "text/event-stream",
-        },
-        timeout=180.0,
-    )
-    raw = r.text
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "X-Org-Id": org_id,
+        "X-Environment": "production",
+        "Accept": "text/event-stream",
+    }
+    # Stream accumulate — prod sometimes closes chunked SSE early; keep partial body.
+    chunks: list[bytes] = []
+    status = "http_000"
+    try:
+        async with ac.stream(
+            "POST",
+            "/api/assistant/chat",
+            json=body,
+            headers=headers,
+            timeout=180.0,
+        ) as r:
+            status = f"http_{r.status_code}"
+            async for part in r.aiter_bytes():
+                chunks.append(part)
+    except Exception as exc:  # noqa: BLE001 — prefer partial SSE over hard fail
+        if not chunks:
+            raise
+        print(f"WARN chat stream truncated ({exc}); using {sum(len(c) for c in chunks)} bytes")
+    raw = b"".join(chunks).decode("utf-8", errors="replace")
     events = _parse_sse(raw)
-    return wall, events, f"http_{r.status_code}"
+    return wall, events, status
 
 
 async def main_async(args: argparse.Namespace) -> dict[str, Any]:
