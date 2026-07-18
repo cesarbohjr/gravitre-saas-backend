@@ -181,7 +181,7 @@ Verified pricing page (2026-07-18): Node **$49** / Control **$129** / Command **
 
 Max theoretical Command usage (1 lookup per output): **~4/day** — far below free tier. **Grounding surcharge likely $0** at current scale; primary cost = Gemini tokens (existing token economics).
 
-Internal `ai_credits` (not on pricing page): Node 2k / Control 15k / Command 75k included; overage **$0.02 / $0.015 / $0.012** per credit — `backend/app/billing/service.py`.
+Internal `ai_credits` (not on pricing page): see **`cogs_reconciliation`** in [`internet-research-pricing-proposal.json`](./internet-research-pricing-proposal.json) — `$0.02/$0.015/$0.012` are **LLM token overage** (Phase 16, 2026-04-23), **not** Google grounding COGS. Prod DB `overage_rates` uses **output/meson** keys aligned with pricing page; may override template `ai_credit` rates when seeded.
 
 #### Proposed tiers (proposal — gate 2 validates)
 
@@ -191,13 +191,13 @@ Internal `ai_credits` (not on pricing page): Node 2k / Control 15k / Command 75k
 | Control ($129) | **60** | None (optional +$10–15) | same |
 | Command ($299) | **200** | None (optional +$20–30) | same |
 
-Overage priced for **$35/1k COGS margin**, not $0 free-tier rate. Same family as Outputs/Mesons — smaller unit, lower price.
+Overage priced for **worst-case $35/1k** as dormant safety valve; **expected COGS at current scale** = Gemini tokens only.
 
-**Launch recommendation:** Bundle included lookups; **do not raise tier prices** — aligns with “intelligence included” brand; overage is dormant safety valve until gate 2.
+**Optional tier bumps:** NOT DECIDED; recorded lean **no** at launch.
 
-**Rejected:** signup free-credit pool; flat $35/mo tier surcharge; tier price increases without cost-driven justification.
+**Gate 2:** when real usage exists — not before.
 
-**Still open:** internal grounding→`ai_credits` debit rate; gate 2 volume validation.
+**Still open:** lookup → internal `ai_credits` debit (gate 3 unifies customer price + ledger + corrected COGS).
 
 ### Sequencing
 

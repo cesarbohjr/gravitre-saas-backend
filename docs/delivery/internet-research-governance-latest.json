@@ -92,6 +92,9 @@
     "proposed_included_lookups_per_month": { "node": 10, "control": 60, "command": 200 },
     "pricing_page_verified": "https://gravitre.app/pricing",
     "proposal_artifact": "docs/delivery/internet-research-pricing-proposal.json",
+    "cogs_reconciliation": "ai_credit_0_02_rates_are_llm_token_overage_not_google_35_1k; gate_3_unifies_lookup_debit",
+    "optional_tier_bumps_status": "NOT_DECIDED_lean_no",
+    "gate_2_timing": "when_real_usage_exists",
     "build_authorized": false
   },
   "pricing": {

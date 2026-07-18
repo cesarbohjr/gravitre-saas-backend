@@ -174,7 +174,25 @@ Google free tier: **10,000 grounding counts/day/account** before $35/1k surcharg
 
 **Implication:** At current plan structure, **Google grounding surcharge is likely $0** for the foreseeable future; real variable cost is **Gemini tokens per grounded call** (smaller; overlaps existing token economics). This is not primarily “cover a $35/1k line item” — it is **package near-zero-marginal-cost capability as valuable, not free**, with overage priced for the edge case where patterns shift.
 
-**Backend reference (internal, not customer-facing):** `DEFAULT_PLANS` in `backend/app/billing/service.py` — Node 2,000 / Control 15,000 / Command 75,000 `ai_credits_included`; overage **$0.02 / $0.015 / $0.012** per credit respectively.
+**Backend reference (internal, not customer-facing):** see **COGS reconciliation** below — do not assume `$0.02/$0.015/$0.012` were derived from Google grounding math.
+
+#### COGS reconciliation — internal ledger vs customer-facing proposal (2026-07-18)
+
+**Question:** Were `$0.02 / $0.015 / $0.012` per `ai_credit` derived the same way as the `$0.25–0.50` research lookup proposal?
+
+**Answer: No — different snapshots, different purpose. Not inconsistent, but must not be conflated.**
+
+| Rate | Origin | COGS basis | Relation to Google $35/1k |
+|------|--------|------------|---------------------------|
+| **`ai_credit` $0.02 / $0.015 / $0.012** | `DEFAULT_PLANS` in `backend/app/billing/service.py` since **2026-04-23** (Phase 16 billing, commit `185bf488`) | **LLM token overage** — `TOKENS_PER_CREDIT = 1000` (~$20/$15/$12 per million tokens before model multipliers) | **None** — predates internet-research governance; never tied to grounding |
+| **DB `billing_plans.overage_rates`** (prod seed) | Migrations / `supabase/seed.sql` — keys **`output` / `meson`** ($2.50→$1.50 outputs; $3→$2 Mesons) | **Customer-facing units** on [pricing page](https://gravitre.app/pricing) | **None** — `_normalize_plan_row` merges DB over template; DB `overage_rates` **replaces** template wholesale → **`ai_credit` keys may be inactive in prod** when DB is seeded |
+| **Research lookup $0.25–0.50** (proposal) | This session — **Additional Research Lookups** line (outputs/Mesons family) | **Expected COGS at scale:** Gemini tokens + **$0 grounding surcharge** (10k/day free tier). **Overage pricing narrative:** worst-case **$35/1k** as conservative safety-valve margin, not assumed per-query cost | **Dual:** expected COGS ≠ overage margin basis |
+
+**Conclusion:** Existing internal `ai_credit` rates do **not** embed the pre-correction `$35/1k-as-baseline` mistake — they were never about grounding. The `$0.25–0.50` lookup range was framed against **worst-case** grounding for the dormant overage line; at current scale the honest expected COGS is **token cost only**. **Gate 3** must define **lookup → internal `ai_credits` debit** in one pass so customer price, internal ledger, and corrected COGS align — not two separate snapshots.
+
+**No change required now** to `$0.02/$0.015/$0.012` for LLM metering. Research conversion is **net-new at build time**.
+
+Artifact: [`internet-research-pricing-proposal.json`](./internet-research-pricing-proposal.json) → `cogs_reconciliation`
 
 #### Proposed tier structure (proposal recorded — gate 2 validates)
 
@@ -185,11 +203,15 @@ Google free tier: **10,000 grounding counts/day/account** before $35/1k surcharg
 | **Node** | $49 | **10** | **None** | 1:1 with 10-output cap; discoverable “try it” tier |
 | **Control** | $129 | **60** | **None** (optional +$10–15 if positioned as distinct value-add) | ~1.5× 40-output cap; real research without unbounded exposure |
 | **Command** | $299 | **200** | **None** (optional +$20–30) | Well above 120-output cap; unconstrained research positioning; still far below Google paid tier |
-| **Overage (any tier)** | — | — | **Additional Research Lookups: $0.25–0.50 each** | Same family as Outputs/Mesons; margin over **$35/1k overage-rate COGS**, not $0 free-tier rate; dormant safety valve until usage patterns warrant |
+| **Overage (any tier)** | — | — | **Additional Research Lookups: $0.25–0.50 each** | Outputs/Mesons family; **expected COGS near-zero** at current scale; **$35/1k used only as worst-case overage margin basis**, not assumed per-query cost |
 
 *Supersedes earlier benchmark-only anchors (Node ~15–25, Control ~150–300, Command ~750–1500) — those were pre–pricing-page; current proposal aligns to **output caps** and **verified COGS math**.*
 
 **Launch recommendation (recorded):** **Do not raise tier prices** for internet research at launch. Free-tier math means charging more would be **optics-only**, not cost recovery — undercuts “intelligence included” positioning (“Pay for outputs and team seats — not buzzword tiers”). **Bundle generous capped allotments**; keep **$0.25–0.50/lookup overage** as the real margin protection, priced and ready but likely dormant until gate 2 confirms patterns.
+
+**Optional tier bumps (+$10–15 Control / +$20–30 Command):** **NOT DECIDED.** Recorded lean: **no** — launch at **$0 tier increase**; let overage line carry margin if ever needed. Requires explicit owner sign-off if positioning changes.
+
+**Gate 2 timing:** Run volume estimate when **real usage exists to measure** — not guessed ahead of enablement.
 
 **Revisit tier pricing only if** gate 2 shows meaningful volume past Google’s free tier — then cost-driven increases use **real data**, not illustrative placeholders.
 

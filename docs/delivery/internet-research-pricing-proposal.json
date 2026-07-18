@@ -1,6 +1,6 @@
 {
   "record": "internet_research_pricing_proposal",
-  "updated_at": "2026-07-18T18:00:00+00:00",
+  "updated_at": "2026-07-18T20:00:00+00:00",
   "status": "PROPOSAL_RECORDED_NOT_BUILT",
   "gate_2_validation_required": true,
   "gate_3_build_required": true,
@@ -25,17 +25,42 @@
   },
   "internal_ai_credits_reference": {
     "source": "backend/app/billing/service.py DEFAULT_PLANS",
+    "origin_commit": "185bf488",
+    "origin_date": "2026-04-23",
+    "purpose": "llm_token_overage_not_grounding",
+    "tokens_per_credit": 1000,
     "customer_facing_on_pricing_page": false,
-    "included_per_tier": {
+    "included_per_tier_default_plans": {
       "node": 2000,
       "control": 15000,
       "command": 75000
     },
-    "overage_usd_per_credit": {
+    "overage_usd_per_credit_default_plans": {
       "node": 0.02,
       "control": 0.015,
       "command": 0.012
-    }
+    },
+    "note": "Implied ~$20/$15/$12 per million tokens at overage before model multipliers"
+  },
+  "db_billing_plans_overage_rates": {
+    "source": "supabase/migrations/20260729120000_seed_all_billing_plans.sql",
+    "keys": "output_and_meson_not_ai_credit",
+    "node": { "output": 2.5, "meson": null },
+    "control": { "output": 2.0, "meson": 3.0 },
+    "command": { "output": 1.5, "meson": 2.0 },
+    "merge_behavior": "_normalize_plan_row replaces template overage_rates when DB seeded"
+  },
+  "cogs_reconciliation": {
+    "reconciled_at": "2026-07-18",
+    "question": "Were internal ai_credit overage rates derived from Google $35/1k grounding?",
+    "answer": "No — different cost lines and eras",
+    "ai_credit_rates_basis": "phase_16_llm_token_overage_predates_internet_research_governance",
+    "research_lookup_proposal_basis": {
+      "expected_cogs_at_current_scale": "gemini_tokens_plus_zero_grounding_surcharge_under_10k_day_free_tier",
+      "customer_overage_margin_basis": "worst_case_35_per_1k_when_google_free_tier_exhausted_safety_valve_only"
+    },
+    "unified_at_gate_3": "lookup_to_ai_credits_debit_must_align_customer_price_internal_ledger_and_corrected_cogs_in_one_pass",
+    "change_required_now_to_ai_credit_rates": false
   },
   "market_benchmark_usd_per_1k_queries": {
     "perplexity_sonar_raw": 5,
@@ -58,16 +83,14 @@
     "command": 200
   },
   "proposed_tier_price_change_at_launch": "none",
-  "optional_tier_price_increases_if_positioning_requires": {
-    "control_usd": "10-15",
-    "command_usd": "20-30"
-  },
   "proposed_overage": {
     "label": "Additional Research Lookups",
     "usd_each": "0.25-0.50",
     "pricing_page_family": "same as Additional Outputs and Mesons",
-    "margin_basis": "google_35_per_1k_overage_rate_not_free_tier"
+    "expected_cogs_at_current_scale": "gemini_tokens_primary_grounding_surcharge_likely_zero",
+    "margin_basis_for_overage_line": "worst_case_google_35_per_1k_when_free_tier_exhausted_not_assumed_per_query"
   },
+  "gate_2_timing": "when_real_usage_exists_to_measure_not_before_enablement",
   "launch_recommendation": {
     "raise_tier_prices": false,
     "bundle_included_lookups": true,
