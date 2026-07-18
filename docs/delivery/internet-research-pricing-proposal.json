@@ -1,0 +1,85 @@
+{
+  "record": "internet_research_pricing_proposal",
+  "updated_at": "2026-07-18T18:00:00+00:00",
+  "status": "PROPOSAL_RECORDED_NOT_BUILT",
+  "gate_2_validation_required": true,
+  "gate_3_build_required": true,
+  "pricing_page_source": {
+    "url": "https://gravitre.app/pricing",
+    "fetched_at": "2026-07-18",
+    "list_prices_usd_month": {
+      "node": 49,
+      "control": 129,
+      "command": 299
+    },
+    "output_caps_per_month": {
+      "node": 10,
+      "control": 40,
+      "command": 120
+    },
+    "existing_pay_as_you_go": {
+      "additional_outputs_usd": "2-3",
+      "additional_mesons_usd": "2-4"
+    },
+    "brand_positioning": "Intelligence included; pay for outputs and team seats"
+  },
+  "internal_ai_credits_reference": {
+    "source": "backend/app/billing/service.py DEFAULT_PLANS",
+    "customer_facing_on_pricing_page": false,
+    "included_per_tier": {
+      "node": 2000,
+      "control": 15000,
+      "command": 75000
+    },
+    "overage_usd_per_credit": {
+      "node": 0.02,
+      "control": 0.015,
+      "command": 0.012
+    }
+  },
+  "market_benchmark_usd_per_1k_queries": {
+    "perplexity_sonar_raw": 5,
+    "perplexity_sonar_pro_search": "14-22",
+    "perplexity_enterprise_pro_bundled": 23,
+    "perplexity_enterprise_max_bundled": 18.8,
+    "google_grounded_generation": "0 under 10k/day/account; 35 above"
+  },
+  "google_free_tier_reframe": {
+    "free_grounding_counts_per_day_per_account": 10000,
+    "max_command_outputs_per_month": 120,
+    "max_lookups_if_one_per_output_per_day": "~4/day",
+    "conclusion": "Grounding surcharge likely $0 at current scale; Gemini tokens are primary variable cost"
+  },
+  "customer_facing_unit": "research_lookup",
+  "internal_metering_unit": "ai_credits",
+  "proposed_included_lookups_per_month": {
+    "node": 10,
+    "control": 60,
+    "command": 200
+  },
+  "proposed_tier_price_change_at_launch": "none",
+  "optional_tier_price_increases_if_positioning_requires": {
+    "control_usd": "10-15",
+    "command_usd": "20-30"
+  },
+  "proposed_overage": {
+    "label": "Additional Research Lookups",
+    "usd_each": "0.25-0.50",
+    "pricing_page_family": "same as Additional Outputs and Mesons",
+    "margin_basis": "google_35_per_1k_overage_rate_not_free_tier"
+  },
+  "launch_recommendation": {
+    "raise_tier_prices": false,
+    "bundle_included_lookups": true,
+    "overage_as_safety_valve": true,
+    "revisit_tier_pricing_when": "gate_2 shows meaningful volume past google free tier"
+  },
+  "supersedes_prior_benchmark_anchors": {
+    "node": "15-25",
+    "control": "150-300",
+    "command": "750-1500",
+    "reason": "Pre-pricing-page; replaced by output-cap-aligned proposal"
+  },
+  "program_doc": "docs/delivery/adaptive-retrieval-layer-program.md",
+  "governance_doc": "docs/delivery/internet-research-governance-google-vertex.md"
+}

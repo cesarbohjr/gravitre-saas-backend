@@ -157,41 +157,51 @@ Grounding costs scale with usage ($35/1k above Google’s 10k/day/account free t
 | `ai_credits` on Node / Control / Command + Stripe Billing Meter | **Live** when metered price IDs configured (`stripe_metering.py`) | **Partial** — LLM tokens only; **grounding surcharge is a separate Google line item** |
 | `intelligence_usage_logs` (Intelligence Pack per-request logging) | **Not built** — scoped in Phase 0 MSP docs, **no table in repo** | Pack-specific; would need extension for non-pack grounding calls |
 
-**Engineering recommendation (Decision A — when gate 3 opens):** Extend existing `usage_tracking` / **`ai_credits`** spine; record each grounding call (count + token metadata); map Google cost → credits with margin; wire to Stripe meter. **Do not invent a third customer-facing unit.**
+**Engineering recommendation (Decision A — when gate 3 opens):** Record each grounding call in **`usage_tracking` / `ai_credits`** internally. **Customer-facing:** **research lookups** — third pay-as-you-go line on [gravitre.app/pricing](https://gravitre.app/pricing) alongside Additional Outputs ($2–3) and Mesons ($2–4), **not** a separate currency exposed as “AI credits.”
 
-### Pricing model (Decision B — direction recorded; numbers pending gate 2)
+### Pricing model (Decision B — proposal recorded 2026-07-18)
 
-Separate from the engineering primitive choice. **Direction recorded 2026-07-18** — specific allotments sized only after gate 2 (volume estimate).
+Plan-tier **included research lookups** (not signup bonus). **Launch: no tier price increases** — revisit only if gate 2 shows volume past Google’s free tier.
 
-**Rejected — flat per-plan dollar inclusion, signup free-credit pool:**
+#### Industry benchmark ($/1k queries)
 
-- Flat $35/month baked into tier: skewed usage, inverted margin (see prior section).
-- **Signup-triggered free credits** (e.g. “500 free API calls”): second allotment mechanism alongside plan-tier `ai_credits` — overlaps the one-concept rule; not used here.
+| Product | ~$/1k |
+|---------|-------|
+| Perplexity Sonar raw | ~$5 |
+| Perplexity Sonar Pro Search | ~$14–22 |
+| Perplexity Enterprise Pro (bundled) | ~$23 |
+| Perplexity Enterprise Max (bundled) | ~$18.8 |
+| Google Grounded Generation | $0 (under 10k/day/account) → $35 above |
 
-**Recorded direction — plan-tier included allotment (not signup):**
+Design allotments for usage **under Google’s free line**, not assuming $35/1k for every query.
 
-Framing: **“how much research is included in what you’re already paying for”** — not a free-trial research pool.
+#### COGS reframe — Gravitree scale vs Google free tier
 
-| Tier | Direction |
-|------|-----------|
-| **Node** | None or very small taste (handful/month) — discoverable, limits exposure on entry tier |
-| **Control** | Modest included allotment — sized post–volume estimate; “included with your plan” |
-| **Command** | Larger allotment — aligned with Command’s broader Intelligence Pack access |
-| **Overage** | General **`ai_credits` pool** on any tier — same as all other usage |
+Verified pricing page (2026-07-18): Node **$49** / Control **$129** / Command **$299**; outputs **10 / 40 / 120** per month. Google: **10k grounding counts/day/account** free.
 
-Avoids: first-try hard wall (something at every tier) **and** unbounded free usage before data to size responsibly.
+Max theoretical Command usage (1 lookup per output): **~4/day** — far below free tier. **Grounding surcharge likely $0** at current scale; primary cost = Gemini tokens (existing token economics).
 
-**Still open until gate 2:** Numeric allotments per tier, conversion rate + margin over Google $35/1k, optional research line item in usage UI (same currency).
+Internal `ai_credits` (not on pricing page): Node 2k / Control 15k / Command 75k included; overage **$0.02 / $0.015 / $0.012** per credit — `backend/app/billing/service.py`.
 
-**Owner still must decide before build:**
+#### Proposed tiers (proposal — gate 2 validates)
 
-1. ~~Tier allotment shape~~ — **recorded**; numbers TBD after volume estimate.
-2. Grounding → `ai_credits` conversion rate and margin.
-3. Boundary UX when included allotment exhausted (charge from general pool with notice — align with existing overage).
+| Tier | Included lookups/mo | Launch price change | Overage |
+|------|---------------------|---------------------|---------|
+| Node ($49) | **10** | None | Additional Research Lookups **$0.25–0.50** |
+| Control ($129) | **60** | None (optional +$10–15) | same |
+| Command ($299) | **200** | None (optional +$20–30) | same |
+
+Overage priced for **$35/1k COGS margin**, not $0 free-tier rate. Same family as Outputs/Mesons — smaller unit, lower price.
+
+**Launch recommendation:** Bundle included lookups; **do not raise tier prices** — aligns with “intelligence included” brand; overage is dormant safety valve until gate 2.
+
+**Rejected:** signup free-credit pool; flat $35/mo tier surcharge; tier price increases without cost-driven justification.
+
+**Still open:** internal grounding→`ai_credits` debit rate; gate 2 volume validation.
 
 ### Sequencing
 
-**Do not build metering infrastructure now.** Flag stays off; volume estimate is NOT RUN. Gate 3 scoped only when seriously considering enablement. Pricing direction is recorded; **committing to specific numbers waits on gate 2**.
+**Do not build metering now.** Proposal on canvas; gate 2 validates; gate 3 implements.
 
 ---
 

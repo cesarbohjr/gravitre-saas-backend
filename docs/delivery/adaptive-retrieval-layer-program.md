@@ -128,8 +128,8 @@ Google bills Gravitree **~$35/1k grounding counts/day above 10k free tier per ac
 
 | Decision | Owner | Status |
 |----------|-------|--------|
-| **A. Engineering / metering primitive** | Engineering (when gate 3 opens) | **Recommendation recorded:** fold grounding into existing **`ai_credits`** — do not invent a third customer-facing unit |
-| **B. Pricing model** | Product / owner | **DIRECTION RECORDED** — plan-tier included allotment (not signup bonus); **specific numbers pending gate 2** |
+| **A. Engineering / metering primitive** | Engineering (when gate 3 opens) | **Recommendation recorded:** meter internally via **`ai_credits`** pool; customer-facing unit = **research lookups** (same family as outputs/Mesons on [pricing page](https://gravitre.app/pricing)) — not a separate currency |
+| **B. Pricing model** | Product / owner | **PROPOSAL RECORDED** — tier allotments + overage line item; **no tier price increase at launch** (revisit after gate 2) |
 
 Decision A (which primitive) and Decision B (how plans price it) are related but **not the same**. A flat “$35/month baked into each plan” is a **pricing-model** choice that could still be implemented via included credits — or wrongly implemented as a hard-coded dollar line disconnected from usage.
 
@@ -147,35 +147,63 @@ Decision A (which primitive) and Decision B (how plans price it) are related but
 - Variable Google cost → variable customer metering through a primitive that already exists: plan-tier included quotas, overage via same pool, Stripe Billing Meter when configured.
 - Architecturally coherent: usage-based cost through usage-based billing.
 
-**Middle path — recorded direction (numbers pending volume estimate)**
+**Middle path — recorded direction**
 
-Tie research to **plan tier**, not signup. This is **“how much research is included in what you’re already paying for”** — not a separate “free trial of research.” One allotment concept (plan-tier included amount), not two overlapping ones (signup bonus + plan tier).
+Tie research to **plan tier**, not signup. One **included allotment** per tier; overage via existing pay-as-you-go pattern. Internally debits **`ai_credits`**; customers see **research lookups** (not “AI credits”) — consistent with pricing page exposing outputs and Mesons, not backend credit math.
 
-| Tier | Included research allotment (direction) |
-|------|----------------------------------------|
-| **Node** | **None or very small taste** (e.g. handful of queries/month) — discoverable, not a real research budget; limits exposure on least-committed customers |
-| **Control** | **Modest real allotment** — sized after volume estimate; framed as **“included with your plan,”** not “free credits” |
-| **Command** | **Larger allotment** — consistent with Command already including the most Intelligence Pack access |
-| **Overage (any tier)** | Debits **general `ai_credits` pool** — same mechanism as everything else |
+**Why not signup-triggered free credits:** Second allotment mechanism alongside plan tier — rejected.
 
-**Why not signup-triggered free credits:** A separate “500 free API calls at signup” pool would be a **second allotment mechanism** alongside plan-tier `ai_credits` — the third-thing problem the engineering recommendation avoids. Exactly one allotment concept: plan-tier included amount.
+#### Market benchmark (cost per 1k queries — comparable to Google $35/1k overage)
 
-**What this avoids:** (1) hard wall on first try — something included at every tier; (2) unbounded free usage before volume data exists to size responsibly.
+| Product | Structure | Effective $/1k queries |
+|---------|-----------|------------------------|
+| Perplexity Sonar (raw search) | $5/1k, no synthesis | ~$5 |
+| Perplexity Sonar Pro Search (agentic) | per-request | ~$14–22 |
+| Perplexity Pro ($20/mo) | bundled fair-use | effectively unlimited within cap |
+| Perplexity Enterprise Pro ($40/seat/mo) | ~1,733 searches/mo bundled | ~$23 all-in |
+| Perplexity Enterprise Max ($325/seat/mo) | ~17,320/mo bundled | ~$18.8 all-in |
+| **Google Grounded Generation** (Gravitree path) | $0 to 10k/day/account; $35/1k above | **$0–35** depending on volume |
 
-**Still open (cannot size without gate 2):** Specific credit counts per tier, grounding → `ai_credits` conversion rate + margin, optional UI line-item separation. Guessing numbers now risks stingy (defeats “included”) or generous (recreates unbounded-cost risk).
+Market per-query economics sit roughly **$5–23/1k**; Google’s **$35/1k is the high end**, offset by **10k/day/account free tier**. Size allotments assuming most usage stays under Google’s free line — not that every query costs $35.
 
-**Honest answer to “free or billed immediately”:** Plan-tier included allotment, **sized from real data once gate 2 runs**, overage through existing `ai_credits` pool from day one, **no** separate unconditional free-credit grant at signup.
+#### Gravitree scale vs Google free tier (reframes COGS)
+
+**Verified list prices** @ [gravitre.app/pricing](https://gravitre.app/pricing) (fetched 2026-07-18): Node **$49**, Control **$129**, Command **$299**; output caps **10 / 40 / 120** per month. Pay-as-you-go precedent: Additional Outputs **$2–3**, Additional Mesons **$2–4**.
+
+Google free tier: **10,000 grounding counts/day/account** before $35/1k surcharge. Even if every Command output triggered one grounded search at full utilization: **120/month ≈ 4/day** — **~3 orders of magnitude** under the free threshold.
+
+**Implication:** At current plan structure, **Google grounding surcharge is likely $0** for the foreseeable future; real variable cost is **Gemini tokens per grounded call** (smaller; overlaps existing token economics). This is not primarily “cover a $35/1k line item” — it is **package near-zero-marginal-cost capability as valuable, not free**, with overage priced for the edge case where patterns shift.
+
+**Backend reference (internal, not customer-facing):** `DEFAULT_PLANS` in `backend/app/billing/service.py` — Node 2,000 / Control 15,000 / Command 75,000 `ai_credits_included`; overage **$0.02 / $0.015 / $0.012** per credit respectively.
+
+#### Proposed tier structure (proposal recorded — gate 2 validates)
+
+**Definition:** 1 **research lookup** ≈ 1 grounded query (token ratio refined when volume data exists). Included lookups are **plan-tier allotments**; overage uses **Additional Research Lookups** — third line in the outputs/Mesons family, **not** a new customer currency.
+
+| Tier | List price | Included research lookups/month | Tier price change at launch | Reasoning |
+|------|------------|--------------------------------|-----------------------------|-----------|
+| **Node** | $49 | **10** | **None** | 1:1 with 10-output cap; discoverable “try it” tier |
+| **Control** | $129 | **60** | **None** (optional +$10–15 if positioned as distinct value-add) | ~1.5× 40-output cap; real research without unbounded exposure |
+| **Command** | $299 | **200** | **None** (optional +$20–30) | Well above 120-output cap; unconstrained research positioning; still far below Google paid tier |
+| **Overage (any tier)** | — | — | **Additional Research Lookups: $0.25–0.50 each** | Same family as Outputs/Mesons; margin over **$35/1k overage-rate COGS**, not $0 free-tier rate; dormant safety valve until usage patterns warrant |
+
+*Supersedes earlier benchmark-only anchors (Node ~15–25, Control ~150–300, Command ~750–1500) — those were pre–pricing-page; current proposal aligns to **output caps** and **verified COGS math**.*
+
+**Launch recommendation (recorded):** **Do not raise tier prices** for internet research at launch. Free-tier math means charging more would be **optics-only**, not cost recovery — undercuts “intelligence included” positioning (“Pay for outputs and team seats — not buzzword tiers”). **Bundle generous capped allotments**; keep **$0.25–0.50/lookup overage** as the real margin protection, priced and ready but likely dormant until gate 2 confirms patterns.
+
+**Revisit tier pricing only if** gate 2 shows meaningful volume past Google’s free tier — then cost-driven increases use **real data**, not illustrative placeholders.
 
 #### Owner decisions still required (before metering is built)
 
-1. ~~**Included research allotment per tier**~~ — **direction recorded** (Node minimal / Control modest / Command larger); **numeric values pending gate 2**.
-2. **Conversion rate + margin** — grounding count (+ associated tokens) → `ai_credits`, with margin over Google’s verified $35/1k overage rate.
-3. **Single pool** — **direction recorded:** reuse **general `ai_credits` pool** for overage; optional separate **UI line item**, same currency.
-4. **Boundary behavior** — at included allotment exhausted: charge from general balance with transparent notice (align with existing overage UX).
+1. ~~**Included allotment per tier**~~ — **proposal recorded** (10 / 60 / 200 lookups); gate 2 validates assumptions.
+2. **Grounding → internal `ai_credits` debit rate** — conversion + margin; customer sees lookups, not credits.
+3. ~~**Customer-facing unit**~~ — **proposal recorded:** **research lookups** + **Additional Research Lookups** overage line (pricing-page family).
+4. **Boundary behavior** — included exhausted → overage lookup purchase / pay-as-you-go (align with “What happens after I hit my limit?” on pricing page).
 
-**Metering build status:** **NOT STARTED** — direction recorded; numeric sizing and implementation wait on **gate 2** (volume estimate), then **gate 3** build.
+**Metering build status:** **NOT STARTED** — proposal on canvas; gate 2 validates volume/COGS; gate 3 implements.
 
 Full analysis: [`internet-research-governance-google-vertex.md`](./internet-research-governance-google-vertex.md)  
+Pricing proposal: [`internet-research-pricing-proposal.json`](./internet-research-pricing-proposal.json)  
 Artifacts: [`internet-research-governance-latest.json`](./internet-research-governance-latest.json), [`internet-research-governance-closure.json`](./internet-research-governance-closure.json)
 
 ---
@@ -199,5 +227,5 @@ Nothing is broken. One specific performance question (RM latency delta on intern
 |------|--------|
 | Milestone 1 — Research Manager + cascade | **PASS** (live-verified) |
 | Milestone 2 — Performance audit | **INCONCLUSIVE, closed by decision** |
-| Internet research enablement | **OFF** — governance **CLOSED**; volume estimate + metering **NOT RUN / NOT BUILT** |
+| Internet research enablement | **OFF** — governance **CLOSED**; pricing **proposal recorded**; gate 2 + metering **NOT RUN / NOT BUILT** |
 | Retrieval-layer program | **Closed** |

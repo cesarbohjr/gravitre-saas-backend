@@ -78,36 +78,21 @@
     "preferred_extension_path": "extend_usage_tracking_ai_credits_with_grounding_conversion_and_margin"
   },
   "metering_product_decisions_open": [
-    "included_research_allotment_per_tier_node_control_command",
-    "grounding_to_ai_credits_conversion_rate_and_margin_over_google_35_per_1k",
-    "single_ai_credits_pool_vs_separate_research_balance",
-    "boundary_behavior_at_quota_stop_throttle_or_charge_with_notice"
+    "grounding_to_ai_credits_internal_debit_rate_and_margin",
+    "boundary_behavior_when_included_lookups_exhausted"
   ],
   "pricing_model_decision": {
-    "status": "DIRECTION_RECORDED_NUMBERS_PENDING_GATE_2",
+    "status": "PROPOSAL_RECORDED_GATE_2_VALIDATES",
     "owner": "product",
     "recorded_at": "2026-07-18",
-    "separate_from_engineering_primitive": true,
-    "engineering_recommendation": "fold_grounding_into_ai_credits_no_third_unit",
-    "allotment_mechanism": "plan_tier_included_only_not_signup_bonus",
-    "rejected": [
-      "flat_per_plan_monthly_surcharge_e_g_35_usd_baked_in",
-      "signup_triggered_free_credit_pool"
-    ],
-    "tier_direction": {
-      "node": "none_or_very_small_taste_handful_per_month_discoverability_only",
-      "control": "modest_included_allotment_sized_after_volume_estimate",
-      "command": "larger_included_allotment_aligned_with_intelligence_pack_access",
-      "overage_any_tier": "general_ai_credits_pool"
-    },
-    "framing": "included_in_plan_not_free_trial_research",
-    "numeric_allotments_status": "NOT_SET_PENDING_VOLUME_ESTIMATE_GATE_2",
-    "still_open": [
-      "grounding_to_ai_credits_conversion_rate_and_margin",
-      "optional_research_line_item_in_usage_ui"
-    ],
-    "build_authorized": false,
-    "note": "Direction recorded; specific numbers and metering build wait on gate 2 volume estimate"
+    "internal_metering": "ai_credits_pool",
+    "customer_facing_unit": "research_lookups",
+    "customer_facing_overage": "additional_research_lookups_0_25_to_0_50_usd",
+    "launch_raise_tier_prices": false,
+    "proposed_included_lookups_per_month": { "node": 10, "control": 60, "command": 200 },
+    "pricing_page_verified": "https://gravitre.app/pricing",
+    "proposal_artifact": "docs/delivery/internet-research-pricing-proposal.json",
+    "build_authorized": false
   },
   "pricing": {
     "list_price_verified": true,
