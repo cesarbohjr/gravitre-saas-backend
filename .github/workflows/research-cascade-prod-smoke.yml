@@ -13,6 +13,7 @@ on:
       - ".github/workflows/research-cascade-prod-smoke.yml"
       - "backend/app/services/adaptive_research_cascade.py"
       - "backend/app/services/research_action_bridge.py"
+      - "backend/app/services/research_manager.py"
       - "backend/app/services/pack_aware_source_selection.py"
       - "backend/app/services/unified_retrieval_service.py"
       - "apps/web/components/gravitre/assistant/research-*.tsx"

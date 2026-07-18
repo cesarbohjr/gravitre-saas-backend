@@ -1,0 +1,111 @@
+name: Milestone 1 Live Reverify
+
+on:
+  workflow_dispatch:
+    inputs:
+      min_sha:
+        description: "Minimum deployed git sha prefix (Research Manager)"
+        required: false
+        default: "4eb6adbe"
+      skip_wave67_write:
+        description: "Skip Wave67 write/approve turns (read-only spotcheck)"
+        required: false
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - "backend/app/services/research_manager.py"
+      - "backend/app/services/unified_retrieval_service.py"
+      - "scripts/smoke-milestone1-live-reverify.py"
+      - "scripts/smoke-retrieval-ab-live.py"
+      - ".github/workflows/milestone1-live-reverify.yml"
+
+concurrency:
+  group: milestone1-live-reverify
+  cancel-in-progress: false
+
+jobs:
+  live-reverify:
+    name: Milestone 1 prod live reverify
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Wait for prod deploy (Research Manager sha)
+        env:
+          BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+          MIN_SHA: ${{ github.event.inputs.min_sha || '4eb6adbe' }}
+        run: |
+          python3 - <<'PY'
+          import json, subprocess, sys, time, urllib.request
+          base = __import__('os').environ['BACKEND_URL'].rstrip('/')
+          minimum = __import__('os').environ['MIN_SHA'].strip().lower()
+          for attempt in range(36):
+              with urllib.request.urlopen(f"{base}/health", timeout=30) as resp:
+                  health = json.loads(resp.read().decode())
+              sha = str(health.get('git_sha') or '').lower()
+              ok = sha.startswith(minimum)
+              if not ok:
+                  try:
+                      subprocess.run(['git', 'merge-base', '--is-ancestor', minimum, sha], check=True, capture_output=True)
+                      ok = True
+                  except subprocess.CalledProcessError:
+                      ok = False
+              print(f"attempt={attempt+1} git_sha={sha} need>={minimum} ok={ok}")
+              if ok:
+                  sys.exit(0)
+              time.sleep(20)
+          print('Timed out waiting for prod deploy')
+          sys.exit(1)
+          PY
+
+      - name: Run Milestone 1 live reverify (four canonical + A/B)
+        env:
+          BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+          OAUTH_SMOKE_USER_ID: ${{ secrets.OAUTH_SMOKE_USER_ID }}
+          OAUTH_SMOKE_ORG_ID: ${{ secrets.OAUTH_SMOKE_ORG_ID }}
+          ROUTING_WAVE_ALLOW_ANY_SHA: "1"
+        run: |
+          EXTRA=""
+          if [ "${{ github.event.inputs.skip_wave67_write }}" = "true" ]; then
+            EXTRA="--skip-wave67-write"
+          fi
+          python3 scripts/smoke-milestone1-live-reverify.py \
+            --base-url "$BACKEND_URL" \
+            --min-sha "${{ github.event.inputs.min_sha || '4eb6adbe' }}" \
+            --json docs/delivery/milestone1-live-reverify-latest.json \
+            $EXTRA
+
+      - name: Upload live reverify artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: milestone1-live-reverify
+          path: |
+            docs/delivery/milestone1-live-reverify-latest.json
+            docs/delivery/retrieval-ab-live-latest.json
+            docs/delivery/smoke-research-cascade-prod-latest.json
+            docs/delivery/react-write-live-milestone1.json
+            docs/delivery/canvas-write-governance-milestone1.json
+            docs/delivery/wave67-spotcheck-milestone1.json
+            docs/delivery/routing-wave-prod-live.json
+          if-no-files-found: ignore
