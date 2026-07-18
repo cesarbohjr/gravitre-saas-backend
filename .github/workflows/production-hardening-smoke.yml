@@ -71,6 +71,16 @@ jobs:
           SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
         run: python scripts/smoke-ai-production.py --json docs/delivery/smoke-ai-production-latest.json
 
+      - name: Run research cascade production smoke (Phases 1–6)
+        env:
+          BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: |
+          python scripts/smoke-research-cascade-prod.py \
+            --json docs/delivery/smoke-research-cascade-prod-latest.json
+
       - name: Upload smoke reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -79,4 +89,5 @@ jobs:
           path: |
             docs/delivery/smoke-marketplace-production-latest.json
             docs/delivery/smoke-ai-production-latest.json
+            docs/delivery/smoke-research-cascade-prod-latest.json
           if-no-files-found: ignore
