@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 import uuid
@@ -153,11 +154,9 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any]:
         if not env.get(key):
             raise SystemExit(f"Missing {key} — set in env or repo Actions secrets")
 
-    from app.workflows.repository import get_supabase_client
-    from app.config import get_settings
+    from supabase import create_client
 
-    settings = get_settings()
-    client = get_supabase_client(settings)
+    client = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
     org_id = (args.org_id or env.get("OAUTH_SMOKE_ORG_ID") or ORG_DEFAULT).strip()
     actor = (env.get("OAUTH_SMOKE_USER_ID") or "").strip()
     if not actor:
