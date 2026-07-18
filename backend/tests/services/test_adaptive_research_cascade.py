@@ -143,6 +143,21 @@ def test_build_research_policy_extension_mentions_pack_sources():
     assert "Intelligence pack sources" in section
 
 
+def test_enrich_research_cascade_exposed_in_evaluate_flow():
+    from app.services.adaptive_research_cascade import enrich_research_cascade
+
+    enriched = enrich_research_cascade(
+        evaluate_research_cascade(
+            retrieval_effectiveness={"source_count": 1, "retrieval_score": 0.5, "top_sources": []},
+            rag_sources=[{"content": "x"}],
+            settings=_settings(),
+        ),
+        retrieval_effectiveness={"source_count": 1, "retrieval_score": 0.5, "top_sources": []},
+        sources=[{"kind": "knowledge"}],
+    )
+    assert enriched["confidence_band"] == "medium"
+
+
 def test_attach_internet_research_to_cascade():
     from app.services.adaptive_research_cascade import attach_internet_research_to_cascade
 

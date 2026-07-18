@@ -2,23 +2,9 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import type { ResearchCascadePayload, ResearchScopeOption } from "./research-cascade-types"
 
-export type ResearchScopeOption = {
-  scope: string
-  label: string
-  description: string
-  enabled: boolean
-  disabled_reason?: string | null
-}
-
-export type ResearchCascadePayload = {
-  internal_thin?: boolean
-  suggest_broaden?: boolean
-  prompt_message?: string | null
-  options?: ResearchScopeOption[]
-  research_scope?: string
-  internet_research_enabled?: boolean
-}
+export type { ResearchCascadePayload, ResearchScopeOption }
 
 type ResearchScopePromptProps = {
   cascade: ResearchCascadePayload | null | undefined

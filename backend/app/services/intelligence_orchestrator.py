@@ -423,6 +423,21 @@ class IntelligenceOrchestrator:
             ],
         )
 
+        research_cascade = dict(retrieval.research_cascade or {})
+        from app.services.research_action_bridge import (
+            attach_research_actions_to_cascade,
+            suggest_research_actions,
+        )
+
+        research_actions = suggest_research_actions(
+            query,
+            research_cascade=research_cascade,
+            connected_integrations=connected,
+            research_scope=research_scope,
+        )
+        if research_actions:
+            research_cascade = attach_research_actions_to_cascade(research_cascade, research_actions)
+
         return AssistantTurnContext(
             retrieval=retrieval,
             agent=agent,
@@ -457,7 +472,7 @@ class IntelligenceOrchestrator:
             execution_gate=execution_gate,
             advisor_brief=advisor_brief,
             explainability=explainability,
-            research_cascade=retrieval.research_cascade or {},
+            research_cascade=research_cascade,
             working_memory=working_memory,
             distillation_meta=distillation_meta,
             operational_envelope=operational_envelope,

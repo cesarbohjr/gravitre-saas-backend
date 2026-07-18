@@ -291,6 +291,126 @@ def build_research_policy_extension(
     return "\n".join(lines)
 
 
+def confidence_band_from_score(score: float | None) -> str:
+    """Map retrieval_score to a display band — real scores only, no synthetic inflation."""
+    if score is None:
+        return "unknown"
+    if score >= 0.75:
+        return "high"
+    if score >= 0.45:
+        return "medium"
+    return "low"
+
+
+def build_source_breakdown(sources: list[dict[str, Any]] | None) -> dict[str, int]:
+    breakdown: dict[str, int] = {}
+    for row in sources or []:
+        if not isinstance(row, dict):
+            continue
+        kind = str(row.get("kind") or "unknown")
+        breakdown[kind] = breakdown.get(kind, 0) + 1
+    return breakdown
+
+
+def build_cascade_stage_progress(cascade: dict[str, Any]) -> list[dict[str, Any]]:
+    """Per-stage status for research plan visualization (Phase 5)."""
+    active = list(cascade.get("active_stages") or [])
+    internet = cascade.get("internet_research") if isinstance(cascade.get("internet_research"), dict) else {}
+    packs = cascade.get("intelligence_packs") if isinstance(cascade.get("intelligence_packs"), dict) else {}
+    rows: list[dict[str, Any]] = []
+    for stage in CASCADE_STAGE_ORDER:
+        if stage not in active:
+            continue
+        status = "completed"
+        detail: str | None = None
+        if stage == "internet_research":
+            if internet.get("ran"):
+                count = int(internet.get("result_count") or 0)
+                status = "completed" if count > 0 else "empty"
+                detail = f"{count} web results"
+            elif not cascade.get("internet_research_enabled"):
+                status = "skipped"
+                detail = "governance gated"
+            else:
+                status = "skipped"
+        elif stage == "intelligence_packs":
+            if packs.get("ran"):
+                count = int(packs.get("result_count") or 0)
+                status = "completed" if count > 0 else "empty"
+                detail = f"{count} pack sources"
+            else:
+                status = "skipped"
+                detail = str(packs.get("skipped_reason") or "no pack assignments")
+        elif stage == "reasoning":
+            status = "pending"
+        rows.append(
+            {
+                "stage": stage,
+                "label": stage.replace("_", " ").title(),
+                "status": status,
+                "detail": detail,
+            }
+        )
+    return rows
+
+
+def build_research_progress_steps(cascade: dict[str, Any]) -> list[str]:
+    """Human-readable cascade steps for Wave 6 SSE progress."""
+    steps: list[str] = []
+    for row in build_cascade_stage_progress(cascade):
+        label = str(row.get("label") or "Stage")
+        status = str(row.get("status") or "pending")
+        detail = row.get("detail")
+        if status == "completed":
+            steps.append(f"{label} complete" + (f" ({detail})" if detail else ""))
+        elif status == "empty":
+            steps.append(f"{label} — no matches")
+        elif status == "skipped":
+            steps.append(f"{label} skipped" + (f" ({detail})" if detail else ""))
+        else:
+            steps.append(f"{label}…")
+    return steps
+
+
+def enrich_research_cascade(
+    cascade: dict[str, Any],
+    *,
+    retrieval_effectiveness: dict[str, Any] | None,
+    sources: list[dict[str, Any]] | None,
+) -> dict[str, Any]:
+    """Phase 4 — attach real retrieval effectiveness and source breakdown."""
+    updated = dict(cascade)
+    effectiveness = retrieval_effectiveness if isinstance(retrieval_effectiveness, dict) else {}
+    score = effectiveness.get("retrieval_score")
+    numeric_score = float(score) if score is not None else None
+    updated["retrieval_score"] = score
+    updated["source_count"] = effectiveness.get("source_count")
+    updated["confidence_band"] = confidence_band_from_score(numeric_score)
+    updated["top_sources"] = list(effectiveness.get("top_sources") or [])[:6]
+    updated["source_breakdown"] = build_source_breakdown(sources)
+    updated["stage_progress"] = build_cascade_stage_progress(updated)
+    updated["progress_steps"] = build_research_progress_steps(updated)
+    return updated
+
+
+def should_emit_research_cascade_sse(cascade: dict[str, Any] | None) -> bool:
+    """True when the client should receive cascade metadata mid-stream."""
+    if not isinstance(cascade, dict) or not cascade:
+        return False
+    if cascade.get("suggest_broaden"):
+        return True
+    scope = str(cascade.get("research_scope") or ResearchScope.INTERNAL_ONLY.value)
+    if scope != ResearchScope.INTERNAL_ONLY.value:
+        return True
+    internet = cascade.get("internet_research") if isinstance(cascade.get("internet_research"), dict) else {}
+    packs = cascade.get("intelligence_packs") if isinstance(cascade.get("intelligence_packs"), dict) else {}
+    if internet.get("ran") or packs.get("ran"):
+        return True
+    if cascade.get("stage_progress") or cascade.get("research_actions"):
+        return True
+    return False
+
+
 def evaluate_research_cascade(
     *,
     retrieval_effectiveness: dict[str, Any] | None,

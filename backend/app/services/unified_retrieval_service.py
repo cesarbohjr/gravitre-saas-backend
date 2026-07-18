@@ -387,6 +387,14 @@ class UnifiedRetrievalService:
                 ran=True,
             )
 
+        from app.services.adaptive_research_cascade import enrich_research_cascade
+
+        research_cascade = enrich_research_cascade(
+            research_cascade,
+            retrieval_effectiveness=retrieval_effectiveness,
+            sources=sources,
+        )
+
         return UnifiedRetrievalBundle(
             rag_sources=rag_sources,
             rag_section=rag_section,

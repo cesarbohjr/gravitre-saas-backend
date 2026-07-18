@@ -61,6 +61,8 @@ import {
   ResearchScopePrompt,
   type ResearchCascadePayload,
 } from "@/components/gravitre/assistant/research-scope-prompt"
+import { ResearchCascadePanel } from "@/components/gravitre/assistant/research-cascade-panel"
+import { ResearchPlanPanel } from "@/components/gravitre/assistant/research-plan-panel"
 import { ConversationSidebar } from "@/components/gravitre/assistant/conversation-sidebar"
 import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
 import { Button } from "@/components/ui/button"
@@ -230,6 +232,7 @@ export function AiWorkspace({
     reason?: string
   } | null>(null)
   const [researchCascade, setResearchCascade] = useState<ResearchCascadePayload | null>(null)
+  const [researchProgressSteps, setResearchProgressSteps] = useState<string[]>([])
   const notifications = useNotifications()
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -329,6 +332,7 @@ export function AiWorkspace({
         contextExplanation?: string
         taskState?: typeof taskState
         researchCascade?: ResearchCascadePayload
+        progressSteps?: string[]
       }
       if (payload.dialogueMode) setDialogueMode(payload.dialogueMode)
       if (payload.pendingTask) setPendingTask(payload.pendingTask)
@@ -339,6 +343,9 @@ export function AiWorkspace({
       if (payload.contextExplanation) setContextExplanation(payload.contextExplanation)
       if (payload.executionGate) setExecutionGate(payload.executionGate)
       if (payload.researchCascade) setResearchCascade(payload.researchCascade)
+      if (Array.isArray(payload.progressSteps) && payload.progressSteps.length > 0) {
+        setResearchProgressSteps(payload.progressSteps)
+      }
       if (Array.isArray(payload.businessSignals) && payload.businessSignals.length > 0) {
         setActiveBusinessSignals(payload.businessSignals)
       }
@@ -941,6 +948,7 @@ export function AiWorkspace({
     async (scope: string) => {
       researchScopeRef.current = scope
       setResearchCascade(null)
+      setResearchProgressSteps([])
       const prompt = lastUserPromptRef.current.trim()
       if (!prompt) return
       await runChat(prompt)
@@ -1077,6 +1085,7 @@ export function AiWorkspace({
       crossDepartmentRef.current = isCrossDepartmentPrompt(prompt)
       researchScopeRef.current = null
       setResearchCascade(null)
+      setResearchProgressSteps([])
       await ensureConversation(prompt)
       const engine = await resolveEngine(prompt, mode)
       setInput("")
@@ -1588,6 +1597,13 @@ export function AiWorkspace({
                   onSelectScope={(scope) => void handleResearchScopeSelect(scope)}
                   className="mb-4"
                 />
+                <ResearchPlanPanel
+                  cascade={researchCascade}
+                  progressSteps={researchProgressSteps}
+                  strategicPlan={strategicPlan}
+                  className="mb-4"
+                />
+                <ResearchCascadePanel cascade={researchCascade} className="mb-4" />
                 <ChatTranscript
                 messages={messages}
                 showWaiting={showWaitingForReply && !conversationLoading}

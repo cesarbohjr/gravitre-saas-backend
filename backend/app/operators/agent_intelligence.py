@@ -1873,6 +1873,19 @@ class AgentIntelligence:
 
         # Wave 6 — stream plan / task state before tools so the UI can show progress live.
         # Routing wave — emit named product tier + latency budget before tools.
+        from app.services.adaptive_research_cascade import (
+            build_research_progress_steps,
+            should_emit_research_cascade_sse,
+        )
+
+        cascade_for_sse = turn_ctx.research_cascade if isinstance(turn_ctx.research_cascade, dict) else {}
+        research_steps = build_research_progress_steps(cascade_for_sse) if cascade_for_sse else []
+        tool_progress = build_progress_steps(
+            routing_tier=routing_control.tier,
+            connected_integrations=connected_list,
+            connector_names=connector_focus,
+            phase="tools",
+        )
         yield sse_intelligence_metadata(
             message_id=message_id,
             confidence={"score": classification_confidence, "needs_clarification": False},
@@ -1885,13 +1898,8 @@ class AgentIntelligence:
             pipeline_tier=pipeline_tier,
             routing_tier=routing_control.tier,
             routing=routing_sse,
-            progress_steps=build_progress_steps(
-                routing_tier=routing_control.tier,
-                connected_integrations=connected_list,
-                connector_names=connector_focus,
-                phase="tools",
-            ),
-            research_cascade=turn_ctx.research_cascade if turn_ctx.research_cascade.get("suggest_broaden") else None,
+            progress_steps=[*research_steps, *tool_progress],
+            research_cascade=cascade_for_sse if should_emit_research_cascade_sse(cascade_for_sse) else None,
         )
         if turn_ctx.strategic_plan or (
             isinstance(task_state, dict) and task_state.get("current_plan")
