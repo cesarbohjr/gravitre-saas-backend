@@ -2,10 +2,16 @@
 
 Hard rules:
 - Writes training rows only; never contacts customers.
-- Labels must be explicit churn/retain — not generic agent outcome_success.
+- Labels must be explicit churn/retain — not generic agent failures.
+
+Storage (compatible with live agent_action_outcomes — no outcome_payload column):
+- metric_name = churn_customer_signal
+- metric_value_after = 1.0 if churned else 0.0
+- confidence_note = JSON with FEATURE_KEYS + label_reason (+ advisory flag)
 """
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from typing import Any
 
@@ -15,7 +21,6 @@ CHURN_METRIC_NAME = "churn_customer_signal"
 CHURN_ENTITY_TYPE = "customer"
 CHURN_ACTION_TYPE = "churn_risk_label"
 
-# Explicit churn reasons (stored in outcome_payload for audit; not model features).
 CHURN_LABEL_REASONS = frozenset({"cancel", "non_renew", "closed_lost", "churned"})
 RETAIN_LABEL_REASONS = frozenset({"active", "renewed", "retained"})
 
@@ -30,7 +35,6 @@ def features_usable(features: dict[str, float]) -> bool:
 
 
 def resolve_churn_label(*, churned: bool | None = None, label_reason: str | None = None) -> bool | None:
-    """Return True if churned, False if retained, None if unknown."""
     if churned is not None:
         return bool(churned)
     reason = str(label_reason or "").strip().lower()
@@ -39,6 +43,19 @@ def resolve_churn_label(*, churned: bool | None = None, label_reason: str | None
     if reason in RETAIN_LABEL_REASONS:
         return False
     return None
+
+
+def _parse_note_payload(note: Any) -> dict[str, Any]:
+    if isinstance(note, dict):
+        return note
+    text = str(note or "").strip()
+    if not text.startswith("{"):
+        return {}
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
 
 
 def build_churn_outcome_row(
@@ -50,12 +67,18 @@ def build_churn_outcome_row(
     label_reason: str | None = None,
     agent_id: str | None = None,
 ) -> dict[str, Any]:
-    """Build an agent_action_outcomes row for churn training."""
     feature_row = extract_churn_features(features)
     if not features_usable(feature_row):
         raise ValueError("churn features must include at least one positive FEATURE_KEYS value")
     now = datetime.now(timezone.utc).isoformat()
     reason = str(label_reason or ("churned" if churned else "retained")).strip().lower()
+    note_payload = {
+        **feature_row,
+        "label_reason": reason,
+        "churned": bool(churned),
+        "advisory_only": True,
+        "schema": "churn_customer_signal_v1",
+    }
     return {
         "org_id": org_id,
         "agent_id": agent_id,
@@ -65,14 +88,9 @@ def build_churn_outcome_row(
         "metric_name": CHURN_METRIC_NAME,
         "action_taken_at": now,
         "measured_at": now,
-        "outcome_success": not bool(churned),  # success = retained
-        "outcome_payload": {
-            **feature_row,
-            "label_reason": reason,
-            "churned": bool(churned),
-            "advisory_only": True,
-        },
-        "confidence_note": "Labeled churn customer signal — advisory training only; never auto-contacts.",
+        "metric_value_before": float(sum(feature_row.values())),
+        "metric_value_after": 1.0 if churned else 0.0,
+        "confidence_note": json.dumps(note_payload, separators=(",", ":")),
     }
 
 
@@ -86,7 +104,6 @@ def upsert_churn_training_example(
     label_reason: str | None = None,
     agent_id: str | None = None,
 ) -> dict[str, Any]:
-    """Insert (or replace-by-reinsert) a labeled churn training example."""
     label = resolve_churn_label(churned=churned, label_reason=label_reason)
     if label is None:
         raise ValueError("churn label required (churned bool or label_reason)")
@@ -98,7 +115,6 @@ def upsert_churn_training_example(
         label_reason=label_reason,
         agent_id=agent_id,
     )
-    # Soft replace: delete prior signal for same customer, then insert.
     try:
         (
             client.table("agent_action_outcomes")
@@ -119,27 +135,32 @@ def upsert_churn_training_example(
 def list_churn_training_rows(client: Any, org_id: str) -> list[dict[str, Any]]:
     rows = (
         client.table("agent_action_outcomes")
-        .select("id, target_entity_id, outcome_payload, outcome_success, measured_at")
+        .select("id, target_entity_id, confidence_note, metric_value_after, measured_at")
         .eq("org_id", org_id)
         .eq("metric_name", CHURN_METRIC_NAME)
         .eq("target_entity_type", CHURN_ENTITY_TYPE)
-        .not_.is_("outcome_success", "null")
+        .not_.is_("measured_at", "null")
         .execute()
         .data
         or []
     )
     usable: list[dict[str, Any]] = []
     for row in rows:
-        features = extract_churn_features(row.get("outcome_payload"))
+        payload = _parse_note_payload(row.get("confidence_note"))
+        features = extract_churn_features(payload)
         if not features_usable(features):
             continue
+        if "churned" in payload:
+            churned = bool(payload.get("churned"))
+        else:
+            churned = float(row.get("metric_value_after") or 0.0) >= 0.5
         usable.append(
             {
                 "id": row.get("id"),
                 "customer_id": row.get("target_entity_id"),
                 "features": features,
-                "churned": not bool(row.get("outcome_success")),
-                "outcome_success": row.get("outcome_success"),
+                "churned": churned,
+                "outcome_success": not churned,
             }
         )
     return usable

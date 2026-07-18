@@ -1,6 +1,7 @@
 """Churn labeled-feature contract + advisory surface."""
 from __future__ import annotations
 
+import json
 from unittest.mock import MagicMock
 
 import pytest
@@ -46,9 +47,12 @@ def test_build_churn_outcome_row_contract():
     )
     assert row["metric_name"] == CHURN_METRIC_NAME
     assert row["target_entity_type"] == "customer"
-    assert row["outcome_success"] is False
-    assert row["outcome_payload"]["days_since_last_activity"] == 90.0
-    assert row["outcome_payload"]["advisory_only"] is True
+    assert row["metric_value_after"] == 1.0
+    assert "outcome_payload" not in row
+    note = json.loads(row["confidence_note"])
+    assert note["days_since_last_activity"] == 90.0
+    assert note["advisory_only"] is True
+    assert note["churned"] is True
 
 
 def test_build_rejects_all_zero_features():
@@ -62,7 +66,6 @@ def test_build_rejects_all_zero_features():
 
 
 def _mock_churn_select(client: MagicMock, data: list[dict]) -> None:
-    """Wire supabase-style chained select → eq → eq → not_.is_ → execute."""
     chain = client.table.return_value.select.return_value
     chain.eq.return_value = chain
     chain.not_.is_.return_value = chain
@@ -77,14 +80,16 @@ def test_list_and_count_labeled_rows():
             {
                 "id": "1",
                 "target_entity_id": "c1",
-                "outcome_success": False,
-                "outcome_payload": {"days_since_last_activity": 10, "open_support_tickets": 1},
+                "metric_value_after": 1.0,
+                "confidence_note": '{"days_since_last_activity":10,"open_support_tickets":1,"churned":true}',
+                "measured_at": "2026-07-18T00:00:00Z",
             },
             {
                 "id": "2",
                 "target_entity_id": "c2",
-                "outcome_success": True,
-                "outcome_payload": {},
+                "metric_value_after": 0.0,
+                "confidence_note": "{}",
+                "measured_at": "2026-07-18T00:00:00Z",
             },
         ],
     )
@@ -127,12 +132,12 @@ async def test_advisory_cards_never_executable():
             {
                 "id": "1",
                 "target_entity_id": "acct-1",
-                "outcome_success": False,
-                "outcome_payload": {
-                    "days_since_last_activity": 120,
-                    "open_support_tickets": 5,
-                    "failed_payments_30d": 1,
-                },
+                "metric_value_after": 1.0,
+                "measured_at": "2026-07-18T00:00:00Z",
+                "confidence_note": (
+                    '{"days_since_last_activity":120,"open_support_tickets":5,'
+                    '"failed_payments_30d":1,"churned":true}'
+                ),
             }
         ],
     )
