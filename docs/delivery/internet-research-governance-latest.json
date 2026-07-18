@@ -1,0 +1,53 @@
+{
+  "record": "internet_research_governance",
+  "updated_at": "2026-07-18T12:00:00+00:00",
+  "internet_research_enabled_prod": false,
+  "current_provider_code": "tavily",
+  "current_provider_path": "backend/app/services/web_research.py",
+  "recommendation": "google_cloud_vertex_search_grounding",
+  "recommendation_status": "not_authorized_not_integrated",
+  "ruled_out": [
+    {
+      "option": "google_custom_search_json_api",
+      "reason": "Closed to new customers; discontinued 2027-01-01"
+    },
+    {
+      "option": "tavily_default_api",
+      "reason": "Training/retention governance insufficient for enablement; stays off"
+    },
+    {
+      "option": "tavily_enterprise",
+      "reason": "Strong governance but flat enterprise cost out of budget"
+    }
+  ],
+  "google_cloud_standard_paid_baseline": {
+    "no_training_without_permission": true,
+    "note": "Training Restriction in Google Cloud Service Specific Terms",
+    "retention_debug_days": 30,
+    "zero_retention": "requires_dpa_add_on_via_sales",
+    "soc2_standard_cloud_dpa": true
+  },
+  "tavily_exa_standard_tier_pattern": {
+    "no_training_typically": "enterprise_upsell",
+    "zero_retention_typically": "enterprise_upsell"
+  },
+  "pricing_open_item": {
+    "status": "NOT_RUN",
+    "action": "Verify current list prices at cloud.google.com/generative-ai-app-builder/pricing; estimate vs Gravitree query volume",
+    "indicative_reference_only": {
+      "vertex_ai_search_data_store_per_1k_queries_usd": 4,
+      "grounding_google_search_gemini_2x_per_1k_queries_usd": 35,
+      "grounding_free_tier_note": "Gemini 2.x grounding: first 10k queries/day/account may be $0 — verify on pricing page"
+    },
+    "warning": "Indicative numbers only — not a cost PASS until owner review with live pricing page"
+  },
+  "practical_next_steps_when_authorized": [
+    "Extend existing GCP project (GSC OAuth footprint)",
+    "Integrate Vertex AI Search / Grounding with Google Search — not Custom Search JSON API",
+    "Abstract web_research provider; add Google provider",
+    "Owner sign-off + volume-based cost estimate",
+    "Prod smoke before INTERNET_RESEARCH_ENABLED=true"
+  ],
+  "program_doc": "docs/delivery/internet-research-governance-google-vertex.md",
+  "adaptive_retrieval_program": "docs/delivery/adaptive-retrieval-layer-program.md"
+}

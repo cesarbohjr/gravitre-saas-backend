@@ -74,11 +74,30 @@ Pre-RM SHA for comparison: `09e57595` (parent of `4eb6adbe`).
 
 ---
 
-## Internet research (Tavily)
+## Internet research governance
 
-**Status: OFF — unchanged by Milestone 2 closure**
+**Status: OFF — recommendation updated, enablement not authorized**
 
-`INTERNET_RESEARCH_ENABLED` remains off pending Tavily enterprise vs standard API governance (retention/training/DPA). Milestone 2 confirmed internal probes do not invoke internet research while flag is off.
+`INTERNET_RESEARCH_ENABLED` remains **off**. Milestone 2 confirmed internal probes do not invoke internet research while the flag is off.
+
+### Prior position (Tavily)
+
+Standard Tavily API tier: governance insufficient (training/retention); Enterprise tier: stronger but **out of budget**. No enablement on default Tavily.
+
+### Recommended path (2026-07-18)
+
+**Google Cloud Vertex AI Search / Grounding with Google Search** — likely **replacement** (or parallel) for Tavily:
+
+- **Not** Custom Search JSON API (closed to new customers; EOL 2027-01-01).
+- **Yes** `discoveryengine.googleapis.com` / Vertex grounding — standard paid GCP API, not a special enterprise-only product.
+- **Governance win:** Google Cloud Service Specific Terms **Training Restriction** (no training without permission) on **standard paid** projects — vs Tavily/Exa where that typically requires enterprise upsell.
+- **Honest caveat:** ~30-day debug retention on standard tier; true zero-retention still needs DPA add-on via sales.
+- **Open item:** Confirm **current** per-query pricing vs expected volume before lock-in (indicative: ~$4/1k data-store search queries; ~$35/1k live Google Search grounding on Gemini 2.x — verify on pricing page).
+
+Full analysis: [`internet-research-governance-google-vertex.md`](./internet-research-governance-google-vertex.md)  
+Artifact: [`internet-research-governance-latest.json`](./internet-research-governance-latest.json)
+
+**Current code:** Tavily-only (`backend/app/services/web_research.py`). No integration change until owner sign-off + pricing estimate.
 
 ---
 
@@ -101,5 +120,5 @@ Nothing is broken. One specific performance question (RM latency delta on intern
 |------|--------|
 | Milestone 1 — Research Manager + cascade | **PASS** (live-verified) |
 | Milestone 2 — Performance audit | **INCONCLUSIVE, closed by decision** |
-| Internet research enablement | **OFF** (governance pending) |
+| Internet research enablement | **OFF** — Google Vertex/grounding recommended; pricing + sign-off pending |
 | Retrieval-layer program | **Closed** |
