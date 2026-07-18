@@ -138,6 +138,7 @@ class AssistantChatRequest(BaseModel):
     preferred_persona: str | None = None
     department: str | None = None
     cross_department: bool | None = None
+    research_scope: str | None = None
 
     model_config = ConfigDict(extra="ignore")
 
@@ -618,6 +619,7 @@ def _build_stream(
     mode: str | None,
     preferred_persona: str | None = None,
     environment_name: str = "production",
+    research_scope: str | None = None,
 ):
     """Yield AI SDK UI stream via AgentIntelligence + ReActEngine."""
 
@@ -649,6 +651,7 @@ def _build_stream(
                 conversation_id=conversation_id,
                 explicit_persona=preferred_persona,
                 environment_name=environment_name,
+                research_scope=research_scope,
             ):
                 if isinstance(event, AssistantStreamComplete):
                     complete = event
@@ -978,6 +981,7 @@ async def assistant_chat(
             mode=body.mode,
             preferred_persona=preferred_persona,
             environment_name=environment_name,
+            research_scope=(body.research_scope or "").strip() or None,
         ),
         media_type="text/event-stream",
         headers=_STREAM_HEADERS,

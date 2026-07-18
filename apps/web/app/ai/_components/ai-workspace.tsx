@@ -57,6 +57,10 @@ import { ApiError } from "@/lib/fetcher"
 import type { AiEngine } from "@/lib/ai-surface-handoff"
 import type { SearchResult } from "@/types/api"
 import { ChatTranscript } from "@/components/gravitre/assistant/chat-transcript"
+import {
+  ResearchScopePrompt,
+  type ResearchCascadePayload,
+} from "@/components/gravitre/assistant/research-scope-prompt"
 import { ConversationSidebar } from "@/components/gravitre/assistant/conversation-sidebar"
 import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
 import { Button } from "@/components/ui/button"
@@ -225,6 +229,7 @@ export function AiWorkspace({
     requires_approval?: boolean
     reason?: string
   } | null>(null)
+  const [researchCascade, setResearchCascade] = useState<ResearchCascadePayload | null>(null)
   const notifications = useNotifications()
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -242,6 +247,8 @@ export function AiWorkspace({
   const initialPromptSentRef = useRef(false)
   const initialConversationHandledRef = useRef(false)
   const crossDepartmentRef = useRef(false)
+  const researchScopeRef = useRef<string | null>(null)
+  const lastUserPromptRef = useRef<string>("")
   const loadingMessagesForRef = useRef<string | null>(null)
   const messagesLoadResolvedRef = useRef<{ conversationId: string; resolved: boolean } | null>(null)
   const chatFirstTokenMarkedRef = useRef(false)
@@ -283,6 +290,7 @@ export function AiWorkspace({
           preferred_persona: preferredPersonaRef.current,
           department: selectedDepartment === "all" ? undefined : selectedDepartment,
           cross_department: crossDepartmentRef.current,
+          research_scope: researchScopeRef.current ?? undefined,
         }),
       }),
     [chatMode, selectedDepartment],
@@ -320,6 +328,7 @@ export function AiWorkspace({
         executionGate?: typeof executionGate
         contextExplanation?: string
         taskState?: typeof taskState
+        researchCascade?: ResearchCascadePayload
       }
       if (payload.dialogueMode) setDialogueMode(payload.dialogueMode)
       if (payload.pendingTask) setPendingTask(payload.pendingTask)
@@ -329,6 +338,7 @@ export function AiWorkspace({
       if (payload.explainability) setExplainability(payload.explainability)
       if (payload.contextExplanation) setContextExplanation(payload.contextExplanation)
       if (payload.executionGate) setExecutionGate(payload.executionGate)
+      if (payload.researchCascade) setResearchCascade(payload.researchCascade)
       if (Array.isArray(payload.businessSignals) && payload.businessSignals.length > 0) {
         setActiveBusinessSignals(payload.businessSignals)
       }
@@ -920,10 +930,22 @@ export function AiWorkspace({
       chatFirstTokenMarkedRef.current = false
       startChatPerf("total_response")
       startChatPerf("first_token")
+      lastUserPromptRef.current = prompt
       await ensureConversation(prompt)
       sendMessage({ text: prompt })
     },
     [ensureConversation, sendMessage],
+  )
+
+  const handleResearchScopeSelect = useCallback(
+    async (scope: string) => {
+      researchScopeRef.current = scope
+      setResearchCascade(null)
+      const prompt = lastUserPromptRef.current.trim()
+      if (!prompt) return
+      await runChat(prompt)
+    },
+    [runChat],
   )
 
   const runExecute = useCallback(
@@ -1053,6 +1075,8 @@ export function AiWorkspace({
       setSessionBusy(true)
       await ensureSelectedOrg()
       crossDepartmentRef.current = isCrossDepartmentPrompt(prompt)
+      researchScopeRef.current = null
+      setResearchCascade(null)
       await ensureConversation(prompt)
       const engine = await resolveEngine(prompt, mode)
       setInput("")
@@ -1558,7 +1582,13 @@ export function AiWorkspace({
             ) : null}
 
             {!showLanding ? (
-              <ChatTranscript
+              <>
+                <ResearchScopePrompt
+                  cascade={researchCascade}
+                  onSelectScope={(scope) => void handleResearchScopeSelect(scope)}
+                  className="mb-4"
+                />
+                <ChatTranscript
                 messages={messages}
                 showWaiting={showWaitingForReply && !conversationLoading}
                 explainability={explainability}
@@ -1570,6 +1600,7 @@ export function AiWorkspace({
                 onConfirmExecution={() => void handleConfirmExecution()}
                 canApprove={canApproveWrites}
               />
+              </>
             ) : null}
 
             {!showLanding && !conversationLoading && threadRestoreStale ? (

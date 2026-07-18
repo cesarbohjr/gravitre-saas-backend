@@ -324,6 +324,10 @@ class Settings(BaseSettings):
     disable_ai: bool = False
     # Optional Tavily API key for assistant search_web tool (STA-148).
     tavily_api_key: str = ""
+    internet_research_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("INTERNET_RESEARCH_ENABLED", "internet_research_enabled"),
+    )
     # Browser agent for connector API gaps (read-only fetch + optional Playwright interact).
     browser_agent_enabled: bool = True
     browser_agent_interact_enabled: bool = False

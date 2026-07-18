@@ -36,6 +36,7 @@ class UnifiedRetrievalBundle(BaseModel):
     graph_context: dict[str, Any] = Field(default_factory=dict)
     retrieval_plan: dict[str, Any] = Field(default_factory=dict)
     retrieval_effectiveness: dict[str, Any] = Field(default_factory=dict)
+    research_cascade: dict[str, Any] = Field(default_factory=dict)
 
 
 class UnifiedRetrievalService:
@@ -289,6 +290,18 @@ class UnifiedRetrievalService:
             classification=classification,
         )
 
+        from app.services.adaptive_research_cascade import evaluate_research_cascade
+
+        research_scope = str(params.get("research_scope") or "").strip() or None
+        research_cascade = evaluate_research_cascade(
+            retrieval_effectiveness=retrieval_effectiveness,
+            rag_sources=rag_sources,
+            memory_context=memory_context,
+            graph_context=graph_context,
+            research_scope=research_scope,
+            settings=self.settings,
+        )
+
         return UnifiedRetrievalBundle(
             rag_sources=rag_sources,
             rag_section=rag_section,
@@ -300,6 +313,7 @@ class UnifiedRetrievalService:
             graph_context=graph_context,
             retrieval_plan=retrieval_plan.to_params(),
             retrieval_effectiveness=retrieval_effectiveness,
+            research_cascade=research_cascade,
         )
 
     async def retrieve_knowledge_rows(

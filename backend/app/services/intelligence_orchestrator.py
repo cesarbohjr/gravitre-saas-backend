@@ -84,6 +84,7 @@ class AssistantTurnContext:
     execution_gate: dict[str, Any] = field(default_factory=dict)
     advisor_brief: dict[str, Any] | None = None
     explainability: dict[str, Any] = field(default_factory=dict)
+    research_cascade: dict[str, Any] = field(default_factory=dict)
     working_memory: dict[str, Any] = field(default_factory=dict)
     distillation_meta: dict[str, Any] = field(default_factory=dict)
     operational_envelope: dict[str, Any] = field(default_factory=dict)
@@ -128,6 +129,7 @@ class IntelligenceOrchestrator:
         conversation_history: list[dict[str, Any]] | None = None,
         routing_tier: str | None = None,
         mode: str | None = None,
+        research_scope: str | None = None,
     ) -> AssistantTurnContext:
         _ = conversation_history, persona
         connected = self._registry.list_connected_integrations(client, org_id, environment_name=environment_name)
@@ -217,6 +219,7 @@ class IntelligenceOrchestrator:
                     "rag_top_k": registry_plan.rag_top_k if registry_plan.slice_enabled("rag") else 0,
                     "knowledge_assignments": knowledge_assignments if registry_plan.slice_enabled("rag") else [],
                     "classification": classification,
+                    "research_scope": research_scope,
                 },
                 environment_name=environment_name,
                 user_id=user_id,
@@ -454,6 +457,7 @@ class IntelligenceOrchestrator:
             execution_gate=execution_gate,
             advisor_brief=advisor_brief,
             explainability=explainability,
+            research_cascade=retrieval.research_cascade or {},
             working_memory=working_memory,
             distillation_meta=distillation_meta,
             operational_envelope=operational_envelope,

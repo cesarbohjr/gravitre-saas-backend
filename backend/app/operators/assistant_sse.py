@@ -78,6 +78,7 @@ def sse_intelligence_metadata(
     routing: dict[str, Any] | None = None,
     progress_steps: list[str] | None = None,
     tool_visibility: dict[str, Any] | None = None,
+    research_cascade: dict[str, Any] | None = None,
 ) -> AssistantStreamEvent:
     return _sse(
         {
@@ -115,6 +116,7 @@ def sse_intelligence_metadata(
                 "routing": routing,
                 "progressSteps": progress_steps or [],
                 "toolVisibility": tool_visibility or {},
+                "researchCascade": research_cascade or None,
             },
         }
     )

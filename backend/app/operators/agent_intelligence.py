@@ -1112,6 +1112,7 @@ class AgentIntelligence:
         assistant_base_prompt: str | None = None,
         conversation_id: str | None = None,
         explicit_persona: str | None = None,
+        research_scope: str | None = None,
     ) -> AsyncIterator[AssistantStreamEvent | AssistantStreamComplete]:
         """Streaming variant for assistant / agent chat surfaces.
 
@@ -1602,6 +1603,7 @@ class AgentIntelligence:
             conversation_history=conversation_history,
             routing_tier=routing_control.tier,
             mode=requested_mode,
+            research_scope=research_scope,
         )
         agent = turn_ctx.agent
         retrieval = turn_ctx.retrieval
@@ -1796,6 +1798,14 @@ class AgentIntelligence:
             task_state["current_plan"] = turn_ctx.strategic_plan
         specialist_modifier = turn_ctx.specialist_modifier
         persona_modifier_parts = [part for part in (persona.get("system_prompt_modifier"), specialist_modifier) if part]
+        from app.services.adaptive_research_cascade import build_research_policy_extension
+
+        research_policy = build_research_policy_extension(
+            research_scope=research_scope,
+            cascade_state=turn_ctx.research_cascade if isinstance(turn_ctx.research_cascade, dict) else {},
+        )
+        if research_policy:
+            persona_modifier_parts.append(research_policy)
         combined_persona_modifier = "\n\n".join(persona_modifier_parts) if persona_modifier_parts else None
         surface = "agent_chat" if agent_id else "assistant"
 
@@ -1881,6 +1891,7 @@ class AgentIntelligence:
                 connector_names=connector_focus,
                 phase="tools",
             ),
+            research_cascade=turn_ctx.research_cascade if turn_ctx.research_cascade.get("suggest_broaden") else None,
         )
         if turn_ctx.strategic_plan or (
             isinstance(task_state, dict) and task_state.get("current_plan")
@@ -2456,6 +2467,7 @@ class AgentIntelligence:
                 "routingTier": routing_control.tier,
                 "escalations": list(routing_control.escalations),
             },
+            research_cascade=turn_ctx.research_cascade if isinstance(turn_ctx.research_cascade, dict) else None,
         )
 
         yield AssistantStreamComplete(
