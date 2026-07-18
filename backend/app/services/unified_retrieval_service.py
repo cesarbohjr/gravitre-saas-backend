@@ -224,8 +224,44 @@ class UnifiedRetrievalService:
                     enriched["provenance"] = build_from_memory_row(enriched, plan=retrieval_plan)
                     sources.append({"kind": "memory", "category": key, **enriched})
 
+        from app.services.retrieval_provenance import summarize_retrieval_effectiveness
+        from app.services.research_manager import (
+            authority_rank_sources,
+            build_cascade_plan,
+            compress_evidence_section,
+            is_confidence_sufficient,
+            research_manager_metadata,
+            should_fetch_graph_layer,
+        )
+
+        post_rag_effectiveness = summarize_retrieval_effectiveness(
+            sources,
+            plan=retrieval_plan,
+            classification=classification,
+        )
+        confidence_sufficient = is_confidence_sufficient(
+            retrieval_effectiveness=post_rag_effectiveness,
+            rag_sources=rag_sources,
+            memory_context=memory_context,
+        )
+        cascade_plan = build_cascade_plan(
+            research_scope=str(params.get("research_scope") or "").strip() or None,
+            settings=self.settings,
+            knowledge_assignments=assignments if isinstance(assignments, list) else [],
+            confidence_sufficient=confidence_sufficient,
+            stopped_at="internal_rag" if confidence_sufficient else None,
+        )
+
         graph_context: dict[str, Any] = {}
-        if should_fetch_graph(classification, retrieval_plan):
+        graph_allowed = should_fetch_graph(classification, retrieval_plan)
+        fetch_graph = should_fetch_graph_layer(
+            classification=classification,
+            plan_active=retrieval_plan.active,
+            requires_graph=bool((classification or {}).get("requires_graph")),
+            graph_weight=float(getattr(retrieval_plan, "graph_weight", 0) or 0),
+            confidence_sufficient=confidence_sufficient or not graph_allowed,
+        )
+        if fetch_graph and graph_allowed:
             try:
                 from app.services.knowledge_graph_service import get_knowledge_graph_service
                 from app.services.retrieval_provenance import build_from_graph_context
@@ -234,11 +270,30 @@ class UnifiedRetrievalService:
                 if isinstance(graph_context, dict) and graph_context:
                     graph_context["provenance"] = build_from_graph_context(graph_context, plan=retrieval_plan)
                     sources.append({"kind": "graph", **graph_context})
+                    post_rag_effectiveness = summarize_retrieval_effectiveness(
+                        sources,
+                        plan=retrieval_plan,
+                        classification=classification,
+                    )
+                    confidence_sufficient = is_confidence_sufficient(
+                        retrieval_effectiveness=post_rag_effectiveness,
+                        rag_sources=rag_sources,
+                        memory_context=memory_context,
+                        graph_context=graph_context,
+                    )
+                    if confidence_sufficient:
+                        cascade_plan = build_cascade_plan(
+                            research_scope=str(params.get("research_scope") or "").strip() or None,
+                            settings=self.settings,
+                            knowledge_assignments=assignments if isinstance(assignments, list) else [],
+                            confidence_sufficient=True,
+                            stopped_at="knowledge_graph",
+                        )
             except Exception as exc:  # noqa: BLE001
                 logger.debug("unified_retrieval_graph_skipped org_id=%s error=%s", org_id, exc)
 
         hybrid_fused = False
-        if active_scopes.knowledge:
+        if active_scopes.knowledge and not confidence_sufficient:
             try:
                 from app.services.hybrid_memory_service import get_hybrid_memory_service
 
@@ -282,11 +337,6 @@ class UnifiedRetrievalService:
                 + "\n</knowledge_base>\n"
             )
 
-        from app.services.retrieval_provenance import summarize_retrieval_effectiveness
-
-        internet_payload: dict[str, Any] | None = None
-        pack_payload: dict[str, Any] | None = None
-        research_scope = str(params.get("research_scope") or "").strip() or None
         from app.services.adaptive_research_cascade import (
             attach_internet_research_to_cascade,
             evaluate_research_cascade,
@@ -301,10 +351,17 @@ class UnifiedRetrievalService:
             retrieve_pack_sources,
         )
 
-        if should_run_intelligence_packs_stage(
-            research_scope,
-            settings=self.settings,
-            knowledge_assignments=assignments if isinstance(assignments, list) else [],
+        internet_payload: dict[str, Any] | None = None
+        pack_payload: dict[str, Any] | None = None
+        research_scope = str(params.get("research_scope") or "").strip() or None
+
+        if (
+            not cascade_plan.skip_external
+            and should_run_intelligence_packs_stage(
+                research_scope,
+                settings=self.settings,
+                knowledge_assignments=assignments if isinstance(assignments, list) else [],
+            )
         ):
             try:
                 pack_payload = await retrieve_pack_sources(
@@ -332,7 +389,9 @@ class UnifiedRetrievalService:
                 logger.warning("unified_retrieval_pack_sources_skipped org_id=%s error=%s", org_id, exc)
                 pack_payload = {"rows": [], "pack_ids": [], "error": str(exc)}
 
-        if should_run_internet_research(research_scope, settings=self.settings):
+        if not cascade_plan.skip_external and should_run_internet_research(
+            research_scope, settings=self.settings
+        ):
             try:
                 from app.services.web_research import search_web
 
@@ -360,11 +419,25 @@ class UnifiedRetrievalService:
                 logger.warning("unified_retrieval_internet_skipped org_id=%s error=%s", org_id, exc)
                 internet_payload = {"results": [], "sources": [], "totalResults": 0, "error": str(exc)}
 
+        sources = authority_rank_sources(sources)
+        rag_sources = authority_rank_sources(rag_sources)
         retrieval_effectiveness = summarize_retrieval_effectiveness(
             sources,
             plan=retrieval_plan,
             classification=classification,
         )
+        pack_internet_tail = ""
+        for marker in ("<intelligence_pack_sources>", "<internet_research>"):
+            if marker in rag_section:
+                pack_internet_tail = rag_section[rag_section.index(marker) :]
+                break
+        knowledge_rows = [
+            row
+            for row in rag_sources
+            if str(row.get("kind") or "knowledge") not in {"internet", "intelligence_pack"}
+        ]
+        if knowledge_rows:
+            rag_section = compress_evidence_section(knowledge_rows) + pack_internet_tail
 
         research_cascade = evaluate_research_cascade(
             retrieval_effectiveness=retrieval_effectiveness,
@@ -393,6 +466,12 @@ class UnifiedRetrievalService:
             research_cascade,
             retrieval_effectiveness=retrieval_effectiveness,
             sources=sources,
+        )
+        research_cascade.update(
+            research_manager_metadata(
+                plan=cascade_plan,
+                research_scope=research_scope,
+            )
         )
 
         return UnifiedRetrievalBundle(

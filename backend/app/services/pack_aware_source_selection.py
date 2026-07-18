@@ -61,6 +61,13 @@ def score_source_relevance(source: PackSourceDefinition, query: str) -> float:
     base = overlap / max(len(query_tokens), 1)
     if source.vendor.replace("_", " ") in query.lower():
         base += 0.25
+    if source.preferred_source_types:
+        vendor_key = source.vendor.lower()
+        for pref in source.preferred_source_types:
+            pref_key = pref.lower().replace("_", " ")
+            if pref_key in vendor_key or vendor_key in pref_key.replace(" ", "_"):
+                base += 0.15
+                break
     return min(0.95, 0.25 + base * 0.5)
 
 

@@ -17,10 +17,17 @@ class PackSourceDefinition:
     title: str
     keywords: tuple[str, ...] = ()
     reference_summary: str = ""
+    preferred_source_types: tuple[str, ...] = ()
 
 
 _REGISTRY: dict[str, PackSourceDefinition] = {}
 _BOOTSTRAPPED = False
+
+_PACK_VENDOR_PREFERENCES: dict[str, tuple[str, ...]] = {
+    "msp-intelligence-pack": ("microsoft_docs", "cisa", "nvd", "vendor_kb"),
+    "marketing-intelligence-pack": ("industry_report", "competitor_news", "market_research"),
+    "executive-intelligence-pack": ("macro_indicator", "regulatory_filing", "industry_report"),
+}
 
 _VENDOR_KEYWORDS: dict[str, tuple[str, ...]] = {
     "fred": ("gdp", "unemployment", "inflation", "cpi", "macro", "economy", "interest", "rate"),
@@ -73,6 +80,7 @@ def ensure_pack_sources_registered() -> None:
         from app.marketplace.intelligence_packs.catalog import list_intelligence_pack_specs
 
         for pack_id, vendors in PACK_VENDOR_MAP.items():
+            pack_prefs = _PACK_VENDOR_PREFERENCES.get(pack_id, ())
             for vendor in vendors:
                 v = str(vendor).strip().lower()
                 keywords = _VENDOR_KEYWORDS.get(v, (v.replace("_", " "),))
@@ -83,6 +91,7 @@ def ensure_pack_sources_registered() -> None:
                         pack_id=pack_id,
                         title=f"{v.replace('_', ' ').title()} ({pack_id})",
                         keywords=keywords,
+                        preferred_source_types=pack_prefs,
                     )
                 )
 
@@ -121,6 +130,7 @@ def pack_source_catalog() -> list[dict[str, Any]]:
             "pack_id": d.pack_id,
             "title": d.title,
             "keywords": list(d.keywords),
+            "preferred_source_types": list(d.preferred_source_types),
         }
         for d in sorted(_REGISTRY.values(), key=lambda row: row.id)
     ]
