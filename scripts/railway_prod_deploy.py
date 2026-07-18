@@ -17,6 +17,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import Any
 
 RAILWAY_GQL = "https://backboard.railway.com/graphql/v2"
@@ -196,7 +197,23 @@ def sha_is_ancestor(ancestor_prefix: str, descendant_sha: str) -> bool:
         return descendant_sha.lower().startswith(ancestor_prefix.lower())
 
 
+def _load_operator_env() -> None:
+    from dotenv import dotenv_values
+
+    repo = Path(__file__).resolve().parent.parent
+    for path in (repo / "backend" / ".env.operator.local", repo / ".env.operator.local", repo / "backend" / ".env"):
+        if not path.is_file():
+            continue
+        try:
+            for key, value in dotenv_values(path).items():
+                if value:
+                    __import__("os").environ.setdefault(key, value)
+        except UnicodeDecodeError:
+            continue
+
+
 def main() -> int:
+    _load_operator_env()
     parser = argparse.ArgumentParser(description="Deploy a specific commit to Railway prod")
     parser.add_argument("--commit-sha", default=None, help="Full or prefix git SHA to deploy")
     parser.add_argument("--latest-commit", action="store_true", help="Deploy latest main commit")

@@ -49,7 +49,12 @@ def _load_env() -> dict[str, str]:
     from dotenv import dotenv_values
 
     merged: dict[str, str] = {}
-    for path in (BACKEND / ".env", BACKEND / ".env.operator.local", REPO / ".env"):
+    for path in (
+        BACKEND / ".env",
+        BACKEND / ".env.operator.local",
+        REPO / ".env.operator.local",
+        REPO / ".env",
+    ):
         if not path.is_file():
             continue
         try:
@@ -58,6 +63,15 @@ def _load_env() -> dict[str, str]:
             pass
     merged.update({k: v for k, v in __import__("os").environ.items() if v})
     return merged
+
+
+def _apply_env() -> dict[str, str]:
+    """Load operator.local into os.environ for Option B local runs."""
+    env = _load_env()
+    for key, value in env.items():
+        if value:
+            __import__("os").environ.setdefault(key, value)
+    return env
 
 
 def _mint_and_actor(env: dict[str, str], org_id: str) -> tuple[str, str, str]:
@@ -93,7 +107,8 @@ def _railway_deploy(commit_sha: str | None, *, latest: bool, wait_health: bool) 
         cmd.extend(["--commit-sha", commit_sha])
     if wait_health:
         cmd.append("--wait-health")
-    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=1200)
+    child_env = {**__import__("os").environ, **_load_env()}
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=1200, env=child_env)
     if proc.returncode != 0:
         raise RuntimeError(
             f"railway_prod_deploy failed exit={proc.returncode}\nstdout={proc.stdout}\nstderr={proc.stderr}"
@@ -102,7 +117,7 @@ def _railway_deploy(commit_sha: str | None, *, latest: bool, wait_health: bool) 
 
 
 def run_probe_only(args: argparse.Namespace) -> dict[str, Any]:
-    env = _load_env()
+    env = _apply_env()
     for key in ("SUPABASE_URL", "SUPABASE_JWT_SECRET", "SUPABASE_SERVICE_ROLE_KEY"):
         if not env.get(key):
             raise SystemExit(f"Missing {key}")
@@ -173,6 +188,7 @@ def _finalize_ab_report(
 
 def run_manual_wait_ab(args: argparse.Namespace) -> dict[str, Any]:
     """Poll prod /health while operator briefly rollbacks/restores via Railway UI."""
+    _apply_env()
     base_url = (args.base_url or PROD_DEFAULT).rstrip("/")
     started = datetime.now(timezone.utc).isoformat()
     tip_health = fetch_health(base_url)
@@ -228,8 +244,12 @@ def run_manual_wait_ab(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def run_full_ab(args: argparse.Namespace) -> dict[str, Any]:
-    if not __import__("os").environ.get("RAILWAY_TOKEN"):
-        raise SystemExit("RAILWAY_TOKEN required for --full-ab")
+    env = _apply_env()
+    if not env.get("RAILWAY_TOKEN"):
+        raise SystemExit(
+            "RAILWAY_TOKEN required for --full-ab "
+            "(set in env or backend/.env.operator.local)"
+        )
 
     base_url = (args.base_url or PROD_DEFAULT).rstrip("/")
     started = datetime.now(timezone.utc).isoformat()
@@ -301,6 +321,12 @@ def main() -> int:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(text + "\n", encoding="utf-8")
         print(f"\nWROTE {out}", flush=True)
+        if args.full_ab or args.manual_wait_ab:
+            pre = (report.get("phases") or {}).get("probe_pre_rm")
+            if isinstance(pre, dict) and pre:
+                pre_out = out.parent / "milestone2-latency-pre-rm-probe.json"
+                pre_out.write_text(json.dumps(pre, indent=2, default=str) + "\n", encoding="utf-8")
+                print(f"WROTE {pre_out}", flush=True)
 
     verdict = report.get("verdict")
     direction = report.get("milestone2_latency_guardrail") or (report.get("delta") or {}).get("direction")

@@ -7,10 +7,6 @@ on:
         description: "Reason for manual trigger (pre/post RM latency guardrail)"
         required: false
         default: "milestone2-latency-ab"
-  push:
-    branches: [main]
-    paths:
-      - ".github/milestone2-latency-ab-run.trigger"
 
 concurrency:
   group: milestone2-latency-ab
