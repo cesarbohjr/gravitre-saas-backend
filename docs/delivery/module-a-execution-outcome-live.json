@@ -1,0 +1,34 @@
+{
+  "verified_at": "2026-07-19T08:40:47.594016+00:00",
+  "module": "A",
+  "ticket": "STA-329",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "user_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "email": "conversation-smoke-sa@gravitre.app",
+  "conversation_id": "00000000-0000-4000-8000-084044051046",
+  "run_id": "cd7b8a4c-5f06-4210-bc20-2eaa4a314895",
+  "run_status_legacy": "failed",
+  "run_status_contract": "failed",
+  "audit_event_ids": [
+    "d5ecef35-be90-4759-b380-9508d3658159"
+  ],
+  "audit_log_ids": [
+    "1ede960f-c9af-46c4-bc94-4ca608e9df79"
+  ],
+  "notification_ids": [
+    "60725e38-e671-445f-8d56-a5c2dbcdf816"
+  ],
+  "learning_event_ids": [
+    "4a84c20a-5ef4-4ded-9b2a-4491cf6cc2e9"
+  ],
+  "checks": {
+    "runs_legacy_failed": true,
+    "runs_contract_failed": true,
+    "audit_events": true,
+    "audit_logs": true,
+    "notifications_run_failed": true,
+    "learning_workflow_failed": true
+  },
+  "pass": true,
+  "note": "Module A acceptance: chat orchestration failure fans out via finalize_execution_outcome() to Runs + Audit + Notifications + Learning"
+}

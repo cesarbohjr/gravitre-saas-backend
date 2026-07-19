@@ -24,6 +24,7 @@ OUTCOME_EVENTS = frozenset(
         "prediction_missed",
         "workflow_executed",
         "workflow_failed",
+        "workflow_cancelled",
         "connector_action_executed",
         "connector_action_failed",
         "business_metric_improved",

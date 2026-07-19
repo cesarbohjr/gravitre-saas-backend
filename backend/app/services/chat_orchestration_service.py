@@ -1149,8 +1149,6 @@ class ChatOrchestrationService:
     ) -> dict[str, Any]:
         step_results = list(params.get("step_results") or [])
         successes = sum(1 for row in step_results if row.get("success"))
-        # MODULE A BRIDGE: any failed (non-skipped) step ⇒ not fully completed.
-        # Absorbed by finalize_execution_outcome() — do not keep alongside Module A.
         run_ok = orchestration_run_fully_completed(step_results)
         lines = []
         for row in step_results:
@@ -1201,10 +1199,9 @@ class ChatOrchestrationService:
                 "source": "chat_orchestration",
             },
         )
-        # Failure notify/audit when run_id is set is owned by finalize_orchestration_run
-        # (MODULE A BRIDGE). Only emit task_completed here; if there is no run_id, emit
-        # run_failed so the failure is still visible.
-        if run_ok or not run_id:
+        # Notify/audit/learning when run_id is set is owned by finalize_orchestration_run
+        # → finalize_execution_outcome(). Only emit here when there is no run_id.
+        if not run_id:
             emit_notification(
                 client,
                 org_id=org_id,

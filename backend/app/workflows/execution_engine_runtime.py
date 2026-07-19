@@ -49,8 +49,6 @@ from app.workflows.execution_engine import (
 from app.workflows.registry import StepContext, get_handler
 from app.workflows.repository import (
     create_step,
-    emit_execute_completed,
-    emit_execute_failed,
     emit_execute_step_completed,
     emit_execute_step_failed,
     get_run_with_steps,
@@ -149,101 +147,87 @@ def _finalize_run(
 ) -> tuple[str, list[dict], list[str], bool]:
     run_with_steps = get_run_with_steps(ctx.client, ctx.org_id, ctx.run_id, ctx.environment_name)
     step_rows = run_with_steps["steps"] if run_with_steps else []
-    completed_at_iso = datetime.now(timezone.utc).isoformat()
-    update_run(
-        client=ctx.client,
-        run_id=ctx.run_id,
-        status=final_status,
-        completed_at=completed_at_iso if final_status in {RUN_STATUS_COMPLETED, RUN_STATUS_FAILED, RUN_STATUS_CANCELLED} else None,
-        error_message=run_error_message,
+    workflow_id = str((run_with_steps or {}).get("workflow_id") or "") or None
+
+    from app.services.execution_outcome import (
+        VerifiedOutputRef,
+        finalize_execution_outcome,
+        is_terminal_run_status,
     )
-    if final_status == RUN_STATUS_FAILED:
-        emit_execute_failed(ctx.client, ctx.org_id, ctx.user_id, ctx.run_id, run_error_message)
-        try:
-            from app.services.notification_emitter import emit_notification
 
-            emit_notification(
-                ctx.client,
-                org_id=ctx.org_id,
-                user_id=ctx.user_id,
-                event_type="run_failed",
-                title="Workflow run failed",
-                body=(run_error_message or "Review the run details for step-level errors.")[:2000],
-                entity_ref={
-                    "entity_type": "workflow_run",
-                    "entity_id": ctx.run_id,
-                    "result_url": f"/runs/{ctx.run_id}",
-                },
-                channel_hints={"bell": True, "email": False},
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("run_failed notification skipped run_id=%s error=%s", ctx.run_id, exc)
-    elif final_status == RUN_STATUS_COMPLETED:
-        emit_execute_completed(ctx.client, ctx.org_id, ctx.user_id, ctx.run_id, final_status)
+    if is_terminal_run_status(final_status):
         wf_name = "Workflow"
-        try:
-            run_meta = get_run_with_steps(ctx.client, ctx.org_id, ctx.run_id, ctx.environment_name) or {}
-            wf_id = str(run_meta.get("workflow_id") or "")
-            if wf_id:
-                wf_row = (
-                    ctx.client.table("workflow_defs")
-                    .select("name")
-                    .eq("org_id", ctx.org_id)
-                    .eq("id", wf_id)
-                    .limit(1)
-                    .execute()
+        email_context = None
+        channel_hints = {"bell": True, "email": False}
+        if final_status == RUN_STATUS_COMPLETED:
+            channel_hints = {"bell": True, "email": True}
+            try:
+                if workflow_id:
+                    wf_row = (
+                        ctx.client.table("workflow_defs")
+                        .select("name")
+                        .eq("org_id", ctx.org_id)
+                        .eq("id", workflow_id)
+                        .limit(1)
+                        .execute()
+                    )
+                    if wf_row.data:
+                        wf_name = str(wf_row.data[0].get("name") or wf_name)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("workflow name lookup skipped run_id=%s error=%s", ctx.run_id, exc)
+            email_context = {
+                "kind": "workflow_completion",
+                "run_id": ctx.run_id,
+                "workflow_name": wf_name,
+                "final_status": final_status,
+            }
+
+        outcome_source = "canvas" if (ctx.parameters or {}).get("source") == "canvas" else "api"
+        finalize_execution_outcome(
+            ctx.client,
+            org_id=ctx.org_id,
+            status=final_status,
+            source=outcome_source,
+            actor_id=ctx.user_id,
+            run_id=ctx.run_id,
+            workflow_id=workflow_id,
+            error_summary=run_error_message,
+            verified_output=VerifiedOutputRef(
+                result_url=f"/runs/{ctx.run_id}",
+                entity_type="workflow_run",
+                entity_id=ctx.run_id,
+                summary=(
+                    run_error_message
+                    if final_status == RUN_STATUS_FAILED
+                    else f"Run finished with status {final_status}."
+                ),
+            ),
+            channel_hints=channel_hints,
+            email_context=email_context,
+            metadata={"path": "execution_engine_runtime", "environment": ctx.environment_name},
+        )
+        if final_status == RUN_STATUS_COMPLETED:
+            try:
+                from app.marketplace.adoption import maybe_record_workflow_adoption
+
+                maybe_record_workflow_adoption(
+                    ctx.client,
+                    org_id=ctx.org_id,
+                    run_id=ctx.run_id,
+                    final_status=final_status,
                 )
-                if wf_row.data:
-                    wf_name = str(wf_row.data[0].get("name") or wf_name)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("workflow name lookup skipped run_id=%s error=%s", ctx.run_id, exc)
-        try:
-            from app.services.notification_emitter import emit_notification
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "marketplace adoption hook skipped org_id=%s run_id=%s error=%s",
+                    ctx.org_id,
+                    ctx.run_id,
+                    str(exc),
+                )
+        if final_status in {RUN_STATUS_COMPLETED, RUN_STATUS_FAILED}:
+            try:
+                from app.services.agent_memory_service import create_agent_memory
 
-            emit_notification(
-                ctx.client,
-                org_id=ctx.org_id,
-                user_id=ctx.user_id,
-                event_type="run_completed",
-                title="Workflow run completed",
-                body=f"Run finished with status {final_status}.",
-                entity_ref={
-                    "entity_type": "workflow_run",
-                    "entity_id": ctx.run_id,
-                    "result_url": f"/runs/{ctx.run_id}",
-                },
-                channel_hints={"bell": True, "email": True},
-                email_context={
-                    "kind": "workflow_completion",
-                    "run_id": ctx.run_id,
-                    "workflow_name": wf_name,
-                    "final_status": final_status,
-                },
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("run_completed notification skipped run_id=%s error=%s", ctx.run_id, exc)
-        try:
-            from app.marketplace.adoption import maybe_record_workflow_adoption
-
-            maybe_record_workflow_adoption(
-                ctx.client,
-                org_id=ctx.org_id,
-                run_id=ctx.run_id,
-                final_status=final_status,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "marketplace adoption hook skipped org_id=%s run_id=%s error=%s",
-                ctx.org_id,
-                ctx.run_id,
-                str(exc),
-            )
-    if final_status in {RUN_STATUS_COMPLETED, RUN_STATUS_FAILED}:
-        try:
-            from app.services.agent_memory_service import create_agent_memory
-
-            run_meta = get_run_with_steps(ctx.client, ctx.org_id, ctx.run_id, ctx.environment_name)
-            if run_meta:
+                run_meta = run_with_steps or {}
                 wf_id = str(run_meta.get("workflow_id") or "")
                 params = run_meta.get("parameters") if isinstance(run_meta.get("parameters"), dict) else {}
                 agent_id = str(params.get("agent_id") or params.get("agentId") or "")
@@ -262,13 +246,21 @@ def _finalize_run(
                         provenance="outcome_learning",
                         confidence=70,
                     )
-        except Exception as exc:  # noqa: BLE001
-            logger.debug(
-                "workflow_outcome_learning_skipped org_id=%s run_id=%s error=%s",
-                ctx.org_id,
-                ctx.run_id,
-                exc,
-            )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug(
+                    "workflow_outcome_learning_skipped org_id=%s run_id=%s error=%s",
+                    ctx.org_id,
+                    ctx.run_id,
+                    exc,
+                )
+    else:
+        update_run(
+            client=ctx.client,
+            run_id=ctx.run_id,
+            status=final_status,
+            completed_at=None,
+            error_message=run_error_message,
+        )
     return final_status, step_rows, errors, rate_limited
 
 

@@ -1217,16 +1217,26 @@ class ChatConnectorExecutionService:
                 plan.invoke_action,
                 exc,
             )
-            return ExecutionResult(
+            failed = ExecutionResult(
                 success=False,
                 entity_type="connector",
                 entity_id="",
                 connector_management_url="/connectors",
+                result_url=f"/ai?conversation={conversation_id}" if conversation_id else "/ai",
                 title=plan.label,
                 body=str(exc),
                 integration=plan.integration,
                 task_label=plan.label,
             )
+            self._finalize_connector_outcome(
+                client,
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                plan=plan,
+                result=failed,
+            )
+            return failed
 
         success = bool(observation.get("success"))
         connector_id = str(observation.get("connector_id") or "")
@@ -1256,7 +1266,7 @@ class ChatConnectorExecutionService:
                 action=plan.invoke_action,
                 reason=str(details.get("reason") or ""),
             )
-            return ExecutionResult(
+            failed = ExecutionResult(
                 success=False,
                 entity_type="connector",
                 entity_id=connector_id,
@@ -1270,6 +1280,15 @@ class ChatConnectorExecutionService:
                 error_code=error_code,
                 structured=structured_payload or None,
             )
+            self._finalize_connector_outcome(
+                client,
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                plan=plan,
+                result=failed,
+            )
+            return failed
 
         summary = self._summarize_result(plan, result_data, observation)
         result = ExecutionResult(
@@ -1301,7 +1320,7 @@ class ChatConnectorExecutionService:
                 )
                 from app.services.tool_error_messages import format_tool_error_for_user
 
-                return ExecutionResult(
+                failed = ExecutionResult(
                     success=False,
                     entity_type="connector",
                     entity_id=connector_id,
@@ -1320,22 +1339,23 @@ class ChatConnectorExecutionService:
                     structured=structured_payload or None,
                     error_code="unverifiable_output",
                 )
+                self._finalize_connector_outcome(
+                    client,
+                    org_id=org_id,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    plan=plan,
+                    result=failed,
+                )
+                return failed
 
-        emit_notification(
+        self._finalize_connector_outcome(
             client,
             org_id=org_id,
             user_id=user_id,
-            event_type=result.notification_type,
-            title=result.title,
-            body=result.body,
-            entity_ref={
-                "entity_type": result.entity_type,
-                "entity_id": result.entity_id or None,
-                "result_url": result.result_url,
-                "external_url": result.external_url,
-                "integration": result.integration,
-            },
-            channel_hints={"bell": True, "email": False},
+            conversation_id=conversation_id,
+            plan=plan,
+            result=result,
         )
 
         prior_state = await self._state.get_task_state(conversation_id, org_id, client=client)
@@ -1380,6 +1400,60 @@ class ChatConnectorExecutionService:
         )
         await self._record_outcomes(org_id, user_id, plan, result, observation, classification)
         return result
+
+    def _finalize_connector_outcome(
+        self,
+        client: Any,
+        *,
+        org_id: str,
+        user_id: str,
+        conversation_id: str,
+        plan: ConnectorActionPlan,
+        result: ExecutionResult,
+    ) -> None:
+        """Route single-connector chat terminals through finalize_execution_outcome().
+
+        Fixes the audit finding that failure paths returned before emit_notification.
+        No workflow_run row for this path — persist_run=False; fanout still covers
+        notify + audit + learning.
+        """
+        from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
+
+        status = "completed" if result.success else "failed"
+        try:
+            finalize_execution_outcome(
+                client,
+                org_id=org_id,
+                status=status,
+                source="assistant_chat",
+                actor_id=user_id,
+                run_id=None,
+                persist_run=False,
+                error_summary=None if result.success else (result.body or "Connector action failed"),
+                verified_output=VerifiedOutputRef(
+                    summary=(result.body or "")[:2000] or None,
+                    result_url=result.result_url,
+                    external_url=result.external_url,
+                    entity_type=result.entity_type or "connector",
+                    entity_id=result.entity_id or None,
+                    integration=result.integration or plan.integration,
+                ),
+                notification_title=result.title or plan.label,
+                notification_body=(result.body or "")[:2000] or None,
+                metadata={
+                    "conversation_id": conversation_id,
+                    "invoke_action": plan.invoke_action,
+                    "tool_name": plan.tool_name,
+                    "path": "chat_connector_execute_plan",
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "chat connector outcome finalize skipped org_id=%s action=%s error=%s",
+                org_id,
+                plan.invoke_action,
+                exc,
+            )
 
     def _turn_from_execution(
         self,
