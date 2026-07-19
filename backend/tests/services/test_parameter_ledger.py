@@ -90,3 +90,36 @@ def test_apply_ledger_to_plan_unprompted_email():
 def test_legacy_slack_channel_bridge():
     ledger = get_ledger({"clarified_params": {"slack_channel": "sales"}})
     assert ledger.get("channel") == "sales"
+
+
+def test_resume_advances_pending_task_args_from_live_ledger():
+    """Fix 1 — resume must rewrite pending_task.args, not leave a stale snapshot."""
+    plan = ConnectorActionPlan(
+        tool_name="gmail_send",
+        invoke_action="gmail.messages.send",
+        integration="gmail",
+        kind="write",
+        label="Send Gmail",
+        args={"subject": "Follow-up"},
+    )
+    ledger = ingest_message_slots("Send an email via Gmail")
+    patch = stage_awaiting_params(plan, ("recipient", "body"), ledger=ledger)
+    assert (patch["pending_task"]["params"].get("args") or {}).get("to") is None
+
+    task_state = {**patch, "recent_user_messages": ["Send an email via Gmail"]}
+    resumed, _, resume_patch = resume_awaiting_params(
+        "alex.moduleb.audit@acme.test — subject Module B cert, body Hello from live audit.",
+        task_state,
+    )
+    assert resumed is not None
+    assert resumed.args.get("to") == "alex.moduleb.audit@acme.test"
+    advanced_args = (resume_patch.get("pending_task") or {}).get("params", {}).get("args") or {}
+    assert advanced_args.get("to") == "alex.moduleb.audit@acme.test"
+    assert "hello" in (advanced_args.get("body") or "").lower()
+
+
+def test_ingest_title_is_unquoted():
+    ledger = ingest_message_slots(
+        "title is Checkout fails on mobile for VIP accounts priority urgent"
+    )
+    assert "checkout" in (ledger.get("title") or "").lower()

@@ -269,6 +269,50 @@ def ingest_message_slots(
                     turn_index=turn_index,
                 )
 
+    # "subject X, body Y" / "subject is X body is Y" unquoted forms.
+    subj_body = re.search(
+        r"\bsubject\s*(?:is|=|:)?\s*(.+?)\s*[,—-]?\s*body\s*(?:is|=|:)?\s*(.+)$",
+        text,
+        re.I,
+    )
+    if subj_body:
+        result.upsert(
+            "subject",
+            subj_body.group(1).strip(" .\"'"),
+            source="user_message",
+            turn_index=turn_index,
+        )
+        result.upsert(
+            "body",
+            subj_body.group(2).strip(" .\"'"),
+            source="user_message",
+            turn_index=turn_index,
+        )
+    else:
+        subj_only = re.search(r"\bsubject\s*(?:is|=|:)\s*(.+)$", text, re.I)
+        if subj_only and not result.get("subject"):
+            result.upsert(
+                "subject",
+                subj_only.group(1).strip(" .\"'")[:300],
+                source="user_message",
+                turn_index=turn_index,
+            )
+
+    # "title is X" / "name is X" unquoted forms (Pipedrive/ClickUp/Notion/GitHub).
+    title_only = re.search(
+        r"\b(?:title|name)\s*(?:is|=|:)\s*(.+?)(?:\s+priority\b|$)",
+        text,
+        re.I,
+    )
+    if title_only:
+        titled = title_only.group(1).strip(" .\"'")[:300]
+        if titled and not result.get("title"):
+            result.upsert("title", titled, source="user_message", turn_index=turn_index)
+        if titled and not result.get("name"):
+            result.upsert("name", titled, source="user_message", turn_index=turn_index)
+        if titled and not result.get("summary"):
+            result.upsert("summary", titled, source="user_message", turn_index=turn_index)
+
     return result
 
 
@@ -360,20 +404,68 @@ def is_awaiting_params(task_state: dict[str, Any] | None) -> bool:
     )
 
 
+def missing_required_fields(
+    invoke_action: str,
+    args: dict[str, Any] | None,
+    ledger: ParameterLedger,
+) -> list[str]:
+    """Live ledger-aware missing required labels — call every turn, never cache."""
+    from app.connectors.action_catalog.action_workflow_schema import get_workflow_schema
+    from app.services.action_workflow_validation import _field_present
+
+    schema = get_workflow_schema(invoke_action)
+    if not schema:
+        return []
+    filled = bind_args_from_ledger(invoke_action, dict(args or {}), ledger)
+    missing: list[str] = []
+    for field_spec in schema.required_fields:
+        if not _field_present(filled, field_spec):
+            missing.append(field_spec.label)
+    return missing
+
+
+def slot_confidence(ledger: ParameterLedger, key: str) -> str:
+    """Return high|medium|low for a ledger slot (default high when present)."""
+    slot = ledger.slots.get(key)
+    if slot is None:
+        for alias in SLOT_ALIASES.get(key, ()):
+            slot = ledger.slots.get(alias)
+            if slot:
+                break
+    if slot is None or not slot.value:
+        return "low"
+    conf = (slot.confidence or "high").lower()
+    if conf in {"high", "medium", "low"}:
+        return conf
+    return "high"
+
+
 def stage_awaiting_params(
     plan: ConnectorActionPlan,
-    missing_fields: tuple[str, ...] | list[str],
+    missing_fields: tuple[str, ...] | list[str] | None = None,
     *,
     ledger: ParameterLedger | None = None,
 ) -> dict[str, Any]:
-    """Build task_state patch: pending_task awaiting_params + ledger pending_missing."""
+    """Build task_state patch: pending_task awaiting_params + ledger pending_missing.
+
+    Always rebinds args from the live ledger before staging so pending_task.args
+    advances whenever the ledger already has values.
+    """
     active = ledger or ParameterLedger()
     args = bind_args_from_ledger(plan.invoke_action, dict(plan.args or {}), active)
     # Persist known args into ledger slots for resume.
     for key, value in args.items():
         if isinstance(value, str) and value.strip():
             active.upsert(key, value, source="staged_plan")
-    active.pending_missing = [str(item) for item in missing_fields if str(item).strip()]
+    # Recompute missing from live ledger+args — never trust a stale caller list alone.
+    live_missing = missing_required_fields(plan.invoke_action, args, active)
+    if missing_fields is not None and not live_missing:
+        # Caller said something was missing but ledger filled it — trust ledger.
+        active.pending_missing = []
+    elif live_missing:
+        active.pending_missing = live_missing
+    else:
+        active.pending_missing = [str(item) for item in (missing_fields or []) if str(item).strip()]
 
     params: dict[str, Any] = {
         "tool_name": plan.tool_name,
@@ -510,9 +602,32 @@ def resume_awaiting_params(
         inferred_fields=tuple(str(x) for x in (params.get("inferred_fields") or [])),
         inference_sources=dict(params.get("inference_sources") or {}),
     )
-    ledger.pending_missing = []
+    # Advance pending_task.args from live ledger (root cause of test-1 stall).
+    advanced = stage_awaiting_params(plan, ledger=ledger)
+    still_missing = list(
+        (advanced.get("parameter_ledger") or {}).get("pending_missing") or []
+    )
+    if not still_missing:
+        # All required fields present — keep pending for confirm/execute path,
+        # but clear awaiting_params trap by leaving status awaiting_params only
+        # when still incomplete; when complete, status stays awaiting_params
+        # until process_turn promotes to awaiting_confirm (write gate).
+        ledger.pending_missing = []
+        advanced["parameter_ledger"] = ledger.to_dict()
+        # Mark complete so callers can promote.
+        pending_params = dict((advanced.get("pending_task") or {}).get("params") or {})
+        pending_params["args"] = dict(plan.args or {})
+        for key in ("channel", "to", "email", "subject", "body", "message", "text"):
+            if plan.args.get(key):
+                pending_params[key] = plan.args[key]
+        advanced["pending_task"] = {
+            "type": "connector_action",
+            "status": "awaiting_params",
+            "params": pending_params,
+            "resume_complete": True,
+        }
     patch = {
-        **ledger_patch(ledger),
+        **advanced,
         "clarified_params": _clarified_bridge_from_ledger(ledger, plan),
         "recent_user_messages": [strip_assistant_scope_prefix(message or "")],
     }

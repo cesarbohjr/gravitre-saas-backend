@@ -90,15 +90,26 @@ def extract_action_args_heuristic(
                 args[key] = project.group(1).upper()
             elif active.get("project_key"):
                 args[key] = active.get("project_key")
+        elif key in {"list_id"} or label_l in {"list id", "list"}:
+            list_m = re.search(r"\bin\s+list\s+(\w[\w-]*)", text, re.I) or re.search(
+                r"\blist\s+(\w[\w-]*)",
+                text,
+                re.I,
+            )
+            if list_m:
+                args[key] = list_m.group(1)
+            elif active.get("list_id"):
+                args[key] = active.get("list_id")  # type: ignore[assignment]
         elif key in {"summary", "title", "name"} or any(
-            tok in label_l for tok in ("summary", "title", "name", "list")
+            tok in label_l for tok in ("summary", "title", "name", "list name")
         ):
             if quoted:
                 args[key] = quoted[0].strip()
             else:
                 # Unquoted Jira/title: "create an issue login page broken in project ENG"
                 titled = re.search(
-                    r"\b(?:titled|called|named|summary|title)\s+(?:is\s+)?(.+?)(?:\s+in\s+project\b|\s+project\s+\S+\s*$|$)",
+                    r"\b(?:titled|called|named|summary|title)\s+(?:is\s+)?(.+?)"
+                    r"(?:\s+in\s+list\b|\s+in\s+project\b|\s+project\s+\S+\s*$|$)",
                     text,
                     re.I,
                 )
@@ -142,15 +153,93 @@ def extract_action_args_heuristic(
                 args[key] = quoted[0].strip()
             elif active.get("subject"):
                 args[key] = active.get("subject")  # type: ignore[assignment]
-        elif key in {"body", "message", "text", "description"} or any(
-            tok in label_l for tok in ("body", "message", "description")
+            else:
+                # "subject is X" / "ticket about X" / "ticket for X"
+                subj = re.search(
+                    r"\bsubject\s*(?:is|=|:)\s*(.+?)(?:\s+priority\b|\s+body\b|$)",
+                    text,
+                    re.I,
+                )
+                if not subj:
+                    subj = re.search(
+                        r"\b(?:ticket|issue)\s+(?:for|about|regarding)\s+(.+?)(?:\s+priority\b|$)",
+                        text,
+                        re.I,
+                    )
+                if subj:
+                    args[key] = subj.group(1).strip(" .\"'")[:300]
+        elif key in {"body", "message", "text", "description", "comment"} or any(
+            tok in label_l for tok in ("body", "message", "description", "comment")
         ):
             if len(quoted) > 1:
                 args[key] = quoted[-1].strip()
-            elif active.get(key) or active.get("body") or active.get("message"):
+            elif active.get(key) or active.get("body") or active.get("message") or active.get(
+                "description"
+            ):
                 args[key] = (
-                    active.get(key) or active.get("body") or active.get("message")  # type: ignore[assignment]
+                    active.get(key)
+                    or active.get("body")
+                    or active.get("message")
+                    or active.get("description")  # type: ignore[assignment]
                 )
+            else:
+                # Zendesk/Freshdesk/Intercom: reuse subject text as description seed
+                # when the user only supplied one free-text blob.
+                seed = args.get("subject") or active.get("subject") or active.get("quoted")
+                if seed and ("ticket" in text.lower() or "zendesk" in text.lower()
+                             or "freshdesk" in text.lower() or "intercom" in text.lower()):
+                    args[key] = str(seed)
+        elif key in {"item_name", "name"} or any(
+            tok in label_l for tok in ("item name", "task name", "page title")
+        ):
+            if quoted:
+                args[key] = quoted[0].strip()[:200]
+            else:
+                named = re.search(
+                    r"\b(?:called|named|titled)\s+[\"']?([^\"'.]+?)[\"']?"
+                    r"(?:\s+on\s+board\b|\s+in\s+list\b|\s+board\b|\s+list\b|$)",
+                    text,
+                    re.I,
+                )
+                if not named:
+                    named = re.search(
+                        r"\b(?:create|add)\s+(?:a\s+)?(?:task|item|page|deal|issue)\s+(.+?)"
+                        r"(?:\s+on\s+board\b|\s+in\s+list\b|\s+board\b|\s+list\b|$)",
+                        text,
+                        re.I,
+                    )
+                if named:
+                    args[key] = named.group(1).strip(" .\"'")[:200]
+                elif active.get("name") or active.get("summary") or active.get("quoted"):
+                    args[key] = (
+                        active.get("name") or active.get("summary") or active.get("quoted")  # type: ignore[assignment]
+                    )
+        elif key in {"board_id"} or "board" in label_l:
+            board = re.search(r"\bboard\s+(\w[\w-]*)", text, re.I)
+            if board:
+                args[key] = board.group(1)
+            elif active.get("board_id"):
+                args[key] = active.get("board_id")  # type: ignore[assignment]
+        elif key in {"title"} or "title" in label_l or "pr title" in label_l or "deal" in label_l:
+            if quoted:
+                args[key] = quoted[0].strip()[:200]
+            else:
+                titled = re.search(
+                    r"\b(?:titled|called|named|title)\s*(?:is|=|:)?\s*[\"']?([^\"'.]+)[\"']?",
+                    text,
+                    re.I,
+                )
+                if titled:
+                    args[key] = titled.group(1).strip()[:200]
+                elif active.get("title") or active.get("summary") or active.get("name") or active.get(
+                    "quoted"
+                ):
+                    args[key] = (
+                        active.get("title")
+                        or active.get("summary")
+                        or active.get("name")
+                        or active.get("quoted")  # type: ignore[assignment]
+                    )
 
     return {k: v for k, v in args.items() if v is not None and str(v).strip()}
 

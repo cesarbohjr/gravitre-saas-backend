@@ -583,7 +583,13 @@ class ChatConnectorExecutionService:
         if isinstance(pending, dict) and pending.get("type") == "connector_action":
             # Module B — generic multi-turn resume (all connectors, not Slack-only).
             if is_awaiting_params(task_state):
-                resumed, _ledger, _patch = resume_awaiting_params(message, task_state)
+                resumed, _ledger, patch = resume_awaiting_params(message, task_state)
+                # Always merge live ledger + advanced pending_task.args into the
+                # caller's task_state. process_turn must persist this even when
+                # execution is later blocked (disconnected connector).
+                if patch:
+                    task_state.update(patch)
+                    task_state["__resume_state_patch"] = patch
                 if resumed is not None:
                     tool_name = resumed.tool_name or ""
                     if tool_name and self._registry.get_spec(tool_name):
@@ -876,6 +882,21 @@ class ChatConnectorExecutionService:
             task_state=task_state,
             structured_plan=structured_plan,
         )
+        # Fix 1 — persist resume advancement (pending_task.args + ledger) every turn.
+        # Must happen before blocked-connector early returns, or args stall forever.
+        resume_patch = (task_state or {}).pop("__resume_state_patch", None)
+        if isinstance(resume_patch, dict) and resume_patch:
+            try:
+                await self._state.update_task_state(
+                    conversation_id,
+                    org_id,
+                    resume_patch,
+                    client=client,
+                )
+                task_state = {**(task_state or {}), **resume_patch}
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("awaiting_params resume persist failed: %s", exc)
+                task_state = {**(task_state or {}), **resume_patch}
         # Module B Phase 2 — schema-constrained extraction (FAST tier) for write plans.
         if plan is not None and structured_plan is None:
             try:

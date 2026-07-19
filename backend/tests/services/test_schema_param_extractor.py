@@ -60,6 +60,54 @@ async def test_enrich_plan_skips_model_when_complete():
     assert patch.get("parameter_ledger")
 
 
+def test_zendesk_heuristic_extracts_subject_without_quotes():
+    args = extract_action_args_heuristic(
+        "zendesk.tickets.create",
+        "create a zendesk ticket about Checkout fails on mobile for VIP accounts",
+    )
+    assert "checkout" in (args.get("subject") or "").lower()
+    assert args.get("comment") or args.get("body") or args.get("description")
+
+
+def test_monday_heuristic_extracts_item_name_and_board():
+    args = extract_action_args_heuristic(
+        "monday.items.create",
+        "create an item called Renewals follow-up on board sales123",
+    )
+    assert "renewals" in (args.get("item_name") or args.get("name") or "").lower()
+    assert args.get("board_id") == "sales123"
+
+
+def test_clickup_heuristic_extracts_task_name_and_list():
+    args = extract_action_args_heuristic(
+        "clickup.tasks.create",
+        "create a task called Mobile checkout bug in list eng-triage",
+    )
+    assert "checkout" in (args.get("name") or "").lower()
+    assert args.get("list_id") == "eng-triage"
+
+
+def test_github_notion_pipedrive_spotcheck_schema_primary():
+    """Three connectors never named in Module B history before this fix pass."""
+    gh = extract_action_args_heuristic(
+        "github.issues.create",
+        "create a github issue titled Auth token refresh fails",
+    )
+    assert "auth" in (gh.get("title") or "").lower()
+
+    notion = extract_action_args_heuristic(
+        "notion.pages.create",
+        'create a notion page called "Q3 renewals brief"',
+    )
+    assert "renewals" in (notion.get("title") or notion.get("name") or "").lower()
+
+    pd = extract_action_args_heuristic(
+        "pipedrive.deals.create",
+        "title is Checkout fails on mobile for VIP accounts priority urgent",
+    )
+    assert "checkout" in (pd.get("title") or "").lower()
+
+
 def test_jira_stage_resume_multi_turn():
     plan = ConnectorActionPlan(
         tool_name="jira_create",

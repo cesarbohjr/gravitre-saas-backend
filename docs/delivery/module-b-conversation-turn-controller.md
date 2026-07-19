@@ -71,12 +71,33 @@ Artifact: [`module-b-conversation-turn-controller-live.json`](module-b-conversat
 
 | # | Repro | Gate |
 |---|-------|------|
-| 1 | Gmail multi-turn recipient | ledger stage → resume fills `to` |
-| 2 | Unprompted email across turns | ingest turn1 → bind on “send email” later |
-| 3 | Jira cold multi-turn | schema extract without quotes |
+| 1 | Gmail multi-turn recipient | ledger stage → resume fills `to` + persists `pending_task.args` |
+| 2 | Unprompted email across turns | live ledger read every turn — never re-ask recipient |
+| 3 | Cold connector (Pipedrive) | schema-primary extract without quotes; not Zendesk/Jira |
 | 4 | Off-script strategic recovery | intent=`modify` |
 
 **Done bar:** all four PASS on deployed tip with conversation/audit evidence pointers. Local service repro PASS alone is not production-fixed — require merge → Railway redeploy → live chat re-run.
+
+## Fix pass (read-side + dual-path + extract priority)
+
+1. **Live ledger on clarify** — `_catalog_write_clarification` always calls `get_ledger(task_state)`; deleted `_slack_send_clarification` / `_email_send_clarification`.
+2. **Resume patch persistence** — `plan_action` merges `__resume_state_patch`; `process_turn` persists it before blocked-connector returns (root cause of stalled `pending_task.args`).
+3. **Schema-primary extraction** — `chat_action_mapper.match_segment` runs schema heuristic first; vendor `_extract_args` is fallback only.
+4. **Confidence-aware clarify** — high → silent use; medium (likely name→email) → propose/confirm; low → ask cleanly.
+
+### Dual-path inventory
+
+| Pre-ledger helper | Disposition |
+|-------------------|-------------|
+| `_slack_send_clarification` | **Deleted** — superseded by `_catalog_write_clarification` |
+| `_email_send_clarification` | **Deleted** — same |
+| `_is_slack_awaiting_body` | **Already deleted** earlier |
+| Vendor `_extract_args` in mapper | **Kept as fallback only** — schemas do not yet cover every NL edge; shrinks over time |
+| `conversational_execution_service` agent/workflow param clarify | **Kept** — non-catalog create-agent/workflow dialogue; ledger is for catalog connector actions |
+
+## Tracked follow-up (do not start until phase 1 live-verified)
+
+**Cross-conversation entity memory (Module B phase 2 follow-up):** once in-conversation ledger is live-PASS, reuse `entity_resolution_store` / `org_entity_resolution_records` so a Slack channel or email recipient confirmed in conversation A can be recalled in a later conversation B. Explicitly gated — not built in this pass.
 
 ### Evidence (service + durable ledger)
 
