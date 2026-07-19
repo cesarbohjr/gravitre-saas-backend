@@ -1,10 +1,13 @@
 """Map tool/connector error_code values to actionable user-facing copy.
 
 Wave 3 — stop LLM-narrated generic failures when a structured error_code exists.
+Copy is owned by Module D gravitree_voice; this module is the adapter.
 """
 from __future__ import annotations
 
 from typing import Any
+
+from app.services.gravitree_voice import format_operator_message
 
 # Codes that should short-circuit ReAct instead of letting the model paraphrase.
 REACT_SHORT_CIRCUIT_ERROR_CODES = frozenset(
@@ -22,71 +25,6 @@ REACT_SHORT_CIRCUIT_ERROR_CODES = frozenset(
         "tool_error",
     }
 )
-
-_TOOL_ERROR_USER_MESSAGES: dict[str, str] = {
-    "auth_expired": (
-        "Authentication expired for {integration}. "
-        "Reconnect it at /connectors, then try again."
-    ),
-    "permission_denied": (
-        "You don't have permission to run this action"
-        "{action_suffix}. Ask an admin to grant access, or pick a different tool."
-    ),
-    "connector_not_connected": (
-        "{integration} is not connected for this organization. "
-        "Connect it at /connectors, then try again."
-    ),
-    "channel_not_found": (
-        "That Slack channel was not found (or the bot is not a member). "
-        "Use a public channel name/id the bot can access, invite the bot, then try again."
-    ),
-    "missing_scope": (
-        "{integration} is connected but missing required permissions"
-        "{action_suffix}. Reconnect it at /connectors and approve the requested scopes."
-    ),
-    "validation_error": (
-        "Invalid parameters for this {integration} action{action_suffix}. "
-        "Check required fields and try again."
-    ),
-    "rate_limited": (
-        "{integration} rate-limited the request. Wait a moment and try again."
-    ),
-    "connector_timeout": (
-        "{integration} did not respond in time. Try again shortly."
-    ),
-    "write_approval_required": (
-        "This write needs your approval before it runs."
-    ),
-    "tool_not_available": (
-        "That tool isn't connected or permitted for this agent. "
-        "Connect it at /connectors or switch mode."
-    ),
-    "action_not_found": (
-        "This action isn't implemented yet for {integration}."
-    ),
-    "tool_error": (
-        "{integration} returned an error{action_suffix}. "
-        "Check connector health at /connectors."
-    ),
-    "unverifiable_output": (
-        "The connector action completed but returned no verifiable output "
-        "(missing body and result link)."
-    ),
-}
-
-
-def _integration_label(integration: str | None) -> str:
-    value = str(integration or "").strip().replace("_", " ")
-    if not value:
-        return "the connector"
-    return value.title()
-
-
-def _action_suffix(action: str | None) -> str:
-    value = str(action or "").strip()
-    if not value:
-        return ""
-    return f" ({value})"
 
 
 def format_tool_error_for_user(
@@ -131,23 +69,13 @@ def format_tool_error_for_user(
     if code == "permission_denied" and is_apollo_discovery_plan_limit_text(detail):
         return APOLLO_DISCOVERY_USER_MESSAGE
 
-    template = _TOOL_ERROR_USER_MESSAGES.get(code)
-    if template:
-        return template.format(
-            integration=_integration_label(integration),
-            action_suffix=_action_suffix(action),
-        ).strip()
-
-    if detail:
-        # Avoid dumping huge vendor payloads into chat.
-        if len(detail) > 400:
-            detail = detail[:397] + "..."
-        label = _integration_label(integration)
-        if label != "the connector":
-            return f"{label} action failed: {detail}"
-        return detail
-    return "The connector action failed."
-
+    return format_operator_message(
+        "tool_error",
+        error_code=code,
+        error_message=detail,
+        integration=integration,
+        action=action,
+    )
 
 def integration_from_tool_name(tool_name: str | None) -> str | None:
     """Best-effort vendor from registry tool name (e.g. apollo_lists_create → apollo)."""

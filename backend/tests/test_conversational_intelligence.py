@@ -270,10 +270,13 @@ def test_persona_modifier_injected_into_prompt():
         None,
         [],
         {},
-        persona_modifier="Be concise and executive-facing.",
+        persona_modifier="Emphasize pipeline and executive metrics.",
     )
-    assert "Communication Style" in prompt
-    assert "executive-facing" in prompt
+    assert "## Voice" in prompt
+    assert "Connected" in prompt
+    assert "## Domain focus" in prompt
+    assert "executive metrics" in prompt
+    assert prompt.count("## Voice") == 1
 
 
 def test_persona_never_overrides_governance():
@@ -286,6 +289,15 @@ def test_persona_never_overrides_confidence_scores():
     service = PersonaService()
     persona = service.COMMUNICATION_PERSONAS["friendly_assistant"]
     assert "confidence" not in persona["system_prompt_modifier"].lower()
+
+
+def test_persona_modifiers_are_domain_focus_only():
+    """Module D: overlays must not redefine tone/humor (base Voice wins)."""
+    banned = ("be warm", "be energetic", "humor", "communicate at the c-suite")
+    for key, persona in PersonaService.COMMUNICATION_PERSONAS.items():
+        mod = str(persona.get("system_prompt_modifier") or "").lower()
+        for phrase in banned:
+            assert phrase not in mod, f"{key} still redefines voice: {phrase}"
 
 
 def test_all_caps_detected_as_frustration():

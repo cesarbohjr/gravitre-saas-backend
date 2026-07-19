@@ -1,4 +1,9 @@
-"""Communication-style personas — distinct from capability-based AGENT_PERSONAS."""
+"""Department domain-focus overlays — distinct from capability-based AGENT_PERSONAS.
+
+Module D: product Voice is owned by gravitree_voice. These personas only choose
+what to emphasize (pipeline vs campaigns). They must not redefine tone, humor,
+or formality — base Voice always wins.
+"""
 from __future__ import annotations
 
 from typing import Any
@@ -14,8 +19,8 @@ logger = get_logger(__name__)
 
 class PersonaService:
     """
-    Manages HOW the system communicates (tone, verbosity, formality).
-    Never overrides safety, approval, confidence, or governance.
+    Domain-focus overlays for department context.
+    Never overrides Voice, safety, approval, confidence, or governance.
     """
 
     COMMUNICATION_PERSONAS: dict[str, dict[str, Any]] = {
@@ -29,9 +34,8 @@ class PersonaService:
             "default_for_departments": ["executive"],
             "label": "Executive Strategist",
             "system_prompt_modifier": (
-                "Communicate at the C-suite level. Lead with insights, not process. "
-                "Be direct. Use business metrics. Avoid jargon. Maximum 3 paragraphs "
-                "unless depth is explicitly requested."
+                "Emphasize business outcomes, metrics, and strategic trade-offs. "
+                "Prefer insight over process detail. Keep answers short unless depth is requested."
             ),
         },
         "marketing_operator": {
@@ -44,8 +48,7 @@ class PersonaService:
             "default_for_departments": ["marketing"],
             "label": "Marketing Operator",
             "system_prompt_modifier": (
-                "Focus on campaign performance, audience, and creative outcomes. "
-                "Be practical and action-oriented."
+                "Emphasize campaign performance, audience, and creative outcomes."
             ),
         },
         "sales_advisor": {
@@ -58,8 +61,8 @@ class PersonaService:
             "default_for_departments": ["sales"],
             "label": "Sales Advisor",
             "system_prompt_modifier": (
-                "Focus on pipeline, conversion, and customer relationships. "
-                "Lead with opportunities and risks."
+                "Emphasize pipeline, conversion, and customer relationships. "
+                "Surface opportunities and risks."
             ),
         },
         "operations_analyst": {
@@ -72,8 +75,7 @@ class PersonaService:
             "default_for_departments": ["operations"],
             "label": "Operations Analyst",
             "system_prompt_modifier": (
-                "Focus on efficiency, bottlenecks, and process improvement. "
-                "Use structured analysis."
+                "Emphasize efficiency, bottlenecks, and process improvement."
             ),
         },
         "support_specialist": {
@@ -86,7 +88,7 @@ class PersonaService:
             "default_for_departments": ["support"],
             "label": "Support Specialist",
             "system_prompt_modifier": (
-                "Prioritize resolution and customer satisfaction. Be warm but efficient."
+                "Emphasize resolution steps and customer impact."
             ),
         },
         "finance_analyst": {
@@ -99,8 +101,7 @@ class PersonaService:
             "default_for_departments": ["finance"],
             "label": "Finance Analyst",
             "system_prompt_modifier": (
-                "Lead with financial metrics and risk. Be precise with numbers. "
-                "Flag uncertainty explicitly."
+                "Emphasize financial metrics, risk, and numeric precision."
             ),
         },
         "hr_advisor": {
@@ -113,7 +114,7 @@ class PersonaService:
             "default_for_departments": ["hr"],
             "label": "HR Advisor",
             "system_prompt_modifier": (
-                "Focus on people, culture, and compliance. Be sensitive and fair."
+                "Emphasize people, culture, and compliance considerations."
             ),
         },
         "engineering_copilot": {
@@ -126,8 +127,8 @@ class PersonaService:
             "default_for_departments": ["engineering"],
             "label": "Engineering Copilot",
             "system_prompt_modifier": (
-                "Lead with technical accuracy. Use precise terminology. "
-                "Prefer code examples over prose. Skip basics for technical users."
+                "Emphasize technical accuracy and precise terminology. "
+                "Prefer concrete examples when explaining systems."
             ),
         },
         "friendly_assistant": {
@@ -140,8 +141,7 @@ class PersonaService:
             "default_for_departments": ["general"],
             "label": "Friendly Assistant",
             "system_prompt_modifier": (
-                "Be helpful, clear, and approachable. Match the user's level of detail. "
-                "Avoid unnecessary jargon."
+                "Match the user's level of detail. Prefer plain language over jargon."
             ),
         },
         "deep_research_analyst": {
@@ -154,8 +154,7 @@ class PersonaService:
             "default_for_departments": [],
             "label": "Deep Research Analyst",
             "system_prompt_modifier": (
-                "Explore all angles. Surface assumptions. Cite sources. "
-                "Acknowledge uncertainty explicitly."
+                "Emphasize multiple angles, explicit assumptions, and cited sources."
             ),
         },
     }

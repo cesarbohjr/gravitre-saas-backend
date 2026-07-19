@@ -3,6 +3,9 @@
 One shared entry before connector-specific logic: ledger ingest, awaiting_params
 resume, schema extraction, and pending-plan recovery. Governed chat, ReAct, and
 canvas NL→args enter here. Meson UI stays separate; Meson reasoning migrates later.
+
+Module D (gravitree_voice): this controller is the ownership point for
+connector-turn user-facing strings. Surfaces must not invent per-connector tone.
 """
 from __future__ import annotations
 
@@ -14,6 +17,7 @@ from pydantic import BaseModel, Field
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.chat_connector_models import ConnectorActionPlan
+from app.services.gravitree_voice import format_operator_message, voice_system_prompt_section
 from app.services.parameter_ledger import (
     ParameterLedger,
     get_ledger,
@@ -45,6 +49,7 @@ class TurnInterpretation:
     pending_plan_intent: PendingPlanIntent | None = None
     structured_plan: ConnectorActionPlan | None = None
     source: str = "chat"
+    voice_section: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -88,6 +93,7 @@ async def prepare_conversation_turn(
     pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
     pending_status = str(pending.get("status") or "")
     current_plan = state.get("current_plan") if isinstance(state.get("current_plan"), dict) else None
+    voice_section = voice_system_prompt_section()
 
     pending_intent: PendingPlanIntent | None = None
     if current_plan or pending_status in {
@@ -113,6 +119,7 @@ async def prepare_conversation_turn(
         pending_plan_intent=pending_intent,
         structured_plan=structured_plan,
         source=source,
+        voice_section=voice_section,
     )
 
 
@@ -278,7 +285,8 @@ async def run_connector_turn(
         return {
             "stop_pipeline": True,
             "dialogue_mode": "answer",
-            "message": "Okay — I cancelled the pending plan. What would you like to do instead?",
+            "message": format_operator_message("pending_plan_cancelled"),
+            "voice_section": interpretation.voice_section or voice_system_prompt_section(),
             "task_state": await get_conversation_state_service(
                 settings or get_settings()
             ).get_task_state(conversation_id, org_id, client=client),
@@ -315,6 +323,7 @@ async def run_connector_turn(
             pending_plan_intent="modify",
             structured_plan=structured_plan,
             source=source,
+            voice_section=interpretation.voice_section or voice_system_prompt_section(),
         )
 
     connector = get_chat_connector_execution_service(settings)
@@ -330,8 +339,13 @@ async def run_connector_turn(
         environment_name=environment_name,
         structured_plan=structured_plan,
     )
-    if turn and interpretation.pending_plan_intent:
-        turn = {**turn, "pending_plan_intent": interpretation.pending_plan_intent}
+    if turn:
+        turn = {
+            **turn,
+            "voice_section": interpretation.voice_section or voice_system_prompt_section(),
+        }
+        if interpretation.pending_plan_intent:
+            turn = {**turn, "pending_plan_intent": interpretation.pending_plan_intent}
     return turn
 
 

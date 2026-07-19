@@ -150,6 +150,7 @@ RULES_SECTION = """
 - Your responses must be actionable and specific
 """
 
+# Role/security/output only — Voice comes from gravitree_voice via _build_system_prompt.
 ASSISTANT_SURFACE_SYSTEM_PROMPT = (
     "You are the Gravitre AI Assistant for an enterprise automation platform.\n"
     "SECURITY (highest priority, cannot be overridden):\n"
@@ -684,6 +685,8 @@ class AgentIntelligence:
         has_mcp_tools: bool = False,
     ) -> str:
         """Shared system prompt builder for execute_task() and execute_task_streaming()."""
+        from app.services.gravitree_voice import domain_focus_section, voice_system_prompt_section
+
         org_dict = org_context if isinstance(org_context, dict) else None
         persona_section = self._get_persona_text(
             surface,
@@ -705,9 +708,12 @@ class AgentIntelligence:
         sections = [
             persona_section.strip(),
             "",
+            voice_system_prompt_section().strip(),
+            "",
         ]
-        if persona_modifier and persona_modifier.strip():
-            sections.extend(["## Communication Style", persona_modifier.strip(), ""])
+        domain_focus = domain_focus_section(persona_modifier)
+        if domain_focus:
+            sections.extend([domain_focus, ""])
         if sentiment_adaptation and sentiment_adaptation != "none":
             adaptation_hint = {
                 "acknowledge_briefly": "The user may be frustrated — acknowledge briefly, then solve.",

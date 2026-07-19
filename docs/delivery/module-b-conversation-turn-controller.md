@@ -29,6 +29,10 @@ conversation_turn_controller
 
 Meson UI is unchanged. Meson reasoning unification is a deferred sub-phase.
 
+Module D (`gravitree_voice`) attaches `voice_section` on `TurnInterpretation` /
+`run_connector_turn` results. Connector-turn user-facing strings (e.g. pending-plan
+cancel) call `format_operator_message` — not per-surface copy.
+
 ## Phases shipped
 
 ### Phase 1 — Parameter ledger

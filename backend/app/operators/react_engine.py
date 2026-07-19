@@ -264,7 +264,11 @@ class ReActEngine:
             or MODEL_TIERS["high"]["openai"]
         )
         messages: list[dict[str, Any]] = []
-        hardened = harden_system_prompt(system_prompt or _default_react_system_prompt())
+        from app.services.gravitree_voice import apply_voice
+
+        hardened = harden_system_prompt(
+            apply_voice(system_prompt or _default_react_system_prompt())
+        )
         if hardened:
             messages.append({"role": "system", "content": hardened})
         messages.append(
@@ -719,6 +723,7 @@ class ReActEngine:
 
 
 def _default_react_system_prompt() -> str:
+    # Voice is applied at the call site via apply_voice (idempotent).
     return (
         "You are a Gravitre autonomous agent. Use the provided tools to research and act.\n"
         "Think step by step. Call tools when you need external data or to perform an action.\n"

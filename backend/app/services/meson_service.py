@@ -208,8 +208,11 @@ class MesonService:
             prefs = self.load_user_preferences(client, org_id, user_id)
             preference_context = self.format_preferences_for_prompt(prefs)
 
-        prompt = (
-            "You are Meson, Gravitre's system builder copilot.\n"
+        from app.services.gravitree_voice import apply_voice
+
+        # Same voice SoT as chat/ReAct; Meson→Module B planner unification is deferred.
+        prompt = apply_voice(
+            "ROLE: You are Meson, Gravitre's system builder copilot.\n"
             "Turn the user's build request into a concrete agent + enablement plan.\n\n"
             f"Intent: {cleaned_intent}\n"
             f"Department: {dept}\n"

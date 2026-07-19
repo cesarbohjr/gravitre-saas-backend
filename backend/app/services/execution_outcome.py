@@ -171,30 +171,28 @@ def _learning_event_for(status: TerminalStatus) -> str:
 
 
 def _default_title(status: TerminalStatus, *, source: OutcomeSource) -> str:
-    if source == "chat_orch":
-        if status == "failed":
-            return "Orchestration run failed"
-        if status == "cancelled":
-            return "Orchestration run cancelled"
-        return "Orchestration run completed"
-    if status == "failed":
-        return "Workflow run failed"
-    if status == "cancelled":
-        return "Workflow run cancelled"
-    return "Workflow run completed"
+    from app.services.gravitree_voice import format_operator_message
+
+    return format_operator_message(
+        "notification_run_title",
+        status=status,
+        source=source,
+    )
 
 
 def _default_body(event: ExecutionOutcomeEvent, status: TerminalStatus) -> str:
-    if event.notification_body:
-        return event.notification_body[:2000]
-    if status == "failed":
-        return (event.error_summary or "Review the run details for step-level errors.")[:2000]
-    if status == "cancelled":
-        return (event.error_summary or "Run was cancelled.")[:2000]
-    if event.verified_output and event.verified_output.summary:
-        return event.verified_output.summary[:2000]
-    return f"Run finished with status {status}."
+    from app.services.gravitree_voice import format_operator_message
 
+    verified_summary = (
+        event.verified_output.summary if event.verified_output else None
+    )
+    return format_operator_message(
+        "notification_run_body",
+        status=status,
+        body=event.notification_body,
+        error_summary=event.error_summary,
+        verified_summary=verified_summary,
+    )
 
 def _persist_run(client: Any, event: ExecutionOutcomeEvent, status: TerminalStatus, ts: str) -> None:
     if not event.persist_run or not event.run_id:

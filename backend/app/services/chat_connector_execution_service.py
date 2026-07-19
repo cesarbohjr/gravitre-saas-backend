@@ -1862,15 +1862,17 @@ class ChatConnectorExecutionService:
         result_url = (
             f"/approvals?id={approval_id}" if approval_id else "/approvals"
         )
-        # Requester acknowledgment
+        # Requester acknowledgment — titles/bodies from Module D gravitree_voice
+        from app.services.gravitree_voice import format_operator_message
+
         try:
             emit_notification(
                 client,
                 org_id=org_id,
                 user_id=user_id,
                 event_type="approval_needed",
-                title="Request sent for approval",
-                body=f"{label} is waiting in the Decision Queue.",
+                title=format_operator_message("approval_needed_requester_title"),
+                body=format_operator_message("approval_needed_requester", label=label),
                 entity_ref={
                     "entity_type": "approval",
                     "entity_id": approval_id or conversation_id,
