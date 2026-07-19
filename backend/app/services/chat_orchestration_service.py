@@ -645,6 +645,7 @@ class ChatOrchestrationService:
                     "params": params,
                 },
             },
+            client=client,
         )
         refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
         lines = [self._format_step_line(idx, step) for idx, step in enumerate(steps, start=1)]
