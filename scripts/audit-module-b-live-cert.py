@@ -707,25 +707,31 @@ async def main() -> int:
     # Universal memory verdict
     s = report["structural"]
     t = report["tests"]
+    cold_key = (
+        "3_cold_connector_pipedrive"
+        if "3_cold_connector_pipedrive" in t
+        else "3_cold_connector_zendesk"
+    )
     four = [
         t["1_gmail_multi_turn"]["verdict"],
         t["2_unprompted_email_across_turns"]["verdict"],
-        t["3_cold_connector_zendesk"]["verdict"],
+        t[cold_key]["verdict"],
         t["4_off_script_recovery"]["verdict"],
     ]
     dual = s.get("dual_system_risk") or s.get("slack_named_clarification_path_still_exists")
-    regex_primary = s.get("vendor_regex_still_in_mapper")
+    schema_primary = bool(s.get("schema_extraction_is_primary"))
+    resume_persisted = bool(s.get("resume_patch_persisted_before_blocked_return"))
     canvas_partial = s.get("canvas_only_binds_ledger_not_full_controller")
 
-    if all(v == "PASS" for v in four) and not dual and not regex_primary:
+    if all(v == "PASS" for v in four) and not dual and schema_primary and resume_persisted:
         universal = "UNIVERSAL"
     elif any(v == "PASS" for v in four):
         universal = "PARTIAL_STILL_STRONGER_ON_PATCHED_PATHS"
     else:
         universal = "NOT_UNIVERSAL"
 
-    # Honest override: if regex still primary + slack path remains → cannot claim universal
-    if regex_primary or dual or canvas_partial:
+    # Honest override: dual path or schema not primary → cannot claim universal
+    if dual or not schema_primary or not resume_persisted:
         if universal == "UNIVERSAL":
             universal = "PARTIAL_STILL_STRONGER_ON_PATCHED_PATHS"
 
@@ -733,7 +739,7 @@ async def main() -> int:
     report["four_verdicts"] = {
         "1_gmail_multi_turn": t["1_gmail_multi_turn"]["verdict"],
         "2_unprompted_email_across_turns": t["2_unprompted_email_across_turns"]["verdict"],
-        "3_cold_connector_zendesk": t["3_cold_connector_zendesk"]["verdict"],
+        cold_key: t[cold_key]["verdict"],
         "4_off_script_recovery": t["4_off_script_recovery"]["verdict"],
     }
     report["universal_memory_verdict"] = universal
