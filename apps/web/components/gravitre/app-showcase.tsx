@@ -227,9 +227,9 @@ function AppScreen({ featureId }: { featureId: string }) {
             {/* Stats row */}
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: "Success", value: "98.5%" },
-                { label: "Tasks", value: "1,234" },
-                { label: "Saved", value: "42h" },
+                { label: "Success", value: "Live ops" },
+                { label: "Tasks", value: "Tracked" },
+                { label: "Hours saved", value: "Estimate" },
               ].map((stat, i) => (
                 <div key={i} className="p-2 rounded-lg bg-zinc-800/50 text-center">
                   <div className="text-xs text-zinc-500">{stat.label}</div>

@@ -71,10 +71,10 @@ function BentoCard({
 // Interactive App Screen Components
 function AgentsScreen() {
   const agents = [
-    { name: "Data Analyst", icon: BarChart3, color: "emerald", status: "active", tasks: 12, accuracy: "98%" },
-    { name: "Content Writer", icon: FileText, color: "blue", status: "active", tasks: 8, accuracy: "95%" },
-    { name: "Research Agent", icon: Eye, color: "purple", status: "idle", tasks: 0, accuracy: "97%" },
-    { name: "Code Reviewer", icon: GitBranch, color: "amber", status: "active", tasks: 5, accuracy: "99%" },
+    { name: "Data Analyst", icon: BarChart3, color: "emerald", status: "active", role: "Advisory" },
+    { name: "Content Writer", icon: FileText, color: "blue", status: "active", role: "Drafts" },
+    { name: "Research Agent", icon: Eye, color: "purple", status: "idle", role: "Lookup" },
+    { name: "Code Reviewer", icon: GitBranch, color: "amber", status: "active", role: "Review" },
   ]
   
   return (
@@ -135,8 +135,8 @@ function AgentsScreen() {
                 </span>
               </div>
               <div className="flex items-center gap-3 mt-1">
-                <span className="text-[10px] text-zinc-500">{agent.tasks} tasks</span>
-                <span className="text-[10px] text-zinc-500">{agent.accuracy} accuracy</span>
+                <span className="text-[10px] text-zinc-500">{agent.role}</span>
+                <span className="text-[10px] text-zinc-500">Outcomes from your org</span>
               </div>
             </div>
             <ChevronRight className="h-4 w-4 text-zinc-400" />
@@ -367,7 +367,7 @@ function AIOperatorScreen() {
     },
     { 
       type: 'ai', 
-      message: "I found 3 key trends: 1) 23% increase in enterprise deals, 2) APAC region outperformed by 15%, 3) New product line contributed 40% of growth.",
+      message: "In your workspace, Insights surfaces trends from your connected CRM and run telemetry — with sources you can audit. This marketing mock does not invent percentages.",
       agent: "Data Analyst"
     },
     { 
@@ -1141,7 +1141,9 @@ export function FeaturesLegacyContent({
                           <Sparkles className="h-3 w-3 text-emerald-600" />
                           <span className="text-[10px] font-medium text-emerald-700">via Data Analyst</span>
                         </div>
-                        <p className="text-sm text-emerald-800">Found 3 key trends: 23% increase in enterprise deals, APAC outperformed by 15%, new product line contributed 40% of growth.</p>
+                        <p className="text-sm text-emerald-800">
+                          Insights cites sources from your connected stack. Hard percentages appear only from your org&apos;s data — never fabricated for marketing.
+                        </p>
                       </div>
                       <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shrink-0 shadow-md">
                         <Sparkles className="h-4 w-4 text-white" />

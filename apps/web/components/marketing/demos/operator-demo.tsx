@@ -35,14 +35,16 @@ const DEMO_RESPONSES: Record<string, { response: string; actions?: { label: stri
     ],
   },
   "What leads haven't been contacted?": {
-    response: "Found **47 leads** that haven't been contacted in the last 7 days:\n\n- **23** from Salesforce (high priority)\n- **15** from HubSpot (medium priority)\n- **9** from web forms (low priority)\n\nI can create a follow-up workflow or export this list.",
+    response:
+      "In your workspace I’d pull uncontacted leads from connected CRM tools, prioritize by your signals, and offer a follow-up workflow or export.\n\n**This demo does not invent lead counts** — live totals come from your connectors.",
     actions: [
       { label: "Create Workflow", type: "action" },
       { label: "Export List", type: "action" },
     ],
   },
   "Create a report of sync errors": {
-    response: "I'll generate a sync error report for the last 30 days.\n\n**Summary:**\n- Total sync attempts: 1,247\n- Successful: 1,198 (96.1%)\n- Failed: 49 (3.9%)\n\n**Top error types:**\n1. Authentication failures (18)\n2. Rate limiting (15)\n3. Network timeouts (12)\n4. Schema mismatches (4)",
+    response:
+      "In your workspace I’d summarize sync attempts from connector audit events — successes, failures, and top error types — with operational counts from your org.\n\n**This demo does not invent a success percentage.** Open Connectors or Runs for live telemetry.",
     actions: [
       { label: "Download Report", type: "action" },
       { label: "Fix Issues", type: "action" },
