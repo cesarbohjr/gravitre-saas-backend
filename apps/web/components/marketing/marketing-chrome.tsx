@@ -6,20 +6,9 @@ import { usePathname } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { ArrowRight, Menu, X, ChevronDown } from "lucide-react"
 import { openMarketingConsentSettings } from "@/lib/marketing-consent"
-import { FEATURES_NAV } from "@/lib/features-nav"
-
-const featuresNavChildren = FEATURES_NAV.filter(
-  (item) => item.id !== "overview" && item.id !== "marketplace",
-).map((item) => ({
-  href: item.href,
-  label: item.label,
-}))
 
 const navLinks = [
-  {
-    label: "Features",
-    children: featuresNavChildren,
-  },
+  { href: "/features", label: "Features" },
   { href: "/technology", label: "Technology" },
   { href: "/marketplace", label: "Marketplace" },
   { href: "/pricing", label: "Pricing" },
@@ -162,9 +151,8 @@ export function MarketingChrome({
                   <Link
                     key={link.href}
                     href={link.href!}
-                      className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
-                      pathname === link.href ||
-                      (link.href === "/features" && pathname.startsWith("/features"))
+                    className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                      pathname === link.href
                         ? "text-zinc-900 bg-zinc-100"
                         : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
                     }`}

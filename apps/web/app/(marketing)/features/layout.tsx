@@ -1,14 +1,13 @@
 import { marketingMetadata } from "@/lib/seo"
-import { FeaturesShell } from "@/components/marketing/features/features-shell"
 
 export const metadata = marketingMetadata({
   title: "Features",
   description:
-    "GIBE (Gravitre Intelligent Business Engine): built-in ML, org learning, predictive ops, connector executability, agents, workflows, and MCP-native execution with approval gates.",
+    "Agents, workflows, connectors, learning, and models — one stack with governance built in. Explore the Gravitre platform, its technology (GIBE + governance), and the marketplace.",
   ogDescription:
     "An MCP server with a brain — memory, ML catalog, failure predictions, and governed execution.",
 })
 
 export default function FeaturesLayout({ children }: { children: React.ReactNode }) {
-  return <FeaturesShell>{children}</FeaturesShell>
+  return <>{children}</>
 }
