@@ -1,13 +1,16 @@
 {
   "pass": true,
-  "status": "STARTED",
+  "status": "CF_STARTED",
   "sequence": "both_sequenced_churn_first",
-  "ran_at": "2026-07-18T10:00:00+00:00",
+  "ran_at": "2026-07-19T03:15:00+00:00",
   "phase0": "docs/delivery/phase0-cf-churn-ml.md",
+  "live_tip_churn": "docs/delivery/phase5-churn-ml-live.json",
+  "live_tip_cf": "docs/delivery/phase5-cf-soft-rank-live.json",
   "churn": {
     "slice": "feature_label_contract_advisory_api_ui_fix",
     "model": "churn_risk_scorer",
     "metric_name": "churn_customer_signal",
+    "storage": "confidence_note JSON + metric_value_after label",
     "min_labeled_examples": 30,
     "endpoints": [
       "GET /api/intelligence/churn-risk/advisory",
@@ -16,18 +19,29 @@
     "predictive_domain": "customer_success",
     "advisory_only": true,
     "auto_contact": false,
-    "live_train_tip": "NOT RUN — needs ≥30 labeled rows on smoke org after deploy"
+    "live_train_tip": "PASS — advisory HTTP 200 trained:true @ 2026-07-19T02:53:31Z tip sha 77529f7f… (phase5-churn-ml-live.json)"
   },
   "cf": {
-    "slice": "phase0_design_only",
-    "code": false,
-    "gate_proposed": "≥50 scored interactions / org / 30d",
-    "contract": "STA-314 suggest-only; never auto-execute",
-    "follows": "churn advisory evidence"
+    "slice": "soft_rank_v1_after_heuristics",
+    "code": true,
+    "modules": [
+      "backend/app/ml/cf_interaction_ingest.py",
+      "backend/app/ml/cf_soft_rank.py",
+      "backend/app/services/cf_rank_service.py"
+    ],
+    "gate": "≥50 scored interactions / org / 30d",
+    "placement": "heuristics → CF soft-rank → dismiss → Phase 5.2 outcome rank",
+    "contract": "STA-314 suggest-only; never auto-execute; never drop cards",
+    "cold_start": "heuristics order when gate fails (cfRanked=false)",
+    "endpoint": "GET /api/intelligence/recommendations/heuristics (cfGate + cfRanked)",
+    "live_tip": "NOT RUN — needs deploy + smoke-phase5-cf-soft-rank-live.py"
   },
   "tests": {
-    "backend": "backend/tests/ml/test_churn_feature_ingest.py",
+    "backend": [
+      "backend/tests/ml/test_churn_feature_ingest.py",
+      "backend/tests/ml/test_cf_soft_rank.py"
+    ],
     "frontend": "apps/web/__tests__/intelligence/normalize-domain-predictions.test.ts"
   },
-  "note": "CF/churn ML hold lifted to STARTED. Churn first build slice landed locally; CF waits. Live train/advisory tip still required before churn DONE."
+  "note": "Churn tip PASS unlocked CF code. CF v1 is lightweight item-affinity soft-rank (not full MF). Live tip still required before CF DONE."
 }

@@ -32,7 +32,7 @@ Rollup: `docs/delivery/foundation-five-gates-tip-resmoke.json`
 |----------|--------|
 | Monetization | **LOCKED (b)** — standalone pack subscriptions |
 | Licensing / data-governance owner | **LOCKED — Cesar Bohorquez Jr.** (sole owner, same as STA-312). Covers PII-embedding **and** Crunchbase / PDL / OpenCorporates-commercial / CIS Controls **and** Finance banking/QB/Xero/NetSuite, HR HRIS/ATS/Payroll, Compliance PHI-vs-guidance scope **and** GSC raw search-query → Memory/KG (Marketing stop-line). |
-| Phase 5 ML | **UNHELD** — v1 shipped (CRM outcomes + ranked heuristics). **CF/churn STARTED** 2026-07-18 (both sequenced: churn first) — `phase0-cf-churn-ml.md` |
+| Phase 5 ML | **UNHELD** — v1 shipped (CRM outcomes + ranked heuristics). **Churn tip PASS**; **CF v1 soft-rank STARTED** 2026-07-19 — `phase0-cf-churn-ml.md` |
 | 12-pack vision | **Phase 0 DONE** — `docs/delivery/phase0-twelve-pack-marketplace-vision.md`. Build order below. |
 
 ---
@@ -328,7 +328,7 @@ Locked sequence **closed**. Spec `docs/delivery/phase0-business-os-intelligence-
 
 ### CF / Churn ML start (2026-07-18)
 
-**Both sequenced — churn first.** Spec `docs/delivery/phase0-cf-churn-ml.md`; artifact `docs/delivery/phase5-cf-churn-ml-start.json` (`STARTED`).
+**Both sequenced — churn first.** Spec `docs/delivery/phase0-cf-churn-ml.md`; artifact `docs/delivery/phase5-cf-churn-ml-start.json` (`CF_STARTED`).
 
-- Churn: labeled `churn_customer_signal` contract, strict ≥30 gate, `GET/POST /api/intelligence/churn-risk/*`, CS predictive domain, predictive UI dict fix. Advisory-only; no auto-contact. Live train tip **NOT RUN**.
-- CF: Phase 0 design only (re-rank heuristics after volume gate); no CF ranker code until churn advisory evidence.
+- Churn: labeled `churn_customer_signal` via `confidence_note` + `metric_value_after`. **PASS** — advisory HTTP 200 `trained:true` @ `2026-07-19T02:53:31Z` tip sha `77529f7f…` (`phase5-churn-ml-live.json`).
+- CF v1: item-affinity soft-rank after heuristics / before dismiss; ≥50 interactions/30d gate; cold start when gate fails. Modules `cf_interaction_ingest` / `cf_soft_rank` / `cf_rank_service`. Live tip **NOT RUN** (`scripts/smoke-phase5-cf-soft-rank-live.py`).

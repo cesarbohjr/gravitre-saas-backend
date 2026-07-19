@@ -12,7 +12,7 @@
 | Step | Track | This pass |
 |------|--------|-----------|
 | 1 | **Churn** advisory productionization | **START** — feature/label contract, gates, advisory API, predictive UI fix |
-| 2 | **CF** collaborative filtering | **Phase 0 design only** — no CF ranker code until churn advisory path ships + volume gate |
+| 2 | **CF** collaborative filtering | **UNLOCKED** after churn tip PASS — v1 soft-rank code (item affinity; not full MF) |
 
 Hard rules (both tracks):
 
@@ -60,7 +60,7 @@ Do **not** treat generic agent `outcome_success` failures as churn unless writte
 
 ---
 
-## B. CF (Phase 0 only — after churn)
+## B. CF (v1 soft-rank — after churn tip PASS)
 
 ### Existing (not CF)
 
@@ -68,21 +68,23 @@ Do **not** treat generic agent `outcome_success` failures as churn unless writte
 - Phase 5.2 soft-rank: `recommendation_quality_engine` via CRM / outcome events  
 - Feedback: dismissals, assistant recommendation feedback, `crm_recommendation_outcomes`  
 
-### CF v1 design (when unlocked)
+### CF v1 shipped (code)
 
 | Item | Spec |
 |------|------|
 | Interaction matrix | org × (connector \| pack \| heuristic card_id) from usage + accept/dismiss/CRM |
-| Cold start | Keep heuristics; CF re-ranks only when volume gate met |
+| Cold start | Keep heuristics; CF re-ranks only when volume gate met (`cfRanked=false`) |
 | Contract | Same STA-314 bans — no execute payloads |
-| Volume gate (proposed) | ≥50 scored interactions / org in 30d before CF rank enabled |
-| Placement | Soft-rank layer after heuristics, before dismiss filter |
+| Volume gate | ≥50 scored interactions / org in 30d |
+| Placement | Soft-rank after heuristics, before dismiss filter |
+| Modules | `cf_interaction_ingest.py`, `cf_soft_rank.py`, `cf_rank_service.py` |
+| Response flags | `cfGate`, `cfRanked` on heuristics payload |
 
-### Non-goals (CF Phase 0)
+### Non-goals (CF v1)
 
-- No matrix-factorization code this pass  
+- No full matrix-factorization / ALS yet  
 - No auto-execute from CF scores  
-- Does not replace Phase 5.2 outcome soft-rank until CF tip PASSes  
+- Does not replace Phase 5.2 outcome soft-rank until CF tip PASSes with `cfRanked:true` at volume  
 
 ---
 

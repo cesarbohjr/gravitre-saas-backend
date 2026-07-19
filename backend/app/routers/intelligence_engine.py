@@ -145,6 +145,15 @@ async def intelligence_heuristic_recommendations(
         installed_packs=signals["installed_packs"],
         lookback_days=int(signals.get("lookback_days") or 30),
     )
+    # CF v1 — soft-rank after heuristics, before dismiss (Phase 0 placement).
+    # Cold start when <50 scored interactions / 30d; never drops cards.
+    try:
+        from app.services.cf_rank_service import soft_rank_heuristic_payload
+
+        payload = soft_rank_heuristic_payload(client, org_id, payload)
+    except Exception:  # noqa: BLE001
+        payload = dict(payload)
+        payload["cfRanked"] = False
     if user_id:
         payload = filter_dismissed_recommendations(
             payload,
