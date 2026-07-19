@@ -325,7 +325,7 @@ export default function MarketplacePlatformAdminPage() {
     <AppShell title="Public catalog review">
       <div className="mx-auto max-w-4xl space-y-6">
         <Button variant="ghost" size="sm" asChild className="-ml-2">
-          <Link href="/marketplace">
+          <Link href="/marketplace/assets">
             <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden />
             Marketplace
           </Link>

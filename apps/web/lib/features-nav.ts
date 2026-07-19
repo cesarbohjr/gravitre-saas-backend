@@ -4,7 +4,6 @@ import {
   Bot,
   Brain,
   LayoutGrid,
-  Package,
   Shield,
   Sparkles,
   Workflow,
@@ -106,14 +105,6 @@ export const FEATURES_NAV: FeaturesNavItem[] = [
     label: "Metrics & use cases",
     description: "Honest reporting tiers and where teams start.",
     icon: BarChart3,
-    group: "Intelligence",
-  },
-  {
-    id: "marketplace",
-    href: "/features/marketplace",
-    label: "Marketplace",
-    description: "60+ installable templates, packs, and agents.",
-    icon: Package,
     group: "Intelligence",
   },
   {

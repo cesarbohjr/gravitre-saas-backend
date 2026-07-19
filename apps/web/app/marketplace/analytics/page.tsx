@@ -123,7 +123,7 @@ export default function MarketplaceAnalyticsPage() {
               </p>
             </div>
             <Button variant="outline" size="sm" asChild>
-              <Link href="/marketplace">
+              <Link href="/marketplace/assets">
                 <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden />
                 Marketplace home
               </Link>

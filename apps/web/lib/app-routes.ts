@@ -23,7 +23,7 @@ export const APP_ROUTES = {
   intelligencePredictive: "/intelligence/predictive",
   intelligenceMemory: "/intelligence/memory",
   intelligenceReports: "/intelligence/reports",
-  marketplace: "/marketplace",
+  marketplace: "/marketplace/assets",
   connectors: "/connectors",
   workflows: "/workflows",
   runs: "/runs",

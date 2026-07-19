@@ -108,7 +108,7 @@ export default function MarketplacePublisherPage() {
     <AppShell title="Become a publisher">
       <div className="mx-auto max-w-xl space-y-6">
         <Button variant="ghost" size="sm" asChild className="-ml-2">
-          <Link href="/marketplace">
+          <Link href="/marketplace/assets">
             <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden />
             Marketplace
           </Link>

@@ -44,11 +44,6 @@ import { MARKETING_COPY } from "@/lib/marketing-copy"
 import { SHOW_MARKETING_TESTIMONIALS } from "@/lib/marketing-flags"
 import type { FeaturesSectionId } from "@/lib/features-nav"
 
- function showSection(active: FeaturesSectionId | "all", ...ids: (FeaturesSectionId | "all")[]) {
-  if (active === "all") return true
-  return ids.includes(active)
-  }
-
 // Bento card component - Light theme
 function BentoCard({ 
   children, 
@@ -569,11 +564,25 @@ export function FeaturesLegacyContent({
   section = "all",
   showHero = true,
   showTail = true,
+  exclude = [],
 }: {
   section?: FeaturesSectionId | "all"
   showHero?: boolean
   showTail?: boolean
+  exclude?: FeaturesSectionId[]
 }) {
+  const excluded = new Set<string>(exclude)
+  // Show a gated block when the active section matches one of `ids`.
+  // With section="all", every non-excluded section renders; `exclude` lets the
+  // main Features page hide sections that now live on their own tab (GIBE,
+  // Governance, Marketplace) without duplicating any content.
+  function showSection(active: FeaturesSectionId | "all", ...ids: (FeaturesSectionId | "all")[]) {
+    const realIds = ids.filter((id): id is FeaturesSectionId => id !== "all")
+    if (active === "all") {
+      return realIds.some((id) => !excluded.has(id))
+    }
+    return ids.includes(active) && !excluded.has(active)
+  }
   return (
     <div className="relative overflow-hidden bg-white">
       {showHero && section === "all" ? (
@@ -740,7 +749,7 @@ export function FeaturesLegacyContent({
       </>
       ) : null}
 
-      {showSection(section, "intelligence") ? (
+      {showSection(section, "intelligence", "all") ? (
       <>
       <IntelligenceEngineSection variant="compact" />
 
@@ -748,7 +757,7 @@ export function FeaturesLegacyContent({
       </>
       ) : null}
 
-      {showSection(section, "how-it-works") ? (
+      {showSection(section, "how-it-works", "all") ? (
       <>
       {/* How Gravitre Works - Architecture Diagram */}
       <section className="relative pb-32">
@@ -1049,7 +1058,7 @@ export function FeaturesLegacyContent({
       </>
       ) : null}
 
-      {showSection(section, "gravitre-ai", "agents", "workflows", "integrations", "governance", "meson") ? (
+      {showSection(section, "gravitre-ai", "agents", "workflows", "integrations", "governance", "meson", "all") ? (
       <>
       {/* 5 Key Features - Light Theme Screens */}
       <section className="relative py-32 border-t border-zinc-200 bg-white">
@@ -1070,7 +1079,7 @@ export function FeaturesLegacyContent({
 
           <div className={section === "all" ? "space-y-32" : ""}>
             {/* Feature 1: Gravitre AI */}
-            {showSection(section, "gravitre-ai") ? (
+            {showSection(section, "gravitre-ai", "all") ? (
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1152,7 +1161,7 @@ export function FeaturesLegacyContent({
             ) : null}
 
             {/* Feature 2: Smart Agents */}
-            {showSection(section, "agents") ? (
+            {showSection(section, "agents", "all") ? (
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1232,7 +1241,7 @@ export function FeaturesLegacyContent({
             ) : null}
 
             {/* Feature 3: Visual Workflow Builder */}
-            {showSection(section, "workflows") ? (
+            {showSection(section, "workflows", "all") ? (
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1326,7 +1335,7 @@ export function FeaturesLegacyContent({
             ) : null}
 
             {/* Feature 4: Connected Integrations */}
-            {showSection(section, "integrations") ? (
+            {showSection(section, "integrations", "all") ? (
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1404,7 +1413,7 @@ export function FeaturesLegacyContent({
             ) : null}
 
             {/* Feature 5: Enterprise Security */}
-            {showSection(section, "governance") ? (
+            {showSection(section, "governance", "all") ? (
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1479,7 +1488,7 @@ export function FeaturesLegacyContent({
             ) : null}
 
             {/* Feature 6: Meson - The AI System Builder */}
-            {showSection(section, "meson") ? (
+            {showSection(section, "meson", "all") ? (
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1600,7 +1609,7 @@ export function FeaturesLegacyContent({
       </>
       ) : null}
 
-      {showSection(section, "integrations") ? (
+      {showSection(section, "integrations", "all") ? (
       <>
       {/* Detailed Features */}
       <section className="relative py-32 border-t border-zinc-200 bg-zinc-50">
@@ -1672,13 +1681,13 @@ export function FeaturesLegacyContent({
       </>
       ) : null}
 
-      {showSection(section, "insights") ? <TransparencyMetricsSection /> : null}
+      {showSection(section, "insights", "all") ? <TransparencyMetricsSection /> : null}
 
-      {showSection(section, "marketplace") ? <MarketplaceHighlightsSection /> : null}
+      {showSection(section, "marketplace", "all") ? <MarketplaceHighlightsSection /> : null}
 
-      {showSection(section, "insights") ? <UseCasesSection /> : null}
+      {showSection(section, "insights", "all") ? <UseCasesSection /> : null}
 
-      {showSection(section, "governance") ? <GovernanceAiStackSection /> : null}
+      {showSection(section, "governance", "all") ? <GovernanceAiStackSection /> : null}
 
       {section === "all" && SHOW_MARKETING_TESTIMONIALS ? (
       <section className="relative py-32 border-t border-zinc-200 bg-zinc-50">

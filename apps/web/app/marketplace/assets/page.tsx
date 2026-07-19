@@ -559,7 +559,7 @@ function MarketplaceAssetsContent() {
 
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Link href="/marketplace" className="hover:text-foreground">
+                <Link href="/marketplace/assets" className="hover:text-foreground">
                   Marketplace home
                 </Link>
                 <span aria-hidden>·</span>

@@ -1,12 +1,5 @@
-import { marketingMetadata } from "@/lib/seo"
-import { FeaturesSectionPage } from "@/components/marketing/features/features-section-page"
+import { redirect } from "next/navigation"
 
-export const metadata = marketingMetadata({
-  title: "Marketplace | Features",
-  description:
-    "60+ installable workflow templates, department packs, agents, and knowledge — connector checks before install.",
-})
-
-export default function FeaturesMarketplacePage() {
-  return <FeaturesSectionPage section="marketplace" />
+export default function FeaturesMarketplaceRedirect() {
+  redirect("/marketplace")
 }
