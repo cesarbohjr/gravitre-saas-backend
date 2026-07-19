@@ -166,6 +166,13 @@ def extract_action_args_heuristic(
                         text,
                         re.I,
                     )
+                if not subj:
+                    # "create a ticket checkout fails on mobile priority high"
+                    subj = re.search(
+                        r"\b(?:create|open|file)\s+(?:a\s+)?(?:support\s+)?(?:ticket|issue)\s+(.+?)(?:\s+priority\b|$)",
+                        text,
+                        re.I,
+                    )
                 if subj:
                     args[key] = subj.group(1).strip(" .\"'")[:300]
         elif key in {"body", "message", "text", "description", "comment"} or any(

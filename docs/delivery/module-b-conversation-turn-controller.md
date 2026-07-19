@@ -99,14 +99,15 @@ Artifact: [`module-b-conversation-turn-controller-live.json`](module-b-conversat
 
 **Cross-conversation entity memory (Module B phase 2 follow-up):** once in-conversation ledger is live-PASS, reuse `entity_resolution_store` / `org_entity_resolution_records` so a Slack channel or email recipient confirmed in conversation A can be recalled in a later conversation B. Explicitly gated — not built in this pass.
 
-### Evidence (service + durable ledger)
+### Evidence (live prod cert — required Done bar)
 
-From `scripts/verify-module-b-conversation-turn-controller.py` @ `2026-07-19T09:01:43Z`:
+From `scripts/audit-module-b-live-cert.py` @ tip `d9ed9f4e` — artifact [`module-b-live-cert-audit.json`](module-b-live-cert-audit.json):
 
-- `gmail_multi_turn_recipient` PASS — resume filled `to=alex@acme.com`
-- `unprompted_email_across_turns` PASS — ledger bind without re-ask
-- `jira_cold_multi_turn` PASS — `summary=login page broken`, `project_key=ENG`
-- `off_script_strategic_recovery` PASS — intent=`modify`
-- `durable_ledger_persist` PASS — conversation `00000000-0000-4000-8000-090143098494` org `f07e57c0-1501-4000-8000-c04e57a00001` slot `to=alex@acme.com`
+| Test | Verdict | Evidence |
+|------|---------|----------|
+| 1 Gmail multi-turn | **PASS** | conversation `3f60b6ae-6218-48e9-aaa6-5c122d4d4c60` — turn2 bound recipient in ledger/`pending_task.args` |
+| 2 Unprompted email | **PASS** | conversation `4681c262-4c64-4784-8298-dea271af6f69` — turn1 ledger wrote `renewals.moduleb@acme.test`; turn4 did not re-ask recipient |
+| 3 Cold Pipedrive | **PASS** | conversation `a7e64ac3-ce62-49c3-a00d-a309295a80f8` — title bound without quotes |
+| 4 Off-script recovery | **PASS** | conversation `0e414f65-a094-4828-9405-a3581620ecc3` — modify path adapted |
 
-Prod chat tip re-run (Railway tip after this push) still required before labeling the module user-facing Done.
+`universal_memory_verdict`: **UNIVERSAL** (dual-path deleted, schema-primary extract, resume patch persisted).

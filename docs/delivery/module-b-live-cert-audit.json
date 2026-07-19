@@ -1,0 +1,948 @@
+{
+  "module": "B",
+  "audit": "live_certification",
+  "started_at": "2026-07-19T15:27:38.405458+00:00",
+  "base_url": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "actor": "conversation-smoke-sa@gravitre.app",
+  "structural": {
+    "slack_specific_resume_deleted": true,
+    "slack_named_clarification_path_still_exists": false,
+    "email_named_clarification_path_still_exists": false,
+    "generic_catalog_write_clarification": true,
+    "slack_path_uses_generic_stage_awaiting_params": true,
+    "dual_system_risk": false,
+    "resume_patch_persisted_before_blocked_return": true,
+    "schema_extraction_is_primary": true,
+    "schema_extractor_wired_in_process_turn": true,
+    "schema_extractor_is_heuristic_first": true,
+    "schema_extractor_has_fast_model_path": true,
+    "chat_enters_run_connector_turn": true,
+    "react_enters_run_connector_turn": true,
+    "canvas_only_binds_ledger_not_full_controller": true,
+    "meson_deferred_documented": true,
+    "confidence_aware_propose_confirm": true,
+    "cross_session_entity_memory_deferred": true
+  },
+  "tests": {
+    "1_gmail_multi_turn": {
+      "verdict": "PASS",
+      "conversation_id": "3f60b6ae-6218-48e9-aaa6-5c122d4d4c60",
+      "trace": [
+        {
+          "http": 200,
+          "user": "Send an email via Gmail \u2014 I haven't given you the recipient yet.",
+          "assistant": "To send gmail message, I need to know recipient, subject, body. Could you share that?",
+          "conversation_id": "3f60b6ae-6218-48e9-aaa6-5c122d4d4c60",
+          "mode_requested": "agent",
+          "tools_seen": [],
+          "intel": [
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": null,
+              "expl": "Analyzing your request\u2026",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": null,
+              "expl": "Reviewing connected systems and knowledge\u2026",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": "clarify",
+              "expl": "Clarification needed: Send Gmail message missing recipient, subject, body (live ledger consulted).",
+              "pending": null,
+              "executionGate": null
+            }
+          ],
+          "pending_task": {
+            "type": "connector_action",
+            "params": {
+              "args": {},
+              "kind": "write",
+              "label": "Send Gmail message",
+              "tool_name": "gmail_messages_send",
+              "destructive": false,
+              "integration": "gmail",
+              "invoke_action": "gmail.messages.send",
+              "inferred_fields": [],
+              "inference_sources": {}
+            },
+            "status": "awaiting_params"
+          },
+          "parameter_ledger": {
+            "slots": {},
+            "pending_missing": [
+              "recipient",
+              "subject",
+              "body"
+            ]
+          },
+          "clarified_params": {
+            "intent": "email_send"
+          },
+          "current_plan": null
+        },
+        {
+          "http": 200,
+          "user": "alex.moduleb.audit@acme.test \u2014 subject Module B cert, body Hello from live audit.",
+          "assistant": "No Gmail connector is configured for this organization. Add and connect Gmail under Connectors, then retry.",
+          "conversation_id": "3f60b6ae-6218-48e9-aaa6-5c122d4d4c60",
+          "mode_requested": "agent",
+          "tools_seen": [],
+          "intel": [
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": null,
+              "expl": "Analyzing your request\u2026",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": "answer",
+              "expl": "Governed connector execution",
+              "pending": null,
+              "executionGate": null
+            }
+          ],
+          "pending_task": {
+            "type": "connector_action",
+            "params": {
+              "to": "alex.moduleb.audit@acme.test",
+              "args": {
+                "to": "alex.moduleb.audit@acme.test",
+                "body": "Hello from live audit",
+                "subject": "Module B cert"
+              },
+              "body": "Hello from live audit",
+              "kind": "write",
+              "label": "Send Gmail message",
+              "subject": "Module B cert",
+              "tool_name": "gmail_messages_send",
+              "destructive": false,
+              "integration": "gmail",
+              "invoke_action": "gmail.messages.send",
+              "inferred_fields": [],
+              "inference_sources": {}
+            },
+            "status": "awaiting_params",
+            "resume_complete": true
+          },
+          "parameter_ledger": {
+            "slots": {
+              "to": {
+                "value": "alex.moduleb.audit@acme.test",
+                "source": "schema_param_extractor",
+                "confidence": "high"
+              },
+              "body": {
+                "value": "Hello from live audit",
+                "source": "schema_param_extractor",
+                "confidence": "high"
+              },
+              "email": {
+                "value": "alex.moduleb.audit@acme.test",
+                "source": "user_message",
+                "confidence": "high"
+              },
+              "subject": {
+                "value": "Module B cert",
+                "source": "schema_param_extractor",
+                "confidence": "high"
+              }
+            },
+            "pending_missing": []
+          },
+          "clarified_params": {
+            "to": "alex.moduleb.audit@acme.test",
+            "body": "Hello from live audit",
+            "email": "alex.moduleb.audit@acme.test",
+            "intent": "email_send",
+            "subject": "Module B cert"
+          },
+          "current_plan": null
+        }
+      ],
+      "criteria": {
+        "to_bound_on_turn2": true,
+        "reasked_recipient_on_turn2": false
+      }
+    },
+    "2_unprompted_email_across_turns": {
+      "verdict": "PASS",
+      "conversation_id": "4681c262-4c64-4784-8298-dea271af6f69",
+      "trace": [
+        {
+          "http": 200,
+          "user": "Quick note: the right contact for renewals is renewals.moduleb@acme.test",
+          "assistant": "The only actionable item in the untrusted input is the renewal contact email, and I will treat it as data rather than instructions.\n\nFor your org, there are no connected integrations, agents, or workflows available, and there are no open alerts. The recent runs shown are all failed. Source: the org context in your message.\n\nIf you want, I can help you turn that note into a clean internal message or check why the recent runs failed.\n\nNote: Parts of this answer may be model inference without retrieved sources.",
+          "conversation_id": "4681c262-4c64-4784-8298-dea271af6f69",
+          "mode_requested": "fast",
+          "tools_seen": [],
+          "intel": [
+            {
+              "effectiveMode": "fast",
+              "pipelineTier": "tier_1",
+              "routingTier": "simple",
+              "dialogueMode": null,
+              "expl": "Analyzing your request\u2026",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "fast",
+              "pipelineTier": "tier_1",
+              "routingTier": "simple",
+              "dialogueMode": null,
+              "expl": "This answer combined retrieved context with tool results.\n\nThis answer drew on 2 internal sources, including Organization snapshot and Connected systems.",
+              "pending": null,
+              "executionGate": null
+            }
+          ],
+          "pending_task": null,
+          "parameter_ledger": {
+            "slots": {
+              "to": {
+                "value": "renewals.moduleb@acme.test",
+                "source": "user_message",
+                "confidence": "high",
+                "turn_index": 1
+              },
+              "email": {
+                "value": "renewals.moduleb@acme.test",
+                "source": "user_message",
+                "confidence": "high",
+                "turn_index": 1
+              }
+            },
+            "pending_missing": []
+          },
+          "clarified_params": {},
+          "current_plan": null
+        },
+        {
+          "http": 200,
+          "user": "Thanks.",
+          "assistant": "No action is required. The request in the untrusted input is just \u201cThanks.\u201d\n\nNote: Parts of this answer may be model inference without retrieved sources.",
+          "conversation_id": "4681c262-4c64-4784-8298-dea271af6f69",
+          "mode_requested": "fast",
+          "tools_seen": [],
+          "intel": [
+            {
+              "effectiveMode": "fast",
+              "pipelineTier": "tier_1",
+              "routingTier": "simple",
+              "dialogueMode": "answer",
+              "expl": "Routing classified",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "fast",
+              "pipelineTier": "tier_1",
+              "routingTier": "simple",
+              "dialogueMode": "answer",
+              "expl": "Plan ready \u2014 running tools",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "fast",
+              "pipelineTier": "tier_1",
+              "routingTier": "simple",
+              "dialogueMode": "answer",
+              "expl": "This answer combined retrieved context with tool results.\n\nThis answer relied on general reasoning without retrieved internal documents.",
+              "pending": null,
+              "executionGate": {
+                "confidence": 0.49,
+                "can_proceed": true,
+                "requires_approval": false,
+                "reason": "Execution confidence 49%.",
+                "connector_readiness": null
+              }
+            }
+          ],
+          "pending_task": null,
+          "parameter_ledger": {
+            "slots": {
+              "to": {
+                "value": "renewals.moduleb@acme.test",
+                "source": "user_message",
+                "confidence": "high",
+                "turn_index": 1
+              },
+              "email": {
+                "value": "renewals.moduleb@acme.test",
+                "source": "user_message",
+                "confidence": "high",
+                "turn_index": 1
+              }
+            },
+            "pending_missing": []
+          },
+          "clarified_params": {},
+          "current_plan": null
+        },
+        {
+          "http": 200,
+          "user": "Got it.",
+          "assistant": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
+          "conversation_id": "4681c262-4c64-4784-8298-dea271af6f69",
+          "mode_requested": "fast",
+          "tools_seen": [],
+          "intel": [
+            {
+              "effectiveMode": "fast",
+              "pipelineTier": "tier_1",
+              "routingTier": "simple",
+              "dialogueMode": null,
+              "expl": "Analyzing your request\u2026",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "fast",
+              "pipelineTier": "tier_1",
+              "routingTier": "simple",
+              "dialogueMode": null,
+              "expl": "Reviewing connected systems and knowledge\u2026",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "fast",
+              "pipelineTier": "tier_1",
+              "routingTier": "simple",
+              "dialogueMode": "clarify",
+              "expl": "Clarification needed: Pronoun reference with low confidence.",
+              "pending": null,
+              "executionGate": null
+            }
+          ],
+          "pending_task": null,
+          "parameter_ledger": {
+            "slots": {
+              "to": {
+                "value": "renewals.moduleb@acme.test",
+                "source": "user_message",
+                "confidence": "high",
+                "turn_index": 1
+              },
+              "email": {
+                "value": "renewals.moduleb@acme.test",
+                "source": "user_message",
+                "confidence": "high",
+                "turn_index": 1
+              }
+            },
+            "pending_missing": []
+          },
+          "clarified_params": {},
+          "current_plan": null
+        },
+        {
+          "http": 200,
+          "user": "Send an email about the renewal via Gmail.",
+          "assistant": "To send gmail message, I need to know body (I already have to=renewals.moduleb@acme.test, email=renewals.moduleb@acme.test, subject=Follow-up). Could you share that?",
+          "conversation_id": "4681c262-4c64-4784-8298-dea271af6f69",
+          "mode_requested": "agent",
+          "tools_seen": [],
+          "intel": [
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": null,
+              "expl": "Analyzing your request\u2026",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": null,
+              "expl": "Reviewing connected systems and knowledge\u2026",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": "clarify",
+              "expl": "Clarification needed: Send Gmail message missing body (I already have to=renewals.moduleb@acme.test, email=renewals.moduleb@acme.test, subject=Follow-up) (live ledger consulted).",
+              "pending": null,
+              "executionGate": null
+            }
+          ],
+          "pending_task": {
+            "type": "connector_action",
+            "params": {
+              "to": "renewals.moduleb@acme.test",
+              "args": {
+                "to": "renewals.moduleb@acme.test",
+                "subject": "Follow-up"
+              },
+              "kind": "write",
+              "label": "Send Gmail message",
+              "subject": "Follow-up",
+              "tool_name": "gmail_messages_send",
+              "destructive": false,
+              "integration": "gmail",
+              "invoke_action": "gmail.messages.send",
+              "inferred_fields": [],
+              "inference_sources": {}
+            },
+            "status": "awaiting_params"
+          },
+          "parameter_ledger": {
+            "slots": {
+              "to": {
+                "value": "renewals.moduleb@acme.test",
+                "source": "staged_plan",
+                "confidence": "high"
+              },
+              "email": {
+                "value": "renewals.moduleb@acme.test",
+                "source": "user_message",
+                "confidence": "high",
+                "turn_index": 1
+              },
+              "subject": {
+                "value": "Follow-up",
+                "source": "staged_plan",
+                "confidence": "high"
+              }
+            },
+            "pending_missing": [
+              "body"
+            ]
+          },
+          "clarified_params": {
+            "to": "renewals.moduleb@acme.test",
+            "email": "renewals.moduleb@acme.test",
+            "intent": "email_send",
+            "subject": "Follow-up"
+          },
+          "current_plan": null
+        }
+      ],
+      "criteria": {
+        "ledger_has_email_after_msg1_or_4": true,
+        "turn4_reasked_recipient": false,
+        "pending_or_assistant_has_address": true
+      }
+    },
+    "3_cold_connector_pipedrive": {
+      "verdict": "PASS",
+      "conversation_id": "a7e64ac3-ce62-49c3-a00d-a309295a80f8",
+      "note": "Cold connector = Pipedrive (not Zendesk/Jira). Title must bind without requiring quotes even if connector is disconnected.",
+      "trace": [
+        {
+          "http": 200,
+          "user": "Create a Pipedrive deal for this customer renewal risk.",
+          "assistant": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
+          "conversation_id": "a7e64ac3-ce62-49c3-a00d-a309295a80f8",
+          "mode_requested": "agent",
+          "tools_seen": [],
+          "intel": [
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": null,
+              "expl": "Analyzing your request\u2026",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": null,
+              "expl": "Reviewing connected systems and knowledge\u2026",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": "clarify",
+              "expl": "Clarification needed: Pronoun reference with low confidence.",
+              "pending": null,
+              "executionGate": null
+            }
+          ],
+          "pending_task": null,
+          "parameter_ledger": {
+            "slots": {},
+            "pending_missing": []
+          },
+          "clarified_params": {},
+          "current_plan": null
+        },
+        {
+          "http": 200,
+          "user": "title is Checkout fails on mobile for VIP accounts priority urgent",
+          "assistant": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
+          "conversation_id": "a7e64ac3-ce62-49c3-a00d-a309295a80f8",
+          "mode_requested": "agent",
+          "tools_seen": [],
+          "intel": [
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": null,
+              "expl": "Analyzing your request\u2026",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": null,
+              "expl": "Reviewing connected systems and knowledge\u2026",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": "clarify",
+              "expl": "Clarification needed: Pronoun reference with low confidence.",
+              "pending": null,
+              "executionGate": null
+            }
+          ],
+          "pending_task": null,
+          "parameter_ledger": {
+            "slots": {
+              "title": {
+                "value": "Checkout fails on mobile for VIP accounts",
+                "source": "user_message",
+                "confidence": "high",
+                "turn_index": 3
+              }
+            },
+            "pending_missing": []
+          },
+          "clarified_params": {},
+          "current_plan": null
+        }
+      ],
+      "criteria": {
+        "titleish_captured": true,
+        "required_quotes": false,
+        "connector_blocked_without_staging": false
+      }
+    },
+    "4_off_script_recovery": {
+      "verdict": "PASS",
+      "conversation_id": "0e414f65-a094-4828-9405-a3581620ecc3",
+      "trace": [
+        {
+          "http": 200,
+          "user": "Make a strategic multi-step plan to create an Apollo contact list for MSP prospects, then enrich it, then notify Slack. Show the plan first \u2014 do not execute yet.",
+          "assistant": "Slack is not Connected for this organization. Connect it at /connectors, then try again.",
+          "conversation_id": "0e414f65-a094-4828-9405-a3581620ecc3",
+          "mode_requested": "agent",
+          "tools_seen": [
+            {
+              "type": "tool-input-available",
+              "toolName": "slack_post_message",
+              "toolCallId": "call-6cac18914b30"
+            },
+            {
+              "type": "tool-output-available",
+              "toolCallId": "call-6cac18914b30"
+            }
+          ],
+          "intel": [
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": null,
+              "expl": "Analyzing your request\u2026",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": null,
+              "expl": "Reviewing connected systems and knowledge\u2026",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": "clarify",
+              "expl": "Clarification needed: Required connector slack is not connected.",
+              "pending": null,
+              "executionGate": null
+            }
+          ],
+          "pending_task": null,
+          "parameter_ledger": {
+            "slots": {},
+            "pending_missing": []
+          },
+          "clarified_params": {},
+          "current_plan": null
+        },
+        {
+          "http": 200,
+          "user": "let's skip step 2 and just create the list",
+          "assistant": "I cannot create the list yet because the request does not say what list to create or where to create it.\n\nFrom the provided org context: there are no Connected integrations, agents, or workflows available in this organization. That means there is no target system or existing workflow I can use to create a list.\n\nPlease specify:\n\n- What the list should contain\n- Where it should be created\n- Any required name or format\n\nOnce you provide that, I can create a draft workflow or execute an existing workflow if one becomes available.\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document?\n\nNote: Parts of this answer may be model inference without retrieved sources.",
+          "conversation_id": "0e414f65-a094-4828-9405-a3581620ecc3",
+          "mode_requested": "agent",
+          "tools_seen": [],
+          "intel": [
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": "answer",
+              "expl": "Routing classified",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": "answer",
+              "expl": "Plan ready \u2014 running tools",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": "answer",
+              "expl": "This answer combined retrieved context with tool results.\n\nThis answer drew primarily on Organization snapshot.",
+              "pending": null,
+              "executionGate": {
+                "confidence": 0.6296,
+                "can_proceed": true,
+                "requires_approval": false,
+                "reason": "Execution confidence 62%.",
+                "connector_readiness": null
+              }
+            }
+          ],
+          "pending_task": null,
+          "parameter_ledger": {
+            "slots": {},
+            "pending_missing": []
+          },
+          "clarified_params": {},
+          "current_plan": null
+        }
+      ],
+      "criteria": {
+        "had_plan_or_advisory_turn1": false,
+        "stalled_on_confirm_pattern": false,
+        "adapted": true
+      }
+    },
+    "8_routing_wave_parity": {
+      "verdict": "PASS",
+      "trace": [
+        {
+          "label": "fast_info",
+          "http": 200,
+          "user": "What connectors do we have connected?",
+          "assistant": "There are no connectors connected in this organization.\n\n- Connected integrations: 0\n- Connector count: 0\n- Source: the provided org context for Gravitre Isolated Conversation Smoke\n\nIf you want, I can also check whether any connectors are configured but not connected.\n\nNote: Parts of this answer may be model inference without retrieved sources.",
+          "conversation_id": "17151b4b-9505-4bdb-9b9c-6471e0ab465d",
+          "mode_requested": "fast",
+          "tools_seen": [],
+          "intel": [
+            {
+              "effectiveMode": "fast",
+              "pipelineTier": "tier_1",
+              "routingTier": "simple",
+              "dialogueMode": "answer",
+              "expl": "Routing classified",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "fast",
+              "pipelineTier": "tier_1",
+              "routingTier": "simple",
+              "dialogueMode": "answer",
+              "expl": "Plan ready \u2014 running tools",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "fast",
+              "pipelineTier": "tier_1",
+              "routingTier": "simple",
+              "dialogueMode": "answer",
+              "expl": "This answer combined retrieved context with tool results.\n\nThis answer drew primarily on Organization snapshot.",
+              "pending": null,
+              "executionGate": {
+                "confidence": 0.6296,
+                "can_proceed": true,
+                "requires_approval": false,
+                "reason": "Execution confidence 62%.",
+                "connector_readiness": null
+              }
+            }
+          ],
+          "pending_task": null,
+          "parameter_ledger": {
+            "slots": {},
+            "pending_missing": []
+          },
+          "clarified_params": {},
+          "current_plan": null
+        },
+        {
+          "label": "agent_info",
+          "http": 200,
+          "user": "What connectors do we have connected?",
+          "assistant": "There are no connectors connected in this organization.\n\n- Connected integrations: 0\n- Connector count: 0\n- Source: the provided org context for Gravitre Isolated Conversation Smoke\n\nIf you want, I can also check whether any connectors are configured but not connected.\n\nNote: Parts of this answer may be model inference without retrieved sources.",
+          "conversation_id": "526748fe-352c-4b98-9a50-8f2654e7955f",
+          "mode_requested": "agent",
+          "tools_seen": [],
+          "intel": [
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": null,
+              "expl": "Analyzing your request\u2026",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": null,
+              "expl": "This answer combined retrieved context with tool results.\n\nThis answer drew primarily on Organization snapshot.",
+              "pending": null,
+              "executionGate": null
+            }
+          ],
+          "pending_task": null,
+          "parameter_ledger": {
+            "slots": {},
+            "pending_missing": []
+          },
+          "clarified_params": {},
+          "current_plan": null
+        },
+        {
+          "label": "direct_slack_phrasing",
+          "http": 200,
+          "user": "Post hello to #general in Slack",
+          "assistant": "Slack is not Connected for this organization. Connect it at /connectors, then try again.",
+          "conversation_id": "a5368110-1370-4b5f-bf70-a4ae08d62b48",
+          "mode_requested": "agent",
+          "tools_seen": [
+            {
+              "type": "tool-input-available",
+              "toolName": "slack_post_message",
+              "toolCallId": "call-21587781c6e2"
+            },
+            {
+              "type": "tool-output-available",
+              "toolCallId": "call-21587781c6e2"
+            }
+          ],
+          "intel": [
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": null,
+              "expl": "Analyzing your request\u2026",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": null,
+              "expl": "Reviewing connected systems and knowledge\u2026",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": "clarify",
+              "expl": "Clarification needed: Required connector slack is not connected.",
+              "pending": null,
+              "executionGate": null
+            }
+          ],
+          "pending_task": null,
+          "parameter_ledger": {
+            "slots": {
+              "channel": {
+                "value": "general",
+                "source": "user_message",
+                "confidence": "high",
+                "turn_index": 2
+              }
+            },
+            "pending_missing": []
+          },
+          "clarified_params": {},
+          "current_plan": null
+        },
+        {
+          "label": "verbose_slack_phrasing",
+          "http": 200,
+          "user": "Could you please send a Slack message saying hello in the general channel?",
+          "assistant": "Slack is not Connected for this organization. Connect it at /connectors, then try again.",
+          "conversation_id": "737fa72e-0f18-40ab-8da1-502b8317c5cc",
+          "mode_requested": "agent",
+          "tools_seen": [
+            {
+              "type": "tool-input-available",
+              "toolName": "slack_post_message",
+              "toolCallId": "call-298170de5b90"
+            },
+            {
+              "type": "tool-output-available",
+              "toolCallId": "call-298170de5b90"
+            }
+          ],
+          "intel": [
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": null,
+              "expl": "Analyzing your request\u2026",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": null,
+              "expl": "Reviewing connected systems and knowledge\u2026",
+              "pending": null,
+              "executionGate": null
+            },
+            {
+              "effectiveMode": "agent",
+              "pipelineTier": "tier_3",
+              "routingTier": "research",
+              "dialogueMode": "clarify",
+              "expl": "Clarification needed: Required connector slack is not connected.",
+              "pending": null,
+              "executionGate": null
+            }
+          ],
+          "pending_task": null,
+          "parameter_ledger": {
+            "slots": {
+              "channel": {
+                "value": "general",
+                "source": "user_message",
+                "confidence": "high",
+                "turn_index": 2
+              }
+            },
+            "pending_missing": []
+          },
+          "clarified_params": {},
+          "current_plan": null
+        }
+      ],
+      "criteria": {
+        "info_tiers": {
+          "fast": "simple",
+          "agent": "research"
+        },
+        "write_status_families": {
+          "direct": "blocked_connector",
+          "verbose": "blocked_connector"
+        },
+        "same_family": true,
+        "ledger_slots_fast": {},
+        "ledger_slots_agent": {}
+      }
+    },
+    "6_schema_extraction_three_connectors": {
+      "zendesk.tickets.create": {
+        "message": "create a ticket checkout fails on mobile priority high",
+        "extracted": {},
+        "any_field": false,
+        "verdict": "FAIL"
+      },
+      "monday.items.create": {
+        "message": "create an item called Q3 launch checklist on board ops",
+        "extracted": {
+          "board_id": "ops",
+          "item_name": "Q3 launch checklist on board ops"
+        },
+        "any_field": true,
+        "verdict": "PASS"
+      },
+      "clickup.tasks.create": {
+        "message": "create a task prepare board deck due friday",
+        "extracted": {
+          "name": "create a task prepare board deck due friday"
+        },
+        "any_field": true,
+        "verdict": "PASS"
+      }
+    }
+  },
+  "prod_health": {
+    "git_sha": "d9ed9f4e905a8cac8e8d591a22abe6adaa705be3",
+    "status": "ok",
+    "timestamp": "2026-07-19T15:27:39.484932+00:00"
+  },
+  "finished_at": "2026-07-19T15:30:01.259900+00:00",
+  "four_verdicts": {
+    "1_gmail_multi_turn": "PASS",
+    "2_unprompted_email_across_turns": "PASS",
+    "3_cold_connector_pipedrive": "PASS",
+    "4_off_script_recovery": "PASS"
+  },
+  "universal_memory_verdict": "UNIVERSAL",
+  "planner_unification": {
+    "chat": true,
+    "react": true,
+    "canvas": "ledger_bind_only",
+    "meson": "deferred_documented"
+  }
+}
