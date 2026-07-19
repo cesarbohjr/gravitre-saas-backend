@@ -132,33 +132,51 @@ def main() -> int:
         train_http = {"status_code": None, "error": exc.__class__.__name__}
 
     # Allow Temporal/registry to settle when async train was started.
-    time.sleep(int(os.environ.get("CF_MF_POST_TRAIN_WAIT_S", "20")))
+    time.sleep(int(os.environ.get("CF_MF_POST_TRAIN_WAIT_S", "45")))
 
-    try:
-        r = httpx.get(
-            f"{BASE}/api/intelligence/recommendations/heuristics",
-            headers=hdr,
-            timeout=60.0,
-        )
-        body = r.json() if r.content else {}
-        cards = body.get("recommendations") or []
-        advisory = {
-            "status_code": r.status_code,
-            "card_count": len(cards),
-            "cfRanked": body.get("cfRanked"),
-            "cfMethod": body.get("cfMethod"),
-            "cfGate": body.get("cfGate"),
-            "advisory_only": body.get("advisoryOnly"),
-            "sample_ids": [c.get("id") for c in cards[:5]],
-            "sample_methods": [c.get("cf_method") for c in cards[:5]],
-            "executable_any": any(
-                bool(c.get("executable") or c.get("toolName") or c.get("arguments"))
-                for c in cards
-            ),
-            "error_detail": body.get("detail") if r.status_code >= 400 else None,
-        }
-    except Exception as exc:  # noqa: BLE001
-        advisory = {"status_code": None, "error": exc.__class__.__name__, "card_count": 0}
+    advisory = {"status_code": None, "card_count": 0}
+    deadline = time.time() + int(os.environ.get("CF_MF_ADVISORY_WAIT_S", "180"))
+    while time.time() < deadline:
+        try:
+            r = httpx.get(
+                f"{BASE}/api/intelligence/recommendations/heuristics",
+                headers=hdr,
+                timeout=90.0,
+            )
+            if not r.content:
+                time.sleep(10)
+                continue
+            body = r.json()
+            cards = body.get("recommendations") or []
+            advisory = {
+                "status_code": r.status_code,
+                "card_count": len(cards),
+                "cfRanked": body.get("cfRanked"),
+                "cfMethod": body.get("cfMethod"),
+                "cfGate": body.get("cfGate"),
+                "advisory_only": body.get("advisoryOnly"),
+                "sample_ids": [c.get("id") for c in cards[:5]],
+                "sample_methods": [c.get("cf_method") for c in cards[:5]],
+                "executable_any": any(
+                    bool(c.get("executable") or c.get("toolName") or c.get("arguments"))
+                    for c in cards
+                ),
+                "error_detail": body.get("detail") if r.status_code >= 400 else None,
+            }
+            if (
+                r.status_code == 200
+                and body.get("cfRanked") is True
+                and body.get("cfMethod") == "matrix_factorization"
+            ):
+                break
+            if r.status_code == 200 and body.get("cfRanked") is True:
+                # Artifact may still be deploying; keep polling briefly.
+                time.sleep(15)
+                continue
+            break
+        except Exception as exc:  # noqa: BLE001
+            advisory = {"status_code": None, "error": exc.__class__.__name__, "card_count": 0}
+            time.sleep(10)
 
     train_body = (train_http or {}).get("body") or {}
     train_ok = bool((train_local or {}).get("trained")) or (

@@ -32,7 +32,7 @@ Rollup: `docs/delivery/foundation-five-gates-tip-resmoke.json`
 |----------|--------|
 | Monetization | **LOCKED (b)** — standalone pack subscriptions |
 | Licensing / data-governance owner | **LOCKED — Cesar Bohorquez Jr.** (sole owner, same as STA-312). Covers PII-embedding **and** Crunchbase / PDL / OpenCorporates-commercial / CIS Controls **and** Finance banking/QB/Xero/NetSuite, HR HRIS/ATS/Payroll, Compliance PHI-vs-guidance scope **and** GSC raw search-query → Memory/KG (Marketing stop-line). |
-| Phase 5 ML | **UNHELD** — v1 shipped (CRM outcomes + ranked heuristics). **Churn tip PASS**; **CF soft-rank tip PASS**; **CF matrix factorization STARTED** 2026-07-19 — `phase0-cf-churn-ml.md` |
+| Phase 5 ML | **UNHELD** — v1 shipped (CRM outcomes + ranked heuristics). **Churn tip PASS**; **CF soft-rank tip PASS**; **CF matrix factorization tip PASS** 2026-07-19 — `phase0-cf-churn-ml.md` |
 | 12-pack vision | **Phase 0 DONE** — `docs/delivery/phase0-twelve-pack-marketplace-vision.md`. Build order below. |
 
 ---
@@ -332,4 +332,4 @@ Locked sequence **closed**. Spec `docs/delivery/phase0-business-os-intelligence-
 
 - Churn: labeled `churn_customer_signal` via `confidence_note` + `metric_value_after`. **PASS** — advisory HTTP 200 `trained:true` @ `2026-07-19T02:53:31Z` tip sha `77529f7f…` (`phase5-churn-ml-live.json`).
 - CF v1: item-affinity soft-rank after heuristics / before dismiss; ≥50 interactions/30d gate. **PASS** — heuristics HTTP 200 `cfRanked:true` gate ready @ tip sha `9d5451a5…` (`phase5-cf-soft-rank-live.json`).
-- CF MF: TruncatedSVD user×item (`cf_matrix_factorizer`); heuristics `cfMethod=matrix_factorization` when artifact loaded. Live tip via `scripts/smoke-phase5-cf-matrix-factorization-live.py` (**NOT RUN** until deploy).
+- CF MF: TruncatedSVD user×item (`cf_matrix_factorizer`). **PASS** — heuristics HTTP 200 `cfMethod=matrix_factorization` @ tip sha `c36f92d3…`; model `a194a993…` v1 deployed (`phase5-cf-matrix-factorization-live.json`).

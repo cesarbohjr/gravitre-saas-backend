@@ -98,7 +98,11 @@ class CfMatrixFactorizer(BaseMLModel):
 
         # Shift negatives into non-negative space for TruncatedSVD stability.
         shifted = matrix - matrix.min() if matrix.min() < 0 else matrix.copy()
-        n_comp = int(max(2, min(n_components, len(user_ids) - 1, len(item_ids) - 1)))
+        # sklearn requires n_components < n_samples and <= n_features.
+        max_comp = min(len(user_ids) - 1, len(item_ids), n_components)
+        n_comp = int(max(1, max_comp))
+        if n_comp < 1:
+            raise ValueError("matrix too small for factorization")
         svd = TruncatedSVD(n_components=n_comp, random_state=42)
         user_factors = svd.fit_transform(shifted)
         item_factors = svd.components_.T  # items × k
