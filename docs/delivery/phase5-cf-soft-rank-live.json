@@ -1,0 +1,68 @@
+{
+  "pass": true,
+  "status": "PASS",
+  "ran_at": "2026-07-19T03:32:17.397457+00:00",
+  "prod_git_sha": "9d5451a5971da1ff0bbba296f21ac91cdf8e7b47",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "deploy": {
+    "ok": true,
+    "git_sha": "9d5451a5971da1ff0bbba296f21ac91cdf8e7b47",
+    "matched": "sha",
+    "health": {
+      "status": "ok",
+      "timestamp": "2026-07-19T03:32:12.526111+00:00",
+      "version": "0.1.0",
+      "environment": "prod",
+      "git_sha": "9d5451a5971da1ff0bbba296f21ac91cdf8e7b47",
+      "ai_disabled": false,
+      "checks": {
+        "database": "healthy",
+        "cache": "healthy",
+        "temporal": "configured",
+        "clickhouse": "configured"
+      }
+    }
+  },
+  "gate": {
+    "model": "cf_soft_ranker",
+    "lookback_days": 30,
+    "current": 173,
+    "required": 50,
+    "ready": true,
+    "advisory_only": true,
+    "cold_start": false
+  },
+  "advisory": {
+    "status_code": 200,
+    "card_count": 20,
+    "cfRanked": true,
+    "cfGate": {
+      "model": "cf_soft_ranker",
+      "lookback_days": 30,
+      "current": 173,
+      "required": 50,
+      "ready": true,
+      "advisory_only": true,
+      "cold_start": false
+    },
+    "outcomeRanked": true,
+    "advisory_only": true,
+    "sample_ids": [
+      "nonexec-slack",
+      "nonexec-zendesk",
+      "nonexec-finseo",
+      "nonexec-salesforce",
+      "nonexec-quickbooks"
+    ],
+    "executable_any": false,
+    "error_detail": null
+  },
+  "governance": {
+    "advisory_only": true,
+    "auto_execute": false,
+    "placement": "heuristics \u2192 CF soft-rank \u2192 dismiss \u2192 outcome rank",
+    "volume_gate": "\u226550 scored interactions / org / 30d"
+  },
+  "note": "CF v1 soft-rank tip: cold start when gate fails; cfRanked when \u226550 interactions/30d."
+}
