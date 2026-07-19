@@ -4,6 +4,8 @@
   "started_at": "2026-07-19T09:01:40.560693+00:00",
   "finished_at": "2026-07-19T09:01:43.371830+00:00",
   "overall": "PASS",
+  "deploy_commit": "6a5e8be6",
+  "prod_chat_tip": "NOT RUN",
   "results": [
     {
       "name": "gmail_multi_turn_recipient",
@@ -34,5 +36,5 @@
       "detail": "slots.to=alex@acme.com"
     }
   ],
-  "note": "In-process service repros. Prod chat tip PASS still requires merge \u2192 Railway redeploy \u2192 live chat traces with evidence pointers."
+  "note": "In-process + durable ledger PASS. Pushed main@6a5e8be6 for Railway tip. Prod chat tip UI re-run still required before user-facing Done."
 }
