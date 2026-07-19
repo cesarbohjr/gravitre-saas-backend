@@ -99,5 +99,5 @@ async def test_upload_artifact_uses_vercel_blob_put_api(monkeypatch):
     assert captured["params"] == {"pathname": "models/m1/v1.pkl"}
     assert captured["headers"]["Authorization"] == "Bearer vercel_blob_rw_test"
     assert captured["headers"]["x-api-version"] == "12"
-    assert captured["headers"]["x-vercel-blob-access"] == "public"
+    assert captured["headers"]["x-vercel-blob-access"] == "private"
     assert captured["content"] == b"pickle-bytes"

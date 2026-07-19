@@ -283,7 +283,7 @@ class ModelRegistry:
         blob_token = self.settings.blob_read_write_token
         if not blob_token:
             raise ValueError("BLOB_READ_WRITE_TOKEN not configured")
-        # Public so _download_artifact can fetch without a second auth header.
+        # Store is private-access; downloads must send the same Bearer token.
         filename = f"models/{model_id}/v{version}.pkl"
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.put(
@@ -294,7 +294,7 @@ class ModelRegistry:
                     "Authorization": f"Bearer {blob_token}",
                     "x-api-version": "12",
                     "x-content-type": "application/octet-stream",
-                    "x-vercel-blob-access": "public",
+                    "x-vercel-blob-access": "private",
                     "x-add-random-suffix": "0",
                     "x-allow-overwrite": "1",
                 },
@@ -311,8 +311,12 @@ class ModelRegistry:
         return result["url"]
 
     async def _download_artifact(self, url: str) -> bytes:
+        headers: dict[str, str] = {}
+        blob_token = self.settings.blob_read_write_token
+        if blob_token:
+            headers["Authorization"] = f"Bearer {blob_token}"
         async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.get(url)
+            response = await client.get(url, headers=headers)
             response.raise_for_status()
         return response.content
 
