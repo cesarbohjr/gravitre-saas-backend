@@ -190,6 +190,21 @@ def sync_orchestration_step(
         logger.warning("chat orchestration step sync failed run=%s step=%s: %s", run_id, step_id, exc)
 
 
+def orchestration_run_fully_completed(step_results: list[dict[str, Any]] | None) -> bool:
+    """True only when every non-skipped step succeeded and at least one step succeeded.
+
+    MODULE A BRIDGE (temporary): shared success predicate for chat orchestration
+    finalize until finalize_execution_outcome() owns outcome semantics. Delete with
+    the bridge emit block in finalize_orchestration_run — do not keep alongside Module A.
+    """
+    rows = list(step_results or [])
+    if not rows:
+        return False
+    if any(not row.get("success") and not row.get("skipped") for row in rows):
+        return False
+    return any(bool(row.get("success")) for row in rows)
+
+
 def finalize_orchestration_run(
     client: Any,
     *,
@@ -197,7 +212,17 @@ def finalize_orchestration_run(
     run_id: str,
     success: bool,
     summary: str | None = None,
+    user_id: str | None = None,
 ) -> None:
+    """Mark a chat orchestration run completed or failed.
+
+    MODULE A BRIDGE (temporary): On failure this mirrors execute.py's
+    emit_execute_failed + emit_notification(run_failed) so failures are not
+    silently swallowed while Module A is built. Module A's
+    finalize_execution_outcome() will replace and absorb this block — DELETE
+    the failure emit logic here when that ships; do not keep a second
+    implementation alongside it.
+    """
     if not run_id:
         return
     try:
@@ -211,6 +236,53 @@ def finalize_orchestration_run(
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("chat orchestration run finalize failed run=%s: %s", run_id, exc)
+        return
+
+    if success:
+        return
+
+    # --- MODULE A BRIDGE START: delete when finalize_execution_outcome() ships ---
+    error_message = (summary or "Orchestration failed")[:2000]
+    if not user_id:
+        logger.warning(
+            "chat orchestration run_failed notify/audit skipped (no user_id) run=%s",
+            run_id,
+        )
+        return
+    try:
+        from app.workflows.repository import emit_execute_failed
+
+        emit_execute_failed(client, org_id, user_id, run_id, error_message)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "chat orchestration workflow.execute.failed audit skipped run=%s: %s",
+            run_id,
+            exc,
+        )
+    try:
+        from app.services.notification_emitter import emit_notification
+
+        emit_notification(
+            client,
+            org_id=org_id,
+            user_id=user_id,
+            event_type="run_failed",
+            title="Orchestration run failed",
+            body=error_message,
+            entity_ref={
+                "entity_type": "workflow_run",
+                "entity_id": run_id,
+                "result_url": f"/runs/{run_id}",
+            },
+            channel_hints={"bell": True, "email": False},
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "chat orchestration run_failed notification skipped run=%s: %s",
+            run_id,
+            exc,
+        )
+    # --- MODULE A BRIDGE END ---
 
 
 def resolve_orchestration_result_url(

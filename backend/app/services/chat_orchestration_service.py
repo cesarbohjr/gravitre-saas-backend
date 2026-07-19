@@ -26,6 +26,7 @@ from app.services.notification_emitter import emit_notification
 from app.services.chat_orchestration_runs import (
     finalize_orchestration_run,
     first_external_step_url,
+    orchestration_run_fully_completed,
     resolve_orchestration_result_url,
     start_orchestration_run,
     sync_orchestration_step,
@@ -844,6 +845,7 @@ class ChatOrchestrationService:
                     run_id=run_id,
                     success=False,
                     summary=result.body,
+                    user_id=user_id,
                 )
             return {
                 "stop_pipeline": True,
@@ -936,6 +938,7 @@ class ChatOrchestrationService:
                         run_id=run_id,
                         success=False,
                         summary=result.body,
+                        user_id=user_id,
                     )
                 params["step_results"] = step_results
                 params["current_step_index"] = step_idx + 1
@@ -1012,6 +1015,7 @@ class ChatOrchestrationService:
                         "step_id": step.step_id,
                         "label": step.label,
                         "success": False,
+                        "skipped": True,
                         "summary": step.skip_reason or "Skipped unsupported step.",
                         "url": "/connectors",
                     }
@@ -1101,6 +1105,7 @@ class ChatOrchestrationService:
                         run_id=run_id,
                         success=False,
                         summary=result.body,
+                        user_id=user_id,
                     )
                 return {
                     "stop_pipeline": True,
@@ -1144,6 +1149,9 @@ class ChatOrchestrationService:
     ) -> dict[str, Any]:
         step_results = list(params.get("step_results") or [])
         successes = sum(1 for row in step_results if row.get("success"))
+        # MODULE A BRIDGE: any failed (non-skipped) step ⇒ not fully completed.
+        # Absorbed by finalize_execution_outcome() — do not keep alongside Module A.
+        run_ok = orchestration_run_fully_completed(step_results)
         lines = []
         for row in step_results:
             mark = "✓" if row.get("success") else "○"
@@ -1155,8 +1163,9 @@ class ChatOrchestrationService:
                 client,
                 org_id=org_id,
                 run_id=run_id,
-                success=successes > 0,
+                success=run_ok,
                 summary=summary_body,
+                user_id=user_id,
             )
         primary_url = resolve_orchestration_result_url(
             run_id=run_id,
@@ -1166,15 +1175,23 @@ class ChatOrchestrationService:
         external_url = first_external_step_url(step_results)
         goal = str(params.get("goal") or "Chat orchestration")
         result = ExecutionResult(
-            success=successes > 0,
+            success=run_ok,
             entity_type="workflow_run" if run_id else "orchestration",
             entity_id=run_id or conversation_id,
             result_url=primary_url,
             external_url=external_url,
-            title=f"Orchestration complete ({successes}/{len(step_results)} steps)",
+            title=(
+                f"Orchestration complete ({successes}/{len(step_results)} steps)"
+                if run_ok
+                else f"Orchestration failed ({successes}/{len(step_results)} steps succeeded)"
+            ),
             body=summary_body,
-            notification_type="task_completed",
-            task_label="Multi-step orchestration complete",
+            notification_type="task_completed" if run_ok else "run_failed",
+            task_label=(
+                "Multi-step orchestration complete"
+                if run_ok
+                else "Multi-step orchestration failed"
+            ),
             structured={
                 "runId": run_id,
                 "conversationId": conversation_id,
@@ -1184,21 +1201,25 @@ class ChatOrchestrationService:
                 "source": "chat_orchestration",
             },
         )
-        emit_notification(
-            client,
-            org_id=org_id,
-            user_id=user_id,
-            event_type=result.notification_type,
-            title=result.title,
-            body=result.body[:500],
-            entity_ref={
-                "entity_type": result.entity_type,
-                "entity_id": result.entity_id,
-                "result_url": result.result_url,
-                "external_url": external_url,
-            },
-            channel_hints={"bell": True, "email": False},
-        )
+        # Failure notify/audit when run_id is set is owned by finalize_orchestration_run
+        # (MODULE A BRIDGE). Only emit task_completed here; if there is no run_id, emit
+        # run_failed so the failure is still visible.
+        if run_ok or not run_id:
+            emit_notification(
+                client,
+                org_id=org_id,
+                user_id=user_id,
+                event_type=result.notification_type,
+                title=result.title,
+                body=result.body[:500],
+                entity_ref={
+                    "entity_type": result.entity_type,
+                    "entity_id": result.entity_id,
+                    "result_url": result.result_url,
+                    "external_url": external_url,
+                },
+                channel_hints={"bell": True, "email": False},
+            )
         try:
             from app.services.execution_memory_service import get_execution_memory_service
 
@@ -1206,7 +1227,7 @@ class ChatOrchestrationService:
                 org_id=org_id,
                 goal=str(params.get("goal") or "orchestration"),
                 steps=list(params.get("steps") or []),
-                success=successes > 0,
+                success=run_ok,
                 run_id=run_id,
             )
         except Exception as exc:  # noqa: BLE001
@@ -1218,7 +1239,7 @@ class ChatOrchestrationService:
                 "clarified_params": params,
                 "pending_task": {
                     "type": "connector_orchestration",
-                    "status": "completed",
+                    "status": "completed" if run_ok else "failed",
                     "result": serialize_execution_result(result),
                 },
                 "pending_steps": [],
