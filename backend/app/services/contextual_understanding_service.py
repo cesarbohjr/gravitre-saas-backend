@@ -103,19 +103,40 @@ class ContextualUnderstandingService:
         }
 
     def _extract_entities_rule_based(self, message: str) -> list[dict[str, Any]]:
+        from app.services.confidence_honesty import (
+            CONFIDENCE_SOURCE_ENTITY_EXTRACT,
+            label_confidence,
+        )
+
         entities: list[dict[str, Any]] = []
         lowered = message.lower()
         if "workflow" in lowered:
-            entities.append({"type": "workflow", "name": "workflow", "confidence": 0.7})
+            entities.append(
+                {"type": "workflow", "name": "workflow", **label_confidence(0.7, source=CONFIDENCE_SOURCE_ENTITY_EXTRACT)}
+            )
         if re.search(r"\bagent\b", lowered):
-            entities.append({"type": "agent", "name": "agent", "confidence": 0.7})
+            entities.append(
+                {"type": "agent", "name": "agent", **label_confidence(0.7, source=CONFIDENCE_SOURCE_ENTITY_EXTRACT)}
+            )
         if re.search(r"\bconnector\b", lowered):
-            entities.append({"type": "connector", "name": "connector", "confidence": 0.65})
+            entities.append(
+                {
+                    "type": "connector",
+                    "name": "connector",
+                    **label_confidence(0.65, source=CONFIDENCE_SOURCE_ENTITY_EXTRACT),
+                }
+            )
         quoted = re.findall(r'"([^"]{2,80})"|\'([^\']{2,80})\'', message)
         for pair in quoted[:3]:
             name = pair[0] or pair[1]
             if name:
-                entities.append({"type": "named_entity", "name": name, "confidence": 0.8})
+                entities.append(
+                    {
+                        "type": "named_entity",
+                        "name": name,
+                        **label_confidence(0.8, source=CONFIDENCE_SOURCE_ENTITY_EXTRACT),
+                    }
+                )
         return entities
 
     @staticmethod

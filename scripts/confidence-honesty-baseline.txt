@@ -1,0 +1,26 @@
+# Grandfathered Module C confidence-honesty debt. Do not grow this list.
+backend/app/intelligence_packs/shared/schemas.py:44: bare confidence=0.85
+backend/app/operators/consensus_engine.py:69: bare confidence=0.5
+backend/app/routers/goals.py:63: bare confidence=0.75
+backend/app/routers/goals.py:76: bare confidence=0.75
+backend/app/services/answer_validator.py:56: bare confidence=0.1
+backend/app/services/answer_validator.py:95: bare confidence=0.5
+backend/app/services/connector_action_workflows.py:237: bare confidence=0.85
+backend/app/services/connector_action_workflows.py:320: bare confidence=0.9
+backend/app/services/connector_action_workflows.py:331: bare confidence=0.9
+backend/app/services/connector_action_workflows.py:340: bare confidence=0.9
+backend/app/services/connector_session_state.py:222: bare confidence=0.85
+backend/app/services/council_service.py:191: bare confidence=0.55
+backend/app/services/intelligence_visibility_service.py:124: bare score=0.55
+backend/app/services/intelligence_visibility_service.py:126: bare score=0.8
+backend/app/services/intelligence_visibility_service.py:128: bare score=0.6
+backend/app/services/intelligence_visibility_service.py:130: bare score=0.4
+backend/app/services/intelligence_visibility_service.py:713: bare score=0.5
+backend/app/services/ml_upgrade_service.py:161: bare confidence=0.72
+backend/app/services/proactive_guidance_service.py:102: bare confidence=0.55
+backend/app/services/rads_service.py:57: bare confidence=0.3
+backend/app/services/recommendation_heuristics_service.py:84: bare confidence=0.9
+backend/app/services/recommendation_heuristics_service.py:104: bare confidence=0.75
+backend/app/services/recommendation_heuristics_service.py:132: bare confidence=0.8
+backend/app/services/swarm_coordinator_service.py:227: bare confidence=0.55
+backend/app/services/workflow_twin_predictor_service.py:57: bare confidence=0.5

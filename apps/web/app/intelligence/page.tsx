@@ -73,6 +73,10 @@ export default function IntelligenceCenterPage() {
   const byEvent = (outcomes?.by_event_type as Record<string, number> | undefined) ?? {}
   const totalEvents = readNumber(summary.total_events, 0)
   const avgConfidence = trust?.avg_confidence as number | null | undefined
+  const trustRecord = trust as Record<string, unknown> | undefined
+  const confidenceIsEstimate = Boolean(
+    trustRecord?.confidence_is_estimate ?? trustRecord?.confidenceIsEstimate,
+  )
 
   return (
     <AppShell title={copy.title}>
@@ -111,6 +115,7 @@ export default function IntelligenceCenterPage() {
         <RecommendationExplanation
           summary={SURFACE_COPY.sections.recommendationSummary}
           confidence={typeof avgConfidence === "number" ? avgConfidence : null}
+          isEstimate={confidenceIsEstimate}
           advisoryOnly
           sources={[{ type: "optimization_suggestions", label: "Org optimization signals" }]}
         />

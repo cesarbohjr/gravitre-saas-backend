@@ -63,6 +63,9 @@ class MesonInterpretResult(BaseModel):
     output_types: list[str] = Field(default_factory=list, alias="outputTypes")
     generated_config: MesonGeneratedConfig = Field(alias="generatedConfig")
     confidence: float = 0.75
+    # Module C / STA-331: match MesonSuggestion — heuristic interpret scores are estimates.
+    confidence_is_estimate: bool = Field(default=True, alias="confidenceIsEstimate")
+    confidence_source: str = Field(default="heuristic", alias="confidenceSource")
     explanation: str | None = None
 
     model_config = {"populate_by_name": True}
@@ -175,7 +178,11 @@ class MesonInterpretPayload(BaseModel):
     workflows: list[str] = Field(default_factory=list)
     sample_outputs: list[str] = Field(default_factory=list)
     confidence: float = 0.75
+    confidence_is_estimate: bool = Field(default=True, alias="confidenceIsEstimate")
+    confidence_source: str = Field(default="heuristic", alias="confidenceSource")
     explanation: str | None = None
+
+    model_config = {"populate_by_name": True}
 
 
 class MesonService:
@@ -264,6 +271,8 @@ class MesonService:
             outputTypes=selected_outputs,
             generatedConfig=generated,
             confidence=parsed.confidence,
+            confidenceIsEstimate=getattr(parsed, "confidence_is_estimate", True),
+            confidenceSource=getattr(parsed, "confidence_source", "heuristic"),
             explanation=parsed.explanation,
         )
         if client is not None and org_id and user_id:

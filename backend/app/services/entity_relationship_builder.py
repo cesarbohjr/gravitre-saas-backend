@@ -1,4 +1,11 @@
-"""v6 entity relationship builder — restates existing v3/v4 signal only."""
+"""v6 entity relationship builder — restates existing v3/v4 signal only.
+
+Module C / STA-331: stored edge ``confidence`` values written here are
+**heuristic estimates** (``confidence_source=entity_relationship_heuristic``),
+not learned scores. Knowledge-graph scoring blends these with type reliability
+priors that are *also* estimates — see ``KG_BLEND_NOTE`` in confidence_honesty.
+The blend is not more authoritative than either input alone.
+"""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -6,10 +13,19 @@ from typing import Any
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.services.confidence_honesty import (
+    CONFIDENCE_SOURCE_EDGE_HEURISTIC,
+    estimated_confidence,
+)
 from app.services.query_normalization import normalize_query
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
+
+
+def _heuristic_edge_confidence(value: float) -> float:
+    """DB stores a float; provenance is always entity_relationship_heuristic estimate."""
+    return float(estimated_confidence(value, source=CONFIDENCE_SOURCE_EDGE_HEURISTIC)["confidence"])
 
 REL_ASSOCIATED_DEPARTMENT = "associated-department"
 REL_REFERENCED_BY_AGENT = "referenced-by-agent"
@@ -196,7 +212,7 @@ async def build_relationships_from_glossary(
             relationship_type=REL_ASSOCIATED_DEPARTMENT,
             target_entity_type=ENTITY_DEPARTMENT,
             target_entity_id=dept_id,
-            confidence=0.8,
+            confidence=_heuristic_edge_confidence(0.8),
             evidence_count=max(1, int(row.get("frequency") or 1)),
         ):
             count += 1
@@ -244,7 +260,7 @@ async def build_relationships_from_agent_memories(
                 relationship_type=REL_REFERENCED_BY_AGENT,
                 target_entity_type=ENTITY_GLOSSARY,
                 target_entity_id=str(term_row["id"]),
-                confidence=0.6,
+                confidence=_heuristic_edge_confidence(0.6),
                 evidence_count=1,
             ):
                 count += 1
@@ -293,7 +309,7 @@ async def build_relationships_from_query_clusters(
                 relationship_type=REL_COOCCURS_WITH,
                 target_entity_type=ENTITY_GLOSSARY,
                 target_entity_id=str(term_row["id"]),
-                confidence=0.7,
+                confidence=_heuristic_edge_confidence(0.7),
                 evidence_count=1,
             ):
                 count += 1
@@ -355,7 +371,7 @@ async def build_relationships_from_crm_data(
                     relationship_type=REL_TRACKED_BY,
                     target_entity_type=ENTITY_AGENT,
                     target_entity_id=agent_id,
-                    confidence=0.75,
+                    confidence=_heuristic_edge_confidence(0.75),
                     evidence_count=1,
                 ):
                     count += 1
@@ -373,7 +389,7 @@ async def build_relationships_from_crm_data(
                     relationship_type=REL_OBSERVED_IN,
                     target_entity_type=ENTITY_WORKFLOW_RUN,
                     target_entity_id=run_id,
-                    confidence=0.7,
+                    confidence=_heuristic_edge_confidence(0.7),
                     evidence_count=1,
                 ):
                     count += 1
@@ -392,7 +408,7 @@ async def build_relationships_from_crm_data(
                     relationship_type=REL_INFLUENCED_BY,
                     target_entity_type="linkedin_post",
                     target_entity_id=post_id,
-                    confidence=0.65,
+                    confidence=_heuristic_edge_confidence(0.65),
                     evidence_count=1,
                 ):
                     count += 1

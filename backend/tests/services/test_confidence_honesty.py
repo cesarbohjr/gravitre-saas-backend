@@ -5,10 +5,27 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.confidence_honesty import estimated_confidence, computed_confidence
+from app.services.confidence_honesty import (
+    CONFIDENCE_SOURCE_MODEL_SELECTION,
+    computed_confidence,
+    estimated_confidence,
+    label_confidence,
+    model_selection_ml_confidence,
+)
 from app.services.knowledge_graph_service import KnowledgeGraphService
-from app.services.meson_service import MesonSuggestion, _rank_suggestions_by_feedback
+from app.services.meson_service import MesonInterpretResult, MesonSuggestion, _rank_suggestions_by_feedback
 from app.services.recommendation_heuristics_service import build_heuristic_recommendations
+
+
+def test_label_confidence_is_canonical_helper():
+    labeled = label_confidence(0.65, source=CONFIDENCE_SOURCE_MODEL_SELECTION, is_estimate=True)
+    assert labeled["confidence"] == 0.65
+    assert labeled["confidence_is_estimate"] is True
+    assert labeled["confidenceIsEstimate"] is True
+    assert labeled["confidence_source"] == CONFIDENCE_SOURCE_MODEL_SELECTION
+    missing = label_confidence(None, source="insufficient_data")
+    assert missing["confidence"] is None
+    assert missing["confidence_source"] == "insufficient_data"
 
 
 def test_estimated_vs_computed_helpers():
@@ -18,6 +35,35 @@ def test_estimated_vs_computed_helpers():
     real = computed_confidence(0.9, source="feedback_acceptance_rate")
     assert real["confidence_is_estimate"] is False
     assert real["confidence_source"] == "feedback_acceptance_rate"
+
+
+def test_model_selection_ml_confidence_is_labeled_estimate():
+    high = model_selection_ml_confidence("ml_internal")
+    low = model_selection_ml_confidence("llm")
+    assert high["confidence"] == 0.65
+    assert low["confidence"] == 0.45
+    assert high["confidence_is_estimate"] is True
+    assert high["confidence_source"] == CONFIDENCE_SOURCE_MODEL_SELECTION
+
+
+def test_meson_interpret_defaults_to_estimate():
+    result = MesonInterpretResult(
+        intent="build a sales agent",
+        department="sales",
+        systems=["crm"],
+        outputTypes=["workflows"],
+        generatedConfig={
+            "agent": "Sales Agent",
+            "agent_role": "Specialist",
+            "agent_description": "x",
+            "training": [],
+            "workflows": [],
+            "sample_outputs": [],
+        },
+        confidence=0.55,
+    )
+    assert result.confidence_is_estimate is True
+    assert result.confidence_source == "heuristic"
 
 
 def test_heuristic_recommendation_cards_mark_confidence_estimate():
@@ -92,6 +138,7 @@ async def test_kg_relationship_score_is_estimate_prior():
     assert result["confidence_is_estimate"] is True
     assert result["confidence_source"] == "type_reliability_prior"
     assert result["confidence"] > 0
+    assert "both estimates" in (result.get("note") or "").lower()
 
 
 @pytest.mark.asyncio

@@ -120,6 +120,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
+      - name: Lint confidence honesty (Module C)
+        working-directory: .
+        run: python scripts/lint-confidence-honesty.py
+
       - name: Run tests
         run: python -m pytest -q
         env:

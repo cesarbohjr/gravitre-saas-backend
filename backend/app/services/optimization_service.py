@@ -50,7 +50,12 @@ class Recommendation(BaseModel):
     suggested_change: str
     estimated_impact: str
     confidence: float = Field(ge=0.0, le=1.0)
+    # Module C / STA-331: optimization heuristics are estimates until Module A seasons them.
+    confidence_is_estimate: bool = Field(default=True, alias="confidenceIsEstimate")
+    confidence_source: str = Field(default="optimization_heuristic", alias="confidenceSource")
     risk: str
+
+    model_config = {"populate_by_name": True}
 
 
 class OptimizationService:
