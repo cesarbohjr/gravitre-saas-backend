@@ -404,8 +404,8 @@ def _persist_conversation_turn(
             current_count = 0
 
         if not conv_id:
-            # Creating a new conversations row — smoke/CI must target isolated org.
-            assert_conversation_create_allowed(org_id)
+            # Creating a new conversations row — test credentials → isolated org only.
+            assert_conversation_create_allowed(org_id, actor_id=user_id)
             title = user_text.strip()[:80] or "New conversation"
             insert = (
                 client.table("conversations")
@@ -920,6 +920,38 @@ async def assistant_chat(
             org_id=org_id,
             user_id=user_id,
         )
+        # Module B — write-on-mention into the conversation ledger BEFORE streaming.
+        # Must not depend on agent_intelligence reaching the mid-pipeline ingest
+        # (fast-path / early returns / swallowed errors were dropping unprompted emails).
+        if conversation_id and (last_user or "").strip():
+            try:
+                from app.services.parameter_ledger import (
+                    get_ledger,
+                    ingest_message_slots,
+                    ledger_patch,
+                )
+
+                state_svc = get_conversation_state_service(settings)
+                prior = await state_svc.get_task_state(conversation_id, org_id)
+                ledger = ingest_message_slots(
+                    last_user,
+                    turn_index=len(list((prior or {}).get("recent_user_messages") or [])) + 1,
+                    ledger=get_ledger(prior),
+                )
+                await state_svc.update_task_state(
+                    conversation_id,
+                    org_id,
+                    {
+                        **ledger_patch(ledger),
+                        "recent_user_messages": [last_user],
+                    },
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "parameter_ledger pre-stream ingest failed conversation_id=%s error=%s",
+                    conversation_id,
+                    exc,
+                )
 
     history_messages: list[dict[str, Any]] = []
     for message in body.messages[:-1][-_MAX_HISTORY:]:

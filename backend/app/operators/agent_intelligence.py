@@ -1384,8 +1384,8 @@ class AgentIntelligence:
             org_id,
             client=client,
         )
-        # Module B — ingest slots from every user turn into the shared ledger
-        # (unprompted email/channel/etc. must survive until a later action turn).
+        # Module B — refresh ledger (assistant router pre-stream ingest is primary;
+        # this backfills and keeps in-memory task_state aligned).
         try:
             from app.services.parameter_ledger import (
                 get_ledger,
@@ -1393,6 +1393,12 @@ class AgentIntelligence:
                 ledger_patch,
             )
 
+            if conversation_id:
+                task_state = await get_conversation_state_service(active_settings).get_task_state(
+                    conversation_id,
+                    org_id,
+                    client=client,
+                )
             _ledger = ingest_message_slots(
                 task_text,
                 turn_index=len(list((task_state or {}).get("recent_user_messages") or [])) + 1,
@@ -1402,21 +1408,26 @@ class AgentIntelligence:
                 **ledger_patch(_ledger),
                 "recent_user_messages": [task_text],
             }
-            await get_conversation_state_service(active_settings).update_task_state(
-                conversation_id or "",
-                org_id,
-                _ledger_updates,
-                client=client,
+            if conversation_id:
+                await get_conversation_state_service(active_settings).update_task_state(
+                    conversation_id,
+                    org_id,
+                    _ledger_updates,
+                    client=client,
+                )
+                task_state = await get_conversation_state_service(active_settings).get_task_state(
+                    conversation_id,
+                    org_id,
+                    client=client,
+                )
+            else:
+                task_state = {**(task_state or {}), **_ledger_updates}
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "parameter_ledger mid-pipeline ingest failed conversation_id=%s error=%s",
+                conversation_id,
+                exc,
             )
-            task_state = {**(task_state or {}), **_ledger_updates}
-            # Keep merged ledger slots after persist semantics.
-            task_state = await get_conversation_state_service(active_settings).get_task_state(
-                conversation_id or "",
-                org_id,
-                client=client,
-            )
-        except Exception:  # noqa: BLE001
-            pass
         persona = await get_persona_service(active_settings).get_persona_for_request(
             org_id,
             user_id,
