@@ -120,6 +120,9 @@ def create_workflow_conversation(
     scenario_id: str,
     run_id: str,
 ) -> str:
+    from app.services.conversation_write_guard import assert_conversation_create_allowed
+
+    assert_conversation_create_allowed(org_id)
     now = datetime.now(timezone.utc).isoformat()
     row = {
         "org_id": org_id,

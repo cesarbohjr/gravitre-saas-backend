@@ -21,6 +21,12 @@ import sys
 
 sys.path.insert(0, str(BACKEND))
 
+from isolated_conversation_org import (  # noqa: E402
+    DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID,
+    mark_smoke_run,
+    smoke_http_headers,
+)
+
 for p in (BACKEND / ".env", BACKEND / ".env.operator.local"):
     if p.is_file():
         for k, v in dotenv_values(p).items():
@@ -44,11 +50,12 @@ from app.services.tool_registry import get_tool_registry  # noqa: E402
 from app.services.tool_types import ToolContext  # noqa: E402
 from app.workflows.repository import get_supabase_client  # noqa: E402
 
-ORG = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+ORG = DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID
 SLACK_ID = "fe7433c3-6475-474a-863f-91b98d17a0b8"
 
 
 async def main() -> None:
+    mark_smoke_run()
     settings = get_settings()
     client = get_supabase_client(settings)
     actor = str(

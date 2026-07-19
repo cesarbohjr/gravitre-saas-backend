@@ -1,0 +1,54 @@
+{
+  "started_at": "2026-07-19T04:12:33.157737+00:00",
+  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "conversation_id": "b102e668-d1f1-4bd5-b826-76a082095b38",
+  "min_sha_prefix": "716864e6",
+  "checks": {
+    "deploy_sha": {
+      "pass": true,
+      "git_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+      "required_prefix": "716864e6"
+    },
+    "thin_suggest_broaden": {
+      "pass": false,
+      "detail": "suggest_broaden or internal_thin in researchCascade SSE"
+    },
+    "scoped_enrichment": {
+      "pass": false,
+      "detail": "confidence_band/source_breakdown/stage_progress in final researchCascade"
+    },
+    "progress_steps_sse": {
+      "pass": true,
+      "detail": "progressSteps in mid/final SSE"
+    }
+  },
+  "pass": false,
+  "health": {
+    "status": "ok",
+    "timestamp": "2026-07-19T04:12:33.499948+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+    "ai_disabled": false,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "trace_thin": {
+    "http_status": 200,
+    "cascade_count": 0,
+    "cascade": {},
+    "event_count": 10
+  },
+  "trace_scoped": {
+    "http_status": 200,
+    "cascade_count": 0,
+    "cascade": {},
+    "event_count": 10
+  },
+  "finished_at": "2026-07-19T04:12:40.775221+00:00"
+}

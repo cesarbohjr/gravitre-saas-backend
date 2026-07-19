@@ -53,27 +53,21 @@ def _supabase_client(env: dict[str, str]):
 
 
 def _resolve_org(env: dict[str, str], client) -> tuple[str, str]:
-    org_id = (
+    """Conversation E2E writes — isolated test org only (never operator workspace)."""
+    sys.path.insert(0, str(REPO / "scripts"))
+    from isolated_conversation_org import resolve_isolated_conversation_actor
+
+    # Prefer explicit isolated overrides; ignore OAUTH_SMOKE_ORG_ID (operator workspace).
+    org_override = (
         env.get("CHAT_WORKFLOW_E2E_ORG_ID")
         or env.get("CHAT_E2E_ORG_ID")
-        or env.get("OAUTH_SMOKE_ORG_ID")
-        or env.get("SMOKE_ORG_ID")
+        or env.get("ISOLATED_CONVERSATION_TEST_ORG_ID")
         or ""
     ).strip()
-    user_id = env.get("CHAT_WORKFLOW_E2E_USER_ID") or env.get("CHAT_E2E_USER_ID") or "chat-workflow-e2e"
-    if org_id:
-        return org_id, user_id
-    members = (
-        client.table("organization_members")
-        .select("org_id, user_id")
-        .eq("role", "admin")
-        .limit(1)
-        .execute()
-    )
-    if not members.data:
-        raise SystemExit("Set CHAT_WORKFLOW_E2E_ORG_ID or connect an admin org")
-    row = members.data[0]
-    return str(row["org_id"]), str(row.get("user_id") or user_id)
+    if org_override:
+        env = {**env, "ISOLATED_CONVERSATION_TEST_ORG_ID": org_override}
+    org_id, user_id, _email = resolve_isolated_conversation_actor(env, client)
+    return org_id, user_id
 
 
 async def _async_main() -> int:

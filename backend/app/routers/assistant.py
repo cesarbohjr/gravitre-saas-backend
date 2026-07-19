@@ -383,6 +383,11 @@ def _persist_conversation_turn(
     assistant_message_id: str | None = None,
 ) -> tuple[str | None, str | None]:
     """Append user/assistant messages to an owned conversation (best-effort)."""
+    from app.services.conversation_write_guard import (
+        ConversationWriteBlockedError,
+        assert_conversation_create_allowed,
+    )
+
     try:
         client = get_supabase_client(settings)
         now = _now_iso()
@@ -408,6 +413,8 @@ def _persist_conversation_turn(
             current_count = 0
 
         if not conv_id:
+            # Creating a new conversations row — smoke/CI must target isolated org.
+            assert_conversation_create_allowed(org_id)
             title = user_text.strip()[:80] or "New conversation"
             insert = (
                 client.table("conversations")
@@ -482,6 +489,8 @@ def _persist_conversation_turn(
             }
         ).eq("id", conv_id).eq("org_id", org_id).eq("user_id", user_id).execute()
         return conv_id, assistant_id
+    except ConversationWriteBlockedError:
+        raise
     except Exception as exc:  # noqa: BLE001
         logger.warning(
             "assistant conversation persist failed org_id=%s user_id=%s error=%s",

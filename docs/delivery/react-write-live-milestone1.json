@@ -1,0 +1,44 @@
+{
+  "probe_started_at": "2026-07-19T04:07:06.757634+00:00",
+  "list_name": "gravitre-react-gate-probe-20260719",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "conversation_id": "13025535-4ea0-4303-b1b2-66ae175663e7",
+  "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+  "path": "react_write_gate -> awaiting_confirm -> execute_plan",
+  "agent_id": "synthetic-default",
+  "react_gate": {
+    "at": "2026-07-19T04:07:07.088542+00:00",
+    "latency_ms": 0,
+    "success": false,
+    "error_code": "write_approval_required",
+    "pending_approval": true,
+    "action": "apollo.lists.create",
+    "tool": "apollo_lists_create"
+  },
+  "approval_plan": {
+    "at": "2026-07-19T04:07:07.088542+00:00",
+    "invoke_action": "apollo.lists.create",
+    "requires_approval": true,
+    "label": "Create contact list",
+    "args": {
+      "name": "gravitre-react-gate-probe-20260719",
+      "modality": "contacts"
+    },
+    "source": "react_write_gate",
+    "dialogue_mode": "confirm",
+    "ci_auto_approve": true
+  },
+  "pending_persisted_at": "2026-07-19T04:07:07.641880+00:00",
+  "user_approval_at": "2026-07-19T04:07:07.641880+00:00",
+  "execution": {
+    "at": "2026-07-19T04:07:13.388550+00:00",
+    "latency_ms": 5746,
+    "success": true,
+    "error_code": null,
+    "entity_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+    "result_url": "/ai?conversation=13025535-4ea0-4303-b1b2-66ae175663e7",
+    "body": "Found existing contact list \"gravitre-react-gate-probe-20260719\" (id: 6a5c423ee913380018aacf3b).",
+    "integration": "apollo",
+    "task_label": "Create contact list"
+  }
+}

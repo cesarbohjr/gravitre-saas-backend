@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { proxyToFastApi } from "@/lib/backend-proxy"
+import { shouldUseDemoRuntimeFallback } from "@/lib/demo-runtime-fallback"
 import { setApprovalStatus } from "@/lib/demo-runtime-store"
 import { isDemoApprovalId } from "@/lib/demo-approval-ids"
 
@@ -10,7 +11,7 @@ interface RouteParams {
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const { id } = await params
 
-  if (isDemoApprovalId(id)) {
+  if (isDemoApprovalId(id) && shouldUseDemoRuntimeFallback()) {
     const updated = setApprovalStatus(id, "approved")
     if (!updated) {
       return NextResponse.json({ detail: "Approval not found" }, { status: 404 })
@@ -25,9 +26,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
   }
 
-  const updated = setApprovalStatus(id, "approved")
-  if (!updated) {
-    return NextResponse.json({ detail: "Approval not found" }, { status: 404 })
+  if (shouldUseDemoRuntimeFallback() && isDemoApprovalId(id)) {
+    const updated = setApprovalStatus(id, "approved")
+    if (!updated) {
+      return NextResponse.json({ detail: "Approval not found" }, { status: 404 })
+    }
+    return NextResponse.json({ run: { id, approval_status: "approved", status: "running" } })
   }
-  return NextResponse.json({ run: { id, approval_status: "approved", status: "running" } })
+
+  return NextResponse.json(
+    { detail: "Backend unavailable", error: "FASTAPI_BASE_URL is not configured" },
+    { status: 503 },
+  )
 }

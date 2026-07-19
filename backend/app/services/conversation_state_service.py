@@ -7,6 +7,10 @@ from typing import Any
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.services.conversation_write_guard import (
+    ConversationWriteBlockedError,
+    assert_conversation_create_allowed,
+)
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
@@ -174,6 +178,8 @@ class ConversationStateService:
             )
             if owned.data:
                 return conv_id
+            # Create path only — smoke/test/CI must fail loudly (never soft-skip).
+            assert_conversation_create_allowed(org_id)
             now = datetime.now(timezone.utc).isoformat()
             safe_title = (title or "New conversation").strip()[:80] or "New conversation"
             db.table("conversations").insert(
@@ -190,6 +196,8 @@ class ConversationStateService:
                 }
             ).execute()
             return conv_id
+        except ConversationWriteBlockedError:
+            raise
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "ensure_owned_conversation failed conversation_id=%s error=%s",

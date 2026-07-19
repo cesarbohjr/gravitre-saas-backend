@@ -1,0 +1,672 @@
+{
+  "probe": "retrieval_ab_live",
+  "started_at": "2026-07-19T04:10:17.543255+00:00",
+  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+  "min_sha_prefix": "4eb6adbe",
+  "queries": {
+    "A_fast_connectors": {
+      "pass": true,
+      "http": 200,
+      "conversation_fingerprint": {
+        "tool_names": [
+          "searchKnowledgeBase",
+          "getConnectorStatus"
+        ],
+        "error_codes": [],
+        "routing_tiers": [
+          "simple",
+          "simple",
+          "simple",
+          "simple",
+          "simple"
+        ],
+        "effective_modes": [
+          "fast",
+          "fast",
+          "fast",
+          "fast",
+          "fast"
+        ],
+        "final_routingTier": "simple",
+        "final_effectiveMode": "fast",
+        "pending_seen": false,
+        "research_cascade_final": {
+          "internal_thin": true,
+          "suggest_broaden": true,
+          "prompt_message": "I found limited information within your organization's connected knowledge. I can broaden my research.",
+          "options": [
+            {
+              "scope": "internal_only",
+              "label": "Internal only",
+              "description": "Stay with your connected knowledge, memory, and graph.",
+              "enabled": true
+            },
+            {
+              "scope": "intelligence_packs",
+              "label": "+ Intelligence Packs",
+              "description": "Add curated pack signals and external source hints.",
+              "enabled": true
+            },
+            {
+              "scope": "internet_research",
+              "label": "+ Live Internet Research",
+              "description": "Search the public web when governance allows.",
+              "enabled": false,
+              "disabled_reason": "Pending governance approval \u2014 internet research is not enabled for this environment."
+            },
+            {
+              "scope": "everything",
+              "label": "Everything available",
+              "description": "Use all enabled internal and pack sources.",
+              "enabled": true
+            }
+          ],
+          "research_scope": "internal_only",
+          "active_stages": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "reasoning"
+          ],
+          "stage_order": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "intelligence_packs",
+            "internet_research",
+            "reasoning"
+          ],
+          "internet_research_enabled": false,
+          "retrieval_score": null,
+          "source_count": 1,
+          "confidence_band": "unknown",
+          "top_sources": [
+            {
+              "source_name": "Knowledge graph",
+              "source_type": "knowledge_graph",
+              "assignment_id": null,
+              "score": null,
+              "match_tier": "graph",
+              "url": null
+            }
+          ],
+          "source_breakdown": {
+            "graph": 1
+          },
+          "stage_progress": [
+            {
+              "stage": "conversation_memory",
+              "label": "Conversation Memory",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "internal_rag",
+              "label": "Internal Rag",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "knowledge_graph",
+              "label": "Knowledge Graph",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "connectors",
+              "label": "Connectors",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "reasoning",
+              "label": "Reasoning",
+              "status": "pending",
+              "detail": null
+            }
+          ],
+          "progress_steps": [
+            "Conversation Memory complete",
+            "Internal Rag complete",
+            "Knowledge Graph complete",
+            "Connectors complete",
+            "Reasoning\u2026"
+          ],
+          "research_manager": true,
+          "cascade_stopped_at": null,
+          "confidence_sufficient": false,
+          "skip_graph": false,
+          "skip_external": false,
+          "planned_stages": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "reasoning"
+          ]
+        },
+        "text_head": "Here\u2019s what\u2019s connected in your workspace right now: Apollo, Google Search Console, HubSpot, Microsoft 365, and Pipedrive.\n\nI also checked the live connector status, and the only connector currently showing as connected in the detailed health view is AI Visibility UI. The others in that snapshot are either disconnected, pending auth, or error state.\n\nThe one best next move is to reconnect the auth",
+        "event_types": [
+          "data-intelligence",
+          "data-suggestions",
+          "finish",
+          "finish-step",
+          "start",
+          "start-step",
+          "text-delta",
+          "text-end",
+          "text-start",
+          "tool-input-available",
+          "tool-output-available"
+        ]
+      },
+      "reasons": [],
+      "message": "What connectors are connected? (retrieval-ab A 202607190410)"
+    },
+    "B_write_intent_gate": {
+      "pass": true,
+      "http": 200,
+      "conversation_fingerprint": {
+        "tool_names": [],
+        "error_codes": [],
+        "routing_tiers": [
+          "simple",
+          "simple",
+          "simple"
+        ],
+        "effective_modes": [
+          "fast",
+          "fast",
+          "fast"
+        ],
+        "final_routingTier": "simple",
+        "final_effectiveMode": "fast",
+        "pending_seen": true,
+        "research_cascade_final": null,
+        "text_head": "I can create a contact list named **gravitre-retrieval-ab-202607190410** in Apollo.\n\nApprove below to create it, or tell me what to change (name, modality, or follow-up criteria to populate it).",
+        "event_types": [
+          "data-intelligence",
+          "data-suggestions",
+          "finish",
+          "finish-step",
+          "start",
+          "start-step",
+          "text-delta",
+          "text-end",
+          "text-start"
+        ]
+      },
+      "reasons": [],
+      "message": "Create an Apollo contact list named exactly 'gravitre-retrieval-ab-202607190410' with no contacts. Use Apollo only."
+    },
+    "C_org_kb": {
+      "pass": true,
+      "http": 200,
+      "conversation_fingerprint": {
+        "tool_names": [
+          "searchKnowledgeBase",
+          "getConnectorStatus"
+        ],
+        "error_codes": [],
+        "routing_tiers": [
+          "simple",
+          "simple",
+          "simple",
+          "simple",
+          "simple"
+        ],
+        "effective_modes": [
+          "fast",
+          "fast",
+          "fast",
+          "fast",
+          "fast"
+        ],
+        "final_routingTier": "simple",
+        "final_effectiveMode": "fast",
+        "pending_seen": false,
+        "research_cascade_final": {
+          "internal_thin": true,
+          "suggest_broaden": true,
+          "prompt_message": "I found limited information within your organization's connected knowledge. I can broaden my research.",
+          "options": [
+            {
+              "scope": "internal_only",
+              "label": "Internal only",
+              "description": "Stay with your connected knowledge, memory, and graph.",
+              "enabled": true
+            },
+            {
+              "scope": "intelligence_packs",
+              "label": "+ Intelligence Packs",
+              "description": "Add curated pack signals and external source hints.",
+              "enabled": true
+            },
+            {
+              "scope": "internet_research",
+              "label": "+ Live Internet Research",
+              "description": "Search the public web when governance allows.",
+              "enabled": false,
+              "disabled_reason": "Pending governance approval \u2014 internet research is not enabled for this environment."
+            },
+            {
+              "scope": "everything",
+              "label": "Everything available",
+              "description": "Use all enabled internal and pack sources.",
+              "enabled": true
+            }
+          ],
+          "research_scope": "internal_only",
+          "active_stages": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "reasoning"
+          ],
+          "stage_order": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "intelligence_packs",
+            "internet_research",
+            "reasoning"
+          ],
+          "internet_research_enabled": false,
+          "retrieval_score": null,
+          "source_count": 0,
+          "confidence_band": "unknown",
+          "top_sources": [],
+          "source_breakdown": {},
+          "stage_progress": [
+            {
+              "stage": "conversation_memory",
+              "label": "Conversation Memory",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "internal_rag",
+              "label": "Internal Rag",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "knowledge_graph",
+              "label": "Knowledge Graph",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "connectors",
+              "label": "Connectors",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "reasoning",
+              "label": "Reasoning",
+              "status": "pending",
+              "detail": null
+            }
+          ],
+          "progress_steps": [
+            "Conversation Memory complete",
+            "Internal Rag complete",
+            "Knowledge Graph complete",
+            "Connectors complete",
+            "Reasoning\u2026"
+          ],
+          "research_manager": true,
+          "cascade_stopped_at": null,
+          "confidence_sufficient": false,
+          "skip_graph": false,
+          "skip_external": false,
+          "planned_stages": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "reasoning"
+          ]
+        },
+        "text_head": "I can\u2019t answer the refund policy from internal knowledge right now because no knowledge excerpts were retrieved for this organization.\n\nWhat I do see is that your connected sources are mostly operational connectors like HubSpot, Apollo, Microsoft 365, Pipedrive, and Google Search Console, but there isn\u2019t an ingested internal policy source available to read from here. To get the policy into reach, ",
+        "event_types": [
+          "data-intelligence",
+          "data-suggestions",
+          "finish",
+          "finish-step",
+          "start",
+          "start-step",
+          "text-delta",
+          "text-end",
+          "text-start",
+          "tool-input-available",
+          "tool-output-available"
+        ]
+      },
+      "reasons": [],
+      "message": "What is our refund policy? Answer from internal knowledge only. (retrieval-ab C 202607190410)"
+    },
+    "D_thin_broaden": {
+      "pass": true,
+      "http": 200,
+      "conversation_fingerprint": {
+        "tool_names": [
+          "searchKnowledgeBase"
+        ],
+        "error_codes": [],
+        "routing_tiers": [
+          "simple",
+          "simple",
+          "simple",
+          "simple",
+          "simple"
+        ],
+        "effective_modes": [
+          "fast",
+          "fast",
+          "fast",
+          "fast",
+          "fast"
+        ],
+        "final_routingTier": "simple",
+        "final_effectiveMode": "fast",
+        "pending_seen": false,
+        "research_cascade_final": {
+          "internal_thin": true,
+          "suggest_broaden": true,
+          "prompt_message": "I found limited information within your organization's connected knowledge. I can broaden my research.",
+          "options": [
+            {
+              "scope": "internal_only",
+              "label": "Internal only",
+              "description": "Stay with your connected knowledge, memory, and graph.",
+              "enabled": true
+            },
+            {
+              "scope": "intelligence_packs",
+              "label": "+ Intelligence Packs",
+              "description": "Add curated pack signals and external source hints.",
+              "enabled": true
+            },
+            {
+              "scope": "internet_research",
+              "label": "+ Live Internet Research",
+              "description": "Search the public web when governance allows.",
+              "enabled": false,
+              "disabled_reason": "Pending governance approval \u2014 internet research is not enabled for this environment."
+            },
+            {
+              "scope": "everything",
+              "label": "Everything available",
+              "description": "Use all enabled internal and pack sources.",
+              "enabled": true
+            }
+          ],
+          "research_scope": "internal_only",
+          "active_stages": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "reasoning"
+          ],
+          "stage_order": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "intelligence_packs",
+            "internet_research",
+            "reasoning"
+          ],
+          "internet_research_enabled": false,
+          "retrieval_score": null,
+          "source_count": 0,
+          "confidence_band": "unknown",
+          "top_sources": [],
+          "source_breakdown": {},
+          "stage_progress": [
+            {
+              "stage": "conversation_memory",
+              "label": "Conversation Memory",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "internal_rag",
+              "label": "Internal Rag",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "knowledge_graph",
+              "label": "Knowledge Graph",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "connectors",
+              "label": "Connectors",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "reasoning",
+              "label": "Reasoning",
+              "status": "pending",
+              "detail": null
+            }
+          ],
+          "progress_steps": [
+            "Conversation Memory complete",
+            "Internal Rag complete",
+            "Knowledge Graph complete",
+            "Connectors complete",
+            "Reasoning\u2026"
+          ],
+          "research_manager": true,
+          "cascade_stopped_at": null,
+          "confidence_sufficient": false,
+          "skip_graph": false,
+          "skip_external": false,
+          "planned_stages": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "reasoning"
+          ]
+        },
+        "text_head": "I can\u2019t determine an exact Q3 2027 revenue forecast for \u201cZephyr Dynamics in Antarctica\u201d from the information available here. There\u2019s no internal knowledge excerpt for that subsidiary, and the request appears to refer to a fictional entity that isn\u2019t present in the org context.\n\nIf you want, I can help in one of two ways:\n- look for any internal references to Zephyr Dynamics across your connected s",
+        "event_types": [
+          "data-intelligence",
+          "data-suggestions",
+          "finish",
+          "finish-step",
+          "start",
+          "start-step",
+          "text-delta",
+          "text-end",
+          "text-start",
+          "tool-input-available",
+          "tool-output-available"
+        ]
+      },
+      "reasons": [],
+      "message": "What is the exact Q3 2027 revenue forecast for our fictional subsidiary Zephyr Dynamics in Antarctica? Use only internal org knowledge. (retrieval-ab D 202607190410)"
+    },
+    "E_fast_honesty": {
+      "pass": true,
+      "http": 200,
+      "conversation_fingerprint": {
+        "tool_names": [
+          "searchKnowledgeBase"
+        ],
+        "error_codes": [],
+        "routing_tiers": [
+          "simple",
+          "simple",
+          "simple",
+          "simple",
+          "simple"
+        ],
+        "effective_modes": [
+          "fast",
+          "fast",
+          "fast",
+          "fast",
+          "fast"
+        ],
+        "final_routingTier": "simple",
+        "final_effectiveMode": "fast",
+        "pending_seen": false,
+        "research_cascade_final": {
+          "internal_thin": true,
+          "suggest_broaden": true,
+          "prompt_message": "I found limited information within your organization's connected knowledge. I can broaden my research.",
+          "options": [
+            {
+              "scope": "internal_only",
+              "label": "Internal only",
+              "description": "Stay with your connected knowledge, memory, and graph.",
+              "enabled": true
+            },
+            {
+              "scope": "intelligence_packs",
+              "label": "+ Intelligence Packs",
+              "description": "Add curated pack signals and external source hints.",
+              "enabled": true
+            },
+            {
+              "scope": "internet_research",
+              "label": "+ Live Internet Research",
+              "description": "Search the public web when governance allows.",
+              "enabled": false,
+              "disabled_reason": "Pending governance approval \u2014 internet research is not enabled for this environment."
+            },
+            {
+              "scope": "everything",
+              "label": "Everything available",
+              "description": "Use all enabled internal and pack sources.",
+              "enabled": true
+            }
+          ],
+          "research_scope": "internal_only",
+          "active_stages": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "reasoning"
+          ],
+          "stage_order": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "intelligence_packs",
+            "internet_research",
+            "reasoning"
+          ],
+          "internet_research_enabled": false,
+          "retrieval_score": null,
+          "source_count": 0,
+          "confidence_band": "unknown",
+          "top_sources": [],
+          "source_breakdown": {},
+          "stage_progress": [
+            {
+              "stage": "conversation_memory",
+              "label": "Conversation Memory",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "internal_rag",
+              "label": "Internal Rag",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "knowledge_graph",
+              "label": "Knowledge Graph",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "connectors",
+              "label": "Connectors",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "reasoning",
+              "label": "Reasoning",
+              "status": "pending",
+              "detail": null
+            }
+          ],
+          "progress_steps": [
+            "Conversation Memory complete",
+            "Internal Rag complete",
+            "Knowledge Graph complete",
+            "Connectors complete",
+            "Reasoning\u2026"
+          ],
+          "research_manager": true,
+          "cascade_stopped_at": null,
+          "confidence_sufficient": false,
+          "skip_graph": false,
+          "skip_external": false,
+          "planned_stages": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "reasoning"
+          ]
+        },
+        "text_head": "I\u2019m in retrieval-ab E 202607190410 mode.",
+        "event_types": [
+          "data-intelligence",
+          "data-suggestions",
+          "finish",
+          "finish-step",
+          "start",
+          "start-step",
+          "text-delta",
+          "text-end",
+          "text-start",
+          "tool-input-available",
+          "tool-output-available"
+        ]
+      },
+      "reasons": [],
+      "message": "Reply with one sentence: what mode are you in? (retrieval-ab E 202607190410)"
+    }
+  },
+  "pass": true,
+  "health": {
+    "status": "ok",
+    "timestamp": "2026-07-19T04:10:17.922723+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+    "ai_disabled": false,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "deploy_sha_ok": true,
+  "finished_at": "2026-07-19T04:12:30.401320+00:00"
+}

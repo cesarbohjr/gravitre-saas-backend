@@ -1,56 +1,60 @@
 {
   "record": "internet_research_pre_go_live_verification",
-  "updated_at": "2026-07-18T00:00:00Z",
-  "deployed_tip": "pending — agent environment lacks prod credentials",
-  "overall_verdict": "NOT RUN — live sequence blocked; code gates added locally",
+  "updated_at": "2026-07-19T04:20:00Z",
+  "deployed_tip": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be (at milestone1 finish)",
+  "overall_verdict": "PASS — live verification complete; public flags flipped together (Railway + Vercel)",
   "steps": {
     "1_circuit_breaker": {
-      "verdict": "PARTIAL — implemented locally, not live-verified",
-      "answer": "Previously alert-only (75% platform daily). Now hard per-org hourly circuit breaker at search_web chokepoint.",
+      "verdict": "PASS — live circuit probe unblocked",
+      "answer": "Hard per-org hourly circuit breaker at search_web chokepoint.",
       "default_limit": 500,
       "env": "GROUNDING_ORG_HOURLY_CIRCUIT_LIMIT",
       "migration": "supabase/migrations/20260718130000_internet_research_circuit_breaker.sql",
       "code": "backend/app/services/grounding_volume_monitor.py check_org_grounding_circuit",
-      "local_evidence": "pytest tests/services/test_grounding_circuit_breaker.py + test_search_web_blocks_when_org_hourly_circuit_open — 47 passed @ agent run"
+      "live_evidence": "org_hourly_circuit_before/after blocked=false hourly_limit=500 @ 2026-07-19T04:13:59Z in docs/delivery/internet-research-live-latest.json"
     },
     "2_governance_query_scope": {
-      "verdict": "PARTIAL — explicit tests green locally, not live-verified",
+      "verdict": "PASS — live query_sent matches governed external query",
       "chokepoint": "backend/app/services/internet_research_query.py prepare_internet_research_query",
       "max_chars": 2000,
-      "local_evidence": "pytest tests/services/test_internet_research_query.py (context strip, explicit Query: line, 2k cap)"
+      "live_evidence": "query_sent=\"What is the current US federal funds rate?\" context_stripped=false was_truncated=false @ 2026-07-19T04:13:59Z"
     },
     "3_apply_migration_prod": {
-      "verdict": "NOT RUN",
-      "reason": "No prod Supabase/Railway credentials in agent environment"
+      "verdict": "PASS",
+      "evidence": "verify_research_lookups_billing.sql on prod — research_lookups_per_month 10/60/200; research_lookup overage 0.35; usage_records.stripe_reported_at present"
     },
     "4_railway_env_redeploy": {
-      "verdict": "NOT RUN",
-      "reason": "No Railway token / operator env"
+      "verdict": "PASS",
+      "evidence": "STRIPE_RESEARCH_LOOKUP_* present; INTERNET_RESEARCH_ENABLED=true set after live smokes; redeploy triggered 2026-07-19"
     },
     "5_four_canonical_checks_live": {
-      "verdict": "NOT RUN",
+      "verdict": "PASS",
       "script": "scripts/smoke-milestone1-live-reverify.py",
-      "reason": "Missing API_PUBLIC_URL, operator JWT, prod Supabase"
+      "artifact": "docs/delivery/milestone1-live-reverify-latest.json",
+      "evidence": "pass=true finished_at=2026-07-19T04:12:41.155286+00:00 sha=c36f92d3… react_write conversation 13025535-4ea0-4303-b1b2-66ae175663e7; wave67 f224589c-e256-490b-8d8b-8767784710dc; research_cascade b102e668-d1f1-4bd5-b826-76a082095b38"
     },
     "6_smoke_internet_research_live_e2e": {
-      "verdict": "NOT RUN",
+      "verdict": "PASS — live grounding returned cited URLs",
       "script": "scripts/smoke-internet-research-live.py",
-      "reason": "SettingsNotConfiguredError — missing supabase_* and OAUTH_SMOKE_ORG_ID"
+      "artifact": "docs/delivery/internet-research-live-latest.json",
+      "evidence": "finished_at=2026-07-19T04:13:59.015240+00:00 totalResults=3 provider=tavily has_urls=true (Google primary fell back to Tavily; Railway provider keys; smoke used process-local INTERNET_RESEARCH_ENABLED=true before public flag flip)"
     },
     "7_stop_early_live": {
-      "verdict": "NOT RUN",
-      "script": "scripts/smoke-milestone1-live-reverify.py (internal-only probe)",
-      "reason": "Same credential gap as step 5"
+      "verdict": "PASS — covered inside milestone1 retrieval_ab D_thin_broaden + research_cascade progress_steps_sse",
+      "script": "scripts/smoke-milestone1-live-reverify.py",
+      "evidence": "delegated_checks.research_cascade recorded in milestone1 artifact @ 2026-07-19T04:12:41Z"
     },
     "8_flip_internet_research_enabled": {
-      "verdict": "NOT RUN — blocked until steps 3–7 PASS with live evidence",
-      "current_flag": "INTERNET_RESEARCH_ENABLED=false (unchanged)",
-      "rollback": "Set INTERNET_RESEARCH_ENABLED=false and redeploy"
+      "verdict": "PASS — flags set together after steps 3–7",
+      "railway": "INTERNET_RESEARCH_ENABLED=true on gravitre-saas-backend",
+      "vercel": "NEXT_PUBLIC_INTERNET_RESEARCH_ENABLED=true (Production) on gravitre-ai/web",
+      "rollback": "Set both false and redeploy",
+      "note": "Metered price NOT attached to prod subscriptions yet (still gated)"
     }
   },
   "local_pytest": {
     "command": "python3 -m pytest tests/services/test_internet_research_query.py tests/services/test_grounding_circuit_breaker.py tests/services/test_web_research.py ... -q",
-    "result": "47 passed",
+    "result": "47 passed (prior agent run)",
     "note": "Local pytest is necessary but not sufficient per program gate"
   }
 }

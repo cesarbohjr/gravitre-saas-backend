@@ -18,7 +18,7 @@ from httpx import Client
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
 OUT = ROOT / "docs" / "delivery" / "auth-expired-clarify-live.json"
-ORG = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+ORG = DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID
 BASE = "https://gravitre-saas-backend-production.up.railway.app"
 PROMPT = "send a message in slack general channel"
 
@@ -40,6 +40,12 @@ def load_env() -> None:
 def main() -> int:
     load_env()
     sys.path.insert(0, str(BACKEND))
+
+from isolated_conversation_org import (  # noqa: E402
+    DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID,
+    mark_smoke_run,
+    smoke_http_headers,
+)
     from app.config import get_settings
     from app.workflows.repository import get_supabase_client
 

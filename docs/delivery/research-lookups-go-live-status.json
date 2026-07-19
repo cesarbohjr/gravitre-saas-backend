@@ -1,11 +1,9 @@
 {
   "record": "research_lookups_go_live_status",
-  "updated_at": "2026-07-18T16:45:34Z",
-  "sequencing": "flag_gated — do not flip INTERNET_RESEARCH_ENABLED or NEXT_PUBLIC_INTERNET_RESEARCH_ENABLED until live verification PASS",
+  "updated_at": "2026-07-19T04:14:00Z",
+  "sequencing": "flag_gated — flip INTERNET_RESEARCH_ENABLED + NEXT_PUBLIC_INTERNET_RESEARCH_ENABLED only after live verification PASS",
   "do_not_before_live_pass": [
-    "attach STRIPE_RESEARCH_LOOKUP_METERED_PRICE_ID to production subscriptions",
-    "INTERNET_RESEARCH_ENABLED=true on Railway",
-    "NEXT_PUBLIC_INTERNET_RESEARCH_ENABLED=true on Vercel"
+    "attach STRIPE_RESEARCH_LOOKUP_METERED_PRICE_ID to production subscriptions"
   ],
   "go_live_together": [
     "INTERNET_RESEARCH_ENABLED=true (Railway)",
@@ -15,8 +13,9 @@
   "local_handoff": "docs/delivery/research-lookups-local-handoff.md",
   "steps": {
     "1_migration_prod_staging": {
-      "status": "NOT_RUN",
-      "detail": "missing SUPABASE_ACCESS_TOKEN — run: supabase login or set token in backend/.env.operator.local"
+      "status": "PASS",
+      "detail": "Prod schema verified 2026-07-19 via verify_research_lookups_billing.sql — research_lookups_per_month 10/60/200; research_lookup overage 0.35; usage_records.stripe_reported_at present (remote migration versions already applied; local filename drift noted)",
+      "verified_at": "2026-07-19T03:20:00Z"
     },
     "2_stripe_meter_price": {
       "status": "PASS",
@@ -29,7 +28,31 @@
     },
     "3_railway_env_vars": {
       "status": "PASS",
-      "detail": "railway variable set @ 2026-07-18T16:45:34Z service=gravitre-saas-backend — STRIPE_RESEARCH_LOOKUP_METER_EVENT_NAME + STRIPE_RESEARCH_LOOKUP_METERED_PRICE_ID verified via railway variables --json"
+      "detail": "STRIPE_RESEARCH_LOOKUP_METER_EVENT_NAME + STRIPE_RESEARCH_LOOKUP_METERED_PRICE_ID on gravitre-saas-backend; redeployed 2026-07-19 so process picked up vars"
+    },
+    "4_live_verification": {
+      "status": "PASS",
+      "detail": "milestone1_live_reverify pass=true @ 2026-07-19T04:12:41Z (sha c36f92d3…); internet_research_live_smoke PASS — live grounding returned cited URLs @ 2026-07-19T04:13:59Z (provider tavily fallback; process-local INTERNET_RESEARCH_ENABLED for smoke only — Railway/Vercel public flags flipped in step 5)",
+      "milestone1_artifact": "docs/delivery/milestone1-live-reverify-latest.json",
+      "internet_research_artifact": "docs/delivery/internet-research-live-latest.json",
+      "evidence": {
+        "milestone1_started_at": "2026-07-19T04:07:01.148630+00:00",
+        "milestone1_finished_at": "2026-07-19T04:12:41.155286+00:00",
+        "prod_git_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+        "react_write_conversation_id": "13025535-4ea0-4303-b1b2-66ae175663e7",
+        "wave67_conversation_id": "f224589c-e256-490b-8d8b-8767784710dc",
+        "research_cascade_conversation_id": "b102e668-d1f1-4bd5-b826-76a082095b38",
+        "internet_search_totalResults": 3,
+        "internet_search_provider": "tavily",
+        "internet_smoke_finished_at": "2026-07-19T04:13:59.015240+00:00"
+      }
+    },
+    "5_public_flags": {
+      "status": "PASS",
+      "detail": "Railway INTERNET_RESEARCH_ENABLED=true (deploy 7bc40ceb… SUCCESS @ 2026-07-19); Vercel NEXT_PUBLIC_INTERNET_RESEARCH_ENABLED=true Production + vercel --prod → https://web-a390gmxjv-gravitre-ai.vercel.app; metered price still NOT attached to prod subs",
+      "railway_redeploy": "65db4596-ec3b-4808-9c70-8dbe7b8c1c61 SUCCESS (tip); health git_sha 71511c19…",
+      "vercel_prod_url": "https://web-a390gmxjv-gravitre-ai.vercel.app",
+      "flipped_at": "2026-07-19T04:20:00Z"
     }
   },
   "migration_files": [

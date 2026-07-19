@@ -11,6 +11,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import re
 import subprocess
@@ -31,8 +32,14 @@ BACKEND = REPO / "backend"
 sys.path.insert(0, str(BACKEND))
 sys.path.insert(0, str(REPO))
 
+from isolated_conversation_org import (  # noqa: E402
+    DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID,
+    mark_smoke_run,
+    smoke_http_headers,
+)
+
 PROD_DEFAULT = "https://gravitre-saas-backend-production.up.railway.app"
-ORG_DEFAULT = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+ORG_DEFAULT = DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID
 BASELINE_PATH = REPO / "docs" / "delivery" / "retrieval-ab-baseline.json"
 
 QUERIES: list[dict[str, Any]] = [
@@ -202,6 +209,7 @@ def _chat(
     token: str,
     message: str,
     mode: str,
+    attempts: int = 3,
 ) -> tuple[int, list[dict[str, Any]]]:
     body = {
         "messages": [{"role": "user", "content": message}],
@@ -212,17 +220,34 @@ def _chat(
     }
     url = f"{base_url.rstrip('/')}/api/assistant/chat"
     data = json.dumps(body).encode("utf-8")
-    req = urllib.request.Request(url, data=data, method="POST")
-    req.add_header("Authorization", f"Bearer {token}")
-    req.add_header("X-Org-Id", org_id)
-    req.add_header("X-Environment", "production")
-    req.add_header("Content-Type", "application/json")
-    req.add_header("Accept", "text/event-stream")
-    try:
-        with urllib.request.urlopen(req, timeout=300) as resp:
-            return int(resp.status), _parse_sse(resp.read().decode("utf-8", errors="replace"))
-    except urllib.error.HTTPError as exc:
-        return exc.code, _parse_sse(exc.read().decode("utf-8", errors="replace"))
+    last_exc: BaseException | None = None
+    for attempt in range(1, attempts + 1):
+        req = urllib.request.Request(url, data=data, method="POST")
+        req.add_header("Authorization", f"Bearer {token}")
+        req.add_header("X-Org-Id", org_id)
+        req.add_header("X-Environment", "production")
+        req.add_header("Content-Type", "application/json")
+        req.add_header("Accept", "text/event-stream")
+        for key, value in smoke_http_headers().items():
+            req.add_header(key, value)
+        try:
+            with urllib.request.urlopen(req, timeout=300) as resp:
+                return int(resp.status), _parse_sse(resp.read().decode("utf-8", errors="replace"))
+        except urllib.error.HTTPError as exc:
+            # Retry transient gateway failures; return body for non-retryable codes.
+            if exc.code in {502, 503, 504} and attempt < attempts:
+                last_exc = exc
+                time.sleep(1.5 * attempt)
+                continue
+            return exc.code, _parse_sse(exc.read().decode("utf-8", errors="replace"))
+        except (http.client.IncompleteRead, TimeoutError, urllib.error.URLError) as exc:
+            last_exc = exc
+            if attempt >= attempts:
+                raise
+            time.sleep(1.5 * attempt)
+    if last_exc:
+        raise last_exc
+    raise RuntimeError("chat request failed without exception")
 
 
 def _contains_any(haystack: list[str], needles: list[str]) -> bool:
@@ -314,17 +339,17 @@ def _sha_at_least(deployed: str, minimum: str) -> bool:
 
 
 def run_smoke(args: argparse.Namespace) -> dict[str, Any]:
+    mark_smoke_run()
     env = _load_env()
     for key in ("SUPABASE_URL", "SUPABASE_JWT_SECRET", "SUPABASE_SERVICE_ROLE_KEY"):
         if not env.get(key):
             raise SystemExit(f"Missing {key}")
 
     from supabase import create_client
-
-    from scripts.smoke_auth import resolve_smoke_actor_and_email
+    from smoke_auth import resolve_smoke_actor_and_email
 
     client = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
-    org_id = (args.org_id or env.get("OAUTH_SMOKE_ORG_ID") or ORG_DEFAULT).strip()
+    org_id = (args.org_id or env.get("ISOLATED_CONVERSATION_TEST_ORG_ID") or ORG_DEFAULT).strip()
     actor, email = resolve_smoke_actor_and_email(client, org_id=org_id, env=env)
     token = _mint_token(env, actor, email)
     base_url = (args.base_url or PROD_DEFAULT).rstrip("/")

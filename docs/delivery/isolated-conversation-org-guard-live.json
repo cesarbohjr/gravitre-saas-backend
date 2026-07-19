@@ -1,0 +1,41 @@
+{
+  "probe": "isolated_conversation_org_guard",
+  "verified_at": "2026-07-19T08:00:00Z",
+  "isolated_org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "isolated_org_slug": "gravitre-isolated-conversation-smoke",
+  "isolated_org_name": "Gravitre Isolated Conversation Smoke",
+  "service_account_user_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "service_account_email": "conversation-smoke-sa@gravitre.app",
+  "forbidden_operator_org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "evidence": {
+    "write_isolated": {
+      "status": "PASS",
+      "conversation_id": "c378ad04-e580-4d8d-a8ac-e592aac9ee3a",
+      "path": "ConversationStateService.ensure_owned_conversation",
+      "note": "Row inserted into isolated org only; cleaned up after verify"
+    },
+    "refuse_operator_org": {
+      "status": "PASS",
+      "error_class": "ConversationWriteBlockedError",
+      "message_prefix": "REFUSING conversation create"
+    },
+    "ensure_owned_refuses_operator": {
+      "status": "PASS",
+      "error_class": "ConversationWriteBlockedError"
+    },
+    "no_operator_row_leaked": {
+      "status": "PASS"
+    }
+  },
+  "unit_tests": "pytest tests/services/test_conversation_write_guard.py tests/services/test_ensure_owned_conversation.py — 6 passed",
+  "chokepoints": [
+    "ensure_owned_conversation",
+    "create_conversation (ensureConversation API)",
+    "_persist_conversation_turn",
+    "create_workflow_conversation",
+    "frontend ensureConversation + conversation-smoke-guard.ts"
+  ],
+  "verify_script": "python scripts/verify-isolated-conversation-org-guard.py",
+  "provision_script": "python scripts/isolated_conversation_org.py",
+  "deploy_note": "API middleware X-Gravitree-Smoke-Run engages only after Railway redeploy of conversation_write_guard; in-process ensure_owned_conversation guard verified live against prod Supabase without deploy."
+}

@@ -984,69 +984,128 @@ function TeamSettings({
   )
 }
 
-function WebhooksSettings() {
+type OrgWebhook = {
+  id: string
+  url: string
+  events: string[]
+  status: string
+}
+
+function WebhooksSettings({ isAdmin }: { isAdmin: boolean }) {
+  const { data, error, isLoading, mutate } = useSWR<{ webhooks?: OrgWebhook[] }>(
+    "/api/settings/webhooks",
+    apiFetcher,
+    { revalidateOnFocus: false },
+  )
   const [addDialog, setAddDialog] = useState(false)
   const [newUrl, setNewUrl] = useState("")
   const [selectedEvents, setSelectedEvents] = useState<string[]>([])
-  const [webhooks, setWebhooks] = useState([
-    { url: "https://api.slack.com/hooks/xxx", events: ["workflow.completed", "approval.pending"], status: "active" },
-    { url: "https://hooks.zapier.com/xxx", events: ["run.failed"], status: "active" },
-  ])
   const [isAdding, setIsAdding] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const webhooks = data?.webhooks ?? []
 
   const availableEvents = [
     "workflow.completed",
     "workflow.failed",
     "run.started",
     "run.failed",
+    "run.completed",
     "approval.pending",
     "approval.completed",
+    "approval.requested",
   ]
 
   const handleAddWebhook = async () => {
     setIsAdding(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setWebhooks([...webhooks, { url: newUrl, events: selectedEvents, status: "active" }])
-    setIsAdding(false)
-    setNewUrl("")
-    setSelectedEvents([])
-    setAddDialog(false)
+    try {
+      await settingsApi.createWebhook({ url: newUrl.trim(), events: selectedEvents, status: "active" })
+      toast.success("Webhook added")
+      setNewUrl("")
+      setSelectedEvents([])
+      setAddDialog(false)
+      await mutate()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to add webhook"
+      toast.error(message)
+    } finally {
+      setIsAdding(false)
+    }
   }
 
-  const handleDeleteWebhook = (index: number) => {
-    setWebhooks(webhooks.filter((_, i) => i !== index))
+  const handleDeleteWebhook = async (id: string) => {
+    if (!confirm("Remove this webhook?")) return
+    setDeletingId(id)
+    try {
+      await settingsApi.deleteWebhook(id)
+      toast.success("Webhook removed")
+      await mutate()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to remove webhook"
+      toast.error(message)
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   return (
     <div className="space-y-6">
-      {webhooks.map((webhook, i) => (
-        <div key={i} className="rounded-lg border border-border bg-card p-4">
-          <div className="flex items-start justify-between mb-2">
-            <code className="text-xs font-mono text-foreground">{webhook.url}</code>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-success/10 text-success">
-                {webhook.status}
-              </span>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handleDeleteWebhook(i)}>
-                <X className="h-3 w-3" />
-              </Button>
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading webhooks…
+        </div>
+      ) : error ? (
+        <div className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
+          Could not load webhooks. Refresh and try again.
+        </div>
+      ) : webhooks.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border bg-card/50 p-8 text-center">
+          <Webhook className="mx-auto mb-3 h-8 w-8 text-muted-foreground/60" />
+          <p className="text-sm font-medium text-foreground">No webhooks configured yet</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Add an outbound endpoint to receive workflow and approval events for this organization.
+          </p>
+        </div>
+      ) : (
+        webhooks.map((webhook) => (
+          <div key={webhook.id} className="rounded-lg border border-border bg-card p-4">
+            <div className="flex items-start justify-between mb-2">
+              <code className="text-xs font-mono text-foreground break-all">{webhook.url}</code>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-success/10 text-success">
+                  {webhook.status || "active"}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  disabled={!isAdmin || deletingId === webhook.id}
+                  onClick={() => handleDeleteWebhook(webhook.id)}
+                >
+                  {deletingId === webhook.id ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <X className="h-3 w-3" />
+                  )}
+                </Button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {(webhook.events || []).map((event) => (
+                <span key={event} className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                  {event}
+                </span>
+              ))}
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {webhook.events.map((event) => (
-              <span key={event} className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                {event}
-              </span>
-            ))}
-          </div>
-        </div>
-      ))}
-      <Button size="sm" className="gap-2" onClick={() => setAddDialog(true)}>
+        ))
+      )}
+      <Button size="sm" className="gap-2" disabled={!isAdmin} onClick={() => setAddDialog(true)}>
         <Webhook className="h-3.5 w-3.5" />
         Add Webhook
       </Button>
 
-      {/* Add Webhook Dialog */}
       <Dialog open={addDialog} onOpenChange={setAddDialog}>
         <DialogContent className="bg-card border-border">
           <DialogHeader>
@@ -1056,12 +1115,12 @@ function WebhooksSettings() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground uppercase">Webhook URL</label>
-              <Input 
+              <Input
                 type="url"
                 value={newUrl}
                 onChange={(e) => setNewUrl(e.target.value)}
-                placeholder="https://your-server.com/webhook" 
-                className="bg-secondary border-border" 
+                placeholder="https://your-server.com/webhook"
+                className="bg-secondary border-border"
               />
             </div>
             <div className="space-y-2">
@@ -1069,18 +1128,18 @@ function WebhooksSettings() {
               <div className="space-y-2">
                 {availableEvents.map((event) => (
                   <label key={event} className="flex items-center gap-2 text-sm">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       checked={selectedEvents.includes(event)}
                       onChange={(e) => {
                         if (e.target.checked) {
                           setSelectedEvents([...selectedEvents, event])
                         } else {
-                          setSelectedEvents(selectedEvents.filter(e => e !== event))
+                          setSelectedEvents(selectedEvents.filter((name) => name !== event))
                         }
                       }}
-                      className="rounded" 
-                    /> 
+                      className="rounded"
+                    />
                     {event}
                   </label>
                 ))}
@@ -1650,7 +1709,7 @@ function SettingsContent() {
         return <MesonAddonsSettings isAdmin={isAdmin} />
       case "billing-usage":
         return <BillingUsageSettings />
-      case "webhooks": return <WebhooksSettings />
+      case "webhooks": return <WebhooksSettings isAdmin={isAdmin} />
       default:
         return (
           <OrganizationSettings

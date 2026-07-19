@@ -431,10 +431,17 @@ async def api_versioning(request: Request, call_next):
 
 @app.middleware("http")
 async def request_tracing(request: Request, call_next):
+    from app.services.conversation_write_guard import set_smoke_run_context
+
     request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
     request_id_ctx.set(request_id)
+    smoke_header = (request.headers.get("x-gravitree-smoke-run") or "").strip().lower()
+    set_smoke_run_context(smoke_header in {"1", "true", "yes", "on"})
     start = time.perf_counter()
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    finally:
+        set_smoke_run_context(False)
     duration_ms = (time.perf_counter() - start) * 1000
     logger.info(
         "%s %s %s %.2fms",

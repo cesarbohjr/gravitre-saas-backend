@@ -27,11 +27,17 @@ REPO = Path(__file__).resolve().parent.parent
 BACKEND = REPO / "backend"
 sys.path.insert(0, str(BACKEND))
 
+from isolated_conversation_org import (  # noqa: E402
+    DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID,
+    mark_smoke_run,
+    smoke_http_headers,
+)
+
 BASE = os.environ.get(
     "BACKEND_URL",
     "https://gravitre-saas-backend-production.up.railway.app",
 ).rstrip("/")
-ORG = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+ORG = DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID
 ACTOR = "f7e32f06-49df-4e73-8962-f41c21850762"
 OUT = REPO / "docs" / "delivery" / "execution-link-high-intent-latest.json"
 PORTAL_LESS = "https://app.hubspot.com/contacts/objects/"

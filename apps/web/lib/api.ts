@@ -2183,6 +2183,28 @@ export const settingsApi = {
   revokeApiKey: (id: string) =>
     patchJson<{ apiKey: ApiKey }>(apiUrl("/api/settings/api-keys"), { id, status: "revoked" }),
 
+  // Outbound webhooks (org-scoped Supabase-backed settings)
+  listWebhooks: () =>
+    fetcher<{ webhooks: Array<{ id: string; url: string; events: string[]; status: string }> }>(
+      apiUrl("/api/settings/webhooks"),
+    ),
+  createWebhook: (data: { url: string; events: string[]; status?: string }) =>
+    postJson<{ webhook: { id: string; url: string; events: string[]; status: string } }>(
+      apiUrl("/api/settings/webhooks"),
+      data,
+    ),
+  deleteWebhook: async (id: string) => {
+    const response = await apiFetch(apiUrl("/api/settings/webhooks"), {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.error || error.detail || `Request failed: ${response.status}`)
+    }
+  },
+
   // Lite seats / departments
   getLiteSeats: () => fetcher<LiteSeatsResponse>(apiUrl("/api/settings/lite-seats")),
   createDepartment: (data: { name: string; lite_seat_allocation: number; department_admin_id?: string }) =>
