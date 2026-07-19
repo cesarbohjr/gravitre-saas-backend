@@ -19,7 +19,18 @@ import {
   Download,
   CheckCircle2,
 } from "lucide-react"
-import { MarketplaceHighlightsSection } from "@/components/marketing/platform-sections"
+
+const WHY_STATS = [
+  { value: "60+", label: "Installable templates" },
+  { value: "6", label: "Department packs" },
+  { value: "Minutes", label: "Time to first run" },
+]
+
+const WHY_GUARANTEES = [
+  "Readiness check before install",
+  "Human approval on writes",
+  "Version history and rollback",
+]
 
 type Category = "All" | "Agents" | "Workflows" | "Department packs" | "Knowledge"
 
@@ -254,8 +265,38 @@ export function MarketplacePage() {
         </div>
       </section>
 
-      {/* Why the marketplace (reused stats + bullets + packs) */}
-      <MarketplaceHighlightsSection />
+      {/* Why the marketplace — compact stats + governance guarantees (no
+         duplicate headline/pack cards; the catalog above already covers them) */}
+      <section className="border-t border-zinc-200 bg-zinc-50 py-20 lg:py-24">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="grid gap-4 sm:grid-cols-3">
+            {WHY_STATS.map((stat, i) => (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.08 }}
+                className="rounded-2xl border border-zinc-200 bg-white p-6 text-center shadow-sm"
+              >
+                <div className="text-3xl font-bold text-zinc-900">{stat.value}</div>
+                <div className="mt-1 text-sm text-zinc-500">{stat.label}</div>
+              </motion.div>
+            ))}
+          </div>
+          <ul className="mx-auto mt-10 grid max-w-3xl gap-3 sm:grid-cols-3">
+            {WHY_GUARANTEES.map((item) => (
+              <li
+                key={item}
+                className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700"
+              >
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
 
       {/* CTA */}
       <section className="relative overflow-hidden border-t border-zinc-200 bg-gradient-to-b from-white to-emerald-50 py-24">
