@@ -21,6 +21,12 @@ export const ESTIMATED_IMPACT_LABEL = "Estimated impact"
 export const OPTIMIZATION_ESTIMATE_METHODOLOGY =
   "Impact ranges come from run telemetry and heuristics, not controlled before/after time-on-task studies."
 
+/** Module C / STA-331: heuristic confidence scores are estimates until outcome-derived. */
+export const ESTIMATED_CONFIDENCE_LABEL = "Estimated confidence"
+export const ESTIMATED_CONFIDENCE_SHORT = "Est."
+export const CONFIDENCE_ESTIMATE_METHODOLOGY =
+  "Confidence figures marked Estimate come from heuristics or type priors, not a loaded model or Module A outcome computation."
+
 /** Counts from agent jobs, workflow runs, and audit events in Gravitre. */
 export const OPERATIONAL_TASKS_COMPLETED_LABEL = "Tasks completed (operational)"
 export const OPERATIONAL_TASKS_FAILED_LABEL = "Tasks failed (operational)"

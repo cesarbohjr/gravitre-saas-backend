@@ -99,7 +99,11 @@ export default function IntelligenceModelsPage() {
                 {names.map((name) => {
                   const entry = catalog[name] as Record<string, unknown>
                   const statusRow = orgStatus[name]
-                  const status = readString(statusRow?.catalog_status, readString(entry.status, "PLANNED"))
+                  // Module C / STA-331: prefer runtime_status (artifact load) over catalog TRAINED.
+                  const status = readString(
+                    statusRow?.runtime_status,
+                    readString(statusRow?.catalog_status, readString(entry.status, "PLANNED")),
+                  )
                   const sufficiency = dataSufficiencyProgress(name, status, readiness)
                   return (
                     <tr key={name} className="border-b border-border/60 last:border-0">

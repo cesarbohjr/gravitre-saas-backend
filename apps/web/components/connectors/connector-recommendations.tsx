@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import { Sparkles, ArrowRight, X, Plug, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { enterpriseApi } from "@/lib/api"
+import { ESTIMATED_CONFIDENCE_SHORT } from "@/lib/outcome-labels"
 import { cn } from "@/lib/utils"
 import type { IntegrationSuggestion } from "@/types/api"
 
@@ -129,7 +130,7 @@ function RecommendationCard({
             CONFIDENCE_TONE(suggestion.confidence),
           )}
         >
-          {confidencePct}% match
+          {ESTIMATED_CONFIDENCE_SHORT} {confidencePct}% match
         </span>
       </div>
 

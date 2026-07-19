@@ -82,6 +82,9 @@ class MesonSuggestion(BaseModel):
     label: str
     reason: str | None = None
     confidence: float = 0.7
+    # Module C / STA-331: heuristic constants are estimates until feedback/outcomes compute them.
+    confidence_is_estimate: bool = Field(default=True, alias="confidenceIsEstimate")
+    confidence_source: str = Field(default="heuristic", alias="confidenceSource")
 
     model_config = {"populate_by_name": True}
 
@@ -2487,15 +2490,29 @@ def _rank_suggestions_by_feedback(
             continue
 
         confidence = suggestion.confidence
-        if total:
+        is_estimate = True
+        source = "heuristic"
+        if total >= 2:
             rate = accepted / total
-            if rate >= 0.6:
-                confidence = min(0.99, confidence + 0.05)
-            elif rate <= 0.25 and dismissed >= 2:
+            if rate <= 0.25 and dismissed >= 2:
                 continue
+            # Real acceptance rate over recorded feedback — not a silent constant.
+            confidence = min(0.99, max(0.05, rate))
+            is_estimate = False
+            source = "feedback_acceptance_rate"
 
-        if confidence != suggestion.confidence:
-            suggestion = suggestion.model_copy(update={"confidence": confidence})
+        if (
+            confidence != suggestion.confidence
+            or is_estimate != suggestion.confidence_is_estimate
+            or source != suggestion.confidence_source
+        ):
+            suggestion = suggestion.model_copy(
+                update={
+                    "confidence": confidence,
+                    "confidence_is_estimate": is_estimate,
+                    "confidence_source": source,
+                }
+            )
         ranked.append(suggestion)
 
     ranked.sort(key=lambda item: item.confidence, reverse=True)

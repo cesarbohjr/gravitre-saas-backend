@@ -162,6 +162,8 @@ def _card(
     priority: int,
     href: str,
 ) -> dict[str, Any]:
+    # Module C / STA-331: heuristic card scores are estimates (STA-286 pattern),
+    # not live model intelligence, until Module A outcome volume seasons CF ranking.
     return {
         "id": card_id,
         "kind": kind,
@@ -169,6 +171,10 @@ def _card(
         "reason": reason,
         "evidence": evidence,
         "confidence": confidence,
+        "confidenceIsEstimate": True,
+        "confidence_is_estimate": True,
+        "confidenceSource": "heuristic",
+        "confidence_source": "heuristic",
         "priority": priority,
         "advisoryOnly": True,
         "href": href,

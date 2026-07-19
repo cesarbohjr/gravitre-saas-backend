@@ -358,21 +358,82 @@ def _count_org_data_points(org_id: str, model_name: str, settings: Settings) -> 
 
 
 async def get_org_model_status(org_id: str, model_name: str, *, settings: Settings | None = None) -> dict[str, Any]:
+    """Org status for catalog models.
+
+    Module C / STA-331: ``catalog_status`` is capability metadata only.
+    ``runtime_status`` / ``live_inference_path`` / ``artifact_loaded`` reflect
+    whether a real deployed artifact exists for this org — never invent TRAINED
+    from the static catalog alone.
+    """
     active = settings or get_settings()
     if model_name not in GRAVITRE_ML_CATALOG:
         raise ValueError(f"Unknown catalog model: {model_name}")
     meta = GRAVITRE_ML_CATALOG[model_name]
     status = meta["status"]
-    payload = {
+    fallback = meta.get("fallback") or "heuristic"
+    payload: dict[str, Any] = {
         "model_name": model_name,
         "catalog_status": status.value,
         "advisory_only": bool(meta.get("advisory_only", False)),
         "use_cases": meta.get("use_cases", []),
         "activation": meta.get("activation") or meta.get("min_data") or meta.get("note"),
-        "fallback": meta.get("fallback"),
+        "fallback": fallback,
+        "artifact_loaded": False,
+        "live_inference_path": "heuristic" if status == ModelStatus.TRAINED else status.value,
+        "runtime_status": "heuristic" if status == ModelStatus.TRAINED else status.value,
     }
     if status == ModelStatus.TRAINED:
         payload.update(_count_org_data_points(org_id, model_name, active))
+        data_counts = payload.get("data_counts") if isinstance(payload.get("data_counts"), dict) else {}
+        # Prefer registry deployed artifact over catalog label.
+        try:
+            from app.ml.intelligence_training import CATALOG_MODEL_NAMES
+            from app.ml.registry import get_model_registry
+
+            registry_name = CATALOG_MODEL_NAMES.get(model_name, model_name)
+            registry = get_model_registry()
+            models = await registry.list_models(org_id=org_id)
+            match = next(
+                (m for m in models if m.name == registry_name and m.deployed_version),
+                None,
+            )
+            if match:
+                payload["artifact_loaded"] = True
+                payload["live_inference_path"] = "loaded_model_artifact"
+                payload["runtime_status"] = "trained"
+                payload["deployed_version"] = match.deployed_version
+            else:
+                # Data gate vs pure heuristic fallback when no artifact is deployed.
+                activation = payload.get("activation_requirement") or {}
+                required = 0
+                if isinstance(activation, dict):
+                    for value in activation.values():
+                        try:
+                            required = max(required, int(value))
+                        except (TypeError, ValueError):
+                            continue
+                current = 0
+                if isinstance(data_counts, dict):
+                    for value in data_counts.values():
+                        try:
+                            current = max(current, int(value))
+                        except (TypeError, ValueError):
+                            continue
+                if required and current < required:
+                    payload["live_inference_path"] = "data_gate"
+                    payload["runtime_status"] = "data_gate"
+                else:
+                    payload["live_inference_path"] = str(fallback)
+                    payload["runtime_status"] = "heuristic"
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(
+                "org_model_runtime_status_failed model=%s org_id=%s error=%s",
+                model_name,
+                org_id,
+                exc,
+            )
+            payload["live_inference_path"] = str(fallback)
+            payload["runtime_status"] = "heuristic"
     elif status == ModelStatus.PLANNED and model_name in {
         "sla_breach_predictor",
         "deal_loss_scorer",

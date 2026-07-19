@@ -38,7 +38,9 @@ class KnowledgeGraphService:
     CONFIDENCE_DECAY_PER_HOP = 0.3
     MIN_TRAVERSAL_CONFIDENCE = 0.2
 
-    _RELATIONSHIP_RELIABILITY: dict[str, float] = {
+    # Module C / STA-331: static type priors are estimates, not learned edge confidence.
+    # Kept for traversal blending until Module A outcome volume can season real weights.
+    _TYPE_RELIABILITY_PRIOR: dict[str, float] = {
         "associated-department": 0.85,
         "referenced-by-agent": 0.8,
         "co-occurs-with": 0.65,
@@ -52,6 +54,8 @@ class KnowledgeGraphService:
         "impacts": 0.76,
         "references": 0.7,
     }
+    # Backward-compatible alias for any external references.
+    _RELATIONSHIP_RELIABILITY = _TYPE_RELIABILITY_PRIOR
 
     async def explain_entity(
         self,
@@ -174,8 +178,12 @@ class KnowledgeGraphService:
         *,
         settings: Settings | None = None,
         client: Any | None = None,
-    ) -> float:
-        """Score a relationship from evidence_count, recency, and type reliability."""
+    ) -> dict[str, Any]:
+        """Score a relationship from evidence_count, recency, and type reliability prior.
+
+        Returns provenance fields so callers cannot treat the static prior as a
+        learned confidence score (Module C / STA-331).
+        """
         db = self._client(settings, client)
         rows = (
             db.table("org_entity_relationships")
@@ -201,14 +209,20 @@ class KnowledgeGraphService:
         )
         rows = rows + reverse_rows
         if not rows:
-            return 0.0
+            return {
+                "confidence": 0.0,
+                "confidence_is_estimate": True,
+                "confidenceIsEstimate": True,
+                "confidence_source": "type_reliability_prior",
+                "confidenceSource": "type_reliability_prior",
+            }
         best = 0.0
         now = datetime.now(timezone.utc)
         for row in rows:
             base = float(row.get("confidence") or 0)
             evidence = int(row.get("evidence_count") or 0)
             rel_type = str(row.get("relationship_type") or "")
-            reliability = self._RELATIONSHIP_RELIABILITY.get(rel_type, 0.6)
+            reliability = self._TYPE_RELIABILITY_PRIOR.get(rel_type, 0.6)
             evidence_boost = min(0.15, evidence * 0.02)
             recency_factor = 1.0
             observed = row.get("last_observed_at") or row.get("updated_at")
@@ -221,7 +235,14 @@ class KnowledgeGraphService:
                     pass
             score = min(1.0, (base * 0.5 + reliability * 0.35 + evidence_boost) * recency_factor)
             best = max(best, score)
-        return round(best, 4)
+        return {
+            "confidence": round(best, 4),
+            "confidence_is_estimate": True,
+            "confidenceIsEstimate": True,
+            "confidence_source": "type_reliability_prior",
+            "confidenceSource": "type_reliability_prior",
+            "note": "Blends stored edge confidence with a static type prior — not a trained model score.",
+        }
 
     async def traverse_multi_hop(
         self,

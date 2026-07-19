@@ -518,6 +518,9 @@ export interface MesonSuggestion {
   label: string
   reason?: string
   confidence?: number
+  /** Module C / STA-331: true when score is heuristic, not feedback/outcome-derived. */
+  confidenceIsEstimate?: boolean
+  confidenceSource?: string
 }
 
 export interface MesonSuggestionsResponse {
@@ -1994,6 +1997,11 @@ export const chatAdminApi = {
 export type MlAdminOrgModelStatus = {
   model_name: string
   catalog_status: string
+  /** Module C: real live path — trained only when an artifact is deployed. */
+  runtime_status?: string
+  live_inference_path?: string
+  artifact_loaded?: boolean
+  deployed_version?: string | number | null
   advisory_only?: boolean
   use_cases?: string[]
   activation?: string

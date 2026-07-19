@@ -322,7 +322,11 @@ export function MesonCopilotPanel({
                       {conf != null ? (
                         <div className="mt-2">
                           <div className="flex items-center justify-between text-[9px] text-muted-foreground">
-                            <span>Confidence</span>
+                            <span>
+                              {suggestion.confidenceIsEstimate !== false
+                                ? "Estimated confidence"
+                                : "Confidence"}
+                            </span>
                             <span className="tabular-nums">{Math.round(conf * 100)}%</span>
                           </div>
                           <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted">

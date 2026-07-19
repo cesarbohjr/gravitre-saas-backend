@@ -1537,6 +1537,8 @@ export interface IntegrationSuggestion {
   message: string
   evidence: Record<string, unknown>
   confidence: number
+  confidenceIsEstimate?: boolean
+  confidenceSource?: string
   priority: number
   status: string
   suggestedAt?: string

@@ -52,13 +52,20 @@ def soft_rank_heuristic_payload(
         out["count"] = 0
         return out
 
+    def _preserve_estimate(card: dict[str, Any], *, cf_ranked: bool, method: str) -> dict[str, Any]:
+        # Module C: CF may reorder from outcome interactions, but card confidence
+        # numbers remain heuristic estimates until a separate outcome scorer lands.
+        row = dict(card)
+        row.setdefault("cf_ranked", cf_ranked)
+        row.setdefault("cf_method", method)
+        row.setdefault("confidenceIsEstimate", True)
+        row.setdefault("confidence_is_estimate", True)
+        row.setdefault("confidenceSource", "heuristic")
+        row.setdefault("confidence_source", "heuristic")
+        return row
+
     if not gate.get("ready"):
-        annotated = []
-        for card in cards:
-            row = dict(card)
-            row.setdefault("cf_ranked", False)
-            row.setdefault("cf_method", "cold_start")
-            annotated.append(row)
+        annotated = [_preserve_estimate(card, cf_ranked=False, method="cold_start") for card in cards]
         out["recommendations"] = annotated
         out["count"] = len(annotated)
         return out
@@ -84,10 +91,13 @@ def soft_rank_heuristic_payload(
             cid = str(card.get("id") or "")
             if cid and cid not in ranked_ids:
                 ranked.append(dict(card))
-        out["recommendations"] = ranked
-        out["count"] = len(ranked)
+        out["recommendations"] = [
+            _preserve_estimate(card, cf_ranked=True, method=method) for card in ranked
+        ]
+        out["count"] = len(out["recommendations"])
         out["cfRanked"] = True
         out["cfMethod"] = method
+        out["rankingSource"] = "outcome_interactions" if method != "cold_start" else "cold_start"
     except Exception as exc:  # noqa: BLE001
         logger.warning("cf_soft_rank_failed org_id=%s err=%s", org_id, exc)
         out["recommendations"] = cards
