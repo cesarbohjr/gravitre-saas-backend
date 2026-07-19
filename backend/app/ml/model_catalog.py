@@ -13,6 +13,7 @@ from app.ml.anomaly import AnomalyDetector
 from app.ml.base import ModelStatus
 from app.ml.causal_analysis import CausalImpactAnalyzer
 from app.ml.churn_scoring import ChurnRiskScorer
+from app.ml.cf_matrix_factorization import CfMatrixFactorizer
 from app.ml.classifiers import IntentClassifier
 from app.ml.clustering import QueryClusterer
 from app.ml.domain_llm import DomainSpecificLLMRouter
@@ -103,6 +104,13 @@ GRAVITRE_ML_CATALOG: dict[str, dict[str, Any]] = {
         "use_cases": ["customer_risk_scoring"],
         "activation": "30+ labeled churn_customer_signal rows (FEATURE_KEYS + cancel/non_renew/closed_lost)",
         "fallback": "rule_based_risk_signals",
+        "advisory_only": True,
+    },
+    "cf_matrix_factorizer": {
+        "status": ModelStatus.TRAINED,
+        "use_cases": ["recommendation_soft_rank"],
+        "activation": "50+ scored interactions / 30d with ≥2 actors and ≥3 items",
+        "fallback": "item_affinity_soft_rank",
         "advisory_only": True,
     },
     "sla_breach_predictor": {
@@ -205,6 +213,7 @@ _MODEL_CLASS_MAP: dict[str, Callable[[], Any]] = {
     "retrieval_memory_learner": RetrievalMemoryLearner,
     "revenue_forecaster": RevenueForecaster,
     "churn_risk_scorer": ChurnRiskScorer,
+    "cf_matrix_factorizer": CfMatrixFactorizer,
     "sla_breach_predictor": SlaBreachPredictor,
     "deal_loss_scorer": DealLossScorer,
     "capacity_forecaster": CapacityForecaster,
@@ -294,6 +303,13 @@ def _count_org_data_points(org_id: str, model_name: str, settings: Settings) -> 
             labeled = count_labeled_churn_examples(client, org_id)
             counts["labeled_churn_examples"] = labeled
             counts["outcome_rows"] = labeled  # backward-compatible key; strict = labeled only
+        elif model_name == "cf_matrix_factorizer":
+            from app.ml.cf_interaction_ingest import matrix_factorization_gate_status
+
+            gate = matrix_factorization_gate_status(client, org_id)
+            counts["scored_interactions_30d"] = int(gate.get("current") or 0)
+            counts["cf_actors"] = int(gate.get("actors") or 0)
+            counts["cf_items"] = int(gate.get("items") or 0)
         elif model_name == "sla_breach_predictor":
             rows = (
                 client.table("agent_action_outcomes")

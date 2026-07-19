@@ -80,11 +80,21 @@ Do **not** treat generic agent `outcome_success` failures as churn unless writte
 | Modules | `cf_interaction_ingest.py`, `cf_soft_rank.py`, `cf_rank_service.py` |
 | Response flags | `cfGate`, `cfRanked` on heuristics payload |
 
-### Non-goals (CF v1)
+### CF full matrix factorization (after soft-rank tip)
 
-- No full matrix-factorization / ALS yet  
+| Item | Spec |
+|------|------|
+| Model | `cf_matrix_factorizer` — TruncatedSVD user×item latent factors |
+| Train | `POST /api/admin/ml/models/cf_matrix_factorizer/train` + `train_cf_matrix_factorizer` |
+| Gate | ≥50 interactions / 30d, ≥2 actors, ≥3 items |
+| Serve | Heuristics response `cfMethod=matrix_factorization` when artifact loaded; else `item_affinity` |
+| Contract | STA-314 suggest-only; never auto-execute |
+
+### Non-goals (still)
+
 - No auto-execute from CF scores  
-- Does not replace Phase 5.2 outcome soft-rank until CF tip PASSes with `cfRanked:true` at volume  
+- Cross-org matrix sharing  
+- Replacing Phase 5.2 outcome soft-rank entirely (still runs after CF)  
 
 ---
 

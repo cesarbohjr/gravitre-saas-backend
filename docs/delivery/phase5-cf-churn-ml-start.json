@@ -1,11 +1,12 @@
 {
   "pass": true,
-  "status": "CF_TIP_PASS",
+  "status": "CF_MF_STARTED",
   "sequence": "both_sequenced_churn_first",
-  "ran_at": "2026-07-19T03:32:00+00:00",
+  "ran_at": "2026-07-19T04:00:00+00:00",
   "phase0": "docs/delivery/phase0-cf-churn-ml.md",
   "live_tip_churn": "docs/delivery/phase5-churn-ml-live.json",
   "live_tip_cf": "docs/delivery/phase5-cf-soft-rank-live.json",
+  "live_tip_cf_mf": "docs/delivery/phase5-cf-matrix-factorization-live.json",
   "churn": {
     "slice": "feature_label_contract_advisory_api_ui_fix",
     "model": "churn_risk_scorer",
@@ -36,12 +37,25 @@
     "endpoint": "GET /api/intelligence/recommendations/heuristics (cfGate + cfRanked)",
     "live_tip": "PASS — heuristics HTTP 200 cfRanked:true gate ready @ 2026-07-19T03:32Z tip sha 9d5451a5… (phase5-cf-soft-rank-live.json)"
   },
+  "cf_matrix_factorization": {
+    "slice": "truncated_svd_user_item",
+    "code": true,
+    "model": "cf_matrix_factorizer",
+    "modules": [
+      "backend/app/ml/cf_matrix_factorization.py"
+    ],
+    "gate": "≥50 interactions / 30d, ≥2 actors, ≥3 items",
+    "train": "POST /api/admin/ml/models/cf_matrix_factorizer/train",
+    "serve": "cfMethod=matrix_factorization when artifact loaded; else item_affinity",
+    "live_tip": "NOT RUN — needs deploy + smoke-phase5-cf-matrix-factorization-live.py"
+  },
   "tests": {
     "backend": [
       "backend/tests/ml/test_churn_feature_ingest.py",
-      "backend/tests/ml/test_cf_soft_rank.py"
+      "backend/tests/ml/test_cf_soft_rank.py",
+      "backend/tests/ml/test_cf_matrix_factorization.py"
     ],
     "frontend": "apps/web/__tests__/intelligence/normalize-domain-predictions.test.ts"
   },
-  "note": "Churn tip PASS + CF v1 soft-rank tip PASS. Full MF still out of scope."
+  "note": "Churn + CF soft-rank tips PASS. Full MF code landed; live tip pending deploy."
 }

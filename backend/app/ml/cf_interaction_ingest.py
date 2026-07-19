@@ -1,8 +1,9 @@
-"""CF v1 interaction matrix — org × (connector | pack | card) scored events.
+"""CF interaction matrix — actor × (connector | pack | card) scored events.
 
 Hard rules:
 - Advisory ranking signals only; never auto-execute.
 - Cold start when volume gate fails (caller keeps heuristics order).
+- Rows include actor_id for matrix factorization (user × item).
 """
 from __future__ import annotations
 
@@ -11,6 +12,7 @@ from typing import Any
 
 MIN_SCORED_INTERACTIONS_30D = 50
 LOOKBACK_DAYS = 30
+ORG_ACTOR_PREFIX = "org:"
 
 # Positive / negative weights for soft-rank (gate counts rows, not weight sum).
 WEIGHT_USAGE = 1.0
@@ -48,15 +50,29 @@ def _safe_rows(client: Any, table: str, builder) -> list[dict[str, Any]]:
         return []
 
 
+def _org_actor(org_id: str) -> str:
+    return f"{ORG_ACTOR_PREFIX}{org_id}"
+
+
+def _actor_from_metadata(meta: Any, *, fallback: str) -> str:
+    if isinstance(meta, dict):
+        for key in ("user_id", "userId", "actor_id", "actorId", "sub"):
+            value = str(meta.get(key) or "").strip()
+            if value:
+                return value
+    return fallback
+
+
 def load_scored_interactions(
     client: Any,
     org_id: str,
     *,
     lookback_days: int = LOOKBACK_DAYS,
 ) -> list[dict[str, Any]]:
-    """Load org-scoped scored interactions for the CF soft-rank matrix."""
+    """Load org-scoped scored interactions for CF soft-rank / matrix factorization."""
     cutoff = _cutoff_iso(lookback_days)
     rows: list[dict[str, Any]] = []
+    org_actor = _org_actor(org_id)
 
     # 1) Connector tool usage (audit_events via STA-123 helpers).
     try:
@@ -66,17 +82,42 @@ def load_scored_interactions(
         )
 
         events = fetch_tool_usage_events(client, org_id, lookback_days=lookback_days)
+        # Prefer per-event actors when present; also keep aggregate connector signal.
+        per_vendor: dict[str, int] = {}
+        for event in events:
+            meta = event.get("metadata") if isinstance(event.get("metadata"), dict) else {}
+            vendor = str(
+                meta.get("connector_type")
+                or meta.get("connectorType")
+                or meta.get("vendor")
+                or ""
+            ).strip().lower()
+            if not vendor:
+                continue
+            actor = _actor_from_metadata(meta, fallback=f"usage:{vendor}")
+            rows.append(
+                {
+                    "actor_id": actor,
+                    "item_key": item_key_connector(vendor),
+                    "weight": WEIGHT_USAGE,
+                    "source": "tool_usage_event",
+                }
+            )
+            per_vendor[vendor] = per_vendor.get(vendor, 0) + 1
+
         summary = aggregate_tool_usage(events)
         for item in list(summary.get("connectors") or []):
             vendor = str(item.get("connectorType") or "").strip().lower()
             count = int(item.get("totalInvocations") or 0)
             if not vendor or count <= 0:
                 continue
-            # Cap contribution so a single hot connector cannot drown the gate alone.
+            # Cap org-level aggregate so a hot connector cannot drown the gate alone.
             scored = min(count, 25)
-            for _ in range(scored):
+            already = min(per_vendor.get(vendor, 0), scored)
+            for _ in range(max(0, scored - already)):
                 rows.append(
                     {
+                        "actor_id": org_actor,
                         "item_key": item_key_connector(vendor),
                         "weight": WEIGHT_USAGE,
                         "source": "tool_usage",
@@ -89,7 +130,7 @@ def load_scored_interactions(
     dismissals = _safe_rows(
         client,
         "heuristic_recommendation_dismissals",
-        lambda t: t.select("card_id,dismissed_at")
+        lambda t: t.select("card_id,user_id,dismissed_at")
         .eq("org_id", org_id)
         .gte("dismissed_at", cutoff),
     )
@@ -97,8 +138,10 @@ def load_scored_interactions(
         card_id = str(row.get("card_id") or "").strip()
         if not card_id:
             continue
+        actor = str(row.get("user_id") or "").strip() or org_actor
         rows.append(
             {
+                "actor_id": actor,
                 "item_key": item_key_card(card_id),
                 "weight": WEIGHT_DISMISS,
                 "source": "dismiss",
@@ -109,7 +152,7 @@ def load_scored_interactions(
     outcomes = _safe_rows(
         client,
         "intelligence_outcome_events",
-        lambda t: t.select("outcome_event,entity_id,recommendation_id,created_at")
+        lambda t: t.select("outcome_event,entity_id,recommendation_id,agent_id,created_at")
         .eq("org_id", org_id)
         .gte("created_at", cutoff)
         .in_("outcome_event", ["recommendation_approved", "recommendation_rejected"]),
@@ -120,8 +163,10 @@ def load_scored_interactions(
         if not rec_id:
             continue
         weight = WEIGHT_ACCEPT if event_type == "recommendation_approved" else WEIGHT_REJECT
+        actor = str(row.get("agent_id") or "").strip() or org_actor
         rows.append(
             {
+                "actor_id": actor,
                 "item_key": item_key_card(rec_id),
                 "weight": weight,
                 "source": event_type,
@@ -149,6 +194,7 @@ def load_scored_interactions(
         if rec_id:
             rows.append(
                 {
+                    "actor_id": org_actor,
                     "item_key": item_key_card(rec_id),
                     "weight": weight,
                     "source": f"crm:{outcome}",
@@ -157,6 +203,7 @@ def load_scored_interactions(
         if vendor:
             rows.append(
                 {
+                    "actor_id": org_actor,
                     "item_key": item_key_connector(vendor),
                     "weight": weight * 0.5,
                     "source": f"crm_connector:{outcome}",
@@ -175,6 +222,39 @@ def count_scored_interactions(
     return len(load_scored_interactions(client, org_id, lookback_days=lookback_days))
 
 
+def matrix_factorization_gate_status(
+    client: Any,
+    org_id: str,
+    *,
+    lookback_days: int = LOOKBACK_DAYS,
+) -> dict[str, Any]:
+    """Stricter gate for full MF train (≥50 interactions, ≥2 actors, ≥3 items)."""
+    from app.ml.cf_matrix_factorization import MIN_ITEMS, MIN_USERS
+
+    interactions = load_scored_interactions(client, org_id, lookback_days=lookback_days)
+    actors = {str(r.get("actor_id") or "") for r in interactions if r.get("actor_id")}
+    items = {str(r.get("item_key") or "") for r in interactions if r.get("item_key")}
+    current = len(interactions)
+    ready = (
+        current >= MIN_SCORED_INTERACTIONS_30D
+        and len(actors) >= MIN_USERS
+        and len(items) >= MIN_ITEMS
+    )
+    return {
+        "model": "cf_matrix_factorizer",
+        "lookback_days": lookback_days,
+        "current": current,
+        "required": MIN_SCORED_INTERACTIONS_30D,
+        "actors": len(actors),
+        "items": len(items),
+        "min_actors": MIN_USERS,
+        "min_items": MIN_ITEMS,
+        "ready": ready,
+        "advisory_only": True,
+        "cold_start": not ready,
+    }
+
+
 def training_gate_status(
     client: Any,
     org_id: str,
@@ -182,6 +262,7 @@ def training_gate_status(
     lookback_days: int = LOOKBACK_DAYS,
 ) -> dict[str, Any]:
     current = count_scored_interactions(client, org_id, lookback_days=lookback_days)
+    mf = matrix_factorization_gate_status(client, org_id, lookback_days=lookback_days)
     return {
         "model": "cf_soft_ranker",
         "lookback_days": lookback_days,
@@ -190,6 +271,7 @@ def training_gate_status(
         "ready": current >= MIN_SCORED_INTERACTIONS_30D,
         "advisory_only": True,
         "cold_start": current < MIN_SCORED_INTERACTIONS_30D,
+        "matrix_factorization": mf,
     }
 
 

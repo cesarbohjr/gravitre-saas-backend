@@ -29,6 +29,7 @@ class TrainingSignalService:
         "retrieval_ranker": {"min_evaluation_examples": 100},
         "revenue_forecaster": {"min_history_points": 14},
         "churn_risk_scorer": {"min_labeled_churn_examples": 30},
+        "cf_matrix_factorizer": {"min_scored_interactions_30d": 50},
         "sla_breach_predictor": {"min_ticket_volume_rows": 60},
         "deal_loss_scorer": {"min_measured_deal_outcomes": 25},
         "capacity_forecaster": {"min_capacity_observations": 21},
@@ -107,6 +108,29 @@ class TrainingSignalService:
                 except Exception:  # noqa: BLE001
                     signals_available = 0
                     min_required = thresholds["min_labeled_churn_examples"]
+            elif "min_scored_interactions_30d" in thresholds:
+                try:
+                    from app.ml.cf_interaction_ingest import matrix_factorization_gate_status
+
+                    gate = matrix_factorization_gate_status(client, org_id)
+                    signals_available = int(gate.get("current") or 0)
+                    min_required = thresholds["min_scored_interactions_30d"]
+                    # Surface actor/item readiness without blocking the count signal.
+                    if not gate.get("ready") and signals_available >= min_required:
+                        status = "insufficient_data"
+                        by_model[model_name] = {
+                            "status": status,
+                            "signals_available": signals_available,
+                            "min_required": min_required,
+                            "last_trained_at": None,
+                            "actors": gate.get("actors"),
+                            "items": gate.get("items"),
+                            "note": "interactions met but actors/items below MF minimums",
+                        }
+                        continue
+                except Exception:  # noqa: BLE001
+                    signals_available = 0
+                    min_required = thresholds["min_scored_interactions_30d"]
             elif "min_ticket_volume_rows" in thresholds or "min_capacity_observations" in thresholds:
                 try:
                     from app.ml.model_catalog import _count_org_data_points

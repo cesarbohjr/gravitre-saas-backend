@@ -1,5 +1,6 @@
 """CF soft-rank service — STA-314 suggest-only reorder after heuristics.
 
+Prefers trained matrix factorization when available; falls back to item affinity.
 Cold start: returns payload unchanged when volume gate fails.
 Never executes tools; never drops cards.
 """
@@ -14,7 +15,7 @@ from app.ml.cf_interaction_ingest import (
     load_scored_interactions,
     training_gate_status,
 )
-from app.ml.cf_soft_rank import soft_rank_cards
+from app.ml.cf_soft_rank import card_item_keys, soft_rank_cards
 
 logger = get_logger(__name__)
 
@@ -33,6 +34,9 @@ def soft_rank_heuristic_payload(
     payload: dict[str, Any],
     *,
     lookback_days: int = LOOKBACK_DAYS,
+    actor_id: str | None = None,
+    settings: Any | None = None,
+    factorizer: Any | None = None,
 ) -> dict[str, Any]:
     """Apply CF soft-rank when gate ready; otherwise cold-start (heuristics order)."""
     gate = training_gate_status(client, org_id, lookback_days=lookback_days)
@@ -40,6 +44,7 @@ def soft_rank_heuristic_payload(
     out["advisoryOnly"] = True
     out["cfGate"] = gate
     out["cfRanked"] = False
+    out["cfMethod"] = "cold_start"
 
     cards = list(payload.get("recommendations") or [])
     if not cards:
@@ -48,11 +53,11 @@ def soft_rank_heuristic_payload(
         return out
 
     if not gate.get("ready"):
-        # Cold start — keep heuristic order; annotate for clients.
         annotated = []
         for card in cards:
             row = dict(card)
             row.setdefault("cf_ranked", False)
+            row.setdefault("cf_method", "cold_start")
             annotated.append(row)
         out["recommendations"] = annotated
         out["count"] = len(annotated)
@@ -61,8 +66,19 @@ def soft_rank_heuristic_payload(
     try:
         interactions = load_scored_interactions(client, org_id, lookback_days=lookback_days)
         affinity = item_affinity_scores(interactions)
-        ranked = soft_rank_cards(cards, affinity)
-        # Never drop: append any missing ids (defensive).
+        mf_scores, method = _mf_scores_for_cards(
+            org_id,
+            cards,
+            actor_id=actor_id,
+            settings=settings,
+            factorizer=factorizer,
+        )
+        ranked = soft_rank_cards(
+            cards,
+            affinity,
+            mf_scores=mf_scores,
+            method=method,
+        )
         ranked_ids = {str(c.get("id") or "") for c in ranked}
         for card in cards:
             cid = str(card.get("id") or "")
@@ -71,15 +87,96 @@ def soft_rank_heuristic_payload(
         out["recommendations"] = ranked
         out["count"] = len(ranked)
         out["cfRanked"] = True
+        out["cfMethod"] = method
     except Exception as exc:  # noqa: BLE001
         logger.warning("cf_soft_rank_failed org_id=%s err=%s", org_id, exc)
         out["recommendations"] = cards
         out["count"] = len(cards)
         out["cfRanked"] = False
+        out["cfMethod"] = "error"
         out["cfError"] = exc.__class__.__name__
 
     _assert_no_execute(out)
     return out
+
+
+def _mf_scores_for_cards(
+    org_id: str,
+    cards: list[dict[str, Any]],
+    *,
+    actor_id: str | None,
+    settings: Any | None,
+    factorizer: Any | None,
+) -> tuple[dict[str, float] | None, str]:
+    """Load org MF artifact and score card item keys. Falls back to affinity-only."""
+    model = factorizer
+    if model is None:
+        try:
+            import asyncio
+
+            from app.ml.model_catalog import load_org_trained_catalog_model
+
+            async def _load():
+                return await load_org_trained_catalog_model(
+                    org_id, "cf_matrix_factorizer", settings=settings
+                )
+
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+            if loop and loop.is_running():
+                # Sync route path — skip async load; affinity-only until tip trains via admin.
+                model = None
+            else:
+                model = asyncio.run(_load())
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("cf_mf_load_skipped org_id=%s err=%s", org_id, exc)
+            model = None
+
+    if model is None or not getattr(model, "is_trained", False):
+        return None, "item_affinity"
+
+    item_keys: list[str] = []
+    for card in cards:
+        item_keys.extend(card_item_keys(card))
+    scores = model.score_items(actor_id=actor_id, org_id=org_id, item_keys=item_keys)
+    if not scores:
+        return None, "item_affinity"
+    return scores, "matrix_factorization"
+
+
+async def soft_rank_heuristic_payload_async(
+    client: Any,
+    org_id: str,
+    payload: dict[str, Any],
+    *,
+    lookback_days: int = LOOKBACK_DAYS,
+    actor_id: str | None = None,
+    settings: Any | None = None,
+) -> dict[str, Any]:
+    """Async variant that can load trained MF artifacts from the registry."""
+    factorizer = None
+    try:
+        from app.ml.model_catalog import load_org_trained_catalog_model
+
+        loaded = await load_org_trained_catalog_model(
+            org_id, "cf_matrix_factorizer", settings=settings
+        )
+        if getattr(loaded, "is_trained", False):
+            factorizer = loaded
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("cf_mf_async_load_skipped org_id=%s err=%s", org_id, exc)
+
+    return soft_rank_heuristic_payload(
+        client,
+        org_id,
+        payload,
+        lookback_days=lookback_days,
+        actor_id=actor_id,
+        settings=settings,
+        factorizer=factorizer,
+    )
 
 
 def _assert_no_execute(payload: dict[str, Any]) -> None:

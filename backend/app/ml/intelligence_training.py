@@ -52,6 +52,7 @@ CATALOG_MODEL_NAMES = {
     "workflow_success_predictor": "catalog-workflow-success",
     "revenue_forecaster": "catalog-revenue-forecast",
     "churn_risk_scorer": "catalog-churn-risk",
+    "cf_matrix_factorizer": "catalog-cf-matrix-factorizer",
     "sla_breach_predictor": "catalog-sla-breach",
     "deal_loss_scorer": "catalog-deal-loss",
     "capacity_forecaster": "catalog-capacity-forecast",
@@ -480,6 +481,57 @@ async def train_churn_risk_scorer(
     return {"trained": model_id is not None, "model_id": model_id, "training_examples": len(features)}
 
 
+async def train_cf_matrix_factorizer(
+    org_id: str,
+    *,
+    settings: Settings | None = None,
+    client: Any | None = None,
+) -> dict[str, Any]:
+    """Train TruncatedSVD user×item factors for CF soft-rank (advisory only)."""
+    from app.ml.cf_interaction_ingest import (
+        load_scored_interactions,
+        matrix_factorization_gate_status,
+    )
+    from app.ml.cf_matrix_factorization import CfMatrixFactorizer
+
+    active = settings or get_settings()
+    db = client or get_supabase_client(active)
+    gate = matrix_factorization_gate_status(db, org_id)
+    if not gate.get("ready"):
+        return {
+            "trained": False,
+            "reason": "insufficient_data",
+            "gate": gate,
+            "note": "Need ≥50 scored interactions, ≥2 actors, ≥3 items in 30d.",
+        }
+    interactions = load_scored_interactions(db, org_id)
+    factorizer = CfMatrixFactorizer()
+    metrics = await factorizer.train(interactions=interactions)
+    model_id = await register_trained_artifact(
+        org_id,
+        name=CATALOG_MODEL_NAMES["cf_matrix_factorizer"],
+        model_type=ModelType.EMBEDDING,
+        base_model="cf_matrix_factorizer",
+        artifact=factorizer.save(),
+        metrics=metrics,
+        description="CF TruncatedSVD matrix factorization for heuristic soft-rank",
+    )
+    return {
+        "trained": model_id is not None,
+        "model_id": model_id,
+        "training_examples": len(interactions),
+        "gate": gate,
+        "method": "truncated_svd",
+        "metrics": {
+            "n_users": (metrics.custom_metrics or {}).get("n_users"),
+            "n_items": (metrics.custom_metrics or {}).get("n_items"),
+            "n_components": (metrics.custom_metrics or {}).get("n_components"),
+            "rmse": (metrics.custom_metrics or {}).get("rmse"),
+            "explained_variance": (metrics.custom_metrics or {}).get("explained_variance"),
+        },
+    }
+
+
 def _payload_features(row: dict[str, Any], keys: tuple[str, ...]) -> dict[str, float]:
     payload = row.get("outcome_payload") or {}
     if not isinstance(payload, dict):
@@ -732,6 +784,7 @@ TRAINING_DISPATCH: dict[str, Any] = {
     "workflow_success_predictor": train_workflow_success_predictor,
     "revenue_forecaster": train_revenue_forecaster,
     "churn_risk_scorer": train_churn_risk_scorer,
+    "cf_matrix_factorizer": train_cf_matrix_factorizer,
     "sla_breach_predictor": train_sla_breach_predictor,
     "deal_loss_scorer": train_deal_loss_scorer,
     "capacity_forecaster": train_capacity_forecaster,
