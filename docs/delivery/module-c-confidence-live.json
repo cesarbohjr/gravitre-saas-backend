@@ -1,0 +1,78 @@
+{
+  "target": "https://api.gravitre.app",
+  "expected_sha_prefix": "09699335",
+  "started_at": "2026-07-19T23:55:25.495092+00:00",
+  "checks": {
+    "deploy": {
+      "status": "PASS",
+      "git_sha": "09699335d15c92f3c8eec369021a0d3b468ea7c8",
+      "timestamp": "2026-07-19T23:55:25.831454+00:00"
+    },
+    "models_runtime": {
+      "status": "PASS",
+      "runtime_status": "heuristic",
+      "live_inference_path": "rule_based_classify_query",
+      "artifact_loaded": false,
+      "sample_keys": [
+        "activation",
+        "activation_requirement",
+        "advisory_only",
+        "artifact_loaded",
+        "catalog_status",
+        "data_counts",
+        "fallback",
+        "live_inference_path",
+        "model_name",
+        "runtime_status",
+        "use_cases"
+      ]
+    },
+    "meson_interpret": {
+      "status": "SKIP",
+      "detail": "HTTP 403: {\"success\":false,\"error\":\"Upgrade required\",\"code\":\"UNAUTHORIZED\",\"details\":{\"required_tier\":\"control\"}}"
+    },
+    "intelligence_forecast": {
+      "status": "PASS",
+      "confidence": 0.4923,
+      "confidenceIsEstimate": true,
+      "confidenceSource": "model_selection_heuristic"
+    },
+    "advisor_brief": {
+      "status": "PASS",
+      "confidence": 0.5454,
+      "confidenceIsEstimate": true,
+      "confidenceSource": "advisor_signal_aggregate",
+      "action0_estimate": true
+    },
+    "business_signals": {
+      "status": "PASS",
+      "signal_count": 4,
+      "sample": {
+        "confidence": 0.65,
+        "confidenceIsEstimate": true,
+        "confidenceSource": "business_signal_heuristic"
+      },
+      "note": "empty signals list is OK \u2014 no invented confidence"
+    },
+    "meson_suggestions": {
+      "status": "SKIP",
+      "detail": "HTTP 403: {\"success\":false,\"error\":\"Upgrade required\",\"code\":\"UNAUTHORIZED\",\"details\":{\"required_tier\":\"control\"}}"
+    },
+    "optimization_analyze": {
+      "status": "PASS",
+      "count": 1,
+      "confidenceIsEstimate": true,
+      "confidenceSource": "optimization_heuristic"
+    }
+  },
+  "org_id": "00000000-0000-0000-0000-000000000001",
+  "user_id": "5868d0fd-6043-4b95-bd36-9009e8b434e1",
+  "finished_at": "2026-07-19T23:55:41.134970+00:00",
+  "summary": {
+    "pass": 6,
+    "fail": 0,
+    "skip": 2,
+    "required_pass": true,
+    "overall": "PASS"
+  }
+}
