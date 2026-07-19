@@ -44,11 +44,6 @@ import { MARKETING_COPY } from "@/lib/marketing-copy"
 import { SHOW_MARKETING_TESTIMONIALS } from "@/lib/marketing-flags"
 import type { FeaturesSectionId } from "@/lib/features-nav"
 
- function showSection(active: FeaturesSectionId | "all", ...ids: (FeaturesSectionId | "all")[]) {
-  if (active === "all") return true
-  return ids.includes(active)
-  }
-
 // Bento card component - Light theme
 function BentoCard({ 
   children, 
@@ -569,11 +564,25 @@ export function FeaturesLegacyContent({
   section = "all",
   showHero = true,
   showTail = true,
+  exclude = [],
 }: {
   section?: FeaturesSectionId | "all"
   showHero?: boolean
   showTail?: boolean
+  exclude?: FeaturesSectionId[]
 }) {
+  const excluded = new Set<string>(exclude)
+  // Show a gated block when the active section matches one of `ids`.
+  // With section="all", every non-excluded section renders; `exclude` lets the
+  // main Features page hide sections that now live on their own tab (GIBE,
+  // Governance, Marketplace) without duplicating any content.
+  function showSection(active: FeaturesSectionId | "all", ...ids: (FeaturesSectionId | "all")[]) {
+    const realIds = ids.filter((id): id is FeaturesSectionId => id !== "all")
+    if (active === "all") {
+      return realIds.some((id) => !excluded.has(id))
+    }
+    return ids.includes(active) && !excluded.has(active)
+  }
   return (
     <div className="relative overflow-hidden bg-white">
       {showHero && section === "all" ? (

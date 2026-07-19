@@ -6,18 +6,11 @@ import { usePathname } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { ArrowRight, Menu, X, ChevronDown } from "lucide-react"
 import { openMarketingConsentSettings } from "@/lib/marketing-consent"
-import { FEATURES_NAV } from "@/lib/features-nav"
-
-const featuresNavChildren = FEATURES_NAV.map((item) => ({
-  href: item.href,
-  label: item.label,
-}))
 
 const navLinks = [
-  {
-    label: "Features",
-    children: featuresNavChildren,
-  },
+  { href: "/features", label: "Features" },
+  { href: "/features/technology", label: "Technology" },
+  { href: "/features/marketplace", label: "Marketplace" },
   { href: "/pricing", label: "Pricing" },
   { href: "/docs", label: "Docs" },
   {
