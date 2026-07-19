@@ -121,7 +121,6 @@ async def run_connector_fallback_turn(
     Wave 1: when ReAct already produced structured connector tool_calls with args,
     pass those into ``process_turn`` so NL ``chat_action_mapper`` is skipped.
     """
-    from app.services.chat_connector_execution_service import get_chat_connector_execution_service
     from app.services.chat_orchestration_service import (
         ChatOrchestrationService,
         get_chat_orchestration_service,
@@ -167,8 +166,11 @@ async def run_connector_fallback_turn(
         and "lists.create" not in str(getattr(structured_plan, "invoke_action", "") or "").lower()
     ):
         structured_plan = None
-    connector = get_chat_connector_execution_service(settings)
-    turn = await connector.process_turn(
+    # Module B Phase 3 — ReAct and governed chat share one turn controller entry.
+    from app.services.conversation_turn_controller import run_connector_turn
+
+    turn = await run_connector_turn(
+        settings=settings,
         org_id=org_id,
         user_id=user_id,
         conversation_id=conversation_id,
@@ -179,6 +181,7 @@ async def run_connector_fallback_turn(
         client=client,
         environment_name=environment_name,
         structured_plan=structured_plan,
+        source="react",
     )
     if turn and turn.get("stop_pipeline"):
         return turn

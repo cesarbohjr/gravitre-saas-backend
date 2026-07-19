@@ -573,35 +573,26 @@ class ChatConnectorExecutionService:
         if structured_plan is not None and structured_plan.invoke_action:
             return structured_plan
 
+        from app.services.parameter_ledger import (
+            apply_ledger_to_plan,
+            is_awaiting_params,
+            resume_awaiting_params,
+        )
+
         pending = task_state.get("pending_task") or {}
         if isinstance(pending, dict) and pending.get("type") == "connector_action":
+            # Module B — generic multi-turn resume (all connectors, not Slack-only).
+            if is_awaiting_params(task_state):
+                resumed, _ledger, _patch = resume_awaiting_params(message, task_state)
+                if resumed is not None:
+                    tool_name = resumed.tool_name or ""
+                    if tool_name and self._registry.get_spec(tool_name):
+                        return self._sanitize_plan_message_bodies(resumed)
+                    # Allow resume even when static tool registry lacks a name
+                    # (catalog invoke_action is authoritative).
+                    if resumed.invoke_action:
+                        return self._sanitize_plan_message_bodies(resumed)
             params = dict(pending.get("params") or task_state.get("clarified_params") or {})
-            clarified = task_state.get("clarified_params") if isinstance(task_state.get("clarified_params"), dict) else {}
-            # Multi-turn Slack: channel staged as awaiting_params — this message is the body.
-            if str(pending.get("status") or "") == "awaiting_params":
-                channel = (
-                    params.get("channel")
-                    or (params.get("args") or {}).get("channel")
-                    or clarified.get("slack_channel")
-                )
-                body = self._followup_message_body(message)
-                if channel and body:
-                    args = dict(params.get("args") or {})
-                    args["channel"] = str(channel).lstrip("#")
-                    args["message"] = body
-                    args.setdefault("text", body)
-                    channel_label = args["channel"]
-                    params = {
-                        **params,
-                        "channel": channel_label,
-                        "message": body,
-                        "args": args,
-                        "tool_name": params.get("tool_name") or "slack_send_message",
-                        "invoke_action": params.get("invoke_action") or "slack.post_message",
-                        "integration": params.get("integration") or "slack",
-                        "kind": params.get("kind") or "write",
-                        "label": params.get("label") or f"Post to Slack #{channel_label}",
-                    }
             tool_name = str(params.get("tool_name") or "")
             spec = self._registry.get_spec(tool_name)
             if not spec:
@@ -614,6 +605,8 @@ class ChatConnectorExecutionService:
             if not params.get("label"):
                 params["label"] = tool_name
             plan = self.plan_from_dict(params)
+            if plan:
+                plan = apply_ledger_to_plan(plan, task_state)
             return self._sanitize_plan_message_bodies(plan) if plan else None
 
         mapper = get_chat_action_mapper()
@@ -624,7 +617,7 @@ class ChatConnectorExecutionService:
                 match.entry.registry_key,
                 match.entry.connector_id,
             ) or match.tool_name
-            return ConnectorActionPlan(
+            plan = ConnectorActionPlan(
                 tool_name=tool_name,
                 invoke_action=match.entry.registry_key,
                 integration=match.entry.connector_id,
@@ -633,6 +626,8 @@ class ChatConnectorExecutionService:
                 args=match.args,
                 destructive=match.entry.destructive,
             )
+            # Unprompted cross-turn: bind email/channel/etc. from ledger.
+            return apply_ledger_to_plan(plan, task_state)
 
         connected = {c.lower() for c in connected_integrations}
         registered = set(list_registered_actions())
@@ -667,7 +662,9 @@ class ChatConnectorExecutionService:
             )
             if best is None or score > best[0]:
                 best = (score, plan)
-        return best[1] if best else None
+        if best is None:
+            return None
+        return apply_ledger_to_plan(best[1], task_state)
 
     def plan_fallback_segment(
         self,
@@ -834,9 +831,36 @@ class ChatConnectorExecutionService:
         structured_plan: ConnectorActionPlan | None = None,
     ) -> dict[str, Any] | None:
         from app.services.chat_message_normalize import strip_assistant_scope_prefix
+        from app.services.parameter_ledger import (
+            get_ledger,
+            ingest_message_slots,
+            ledger_patch,
+            stage_awaiting_params,
+        )
 
         # Scope banners belong in the system prompt, not connector task text.
         message = strip_assistant_scope_prefix(message)
+        # Module B — write-on-mention into the conversation-scoped ledger.
+        turn_index = len(list((task_state or {}).get("recent_user_messages") or [])) + 1
+        ledger = ingest_message_slots(
+            message,
+            turn_index=turn_index,
+            ledger=get_ledger(task_state),
+        )
+        task_state = {**(task_state or {}), **ledger_patch(ledger)}
+        try:
+            await self._state.update_task_state(
+                conversation_id,
+                org_id,
+                {
+                    **ledger_patch(ledger),
+                    "recent_user_messages": [message],
+                },
+                client=client,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("parameter ledger ingest persist skipped: %s", exc)
+
         if structured_plan is None and not self.is_connector_intent(message, task_state):
             return None
 
@@ -852,6 +876,29 @@ class ChatConnectorExecutionService:
             task_state=task_state,
             structured_plan=structured_plan,
         )
+        # Module B Phase 2 — schema-constrained extraction (FAST tier) for write plans.
+        if plan is not None and structured_plan is None:
+            try:
+                from app.services.schema_param_extractor import enrich_plan_args_from_schema
+
+                plan, extract_patch = await enrich_plan_args_from_schema(
+                    plan,
+                    message,
+                    task_state=task_state,
+                    settings=self.settings,
+                    org_id=org_id,
+                    use_model=True,
+                )
+                if extract_patch:
+                    task_state = {**(task_state or {}), **extract_patch}
+                    await self._state.update_task_state(
+                        conversation_id,
+                        org_id,
+                        extract_patch,
+                        client=client,
+                    )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("schema param extract skipped: %s", exc)
         if plan is not None:
             plan = self._sanitize_plan_message_bodies(plan)
         # Wave 6–7 claim 4 — omit-name "create a contact list" must reach the Apollo
@@ -977,11 +1024,32 @@ class ChatConnectorExecutionService:
 
         clarification = validate_connector_plan(plan, message)
         if clarification:
+            # Module B — stage awaiting_params on the shared ledger so the next
+            # turn resumes for any connector (not Slack-only).
+            stage_patch = stage_awaiting_params(
+                plan,
+                clarification.missing,
+                ledger=get_ledger(task_state),
+            )
+            try:
+                await self._state.update_task_state(
+                    conversation_id,
+                    org_id,
+                    {**stage_patch, "recent_user_messages": [message]},
+                    client=client,
+                )
+                task_state = await self._state.get_task_state(
+                    conversation_id, org_id, client=client
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("awaiting_params stage persist failed: %s", exc)
+                task_state = {**(task_state or {}), **stage_patch}
             return {
                 "stop_pipeline": True,
                 "dialogue_mode": clarification.dialogue_mode,
                 "message": clarification.message,
                 "task_state": task_state,
+                "pending_task": (task_state or {}).get("pending_task"),
                 "workflow_status": clarification.status,
             }
 

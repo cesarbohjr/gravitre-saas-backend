@@ -31,6 +31,8 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     "resolved_entities": {},
     # Recent user turns for multi-turn param fill (Slack channel → body, etc.).
     "recent_user_messages": [],
+    # Module B — conversation-scoped parameter ledger (canonical slot store).
+    "parameter_ledger": {"slots": {}, "pending_missing": []},
 }
 
 
@@ -121,6 +123,31 @@ class ConversationStateService:
                     merged["resolved_entities"] = {
                         **(merged.get("resolved_entities") or {}),
                         **value,
+                    }
+                elif key == "parameter_ledger" and isinstance(value, dict):
+                    # Deep-merge slots; pending_missing replaces when provided.
+                    current_ledger = (
+                        merged.get("parameter_ledger")
+                        if isinstance(merged.get("parameter_ledger"), dict)
+                        else {}
+                    )
+                    current_slots = (
+                        dict(current_ledger.get("slots") or {})
+                        if isinstance(current_ledger.get("slots"), dict)
+                        else {}
+                    )
+                    incoming_slots = (
+                        dict(value.get("slots") or {})
+                        if isinstance(value.get("slots"), dict)
+                        else {}
+                    )
+                    merged["parameter_ledger"] = {
+                        "slots": {**current_slots, **incoming_slots},
+                        "pending_missing": list(
+                            value["pending_missing"]
+                            if "pending_missing" in value
+                            else (current_ledger.get("pending_missing") or [])
+                        ),
                     }
                 elif key == "recent_user_messages" and isinstance(value, list):
                     existing = list(merged.get("recent_user_messages") or [])

@@ -85,6 +85,21 @@ class ChatActionMapper:
             if score <= 0:
                 continue
             args = self._extract_args(text, entry)
+            # Module B Phase 2 — schema-driven heuristic fill when vendor regex misses
+            # (Jira/Asana/HubSpot without quotes, ledger-aware fields).
+            if (args is None or not args) and write_intent and entry.kind != "read":
+                try:
+                    from app.services.schema_param_extractor import extract_action_args_heuristic
+
+                    schema_args = extract_action_args_heuristic(
+                        entry.registry_key,
+                        text,
+                        existing_args=args or {},
+                    )
+                    if schema_args:
+                        args = schema_args
+                except Exception:  # noqa: BLE001
+                    pass
             if args is None:
                 if write_intent and entry.kind != "read":
                     candidate_wo = ActionMatch(

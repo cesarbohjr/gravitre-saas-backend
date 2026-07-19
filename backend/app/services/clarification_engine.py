@@ -125,13 +125,15 @@ class ClarificationEngine:
             clarified = state.get("clarified_params") or {}
             pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
 
-        # Multi-turn Slack: channel already staged — treat this turn as the message body.
-        if self._is_slack_awaiting_body(pending, clarified):
+        # Multi-turn: params already staged on the shared ledger — resume, don't re-ask.
+        from app.services.parameter_ledger import is_awaiting_params
+
+        if is_awaiting_params({"pending_task": pending}):
             return {
                 "should_clarify": False,
                 "trigger_type": None,
                 "question": None,
-                "reason": "Resuming Slack send with previously clarified channel.",
+                "reason": "Resuming connector action with previously staged parameters.",
             }
 
         rule_result = self._rule_based_trigger(
@@ -191,17 +193,6 @@ class ClarificationEngine:
             "question": None,
             "reason": "Sufficient context and confidence.",
         }
-
-    @staticmethod
-    def _is_slack_awaiting_body(pending: dict[str, Any], clarified: dict[str, Any]) -> bool:
-        if str(pending.get("status") or "") != "awaiting_params":
-            return False
-        params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
-        if str(params.get("integration") or "").lower() == "slack":
-            return bool(params.get("channel") or clarified.get("slack_channel"))
-        return str(clarified.get("intent") or "") == "slack_send" and bool(
-            clarified.get("slack_channel")
-        )
 
     def _rule_based_trigger(
         self,
@@ -285,25 +276,18 @@ class ClarificationEngine:
             # Channel + body present (or already clarified) — let mapper/execution proceed.
             return None
 
-        # Follow-up body for a staged Slack send should not hit generic "missing target".
-        if self._is_slack_awaiting_body(pending, clarified):
+        # Follow-up for a staged connector action should not hit generic "missing target".
+        from app.services.parameter_ledger import get_ledger, is_awaiting_params
+
+        if is_awaiting_params({"pending_task": pending}):
             return None
 
         if classification.get("requires_action") and self.ACTION_VERBS.search(request):
             if not clarified.get("action_target") and not understanding.get("entities"):
-                # Email / Outlook: ask for concrete fields, not a vague "which record".
+                # Email / Outlook: ask for concrete fields; stage via shared ledger.
                 if self.EMAIL_SEND_PATTERN.search(request):
-                    return {
-                        "trigger_type": "missing_required_param",
-                        "reason": "Email send missing recipient/subject/body.",
-                        "template_vars": {
-                            "action": "send that email",
-                            "missing_param": (
-                                "the recipient email, subject, and body "
-                                "(or say “use my last HubSpot contact” / paste an address)"
-                            ),
-                        },
-                    }
+                    return self._email_send_clarification(request, clarified)
+
                 # User explicitly deferred choice — do not block with a blank target ask.
                 if self.AUTONOMY_HINT.search(request):
                     return None
@@ -403,13 +387,25 @@ class ClarificationEngine:
         request: str,
         clarified: dict[str, Any],
     ) -> dict[str, Any] | None:
+        from app.services.chat_connector_models import ConnectorActionPlan
+        from app.services.parameter_ledger import (
+            get_ledger,
+            ingest_message_slots,
+            stage_awaiting_params,
+        )
+
         if clarified.get("slack_message") or clarified.get("action_target"):
             return None
-        channel = self._slack_channel_label(request) or clarified.get("slack_channel")
+        ledger = ingest_message_slots(request, ledger=get_ledger({"clarified_params": clarified}))
+        channel = ledger.get("channel") or self._slack_channel_label(request) or clarified.get(
+            "slack_channel"
+        )
         if isinstance(channel, str):
             channel = channel.lstrip("#").strip() or None
         else:
             channel = None
+        if channel:
+            ledger.upsert("channel", channel, source="clarification")
         body = self._slack_message_body(request)
         if body and channel:
             return None
@@ -423,26 +419,18 @@ class ClarificationEngine:
                     "missing_param": "what the message should say",
                 },
             }
-            # Persist channel so the next turn ("sure, say hi…") can resume.
+            # Persist via shared parameter ledger (not Slack-only staging).
             if channel:
+                plan = ConnectorActionPlan(
+                    tool_name="slack_send_message",
+                    invoke_action="slack.post_message",
+                    integration="slack",
+                    kind="write",
+                    label="Send Slack message",
+                    args={"channel": channel},
+                )
                 result["persist_updates"] = {
-                    "clarified_params": {
-                        "slack_channel": channel,
-                        "intent": "slack_send",
-                    },
-                    "pending_task": {
-                        "type": "connector_action",
-                        "status": "awaiting_params",
-                        "params": {
-                            "tool_name": "slack_send_message",
-                            "invoke_action": "slack.post_message",
-                            "integration": "slack",
-                            "kind": "write",
-                            "label": "Send Slack message",
-                            "channel": channel,
-                            "args": {"channel": channel},
-                        },
-                    },
+                    **stage_awaiting_params(plan, ("message",), ledger=ledger),
                     "recent_user_messages": [request],
                 }
             return result
@@ -453,6 +441,67 @@ class ClarificationEngine:
             "template_vars": {
                 "action": "send a Slack message",
                 "missing_param": "which channel to post in (for example #general)",
+            },
+        }
+
+    def _email_send_clarification(
+        self,
+        request: str,
+        clarified: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        """Stage Gmail/Outlook send on the shared ledger when recipient/body missing."""
+        from app.services.chat_connector_models import ConnectorActionPlan
+        from app.services.parameter_ledger import (
+            get_ledger,
+            ingest_message_slots,
+            stage_awaiting_params,
+        )
+
+        ledger = ingest_message_slots(request, ledger=get_ledger({"clarified_params": clarified}))
+        missing: list[str] = []
+        if not ledger.get("to"):
+            missing.append("recipient")
+        if not ledger.get("subject"):
+            missing.append("subject")
+        if not ledger.get("body") and not ledger.get("quoted"):
+            missing.append("body")
+        if not missing:
+            # Ledger already has what Gmail needs (including unprompted prior turns).
+            return None
+        plan = ConnectorActionPlan(
+            tool_name="gmail_messages_send",
+            invoke_action="gmail.messages.send",
+            integration="gmail",
+            kind="write",
+            label="Send Gmail message",
+            args={
+                k: v
+                for k, v in {
+                    "to": ledger.get("to"),
+                    "subject": ledger.get("subject") or "Follow-up",
+                    "body": ledger.get("body") or ledger.get("quoted"),
+                }.items()
+                if v
+            },
+        )
+        # Subject can default at execute time; don't block solely on subject when to is known.
+        ask_missing = [m for m in missing if m != "subject"] or missing
+        ask = ", ".join(ask_missing)
+        return {
+            "trigger_type": "missing_required_param",
+            "reason": f"Email send missing {ask}.",
+            "template_vars": {
+                "action": "send that email",
+                "missing_param": (
+                    "the recipient email, subject, and body "
+                    "(or say “use my last HubSpot contact” / paste an address)"
+                    if "recipient" in ask_missing
+                    else ask
+                ),
+            },
+            "persist_updates": {
+                **stage_awaiting_params(plan, tuple(ask_missing), ledger=ledger),
+                "recent_user_messages": [request],
             },
         }
 
