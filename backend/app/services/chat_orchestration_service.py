@@ -1338,19 +1338,19 @@ class ChatOrchestrationService:
             task_state=refreshed,
             step_results=step_results,
         )
-        # Keep orchestration-specific headline while preserving completion card / recs.
+        # Always keep orchestration headline + per-step body (enrich formats single-action copy).
+        means = (turn.get("post_action_experience") or {}).get("whatThisMeans") or ""
+        headline = (
+            f"**Orchestration complete** ({successes}/{len(step_results)} steps succeeded)."
+            if run_ok
+            else f"**Orchestration failed** ({successes}/{len(step_results)} steps succeeded)."
+        )
+        turn["message"] = (
+            f"{headline}\n\n{summary_body}"
+            + (f"\n\n_What this means:_ {means}" if means else "")
+            + (f"\n\n[View run details]({primary_url})" if primary_url else "")
+        )
         if run_ok:
-            turn["message"] = (
-                f"**Orchestration complete** ({successes}/{len(step_results)} steps succeeded).\n\n"
-                f"{summary_body}"
-                + (
-                    f"\n\n_What this means:_ "
-                    f"{(turn.get('post_action_experience') or {}).get('whatThisMeans') or ''}"
-                    if (turn.get("post_action_experience") or {}).get("whatThisMeans")
-                    else ""
-                )
-                + (f"\n\n[View run details]({primary_url})" if primary_url else "")
-            )
             rec = (turn.get("execution_result") or {}).get("recommendation") or (
                 (turn.get("post_action_experience") or {}).get("recommendation")
             )
@@ -1360,6 +1360,12 @@ class ChatOrchestrationService:
                     f"_Suggest only — reply_ **{rec['suggestedUtterance']}** "
                     f"_to proceed (nothing runs until you approve)._"
                 )
+        else:
+            bridge = (turn.get("execution_result") or {}).get("failure_bridge") or (
+                (turn.get("post_action_experience") or {}).get("failureBridge")
+            )
+            if isinstance(bridge, dict) and bridge.get("prompt"):
+                turn["message"] += f"\n\n{bridge['prompt']}"
         turn["orchestration_perf"] = params.get("orchestration_perf")
         return turn
 
