@@ -1,7 +1,7 @@
 {
   "module": "B",
   "audit": "round2_reverify",
-  "started_at": "2026-07-20T02:48:32.613487+00:00",
+  "started_at": "2026-07-20T03:09:39.607462+00:00",
   "base_url": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "actor": "conversation-smoke-sa@gravitre.app",
@@ -57,13 +57,13 @@
   "tests": {
     "1_gmail_multi_turn": {
       "verdict": "PASS",
-      "conversation_id": "69bc14ca-5c50-4c4e-a25d-b89201033a78",
+      "conversation_id": "9e35cbd6-ce92-48a8-b2f0-7801dc9ebf80",
       "trace": [
         {
           "http": 200,
           "user": "Send an email via Gmail \u2014 I haven't given you the recipient yet.",
           "assistant": "To send gmail message, I need to know recipient, subject, body. Could you share that?",
-          "conversation_id": "69bc14ca-5c50-4c4e-a25d-b89201033a78",
+          "conversation_id": "9e35cbd6-ce92-48a8-b2f0-7801dc9ebf80",
           "mode_requested": "agent",
           "tools_seen": [],
           "intel": [
@@ -127,7 +127,7 @@
           "http": 200,
           "user": "alex.moduleb.audit@acme.test \u2014 subject Module B cert, body Hello from live audit.",
           "assistant": "No Gmail connector is configured for this organization. Add and connect Gmail under Connectors, then retry.",
-          "conversation_id": "69bc14ca-5c50-4c4e-a25d-b89201033a78",
+          "conversation_id": "9e35cbd6-ce92-48a8-b2f0-7801dc9ebf80",
           "mode_requested": "agent",
           "tools_seen": [],
           "intel": [
@@ -215,13 +215,13 @@
     },
     "2_unprompted_email_across_turns": {
       "verdict": "PASS",
-      "conversation_id": "df349fcc-3551-4e98-a65e-19083178cc15",
+      "conversation_id": "68b0c975-938a-42cb-becd-a03e5eef6e43",
       "trace": [
         {
           "http": 200,
           "user": "Quick note: the right contact for renewals is renewals.moduleb@acme.test",
           "assistant": "The note says the right contact for renewals is redacted, so I can\u2019t use or confirm that email.\n\nFrom the org context:\n- There are no connected integrations.\n- There are no agents.\n- There are 3 workflows, including one with an open high-severity alert.\n- The alert is for \u201cApollo create list (write)\u201d with a 40% failure rate in 2 of the last 5 runs. Source: org context you provided.\n\nIf you want, I can help with one of these next:\n- review the failing workflow alert,\n- create a workflow for renewals routing,\n- or help you store the contact in a safer place without exposing the address.\n\nNote: Parts of this answer may be model inference without retrieved sources.",
-          "conversation_id": "df349fcc-3551-4e98-a65e-19083178cc15",
+          "conversation_id": "68b0c975-938a-42cb-becd-a03e5eef6e43",
           "mode_requested": "fast",
           "tools_seen": [],
           "intel": [
@@ -229,8 +229,8 @@
               "effectiveMode": "fast",
               "pipelineTier": "tier_1",
               "routingTier": "simple",
-              "dialogueMode": "answer",
-              "expl": "Routing classified",
+              "dialogueMode": null,
+              "expl": "Analyzing your request\u2026",
               "pending": null,
               "currentPlan": null
             },
@@ -238,16 +238,7 @@
               "effectiveMode": "fast",
               "pipelineTier": "tier_1",
               "routingTier": "simple",
-              "dialogueMode": "answer",
-              "expl": "Plan ready \u2014 running tools",
-              "pending": null,
-              "currentPlan": null
-            },
-            {
-              "effectiveMode": "fast",
-              "pipelineTier": "tier_1",
-              "routingTier": "simple",
-              "dialogueMode": "answer",
+              "dialogueMode": null,
               "expl": "This answer combined retrieved context with tool results.\n\nThis answer drew on 3 internal sources, including Business signals and Organization snapshot.",
               "pending": null,
               "currentPlan": null
@@ -260,13 +251,13 @@
                 "value": "renewals.moduleb@acme.test",
                 "source": "user_message",
                 "confidence": "high",
-                "turn_index": 2
+                "turn_index": 1
               },
               "email": {
                 "value": "renewals.moduleb@acme.test",
                 "source": "user_message",
                 "confidence": "high",
-                "turn_index": 2
+                "turn_index": 1
               }
             },
             "pending_missing": []
@@ -278,7 +269,7 @@
           "http": 200,
           "user": "Thanks.",
           "assistant": "Nothing needs action here. I have the org context, and the only notable item is an open high-severity alert: \u201cApollo create list (write)\u201d is failing in 2 of 5 recent runs, with no connectors configured in this org.\n\nIf you want, I can help you inspect the failing workflow or review the alert details next.\n\nNote: Parts of this answer may be model inference without retrieved sources.",
-          "conversation_id": "df349fcc-3551-4e98-a65e-19083178cc15",
+          "conversation_id": "68b0c975-938a-42cb-becd-a03e5eef6e43",
           "mode_requested": "fast",
           "tools_seen": [],
           "intel": [
@@ -286,8 +277,8 @@
               "effectiveMode": "fast",
               "pipelineTier": "tier_1",
               "routingTier": "simple",
-              "dialogueMode": "answer",
-              "expl": "Routing classified",
+              "dialogueMode": null,
+              "expl": "Analyzing your request\u2026",
               "pending": null,
               "currentPlan": null
             },
@@ -295,16 +286,7 @@
               "effectiveMode": "fast",
               "pipelineTier": "tier_1",
               "routingTier": "simple",
-              "dialogueMode": "answer",
-              "expl": "Plan ready \u2014 running tools",
-              "pending": null,
-              "currentPlan": null
-            },
-            {
-              "effectiveMode": "fast",
-              "pipelineTier": "tier_1",
-              "routingTier": "simple",
-              "dialogueMode": "answer",
+              "dialogueMode": null,
               "expl": "This answer combined retrieved context with tool results.\n\nThis answer relied on general reasoning without retrieved internal documents.",
               "pending": null,
               "currentPlan": null
@@ -317,13 +299,13 @@
                 "value": "renewals.moduleb@acme.test",
                 "source": "user_message",
                 "confidence": "high",
-                "turn_index": 2
+                "turn_index": 1
               },
               "email": {
                 "value": "renewals.moduleb@acme.test",
                 "source": "user_message",
                 "confidence": "high",
-                "turn_index": 2
+                "turn_index": 1
               }
             },
             "pending_missing": []
@@ -335,7 +317,7 @@
           "http": 200,
           "user": "Got it.",
           "assistant": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
-          "conversation_id": "df349fcc-3551-4e98-a65e-19083178cc15",
+          "conversation_id": "68b0c975-938a-42cb-becd-a03e5eef6e43",
           "mode_requested": "fast",
           "tools_seen": [],
           "intel": [
@@ -374,13 +356,13 @@
                 "value": "renewals.moduleb@acme.test",
                 "source": "user_message",
                 "confidence": "high",
-                "turn_index": 2
+                "turn_index": 1
               },
               "email": {
                 "value": "renewals.moduleb@acme.test",
                 "source": "user_message",
                 "confidence": "high",
-                "turn_index": 2
+                "turn_index": 1
               }
             },
             "pending_missing": []
@@ -392,7 +374,7 @@
           "http": 200,
           "user": "Send an email about the renewal via Gmail.",
           "assistant": "To send gmail message, I need to know body (I already have to=renewals.moduleb@acme.test, email=renewals.moduleb@acme.test, subject=Follow-up). Could you share that?",
-          "conversation_id": "df349fcc-3551-4e98-a65e-19083178cc15",
+          "conversation_id": "68b0c975-938a-42cb-becd-a03e5eef6e43",
           "mode_requested": "agent",
           "tools_seen": [],
           "intel": [
@@ -455,7 +437,7 @@
                 "value": "renewals.moduleb@acme.test",
                 "source": "user_message",
                 "confidence": "high",
-                "turn_index": 2
+                "turn_index": 1
               },
               "subject": {
                 "value": "Follow-up",
@@ -485,14 +467,14 @@
     },
     "3_cold_connector_intercom": {
       "verdict": "PASS",
-      "conversation_id": "ee27f9cb-9525-48e1-82cf-fb23e642fcd9",
+      "conversation_id": "a3b52219-0d97-4d14-a7d7-8a8492b56f62",
       "note": "Cold connector = Intercom (not Zendesk/Jira/Pipedrive).",
       "trace": [
         {
           "http": 200,
           "user": "Create an Intercom contact for this renewal lead.",
           "assistant": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
-          "conversation_id": "ee27f9cb-9525-48e1-82cf-fb23e642fcd9",
+          "conversation_id": "a3b52219-0d97-4d14-a7d7-8a8492b56f62",
           "mode_requested": "agent",
           "tools_seen": [],
           "intel": [
@@ -536,7 +518,7 @@
           "http": 200,
           "user": "email is intercom.cold.moduleb@acme.test name is VIP Checkout Lead",
           "assistant": "I can\u2019t process this yet. The request only provides a redacted email and the name \u201cVIP Checkout Lead,\u201d but it does not specify the action or destination.\n\nFrom the provided org context: there are 0 Connected integrations, so there is no CRM, email, Apollo, or other destination available to write to.\n\nNext move: tell me what you want done and where, for example: \u201cCreate a lead in Apollo\u201d or \u201cAdd this contact to a CRM list,\u201d then provide the actual email and connect the required integration.\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document?\n\nNote: Parts of this answer may be model inference without retrieved sources.",
-          "conversation_id": "ee27f9cb-9525-48e1-82cf-fb23e642fcd9",
+          "conversation_id": "a3b52219-0d97-4d14-a7d7-8a8492b56f62",
           "mode_requested": "agent",
           "tools_seen": [],
           "intel": [
@@ -544,8 +526,8 @@
               "effectiveMode": "agent",
               "pipelineTier": "tier_3",
               "routingTier": "research",
-              "dialogueMode": "answer",
-              "expl": "Routing classified",
+              "dialogueMode": null,
+              "expl": "Analyzing your request\u2026",
               "pending": null,
               "currentPlan": null
             },
@@ -553,16 +535,7 @@
               "effectiveMode": "agent",
               "pipelineTier": "tier_3",
               "routingTier": "research",
-              "dialogueMode": "answer",
-              "expl": "Plan ready \u2014 running tools",
-              "pending": null,
-              "currentPlan": null
-            },
-            {
-              "effectiveMode": "agent",
-              "pipelineTier": "tier_3",
-              "routingTier": "research",
-              "dialogueMode": "answer",
+              "dialogueMode": null,
               "expl": "This answer combined retrieved context with tool results.\n\nThis answer drew on 2 internal sources, including Business signals and Organization snapshot.",
               "pending": null,
               "currentPlan": null
@@ -575,13 +548,13 @@
                 "value": "intercom.cold.moduleb@acme.test",
                 "source": "user_message",
                 "confidence": "high",
-                "turn_index": 6
+                "turn_index": 3
               },
               "email": {
                 "value": "intercom.cold.moduleb@acme.test",
                 "source": "user_message",
                 "confidence": "high",
-                "turn_index": 6
+                "turn_index": 3
               },
               "title": {
                 "value": "VIP Checkout Lead",
@@ -603,23 +576,33 @@
     },
     "4_off_script_recovery": {
       "verdict": "PASS",
-      "conversation_id": "887f0cc5-1997-49e6-9d77-66d689373617",
+      "conversation_id": "34cd48f0-91f4-441a-be65-c3189a427764",
       "product_note": "Execute-now connector writes short-circuit when disconnected. Advisory plan-first must stage current_plan listing blockers \u2014 short-circuit without a plan is incorrect for plan-first.",
       "trace": [
         {
           "http": 200,
           "user": "Make a plan to improve MSP outbound: first create an Apollo contact list for prospects, then enrich those contacts, then notify the team on Slack. Show the plan first \u2014 do not execute yet.",
-          "assistant": "To send slack message, I need to know channel. Could you share that?",
-          "conversation_id": "887f0cc5-1997-49e6-9d77-66d689373617",
+          "assistant": "Plan only \u2014 nothing has been executed.\n\nApollo and Slack are not Connected in this organization, so the workflow is not Executable yet. Source: connector status shows 0 connectors.\n\nProposed MSP outbound workflow:\n\n- Connect and authenticate required systems:\n  - Apollo for contact list creation and enrichment.\n  - Slack for team notification.\n  - Optional CRM if prospects should be synced after enrichment.\n\n- Define the prospect criteria before creating the Apollo list:\n  - MSP target segment.\n  - Geography.\n  - Company size.\n  - Job titles or buyer roles.\n  - Exclusions, such as current customers, competitors, or existing open opportunities.\n\n- Create the Apollo contact list:\n  - List name: `MSP Outbound Prospects`\n  - Apply the agreed filters.\n  - Save selected contacts to the list.\n  - Add a safeguard to avoid duplicates if the list already exists.\n\n- Enrich the contacts:\n  - Enrich email, phone, company, title, LinkedIn URL, and firmographic fields where available.\n  - Mark each record with enrichment status: `Verified`, `Partial`, or `Missing`.\n  - Skip or flag contacts without usable business email.\n\n- Validate output before notifying the team:\n  - Count total contacts created.\n  - Count enriched contacts.\n  - Count contacts missing key fields.\n  - Capture any Apollo failures or rate-limit issues.\n\n- Notify the team in Slack:\n  - Post to the agreed Slack channel.\n  - Include the Apollo list name, contact count, enrichment summary, and any exceptions.\n  - Include a link to the Apollo list if available.\n\n- Governance controls:\n  - Require approval before any write action in Apollo.\n  - Require approval before Slack notification if the message contains prospect details.\n  - Do not execute if Apollo or Slack is not Connected and Authenticated.\n\nOne risk is already visible in the provided org context: an open high-severity alert reports elevated failure risk on an Apollo list creation step, with 2 failures in 5 recent runs. Before execution, the Apollo connector and that step should be checked.\n\nBest next move: connect Apollo and Slack, then I can draft this as an Executable workflow without running it.No Apollo connector is configured for this organization. Add and connect Apollo under Connectors, then retry.",
+          "conversation_id": "34cd48f0-91f4-441a-be65-c3189a427764",
           "mode_requested": "agent",
-          "tools_seen": [],
+          "tools_seen": [
+            {
+              "type": "tool-input-available",
+              "toolName": "getConnectorStatus",
+              "toolCallId": "call-4681bd67aa07"
+            },
+            {
+              "type": "tool-output-available",
+              "toolCallId": "call-4681bd67aa07"
+            }
+          ],
           "intel": [
             {
               "effectiveMode": "agent",
               "pipelineTier": "tier_3",
               "routingTier": "research",
-              "dialogueMode": null,
-              "expl": "Analyzing your request\u2026",
+              "dialogueMode": "confirm",
+              "expl": "Routing classified",
               "pending": null,
               "currentPlan": null
             },
@@ -627,62 +610,33 @@
               "effectiveMode": "agent",
               "pipelineTier": "tier_3",
               "routingTier": "research",
-              "dialogueMode": null,
-              "expl": "Reviewing connected systems and knowledge\u2026",
+              "dialogueMode": "confirm",
+              "expl": "Plan ready \u2014 running tools",
               "pending": null,
               "currentPlan": null
             },
             {
-              "effectiveMode": "agent",
-              "pipelineTier": "tier_3",
-              "routingTier": "research",
-              "dialogueMode": "clarify",
-              "expl": "Clarification needed: Send Slack message missing channel (live ledger consulted).",
+              "effectiveMode": null,
+              "pipelineTier": null,
+              "routingTier": null,
+              "dialogueMode": "answer",
+              "expl": "Connector fallback after ReAct",
               "pending": null,
               "currentPlan": null
             }
           ],
-          "pending_task": {
-            "type": "connector_action",
-            "params": {
-              "args": {
-                "text": "the team on Slack. Show the plan first \u2014 do not execute yet",
-                "message": "the team on Slack. Show the plan first \u2014 do not execute yet"
-              },
-              "kind": "write",
-              "text": "the team on Slack. Show the plan first \u2014 do not execute yet",
-              "label": "Send Slack message",
-              "message": "the team on Slack. Show the plan first \u2014 do not execute yet",
-              "tool_name": "slack_send_message",
-              "destructive": false,
-              "integration": "slack",
-              "invoke_action": "slack.post_message",
-              "inferred_fields": [],
-              "inference_sources": {}
-            },
-            "status": "awaiting_params"
-          },
+          "pending_task": null,
           "parameter_ledger": {
             "slots": {
-              "text": {
-                "value": "the team on Slack. Show the plan first \u2014 do not execute yet",
-                "source": "staged_plan",
-                "confidence": "high"
-              },
-              "message": {
-                "value": "the team on Slack. Show the plan first \u2014 do not execute yet",
-                "source": "staged_plan",
+              "name": {
+                "value": "Make a plan to improve MSP outbound: first create an Apollo contact list for prospects, then enrich those contacts, then notify the team on Slack. Show the plan first \u2014 do not execute yet.",
+                "source": "schema_param_extractor",
                 "confidence": "high"
               }
             },
-            "pending_missing": [
-              "channel"
-            ]
+            "pending_missing": []
           },
-          "clarified_params": {
-            "body": "the team on Slack. Show the plan first \u2014 do not execute yet",
-            "intent": "slack_send"
-          },
+          "clarified_params": {},
           "current_plan": {
             "goal": "Make a plan to improve MSP outbound: first create an Apollo contact list for prospects, then enrich those contacts, then notify the team on Slack. Show the plan first \u2014 do not execute yet.",
             "steps": [
@@ -731,9 +685,9 @@
         },
         {
           "http": 200,
-          "user": "actually skip the enrichment step and just create the list",
-          "assistant": "No Slack connector is configured for this organization. Add and connect Slack under Connectors, then retry.",
-          "conversation_id": "887f0cc5-1997-49e6-9d77-66d689373617",
+          "user": "actually revise the plan \u2014 skip the enrichment step and put Slack notify first, then create the Apollo list last",
+          "assistant": "Revised plan is ready. No execution will run yet.\n\n- Step 1: Notify the team in Slack that the MSP outbound plan is being revised and that enrichment is being skipped.\n- Step 2: Define the prospect criteria for the MSP outbound list.\n- Step 3: Create the Apollo contact list for those MSP prospects.\n- Step 4: Confirm the Apollo list was created and share the result back to the team.\n\nEnrichment has been removed.\n\nReadiness note: based on the provided org context, there are no Connected integrations right now, so Slack and Apollo are not currently Connected or Executable. There is also an open high-severity alert on the Apollo list creation step showing 2 failures in 5 recent attempts.\n\nBest next move: connect Slack and Apollo, then approve this revised plan before creating or running the workflow.No Apollo connector is configured for this organization. Add and connect Apollo under Connectors, then retry.",
+          "conversation_id": "34cd48f0-91f4-441a-be65-c3189a427764",
           "mode_requested": "agent",
           "tools_seen": [],
           "intel": [
@@ -741,8 +695,8 @@
               "effectiveMode": "agent",
               "pipelineTier": "tier_3",
               "routingTier": "research",
-              "dialogueMode": null,
-              "expl": "Analyzing your request\u2026",
+              "dialogueMode": "confirm",
+              "expl": "Routing classified",
               "pending": null,
               "currentPlan": null
             },
@@ -750,74 +704,56 @@
               "effectiveMode": "agent",
               "pipelineTier": "tier_3",
               "routingTier": "research",
+              "dialogueMode": "confirm",
+              "expl": "Plan ready \u2014 running tools",
+              "pending": null,
+              "currentPlan": null
+            },
+            {
+              "effectiveMode": null,
+              "pipelineTier": null,
+              "routingTier": null,
               "dialogueMode": "answer",
-              "expl": "Governed connector execution",
+              "expl": "Connector fallback after ReAct",
               "pending": null,
               "currentPlan": null
             }
           ],
-          "pending_task": {
-            "type": "connector_action",
-            "params": {
-              "args": {
-                "text": "the team on Slack. Show the plan first \u2014 do not execute yet",
-                "message": "the team on Slack. Show the plan first \u2014 do not execute yet"
-              },
-              "kind": "write",
-              "text": "the team on Slack. Show the plan first \u2014 do not execute yet",
-              "label": "Send Slack message",
-              "message": "the team on Slack. Show the plan first \u2014 do not execute yet",
-              "tool_name": "slack_send_message",
-              "destructive": false,
-              "integration": "slack",
-              "invoke_action": "slack.post_message",
-              "inferred_fields": [],
-              "inference_sources": {}
-            },
-            "status": "awaiting_params"
-          },
+          "pending_task": null,
           "parameter_ledger": {
             "slots": {
-              "text": {
-                "value": "the team on Slack. Show the plan first \u2014 do not execute yet",
-                "source": "schema_param_extractor",
-                "confidence": "high"
-              },
-              "message": {
-                "value": "the team on Slack. Show the plan first \u2014 do not execute yet",
+              "name": {
+                "value": "actually revise the plan \u2014 skip the enrichment step and put Slack notify first, then create the Apollo list last (regarding plan: Make a plan to improve MSP outbound: first create an Apollo contact li",
                 "source": "schema_param_extractor",
                 "confidence": "high"
               }
             },
-            "pending_missing": [
-              "channel"
-            ]
+            "pending_missing": []
           },
-          "clarified_params": {
-            "body": "the team on Slack. Show the plan first \u2014 do not execute yet",
-            "intent": "slack_send"
-          },
+          "clarified_params": {},
           "current_plan": null
         }
       ],
       "criteria": {
         "had_plan_turn1": true,
         "current_plan_turn1": true,
-        "plan_text_turn1": false,
+        "plan_text_turn1": true,
         "short_circuit_not_connected_turn1": false,
+        "channel_hijack_turn1": false,
+        "connector_dead_end_turn2": false,
         "stalled_on_confirm": false,
         "adapted": true
       }
     },
     "8_confidence_aware_propose": {
       "verdict": "PASS",
-      "conversation_id": "f805fa2a-1f06-49e2-9092-a82f72bf083a",
+      "conversation_id": "fb3876b5-d8a5-4407-98f8-10869055cfd6",
       "trace": [
         {
           "http": 200,
           "user": "FYI for later \u2014 Sarah Chen is sarah.chen.moduleb@acme.test. She's the only Sarah on this account.",
           "assistant": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
-          "conversation_id": "f805fa2a-1f06-49e2-9092-a82f72bf083a",
+          "conversation_id": "fb3876b5-d8a5-4407-98f8-10869055cfd6",
           "mode_requested": "fast",
           "tools_seen": [],
           "intel": [
@@ -874,7 +810,7 @@
           "http": 200,
           "user": "Send an email to Sarah via Gmail about the renewal.",
           "assistant": "To send gmail message, I need to know subject, body (also confirm recipient sarah.chen.moduleb@acme.test). Could you share that?",
-          "conversation_id": "f805fa2a-1f06-49e2-9092-a82f72bf083a",
+          "conversation_id": "fb3876b5-d8a5-4407-98f8-10869055cfd6",
           "mode_requested": "agent",
           "tools_seen": [],
           "intel": [
@@ -960,9 +896,9 @@
     }
   },
   "prod_health": {
-    "git_sha": "8f6ca0b49f7e8a7feee4fdb6fdcd453cae6c6207",
+    "git_sha": "c0655c100c1bd73c402c2d9e289cbdd966b964a7",
     "status": "ok",
-    "timestamp": "2026-07-20T02:48:35.206536+00:00"
+    "timestamp": "2026-07-20T03:09:41.602269+00:00"
   },
   "four_verdicts": {
     "1_gmail_multi_turn": "PASS",
@@ -973,5 +909,5 @@
   "four_all_pass": true,
   "confidence_corruption_regression": "PASS",
   "live_cert_ready": true,
-  "finished_at": "2026-07-20T02:51:26.156918+00:00"
+  "finished_at": "2026-07-20T03:12:08.357115+00:00"
 }
