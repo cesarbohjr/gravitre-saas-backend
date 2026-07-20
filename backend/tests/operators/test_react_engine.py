@@ -385,6 +385,69 @@ async def test_run_auth_expired_surfaces_formatted_error(engine: ReActEngine, to
     assert "Authentication expired" in result.answer
 
 
+@pytest.mark.asyncio
+async def test_parallel_independent_reads_share_one_batch(engine: ReActEngine, tool_ctx: ToolContext):
+    """Phase 2 — consecutive read tools in one model turn run via asyncio.gather."""
+    import asyncio
+
+    engine.registry.get_available_tools = AsyncMock(
+        return_value=[
+            {"type": "function", "function": {"name": "hubspot_search_contacts"}},
+            {"type": "function", "function": {"name": "assistant_connector_status"}},
+        ]
+    )
+    started: list[float] = []
+    gate = asyncio.Event()
+
+    async def _slow_exec(*, ctx, tool_name, args):  # noqa: ANN001
+        started.append(asyncio.get_running_loop().time())
+        if len(started) == 1:
+            await gate.wait()
+        else:
+            gate.set()
+        await asyncio.sleep(0.05)
+        return {"success": True, "tool": tool_name, "result": {}}
+
+    engine.registry.execute_tool = AsyncMock(side_effect=_slow_exec)
+
+    def _requires(name, _reg):
+        return (False, "", "", name)
+
+    engine.router._openai.chat.completions.create = AsyncMock(
+        side_effect=[
+            SimpleNamespace(
+                choices=[
+                    _choice(
+                        "",
+                        tool_calls=[
+                            _tool_call("hubspot_search_contacts", '{"query":"a"}', "c1"),
+                            _tool_call("assistant_connector_status", "{}", "c2"),
+                        ],
+                    )
+                ]
+            ),
+            SimpleNamespace(choices=[_choice("Both reads done.")]),
+        ]
+    )
+    with patch(
+        "app.services.react_write_gate.tool_requires_user_write_approval",
+        side_effect=_requires,
+    ):
+        with patch("app.operators.react_engine.moderate_input", new=AsyncMock()):
+            with patch("app.operators.react_engine.write_audit_event"):
+                result = await engine.run(
+                    ctx=tool_ctx,
+                    task="Check HubSpot and connector status",
+                    permitted_tools=["hubspot"],
+                    connected_integrations=["hubspot"],
+                )
+    assert result.status == ReActStatus.COMPLETED
+    assert len(result.tool_calls) == 2
+    assert all(c.get("parallel_batch") for c in result.tool_calls)
+    # Overlap: second tool started before first finished (gate handshake).
+    assert len(started) == 2
+
+
 def test_resolve_permitted_tools_from_agent_systems():
     allowed = resolve_permitted_tools({"systems": ["hubspot", "slack"]})
     assert allowed == ["hubspot", "slack"]

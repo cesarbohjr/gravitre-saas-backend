@@ -59,6 +59,8 @@ HOUSE_PHRASING: dict[str, str] = {
         "Write blocked: this canvas step needs an approved run "
         "(required_approvals>=1). In-graph approval alone is not enough."
     ),
+    # Phase 5 — correction acknowledgment (user said "actually / no I meant").
+    "correction_ack": "Got it — updated to {correction}. Continuing with that.",
 }
 
 GRAVITREE_VOICE_RULES: tuple[str, ...] = (
@@ -474,6 +476,10 @@ def format_operator_message(
 
     if key == "canvas_write_blocked":
         return HOUSE_PHRASING["canvas_write_blocked"]
+
+    if key == "correction_ack":
+        correction = str(ctx.get("correction") or ctx.get("value") or "your correction").strip()
+        return house_phrase("correction_ack", correction=correction)
 
     if key == "blocked":
         blocker = str(ctx.get("blocker") or "This action cannot run.").strip()

@@ -4,7 +4,9 @@ Reason → Act → Observe loop with LLM tool calls routed through ToolRegistry 
 """
 from __future__ import annotations
 
+import asyncio
 import json
+import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -421,135 +423,182 @@ class ReActEngine:
             }
             messages.append(assistant_message)
 
+            # Phase 2 — parallelize consecutive independent *read* tools in one
+            # model turn. Writes stay serial + gated (approval short-circuit).
+            from app.services.react_write_gate import tool_requires_user_write_approval
+            from app.services.tool_error_messages import (
+                REACT_SHORT_CIRCUIT_ERROR_CODES,
+                format_tool_error_for_user,
+                integration_from_tool_name,
+            )
+
+            prepared: list[tuple[Any, str, dict[str, Any], str, bool]] = []
             for tc in tool_calls:
                 tool_name = tc.function.name
                 tool_args = _parse_tool_arguments(tc.function.arguments)
                 call_id = f"call-{uuid.uuid4().hex[:12]}"
-                if routing_control is not None:
-                    from app.services.assistant_routing_tier import escalate_for_write_tool
-                    from app.services.react_write_gate import tool_requires_user_write_approval
+                requires_write, *_ = tool_requires_user_write_approval(tool_name, self.registry)
+                prepared.append((tc, tool_name, tool_args, call_id, bool(requires_write)))
 
-                    requires_write, *_ = tool_requires_user_write_approval(tool_name, self.registry)
-                    if escalate_for_write_tool(routing_control, tool_is_write=bool(requires_write)):
-                        esc = routing_control.escalations[-1]
-                        yield ReActStreamEvent(
-                            kind="routing_escalation",
-                            result=esc,
-                        )
-                if emit_text_deltas:
-                    yield ReActStreamEvent(
-                        kind="tool_start",
-                        tool_name=tool_name,
-                        tool_args=tool_args,
-                        tool_call_id=call_id,
-                    )
-                observation = await self._execute_tool_call(
-                    ctx,
-                    tool_name,
-                    tool_args,
-                    allowed_tool_names=allowed_tool_names,
-                )
-                if emit_text_deltas:
-                    yield ReActStreamEvent(
-                        kind="tool_complete",
-                        tool_name=tool_name,
-                        tool_args=tool_args,
-                        tool_call_id=call_id,
-                        result=observation,
-                    )
-                if routing_control is not None and isinstance(observation, dict):
-                    from app.services.assistant_routing_tier import record_tool_outcome
+            idx = 0
+            short_circuit_result: ReActResult | None = None
+            while idx < len(prepared) and short_circuit_result is None:
+                _, _, _, _, is_write = prepared[idx]
+                if is_write:
+                    batch = [prepared[idx]]
+                    idx += 1
+                    parallel = False
+                else:
+                    batch = []
+                    while idx < len(prepared) and not prepared[idx][4]:
+                        batch.append(prepared[idx])
+                        idx += 1
+                    parallel = len(batch) > 1
 
-                    if record_tool_outcome(
-                        routing_control,
-                        success=bool(observation.get("success")),
-                        error_code=str(observation.get("error_code") or "") or None,
-                    ):
-                        esc = routing_control.escalations[-1]
-                        yield ReActStreamEvent(kind="routing_escalation", result=esc)
-                tool_calls_log.append(
-                    {
-                        "iteration": iteration,
-                        "tool": tool_name,
-                        "args": tool_args,
-                        "result": observation,
-                    }
-                )
-                trace.append(
-                    ReActTraceStep(
-                        iteration=iteration,
-                        thought=content or None,
-                        tool_name=tool_name,
-                        tool_args=tool_args,
-                        observation=_truncate_observation(observation),
-                        tool_success=bool(observation.get("success")),
-                    )
-                )
-                self._audit_iteration(
-                    ctx,
-                    audit_resource_type,
-                    audit_id,
-                    iteration,
-                    tool_name=tool_name,
-                    tool_args=tool_args,
-                    observation=observation if isinstance(observation, dict) else None,
-                    tool_success=bool(observation.get("success")),
-                    status="tool_call",
-                )
-                messages.append(
-                    {
-                        "role": "tool",
-                        "tool_call_id": tc.id,
-                        "content": _truncate_observation(observation),
-                    }
-                )
+                for tc, tool_name, tool_args, call_id, requires_write in batch:
+                    if routing_control is not None:
+                        from app.services.assistant_routing_tier import escalate_for_write_tool
 
-                if (
-                    observation.get("pending_approval")
-                    and str(observation.get("error_code") or "") == "write_approval_required"
-                ):
-                    # Stop immediately — chat layer materializes format_write_approval_message.
-                    # Do not stream a model-authored final answer that would race the approval UX.
-                    result = ReActResult(
-                        status=ReActStatus.NEEDS_HUMAN_INPUT,
-                        answer="",
-                        trace=trace,
-                        iterations=iteration,
-                        tool_calls=tool_calls_log,
-                    )
-                    yield ReActStreamEvent(kind="done", react_result=result)
-                    return
-
-                from app.services.tool_error_messages import (
-                    REACT_SHORT_CIRCUIT_ERROR_CODES,
-                    format_tool_error_for_user,
-                    integration_from_tool_name,
-                )
-
-                error_code = str(observation.get("error_code") or "").strip().lower()
-                if (
-                    observation.get("success") is False
-                    and error_code in REACT_SHORT_CIRCUIT_ERROR_CODES
-                ):
-                    # Wave 3 — surface real error_code; do not let the model invent failure stories.
-                    answer = format_tool_error_for_user(
-                        error_code,
-                        str(observation.get("error") or ""),
-                        integration=integration_from_tool_name(tool_name),
-                        action=str(observation.get("action") or ""),
-                    )
-                    result = ReActResult(
-                        status=ReActStatus.NEEDS_HUMAN_INPUT,
-                        answer=answer,
-                        trace=trace,
-                        iterations=iteration,
-                        tool_calls=tool_calls_log,
-                    )
+                        if escalate_for_write_tool(
+                            routing_control, tool_is_write=bool(requires_write)
+                        ):
+                            esc = routing_control.escalations[-1]
+                            yield ReActStreamEvent(kind="routing_escalation", result=esc)
                     if emit_text_deltas:
-                        for piece in chunk_text_deltas(result.answer):
-                            yield ReActStreamEvent(kind="text_delta", content=piece)
-                    yield ReActStreamEvent(kind="done", react_result=result)
-                    return
+                        yield ReActStreamEvent(
+                            kind="tool_start",
+                            tool_name=tool_name,
+                            tool_args=tool_args,
+                            tool_call_id=call_id,
+                        )
+
+                started = time.perf_counter()
+                if parallel:
+                    observations = list(
+                        await asyncio.gather(
+                            *[
+                                self._execute_tool_call(
+                                    ctx,
+                                    tool_name,
+                                    tool_args,
+                                    allowed_tool_names=allowed_tool_names,
+                                )
+                                for _tc, tool_name, tool_args, _cid, _w in batch
+                            ]
+                        )
+                    )
+                else:
+                    _tc, tool_name, tool_args, _cid, _w = batch[0]
+                    observations = [
+                        await self._execute_tool_call(
+                            ctx,
+                            tool_name,
+                            tool_args,
+                            allowed_tool_names=allowed_tool_names,
+                        )
+                    ]
+                elapsed_ms = int((time.perf_counter() - started) * 1000)
+
+                for (tc, tool_name, tool_args, call_id, _w), observation in zip(
+                    batch, observations, strict=True
+                ):
+                    if emit_text_deltas:
+                        yield ReActStreamEvent(
+                            kind="tool_complete",
+                            tool_name=tool_name,
+                            tool_args=tool_args,
+                            tool_call_id=call_id,
+                            result=observation,
+                        )
+                    if routing_control is not None and isinstance(observation, dict):
+                        from app.services.assistant_routing_tier import record_tool_outcome
+
+                        if record_tool_outcome(
+                            routing_control,
+                            success=bool(observation.get("success")),
+                            error_code=str(observation.get("error_code") or "") or None,
+                        ):
+                            esc = routing_control.escalations[-1]
+                            yield ReActStreamEvent(kind="routing_escalation", result=esc)
+                    tool_calls_log.append(
+                        {
+                            "iteration": iteration,
+                            "tool": tool_name,
+                            "args": tool_args,
+                            "result": observation,
+                            "parallel_batch": parallel,
+                            "batch_elapsed_ms": elapsed_ms if parallel else None,
+                        }
+                    )
+                    trace.append(
+                        ReActTraceStep(
+                            iteration=iteration,
+                            thought=content or None,
+                            tool_name=tool_name,
+                            tool_args=tool_args,
+                            observation=_truncate_observation(observation),
+                            tool_success=bool(observation.get("success")),
+                        )
+                    )
+                    self._audit_iteration(
+                        ctx,
+                        audit_resource_type,
+                        audit_id,
+                        iteration,
+                        tool_name=tool_name,
+                        tool_args=tool_args,
+                        observation=observation if isinstance(observation, dict) else None,
+                        tool_success=bool(observation.get("success")),
+                        status="tool_call",
+                    )
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tc.id,
+                            "content": _truncate_observation(observation),
+                        }
+                    )
+
+                    if (
+                        observation.get("pending_approval")
+                        and str(observation.get("error_code") or "")
+                        == "write_approval_required"
+                    ):
+                        short_circuit_result = ReActResult(
+                            status=ReActStatus.NEEDS_HUMAN_INPUT,
+                            answer="",
+                            trace=trace,
+                            iterations=iteration,
+                            tool_calls=tool_calls_log,
+                        )
+                        break
+
+                    error_code = str(observation.get("error_code") or "").strip().lower()
+                    if (
+                        observation.get("success") is False
+                        and error_code in REACT_SHORT_CIRCUIT_ERROR_CODES
+                    ):
+                        answer = format_tool_error_for_user(
+                            error_code,
+                            str(observation.get("error") or ""),
+                            integration=integration_from_tool_name(tool_name),
+                            action=str(observation.get("action") or ""),
+                        )
+                        short_circuit_result = ReActResult(
+                            status=ReActStatus.NEEDS_HUMAN_INPUT,
+                            answer=answer,
+                            trace=trace,
+                            iterations=iteration,
+                            tool_calls=tool_calls_log,
+                        )
+                        break
+
+            if short_circuit_result is not None:
+                if short_circuit_result.answer and emit_text_deltas:
+                    for piece in chunk_text_deltas(short_circuit_result.answer):
+                        yield ReActStreamEvent(kind="text_delta", content=piece)
+                yield ReActStreamEvent(kind="done", react_result=short_circuit_result)
+                return
 
         result = ReActResult(
             status=ReActStatus.MAX_ITERATIONS_REACHED,
