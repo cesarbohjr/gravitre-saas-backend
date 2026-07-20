@@ -15,8 +15,8 @@ Behavioral range (not tone alone):
 - Humor budget: rare, never on errors/governance; opt-in via allow_humor
 - House phrasing: curated Gravitree-specific lines for recurring moments
 
-Future: format_outcome_digest() — Executive Digest over Module A outcome streams
-(interface reserved; not implemented until the stream exists).
+Executive Digest: format_outcome_digest() shapes Module A outcome batches
+(intelligence_outcome_events / outcome_event_bus payloads) in this voice.
 """
 from __future__ import annotations
 
@@ -177,10 +177,10 @@ _HUMOR_FORBIDDEN_KINDS = frozenset(
 
 @dataclass(frozen=True)
 class OutcomeDigestItem:
-    """One terminal outcome for a future Executive Digest batch.
+    """One terminal outcome for an Executive Digest batch.
 
-    Designed for Module A's real-time outcome stream. Do not invent fields —
-    map from finalize_execution_outcome / intelligence_outcome_events.
+    Map from finalize_execution_outcome / intelligence_outcome_events /
+    outcome_event_bus payloads — do not invent fields.
     """
 
     status: str
@@ -189,6 +189,58 @@ class OutcomeDigestItem:
     verified: bool = False
     run_id: str | None = None
     measured_at: str | None = None
+
+
+def coerce_outcome_digest_item(raw: OutcomeDigestItem | dict[str, Any]) -> OutcomeDigestItem:
+    """Normalize a stream/DB row or dict into OutcomeDigestItem."""
+    if isinstance(raw, OutcomeDigestItem):
+        return raw
+    if not isinstance(raw, dict):
+        raise TypeError(f"OutcomeDigestItem requires dict or dataclass, got {type(raw)!r}")
+    meta = raw.get("metadata") if isinstance(raw.get("metadata"), dict) else {}
+    status = str(
+        raw.get("status")
+        or raw.get("terminal_status")
+        or meta.get("terminal_status")
+        or raw.get("outcome_event")
+        or ""
+    ).strip().lower()
+    if status in {"workflow_failed", "run_failed"}:
+        status = "failed"
+    elif status in {"workflow_cancelled", "run_cancelled"}:
+        status = "cancelled"
+    elif status in {"workflow_executed", "workflow_completed", "run_completed"}:
+        status = "completed"
+    elif status == "partial_success":
+        status = "partial_success"
+    summary = str(
+        raw.get("summary")
+        or raw.get("error_summary")
+        or meta.get("error")
+        or meta.get("verified_summary")
+        or raw.get("outcome_event")
+        or status
+        or "outcome"
+    ).strip()
+    source = raw.get("source") or meta.get("source")
+    verified_output = raw.get("verified_output")
+    if isinstance(verified_output, dict) and verified_output.get("summary") and not raw.get("summary"):
+        summary = str(verified_output.get("summary") or summary)
+    verified = bool(
+        raw.get("verified")
+        or (isinstance(verified_output, dict) and verified_output.get("summary"))
+        or meta.get("verified_summary")
+    )
+    run_id = raw.get("run_id") or raw.get("workflow_run_id") or meta.get("run_id")
+    measured_at = raw.get("measured_at") or raw.get("timestamp") or raw.get("created_at")
+    return OutcomeDigestItem(
+        status=status or "unknown",
+        summary=summary[:400],
+        source=str(source).strip() if source else None,
+        verified=verified,
+        run_id=str(run_id).strip() if run_id else None,
+        measured_at=str(measured_at).strip() if measured_at else None,
+    )
 
 
 def chev_term(status: str | None) -> str:
@@ -462,21 +514,69 @@ def format_operator_message(
 def format_outcome_digest(
     items: Sequence[OutcomeDigestItem | dict[str, Any]],
     *,
-    title: str = "Weekly Business Digest",
+    title: str = "Executive Digest",
     period_label: str | None = None,
+    allow_humor: bool = False,
 ) -> str:
-    """Turn a batch of Module A outcomes into a human-readable digest.
+    """Turn a batch of Module A outcomes into one human-readable digest.
 
-    Named follow-up — do not implement the product digest here. Requires
-    Module A's real-time outcome stream. Signature is stable so Executive Digest
-    can call this without rewriting gravitree_voice later.
+    Fact-first Gravitree voice. Failures use the blocked register (blocker + next
+    action). Clean windows may use the light success flourish when ``allow_humor``.
     """
-    _ = (items, title, period_label)
-    raise NotImplementedError(
-        "format_outcome_digest is reserved for the Executive Digest follow-up; "
-        "it depends on Module A's real-time outcome stream. "
-        "Use format_operator_message for single-event copy until then."
+    normalized = [coerce_outcome_digest_item(item) for item in (items or [])]
+    header = [str(title or "Executive Digest").strip() or "Executive Digest"]
+    if period_label:
+        header.append(str(period_label).strip())
+
+    if not normalized:
+        return "\n".join(header + ["", "No terminal outcomes in this window."])
+
+    completed = [i for i in normalized if i.status in {"completed", "partial_success"}]
+    failed = [i for i in normalized if i.status == "failed"]
+    cancelled = [i for i in normalized if i.status == "cancelled"]
+    other = [
+        i
+        for i in normalized
+        if i.status not in {"completed", "partial_success", "failed", "cancelled"}
+    ]
+
+    lines = list(header)
+    lines.append("")
+    lines.append(
+        f"{len(completed)} completed · {len(failed)} failed · {len(cancelled)} cancelled"
+        + (f" · {len(other)} other" if other else "")
+        + "."
     )
+
+    if failed:
+        lines.append("")
+        lines.append("Failures (blocked — fix these next):")
+        for item in failed[:8]:
+            src = f" [{item.source}]" if item.source else ""
+            run = f" · run {item.run_id[:8]}" if item.run_id else ""
+            lines.append(f"- {item.summary}{src}{run}")
+        lines.append("Next: open the failed run, fix the blocker, then retry.")
+
+    if completed:
+        lines.append("")
+        lines.append("Completed:")
+        for item in completed[:6]:
+            label = "Verified" if item.verified else "Done"
+            src = f" [{item.source}]" if item.source else ""
+            lines.append(f"- {label}: {item.summary}{src}")
+
+    if cancelled and not failed:
+        lines.append("")
+        lines.append(f"{len(cancelled)} run(s) cancelled — no retry needed unless you re-queue them.")
+
+    if failed == [] and completed and humor_permitted(kind="success_win", allow_humor=allow_humor):
+        lines.append("")
+        lines.append(HOUSE_PHRASING["success_win_light"])
+    elif failed == [] and completed:
+        lines.append("")
+        lines.append(HOUSE_PHRASING["success_win"])
+
+    return "\n".join(lines).strip() + "\n"
 
 
 def _format_write_approval(**ctx: Any) -> str:

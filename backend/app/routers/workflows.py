@@ -1230,6 +1230,22 @@ async def execution_outcomes_ops_summary(
     return summarize_outcomes_last_24h(client, org_id=org_id)
 
 
+@router.get("/execution-outcomes/executive-digest")
+async def execution_outcomes_executive_digest(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    allow_humor: bool = Query(default=False, alias="allowHumor"),
+) -> dict:
+    """Module D Executive Digest over Module A's last-24h outcome stream."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    from app.services.outcome_ops_summary import executive_digest_last_24h
+
+    client = get_supabase_client(settings)
+    return executive_digest_last_24h(client, org_id=org_id, allow_humor=allow_humor)
+
+
 @router.get("/failure-predictions")
 async def list_workflow_failure_predictions(
     _user: Annotated[dict, Depends(get_current_user)],
@@ -1808,6 +1824,7 @@ async def execute_workflow(
             required_approvals=required_approvals,
         )
         try:
+            from app.services.gravitree_voice import format_operator_message
             from app.services.notification_emitter import emit_notification
 
             emit_notification(
@@ -1815,8 +1832,17 @@ async def execute_workflow(
                 org_id=org_id,
                 user_id=current_user["user_id"],
                 event_type="approval_needed",
-                title="Workflow awaiting approval",
-                body=f"{str(wf_name or workflow_id)} is queued in the Decision Queue.",
+                title=format_operator_message(
+                    "approval_needed_requester_title",
+                    confidence_register="certain",
+                    allow_humor=False,
+                ),
+                body=format_operator_message(
+                    "approval_needed_requester",
+                    label=str(wf_name or workflow_id),
+                    confidence_register="certain",
+                    allow_humor=False,
+                ),
                 entity_ref={
                     "entity_type": "workflow_run",
                     "entity_id": run_id,

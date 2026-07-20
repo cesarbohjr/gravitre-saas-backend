@@ -94,6 +94,8 @@ def test_run_allows_write_only_when_required_approvals_and_approved():
 
 
 def test_block_canvas_write_step_for_unapproved_run():
+    from app.services.canvas_write_gate import user_facing_message_from_write_authority_error
+
     blocked = block_canvas_write_step(
         step_type="invoke_tool",
         config={"action": "apollo.lists.create"},
@@ -104,6 +106,12 @@ def test_block_canvas_write_step_for_unapproved_run():
     # Module D — user-facing copy from gravitree_voice, not a hand-written canvas string.
     assert "Write blocked" in str(blocked.get("error") or "")
     assert "required_approvals" in str(blocked.get("error") or "")
+    voice = str(blocked.get("error") or "")
+    extracted = user_facing_message_from_write_authority_error(
+        PermissionError(f"{CANVAS_WRITE_AUTHORITY_BLOCKED}: {voice}")
+    )
+    assert extracted == voice
+    assert user_facing_message_from_write_authority_error(RuntimeError("other")) is None
 
 
 def test_invoke_tool_handler_blocks_write_without_approval(monkeypatch):

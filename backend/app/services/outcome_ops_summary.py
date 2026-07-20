@@ -11,23 +11,33 @@ def _bucket_key(value: str | None, *, fallback: str = "unknown") -> str:
     return text or fallback
 
 
-def summarize_outcomes_last_24h(client: Any, *, org_id: str) -> dict[str, Any]:
-    """Aggregate intelligence_outcome_events for pass/fail by source and connector."""
-    since = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+def _load_outcome_event_rows(
+    client: Any,
+    *,
+    org_id: str,
+    since: str,
+    limit: int = 500,
+) -> list[dict[str, Any]]:
     try:
-        rows = (
+        return (
             client.table("intelligence_outcome_events")
-            .select("id,outcome_event,metadata,created_at,workflow_run_id")
+            .select("id,outcome_event,metadata,created_at,workflow_run_id,workflow_id")
             .eq("org_id", org_id)
             .gte("created_at", since)
             .order("created_at", desc=True)
-            .limit(500)
+            .limit(limit)
             .execute()
             .data
             or []
         )
     except Exception:  # noqa: BLE001
-        rows = []
+        return []
+
+
+def summarize_outcomes_last_24h(client: Any, *, org_id: str) -> dict[str, Any]:
+    """Aggregate intelligence_outcome_events for pass/fail by source and connector."""
+    since = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    rows = _load_outcome_event_rows(client, org_id=org_id, since=since, limit=500)
 
     by_source: dict[str, dict[str, int]] = defaultdict(lambda: {"pass": 0, "fail": 0, "cancel": 0})
     by_connector: dict[str, dict[str, int]] = defaultdict(lambda: {"pass": 0, "fail": 0, "cancel": 0})
@@ -96,4 +106,31 @@ def summarize_outcomes_last_24h(client: Any, *, org_id: str) -> dict[str, Any]:
             )
         ],
         "event_count": len(rows),
+    }
+
+
+def executive_digest_last_24h(
+    client: Any,
+    *,
+    org_id: str,
+    allow_humor: bool = False,
+    limit: int = 80,
+) -> dict[str, Any]:
+    """Build a Module D Executive Digest from real Module A outcome rows."""
+    from app.services.gravitree_voice import format_outcome_digest
+
+    since = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    rows = _load_outcome_event_rows(client, org_id=org_id, since=since, limit=limit)
+    digest = format_outcome_digest(
+        rows,
+        title="Executive Digest",
+        period_label="Last 24 hours",
+        allow_humor=allow_humor,
+    )
+    return {
+        "window_hours": 24,
+        "since": since,
+        "event_count": len(rows),
+        "digest": digest,
+        "allow_humor": bool(allow_humor),
     }

@@ -139,6 +139,36 @@ def test_insufficient_info_house_phrase():
     assert format_operator_message("insufficient_info") == HOUSE_PHRASING["insufficient_info"]
 
 
-def test_format_outcome_digest_reserved():
-    with pytest.raises(NotImplementedError, match="Executive Digest"):
-        format_outcome_digest([{"status": "failed", "summary": "x"}])
+def test_format_outcome_digest_shapes_real_outcomes():
+    text = format_outcome_digest(
+        [
+            {
+                "status": "failed",
+                "summary": "Write blocked: this canvas step needs an approved run.",
+                "source": "api",
+                "run_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+            },
+            {
+                "status": "completed",
+                "summary": "List created in Apollo",
+                "source": "api",
+                "verified": True,
+            },
+        ],
+        title="Executive Digest",
+        period_label="Last 24 hours",
+        allow_humor=False,
+    )
+    assert "Executive Digest" in text
+    assert "1 completed · 1 failed" in text
+    assert "Write blocked" in text
+    assert "Verified: List created" in text
+    assert "Done — clean run" not in text  # humor off when failures present
+
+
+def test_format_outcome_digest_clean_window_may_use_light_touch():
+    text = format_outcome_digest(
+        [{"status": "completed", "summary": "Sync finished", "verified": True}],
+        allow_humor=True,
+    )
+    assert "Done — clean run" in text

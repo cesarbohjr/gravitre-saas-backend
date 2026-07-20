@@ -123,6 +123,21 @@ def block_canvas_write_step(
     }
 
 
+def user_facing_message_from_write_authority_error(exc: BaseException) -> str | None:
+    """Return Module D voice copy when ``exc`` is a canvas write-authority block.
+
+    Handlers raise ``PermissionError(f\"{CANVAS_WRITE_AUTHORITY_BLOCKED}: {voice}\")``.
+    Execute paths must surface the voice suffix — not a generic \"Step execution failed\".
+    """
+    text = str(exc or "").strip()
+    if not text or CANVAS_WRITE_AUTHORITY_BLOCKED not in text:
+        return None
+    if ": " in text:
+        voice = text.split(": ", 1)[1].strip()
+        return voice[:500] if voice else None
+    return text[:500]
+
+
 def load_run_for_write_gate(client: Any, org_id: str, run_id: str | None) -> dict[str, Any] | None:
     if not client or not run_id:
         return None
