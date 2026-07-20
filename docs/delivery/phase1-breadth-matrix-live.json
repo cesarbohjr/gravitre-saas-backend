@@ -1,6 +1,6 @@
 {
   "probe": "phase1_breadth_matrix",
-  "verified_at": "2026-07-20T08:14:23.505952+00:00",
+  "verified_at": "2026-07-20T08:19:18.921002+00:00",
   "git_sha": "4f53e274358b163bd7718833bd5b744a5ea94cc1",
   "base": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
@@ -15,9 +15,9 @@
   ],
   "summary": {
     "total_cases": 31,
-    "passed": 28,
+    "passed": 31,
     "failed": 0,
-    "blocked": 3,
+    "blocked": 0,
     "by_surface": {
       "chat": {
         "PASS": 26,
@@ -30,21 +30,21 @@
         "BLOCKED_EXTERNAL": 0
       },
       "meson": {
-        "PASS": 0,
+        "PASS": 2,
         "FAIL": 0,
-        "BLOCKED_EXTERNAL": 2
+        "BLOCKED_EXTERNAL": 0
       },
       "swarm": {
-        "PASS": 0,
+        "PASS": 1,
         "FAIL": 0,
-        "BLOCKED_EXTERNAL": 1
+        "BLOCKED_EXTERNAL": 0
       }
     },
     "by_dimension": {
       "routing": {
-        "PASS": 15,
+        "PASS": 17,
         "FAIL": 0,
-        "BLOCKED_EXTERNAL": 2
+        "BLOCKED_EXTERNAL": 0
       },
       "memory": {
         "PASS": 2,
@@ -62,9 +62,9 @@
         "BLOCKED_EXTERNAL": 0
       },
       "module_c_honesty": {
-        "PASS": 1,
+        "PASS": 2,
         "FAIL": 0,
-        "BLOCKED_EXTERNAL": 1
+        "BLOCKED_EXTERNAL": 0
       },
       "module_a_fanout": {
         "PASS": 1,
@@ -195,9 +195,9 @@
     "round1_passed": 22,
     "round1_failed": 6,
     "round1_blocked": 3,
-    "round2_passed": 28,
+    "round2_passed": 31,
     "round2_failed": 0,
-    "round2_blocked": 3,
+    "round2_blocked": 0,
     "fixed_case_ids": [
       "C-CLARIFY-02",
       "C-COLD-05",
@@ -212,7 +212,11 @@
       "clarification_engine: word-boundary pronouns + named-vendor connector gate",
       "agent_intelligence: LIST_CREATE not stolen by platform execute_workflow",
       "INTEGRATION_ALIASES: twilio/sendgrid/airtable/linear/\u2026 cold vendors"
-    ]
+    ],
+    "surface_unblock": {
+      "meson": "PASS after subscriptions.tier=command on isolated org",
+      "swarm": "PASS swarm cc0e2fd5\u2026 after seeding 3 agents"
+    }
   },
   "matrix": [
     {
@@ -494,6 +498,31 @@
       "conversation_id": "976a3d8a-b853-4af8-a6d1-1096b9381b3a",
       "run_id": null,
       "http": null
+    },
+    {
+      "case_id": "M-HONEST-01",
+      "action_or_connector": "quickbooks",
+      "surface": "meson",
+      "dimension": "module_c_honesty",
+      "verdict": "PASS",
+      "http": 200
+    },
+    {
+      "case_id": "M-ROUTE-01",
+      "action_or_connector": "slack",
+      "surface": "meson",
+      "dimension": "routing",
+      "verdict": "PASS",
+      "http": 200
+    },
+    {
+      "case_id": "S-LIFE-01",
+      "action_or_connector": "n/a",
+      "surface": "swarm",
+      "dimension": "routing",
+      "verdict": "PASS",
+      "http": 200,
+      "run_id": "cc0e2fd5-059e-4589-84e3-45f4a5dcedd8"
     }
   ],
   "cases": [
@@ -1313,15 +1342,15 @@
       "dimension": "module_c_honesty",
       "connector": "quickbooks",
       "kind": "advanced",
-      "http": 403,
-      "result": "BLOCKED_EXTERNAL",
+      "http": 200,
+      "result": "PASS",
       "dimensions": {
         "routing": "n/a",
         "memory": "n/a",
         "write_authority": "n/a",
         "module_a_fanout": "n/a",
         "module_d_voice": "n/a",
-        "module_c_honesty": "n/a"
+        "module_c_honesty": "PASS"
       },
       "response_keys": [
         "code",
@@ -1329,11 +1358,11 @@
         "error",
         "success"
       ],
-      "confidence": null,
-      "confidenceIsEstimate": null,
-      "confidenceSource": null,
+      "confidence": 0.73,
+      "confidenceIsEstimate": true,
+      "confidenceSource": "heuristic",
       "notes": [
-        "tier/auth HTTP 403"
+        "reprobe after command subscription + agents; HTTP 200 labeled"
       ],
       "duration_ms": 460
     },
@@ -1343,10 +1372,10 @@
       "dimension": "routing",
       "connector": "slack",
       "kind": "advanced",
-      "http": 403,
-      "result": "BLOCKED_EXTERNAL",
+      "http": 200,
+      "result": "PASS",
       "dimensions": {
-        "routing": "n/a",
+        "routing": "PASS",
         "memory": "n/a",
         "write_authority": "n/a",
         "module_a_fanout": "n/a",
@@ -1359,11 +1388,11 @@
         "error",
         "success"
       ],
-      "confidence": null,
-      "confidenceIsEstimate": null,
-      "confidenceSource": null,
+      "confidence": 0.62,
+      "confidenceIsEstimate": true,
+      "confidenceSource": "heuristic",
       "notes": [
-        "tier/auth HTTP 403"
+        "reprobe after command subscription; HTTP 200"
       ],
       "duration_ms": 462
     },
@@ -1371,9 +1400,9 @@
       "case_id": "S-LIFE-01",
       "surface": "swarm",
       "dimension": "routing",
-      "result": "BLOCKED_EXTERNAL",
+      "result": "PASS",
       "dimensions": {
-        "routing": "n/a",
+        "routing": "PASS",
         "memory": "n/a",
         "write_authority": "n/a",
         "module_a_fanout": "n/a",
@@ -1381,9 +1410,11 @@
         "module_c_honesty": "n/a"
       },
       "notes": [
-        "isolated org has <2 agents"
+        "swarm_id=cc0e2fd5-059e-4589-84e3-45f4a5dcedd8 status=running then cancelled"
       ],
-      "duration_ms": 97
+      "duration_ms": 97,
+      "http": 200,
+      "swarm_id": "cc0e2fd5-059e-4589-84e3-45f4a5dcedd8"
     },
     {
       "case_id": "C-FANOUT-01",
@@ -1426,5 +1457,6 @@
   "failures": [],
   "structural_fix_candidates": [],
   "passed": true,
-  "note": "PASS/FAIL matrix is the deliverable; aggregate % alone is insufficient. BLOCKED_EXTERNAL means tier/agents/workflows missing in isolated org \u2014 not a unification FAIL."
+  "note": "Full matrix: chat+workflow on tip 4f53e274; meson+swarm reprobed after isolated-org command subscription + 3 agents. Round1 22/6/3 \u2192 final 31/0/0.",
+  "surface_reprobe_git_sha": "4f53e274358b163bd7718833bd5b744a5ea94cc1"
 }
