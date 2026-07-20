@@ -125,6 +125,17 @@ def test_ingest_title_is_unquoted():
     assert "checkout" in (ledger.get("title") or "").lower()
 
 
+def test_email_local_part_subject_does_not_steal_subject_slot():
+    """subject.pollution@acme.test must not match \\bsubject free-text extract."""
+    ledger = ingest_message_slots(
+        "recipient subject.pollution@acme.test, subject Integration proof, "
+        "body Hello from subject-pollution repro."
+    )
+    assert ledger.get("to") == "subject.pollution@acme.test"
+    assert ledger.get("subject") == "Integration proof"
+    assert "hello" in (ledger.get("body") or "").lower()
+
+
 def test_filler_turn_does_not_pollute_subject():
     """Phase 0.1 — side questions must not fill free-text subject via resume."""
     plan = ConnectorActionPlan(

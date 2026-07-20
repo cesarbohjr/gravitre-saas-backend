@@ -298,7 +298,10 @@ def ingest_message_slots(
             turn_index=turn_index,
         )
 
-    quoted = QUOTED_RE.findall(text)
+    # Mask emails so local-parts like subject.pollution@x never match \bsubject.
+    text_for_freeform = EMAIL_RE.sub(" ", text)
+
+    quoted = QUOTED_RE.findall(text_for_freeform)
     if quoted:
         # Keep latest quote as a generic binding target until schema bind.
         result.upsert(
@@ -309,7 +312,7 @@ def ingest_message_slots(
         )
         if len(quoted) >= 1 and not result.get("summary"):
             # Common: first quote is title/subject for create/send intents.
-            if re.search(r"\b(issue|ticket|task|subject|titled|called|named)\b", text, re.I):
+            if re.search(r"\b(issue|ticket|task|subject|titled|called|named)\b", text_for_freeform, re.I):
                 result.upsert(
                     "summary",
                     quoted[0].strip(),
@@ -322,7 +325,7 @@ def ingest_message_slots(
                     source="user_message",
                     turn_index=turn_index,
                 )
-            if re.search(r"\bsubject\b", text, re.I):
+            if re.search(r"\bsubject\b", text_for_freeform, re.I):
                 result.upsert(
                     "subject",
                     quoted[0].strip(),
@@ -331,9 +334,11 @@ def ingest_message_slots(
                 )
 
     # "subject X, body Y" / "subject is X body is Y" unquoted forms.
+    # Require a word-boundary subject cue that is not an email local-part
+    # (emails already masked above). Prefer explicit is/=/: when present.
     subj_body = re.search(
         r"\bsubject\s*(?:is|=|:)?\s*(.+?)\s*[,—-]?\s*body\s*(?:is|=|:)?\s*(.+)$",
-        text,
+        text_for_freeform,
         re.I,
     )
     if subj_body:
@@ -350,7 +355,7 @@ def ingest_message_slots(
             turn_index=turn_index,
         )
     else:
-        subj_only = re.search(r"\bsubject\s*(?:is|=|:)\s*(.+)$", text, re.I)
+        subj_only = re.search(r"\bsubject\s*(?:is|=|:)\s*(.+)$", text_for_freeform, re.I)
         if subj_only and not result.get("subject"):
             result.upsert(
                 "subject",

@@ -1,0 +1,69 @@
+{
+  "probe": "module_b_subject_pollution",
+  "verified_at": "2026-07-20T07:10:35.546617+00:00",
+  "git_sha": "7ee5d704cc4a59f93386c5392a1f8b346e877a7c",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "conversation_id": "b8de8db0-56aa-4007-bf0c-0eaa6409fbff",
+  "after_filler_subject": null,
+  "after_explicit_subject": "pollution@acme.test, subject Integration proof",
+  "filler_polluted": false,
+  "explicit_subject_ok": false,
+  "turns": [
+    {
+      "user": "Send an email via Gmail \u2014 I haven't given you the recipient yet.",
+      "assistant": "To send gmail message, I need to know recipient, subject, body. Could you share that?",
+      "ledger": {
+        "slots": {},
+        "pending_missing": [
+          "recipient",
+          "subject",
+          "body"
+        ]
+      }
+    },
+    {
+      "user": "Quick side note: what connectors are Connected in this org right now?",
+      "assistant": "Connect Gmail at /connectors to run this action.",
+      "ledger": {
+        "slots": {},
+        "pending_missing": [
+          "recipient",
+          "subject",
+          "body"
+        ]
+      }
+    },
+    {
+      "user": "Back to the Gmail send: recipient subject.pollution@acme.test, subject Integration proof, body Hello from subject-pollution repro.",
+      "assistant": "Connect Gmail at /connectors to run this action.",
+      "ledger": {
+        "slots": {
+          "to": {
+            "value": "subject.pollution@acme.test",
+            "source": "schema_param_extractor",
+            "confidence": "high"
+          },
+          "body": {
+            "value": "Hello from subject-pollution repro",
+            "source": "schema_param_extractor",
+            "confidence": "high"
+          },
+          "email": {
+            "value": "subject.pollution@acme.test",
+            "source": "user_message",
+            "confidence": "high"
+          },
+          "subject": {
+            "value": "pollution@acme.test, subject Integration proof",
+            "source": "schema_param_extractor",
+            "confidence": "high"
+          }
+        },
+        "pending_missing": []
+      }
+    }
+  ],
+  "passed": false,
+  "verdict": "FAIL \u2014 subject still polluted or not repaired"
+}

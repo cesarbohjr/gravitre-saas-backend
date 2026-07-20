@@ -72,7 +72,9 @@ def extract_action_args_heuristic(
     if not field_keys:
         return args
 
-    quoted = QUOTED_RE.findall(text)
+    # Mask emails so local-parts like subject.pollution@x never match \bsubject.
+    text_for_slots = EMAIL_RE.sub(" ", text)
+    quoted = QUOTED_RE.findall(text_for_slots)
     email = EMAIL_RE.search(text)
     project = PROJECT_KEY_RE.search(text)
 
@@ -159,7 +161,7 @@ def extract_action_args_heuristic(
                 # "subject is X" / "ticket about X" / "ticket for X"
                 subj = re.search(
                     r"\bsubject\s*(?:is|=|:)\s*(.+?)(?:\s+priority\b|\s+body\b|$)",
-                    text,
+                    text_for_slots,
                     re.I,
                 )
                 if not subj:

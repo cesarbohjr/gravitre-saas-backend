@@ -258,12 +258,13 @@ async def main() -> int:
     )
     last = turns[-1] if turns else {}
     assistant = last.get("assistant") or ""
-    successish = fanout.get("fanout_complete") or (
-        "done" in assistant.lower() and "list" in assistant.lower()
+    # Real vendor body + Module A learning (+ run when create_run succeeded).
+    real_vendor = "Created contact list" in assistant or "app.apollo.io/#/lists/" in assistant
+    successish = bool(
+        real_vendor
+        and fanout.get("learning_record_id")
+        and (fanout.get("run_id") or fanout.get("notification_id") or fanout.get("audit_event_ids"))
     )
-    # Also accept tool.invoke path without workflow_run if learning recorded
-    if not fanout.get("fanout_complete") and fanout.get("learning_record_id"):
-        successish = True
 
     report = {
         "probe": "phase0_real_vendor_success",

@@ -133,18 +133,35 @@ def main() -> int:
     term = f"Phase0Resolve-{uuid.uuid4().hex[:8]}"
     gloss = (
         client.table("org_glossary_terms")
-        .insert(
+        .upsert(
             {
                 "org_id": org_id,
                 "term": term,
-                "definition": f"{term} is an organic Module C resolve fixture.",
-                "created_at": now,
-                "updated_at": now,
-            }
+                "term_type": "named_entity",
+                "frequency": 2,
+                "example_context": f"{term} is an organic Module C resolve fixture.",
+                "associated_department": "sales",
+                "source": "query",
+                "status": "confirmed",
+                "last_extracted_at": now,
+            },
+            on_conflict="org_id,term",
         )
         .execute()
     )
     gloss_id = str((gloss.data or [{}])[0].get("id") or "")
+    if not gloss_id:
+        fetched = (
+            client.table("org_glossary_terms")
+            .select("id")
+            .eq("org_id", org_id)
+            .eq("term", term)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        gloss_id = str(fetched[0]["id"]) if fetched else ""
     dept = (
         client.table("departments")
         .select("id")
