@@ -1,12 +1,12 @@
 {
-  "pulled_at": "2026-07-20T03:28:08.914452+00:00",
-  "git_sha": "2ed2c59d6a37adeb6f58281dd7346ff5c23274e7",
+  "pulled_at": "2026-07-20T03:36:34.732157+00:00",
+  "git_sha": "7a22ee674804a6e9421b8b82a23cac66a458c9c8",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "seeded_glossary_id": "f91a402c-7e7e-4030-b7f5-4a4564682286",
   "seeded_edge_confidence": 0.72,
   "6_entity_relationships": {
     "snapshot_http": 200,
-    "entity_scoped_http": 500,
+    "entity_scoped_http": 200,
     "total": 1,
     "relationship0": {
       "confidence": 0.72,
@@ -30,12 +30,7 @@
       "target_entity_id",
       "target_entity_type"
     ],
-    "entity_scoped_error": {
-      "success": false,
-      "error": "An unexpected error occurred. Our team has been notified.",
-      "code": "INTERNAL_ERROR",
-      "details": {}
-    }
+    "entity_scoped_error": null
   },
   "7_contextual_entities": {
     "http": 200,
