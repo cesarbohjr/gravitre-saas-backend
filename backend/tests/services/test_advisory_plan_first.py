@@ -43,3 +43,24 @@ def test_advisory_skips_connector_preflight():
         )
         is False
     )
+
+
+def test_advisory_skips_catalog_write_clarification():
+    """Plan-first must not hijack into Slack channel / Gmail staging."""
+    from app.services.clarification_engine import ClarificationEngine
+
+    engine = ClarificationEngine()
+    trigger = engine._rule_based_trigger(
+        {
+            "request": ADVISORY_APOLLO,
+            "requires_action": True,
+            "risk_level": "low",
+            "classification_confidence": 0.9,
+        },
+        {"connected_integrations": []},
+        {"connector_dependencies": ["slack", "apollo"]},
+        {},
+        0.9,
+        task_state={"parameter_ledger": {"slots": {}, "pending_missing": []}},
+    )
+    assert trigger is None

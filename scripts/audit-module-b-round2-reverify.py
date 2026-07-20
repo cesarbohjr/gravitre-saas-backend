@@ -524,44 +524,70 @@ async def main() -> int:
         t4b = await chat_turn(
             ac,
             hdr,
-            text="actually skip the enrichment step and just create the list",
+            text=(
+                "actually revise the plan — skip the enrichment step and put "
+                "Slack notify first, then create the Apollo list last"
+            ),
             conversation_id=cid4,
             org_id=org_id,
             mode="agent",
         )
-        short_circuit_t1 = "not connected" in (t4a.get("assistant") or "").lower()
-        current_plan_t1 = isinstance(t4a.get("current_plan"), dict) and bool(t4a.get("current_plan"))
-        # Also accept plan text if SSE persisted steps without task_state write yet.
-        plan_text_t1 = any(
-            tok in (t4a.get("assistant") or "").lower()
-            for tok in ("step 1", "step 2", "steps:", "goal:", "plan confidence")
+        asst1 = (t4a.get("assistant") or "").lower()
+        asst2 = (t4b.get("assistant") or "").lower()
+        short_circuit_t1 = "not connected" in asst1
+        channel_hijack_t1 = (
+            "channel" in asst1
+            and ("need to know" in asst1 or "could you share" in asst1)
+            and "step" not in asst1
         )
-        had_plan = current_plan_t1 or (plan_text_t1 and not short_circuit_t1)
+        current_plan_t1 = isinstance(t4a.get("current_plan"), dict) and bool(
+            (t4a.get("current_plan") or {}).get("steps")
+            or (t4a.get("current_plan") or {}).get("goal")
+        )
+        # User-facing plan signal (not just silent task_state).
+        plan_text_t1 = any(
+            tok in asst1
+            for tok in ("step 1", "step 2", "steps:", "goal:", "plan confidence", "here's a plan", "here is a plan")
+        ) or (
+            current_plan_t1
+            and any(tok in asst1 for tok in ("plan", "step", "apollo", "enrich", "outbound"))
+            and not channel_hijack_t1
+            and not short_circuit_t1
+        )
+        had_plan = current_plan_t1 and plan_text_t1 and not short_circuit_t1 and not channel_hijack_t1
         stalled = any(
-            tok in (t4b.get("assistant") or "").lower()
+            tok in asst2
             for tok in ("reply yes", "reply **yes**", "please confirm", "say yes", "type yes")
-        ) and "skip" not in (t4b.get("assistant") or "").lower()
-        adapted = not stalled and not short_circuit_t1 and (
-            "list" in (t4b.get("assistant") or "").lower()
-            or "enrich" in (t4b.get("assistant") or "").lower()
-            or "skip" in (t4b.get("assistant") or "").lower()
-            or _pending_awaiting_confirm(t4b)
-            or (t4b.get("current_plan") is None and current_plan_t1)
-            or "create" in (t4b.get("assistant") or "").lower()
-            or "apollo" in (t4b.get("assistant") or "").lower()
+        ) and "skip" not in asst2
+        connector_dead_end_t2 = any(
+            tok in asst2
+            for tok in (
+                "not connected",
+                "no slack connector",
+                "connect it at /connectors",
+                "add and connect slack",
+            )
+        )
+        adapted = (
+            not stalled
+            and not short_circuit_t1
+            and not channel_hijack_t1
+            and not connector_dead_end_t2
+            and (
+                ("skip" in asst2 and ("enrich" in asst2 or "step" in asst2))
+                or ("slack" in asst2 and ("first" in asst2 or "before" in asst2 or "order" in asst2))
+                or ("list" in asst2 and ("last" in asst2 or "skip" in asst2 or "revised" in asst2 or "updated" in asst2))
+                or ("apollo" in asst2 and ("skip" in asst2 or "revise" in asst2 or "updated" in asst2 or "plan" in asst2))
+                or ("plan" in asst2 and ("skip" in asst2 or "revise" in asst2 or "updated" in asst2))
+            )
         )
         if stalled and isinstance(t4b.get("current_plan"), dict):
-            adapted = False
-        # Hard fail: connector short-circuit on advisory plan-first
-        if short_circuit_t1:
-            had_plan = False
             adapted = False
         test4_pass = bool(
             t4a.get("http") == 200
             and t4b.get("http") == 200
             and had_plan
             and adapted
-            and not short_circuit_t1
         )
         report["tests"]["4_off_script_recovery"] = {
             "verdict": "PASS" if test4_pass else "FAIL",
@@ -577,6 +603,8 @@ async def main() -> int:
                 "current_plan_turn1": current_plan_t1,
                 "plan_text_turn1": plan_text_t1,
                 "short_circuit_not_connected_turn1": short_circuit_t1,
+                "channel_hijack_turn1": channel_hijack_t1,
+                "connector_dead_end_turn2": connector_dead_end_t2,
                 "stalled_on_confirm": stalled,
                 "adapted": adapted,
             },

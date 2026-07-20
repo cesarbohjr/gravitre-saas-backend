@@ -140,3 +140,18 @@ From `scripts/audit-module-b-live-cert.py` @ tip `d9ed9f4e` — artifact [`modul
 | 4 Off-script recovery | **PASS** | conversation `0e414f65-a094-4828-9405-a3581620ecc3` — modify path adapted |
 
 `universal_memory_verdict`: **UNIVERSAL** (dual-path deleted, schema-primary extract, resume patch persisted).
+
+### Round-2 re-verify (corruption + advisory fix) — tip `8f6ca0b4`
+
+From `scripts/audit-module-b-round2-reverify.py` — artifact [`module-b-round2-reverify.json`](module-b-round2-reverify.json).
+Includes Module B commit `e4c5ea09`.
+
+| Test | Verdict | Evidence |
+|------|---------|----------|
+| 1 Gmail multi-turn | **PASS** | conversation `69bc14ca-5c50-4c4e-a25d-b89201033a78` |
+| 2 Unprompted email | **PASS** | conversation `df349fcc-3551-4e98-a65e-19083178cc15` |
+| 3 Cold Intercom | **PASS** | conversation `ee27f9cb-9525-48e1-82cf-fb23e642fcd9` |
+| 4 Off-script recovery | **PASS** | conversation `887f0cc5-1997-49e6-9d77-66d689373617` — `current_plan` staged; no Slack short-circuit; adapted on skip-enrichment phrasing |
+| 8 Confidence propose | **PASS** | conversation `f805fa2a-1f06-49e2-9092-a82f72bf083a` — proposes full `sarah.chen.moduleb@acme.test`; `corrupted_local_part_suffix=false` |
+
+Schema sweep: [`module-b-schema-extraction-sweep.json`](module-b-schema-extraction-sweep.json) — 79 coverable write actions PASS, 0 FAIL_EMPTY.

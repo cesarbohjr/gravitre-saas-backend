@@ -286,6 +286,13 @@ class ClarificationEngine:
         if is_awaiting_params(task_state or {"pending_task": pending}):
             return None
 
+        # Advisory plan-first must present current_plan, not dive into catalog write
+        # staging (e.g. Slack channel ask) that hijacks the turn before the plan
+        # is shown — Round-2 test 4 false-PASS: plan in task_state but user saw
+        # "need channel" / turn2 became connector-unavailable.
+        if advisory_plan:
+            return None
+
         # Generic catalog write clarification — live ledger read every turn.
         # Replaces Slack/Gmail-specific staging helpers (deleted).
         if classification.get("requires_action") and (
