@@ -84,9 +84,12 @@ const nextConfig = {
       { source: "/admin/intelligence/:path*", destination: "/intelligence/learning/:path*", permanent: true },
       { source: "/intelligence/models", destination: "/models/built-in", permanent: true },
       { source: "/intelligence/models/:name", destination: "/models/built-in/:name", permanent: true },
-      { source: "/features/technology", destination: "/technology", permanent: true },
-      { source: "/features/intelligence", destination: "/technology", permanent: true },
-      { source: "/features/governance", destination: "/technology", permanent: true },
+      // GIBE + Governance now live on the Technology tab.
+      { source: "/technology", destination: "/features/technology", permanent: true },
+      { source: "/features/intelligence", destination: "/features/technology", permanent: true },
+      { source: "/features/governance", destination: "/features/technology", permanent: true },
+      { source: "/features/gibe", destination: "/features/technology", permanent: true },
+      // Retired split sub-pages now fold back into the single Features page.
       { source: "/features/agents", destination: "/features", permanent: true },
       { source: "/features/workflows", destination: "/features", permanent: true },
       { source: "/features/meson", destination: "/features", permanent: true },
