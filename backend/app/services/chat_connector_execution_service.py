@@ -867,6 +867,20 @@ class ChatConnectorExecutionService:
         except Exception as exc:  # noqa: BLE001
             logger.debug("parameter ledger ingest persist skipped: %s", exc)
 
+        # Post-action inline preview — live vendor read from session entity (no new write path).
+        preview_turn = await self._try_inline_preview_turn(
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            message=message,
+            task_state=task_state,
+            client=client,
+            classification=classification,
+            environment_name=environment_name,
+        )
+        if preview_turn is not None:
+            return preview_turn
+
         if structured_plan is None and not self.is_connector_intent(message, task_state):
             return None
 
@@ -1039,7 +1053,7 @@ class ChatConnectorExecutionService:
                 body=message,
                 integration=plan.integration,
                 task_label=plan.label,
-                error_code="connector_not_ready",
+                error_code="connector_not_connected",
             )
             self._finalize_connector_outcome(
                 client,
@@ -1049,13 +1063,7 @@ class ChatConnectorExecutionService:
                 plan=plan,
                 result=failed,
             )
-            return {
-                "stop_pipeline": True,
-                "dialogue_mode": "answer",
-                "message": message,
-                "execution_result": serialize_execution_result(failed),
-                "task_state": task_state,
-            }
+            return self._turn_from_execution(failed, task_state, plan)
 
         from app.services.connector_action_workflows import (
             format_write_approval_message,
@@ -1639,12 +1647,88 @@ class ChatConnectorExecutionService:
                 exc,
             )
 
+    async def _try_inline_preview_turn(
+        self,
+        *,
+        org_id: str,
+        user_id: str,
+        conversation_id: str,
+        message: str,
+        task_state: dict[str, Any],
+        client: Any,
+        classification: dict[str, Any],
+        environment_name: str,
+    ) -> dict[str, Any] | None:
+        """On preview intent, fetch the live vendor object via an existing read action."""
+        from app.services.post_action_experience_service import (
+            build_preview_plan_from_session,
+            format_inline_preview_message,
+            is_inline_preview_intent,
+        )
+
+        if not is_inline_preview_intent(message):
+            return None
+        plan = build_preview_plan_from_session(message, task_state)
+        if plan is None:
+            return None
+        # Strip preview-only args before invoke (catalog may reject unknown keys).
+        invoke_args = {
+            key: value
+            for key, value in dict(plan.args or {}).items()
+            if not str(key).startswith("preview_")
+        }
+        invoke_plan = replace(plan, args=invoke_args)
+        try:
+            execution = await self.execute_plan(
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                plan=invoke_plan,
+                client=client,
+                classification=classification,
+                environment_name=environment_name,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("inline_preview_failed org_id=%s error=%s", org_id, exc)
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "answer",
+                "message": (
+                    "I couldn't fetch a live preview from the vendor right now. "
+                    f"Open the record from the completion card, or retry shortly. ({exc})"
+                ),
+                "task_state": task_state,
+            }
+        # Re-attach preview filter args for formatter matching.
+        preview_plan = replace(invoke_plan, args=dict(plan.args or {}))
+        body = format_inline_preview_message(plan=preview_plan, result=execution)
+        serialized = serialize_execution_result(execution)
+        structured = dict(serialized.get("structured") or {})
+        structured["inlinePreview"] = True
+        structured["source"] = "post_action_inline_preview"
+        serialized["structured"] = structured
+        serialized["body"] = body
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "answer",
+            "message": body,
+            "execution_result": serialized,
+            "task_state": task_state,
+            "post_action_experience": {
+                "kind": "inline_preview",
+                "integration": plan.integration,
+                "invokeAction": plan.invoke_action,
+            },
+        }
+
     def _turn_from_execution(
         self,
         execution: ExecutionResult,
         task_state: dict[str, Any],
         plan: ConnectorActionPlan | None = None,
     ) -> dict[str, Any]:
+        from app.services.post_action_experience_service import enrich_execution_turn
+
         connector_tool = None
         if plan is not None:
             connector_tool = {
@@ -1655,30 +1739,13 @@ class ChatConnectorExecutionService:
                 "label": plan.label,
                 "args": dict(plan.args),
             }
-        if execution.success:
-            link_line = ""
-            if execution.result_url:
-                label = _result_link_label(execution.integration, result_url=execution.result_url)
-                link_line = f"\n\n[{label}]({execution.result_url})"
-            if execution.external_url:
-                vendor = _result_link_label(execution.integration, result_url=execution.external_url)
-                link_line += f"\n\n[{vendor}]({execution.external_url})"
-            return {
-                "stop_pipeline": True,
-                "dialogue_mode": "answer",
-                "message": f"Done — **{execution.title}**.\n\n{execution.body}{link_line}",
-                "execution_result": serialize_execution_result(execution),
-                "connector_tool": connector_tool,
-                "task_state": task_state,
-            }
-        return {
-            "stop_pipeline": True,
-            "dialogue_mode": "answer",
-            "message": f"I couldn't complete that: {execution.body}",
-            "execution_result": serialize_execution_result(execution),
-            "connector_tool": connector_tool,
-            "task_state": task_state,
-        }
+        return enrich_execution_turn(
+            message="",
+            execution=execution,
+            plan=plan,
+            task_state=task_state,
+            connector_tool=connector_tool,
+        )
 
     async def _evaluate_risk(
         self,

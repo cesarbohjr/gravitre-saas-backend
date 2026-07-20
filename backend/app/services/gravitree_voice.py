@@ -155,7 +155,7 @@ _TOOL_ERROR_TEMPLATES: dict[str, str] = {
     ),
     "connector_not_connected": (
         "{integration} is not Connected for this organization. "
-        "Connect it at /connectors, then try again."
+        "Connect it now at /connectors, or reply **yes** to open the connect flow, then try again."
     ),
     "channel_not_found": (
         "That Slack channel was not found (or the bot is not a member). "

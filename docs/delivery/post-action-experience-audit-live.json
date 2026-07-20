@@ -1,0 +1,57 @@
+{
+  "probe": "post_action_experience_audit",
+  "verified_at": "2026-07-20T19:30:00+00:00",
+  "git_sha": "e153ed5c",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "user_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "note": "Part 1 diagnosis (pre-build). Re-probe after harness fix (yes confirm). Build closes gaps in Part 2 verify artifact.",
+  "cases": {
+    "write_apollo_list": {
+      "conversation_id": "1776c95d-8e06-45b4-8461-f4e0a1b8e3e3",
+      "list_name": "PostAction-Card-34868a8a",
+      "assistant_quote": "Done — **Create contact list**.\n\nCreated contact list \"PostAction-Card-34868a8a\" (id: 6a5e772ac2c6a200102823a3).\n\n[View in Gravitre](/ai?conversation=1776c95d-8e06-45b4-8461-f4e0a1b8e3e3)\n\n[View in Apollo](https://app.apollo.io/#/lists/6a5e772ac2c6a200102823a3)",
+      "has_vendor_http_link": true,
+      "has_what_this_means": false,
+      "preview_quote": "I planned a **2-step orchestration**:\n1. **Search people** (read, auto-run)\n2. **Get contact** (read, auto-run)",
+      "preview_is_live_vendor_fetch": false,
+      "audit_trail_in_conversation": false,
+      "verdict": "PARTIAL",
+      "gap": "Vendor link PASS; missing what-this-means line, live preview, in-chat audit trail, completion recommendation."
+    },
+    "read_connector_status": {
+      "note": "Initial audit hit ambiguous_entity on 'List them'; re-score deferred to Part 2 verify with pronoun-free prompt.",
+      "verdict": "INCONCLUSIVE"
+    },
+    "swarm_step_transparency": {
+      "swarm_id": "c54ddbe8-ec0b-4f0f-bebc-d6d4389c4c65",
+      "api_path_note": "Correct path is GET /api/agent-swarm/{id} (not /api/swarm).",
+      "chat_shows_sales_and_marketing": false,
+      "verdict": "FAIL",
+      "gap": "Backend subtasks have distinct Sales/Marketing findings; chat did not surface step-level evidence."
+    },
+    "failure_zendesk": {
+      "conversation_id": "1dcf83c0-7f71-4f7a-9fa0-1dcd766b4b66",
+      "assistant_quote": "Zendesk is not Connected for this organization. Connect it at /connectors, then try again.",
+      "specific_actionable_why": true,
+      "single_next_action_offered": true,
+      "one_step_affirmable_cta": false,
+      "verdict": "PARTIAL",
+      "gap": "Diagnosis clear; not yet an affirmable one-step connect bridge in the failure card."
+    },
+    "recommendations_on_completion": {
+      "heuristics_endpoint_exists": true,
+      "wired_into_write_completion": false,
+      "verdict": "FAIL",
+      "gap": "GET /api/intelligence/recommendations/heuristics is a separate surface; not fired off Module A outcome into chat completion."
+    }
+  },
+  "overall": "FAIL",
+  "verdicts": {
+    "write_apollo_list": "PARTIAL",
+    "read_connector_status": "INCONCLUSIVE",
+    "swarm_step_transparency": "FAIL",
+    "failure_zendesk": "PARTIAL",
+    "recommendations_on_completion": "FAIL"
+  }
+}

@@ -1329,18 +1329,39 @@ class ChatOrchestrationService:
             },
         )
         refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
-        return {
-            "stop_pipeline": True,
-            "dialogue_mode": "answer",
-            "message": (
+        from app.services.post_action_experience_service import enrich_execution_turn
+
+        turn = enrich_execution_turn(
+            message="",
+            execution=result,
+            plan=None,
+            task_state=refreshed,
+            step_results=step_results,
+        )
+        # Keep orchestration-specific headline while preserving completion card / recs.
+        if run_ok:
+            turn["message"] = (
                 f"**Orchestration complete** ({successes}/{len(step_results)} steps succeeded).\n\n"
                 f"{summary_body}"
+                + (
+                    f"\n\n_What this means:_ "
+                    f"{(turn.get('post_action_experience') or {}).get('whatThisMeans') or ''}"
+                    if (turn.get("post_action_experience") or {}).get("whatThisMeans")
+                    else ""
+                )
                 + (f"\n\n[View run details]({primary_url})" if primary_url else "")
-            ),
-            "execution_result": serialize_execution_result(result),
-            "task_state": refreshed,
-            "orchestration_perf": params.get("orchestration_perf"),
-        }
+            )
+            rec = (turn.get("execution_result") or {}).get("recommendation") or (
+                (turn.get("post_action_experience") or {}).get("recommendation")
+            )
+            if isinstance(rec, dict) and rec.get("suggestedUtterance"):
+                turn["message"] += (
+                    f"\n\n**What I'd look at next:** {rec.get('title')} — {rec.get('reason')}\n"
+                    f"_Suggest only — reply_ **{rec['suggestedUtterance']}** "
+                    f"_to proceed (nothing runs until you approve)._"
+                )
+        turn["orchestration_perf"] = params.get("orchestration_perf")
+        return turn
 
     async def _clear_orchestration(self, conversation_id: str, org_id: str) -> None:
         await self._state.update_task_state(

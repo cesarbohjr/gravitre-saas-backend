@@ -26,6 +26,38 @@ export type ChatArtifact = {
   } | null
 }
 
+export type PostActionRecommendation = {
+  id?: string
+  kind?: string
+  title?: string
+  reason?: string
+  suggestedUtterance?: string
+  advisoryOnly?: boolean
+  href?: string | null
+  confidence?: number
+  confidence_is_estimate?: boolean
+  confidenceIsEstimate?: boolean
+}
+
+export type PostActionFailureBridge = {
+  kind?: string
+  errorCode?: string
+  ctaLabel?: string
+  ctaHref?: string
+  suggestedUtterance?: string
+  prompt?: string
+  advisoryOnly?: boolean
+}
+
+export type PostActionStepCard = {
+  index?: number
+  stepId?: string
+  label?: string
+  success?: boolean
+  summary?: string
+  evidenceUrl?: string | null
+}
+
 export type ChatExecutionResult = {
   success?: boolean
   entity_type?: string
@@ -46,7 +78,22 @@ export type ChatExecutionResult = {
     runId?: string | null
     conversationId?: string | null
     goal?: string | null
+    whatThisMeans?: string | null
+    completionCard?: {
+      whatHappened?: string
+      whatThisMeans?: string
+      vendorUrl?: string | null
+      gravitreUrl?: string | null
+      success?: boolean
+    } | null
+    recommendation?: PostActionRecommendation | null
+    failureBridge?: PostActionFailureBridge | null
+    stepBreakdown?: PostActionStepCard[] | null
+    inlinePreview?: boolean
   } | null
+  what_this_means?: string | null
+  recommendation?: PostActionRecommendation | null
+  failure_bridge?: PostActionFailureBridge | null
   /** Wave 7 — structured failure code (e.g. unverifiable_output). */
   error_code?: string | null
   /** Wave 7 — calibrated uncertainty notes from trust envelope. */
@@ -293,6 +340,15 @@ export function ChatExecutionPanel({
   if (executionResult && executionResult.success === false) {
     const code = executionResult.error_code
     const unverifiable = code === "unverifiable_output"
+    const bridge =
+      executionResult.failure_bridge ||
+      executionResult.structured?.failureBridge ||
+      null
+    const ctaHref =
+      bridge?.ctaHref ||
+      executionResult.connector_management_url ||
+      "/connectors"
+    const ctaLabel = bridge?.ctaLabel || "Open connectors"
     return (
       <div
         className={cn(
@@ -322,16 +378,24 @@ export function ChatExecutionPanel({
                 {executionResult.body}
               </p>
             ) : null}
-            {executionResult.connector_management_url ? (
-              <div className="mt-3">
-                <Button asChild size="sm" variant="outline" className="h-8">
-                  <Link href={executionResult.connector_management_url}>
-                    Open connectors
+            {bridge?.prompt ? (
+              <p className="mt-2 text-xs text-foreground/90">{bridge.prompt}</p>
+            ) : null}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button asChild size="sm" className="h-8">
+                {isExternalUrl(ctaHref) ? (
+                  <a href={ctaHref} target="_blank" rel="noopener noreferrer">
+                    {ctaLabel}
+                    <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                  </a>
+                ) : (
+                  <Link href={ctaHref}>
+                    {ctaLabel}
                     <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                   </Link>
-                </Button>
-              </div>
-            ) : null}
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -346,6 +410,17 @@ export function ChatExecutionPanel({
     const assumptions = (executionResult.assumption_notes || []).filter(
       (note) => typeof note === "string" && note.trim(),
     )
+    const whatThisMeans =
+      executionResult.what_this_means ||
+      executionResult.structured?.whatThisMeans ||
+      executionResult.structured?.completionCard?.whatThisMeans ||
+      null
+    const recommendation =
+      executionResult.recommendation ||
+      executionResult.structured?.recommendation ||
+      null
+    const steps = executionResult.structured?.stepBreakdown || []
+    const isPreview = Boolean(executionResult.structured?.inlinePreview)
     return (
       <div
         className={cn(
@@ -357,16 +432,59 @@ export function ChatExecutionPanel({
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
           <div className="min-w-0 flex-1">
             <p className="font-medium text-foreground">
-              {executionResult.task_label || executionResult.title || "Task completed"}
+              {isPreview
+                ? "Live vendor preview"
+                : executionResult.task_label || executionResult.title || "Task completed"}
             </p>
             {executionResult.body ? (
               <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">{executionResult.body}</p>
             ) : null}
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              {resultUrl
-                ? "Verified — open the run overview for a durable audit trail."
-                : "Completed with inline summary only (no deep link returned)."}
-            </p>
+            {whatThisMeans ? (
+              <p className="mt-2 text-xs text-foreground/90">
+                <span className="font-medium">What this means: </span>
+                {whatThisMeans}
+              </p>
+            ) : (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                {resultUrl
+                  ? "Verified — open the run overview for a durable audit trail."
+                  : "Completed with inline summary only (no deep link returned)."}
+              </p>
+            )}
+            {steps.length > 1 ? (
+              <ol className="mt-2 space-y-1.5 text-xs text-muted-foreground">
+                {steps.map((step) => (
+                  <li key={step.stepId || step.index} className="flex gap-2">
+                    <span className="font-medium text-foreground/80">{step.index}.</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="text-foreground/90">
+                        {step.success === false ? "○" : "✓"} {step.label || "Step"}
+                      </span>
+                      {step.summary ? (
+                        <p className="mt-0.5 line-clamp-3">{step.summary}</p>
+                      ) : null}
+                      {step.evidenceUrl ? (
+                        <p className="mt-0.5 truncate text-[11px]">{step.evidenceUrl}</p>
+                      ) : null}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            ) : null}
+            {recommendation?.title ? (
+              <div className="mt-2 rounded-lg border border-border/60 bg-background/60 px-2.5 py-2 text-[11px]">
+                <p className="font-medium text-foreground">What I&apos;d look at next</p>
+                <p className="mt-0.5 text-muted-foreground">
+                  {recommendation.title}
+                  {recommendation.reason ? ` — ${recommendation.reason}` : ""}
+                </p>
+                {recommendation.suggestedUtterance ? (
+                  <p className="mt-1 text-foreground/80">
+                    Suggest only — say &ldquo;{recommendation.suggestedUtterance}&rdquo; to proceed.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             {assumptions.length > 0 ? (
               <div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-2.5 py-2 text-[11px] text-amber-900 dark:text-amber-200">
                 <p className="font-medium">Assumptions</p>

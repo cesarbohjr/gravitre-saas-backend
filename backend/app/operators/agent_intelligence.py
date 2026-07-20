@@ -1495,6 +1495,110 @@ class AgentIntelligence:
             explicit_persona=explicit_persona,
         )
 
+        # Post-action: swarm step-level transparency (before ReAct invents missing evidence).
+        from app.services.post_action_experience_service import (
+            is_inline_preview_intent,
+            try_swarm_transparency_turn,
+        )
+
+        swarm_turn = try_swarm_transparency_turn(client, org_id, task_text)
+        if swarm_turn and swarm_turn.get("stop_pipeline"):
+            response_text = str(swarm_turn.get("message") or "")
+            dialogue_mode = str(swarm_turn.get("dialogue_mode") or "answer")
+            yield sse_intelligence_metadata(
+                message_id=message_id,
+                confidence={"score": classification_confidence, "needs_clarification": False},
+                answer_explanation="Swarm step-level transparency",
+                dialogue_mode=dialogue_mode,
+                persona_key=str(persona.get("persona_key") or ""),
+                task_state=task_state,
+                execution_result=swarm_turn.get("execution_result"),
+                effective_mode=mode_key,
+                pipeline_tier=pipeline_tier,
+                routing_tier=routing_control.tier,
+                routing=routing_sse,
+            )
+            text_id, start_event = sse_text_start()
+            yield start_event
+            yield sse_text_delta(text_id, response_text)
+            yield sse_text_end(text_id)
+            yield AssistantStreamComplete(
+                full_content=response_text,
+                tool_results=[],
+                react_result=None,
+                model="post_action_swarm_transparency",
+                message_id=message_id,
+                confidence={"score": classification_confidence, "needs_clarification": False},
+                answer_explanation="Swarm step-level transparency",
+                dialogue_mode=dialogue_mode,
+                persona_key=str(persona.get("persona_key") or ""),
+                proactive_suggestions=[],
+                task_state=task_state,
+                execution_result=swarm_turn.get("execution_result"),
+            )
+            return
+
+        # Post-action: inline vendor preview from session (before ReAct re-plans a write).
+        if is_inline_preview_intent(task_text):
+            from app.services.chat_connector_execution_service import (
+                get_chat_connector_execution_service,
+            )
+
+            preview_turn = await get_chat_connector_execution_service(
+                active_settings
+            ).process_turn(
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id or "",
+                message=task_text,
+                classification=pipeline_classification,
+                task_state=task_state,
+                connected_integrations=list(connected_early or []),
+                client=client,
+                environment_name=environment_name,
+            )
+            if (
+                preview_turn
+                and preview_turn.get("stop_pipeline")
+                and (preview_turn.get("post_action_experience") or {}).get("kind")
+                == "inline_preview"
+            ):
+                task_state = preview_turn.get("task_state") or task_state
+                response_text = str(preview_turn.get("message") or "")
+                dialogue_mode = str(preview_turn.get("dialogue_mode") or "answer")
+                yield sse_intelligence_metadata(
+                    message_id=message_id,
+                    confidence={"score": classification_confidence, "needs_clarification": False},
+                    answer_explanation="Inline vendor preview",
+                    dialogue_mode=dialogue_mode,
+                    persona_key=str(persona.get("persona_key") or ""),
+                    task_state=task_state,
+                    execution_result=preview_turn.get("execution_result"),
+                    effective_mode=mode_key,
+                    pipeline_tier=pipeline_tier,
+                    routing_tier=routing_control.tier,
+                    routing=routing_sse,
+                )
+                text_id, start_event = sse_text_start()
+                yield start_event
+                yield sse_text_delta(text_id, response_text)
+                yield sse_text_end(text_id)
+                yield AssistantStreamComplete(
+                    full_content=response_text,
+                    tool_results=[],
+                    react_result=None,
+                    model="post_action_inline_preview",
+                    message_id=message_id,
+                    confidence={"score": classification_confidence, "needs_clarification": False},
+                    answer_explanation="Inline vendor preview",
+                    dialogue_mode=dialogue_mode,
+                    persona_key=str(persona.get("persona_key") or ""),
+                    proactive_suggestions=[],
+                    task_state=task_state,
+                    execution_result=preview_turn.get("execution_result"),
+                )
+                return
+
         from app.services.conversational_execution_service import get_conversational_execution_service
 
         conv_turn = await get_conversational_execution_service(active_settings).process_turn(
