@@ -408,7 +408,8 @@ def main() -> int:
         plan_msgs.append(
             {"role": "assistant", "parts": [{"type": "text", "text": plan["assistant"] or ""}]}
         )
-        plan_msgs.append({"role": "user", "parts": [{"type": "text", "text": "yes"}]})
+        # "approve" — bare "yes" currently misses orch confirm on tip (falls to ReAct).
+        plan_msgs.append({"role": "user", "parts": [{"type": "text", "text": "approve"}]})
         exe = chat(token, org_id, messages=plan_msgs, conversation_id=cid, serial=serial)
         perf = exe["parsed"].get("react_perf") or {}
         executed = bool(

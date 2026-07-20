@@ -223,6 +223,14 @@ class ChatOrchestrationService:
         client: Any,
         environment_name: str = "production",
     ) -> dict[str, Any] | None:
+        # Reload — caller may hold a stale snapshot after ledger/pre-stream writes.
+        try:
+            task_state = await self._state.get_task_state(
+                conversation_id, org_id, client=client
+            )
+        except Exception:  # noqa: BLE001
+            pass
+
         if not self.is_orchestration_intent(message, task_state, connected_integrations):
             return None
 
@@ -262,6 +270,12 @@ class ChatOrchestrationService:
 
         status = str(pending.get("status") or "")
         confirmed = CONFIRM_PATTERN.match(message.strip()) or message.strip().lower() in {
+            "yes",
+            "y",
+            "yeah",
+            "yep",
+            "ok",
+            "okay",
             "confirm",
             "run",
             "execute",

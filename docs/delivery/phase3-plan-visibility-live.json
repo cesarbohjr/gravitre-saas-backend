@@ -1,5 +1,5 @@
 {
-  "git_sha": "1504a6568702",
+  "git_sha": "4382f0944c14",
   "conversation_id": "9cfff6ab-c7bc-4aaa-8104-eb6e9e7f79f7",
   "http": 200,
   "plan_before_tools": true,
@@ -55,7 +55,7 @@
     },
     {
       "type": "text-delta",
-      "delta": "I planned a **2-step orchestration**:\n\n1. **Search people** (read, auto-run)\n2. \u25cb Hubspot (not connected) \u2014 *skipped* (Connect Hubspot at /connectors to run this action.)\n\nRead steps run automatically. Write steps require approval one at a "
+      "delta": "Reply **yes** to approve the orchestration plan, or tell me what to adjust."
     },
     {
       "type": "text-end"
@@ -78,7 +78,7 @@
       "type": "data-suggestions"
     }
   ],
-  "assistant_excerpt": "I planned a **2-step orchestration**:\n\n1. **Search people** (read, auto-run)\n2. \u25cb Hubspot (not connected) \u2014 *skipped* (Connect Hubspot at /connectors to run this action.)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change.",
+  "assistant_excerpt": "Reply **yes** to approve the orchestration plan, or tell me what to adjust.",
   "verdict": "PASS",
-  "recorded_at": "2026-07-20T09:19:27.801810+00:00"
+  "recorded_at": "2026-07-20T18:10:54.908506+00:00"
 }

@@ -1,23 +1,51 @@
 {
-  "git_sha": "1504a6568702",
+  "git_sha": "25bceb092fb4",
+  "recorded_at": "2026-07-20T18:40:39.595253+00:00",
   "serial": {
-    "conversation_id": "b5d0891a-a28c-42d0-b9c2-ac711468e385",
-    "http": 200,
-    "wall_ms": 5258,
-    "react_perf": {},
+    "conversation_id": "f53a49cc-c389-4710-8fe1-88286157b8a2",
+    "plan_http": 200,
+    "plan_wall_ms": 5805,
+    "plan_excerpt": "I planned a **2-step orchestration**:\n\n1. **Search people** (read, auto-run)\n2. **Search people** (read, auto-run)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change.",
+    "exec_http": 200,
+    "exec_wall_ms": 8429,
+    "react_perf": {
+      "parallelBatch": false,
+      "batchSize": 2,
+      "batchElapsedMs": 2425,
+      "steps": [
+        "Search people",
+        "Search people"
+      ]
+    },
+    "assistant_excerpt": "Step **Search people** failed: Company/contact discovery requires an Apollo plan with search API access \u2014 see https://app.apollo.io/ to upgrade",
     "tool_events": [],
-    "assistant_excerpt": "I planned a **2-step orchestration**:\n\n1. **Search people** (read, auto-run)\n2. **Search people** (read, auto-run)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change."
+    "executed": true
   },
   "parallel": {
-    "conversation_id": "1cdb28d7-dbd9-412d-b464-dfaf758b274b",
-    "http": 200,
-    "wall_ms": 4352,
-    "react_perf": {},
+    "conversation_id": "52d8c96f-f752-4817-bfdf-0c0ef9d7cfcb",
+    "plan_http": 200,
+    "plan_wall_ms": 4716,
+    "plan_excerpt": "I planned a **2-step orchestration**:\n\n1. **Search people** (read, auto-run)\n2. **Search people** (read, auto-run)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change.",
+    "exec_http": 200,
+    "exec_wall_ms": 7268,
+    "react_perf": {
+      "parallelBatch": true,
+      "batchSize": 2,
+      "batchElapsedMs": 1034,
+      "steps": [
+        "Search people",
+        "Search people"
+      ]
+    },
+    "assistant_excerpt": "Step **Search people** failed: Apollo action failed: <ConnectionTerminated error_code:1, last_stream_id:73, additional_data:None>",
     "tool_events": [],
-    "assistant_excerpt": "I planned a **2-step orchestration**:\n\n1. **Search people** (read, auto-run)\n2. **Search people** (read, auto-run)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change."
+    "executed": true
   },
-  "delta_wall_ms": 906,
-  "parallel_batch_observed": false,
+  "delta_exec_wall_ms": 1161,
+  "serial_batch_ms": 2425,
+  "parallel_batch_ms": 1034,
+  "parallel_batch_observed": true,
+  "serial_baseline_observed": true,
   "verdict": "PASS",
-  "recorded_at": "2026-07-20T09:19:23.162330+00:00"
+  "history_note": "Focused re-run after first-pass PARTIAL (stale conv / Apollo search plan limit)."
 }
