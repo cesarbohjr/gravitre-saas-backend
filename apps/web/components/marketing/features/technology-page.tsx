@@ -129,7 +129,7 @@ export function TechnologyPage() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
-                href="/marketplace"
+                href="/features/marketplace"
                 className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-6 py-3 text-sm font-semibold text-zinc-900 transition-colors hover:bg-zinc-50"
               >
                 Explore the marketplace

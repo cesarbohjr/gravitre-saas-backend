@@ -143,7 +143,7 @@ export default function IntelligenceCenterPage() {
             </ul>
             <div className="mt-3">
               <Button variant="link" size="sm" className="h-auto px-0" asChild>
-                <Link href={APP_ROUTES.intelligenceModelsPath}>View all models</Link>
+                <Link href={APP_ROUTES.builtInModels}>View all models</Link>
               </Button>
             </div>
           </section>

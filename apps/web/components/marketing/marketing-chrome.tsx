@@ -9,8 +9,8 @@ import { openMarketingConsentSettings } from "@/lib/marketing-consent"
 
 const navLinks = [
   { href: "/features", label: "Features" },
-  { href: "/technology", label: "Technology" },
-  { href: "/marketplace", label: "Marketplace" },
+  { href: "/features/technology", label: "Technology" },
+  { href: "/features/marketplace", label: "Marketplace" },
   { href: "/pricing", label: "Pricing" },
   { href: "/docs", label: "Docs" },
   {

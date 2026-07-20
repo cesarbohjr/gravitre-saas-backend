@@ -8,7 +8,6 @@ import {
   GRANTED_CONSENT,
   OPEN_CONSENT_EVENT,
   type MarketingConsentState,
-  isConsentBannerRegion,
   persistMarketingConsent,
   readStoredMarketingConsent,
   updateGtagConsent,
@@ -37,11 +36,10 @@ export function MarketingConsentBanner({ country }: Props) {
         analytics_storage: stored.analytics_storage,
       })
       setPanel(null)
-    } else if (
-      isConsentBannerRegion(country) ||
-      // Local/dev often has no geo header — surface the banner so consent can be tested.
-      (process.env.NODE_ENV === "development" && !country)
-    ) {
+    } else {
+      // Surface the consent banner to every first-time visitor, regardless of
+      // region, until they make a choice. `country` still informs default
+      // behaviour downstream but no longer gates whether the banner appears.
       setPanel("banner")
     }
     setHydrated(true)
