@@ -383,7 +383,7 @@ async def test_no_auto_retrain_outside_scheduled_rules():
 
 def test_all_outcome_events_valid_set():
     assert "recommendation_created" in OUTCOME_EVENTS
-    assert len(OUTCOME_EVENTS) == 22
+    assert len(OUTCOME_EVENTS) == 23
 
 
 def test_existing_ml_layer_intact():

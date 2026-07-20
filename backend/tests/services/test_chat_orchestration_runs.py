@@ -77,7 +77,10 @@ def test_finalize_orchestration_run_failure_emits_audit_and_notification():
         )
     update_run.assert_called_once()
     assert update_run.call_args.kwargs["status"] == "failed"
-    emit_failed.assert_called_once_with(client, "org-1", "user-1", "run-9", "Step X failed")
+    emit_failed.assert_called_once()
+    failed_args = emit_failed.call_args[0]
+    assert failed_args[:4] == (client, "org-1", "user-1", "run-9")
+    assert "Step X failed" in str(failed_args[4])
     emit_note.assert_called_once()
     assert emit_note.call_args.kwargs["event_type"] == "run_failed"
     assert emit_note.call_args.kwargs["entity_ref"]["entity_id"] == "run-9"

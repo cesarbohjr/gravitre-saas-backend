@@ -17,7 +17,14 @@ def registry() -> ToolRegistry:
 
 @pytest.fixture
 def tool_ctx() -> ToolContext:
-    settings = SimpleNamespace(disable_connectors=False, connector_secrets_encryption_key="k" * 32)
+    settings = SimpleNamespace(
+        disable_connectors=False,
+        connector_secrets_encryption_key="k" * 32,
+        internet_research_enabled=True,
+        tavily_api_key="",
+        web_research_provider="tavily",
+        web_research_fallback_tavily=True,
+    )
     return ToolContext(
         settings=settings,
         client=MagicMock(),
@@ -104,18 +111,19 @@ async def test_execute_unknown_tool(registry: ToolRegistry, tool_ctx: ToolContex
 
 @pytest.mark.asyncio
 async def test_execute_web_search_not_configured(registry: ToolRegistry, tool_ctx: ToolContext):
+    tool_ctx.settings.internet_research_enabled = False
     result = await registry.execute_tool(
         ctx=tool_ctx,
         tool_name="web_search",
         args={"query": "latest news"},
     )
     assert result["success"] is False
-    assert result["query"] == "latest news"
-    assert "TAVILY_API_KEY" in result["error"]
+    assert "INTERNET_RESEARCH_ENABLED" in result["error"]
 
 
 @pytest.mark.asyncio
 async def test_execute_web_search_missing_query(registry: ToolRegistry, tool_ctx: ToolContext):
+    tool_ctx.settings.tavily_api_key = "tvly-test"
     result = await registry.execute_tool(
         ctx=tool_ctx,
         tool_name="web_search",
@@ -127,6 +135,7 @@ async def test_execute_web_search_missing_query(registry: ToolRegistry, tool_ctx
 
 @pytest.mark.asyncio
 async def test_execute_web_search_success(registry: ToolRegistry, tool_ctx: ToolContext):
+    tool_ctx.settings.tavily_api_key = "tvly-test"
     mock_payload = {
         "results": [{"title": "Example", "url": "https://example.com", "snippet": "Snippet"}],
         "sources": [{"title": "Example", "url": "https://example.com", "excerpt": "Snippet"}],

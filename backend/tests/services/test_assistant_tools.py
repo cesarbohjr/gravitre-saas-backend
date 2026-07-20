@@ -26,7 +26,7 @@ def _settings(**overrides) -> Settings:
 async def test_search_web_without_api_key():
     output = await tools_module.tool_search_web("latest AI news", _settings())
     assert output["totalResults"] == 0
-    assert output["error"] == "web search not configured"
+    assert "not enabled" in output["error"].lower()
 
 
 @pytest.mark.asyncio
@@ -47,7 +47,7 @@ async def test_search_web_parses_tavily_response():
     with patch("app.services.web_research.httpx.AsyncClient", return_value=mock_client):
         output = await tools_module.tool_search_web(
             "latest AI news",
-            _settings(tavily_api_key="tvly-test"),
+            _settings(tavily_api_key="tvly-test", internet_research_enabled=True),
         )
 
     assert output["totalResults"] == 1

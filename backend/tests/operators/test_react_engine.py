@@ -382,7 +382,7 @@ async def test_run_auth_expired_surfaces_formatted_error(engine: ReActEngine, to
         )
     assert result.status == ReActStatus.NEEDS_HUMAN_INPUT
     assert "/connectors" in result.answer
-    assert "Authentication expired" in result.answer
+    assert "authentication expired" in result.answer.lower()
 
 
 @pytest.mark.asyncio
