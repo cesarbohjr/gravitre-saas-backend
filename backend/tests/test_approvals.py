@@ -86,9 +86,8 @@ def test_reject_changes_status(mock_client, mock_reject):
     assert response.json()["status"] == "cancelled"
 
 
-@patch("app.routers.workflows.emit_execute_cancelled")
+@patch("app.services.execution_outcome.finalize_execution_outcome")
 @patch("app.routers.workflows.emit_execute_rejected")
-@patch("app.routers.workflows.update_run")
 @patch("app.routers.workflows.insert_run_approval")
 @patch("app.routers.workflows.get_user_role", return_value="admin")
 @patch("app.routers.workflows.get_run_with_steps")
@@ -98,9 +97,8 @@ def test_reject_accepts_optional_reason(
     mock_get_run,
     _mock_role,
     mock_insert,
-    _mock_update,
     _mock_rejected,
-    _mock_cancelled,
+    _mock_finalize,
 ):
     from app.routers import workflows as workflows_module
 

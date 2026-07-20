@@ -9,7 +9,13 @@ from uuid import uuid4
 from app.core.logging import get_logger
 from app.services.approval_record_service import create_contract_approval
 from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
-from app.workflows.repository import create_run, create_step, update_run, update_step
+from app.workflows.repository import (
+    create_run,
+    create_step,
+    patch_workflow_run,
+    update_run,
+    update_step,
+)
 
 logger = get_logger(__name__)
 
@@ -79,13 +85,15 @@ def start_orchestration_run(
 
     # Mark approval as self-approved at plan confirm (chat "yes" / Approve plan).
     try:
-        client.table("workflow_runs").update(
+        patch_workflow_run(
+            client,
+            run_id,
             {
                 "approval_status": "approved",
                 "status": "running",
                 "required_approvals": 0,
-            }
-        ).eq("id", run_id).eq("org_id", org_id).execute()
+            },
+        )
     except Exception as exc:  # noqa: BLE001
         logger.warning("chat orchestration run approve stamp failed: %s", exc)
 
@@ -241,7 +249,43 @@ def finalize_orchestration_run(
             metadata={"path": "chat_orchestration"},
         )
     except Exception as exc:  # noqa: BLE001
-        logger.warning("chat orchestration run finalize failed run=%s: %s", run_id, exc)
+        logger.error(
+            "MODULE_A_FINALIZE_FAILED_FALLBACK_STATUS_STAMP — investigate "
+            "finalize_execution_outcome failure run_id=%s exc=%s",
+            run_id,
+            exc,
+        )
+        # Alerting (not log-only): Sentry + durable audit dual-write so ops/UI can watch.
+        try:
+            import sentry_sdk
+
+            sentry_sdk.capture_exception(exc)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            from app.workflows.audit import write_audit_event
+
+            write_audit_event(
+                client,
+                org_id,
+                user_id or "00000000-0000-0000-0000-000000000000",
+                "module_a.finalize.fallback",
+                "workflow_run",
+                run_id,
+                {
+                    "severity": "MODULE_A_FINALIZE_FAILED_FALLBACK_STATUS_STAMP",
+                    "error": str(exc)[:500],
+                    "intended_status": status,
+                    "path": "chat_orchestration_runs.finalize_orchestration_run",
+                },
+            )
+        except Exception as alert_exc:  # noqa: BLE001
+            logger.error(
+                "MODULE_A_FINALIZE_FAILED_FALLBACK_STATUS_STAMP — audit alert also failed "
+                "run_id=%s exc=%s",
+                run_id,
+                alert_exc,
+            )
         try:
             update_run(
                 client,
@@ -252,7 +296,18 @@ def finalize_orchestration_run(
                 approval_status="approved",
             )
         except Exception as stamp_exc:  # noqa: BLE001
-            logger.warning("chat orchestration run stamp failed run=%s: %s", run_id, stamp_exc)
+            logger.error(
+                "MODULE_A_FINALIZE_FAILED_FALLBACK_STATUS_STAMP — stamp also failed "
+                "run_id=%s exc=%s",
+                run_id,
+                stamp_exc,
+            )
+            try:
+                import sentry_sdk
+
+                sentry_sdk.capture_exception(stamp_exc)
+            except Exception:  # noqa: BLE001
+                pass
 
 
 def resolve_orchestration_result_url(

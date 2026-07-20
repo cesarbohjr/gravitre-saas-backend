@@ -1,0 +1,43 @@
+{
+  "verified_at": "2026-07-19T10:31:23.454325+00:00",
+  "module": "A",
+  "path": "chat_ui_execute",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "user_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "email": "conversation-smoke-sa@gravitre.app",
+  "conversation_id": "1753490e-e8f9-4411-a2d2-4207f79d3b57",
+  "chat_http": 200,
+  "chat_raw_preview": "data: {\"type\":\"start\"}\n\ndata: {\"type\":\"start-step\"}\n\ndata: {\"type\":\"data-intelligence\",\"data\":{\"messageId\":\"b49be676-386f-4b10-8538-4ae15a59b8e6\",\"confidence\":{\"score\":0.0,\"needs_clarification\":false},\"answerExplanation\":\"Analyzing your request\\u2026\",\"conflicts\":[],\"refinedQuery\":null,\"validation\":null,\"dialogueMode\":null,\"personaKey\":null,\"proactiveSuggestions\":[],\"taskState\":null,\"simulationSummary\":null,\"executionResult\":null,\"pendingTask\":null,\"contextProfile\":null,\"contextExplanation\":null,\"businessSignals\":[],\"strategicPlan\":null,\"knowledgeAssignments\":[],\"assignedSourcesUsed\":[],\"knowledgeGapMessage\":null,\"missingAssignmentLabels\":[],\"memoryConflicts\":[],\"advisorBrief\":null,\"explainability\":{},\"executionGate\":{},\"trustEnvelope\":{},\"effectiveMode\":\"agent\",\"pipelineTier\":\"tier_3\",\"routingTier\":\"research\",\"routing\":{\"routingTier\":\"research\",\"modelTier\":\"high\",\"latencyBudgetMs\":{\"ttft\":2500,\"total\":60000},\"maxToolRounds\":15,\"pinnedFast\":false,\"reasons\":[\"agent_or_reasoning_mode\"]},\"progressSteps\":[\"Routing tier: research\",\"Reviewing connected systems\",\"Loading memory and knowledge\"],\"toolVisibility\":{},\"researchCascade\":null}}\n\ndata: {\"type\":\"data-intelligence\",\"data\":{\"messageId\":\"b49be676-386f-4b10-8538-4ae15a59b8e6\",\"confidence\":{\"score\":0.55,\"needs_clarification\":false},\"answerExplanation\":\"Multi-step connector orchestration\",\"conflicts\":[],\"refinedQuery\":null,\"validation\":null,\"dialogueMode\":\"answer\",\"personaKey\":\"friendly_assistant\",\"proactiveSuggestions\":[],\"taskState\":{\"clarified_params\":{\"goal\":\"Module A chat UI failing orchestration\",\"kind\":\"write\",\"steps\":[{\"kind\":\"write\",\"plan\":{\"args\":{\"url\":\"\",\"body\":{},\"method\":\"POST\"},\"kind\":\"write\",\"label\":\"Post broken webhook (intentional fail)\",\"tool_name\":\"webhook_post\",\"destructive\":false,\"integration\":\"webhook\",\"invoke_action\":\"webhook.post\",\"requires_approval\":false},\"label\":\"Post broken webhook (intentional fail)\",\"segment\":\"post broken webhook\",\"step_id\":\"step_1\",\"supported\":true,\"requires_approval\":fals",
+  "execute_http": null,
+  "execute_body_preview": "{'skipped': True, 'reason': 'chat_consumed_pending_plan'}",
+  "fanout": {
+    "run_id": "716abbdb-d763-4d78-80b3-9511fde5ff96",
+    "run_status_legacy": "failed",
+    "run_status_contract": "failed",
+    "audit_event_ids": [
+      "f9faaaa6-f036-40bc-9208-ca2b7adb3398"
+    ],
+    "audit_log_ids": [
+      "4453e10f-1fa1-4cb8-ab76-088b16bba353"
+    ],
+    "notification_ids": [
+      "8f097fc6-3e95-4456-9dd9-213924422918"
+    ],
+    "learning_event_ids": [
+      "d42e4dc3-7d2a-4fef-8e6a-99616b7e0b5c"
+    ]
+  },
+  "checks": {
+    "chat_or_execute_reached": true,
+    "run_id_present": true,
+    "runs_legacy_failed": true,
+    "runs_contract_failed": true,
+    "audit_events": true,
+    "audit_logs": true,
+    "notifications_run_failed": true,
+    "learning_workflow_failed": true
+  },
+  "pass": true,
+  "note": "Chat UI path: seeded awaiting_plan_confirm orchestration + POST chat 'yes' (CONFIRM_PATTERN; consumed pending). Execute API skipped because chat already ran the plan."
+}

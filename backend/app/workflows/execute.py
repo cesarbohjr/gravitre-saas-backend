@@ -279,14 +279,23 @@ def execute_workflow_steps(
             )
             errors.append(err_msg)
             break
-        except Exception:
+        except Exception as e:
             run_failed = True
             duration_ms = int((datetime.now(timezone.utc) - datetime.fromisoformat(step_started)).total_seconds() * 1000)
             is_rag = "rag" in step_type.lower()
             is_slack = "slack" in step_type.lower()
             is_email = "email" in step_type.lower()
             is_webhook = "webhook" in step_type.lower()
-            if is_rag:
+            from app.services.canvas_write_gate import (
+                CANVAS_WRITE_AUTHORITY_BLOCKED,
+                user_facing_message_from_write_authority_error,
+            )
+
+            write_gate_msg = user_facing_message_from_write_authority_error(e)
+            if write_gate_msg:
+                run_error_message = write_gate_msg
+                code = CANVAS_WRITE_AUTHORITY_BLOCKED
+            elif is_rag:
                 run_error_message = "Retrieval temporarily unavailable"
                 code = ERROR_CODE_RAG_UNAVAILABLE
             elif is_slack:

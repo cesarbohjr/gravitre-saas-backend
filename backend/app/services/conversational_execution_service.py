@@ -13,8 +13,6 @@ from app.services.entity_link_service import (
     build_entity_url,
     resolve_execution_result_url,
 )
-from app.services.notification_emitter import emit_notification
-
 logger = get_logger(__name__)
 
 CONFIRM_PATTERN = re.compile(
@@ -355,6 +353,46 @@ class ConversationalExecutionService:
             classification=classification or {},
         )
 
+    def _finalize_task_outcome(
+        self,
+        client: Any,
+        *,
+        org_id: str,
+        user_id: str,
+        conversation_id: str,
+        result: ExecutionResult,
+    ) -> None:
+        from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
+
+        is_workflow_run = (
+            result.entity_type == "workflow_run" and bool(str(result.entity_id or "").strip())
+        )
+        run_id = str(result.entity_id).strip() if is_workflow_run else None
+        finalize_execution_outcome(
+            client,
+            org_id=org_id,
+            status="completed" if result.success else "failed",
+            source="assistant_chat",
+            actor_id=user_id,
+            run_id=run_id,
+            persist_run=bool(run_id),
+            error_summary=None if result.success else (result.body or result.title),
+            verified_output=VerifiedOutputRef(
+                summary=result.body or result.title,
+                result_url=result.result_url,
+                external_url=result.external_url,
+                entity_type=result.entity_type or ("workflow_run" if run_id else "conversation"),
+                entity_id=run_id or result.entity_id or conversation_id,
+                integration=result.integration,
+            ),
+            notification_title=result.title,
+            notification_body=result.body,
+            metadata={
+                "path": "conversational_execution",
+                "conversation_id": conversation_id,
+            },
+        )
+
     async def execute_task(
         self,
         *,
@@ -376,7 +414,7 @@ class ConversationalExecutionService:
             elif task_type == "run_agent_task":
                 result = await self._run_agent_task(org_id, user_id, clarified, client)
             else:
-                return ExecutionResult(
+                result = ExecutionResult(
                     success=False,
                     entity_type="unknown",
                     entity_id="",
@@ -384,6 +422,14 @@ class ConversationalExecutionService:
                     title="Unsupported task",
                     body=f"Task type {task_type} is not supported yet.",
                 )
+                self._finalize_task_outcome(
+                    client,
+                    org_id=org_id,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    result=result,
+                )
+                return result
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "conversational execute failed org_id=%s task_type=%s error=%s",
@@ -391,7 +437,7 @@ class ConversationalExecutionService:
                 task_type,
                 exc,
             )
-            return ExecutionResult(
+            result = ExecutionResult(
                 success=False,
                 entity_type=task_type,
                 entity_id="",
@@ -399,20 +445,21 @@ class ConversationalExecutionService:
                 title="Execution failed",
                 body=str(exc),
             )
+            self._finalize_task_outcome(
+                client,
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                result=result,
+            )
+            return result
 
-        emit_notification(
+        self._finalize_task_outcome(
             client,
             org_id=org_id,
             user_id=user_id,
-            event_type=result.notification_type,
-            title=result.title,
-            body=result.body,
-            entity_ref={
-                "entity_type": result.entity_type,
-                "entity_id": result.entity_id or None,
-                "result_url": result.result_url,
-            },
-            channel_hints={"bell": True, "email": False},
+            conversation_id=conversation_id,
+            result=result,
         )
 
         await self._state.update_task_state(

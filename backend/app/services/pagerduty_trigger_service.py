@@ -160,13 +160,7 @@ async def start_workflow_from_pagerduty(
             definition=definition,
             environment_name="production",
         )
-        update_payload: dict[str, Any] = {"status": result.status}
-        if result.status == "failed":
-            failed_step = next((item for item in result.results if item.status == "failed"), None)
-            update_payload["error_message"] = failed_step.error if failed_step else "Execution failed"
-        if result.status in {"completed", "failed", "cancelled"}:
-            update_payload["completed_at"] = datetime.now(timezone.utc).isoformat()
-        client.table("workflow_runs").update(update_payload).eq("id", run_id).execute()
+        # Module A: execute_workflow_steps already finalized — do not re-write workflow_runs.
         return {
             "workflow_id": workflow_id,
             "run_id": run_id,
@@ -180,13 +174,17 @@ async def start_workflow_from_pagerduty(
             run_id,
             exc,
         )
-        client.table("workflow_runs").update(
-            {
-                "status": "failed",
-                "error_message": str(exc),
-                "completed_at": datetime.now(timezone.utc).isoformat(),
-            }
-        ).eq("id", run_id).execute()
+        from app.services.trigger_run_finalize import finalize_trigger_exception
+
+        finalize_trigger_exception(
+            client,
+            org_id=org_id,
+            run_id=run_id,
+            actor_id=triggered_by,
+            workflow_id=workflow_id,
+            error=str(exc),
+            source="pagerduty_trigger",
+        )
         return {
             "workflow_id": workflow_id,
             "run_id": run_id,

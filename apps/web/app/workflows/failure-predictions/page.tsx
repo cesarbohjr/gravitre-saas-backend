@@ -24,6 +24,7 @@ import {
   FAILURE_SEVERITY_META,
   groupFailureAlertsBySeverity,
 } from "@/components/workflows/failure-prediction-alerts"
+import { OutcomeOpsPanel } from "@/components/workflows/outcome-ops-panel"
 import { workflowsApi } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { SURFACE_COPY } from "@/lib/surface-copy"
@@ -115,6 +116,10 @@ export default function WorkflowFailurePredictionsPage() {
           </Link>{" "}
           and workflow builder intelligence drawer.
         </p>
+
+        <div className="mt-6">
+          <OutcomeOpsPanel />
+        </div>
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilter)}>

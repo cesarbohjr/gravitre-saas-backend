@@ -304,6 +304,11 @@ def update_run(
         payload["approval_status"] = approval_status
     if parameters is not None:
         payload["parameters"] = parameters
+    patch_workflow_run(client, run_id, payload)
+
+
+def patch_workflow_run(client: Client, run_id: str, payload: dict[str, Any]) -> None:
+    """Update workflow_runs then always mirror into contract runs / run_steps."""
     client.table("workflow_runs").update(payload).eq("id", run_id).execute()
     mirror_legacy_run_to_contract(client, run_id)
 
@@ -313,7 +318,7 @@ def merge_run_parameters(client: Client, run_id: str, patch: dict[str, Any]) -> 
     row = client.table("workflow_runs").select("parameters").eq("id", run_id).limit(1).execute()
     current = dict((row.data or [{}])[0].get("parameters") or {})
     current.update(patch)
-    client.table("workflow_runs").update({"parameters": current}).eq("id", run_id).execute()
+    patch_workflow_run(client, run_id, {"parameters": current})
     return current
 
 
@@ -329,6 +334,7 @@ def try_mark_run_running(client: Client, run_id: str, org_id: str) -> bool:
         .execute()
     )
     if r.data:
+        # Always mirror after a successful claim so contract runs stay in sync.
         mirror_legacy_run_to_contract(client, run_id)
     return bool(r.data)
 

@@ -1,4 +1,9 @@
-"""STA-120: Workflow digital twin — fixtures + LLM predictions, no side effects."""
+"""STA-120: Workflow digital twin — fixtures + LLM predictions, no side effects.
+
+INTENTIONAL Module A bypass: simulation terminals must NOT write customer Runs
+notifications/learning via ``finalize_execution_outcome``. They use
+``emit_dry_run_*`` audit helpers only (see docs/delivery/module-a-dry-run-bypass.md).
+"""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -106,6 +111,8 @@ async def execute_digital_twin(
     """
     Validate, create digital_twin run + steps, simulate with fixtures/LLM.
     Returns (run_id, status, steps, plan, errors, stats).
+
+    INTENTIONAL Module A bypass — terminals use emit_dry_run_* only, not finalize_execution_outcome.
     """
     definition = validate_definition(definition)
     parameters = validate_parameters(parameters)

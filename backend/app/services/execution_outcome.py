@@ -16,8 +16,10 @@ Schema decision (finishes STA-271 residual):
     outcome writer.
 
 Audit decision (finishes STA-274 residual for this path):
+  - Keep both tables (see docs/delivery/module-a-audit-store-decision.md).
   - Sole writer: ``write_audit_event`` (dual-writes audit_logs + audit_events).
   - Customer-facing canonical read store remains ``audit_logs``.
+  - ``audit_events`` remains metrics / tool-invoke stream.
 """
 from __future__ import annotations
 
@@ -35,6 +37,10 @@ from app.workflows.constants import (
 )
 
 logger = get_logger(__name__)
+
+# Versioned training substrate — bump + changelog when wire shape changes.
+# See docs/delivery/module-a-outcome-schema-changelog.md
+OUTCOME_SCHEMA_VERSION = "1.0.0"
 
 TerminalStatus = Literal["completed", "failed", "cancelled", "partial_success"]
 OutcomeSource = Literal[
@@ -331,13 +337,19 @@ def _record_learning(client: Any, event: ExecutionOutcomeEvent, status: Terminal
         "workflow_id": workflow_id or None,
         "workflow_run_id": run_id or None,
         "metadata": {
+            **dict(event.metadata or {}),
+            "schema_version": OUTCOME_SCHEMA_VERSION,
             "source": event.source,
             "terminal_status": status,
             "error": event.error_summary,
             "verified_summary": (event.verified_output.summary if event.verified_output else None),
             "result_url": (event.verified_output.result_url if event.verified_output else None),
+            "integration": (
+                event.verified_output.integration
+                if event.verified_output and event.verified_output.integration
+                else (event.metadata or {}).get("integration")
+            ),
             "cancelled": status == "cancelled",
-            **dict(event.metadata or {}),
         },
         "measured_at": ts,
         "measurement_status": "recorded",
@@ -366,6 +378,11 @@ def _enqueue_failure_alert_correlation(client: Any, event: ExecutionOutcomeEvent
             correlate_observed_run_failure,
         )
 
+        integration = (
+            event.verified_output.integration
+            if event.verified_output and event.verified_output.integration
+            else (event.metadata or {}).get("integration")
+        )
         return bool(
             correlate_observed_run_failure(
                 client,
@@ -374,6 +391,10 @@ def _enqueue_failure_alert_correlation(client: Any, event: ExecutionOutcomeEvent
                 run_id=event.run_id,
                 error_summary=event.error_summary,
                 source=event.source,
+                connector_id=(event.metadata or {}).get("connector_id"),
+                action_type=(event.metadata or {}).get("action_type")
+                or (event.metadata or {}).get("invoke_action"),
+                integration=str(integration).strip() if integration else None,
             )
         )
     except Exception as exc:  # noqa: BLE001
@@ -520,12 +541,54 @@ def finalize_execution_outcome(
             exc,
         )
 
+    stream_payload = {
+        "schema_version": OUTCOME_SCHEMA_VERSION,
+        "org_id": event.org_id,
+        "run_id": event.run_id,
+        "workflow_id": event.workflow_id,
+        "status": terminal,
+        "source": event.source,
+        "actor_id": event.actor_id,
+        "error_summary": event.error_summary,
+        "timestamp": ts,
+        "verified_output": (
+            {
+                "summary": event.verified_output.summary,
+                "result_url": event.verified_output.result_url,
+                "external_url": event.verified_output.external_url,
+                "entity_type": event.verified_output.entity_type,
+                "entity_id": event.verified_output.entity_id,
+                "integration": event.verified_output.integration,
+            }
+            if event.verified_output
+            else None
+        ),
+        "audit_action": audit_action,
+        "notification_event": notification_event,
+        "learning_event": learning_event,
+        "fanout": fanout,
+    }
+    try:
+        from app.services.outcome_event_bus import publish_outcome
+
+        publish_outcome(event.org_id, stream_payload)
+        fanout["outcome_stream_published"] = True
+    except Exception as exc:  # noqa: BLE001
+        fanout["outcome_stream_published"] = False
+        logger.debug(
+            "execution_outcome_stream_publish_skipped run_id=%s error=%s",
+            event.run_id,
+            exc,
+        )
+
     logger.info(
-        "execution_outcome_finalized org_id=%s run_id=%s status=%s source=%s fanout=%s",
+        "execution_outcome_finalized org_id=%s run_id=%s status=%s source=%s "
+        "schema_version=%s fanout=%s",
         event.org_id,
         event.run_id,
         terminal,
         event.source,
+        OUTCOME_SCHEMA_VERSION,
         fanout,
     )
     return FinalizeExecutionOutcomeResult(

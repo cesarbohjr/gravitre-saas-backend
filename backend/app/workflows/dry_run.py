@@ -1,4 +1,9 @@
-"""BE-11: Dry-run execution engine. Deterministic; RAG = real read, others simulated."""
+"""BE-11: Dry-run execution engine. Deterministic; RAG = real read, others simulated.
+
+INTENTIONAL Module A bypass: dry-run terminals must NOT write customer Runs
+notifications/learning via ``finalize_execution_outcome``. They use
+``emit_dry_run_*`` audit helpers only (see docs/delivery/module-a-dry-run-bypass.md).
+"""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -55,6 +60,8 @@ def execute_dry_run(
     Validate, create run + steps, execute steps. Returns (run_id, status, steps, plan, errors).
     Raises WorkflowValidationError on validation failure.
     On RAG failure: run and steps are persisted; returns status=failed, errors list; caller may raise 503.
+
+    INTENTIONAL Module A bypass — terminals use emit_dry_run_* only, not finalize_execution_outcome.
     """
     definition = validate_definition(definition)
     parameters = validate_parameters(parameters)
