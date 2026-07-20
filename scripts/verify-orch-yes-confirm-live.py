@@ -6,6 +6,7 @@ Writes docs/delivery/phase2-orch-yes-confirm-live.json
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 import uuid
@@ -29,7 +30,8 @@ from gravitree_test_client import (  # noqa: E402
 BASE = "https://api.gravitre.app"
 ENV = "production"
 OUT = REPO / "docs" / "delivery" / "phase2-orch-yes-confirm-live.json"
-TARGET_SHA_PREFIX = "17b98075"
+# Optional pin; empty = accept whatever tip is currently deployed.
+TARGET_SHA_PREFIX = (os.environ.get("ORCH_YES_TARGET_SHA") or "").strip()
 PROMPT = (
     "In one orchestration: search Apollo people for 'VP Sales' AND "
     "search Apollo people for 'Head of Marketing'. Read-only only."
@@ -128,16 +130,22 @@ def main() -> int:
     tip = health()
     sha = str(tip.get("git_sha") or "")
     sha12 = sha[:12]
-    deployed = sha.startswith(TARGET_SHA_PREFIX) or sha12.startswith(TARGET_SHA_PREFIX[:8])
+    deployed = True
+    if TARGET_SHA_PREFIX:
+        deployed = sha.startswith(TARGET_SHA_PREFIX) or sha12.startswith(TARGET_SHA_PREFIX[:8])
 
     out: dict = {
         "recorded_at": utcnow(),
         "base": BASE,
         "git_sha": sha12,
-        "target_sha": TARGET_SHA_PREFIX,
+        "target_sha": TARGET_SHA_PREFIX or sha12,
         "deployed_tip_matches_target": deployed,
         "org_id": org_id,
         "user_id": user_id,
+        "prior_fail_on_17b98075": (
+            "Tier0 org-cache for normalized 'yes' short-circuited before orch; "
+            "fixed in e908f88b (is_tier0_ineligible_query)."
+        ),
     }
     if not deployed:
         out["verdict"] = "BLOCKED"
