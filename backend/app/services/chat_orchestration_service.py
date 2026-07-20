@@ -17,12 +17,12 @@ from app.services.chat_connector_execution_service import (
 )
 from app.services.connector_execution_matrix import skip_reason_for_entry
 from app.services.conversation_state_service import get_conversation_state_service
+from app.services.gravitree_voice import format_operator_message
 from app.services.conversational_execution_service import (
     CONFIRM_PATTERN,
     DECLINE_PATTERN,
     ExecutionResult,
 )
-from app.services.notification_emitter import emit_notification
 from app.services.chat_orchestration_runs import (
     finalize_orchestration_run,
     first_external_step_url,
@@ -460,7 +460,12 @@ class ChatOrchestrationService:
                     kind="write",
                     supported=False,
                     requires_approval=False,
-                    skip_reason=f"Connect {integration.replace('_', ' ').title()} in Gravitre to run this action.",
+                    skip_reason=format_operator_message(
+                        "connector_connect_to_run",
+                        integration=integration,
+                        confidence_register="blocked",
+                        allow_humor=False,
+                    ),
                 )
 
         planning_text = self._segment_planning_text(segment, connected_integrations, goal=goal)
@@ -486,7 +491,12 @@ class ChatOrchestrationService:
                 kind="write",
                 supported=False,
                 requires_approval=False,
-                skip_reason=reason or "No executable action matched this segment.",
+                skip_reason=reason
+                or format_operator_message(
+                    "no_executable_action",
+                    confidence_register="blocked",
+                    allow_humor=False,
+                ),
             )
 
         risk = await self._connector._evaluate_risk(org_id, user_id, plan, classification)  # noqa: SLF001
@@ -537,7 +547,12 @@ class ChatOrchestrationService:
                     "step_id": step.step_id,
                     "label": step.label,
                     "success": False,
-                    "summary": step.skip_reason or "Skipped unsupported step.",
+                    "summary": step.skip_reason
+                    or format_operator_message(
+                        "skipped_unsupported",
+                        confidence_register="blocked",
+                        allow_humor=False,
+                    ),
                     "url": "/connectors",
                 }
                 for step in steps
@@ -1016,7 +1031,12 @@ class ChatOrchestrationService:
                         "label": step.label,
                         "success": False,
                         "skipped": True,
-                        "summary": step.skip_reason or "Skipped unsupported step.",
+                        "summary": step.skip_reason
+                        or format_operator_message(
+                            "skipped_unsupported",
+                            confidence_register="blocked",
+                            allow_humor=False,
+                        ),
                         "url": "/connectors",
                     }
                 )
@@ -1030,7 +1050,12 @@ class ChatOrchestrationService:
                         step_id=step.step_id,
                         success=False,
                         skipped=True,
-                        summary=step.skip_reason or "Skipped — connector not connected.",
+                        summary=step.skip_reason
+                        or format_operator_message(
+                            "skipped_unsupported",
+                            confidence_register="blocked",
+                            allow_humor=False,
+                        ),
                         result_url="/connectors",
                     )
                 idx += 1
@@ -1156,6 +1181,21 @@ class ChatOrchestrationService:
             lines.append(f"- {mark} {row.get('label')}: {row.get('summary')}")
         summary_body = "\n".join(lines) if lines else "Orchestration finished."
         run_id = str(params.get("orchestration_run_id") or "") or None
+        # Prefer a late run when steps exist so Module A fanout has a Runs row.
+        if not run_id:
+            steps_for_run = list(params.get("steps") or [])
+            if steps_for_run:
+                late_run_id = start_orchestration_run(
+                    client,
+                    org_id=org_id,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    goal=str(params.get("goal") or "Chat orchestration"),
+                    steps=steps_for_run,
+                )
+                if late_run_id:
+                    run_id = late_run_id
+                    params["orchestration_run_id"] = run_id
         if run_id:
             finalize_orchestration_run(
                 client,
@@ -1164,6 +1204,35 @@ class ChatOrchestrationService:
                 success=run_ok,
                 summary=summary_body,
                 user_id=user_id,
+            )
+        else:
+            # Orphan path: no run_id and no steps to create one — still fan out.
+            from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
+
+            finalize_execution_outcome(
+                client,
+                org_id=org_id,
+                status="completed" if run_ok else "failed",
+                source="chat_orch",
+                actor_id=user_id,
+                persist_run=False,
+                error_summary=None if run_ok else summary_body,
+                verified_output=VerifiedOutputRef(
+                    summary=summary_body[:2000] or None,
+                    result_url=f"/ai?conversation={conversation_id}",
+                    entity_type="conversation",
+                    entity_id=conversation_id,
+                ),
+                notification_title=(
+                    f"Orchestration complete ({successes}/{len(step_results)} steps)"
+                    if run_ok
+                    else f"Orchestration failed ({successes}/{len(step_results)} steps succeeded)"
+                ),
+                notification_body=summary_body[:500],
+                metadata={
+                    "path": "chat_orchestration_orphan",
+                    "conversation_id": conversation_id,
+                },
             )
         primary_url = resolve_orchestration_result_url(
             run_id=run_id,
@@ -1199,24 +1268,6 @@ class ChatOrchestrationService:
                 "source": "chat_orchestration",
             },
         )
-        # Notify/audit/learning when run_id is set is owned by finalize_orchestration_run
-        # → finalize_execution_outcome(). Only emit here when there is no run_id.
-        if not run_id:
-            emit_notification(
-                client,
-                org_id=org_id,
-                user_id=user_id,
-                event_type=result.notification_type,
-                title=result.title,
-                body=result.body[:500],
-                entity_ref={
-                    "entity_type": result.entity_type,
-                    "entity_id": result.entity_id,
-                    "result_url": result.result_url,
-                    "external_url": external_url,
-                },
-                channel_hints={"bell": True, "email": False},
-            )
         try:
             from app.services.execution_memory_service import get_execution_memory_service
 

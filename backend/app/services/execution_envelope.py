@@ -123,16 +123,64 @@ def format_not_executable_message(payload: dict[str, Any]) -> str:
             planned=metadata.get("planned"),
         )
 
+    from app.services.gravitree_voice import format_operator_message
+
     reason = str(payload.get("reason") or "not_implemented")
     next_step = str(payload.get("next_step") or "").strip()
-    labels = {
-        "missing_scope": "This action needs a connector scope that is not configured.",
-        "missing_connector": "This integration is not connected in this workspace.",
-        "missing_permission": "Your role does not allow this action.",
-        "not_implemented": "No catalog action matches this request yet.",
-        "requires_approval": "This action requires explicit approval before it can run.",
-        "token_expired": "The connector is configured, but authentication has expired.",
-        "unsupported_action": "This connector action is not supported yet.",
-    }
-    base = labels.get(reason, "This action cannot run right now.")
+    # Route through Module D — blocked register, no humor.
+    if reason == "missing_connector":
+        integration = payload.get("missing_connector") or (payload.get("metadata") or {}).get(
+            "missing_connector"
+        )
+        base = format_operator_message(
+            "connector_connect_to_run",
+            integration=integration or "the connector",
+            confidence_register="blocked",
+            allow_humor=False,
+        )
+    elif reason == "requires_approval":
+        base = format_operator_message(
+            "tool_error",
+            error_code="write_approval_required",
+            confidence_register="blocked",
+            allow_humor=False,
+        )
+    elif reason == "token_expired":
+        base = format_operator_message(
+            "tool_error",
+            error_code="auth_expired",
+            integration=(payload.get("metadata") or {}).get("integration"),
+            confidence_register="blocked",
+            allow_humor=False,
+        )
+    elif reason == "missing_scope":
+        base = format_operator_message(
+            "tool_error",
+            error_code="missing_scope",
+            integration=(payload.get("metadata") or {}).get("integration"),
+            confidence_register="blocked",
+            allow_humor=False,
+        )
+    elif reason in {"not_implemented", "unsupported_action"}:
+        base = format_operator_message(
+            "no_executable_action",
+            confidence_register="blocked",
+            allow_humor=False,
+        )
+    elif reason == "missing_permission":
+        base = format_operator_message(
+            "tool_error",
+            error_code="permission_denied",
+            confidence_register="blocked",
+            allow_humor=False,
+        )
+    else:
+        base = format_operator_message(
+            "blocked",
+            blocker="This action cannot run right now.",
+            next_action=next_step or "Check connectors and try again.",
+            confidence_register="blocked",
+            allow_humor=False,
+        )
+        return base
     return f"{base} {next_step}".strip()

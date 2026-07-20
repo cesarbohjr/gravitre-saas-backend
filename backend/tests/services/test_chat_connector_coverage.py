@@ -182,7 +182,7 @@ async def test_skipped_steps_do_not_break_orchestration():
                         "kind": "write",
                         "supported": False,
                         "requires_approval": False,
-                        "skip_reason": "Connect Monday in Gravitre to run this action.",
+                        "skip_reason": "Connect Monday at /connectors to run this action.",
                     },
                     {
                         "step_id": "step_2",
@@ -246,10 +246,12 @@ async def test_finalize_summary_includes_step_outcomes():
                 "step_id": "step_2",
                 "label": "Monday",
                 "success": False,
-                "summary": "Connect Monday in Gravitre to run this action.",
+                "summary": "Connect Monday at /connectors to run this action.",
             },
         ],
     }
     result = await service._finalize_orchestration("conv-1", "org-1", "user-1", params, MagicMock())
     assert "1/2" in result["message"] or "Orchestration complete" in result["message"]
-    assert result["execution_result"]["success"] is True
+    # Module A honesty: mixed step outcomes are not reported as full success.
+    assert result["execution_result"]["success"] is False
+    assert "Connect Monday at /connectors" in result["message"]

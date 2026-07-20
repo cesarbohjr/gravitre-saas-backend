@@ -41,13 +41,25 @@ Meson→B unification ships.
 | Export | Role |
 |--------|------|
 | `GRAVITREE_VOICE_RULES` | Canonical trait list |
-| `voice_system_prompt_section()` | The one `## Voice` block |
+| `HOUSE_PHRASING` | Curated Gravitree lines (insufficient info, assumption, win) |
+| `voice_system_prompt_section()` | The one `## Voice` block (includes confidence register + humor budget) |
 | `apply_voice(system_prompt)` | Idempotent inject / strip legacy `VOICE:` |
-| `format_operator_message(kind, **ctx)` | Approvals, tool errors, notifications, turn cancel |
+| `format_operator_message(kind, *, confidence_register, allow_humor, **ctx)` | Approvals, errors, notifications, canvas, skip reasons |
+| `humor_permitted(kind, allow_humor)` | Humor budget gate (always off for errors/approvals) |
 | `chev_term(status)` | Connected / Healthy / Executable / Verified labels |
 | `domain_focus_section(modifier)` | Persona overlays under `## Domain focus` |
+| `format_outcome_digest(items, …)` | **Reserved** — Executive Digest over Module A outcome stream (raises `NotImplementedError` until stream exists) |
+| `OutcomeDigestItem` | Stable digest item shape for that follow-up |
 
-## Call sites (v1)
+### Confidence register
+
+`certain` (declarative) · `estimate` (label + “based on what's Connected so far”) · `blocked` (name blocker + next action, no apology loop).
+
+### Humor budget
+
+`allow_humor=True` only honored for low-stakes kinds (e.g. `success_win`). Forced off for write approval, tool errors, canvas write blocked, connector-connect skips.
+
+## Call sites
 
 1. `_build_system_prompt` — chat / agent surfaces
 2. `react_engine` — `apply_voice` before `harden_system_prompt`
@@ -57,6 +69,9 @@ Meson→B unification ships.
 6. `execution_outcome` notification title/body defaults
 7. Chat write approval requester notification
 8. `meson_service` interpret prompt
+9. `canvas_write_gate.block_canvas_write_step` — canvas write blocked copy
+10. `chat_action_mapper` / `connector_execution_matrix` / orchestration skip reasons
+11. `execution_envelope.format_not_executable_message`
 
 ## Department personas
 

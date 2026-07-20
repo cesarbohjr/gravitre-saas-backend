@@ -107,13 +107,16 @@ def block_canvas_write_step(
         return None
     if run_allows_catalog_write_execution(run_row):
         return None
+    # User-facing copy owned by Module D gravitree_voice (same SoT as chat/ReAct).
+    from app.services.gravitree_voice import format_operator_message
+
     return {
         "success": False,
         "error_code": CANVAS_WRITE_AUTHORITY_BLOCKED,
-        "error": (
-            "Write-capable canvas steps require an approved run with required_approvals>=1 "
-            "(catalog write authority). In-graph approval nodes and approval_policies=0 "
-            "are not sufficient to skip this gate."
+        "error": format_operator_message(
+            "canvas_write_blocked",
+            confidence_register="blocked",
+            allow_humor=False,
         ),
         "action": action,
         "pending_approval": True,

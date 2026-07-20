@@ -1,14 +1,19 @@
 """Module D — Gravitree Voice Layer unit tests."""
 from __future__ import annotations
 
+import pytest
+
 from app.services.gravitree_voice import (
     CHEV_TERMS,
     GRAVITREE_VOICE_RULES,
+    HOUSE_PHRASING,
     VOICE_SECTION_HEADER,
     apply_voice,
     chev_term,
     domain_focus_section,
     format_operator_message,
+    format_outcome_digest,
+    humor_permitted,
     voice_system_prompt_section,
 )
 
@@ -22,6 +27,9 @@ def test_voice_section_contains_chev_and_core_traits():
     assert "Verified" in section
     assert "I think" in section
     assert "over-apologize" in section or "Never over-apologize" in section
+    assert "Confidence register" in section
+    assert "Humor budget" in section
+    assert HOUSE_PHRASING["insufficient_info"] in section
     assert len(GRAVITREE_VOICE_RULES) >= 8
 
 
@@ -85,3 +93,52 @@ def test_notification_run_title_body():
         verified_summary="List created in HubSpot",
     )
     assert "List created" in body
+
+
+def test_connector_connect_to_run_house_style():
+    msg = format_operator_message(
+        "connector_connect_to_run",
+        integration="slack",
+        confidence_register="blocked",
+    )
+    assert "Connect Slack" in msg
+    assert "/connectors" in msg
+    assert "in Gravitre" not in msg
+
+
+def test_canvas_write_blocked_kind():
+    msg = format_operator_message("canvas_write_blocked", allow_humor=True)
+    assert "Write blocked" in msg
+    assert humor_permitted(kind="canvas_write_blocked", allow_humor=True) is False
+
+
+def test_humor_forbidden_on_write_approval():
+    assert humor_permitted(kind="write_approval", allow_humor=True) is False
+    assert humor_permitted(kind="success_win", allow_humor=True) is True
+    assert humor_permitted(kind="success_win", allow_humor=False) is False
+
+
+def test_success_win_humor_budget():
+    sober = format_operator_message("success_win", allow_humor=False)
+    light = format_operator_message("success_win", allow_humor=True)
+    assert sober == HOUSE_PHRASING["success_win"]
+    assert light == HOUSE_PHRASING["success_win_light"]
+
+
+def test_estimate_register_prefix():
+    msg = format_operator_message(
+        "estimate",
+        detail="pipeline is thinning this week.",
+        confidence_register="estimate",
+    )
+    assert msg.startswith("Estimate —")
+    assert "Connected" in msg
+
+
+def test_insufficient_info_house_phrase():
+    assert format_operator_message("insufficient_info") == HOUSE_PHRASING["insufficient_info"]
+
+
+def test_format_outcome_digest_reserved():
+    with pytest.raises(NotImplementedError, match="Executive Digest"):
+        format_outcome_digest([{"status": "failed", "summary": "x"}])

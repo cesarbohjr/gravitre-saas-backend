@@ -9,12 +9,23 @@ Pattern mirrors catalog_write_authority: one module, every surface calls in.
 Module B (conversation_turn_controller) is the planner ownership point for
 connector-turn user-facing strings; Meson calls this module directly until it
 enters B.
+
+Behavioral range (not tone alone):
+- Confidence register: certain | estimate | blocked
+- Humor budget: rare, never on errors/governance; opt-in via allow_humor
+- House phrasing: curated Gravitree-specific lines for recurring moments
+
+Future: format_outcome_digest() — Executive Digest over Module A outcome streams
+(interface reserved; not implemented until the stream exists).
 """
 from __future__ import annotations
 
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Literal, Sequence
 
 VOICE_SECTION_HEADER = "## Voice"
+
+ConfidenceRegister = Literal["certain", "estimate", "blocked"]
 
 # Canonical readiness / verification vocabulary (CHEV + Verified).
 CHEV_TERMS: dict[str, str] = {
@@ -26,8 +37,32 @@ CHEV_TERMS: dict[str, str] = {
     "authenticated": "Authenticated",
 }
 
+# Curated house style — recognizably Gravitree, not generic LLM hedges.
+HOUSE_PHRASING: dict[str, str] = {
+    "insufficient_info": (
+        "I don't have enough information yet. Tell me the missing detail and I'll continue."
+    ),
+    "assumption_flag": (
+        "Assumption — based on what's Connected so far; say if that is wrong."
+    ),
+    "success_win": "Done. Verified output is ready.",
+    "success_win_light": "Done — clean run.",
+    "blocked_generic": "Blocked. {blocker} Next: {next_action}",
+    "estimate_prefix": "Estimate — based on what's Connected so far:",
+    "connector_connect_to_run": (
+        "Connect {integration} at /connectors to run this action."
+    ),
+    "skipped_unsupported": "Skipped — no Executable action matched this step.",
+    "no_executable_action": "No Executable action matched this request.",
+    "skipped_connector": "Skipped — {integration} is not Connected.",
+    "canvas_write_blocked": (
+        "Write blocked: this canvas step needs an approved run "
+        "(required_approvals>=1). In-graph approval alone is not enough."
+    ),
+}
+
 GRAVITREE_VOICE_RULES: tuple[str, ...] = (
-    "Calm expert: capable operator, not a chatbot persona.",
+    "Calm expert: capable operator, not a chatbot persona. Smart, cool geek — precise, not cute.",
     "Lead with the fact, then the implication, then the one best next move.",
     "Show your work when a fact comes from a tool or connector result — cite the source briefly in plain language.",
     "State uncertainty plainly when you do not know; never invent connector states, metrics, or agent names.",
@@ -35,8 +70,29 @@ GRAVITREE_VOICE_RULES: tuple[str, ...] = (
     "Never over-apologize; refuse safety and governance limits plainly.",
     "Use Connected / Healthy / Executable / Verified (and Configured / Authenticated when describing readiness) — not vague \"working\" or \"smart\".",
     "Avoid buzzwords entirely (synergy, leverage, unlock, seamless, delightful, magical).",
-    "Humor is light and rare; never cute.",
+    "Humor is light and rare; never cute; never during errors, approvals, or governance moments.",
     "Complete sentences in chat; short bullets only for 3+ items. No report headers like \"Workflow health:\".",
+)
+
+_CONFIDENCE_REGISTER_RULES = (
+    "Confidence register (match phrasing to certainty):\n"
+    "- certain: short, declarative; no fake hedges.\n"
+    "- estimate: label it (\"Estimate — based on what's Connected so far\") and allow "
+    "\"likely\" / \"based on what's Connected so far\" — never present as Verified.\n"
+    "- blocked: name the blocker, state the next action, no apology loop."
+)
+
+_HUMOR_BUDGET_RULES = (
+    "Humor budget: rare and contextual only. Never joke on errors, write approvals, "
+    "governance refusals, or blocked states. Allowed only on low-stakes clean success "
+    "or idle moments when the surface explicitly permits flourish."
+)
+
+_HOUSE_PHRASE_RULES = (
+    "House phrasing (prefer these exact shapes when they fit):\n"
+    f"- Insufficient info: \"{HOUSE_PHRASING['insufficient_info']}\"\n"
+    f"- Flagging an assumption: \"{HOUSE_PHRASING['assumption_flag']}\"\n"
+    f"- Reporting a win: \"{HOUSE_PHRASING['success_win']}\""
 )
 
 _VOICE_SECTION_BODY = (
@@ -94,7 +150,45 @@ _TOOL_ERROR_TEMPLATES: dict[str, str] = {
         "The connector action completed but returned no Verified output "
         "(missing body and result link)."
     ),
+    "canvas_write_authority_blocked": HOUSE_PHRASING["canvas_write_blocked"],
 }
+
+# Kinds that never allow humor (governance / error / blocked).
+_HUMOR_FORBIDDEN_KINDS = frozenset(
+    {
+        "tool_error",
+        "write_approval",
+        "canvas_write_blocked",
+        "connector_connect_to_run",
+        "pending_plan_cancelled",
+        "approval_needed_requester",
+        "approval_needed_requester_title",
+        "notification_run_title",
+        "notification_run_body",
+        "insufficient_info",
+        "assumption_flag",
+        "blocked",
+        "skipped_unsupported",
+        "no_executable_action",
+        "skipped_connector",
+    }
+)
+
+
+@dataclass(frozen=True)
+class OutcomeDigestItem:
+    """One terminal outcome for a future Executive Digest batch.
+
+    Designed for Module A's real-time outcome stream. Do not invent fields —
+    map from finalize_execution_outcome / intelligence_outcome_events.
+    """
+
+    status: str
+    summary: str
+    source: str | None = None
+    verified: bool = False
+    run_id: str | None = None
+    measured_at: str | None = None
 
 
 def chev_term(status: str | None) -> str:
@@ -105,10 +199,49 @@ def chev_term(status: str | None) -> str:
     return str(status or "").strip()
 
 
+def house_phrase(key: str, **ctx: Any) -> str:
+    """Return a curated house-style line; raises KeyError for unknown keys."""
+    template = HOUSE_PHRASING[key]
+    if "{" in template:
+        return template.format(**{k: (v if v is not None else "") for k, v in ctx.items()})
+    return template
+
+
+def confidence_register_hint(register: ConfidenceRegister | str | None) -> str:
+    """Short phrasing constraint for the named confidence register."""
+    key = str(register or "certain").strip().lower()
+    if key == "estimate":
+        return (
+            "Register=estimate: lead with "
+            f"\"{HOUSE_PHRASING['estimate_prefix']}\" "
+            "and use likely/based-on-Connected hedges. Do not claim Verified."
+        )
+    if key == "blocked":
+        return (
+            "Register=blocked: name the blocker, state the one next action, "
+            "no apology loop, no humor."
+        )
+    return "Register=certain: short declarative facts; no fake hedges."
+
+
+def humor_permitted(*, kind: str | None = None, allow_humor: bool = False) -> bool:
+    """Humor budget gate — false for errors, approvals, and governance kinds."""
+    key = str(kind or "").strip().lower()
+    if key in _HUMOR_FORBIDDEN_KINDS:
+        return False
+    return bool(allow_humor)
+
+
 def voice_system_prompt_section() -> str:
-    """The one VOICE block for LLM system prompts."""
+    """The one VOICE block for LLM system prompts (includes behavioral range)."""
     rules = "\n".join(f"- {rule}" for rule in GRAVITREE_VOICE_RULES)
-    return f"{VOICE_SECTION_HEADER}\n{_VOICE_SECTION_BODY}\n\nRules:\n{rules}"
+    return (
+        f"{VOICE_SECTION_HEADER}\n{_VOICE_SECTION_BODY}\n\n"
+        f"Rules:\n{rules}\n\n"
+        f"{_CONFIDENCE_REGISTER_RULES}\n\n"
+        f"{_HUMOR_BUDGET_RULES}\n\n"
+        f"{_HOUSE_PHRASE_RULES}"
+    )
 
 
 def apply_voice(system_prompt: str | None) -> str:
@@ -118,7 +251,6 @@ def apply_voice(system_prompt: str | None) -> str:
     if not text:
         return section
 
-    # Strip legacy inline VOICE: blocks from older surface prompts.
     cleaned_lines: list[str] = []
     skipping_voice = False
     for line in text.splitlines():
@@ -127,13 +259,11 @@ def apply_voice(system_prompt: str | None) -> str:
             skipping_voice = True
             continue
         if skipping_voice:
-            # Legacy VOICE: was a single multi-line clause ending at OUTPUT: or blank role break.
             if stripped.startswith("OUTPUT:") or stripped.startswith("ROLE:") or stripped.startswith("SECURITY"):
                 skipping_voice = False
                 cleaned_lines.append(line)
             continue
         if stripped == VOICE_SECTION_HEADER or stripped.startswith(f"{VOICE_SECTION_HEADER} "):
-            # Drop existing ## Voice section; re-append canonical below.
             skipping_voice = True
             continue
         if skipping_voice:
@@ -171,12 +301,95 @@ def _action_suffix(action: str | None) -> str:
     return f" ({value})"
 
 
-def format_operator_message(kind: str, **ctx: Any) -> str:
-    """Shared shaper for approval / error / notification / turn-facing user strings."""
+def _apply_register(text: str, register: ConfidenceRegister | str | None) -> str:
+    key = str(register or "certain").strip().lower()
+    body = (text or "").strip()
+    if not body:
+        return body
+    if key == "estimate" and not body.lower().startswith("estimate"):
+        return f"{HOUSE_PHRASING['estimate_prefix']} {body}"
+    return body
+
+
+def format_operator_message(
+    kind: str,
+    *,
+    confidence_register: ConfidenceRegister | str | None = None,
+    allow_humor: bool = False,
+    **ctx: Any,
+) -> str:
+    """Shared shaper for approval / error / notification / turn / canvas user strings.
+
+    ``allow_humor`` is ignored (forced off) for governance/error/blocked kinds.
+    ``confidence_register`` shapes estimate/blocked phrasing where applicable.
+    """
     key = str(kind or "").strip().lower()
+    register = str(confidence_register or "").strip().lower() or None
+    if register not in {None, "certain", "estimate", "blocked"}:
+        register = "certain"
+    # Default register by kind when caller omits it.
+    if register is None:
+        if key in {
+            "tool_error",
+            "canvas_write_blocked",
+            "connector_connect_to_run",
+            "blocked",
+            "skipped_connector",
+            "write_approval",
+        }:
+            register = "blocked"
+        elif key in {"assumption_flag", "estimate"}:
+            register = "estimate"
+        else:
+            register = "certain"
+
+    flourish_ok = humor_permitted(kind=key, allow_humor=allow_humor)
 
     if key == "pending_plan_cancelled":
         return "Cancelled the pending plan. What should we do instead?"
+
+    if key == "house" or key == "house_phrase":
+        phrase_key = str(ctx.get("phrase") or ctx.get("key") or "").strip()
+        return house_phrase(phrase_key, **{k: v for k, v in ctx.items() if k not in {"phrase", "key"}})
+
+    if key == "insufficient_info":
+        return HOUSE_PHRASING["insufficient_info"]
+
+    if key == "assumption_flag":
+        detail = str(ctx.get("detail") or "").strip()
+        base = HOUSE_PHRASING["assumption_flag"]
+        return f"{base} {detail}".strip() if detail else base
+
+    if key == "success_win":
+        if flourish_ok:
+            return HOUSE_PHRASING["success_win_light"]
+        return HOUSE_PHRASING["success_win"]
+
+    if key == "connector_connect_to_run":
+        return house_phrase(
+            "connector_connect_to_run",
+            integration=_integration_label(ctx.get("integration")),
+        )
+
+    if key == "skipped_connector":
+        return house_phrase(
+            "skipped_connector",
+            integration=_integration_label(ctx.get("integration")),
+        )
+
+    if key == "skipped_unsupported":
+        return HOUSE_PHRASING["skipped_unsupported"]
+
+    if key == "no_executable_action":
+        return HOUSE_PHRASING["no_executable_action"]
+
+    if key == "canvas_write_blocked":
+        return HOUSE_PHRASING["canvas_write_blocked"]
+
+    if key == "blocked":
+        blocker = str(ctx.get("blocker") or "This action cannot run.").strip()
+        next_action = str(ctx.get("next_action") or "Fix the blocker, then retry.").strip()
+        return house_phrase("blocked_generic", blocker=blocker, next_action=next_action)
 
     if key == "tool_error":
         code = str(ctx.get("error_code") or "").strip().lower()
@@ -197,6 +410,7 @@ def format_operator_message(kind: str, **ctx: Any) -> str:
         return "The connector action failed."
 
     if key == "write_approval":
+        # Governance — humor always off regardless of allow_humor.
         return _format_write_approval(**ctx)
 
     if key == "notification_run_title":
@@ -238,7 +452,31 @@ def format_operator_message(kind: str, **ctx: Any) -> str:
     if key == "approval_needed_requester_title":
         return "Request sent for approval"
 
+    if key == "estimate":
+        detail = str(ctx.get("detail") or ctx.get("message") or "").strip()
+        return _apply_register(detail or "signal is incomplete.", "estimate")
+
     raise ValueError(f"Unknown operator message kind: {kind}")
+
+
+def format_outcome_digest(
+    items: Sequence[OutcomeDigestItem | dict[str, Any]],
+    *,
+    title: str = "Weekly Business Digest",
+    period_label: str | None = None,
+) -> str:
+    """Turn a batch of Module A outcomes into a human-readable digest.
+
+    Named follow-up — do not implement the product digest here. Requires
+    Module A's real-time outcome stream. Signature is stable so Executive Digest
+    can call this without rewriting gravitree_voice later.
+    """
+    _ = (items, title, period_label)
+    raise NotImplementedError(
+        "format_outcome_digest is reserved for the Executive Digest follow-up; "
+        "it depends on Module A's real-time outcome stream. "
+        "Use format_operator_message for single-event copy until then."
+    )
 
 
 def _format_write_approval(**ctx: Any) -> str:

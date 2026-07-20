@@ -101,6 +101,9 @@ def test_block_canvas_write_step_for_unapproved_run():
     )
     assert blocked is not None
     assert blocked["error_code"] == CANVAS_WRITE_AUTHORITY_BLOCKED
+    # Module D — user-facing copy from gravitree_voice, not a hand-written canvas string.
+    assert "Write blocked" in str(blocked.get("error") or "")
+    assert "required_approvals" in str(blocked.get("error") or "")
 
 
 def test_invoke_tool_handler_blocks_write_without_approval(monkeypatch):
