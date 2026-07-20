@@ -1592,7 +1592,8 @@ class ChatConnectorExecutionService:
                 run_hash=f"chat-connector-{uuid4().hex[:16]}",
                 workflow_id=None,
                 environment_name="production",
-                trigger_type="assistant_chat",
+                # workflow_runs_trigger_type_check allows manual/schedule/rollback/webhook/api/hubspot
+                trigger_type="api",
                 run_type="execute",
             )
             run_id = str(created["id"])
