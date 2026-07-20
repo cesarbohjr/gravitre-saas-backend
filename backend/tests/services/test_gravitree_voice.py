@@ -95,6 +95,39 @@ def test_notification_run_title_body():
     assert "List created" in body
 
 
+def test_notification_failure_body_uses_blocked_register():
+    body = format_operator_message(
+        "notification_run_body",
+        status="failed",
+        error_summary="step blew up",
+    )
+    assert body.startswith("Blocked.")
+    assert "Next:" in body
+
+
+def test_format_confidence_for_voice_labels_estimates():
+    from app.services.gravitree_voice import format_confidence_for_voice
+
+    text = format_confidence_for_voice(0.72, is_estimate=True)
+    assert text.startswith("Estimate —")
+    assert "72%" in text
+
+
+def test_format_operator_message_intercepts_numeric_confidence():
+    text = format_operator_message("success_win", confidence=0.9, confidence_is_estimate=True)
+    assert text.startswith("Estimate —")
+    assert "90%" in text
+
+
+def test_failure_alert_kinds():
+    title = format_operator_message("failure_alert_title", label="gmail", repeated=True)
+    assert "Repeated" in title and "gmail" in title
+    body = format_operator_message(
+        "failure_alert_body", blocker="auth expired", failure_count=3
+    )
+    assert body.startswith("Blocked.")
+
+
 def test_connector_connect_to_run_house_style():
     msg = format_operator_message(
         "connector_connect_to_run",

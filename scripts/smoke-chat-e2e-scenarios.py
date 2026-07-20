@@ -50,26 +50,15 @@ def _supabase_client(env: dict[str, str]):
 
 
 def _resolve_org(env: dict[str, str], client) -> tuple[str, str]:
-    org_id = (
-        env.get("CHAT_E2E_ORG_ID")
-        or env.get("OAUTH_SMOKE_ORG_ID")
-        or env.get("SMOKE_ORG_ID")
-        or ""
-    ).strip()
-    user_id = env.get("CHAT_E2E_USER_ID") or env.get("SMOKE_USER_ID") or "chat-e2e-runner"
-    if org_id:
-        return org_id, user_id
-    members = (
-        client.table("organization_members")
-        .select("org_id, user_id")
-        .eq("role", "admin")
-        .limit(1)
-        .execute()
-    )
-    if not members.data:
-        raise SystemExit("Set CHAT_E2E_ORG_ID or connect an admin org")
-    row = members.data[0]
-    return str(row["org_id"]), str(row.get("user_id") or user_id)
+    """Isolated conversation test org only — never inherit OAUTH_SMOKE_ORG_ID."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from gravitree_test_client import require_isolated_org, resolve_test_actor
+
+    org_id, user_id, _email = resolve_test_actor(env, client)
+    override = (env.get("CHAT_E2E_ORG_ID") or env.get("ISOLATED_CONVERSATION_TEST_ORG_ID") or "").strip()
+    if override:
+        org_id = require_isolated_org(override)
+    return org_id, user_id
 
 
 async def _async_main() -> int:

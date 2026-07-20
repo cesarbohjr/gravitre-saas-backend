@@ -1,0 +1,70 @@
+{
+  "module": "D-round3",
+  "started_at": "2026-07-20T01:23:38.128555+00:00",
+  "finished_at": "2026-07-20T01:24:22.129075+00:00",
+  "git_sha": "646dfc22f3d322ee2ab79b3325d995b6bb14f5f6",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "verdict": "PARTIAL — voice universal on chat/skip/formatter surfaces; canvas gate emits voice SoT but tip 646dfc22 still sanitizes to 'Step execution failed' until execute-path fix deploys",
+  "1_canvas": {
+    "expected": "Write blocked: this canvas step needs an approved run (required_approvals>=1). In-graph approval alone is not enough.",
+    "gate_sot_match": true,
+    "tip_pre_fix_run": {
+      "run_id": "d40c93f2-c2d4-4acd-b640-d50c50fe30d2",
+      "tip_sha": "646dfc22f3d322ee2ab79b3325d995b6bb14f5f6",
+      "step_error_code": "step_failed",
+      "user_facing_error": "Step execution failed",
+      "note": "Gate raised voice PermissionError; execute.py sanitized it away on tip"
+    },
+    "post_fix_local_sync_run": {
+      "run_id": "beacee05-3b77-47a3-994b-4937b27058f7",
+      "exec_path": "sync_execute_workflow_steps (local code with sanitize fix against prod DB)",
+      "step_error_code": "canvas_write_authority_blocked",
+      "user_facing_error": "Write blocked: this canvas step needs an approved run (required_approvals>=1). In-graph approval alone is not enough.",
+      "matches_voice_sot": true,
+      "deployed_to_tip": false
+    }
+  },
+  "2_connect_slack": {
+    "expected": "Connect Slack at /connectors to run this action.",
+    "mapper_output": "Connect Slack at /connectors to run this action.",
+    "chat_conversation_id": "4d8015e5-49bb-45a5-9fd2-a16a0b760477",
+    "chat_http": 200,
+    "chat_preview": "Slack is not Connected for this organization. Connect it at /connectors, then try again.",
+    "old_string_absent": true,
+    "pass": true
+  },
+  "3_llm_post_deploy": {
+    "conversation_id": "f343fd6b-11f5-40da-998a-973865bfb5af",
+    "http": 200,
+    "content": "I don't have enough information yet; based on what's Connected so far, I would say connector readiness is not Verified or Healthy. When details are incomplete, I state the gap plainly and name what is Connected before I can confirm readiness.",
+    "tip_is_646dfc22": true,
+    "voice_section_has_register": true,
+    "pass": true
+  },
+  "4_confidence_register": {
+    "estimate_sot": "Estimate — based on what's Connected so far: pipeline risk is rising this week.",
+    "estimate_conversation_id": "8eb7e367-602e-4b85-abd1-637159022f6e",
+    "estimate_transcript": "Estimate — based on what's Connected so far, revenue outlook is likely stable to slightly up.",
+    "estimate_pass": true,
+    "blocked_sot": "Blocked. Slack is not Connected. Next: Connect Slack at /connectors, then retry.",
+    "blocked_conversation_id": "4d8015e5-49bb-45a5-9fd2-a16a0b760477",
+    "blocked_transcript": "Slack is not Connected for this organization. Connect it at /connectors, then try again.",
+    "blocked_pass": true,
+    "distinct": true
+  },
+  "5_humor_budget": {
+    "write_approval_preview": "I can create a contact list named **MSP Prospects** in Apollo.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
+    "success_sober": "Done. Verified output is ready.",
+    "success_light": "Done — clean run.",
+    "humor_forbidden_on_approval": true,
+    "pass": true
+  },
+  "6_executive_digest": {
+    "reserved_not_implemented": true,
+    "error_message": "format_outcome_digest is reserved for the Executive Digest follow-up; it depends on Module A's real-time outcome stream. Use format_operator_message for single-event copy until then.",
+    "documented_in_module_d_md": true
+  },
+  "passed": false,
+  "named_gap": "Canvas write-authority voice string is produced by block_canvas_write_step on tip, but workflow execute sanitizes PermissionError to 'Step execution failed'. Fix landed locally (execute.py + execution_engine_runtime.py + user_facing_message_from_write_authority_error); not on tip until merge → Railway redeploy → live re-run."
+}

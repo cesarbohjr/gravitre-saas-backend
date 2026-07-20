@@ -1,0 +1,18 @@
+{
+  "probe": "conversation_write_leak_24h",
+  "since": "2026-07-18T10:23:20.018877+00:00",
+  "total_creates": 132,
+  "by_org": {
+    "f07e57c0-1501-4000-8000-c04e57a00001": 18,
+    "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea": 114
+  },
+  "by_user": {
+    "a9f1240f-910a-42ca-aebf-38caeac288c3": 18,
+    "f7e32f06-49df-4e73-8962-f41c21850762": 114
+  },
+  "isolated_org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "isolated_user_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "active_leak_candidates": [],
+  "pass": true,
+  "generated_at": "2026-07-19T10:23:22.339842+00:00"
+}

@@ -632,8 +632,12 @@ export function AiWorkspace({
         refreshConversationTitleIfNeeded(existingId, title)
         return existingId
       }
-      // Smoke/CI chokepoint: never create threads in a real operator org.
-      assertConversationCreateOrgAllowed(getSelectedOrgFromStorage()?.id ?? null)
+      // Default-deny: test/service credentials cannot create threads outside isolated org.
+      assertConversationCreateOrgAllowed(
+        getSelectedOrgFromStorage()?.id ?? null,
+        user?.id ?? null,
+        user?.email ?? null,
+      )
       if (!pendingConversationRef.current) {
         const createTitle = deriveConversationTitle(title)
         pendingConversationRef.current = conversationsApi
@@ -675,7 +679,7 @@ export function AiWorkspace({
       }
       return pendingConversationRef.current
     },
-    [mutateConversations, refreshConversationTitleIfNeeded],
+    [mutateConversations, refreshConversationTitleIfNeeded, user?.id, user?.email],
   )
 
   const applyConversationMessages = useCallback(

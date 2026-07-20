@@ -1010,10 +1010,50 @@ class ChatConnectorExecutionService:
             environment_name=environment_name,
         )
         if blocked:
+            # Module A + D: terminal blocked write still fans out (Runs/Notify/Audit/Learning)
+            # and uses voice SoT — do not soft-return outside finalize_execution_outcome.
+            from app.services.gravitree_voice import format_operator_message
+
+            voiced = format_operator_message(
+                "connector_connect_to_run",
+                integration=plan.integration,
+                confidence_register="blocked",
+            )
+            # Prefer connect house phrase when the blocker is missing connector;
+            # otherwise keep availability detail inside blocked register.
+            if "connect" in blocked.lower() and "connector" in blocked.lower():
+                message = voiced
+            else:
+                message = format_operator_message(
+                    "blocked",
+                    blocker=blocked[:400],
+                    next_action=f"Connect {plan.integration} at /connectors, then retry.",
+                )
+            failed = ExecutionResult(
+                success=False,
+                entity_type="connector",
+                entity_id="",
+                connector_management_url="/connectors",
+                result_url=f"/ai?conversation={conversation_id}" if conversation_id else "/ai",
+                title=plan.label,
+                body=message,
+                integration=plan.integration,
+                task_label=plan.label,
+                error_code="connector_not_ready",
+            )
+            self._finalize_connector_outcome(
+                client,
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                plan=plan,
+                result=failed,
+            )
             return {
                 "stop_pipeline": True,
                 "dialogue_mode": "answer",
-                "message": blocked,
+                "message": message,
+                "execution_result": serialize_execution_result(failed),
                 "task_state": task_state,
             }
 
@@ -1516,13 +1556,53 @@ class ChatConnectorExecutionService:
     ) -> None:
         """Route single-connector chat terminals through finalize_execution_outcome().
 
-        Fixes the audit finding that failure paths returned before emit_notification.
-        No workflow_run row for this path — persist_run=False; fanout still covers
-        notify + audit + learning.
+        Creates a lightweight workflow_run so Module A fanout includes Runs (not only
+        notify/audit/learning). Titles/bodies are shaped by Module D inside finalize.
         """
+        from uuid import uuid4
+
         from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
+        from app.workflows.repository import create_run
 
         status = "completed" if result.success else "failed"
+        run_id: str | None = None
+        try:
+            created = create_run(
+                client,
+                org_id=org_id,
+                triggered_by=user_id,
+                definition_snapshot={
+                    "name": plan.label or plan.invoke_action,
+                    "source": "assistant_chat",
+                    "steps": [
+                        {
+                            "id": "connector",
+                            "name": plan.label or plan.invoke_action,
+                            "type": "invoke_tool",
+                            "config": {"action": plan.invoke_action},
+                        }
+                    ],
+                },
+                parameters={
+                    "conversation_id": conversation_id,
+                    "invoke_action": plan.invoke_action,
+                    "integration": plan.integration,
+                    "tool_name": plan.tool_name,
+                },
+                run_hash=f"chat-connector-{uuid4().hex[:16]}",
+                workflow_id=None,
+                environment_name="production",
+                trigger_type="assistant_chat",
+                run_type="execute",
+            )
+            run_id = str(created["id"])
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "chat connector run create skipped org_id=%s action=%s error=%s",
+                org_id,
+                plan.invoke_action,
+                exc,
+            )
         try:
             finalize_execution_outcome(
                 client,
@@ -1530,24 +1610,24 @@ class ChatConnectorExecutionService:
                 status=status,
                 source="assistant_chat",
                 actor_id=user_id,
-                run_id=None,
-                persist_run=False,
+                run_id=run_id,
+                persist_run=bool(run_id),
                 error_summary=None if result.success else (result.body or "Connector action failed"),
                 verified_output=VerifiedOutputRef(
                     summary=(result.body or "")[:2000] or None,
                     result_url=result.result_url,
                     external_url=result.external_url,
                     entity_type=result.entity_type or "connector",
-                    entity_id=result.entity_id or None,
+                    entity_id=result.entity_id or run_id or None,
                     integration=result.integration or plan.integration,
                 ),
-                notification_title=result.title or plan.label,
                 notification_body=(result.body or "")[:2000] or None,
                 metadata={
                     "conversation_id": conversation_id,
                     "invoke_action": plan.invoke_action,
                     "tool_name": plan.tool_name,
                     "path": "chat_connector_execute_plan",
+                    "error_code": getattr(result, "error_code", None),
                 },
             )
         except Exception as exc:  # noqa: BLE001

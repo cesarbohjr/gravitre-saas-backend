@@ -109,6 +109,10 @@ def test_finalize_failure_fanout() -> None:
     emit_failed.assert_called_once()
     emit_notification.assert_called_once()
     assert emit_notification.call_args.kwargs["event_type"] == "run_failed"
+    # Module D house title — callers cannot bypass with notification_title.
+    assert emit_notification.call_args.kwargs["title"] == "Orchestration run failed"
+    body = emit_notification.call_args.kwargs["body"]
+    assert "Blocked." in body or "step blew up" in body
     correlate.assert_called_once()
     assert client.store.get("intelligence_outcome_events")
 

@@ -3989,6 +3989,20 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     from dataclasses import replace
 
     params = dict(params or {})
+    # Module 0 — credential/isolation guard on the shared write spine (chat/ReAct/canvas).
+    from app.services.conversation_write_guard import (
+        ConversationWriteBlockedError,
+        assert_org_write_allowed,
+    )
+
+    try:
+        assert_org_write_allowed(
+            ctx.org_id,
+            actor_id=getattr(ctx, "actor_id", None),
+            resource="tool invoke",
+        )
+    except ConversationWriteBlockedError as exc:
+        raise ToolValidationError(str(exc), code="ORG_WRITE_ISOLATION") from exc
     federation_token = params.pop("federation_token", None) or params.pop("federationToken", None)
     federation_grant_id = params.pop("federation_grant_id", None) or params.pop("federationGrantId", None)
     federated_grant = None

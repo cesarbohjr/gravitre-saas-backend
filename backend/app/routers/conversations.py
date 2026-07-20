@@ -295,7 +295,17 @@ async def create_conversation(
 ) -> dict:
     org_id = _require_org(org_id)
     try:
-        assert_conversation_create_allowed(org_id)
+        from app.services.conversation_write_guard import bind_request_actor
+
+        bind_request_actor(
+            actor_id=str(user.get("user_id") or ""),
+            actor_email=str(user.get("email") or ""),
+        )
+        assert_conversation_create_allowed(
+            org_id,
+            actor_id=str(user.get("user_id") or ""),
+            actor_email=str(user.get("email") or "") or None,
+        )
     except ConversationWriteBlockedError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     now = _now_iso()

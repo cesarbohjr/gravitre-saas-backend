@@ -165,6 +165,9 @@ _HUMOR_FORBIDDEN_KINDS = frozenset(
         "approval_needed_requester_title",
         "notification_run_title",
         "notification_run_body",
+        "audit_failure_summary",
+        "failure_alert_title",
+        "failure_alert_body",
         "insufficient_info",
         "assumption_flag",
         "blocked",
@@ -363,6 +366,32 @@ def _apply_register(text: str, register: ConfidenceRegister | str | None) -> str
     return body
 
 
+def format_confidence_for_voice(
+    value: float | None,
+    *,
+    source: str | None = None,
+    is_estimate: bool = True,
+) -> str:
+    """Module C honesty through Module D — never emit an unlabeled confidence number."""
+    from app.services.confidence_honesty import (
+        CONFIDENCE_SOURCE_HEURISTIC,
+        label_confidence,
+    )
+
+    labeled = label_confidence(
+        value,
+        source=source or CONFIDENCE_SOURCE_HEURISTIC,
+        is_estimate=is_estimate,
+    )
+    conf = labeled.get("confidence")
+    if conf is None:
+        return format_operator_message("insufficient_info")
+    detail = f"{float(conf):.0%} confidence"
+    if labeled.get("confidence_is_estimate", True) or is_estimate:
+        return format_operator_message("estimate", detail=detail)
+    return detail
+
+
 def format_operator_message(
     kind: str,
     *,
@@ -374,8 +403,16 @@ def format_operator_message(
 
     ``allow_humor`` is ignored (forced off) for governance/error/blocked kinds.
     ``confidence_register`` shapes estimate/blocked phrasing where applicable.
+    Numeric ``confidence`` in ``ctx`` is always routed through Module C labeling.
     """
     key = str(kind or "").strip().lower()
+    # Module C gate: a bare float in voice context must be labeled before emission.
+    if "confidence" in ctx and isinstance(ctx.get("confidence"), (int, float)):
+        return format_confidence_for_voice(
+            float(ctx["confidence"]),
+            source=str(ctx.get("confidence_source") or "") or None,
+            is_estimate=bool(ctx.get("confidence_is_estimate", True)),
+        )
     register = str(confidence_register or "").strip().lower() or None
     if register not in {None, "certain", "estimate", "blocked"}:
         register = "certain"
@@ -486,16 +523,57 @@ def format_operator_message(
         status = str(ctx.get("status") or "").strip().lower()
         explicit = str(ctx.get("body") or "").strip()
         if explicit:
+            # Failures: reshape through blocked register unless already voiced.
+            if status == "failed":
+                lowered = explicit.lower()
+                if lowered.startswith(("blocked", "write blocked", "connect ")):
+                    return explicit[:2000]
+                return house_phrase(
+                    "blocked_generic",
+                    blocker=explicit[:400],
+                    next_action="Open the failed run, fix the blocker, then retry.",
+                )[:2000]
             return explicit[:2000]
         error_summary = str(ctx.get("error_summary") or "").strip()
         if status == "failed":
-            return (error_summary or "Review the run details for step-level errors.")[:2000]
+            detail = error_summary or "Review the run details for step-level errors."
+            lowered = detail.lower()
+            if lowered.startswith(("blocked", "write blocked", "connect ")):
+                return detail[:2000]
+            return house_phrase(
+                "blocked_generic",
+                blocker=detail[:400],
+                next_action="Open the failed run, fix the blocker, then retry.",
+            )[:2000]
         if status == "cancelled":
             return (error_summary or "Run was cancelled.")[:2000]
         verified_summary = str(ctx.get("verified_summary") or "").strip()
         if verified_summary:
             return verified_summary[:2000]
         return f"Run finished with status {status or 'completed'}."
+
+    if key == "audit_failure_summary":
+        err = str(ctx.get("error_summary") or "execution failed").strip()
+        lowered = err.lower()
+        if lowered.startswith(("blocked", "write blocked", "failed —", "failed -")):
+            return err[:500]
+        return f"Failed — {err}"[:500]
+
+    if key == "failure_alert_title":
+        label = str(ctx.get("label") or "workflow").strip() or "workflow"
+        if ctx.get("repeated"):
+            return f"Repeated {label} failures across workflows"[:200]
+        return f"Observed {label} run failure"[:200]
+
+    if key == "failure_alert_body":
+        blocker = str(ctx.get("blocker") or ctx.get("error_summary") or "run failed").strip()
+        count = ctx.get("failure_count")
+        prefix = f"{count} related failures. " if isinstance(count, int) and count > 1 else ""
+        return house_phrase(
+            "blocked_generic",
+            blocker=f"{prefix}{blocker}"[:400],
+            next_action="Open the failed run, fix the blocker, then retry.",
+        )[:1000]
 
     if key == "approval_needed_requester":
         label = str(ctx.get("label") or "This write").strip()

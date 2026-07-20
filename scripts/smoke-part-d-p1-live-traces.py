@@ -30,10 +30,19 @@ for p in [ROOT / "backend" / ".env", ROOT / ".env.operator.local", ROOT / "backe
 import sys
 
 sys.path.insert(0, str(ROOT / "backend"))
+sys.path.insert(0, str(ROOT / "scripts"))
 from app.config import get_settings
 from app.workflows.repository import get_supabase_client
+from gravitree_test_client import (  # noqa: E402
+    ISOLATED_ORG_ID,
+    mark_smoke_run,
+    resolve_test_actor,
+    smoke_http_headers,
+)
 
-ORG = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+# Conversation chat probes — isolated org only (never Cesar operator workspace).
+ORG = ISOLATED_ORG_ID
+mark_smoke_run()
 BASE = "https://gravitre-saas-backend-production.up.railway.app"
 # Accept any current prod tip; set PART_D_P1_EXPECTED_SHA_PREFIX to pin when needed.
 EXPECTED_SHA_PREFIX = os.environ.get("PART_D_P1_EXPECTED_SHA_PREFIX", "")
@@ -158,10 +167,7 @@ def pass_gate(pending: dict | None, expected_type: str) -> bool:
 async def main() -> None:
     s = get_settings()
     c = get_supabase_client(s)
-    actor = os.environ.get("OAUTH_SMOKE_USER_ID") or (
-        c.table("organization_members").select("user_id").eq("org_id", ORG).limit(1).execute().data[0]["user_id"]
-    )
-    email = (c.auth.admin.get_user_by_id(actor).user.email) or f"{actor}@gravitre.local"
+    _org, actor, email = resolve_test_actor(client=c)
     url = os.environ["SUPABASE_URL"].rstrip("/")
     tok = jwt.encode(
         {
@@ -176,16 +182,19 @@ async def main() -> None:
         os.environ["SUPABASE_JWT_SECRET"],
         algorithm="HS256",
     )
+    smoke_hdrs = smoke_http_headers()
     hdr = {
         "Authorization": f"Bearer {tok}",
         "X-Org-Id": ORG,
         "X-Environment": "production",
         "Accept": "text/event-stream",
+        **smoke_hdrs,
     }
     state_hdr = {
         "Authorization": f"Bearer {tok}",
         "X-Org-Id": ORG,
         "X-Environment": "production",
+        **smoke_hdrs,
     }
 
     report: dict = {

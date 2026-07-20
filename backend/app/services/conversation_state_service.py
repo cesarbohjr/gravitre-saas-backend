@@ -205,8 +205,8 @@ class ConversationStateService:
             )
             if owned.data:
                 return conv_id
-            # Create path only — smoke/test/CI must fail loudly (never soft-skip).
-            assert_conversation_create_allowed(org_id)
+            # Create path only — test credentials default-deny outside isolated org.
+            assert_conversation_create_allowed(org_id, actor_id=uid)
             now = datetime.now(timezone.utc).isoformat()
             safe_title = (title or "New conversation").strip()[:80] or "New conversation"
             db.table("conversations").insert(

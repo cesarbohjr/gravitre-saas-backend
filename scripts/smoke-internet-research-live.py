@@ -46,7 +46,11 @@ _load_env_files()
 async def _main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--json", required=True)
-    parser.add_argument("--org-id", default=os.getenv("OAUTH_SMOKE_ORG_ID", ""))
+    parser.add_argument(
+        "--org-id",
+        default="",
+        help="Must be the isolated conversation test org (OAUTH_SMOKE_ORG_ID ignored)",
+    )
     args = parser.parse_args()
 
     from app.config import get_settings
@@ -57,13 +61,14 @@ async def _main() -> int:
         get_platform_grounding_status,
         org_hourly_circuit_limit,
     )
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from gravitree_test_client import require_isolated_org, resolve_test_actor
 
     settings = get_settings()
     client = get_supabase_client(settings)
-    org_id = args.org_id.strip()
-    if not org_id:
-        print("OAUTH_SMOKE_ORG_ID required", file=sys.stderr)
-        return 2
+    org_id, _actor, _email = resolve_test_actor()
+    if args.org_id.strip():
+        org_id = require_isolated_org(args.org_id.strip())
 
     report: dict = {
         "record": "internet_research_live_smoke",

@@ -146,7 +146,8 @@ def lookup_resolutions(
                     entity_id=str(row.get("entity_id") or ""),
                     integration=str(row.get("integration") or ""),
                     source=str(row.get("source") or "org entity cache"),
-                    confidence=float(row.get("confidence") or 0.0),
+                    raw_conf = row.get("confidence")
+                    confidence=float(raw_conf) if raw_conf is not None else 0.0,
                 )
             )
         return hits

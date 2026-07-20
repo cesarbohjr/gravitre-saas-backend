@@ -35,7 +35,6 @@ sys.path.insert(0, str(REPO))
 from scripts.milestone2_perf_common import (  # noqa: E402
     INTERNAL_QUERIES,
     MODEL_CALL_TASK_TYPES,
-    ORG_DEFAULT,
     PRE_RM_SHA,
     PROD_DEFAULT,
     RM_MERGE_COMMIT,
@@ -44,6 +43,11 @@ from scripts.milestone2_perf_common import (  # noqa: E402
     compare_latency,
     fetch_health,
     latency_summary,
+)
+from gravitree_test_client import (  # noqa: E402
+    get_service_client,
+    require_isolated_org,
+    resolve_test_actor,
 )
 
 RM_MERGE_AT = datetime(2026, 7, 18, 5, 5, 29, tzinfo=timezone.utc)
@@ -165,12 +169,11 @@ def run_audit(args: argparse.Namespace) -> dict[str, Any]:
         if not env.get(key):
             raise SystemExit(f"Missing {key}")
 
-    from supabase import create_client
-    from smoke_auth import resolve_smoke_actor_and_email
-
-    client = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
-    org_id = (args.org_id or env.get("OAUTH_SMOKE_ORG_ID") or ORG_DEFAULT).strip()
-    actor, email = resolve_smoke_actor_and_email(client, org_id=org_id, env=env)
+    # Conversation chat probes — isolated org only (ignore OAUTH_SMOKE_ORG_ID).
+    client = get_service_client(env)
+    org_id, actor, email = resolve_test_actor(env, client)
+    if getattr(args, "org_id", None):
+        org_id = require_isolated_org(args.org_id)
     token = _mint_token(env, actor, email)
     base_url = (args.base_url or PROD_DEFAULT).rstrip("/")
     tag = datetime.now(timezone.utc).strftime("%Y%m%d%H%M")

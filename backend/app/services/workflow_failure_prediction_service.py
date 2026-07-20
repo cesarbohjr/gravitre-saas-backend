@@ -803,16 +803,18 @@ def correlate_observed_run_failure(
                 }
             )
             label = resolved_integration or resolved_action_type or "workflow"
-            title = (
-                f"Repeated {label} failures across workflows"
-                if kind in {"connector", "action"} and correlated_wfs
-                else (row.get("title") or "Observed workflow run failure")
+            from app.services.gravitree_voice import format_operator_message
+
+            title = format_operator_message(
+                "failure_alert_title",
+                label=label,
+                repeated=bool(kind in {"connector", "action"} and correlated_wfs),
             )
-            message = (
-                f"{len(correlated_runs) + 1} related failures"
-                f"{f' on {label}' if label else ''}. "
-                f"Latest: {(error_summary or 'run failed')[:400]}"
-            )[:1000]
+            message = format_operator_message(
+                "failure_alert_body",
+                blocker=(error_summary or "run failed")[:400],
+                failure_count=len(correlated_runs) + 1,
+            )
             try:
                 client.table("workflow_failure_alerts").update(
                     {
@@ -862,13 +864,21 @@ def correlate_observed_run_failure(
         ),
     }
     label = resolved_integration or resolved_action_type or "workflow"
+    from app.services.gravitree_voice import format_operator_message
+
     alert = _alert_row(
         org_id=org_id,
         workflow_id=resolved_workflow_id,
         alert_type="step_failure_risk",
         severity="high",
-        title=f"Observed {label} run failure",
-        message=(error_summary or "A workflow run failed. Review the run for step-level errors.")[:1000],
+        title=format_operator_message("failure_alert_title", label=label, repeated=False),
+        message=format_operator_message(
+            "failure_alert_body",
+            blocker=(error_summary or "A workflow run failed. Review the run for step-level errors.")[
+                :400
+            ],
+            failure_count=1,
+        ),
         evidence=evidence,
         connector_id=resolved_connector_id,
     )

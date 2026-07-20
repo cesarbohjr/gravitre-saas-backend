@@ -753,8 +753,9 @@ async def train_causal_impact_analyzer(
     structured = await analyzer.predict_structured(org_id=org_id, metric_name="deal_amount", settings=active)
     if structured.get("status") != "ok":
         return {"trained": False, **structured}
+    raw_accuracy = structured.get("confidence")
     metrics = ModelMetrics(
-        accuracy=float(structured.get("confidence") or 0.5),
+        accuracy=float(raw_accuracy) if raw_accuracy is not None else None,
         custom_metrics={
             "sample_size": structured.get("sample_size"),
             "estimated_effect": structured.get("estimated_effect"),

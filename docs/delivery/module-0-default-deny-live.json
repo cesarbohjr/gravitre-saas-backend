@@ -1,0 +1,50 @@
+{
+  "probe": "module_0_default_deny",
+  "verified_at": "2026-07-19T10:25:00Z",
+  "guard": "credential-level default-deny in conversation_write_guard",
+  "evidence": {
+    "unflagged_sa_refuse": {
+      "status": "PASS",
+      "actor": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+      "target_org": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+      "error_prefix": "REFUSING conversation create: test/service credential cannot write",
+      "leaked_row": false
+    },
+    "flagged_sa_refuse": {
+      "status": "PASS",
+      "leaked_row": false
+    },
+    "phantom_soft_delete": {
+      "status": "PASS",
+      "conversation_id": "2c7cfccb-3be2-441e-9527-5feab53c1dba",
+      "deleted_at": "2026-07-19T10:20:00+00:00",
+      "batch_tag": "smoke_conv_cleanup_20260719T102000Z"
+    },
+    "cesar_active_phantoms": {
+      "status": "PASS",
+      "active_phantom_count": 0,
+      "active_conversations": 2,
+      "titles": [
+        "Search HubSpot for high-intent leads and draft a follow-up in Slack for approval",
+        "What agents are currently active?"
+      ]
+    },
+    "vercel_production_env": {
+      "status": "CHECKED",
+      "project": "gravitre-ai/web",
+      "FASTAPI_BASE_URL_PRESENT": false,
+      "ALLOW_DEMO_RUNTIME_FALLBACK": "<unset>",
+      "VERCEL_ENV_PRESENT": true,
+      "demo_runtime_fail_closed": true,
+      "note": "With FASTAPI unset, isDemoRuntimeFallbackAllowed() is still false in Vercel production (VERCEL_ENV=production), so shouldUseDemoRuntimeFallback() cannot open demo-runtime-store."
+    },
+    "harness": {
+      "module": "scripts/gravitree_test_client.py",
+      "ci_lint": "scripts/lint-smoke-harness.py (wired in .github/workflows/ci.yml)",
+      "leak_monitor": "scripts/report-conversation-write-leak-24h.py",
+      "leak_monitor_pass": true
+    }
+  },
+  "unit_tests": "pytest tests/services/test_conversation_write_guard.py — 6 passed",
+  "verify_script": "python scripts/verify-conversation-default-deny.py"
+}

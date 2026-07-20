@@ -192,12 +192,32 @@ def _default_body(event: ExecutionOutcomeEvent, status: TerminalStatus) -> str:
     verified_summary = (
         event.verified_output.summary if event.verified_output else None
     )
+    # Prefer explicit body; fall back to caller title detail (never bypass voice).
+    body = event.notification_body or (
+        event.notification_title if status != "failed" else None
+    )
     return format_operator_message(
         "notification_run_body",
         status=status,
-        body=event.notification_body,
+        body=body,
         error_summary=event.error_summary,
         verified_summary=verified_summary,
+    )
+
+
+def _audit_summary(event: ExecutionOutcomeEvent, status: TerminalStatus) -> str | None:
+    """Voice-shape audit-facing failure summaries via Module D (raw detail preserved in metadata)."""
+    raw = (event.error_summary or "").strip()
+    if not raw:
+        return event.error_summary
+    if status != "failed":
+        return event.error_summary
+    from app.services.gravitree_voice import format_operator_message
+
+    return format_operator_message(
+        "audit_failure_summary",
+        error_summary=raw,
+        source=event.source,
     )
 
 def _persist_run(client: Any, event: ExecutionOutcomeEvent, status: TerminalStatus, ts: str) -> None:
@@ -205,12 +225,13 @@ def _persist_run(client: Any, event: ExecutionOutcomeEvent, status: TerminalStat
         return
     from app.workflows.repository import update_run
 
+    auditish = _audit_summary(event, status) if status == "failed" else event.error_summary
     update_run(
         client,
         event.run_id,
         status=status,
         completed_at=ts,
-        error_message=event.error_summary if status == "failed" else event.error_summary,
+        error_message=auditish if status == "failed" else event.error_summary,
         approval_status=event.approval_status,
     )
 
@@ -225,6 +246,7 @@ def _write_audit(client: Any, event: ExecutionOutcomeEvent, status: TerminalStat
         )
         return None
 
+    voiced_error = _audit_summary(event, status) if status == "failed" else event.error_summary
     resource_id = event.run_id
     if resource_id:
         from app.workflows.repository import (
@@ -234,7 +256,7 @@ def _write_audit(client: Any, event: ExecutionOutcomeEvent, status: TerminalStat
         )
 
         if status == "failed":
-            emit_execute_failed(client, event.org_id, actor, resource_id, event.error_summary)
+            emit_execute_failed(client, event.org_id, actor, resource_id, voiced_error)
         elif status == "cancelled":
             emit_execute_cancelled(client, event.org_id, actor, resource_id)
         else:
@@ -264,7 +286,8 @@ def _write_audit(client: Any, event: ExecutionOutcomeEvent, status: TerminalStat
         metadata={
             "source": event.source,
             "status": status,
-            "error_message": (event.error_summary or "")[:200],
+            "error_message": (voiced_error or "")[:200],
+            "error_message_raw": (event.error_summary or "")[:200],
             **dict(event.metadata or {}),
         },
     )
@@ -290,12 +313,13 @@ def _emit_notification(
 
     notify_event = _notification_event_for(status)
     verified = event.verified_output or VerifiedOutputRef()
+    # Always Module D house titles — caller notification_title must not bypass voice.
     emit_notification(
         client,
         org_id=event.org_id,
         user_id=actor,
         event_type=notify_event,
-        title=event.notification_title or _default_title(status, source=event.source),
+        title=_default_title(status, source=event.source),
         body=_default_body(event, status),
         entity_ref=verified.as_entity_ref(run_id=event.run_id),
         channel_hints=dict(event.channel_hints or {"bell": True, "email": False}),

@@ -154,7 +154,6 @@ def resolve_isolated_conversation_actor(
         raise ConversationWriteBlockedError(
             f"ISOLATED_CONVERSATION_TEST_ORG_ID must not be operator org {FORBIDDEN_OPERATOR_ORG_ID}"
         )
-    assert_conversation_create_allowed(org_id)
 
     user_id = (
         (env.get("ISOLATED_CONVERSATION_TEST_USER_ID") or "").strip()
@@ -173,6 +172,8 @@ def resolve_isolated_conversation_actor(
         raise SystemExit(
             "Set ISOLATED_CONVERSATION_TEST_USER_ID or call with client= to provision the SA actor"
         )
+
+    assert_conversation_create_allowed(org_id, actor_id=user_id, actor_email=email)
 
     env["ISOLATED_CONVERSATION_TEST_ORG_ID"] = org_id
     env["ISOLATED_CONVERSATION_TEST_USER_ID"] = user_id

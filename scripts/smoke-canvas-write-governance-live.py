@@ -454,10 +454,14 @@ def main() -> int:
         os.environ.setdefault(k, v)
 
     client = _supabase(env)
-    org_id = (env.get("OAUTH_SMOKE_ORG_ID") or env.get("SMOKE_ORG_ID") or SMOKE_ORG).strip()
-    from scripts.smoke_auth import resolve_smoke_actor_and_email
+    # Conversation / probe titles must not land in operator org via OAUTH_SMOKE_ORG_ID.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from gravitree_test_client import require_isolated_org, resolve_test_actor
 
-    actor, email = resolve_smoke_actor_and_email(client, org_id=org_id, env=env)
+    org_id, actor, email = resolve_test_actor(env, client)
+    override = (env.get("CANVAS_SMOKE_ORG_ID") or env.get("ISOLATED_CONVERSATION_TEST_ORG_ID") or "").strip()
+    if override:
+        org_id = require_isolated_org(override)
     token = _mint_token(env, actor, email)
 
     list_name = f"CanvasGovProbe {datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')} {uuid.uuid4().hex[:6]}"

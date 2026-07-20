@@ -350,6 +350,10 @@ class MesonService:
         plan: MesonInterpretResult,
         create_workflow: bool = True,
     ) -> MesonDeployResult:
+        # Module 0 — same isolation guard as chat/ReAct/canvas write spine.
+        from app.services.conversation_write_guard import assert_org_write_allowed
+
+        assert_org_write_allowed(org_id, actor_id=user_id, resource="meson deploy")
         cfg = plan.generated_config
         persona_role = DEPARTMENT_ROLE.get(plan.department, "default")
         operator = create_operator(

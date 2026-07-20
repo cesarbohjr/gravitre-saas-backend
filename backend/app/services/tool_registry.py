@@ -1254,6 +1254,19 @@ class ToolRegistry:
         settings = ctx.settings
         agent_id = str(args.get("agentId") or args.get("agent_id") or ctx.agent_id or "") or None
         user_id = ctx.actor_id if ctx.actor_id not in {None, "", "system"} else None
+        # Module 0 — platform write arms bypass invoke_tool; gate them here.
+        if tool_name in {
+            "assistant_create_workflow",
+            "assistant_execute_workflow",
+            "assistant_run_agent_task",
+        }:
+            from app.services.conversation_write_guard import assert_org_write_allowed
+
+            assert_org_write_allowed(
+                org_id,
+                actor_id=user_id,
+                resource=f"platform tool {tool_name}",
+            )
         try:
             if tool_name == "assistant_agent_status":
                 payload = assistant_tools_module.tool_agent_status(
