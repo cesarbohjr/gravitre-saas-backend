@@ -139,6 +139,7 @@ def lookup_resolutions(
         resp = query.execute()
         hits: list[ResolutionHit] = []
         for row in resp.data or []:
+            raw_conf = row.get("confidence")
             hits.append(
                 ResolutionHit(
                     alias_normalized=str(row.get("alias_normalized") or ""),
@@ -146,7 +147,6 @@ def lookup_resolutions(
                     entity_id=str(row.get("entity_id") or ""),
                     integration=str(row.get("integration") or ""),
                     source=str(row.get("source") or "org entity cache"),
-                    raw_conf = row.get("confidence")
                     confidence=float(raw_conf) if raw_conf is not None else 0.0,
                 )
             )

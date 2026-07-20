@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest"
 import { normalizeDomainPredictions } from "@/lib/intelligence/normalize-domain-predictions"
 
 describe("normalizeDomainPredictions", () => {
