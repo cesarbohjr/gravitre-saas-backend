@@ -261,6 +261,11 @@ def _suggestion_row(
         "message": message,
         "evidence": evidence,
         "confidence": confidence,
+        # Module C / STA-331: formula scores are estimates until outcome-seasoned.
+        "confidence_is_estimate": True,
+        "confidenceIsEstimate": True,
+        "confidence_source": "heuristic",
+        "confidenceSource": "heuristic",
         "priority": priority,
         "status": "open",
         "suggested_at": _now_iso(),
@@ -390,6 +395,9 @@ def build_integration_suggestions(
 
 
 def _serialize_suggestion(row: dict[str, Any]) -> dict[str, Any]:
+    is_estimate = row.get("confidence_is_estimate")
+    if is_estimate is None:
+        is_estimate = row.get("confidenceIsEstimate", True)
     return {
         "id": row.get("id"),
         "orgId": row.get("org_id"),
@@ -401,6 +409,10 @@ def _serialize_suggestion(row: dict[str, Any]) -> dict[str, Any]:
         "message": row.get("message"),
         "evidence": row.get("evidence") or {},
         "confidence": float(row.get("confidence") or 0),
+        "confidenceIsEstimate": bool(is_estimate),
+        "confidenceSource": row.get("confidence_source")
+        or row.get("confidenceSource")
+        or "heuristic",
         "priority": int(row.get("priority") or 0),
         "status": row.get("status"),
         "suggestedAt": row.get("suggested_at"),

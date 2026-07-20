@@ -218,7 +218,7 @@ function InstalledContent() {
       <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-6 md:py-8">
         <div className="mb-8">
           <Button variant="ghost" size="sm" className="mb-3 -ml-2" asChild>
-            <Link href="/marketplace">
+            <Link href="/marketplace/assets">
               <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden />
               Marketplace
             </Link>

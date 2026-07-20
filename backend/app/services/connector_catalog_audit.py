@@ -32,6 +32,8 @@ from app.services.tool_service import list_registered_actions
 SchemaStatus = Literal["override", "extension", "explicit", "inferred", "missing"]
 TestStatus = Literal["mock", "live", "none"]
 RiskLevel = Literal["low", "medium", "high"]
+# Honesty: "implemented" ≠ "verified working". Unverified = executable but testStatus none.
+VerificationClaim = Literal["verified_working", "implemented_unverified", "not_implemented"]
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _TESTS_ROOT = _REPO_ROOT / "tests"
@@ -52,6 +54,7 @@ class CatalogAuditRow:
     multi_step_plans: bool
     structured_results: bool
     test_status: TestStatus
+    verification_claim: VerificationClaim = "not_implemented"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -68,7 +71,16 @@ class CatalogAuditRow:
             "multiStepPlans": self.multi_step_plans,
             "structuredResults": self.structured_results,
             "testStatus": self.test_status,
+            "verificationClaim": self.verification_claim,
         }
+
+
+def _verification_claim(*, implementation_status: str, test_status: TestStatus) -> VerificationClaim:
+    if implementation_status == "not_implemented":
+        return "not_implemented"
+    if test_status in {"mock", "live"}:
+        return "verified_working"
+    return "implemented_unverified"
 
 
 def schema_source_for_action(action_key: str, *, kind: str, suffix: str) -> SchemaStatus:
@@ -184,6 +196,7 @@ def audit_connector_catalog() -> list[CatalogAuditRow]:
                 schema_status = "missing"
 
         scopes = entry.required_scopes if entry else spec.scopes
+        test_status = _test_status_for(action_id, vendor)
         rows.append(
             CatalogAuditRow(
                 vendor=vendor,
@@ -202,7 +215,11 @@ def audit_connector_catalog() -> list[CatalogAuditRow]:
                 approval_required=bool(entry.requires_approval if entry else spec.requires_approval or spec.kind == "write"),
                 multi_step_plans=bool(entry and entry.chat_executable and implemented),
                 structured_results=implemented,
-                test_status=_test_status_for(action_id, vendor),
+                test_status=test_status,
+                verification_claim=_verification_claim(
+                    implementation_status=impl,
+                    test_status=test_status,
+                ),
             )
         )
     return rows
@@ -240,17 +257,33 @@ def audit_summary(rows: list[CatalogAuditRow] | None = None) -> dict[str, Any]:
             bucket["high_risk"] += 1
 
     registry = registry_violation_summary()
+    implemented = sum(1 for r in data if r.implementation_status != "not_implemented")
+    verified_working = sum(1 for r in data if r.verification_claim == "verified_working")
+    implemented_unverified = sum(1 for r in data if r.verification_claim == "implemented_unverified")
+    not_implemented = sum(1 for r in data if r.verification_claim == "not_implemented")
     return {
         "totalActions": total,
-        "implemented": sum(1 for r in data if r.implementation_status != "not_implemented"),
+        "implemented": implemented,
+        # Honesty split: never treat "implemented" as "verified working".
+        "verifiedWorking": verified_working,
+        "implementedUnverified": implemented_unverified,
+        "notImplemented": not_implemented,
+        "notImplementedActions": sorted(
+            r.action_id for r in data if r.verification_claim == "not_implemented"
+        ),
         "chatExposed": sum(1 for r in data if r.chat_exposure),
         "executeExposed": sum(1 for r in data if r.execute_exposure),
         "schemaMissing": sum(1 for r in data if r.input_schema_status == "missing"),
         "scopeUnregistered": sum(1 for r in data if not r.scope_registered and r.implementation_status != "not_implemented"),
         "noTests": sum(1 for r in data if r.test_status == "none"),
         "multiStepReady": sum(1 for r in data if r.multi_step_plans),
+        "pendingOutputSchemaRemaining": None,  # filled by callers via output_contract_summary
         "registryViolations": registry,
         "byVendor": by_vendor,
+        "claimNote": (
+            "implemented is not verifiedWorking. Use verifiedWorking for coverage claims; "
+            "implementedUnverified actions must not be marketed as tested."
+        ),
     }
 
 

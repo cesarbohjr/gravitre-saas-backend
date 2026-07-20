@@ -30,16 +30,16 @@
     },
     {
       "engine": "Recommendation",
-      "component": "not built",
-      "model_today": "n/a",
+      "component": "recommendation_heuristics_service + recommendation_quality_engine",
+      "model_today": "heuristics + outcome soft-rank (Phase 5.2); CF not built",
       "slot_from_doc": "heuristic first, CF/ML later",
-      "decision": "Heuristic suggest-only cards; UI+API tests ban direct execute; no ML until usage data",
-      "gate": "Safe parallel (recommend-only hard requirement)"
+      "decision": "Heuristic suggest-only cards shipped (STA-314). CF Phase 0 designed in phase0-cf-churn-ml.md — code after churn advisory slice.",
+      "gate": "CF volume ≥50 interactions/org/30d before rank enable; never auto-execute"
     },
     {
       "engine": "Forecasting / GNN / CV / speech / churn ML",
-      "decision": "OUT OF SCOPE — defer indefinitely / pack-specific",
-      "gate": "N/A"
+      "decision": "GNN/CV/speech still OOS. Churn STARTED 2026-07-18 (both sequenced: churn first) — see phase0-cf-churn-ml.md",
+      "gate": "30+ labeled churn_customer_signal rows; advisory-only; no auto-contact"
     }
   ],
   "adr_001_summary": {

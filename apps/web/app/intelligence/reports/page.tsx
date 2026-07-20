@@ -184,7 +184,7 @@ export default function IntelligenceReportsPage() {
                         action={{
                           label: "Open Marketplace",
                           onClick: () => {
-                            window.location.href = "/marketplace"
+                            window.location.href = APP_ROUTES.marketplace
                           },
                           variant: "outline",
                         }}

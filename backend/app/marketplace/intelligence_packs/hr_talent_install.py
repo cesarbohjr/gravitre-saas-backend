@@ -8,13 +8,18 @@ from __future__ import annotations
 from typing import Any
 
 from app.core.logging import get_logger
-from app.marketplace.connector_category_templates import install_connector_category_template
+from app.marketplace.connector_category_templates import (
+    connector_stub_coverage,
+    install_connector_category_template,
+)
 from app.marketplace.intelligence_packs.catalog import IntelligencePackSpec
 from app.marketplace.intelligence_packs.install import install_intelligence_pack
 from app.services.agent_tool_permissions import default_demo_scopes_for_system, upsert_agent_tool_permission
 from app.workflows.constants import SCHEMA_VERSION
 
 logger = get_logger(__name__)
+
+_HR_STUB_TYPES = ("workday", "bamboohr", "greenhouse", "gusto")
 
 
 def _marketplace_entity_id(org_id: str, asset_id: str, seed: str) -> str:
@@ -23,19 +28,17 @@ def _marketplace_entity_id(org_id: str, asset_id: str, seed: str) -> str:
     return marketplace_entity_id(org_id, asset_id, seed)
 
 
-def _active_connector_id(client: Any, org_id: str, connector_type: str) -> str | None:
-    rows = (
-        client.table("connectors")
-        .select("id, type, status")
-        .eq("org_id", org_id)
-        .eq("type", connector_type)
-        .is_("deleted_at", "null")
-        .limit(5)
-        .execute()
-    )
-    for row in rows.data or []:
-        if str(row.get("status") or "").lower() in {"active", "connected", "healthy"}:
-            return str(row["id"])
+def _active_id_from_coverage(coverage: dict[str, Any], connector_type: str) -> str | None:
+    info = (coverage.get("byType") or {}).get(connector_type) or {}
+    if info.get("active") and info.get("id"):
+        return str(info["id"])
+    return None
+
+
+def _stub_id_from_coverage(coverage: dict[str, Any], connector_type: str) -> str | None:
+    info = (coverage.get("byType") or {}).get(connector_type) or {}
+    if info.get("stagedOk") and info.get("id"):
+        return str(info["id"])
     return None
 
 
@@ -142,6 +145,7 @@ def install_hr_talent_pack_demo_bundle(
         asset_id=asset_id,
     )
 
+    staging_error: str | None = None
     staged: dict[str, Any] = {"created": [], "stagedCount": 0, "skipped": []}
     if spec.connector_template_id:
         try:
@@ -153,13 +157,20 @@ def install_hr_talent_pack_demo_bundle(
                 environment_name=environment_name,
             )
         except Exception as exc:  # noqa: BLE001
+            staging_error = str(exc)
             logger.warning("hr_talent_pack_stub_stage_failed err=%s", exc)
-            staged = {"error": str(exc), "created": [], "stagedCount": 0, "skipped": []}
+            staged = {"error": staging_error, "created": [], "stagedCount": 0, "skipped": []}
 
-    workday_id = _active_connector_id(client, org_id, "workday")
-    bamboo_id = _active_connector_id(client, org_id, "bamboohr")
-    greenhouse_id = _active_connector_id(client, org_id, "greenhouse")
-    gusto_id = _active_connector_id(client, org_id, "gusto")
+    coverage = connector_stub_coverage(
+        client,
+        org_id,
+        list(_HR_STUB_TYPES),
+        environment_name=environment_name,
+    )
+    workday_id = _active_id_from_coverage(coverage, "workday")
+    bamboo_id = _active_id_from_coverage(coverage, "bamboohr")
+    greenhouse_id = _active_id_from_coverage(coverage, "greenhouse")
+    gusto_id = _active_id_from_coverage(coverage, "gusto")
 
     workflow_id = None
     if spec.workflow_name and spec.workflow_steps:
@@ -221,10 +232,16 @@ def install_hr_talent_pack_demo_bundle(
         "assignmentCount": assignments.get("count") or 0,
         "assignmentIds": [row.get("id") for row in assignments.get("assignments") or [] if row.get("id")],
         "connectorStubs": staged,
+        "stagingError": staging_error,
+        "stubCoverage": coverage,
         "workdayConnectorId": workday_id,
         "bamboohrConnectorId": bamboo_id,
         "greenhouseConnectorId": greenhouse_id,
         "gustoConnectorId": gusto_id,
+        "workdayStubConnectorId": _stub_id_from_coverage(coverage, "workday"),
+        "bamboohrStubConnectorId": _stub_id_from_coverage(coverage, "bamboohr"),
+        "greenhouseStubConnectorId": _stub_id_from_coverage(coverage, "greenhouse"),
+        "gustoStubConnectorId": _stub_id_from_coverage(coverage, "gusto"),
         "stopLinesHonored": [
             "no_linkedin_scrape",
             "employee_pii_memory_kg_blocked",

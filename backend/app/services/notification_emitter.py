@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 NotificationEventType = Literal[
     "run_completed",
     "run_failed",
+    "run_cancelled",
     "approval_needed",
     "assignment_changed",
     "scheduled_run_completed",
@@ -24,6 +25,7 @@ CANONICAL_EVENT_TYPES: frozenset[str] = frozenset(
     {
         "run_completed",
         "run_failed",
+        "run_cancelled",
         "approval_needed",
         "assignment_changed",
         "scheduled_run_completed",

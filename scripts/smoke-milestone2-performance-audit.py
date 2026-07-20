@@ -166,7 +166,7 @@ def run_audit(args: argparse.Namespace) -> dict[str, Any]:
             raise SystemExit(f"Missing {key}")
 
     from supabase import create_client
-    from scripts.smoke_auth import resolve_smoke_actor_and_email
+    from smoke_auth import resolve_smoke_actor_and_email
 
     client = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
     org_id = (args.org_id or env.get("OAUTH_SMOKE_ORG_ID") or ORG_DEFAULT).strip()

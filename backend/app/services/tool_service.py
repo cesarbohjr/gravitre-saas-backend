@@ -306,6 +306,20 @@ def _hubspot_connector_and_token(ctx: ToolContext, params: dict[str, Any]) -> tu
     return cid, token
 
 
+def _hubspot_hub_id(ctx: ToolContext, connector_id: str) -> str | None:
+    """Portal id for deep links — never invent portal-less HubSpot URLs without this."""
+    from app.connectors.hubspot_oauth import load_oauth_tokens
+    from app.services.hubspot_urls import extract_hub_id
+
+    conn = get_connector(ctx.client, ctx.org_id, connector_id, environment_name=ctx.environment_name)
+    tokens = None
+    try:
+        tokens = load_oauth_tokens(ctx.client, connector_id, ctx.settings)
+    except Exception:  # noqa: BLE001
+        tokens = None
+    return extract_hub_id((conn or {}).get("config"), tokens, conn)
+
+
 def _handle_hubspot_error(exc: HubSpotAPIError) -> ToolError:
     if exc.status_code == 429:
         return ToolRateLimitedError(str(exc))
@@ -474,18 +488,26 @@ def _exec_hubspot_contacts_search(ctx: ToolContext, params: dict[str, Any]) -> N
         for row in contacts
         if isinstance(row, dict)
     ]
-    result_url = "https://app.hubspot.com/contacts/objects/0-1/views/all/list"
+    from app.services.hubspot_urls import resolve_search_or_list_result_url
+
+    result_url = resolve_search_or_list_result_url(
+        _hubspot_hub_id(ctx, cid),
+        object_type="contacts",
+        records=normalized,
+    )
+    payload: dict[str, Any] = {
+        "contacts": normalized,
+        "total": data.get("total", len(normalized)),
+        "search": data,
+        "summary": f"Found {len(normalized)} HubSpot contact(s)",
+    }
+    if result_url:
+        payload["result_url"] = result_url
     return NormalizedResult(
         success=True,
         action="hubspot.contacts.search",
         connector_id=cid,
-        data={
-            "contacts": normalized,
-            "total": data.get("total", len(normalized)),
-            "search": data,
-            "result_url": result_url,
-            "summary": f"Found {len(normalized)} HubSpot contact(s)",
-        },
+        data=payload,
     )
 
 
@@ -503,18 +525,26 @@ def _exec_hubspot_contacts_list(ctx: ToolContext, params: dict[str, Any]) -> Nor
         for row in contacts
         if isinstance(row, dict)
     ]
-    result_url = "https://app.hubspot.com/contacts/objects/0-1/views/all/list"
+    from app.services.hubspot_urls import resolve_search_or_list_result_url
+
+    result_url = resolve_search_or_list_result_url(
+        _hubspot_hub_id(ctx, cid),
+        object_type="contacts",
+        records=normalized,
+    )
+    payload: dict[str, Any] = {
+        "contacts": normalized,
+        "total": len(normalized),
+        "paging": data.get("paging"),
+        "summary": f"Listed {len(normalized)} HubSpot contact(s)",
+    }
+    if result_url:
+        payload["result_url"] = result_url
     return NormalizedResult(
         success=True,
         action="hubspot.contacts.list",
         connector_id=cid,
-        data={
-            "contacts": normalized,
-            "total": len(normalized),
-            "paging": data.get("paging"),
-            "result_url": result_url,
-            "summary": f"Listed {len(normalized)} HubSpot contact(s)",
-        },
+        data=payload,
     )
 
 
@@ -539,37 +569,24 @@ def _exec_hubspot_associations_create(ctx: ToolContext, params: dict[str, Any]) 
         )
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
-    # Prefer the "to" object deep link when it is a primary CRM object.
-    portal_paths = {
-        "contacts": "0-1",
-        "contact": "0-1",
-        "companies": "0-2",
-        "company": "0-2",
-        "deals": "0-3",
-        "deal": "0-3",
-        "tickets": "0-5",
-        "ticket": "0-5",
+    from app.services.hubspot_urls import record_url
+
+    result_url = record_url(_hubspot_hub_id(ctx, cid), object_type=to_type, record_id=to_id)
+    assoc_payload: dict[str, Any] = {
+        "association": data if isinstance(data, dict) else {"raw": data},
+        "from_type": from_type,
+        "from_id": from_id,
+        "to_type": to_type,
+        "to_id": to_id,
+        "summary": f"Associated {from_type}/{from_id} → {to_type}/{to_id}",
     }
-    obj_key = to_type.lower()
-    object_type_id = portal_paths.get(obj_key)
-    result_url = (
-        f"https://app.hubspot.com/contacts/record/{object_type_id}/{to_id}"
-        if object_type_id
-        else "https://app.hubspot.com/contacts"
-    )
+    if result_url:
+        assoc_payload["result_url"] = result_url
     return NormalizedResult(
         success=True,
         action="hubspot.associations.create",
         connector_id=cid,
-        data={
-            "association": data if isinstance(data, dict) else {"raw": data},
-            "from_type": from_type,
-            "from_id": from_id,
-            "to_type": to_type,
-            "to_id": to_id,
-            "result_url": result_url,
-            "summary": f"Associated {from_type}/{from_id} → {to_type}/{to_id}",
-        },
+        data=assoc_payload,
     )
 
 
@@ -691,7 +708,9 @@ def _exec_hubspot_lists_create(ctx: ToolContext, params: dict[str, Any]) -> Norm
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
     list_id = str((data or {}).get("listId") or (data or {}).get("list", {}).get("listId") or (data or {}).get("id") or "")
-    result_url = f"https://app.hubspot.com/contacts/lists/{list_id}" if list_id else None
+    from app.services.hubspot_urls import list_membership_url
+
+    result_url = list_membership_url(_hubspot_hub_id(ctx, cid), list_id=list_id)
     try:
         from app.services.intelligence_pack_tools import emit_pack_source_notification
 
@@ -759,12 +778,15 @@ def _exec_hubspot_pipelines_list(ctx: ToolContext, params: dict[str, Any]) -> No
         data = list_deal_pipelines(token)
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
-    # Phase 3.5 cohesion — deep link + notification for pack/smoke consumers
-    result_url = "https://app.hubspot.com/contacts/pipelines"
+    from app.services.hubspot_urls import pipelines_url
+
+    result_url = pipelines_url(_hubspot_hub_id(ctx, cid))
     if isinstance(data, dict):
-        payload = {**data, "result_url": result_url}
+        payload = {**data}
     else:
-        payload = {"pipelines": data, "result_url": result_url}
+        payload = {"pipelines": data}
+    if result_url:
+        payload["result_url"] = result_url
     try:
         from app.services.intelligence_pack_tools import emit_pack_source_notification
 
@@ -822,16 +844,26 @@ def _exec_hubspot_deals_list(ctx: ToolContext, params: dict[str, Any]) -> Normal
         data = list_deals(token, limit=int(params.get("limit") or 25))
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
-    result_url = "https://app.hubspot.com/contacts/objects/0-3/views/all/list"
+    from app.services.hubspot_urls import resolve_search_or_list_result_url
+
     if isinstance(data, dict):
-        payload = {**data, "result_url": result_url}
+        payload: dict[str, Any] = {**data}
+        results = payload.get("results") or payload.get("deals") or []
     else:
-        payload = {"results": data, "result_url": result_url}
+        results = data if isinstance(data, list) else []
+        payload = {"results": results}
+    records = [row for row in results if isinstance(row, dict)] if isinstance(results, list) else []
+    result_url = resolve_search_or_list_result_url(
+        _hubspot_hub_id(ctx, cid),
+        object_type="deals",
+        records=records,
+    )
+    if result_url:
+        payload["result_url"] = result_url
     try:
         from app.services.intelligence_pack_tools import emit_pack_source_notification
 
-        results = payload.get("results") or payload.get("deals") or []
-        count = len(results) if isinstance(results, list) else 0
+        count = len(records)
         emit_pack_source_notification(
             ctx,
             title="HubSpot deals listed",
@@ -885,19 +917,21 @@ def _exec_hubspot_companies_create(ctx: ToolContext, params: dict[str, Any]) -> 
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
     company_id = str((data or {}).get("id") or "")
-    result_url = (
-        f"https://app.hubspot.com/contacts/record/0-2/{company_id}" if company_id else None
-    )
+    from app.services.hubspot_urls import record_url
+
+    result_url = record_url(_hubspot_hub_id(ctx, cid), object_type="companies", record_id=company_id)
+    company_payload: dict[str, Any] = {
+        "company": data,
+        "company_id": company_id or None,
+        "summary": f"Created HubSpot company {company_id or properties.get('name') or ''}".strip(),
+    }
+    if result_url:
+        company_payload["result_url"] = result_url
     return NormalizedResult(
         success=True,
         action="hubspot.companies.create",
         connector_id=cid,
-        data={
-            "company": data,
-            "company_id": company_id or None,
-            "result_url": result_url,
-            "summary": f"Created HubSpot company {company_id or properties.get('name') or ''}".strip(),
-        },
+        data=company_payload,
     )
 
 
@@ -914,7 +948,7 @@ def _exec_hubspot_owners_list(ctx: ToolContext, params: dict[str, Any]) -> Norma
         raise _handle_hubspot_error(exc) from exc
     results = (data or {}).get("results") if isinstance(data, dict) else data
     owners = results if isinstance(results, list) else []
-    result_url = "https://app.hubspot.com/settings/user-preferences/users"
+    # Settings deep links are unreliable without portal context — omit vendor URL.
     return NormalizedResult(
         success=True,
         action="hubspot.owners.list",
@@ -922,7 +956,6 @@ def _exec_hubspot_owners_list(ctx: ToolContext, params: dict[str, Any]) -> Norma
         data={
             "owners": owners,
             "total": len(owners),
-            "result_url": result_url,
             "summary": f"Listed {len(owners)} HubSpot owner(s)",
         },
     )
@@ -938,17 +971,21 @@ def _exec_hubspot_tickets_get(ctx: ToolContext, params: dict[str, Any]) -> Norma
         data = hubspot_get_ticket(token, str(ticket_id), properties=params.get("properties"))
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
-    result_url = f"https://app.hubspot.com/contacts/record/0-5/{ticket_id}"
+    from app.services.hubspot_urls import record_url
+
+    result_url = record_url(_hubspot_hub_id(ctx, cid), object_type="tickets", record_id=str(ticket_id))
+    ticket_payload: dict[str, Any] = {
+        "ticket": data,
+        "ticket_id": str(ticket_id),
+        "summary": f"Fetched HubSpot ticket {ticket_id}",
+    }
+    if result_url:
+        ticket_payload["result_url"] = result_url
     return NormalizedResult(
         success=True,
         action="hubspot.tickets.get",
         connector_id=cid,
-        data={
-            "ticket": data,
-            "ticket_id": str(ticket_id),
-            "result_url": result_url,
-            "summary": f"Fetched HubSpot ticket {ticket_id}",
-        },
+        data=ticket_payload,
     )
 
 

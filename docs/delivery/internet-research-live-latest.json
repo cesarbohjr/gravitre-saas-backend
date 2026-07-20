@@ -1,0 +1,62 @@
+{
+  "record": "internet_research_live_smoke",
+  "started_at": "2026-07-19T04:13:53.848861+00:00",
+  "internet_research_enabled": true,
+  "web_research_provider": "google",
+  "grounding_org_hourly_circuit_limit": 500,
+  "org_hourly_circuit_before": {
+    "blocked": false,
+    "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+    "hour_bucket": "2026-07-19T04:00:00+00:00",
+    "hourly_count": 0,
+    "hourly_limit": 500,
+    "reason": null
+  },
+  "external_search": {
+    "totalResults": 3,
+    "provider": "tavily",
+    "has_urls": true,
+    "error": null,
+    "query_sent": "What is the current US federal funds rate?",
+    "context_stripped": false,
+    "was_truncated": false,
+    "circuit_breaker": null
+  },
+  "grounding_volume": {
+    "usage_date": "2026-07-19",
+    "platform_grounding_count": 0,
+    "free_tier_limit": 10000,
+    "alert_threshold": 7500,
+    "pct_of_free_tier": 0.0,
+    "in_overage_tier": false
+  },
+  "org_hourly_circuit_after": {
+    "blocked": false,
+    "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+    "hour_bucket": "2026-07-19T04:00:00+00:00",
+    "hourly_count": 0,
+    "hourly_limit": 500,
+    "reason": null
+  },
+  "org_research_lookup_daily_latest": [],
+  "recent_research_lookup_usage": [
+    {
+      "metric_type": "research_lookups",
+      "quantity": 1,
+      "metadata": {
+        "source": "research_lookup",
+        "provider": "tavily",
+        "source_id": "fc6593985aef81ba",
+        "cogs_basis": "free_tier_grounding_expected_at_current_scale",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "token_cogs_usd": 0.0,
+        "total_cogs_usd": 0.0,
+        "grounding_count": 1,
+        "grounding_cogs_usd": 0.0
+      }
+    }
+  ],
+  "verdict": "PASS \u2014 live grounding returned cited URLs",
+  "finished_at": "2026-07-19T04:13:59.015240+00:00"
+}

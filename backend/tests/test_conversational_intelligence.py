@@ -171,8 +171,13 @@ async def test_slack_send_persists_channel_when_asking_for_body(clarification_en
     assert result["should_clarify"] is True
     persist.assert_awaited()
     updates = persist.await_args.args[2]
-    assert updates["clarified_params"]["slack_channel"] == "general"
     assert updates["pending_task"]["status"] == "awaiting_params"
+    # Module B — channel lives on the shared parameter ledger.
+    ledger_slots = (updates.get("parameter_ledger") or {}).get("slots") or {}
+    channel_slot = ledger_slots.get("channel") or {}
+    assert channel_slot.get("value") == "general" or updates.get("clarified_params", {}).get(
+        "slack_channel"
+    ) == "general"
 
 
 @pytest.mark.asyncio
@@ -201,7 +206,7 @@ async def test_slack_followup_body_skips_reclarify(clarification_engine):
         org_id="org-1",
     )
     assert result["should_clarify"] is False
-    assert "Resuming Slack" in (result.get("reason") or "")
+    assert "Resuming connector action" in (result.get("reason") or "")
 
 
 @pytest.mark.asyncio
@@ -265,10 +270,13 @@ def test_persona_modifier_injected_into_prompt():
         None,
         [],
         {},
-        persona_modifier="Be concise and executive-facing.",
+        persona_modifier="Emphasize pipeline and executive metrics.",
     )
-    assert "Communication Style" in prompt
-    assert "executive-facing" in prompt
+    assert "## Voice" in prompt
+    assert "Connected" in prompt
+    assert "## Domain focus" in prompt
+    assert "executive metrics" in prompt
+    assert prompt.count("## Voice") == 1
 
 
 def test_persona_never_overrides_governance():
@@ -281,6 +289,15 @@ def test_persona_never_overrides_confidence_scores():
     service = PersonaService()
     persona = service.COMMUNICATION_PERSONAS["friendly_assistant"]
     assert "confidence" not in persona["system_prompt_modifier"].lower()
+
+
+def test_persona_modifiers_are_domain_focus_only():
+    """Module D: overlays must not redefine tone/humor (base Voice wins)."""
+    banned = ("be warm", "be energetic", "humor", "communicate at the c-suite")
+    for key, persona in PersonaService.COMMUNICATION_PERSONAS.items():
+        mod = str(persona.get("system_prompt_modifier") or "").lower()
+        for phrase in banned:
+            assert phrase not in mod, f"{key} still redefines voice: {phrase}"
 
 
 def test_all_caps_detected_as_frustration():

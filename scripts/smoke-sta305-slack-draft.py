@@ -24,8 +24,14 @@ ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
 sys.path.insert(0, str(BACKEND))
 
+from isolated_conversation_org import (  # noqa: E402
+    DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID,
+    mark_smoke_run,
+    smoke_http_headers,
+)
+
 OUT = ROOT / "docs" / "delivery" / "sta305-catalog-kind-prod.json"
-ORG = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+ORG = DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID
 BASE = "https://gravitre-saas-backend-production.up.railway.app"
 SEGMENT = "draft a follow-up in Slack for approval"
 CHAT_TIMEOUT = 180.0

@@ -1,11 +1,12 @@
 {
   "pass": true,
-  "ran_at": "2026-07-16T05:44:43.739205+00:00",
-  "prod_git_sha": "cd056edfc7a61bd574e7bf22f77854ab1768d68b",
+  "ran_at": "2026-07-18T09:21:33.095907+00:00",
+  "prod_git_sha": "9d1ae05105f066b07bda00d575204afb4cd91f95",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "pack_slug": "hr-talent-intelligence-pack",
   "asset_id": "4524bc84-5049-4106-b73d-3babd2bf714e",
   "h3_unlocked": true,
+  "status": "PARTIAL",
   "bundle": {
     "agentId": "dd1db2d7-e34f-5213-92b0-4d7e4edc8dac",
     "workflowId": "8d2d11c9-e85a-53b8-bf76-5880c91e0b64",
@@ -14,8 +15,16 @@
     "bamboohrConnectorId": null,
     "greenhouseConnectorId": null,
     "gustoConnectorId": null,
+    "stubConnectorIds": {
+      "workday": "27dc8b22-a988-4582-a23a-3883bd0550d4",
+      "bamboohr": "c99cacda-6793-49b6-a28f-8d3fb75d2c13",
+      "greenhouse": "47ed6670-9847-4212-acd4-892f4812d75e",
+      "gusto": "38c67b8c-783f-40d0-8854-4e7ce50281e0"
+    },
     "stubCount": 0,
-    "skippedCount": 0,
+    "skippedCount": 4,
+    "stubCoverageOk": true,
+    "stagingError": null,
     "stopLinesHonored": [
       "no_linkedin_scrape",
       "employee_pii_memory_kg_blocked",
@@ -23,6 +32,45 @@
       "hr_read_only_tip",
       "path_h3_all_hr_live"
     ]
+  },
+  "stubCoverage": {
+    "byType": {
+      "workday": {
+        "id": "27dc8b22-a988-4582-a23a-3883bd0550d4",
+        "status": "needs_connection",
+        "stagedOk": true,
+        "active": false
+      },
+      "bamboohr": {
+        "id": "c99cacda-6793-49b6-a28f-8d3fb75d2c13",
+        "status": "needs_connection",
+        "stagedOk": true,
+        "active": false
+      },
+      "greenhouse": {
+        "id": "47ed6670-9847-4212-acd4-892f4812d75e",
+        "status": "needs_connection",
+        "stagedOk": true,
+        "active": false
+      },
+      "gusto": {
+        "id": "38c67b8c-783f-40d0-8854-4e7ce50281e0",
+        "status": "needs_connection",
+        "stagedOk": true,
+        "active": false
+      }
+    },
+    "required": [
+      "workday",
+      "bamboohr",
+      "greenhouse",
+      "gusto"
+    ],
+    "coveredCount": 4,
+    "requiredCount": 4,
+    "missing": [],
+    "notStagedOk": [],
+    "coverageOk": true
   },
   "invokes": {},
   "live_invoke_ok": false,
@@ -42,39 +90,33 @@
   },
   "cohesion": {
     "kpi_panel_ui_ok": true,
-    "h3_unlock_stop_line_ok": true
+    "h3_unlock_stop_line_ok": true,
+    "stub_coverage_ok": true
   },
   "governance": {
     "h3_all_hr_live": true,
     "hr_read_only_tip": true,
     "employee_pii_memory_kg_blocked": true,
     "compensation_memory_kg_blocked": true,
-    "no_linkedin_scrape": true
+    "no_linkedin_scrape": true,
+    "live_oauth_api_test": "HOLD"
   },
-  "status": "PARTIAL",
-  "note": "HR #10 H3: unlock + pack scaffold tip only. Not live HRIS/ATS/Payroll proven.",
   "greenhouse_stub": {
     "verdict": "FIXED",
-    "was": "REAL_GAP",
-    "not": "accepted_not_yet_like_zendesk",
-    "reason_was": "Postgres connectors_type_check never listed greenhouse; stub insert failed.",
-    "fix_applied": "Additive migration 20260716120000_add_missing_connector_types_greenhouse_ahrefs.sql (also ahrefs, ai_visibility_ui, clay, finseo)",
-    "verified_at": "2026-07-16T06:08:06+00:00",
-    "greenhouse_connector_id": "47ed6670-9847-4212-acd4-892f4812d75e",
-    "status": "needs_connection",
-    "note": "HR template stages needs_connection (same as Workday/BambooHR). Zendesk/CS uses pending_auth — same staged-awaiting-auth class, different status label. Insert now succeeds; no live Greenhouse API invoke (F3/H3 live-activation HOLD)."
+    "note": "Included in 4\u00d7 stub coverage assertion (needs_connection class)."
   },
+  "note": "HR #10 H3: scaffold tip requires 4\u00d7 staged stubs (Workday/BambooHR/Greenhouse/Gusto). Live HRIS/ATS/Payroll invoke stays HOLD until Cesar explicit live-activation sign-off.",
   "reassessment": {
-    "at": "2026-07-16T06:08:06+00:00",
-    "prod_git_sha": "cd056edfc7a61bd574e7bf22f77854ab1768d68b",
-    "verdict": "PARTIAL — not DONE",
+    "at": "2026-07-18T09:21:33.095938+00:00",
+    "prod_git_sha": "9d1ae05105f066b07bda00d575204afb4cd91f95",
+    "verdict": "PARTIAL \u2014 scaffold solid; not live-proven",
     "live_invoke_ok": false,
     "any_active_connector": false,
-    "greenhouse_stub": "FIXED — inserts needs_connection",
-    "live_connection_test": "HOLD — Cesar STA-312 sign-off required before Plaid/Gusto/QB/etc. smoke-org connects",
+    "stub_coverage_ok": true,
+    "live_connection_test": "HOLD \u2014 explicit Cesar sign-off required before OAuth/API connects",
     "governance_signoff": {
       "h3_unlock": "YES (Cesar 2026-07-15)",
-      "live_oauth_api_test": "HOLD — explicit separate sign-off not given 2026-07-16; do not connect yet"
+      "live_oauth_api_test": "HOLD"
     }
   }
 }

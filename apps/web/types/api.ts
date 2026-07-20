@@ -318,6 +318,8 @@ export interface Run {
   status: RunStatus
   run_type?: string
   parameters?: Record<string, unknown>
+  definitionSnapshot?: Record<string, unknown>
+  definition_snapshot?: Record<string, unknown>
   result?: Record<string, unknown>
   error?: string
   errorMessage?: string
@@ -921,6 +923,7 @@ export interface BillingUsageResponse {
     workflow_runs: number
     api_calls: number
     ai_tokens: number
+    research_lookups?: number
   }
   included_outputs: number | null
   workflow_runs_included?: number | null
@@ -928,6 +931,12 @@ export interface BillingUsageResponse {
   weekly_totals?: number[]
   overage_outputs: number
   overage_cost_usd: number
+  included_research_lookups?: number
+  overage_research_lookups?: number
+  overage_research_cost_usd?: number
+  research_lookup_overage_rate_usd?: number
+  internet_research_enabled?: boolean
+  research_lookups_billing_visible?: boolean
 }
 
 // ============ API Requests ============
@@ -1528,6 +1537,8 @@ export interface IntegrationSuggestion {
   message: string
   evidence: Record<string, unknown>
   confidence: number
+  confidenceIsEstimate?: boolean
+  confidenceSource?: string
   priority: number
   status: string
   suggestedAt?: string

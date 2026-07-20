@@ -84,7 +84,28 @@ class ChatActionMapper:
             score = self._score(text, entry)
             if score <= 0:
                 continue
-            args = self._extract_args(text, entry)
+            # Fix 3 — schema-constrained extraction is primary; vendor regex is fallback.
+            args: dict[str, Any] | None = None
+            if write_intent and entry.kind != "read":
+                try:
+                    from app.services.schema_param_extractor import extract_action_args_heuristic
+
+                    schema_args = extract_action_args_heuristic(
+                        entry.registry_key,
+                        text,
+                        existing_args={},
+                    )
+                    if schema_args:
+                        args = schema_args
+                except Exception:  # noqa: BLE001
+                    pass
+            if args is None or not args:
+                vendor_args = self._extract_args(text, entry)
+                if vendor_args:
+                    # Schema keys win; vendor fills gaps the schema has not covered yet.
+                    args = {**vendor_args, **(args or {})}
+                elif args is None:
+                    args = vendor_args
             if args is None:
                 if write_intent and entry.kind != "read":
                     candidate_wo = ActionMatch(

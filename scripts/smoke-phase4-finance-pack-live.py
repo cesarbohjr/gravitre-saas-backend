@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Live smoke: Finance pack #9 (F3) — install + read tip + Phase 3.5 cohesion.
+"""Live smoke: Finance pack #9 (F3) — install + stub coverage + Phase 3.5 cohesion.
 
 Writes docs/delivery/phase4-finance-pack-live.json
 
 F3 unlocked: QB + Xero + NetSuite + Plaid if entitled.
-Tip PASS: install bundle + stubs for all four + PackKpiPanel UI.
-Live invoke PASS when at least one active finance connector succeeds a read.
+Scaffold tip PASS: install bundle + 4× staged stubs + PackKpiPanel UI + unlock stop-line.
+Live invoke PASS only when an *active* finance connector succeeds a read (HOLD until Cesar sign-off).
 """
 from __future__ import annotations
 
 import json
 import os
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
@@ -31,6 +31,7 @@ ORG = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
 ACTOR = "f7e32f06-49df-4e73-8962-f41c21850762"
 OUT = REPO / "docs" / "delivery" / "phase4-finance-pack-live.json"
 PACK_SLUG = "finance-intelligence-pack"
+REQUIRED_STUBS = ("quickbooks", "xero", "netsuite", "plaid")
 
 
 def utcnow() -> str:
@@ -115,7 +116,6 @@ def main() -> int:
         .execute()
     ).data[0]
 
-    window_start = datetime.now(timezone.utc) - timedelta(seconds=5)
     bundle = install_finance_pack_demo_bundle(
         sb,
         ORG,
@@ -153,12 +153,13 @@ def main() -> int:
     if plaid_id:
         r = invoke_tool(ctx, "plaid.accounts.get", {"connector_id": plaid_id})
         invokes["plaid.accounts.get"] = _invoke_record(r)
-        # Plaid entitled only when exchange completed
         live_ok = live_ok or bool(r.success)
 
     kpis = pack_kpi_summary(sb, org_id=ORG, pack_id=PACK_SLUG)
     stop = list(bundle.get("stopLinesHonored") or [])
     stubs = bundle.get("connectorStubs") or {}
+    coverage = bundle.get("stubCoverage") or {}
+    staging_error = bundle.get("stagingError") or stubs.get("error")
 
     panel_src = (REPO / "apps" / "web" / "components" / "marketplace" / "pack-kpi-panel.tsx").read_text(
         encoding="utf-8"
@@ -176,14 +177,20 @@ def main() -> int:
 
     any_active = bool(qb_id or xero_id or ns_id or plaid_id)
     unlock_ok = "path_f3_all_finance_live" in stop or "path_f3" in str(stop)
+    stub_coverage_ok = bool(coverage.get("coverageOk")) and not staging_error
+    stub_ids = {
+        t: (bundle.get(f"{t}StubConnectorId") or (coverage.get("byType") or {}).get(t, {}).get("id"))
+        for t in REQUIRED_STUBS
+    }
     install_ok = (
         bool(bundle.get("agentId"))
         and bool(bundle.get("workflowId"))
         and int(bundle.get("assignmentCount") or 0) >= 1
         and ui_ok
+        and stub_coverage_ok
     )
-    # F3 unlock tip: install + unlock stop-line + UI. Live reads required only when a connector is active.
-    passed = install_ok and (live_ok if any_active else unlock_ok)
+    # Scaffold tip: install + unlock + UI + 4× stubs. Live reads only when a connector is active.
+    passed = install_ok and unlock_ok and (live_ok if any_active else True)
 
     artifact = {
         "pass": passed,
@@ -193,6 +200,7 @@ def main() -> int:
         "pack_slug": PACK_SLUG,
         "asset_id": asset.get("id"),
         "f3_unlocked": True,
+        "status": "PARTIAL" if passed and not live_ok else ("DONE" if passed and live_ok else "FAIL"),
         "bundle": {
             "agentId": bundle.get("agentId"),
             "workflowId": bundle.get("workflowId"),
@@ -201,10 +209,14 @@ def main() -> int:
             "xeroConnectorId": xero_id,
             "netsuiteConnectorId": ns_id,
             "plaidConnectorId": plaid_id,
+            "stubConnectorIds": stub_ids,
             "stubCount": stubs.get("stagedCount"),
             "skippedCount": len(stubs.get("skipped") or []),
+            "stubCoverageOk": stub_coverage_ok,
+            "stagingError": staging_error,
             "stopLinesHonored": stop,
         },
+        "stubCoverage": coverage,
         "invokes": invokes,
         "live_invoke_ok": live_ok,
         "any_active_connector": any_active,
@@ -212,17 +224,32 @@ def main() -> int:
         "cohesion": {
             "kpi_panel_ui_ok": ui_ok,
             "f3_unlock_stop_line_ok": unlock_ok,
+            "stub_coverage_ok": stub_coverage_ok,
         },
         "governance": {
             "f3_all_finance_live": True,
             "finance_read_only_tip": True,
             "raw_banking_memory_kg_blocked": True,
             "plaid_if_entitled": True,
+            "live_oauth_link_test": "HOLD",
         },
         "note": (
-            "Finance #9 F3: QB+Xero+NetSuite+Plaid unlocked. "
-            "Live invoke required only when an active connector exists on smoke org."
+            "Finance #9 F3: scaffold tip requires 4× staged stubs (needs_connection class). "
+            "Live Plaid/Gusto/QB invoke stays HOLD until Cesar explicit live-activation sign-off."
         ),
+        "reassessment": {
+            "at": utcnow(),
+            "prod_git_sha": tip,
+            "verdict": "PARTIAL — scaffold solid; not live-proven",
+            "live_invoke_ok": live_ok,
+            "any_active_connector": any_active,
+            "stub_coverage_ok": stub_coverage_ok,
+            "live_connection_test": "HOLD — explicit Cesar sign-off required before OAuth/Link",
+            "governance_signoff": {
+                "f3_unlock": "YES (Cesar 2026-07-15)",
+                "live_oauth_link_test": "HOLD",
+            },
+        },
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(artifact, indent=2) + "\n", encoding="utf-8")
@@ -233,6 +260,7 @@ def main() -> int:
                 "out": str(OUT),
                 "live_ok": live_ok,
                 "any_active": any_active,
+                "stub_coverage_ok": stub_coverage_ok,
                 "tip": tip,
             },
             indent=2,

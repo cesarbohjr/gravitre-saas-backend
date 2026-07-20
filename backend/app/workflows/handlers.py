@@ -154,10 +154,32 @@ class InvokeToolHandler(StepHandler):
         )
 
     def execute(self, context: StepContext) -> dict[str, Any]:
-        cfg = context.config or {}
+        cfg = dict(context.config or {})
         action = cfg.get("action")
         if not action:
             raise ValueError("invoke_tool requires config.action")
+        # Module B Phase 3 — canvas NL→args via shared ledger/schema path.
+        # task_state may be injected on run parameters; otherwise intent_text alone fills.
+        try:
+            from app.services.canvas_write_gate import enrich_canvas_step_config_from_ledger
+
+            params = context.parameters if isinstance(context.parameters, dict) else {}
+            task_state = params.get("task_state") if isinstance(params.get("task_state"), dict) else None
+            intent_text = str(
+                cfg.get("intent_text")
+                or cfg.get("prompt")
+                or params.get("intent_text")
+                or ""
+            )
+            if task_state or intent_text:
+                cfg = enrich_canvas_step_config_from_ledger(
+                    invoke_action=str(action),
+                    config=cfg,
+                    task_state=task_state,
+                    intent_text=intent_text or None,
+                )
+        except Exception:  # noqa: BLE001
+            pass
         _enforce_canvas_write_authority(context)
         result = invoke_tool(
             tool_context_from_step(context),

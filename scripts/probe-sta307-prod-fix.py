@@ -33,8 +33,16 @@ from httpx import AsyncClient
 
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
+import sys
+sys.path.insert(0, str(BACKEND))
+sys.path.insert(0, str(ROOT / "scripts"))
+from isolated_conversation_org import (
+    DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID,
+    mark_smoke_run,
+    smoke_http_headers,
+)
 OUT = ROOT / "docs" / "delivery" / "sta307-prod-verdict.json"
-ORG = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+ORG = DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID
 BASE = "https://gravitre-saas-backend-production.up.railway.app"
 # Tip at last Item-5 fix ship; override with STA307_ALLOW_ANY_SHA=1
 EXPECTED_SHA_PREFIX = "19ac9ba7"

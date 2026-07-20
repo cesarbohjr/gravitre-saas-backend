@@ -21,6 +21,12 @@ import sys
 
 sys.path.insert(0, str(BACKEND))
 
+from isolated_conversation_org import (  # noqa: E402
+    DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID,
+    mark_smoke_run,
+    smoke_http_headers,
+)
+
 for p in (BACKEND / ".env", BACKEND / ".env.operator.local"):
     if p.is_file():
         for k, v in dotenv_values(p).items():
@@ -37,7 +43,7 @@ from app.services.chat_connector_models import ConnectorActionPlan, LIST_CREATE_
 from app.services.conversation_state_service import get_conversation_state_service  # noqa: E402
 from app.workflows.repository import get_supabase_client  # noqa: E402
 
-ORG = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+ORG = DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID
 # Deliberately NO list name — inference must supply default "MSP Prospects".
 # LIST_CREATE_INTENT requires create/new + (contact) list; avoid trailing text after
 # "list" or the planned-details regex treats it as a name.

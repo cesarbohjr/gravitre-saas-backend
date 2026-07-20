@@ -25,6 +25,8 @@ from app.services.conversational_execution_service import (
 from app.services.notification_emitter import emit_notification
 from app.services.chat_orchestration_runs import (
     finalize_orchestration_run,
+    first_external_step_url,
+    orchestration_run_fully_completed,
     resolve_orchestration_result_url,
     start_orchestration_run,
     sync_orchestration_step,
@@ -40,6 +42,37 @@ from app.services.connector_session_state import (
 )
 
 logger = get_logger(__name__)
+
+
+def _vendor_url_from_execution(result: ExecutionResult) -> str | None:
+    """Prefer explicit external_url; fall back to http result_url for legacy steps."""
+    external = str(getattr(result, "external_url", None) or "").strip()
+    if external.startswith(("http://", "https://")):
+        return external
+    url = str(result.result_url or "").strip()
+    if url.startswith(("http://", "https://")):
+        return url
+    structured = result.structured if isinstance(result.structured, dict) else {}
+    nested = str(structured.get("external_url") or "").strip()
+    if nested.startswith(("http://", "https://")):
+        return nested
+    return None
+
+
+def _step_result_row(step: Any, result: ExecutionResult) -> dict[str, Any]:
+    vendor_url = _vendor_url_from_execution(result)
+    return {
+        "step_id": step.step_id,
+        "label": step.label,
+        "invoke_action": step.plan.invoke_action if getattr(step, "plan", None) else "",
+        "success": result.success,
+        "summary": result.body,
+        "url": vendor_url,
+        "external_url": vendor_url,
+        "primary_url": result.result_url,
+        "structured": dict(result.structured or {}),
+    }
+
 
 MULTI_STEP_SPLIT = re.compile(
     r"(?:,\s+and\s+|\s+;\s+|\s+then\s+|\s+and then\s+|"
@@ -613,6 +646,7 @@ class ChatOrchestrationService:
                     "params": params,
                 },
             },
+            client=client,
         )
         refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
         lines = [self._format_step_line(idx, step) for idx, step in enumerate(steps, start=1)]
@@ -754,23 +788,14 @@ class ChatOrchestrationService:
             environment_name=environment_name,
         )
         step_results = list(params.get("step_results") or [])
-        step_results.append(
-            {
-                "step_id": step.step_id,
-                "label": step.label,
-                "invoke_action": step.plan.invoke_action if step.plan else "",
-                "success": result.success,
-                "summary": result.body,
-                "url": result.result_url,
-                "structured": dict(result.structured or {}),
-            }
-        )
+        step_results.append(_step_result_row(step, result))
         completed = list(task_state.get("completed_steps") or [])
         completed.append(
             {
                 "step_id": step.step_id,
                 "label": step.label,
                 "url": result.result_url,
+                "external_url": _vendor_url_from_execution(result),
                 "entity_type": result.entity_type,
                 "entity_id": result.entity_id,
             }
@@ -786,7 +811,7 @@ class ChatOrchestrationService:
                 step_id=step.step_id,
                 success=bool(result.success),
                 summary=result.body,
-                result_url=result.result_url,
+                result_url=_vendor_url_from_execution(result),
             )
         session_updates = self._orchestration_session_updates(
             task_state,
@@ -820,6 +845,7 @@ class ChatOrchestrationService:
                     run_id=run_id,
                     success=False,
                     summary=result.body,
+                    user_id=user_id,
                 )
             return {
                 "stop_pipeline": True,
@@ -893,17 +919,7 @@ class ChatOrchestrationService:
         results = await asyncio.gather(*[_run_one(step) for _, step in batch])
         step_results = list(params.get("step_results") or [])
         for (step_idx, step), result in zip(batch, results, strict=True):
-            step_results.append(
-                {
-                    "step_id": step.step_id,
-                    "label": step.label,
-                    "invoke_action": step.plan.invoke_action if step.plan else "",
-                    "success": result.success,
-                    "summary": result.body,
-                    "url": result.result_url,
-                    "structured": dict(result.structured or {}),
-                }
-            )
+            step_results.append(_step_result_row(step, result))
             if run_id:
                 sync_orchestration_step(
                     client,
@@ -912,7 +928,7 @@ class ChatOrchestrationService:
                     step_id=step.step_id,
                     success=bool(result.success),
                     summary=result.body,
-                    result_url=result.result_url,
+                    result_url=_vendor_url_from_execution(result),
                 )
             if not result.success:
                 if run_id:
@@ -922,6 +938,7 @@ class ChatOrchestrationService:
                         run_id=run_id,
                         success=False,
                         summary=result.body,
+                        user_id=user_id,
                     )
                 params["step_results"] = step_results
                 params["current_step_index"] = step_idx + 1
@@ -998,6 +1015,7 @@ class ChatOrchestrationService:
                         "step_id": step.step_id,
                         "label": step.label,
                         "success": False,
+                        "skipped": True,
                         "summary": step.skip_reason or "Skipped unsupported step.",
                         "url": "/connectors",
                     }
@@ -1079,7 +1097,7 @@ class ChatOrchestrationService:
                         step_id=step.step_id,
                         success=False,
                         summary=result.body,
-                        result_url=result.result_url,
+                        result_url=_vendor_url_from_execution(result),
                     )
                     finalize_orchestration_run(
                         client,
@@ -1087,6 +1105,7 @@ class ChatOrchestrationService:
                         run_id=run_id,
                         success=False,
                         summary=result.body,
+                        user_id=user_id,
                     )
                 return {
                     "stop_pipeline": True,
@@ -1103,17 +1122,7 @@ class ChatOrchestrationService:
                     "task_state": task_state,
                 }
             step_results = list(params.get("step_results") or [])
-            step_results.append(
-                {
-                    "step_id": step.step_id,
-                    "label": step.label,
-                    "invoke_action": step.plan.invoke_action if step.plan else "",
-                    "success": True,
-                    "summary": result.body,
-                    "url": result.result_url,
-                    "structured": dict(result.structured or {}),
-                }
-            )
+            step_results.append(_step_result_row(step, result))
             params["step_results"] = step_results
             if run_id:
                 sync_orchestration_step(
@@ -1123,7 +1132,7 @@ class ChatOrchestrationService:
                     step_id=step.step_id,
                     success=True,
                     summary=result.body,
-                    result_url=result.result_url,
+                    result_url=_vendor_url_from_execution(result),
                 )
             idx += 1
             params["current_step_index"] = idx
@@ -1140,6 +1149,7 @@ class ChatOrchestrationService:
     ) -> dict[str, Any]:
         step_results = list(params.get("step_results") or [])
         successes = sum(1 for row in step_results if row.get("success"))
+        run_ok = orchestration_run_fully_completed(step_results)
         lines = []
         for row in step_results:
             mark = "✓" if row.get("success") else "○"
@@ -1151,39 +1161,62 @@ class ChatOrchestrationService:
                 client,
                 org_id=org_id,
                 run_id=run_id,
-                success=successes > 0,
+                success=run_ok,
                 summary=summary_body,
+                user_id=user_id,
             )
         primary_url = resolve_orchestration_result_url(
             run_id=run_id,
             step_results=step_results,
             conversation_id=conversation_id,
         )
-
+        external_url = first_external_step_url(step_results)
+        goal = str(params.get("goal") or "Chat orchestration")
         result = ExecutionResult(
-            success=successes > 0,
+            success=run_ok,
             entity_type="workflow_run" if run_id else "orchestration",
             entity_id=run_id or conversation_id,
             result_url=primary_url,
-            title=f"Orchestration complete ({successes}/{len(step_results)} steps)",
+            external_url=external_url,
+            title=(
+                f"Orchestration complete ({successes}/{len(step_results)} steps)"
+                if run_ok
+                else f"Orchestration failed ({successes}/{len(step_results)} steps succeeded)"
+            ),
             body=summary_body,
-            notification_type="task_completed",
-            task_label="Multi-step orchestration complete",
-        )
-        emit_notification(
-            client,
-            org_id=org_id,
-            user_id=user_id,
-            event_type=result.notification_type,
-            title=result.title,
-            body=result.body[:500],
-            entity_ref={
-                "entity_type": result.entity_type,
-                "entity_id": result.entity_id,
-                "result_url": result.result_url,
+            notification_type="task_completed" if run_ok else "run_failed",
+            task_label=(
+                "Multi-step orchestration complete"
+                if run_ok
+                else "Multi-step orchestration failed"
+            ),
+            structured={
+                "runId": run_id,
+                "conversationId": conversation_id,
+                "goal": goal,
+                "external_url": external_url,
+                "step_results": step_results,
+                "source": "chat_orchestration",
             },
-            channel_hints={"bell": True, "email": False},
         )
+        # Notify/audit/learning when run_id is set is owned by finalize_orchestration_run
+        # → finalize_execution_outcome(). Only emit here when there is no run_id.
+        if not run_id:
+            emit_notification(
+                client,
+                org_id=org_id,
+                user_id=user_id,
+                event_type=result.notification_type,
+                title=result.title,
+                body=result.body[:500],
+                entity_ref={
+                    "entity_type": result.entity_type,
+                    "entity_id": result.entity_id,
+                    "result_url": result.result_url,
+                    "external_url": external_url,
+                },
+                channel_hints={"bell": True, "email": False},
+            )
         try:
             from app.services.execution_memory_service import get_execution_memory_service
 
@@ -1191,7 +1224,7 @@ class ChatOrchestrationService:
                 org_id=org_id,
                 goal=str(params.get("goal") or "orchestration"),
                 steps=list(params.get("steps") or []),
-                success=successes > 0,
+                success=run_ok,
                 run_id=run_id,
             )
         except Exception as exc:  # noqa: BLE001
@@ -1203,7 +1236,7 @@ class ChatOrchestrationService:
                 "clarified_params": params,
                 "pending_task": {
                     "type": "connector_orchestration",
-                    "status": "completed",
+                    "status": "completed" if run_ok else "failed",
                     "result": serialize_execution_result(result),
                 },
                 "pending_steps": [],

@@ -518,6 +518,9 @@ export interface MesonSuggestion {
   label: string
   reason?: string
   confidence?: number
+  /** Module C / STA-331: true when score is heuristic, not feedback/outcome-derived. */
+  confidenceIsEstimate?: boolean
+  confidenceSource?: string
 }
 
 export interface MesonSuggestionsResponse {
@@ -1793,6 +1796,23 @@ export const intelligenceApi = {
   },
   trainingReadiness: () =>
     fetcher<Record<string, unknown>>(apiUrl("/api/intelligence/training-readiness")),
+  churnRiskAdvisory: (params?: { limit?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.limit != null) query.set("limit", String(params.limit))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<{
+      recommendations: Array<Record<string, unknown>>
+      gate: Record<string, unknown>
+      trained: boolean
+      advisory_only: boolean
+    }>(apiUrl(`/api/intelligence/churn-risk/advisory${suffix}`))
+  },
+  upsertChurnRiskLabel: (body: {
+    customer_id: string
+    features: Record<string, number>
+    churned?: boolean
+    label_reason?: string
+  }) => postJson<Record<string, unknown>>(apiUrl("/api/intelligence/churn-risk/labels"), body),
   banditStatus: () =>
     fetcher<Record<string, unknown>>(apiUrl("/api/admin/intelligence/learning/bandit-status")),
   memoryConflicts: () =>
@@ -1977,6 +1997,11 @@ export const chatAdminApi = {
 export type MlAdminOrgModelStatus = {
   model_name: string
   catalog_status: string
+  /** Module C: real live path — trained only when an artifact is deployed. */
+  runtime_status?: string
+  live_inference_path?: string
+  artifact_loaded?: boolean
+  deployed_version?: string | number | null
   advisory_only?: boolean
   use_cases?: string[]
   activation?: string
@@ -2165,6 +2190,28 @@ export const settingsApi = {
     postJson<{ apiKey: ApiKey }>(apiUrl(`/api/settings/api-keys/${id}/rotate`), {}),
   revokeApiKey: (id: string) =>
     patchJson<{ apiKey: ApiKey }>(apiUrl("/api/settings/api-keys"), { id, status: "revoked" }),
+
+  // Outbound webhooks (org-scoped Supabase-backed settings)
+  listWebhooks: () =>
+    fetcher<{ webhooks: Array<{ id: string; url: string; events: string[]; status: string }> }>(
+      apiUrl("/api/settings/webhooks"),
+    ),
+  createWebhook: (data: { url: string; events: string[]; status?: string }) =>
+    postJson<{ webhook: { id: string; url: string; events: string[]; status: string } }>(
+      apiUrl("/api/settings/webhooks"),
+      data,
+    ),
+  deleteWebhook: async (id: string) => {
+    const response = await apiFetch(apiUrl("/api/settings/webhooks"), {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.error || error.detail || `Request failed: ${response.status}`)
+    }
+  },
 
   // Lite seats / departments
   getLiteSeats: () => fetcher<LiteSeatsResponse>(apiUrl("/api/settings/lite-seats")),

@@ -152,8 +152,8 @@ export function MarketingChrome({
                     key={link.href}
                     href={link.href!}
                     className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
-                      pathname === link.href 
-                        ? "text-zinc-900 bg-zinc-100" 
+                      pathname === link.href
+                        ? "text-zinc-900 bg-zinc-100"
                         : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
                     }`}
                   >

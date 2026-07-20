@@ -24,11 +24,49 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 
+# subscriptions.status CHECK allows only these values (see monetization migration).
+_ALLOWED_SUBSCRIPTION_STATUSES = frozenset({"active", "past_due", "canceled", "trialing", "inactive"})
+_STRIPE_SUBSCRIPTION_STATUS_MAP = {
+    "active": "active",
+    "trialing": "trialing",
+    "past_due": "past_due",
+    "canceled": "canceled",
+    "cancelled": "canceled",
+    "incomplete": "inactive",
+    "incomplete_expired": "inactive",
+    "unpaid": "past_due",
+    "paused": "inactive",
+}
+_VALID_BILLING_PLAN_CODES = frozenset({"node", "control", "command", "enterprise"})
+
 
 def _to_iso(ts: int | None) -> str | None:
     if not ts:
         return None
     return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+
+
+def _sanitize_org_id(org_id: str | None) -> str | None:
+    value = str(org_id or "").strip()
+    return value or None
+
+
+def _normalize_subscription_status(stripe_status: str | None) -> str:
+    """Map Stripe subscription.status to subscriptions.status CHECK values."""
+    normalized = str(stripe_status or "active").strip().lower()
+    mapped = _STRIPE_SUBSCRIPTION_STATUS_MAP.get(normalized, normalized)
+    if mapped in _ALLOWED_SUBSCRIPTION_STATUSES:
+        return mapped
+    logger.warning("Unknown Stripe subscription status %r; storing as inactive", stripe_status)
+    return "inactive"
+
+
+def _normalize_billing_plan_code(plan_code: str | None) -> str | None:
+    """Return a billing_plans FK-safe code, or None when unknown."""
+    normalized = _normalize_tier(plan_code)
+    if normalized in _VALID_BILLING_PLAN_CODES:
+        return normalized
+    return None
 
 
 def _normalize_tier(raw_tier: str | None) -> str:
@@ -107,7 +145,7 @@ def _upsert_subscription_from_event(client, settings: Settings, org_id: str | No
         "stripe_customer_id": data.get("customer"),
         "stripe_subscription_id": data.get("id"),
         "tier": plan_tier,
-        "status": data.get("status") or "active",
+        "status": _normalize_subscription_status(data.get("status")),
         "current_period_start": _to_iso(data.get("current_period_start")),
         "current_period_end": _to_iso(data.get("current_period_end")),
         "seat_count": quantity,
@@ -168,24 +206,24 @@ def _process_stripe_event(
             items = (data.get("items") or {}).get("data") or []
             primary_item = items[0] if items else {}
             price_id = (primary_item.get("price") or {}).get("id")
-            plan_code = (metadata.get("plan_code") if isinstance(metadata, dict) else None) or _plan_from_price(
-                settings, price_id
+            plan_code = _normalize_billing_plan_code(
+                (metadata.get("plan_code") if isinstance(metadata, dict) else None)
+                or _plan_from_price(settings, price_id)
             )
             billing_status = data.get("status") or "active"
             if billing_status == "incomplete":
                 billing_status = "pending"
-            client.table("org_billing").upsert(
-                {
-                    "org_id": org_id,
-                    "stripe_customer_id": data.get("customer"),
-                    "stripe_subscription_id": data.get("id"),
-                    "plan_code": plan_code,
-                    "billing_status": billing_status,
-                    "current_period_end": _to_iso(data.get("current_period_end")),
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                },
-                on_conflict="org_id",
-            ).execute()
+            org_billing_row = {
+                "org_id": org_id,
+                "stripe_customer_id": data.get("customer"),
+                "stripe_subscription_id": data.get("id"),
+                "billing_status": billing_status,
+                "current_period_end": _to_iso(data.get("current_period_end")),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+            if plan_code:
+                org_billing_row["plan_code"] = plan_code
+            client.table("org_billing").upsert(org_billing_row, on_conflict="org_id").execute()
 
     if event_type == "customer.subscription.deleted":
         subscription_id = data.get("id")
@@ -249,7 +287,7 @@ async def stripe_webhook(
     event_type = str(getattr(event, "type", None) or event.get("type") or "")
     data = event.get("data", {}).get("object", {}) or {}
     metadata = data.get("metadata") or {}
-    org_id = metadata.get("org_id")
+    org_id = _sanitize_org_id(metadata.get("org_id"))
 
     if not stripe_event_id:
         raise HTTPException(status_code=400, detail="Stripe event id missing")

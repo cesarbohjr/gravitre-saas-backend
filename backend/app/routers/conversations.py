@@ -13,6 +13,10 @@ from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.core.supabase_response import response_error
+from app.services.conversation_write_guard import (
+    ConversationWriteBlockedError,
+    assert_conversation_create_allowed,
+)
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
 logger = get_logger(__name__)
@@ -290,6 +294,10 @@ async def create_conversation(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     org_id = _require_org(org_id)
+    try:
+        assert_conversation_create_allowed(org_id)
+    except ConversationWriteBlockedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     now = _now_iso()
     title = (body.title or "").strip() or "New conversation"
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)

@@ -6,7 +6,9 @@ import { useRef, useEffect, useState } from "react"
 import { ArrowRight, Bot, Workflow, Shield, Zap, Users, BarChart3, Sparkles, Play, ChevronRight } from "lucide-react"
 import { AppShowcase } from "@/components/gravitre/app-showcase"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
+import { GibeHonestyCards } from "@/components/marketing/gibe-honesty-cards"
 import { ProductShowcase, HowItWorks, TestimonialsCarousel } from "@/components/marketing/product-showcase"
+import { buildOperationalSuccessClaim, EMPTY_LIVE_INTEL } from "@/lib/marketing-intelligence-truth"
 import { IntelligenceEngineSection } from "@/components/marketing/intelligence-engine-section"
 import { ProductTruthPills } from "@/components/marketing/platform-truth-banner"
 import { IntegrationStrip } from "@/components/marketing/integration-strip"
@@ -350,21 +352,21 @@ function ProductPreview() {
               {/* Right panel */}
               <div className="col-span-3 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
                 <div className="text-xs text-zinc-400 mb-3 font-medium">Metrics</div>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-zinc-500">Success</span>
-                      <span className="text-emerald-600 font-medium">98.5%</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-zinc-100">
-                      <motion.div 
-                        className="h-full rounded-full bg-emerald-500"
-                        initial={{ width: 0 }}
-                        animate={{ width: "98.5%" }}
-                        transition={{ duration: 1, delay: 0.5 }}
-                      />
-                    </div>
-                  </div>
+                <div className="space-y-3">
+                  {(() => {
+                    const success = buildOperationalSuccessClaim(EMPTY_LIVE_INTEL)
+                    return (
+                      <div>
+                        <div className="text-xs text-zinc-500 mb-1 leading-snug">{success.eyebrow}</div>
+                        <div className="text-sm font-medium text-emerald-700 leading-snug">
+                          {success.primary}
+                        </div>
+                        <p className="mt-2 text-[10px] text-zinc-400 leading-relaxed">
+                          Live run telemetry in your workspace — never a fabricated public %
+                        </p>
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
             </div>
@@ -677,16 +679,7 @@ export default function HomePage() {
               description: MARKETING_COPY.howItWorks.steps[1].description,
               visual: (
                 <div className="bg-zinc-900 rounded-xl p-6 shadow-2xl border border-zinc-800">
-                  <div className="space-y-3 text-sm">
-                    <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 p-3">
-                      <p className="text-zinc-400 text-xs">Query clusters</p>
-                      <p className="text-zinc-200 mt-1">47 distinct themes · 3 knowledge gaps detected</p>
-                    </div>
-                    <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 p-3">
-                      <p className="text-zinc-400 text-xs">Retrieval ranker</p>
-                      <p className="text-zinc-200 mt-1">TRAINED · memory confidence 84%</p>
-                    </div>
-                  </div>
+                  <GibeHonestyCards />
                 </div>
               ),
             },

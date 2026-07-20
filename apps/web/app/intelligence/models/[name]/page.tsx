@@ -71,7 +71,11 @@ export default function ModelProfilePage() {
     )
   }
 
-  const status = readString(statusEntry?.catalog_status, readString(catalogEntry.status, "PLANNED"))
+  // Module C / STA-331: prefer runtime_status (artifact load) over catalog TRAINED.
+  const status = readString(
+    statusEntry?.runtime_status,
+    readString(statusEntry?.catalog_status, readString(catalogEntry.status, "PLANNED")),
+  )
   const isPlanned = status.toUpperCase() === "PLANNED" || status.toUpperCase() === "DISABLED"
   const readinessEntry = ((readiness?.by_model as Record<string, Record<string, unknown>> | undefined) ?? {})[
     modelName

@@ -72,18 +72,27 @@ def main() -> int:
     env = dict(__import__("os").environ)
     env.setdefault("BACKEND_URL", args.base_url)
     env.setdefault("ROUTING_WAVE_ALLOW_ANY_SHA", "1")
+    env["GRAVITREE_SMOKE_RUN"] = "1"
+    env.setdefault(
+        "ISOLATED_CONVERSATION_TEST_ORG_ID",
+        "f07e57c0-1501-4000-8000-c04e57a00001",
+    )
+    # Conversation smokes must not inherit operator-org OAUTH_SMOKE_ORG_ID.
+    env.pop("OAUTH_SMOKE_ORG_ID", None)
+    env.pop("SMOKE_ORG_ID", None)
     env["ROUTING_WAVE_JSON_OUT"] = str(REPO / "docs/delivery/routing-wave-milestone1-live.json")
+    py = sys.executable
 
     steps: list[tuple[str, list[str], Path]] = [
         (
             "react_write_gate",
-            ["python3", "scripts/smoke-react-write-live.py", "--json", "docs/delivery/react-write-live-milestone1.json"],
+            [py, "scripts/smoke-react-write-live.py", "--json", "docs/delivery/react-write-live-milestone1.json"],
             REPO / "docs/delivery/react-write-live-milestone1.json",
         ),
         (
             "canvas_write_authority",
             [
-                "python3",
+                py,
                 "scripts/smoke-canvas-write-governance-live.py",
                 "--json",
                 "docs/delivery/canvas-write-governance-milestone1.json",
@@ -93,7 +102,7 @@ def main() -> int:
         (
             "wave67_spotcheck",
             [
-                "python3",
+                py,
                 "scripts/smoke-wave67-spotcheck.py",
                 "--base-url",
                 args.base_url,
@@ -105,13 +114,13 @@ def main() -> int:
         ),
         (
             "routing_wave_abcd",
-            ["python3", "scripts/smoke-routing-wave-live.py"],
+            [py, "scripts/smoke-routing-wave-live.py"],
             REPO / "docs/delivery/routing-wave-milestone1-live.json",
         ),
         (
             "retrieval_ab",
             [
-                "python3",
+                py,
                 "scripts/smoke-retrieval-ab-live.py",
                 "--base-url",
                 args.base_url,
@@ -125,7 +134,7 @@ def main() -> int:
         (
             "research_cascade",
             [
-                "python3",
+                py,
                 "scripts/smoke-research-cascade-prod.py",
                 "--base-url",
                 args.base_url,
@@ -148,9 +157,16 @@ def main() -> int:
                 for k in ("1_plan_before_tools", "2_tool_chips_error_code", "4_assumption_notes_ui")
             )
             claim3 = claims.get("3_approval_panel_result_url", {}).get("status")
-            passed = core_ok and claim3 in {"PASS", "FAIL"}
-            if claim3 == "FAIL" and core_ok:
-                report.setdefault("partial_checks", {})[key] = "claim_3_approval_result_url_not_reached"
+            # PASS/FAIL/PARTIAL all acceptable for claim 3 — FAIL/PARTIAL mean panel path
+            # not fully reached on this run; core claims 1/2/4 remain the hard gate.
+            # Child may exit 1 when claim3 is FAIL; score from fresh claims instead.
+            finished = str(payload.get("finished_at") or payload.get("started_at") or "")
+            fresh = finished >= report["started_at"][:19]
+            passed = fresh and core_ok and claim3 in {"PASS", "FAIL", "PARTIAL"}
+            if claim3 in {"FAIL", "PARTIAL"} and core_ok and fresh:
+                report.setdefault("partial_checks", {})[key] = (
+                    f"claim_3_approval_result_url_{str(claim3).lower()}"
+                )
         if key == "routing_wave_abcd" and payload.get("verdict"):
             started = payload.get("started_at") or ""
             passed = passed and payload.get("verdict") == "PASS" and started >= report["started_at"][:19]
@@ -158,13 +174,20 @@ def main() -> int:
             ab = report.get("artifacts", {}).get("retrieval_ab") or {}
             d_ok = bool((ab.get("queries") or {}).get("D_thin_broaden", {}).get("pass"))
             progress_ok = bool((payload.get("checks") or {}).get("progress_steps_sse", {}).get("pass"))
-            passed = d_ok and progress_ok
+            # Thin/scoped cascade UI is validated via retrieval_ab D + progress SSE.
+            # Accept that delegated path even when the cascade script's own pass is false,
+            # but only for a fresh artifact from this aggregator run.
+            finished = str(payload.get("finished_at") or payload.get("started_at") or "")
+            fresh = finished >= report["started_at"][:19]
+            passed = fresh and d_ok and progress_ok
             if passed and not payload.get("pass"):
                 report.setdefault("delegated_checks", {})[key] = (
                     "thin/scoped cascade UI validated via retrieval_ab D_thin_broaden + progress_steps_sse"
                 )
         if key == "retrieval_ab" and "pass" in payload:
-            passed = passed and bool(payload.get("pass"))
+            finished = str(payload.get("finished_at") or payload.get("started_at") or "")
+            fresh = finished >= report["started_at"][:19]
+            passed = passed and fresh and bool(payload.get("pass"))
         all_pass = all_pass and passed
         report["checks"][key] = {
             "pass": passed,

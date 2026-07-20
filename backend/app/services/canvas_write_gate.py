@@ -15,6 +15,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.services.catalog_write_authority import invoke_action_requires_write_approval
+from app.services.conversation_turn_controller import bind_canvas_step_args
 from app.services.tool_service import STEP_TYPE_TO_ACTION
 
 CANVAS_WRITE_AUTHORITY_BLOCKED = "canvas_write_authority_blocked"
@@ -136,3 +137,19 @@ def load_run_for_write_gate(client: Any, org_id: str, run_id: str | None) -> dic
     except Exception:  # noqa: BLE001
         return None
     return None
+
+
+def enrich_canvas_step_config_from_ledger(
+    *,
+    invoke_action: str,
+    config: dict[str, Any] | None,
+    task_state: dict[str, Any] | None = None,
+    intent_text: str | None = None,
+) -> dict[str, Any]:
+    """Module B — canvas NL→args via the same ledger/schema path as chat/ReAct."""
+    return bind_canvas_step_args(
+        invoke_action=invoke_action,
+        step_config=config,
+        task_state=task_state,
+        intent_text=intent_text,
+    )

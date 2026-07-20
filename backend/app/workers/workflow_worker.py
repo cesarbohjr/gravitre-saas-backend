@@ -45,6 +45,7 @@ def process_workflow_run_job(settings: Settings, job_raw: str) -> bool:
             parameters=parameters,
             client=client,
             environment_name=environment_name,
+            outcome_source="worker",
         )
         logger.info(
             "workflow_worker_completed org_id=%s run_id=%s status=%s steps=%s rate_limited=%s errors=%s",
@@ -62,6 +63,34 @@ def process_workflow_run_job(settings: Settings, job_raw: str) -> bool:
             job.run_id,
             str(exc),
         )
+        # Crash path: ensure terminal fanout so the run cannot stay 'running'.
+        try:
+            from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
+
+            finalize_execution_outcome(
+                client,
+                org_id=job.org_id,
+                status="failed",
+                source="worker",
+                actor_id=actor_id,
+                run_id=job.run_id,
+                workflow_id=str(run.get("workflow_id") or "") or None,
+                error_summary=str(exc)[:2000],
+                verified_output=VerifiedOutputRef(
+                    result_url=f"/runs/{job.run_id}",
+                    entity_type="workflow_run",
+                    entity_id=job.run_id,
+                    summary=str(exc)[:2000],
+                ),
+                metadata={"path": "workflow_worker_crash"},
+            )
+        except Exception as finalize_exc:  # noqa: BLE001
+            logger.warning(
+                "workflow_worker_crash_finalize_failed org_id=%s run_id=%s error=%s",
+                job.org_id,
+                job.run_id,
+                finalize_exc,
+            )
     return True
 
 

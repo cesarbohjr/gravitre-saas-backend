@@ -606,6 +606,90 @@ def _build_predictive_alerts(
     return alerts
 
 
+def correlate_observed_run_failure(
+    client: Any,
+    *,
+    org_id: str,
+    workflow_id: str | None,
+    run_id: str | None,
+    error_summary: str | None = None,
+    source: str | None = None,
+) -> bool:
+    """Subscriber for Module A: react to a real terminal failure (not a heuristic scan).
+
+    Failure Alerts remains a distinct predictive product. This only correlates an
+    observed run failure into evidence so the surface can react to trustworthy
+    outcomes. Returns False when correlation is not applicable (e.g. no workflow_id).
+    """
+    resolved_workflow_id = str(workflow_id or "").strip() or None
+    if not resolved_workflow_id and run_id:
+        try:
+            row = (
+                client.table("workflow_runs")
+                .select("workflow_id")
+                .eq("id", run_id)
+                .eq("org_id", org_id)
+                .limit(1)
+                .execute()
+            )
+            resolved_workflow_id = str((row.data or [{}])[0].get("workflow_id") or "").strip() or None
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("failure_alert_correlate_workflow_lookup_skipped run=%s err=%s", run_id, exc)
+
+    if not resolved_workflow_id:
+        # Chat orchestration and other run paths without a workflow_defs FK cannot
+        # persist into workflow_failure_alerts (workflow_id NOT NULL). Learning +
+        # Runs/Notifications/Audit still receive the outcome via Module A.
+        return False
+
+    evidence = {
+        "observed_run_failure": True,
+        "run_id": run_id,
+        "source": source,
+        "error_summary": (error_summary or "")[:500],
+        "correlated_at": _now_iso(),
+        "subscriber": "finalize_execution_outcome",
+    }
+    alert = _alert_row(
+        org_id=org_id,
+        workflow_id=resolved_workflow_id,
+        alert_type="step_failure_risk",
+        severity="high",
+        title="Observed workflow run failure",
+        message=(error_summary or "A workflow run failed. Review the run for step-level errors.")[:1000],
+        evidence=evidence,
+    )
+    try:
+        # Dedup: skip if an open observed alert already cites this run_id.
+        existing = (
+            client.table("workflow_failure_alerts")
+            .select("id, evidence")
+            .eq("org_id", org_id)
+            .eq("workflow_id", resolved_workflow_id)
+            .eq("status", "open")
+            .eq("alert_type", "step_failure_risk")
+            .limit(25)
+            .execute()
+        )
+        for row in existing.data or []:
+            ev = row.get("evidence") if isinstance(row.get("evidence"), dict) else {}
+            if ev.get("observed_run_failure") and str(ev.get("run_id") or "") == str(run_id or ""):
+                return True
+        client.table("workflow_failure_alerts").insert(alert).execute()
+        return True
+    except Exception as exc:  # noqa: BLE001
+        if _is_missing_table_error(exc):
+            return False
+        logger.debug(
+            "failure_alert_correlate_skipped org=%s workflow=%s run=%s err=%s",
+            org_id,
+            resolved_workflow_id,
+            run_id,
+            exc,
+        )
+        return False
+
+
 def list_failure_alerts(
     client: Any,
     org_id: str,

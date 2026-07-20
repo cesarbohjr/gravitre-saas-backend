@@ -114,7 +114,12 @@ def enrich_plan_inference_metadata(
     return plan
 
 
-def _result_link_label(integration: str | None) -> str:
+def _result_link_label(integration: str | None, *, result_url: str | None = None) -> str:
+    url = str(result_url or "").strip()
+    if url.startswith("/runs/"):
+        return "View run"
+    if url.startswith("/ai"):
+        return "View in Gravitre"
     normalized = str(integration or "").strip()
     if not normalized:
         return "View result"
@@ -568,35 +573,32 @@ class ChatConnectorExecutionService:
         if structured_plan is not None and structured_plan.invoke_action:
             return structured_plan
 
+        from app.services.parameter_ledger import (
+            apply_ledger_to_plan,
+            is_awaiting_params,
+            resume_awaiting_params,
+        )
+
         pending = task_state.get("pending_task") or {}
         if isinstance(pending, dict) and pending.get("type") == "connector_action":
+            # Module B — generic multi-turn resume (all connectors, not Slack-only).
+            if is_awaiting_params(task_state):
+                resumed, _ledger, patch = resume_awaiting_params(message, task_state)
+                # Always merge live ledger + advanced pending_task.args into the
+                # caller's task_state. process_turn must persist this even when
+                # execution is later blocked (disconnected connector).
+                if patch:
+                    task_state.update(patch)
+                    task_state["__resume_state_patch"] = patch
+                if resumed is not None:
+                    tool_name = resumed.tool_name or ""
+                    if tool_name and self._registry.get_spec(tool_name):
+                        return self._sanitize_plan_message_bodies(resumed)
+                    # Allow resume even when static tool registry lacks a name
+                    # (catalog invoke_action is authoritative).
+                    if resumed.invoke_action:
+                        return self._sanitize_plan_message_bodies(resumed)
             params = dict(pending.get("params") or task_state.get("clarified_params") or {})
-            clarified = task_state.get("clarified_params") if isinstance(task_state.get("clarified_params"), dict) else {}
-            # Multi-turn Slack: channel staged as awaiting_params — this message is the body.
-            if str(pending.get("status") or "") == "awaiting_params":
-                channel = (
-                    params.get("channel")
-                    or (params.get("args") or {}).get("channel")
-                    or clarified.get("slack_channel")
-                )
-                body = self._followup_message_body(message)
-                if channel and body:
-                    args = dict(params.get("args") or {})
-                    args["channel"] = str(channel).lstrip("#")
-                    args["message"] = body
-                    args.setdefault("text", body)
-                    channel_label = args["channel"]
-                    params = {
-                        **params,
-                        "channel": channel_label,
-                        "message": body,
-                        "args": args,
-                        "tool_name": params.get("tool_name") or "slack_send_message",
-                        "invoke_action": params.get("invoke_action") or "slack.post_message",
-                        "integration": params.get("integration") or "slack",
-                        "kind": params.get("kind") or "write",
-                        "label": params.get("label") or f"Post to Slack #{channel_label}",
-                    }
             tool_name = str(params.get("tool_name") or "")
             spec = self._registry.get_spec(tool_name)
             if not spec:
@@ -609,6 +611,8 @@ class ChatConnectorExecutionService:
             if not params.get("label"):
                 params["label"] = tool_name
             plan = self.plan_from_dict(params)
+            if plan:
+                plan = apply_ledger_to_plan(plan, task_state)
             return self._sanitize_plan_message_bodies(plan) if plan else None
 
         mapper = get_chat_action_mapper()
@@ -619,7 +623,7 @@ class ChatConnectorExecutionService:
                 match.entry.registry_key,
                 match.entry.connector_id,
             ) or match.tool_name
-            return ConnectorActionPlan(
+            plan = ConnectorActionPlan(
                 tool_name=tool_name,
                 invoke_action=match.entry.registry_key,
                 integration=match.entry.connector_id,
@@ -628,6 +632,8 @@ class ChatConnectorExecutionService:
                 args=match.args,
                 destructive=match.entry.destructive,
             )
+            # Unprompted cross-turn: bind email/channel/etc. from ledger.
+            return apply_ledger_to_plan(plan, task_state)
 
         connected = {c.lower() for c in connected_integrations}
         registered = set(list_registered_actions())
@@ -662,7 +668,9 @@ class ChatConnectorExecutionService:
             )
             if best is None or score > best[0]:
                 best = (score, plan)
-        return best[1] if best else None
+        if best is None:
+            return None
+        return apply_ledger_to_plan(best[1], task_state)
 
     def plan_fallback_segment(
         self,
@@ -829,9 +837,36 @@ class ChatConnectorExecutionService:
         structured_plan: ConnectorActionPlan | None = None,
     ) -> dict[str, Any] | None:
         from app.services.chat_message_normalize import strip_assistant_scope_prefix
+        from app.services.parameter_ledger import (
+            get_ledger,
+            ingest_message_slots,
+            ledger_patch,
+            stage_awaiting_params,
+        )
 
         # Scope banners belong in the system prompt, not connector task text.
         message = strip_assistant_scope_prefix(message)
+        # Module B — write-on-mention into the conversation-scoped ledger.
+        turn_index = len(list((task_state or {}).get("recent_user_messages") or [])) + 1
+        ledger = ingest_message_slots(
+            message,
+            turn_index=turn_index,
+            ledger=get_ledger(task_state),
+        )
+        task_state = {**(task_state or {}), **ledger_patch(ledger)}
+        try:
+            await self._state.update_task_state(
+                conversation_id,
+                org_id,
+                {
+                    **ledger_patch(ledger),
+                    "recent_user_messages": [message],
+                },
+                client=client,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("parameter ledger ingest persist skipped: %s", exc)
+
         if structured_plan is None and not self.is_connector_intent(message, task_state):
             return None
 
@@ -847,6 +882,44 @@ class ChatConnectorExecutionService:
             task_state=task_state,
             structured_plan=structured_plan,
         )
+        # Fix 1 — persist resume advancement (pending_task.args + ledger) every turn.
+        # Must happen before blocked-connector early returns, or args stall forever.
+        resume_patch = (task_state or {}).pop("__resume_state_patch", None)
+        if isinstance(resume_patch, dict) and resume_patch:
+            try:
+                await self._state.update_task_state(
+                    conversation_id,
+                    org_id,
+                    resume_patch,
+                    client=client,
+                )
+                task_state = {**(task_state or {}), **resume_patch}
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("awaiting_params resume persist failed: %s", exc)
+                task_state = {**(task_state or {}), **resume_patch}
+        # Module B Phase 2 — schema-constrained extraction (FAST tier) for write plans.
+        if plan is not None and structured_plan is None:
+            try:
+                from app.services.schema_param_extractor import enrich_plan_args_from_schema
+
+                plan, extract_patch = await enrich_plan_args_from_schema(
+                    plan,
+                    message,
+                    task_state=task_state,
+                    settings=self.settings,
+                    org_id=org_id,
+                    use_model=True,
+                )
+                if extract_patch:
+                    task_state = {**(task_state or {}), **extract_patch}
+                    await self._state.update_task_state(
+                        conversation_id,
+                        org_id,
+                        extract_patch,
+                        client=client,
+                    )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("schema param extract skipped: %s", exc)
         if plan is not None:
             plan = self._sanitize_plan_message_bodies(plan)
         # Wave 6–7 claim 4 — omit-name "create a contact list" must reach the Apollo
@@ -972,11 +1045,32 @@ class ChatConnectorExecutionService:
 
         clarification = validate_connector_plan(plan, message)
         if clarification:
+            # Module B — stage awaiting_params on the shared ledger so the next
+            # turn resumes for any connector (not Slack-only).
+            stage_patch = stage_awaiting_params(
+                plan,
+                clarification.missing,
+                ledger=get_ledger(task_state),
+            )
+            try:
+                await self._state.update_task_state(
+                    conversation_id,
+                    org_id,
+                    {**stage_patch, "recent_user_messages": [message]},
+                    client=client,
+                )
+                task_state = await self._state.get_task_state(
+                    conversation_id, org_id, client=client
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("awaiting_params stage persist failed: %s", exc)
+                task_state = {**(task_state or {}), **stage_patch}
             return {
                 "stop_pipeline": True,
                 "dialogue_mode": clarification.dialogue_mode,
                 "message": clarification.message,
                 "task_state": task_state,
+                "pending_task": (task_state or {}).get("pending_task"),
                 "workflow_status": clarification.status,
             }
 
@@ -1212,23 +1306,42 @@ class ChatConnectorExecutionService:
                 plan.invoke_action,
                 exc,
             )
-            return ExecutionResult(
+            failed = ExecutionResult(
                 success=False,
                 entity_type="connector",
                 entity_id="",
                 connector_management_url="/connectors",
+                result_url=f"/ai?conversation={conversation_id}" if conversation_id else "/ai",
                 title=plan.label,
                 body=str(exc),
                 integration=plan.integration,
                 task_label=plan.label,
             )
+            self._finalize_connector_outcome(
+                client,
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                plan=plan,
+                result=failed,
+            )
+            return failed
 
         success = bool(observation.get("success"))
         connector_id = str(observation.get("connector_id") or "")
         result_data = observation.get("result") if isinstance(observation.get("result"), dict) else {}
         external_url = self._external_url(plan.integration, plan.invoke_action, result_data, observation)
+        if plan.integration == "hubspot" and external_url:
+            from app.services.hubspot_urls import is_portal_scoped_hubspot_url
+
+            if not is_portal_scoped_hubspot_url(external_url):
+                external_url = None
         connector_management_url = build_connector_management_url(connector_id)
-        result_url = external_url
+        # Primary CTA stays in Gravitre; vendor links are secondary only.
+        primary_url = f"/ai?conversation={conversation_id}" if conversation_id else "/ai"
+        structured_payload = dict(result_data or {})
+        if external_url:
+            structured_payload["external_url"] = external_url
 
         if not success:
             from app.services.tool_error_messages import format_tool_error_for_user
@@ -1242,18 +1355,29 @@ class ChatConnectorExecutionService:
                 action=plan.invoke_action,
                 reason=str(details.get("reason") or ""),
             )
-            return ExecutionResult(
+            failed = ExecutionResult(
                 success=False,
                 entity_type="connector",
                 entity_id=connector_id,
                 connector_management_url=connector_management_url,
-                result_url=result_url,
+                result_url=primary_url,
+                external_url=external_url,
                 integration=plan.integration,
                 title=plan.label,
                 body=body,
                 task_label=plan.label,
                 error_code=error_code,
+                structured=structured_payload or None,
             )
+            self._finalize_connector_outcome(
+                client,
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                plan=plan,
+                result=failed,
+            )
+            return failed
 
         summary = self._summarize_result(plan, result_data, observation)
         result = ExecutionResult(
@@ -1261,13 +1385,14 @@ class ChatConnectorExecutionService:
             entity_type="connector",
             entity_id=connector_id,
             connector_management_url=connector_management_url,
-            result_url=result_url,
+            result_url=primary_url,
+            external_url=external_url,
             integration=plan.integration,
             title=plan.label,
             body=summary,
             notification_type="task_completed",
             task_label=plan.label,
-            structured=result_data,
+            structured=structured_payload or None,
             assumption_notes=_assumption_notes_from_plan(plan),
         )
         if plan.kind == "write":
@@ -1284,12 +1409,13 @@ class ChatConnectorExecutionService:
                 )
                 from app.services.tool_error_messages import format_tool_error_for_user
 
-                return ExecutionResult(
+                failed = ExecutionResult(
                     success=False,
                     entity_type="connector",
                     entity_id=connector_id,
                     connector_management_url=connector_management_url,
-                    result_url=result_url,
+                    result_url=primary_url,
+                    external_url=external_url,
                     integration=plan.integration,
                     title=plan.label,
                     body=format_tool_error_for_user(
@@ -1299,24 +1425,26 @@ class ChatConnectorExecutionService:
                         action=plan.invoke_action,
                     ),
                     task_label=plan.label,
-                    structured=result_data,
+                    structured=structured_payload or None,
                     error_code="unverifiable_output",
                 )
+                self._finalize_connector_outcome(
+                    client,
+                    org_id=org_id,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    plan=plan,
+                    result=failed,
+                )
+                return failed
 
-        emit_notification(
+        self._finalize_connector_outcome(
             client,
             org_id=org_id,
             user_id=user_id,
-            event_type=result.notification_type,
-            title=result.title,
-            body=result.body,
-            entity_ref={
-                "entity_type": result.entity_type,
-                "entity_id": result.entity_id or None,
-                "result_url": result.result_url,
-                "integration": result.integration,
-            },
-            channel_hints={"bell": True, "email": False},
+            conversation_id=conversation_id,
+            plan=plan,
+            result=result,
         )
 
         prior_state = await self._state.get_task_state(conversation_id, org_id, client=client)
@@ -1334,6 +1462,7 @@ class ChatConnectorExecutionService:
                         "step_id": f"connector_{plan.invoke_action}",
                         "label": plan.label,
                         "url": result.result_url,
+                        "external_url": result.external_url,
                         "entity_type": "connector",
                         "entity_id": connector_id,
                     }
@@ -1344,6 +1473,7 @@ class ChatConnectorExecutionService:
                         "tool_name": plan.tool_name,
                         "entity_id": connector_id,
                         "url": result.result_url,
+                        "external_url": result.external_url,
                     }
                 ],
                 **self._session_updates_after_execution(
@@ -1359,6 +1489,60 @@ class ChatConnectorExecutionService:
         )
         await self._record_outcomes(org_id, user_id, plan, result, observation, classification)
         return result
+
+    def _finalize_connector_outcome(
+        self,
+        client: Any,
+        *,
+        org_id: str,
+        user_id: str,
+        conversation_id: str,
+        plan: ConnectorActionPlan,
+        result: ExecutionResult,
+    ) -> None:
+        """Route single-connector chat terminals through finalize_execution_outcome().
+
+        Fixes the audit finding that failure paths returned before emit_notification.
+        No workflow_run row for this path — persist_run=False; fanout still covers
+        notify + audit + learning.
+        """
+        from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
+
+        status = "completed" if result.success else "failed"
+        try:
+            finalize_execution_outcome(
+                client,
+                org_id=org_id,
+                status=status,
+                source="assistant_chat",
+                actor_id=user_id,
+                run_id=None,
+                persist_run=False,
+                error_summary=None if result.success else (result.body or "Connector action failed"),
+                verified_output=VerifiedOutputRef(
+                    summary=(result.body or "")[:2000] or None,
+                    result_url=result.result_url,
+                    external_url=result.external_url,
+                    entity_type=result.entity_type or "connector",
+                    entity_id=result.entity_id or None,
+                    integration=result.integration or plan.integration,
+                ),
+                notification_title=result.title or plan.label,
+                notification_body=(result.body or "")[:2000] or None,
+                metadata={
+                    "conversation_id": conversation_id,
+                    "invoke_action": plan.invoke_action,
+                    "tool_name": plan.tool_name,
+                    "path": "chat_connector_execute_plan",
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "chat connector outcome finalize skipped org_id=%s action=%s error=%s",
+                org_id,
+                plan.invoke_action,
+                exc,
+            )
 
     def _turn_from_execution(
         self,
@@ -1379,8 +1563,11 @@ class ChatConnectorExecutionService:
         if execution.success:
             link_line = ""
             if execution.result_url:
-                label = _result_link_label(execution.integration)
+                label = _result_link_label(execution.integration, result_url=execution.result_url)
                 link_line = f"\n\n[{label}]({execution.result_url})"
+            if execution.external_url:
+                vendor = _result_link_label(execution.integration, result_url=execution.external_url)
+                link_line += f"\n\n[{vendor}]({execution.external_url})"
             return {
                 "stop_pipeline": True,
                 "dialogue_mode": "answer",
@@ -1696,15 +1883,17 @@ class ChatConnectorExecutionService:
         result_url = (
             f"/approvals?id={approval_id}" if approval_id else "/approvals"
         )
-        # Requester acknowledgment
+        # Requester acknowledgment — titles/bodies from Module D gravitree_voice
+        from app.services.gravitree_voice import format_operator_message
+
         try:
             emit_notification(
                 client,
                 org_id=org_id,
                 user_id=user_id,
                 event_type="approval_needed",
-                title="Request sent for approval",
-                body=f"{label} is waiting in the Decision Queue.",
+                title=format_operator_message("approval_needed_requester_title"),
+                body=format_operator_message("approval_needed_requester", label=label),
                 entity_ref={
                     "entity_type": "approval",
                     "entity_id": approval_id or conversation_id,

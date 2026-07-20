@@ -26,6 +26,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 BACKEND = REPO / "backend"
 sys.path.insert(0, str(BACKEND))
+sys.path.insert(0, str(REPO / "scripts"))
 
 from dotenv import dotenv_values  # noqa: E402
 
@@ -229,21 +230,13 @@ def main() -> int:
     for key, value in env.items():
         os.environ.setdefault(key, value)
 
-    org_id = (
-        env.get("OAUTH_SMOKE_ORG_ID")
-        or env.get("SMOKE_ORG_ID")
-        or env.get("OPERATOR_ORG_ID")
-        or ""
-    ).strip()
-    if not org_id:
-        raise SystemExit("OAUTH_SMOKE_ORG_ID required")
-
     from app.config import get_settings
     from app.workflows.repository import get_supabase_client
+    from isolated_conversation_org import resolve_isolated_conversation_actor
 
     settings = get_settings()
     client = get_supabase_client(settings)
-    actor_id = _resolve_actor(client, org_id, env)
+    org_id, actor_id, _email = resolve_isolated_conversation_actor(env, client)
     list_name = args.list_name or (
         f"gravitre-react-gate-probe-{datetime.now(timezone.utc).strftime('%Y%m%d')}"
     )

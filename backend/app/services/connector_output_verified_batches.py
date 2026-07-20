@@ -412,7 +412,7 @@ VERIFIED_ADVANCED_OUTPUT_BATCH_13: frozenset[str] = frozenset(
         "stripe.payment_intents.confirm",
         "stripe.subscriptions.update",
         "twilio.conversations.create",
-        "webhook.post.replay",
+        # webhook.post.replay remains catalogued but not_implemented — do not claim verified output.
         "workday.batch.workers.export",
         "workday.learning.enroll",
         "xero.banktransactions.import",

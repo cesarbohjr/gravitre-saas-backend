@@ -1,0 +1,127 @@
+{
+  "pass": true,
+  "status": "PASS",
+  "ran_at": "2026-07-19T04:04:35.753433+00:00",
+  "prod_git_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "deploy": {
+    "ok": true,
+    "git_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+    "matched": "sha",
+    "health": {
+      "status": "ok",
+      "timestamp": "2026-07-19T04:04:15.337125+00:00",
+      "version": "0.1.0",
+      "environment": "prod",
+      "git_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+      "ai_disabled": false,
+      "checks": {
+        "database": "healthy",
+        "cache": "healthy",
+        "temporal": "configured",
+        "clickhouse": "configured"
+      }
+    }
+  },
+  "gate": {
+    "model": "cf_matrix_factorizer",
+    "lookback_days": 30,
+    "current": 173,
+    "required": 50,
+    "actors": 2,
+    "items": 16,
+    "min_actors": 2,
+    "min_items": 3,
+    "ready": true,
+    "advisory_only": true,
+    "cold_start": false
+  },
+  "train_local": {
+    "trained": false,
+    "model_id": null,
+    "training_examples": 173,
+    "gate": {
+      "model": "cf_matrix_factorizer",
+      "lookback_days": 30,
+      "current": 173,
+      "required": 50,
+      "actors": 2,
+      "items": 16,
+      "min_actors": 2,
+      "min_items": 3,
+      "ready": true,
+      "advisory_only": true,
+      "cold_start": false
+    },
+    "method": "truncated_svd",
+    "metrics": {
+      "n_users": 2,
+      "n_items": 16,
+      "n_components": 1,
+      "rmse": 1.3997079098852403,
+      "explained_variance": 0.9958214321811434
+    }
+  },
+  "train_http": {
+    "status_code": 200,
+    "body": {
+      "temporal": true,
+      "workflow_id": "ml-training-cbbf993b-b22f-41ce-964b-1fc25e0dd9ea-cf_matrix_factorizer",
+      "run_id": "019f788b-ea33-749f-aa8f-6715c76e2ad5",
+      "model_name": "cf_matrix_factorizer"
+    }
+  },
+  "advisory": {
+    "status_code": 200,
+    "card_count": 20,
+    "cfRanked": true,
+    "cfMethod": "matrix_factorization",
+    "cfGate": {
+      "model": "cf_soft_ranker",
+      "lookback_days": 30,
+      "current": 173,
+      "required": 50,
+      "ready": true,
+      "advisory_only": true,
+      "cold_start": false,
+      "matrix_factorization": {
+        "model": "cf_matrix_factorizer",
+        "lookback_days": 30,
+        "current": 173,
+        "required": 50,
+        "actors": 2,
+        "items": 16,
+        "min_actors": 2,
+        "min_items": 3,
+        "ready": true,
+        "advisory_only": true,
+        "cold_start": false
+      }
+    },
+    "advisory_only": true,
+    "sample_ids": [
+      "nonexec-slack",
+      "nonexec-zendesk",
+      "nonexec-finseo",
+      "nonexec-salesforce",
+      "nonexec-quickbooks"
+    ],
+    "sample_methods": [
+      "matrix_factorization",
+      "matrix_factorization",
+      "matrix_factorization",
+      "matrix_factorization",
+      "matrix_factorization"
+    ],
+    "executable_any": false,
+    "error_detail": null
+  },
+  "governance": {
+    "advisory_only": true,
+    "auto_execute": false,
+    "method": "truncated_svd_user_item_mf",
+    "placement": "heuristics \u2192 CF MF/affinity \u2192 dismiss \u2192 outcome rank"
+  },
+  "note": "CF matrix factorization tip: train cf_matrix_factorizer, GET heuristics with cfMethod=matrix_factorization."
+}

@@ -1,0 +1,50 @@
+{
+  "pass": true,
+  "status": "DONE_ROLLUP_ONLY",
+  "ran_at": "2026-07-18T09:47:00+00:00",
+  "pack_slug": "business-os-intelligence-pack",
+  "pack_number": 12,
+  "mode": "rollup_only",
+  "evidence": {
+    "phase0": "docs/delivery/phase0-business-os-intelligence-pack.md",
+    "vision": "docs/delivery/phase0-twelve-pack-marketplace-vision.md",
+    "program": "docs/delivery/master-knowledge-intelligence-packs-program.md",
+    "live_ui_rollup": "apps/web/app/intelligence/reports/page.tsx (PackKpiPanel multi-tab)"
+  },
+  "built": {
+    "catalog_intelligence_pack": false,
+    "demo_agent": false,
+    "connector_template": false,
+    "new_connectors": false,
+    "daily_briefing_workflow": false,
+    "tip_smoke_vendor_invoke": false
+  },
+  "packs": [
+    {"n": 1, "id": "executive-intelligence-pack", "status": "DONE", "evidence": "phase4-executive-pack-live.json"},
+    {"n": 2, "id": "msp-intelligence-pack", "status": "DONE", "evidence": "phase4-msp-pack-live.json"},
+    {"n": 3, "id": "sales-intelligence-pack", "status": "DONE", "evidence": "phase4-sales-pack-live.json"},
+    {"n": "3.5", "id": "shared-pack-kpi-cohesion", "status": "DONE", "evidence": "phase35-executive-cohesion-live.json"},
+    {"n": 4, "id": "customer-success-intelligence-pack", "status": "DONE", "evidence": "phase4-customer-success-pack-live.json"},
+    {"n": 5, "id": "prospecting-intelligence-pack", "status": "DONE", "evidence": "phase4-prospecting-pack-live.json"},
+    {"n": 6, "id": "marketing-intelligence-pack", "status": "DONE", "evidence": "phase4-marketing-pack-live.json"},
+    {"n": 7, "id": "revops-intelligence-pack", "status": "DONE", "evidence": "phase4-revops-pack-live.json"},
+    {"n": 8, "id": "ai-search-intelligence-pack", "status": "DONE_UI_ONLY", "evidence": "phase4-ai-search-pack-live.json", "open": "dual_byo_api_NOT_RUN"},
+    {"n": 9, "id": "finance-intelligence-pack", "status": "PARTIAL", "evidence": "phase4-finance-pack-live.json", "open": "live_oauth_HOLD"},
+    {"n": 10, "id": "hr-talent-intelligence-pack", "status": "PARTIAL", "evidence": "phase4-hr-talent-pack-live.json", "open": "live_oauth_HOLD"},
+    {"n": 11, "id": "compliance-intelligence-pack", "status": "DONE_GUIDANCE_ONLY", "evidence": "phase4-compliance-pack-guidance.json", "open": "phi_STOP"},
+    {"n": 12, "id": "business-os-intelligence-pack", "status": "DONE_ROLLUP_ONLY", "evidence": "phase0-business-os-intelligence-pack.md"}
+  ],
+  "counts": {
+    "done": 8,
+    "done_ui_or_guidance_or_rollup": 3,
+    "partial": 2,
+    "total_locked_sequence": 12
+  },
+  "holds_unchanged": [
+    "finance_hr_live_activation",
+    "compliance_phi",
+    "ai_search_dual_byo_api_optional",
+    "churn_cf_ml"
+  ],
+  "note": "Pack #12 closes the locked 12-pack order as rollup documentation + existing Reports PackKpiPanel surface. No new connectors. Not a claim that every pack is live-invoke DONE."
+}

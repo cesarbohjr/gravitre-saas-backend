@@ -114,13 +114,22 @@ async def get_conversation_health(
     total = max(len(rows), 1)
     qualities = [float(r["response_quality"]) for r in rows if r.get("response_quality") is not None]
     clarify_rate = sum(1 for r in rows if r.get("query_category") == "help") / total
-    avg_confidence = sum(qualities) / len(qualities) if qualities else 0.65
+    # Module C / STA-331: never invent a 0.65 "live" confidence when there is no data.
+    has_quality = bool(qualities)
+    avg_confidence = (sum(qualities) / len(qualities)) if has_quality else None
 
     return {
-        "avg_frustration_score_7d": round(max(0.0, 1.0 - avg_confidence) * 0.5, 3),
+        "avg_frustration_score_7d": (
+            round(max(0.0, 1.0 - avg_confidence) * 0.5, 3) if avg_confidence is not None else None
+        ),
         "avg_clarification_rate_7d": round(clarify_rate, 3),
-        "avg_confidence_7d": round(avg_confidence, 3),
-        "escalation_rate_7d": round(max(0.0, 0.4 - avg_confidence), 3),
+        "avg_confidence_7d": round(avg_confidence, 3) if avg_confidence is not None else None,
+        "confidence_is_estimate": False,
+        "confidence_source": "response_quality" if has_quality else "insufficient_data",
+        "escalation_rate_7d": (
+            round(max(0.0, 0.4 - avg_confidence), 3) if avg_confidence is not None else None
+        ),
         "consensus_trigger_rate_7d": round(min(0.25, clarify_rate * 0.3), 3),
         "sample_size": len(rows),
+        "quality_sample_size": len(qualities),
     }

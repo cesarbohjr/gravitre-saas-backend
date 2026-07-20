@@ -84,6 +84,16 @@ const nextConfig = {
       { source: "/admin/intelligence/:path*", destination: "/intelligence/learning/:path*", permanent: true },
       { source: "/intelligence/models", destination: "/models/built-in", permanent: true },
       { source: "/intelligence/models/:name", destination: "/models/built-in/:name", permanent: true },
+      { source: "/features/technology", destination: "/technology", permanent: true },
+      { source: "/features/intelligence", destination: "/technology", permanent: true },
+      { source: "/features/governance", destination: "/technology", permanent: true },
+      { source: "/features/agents", destination: "/features", permanent: true },
+      { source: "/features/workflows", destination: "/features", permanent: true },
+      { source: "/features/meson", destination: "/features", permanent: true },
+      { source: "/features/gravitre-ai", destination: "/features", permanent: true },
+      { source: "/features/how-it-works", destination: "/features", permanent: true },
+      { source: "/features/integrations", destination: "/features", permanent: true },
+      { source: "/features/insights", destination: "/features", permanent: true },
     ]
   },
 }

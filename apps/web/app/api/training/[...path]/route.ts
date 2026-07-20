@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { proxyToFastApi } from "@/lib/backend-proxy"
+import { shouldUseDemoRuntimeFallback } from "@/lib/demo-runtime-fallback"
 import {
   addInstruction,
   addTrainingDataset,
@@ -36,11 +37,20 @@ async function readJson(request: NextRequest): Promise<Record<string, unknown>> 
   return (await request.json().catch(() => ({}))) as Record<string, unknown>
 }
 
+function backendUnavailable() {
+  return NextResponse.json(
+    { detail: "Backend unavailable", error: "FASTAPI_BASE_URL is not configured" },
+    { status: 503 },
+  )
+}
+
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { path } = await params
   const target = buildTarget(path)
   const proxied = await maybeProxy(request, target)
   if (proxied) return proxied
+
+  if (!shouldUseDemoRuntimeFallback()) return backendUnavailable()
 
   const parts = getPath(path)
   const store = getDemoStore().training
@@ -87,6 +97,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const target = buildTarget(path)
   const proxied = await maybeProxy(request, target)
   if (proxied) return proxied
+
+  if (!shouldUseDemoRuntimeFallback()) return backendUnavailable()
 
   const parts = getPath(path)
   const body = await readJson(request)
@@ -158,6 +170,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const proxied = await maybeProxy(request, target)
   if (proxied) return proxied
 
+  if (!shouldUseDemoRuntimeFallback()) return backendUnavailable()
+
   const parts = getPath(path)
   const body = await readJson(request)
   const store = getDemoStore().training
@@ -181,6 +195,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   const proxied = await maybeProxy(request, target)
   if (proxied) return proxied
 
+  if (!shouldUseDemoRuntimeFallback()) return backendUnavailable()
+
   const parts = getPath(path)
   const body = await readJson(request)
 
@@ -197,6 +213,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const target = buildTarget(path)
   const proxied = await maybeProxy(request, target)
   if (proxied) return proxied
+
+  if (!shouldUseDemoRuntimeFallback()) return backendUnavailable()
 
   const parts = getPath(path)
   const store = getDemoStore().training

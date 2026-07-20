@@ -6,6 +6,9 @@ export type AiRouteDecision = {
   mode: AiRouteMode
   confidence: number
   reason: string
+  /** Module C / STA-331: heuristic route scores are estimates, not live model intelligence. */
+  confidenceIsEstimate?: boolean
+  confidenceSource?: string
 }
 
 const EXECUTE_VERBS =
@@ -144,6 +147,8 @@ export function heuristicRouteIntent(prompt: string): AiRouteDecision {
       mode: "chat",
       confidence: 0.88,
       reason: "Conversational operator flow — confirm details, then create via dialogue.",
+      confidenceIsEstimate: true,
+      confidenceSource: "heuristic",
     }
   }
 
@@ -152,6 +157,8 @@ export function heuristicRouteIntent(prompt: string): AiRouteDecision {
       mode: "chat",
       confidence: 0.9,
       reason: "Connector read/write or integration inventory — use governed chat execution.",
+      confidenceIsEstimate: true,
+      confidenceSource: "heuristic",
     }
   }
 
@@ -167,10 +174,22 @@ export function heuristicRouteIntent(prompt: string): AiRouteDecision {
   const confidence = winner.score === 0 ? 0.4 : Math.min(0.92, 0.52 + winner.score * 0.08 + margin * 0.05)
 
   if (winner.score === 0) {
-    return { mode: "chat", confidence: 0.4, reason: "Defaulting to a conversational answer." }
+    return {
+      mode: "chat",
+      confidence: 0.4,
+      reason: "Defaulting to a conversational answer.",
+      confidenceIsEstimate: true,
+      confidenceSource: "heuristic",
+    }
   }
 
-  return { mode: winner.mode, confidence, reason: winner.reason }
+  return {
+    mode: winner.mode,
+    confidence,
+    reason: winner.reason,
+    confidenceIsEstimate: true,
+    confidenceSource: "heuristic",
+  }
 }
 
 /** Guardrail: model sometimes confuses create/delegate prompts with search lookups. */
@@ -188,6 +207,8 @@ export function reconcileModelRouteIntent(
       mode: "chat",
       confidence: Math.max(model.confidence, 0.85),
       reason: "Agent/workflow creation uses conversational operator mode, not the analysis dashboard.",
+      confidenceIsEstimate: true,
+      confidenceSource: "heuristic_guardrail",
     }
   }
 
@@ -196,6 +217,8 @@ export function reconcileModelRouteIntent(
       mode: "chat",
       confidence: Math.max(model.confidence, 0.88),
       reason: "Connector execution or inventory — routing to governed chat.",
+      confidenceIsEstimate: true,
+      confidenceSource: "heuristic_guardrail",
     }
   }
 
@@ -204,6 +227,8 @@ export function reconcileModelRouteIntent(
       mode: "execute",
       confidence: Math.max(model.confidence, 0.78),
       reason: "Creation or delegation request — routing to Execute instead of Search.",
+      confidenceIsEstimate: true,
+      confidenceSource: "heuristic_guardrail",
     }
   }
 
@@ -213,12 +238,16 @@ export function reconcileModelRouteIntent(
         mode: "chat",
         confidence: Math.max(model.confidence, 0.8),
         reason: "Creation request stays in conversational operator mode.",
+        confidenceIsEstimate: true,
+        confidenceSource: "heuristic_guardrail",
       }
     }
     return {
       mode: "execute",
       confidence: Math.max(model.confidence, 0.75),
       reason: "Action-oriented request — routing to Execute.",
+      confidenceIsEstimate: true,
+      confidenceSource: "heuristic_guardrail",
     }
   }
 
@@ -227,8 +256,14 @@ export function reconcileModelRouteIntent(
       mode: "find",
       confidence: Math.max(model.confidence, 0.72),
       reason: "Explicit lookup phrasing — routing to Universal Search.",
+      confidenceIsEstimate: true,
+      confidenceSource: "heuristic_guardrail",
     }
   }
 
-  return model
+  return {
+    ...model,
+    confidenceIsEstimate: model.confidenceIsEstimate ?? false,
+    confidenceSource: model.confidenceSource ?? "model",
+  }
 }

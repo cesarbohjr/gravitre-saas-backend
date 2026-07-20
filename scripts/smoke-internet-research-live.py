@@ -20,10 +20,27 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 
-load_dotenv(ROOT / "backend" / ".env.operator.local", override=False)
-load_dotenv(ROOT / "backend" / ".env", override=False)
+
+def _load_env_files() -> None:
+    """Load backend env files with encoding fallback (Windows cp1252 operator files)."""
+    for path in (ROOT / "backend" / ".env.operator.local", ROOT / "backend" / ".env"):
+        if not path.is_file():
+            continue
+        values: dict[str, str | None] = {}
+        for encoding in ("utf-8", "utf-8-sig", "cp1252", "latin-1"):
+            try:
+                values = dotenv_values(path, encoding=encoding)
+                break
+            except UnicodeDecodeError:
+                continue
+        for key, value in values.items():
+            if value and key not in os.environ:
+                os.environ[key] = value
+
+
+_load_env_files()
 
 
 async def _main() -> int:

@@ -13,7 +13,7 @@ export const MARKETING_COPY = {
   },
   stats: [
     { value: "4-layer", label: "Intelligence stack" },
-    { value: "100", suffix: "%", label: "Human approval gates" },
+    { value: "Always", label: "Human approval gates" },
     { value: "50", suffix: "+", label: "Connector integrations" },
     { value: "Live", label: "Configured → Executable checks" },
   ],

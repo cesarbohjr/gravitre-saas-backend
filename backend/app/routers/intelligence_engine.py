@@ -145,6 +145,23 @@ async def intelligence_heuristic_recommendations(
         installed_packs=signals["installed_packs"],
         lookback_days=int(signals.get("lookback_days") or 30),
     )
+    # CF — soft-rank after heuristics, before dismiss.
+    # Prefers trained matrix factorization; falls back to item affinity.
+    # Cold start when <50 scored interactions / 30d; never drops cards.
+    try:
+        from app.services.cf_rank_service import soft_rank_heuristic_payload_async
+
+        payload = await soft_rank_heuristic_payload_async(
+            client,
+            org_id,
+            payload,
+            actor_id=user_id or None,
+            settings=settings,
+        )
+    except Exception:  # noqa: BLE001
+        payload = dict(payload)
+        payload["cfRanked"] = False
+        payload["cfMethod"] = "error"
     if user_id:
         payload = filter_dismissed_recommendations(
             payload,
@@ -310,3 +327,65 @@ async def intelligence_training_readiness(
 ) -> dict[str, Any]:
     """Training readiness signals for Intelligence Center model profiles."""
     return await get_training_signal_service(settings).get_training_readiness(org_id)
+
+
+@router.get("/churn-risk/advisory")
+async def intelligence_churn_risk_advisory(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _member: Annotated[tuple, Depends(require_org_member)],
+    settings: Settings = Depends(get_settings),
+    limit: int = 25,
+) -> dict[str, Any]:
+    """Suggest-only churn risk cards — never auto-contacts or invokes tools."""
+    from app.services.churn_advisory_service import build_churn_advisory_cards
+
+    return await build_churn_advisory_cards(org_id, settings=settings, limit=min(max(limit, 1), 100))
+
+
+class ChurnLabelRequest(BaseModel):
+    customer_id: str = Field(..., min_length=1)
+    features: dict[str, float] = Field(default_factory=dict)
+    churned: bool | None = None
+    label_reason: str | None = None
+
+
+@router.post("/churn-risk/labels")
+async def intelligence_churn_risk_label(
+    body: ChurnLabelRequest,
+    org_id: Annotated[str, Depends(get_org_context)],
+    member: Annotated[tuple, Depends(require_org_member)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Upsert a labeled churn training example (FEATURE_KEYS contract)."""
+    from app.ml.churn_feature_ingest import upsert_churn_training_example
+
+    user, _org, _role = member
+    actor_id = str(user.get("user_id") or user.get("sub") or "") or None
+    client = get_supabase_client(settings)
+    try:
+        result = upsert_churn_training_example(
+            client,
+            org_id=org_id,
+            customer_id=body.customer_id,
+            features=body.features,
+            churned=body.churned,
+            label_reason=body.label_reason,
+            agent_id=actor_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if actor_id:
+        write_audit_event(
+            client,
+            org_id,
+            actor_id,
+            "churn.label.upserted",
+            "churn_customer_signal",
+            org_id,
+            metadata={
+                "customer_id": body.customer_id,
+                "churned": result.get("churned"),
+                "advisory_only": True,
+            },
+        )
+    return result

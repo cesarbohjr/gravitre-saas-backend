@@ -31,7 +31,13 @@ BACKEND = REPO / "backend"
 sys.path.insert(0, str(BACKEND))
 sys.path.insert(0, str(REPO))
 
-ORG_DEFAULT = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+from isolated_conversation_org import (  # noqa: E402
+    DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID,
+    mark_smoke_run,
+    smoke_http_headers,
+)
+
+ORG_DEFAULT = DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID
 PROD_DEFAULT = "https://gravitre-saas-backend-production.up.railway.app"
 
 
@@ -235,6 +241,7 @@ async def _chat(
         "X-Org-Id": org_id,
         "X-Environment": "production",
         "Accept": "text/event-stream",
+        **smoke_http_headers(),
     }
     # Stream accumulate — prod sometimes closes chunked SSE early; keep partial body.
     chunks: list[bytes] = []
@@ -260,18 +267,22 @@ async def _chat(
 
 
 async def main_async(args: argparse.Namespace) -> dict[str, Any]:
+    mark_smoke_run()
     env = _load_env()
     for k, v in env.items():
         os.environ.setdefault(k, v)
 
     from app.workflows.repository import get_supabase_client
     from app.config import get_settings
+    from smoke_auth import resolve_smoke_actor_and_email
 
     settings = get_settings()
     client = get_supabase_client(settings)
-    org_id = (args.org_id or env.get("OAUTH_SMOKE_ORG_ID") or ORG_DEFAULT).strip()
-    from scripts.smoke_auth import resolve_smoke_actor_and_email
-
+    org_id = (args.org_id or env.get("ISOLATED_CONVERSATION_TEST_ORG_ID") or ORG_DEFAULT).strip()
+    env.setdefault(
+        "ISOLATED_CONVERSATION_TEST_USER_ID",
+        env.get("OAUTH_SMOKE_USER_ID") or "",
+    )
     actor, email = resolve_smoke_actor_and_email(client, org_id=org_id, env=env)
     token = _mint_token(env, actor, email)
     day = datetime.now(timezone.utc).strftime("%Y%m%d")

@@ -181,10 +181,23 @@ def _is_mutating_advanced(action_key: str) -> bool:
 
 
 def collect_write_action_keys() -> frozenset[str]:
-    """Catalog write actions plus advanced write-like (mutating) actions."""
+    """Catalog write actions plus advanced write-like (mutating) actions.
+
+    Excludes ``not_implemented`` actions so they cannot inflate verified-output
+    or pending-debt counts (catalog honesty — unimplemented ≠ pending verify).
+    """
+    from app.services.connector_execution_matrix import build_connector_execution_matrix
+
+    implemented = {
+        e.action_key
+        for e in build_connector_execution_matrix()
+        if e.implementation_status != "not_implemented"
+    }
     keys: set[str] = set()
     for spec in all_catalog_action_specs():
         key = _action_key(spec)
+        if key not in implemented:
+            continue
         if spec.kind == "write":
             keys.add(key)
         elif spec.kind == "advanced" and _is_mutating_advanced(key):

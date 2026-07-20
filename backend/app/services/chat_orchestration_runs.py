@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from app.core.logging import get_logger
 from app.services.approval_record_service import create_contract_approval
+from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
 from app.workflows.repository import create_run, create_step, update_run, update_step
 
 logger = get_logger(__name__)
@@ -172,20 +173,35 @@ def sync_orchestration_step(
         step_uuid = str(rows[0]["id"])
         now = _now_iso()
         status = "skipped" if skipped else ("completed" if success else "failed")
+        snapshot: dict[str, Any] = {"summary": summary}
+        if result_url:
+            snapshot["result_url"] = result_url
+            if str(result_url).startswith(("http://", "https://")):
+                snapshot["external_url"] = result_url
         update_step(
             client,
             step_uuid,
             status=status,
-            output_snapshot={
-                "summary": summary,
-                "result_url": result_url,
-            },
+            output_snapshot=snapshot,
             started_at=now,
             completed_at=now,
             error_message=None if (success or skipped) else (summary or "Step failed"),
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("chat orchestration step sync failed run=%s step=%s: %s", run_id, step_id, exc)
+
+
+def orchestration_run_fully_completed(step_results: list[dict[str, Any]] | None) -> bool:
+    """True only when every non-skipped step succeeded and at least one step succeeded.
+
+    Module A outcome semantics: any failed (non-skipped) step ⇒ not fully completed.
+    """
+    rows = list(step_results or [])
+    if not rows:
+        return False
+    if any(not row.get("success") and not row.get("skipped") for row in rows):
+        return False
+    return any(bool(row.get("success")) for row in rows)
 
 
 def finalize_orchestration_run(
@@ -195,20 +211,48 @@ def finalize_orchestration_run(
     run_id: str,
     success: bool,
     summary: str | None = None,
+    user_id: str | None = None,
 ) -> None:
+    """Mark a chat orchestration run completed or failed via finalize_execution_outcome()."""
     if not run_id:
         return
+    status = "completed" if success else "failed"
+    error_summary = None if success else (summary or "Orchestration failed")
     try:
-        update_run(
+        finalize_execution_outcome(
             client,
-            run_id,
-            status="completed" if success else "failed",
-            completed_at=_now_iso(),
-            error_message=None if success else (summary or "Orchestration failed"),
+            org_id=org_id,
+            status=status,
+            source="chat_orch",
+            actor_id=user_id,
+            run_id=run_id,
+            error_summary=error_summary,
             approval_status="approved",
+            verified_output=VerifiedOutputRef(
+                summary=(summary or "")[:2000] or None,
+                result_url=f"/runs/{run_id}",
+                entity_type="workflow_run",
+                entity_id=run_id,
+            ),
+            notification_title=(
+                "Orchestration run completed" if success else "Orchestration run failed"
+            ),
+            notification_body=(summary or error_summary or "")[:2000] or None,
+            metadata={"path": "chat_orchestration"},
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("chat orchestration run finalize failed run=%s: %s", run_id, exc)
+        try:
+            update_run(
+                client,
+                run_id,
+                status=status,
+                completed_at=_now_iso(),
+                error_message=error_summary,
+                approval_status="approved",
+            )
+        except Exception as stamp_exc:  # noqa: BLE001
+            logger.warning("chat orchestration run stamp failed run=%s: %s", run_id, stamp_exc)
 
 
 def resolve_orchestration_result_url(
@@ -217,19 +261,26 @@ def resolve_orchestration_result_url(
     step_results: list[dict[str, Any]],
     conversation_id: str,
 ) -> str:
-    """Never bounce successful orchestration back to /ai alone."""
-    for row in reversed(step_results or []):
-        url = str(row.get("url") or "").strip()
-        if not url or url in {"/ai", "/connectors"}:
-            continue
-        if url.startswith("http://") or url.startswith("https://") or url.startswith("/"):
-            # Prefer durable Gravitre run page when we have one; keep external vendor links
-            # as secondary via the run detail page.
-            if run_id and not url.startswith("http"):
-                return f"/runs/{run_id}"
-            if run_id and url.startswith("http"):
-                return f"/runs/{run_id}"
-            return url
+    """Primary CTA is always Gravitre — vendor URLs live on the run detail page."""
     if run_id:
         return f"/runs/{run_id}"
+    for row in reversed(step_results or []):
+        url = str(row.get("primary_url") or row.get("url") or "").strip()
+        if not url or url in {"/ai", "/connectors"}:
+            continue
+        # Never use raw vendor http(s) as the orchestration primary CTA.
+        if url.startswith("http://") or url.startswith("https://"):
+            continue
+        if url.startswith("/"):
+            return url
     return f"/ai?conversation={conversation_id}"
+
+
+def first_external_step_url(step_results: list[dict[str, Any]] | None) -> str | None:
+    """First portal/vendor http URL from step snapshots (secondary CTA)."""
+    for row in reversed(step_results or []):
+        for key in ("external_url", "url"):
+            url = str(row.get(key) or "").strip()
+            if url.startswith("http://") or url.startswith("https://"):
+                return url
+    return None

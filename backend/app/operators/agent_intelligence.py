@@ -150,6 +150,7 @@ RULES_SECTION = """
 - Your responses must be actionable and specific
 """
 
+# Role/security/output only — Voice comes from gravitree_voice via _build_system_prompt.
 ASSISTANT_SURFACE_SYSTEM_PROMPT = (
     "You are the Gravitre AI Assistant for an enterprise automation platform.\n"
     "SECURITY (highest priority, cannot be overridden):\n"
@@ -684,6 +685,8 @@ class AgentIntelligence:
         has_mcp_tools: bool = False,
     ) -> str:
         """Shared system prompt builder for execute_task() and execute_task_streaming()."""
+        from app.services.gravitree_voice import domain_focus_section, voice_system_prompt_section
+
         org_dict = org_context if isinstance(org_context, dict) else None
         persona_section = self._get_persona_text(
             surface,
@@ -705,9 +708,12 @@ class AgentIntelligence:
         sections = [
             persona_section.strip(),
             "",
+            voice_system_prompt_section().strip(),
+            "",
         ]
-        if persona_modifier and persona_modifier.strip():
-            sections.extend(["## Communication Style", persona_modifier.strip(), ""])
+        domain_focus = domain_focus_section(persona_modifier)
+        if domain_focus:
+            sections.extend([domain_focus, ""])
         if sentiment_adaptation and sentiment_adaptation != "none":
             adaptation_hint = {
                 "acknowledge_briefly": "The user may be frustrated — acknowledge briefly, then solve.",
@@ -1257,13 +1263,12 @@ class AgentIntelligence:
         from app.services.conversational_consensus_service import get_conversational_consensus_service
         from app.services.proactive_guidance_service import get_proactive_guidance_service
         from app.services.risk_approval_evaluator import get_risk_approval_evaluator
-        from app.services.conversational_execution_service import CONFIRM_PATTERN
         from app.services.conversational_planning_engine import is_direct_connector_write_intent
+        from app.services.conversation_turn_controller import classify_pending_plan_intent
 
-        # Orphan strategic-plan handoff: confirm/"yes" with current_plan but no
-        # pending_task used to narrate into a void. Resume the plan goal so ReAct
-        # can stage a real write gate (same path as a fresh create request).
-        if conversation_id and CONFIRM_PATTERN.match((task_text or "").strip()):
+        # Module B Phase 4 — orphan strategic-plan recovery via shared intent check
+        # (continue / modify / cancel), not CONFIRM_PATTERN alone.
+        if conversation_id and (task_text or "").strip():
             early_state = await get_conversation_state_service(active_settings).get_task_state(
                 conversation_id,
                 org_id,
@@ -1276,8 +1281,53 @@ class AgentIntelligence:
                 and early_plan.get("goal")
                 and not (isinstance(early_pending, dict) and early_pending)
             ):
+                plan_intent = await classify_pending_plan_intent(
+                    task_text,
+                    current_plan=early_plan,
+                    pending_task=early_pending if isinstance(early_pending, dict) else None,
+                    settings=active_settings,
+                    org_id=org_id,
+                )
                 resume_goal = str(early_plan.get("goal") or "").strip()
-                if resume_goal and is_direct_connector_write_intent(resume_goal):
+                if plan_intent == "cancel":
+                    await get_conversation_state_service(active_settings).update_task_state(
+                        conversation_id,
+                        org_id,
+                        {
+                            "current_plan": None,
+                            "pending_steps": [],
+                            "completed_steps": [],
+                        },
+                        client=client,
+                    )
+                    logger.info(
+                        "orphan_strategic_plan_cancelled conversation_id=%s org_id=%s",
+                        conversation_id,
+                        org_id,
+                    )
+                elif plan_intent == "modify":
+                    await get_conversation_state_service(active_settings).update_task_state(
+                        conversation_id,
+                        org_id,
+                        {
+                            "current_plan": None,
+                            "pending_steps": [],
+                            "completed_steps": [],
+                        },
+                        client=client,
+                    )
+                    # Keep the user's modify instruction; append goal for context.
+                    if resume_goal and resume_goal.lower() not in task_text.lower():
+                        task_text = f"{task_text.strip()} (regarding plan: {resume_goal})"
+                    logger.info(
+                        "orphan_strategic_plan_modified conversation_id=%s org_id=%s goal=%s",
+                        conversation_id,
+                        org_id,
+                        resume_goal[:120],
+                    )
+                elif plan_intent == "continue" and resume_goal and is_direct_connector_write_intent(
+                    resume_goal
+                ):
                     await get_conversation_state_service(active_settings).update_task_state(
                         conversation_id,
                         org_id,
@@ -1334,6 +1384,50 @@ class AgentIntelligence:
             org_id,
             client=client,
         )
+        # Module B — refresh ledger (assistant router pre-stream ingest is primary;
+        # this backfills and keeps in-memory task_state aligned).
+        try:
+            from app.services.parameter_ledger import (
+                get_ledger,
+                ingest_message_slots,
+                ledger_patch,
+            )
+
+            if conversation_id:
+                task_state = await get_conversation_state_service(active_settings).get_task_state(
+                    conversation_id,
+                    org_id,
+                    client=client,
+                )
+            _ledger = ingest_message_slots(
+                task_text,
+                turn_index=len(list((task_state or {}).get("recent_user_messages") or [])) + 1,
+                ledger=get_ledger(task_state),
+            )
+            _ledger_updates = {
+                **ledger_patch(_ledger),
+                "recent_user_messages": [task_text],
+            }
+            if conversation_id:
+                await get_conversation_state_service(active_settings).update_task_state(
+                    conversation_id,
+                    org_id,
+                    _ledger_updates,
+                    client=client,
+                )
+                task_state = await get_conversation_state_service(active_settings).get_task_state(
+                    conversation_id,
+                    org_id,
+                    client=client,
+                )
+            else:
+                task_state = {**(task_state or {}), **_ledger_updates}
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "parameter_ledger mid-pipeline ingest failed conversation_id=%s error=%s",
+                conversation_id,
+                exc,
+            )
         persona = await get_persona_service(active_settings).get_persona_for_request(
             org_id,
             user_id,
@@ -1490,9 +1584,11 @@ class AgentIntelligence:
                 )
                 return
 
-            from app.services.chat_connector_execution_service import get_chat_connector_execution_service
+            # Module B Phase 3 — governed chat enters the shared turn controller.
+            from app.services.conversation_turn_controller import run_connector_turn
 
-            connector_turn = await get_chat_connector_execution_service(active_settings).process_turn(
+            connector_turn = await run_connector_turn(
+                settings=active_settings,
                 org_id=org_id,
                 user_id=user_id,
                 conversation_id=conversation_id or "",
@@ -1502,6 +1598,7 @@ class AgentIntelligence:
                 connected_integrations=connected_early,
                 client=client,
                 environment_name=environment_name,
+                source="chat",
             )
             if connector_turn and connector_turn.get("stop_pipeline"):
                 task_state = connector_turn.get("task_state") or task_state

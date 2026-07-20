@@ -77,7 +77,7 @@ def _apply_env() -> dict[str, str]:
 def _mint_and_actor(env: dict[str, str], org_id: str) -> tuple[str, str, str]:
     import jwt
     from supabase import create_client
-    from scripts.smoke_auth import resolve_smoke_actor_and_email
+    from smoke_auth import resolve_smoke_actor_and_email
 
     client = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
     actor, email = resolve_smoke_actor_and_email(client, org_id=org_id, env=env)
@@ -122,7 +122,7 @@ def run_probe_only(args: argparse.Namespace) -> dict[str, Any]:
         if not env.get(key):
             raise SystemExit(f"Missing {key}")
 
-    org_id = (args.org_id or env.get("OAUTH_SMOKE_ORG_ID") or ORG_DEFAULT).strip()
+    org_id = (args.org_id or env.get("ISOLATED_CONVERSATION_TEST_ORG_ID") or ORG_DEFAULT).strip()
     actor, _email, token = _mint_and_actor(env, org_id)
     base_url = (args.base_url or PROD_DEFAULT).rstrip("/")
 

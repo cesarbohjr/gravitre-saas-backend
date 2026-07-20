@@ -1,0 +1,61 @@
+{
+  "pass": true,
+  "status": "CF_MF_TIP_PASS",
+  "sequence": "both_sequenced_churn_first",
+  "ran_at": "2026-07-19T04:04:00+00:00",
+  "phase0": "docs/delivery/phase0-cf-churn-ml.md",
+  "live_tip_churn": "docs/delivery/phase5-churn-ml-live.json",
+  "live_tip_cf": "docs/delivery/phase5-cf-soft-rank-live.json",
+  "live_tip_cf_mf": "docs/delivery/phase5-cf-matrix-factorization-live.json",
+  "churn": {
+    "slice": "feature_label_contract_advisory_api_ui_fix",
+    "model": "churn_risk_scorer",
+    "metric_name": "churn_customer_signal",
+    "storage": "confidence_note JSON + metric_value_after label",
+    "min_labeled_examples": 30,
+    "endpoints": [
+      "GET /api/intelligence/churn-risk/advisory",
+      "POST /api/intelligence/churn-risk/labels"
+    ],
+    "predictive_domain": "customer_success",
+    "advisory_only": true,
+    "auto_contact": false,
+    "live_train_tip": "PASS — advisory HTTP 200 trained:true @ 2026-07-19T02:53:31Z tip sha 77529f7f… (phase5-churn-ml-live.json)"
+  },
+  "cf": {
+    "slice": "soft_rank_v1_after_heuristics",
+    "code": true,
+    "modules": [
+      "backend/app/ml/cf_interaction_ingest.py",
+      "backend/app/ml/cf_soft_rank.py",
+      "backend/app/services/cf_rank_service.py"
+    ],
+    "gate": "≥50 scored interactions / org / 30d",
+    "placement": "heuristics → CF soft-rank → dismiss → Phase 5.2 outcome rank",
+    "contract": "STA-314 suggest-only; never auto-execute; never drop cards",
+    "cold_start": "heuristics order when gate fails (cfRanked=false)",
+    "endpoint": "GET /api/intelligence/recommendations/heuristics (cfGate + cfRanked)",
+    "live_tip": "PASS — heuristics HTTP 200 cfRanked:true gate ready @ 2026-07-19T03:32Z tip sha 9d5451a5… (phase5-cf-soft-rank-live.json)"
+  },
+  "cf_matrix_factorization": {
+    "slice": "truncated_svd_user_item",
+    "code": true,
+    "model": "cf_matrix_factorizer",
+    "modules": [
+      "backend/app/ml/cf_matrix_factorization.py"
+    ],
+    "gate": "≥50 interactions / 30d, ≥2 actors, ≥3 items",
+    "train": "POST /api/admin/ml/models/cf_matrix_factorizer/train",
+    "serve": "cfMethod=matrix_factorization when artifact loaded; else item_affinity",
+    "live_tip": "PASS — heuristics HTTP 200 cfMethod=matrix_factorization @ 2026-07-19T04:04Z tip sha c36f92d3…; model a194a993… v1 deployed (phase5-cf-matrix-factorization-live.json)"
+  },
+  "tests": {
+    "backend": [
+      "backend/tests/ml/test_churn_feature_ingest.py",
+      "backend/tests/ml/test_cf_soft_rank.py",
+      "backend/tests/ml/test_cf_matrix_factorization.py"
+    ],
+    "frontend": "apps/web/__tests__/intelligence/normalize-domain-predictions.test.ts"
+  },
+  "note": "Churn + CF soft-rank + CF matrix factorization tips PASS."
+}

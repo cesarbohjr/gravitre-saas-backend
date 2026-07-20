@@ -53,6 +53,10 @@ import {
   deriveConversationTitle,
   shouldRefreshConversationTitle,
 } from "@/lib/conversation-title"
+import {
+  assertConversationCreateOrgAllowed,
+  isConversationSmokeGuardError,
+} from "@/lib/conversation-smoke-guard"
 import { ApiError } from "@/lib/fetcher"
 import type { AiEngine } from "@/lib/ai-surface-handoff"
 import type { SearchResult } from "@/types/api"
@@ -628,6 +632,8 @@ export function AiWorkspace({
         refreshConversationTitleIfNeeded(existingId, title)
         return existingId
       }
+      // Smoke/CI chokepoint: never create threads in a real operator org.
+      assertConversationCreateOrgAllowed(getSelectedOrgFromStorage()?.id ?? null)
       if (!pendingConversationRef.current) {
         const createTitle = deriveConversationTitle(title)
         pendingConversationRef.current = conversationsApi
@@ -655,7 +661,14 @@ export function AiWorkspace({
             void mutateConversations()
             return created.id
           })
-          .catch(() => null)
+          .catch((error) => {
+            // Fail loudly for smoke/CI misconfig — never silent-null pollution paths.
+            if (isConversationSmokeGuardError(error)) throw error
+            if (error instanceof ApiError && isConversationSmokeGuardError(error.message)) {
+              throw error
+            }
+            return null
+          })
           .finally(() => {
             pendingConversationRef.current = null
           })

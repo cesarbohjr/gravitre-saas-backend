@@ -35,9 +35,17 @@ function OperatorScreen() {
   const [messageIndex, setMessageIndex] = useState(0)
   const messages = [
     { type: "user", text: "Why did the HubSpot contact sync fail?" },
-    { type: "ai", text: "HubSpot is connected, but contact search permission is missing. Confidence: High. Complete OAuth scopes, then re-run the workflow.", agent: "Connector check" },
+    {
+      type: "ai",
+      text: "HubSpot is connected, but contact search permission is missing. Estimated confidence: Medium. Complete OAuth scopes, then re-run the workflow.",
+      agent: "Connector check",
+    },
     { type: "user", text: "Show stalled deals over 30 days" },
-    { type: "ai", text: "14 deals stalled >30 days. Main bottleneck: approval queue adding 2.4 days. Recommended: remove one approval step on deals under $50k.", agent: "Insights" },
+    {
+      type: "ai",
+      text: "Here’s what your CRM signals show in-product: stalled deals, approval bottlenecks, and an advisory next step — with sources you can audit. Counts come from your workspace, not this marketing mock.",
+      agent: "Insights",
+    },
   ]
 
   useEffect(() => {
@@ -150,11 +158,12 @@ function OperatorScreen() {
 
 // Animated Agents Screen
 function AgentsScreen() {
+  // Status / role labels only — no fabricated accuracy percentages (Module C).
   const agents = [
-    { name: "Data Analyst", status: "active", tasks: 12, accuracy: 98, color: "emerald", icon: BarChart3 },
-    { name: "Content Writer", status: "active", tasks: 8, accuracy: 95, color: "blue", icon: FileText },
-    { name: "Research Agent", status: "idle", tasks: 0, accuracy: 97, color: "purple", icon: Eye },
-    { name: "Code Reviewer", status: "active", tasks: 5, accuracy: 99, color: "amber", icon: GitBranch },
+    { name: "Data Analyst", status: "active", role: "Advisory", color: "emerald", icon: BarChart3 },
+    { name: "Content Writer", status: "active", role: "Drafts", color: "blue", icon: FileText },
+    { name: "Research Agent", status: "idle", role: "Lookup", color: "purple", icon: Eye },
+    { name: "Code Reviewer", status: "active", role: "Review", color: "amber", icon: GitBranch },
   ]
 
   return (
@@ -212,23 +221,11 @@ function AgentsScreen() {
                 {agent.status}
               </span>
               <span className="text-zinc-600">·</span>
-              <span className="text-xs text-zinc-500">{agent.tasks} tasks</span>
+              <span className="text-xs text-zinc-500">{agent.role}</span>
             </div>
-            
-            {/* Performance bar */}
-            <div className="mt-3 h-1 rounded-full bg-zinc-700 overflow-hidden">
-              <motion.div
-                className={`h-full rounded-full ${
-                  agent.color === 'emerald' ? 'bg-emerald-500' :
-                  agent.color === 'blue' ? 'bg-blue-500' :
-                  agent.color === 'purple' ? 'bg-purple-500' : 'bg-amber-500'
-                }`}
-                initial={{ width: 0 }}
-                animate={{ width: `${agent.accuracy}%` }}
-                transition={{ delay: i * 0.1 + 0.3, duration: 0.8 }}
-              />
-            </div>
-            <span className="text-[10px] text-zinc-500 mt-1 block">{agent.accuracy}% accuracy</span>
+            <span className="text-[10px] text-zinc-500 mt-3 block">
+              Outcomes measured in your org — not a marketing accuracy score
+            </span>
           </motion.div>
         ))}
       </div>
@@ -238,10 +235,11 @@ function AgentsScreen() {
 
 // Animated Workflows Screen
 function WorkflowsScreen() {
+  // Illustrative workflow names/status only — no fabricated run counts or success % (Module C).
   const workflows = [
-    { name: "Customer Onboarding", status: "active", runs: 1247, success: 98.5 },
-    { name: "Lead Qualification", status: "active", runs: 892, success: 95.2 },
-    { name: "Report Generation", status: "paused", runs: 456, success: 99.1 },
+    { name: "Customer Onboarding", status: "active", detail: "Approval-gated" },
+    { name: "Lead Qualification", status: "active", detail: "Connector-checked" },
+    { name: "Report Generation", status: "paused", detail: "Awaiting review" },
   ]
 
   return (
@@ -313,8 +311,7 @@ function WorkflowsScreen() {
                 <span className="text-sm text-zinc-300">{wf.name}</span>
               </div>
               <div className="flex items-center gap-4 text-xs">
-                <span className="text-zinc-500">{wf.runs.toLocaleString()} runs</span>
-                <span className="text-emerald-400">{wf.success}%</span>
+                <span className="text-zinc-500">{wf.detail}</span>
               </div>
             </motion.div>
           ))}
@@ -326,14 +323,27 @@ function WorkflowsScreen() {
 
 // Animated Analytics Screen
 function AnalyticsScreen() {
-  const [animatedValues, setAnimatedValues] = useState({ tasks: 0, success: 0, time: 0 })
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setAnimatedValues({ tasks: 12847, success: 98.5, time: 2.3 })
-    }, 500)
-    return () => clearTimeout(timer)
-  }, [])
+  // Directional / provenance labels only — no fabricated KPIs (Module C / STA-286).
+  const stats = [
+    {
+      label: "Tasks completed",
+      value: "Operational",
+      change: "Counted from your runs",
+      color: "emerald",
+    },
+    {
+      label: "Success rate",
+      value: "Live ops",
+      change: "From recorded executions",
+      color: "blue",
+    },
+    {
+      label: "Hours saved",
+      value: "Estimate",
+      change: "Catalog estimate until measured",
+      color: "purple",
+    },
+  ]
 
   return (
     <div className="bg-zinc-900 rounded-xl overflow-hidden shadow-2xl border border-zinc-800">
@@ -349,17 +359,13 @@ function AnalyticsScreen() {
         </div>
         <div className="flex items-center gap-2 text-xs text-zinc-500">
           <Clock className="h-3 w-3" />
-          Last 30 days
+          Your workspace
         </div>
       </div>
 
       {/* Stats Grid */}
       <div className="p-4 grid grid-cols-3 gap-3">
-        {[
-          { label: "Tasks Completed", value: animatedValues.tasks.toLocaleString(), change: "+12%", color: "emerald" },
-          { label: "Success Rate", value: `${animatedValues.success}%`, change: "+2.3%", color: "blue" },
-          { label: "Avg. Response", value: `${animatedValues.time}s`, change: "-15%", color: "purple" },
-        ].map((stat, i) => (
+        {stats.map((stat, i) => (
           <motion.div
             key={stat.label}
             initial={{ opacity: 0, y: 20 }}
@@ -368,12 +374,12 @@ function AnalyticsScreen() {
             className="p-4 rounded-xl border border-zinc-800 bg-zinc-800/30"
           >
             <div className="text-xs text-zinc-500 mb-1">{stat.label}</div>
-            <div className="text-2xl font-bold text-zinc-200">{stat.value}</div>
+            <div className="text-lg font-bold text-zinc-200 leading-tight">{stat.value}</div>
             <div className={`text-xs mt-1 ${
               stat.color === 'emerald' ? 'text-emerald-400' :
               stat.color === 'blue' ? 'text-blue-400' : 'text-purple-400'
             }`}>
-              {stat.change} from last period
+              {stat.change}
             </div>
           </motion.div>
         ))}

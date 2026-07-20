@@ -276,12 +276,6 @@ async def test_internal_budget_enforcement_sets_override(async_client, monkeypat
 
 async def test_internal_sync_accepts_valid_secret(async_client, monkeypatch):
     app.dependency_overrides[get_settings] = lambda: _settings(internal_api_secret="right-secret")
-    monkeypatch.setattr(
-        metering,
-        "report_usage_for_active_orgs",
-        lambda *a, **k: {"orgs": 0, "reported_rows": 0, "results": []},
-    )
-    # Patch the symbol imported into the router module too.
     import app.routers.billing_sync as billing_sync
 
     monkeypatch.setattr(
@@ -289,9 +283,16 @@ async def test_internal_sync_accepts_valid_secret(async_client, monkeypatch):
         "report_usage_for_active_orgs",
         lambda *a, **k: {"orgs": 0, "reported_rows": 0, "results": []},
     )
+    monkeypatch.setattr(
+        billing_sync,
+        "report_research_lookup_overage_for_active_orgs",
+        lambda *a, **k: {"orgs": 0, "reported_orgs": 0, "results": []},
+    )
     resp = await async_client.post(
         "/api/internal/billing/sync-usage",
         headers={"X-Internal-Secret": "right-secret"},
     )
     assert resp.status_code == 200
-    assert resp.json()["orgs"] == 0
+    body = resp.json()
+    assert body["ai_credits"]["orgs"] == 0
+    assert body["research_lookups"]["orgs"] == 0

@@ -313,7 +313,7 @@ export default function MarketplacePublisherAnalyticsPage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
-                <Link href="/marketplace">
+                <Link href="/marketplace/assets">
                   <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden />
                   Marketplace
                 </Link>

@@ -3,7 +3,7 @@ department: hr
 label: HR
 kpis: [time_to_hire, retention_rate, offer_acceptance, headcount_plan]
 terminology: [recruiting, onboarding, compensation, performance, headcount]
-connector_preferences: [slack, microsoft365]
+connector_preferences: [workday, bamboohr, greenhouse, gusto, slack, microsoft365]
 retrieval_preferences: [job_descriptions, policy_handbook, org_chart]
 memory_priorities: [hiring_pipeline, policy_updates, review_cycles]
 workflow_priorities: [candidate_screening, onboarding_checklist, review_cycle]

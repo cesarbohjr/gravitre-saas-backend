@@ -32,8 +32,19 @@ from httpx import AsyncClient
 
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
+sys.path.insert(0, str(BACKEND))
+sys.path.insert(0, str(ROOT))
+from isolated_conversation_org import (  # noqa: E402
+    DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID,
+    DEFAULT_ISOLATED_CONVERSATION_TEST_USER_ID,
+    assert_conversation_create_allowed,
+    mark_smoke_run,
+    resolve_isolated_conversation_actor,
+    smoke_http_headers,
+)
+
 OUT = ROOT / "docs" / "delivery" / "sta307-conversation-id-check.json"
-ORG = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+ORG = DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID
 BASE = "https://gravitre-saas-backend-production.up.railway.app"
 PROMPT = (
     "Search HubSpot for high-intent leads and draft a follow-up in Slack "
@@ -242,6 +253,7 @@ async def controlled_probe(ac: AsyncClient, hdr: dict, client, actor: str) -> di
     target_title = f"STA-307-TARGET {nonce} — {prompt}"[:80]
 
     # Pre-create two conversations via direct insert (service role) so titles are known.
+    assert_conversation_create_allowed(ORG)
     cid_target = str(uuid.uuid4())
     cid_decoy = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
@@ -421,21 +433,16 @@ async def controlled_probe(ac: AsyncClient, hdr: dict, client, actor: str) -> di
 
 async def main() -> int:
     load_env()
-    sys.path.insert(0, str(BACKEND))
+    mark_smoke_run()
     from app.config import get_settings
     from app.workflows.repository import get_supabase_client
 
     settings = get_settings()
     client = get_supabase_client(settings)
-    actor = os.environ.get("OAUTH_SMOKE_USER_ID") or (
-        client.table("organization_members")
-        .select("user_id")
-        .eq("org_id", ORG)
-        .limit(1)
-        .execute()
-        .data[0]["user_id"]
-    )
-    email = (client.auth.admin.get_user_by_id(actor).user.email) or f"{actor}@gravitre.local"
+    env = {k: v for k, v in os.environ.items() if v}
+    org_id, actor, email = resolve_isolated_conversation_actor(env, client)
+    global ORG
+    ORG = org_id
     url = os.environ["SUPABASE_URL"].rstrip("/")
     now = int(time.time())
     tok = jwt.encode(
@@ -456,6 +463,7 @@ async def main() -> int:
         "X-Org-Id": ORG,
         "X-Environment": "production",
         "Accept": "text/event-stream",
+        **smoke_http_headers(),
     }
 
     report: dict[str, Any] = {

@@ -118,16 +118,15 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   )
 
   const addNotification = useCallback((notification: Omit<Notification, "id" | "timestamp" | "read">) => {
-    // Ignore chat bounce-back links — they look like a "workflow detail" toast but
-    // only reopen /ai. Prefer /runs/... or an external vendor URL.
+    // Prefer durable Gravitre destinations. Allow /ai?conversation=… (audit trail to chat)
+    // and /runs/…; strip bare /ai bounce-backs and portal-less HubSpot list URLs.
     const rawLink = notification.link?.trim() || undefined
-    const link =
-      rawLink &&
-      rawLink !== "/ai" &&
-      !rawLink.startsWith("/ai?") &&
-      !rawLink.startsWith("/ai#")
-        ? rawLink
-        : undefined
+    const isBareAi = rawLink === "/ai" || rawLink === "/ai/" || rawLink?.startsWith("/ai#")
+    const isBrokenHubspot =
+      !!rawLink &&
+      rawLink.startsWith("https://app.hubspot.com/contacts/objects/") &&
+      !/^https:\/\/app\.hubspot\.com\/contacts\/\d+\//.test(rawLink)
+    const link = rawLink && !isBareAi && !isBrokenHubspot ? rawLink : undefined
     const newNotification: Notification = {
       ...notification,
       link,

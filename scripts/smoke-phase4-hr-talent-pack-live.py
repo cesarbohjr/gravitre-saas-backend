@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Live smoke: HR & Talent pack #10 (H3) — install + read tip + Phase 3.5 cohesion.
+"""Live smoke: HR & Talent pack #10 (H3) — install + stub coverage + Phase 3.5 cohesion.
 
 Writes docs/delivery/phase4-hr-talent-pack-live.json
 
 H3 unlocked: Workday + BambooHR + Greenhouse + Gusto.
-Tip PASS: install bundle + PackKpiPanel UI + unlock stop-line.
-Live invoke PASS when at least one active HR connector succeeds a read.
+Scaffold tip PASS: install bundle + 4× staged stubs + PackKpiPanel UI + unlock stop-line.
+Live invoke PASS only when an *active* HR connector succeeds a read (HOLD until Cesar sign-off).
 """
 from __future__ import annotations
 
@@ -31,6 +31,7 @@ ORG = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
 ACTOR = "f7e32f06-49df-4e73-8962-f41c21850762"
 OUT = REPO / "docs" / "delivery" / "phase4-hr-talent-pack-live.json"
 PACK_SLUG = "hr-talent-intelligence-pack"
+REQUIRED_STUBS = ("workday", "bamboohr", "greenhouse", "gusto")
 
 
 def utcnow() -> str:
@@ -154,6 +155,8 @@ def main() -> int:
     kpis = pack_kpi_summary(sb, org_id=ORG, pack_id=PACK_SLUG)
     stop = list(bundle.get("stopLinesHonored") or [])
     stubs = bundle.get("connectorStubs") or {}
+    coverage = bundle.get("stubCoverage") or {}
+    staging_error = bundle.get("stagingError") or stubs.get("error")
 
     panel_src = (REPO / "apps" / "web" / "components" / "marketplace" / "pack-kpi-panel.tsx").read_text(
         encoding="utf-8"
@@ -171,13 +174,19 @@ def main() -> int:
 
     any_active = bool(wd_id or bb_id or gh_id or gusto_id)
     unlock_ok = "path_h3_all_hr_live" in stop or "path_h3" in str(stop)
+    stub_coverage_ok = bool(coverage.get("coverageOk")) and not staging_error
+    stub_ids = {
+        t: (bundle.get(f"{t}StubConnectorId") or (coverage.get("byType") or {}).get(t, {}).get("id"))
+        for t in REQUIRED_STUBS
+    }
     install_ok = (
         bool(bundle.get("agentId"))
         and bool(bundle.get("workflowId"))
         and int(bundle.get("assignmentCount") or 0) >= 1
         and ui_ok
+        and stub_coverage_ok
     )
-    passed = install_ok and (live_ok if any_active else unlock_ok)
+    passed = install_ok and unlock_ok and (live_ok if any_active else True)
 
     artifact = {
         "pass": passed,
@@ -187,6 +196,7 @@ def main() -> int:
         "pack_slug": PACK_SLUG,
         "asset_id": asset.get("id"),
         "h3_unlocked": True,
+        "status": "PARTIAL" if passed and not live_ok else ("DONE" if passed and live_ok else "FAIL"),
         "bundle": {
             "agentId": bundle.get("agentId"),
             "workflowId": bundle.get("workflowId"),
@@ -195,10 +205,14 @@ def main() -> int:
             "bamboohrConnectorId": bb_id,
             "greenhouseConnectorId": gh_id,
             "gustoConnectorId": gusto_id,
+            "stubConnectorIds": stub_ids,
             "stubCount": stubs.get("stagedCount"),
             "skippedCount": len(stubs.get("skipped") or []),
+            "stubCoverageOk": stub_coverage_ok,
+            "stagingError": staging_error,
             "stopLinesHonored": stop,
         },
+        "stubCoverage": coverage,
         "invokes": invokes,
         "live_invoke_ok": live_ok,
         "any_active_connector": any_active,
@@ -206,6 +220,7 @@ def main() -> int:
         "cohesion": {
             "kpi_panel_ui_ok": ui_ok,
             "h3_unlock_stop_line_ok": unlock_ok,
+            "stub_coverage_ok": stub_coverage_ok,
         },
         "governance": {
             "h3_all_hr_live": True,
@@ -213,11 +228,29 @@ def main() -> int:
             "employee_pii_memory_kg_blocked": True,
             "compensation_memory_kg_blocked": True,
             "no_linkedin_scrape": True,
+            "live_oauth_api_test": "HOLD",
+        },
+        "greenhouse_stub": {
+            "verdict": "FIXED",
+            "note": "Included in 4× stub coverage assertion (needs_connection class).",
         },
         "note": (
-            "HR & Talent #10 H3: Workday+BambooHR+Greenhouse+Gusto unlocked. "
-            "Live invoke required only when an active connector exists on smoke org."
+            "HR #10 H3: scaffold tip requires 4× staged stubs (Workday/BambooHR/Greenhouse/Gusto). "
+            "Live HRIS/ATS/Payroll invoke stays HOLD until Cesar explicit live-activation sign-off."
         ),
+        "reassessment": {
+            "at": utcnow(),
+            "prod_git_sha": tip,
+            "verdict": "PARTIAL — scaffold solid; not live-proven",
+            "live_invoke_ok": live_ok,
+            "any_active_connector": any_active,
+            "stub_coverage_ok": stub_coverage_ok,
+            "live_connection_test": "HOLD — explicit Cesar sign-off required before OAuth/API connects",
+            "governance_signoff": {
+                "h3_unlock": "YES (Cesar 2026-07-15)",
+                "live_oauth_api_test": "HOLD",
+            },
+        },
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(artifact, indent=2) + "\n", encoding="utf-8")
@@ -228,6 +261,7 @@ def main() -> int:
                 "out": str(OUT),
                 "live_ok": live_ok,
                 "any_active": any_active,
+                "stub_coverage_ok": stub_coverage_ok,
                 "tip": tip,
             },
             indent=2,

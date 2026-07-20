@@ -141,6 +141,6 @@
     "pricing_page_live": "NOT RUN — no Research Lookups copy deployed (correct given flag off)",
     "billing_ui": "NOT RUN — API fields exist but no UI consumer",
     "stripe_test_charge": "NOT RUN — no meter/price/reporting path",
-    "sequencing_decision": "PENDING_CESAR"
+    "sequencing_decision": "(a) flag-gated — customer-visible pricing/billing hidden until INTERNET_RESEARCH_ENABLED=true and live verification PASS",
   }
 }

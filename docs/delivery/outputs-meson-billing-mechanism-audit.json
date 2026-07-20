@@ -1,0 +1,25 @@
+{
+  "record": "outputs_meson_billing_mechanism_audit",
+  "updated_at": "2026-07-19",
+  "verdict": "NOT_CHARGED_AUTOMATICALLY — pre-existing gap",
+  "question": "How does Outputs/Mesons overage actually get billed today, if not through Stripe?",
+  "findings": {
+    "stripe": {
+      "outputs_overage": "No Stripe Product/Price/Meter env vars; no reporting code path",
+      "mesons_overage": "No Stripe metered overage path; meson_addon_catalog exists for subscription JSON toggles only",
+      "ai_credits_overage": "ONLY automatic Stripe path — usage_tracking + stripe.billing.MeterEvent (STRIPE_METER_EVENT_NAME=ai_credits_used) via stripe_metering.py + hourly usage_scheduler"
+    },
+    "internal_ledger": {
+      "usage_records.outputs": "Read by GET /api/settings/billing-usage and billing overview — NO writer found in backend codebase (only research_lookups inserts to usage_records today)",
+      "overage_usage_table": "Written only by apply_usage_with_overage for ai_credits and workflow_runs (usage_tracking family) — NOT outputs or mesons",
+      "billing_plans.overage_rates": "DB keys output/meson ($2.50–1.50 / $3–2) used for display-rate intent; not wired to Stripe invoicing"
+    },
+    "ui": {
+      "settings_billing_usage": "Shows estimated overage_cost_usd using hardcoded $0.01/output in settings.py — display only",
+      "pricing_page": "Marketing copy $2–3 outputs, $2–4 mesons — not connected to charging"
+    },
+    "manual_batch_reconciliation": "No batch job, cron, or admin script found that invoices output/meson overage outside Stripe ai_credits meter"
+  },
+  "conclusion": "Customers are NOT being automatically charged for Outputs or Mesons overage in the current codebase. Accrued overage (if usage were recorded) would not reach Stripe. This is a pre-existing product/billing gap independent of Research Lookups.",
+  "research_lookups_implication": "Research Lookups correctly uses a separate Stripe Billing Meter (research_lookups_used) because the Outputs/Mesons pattern is tracking/display-only, not real billing. Outputs/Meson automatic charging remains out of scope unless product decides to backfill that gap separately."
+}

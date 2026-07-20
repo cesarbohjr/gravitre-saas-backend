@@ -7,6 +7,10 @@ from typing import Any
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.services.conversation_write_guard import (
+    ConversationWriteBlockedError,
+    assert_conversation_create_allowed,
+)
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
@@ -27,6 +31,8 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     "resolved_entities": {},
     # Recent user turns for multi-turn param fill (Slack channel → body, etc.).
     "recent_user_messages": [],
+    # Module B — conversation-scoped parameter ledger (canonical slot store).
+    "parameter_ledger": {"slots": {}, "pending_missing": []},
 }
 
 
@@ -118,6 +124,31 @@ class ConversationStateService:
                         **(merged.get("resolved_entities") or {}),
                         **value,
                     }
+                elif key == "parameter_ledger" and isinstance(value, dict):
+                    # Deep-merge slots; pending_missing replaces when provided.
+                    current_ledger = (
+                        merged.get("parameter_ledger")
+                        if isinstance(merged.get("parameter_ledger"), dict)
+                        else {}
+                    )
+                    current_slots = (
+                        dict(current_ledger.get("slots") or {})
+                        if isinstance(current_ledger.get("slots"), dict)
+                        else {}
+                    )
+                    incoming_slots = (
+                        dict(value.get("slots") or {})
+                        if isinstance(value.get("slots"), dict)
+                        else {}
+                    )
+                    merged["parameter_ledger"] = {
+                        "slots": {**current_slots, **incoming_slots},
+                        "pending_missing": list(
+                            value["pending_missing"]
+                            if "pending_missing" in value
+                            else (current_ledger.get("pending_missing") or [])
+                        ),
+                    }
                 elif key == "recent_user_messages" and isinstance(value, list):
                     existing = list(merged.get("recent_user_messages") or [])
                     merged["recent_user_messages"] = (existing + list(value))[-12:]
@@ -174,6 +205,8 @@ class ConversationStateService:
             )
             if owned.data:
                 return conv_id
+            # Create path only — smoke/test/CI must fail loudly (never soft-skip).
+            assert_conversation_create_allowed(org_id)
             now = datetime.now(timezone.utc).isoformat()
             safe_title = (title or "New conversation").strip()[:80] or "New conversation"
             db.table("conversations").insert(
@@ -190,6 +223,8 @@ class ConversationStateService:
                 }
             ).execute()
             return conv_id
+        except ConversationWriteBlockedError:
+            raise
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "ensure_owned_conversation failed conversation_id=%s error=%s",

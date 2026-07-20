@@ -8,6 +8,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import os
 import re
@@ -29,11 +30,17 @@ BACKEND = REPO / "backend"
 sys.path.insert(0, str(BACKEND))
 sys.path.insert(0, str(REPO))
 
+from isolated_conversation_org import (  # noqa: E402
+    DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID,
+    mark_smoke_run,
+    smoke_http_headers,
+)
+
 PROD_DEFAULT = os.environ.get(
     "BACKEND_URL",
     "https://gravitre-saas-backend-production.up.railway.app",
 ).rstrip("/")
-ORG_DEFAULT = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+ORG_DEFAULT = DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID
 MIN_SHA_PREFIX = "716864e6"
 
 
@@ -109,20 +116,35 @@ def _request_sse(
     token: str,
     body: dict[str, Any],
     timeout: int = 180,
+    attempts: int = 3,
 ) -> tuple[int, str]:
     url = f"{base_url.rstrip('/')}/api/assistant/chat"
     data = json.dumps(body).encode("utf-8")
-    req = urllib.request.Request(url, data=data, method="POST")
-    req.add_header("Authorization", f"Bearer {token}")
-    req.add_header("X-Org-Id", org_id)
-    req.add_header("X-Environment", "production")
-    req.add_header("Content-Type", "application/json")
-    req.add_header("Accept", "text/event-stream")
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return int(resp.status), resp.read().decode("utf-8", errors="replace")
-    except urllib.error.HTTPError as exc:
-        return exc.code, exc.read().decode("utf-8", errors="replace")
+    last_exc: BaseException | None = None
+    for attempt in range(1, attempts + 1):
+        req = urllib.request.Request(url, data=data, method="POST")
+        req.add_header("Authorization", f"Bearer {token}")
+        req.add_header("X-Org-Id", org_id)
+        req.add_header("X-Environment", "production")
+        req.add_header("Content-Type", "application/json")
+        req.add_header("Accept", "text/event-stream")
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return int(resp.status), resp.read().decode("utf-8", errors="replace")
+        except urllib.error.HTTPError as exc:
+            if exc.code in {502, 503, 504} and attempt < attempts:
+                last_exc = exc
+                time.sleep(1.5 * attempt)
+                continue
+            return exc.code, exc.read().decode("utf-8", errors="replace")
+        except (http.client.IncompleteRead, TimeoutError, urllib.error.URLError) as exc:
+            last_exc = exc
+            if attempt >= attempts:
+                raise
+            time.sleep(1.5 * attempt)
+    if last_exc:
+        raise last_exc
+    raise RuntimeError("SSE request failed without exception")
 
 
 def _chat(
@@ -184,10 +206,10 @@ def run_smoke(args: argparse.Namespace) -> dict[str, Any]:
 
     from supabase import create_client
 
-    from scripts.smoke_auth import resolve_smoke_actor_and_email
+    from smoke_auth import resolve_smoke_actor_and_email
 
     client = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
-    org_id = (args.org_id or env.get("OAUTH_SMOKE_ORG_ID") or ORG_DEFAULT).strip()
+    org_id = (args.org_id or env.get("ISOLATED_CONVERSATION_TEST_ORG_ID") or ORG_DEFAULT).strip()
     actor, email = resolve_smoke_actor_and_email(client, org_id=org_id, env=env)
     token = _mint_token(env, actor, email)
     base_url = (args.base_url or PROD_DEFAULT).rstrip("/")

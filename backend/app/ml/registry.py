@@ -279,26 +279,44 @@ class ModelRegistry:
         ).execute()
 
     async def _upload_artifact(self, model_id: str, version: int, data: bytes) -> str:
+        """Upload via current Vercel Blob put API (pathname query + access header)."""
         blob_token = self.settings.blob_read_write_token
         if not blob_token:
             raise ValueError("BLOB_READ_WRITE_TOKEN not configured")
+        # Store is private-access; downloads must send the same Bearer token.
         filename = f"models/{model_id}/v{version}.pkl"
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.put(
-                f"https://blob.vercel-storage.com/{filename}",
+                "https://blob.vercel-storage.com/",
+                params={"pathname": filename},
                 content=data,
                 headers={
                     "Authorization": f"Bearer {blob_token}",
+                    "x-api-version": "12",
                     "x-content-type": "application/octet-stream",
+                    "x-vercel-blob-access": "private",
+                    "x-add-random-suffix": "0",
+                    "x-allow-overwrite": "1",
                 },
             )
+            if response.status_code >= 400:
+                logger.error(
+                    "blob_upload_failed status=%s pathname=%s body=%s",
+                    response.status_code,
+                    filename,
+                    (response.text or "")[:500],
+                )
             response.raise_for_status()
             result = response.json()
         return result["url"]
 
     async def _download_artifact(self, url: str) -> bytes:
+        headers: dict[str, str] = {}
+        blob_token = self.settings.blob_read_write_token
+        if blob_token:
+            headers["Authorization"] = f"Bearer {blob_token}"
         async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.get(url)
+            response = await client.get(url, headers=headers)
             response.raise_for_status()
         return response.content
 

@@ -12,37 +12,62 @@ def _artifact_id(kind: str, seed: str) -> str:
     return f"{kind}:{seed}"
 
 
+def _external_from_result(result: Any) -> str | None:
+    external = str(getattr(result, "external_url", None) or "").strip()
+    if external.startswith(("http://", "https://")):
+        return external
+    structured = result.structured if isinstance(getattr(result, "structured", None), dict) else {}
+    nested = str(structured.get("external_url") or "").strip()
+    if nested.startswith(("http://", "https://")):
+        return nested
+    return None
+
+
 class ArtifactRegistryService:
     """Build and attach artifact cards from execution results."""
 
     def build_artifacts(self, result: Any) -> list[dict[str, Any]]:
         artifacts: list[dict[str, Any]] = []
         structured = dict(result.structured or {})
+        external_url = _external_from_result(result)
+        primary_url = str(result.result_url or "").strip() or None
+        # Never promote raw vendor http links as the only artifact when we have a Gravitre home.
+        if primary_url and primary_url.startswith(("http://", "https://")) and not external_url:
+            external_url = primary_url
+            primary_url = None
 
-        if result.result_url:
-            artifacts.append(
-                {
-                    "artifact_id": _artifact_id("link", result.entity_id or result.result_url),
-                    "kind": "link",
-                    "title": result.task_label or result.title or "Open result",
-                    "preview": (result.body or "")[:240] or None,
-                    "result_url": result.result_url,
-                    "source": result.entity_type or "execution",
-                    "integration": result.integration,
-                }
-            )
-
-        if result.entity_type in {"run", "workflow_run"} or structured.get("runId"):
-            run_id = str(structured.get("runId") or result.entity_id or "")
+        run_id = str(structured.get("runId") or "")
+        if result.entity_type in {"run", "workflow_run"} or run_id:
+            run_id = run_id or str(result.entity_id or "")
+            run_href = primary_url or (f"/runs/{run_id}" if run_id else None)
             artifacts.append(
                 {
                     "artifact_id": _artifact_id("run", run_id or uuid4().hex),
                     "kind": "run",
-                    "title": result.title or "Workflow run",
+                    "title": result.title or result.task_label or "Workflow run",
                     "preview": (result.body or "")[:240] or None,
-                    "result_url": result.result_url,
+                    "result_url": run_href,
                     "source": "workflow",
-                    "metadata": {"runId": run_id, "workflowId": structured.get("workflowId")},
+                    "metadata": {
+                        "runId": run_id,
+                        "workflowId": structured.get("workflowId"),
+                        "conversationId": structured.get("conversationId"),
+                        "external_url": external_url,
+                        "goal": structured.get("goal"),
+                    },
+                }
+            )
+        elif primary_url:
+            artifacts.append(
+                {
+                    "artifact_id": _artifact_id("link", result.entity_id or primary_url),
+                    "kind": "link",
+                    "title": result.task_label or result.title or "Open result",
+                    "preview": (result.body or "")[:240] or None,
+                    "result_url": primary_url,
+                    "source": result.entity_type or "execution",
+                    "integration": result.integration,
+                    "metadata": {"external_url": external_url} if external_url else {},
                 }
             )
 
@@ -67,9 +92,10 @@ class ArtifactRegistryService:
                     "kind": "record",
                     "title": result.task_label or result.title or "Connector result",
                     "preview": (result.body or "")[:240] or None,
-                    "result_url": result.result_url,
+                    "result_url": primary_url,
                     "source": "connector",
                     "integration": result.integration,
+                    "metadata": {"external_url": external_url} if external_url else {},
                 }
             )
 

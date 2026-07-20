@@ -1,0 +1,40 @@
+{
+  "module": "B",
+  "title": "Conversation Turn Controller",
+  "started_at": "2026-07-19T09:01:40.560693+00:00",
+  "finished_at": "2026-07-19T09:01:43.371830+00:00",
+  "overall": "PASS",
+  "deploy_commit": "6a5e8be6",
+  "prod_chat_tip": "NOT RUN",
+  "results": [
+    {
+      "name": "gmail_multi_turn_recipient",
+      "status": "PASS",
+      "detail": "to=alex@acme.com"
+    },
+    {
+      "name": "unprompted_email_across_turns",
+      "status": "PASS",
+      "detail": "to=alex@acme.com"
+    },
+    {
+      "name": "jira_cold_multi_turn",
+      "status": "PASS",
+      "detail": "create={'project_key': 'ENG', 'summary': 'login page broken'} follow={'project_key': 'ENG', 'summary': 'Checkout button fails on mobile'}"
+    },
+    {
+      "name": "off_script_strategic_recovery",
+      "status": "PASS",
+      "detail": "intent=modify"
+    },
+    {
+      "name": "durable_ledger_persist",
+      "status": "PASS",
+      "conversation_id": "00000000-0000-4000-8000-090143098494",
+      "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+      "actor": "conversation-smoke-sa@gravitre.app",
+      "detail": "slots.to=alex@acme.com"
+    }
+  ],
+  "note": "In-process + durable ledger PASS. Pushed main@6a5e8be6 for Railway tip. Prod chat tip UI re-run still required before user-facing Done."
+}

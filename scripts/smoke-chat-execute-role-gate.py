@@ -27,8 +27,14 @@ REPO = Path(__file__).resolve().parent.parent
 BACKEND = REPO / "backend"
 sys.path.insert(0, str(BACKEND))
 
+from isolated_conversation_org import (  # noqa: E402
+    DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID,
+    mark_smoke_run,
+    smoke_http_headers,
+)
+
 API_BASE = os.environ.get("BACKEND_URL", "https://api.gravitre.app").rstrip("/")
-ORG = os.environ.get("SMOKE_ORG_ID", "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea")
+ORG = os.environ.get("ISOLATED_CONVERSATION_TEST_ORG_ID", DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID)
 ENV_NAME = "production"
 OUT = REPO / "docs" / "delivery" / "chat-execute-role-gate-live.json"
 

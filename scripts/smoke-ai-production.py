@@ -155,6 +155,7 @@ def _request(
     if org_id:
         req.add_header("X-Org-Id", org_id)
     req.add_header("X-Environment", ENV_NAME)
+    req.add_header("X-Gravitree-Smoke-Run", "1")
     if body is not None:
         req.add_header("Content-Type", "application/json")
     with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -178,6 +179,7 @@ def _request_text(
     req.add_header("Authorization", f"Bearer {token}")
     req.add_header("X-Org-Id", org_id)
     req.add_header("X-Environment", ENV_NAME)
+    req.add_header("X-Gravitree-Smoke-Run", "1")
     if body is not None:
         req.add_header("Content-Type", "application/json")
     with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -216,21 +218,13 @@ def _supabase_client(env: dict[str, str]):
 
 
 def _admin_org(env: dict[str, str]) -> tuple[str, str, str]:
+    """Conversation-creating smoke — isolated org only (never operator workspace)."""
+    sys.path.insert(0, str(REPO))
+    sys.path.insert(0, str(REPO / "scripts"))
+    from isolated_conversation_org import resolve_isolated_conversation_actor
+
     client = _supabase_client(env)
-    members = (
-        client.table("organization_members")
-        .select("org_id, user_id, role")
-        .eq("role", "admin")
-        .limit(1)
-        .execute()
-    )
-    if not members.data:
-        raise SystemExit("No admin organization_members row found")
-    row = members.data[0]
-    org_id = str(row["org_id"])
-    user_id = str(row["user_id"])
-    users = client.auth.admin.get_user_by_id(user_id)
-    email = (users.user.email if users and users.user else None) or f"{user_id}@gravitre.local"
+    org_id, user_id, email = resolve_isolated_conversation_actor(env, client)
     return org_id, user_id, email
 
 

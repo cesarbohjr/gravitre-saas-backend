@@ -1,0 +1,34 @@
+{
+  "pass": true,
+  "status": "DONE_GUIDANCE_ONLY",
+  "ran_at": "2026-07-18T09:22:00+00:00",
+  "pack_slug": "compliance-intelligence-pack",
+  "pack_number": 11,
+  "mode": "guidance_docs_only",
+  "evidence": {
+    "phase0": "docs/delivery/phase0-compliance-intelligence-pack.md",
+    "vision": "docs/delivery/phase0-twelve-pack-marketplace-vision.md",
+    "program": "docs/delivery/master-knowledge-intelligence-packs-program.md"
+  },
+  "built": {
+    "catalog_intelligence_pack": false,
+    "demo_agent": false,
+    "connector_template": false,
+    "tip_smoke": false,
+    "live_invoke": false
+  },
+  "governance": {
+    "phi_stop_line": true,
+    "guidance_docs_only": true,
+    "owner": "Cesar Bohorquez Jr.",
+    "pattern": "STA-312",
+    "live_phi_or_ehr": "STOP — engineering cannot decide",
+    "build_requires": "Named Cesar clear before catalog/install/tip"
+  },
+  "related_existing": {
+    "knowledge_pack_slug": "compliance-operations-knowledge",
+    "platform_helpers": "backend/app/services/compliance_service.py",
+    "fedramp_doc": "docs/compliance/fedramp-gap-analysis.md"
+  },
+  "note": "Pack #11 program obligation = guidance + PHI stop-line. Not a live pack DONE."
+}

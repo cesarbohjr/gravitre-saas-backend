@@ -1,0 +1,86 @@
+{
+  "generated_at": "2026-07-18T16:48:23.692085+00:00",
+  "railway_health": {
+    "status": "ok",
+    "timestamp": "2026-07-18T16:48:10.787696+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "unknown",
+    "ai_disabled": false,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "hubspot_connector_id": "547cdda5-2637-4a2b-b087-d5ea89486575",
+  "contacts_search": {
+    "success": true,
+    "error_code": null,
+    "error_message": null,
+    "result_url": "https://app.hubspot.com/contacts/343328749/objects/0-1/views/all/list",
+    "summary": "Found 5 HubSpot contact(s)",
+    "portal_less": false,
+    "portal_scoped": true,
+    "contact_count": 5
+  },
+  "orchestration": {
+    "conversation_id": "882b6e0b-8387-4fe5-9c50-fa392a3d8f02",
+    "status": "awaiting_step_confirm",
+    "result_url": "/runs/d15ab13d-25ae-4be2-a9dd-d3e3f8e5677d",
+    "run_id": "d15ab13d-25ae-4be2-a9dd-d3e3f8e5677d",
+    "external_url": null,
+    "message_preview": "**Step 1 of 2** requires approval:\n\n**Search contacts** (hubspot.contacts.search)\n\nAction type 'hubspot.contacts.search' requires approval per policy\n\nReply **yes** to run this step, or **no** to cancel.",
+    "structured_keys": [],
+    "dialogue_mode": "confirm",
+    "pending_type": "connector_orchestration",
+    "plan_errors": []
+  },
+  "run": {
+    "id": "d15ab13d-25ae-4be2-a9dd-d3e3f8e5677d",
+    "status": "running",
+    "parameters": {
+      "goal": "Search HubSpot for high-intent leads, summarize them, then post a short summary to Slack",
+      "label": "Search HubSpot for high-intent leads, summarize them, then post a short summary to Slack",
+      "source": "chat_orchestration",
+      "requested_by": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "conversation_id": "882b6e0b-8387-4fe5-9c50-fa392a3d8f02"
+    },
+    "definition_snapshot": {
+      "name": "Search HubSpot for high-intent leads, summarize them, then post a short summary to Slack",
+      "steps": [
+        {
+          "id": "step_1",
+          "name": "Search contacts",
+          "type": "connector"
+        },
+        {
+          "id": "step_2",
+          "name": "Post message",
+          "type": "connector"
+        }
+      ],
+      "source": "chat_orchestration",
+      "conversation_id": "882b6e0b-8387-4fe5-9c50-fa392a3d8f02"
+    }
+  },
+  "audit_hubspot_contacts_search_completed": [
+    {
+      "id": "a019ef13-158e-4488-85f1-672e71280a5e",
+      "action": "tool.invoke.completed",
+      "created_at": "2026-07-18T16:48:13.950059+00:00",
+      "tool": "hubspot.contacts.search",
+      "connector_id": "547cdda5-2637-4a2b-b087-d5ea89486575"
+    }
+  ],
+  "recent_notification_urls": [],
+  "portal_less_notification_count": 0,
+  "checks": {
+    "search_no_portal_less_url": true,
+    "orchestration_primary_is_runs": true,
+    "notifications_no_portal_less": true
+  },
+  "pass": true,
+  "query_window_hint": "2026-07-18T16:48:11.652885+00:00"
+}

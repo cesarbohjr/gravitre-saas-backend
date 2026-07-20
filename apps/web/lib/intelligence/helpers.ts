@@ -75,6 +75,9 @@ export function modelStatusChipClass(status: string): string {
   if (normalized === "TRAINED" || normalized === "READY") {
     return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
   }
+  if (normalized === "HEURISTIC" || normalized === "DATA_GATE") {
+    return "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200"
+  }
   if (normalized === "PLANNED") {
     return "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200"
   }

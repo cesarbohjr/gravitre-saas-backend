@@ -1,11 +1,12 @@
 {
   "pass": true,
-  "ran_at": "2026-07-16T05:44:14.312882+00:00",
-  "prod_git_sha": "cd056edfc7a61bd574e7bf22f77854ab1768d68b",
+  "ran_at": "2026-07-18T09:21:20.893042+00:00",
+  "prod_git_sha": "9d1ae05105f066b07bda00d575204afb4cd91f95",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "pack_slug": "finance-intelligence-pack",
   "asset_id": "8e80e188-4ae5-462a-a4c3-752dfc649899",
   "f3_unlocked": true,
+  "status": "PARTIAL",
   "bundle": {
     "agentId": "dd2275cc-8cae-5096-8000-76713d624a27",
     "workflowId": "41530281-5fb0-5d2a-b025-83df230ca1f4",
@@ -14,14 +15,61 @@
     "xeroConnectorId": null,
     "netsuiteConnectorId": null,
     "plaidConnectorId": null,
+    "stubConnectorIds": {
+      "quickbooks": "92e300a5-66e5-4835-b7dd-325c4ef6a030",
+      "xero": "1bfe0fa7-5c12-4a85-a5be-eb96d9537100",
+      "netsuite": "939c379d-1c26-45d4-85b5-fe350ee402cf",
+      "plaid": "62b6a3cf-d63d-4432-b807-c604cf85dfc8"
+    },
     "stubCount": 0,
     "skippedCount": 4,
+    "stubCoverageOk": true,
+    "stagingError": null,
     "stopLinesHonored": [
       "reuse_existing_connectors",
       "finance_read_only_tip",
       "raw_payroll_banking_memory_kg_blocked",
       "path_f3_all_finance_live"
     ]
+  },
+  "stubCoverage": {
+    "byType": {
+      "quickbooks": {
+        "id": "92e300a5-66e5-4835-b7dd-325c4ef6a030",
+        "status": "needs_connection",
+        "stagedOk": true,
+        "active": false
+      },
+      "xero": {
+        "id": "1bfe0fa7-5c12-4a85-a5be-eb96d9537100",
+        "status": "needs_connection",
+        "stagedOk": true,
+        "active": false
+      },
+      "netsuite": {
+        "id": "939c379d-1c26-45d4-85b5-fe350ee402cf",
+        "status": "needs_connection",
+        "stagedOk": true,
+        "active": false
+      },
+      "plaid": {
+        "id": "62b6a3cf-d63d-4432-b807-c604cf85dfc8",
+        "status": "needs_connection",
+        "stagedOk": true,
+        "active": false
+      }
+    },
+    "required": [
+      "quickbooks",
+      "xero",
+      "netsuite",
+      "plaid"
+    ],
+    "coveredCount": 4,
+    "requiredCount": 4,
+    "missing": [],
+    "notStagedOk": [],
+    "coverageOk": true
   },
   "invokes": {},
   "live_invoke_ok": false,
@@ -41,26 +89,28 @@
   },
   "cohesion": {
     "kpi_panel_ui_ok": true,
-    "f3_unlock_stop_line_ok": true
+    "f3_unlock_stop_line_ok": true,
+    "stub_coverage_ok": true
   },
   "governance": {
     "f3_all_finance_live": true,
     "finance_read_only_tip": true,
     "raw_banking_memory_kg_blocked": true,
-    "plaid_if_entitled": true
+    "plaid_if_entitled": true,
+    "live_oauth_link_test": "HOLD"
   },
-  "status": "PARTIAL",
-  "note": "Finance #9 F3: unlock + pack scaffold tip only. Not live Plaid/Gusto/QB proven.",
+  "note": "Finance #9 F3: scaffold tip requires 4\u00d7 staged stubs (needs_connection class). Live Plaid/Gusto/QB invoke stays HOLD until Cesar explicit live-activation sign-off.",
   "reassessment": {
-    "at": "2026-07-16T05:44:14+00:00",
-    "prod_git_sha": "cd056edfc7a61bd574e7bf22f77854ab1768d68b",
-    "verdict": "PARTIAL — not DONE",
+    "at": "2026-07-18T09:21:20.893070+00:00",
+    "prod_git_sha": "9d1ae05105f066b07bda00d575204afb4cd91f95",
+    "verdict": "PARTIAL \u2014 scaffold solid; not live-proven",
     "live_invoke_ok": false,
     "any_active_connector": false,
-    "live_connection_test": "BLOCKED pending Cesar confirmation of smoke-org live activation (even sandboxed)",
+    "stub_coverage_ok": true,
+    "live_connection_test": "HOLD \u2014 explicit Cesar sign-off required before OAuth/Link",
     "governance_signoff": {
       "f3_unlock": "YES (Cesar 2026-07-15)",
-      "live_oauth_link_test": "NOT CONFIRMED — do not connect yet"
+      "live_oauth_link_test": "HOLD"
     }
   }
 }

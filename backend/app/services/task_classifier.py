@@ -5,8 +5,12 @@ import re
 from typing import Any
 
 from app.config import Settings, get_settings
-from app.ml.base import ModelStatus
-from app.ml.model_catalog import get_org_model_status
+from app.services.confidence_honesty import (
+    CONFIDENCE_SOURCE_HEURISTIC,
+    CONFIDENCE_SOURCE_MODEL,
+    LIVE_PATH_HEURISTIC,
+    LIVE_PATH_LOADED_ARTIFACT,
+)
 from app.services.user_intelligence import classify_query
 
 REVENUE_PATTERN = re.compile(r"revenue|mrr|arr|churn|forecast|pipeline|deal", re.I)
@@ -89,10 +93,32 @@ _CATEGORY_TO_INTENT = {
 }
 
 
+def _intent_artifact_ready(classifier: Any) -> bool:
+    """True only when a real trained text artifact is loaded (not an empty catalog shell)."""
+    return (
+        getattr(classifier, "vectorizer", None) is not None
+        and getattr(classifier, "model", None) is not None
+    )
+
+
+def _confidence_from_probs(probs: list[dict[str, float]] | None, label: str) -> float:
+    if not probs:
+        return 0.0
+    row = probs[0] or {}
+    if label in row:
+        return float(row[label])
+    if row:
+        return float(max(row.values()))
+    return 0.0
+
+
 class TaskClassifier:
     """
     Extends IntentClassifier output with pipeline routing flags.
-    Does NOT replace IntentClassifier — wraps ML status + rule fallback.
+    Does NOT replace IntentClassifier — wraps loaded artifact + rule fallback.
+
+    Module C / STA-331: never treat catalog TRAINED as a live model score.
+    Confidence and live_inference_path reflect the real inference path only.
     """
 
     def __init__(self, settings: Settings | None = None) -> None:
@@ -105,6 +131,7 @@ class TaskClassifier:
         conversation_history: list[dict] | None = None,
         understanding: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        _ = conversation_history
         base = await self._classify_with_ml(org_id, request)
         intent = str(base.get("intent") or "question_answering")
         if understanding:
@@ -175,18 +202,48 @@ class TaskClassifier:
         intent = _CATEGORY_TO_INTENT.get(category, "question_answering")
         confidence = 0.55
         source = "rule_based_classify_query"
+        confidence_is_estimate = True
+        live_path = LIVE_PATH_HEURISTIC
+        artifact_loaded = False
+
         try:
-            status = await get_org_model_status(org_id, "intent_classifier", settings=self.settings)
-            if status.get("catalog_status") == ModelStatus.TRAINED.value:
-                source = "intent_classifier_catalog"
-                confidence = 0.7
+            from app.ml.model_catalog import load_org_trained_catalog_model
+
+            classifier = await load_org_trained_catalog_model(
+                org_id, "intent_classifier", settings=self.settings
+            )
+            if _intent_artifact_ready(classifier):
+                artifact_loaded = True
+                preds, probs = await classifier.predict_text(
+                    [request], return_probabilities=True
+                )
+                if preds:
+                    predicted = str(preds[0] or category)
+                    category = predicted
+                    intent = _CATEGORY_TO_INTENT.get(predicted, predicted)
+                    if intent not in TASK_TYPE_PIPELINE_MAP:
+                        intent = _CATEGORY_TO_INTENT.get(predicted, "question_answering")
+                    confidence = _confidence_from_probs(probs, predicted)
+                    if confidence <= 0:
+                        confidence = 0.55
+                    source = CONFIDENCE_SOURCE_MODEL
+                    confidence_is_estimate = False
+                    live_path = LIVE_PATH_LOADED_ARTIFACT
         except Exception:  # noqa: BLE001
             pass
+
         return {
             "intent": intent,
             "query_category": category,
             "classification_confidence": confidence,
             "classification_source": source,
+            "confidence_is_estimate": confidence_is_estimate,
+            "confidence_source": (
+                CONFIDENCE_SOURCE_MODEL if artifact_loaded and not confidence_is_estimate
+                else CONFIDENCE_SOURCE_HEURISTIC
+            ),
+            "live_inference_path": live_path,
+            "artifact_loaded": artifact_loaded,
         }
 
 

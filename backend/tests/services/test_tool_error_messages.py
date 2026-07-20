@@ -10,7 +10,7 @@ from app.services.tool_error_messages import (
 
 def test_auth_expired_mentions_reconnect():
     msg = format_tool_error_for_user("auth_expired", "token gone", integration="apollo")
-    assert "Authentication expired" in msg
+    assert "authentication expired" in msg.lower()
     assert "Apollo" in msg
     assert "/connectors" in msg
 

@@ -39,9 +39,6 @@ from app.workflows.constants import (
 )
 from app.workflows.repository import (
     create_step,
-    emit_execute_completed,
-    emit_execute_failed,
-    emit_execute_started,
     emit_execute_step_completed,
     emit_execute_step_failed,
     get_run_with_steps,
@@ -63,6 +60,7 @@ def execute_workflow_steps(
     client: Any,
     environment_name: str = "default",
     steps_exist: bool = False,
+    outcome_source: str = "api",
 ) -> tuple[str, list[dict], list[str], bool]:
     """
     Execute steps for an approved run. Only rag_retrieve and noop.
@@ -346,91 +344,84 @@ def execute_workflow_steps(
         final_status = RUN_STATUS_COMPLETED
     run_with_steps = get_run_with_steps(client, org_id, run_id, environment_name)
     step_rows = run_with_steps["steps"] if run_with_steps else []
-    completed_at_iso = datetime.now(timezone.utc).isoformat()
-    update_run(
-        client=client,
-        run_id=run_id,
-        status=final_status,
-        completed_at=completed_at_iso,
-        error_message=run_error_message,
+    workflow_id = None
+    if run_with_steps:
+        workflow_id = str(run_with_steps.get("workflow_id") or "") or None
+
+    from app.services.execution_outcome import (
+        VerifiedOutputRef,
+        finalize_execution_outcome,
+        is_terminal_run_status,
     )
-    if run_failed:
-        emit_execute_failed(client, org_id, user_id, run_id, run_error_message)
-        try:
-            from app.services.notification_emitter import emit_notification
 
-            emit_notification(
-                client,
-                org_id=org_id,
-                user_id=user_id,
-                event_type="run_failed",
-                title="Workflow run failed",
-                body=(run_error_message or "Review the run details for step-level errors.")[:2000],
-                entity_ref={
-                    "entity_type": "workflow_run",
-                    "entity_id": run_id,
-                    "result_url": f"/runs/{run_id}",
-                },
-                channel_hints={"bell": True, "email": False},
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("run_failed notification skipped run_id=%s error=%s", run_id, exc)
-        try:
-            from app.services.compensation_service import compensate_failed_autonomous_run
+    if is_terminal_run_status(final_status):
+        finalize_execution_outcome(
+            client,
+            org_id=org_id,
+            status=final_status,
+            source=outcome_source if outcome_source in {
+                "chat_orch", "assistant_chat", "canvas", "api", "worker", "assignment"
+            } else "api",
+            actor_id=user_id,
+            run_id=run_id,
+            workflow_id=workflow_id,
+            error_summary=run_error_message,
+            verified_output=VerifiedOutputRef(
+                result_url=f"/runs/{run_id}",
+                entity_type="workflow_run",
+                entity_id=run_id,
+                summary=(run_error_message if run_failed else f"Run finished with status {final_status}.")[
+                    :2000
+                ],
+            ),
+            metadata={"path": "execute_workflow_steps", "environment": environment_name},
+        )
+        if run_failed:
+            try:
+                from app.services.compensation_service import compensate_failed_autonomous_run
 
-            compensate_failed_autonomous_run(
+                compensate_failed_autonomous_run(
+                    client,
+                    settings,
+                    org_id=org_id,
+                    run_id=run_id,
+                    actor_id=user_id,
+                    parameters=parameters,
+                    environment_name=environment_name,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "workflow compensation skipped org_id=%s run_id=%s error=%s",
+                    org_id,
+                    run_id,
+                    str(exc),
+                )
+        try:
+            from app.marketplace.adoption import maybe_record_workflow_adoption
+
+            maybe_record_workflow_adoption(
                 client,
-                settings,
                 org_id=org_id,
                 run_id=run_id,
-                actor_id=user_id,
-                parameters=parameters,
-                environment_name=environment_name,
+                final_status=final_status,
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning(
-                "workflow compensation skipped org_id=%s run_id=%s error=%s",
+                "marketplace adoption hook skipped org_id=%s run_id=%s error=%s",
                 org_id,
                 run_id,
                 str(exc),
             )
     else:
-        emit_execute_completed(client, org_id, user_id, run_id, final_status)
-        try:
-            from app.services.notification_emitter import emit_notification
-
-            emit_notification(
-                client,
-                org_id=org_id,
-                user_id=user_id,
-                event_type="run_completed",
-                title="Workflow run completed",
-                body=f"Run finished with status {final_status}.",
-                entity_ref={
-                    "entity_type": "workflow_run",
-                    "entity_id": run_id,
-                    "result_url": f"/runs/{run_id}",
-                },
-                channel_hints={"bell": True, "email": False},
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("run_completed notification skipped run_id=%s error=%s", run_id, exc)
-    try:
-        from app.marketplace.adoption import maybe_record_workflow_adoption
-
-        maybe_record_workflow_adoption(
-            client,
-            org_id=org_id,
+        # Non-terminal (e.g. paused): status stamp only — no outcome fanout.
+        update_run(
+            client=client,
             run_id=run_id,
-            final_status=final_status,
+            status=final_status,
+            completed_at=None,
+            error_message=run_error_message,
         )
-    except Exception as exc:  # noqa: BLE001
-        logger.warning(
-            "marketplace adoption hook skipped org_id=%s run_id=%s error=%s",
-            org_id,
-            run_id,
-            str(exc),
-        )
+
     transparency_log_id = parameters.get("_transparency_log_id")
     if transparency_log_id:
         try:

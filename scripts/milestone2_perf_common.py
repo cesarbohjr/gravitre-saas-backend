@@ -11,8 +11,14 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from isolated_conversation_org import (  # noqa: E402
+    DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID,
+    mark_smoke_run,
+    smoke_http_headers,
+)
+
 PROD_DEFAULT = "https://gravitre-saas-backend-production.up.railway.app"
-ORG_DEFAULT = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+ORG_DEFAULT = DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID
 
 # Research Manager landed on main @ 2026-07-18T05:05:29Z (PR #165, commit 4eb6adbe).
 RM_MERGE_COMMIT = "4eb6adbe"
@@ -158,6 +164,7 @@ def chat_timed(
     message: str,
     mode: str,
 ) -> tuple[int, list[dict[str, Any]], int]:
+    mark_smoke_run()
     body = {
         "messages": [{"role": "user", "content": message}],
         "org_id": org_id,
@@ -173,6 +180,8 @@ def chat_timed(
     req.add_header("X-Environment", "production")
     req.add_header("Content-Type", "application/json")
     req.add_header("Accept", "text/event-stream")
+    for key, value in smoke_http_headers().items():
+        req.add_header(key, value)
     started = time.perf_counter()
     try:
         with urllib.request.urlopen(req, timeout=300) as resp:

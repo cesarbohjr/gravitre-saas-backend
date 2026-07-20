@@ -326,7 +326,11 @@ export function MarketplacePage() {
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
+<<<<<<< HEAD
               href="/features/technology"
+=======
+              href="/technology"
+>>>>>>> d9ed9f4e905a8cac8e8d591a22abe6adaa705be3
               className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-7 py-3.5 text-sm font-semibold text-zinc-900 transition-colors hover:bg-zinc-50"
             >
               See the technology

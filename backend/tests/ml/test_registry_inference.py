@@ -55,3 +55,49 @@ async def test_inference_predict_with_stubbed_runtime(monkeypatch):
     result = await service.predict("org1", "m1", [{"a": 1}], return_probabilities=True)
     assert result.model_id == "m1"
     assert result.predictions == ["safe"]
+
+
+@pytest.mark.asyncio
+async def test_upload_artifact_uses_vercel_blob_put_api(monkeypatch):
+    registry = ModelRegistry()
+    registry._settings = SimpleNamespace(blob_read_write_token="vercel_blob_rw_test")
+
+    captured: dict = {}
+
+    class _Resp:
+        status_code = 200
+        text = ""
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"url": "https://example.public.blob.vercel-storage.com/models/m1/v1.pkl"}
+
+    class _Client:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def put(self, url, params=None, content=None, headers=None):
+            captured["url"] = url
+            captured["params"] = params
+            captured["headers"] = headers
+            captured["content"] = content
+            return _Resp()
+
+    monkeypatch.setattr("app.ml.registry.httpx.AsyncClient", _Client)
+
+    url = await registry._upload_artifact("m1", 1, b"pickle-bytes")
+    assert url.endswith("/models/m1/v1.pkl")
+    assert captured["url"] == "https://blob.vercel-storage.com/"
+    assert captured["params"] == {"pathname": "models/m1/v1.pkl"}
+    assert captured["headers"]["Authorization"] == "Bearer vercel_blob_rw_test"
+    assert captured["headers"]["x-api-version"] == "12"
+    assert captured["headers"]["x-vercel-blob-access"] == "private"
+    assert captured["content"] == b"pickle-bytes"
