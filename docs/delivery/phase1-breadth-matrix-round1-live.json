@@ -1,7 +1,7 @@
 {
   "probe": "phase1_breadth_matrix",
-  "verified_at": "2026-07-20T08:14:23.505952+00:00",
-  "git_sha": "4f53e274358b163bd7718833bd5b744a5ea94cc1",
+  "verified_at": "2026-07-20T07:47:58.078759+00:00",
+  "git_sha": "fae1c65228be5e307710e1822a053c44ed873b99",
   "base": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "user_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
@@ -15,13 +15,13 @@
   ],
   "summary": {
     "total_cases": 31,
-    "passed": 28,
-    "failed": 0,
+    "passed": 22,
+    "failed": 6,
     "blocked": 3,
     "by_surface": {
       "chat": {
-        "PASS": 26,
-        "FAIL": 0,
+        "PASS": 20,
+        "FAIL": 6,
         "BLOCKED_EXTERNAL": 0
       },
       "workflow_execute": {
@@ -42,13 +42,13 @@
     },
     "by_dimension": {
       "routing": {
-        "PASS": 15,
-        "FAIL": 0,
+        "PASS": 12,
+        "FAIL": 3,
         "BLOCKED_EXTERNAL": 2
       },
       "memory": {
-        "PASS": 2,
-        "FAIL": 0,
+        "PASS": 1,
+        "FAIL": 1,
         "BLOCKED_EXTERNAL": 0
       },
       "write_authority": {
@@ -57,8 +57,8 @@
         "BLOCKED_EXTERNAL": 0
       },
       "module_d_voice": {
-        "PASS": 5,
-        "FAIL": 0,
+        "PASS": 4,
+        "FAIL": 1,
         "BLOCKED_EXTERNAL": 0
       },
       "module_c_honesty": {
@@ -67,8 +67,8 @@
         "BLOCKED_EXTERNAL": 1
       },
       "module_a_fanout": {
-        "PASS": 1,
-        "FAIL": 0,
+        "PASS": 0,
+        "FAIL": 1,
         "BLOCKED_EXTERNAL": 0
       }
     },
@@ -104,8 +104,8 @@
         "BLOCKED_EXTERNAL": 0
       },
       "twilio": {
-        "PASS": 1,
-        "FAIL": 0,
+        "PASS": 0,
+        "FAIL": 1,
         "BLOCKED_EXTERNAL": 0
       },
       "pagerduty": {
@@ -119,13 +119,13 @@
         "BLOCKED_EXTERNAL": 0
       },
       "apollo": {
-        "PASS": 3,
-        "FAIL": 0,
+        "PASS": 2,
+        "FAIL": 1,
         "BLOCKED_EXTERNAL": 0
       },
       "gmail": {
-        "PASS": 3,
-        "FAIL": 0,
+        "PASS": 1,
+        "FAIL": 2,
         "BLOCKED_EXTERNAL": 0
       },
       "slack": {
@@ -144,8 +144,8 @@
         "BLOCKED_EXTERNAL": 0
       },
       "n/a": {
-        "PASS": 3,
-        "FAIL": 0,
+        "PASS": 2,
+        "FAIL": 1,
         "BLOCKED_EXTERNAL": 0
       },
       "zendesk": {
@@ -169,8 +169,8 @@
         "BLOCKED_EXTERNAL": 0
       },
       "sendgrid": {
-        "PASS": 1,
-        "FAIL": 0,
+        "PASS": 0,
+        "FAIL": 1,
         "BLOCKED_EXTERNAL": 0
       },
       "verified": {
@@ -189,30 +189,6 @@
         "BLOCKED_EXTERNAL": 1
       }
     }
-  },
-  "delta_vs_round1": {
-    "round1_git_sha": "fae1c65228be5e307710e1822a053c44ed873b99",
-    "round1_passed": 22,
-    "round1_failed": 6,
-    "round1_blocked": 3,
-    "round2_passed": 28,
-    "round2_failed": 0,
-    "round2_blocked": 3,
-    "fixed_case_ids": [
-      "C-CLARIFY-02",
-      "C-COLD-05",
-      "C-FANOUT-01",
-      "C-MEM-01",
-      "C-ROUTE-07",
-      "C-ROUTE-10"
-    ],
-    "new_fail_case_ids": [],
-    "still_failing": [],
-    "structural_fixes_applied": [
-      "clarification_engine: word-boundary pronouns + named-vendor connector gate",
-      "agent_intelligence: LIST_CREATE not stolen by platform execute_workflow",
-      "INTEGRATION_ALIASES: twilio/sendgrid/airtable/linear/\u2026 cold vendors"
-    ]
   },
   "matrix": [
     {
@@ -280,7 +256,7 @@
       "action_or_connector": "twilio",
       "surface": "chat",
       "dimension": "routing",
-      "verdict": "PASS",
+      "verdict": "FAIL",
       "conversation_id": "99b4ee67-72d0-4718-be71-651a79639e6b",
       "run_id": null,
       "http": null
@@ -307,10 +283,10 @@
     },
     {
       "case_id": "C-ROUTE-10",
-      "action_or_connector": "apollo.lists.create",
+      "action_or_connector": "apollo",
       "surface": "chat",
       "dimension": "routing",
-      "verdict": "PASS",
+      "verdict": "FAIL",
       "conversation_id": "a965e7cd-90b7-495f-a0a3-307cc1d7d17e",
       "run_id": null,
       "http": null
@@ -320,7 +296,7 @@
       "action_or_connector": "gmail",
       "surface": "chat",
       "dimension": "memory",
-      "verdict": "PASS",
+      "verdict": "FAIL",
       "conversation_id": "02d153c6-9085-42ab-bdb6-24a255668ab9",
       "run_id": null,
       "http": null
@@ -400,7 +376,7 @@
       "action_or_connector": "assistant.create_workflow",
       "surface": "chat",
       "dimension": "routing",
-      "verdict": "PASS",
+      "verdict": "FAIL",
       "conversation_id": "e82ae565-80d7-4224-94f6-0aba632e4e0f",
       "run_id": null,
       "http": null
@@ -450,7 +426,7 @@
       "action_or_connector": "sendgrid",
       "surface": "chat",
       "dimension": "module_d_voice",
-      "verdict": "PASS",
+      "verdict": "FAIL",
       "conversation_id": "fff35ead-e6ab-4469-be29-40a9e1ec1036",
       "run_id": null,
       "http": null
@@ -472,8 +448,8 @@
       "dimension": "write_authority",
       "verdict": "PASS",
       "conversation_id": null,
-      "run_id": "",
-      "http": 409
+      "run_id": "39a13f73-065f-4a30-b0b2-46851b2ee975",
+      "http": 200
     },
     {
       "case_id": "W-ROUTE-01",
@@ -490,7 +466,7 @@
       "action_or_connector": "gmail",
       "surface": "chat",
       "dimension": "module_a_fanout",
-      "verdict": "PASS",
+      "verdict": "FAIL",
       "conversation_id": "976a3d8a-b853-4af8-a6d1-1096b9381b3a",
       "run_id": null,
       "http": null
@@ -525,7 +501,7 @@
       "invoke_action": "",
       "assistant_quote": "I can\u2019t open a ticket from the current Connected tools.\n\nSource: connector status shows only Apollo is Connected / Healthy / Executable. There is no ticketing connector available here, and no ticket workflow for this request was provided.\n\nBest next move: connect a ticketing system such as Jira, Zendesk, ServiceNow, or Linear, or tell me which existing workflow should handle ticket creation. I can",
       "notes": [],
-      "duration_ms": 4975
+      "duration_ms": 17869
     },
     {
       "case_id": "C-ROUTE-02",
@@ -555,7 +531,7 @@
       "invoke_action": "",
       "assistant_quote": "Notion is not Connected for this organization. Connect it at /connectors, then try again.",
       "notes": [],
-      "duration_ms": 7521
+      "duration_ms": 7744
     },
     {
       "case_id": "C-ROUTE-03",
@@ -585,7 +561,7 @@
       "invoke_action": "",
       "assistant_quote": "Hubspot is not Connected for this organization. Connect it at /connectors, then try again.",
       "notes": [],
-      "duration_ms": 18320
+      "duration_ms": 19458
     },
     {
       "case_id": "C-ROUTE-04",
@@ -615,7 +591,7 @@
       "invoke_action": "",
       "assistant_quote": "Stripe is not Connected for this organization. Connect it at /connectors, then try again.",
       "notes": [],
-      "duration_ms": 7098
+      "duration_ms": 8001
     },
     {
       "case_id": "C-ROUTE-05",
@@ -645,7 +621,7 @@
       "invoke_action": "",
       "assistant_quote": "I can\u2019t pull up an Intercom conversation because Intercom is not Connected for this organization.\n\nSource: connector status shows only Apollo is Connected, Healthy, Authenticated, and Executable. No Intercom connector is available.\n\nBest next move: connect Intercom in Integrations, then ask me again to retrieve the latest conversation.\n\nI may be missing context \u2014 could you clarify or point me to a",
       "notes": [],
-      "duration_ms": 3961
+      "duration_ms": 12580
     },
     {
       "case_id": "C-ROUTE-06",
@@ -675,7 +651,7 @@
       "invoke_action": "",
       "assistant_quote": "Airtable is not Connected for this organization, so I cannot look there for the launch checklist.\n\nSource: connector status shows only Apollo is Connected, Healthy, Authenticated, and Executable. No Airtable connector is available.\n\nNext move: connect Airtable for this organization, then I can search it for the launch checklist.\n\nI may be missing context \u2014 could you clarify or point me to a specif",
       "notes": [],
-      "duration_ms": 4033
+      "duration_ms": 14086
     },
     {
       "case_id": "C-ROUTE-07",
@@ -688,14 +664,14 @@
         {
           "user": "text them via Twilio that we're running late",
           "http": 200,
-          "assistant": "Twilio is not Connected for this organization. Connect it at /connectors, then try again.",
+          "assistant": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
           "invoke_action": "",
           "status": ""
         }
       ],
-      "result": "PASS",
+      "result": "FAIL",
       "dimensions": {
-        "routing": "PASS",
+        "routing": "FAIL",
         "memory": "n/a",
         "write_authority": "n/a",
         "module_a_fanout": "n/a",
@@ -703,9 +679,9 @@
         "module_c_honesty": "n/a"
       },
       "invoke_action": "",
-      "assistant_quote": "Twilio is not Connected for this organization. Connect it at /connectors, then try again.",
+      "assistant_quote": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
       "notes": [],
-      "duration_ms": 15746
+      "duration_ms": 16844
     },
     {
       "case_id": "C-ROUTE-08",
@@ -735,7 +711,7 @@
       "invoke_action": "",
       "assistant_quote": "Blocked. I cannot page the on-call from this workspace because no paging or messaging connector is Connected.\n\nSource: connector status shows only Apollo is Connected, Healthy, Authenticated, and Executable. Apollo is for sales/contact workflows, not incident paging.\n\nI also do not have enough outage detail to draft a reliable incident message. The missing details are the service, severity, impact",
       "notes": [],
-      "duration_ms": 4697
+      "duration_ms": 15437
     },
     {
       "case_id": "C-ROUTE-09",
@@ -765,7 +741,7 @@
       "invoke_action": "",
       "assistant_quote": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
       "notes": [],
-      "duration_ms": 7219
+      "duration_ms": 7196
     },
     {
       "case_id": "C-ROUTE-10",
@@ -778,24 +754,24 @@
         {
           "user": "make a new Apollo list called Breadth Smoke",
           "http": 200,
-          "assistant": "I can create a contact list named **Breadth Smoke** in Apollo.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
-          "invoke_action": "apollo.lists.create",
-          "status": "awaiting_confirm"
+          "assistant": "I need a specific workflow to execute. Name the workflow exactly, or open Workflows and paste its id.",
+          "invoke_action": "",
+          "status": ""
         }
       ],
-      "result": "PASS",
+      "result": "FAIL",
       "dimensions": {
-        "routing": "PASS",
+        "routing": "FAIL",
         "memory": "n/a",
         "write_authority": "n/a",
         "module_a_fanout": "n/a",
         "module_d_voice": "n/a",
         "module_c_honesty": "n/a"
       },
-      "invoke_action": "apollo.lists.create",
-      "assistant_quote": "I can create a contact list named **Breadth Smoke** in Apollo.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
+      "invoke_action": "",
+      "assistant_quote": "I need a specific workflow to execute. Name the workflow exactly, or open Workflows and paste its id.",
       "notes": [],
-      "duration_ms": 5192
+      "duration_ms": 22645
     },
     {
       "case_id": "C-MEM-01",
@@ -808,31 +784,31 @@
         {
           "user": "Send a Gmail \u2014 recipient breadth.memory@acme.test, subject Keep this, body first draft",
           "http": 200,
-          "assistant": "I can\u2019t send that Gmail from this organization right now. The only Connected connector is Apollo; there is no Gmail connector available.\n\nSource: connector status shows Apollo is Connected, Healthy, Authenticated, and Executable. Gmail is not listed.\n\nNext move: connect Gmail for this organization, then I can draft or send the message with the requested recipient, subject, and body.I can't run **Send a Gmail \u2014 recipient breadth.memory@acme.test, subject Keep this, body first draft** yet because ",
+          "assistant": "I can\u2019t send the Gmail. This organization only has Apollo Connected and Healthy; Gmail is not connected, so there is no executable Gmail action available.\n\nSource: connector status shows one Connected integration: Apollo (`apollo-isolated-smoke`), with no Gmail connector.\n\nNext move: connect Gmail for this organization, then ask me to send the email again.I can't run **Send a Gmail \u2014 recipient breadth.memory@acme.test, subject Keep this, body first draft** yet because Gmail isn't ready.\n\nNo Gmai",
           "invoke_action": "",
           "status": ""
         },
         {
           "user": "Actually change only the body to second draft \u2014 keep the rest",
           "http": 200,
-          "assistant": "Gmail is not Connected for this organization. Connect it at /connectors, then try again.",
+          "assistant": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
           "invoke_action": "",
           "status": ""
         }
       ],
-      "result": "PASS",
+      "result": "FAIL",
       "dimensions": {
         "routing": "n/a",
-        "memory": "PASS",
+        "memory": "FAIL",
         "write_authority": "n/a",
         "module_a_fanout": "n/a",
         "module_d_voice": "n/a",
         "module_c_honesty": "n/a"
       },
       "invoke_action": "",
-      "assistant_quote": "Gmail is not Connected for this organization. Connect it at /connectors, then try again.",
+      "assistant_quote": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
       "notes": [],
-      "duration_ms": 28905
+      "duration_ms": 28102
     },
     {
       "case_id": "C-MEM-02",
@@ -845,14 +821,14 @@
         {
           "user": "File a Jira issue in project ENG titled Checkout timeout on mobile",
           "http": 200,
-          "assistant": "I can\u2019t file the Jira issue because Jira is not Connected for this organization.\n\nSource: connector status shows only Apollo is Connected and Healthy. No Jira connector is available.\n\nNext move: connect Jira for this org, then I can create the ENG issue titled \u201cCheckout timeout on mobile.\u201d\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document?",
+          "assistant": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
           "invoke_action": "",
           "status": ""
         },
         {
           "user": "set priority high",
           "http": 200,
-          "assistant": "I don't have enough information yet. Tell me what should be set to high priority \u2014 a workflow, alert, run, or another item \u2014 and I\u2019ll continue.\n\nBased on the provided org context, there is already one open high-severity alert for \u201cCanvas Write Governance Probe (no approval node)\u201d related to elevated failure risk on \u201cApollo create list (write).\u201d I do not have an available update tool here to change priority directly.\n\nI may be missing context \u2014 could you clarify or point me to a specific record o",
+          "assistant": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
           "invoke_action": "",
           "status": ""
         }
@@ -867,9 +843,9 @@
         "module_c_honesty": "n/a"
       },
       "invoke_action": "",
-      "assistant_quote": "I don't have enough information yet. Tell me what should be set to high priority \u2014 a workflow, alert, run, or another item \u2014 and I\u2019ll continue.\n\nBased on the provided org context, there is already one open high-severity alert for \u201cCanvas Write Governance Probe (no approval node)\u201d related to elevated failure risk on \u201cApollo create list (write).\u201d I do not have an available update tool here to change",
+      "assistant_quote": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
       "notes": [],
-      "duration_ms": 7659
+      "duration_ms": 13159
     },
     {
       "case_id": "C-WRITE-01",
@@ -880,7 +856,7 @@
       "conversation_id": "aa30cb65-c75f-4da8-8ba8-80985f73ea29",
       "turns": [
         {
-          "user": "Create an Apollo contact list named Breadth Auth 43129a6f",
+          "user": "Create an Apollo contact list named Breadth Auth 9a13ed3a",
           "http": 200,
           "assistant": "I can create a contact list named **Breadth Auth 9a13ed3a** in Apollo.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
           "invoke_action": "apollo.lists.create",
@@ -899,7 +875,7 @@
       "invoke_action": "apollo.lists.create",
       "assistant_quote": "I can create a contact list named **Breadth Auth 9a13ed3a** in Apollo.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
       "notes": [],
-      "duration_ms": 6586
+      "duration_ms": 18691
     },
     {
       "case_id": "C-WRITE-02",
@@ -929,7 +905,7 @@
       "invoke_action": "",
       "assistant_quote": "Slack is not Connected for this organization. Connect it at /connectors, then try again.",
       "notes": [],
-      "duration_ms": 7798
+      "duration_ms": 8490
     },
     {
       "case_id": "C-WRITE-03",
@@ -942,7 +918,7 @@
         {
           "user": "send that email",
           "http": 200,
-          "assistant": "Connect Gmail at /connectors to run this action.",
+          "assistant": "To send gmail message, I need to know recipient, subject, body. Could you share that?",
           "invoke_action": "",
           "status": ""
         }
@@ -957,9 +933,9 @@
         "module_c_honesty": "n/a"
       },
       "invoke_action": "",
-      "assistant_quote": "Connect Gmail at /connectors to run this action.",
+      "assistant_quote": "To send gmail message, I need to know recipient, subject, body. Could you share that?",
       "notes": [],
-      "duration_ms": 7043
+      "duration_ms": 15350
     },
     {
       "case_id": "C-MULTI-01",
@@ -989,7 +965,7 @@
       "invoke_action": "",
       "assistant_quote": "Slack is not Connected for this organization. Connect it at /connectors, then try again.",
       "notes": [],
-      "duration_ms": 9385
+      "duration_ms": 9898
     },
     {
       "case_id": "C-MULTI-02",
@@ -1002,7 +978,7 @@
         {
           "user": "look up people at Acme in Apollo then draft them an intro email",
           "http": 200,
-          "assistant": "Reply **yes** to approve the orchestration plan, or tell me what to adjust.",
+          "assistant": "I planned a **2-step orchestration**:\n\n1. **Get contact** (read, auto-run)\n2. \u25cb Gmail (not connected) \u2014 *skipped* (Connect Gmail at /connectors to run this action.)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change.",
           "invoke_action": "",
           "status": "awaiting_plan_confirm"
         }
@@ -1017,9 +993,9 @@
         "module_c_honesty": "n/a"
       },
       "invoke_action": "",
-      "assistant_quote": "Reply **yes** to approve the orchestration plan, or tell me what to adjust.",
+      "assistant_quote": "I planned a **2-step orchestration**:\n\n1. **Get contact** (read, auto-run)\n2. \u25cb Gmail (not connected) \u2014 *skipped* (Connect Gmail at /connectors to run this action.)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change.",
       "notes": [],
-      "duration_ms": 4781
+      "duration_ms": 5154
     },
     {
       "case_id": "C-CLARIFY-01",
@@ -1049,7 +1025,7 @@
       "invoke_action": "",
       "assistant_quote": "To do that, I need to know a specific target \u2014 reply with a name, ID, or link, or ask me to search HubSpot/contacts first and pick from results. Could you share that?",
       "notes": [],
-      "duration_ms": 13532
+      "duration_ms": 14925
     },
     {
       "case_id": "C-CLARIFY-02",
@@ -1062,14 +1038,14 @@
         {
           "user": "fix the thing from earlier",
           "http": 200,
-          "assistant": "I'll create a draft workflow for **Create a draft replacement for the active workflow named \"Canvas Write Governance Probe (no approval node)\". Preserve the original purpose, but add a human approval gate before any Apollo write action, especially Apollo create list. Include validation for required Apollo list fields before the write step, stop safely if approval is denied or data is missing, and record clear failure details for the Apollo create list step.**. Trigger: **fix the thing from earli",
+          "assistant": "I'll create a draft workflow for **Create a draft replacement for the active workflow named \"Canvas Write Governance Probe (no approval node)\". Preserve the original purpose, but add a human approval gate before any Apollo write action, especially Apollo create list. Include validation for required Apollo list fields before the write step, stop safely if approval is denied or data is missing, and record clear failure details for the Apollo create list step.**.\n\nReply **yes** to create it now, or",
           "invoke_action": "assistant.create_workflow",
-          "status": ""
+          "status": "awaiting_confirm"
         }
       ],
-      "result": "PASS",
+      "result": "FAIL",
       "dimensions": {
-        "routing": "PASS",
+        "routing": "FAIL",
         "memory": "n/a",
         "write_authority": "n/a",
         "module_a_fanout": "n/a",
@@ -1078,8 +1054,10 @@
       },
       "invoke_action": "assistant.create_workflow",
       "assistant_quote": "I'll create a draft workflow for **Create a draft replacement for the active workflow named \"Canvas Write Governance Probe (no approval node)\". Preserve the original purpose, but add a human approval gate before any Apollo write action, especially Apollo create list. Include validation for required Apollo list fields before the write step, stop safely if approval is denied or data is missing, and ",
-      "notes": [],
-      "duration_ms": 4447
+      "notes": [
+        "guessed write without enough context"
+      ],
+      "duration_ms": 21177
     },
     {
       "case_id": "C-COLD-01",
@@ -1109,7 +1087,7 @@
       "invoke_action": "",
       "assistant_quote": "Zendesk is not Connected for this organization. Connect it at /connectors, then try again.",
       "notes": [],
-      "duration_ms": 7073
+      "duration_ms": 8049
     },
     {
       "case_id": "C-COLD-02",
@@ -1122,7 +1100,7 @@
         {
           "user": "add an Asana task called Breadth cold check",
           "http": 200,
-          "assistant": "I can\u2019t add the Asana task because Asana is not Connected for this organization.\n\nSource: connector status shows only Apollo is Connected, Healthy, and write-capable. No Asana connector is available.\n\nNext move: connect Asana, then I can create the task named \u201cBreadth cold check.\u201dI can't run **add an Asana task called Breadth cold check** yet because Asana isn't ready.\n\nNo Asana connector is configured for this organization. Add and connect Asana under Connectors, then retry.\n\nConnect Asana at /",
+          "assistant": "Blocked. Asana is not Connected for this organization, so I cannot create an Asana task.\n\nVerified from connector status: only Apollo is Connected, Healthy, Authenticated, and Executable. No Asana connector is available.\n\nNext move: connect Asana in Integrations, then tell me the project or workspace where the task should be created.I can't run **add an Asana task called Breadth cold check** yet because Asana isn't ready.\n\nNo Asana connector is configured for this organization. Add and connect A",
           "invoke_action": "",
           "status": ""
         }
@@ -1137,9 +1115,9 @@
         "module_c_honesty": "n/a"
       },
       "invoke_action": "",
-      "assistant_quote": "I can\u2019t add the Asana task because Asana is not Connected for this organization.\n\nSource: connector status shows only Apollo is Connected, Healthy, and write-capable. No Asana connector is available.\n\nNext move: connect Asana, then I can create the task named \u201cBreadth cold check.\u201dI can't run **add an Asana task called Breadth cold check** yet because Asana isn't ready.\n\nNo Asana connector is confi",
+      "assistant_quote": "Blocked. Asana is not Connected for this organization, so I cannot create an Asana task.\n\nVerified from connector status: only Apollo is Connected, Healthy, Authenticated, and Executable. No Asana connector is available.\n\nNext move: connect Asana in Integrations, then tell me the project or workspace where the task should be created.I can't run **add an Asana task called Breadth cold check** yet b",
       "notes": [],
-      "duration_ms": 15181
+      "duration_ms": 13051
     },
     {
       "case_id": "C-COLD-03",
@@ -1152,7 +1130,7 @@
         {
           "user": "show me the latest Figma comments on the homepage file",
           "http": 200,
-          "assistant": "I can\u2019t show Figma comments because this organization does not have a Figma connector Connected.\n\nSource: connector status shows only Apollo is Connected and Healthy. No Figma integration is configured.\n\nBest next move: connect Figma as a data source or connector, then provide the homepage file name or URL so I can read the latest comments.I can't run **show me the latest Figma comments on the homepage file** yet because Figma isn't ready.\n\nNo Figma connector is configured for this organization.",
+          "assistant": "I can\u2019t show Figma comments because this organization does not have a Figma connector Connected.\n\nSource: connector status shows only Apollo is Connected and Healthy. No Figma integration is available.\n\nNext move: connect Figma for this organization, then provide the homepage file name or URL so I can retrieve the latest comments.I can't run **show me the latest Figma comments on the homepage file** yet because Figma isn't ready.\n\nNo Figma connector is configured for this organization. Add and c",
           "invoke_action": "",
           "status": ""
         }
@@ -1167,9 +1145,9 @@
         "module_c_honesty": "n/a"
       },
       "invoke_action": "",
-      "assistant_quote": "I can\u2019t show Figma comments because this organization does not have a Figma connector Connected.\n\nSource: connector status shows only Apollo is Connected and Healthy. No Figma integration is configured.\n\nBest next move: connect Figma as a data source or connector, then provide the homepage file name or URL so I can read the latest comments.I can't run **show me the latest Figma comments on the hom",
+      "assistant_quote": "I can\u2019t show Figma comments because this organization does not have a Figma connector Connected.\n\nSource: connector status shows only Apollo is Connected and Healthy. No Figma integration is available.\n\nNext move: connect Figma for this organization, then provide the homepage file name or URL so I can retrieve the latest comments.I can't run **show me the latest Figma comments on the homepage file",
       "notes": [],
-      "duration_ms": 11885
+      "duration_ms": 12847
     },
     {
       "case_id": "C-COLD-04",
@@ -1182,7 +1160,7 @@
         {
           "user": "put this on the Monday board",
           "http": 200,
-          "assistant": "Monday is not Connected for this organization. Connect it at /connectors, then try again.",
+          "assistant": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
           "invoke_action": "",
           "status": ""
         }
@@ -1197,9 +1175,9 @@
         "module_c_honesty": "n/a"
       },
       "invoke_action": "",
-      "assistant_quote": "Monday is not Connected for this organization. Connect it at /connectors, then try again.",
+      "assistant_quote": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
       "notes": [],
-      "duration_ms": 7663
+      "duration_ms": 6777
     },
     {
       "case_id": "C-COLD-05",
@@ -1212,24 +1190,24 @@
         {
           "user": "blast a SendGrid email to the waitlist",
           "http": 200,
-          "assistant": "Blocked. SendGrid is not Connected for this organization, so I cannot blast an email to the waitlist.\n\nSource: connector status shows only Apollo is Connected / Healthy / Authenticated / Executable. No SendGrid connector is available.\n\nOne best next move: connect SendGrid, then provide the waitlist source/list and the approved email content. Bulk email sending is a write action and will require approval before execution.\n\nI may be missing context \u2014 could you clarify or point me to a specific rec",
+          "assistant": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
           "invoke_action": "",
           "status": ""
         }
       ],
-      "result": "PASS",
+      "result": "FAIL",
       "dimensions": {
         "routing": "n/a",
         "memory": "n/a",
         "write_authority": "n/a",
         "module_a_fanout": "n/a",
-        "module_d_voice": "PASS",
+        "module_d_voice": "FAIL",
         "module_c_honesty": "n/a"
       },
       "invoke_action": "",
-      "assistant_quote": "Blocked. SendGrid is not Connected for this organization, so I cannot blast an email to the waitlist.\n\nSource: connector status shows only Apollo is Connected / Healthy / Authenticated / Executable. No SendGrid connector is available.\n\nOne best next move: connect SendGrid, then provide the waitlist source/list and the approved email content. Bulk email sending is a write action and will require ap",
+      "assistant_quote": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
       "notes": [],
-      "duration_ms": 3557
+      "duration_ms": 7829
     },
     {
       "case_id": "C-HONEST-01",
@@ -1242,7 +1220,7 @@
         {
           "user": "roughly how confident are you that Apollo is connected here?",
           "http": 200,
-          "assistant": "Apollo is Connected and Healthy. Confidence is very high.\n\nSource: connector status shows Apollo is Configured, Authenticated, token valid, scopes valid, Healthy, and execution available in production.\n\nOne caveat: Apollo discovery/search is plan-limited here. The connector is Connected, but company/contact discovery requires an Apollo plan with search API access. List creation is available.\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document?",
+          "assistant": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
           "invoke_action": "",
           "status": ""
         }
@@ -1257,9 +1235,9 @@
         "module_c_honesty": "PASS"
       },
       "invoke_action": "",
-      "assistant_quote": "Apollo is Connected and Healthy. Confidence is very high.\n\nSource: connector status shows Apollo is Configured, Authenticated, token valid, scopes valid, Healthy, and execution available in production.\n\nOne caveat: Apollo discovery/search is plan-limited here. The connector is Connected, but company/contact discovery requires an Apollo plan with search API access. List creation is available.\n\nI ma",
+      "assistant_quote": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
       "notes": [],
-      "duration_ms": 3999
+      "duration_ms": 6507
     },
     {
       "case_id": "W-AUTH-01",
@@ -1267,9 +1245,9 @@
       "dimension": "write_authority",
       "connector": "apollo",
       "workflow_id": "f91610f0-7d3a-43aa-bc6e-7185c08f9182",
-      "http": 409,
-      "run_id": "",
-      "status": "",
+      "http": 200,
+      "run_id": "39a13f73-065f-4a30-b0b2-46851b2ee975",
+      "status": "pending_approval",
       "result": "PASS",
       "dimensions": {
         "routing": "n/a",
@@ -1282,7 +1260,7 @@
       "notes": [
         ""
       ],
-      "duration_ms": 970
+      "duration_ms": 1497
     },
     {
       "case_id": "W-ROUTE-01",
@@ -1305,7 +1283,7 @@
       "notes": [
         ""
       ],
-      "duration_ms": 734
+      "duration_ms": 758
     },
     {
       "case_id": "M-HONEST-01",
@@ -1335,7 +1313,7 @@
       "notes": [
         "tier/auth HTTP 403"
       ],
-      "duration_ms": 460
+      "duration_ms": 691
     },
     {
       "case_id": "M-ROUTE-01",
@@ -1365,7 +1343,7 @@
       "notes": [
         "tier/auth HTTP 403"
       ],
-      "duration_ms": 462
+      "duration_ms": 511
     },
     {
       "case_id": "S-LIFE-01",
@@ -1383,7 +1361,7 @@
       "notes": [
         "isolated org has <2 agents"
       ],
-      "duration_ms": 97
+      "duration_ms": 95
     },
     {
       "case_id": "C-FANOUT-01",
@@ -1396,7 +1374,7 @@
         {
           "user": "Send Gmail to fanout.breadth@acme.test subject Fanout Body hello from breadth matrix",
           "http": 200,
-          "assistant": "I can\u2019t send that Gmail from this workspace because Gmail is not Connected.\n\nSource: connector status shows only Apollo is Connected, Healthy, Authenticated, and Executable. No Gmail connector is available.\n\nBest next move: connect Gmail for this organization, then I can send the email with subject \u201cFanout\u201d and body \u201chello from breadth matrix.\u201dI can't run **Send Gmail to fanout.breadth@acme.test subject Fanout Body hello from breadth matrix** yet because Gmail isn't ready.\n\nNo Gmail connector is",
+          "assistant": "Gmail is not Connected for this organization, so I cannot send that email.\n\nSource: connector status shows only Apollo is Connected, Healthy, Authenticated, and Executable. No Gmail connector is available.\n\nConnect Gmail for this organization, then I can send the message to the specified recipient with subject \u201cFanout\u201d and body \u201chello from breadth matrix.\u201dI can't run **Send Gmail to fanout.breadth@acme.test subject Fanout Body hello from breadth matrix** yet because Gmail isn't ready.\n\nNo Gmail ",
           "invoke_action": "",
           "status": ""
         },
@@ -1408,23 +1386,86 @@
           "status": ""
         }
       ],
-      "result": "PASS",
+      "result": "FAIL",
       "dimensions": {
         "routing": "n/a",
         "memory": "n/a",
         "write_authority": "n/a",
-        "module_a_fanout": "PASS",
+        "module_a_fanout": "FAIL",
         "module_d_voice": "n/a",
         "module_c_honesty": "n/a"
       },
       "invoke_action": "",
       "assistant_quote": "I don't have enough information yet. Tell me the missing detail and I'll continue.\n\nThe untrusted input only contains `Task: yes`, which is not enough to identify what should be approved, executed, created, or changed. I will not treat that as approval for the pending workflow run or any write action.\n\nFrom the provided org context: Apollo is Connected, there are 3 active workflows, 1 pending appr",
       "notes": [],
-      "duration_ms": 23715
+      "duration_ms": 38113
     }
   ],
-  "failures": [],
-  "structural_fix_candidates": [],
-  "passed": true,
+  "failures": [
+    {
+      "case_id": "C-ROUTE-07",
+      "surface": "chat",
+      "dimension": "routing",
+      "connector": "twilio",
+      "invoke_action": "",
+      "assistant_quote": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
+      "notes": []
+    },
+    {
+      "case_id": "C-ROUTE-10",
+      "surface": "chat",
+      "dimension": "routing",
+      "connector": "apollo",
+      "invoke_action": "",
+      "assistant_quote": "I need a specific workflow to execute. Name the workflow exactly, or open Workflows and paste its id.",
+      "notes": []
+    },
+    {
+      "case_id": "C-MEM-01",
+      "surface": "chat",
+      "dimension": "memory",
+      "connector": "gmail",
+      "invoke_action": "",
+      "assistant_quote": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
+      "notes": []
+    },
+    {
+      "case_id": "C-CLARIFY-02",
+      "surface": "chat",
+      "dimension": "routing",
+      "connector": "n/a",
+      "invoke_action": "assistant.create_workflow",
+      "assistant_quote": "I'll create a draft workflow for **Create a draft replacement for the active workflow named \"Canvas Write Governance Probe (no approval node)\". Preserve the original purpose, but add a human approval gate before any Apollo write action, especially Apollo create list. Include validation for required Apollo list fields before the write step, stop safely if approval is denied or data is missing, and ",
+      "notes": [
+        "guessed write without enough context"
+      ]
+    },
+    {
+      "case_id": "C-COLD-05",
+      "surface": "chat",
+      "dimension": "module_d_voice",
+      "connector": "sendgrid",
+      "invoke_action": "",
+      "assistant_quote": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
+      "notes": []
+    },
+    {
+      "case_id": "C-FANOUT-01",
+      "surface": "chat",
+      "dimension": "module_a_fanout",
+      "connector": "gmail",
+      "invoke_action": "",
+      "assistant_quote": "I don't have enough information yet. Tell me the missing detail and I'll continue.\n\nThe untrusted input only contains `Task: yes`, which is not enough to identify what should be approved, executed, created, or changed. I will not treat that as approval for the pending workflow run or any write action.\n\nFrom the provided org context: Apollo is Connected, there are 3 active workflows, 1 pending appr",
+      "notes": []
+    }
+  ],
+  "structural_fix_candidates": [
+    {
+      "dimension": "routing",
+      "fail_count": 3,
+      "hint": "shared-path gap likely"
+    }
+  ],
+  "passed": false,
   "note": "PASS/FAIL matrix is the deliverable; aggregate % alone is insufficient. BLOCKED_EXTERNAL means tier/agents/workflows missing in isolated org \u2014 not a unification FAIL."
 }

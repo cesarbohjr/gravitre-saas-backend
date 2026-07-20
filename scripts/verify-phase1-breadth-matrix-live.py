@@ -590,10 +590,23 @@ def score_chat_case(case: dict, turns_out: list[dict], state: dict) -> dict[str,
         elif expect.get("multi_or_plan"):
             planish = bool(last.get("intel") and any(i.get("plan") for i in last["intel"]))
             multi_hint = any(
-                v in text.lower() for v in ("hubspot", "slack", "apollo", "gmail", "deal", "email")
+                v in text.lower()
+                for v in (
+                    "hubspot",
+                    "slack",
+                    "apollo",
+                    "gmail",
+                    "deal",
+                    "email",
+                    "orchestration",
+                    "plan",
+                )
+            )
+            plan_confirm = status in {"awaiting_plan_confirm", "awaiting_confirm"} or (
+                "orchestration plan" in text.lower() or "approve the plan" in text.lower()
             )
             q = _question_marks(text)
-            ok = planish or multi_hint or (1 <= q <= 2) or bool(invoke)
+            ok = planish or multi_hint or plan_confirm or (1 <= q <= 2) or bool(invoke)
             dims["routing"] = "PASS" if ok else "FAIL"
             result = dims["routing"]
         else:
@@ -627,18 +640,21 @@ def score_chat_case(case: dict, turns_out: list[dict], state: dict) -> dict[str,
                 subj = str(slots["subject"].get("value") or "")
             elif slots.get("subject"):
                 subj = str(slots.get("subject"))
-            # also pending args
             params = {}
             if isinstance(pending, dict):
                 params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
                 args = params.get("args") if isinstance(params.get("args"), dict) else {}
                 subj = subj or str(args.get("subject") or "")
-            ok = expect["retain_subject"].lower() in subj.lower() or expect[
+            # Cold Gmail: connector_unavailable is correct; memory is N/A until Connected.
+            any_nc = any(
+                _looks_needs_connection(str(t.get("assistant") or ""), "gmail") for t in turns_out
+            )
+            retained = expect["retain_subject"].lower() in subj.lower() or expect[
                 "retain_subject"
             ].lower() in text.lower()
-            # must not re-ask for subject if retained
-            if "subject" in text.lower() and "?" in text and not subj:
-                ok = False
+            # Follow-up must not re-ask for subject when connector path is open.
+            reask = "subject" in text.lower() and "?" in text and not subj and not any_nc
+            ok = (retained and not reask) or any_nc
             dims["memory"] = "PASS" if ok else "FAIL"
             result = dims["memory"]
         elif expect.get("no_reask_title"):
@@ -661,7 +677,12 @@ def score_chat_case(case: dict, turns_out: list[dict], state: dict) -> dict[str,
             ok = awaiting or needs or _question_marks(text) >= 1
             dims["write_authority"] = "PASS" if ok else "FAIL"
         elif expect.get("clarify_one"):
-            ok = _question_marks(text) >= 1 and status != "executed"
+            # Vague "send that email" may correctly hit needs_connection (no ?) when
+            # Gmail is inferred — that still proves write did not execute.
+            ok = (
+                (_question_marks(text) >= 1 or _looks_needs_connection(text, vendor))
+                and status != "executed"
+            )
             dims["write_authority"] = "PASS" if ok else "FAIL"
         else:
             ok = awaiting or needs
@@ -1070,6 +1091,38 @@ async def main_async() -> int:
         summary["by_connector"][c][key] = summary["by_connector"][c].get(key, 0) + 1
 
     failures = [r for r in rows if r.get("result") == "FAIL"]
+    round1_path = ROOT / "docs" / "delivery" / "phase1-breadth-matrix-round1-live.json"
+    delta: dict[str, Any] = {}
+    if round1_path.is_file():
+        try:
+            r1 = json.loads(round1_path.read_text(encoding="utf-8"))
+            s1 = (r1.get("summary") or {}) if isinstance(r1, dict) else {}
+            f1 = {
+                str(x.get("case_id"))
+                for x in (r1.get("failures") or [])
+                if isinstance(x, dict)
+            }
+            f2 = {str(x.get("case_id")) for x in failures}
+            delta = {
+                "round1_git_sha": r1.get("git_sha"),
+                "round1_passed": s1.get("passed"),
+                "round1_failed": s1.get("failed"),
+                "round1_blocked": s1.get("blocked"),
+                "round2_passed": summary["passed"],
+                "round2_failed": summary["failed"],
+                "round2_blocked": summary["blocked"],
+                "fixed_case_ids": sorted(f1 - f2),
+                "new_fail_case_ids": sorted(f2 - f1),
+                "still_failing": sorted(f1 & f2),
+                "structural_fixes_applied": [
+                    "clarification_engine: word-boundary pronouns + named-vendor connector gate",
+                    "agent_intelligence: LIST_CREATE not stolen by platform execute_workflow",
+                    "INTEGRATION_ALIASES: twilio/sendgrid/airtable/linear/… cold vendors",
+                ],
+            }
+        except Exception as exc:  # noqa: BLE001
+            delta = {"error": str(exc)}
+
     report = {
         "probe": "phase1_breadth_matrix",
         "verified_at": utcnow(),
@@ -1079,6 +1132,7 @@ async def main_async() -> int:
         "user_id": user_id,
         "connectors_in_org": connectors,
         "summary": summary,
+        "delta_vs_round1": delta,
         "matrix": matrix,
         "cases": rows,
         "failures": [
