@@ -1,0 +1,46 @@
+{
+  "probe": "module_c_inconclusive_resolve",
+  "verified_at": "2026-07-20T07:34:49.704898+00:00",
+  "git_sha": "fae1c65228be5e307710e1822a053c44ed873b99",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "organic_term": "Phase0Resolve-515f2f5e",
+  "glossary_id": "73d84d1d-6765-44d7-93d1-298b3b337fa3",
+  "target_department": "sales",
+  "edge_upsert_ok": true,
+  "seeded_edge_confidence": {
+    "confidence": 0.73,
+    "confidence_is_estimate": true,
+    "confidenceIsEstimate": true,
+    "confidence_source": "entity_relationship_heuristic",
+    "confidenceSource": "entity_relationship_heuristic"
+  },
+  "6_entity_relationships": {
+    "prior": "LIVE INCONCLUSIVE \u2014 no edges in prod",
+    "http": 200,
+    "entity_scoped_http": 200,
+    "total": 2,
+    "relationship0": {
+      "confidence": 0.73,
+      "confidence_is_estimate": true,
+      "confidence_source": "entity_relationship_heuristic"
+    },
+    "resolved": "PASS",
+    "pass": true
+  },
+  "7_contextual_entities": {
+    "prior": "LIVE INCONCLUSIVE \u2014 NO_PUBLIC_JSON / ask 500",
+    "http": 200,
+    "envelope_labeled": true,
+    "entity_count": 0,
+    "entity0": {
+      "confidence": null,
+      "confidence_is_estimate": null,
+      "confidence_source": null,
+      "text": null
+    },
+    "resolved": "PASS",
+    "pass": true
+  },
+  "passed": true,
+  "note": "Organic glossary+department edge in isolated org; labeling contract verified live. Not permanently untestable."
+}

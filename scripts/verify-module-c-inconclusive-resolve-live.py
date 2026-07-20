@@ -162,24 +162,7 @@ def main() -> int:
             or []
         )
         gloss_id = str(fetched[0]["id"]) if fetched else ""
-    dept = (
-        client.table("departments")
-        .select("id")
-        .eq("org_id", org_id)
-        .limit(1)
-        .execute()
-        .data
-        or []
-    )
-    if not dept:
-        d = (
-            client.table("departments")
-            .insert({"org_id": org_id, "name": "Phase0 Sales", "slug": f"phase0-{uuid.uuid4().hex[:6]}"})
-            .execute()
-        )
-        dept_id = str((d.data or [{}])[0].get("id") or "")
-    else:
-        dept_id = str(dept[0]["id"])
+    # Edge targets a department slug string (no departments-row insert required).
 
     from app.services.confidence_honesty import CONFIDENCE_SOURCE_EDGE_HEURISTIC
 
@@ -247,7 +230,7 @@ def main() -> int:
         "org_id": org_id,
         "organic_term": term,
         "glossary_id": gloss_id,
-        "department_id": dept_id,
+        "target_department": "sales",
         "edge_upsert_ok": bool(edge_ok),
         "seeded_edge_confidence": labeled,
         "6_entity_relationships": {

@@ -1,14 +1,14 @@
 {
   "probe": "module_b_subject_pollution",
-  "verified_at": "2026-07-20T07:10:35.546617+00:00",
-  "git_sha": "7ee5d704cc4a59f93386c5392a1f8b346e877a7c",
+  "verified_at": "2026-07-20T07:31:15.181036+00:00",
+  "git_sha": "fae1c65228be5e307710e1822a053c44ed873b99",
   "base": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "conversation_id": "b8de8db0-56aa-4007-bf0c-0eaa6409fbff",
+  "conversation_id": "dea9c1d7-6eca-4942-84e9-181be068bac7",
   "after_filler_subject": null,
-  "after_explicit_subject": "pollution@acme.test, subject Integration proof",
+  "after_explicit_subject": "Integration proof",
   "filler_polluted": false,
-  "explicit_subject_ok": false,
+  "explicit_subject_ok": true,
   "turns": [
     {
       "user": "Send an email via Gmail \u2014 I haven't given you the recipient yet.",
@@ -55,7 +55,7 @@
             "confidence": "high"
           },
           "subject": {
-            "value": "pollution@acme.test, subject Integration proof",
+            "value": "Integration proof",
             "source": "schema_param_extractor",
             "confidence": "high"
           }
@@ -64,6 +64,6 @@
       }
     }
   ],
-  "passed": false,
-  "verdict": "FAIL \u2014 subject still polluted or not repaired"
+  "passed": true,
+  "verdict": "PASS \u2014 filler did not pollute subject; explicit subject Integration proof retained"
 }

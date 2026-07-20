@@ -1,7 +1,7 @@
 {
   "probe": "phase0_real_vendor_success",
-  "verified_at": "2026-07-20T07:11:51.167020+00:00",
-  "git_sha": "7ee5d704cc4a59f93386c5392a1f8b346e877a7c",
+  "verified_at": "2026-07-20T07:36:35.682319+00:00",
+  "git_sha": "fae1c65228be5e307710e1822a053c44ed873b99",
   "base": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "apollo_connector": {
@@ -10,18 +10,19 @@
     "status": "healthy",
     "name": "apollo-isolated-smoke"
   },
-  "conversation_id": "89381c87-974e-400f-9d4f-b04c210ea55e",
-  "list_name": "Phase0 Vendor Proof 48783c56",
+  "conversation_id": "0170cfdc-5b7a-4070-b93b-c96104b99fd3",
+  "list_name": "Phase0 Vendor Proof e7af9b08",
   "turns": [
     {
-      "user": "Create an Apollo contact list named Phase0 Vendor Proof 48783c56",
-      "assistant": "I can create a contact list named **Phase0 Vendor Proof 48783c56** in Apollo.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
+      "user": "Create an Apollo contact list named Phase0 Vendor Proof e7af9b08",
+      "assistant": "I can create a contact list named **Phase0 Vendor Proof e7af9b08** in Apollo.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
       "pending": {
         "type": "connector_action",
         "params": {
           "args": {
-            "name": "Phase0 Vendor Proof 48783c56",
-            "list_name": "Phase0 Vendor Proof 48783c56"
+            "name": "Phase0 Vendor Proof e7af9b08",
+            "list_name": "Phase0 Vendor Proof e7af9b08",
+            "connector_id": "8992743f-6632-4252-81a1-8d09c0482575"
           },
           "kind": "write",
           "label": "Create contact list",
@@ -41,37 +42,37 @@
     },
     {
       "user": "yes",
-      "assistant": "Done \u2014 **Create contact list**.\n\nCreated contact list \"Phase0 Vendor Proof 48783c56\" (id: 6a5dca11479877000cf9784a).\n\n[View in Gravitre](/ai?conversation=89381c87-974e-400f-9d4f-b04c210ea55e)\n\n[View in Apollo](https://app.apollo.io/#/lists/6a5dca11479877000cf9784a)",
+      "assistant": "Done \u2014 **Create contact list**.\n\nCreated contact list \"Phase0 Vendor Proof e7af9b08\" (id: 6a5dcfe369c2db001892af4f).\n\n[View in Gravitre](/ai?conversation=0170cfdc-5b7a-4070-b93b-c96104b99fd3)\n\n[View in Apollo](https://app.apollo.io/#/lists/6a5dcfe369c2db001892af4f)",
       "pending": {
         "type": "connector_action",
         "result": {
-          "body": "Created contact list \"Phase0 Vendor Proof 48783c56\" (id: 6a5dca11479877000cf9784a).",
+          "body": "Created contact list \"Phase0 Vendor Proof e7af9b08\" (id: 6a5dcfe369c2db001892af4f).",
           "title": "Create contact list",
           "success": true,
           "artifacts": null,
           "entity_id": "8992743f-6632-4252-81a1-8d09c0482575",
           "error_code": null,
-          "result_url": "/ai?conversation=89381c87-974e-400f-9d4f-b04c210ea55e",
+          "result_url": "/ai?conversation=0170cfdc-5b7a-4070-b93b-c96104b99fd3",
           "structured": {
             "label": {
-              "id": "6a5dca11479877000cf9784a",
-              "name": "Phase0 Vendor Proof 48783c56",
+              "id": "6a5dcfe369c2db001892af4f",
+              "name": "Phase0 Vendor Proof e7af9b08",
               "user_id": "6a20f3cf0cb1120020d333df",
               "modality": "contacts",
               "sub_type": null,
-              "created_at": "2026-07-20T07:11:13.400Z",
-              "updated_at": "2026-07-20T07:11:13.400Z",
+              "created_at": "2026-07-20T07:36:03.461Z",
+              "updated_at": "2026-07-20T07:36:03.461Z",
               "cached_count": 0,
               "book_of_business": null
             },
-            "list_id": "6a5dca11479877000cf9784a",
-            "result_url": "https://app.apollo.io/#/lists/6a5dca11479877000cf9784a",
-            "external_url": "https://app.apollo.io/#/lists/6a5dca11479877000cf9784a"
+            "list_id": "6a5dcfe369c2db001892af4f",
+            "result_url": "https://app.apollo.io/#/lists/6a5dcfe369c2db001892af4f",
+            "external_url": "https://app.apollo.io/#/lists/6a5dcfe369c2db001892af4f"
           },
           "task_label": "Create contact list",
           "entity_type": "connector",
           "integration": "apollo",
-          "external_url": "https://app.apollo.io/#/lists/6a5dca11479877000cf9784a",
+          "external_url": "https://app.apollo.io/#/lists/6a5dcfe369c2db001892af4f",
           "assumption_notes": null,
           "notification_type": "task_completed",
           "connector_management_url": "/connectors/8992743f-6632-4252-81a1-8d09c0482575"
@@ -81,18 +82,18 @@
     }
   ],
   "fanout": {
-    "run_id": "b1b1fcdf-13a8-4e08-b8a8-7f57bc5ff26a",
+    "run_id": "9bce0d0c-10ff-405f-919b-b4c02603ff62",
     "run_status": "completed",
     "notification_id": null,
     "notification_title": null,
     "notification_body": null,
-    "learning_record_id": "851b0f39-9d85-48e9-8af0-9510c14434a3",
+    "learning_record_id": "d1841b28-c219-459c-8651-5a71cb926177",
     "audit_event_ids": [
-      "424d34e6-935e-4db8-b502-61ee9c560299",
-      "2effc4f2-15e5-4b0c-a7a8-523fe490ead0"
+      "6f38cb78-7c56-4cb5-a7e8-03b22aa659cd",
+      "665279ba-3ffa-4d8d-977e-ab2d07fae3f9"
     ],
     "fanout_complete": false
   },
   "passed": true,
-  "verdict": "PASS \u2014 Apollo list create fanout run=b1b1fcdf-13a8-4e08-b8a8-7f57bc5ff26a notify=None learn=851b0f39-9d85-48e9-8af0-9510c14434a3"
+  "verdict": "PASS \u2014 Apollo list create fanout run=9bce0d0c-10ff-405f-919b-b4c02603ff62 notify=None learn=d1841b28-c219-459c-8651-5a71cb926177"
 }
