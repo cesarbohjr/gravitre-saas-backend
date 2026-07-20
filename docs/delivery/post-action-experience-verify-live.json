@@ -1,0 +1,84 @@
+{
+  "probe": "post_action_experience_verify",
+  "verified_at": "2026-07-20T20:23:01.782845+00:00",
+  "git_sha": "40aac039ccc1",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "user_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "items": {
+    "completion_card_and_recommendation": {
+      "conversation_id": "c5814bb3-e697-4433-9c14-aee719d8fd93",
+      "list_name": "PostAction-Verify-1db35e4b",
+      "assistant_quote": "**Done \u2014 Create contact list**\n\nCreated contact list \"PostAction-Verify-1db35e4b\" (id: 6a5e83c6b49bd9001c143925).\n\n_What this means:_ List \"PostAction-Verify-1db35e4b\" is ready in Apollo with 0 contacts \u2014 ready for your next outreach step once you add people.\n\n[View in Gravitre](/ai?conversation=c5814bb3-e697-4433-9c14-aee719d8fd93)\n\n[View in Apollo](https://app.apollo.io/#/lists/6a5e83c6b49bd9001c143925)\n\n**What I'd look at next:** Populate the list for outreach \u2014 The list exists but has no contacts yet. I'd search Apollo for matching people and add them next.\n_Suggest only \u2014 reply_ **Search Apollo for people to add to this list** _to proceed (nothing runs until you approve)._",
+      "has_what_this_means": true,
+      "has_vendor_http_link": true,
+      "vendor_url": "https://app.apollo.io/#/lists/6a5e83c6b49bd9001c143925",
+      "has_recommendation": true,
+      "recommendation": {
+        "id": "post-action-apollo.lists.create",
+        "kind": "post_action_next_step",
+        "title": "Populate the list for outreach",
+        "reason": "The list exists but has no contacts yet. I'd search Apollo for matching people and add them next.",
+        "suggestedUtterance": "Search Apollo for people to add to this list",
+        "evidence": {
+          "invokeAction": "apollo.lists.create",
+          "integration": "apollo",
+          "entityId": "8992743f-6632-4252-81a1-8d09c0482575",
+          "externalUrl": "https://app.apollo.io/#/lists/6a5e83c6b49bd9001c143925",
+          "success": true
+        },
+        "confidence": 0.78,
+        "confidence_is_estimate": true,
+        "confidenceIsEstimate": true,
+        "confidence_source": "heuristic",
+        "confidenceSource": "heuristic",
+        "priority": 90,
+        "advisoryOnly": true,
+        "href": "https://app.apollo.io/#/lists/6a5e83c6b49bd9001c143925"
+      },
+      "completion_card": {
+        "whatHappened": "Created contact list \"PostAction-Verify-1db35e4b\" (id: 6a5e83c6b49bd9001c143925).",
+        "whatThisMeans": "List \"PostAction-Verify-1db35e4b\" is ready in Apollo with 0 contacts \u2014 ready for your next outreach step once you add people.",
+        "vendorUrl": "https://app.apollo.io/#/lists/6a5e83c6b49bd9001c143925",
+        "gravitreUrl": "/ai?conversation=c5814bb3-e697-4433-9c14-aee719d8fd93",
+        "success": true
+      },
+      "execution_success": true,
+      "verdict": "PASS"
+    },
+    "inline_preview": {
+      "conversation_id": "c5814bb3-e697-4433-9c14-aee719d8fd93",
+      "assistant_quote": "**Live Apollo preview** (fetched now, not a replay of the create payload)\n\n- Name: **PostAction-Verify-1db35e4b**\n- Id: `6a5e83c6b49bd9001c143925`\n- Modality: contacts\n- Contact count: 0\n- Source: live list call succeeded; fields confirmed from the just-created Apollo record\n- Lists scanned live: 0\n\n[Open in Apollo](https://app.apollo.io/#/lists/6a5e83c6b49bd9001c143925)\n\n_What this means:_ this is the current vendor-side object \u2014 counts and fields can differ from what was sent at create time.",
+      "inline_preview": true,
+      "mentions_list_name": true,
+      "verdict": "PASS"
+    },
+    "swarm_step_transparency": {
+      "conversation_id": "48d17781-5111-4be0-af73-ce3d7b3c6fe4",
+      "swarm_id": "c54ddbe8-ec0b-4f0f-bebc-d6d4389c4c65",
+      "assistant_quote": "**Swarm run** `c54ddbe8-ec0b-4f0f-bebc-d6d4389c4c65` \u2014 step-level breakdown\n\n**Objective:** Find our top stalled deals and plan how Marketing should message the team \u2014 Sales owns deal diagnosis; Marketing owns outreach framing.\n\n### What each agent did\n1. \u2713 **Phase1 Sales Swarm Agent** (completed)\n   Evidence: Blocked. I cannot identify top stalled deals, stage age, owner risk, or next commercial action from the available connected systems. The provided org context shows only Apollo is Connected and Executable; no CRM/deal system such as HubSpot or Salesforce is connected. No knowledge-base excerpts were retrieved for this task.\n\nStalled-deal diagnosis requires opportunity/deal records with stage history, owner, activit\u2026\n   Recommended: Blocked\n\n2. \u2713 **Phase1 Marketing Swarm Agent** (completed)\n   Evidence: Marketing framing is executable, but top stalled deals are not verified because no CRM/deal-stage source is connected in this task. No knowledge-base excerpts were retrieved, so this is not based on documented product or policy facts. Connected source available: Apollo only, which is not sufficient to identify stalled deal stage, value, owner, or last activity.\n\nRecommended next",
+      "shows_sales_and_marketing": true,
+      "execution_entity": "swarm_run",
+      "verdict": "PASS"
+    },
+    "failure_bridge": {
+      "conversation_id": "1484cd77-70da-47d6-a3fd-9aba7ec4aff9",
+      "assistant_quote": "Zendesk is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again.",
+      "failure_bridge": null,
+      "verdict": "PASS"
+    },
+    "recommendation_suggest_only": {
+      "advisoryOnly": true,
+      "has_banned_keys": false,
+      "verdict": "PASS"
+    }
+  },
+  "verdicts": {
+    "completion_card_and_recommendation": "PASS",
+    "inline_preview": "PASS",
+    "swarm_step_transparency": "PASS",
+    "failure_bridge": "PASS",
+    "recommendation_suggest_only": "PASS"
+  },
+  "overall": "PASS"
+}
