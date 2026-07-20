@@ -1,5 +1,5 @@
 {
-  "verified_at": "2026-07-20T01:06:57.650975+00:00",
+  "verified_at": "2026-07-20T02:32:27.112162+00:00",
   "module": "A",
   "ticket": "STA-329",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
@@ -7,20 +7,20 @@
   "email": "conversation-smoke-sa@gravitre.app",
   "paths": [
     {
-      "run_id": "9eacd4ab-c45c-4cbb-bc22-e1950c779036",
+      "run_id": "87994ee3-58a4-40ce-ae26-66f8f76824cd",
       "run_status_legacy": "failed",
       "run_status_contract": "failed",
       "audit_event_ids": [
-        "f192d8c9-9449-4ea0-910a-c422892987e9"
+        "ae34ab9d-b325-4157-97cb-8b3449ec0b64"
       ],
       "audit_log_ids": [
-        "50ffe154-2a7a-480c-807d-e0c60d79b470"
+        "ebf926e9-184b-4683-9342-13d9a1ac68a8"
       ],
       "notification_ids": [
-        "e1a75078-3609-405e-99e4-ec194a027369"
+        "be3fd696-6746-4909-8a4d-ea56c09b0018"
       ],
       "learning_event_ids": [
-        "cc50cbb4-6cf1-4818-9983-a7d967f61503"
+        "ee3c79d9-f612-4b13-9845-d78009b95ef5"
       ],
       "schema_versions": [
         "1.0.0"
@@ -37,20 +37,20 @@
       "path": "chat_orch"
     },
     {
-      "run_id": "68633452-4991-4ed7-ae9e-b564f5522509",
+      "run_id": "606a0c7d-7004-4d07-83df-3a290cf70414",
       "run_status_legacy": "failed",
       "run_status_contract": "failed",
       "audit_event_ids": [
-        "ae9466f5-9ab2-4ec5-887d-e723d57761f4"
+        "5f22e223-e2bf-440a-8dfe-f1d7dac9f79b"
       ],
       "audit_log_ids": [
-        "6b7dee49-54d3-4908-b285-75e13eef697b"
+        "697bbcc5-718f-4555-b066-8d4331904606"
       ],
       "notification_ids": [
-        "cd96cce9-8a82-4b8b-b3eb-850680b94dfc"
+        "4c3a99c5-0189-485e-80b3-ea62436cce99"
       ],
       "learning_event_ids": [
-        "bf75e923-321f-4f0c-ae87-4006718d42ce"
+        "3a1e11ac-634f-4cd1-a534-3e8df80c85d0"
       ],
       "schema_versions": [
         "1.0.0"
@@ -67,20 +67,51 @@
       "path": "canvas"
     },
     {
-      "run_id": "aa8459e1-c4ee-4a5b-b5ab-dc18123e735b",
+      "run_id": "d499ebf1-4a7d-4eec-82d8-f8c324763d56",
       "run_status_legacy": "failed",
       "run_status_contract": "failed",
       "audit_event_ids": [
-        "db8dca02-8c47-47e4-a863-6585530af013"
+        "6c96ec81-96fc-4c97-bac3-a8bea2e62190"
       ],
       "audit_log_ids": [
-        "daeb8ae0-8fc7-46b5-bf36-369d1a8ed3e5"
+        "2ec8cf99-9b26-4a4f-a89e-898a40ee337e"
       ],
       "notification_ids": [
-        "5786b436-f451-4eb5-b3e9-b7e8d8b56c9a"
+        "a4c438a4-7456-4547-beed-15ae0e2c648c"
       ],
       "learning_event_ids": [
-        "6e4203b3-d835-4bc2-8079-06785b329f0d"
+        "458dc9e3-cc4b-433d-b54f-123bf7b494c0"
+      ],
+      "schema_versions": [
+        "1.0.0"
+      ],
+      "checks": {
+        "runs_legacy_failed": true,
+        "runs_contract_failed": true,
+        "audit_events": true,
+        "audit_logs": true,
+        "notifications_run_failed": true,
+        "learning_workflow_failed": true
+      },
+      "fanout_complete": true,
+      "path": "agent_jobs",
+      "job_id": "aa58c5f3-0ced-4b7f-9739-c3249f4d1ad7"
+    },
+    {
+      "run_id": "d72f0e2b-851f-4f2e-80ac-483584ecd502",
+      "run_status_legacy": "failed",
+      "run_status_contract": "failed",
+      "audit_event_ids": [
+        "a63ecaa3-0631-4985-be02-03fd0375f092"
+      ],
+      "audit_log_ids": [
+        "58e64703-a3fc-48be-90a5-44ed518ea88a"
+      ],
+      "notification_ids": [
+        "70b1e841-9a46-4fb9-a03d-10e4cfb7c06f"
+      ],
+      "learning_event_ids": [
+        "df654724-44b8-4fdc-87fa-45e878cf54df"
       ],
       "schema_versions": [
         "1.0.0"
@@ -96,38 +127,8 @@
       "fanout_complete": true,
       "path": "connector_trigger",
       "execute_status": "failed"
-    },
-    {
-      "run_id": "e9fc2a18-5a48-42a5-baf7-b632cfa3163c",
-      "run_status_legacy": "failed",
-      "run_status_contract": "failed",
-      "audit_event_ids": [
-        "bfface49-d822-4b0b-87b4-ea974b196f19"
-      ],
-      "audit_log_ids": [
-        "ca8ebbaf-9eef-4504-906e-ab9a8fe8d016"
-      ],
-      "notification_ids": [
-        "ff3595be-a0e2-4539-b3dc-4a743c45fff9"
-      ],
-      "learning_event_ids": [
-        "7751b3fd-5445-46e2-9c8a-4b36091b8578"
-      ],
-      "schema_versions": [
-        "1.0.0"
-      ],
-      "checks": {
-        "runs_legacy_failed": true,
-        "runs_contract_failed": true,
-        "audit_events": true,
-        "audit_logs": true,
-        "notifications_run_failed": true,
-        "learning_workflow_failed": true
-      },
-      "fanout_complete": true,
-      "path": "agent_jobs",
-      "job_id": "2545685b-59c6-475f-a608-fa64c1d79f55"
     }
   ],
-  "all_four_fanout_complete": true
+  "all_four_fanout_complete": true,
+  "deployed_git_sha": "bc4c133dfc944c442f67329c5083427cbcfe8227"
 }

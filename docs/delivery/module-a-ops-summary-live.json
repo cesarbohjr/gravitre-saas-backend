@@ -1,0 +1,67 @@
+{
+  "verified_at": "2026-07-20T02:30:20.049748+00:00",
+  "base": "https://api.gravitre.app",
+  "health_git_sha": "bc4c133dfc944c442f67329c5083427cbcfe8227",
+  "expected_sha_prefix": "bc4c133d",
+  "sha_match": true,
+  "ops_http": 200,
+  "ops_summary": {
+    "window_hours": 24,
+    "since": "2026-07-19T02:30:19.962618+00:00",
+    "totals": {
+      "pass": 0,
+      "fail": 25,
+      "cancel": 0,
+      "other": 0
+    },
+    "pass_rate": 0.0,
+    "by_source": [
+      {
+        "source": "chat_orch",
+        "pass": 0,
+        "fail": 9,
+        "cancel": 0,
+        "pass_rate": 0.0
+      },
+      {
+        "source": "assignment",
+        "pass": 0,
+        "fail": 7,
+        "cancel": 0,
+        "pass_rate": 0.0
+      },
+      {
+        "source": "canvas",
+        "pass": 0,
+        "fail": 5,
+        "cancel": 0,
+        "pass_rate": 0.0
+      },
+      {
+        "source": "api",
+        "pass": 0,
+        "fail": 3,
+        "cancel": 0,
+        "pass_rate": 0.0
+      },
+      {
+        "source": "assistant_chat",
+        "pass": 0,
+        "fail": 1,
+        "cancel": 0,
+        "pass_rate": 0.0
+      }
+    ],
+    "by_connector": [
+      {
+        "connector": "unspecified",
+        "pass": 0,
+        "fail": 25,
+        "cancel": 0,
+        "pass_rate": 0.0
+      }
+    ],
+    "event_count": 25
+  },
+  "pass": true
+}
