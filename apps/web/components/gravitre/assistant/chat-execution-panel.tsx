@@ -4,6 +4,10 @@ import Link from "next/link"
 import { ArrowRight, CheckCircle2, Loader2, ShieldAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import {
+  BusinessOutcomeView,
+  type BusinessOutcomeDto,
+} from "@/components/gravitre/business-outcome/business-outcome-view"
 
 export type ChatArtifact = {
   artifact_id?: string
@@ -94,10 +98,28 @@ export type ChatExecutionResult = {
   what_this_means?: string | null
   recommendation?: PostActionRecommendation | null
   failure_bridge?: PostActionFailureBridge | null
+  business_outcome?: BusinessOutcomeDto | null
+  businessOutcome?: BusinessOutcomeDto | null
   /** Wave 7 — structured failure code (e.g. unverifiable_output). */
   error_code?: string | null
   /** Wave 7 — calibrated uncertainty notes from trust envelope. */
   assumption_notes?: string[] | null
+}
+
+function resolveBusinessOutcome(executionResult: ChatExecutionResult): BusinessOutcomeDto | null {
+  const candidate =
+    executionResult.business_outcome ||
+    executionResult.businessOutcome ||
+    (executionResult.structured as { businessOutcome?: BusinessOutcomeDto } | null | undefined)
+      ?.businessOutcome ||
+    null
+  if (candidate && typeof candidate === "object" && candidate.id && candidate.projection === "business_outcome") {
+    return candidate
+  }
+  if (candidate && typeof candidate === "object" && candidate.id) {
+    return { ...candidate, projection: candidate.projection || "business_outcome" }
+  }
+  return null
 }
 
 export type OrchestrationStepPreview = {
@@ -338,6 +360,10 @@ export function ChatExecutionPanel({
   className,
 }: ChatExecutionPanelProps) {
   if (executionResult && executionResult.success === false) {
+    const businessOutcome = resolveBusinessOutcome(executionResult)
+    if (businessOutcome) {
+      return <BusinessOutcomeView outcome={businessOutcome} density="chat" className={className} />
+    }
     const code = executionResult.error_code
     const unverifiable = code === "unverifiable_output"
     const bridge =
@@ -403,6 +429,10 @@ export function ChatExecutionPanel({
   }
 
   if (executionResult?.success) {
+    const businessOutcome = resolveBusinessOutcome(executionResult)
+    if (businessOutcome) {
+      return <BusinessOutcomeView outcome={businessOutcome} density="chat" className={className} />
+    }
     const resultUrl = executionResult.result_url
     const artifacts = (executionResult.artifacts || []).filter(
       (row) => row && (row.title || row.preview || row.result_url || row.resultUrl),

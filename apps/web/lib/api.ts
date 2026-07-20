@@ -774,6 +774,29 @@ export const schedulesApi = {
 }
 
 // ============ Runs ============
+export const businessOutcomesApi = {
+  get: (id: string) =>
+    fetcher<{ businessOutcome: Record<string, unknown> }>(apiUrl(`/api/business-outcomes/${id}`)),
+  list: (params?: { status?: string; lifecycleState?: string; integration?: string; limit?: number }) => {
+    const search = new URLSearchParams()
+    if (params?.status) search.set("status", params.status)
+    if (params?.lifecycleState) search.set("lifecycleState", params.lifecycleState)
+    if (params?.integration) search.set("integration", params.integration)
+    if (params?.limit != null) search.set("limit", String(params.limit))
+    const query = search.toString()
+    return fetcher<{ businessOutcomes: Record<string, unknown>[]; count: number }>(
+      apiUrl(`/api/business-outcomes${query ? `?${query}` : ""}`),
+    )
+  },
+  exportMarkdown: async (id: string) => {
+    const res = await fetch(apiUrl(`/api/business-outcomes/${id}/export?format=markdown`), {
+      credentials: "include",
+    })
+    if (!res.ok) throw new Error(`Export failed (${res.status})`)
+    return res.text()
+  },
+}
+
 export const runsApi = {
   list: (filters?: { status?: string; workflow_id?: string; limit?: number; offset?: number }) => {
     const params = new URLSearchParams()

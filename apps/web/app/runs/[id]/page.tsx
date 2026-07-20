@@ -23,11 +23,15 @@ import {
   Loader2,
 } from "lucide-react"
 import { fetcher } from "@/lib/fetcher"
-import { approvalsApi, runsApi, workflowsApi } from "@/lib/api"
+import { approvalsApi, businessOutcomesApi, runsApi, workflowsApi } from "@/lib/api"
 import { interruptRequestedDescription, interruptRequestedMessage } from "@/lib/agent-interrupts"
 import { useAuth } from "@/lib/auth-context"
 import { ExecutionTimeline, type ExecutionStepView } from "@/components/runs/execution-timeline"
 import { ApprovalBatchPanel } from "@/components/runs/approval-batch-panel"
+import {
+  BusinessOutcomeView,
+  type BusinessOutcomeDto,
+} from "@/components/gravitre/business-outcome/business-outcome-view"
 import { summarizeStepError, humanizeLogLine } from "@/lib/runs/step-summary"
 import type { ApprovalBatchView, RunCompensationSummary, RunDetailResponse, RunStatus } from "@/types/api"
 
@@ -245,6 +249,13 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
     { refreshInterval: canResolveGraphApproval ? 2000 : 0 },
   )
   const approvalBatch = approvalBatchData?.batch ?? null
+
+  const { data: businessOutcomePayload } = useSWR(
+    id ? `/api/business-outcomes/${id}` : null,
+    () => businessOutcomesApi.get(id),
+    { revalidateOnFocus: false },
+  )
+  const businessOutcome = (businessOutcomePayload?.businessOutcome || null) as BusinessOutcomeDto | null
 
   async function handlePause() {
     if (!isAdmin) {
@@ -825,6 +836,31 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
               Full step trace with payloads, logs, and connector details. Expand steps for raw data.
             </p>
           </div>
+          {businessOutcome ? (
+            <div className="mb-6">
+              <BusinessOutcomeView outcome={businessOutcome} density="timeline" />
+              <div className="mt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8"
+                  onClick={async () => {
+                    try {
+                      const md = await businessOutcomesApi.exportMarkdown(id)
+                      await navigator.clipboard.writeText(md)
+                      toast.success("BusinessOutcome export copied (same DTO as chat/timeline)")
+                    } catch (err) {
+                      toast.error("Export failed", {
+                        description: err instanceof Error ? err.message : "Please try again.",
+                      })
+                    }
+                  }}
+                >
+                  Copy export (same DTO)
+                </Button>
+              </div>
+            </div>
+          ) : null}
           <ExecutionTimeline steps={steps} onRetryStep={handleRetryStep} isRetrying={isRetryingStep} />
         </div>
 
