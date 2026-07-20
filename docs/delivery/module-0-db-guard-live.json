@@ -1,6 +1,9 @@
 {
   "probe": "module_0_db_credential_bypass_guard",
-  "verified_at": "2026-07-20T02:09:35Z",
+  "verified_at": "2026-07-20T02:32:34Z",
+  "prod_health_git_sha": "bc4c133dfc944c442f67329c5083427cbcfe8227",
+  "guard_commit": "e38f702c",
+  "migration": "20260719180000_test_credential_isolated_org_guard (applied to smyeexlrqdpymwjmgzqu)",
   "sa": "a9f1240f-910a-42ca-aebf-38caeac288c3",
   "forbidden_org": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "isolated_org": "f07e57c0-1501-4000-8000-c04e57a00001",
@@ -41,5 +44,6 @@
       "error": null
     }
   ],
-  "status": "PASS"
+  "status": "PASS",
+  "evidence": "PASS — raw service-role conversations.insert refused at DB (23514) @ 2026-07-20T02:32:34Z against prod health git_sha=bc4c133d (includes guard commit e38f702c); leaked_row=false"
 }
