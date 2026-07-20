@@ -284,7 +284,10 @@ def main() -> int:
                 "parts": [
                     {
                         "type": "text",
-                        "text": "What connectors are Connected right now? List them with health.",
+                        "text": (
+                            "What connectors are Connected for this organization right now? "
+                            "For each connector, give the vendor name and health status."
+                        ),
                     }
                 ],
             }

@@ -163,6 +163,27 @@ async def test_primary_account_recall_skips_ambiguous_item_clarify(clarification
 
 
 @pytest.mark.asyncio
+async def test_connector_inventory_this_org_skips_ambiguous_item_clarify(clarification_engine):
+    """Post-action read — 'this organization' + connectors must not ask which item."""
+    clarification_engine._polish_question = AsyncMock(return_value=None)
+    result = await clarification_engine.should_clarify(
+        {
+            "request": (
+                "What connectors are Connected for this organization right now? "
+                "For each connector, give the vendor name and health status."
+            ),
+            "classification_confidence": 0.4,
+            "requires_action": False,
+            "intent": "question",
+        },
+        {"connected_integrations": ["apollo"]},
+        [],
+    )
+    assert result.get("should_clarify") is False
+    assert result.get("trigger_type") != "ambiguous_entity"
+
+
+@pytest.mark.asyncio
 async def test_named_twilio_with_them_routes_to_connector_unavailable(clarification_engine):
     """Phase 1 — 'text them via Twilio' must name Twilio, not ask which workflow."""
     clarification_engine._polish_question = AsyncMock(return_value=None)

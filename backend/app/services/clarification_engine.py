@@ -351,6 +351,20 @@ class ClarificationEngine:
                     lowered,
                 ):
                     return None
+                # Post-action / ops inventory: "this organization" + connector status
+                # is not a platform-item pronoun ask (was trapping clean read probes).
+                if (
+                    re.search(r"\b(this|that)\s+(org|organization)\b", lowered)
+                    or re.search(
+                        r"\b(what|which|list|show|give)\b.{0,48}\bconnectors?\b",
+                        lowered,
+                    )
+                    or re.search(
+                        r"\bconnectors?\b.{0,48}\b(connected|healthy|health|status|executable)\b",
+                        lowered,
+                    )
+                ):
+                    return None
                 # Named vendor in the utterance → connector gate, not platform-item ask.
                 named = self._named_connectors_in_text(request)
                 if named:
