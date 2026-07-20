@@ -41,8 +41,8 @@ def test_execute_skips_steps_on_branch_mismatch():
         side_effect=lambda **kwargs: {"id": f"uuid-{kwargs['step_id']}"},
     ), patch("app.workflows.execute.write_audit_event"), patch(
         "app.workflows.execute.emit_execute_step_completed"
-    ), patch("app.workflows.execute.emit_execute_started"), patch(
-        "app.workflows.execute.emit_execute_completed"
+    ), patch(
+        "app.services.execution_outcome.finalize_execution_outcome"
     ), patch("app.workflows.execute.update_run"), patch(
         "app.workflows.execute.update_step", side_effect=_capture_update
     ), patch(

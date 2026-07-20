@@ -76,8 +76,11 @@ def _patch_runtime(monkeypatch, handler_factory):
     monkeypatch.setattr(f"{_RUNTIME}.write_audit_event", lambda *a, **k: None)
     monkeypatch.setattr(f"{_RUNTIME}.get_run_with_steps", lambda *a, **k: {"steps": []})
     monkeypatch.setattr(f"{_RUNTIME}.update_run", lambda *a, **k: None)
-    monkeypatch.setattr(f"{_RUNTIME}.emit_execute_completed", lambda *a, **k: None)
-    monkeypatch.setattr(f"{_RUNTIME}.emit_execute_failed", lambda *a, **k: None)
+    # Terminal fanout moved to execution_outcome → repository (not imported on runtime).
+    monkeypatch.setattr(
+        "app.services.execution_outcome.finalize_execution_outcome",
+        lambda *a, **k: None,
+    )
     monkeypatch.setattr(f"{_RUNTIME}.merge_run_parameters", lambda *a, **k: {})
 
 

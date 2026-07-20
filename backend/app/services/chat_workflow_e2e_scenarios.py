@@ -366,7 +366,7 @@ def _execution_patches(
         patch.object(orchestration._connector, "_verify_plan_executable", return_value=None),
         patch.object(orchestration._connector, "_evaluate_risk", side_effect=_fake_risk),
         patch.object(orchestration._connector, "execute_plan", side_effect=_fake_execute_plan),
-        patch("app.services.chat_orchestration_service.emit_notification"),
+        patch("app.services.notification_emitter.emit_notification"),
         patch("app.services.chat_connector_execution_service.emit_notification"),
     ):
         yield

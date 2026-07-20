@@ -140,6 +140,9 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: service-role-test
           SUPABASE_JWT_SECRET: jwt-secret-test
           OPENAI_API_KEY: sk-test-openai
+          # Unit tests use synthetic org-1; never inherit smoke isolation flags.
+          GRAVITREE_SMOKE_RUN: ""
+          GRAVITREE_CONVERSATION_SMOKE: ""
 
       - name: Marketplace QA (schemas, install, RLS)
         run: python -m pytest tests/marketplace/ -q

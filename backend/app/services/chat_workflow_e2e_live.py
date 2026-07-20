@@ -529,7 +529,7 @@ async def live_orchestration_session(
     with (
         patch.object(connector, "_verify_plan_executable", return_value=None),
         patch.object(connector, "_evaluate_risk", side_effect=_live_risk),
-        patch("app.services.chat_orchestration_service.emit_notification"),
+        patch("app.services.notification_emitter.emit_notification"),
         patch("app.services.chat_connector_execution_service.emit_notification"),
     ):
         yield
