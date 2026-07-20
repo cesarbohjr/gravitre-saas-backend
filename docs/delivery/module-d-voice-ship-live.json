@@ -1,0 +1,69 @@
+{
+  "module": "D-ship",
+  "started_at": "2026-07-20T03:02:39.453400+00:00",
+  "finished_at": "2026-07-20T03:02:46.739242+00:00",
+  "git_sha": "8f6ca0b49f7e8a7feee4fdb6fdcd453cae6c6207",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "canvas": {
+    "run_id": "a359e031-2eff-4726-8dc0-fd28ac0c945c",
+    "workflow_id": "f91610f0-7d3a-43aa-bc6e-7185c08f9182",
+    "final_status": "failed",
+    "step_error_code": "canvas_write_authority_blocked",
+    "user_facing_error": "Write blocked: this canvas step needs an approved run (required_approvals>=1). In-graph approval alone is not enough.",
+    "expected": "Write blocked: this canvas step needs an approved run (required_approvals>=1). In-graph approval alone is not enough.",
+    "pass": true,
+    "errors_sample": [
+      "Write blocked: this canvas step needs an approved run (required_approvals>=1). In-graph approval alone is not enough."
+    ],
+    "step_rows_sample": [
+      {
+        "id": "eb6f2bef-6dea-401e-9ef9-16e751eaf5e5",
+        "run_id": "a359e031-2eff-4726-8dc0-fd28ac0c945c",
+        "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+        "step_id": "apollo_list_create",
+        "step_index": 0,
+        "step_name": "Apollo create list (write)",
+        "step_type": "invoke_tool",
+        "status": "pending",
+        "input_snapshot": null,
+        "output_snapshot": null,
+        "error_code": null,
+        "error_message": null,
+        "is_retryable": false,
+        "started_at": null,
+        "completed_at": null,
+        "created_at": "2026-07-20T03:02:41.958045+00:00",
+        "logs": null,
+        "order_index": 0
+      },
+      {
+        "id": "35c911d3-646b-4575-91c3-28165cff1c08",
+        "run_id": "a359e031-2eff-4726-8dc0-fd28ac0c945c",
+        "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+        "step_id": "apollo_list_create",
+        "step_index": 0,
+        "step_name": "Apollo create list (write)",
+        "step_type": "invoke_tool",
+        "status": "failed",
+        "input_snapshot": null,
+        "output_snapshot": null,
+        "error_code": "canvas_write_authority_blocked",
+        "error_message": "Write blocked: this canvas step needs an approved run (required_approvals>=1). In-graph approval alone is not enough.",
+        "is_retryable": false,
+        "started_at": "2026-07-20T03:02:42.239851+00:00",
+        "completed_at": "2026-07-20T03:02:42.568549+00:00",
+        "created_at": "2026-07-20T03:02:42.201867+00:00",
+        "logs": null,
+        "order_index": 0
+      }
+    ]
+  },
+  "executive_digest": {
+    "http": 200,
+    "event_count": 32,
+    "digest": "Executive Digest\nLast 24 hours\n\n0 completed \u00b7 29 failed \u00b7 0 cancelled \u00b7 3 other.\n\nFailures (blocked \u2014 fix these next):\n- Write blocked: this canvas step needs an approved run (required_approvals>=1). In-graph approval alone is not enough. [api] \u00b7 run a359e031\n- intentional assignment failure (73ecf5c9-style) [assignment] \u00b7 run 98527a63\n- Write blocked: this canvas step needs an approved run (required_approvals>=1). In-graph approval alone is not enough. [api] \u00b7 run d72f0e2b\n- intentional assignment failure (73ecf5c9-style) [assignment] \u00b7 run 7b91eb04\n- intentional assignment failure for Module A verify [assignment] \u00b7 run d499ebf1\n- Write blocked: this canvas step needs an approved run (required_approvals>=1). In-graph approval alone is not enough. [canvas] \u00b7 run 606a0c7d\n- 4path chat_orch fail [chat_orch] \u00b7 run 87994ee3\n- Step execution failed [api] \u00b7 run d40c93f2\nNext: open the failed run, fix the blocker, then retry.\n",
+    "pass": true
+  },
+  "passed": true
+}

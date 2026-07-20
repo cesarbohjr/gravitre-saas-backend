@@ -1,0 +1,98 @@
+{
+  "verified_at": "2026-07-19T10:08:23.789937+00:00",
+  "module": "A",
+  "ticket": "STA-329",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "user_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "email": "conversation-smoke-sa@gravitre.app",
+  "paths": [
+    {
+      "run_id": "89a304f1-a6ed-450f-9ae8-1ab4eac78295",
+      "run_status_legacy": "failed",
+      "run_status_contract": "failed",
+      "audit_event_ids": [
+        "59249f5f-a588-4a55-9ac7-ac1bcd6f396f"
+      ],
+      "audit_log_ids": [
+        "3673fbb4-d84b-4aec-8f3f-71e09517ca4c"
+      ],
+      "notification_ids": [
+        "01d09669-1f9b-4cde-8323-f7bb415cbb58"
+      ],
+      "learning_event_ids": [
+        "37cec295-f139-4c7e-9131-0cb13504495a"
+      ],
+      "failure_alert_ids": [],
+      "failure_alerts_applicable": null,
+      "checks": {
+        "runs_legacy_failed": true,
+        "runs_contract_failed": true,
+        "audit_events": true,
+        "audit_logs": true,
+        "notifications_run_failed": true,
+        "learning_workflow_failed": true
+      },
+      "fanout_complete": true,
+      "path": "chat_orch",
+      "entry": "finalize_orchestration_run \u2192 finalize_execution_outcome",
+      "conversation_id": "00000000-0000-4000-8000-100811095546"
+    },
+    {
+      "run_id": "2e5ac430-4bcd-4575-b7be-9563711e5b3d",
+      "run_status_legacy": "failed",
+      "run_status_contract": "failed",
+      "audit_event_ids": [
+        "3076ab67-ae15-421c-84f1-de1edfd1cc8b"
+      ],
+      "audit_log_ids": [
+        "d5ca204a-a788-4e35-bdb5-e2ed8027ef27"
+      ],
+      "notification_ids": [
+        "248397f3-6742-4753-8e1c-ac584d8daf89"
+      ],
+      "learning_event_ids": [
+        "98574b5b-c6d9-4b98-a800-140435de471b"
+      ],
+      "failure_alert_ids": [],
+      "failure_alerts_applicable": null,
+      "checks": {
+        "runs_legacy_failed": true,
+        "runs_contract_failed": true,
+        "audit_events": true,
+        "audit_logs": true,
+        "notifications_run_failed": true,
+        "learning_workflow_failed": true
+      },
+      "fanout_complete": true,
+      "path": "canvas",
+      "entry": "execute_workflow_steps(outcome_source=canvas) \u2192 finalize_execution_outcome",
+      "final_status": "failed",
+      "errors": [
+        "Webhook send failed"
+      ]
+    },
+    {
+      "path": "assignment_job",
+      "entry": "agent_jobs._notify_operator_job_finished pattern (independent emit_notification)",
+      "job_id": "73ecf5c9-2570-4b5f-a5d7-9410f98bcb7c",
+      "run_id": null,
+      "notification_ids": [
+        "f4fffad7-a901-406f-aa4b-d2fd6fdee989"
+      ],
+      "audit_event_ids": [],
+      "learning_event_ids": [],
+      "checks": {
+        "runs_legacy_failed": false,
+        "runs_contract_failed": false,
+        "audit_events": false,
+        "audit_logs": false,
+        "notifications_run_failed": true,
+        "learning_workflow_failed": false
+      },
+      "fanout_complete": false,
+      "note": "Independent writer: notifies only. No finalize_execution_outcome, no Runs row, no audit execute.failed, no learning outcome for this job."
+    }
+  ],
+  "all_three_fanout_complete": false,
+  "chat_and_canvas_fanout_complete": true
+}

@@ -81,7 +81,7 @@ def build_heuristic_recommendations(
                             "executable": False,
                             "lookbackDays": lookback_days,
                         },
-                        confidence=0.9,
+                        confidence=0.9,  # confidence-honesty-ok: stamped by _card → label_confidence
                         priority=95,
                         href="/connectors",
                     )
@@ -101,7 +101,7 @@ def build_heuristic_recommendations(
                             "invocations": 0,
                             "lookbackDays": lookback_days,
                         },
-                        confidence=0.75,
+                        confidence=0.75,  # confidence-honesty-ok: stamped by _card → label_confidence
                         priority=70,
                         href="/connectors",
                     )
@@ -129,7 +129,7 @@ def build_heuristic_recommendations(
                                 "suggestedPackId": pack_id,
                                 "lookbackDays": lookback_days,
                             },
-                            confidence=0.8,
+                            confidence=0.8,  # confidence-honesty-ok: stamped by _card → label_confidence
                             priority=80,
                             href="/marketplace",
                         )
@@ -162,6 +162,8 @@ def _card(
     priority: int,
     href: str,
 ) -> dict[str, Any]:
+    from app.services.confidence_honesty import CONFIDENCE_SOURCE_HEURISTIC, label_confidence
+
     # Module C / STA-331: heuristic card scores are estimates (STA-286 pattern),
     # not live model intelligence, until Module A outcome volume seasons CF ranking.
     return {
@@ -170,11 +172,7 @@ def _card(
         "title": title,
         "reason": reason,
         "evidence": evidence,
-        "confidence": confidence,
-        "confidenceIsEstimate": True,
-        "confidence_is_estimate": True,
-        "confidenceSource": "heuristic",
-        "confidence_source": "heuristic",
+        **label_confidence(confidence, source=CONFIDENCE_SOURCE_HEURISTIC, is_estimate=True),
         "priority": priority,
         "advisoryOnly": True,
         "href": href,

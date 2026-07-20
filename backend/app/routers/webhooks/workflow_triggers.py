@@ -170,13 +170,7 @@ async def trigger_workflow(
             definition=definition,
             environment_name="production",
         )
-        update_payload: dict[str, Any] = {"status": result.status}
-        if result.status == "failed":
-            failed_step = next((item for item in result.results if item.status == "failed"), None)
-            update_payload["error_message"] = failed_step.error if failed_step else "Execution failed"
-        if result.status in {"completed", "failed", "cancelled"}:
-            update_payload["completed_at"] = datetime.now(timezone.utc).isoformat()
-        client.table("workflow_runs").update(update_payload).eq("id", run_id).execute()
+        # Module A: execute_workflow_steps already finalized — do not re-write workflow_runs.
         return WebhookTriggerResponse(
             run_id=run_id,
             workflow_id=workflow_id,
@@ -185,13 +179,17 @@ async def trigger_workflow(
         )
     except Exception as exc:  # noqa: BLE001
         logger.error("webhook_execution_error workflow_id=%s run_id=%s error=%s", workflow_id, run_id, str(exc))
-        client.table("workflow_runs").update(
-            {
-                "status": "failed",
-                "error_message": str(exc),
-                "completed_at": datetime.now(timezone.utc).isoformat(),
-            }
-        ).eq("id", run_id).execute()
+        from app.services.trigger_run_finalize import finalize_trigger_exception
+
+        finalize_trigger_exception(
+            client,
+            org_id=org_id,
+            run_id=run_id,
+            actor_id=triggered_by,
+            workflow_id=workflow_id,
+            error=str(exc),
+            source="webhook_trigger",
+        )
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Workflow execution failed") from exc
 
 

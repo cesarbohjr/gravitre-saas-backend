@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 
 from app.workflows.audit import write_audit_event
-from app.workflows.constants import RUN_STATUS_CANCELLED, RUN_STATUS_PAUSED
+from app.workflows.constants import RUN_STATUS_PAUSED
 
 TargetType = Literal["agent_job", "workflow_run", "operator_session"]
 InterruptSignal = Literal["pause", "cancel"]
@@ -185,13 +185,29 @@ def enforce_interrupt(
     )
     if target_type == "workflow_run":
         if signal == "pause":
-            client.table("workflow_runs").update({"status": RUN_STATUS_PAUSED}).eq(
-                "id", target_id
-            ).eq("org_id", org_id).execute()
+            # Non-terminal: repository update_run mirrors to contract runs.
+            from app.workflows.repository import update_run
+
+            update_run(client, target_id, status=RUN_STATUS_PAUSED)
         else:
-            client.table("workflow_runs").update(
-                {"status": RUN_STATUS_CANCELLED, "error_message": "Interrupted by operator"}
-            ).eq("id", target_id).eq("org_id", org_id).execute()
+            from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
+
+            finalize_execution_outcome(
+                client,
+                org_id=org_id,
+                status="cancelled",
+                source="api",
+                actor_id=actor_id,
+                run_id=target_id,
+                error_summary="Interrupted by operator",
+                verified_output=VerifiedOutputRef(
+                    summary="Interrupted by operator",
+                    result_url=f"/runs/{target_id}",
+                    entity_type="workflow_run",
+                    entity_id=target_id,
+                ),
+                metadata={"path": "agent_interrupt", "signal": signal},
+            )
     raise AgentExecutionInterrupted(signal, target_type, target_id)  # type: ignore[arg-type]
 
 

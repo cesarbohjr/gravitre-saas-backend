@@ -19,6 +19,11 @@ export function DecisionTransparencyCard({
   const alt = envelope.alternative_paths_considered
   const domain = envelope.domain_context ?? {}
   const gaps = envelope.known_gaps ?? envelope.missing_context ?? []
+  const isEstimate = Boolean(
+    envelope.confidence_is_estimate ?? envelope.confidenceIsEstimate,
+  )
+  const runtimeStatus = envelope.runtime_status?.trim()
+  const confSource = envelope.confidence_source ?? envelope.confidenceSource
 
   return (
     <article className={`rounded-2xl border border-border/70 bg-card p-4 md:p-5 ${className ?? ""}`}>
@@ -29,8 +34,24 @@ export function DecisionTransparencyCard({
             Evidence-level visibility only — no internal reasoning or deliberation.
           </p>
         </div>
-        <ConfidenceBadge score={envelope.confidence} />
+        <div className="flex flex-wrap items-center gap-2">
+          {runtimeStatus ? (
+            <Badge
+              variant="outline"
+              className="border-sky-500/30 bg-sky-500/5 text-sky-900 dark:text-sky-200"
+              title="Whether a trained artifact is loaded at runtime (not catalog TRAINED)."
+            >
+              {runtimeStatus === "heuristic" ? "Heuristic runtime" : runtimeStatus.replace(/_/g, " ")}
+            </Badge>
+          ) : null}
+          <ConfidenceBadge score={envelope.confidence} isEstimate={isEstimate} />
+        </div>
       </div>
+      {confSource ? (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Confidence source: <span className="font-medium text-foreground">{confSource}</span>
+        </p>
+      ) : null}
 
       <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">

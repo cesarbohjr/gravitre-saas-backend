@@ -251,10 +251,21 @@ def skip_reason_for_entry(
     *,
     connected: bool,
 ) -> str | None:
+    from app.services.gravitree_voice import format_operator_message
+
     if entry is None:
-        return "No matching catalog action was found for this request."
+        return format_operator_message(
+            "no_executable_action",
+            confidence_register="blocked",
+            allow_humor=False,
+        )
     if not connected:
-        return f"Connect {entry.connector_id.replace('_', ' ').title()} in Gravitre to run this action."
+        return format_operator_message(
+            "connector_connect_to_run",
+            integration=entry.connector_id,
+            confidence_register="blocked",
+            allow_humor=False,
+        )
     if entry.implementation_status == "not_implemented":
         return (
             f"{entry.display_name} is cataloged but not implemented in invoke_tool yet "

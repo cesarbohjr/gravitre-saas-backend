@@ -352,13 +352,34 @@ async def get_trust_summary(
     trust = get_ai_trust_layer()
     low = sum(1 for c in confidences if trust.confidence_band(c) in {"low", "insufficient"})
     advisory = sum(1 for r in events if r.get("outcome_event") == "recommendation_created")
+    from app.services.confidence_honesty import (
+        CONFIDENCE_SOURCE_INSUFFICIENT,
+        CONFIDENCE_SOURCE_OUTCOME,
+        label_confidence,
+    )
+
+    if confidences:
+        conf_meta = label_confidence(
+            round(sum(confidences) / len(confidences), 4),
+            source=CONFIDENCE_SOURCE_OUTCOME,
+            is_estimate=False,
+        )
+    else:
+        conf_meta = label_confidence(None, source=CONFIDENCE_SOURCE_INSUFFICIENT)
     payload = {
-        "avg_confidence": round(sum(confidences) / len(confidences), 4) if confidences else None,
+        "avg_confidence": conf_meta["confidence"],
+        **{k: v for k, v in conf_meta.items() if k != "confidence"},
         "low_confidence_rate": round(low / len(confidences), 4) if confidences else None,
         "missing_context_rate": None,
         "advisory_only_rate": round(advisory / max(len(events), 1), 4),
         "sources_cited_rate": None,
         "period_days": period_days,
+        # avg is computed from stored outcome scores — not a catalog TRAINED badge.
+        "avg_confidence_note": (
+            "Computed from outcome confidence_score samples"
+            if confidences
+            else "No outcome confidence samples in window"
+        ),
     }
     if getattr(settings, "domain_adaptive_learning_enabled", False):
         from app.services.knowledge_freshness_service import get_knowledge_freshness_service

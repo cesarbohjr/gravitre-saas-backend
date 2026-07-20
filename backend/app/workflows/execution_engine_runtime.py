@@ -528,16 +528,25 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
             if attempts < max_attempts:
                 time.sleep(policy["retry_backoff_ms"] / 1000.0)
                 continue
-            code = ERROR_CODE_STEP_FAILED
-            message = "Step execution failed"
-            if "rag" in step_type.lower():
-                code, message = ERROR_CODE_RAG_UNAVAILABLE, "Retrieval temporarily unavailable"
-            elif "slack" in step_type.lower():
-                code, message = ERROR_CODE_SLACK_FAILED, "Slack send failed"
-            elif "email" in step_type.lower():
-                code, message = ERROR_CODE_EMAIL_FAILED, "Email send failed"
-            elif "webhook" in step_type.lower():
-                code, message = ERROR_CODE_WEBHOOK_FAILED, "Webhook send failed"
+            from app.services.canvas_write_gate import (
+                CANVAS_WRITE_AUTHORITY_BLOCKED,
+                user_facing_message_from_write_authority_error,
+            )
+
+            write_gate_msg = user_facing_message_from_write_authority_error(exc)
+            if write_gate_msg:
+                code, message = CANVAS_WRITE_AUTHORITY_BLOCKED, write_gate_msg
+            else:
+                code = ERROR_CODE_STEP_FAILED
+                message = "Step execution failed"
+                if "rag" in step_type.lower():
+                    code, message = ERROR_CODE_RAG_UNAVAILABLE, "Retrieval temporarily unavailable"
+                elif "slack" in step_type.lower():
+                    code, message = ERROR_CODE_SLACK_FAILED, "Slack send failed"
+                elif "email" in step_type.lower():
+                    code, message = ERROR_CODE_EMAIL_FAILED, "Email send failed"
+                elif "webhook" in step_type.lower():
+                    code, message = ERROR_CODE_WEBHOOK_FAILED, "Webhook send failed"
             return _handle_node_failure(
                 ctx, node_id, step_uuid, step_started, step_index, step_id, step_type, upstream, config,
                 code, message, exc, policy=policy,

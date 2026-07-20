@@ -1,0 +1,17 @@
+{
+  "pulled_at": "2026-07-20T03:26:30+00:00",
+  "git_sha": "2ed2c59d6a37adeb6f58281dd7346ff5c23274e7",
+  "includes_commit": "db13c572931abe18299d2a1f347c6e4fca12cf58",
+  "http": 200,
+  "endpoint": "POST /api/intelligence/recommend",
+  "quote": {
+    "confidence": null,
+    "confidence_is_estimate": false,
+    "confidenceIsEstimate": false,
+    "confidence_source": "insufficient_data",
+    "confidenceSource": "insufficient_data",
+    "confidence_band": "insufficient",
+    "answer": ""
+  },
+  "note": "PASS — no unlabeled 0.5. Missing primary confidence returns null + insufficient_data via label_confidence/wrap_response."
+}

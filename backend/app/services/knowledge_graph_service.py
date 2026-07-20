@@ -9,6 +9,11 @@ from typing import Any
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.services.confidence_honesty import (
+    CONFIDENCE_SOURCE_TYPE_PRIOR,
+    KG_BLEND_NOTE,
+    label_confidence,
+)
 from app.services.entity_relationship_service import get_related_entities
 from app.services.model_router import TaskType, get_model_router
 from app.workflows.repository import get_supabase_client
@@ -210,15 +215,13 @@ class KnowledgeGraphService:
         rows = rows + reverse_rows
         if not rows:
             return {
-                "confidence": 0.0,
-                "confidence_is_estimate": True,
-                "confidenceIsEstimate": True,
-                "confidence_source": "type_reliability_prior",
-                "confidenceSource": "type_reliability_prior",
+                **label_confidence(0.0, source=CONFIDENCE_SOURCE_TYPE_PRIOR, is_estimate=True),
+                "note": KG_BLEND_NOTE,
             }
         best = 0.0
         now = datetime.now(timezone.utc)
         for row in rows:
+            # Stored edge confidence (entity_relationship_builder) is itself an estimate.
             base = float(row.get("confidence") or 0)
             evidence = int(row.get("evidence_count") or 0)
             rel_type = str(row.get("relationship_type") or "")
@@ -233,15 +236,12 @@ class KnowledgeGraphService:
                     recency_factor = max(0.5, 1.0 - (age_days / 365.0) * 0.3)
                 except ValueError:
                     pass
+            # Both inputs estimated — blend is not more authoritative than either alone.
             score = min(1.0, (base * 0.5 + reliability * 0.35 + evidence_boost) * recency_factor)
             best = max(best, score)
         return {
-            "confidence": round(best, 4),
-            "confidence_is_estimate": True,
-            "confidenceIsEstimate": True,
-            "confidence_source": "type_reliability_prior",
-            "confidenceSource": "type_reliability_prior",
-            "note": "Blends stored edge confidence with a static type prior — not a trained model score.",
+            **label_confidence(round(best, 4), source=CONFIDENCE_SOURCE_TYPE_PRIOR, is_estimate=True),
+            "note": KG_BLEND_NOTE,
         }
 
     async def traverse_multi_hop(

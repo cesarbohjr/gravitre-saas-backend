@@ -158,7 +158,11 @@ class HybridMemoryService:
                             "relationship_type",
                         )
                     )[:500],
-                    "score": float(row.get("confidence") or 0.35),
+                    "score": (
+                        float(row["confidence"])
+                        if row.get("confidence") is not None
+                        else 0.35
+                    ),
                     "source": "entity_graph",
                 }
             )

@@ -1200,6 +1200,20 @@ class ChatConnectorExecutionService:
                 **self._session_updates_for_pending(task_state, plan),
             },
         )
+        # Phase 2 (flagged OFF): promote confirmed ledger slots to durable store.
+        try:
+            from app.services.cross_conversation_ledger_memory import (
+                promote_confirmed_ledger_slots,
+            )
+
+            promote_confirmed_ledger_slots(
+                client,
+                org_id=org_id,
+                conversation_id=conversation_id,
+                task_state=task_state,
+            )
+        except Exception:  # noqa: BLE001
+            pass
         refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
         if user_can_approve:
             approval_message = format_write_approval_message(plan)

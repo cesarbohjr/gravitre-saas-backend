@@ -7,6 +7,7 @@ from typing import Any
 
 from app.services.action_workflow_validation import WorkflowCheck
 from app.services.chat_connector_models import ConnectorActionPlan, LIST_CREATE_INTENT
+from app.services.confidence_honesty import CONFIDENCE_SOURCE_HEURISTIC, estimated_confidence
 from app.services.connector_capability_analysis import (
     LIST_CAPABILITY_CHECKS,
     LIST_FALLBACK_CAPABILITIES,
@@ -234,7 +235,9 @@ async def _try_memory_assignee_resolve(
                 source="memory_opaque"
                 if result.reason == "memory_opaque_match"
                 else result.reason or "memory_resolve",
-                confidence=0.85,
+                confidence=float(
+                    estimated_confidence(0.85, source=CONFIDENCE_SOURCE_HEURISTIC)["confidence"]
+                ),
             )
             # STA-320 Option B: persist role cues so next "the AE" binds without Memory.
             learn_role_aliases(
@@ -317,7 +320,9 @@ async def _resolve_asana_assignee(
                 entity_id=matches[0][1],
                 integration="asana",
                 source="disambiguation",
-                confidence=0.9,
+                confidence=float(
+                    estimated_confidence(0.9, source=CONFIDENCE_SOURCE_HEURISTIC)["confidence"]
+                ),
             )
             if matches[0][0]:
                 upsert_resolution(
@@ -328,7 +333,9 @@ async def _resolve_asana_assignee(
                     entity_id=matches[0][1],
                     integration="asana",
                     source="disambiguation",
-                    confidence=0.9,
+                    confidence=float(
+                        estimated_confidence(0.9, source=CONFIDENCE_SOURCE_HEURISTIC)["confidence"]
+                    ),
                 )
             # STA-320 Option B: if hint was a role cue, learn role→entity aliases.
             learn_role_aliases(
@@ -337,7 +344,9 @@ async def _resolve_asana_assignee(
                 integration="asana",
                 entity_id=matches[0][1],
                 mention=hint,
-                confidence=0.9,
+                confidence=float(
+                    estimated_confidence(0.9, source=CONFIDENCE_SOURCE_HEURISTIC)["confidence"]
+                ),
             )
         except Exception:  # noqa: BLE001
             pass

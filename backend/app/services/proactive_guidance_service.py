@@ -7,6 +7,11 @@ from typing import Any
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.chat_dialogue_settings import load_chat_dialogue_settings
+from app.services.confidence_honesty import (
+    CONFIDENCE_SOURCE_HEURISTIC,
+    CONFIDENCE_SOURCE_SIGNAL_HEURISTIC,
+    label_confidence,
+)
 from app.services.conversation_state_service import get_conversation_state_service
 from app.workflows.repository import get_supabase_client
 
@@ -99,7 +104,7 @@ class ProactiveGuidanceService:
                     "type": suggestion_type,
                     "text": text,
                     "suppression_key": key,
-                    "confidence": 0.55,
+                    **label_confidence(0.55, source=CONFIDENCE_SOURCE_HEURISTIC, is_estimate=True),
                 }
             )
 
@@ -110,12 +115,21 @@ class ProactiveGuidanceService:
             key = f"signal_{hashlib.sha256(title.lower().encode()).hexdigest()[:16]}"
             if key in suppressed:
                 continue
+            raw_conf = signal.get("quality_score") or signal.get("confidence")
+            if raw_conf is not None:
+                conf_meta = label_confidence(
+                    float(raw_conf),
+                    source=CONFIDENCE_SOURCE_SIGNAL_HEURISTIC,
+                    is_estimate=True,
+                )
+            else:
+                conf_meta = label_confidence(0.6, source=CONFIDENCE_SOURCE_HEURISTIC, is_estimate=True)
             candidates.append(
                 {
                     "type": "business_signal",
                     "text": f"Signal: {title} — want me to dig in?",
                     "suppression_key": key,
-                    "confidence": float(signal.get("quality_score") or signal.get("confidence") or 0.6),
+                    **conf_meta,
                 }
             )
 

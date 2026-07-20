@@ -89,6 +89,11 @@ def should_run_connector_preflight(
         return False
     from app.services.chat_connector_models import LIST_CREATE_INTENT
     from app.services.chat_orchestration_service import ChatOrchestrationService
+    from app.services.conversational_planning_engine import is_advisory_plan_first
+
+    # Plan-first advisory asks must reach strategic planning, not connector short-circuit.
+    if is_advisory_plan_first(message or ""):
+        return False
 
     # Prefer governed single-connector auto-plan over multi-step orchestration.
     if LIST_CREATE_INTENT.search(message or ""):

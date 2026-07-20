@@ -17,6 +17,7 @@ import { HeuristicSuggestionCards } from "@/components/intelligence/heuristic-su
 import { SimulationCard } from "@/components/intelligence/simulation-card"
 import { IntelligenceTrace } from "@/components/intelligence/intelligence-trace"
 import { IntelligenceHealthGrid } from "@/components/intelligence/intelligence-health-grid"
+import { Badge } from "@/components/ui/badge"
 import {
   ArrowRight,
   Brain,
@@ -48,6 +49,10 @@ export default function IntelligenceCenterPage() {
   const { data: simulations } = useSWR(user ? "intelligence/simulations" : null, () =>
     intelligenceApi.simulations(),
   )
+  // Module C: surface heuristic vs trained runtime on the hub (not only admin models).
+  const { data: modelCatalog } = useSWR(user ? "intelligence/model-catalog" : null, () =>
+    intelligenceApi.modelCatalog(),
+  )
 
   if (!user) {
     return (
@@ -73,11 +78,76 @@ export default function IntelligenceCenterPage() {
   const byEvent = (outcomes?.by_event_type as Record<string, number> | undefined) ?? {}
   const totalEvents = readNumber(summary.total_events, 0)
   const avgConfidence = trust?.avg_confidence as number | null | undefined
+  const trustRecord = trust as Record<string, unknown> | undefined
+  const confidenceIsEstimate = Boolean(
+    trustRecord?.confidence_is_estimate ?? trustRecord?.confidenceIsEstimate,
+  )
+  const orgTraining = modelCatalog?.orgTrainingStatus ?? {}
+  const runtimeEntries = Object.entries(orgTraining).slice(0, 6)
+  const heuristicRuntimeCount = runtimeEntries.filter(
+    ([, row]) => readString(row?.runtime_status, "") === "heuristic",
+  ).length
+  const trainedRuntimeCount = runtimeEntries.filter(
+    ([, row]) =>
+      readString(row?.runtime_status, "") === "trained" || Boolean(row?.artifact_loaded),
+  ).length
 
   return (
     <AppShell title={copy.title}>
       <div className="space-y-6 p-4 md:p-6">
         <PageHeader title={copy.title} description={copy.description} />
+
+        {runtimeEntries.length > 0 ? (
+          <section className="rounded-2xl border border-border/70 bg-card p-4 md:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-foreground">Model runtime honesty</h2>
+                <p className="mt-1 text-sm text-muted-foreground text-pretty">
+                  Whether each model is running a loaded artifact or a heuristic fallback — not the
+                  catalog TRAINED label alone.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className="border-amber-500/30 bg-amber-500/5">
+                  {heuristicRuntimeCount} heuristic
+                </Badge>
+                <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/5">
+                  {trainedRuntimeCount} artifact-loaded
+                </Badge>
+              </div>
+            </div>
+            <ul className="mt-3 flex flex-wrap gap-2">
+              {runtimeEntries.map(([name, row]) => {
+                const status = readString(row?.runtime_status, "unknown")
+                const isHeuristic = status === "heuristic"
+                return (
+                  <li key={name}>
+                    <Badge
+                      variant="outline"
+                      className={
+                        isHeuristic
+                          ? "border-amber-500/30 bg-amber-500/5 text-amber-950 dark:text-amber-100"
+                          : "border-sky-500/30 bg-sky-500/5"
+                      }
+                      title={
+                        row?.artifact_loaded
+                          ? "Trained artifact loaded at runtime"
+                          : "Heuristic path — no trained artifact loaded"
+                      }
+                    >
+                      {name.replace(/_/g, " ")} · {status.replace(/_/g, " ")}
+                    </Badge>
+                  </li>
+                )
+              })}
+            </ul>
+            <div className="mt-3">
+              <Button variant="link" size="sm" className="h-auto px-0" asChild>
+                <Link href={APP_ROUTES.intelligenceModelsPath}>View all models</Link>
+              </Button>
+            </div>
+          </section>
+        ) : null}
 
         {isLoading && !outcomes ? (
           <p className="text-sm text-muted-foreground">Loading insights…</p>
@@ -111,6 +181,7 @@ export default function IntelligenceCenterPage() {
         <RecommendationExplanation
           summary={SURFACE_COPY.sections.recommendationSummary}
           confidence={typeof avgConfidence === "number" ? avgConfidence : null}
+          isEstimate={confidenceIsEstimate}
           advisoryOnly
           sources={[{ type: "optimization_suggestions", label: "Org optimization signals" }]}
         />

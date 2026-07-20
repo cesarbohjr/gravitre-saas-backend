@@ -29,7 +29,10 @@ class ExplainabilityEngine:
         )
         used = context_profile.get("sourcesUsed") if context_profile else sources
         missing = list((confidence or {}).get("missing_context") or [])
-        score = float((confidence or {}).get("score") or (confidence or {}).get("confidence") or 0.0)
+        raw_score = (confidence or {}).get("score")
+        if raw_score is None:
+            raw_score = (confidence or {}).get("confidence")
+        score = float(raw_score) if raw_score is not None else 0.0
 
         evidence = []
         for row in (used or [])[:8]:

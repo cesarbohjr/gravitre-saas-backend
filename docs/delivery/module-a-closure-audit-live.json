@@ -1,0 +1,46 @@
+{
+  "verified_at": "2026-07-20T02:33:41.704083+00:00",
+  "module": "A",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "user_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "email": "conversation-smoke-sa@gravitre.app",
+  "agent_jobs": {
+    "job_id": "d50e2c05-59a7-42a5-8b55-fbfffc19e499",
+    "fanout": {
+      "run_id": "98527a63-e4b9-4b51-bcfd-35751258e856",
+      "run_status_legacy": "failed",
+      "run_status_contract": "failed",
+      "audit_event_ids": [
+        "226dcd5b-ef5c-4530-94c5-461fe1b6d9ee"
+      ],
+      "audit_log_ids": [
+        "eef3fc1a-f34e-4f4f-a47c-c1ee2c84f5fb"
+      ],
+      "notification_ids": [
+        "32012fe5-4a0c-4cf8-b26f-8268c1c0086a"
+      ],
+      "learning_event_ids": [
+        "1cee4815-d1b4-4b06-8235-7a7f95cdb281"
+      ],
+      "schema_versions": [
+        "1.0.0"
+      ]
+    },
+    "fanout_complete": true,
+    "outcome_stream_received": true,
+    "outcome_stream_event": {
+      "run_id": "98527a63-e4b9-4b51-bcfd-35751258e856",
+      "status": "failed",
+      "schema_version": "1.0.0",
+      "source": "assignment"
+    }
+  },
+  "sta271_direct_write_mirror": {
+    "run_id": "4235b22b-bc7d-44b7-a2a5-56939c993ac0",
+    "legacy_status": "failed",
+    "contract_status": "failed",
+    "mirror_fired": true,
+    "mirrored_by_trigger": true
+  },
+  "pass": true
+}

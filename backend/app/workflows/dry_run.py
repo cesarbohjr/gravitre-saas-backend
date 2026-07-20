@@ -1,4 +1,9 @@
-"""BE-11: Dry-run execution engine. Deterministic; RAG = real read, others simulated."""
+"""BE-11: Dry-run execution engine. Deterministic; RAG = real read, others simulated.
+
+INTENTIONAL Module A bypass: dry-run terminals must NOT write customer Runs
+notifications/learning via ``finalize_execution_outcome``. They use
+``emit_dry_run_*`` audit helpers only (see docs/delivery/module-a-dry-run-bypass.md).
+"""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -55,6 +60,8 @@ def execute_dry_run(
     Validate, create run + steps, execute steps. Returns (run_id, status, steps, plan, errors).
     Raises WorkflowValidationError on validation failure.
     On RAG failure: run and steps are persisted; returns status=failed, errors list; caller may raise 503.
+
+    INTENTIONAL Module A bypass — terminals use emit_dry_run_* only, not finalize_execution_outcome.
     """
     definition = validate_definition(definition)
     parameters = validate_parameters(parameters)
@@ -145,18 +152,31 @@ def execute_dry_run(
             emit_dry_run_step_failed(client, org_id, user_id, run_id, idx, step_id, ERROR_CODE_VALIDATION)
             errors.append(err_msg)
             break
-        except Exception:
+        except Exception as e:
             run_failed = True
             is_rag = "rag" in step_type.lower()
-            run_error_message = "Retrieval temporarily unavailable" if is_rag else "Step execution failed"
-            code = ERROR_CODE_RAG_UNAVAILABLE if is_rag else ERROR_CODE_STEP_FAILED
+            from app.services.canvas_write_gate import (
+                CANVAS_WRITE_AUTHORITY_BLOCKED,
+                user_facing_message_from_write_authority_error,
+            )
+
+            write_gate_msg = user_facing_message_from_write_authority_error(e)
+            if write_gate_msg:
+                run_error_message = write_gate_msg
+                code = CANVAS_WRITE_AUTHORITY_BLOCKED
+            elif is_rag:
+                run_error_message = "Retrieval temporarily unavailable"
+                code = ERROR_CODE_RAG_UNAVAILABLE
+            else:
+                run_error_message = "Step execution failed"
+                code = ERROR_CODE_STEP_FAILED
             update_step(
                 client=client,
                 step_uuid=step_uuid,
                 status=STEP_STATUS_FAILED,
                 error_code=code,
                 error_message=run_error_message,
-                is_retryable=is_rag,
+                is_retryable=is_rag and not write_gate_msg,
                 completed_at=datetime.now(timezone.utc).isoformat(),
             )
             emit_dry_run_step_failed(client, org_id, user_id, run_id, idx, step_id, code)

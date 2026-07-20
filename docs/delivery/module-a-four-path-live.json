@@ -1,0 +1,134 @@
+{
+  "verified_at": "2026-07-20T02:32:27.112162+00:00",
+  "module": "A",
+  "ticket": "STA-329",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "user_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "email": "conversation-smoke-sa@gravitre.app",
+  "paths": [
+    {
+      "run_id": "87994ee3-58a4-40ce-ae26-66f8f76824cd",
+      "run_status_legacy": "failed",
+      "run_status_contract": "failed",
+      "audit_event_ids": [
+        "ae34ab9d-b325-4157-97cb-8b3449ec0b64"
+      ],
+      "audit_log_ids": [
+        "ebf926e9-184b-4683-9342-13d9a1ac68a8"
+      ],
+      "notification_ids": [
+        "be3fd696-6746-4909-8a4d-ea56c09b0018"
+      ],
+      "learning_event_ids": [
+        "ee3c79d9-f612-4b13-9845-d78009b95ef5"
+      ],
+      "schema_versions": [
+        "1.0.0"
+      ],
+      "checks": {
+        "runs_legacy_failed": true,
+        "runs_contract_failed": true,
+        "audit_events": true,
+        "audit_logs": true,
+        "notifications_run_failed": true,
+        "learning_workflow_failed": true
+      },
+      "fanout_complete": true,
+      "path": "chat_orch"
+    },
+    {
+      "run_id": "606a0c7d-7004-4d07-83df-3a290cf70414",
+      "run_status_legacy": "failed",
+      "run_status_contract": "failed",
+      "audit_event_ids": [
+        "5f22e223-e2bf-440a-8dfe-f1d7dac9f79b"
+      ],
+      "audit_log_ids": [
+        "697bbcc5-718f-4555-b066-8d4331904606"
+      ],
+      "notification_ids": [
+        "4c3a99c5-0189-485e-80b3-ea62436cce99"
+      ],
+      "learning_event_ids": [
+        "3a1e11ac-634f-4cd1-a534-3e8df80c85d0"
+      ],
+      "schema_versions": [
+        "1.0.0"
+      ],
+      "checks": {
+        "runs_legacy_failed": true,
+        "runs_contract_failed": true,
+        "audit_events": true,
+        "audit_logs": true,
+        "notifications_run_failed": true,
+        "learning_workflow_failed": true
+      },
+      "fanout_complete": true,
+      "path": "canvas"
+    },
+    {
+      "run_id": "d499ebf1-4a7d-4eec-82d8-f8c324763d56",
+      "run_status_legacy": "failed",
+      "run_status_contract": "failed",
+      "audit_event_ids": [
+        "6c96ec81-96fc-4c97-bac3-a8bea2e62190"
+      ],
+      "audit_log_ids": [
+        "2ec8cf99-9b26-4a4f-a89e-898a40ee337e"
+      ],
+      "notification_ids": [
+        "a4c438a4-7456-4547-beed-15ae0e2c648c"
+      ],
+      "learning_event_ids": [
+        "458dc9e3-cc4b-433d-b54f-123bf7b494c0"
+      ],
+      "schema_versions": [
+        "1.0.0"
+      ],
+      "checks": {
+        "runs_legacy_failed": true,
+        "runs_contract_failed": true,
+        "audit_events": true,
+        "audit_logs": true,
+        "notifications_run_failed": true,
+        "learning_workflow_failed": true
+      },
+      "fanout_complete": true,
+      "path": "agent_jobs",
+      "job_id": "aa58c5f3-0ced-4b7f-9739-c3249f4d1ad7"
+    },
+    {
+      "run_id": "d72f0e2b-851f-4f2e-80ac-483584ecd502",
+      "run_status_legacy": "failed",
+      "run_status_contract": "failed",
+      "audit_event_ids": [
+        "a63ecaa3-0631-4985-be02-03fd0375f092"
+      ],
+      "audit_log_ids": [
+        "58e64703-a3fc-48be-90a5-44ed518ea88a"
+      ],
+      "notification_ids": [
+        "70b1e841-9a46-4fb9-a03d-10e4cfb7c06f"
+      ],
+      "learning_event_ids": [
+        "df654724-44b8-4fdc-87fa-45e878cf54df"
+      ],
+      "schema_versions": [
+        "1.0.0"
+      ],
+      "checks": {
+        "runs_legacy_failed": true,
+        "runs_contract_failed": true,
+        "audit_events": true,
+        "audit_logs": true,
+        "notifications_run_failed": true,
+        "learning_workflow_failed": true
+      },
+      "fanout_complete": true,
+      "path": "connector_trigger",
+      "execute_status": "failed"
+    }
+  ],
+  "all_four_fanout_complete": true,
+  "deployed_git_sha": "bc4c133dfc944c442f67329c5083427cbcfe8227"
+}

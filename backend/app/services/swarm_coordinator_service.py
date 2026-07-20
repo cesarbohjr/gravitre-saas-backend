@@ -13,6 +13,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.config import Settings
+from app.services.confidence_honesty import CONFIDENCE_SOURCE_HEURISTIC, label_confidence, estimated_confidence
 from app.services.council_service import DecisionMethod, coerce_council_agent_role, get_council_service
 from app.services.handoff_service import get_agent
 from app.services.notification_emitter import emit_notification
@@ -218,13 +219,16 @@ def _fallback_swarm_result(
     task: str,
     scoped_tools: list[Any],
 ) -> dict[str, Any]:
+    fb_confidence = float(
+        estimated_confidence(0.55, source=CONFIDENCE_SOURCE_HEURISTIC)["confidence"]
+    )
     fb = SwarmSubtaskResult(
         agent_id=agent_id,
         agent_name=agent_name,
         summary=task[:200],
         finding="Completed with default assessment.",
         recommended_action="proceed",
-        confidence=0.55,
+        confidence=fb_confidence,
         scoped_tools=list(scoped_tools) if isinstance(scoped_tools, list) else [],
     )
     return {
@@ -233,7 +237,7 @@ def _fallback_swarm_result(
         "summary": fb.summary,
         "finding": fb.finding,
         "recommendedAction": fb.recommended_action,
-        "confidence": fb.confidence,
+        **label_confidence(fb_confidence, source=CONFIDENCE_SOURCE_HEURISTIC, is_estimate=True),
         "scopedTools": fb.scoped_tools,
         "executionVerified": False,
         "executionMode": "degraded",

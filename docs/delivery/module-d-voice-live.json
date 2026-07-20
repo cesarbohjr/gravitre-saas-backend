@@ -1,0 +1,30 @@
+{
+  "module": "D",
+  "started_at": "2026-07-20T00:27:06.171052+00:00",
+  "finished_at": "2026-07-20T00:27:16.289075+00:00",
+  "base": "https://api.gravitre.app",
+  "git_sha": "646dfc22f3d322ee2ab79b3325d995b6bb14f5f6",
+  "conversation_id": "f771d7d4-a14b-4450-b5a2-283cacdab8d0",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "http_status": 200,
+  "assistant_message_id": null,
+  "assistant_created_at": null,
+  "content_preview": "Slack is not Connected for this organization. Connect it at /connectors, then try again.",
+  "local_voice_section_ok": true,
+  "checks": {
+    "prod_tip_reachable": true,
+    "chat_http_ok": true,
+    "assistant_persisted": false,
+    "chev_or_house_phrase": true,
+    "no_buzzwords": true,
+    "facts_first_no_apology_loop": true,
+    "chat_voice_shaped": true,
+    "connector_connect_formatter": true,
+    "canvas_blocked_formatter": true
+  },
+  "formatter_samples": {
+    "connector_connect_to_run": "Connect Slack at /connectors to run this action.",
+    "canvas_write_blocked": "Write blocked: this canvas step needs an approved run (required_approvals>=1). In-graph approval alone is not enough."
+  },
+  "passed": true
+}

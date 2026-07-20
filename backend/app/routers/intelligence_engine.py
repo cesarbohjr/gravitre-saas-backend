@@ -106,16 +106,40 @@ async def intelligence_recommend(
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
+    from app.services.confidence_honesty import (
+        CONFIDENCE_SOURCE_HEURISTIC,
+        CONFIDENCE_SOURCE_INSUFFICIENT,
+        label_confidence,
+    )
+
     recs = await get_decision_intelligence_service(settings).recommend_next_action(org_id, body.context)
     primary = (recs.get("recommendations") or [{}])[0]
+    raw_conf = primary.get("confidence")
+    if raw_conf is None:
+        # Honest null — never invent 0.5 as a live intelligence score.
+        labeled = label_confidence(None, source=CONFIDENCE_SOURCE_INSUFFICIENT)
+        conf_value: float | None = None
+        is_estimate = False
+        source = CONFIDENCE_SOURCE_INSUFFICIENT
+    else:
+        labeled = label_confidence(
+            float(raw_conf),
+            source=str(primary.get("confidence_source") or CONFIDENCE_SOURCE_HEURISTIC),
+            is_estimate=bool(primary.get("confidence_is_estimate", True)),
+        )
+        conf_value = labeled["confidence"]
+        is_estimate = bool(labeled["confidence_is_estimate"])
+        source = str(labeled["confidence_source"])
     return get_ai_trust_layer().wrap_response(
         answer=str(primary.get("action") or ""),
         sources=[{"type": "optimization_suggestions"}],
-        confidence=float(primary.get("confidence") or 0.5),
+        confidence=conf_value,
         reasoning_summary=str(primary.get("reasoning") or ""),
         actions_taken=[],
         actions_pending_approval=[primary] if primary else [],
         advisory_only=True,
+        confidence_is_estimate=is_estimate,
+        confidence_source=source,
     )
 
 

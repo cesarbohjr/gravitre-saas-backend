@@ -2,6 +2,7 @@
 
 import { Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { ESTIMATED_CONFIDENCE_LABEL, ESTIMATED_CONFIDENCE_SHORT } from "@/lib/outcome-labels"
 
 export type AdvisorAction = {
   id?: string
@@ -11,7 +12,11 @@ export type AdvisorAction = {
   summary?: string
   impact?: string
   estimated_impact?: string
-  confidence?: number
+  confidence?: number | null
+  confidenceIsEstimate?: boolean
+  confidence_is_estimate?: boolean
+  confidenceSource?: string
+  confidence_source?: string
 }
 
 export type AdvisorBrief = {
@@ -23,9 +28,21 @@ export type AdvisorBrief = {
   risks?: Array<{ title?: string; summary?: string }>
   opportunities?: Array<{ title?: string; summary?: string }>
   impact_summary?: string
-  confidence?: number
+  confidence?: number | null
+  confidenceIsEstimate?: boolean
+  confidence_is_estimate?: boolean
+  confidenceSource?: string
+  confidence_source?: string
   evidence?: Array<{ source?: string; title?: string; department?: string }>
   advisory_only?: boolean
+}
+
+function actionIsEstimate(action: AdvisorAction): boolean {
+  return action.confidenceIsEstimate !== false && action.confidence_is_estimate !== false
+}
+
+function briefIsEstimate(brief: AdvisorBrief): boolean {
+  return brief.confidenceIsEstimate !== false && brief.confidence_is_estimate !== false
 }
 
 export function AdvisorBriefPanel({ brief }: { brief: AdvisorBrief | null | undefined }) {
@@ -42,7 +59,8 @@ export function AdvisorBriefPanel({ brief }: { brief: AdvisorBrief | null | unde
         </p>
         {brief.confidence != null ? (
           <span className="ml-auto text-[10px] text-muted-foreground">
-            {Math.round(brief.confidence * 100)}% confidence
+            {briefIsEstimate(brief) ? ESTIMATED_CONFIDENCE_LABEL : "Confidence"}{" "}
+            {Math.round(brief.confidence * 100)}%
           </span>
         ) : null}
       </div>
@@ -77,7 +95,10 @@ export function AdvisorBriefPanel({ brief }: { brief: AdvisorBrief | null | unde
                   <span>Impact: {action.impact ?? action.estimated_impact}</span>
                 ) : null}
                 {action.confidence != null ? (
-                  <span>{Math.round(action.confidence * 100)}% relevance</span>
+                  <span>
+                    {actionIsEstimate(action) ? `${ESTIMATED_CONFIDENCE_SHORT} ` : ""}
+                    {Math.round(action.confidence * 100)}% relevance
+                  </span>
                 ) : null}
               </div>
             </div>

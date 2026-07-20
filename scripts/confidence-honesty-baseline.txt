@@ -1,0 +1,2 @@
+# Grandfathered Module C confidence-honesty debt. Shrink toward zero — do not grow.
+# Cleared 2026-07-20: all 25 prior exceptions fixed via label_confidence / estimated_confidence.

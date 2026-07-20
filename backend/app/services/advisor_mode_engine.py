@@ -7,6 +7,11 @@ from typing import Any
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.business_signals_engine import get_business_signals_engine
+from app.services.confidence_honesty import (
+    CONFIDENCE_SOURCE_ADVISOR,
+    CONFIDENCE_SOURCE_INSUFFICIENT,
+    label_confidence,
+)
 from app.services.decision_intelligence_service import get_decision_intelligence_service
 from app.services.recommendation_quality_engine import get_recommendation_quality_engine
 from app.services.research_service import get_research_service
@@ -76,11 +81,21 @@ class AdvisorModeEngine:
         risks = [row for row in signals if row.get("signal_type") in {"risk", "alert"}][:3]
         opportunities = [row for row in signals if row.get("signal_type") == "opportunity"][:3]
 
-        confidence = round(
-            sum(float(row.get("quality_score") or row.get("confidence") or 0.5) for row in ranked_actions[:5])
-            / max(len(ranked_actions[:5]), 1),
-            4,
-        ) if ranked_actions else float(dept_brief.get("confidence") or 0.5)
+        if ranked_actions:
+            confidence = round(
+                sum(float(row.get("quality_score") or row.get("confidence") or 0.0) for row in ranked_actions[:5])
+                / max(len(ranked_actions[:5]), 1),
+                4,
+            )
+            conf_meta = label_confidence(confidence, source=CONFIDENCE_SOURCE_ADVISOR, is_estimate=True)
+        elif dept_brief.get("confidence") is not None:
+            conf_meta = label_confidence(
+                float(dept_brief["confidence"]),
+                source=str(dept_brief.get("confidence_source") or CONFIDENCE_SOURCE_ADVISOR),
+                is_estimate=bool(dept_brief.get("confidence_is_estimate", True)),
+            )
+        else:
+            conf_meta = label_confidence(None, source=CONFIDENCE_SOURCE_INSUFFICIENT)
 
         why_parts: list[str] = []
         if risks:
@@ -99,7 +114,7 @@ class AdvisorModeEngine:
             "risks": risks,
             "opportunities": opportunities,
             "impact_summary": self._impact_summary(ranked_actions),
-            "confidence": confidence,
+            **conf_meta,
             "evidence": dept_brief.get("evidence") or [
                 {"source": row.get("source"), "title": row.get("title")} for row in signals[:5]
             ],
@@ -133,11 +148,15 @@ class AdvisorModeEngine:
         except Exception as exc:  # noqa: BLE001
             logger.debug("advisor_research_brief_skipped org_id=%s error=%s", org_id, exc)
 
-        confidence = round(
-            sum(float(row.get("quality_score") or row.get("confidence") or 0.5) for row in ranked[:5])
-            / max(len(ranked[:5]), 1),
-            4,
-        ) if ranked else 0.55
+        if ranked:
+            confidence = round(
+                sum(float(row.get("quality_score") or row.get("confidence") or 0.0) for row in ranked[:5])
+                / max(len(ranked[:5]), 1),
+                4,
+            )
+            conf_meta = label_confidence(confidence, source=CONFIDENCE_SOURCE_ADVISOR, is_estimate=True)
+        else:
+            conf_meta = label_confidence(None, source=CONFIDENCE_SOURCE_INSUFFICIENT)
 
         return {
             "mode": "advisor_executive",
@@ -153,7 +172,7 @@ class AdvisorModeEngine:
             "departments": sections,
             "research_summary": research_brief.get("summary") or research_brief.get("headline"),
             "impact_summary": self._impact_summary(ranked),
-            "confidence": confidence,
+            **conf_meta,
             "evidence": [
                 {"department": section.get("department"), "title": (section.get("what_changed") or ["Update"])[0]}
                 for section in sections[:5]
@@ -191,6 +210,12 @@ class AdvisorModeEngine:
     ) -> list[dict[str, Any]]:
         merged: list[dict[str, Any]] = []
         for row in signals:
+            conf_val = row.get("quality_score") if row.get("quality_score") is not None else row.get("confidence")
+            labeled = label_confidence(
+                float(conf_val) if conf_val is not None else None,
+                source=str(row.get("confidence_source") or CONFIDENCE_SOURCE_ADVISOR),
+                is_estimate=bool(row.get("confidence_is_estimate", True)),
+            )
             merged.append(
                 {
                     "id": row.get("id"),
@@ -198,12 +223,17 @@ class AdvisorModeEngine:
                     "title": row.get("title"),
                     "reason": row.get("summary"),
                     "summary": row.get("summary"),
-                    "confidence": row.get("quality_score") or row.get("confidence"),
+                    **labeled,
                     "estimated_impact": row.get("estimated_impact"),
                     "source": row.get("source"),
                 }
             )
         for row in decision_recs:
+            labeled = label_confidence(
+                float(row["confidence"]) if row.get("confidence") is not None else None,
+                source=str(row.get("confidence_source") or CONFIDENCE_SOURCE_ADVISOR),
+                is_estimate=bool(row.get("confidence_is_estimate", True)),
+            )
             merged.append(
                 {
                     "id": row.get("id"),
@@ -211,7 +241,7 @@ class AdvisorModeEngine:
                     "title": row.get("action") or row.get("title"),
                     "reason": row.get("reasoning") or row.get("reason"),
                     "summary": row.get("reasoning"),
-                    "confidence": row.get("confidence"),
+                    **labeled,
                     "estimated_impact": row.get("estimated_impact"),
                     "source": "decision_intelligence",
                 }

@@ -11,12 +11,15 @@ export function RecommendationExplanation({
   advisoryOnly = true,
   sources,
   className,
+  isEstimate,
 }: {
   summary?: string | null
   confidence?: number | null
   advisoryOnly?: boolean
   sources?: Array<{ type?: string; label?: string }>
   className?: string
+  /** Module C / STA-331: when API stamps estimate provenance, surface it on the badge. */
+  isEstimate?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const safeSummary = (summary || "").trim() || "No explanation available yet."
@@ -36,7 +39,12 @@ export function RecommendationExplanation({
             <span className="mt-0.5 block truncate text-sm text-muted-foreground">{safeSummary}</span>
           ) : null}
         </span>
-        <ConfidenceBadge score={confidence} showScore={false} className="shrink-0" />
+        <ConfidenceBadge
+          score={confidence}
+          showScore={false}
+          isEstimate={Boolean(isEstimate)}
+          className="shrink-0"
+        />
         <CaretDown
           className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")}
           aria-hidden

@@ -704,6 +704,23 @@ export const workflowsApi = {
   dryRun: (data: { workflow_id?: string; definition?: unknown; parameters?: unknown }) =>
     postJson<WorkflowDryRunResponse>(apiUrl("/api/workflows/dry-run"), data),
 
+  // Module A outcome ops consumer (24h pass/fail by source + connector)
+  executionOutcomesOpsSummary: () =>
+    fetcher<{
+      window_hours: number
+      totals: { pass: number; fail: number; cancel: number; other?: number }
+      pass_rate: number | null
+      by_source: Array<{ source: string; pass: number; fail: number; cancel: number; pass_rate: number | null }>
+      by_connector: Array<{
+        connector: string
+        pass: number
+        fail: number
+        cancel: number
+        pass_rate: number | null
+      }>
+      event_count: number
+    }>(apiUrl("/api/workflows/execution-outcomes/ops-summary")),
+
   // Predictive failure alerts (STA-122)
   listFailurePredictions: (params?: { workflowId?: string; status?: string }) => {
     const query = new URLSearchParams()

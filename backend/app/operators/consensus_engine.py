@@ -12,6 +12,11 @@ from app.services.consensus_personas import (
     build_agent_defs,
     persona_vote_weights,
 )
+from app.services.confidence_honesty import (
+    CONFIDENCE_SOURCE_HEURISTIC,
+    CONFIDENCE_SOURCE_MODEL,
+    label_confidence,
+)
 from app.services.conversational_consensus_service import get_conversational_consensus_service
 from app.workflows.repository import get_supabase_client
 
@@ -52,6 +57,7 @@ class ConsensusEngine:
         from app.services.model_router import TaskType, get_model_router
 
         router = get_model_router()
+        used_fallback = False
         try:
             response = await router.complete(
                 TaskType.DECISION_REASONING,
@@ -66,11 +72,17 @@ class ConsensusEngine:
             end = raw.rfind("}")
             parsed = json.loads(raw[start : end + 1]) if start >= 0 and end > start else {}
         except Exception:  # noqa: BLE001
-            parsed = {"vote": "revise", "confidence": 0.5, "summary": "Unable to parse stance."}
+            used_fallback = True
+            parsed = {"vote": "revise", "summary": "Unable to parse stance."}
+        confidence = float(parsed.get("confidence") or 0.5)
         return {
             "persona": persona_key,
             "vote": str(parsed.get("vote") or "revise"),
-            "confidence": float(parsed.get("confidence") or 0.5),
+            **label_confidence(
+                confidence,
+                source=CONFIDENCE_SOURCE_HEURISTIC if used_fallback else CONFIDENCE_SOURCE_MODEL,
+                is_estimate=True,
+            ),
             "summary": str(parsed.get("summary") or "")[:300],
         }
 
@@ -86,14 +98,18 @@ class ConsensusEngine:
             vote = str(stance.get("vote") or "revise")
             weight = float(weights.get(str(stance.get("persona") or ""), 1.0))
             totals[vote] = totals.get(vote, 0.0) + weight
-            confidences.append(float(stance.get("confidence") or 0.5))
+            raw_conf = stance.get("confidence")
+            confidences.append(float(raw_conf) if raw_conf is not None else 0.5)
         winner = max(totals.items(), key=lambda item: item[1])[0]
         tied = [k for k, v in totals.items() if v == totals[winner]]
         if len(tied) > 1:
             by_conf = {}
             for stance in stances:
                 vote = str(stance.get("vote") or "revise")
-                by_conf[vote] = by_conf.get(vote, 0.0) + float(stance.get("confidence") or 0.5)
+                raw_conf = stance.get("confidence")
+                by_conf[vote] = by_conf.get(vote, 0.0) + (
+                    float(raw_conf) if raw_conf is not None else 0.5
+                )
             winner = max(tied, key=lambda key: by_conf.get(key, 0.0))
         minority = [
             {
@@ -104,10 +120,17 @@ class ConsensusEngine:
             for s in stances
             if str(s.get("vote") or "") != winner
         ]
+        aggregate_conf = (
+            round(sum(confidences) / len(confidences), 4) if confidences else None
+        )
         return {
             "consensus_vote": winner,
             "vote_breakdown": totals,
-            "confidence": round(sum(confidences) / len(confidences), 4) if confidences else 0.5,
+            **label_confidence(
+                aggregate_conf,
+                source=CONFIDENCE_SOURCE_HEURISTIC,
+                is_estimate=True,
+            ),
             "minority_opinions": minority,
         }
 

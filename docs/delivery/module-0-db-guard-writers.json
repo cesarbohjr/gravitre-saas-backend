@@ -1,0 +1,52 @@
+{
+  "title": "Legitimate service-role conversations INSERT writers (pre-constraint enumeration)",
+  "enumerated_at": "2026-07-19",
+  "note": "Service role bypasses RLS; BEFORE INSERT trigger keys off row actor column, not auth.uid().",
+  "writers": [
+    {
+      "path": "backend/app/services/conversation_state_service.py",
+      "symbol": "ensure_owned_conversation",
+      "actor_column": "user_id",
+      "legitimate_when": "real user into their org, OR smoke SA into isolated org f07e57c0-…"
+    },
+    {
+      "path": "backend/app/routers/conversations.py",
+      "symbol": "POST /api/conversations",
+      "actor_column": "user_id",
+      "legitimate_when": "authenticated caller creating own conversation"
+    },
+    {
+      "path": "backend/app/services/chat_workflow_e2e_live.py",
+      "symbol": "create_workflow_conversation",
+      "actor_column": "user_id",
+      "legitimate_when": "assert_conversation_create_allowed then insert; isolated org for SA"
+    },
+    {
+      "path": "scripts/probe-sta307-conversation-id.py",
+      "symbol": "raw insert",
+      "actor_column": "user_id",
+      "legitimate_when": "probe tooling; must use isolated org for SA"
+    },
+    {
+      "path": "scripts/verify-module-b-conversation-turn-controller.py",
+      "symbol": "raw insert",
+      "actor_column": "user_id",
+      "legitimate_when": "verify harness; must use isolated org for SA"
+    }
+  ],
+  "non_writers": [
+    "No SQL migration seeds INSERT into public.conversations",
+    "Admin cleanup scripts only UPDATE deleted_at / SELECT",
+    "Frontend ensureConversation goes through POST /api/conversations (app guard + DB trigger)"
+  ],
+  "v2_extended_tables": {
+    "audit_events": "actor_id",
+    "workflow_runs": "triggered_by",
+    "notifications": "user_id (recipient)"
+  },
+  "must_keep_working": [
+    "Smoke SA inserts into f07e57c0-1501-4000-8000-c04e57a00001",
+    "Real operators (e.g. Cesar) inserting into cbbf993b-… with their own user_id",
+    "SET LOCAL gravitree.bypass_test_credential_org_guard=on for emergency ops"
+  ]
+}

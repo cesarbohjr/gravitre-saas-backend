@@ -1,0 +1,4495 @@
+{
+  "module": "B",
+  "audit": "schema_extraction_write_catalog_sweep",
+  "finished_at": "2026-07-20T02:26:40.276754+00:00",
+  "write_action_count": 414,
+  "coverable_contract_keys": [
+    "body",
+    "channel",
+    "channel_id",
+    "email",
+    "list_id",
+    "list_name",
+    "message",
+    "name",
+    "project",
+    "project_key",
+    "subject",
+    "summary",
+    "text",
+    "title",
+    "to"
+  ],
+  "counts": {
+    "SKIP_OPAQUE_KEYS": 103,
+    "PASS": 79,
+    "SKIP_NO_SCHEMA": 232
+  },
+  "fail_empty": [],
+  "skip_no_schema_count": 232,
+  "skip_opaque_keys_count": 103,
+  "rows": [
+    {
+      "action": "salesforce.leads.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "fields"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "salesforce.leads.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "lead_id",
+        "fields"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "salesforce.accounts.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "fields"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "salesforce.opportunities.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "fields"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "salesforce.tasks.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "subject"
+      ],
+      "coverable_keys": [
+        "subject"
+      ],
+      "message": "create a salesforce create titled \"Module B sweep create\"",
+      "extracted": {
+        "subject": "Module B sweep create"
+      },
+      "meaningful": {
+        "subject": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "salesforce.opportunities.update_stage",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "salesforce.accounts.update",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "salesforce.opportunities.update",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "hubspot.contacts.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "email",
+        "firstname",
+        "lastname"
+      ],
+      "coverable_keys": [
+        "email"
+      ],
+      "message": "create a hubspot create for sweep.moduleb@acme.test",
+      "extracted": {
+        "email": "sweep.moduleb@acme.test",
+        "firstname": "create a hubspot create for sweep.moduleb@acme.test",
+        "lastname": "create a hubspot create for sweep.moduleb@acme.test"
+      },
+      "meaningful": {
+        "email": "sweep.moduleb@acme.test",
+        "firstname": "create a hubspot create for sweep.moduleb@acme.test",
+        "lastname": "create a hubspot create for sweep.moduleb@acme.test"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "hubspot.contacts.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "contact_id",
+        "properties"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "hubspot.contacts.delete",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "contact_id"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "hubspot.deals.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "dealname",
+        "amount"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "hubspot.deals.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "deal_id",
+        "properties"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "hubspot.deals.delete",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "deal_id"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "hubspot.notes.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "body",
+        "contact_id",
+        "deal_id",
+        "company_id"
+      ],
+      "coverable_keys": [
+        "body"
+      ],
+      "message": "send a hubspot create saying \"Module B sweep body\"",
+      "extracted": {
+        "body": "Module B sweep body",
+        "deal_id": "Module B sweep body"
+      },
+      "meaningful": {
+        "body": "Module B sweep body",
+        "deal_id": "Module B sweep body"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "hubspot.notes.delete",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "note_id"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "hubspot.associations.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "from_type",
+        "from_id",
+        "to_type",
+        "to_id"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "hubspot.companies.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "name",
+        "domain",
+        "industry"
+      ],
+      "coverable_keys": [
+        "name"
+      ],
+      "message": "create a hubspot create titled \"Module B sweep create\"",
+      "extracted": {
+        "name": "Module B sweep create"
+      },
+      "meaningful": {
+        "name": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "hubspot.deals.update_stage",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "hubspot.sequences.enroll",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "hubspot.lists.add_contact",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "hubspot.lists.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "hubspot.tickets.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "pipedrive.persons.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "name"
+      ],
+      "coverable_keys": [
+        "name"
+      ],
+      "message": "create a pipedrive create titled \"Module B sweep create\"",
+      "extracted": {
+        "name": "Module B sweep create"
+      },
+      "meaningful": {
+        "name": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "pipedrive.persons.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "person_id",
+        "payload"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "pipedrive.deals.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "title"
+      ],
+      "coverable_keys": [
+        "title"
+      ],
+      "message": "create a pipedrive create titled \"Module B sweep create\"",
+      "extracted": {
+        "title": "Module B sweep create"
+      },
+      "meaningful": {
+        "title": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "pipedrive.deals.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "deal_id",
+        "payload"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "pipedrive.deals.update_stage",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "marketo.leads.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "lead_id",
+        "fields"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "marketo.leads.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "email"
+      ],
+      "coverable_keys": [
+        "email"
+      ],
+      "message": "create a marketo create for sweep.moduleb@acme.test",
+      "extracted": {
+        "email": "sweep.moduleb@acme.test"
+      },
+      "meaningful": {
+        "email": "sweep.moduleb@acme.test"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "marketo.campaigns.schedule",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "campaign_id",
+        "run_at"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "marketo.lists.add_to_static_list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "marketo.leads.merge",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "marketo.programs.members.add",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "segment.identify",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "user_id",
+        "traits"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "segment.track",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "event",
+        "user_id",
+        "properties"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "segment.group",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "user_id",
+        "group_id",
+        "traits"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "segment.alias",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "segment.page",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "segment.batch",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "google_analytics.audiences.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "property_id",
+        "display_name"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "google_analytics.conversions.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "property_id",
+        "event_name"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "google_analytics.reports.batch",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "google_analytics.realtime.run",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "google_analytics.funnels.run",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "google_search_console.sitemaps.list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "mailchimp.members.add",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "list_id",
+        "email"
+      ],
+      "coverable_keys": [
+        "list_id",
+        "email"
+      ],
+      "message": "create a mailchimp add for sweep.moduleb@acme.test",
+      "extracted": {
+        "email": "sweep.moduleb@acme.test"
+      },
+      "meaningful": {
+        "email": "sweep.moduleb@acme.test"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "mailchimp.campaigns.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "type"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "mailchimp.tags.add",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "list_id",
+        "email",
+        "tags"
+      ],
+      "coverable_keys": [
+        "list_id",
+        "email"
+      ],
+      "message": "create a mailchimp add for sweep.moduleb@acme.test",
+      "extracted": {
+        "email": "sweep.moduleb@acme.test"
+      },
+      "meaningful": {
+        "email": "sweep.moduleb@acme.test"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "mailchimp.automations.trigger",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "mailchimp.segments.add_member",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "mailchimp.batch.subscribe",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "mixpanel.profiles.set",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "distinct_id",
+        "properties"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "mixpanel.events.track",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "event",
+        "distinct_id",
+        "properties"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "mixpanel.cohorts.export",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "mixpanel.annotations.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "mixpanel.engage.query",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "constant_contact.contacts.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "email",
+        "firstname",
+        "lastname"
+      ],
+      "coverable_keys": [
+        "email"
+      ],
+      "message": "create a constant contact create for sweep.moduleb@acme.test",
+      "extracted": {
+        "email": "sweep.moduleb@acme.test",
+        "firstname": "create a constant contact create for sweep.moduleb@acme.test",
+        "lastname": "create a constant contact create for sweep.moduleb@acme.test"
+      },
+      "meaningful": {
+        "email": "sweep.moduleb@acme.test",
+        "firstname": "create a constant contact create for sweep.moduleb@acme.test",
+        "lastname": "create a constant contact create for sweep.moduleb@acme.test"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "constant_contact.contacts.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "contact_id",
+        "properties"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "constant_contact.campaigns.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "name",
+        "email_campaign_activities"
+      ],
+      "coverable_keys": [
+        "name"
+      ],
+      "message": "create a constant contact create titled \"Module B sweep create\"",
+      "extracted": {
+        "name": "Module B sweep create"
+      },
+      "meaningful": {
+        "name": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "constant_contact.lists.add_contacts",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "constant_contact.tags.apply",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "constant_contact.campaigns.schedule",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "constant_contact.contact_lists.list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "constant_contact.segments.list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "constant_contact.contacts.delete",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "hootsuite.messages.schedule",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "text",
+        "scheduled_at",
+        "profile_ids"
+      ],
+      "coverable_keys": [
+        "text"
+      ],
+      "message": "send a hootsuite schedule saying \"Module B sweep body\"",
+      "extracted": {
+        "text": "Module B sweep body",
+        "message": "Module B sweep body"
+      },
+      "meaningful": {
+        "text": "Module B sweep body",
+        "message": "Module B sweep body"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "hootsuite.messages.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "message_id",
+        "properties",
+        "scheduled_at"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "hootsuite.inbox.reply",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "hootsuite.approvals.submit",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "hootsuite.bulk.schedule",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "semrush.projects.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "name",
+        "project_url"
+      ],
+      "coverable_keys": [
+        "name"
+      ],
+      "message": "create a semrush create titled \"Module B sweep create\"",
+      "extracted": {
+        "name": "Module B sweep create"
+      },
+      "meaningful": {
+        "name": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "semrush.position_tracking.add",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "project_id",
+        "keywords"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "semrush.batch.domain",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "semrush.competitors.compare",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "semrush.exports.run",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "ahrefs.projects.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "name",
+        "url",
+        "protocol",
+        "mode"
+      ],
+      "coverable_keys": [
+        "name"
+      ],
+      "message": "create a ahrefs create titled \"Module B sweep create\"",
+      "extracted": {
+        "name": "Module B sweep create"
+      },
+      "meaningful": {
+        "name": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "ahrefs.rank_tracker.add",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "project_id",
+        "keywords",
+        "locations"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "ahrefs.brand_radar.prompts.track",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "report_id",
+        "prompts"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "ahrefs.brand_radar.exports.run",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "finseo.prompts.track",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "project_id",
+        "prompts"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "finseo.exports.run",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "ai_visibility_ui.prompts.batch",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "brand",
+        "prompts"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "ai_visibility_ui.captures.export",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "stackadapt.campaigns.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "name",
+        "budget",
+        "campaign_type"
+      ],
+      "coverable_keys": [
+        "name"
+      ],
+      "message": "create a stackadapt create titled \"Module B sweep create\"",
+      "extracted": {
+        "name": "Module B sweep create"
+      },
+      "meaningful": {
+        "name": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "stackadapt.campaigns.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "campaign_id",
+        "properties"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "stackadapt.audiences.sync",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "stackadapt.creatives.upload",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "stackadapt.reports.export",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "linkedin.leads.submit",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "lead"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "linkedin.audience.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "audience_id",
+        "payload"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "linkedin.campaigns.optimize",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "linkedin.conversions.track",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "linkedin.batch.enrich",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "apollo.contacts.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "email"
+      ],
+      "coverable_keys": [
+        "email"
+      ],
+      "message": "create a apollo create for sweep.moduleb@acme.test",
+      "extracted": {
+        "email": "sweep.moduleb@acme.test"
+      },
+      "meaningful": {
+        "email": "sweep.moduleb@acme.test"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "apollo.lists.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "name",
+        "modality"
+      ],
+      "coverable_keys": [
+        "name"
+      ],
+      "message": "create a apollo create titled \"Module B sweep create\"",
+      "extracted": {
+        "name": "Module B sweep create"
+      },
+      "meaningful": {
+        "name": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "apollo.sequences.add",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "sequence_id",
+        "contact_ids"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "apollo.enrichment.bulk",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "apollo.tasks.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "apollo.signals.subscribe",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "apollo.contacts.update",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "apollo.contacts.delete",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "apollo.sequences.remove",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "clay.leads.push",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "records",
+        "table_id",
+        "webhook_url"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "clay.enrichments.request",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "records",
+        "table_id"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "clay.crm.sync",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "engagebay.contacts.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "email",
+        "firstname",
+        "lastname",
+        "properties"
+      ],
+      "coverable_keys": [
+        "email"
+      ],
+      "message": "create a engagebay create for sweep.moduleb@acme.test",
+      "extracted": {
+        "email": "sweep.moduleb@acme.test",
+        "firstname": "create a engagebay create for sweep.moduleb@acme.test",
+        "lastname": "create a engagebay create for sweep.moduleb@acme.test"
+      },
+      "meaningful": {
+        "email": "sweep.moduleb@acme.test",
+        "firstname": "create a engagebay create for sweep.moduleb@acme.test",
+        "lastname": "create a engagebay create for sweep.moduleb@acme.test"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "engagebay.contacts.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "contact_id",
+        "properties"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "engagebay.tasks.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "stripe.customers.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "email"
+      ],
+      "coverable_keys": [
+        "email"
+      ],
+      "message": "create a stripe create for sweep.moduleb@acme.test",
+      "extracted": {
+        "email": "sweep.moduleb@acme.test"
+      },
+      "meaningful": {
+        "email": "sweep.moduleb@acme.test"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "stripe.invoices.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "customer",
+        "payload"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "stripe.refunds.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "charge",
+        "amount"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "stripe.subscriptions.update",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "stripe.payment_intents.confirm",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "stripe.checkout.sessions.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "quickbooks.invoices.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "customer"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "quickbooks.customers.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "name"
+      ],
+      "coverable_keys": [
+        "name"
+      ],
+      "message": "create a quickbooks create titled \"Module B sweep create\"",
+      "extracted": {
+        "name": "Module B sweep create"
+      },
+      "meaningful": {
+        "name": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "quickbooks.payments.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "amount"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "quickbooks.customers.search",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "quickbooks.bills.list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "quickbooks.bills.get",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "quickbooks.vendors.get",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "quickbooks.journalentries.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "netsuite.customers.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "customer_id",
+        "fields"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "netsuite.journalentries.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "entry"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "netsuite.salesorders.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "payload"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "netsuite.items.get",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "netsuite.invoices.get",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "netsuite.fulfillment.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "xero.invoices.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "contact"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "xero.contacts.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "name"
+      ],
+      "coverable_keys": [
+        "name"
+      ],
+      "message": "create a xero create titled \"Module B sweep create\"",
+      "extracted": {
+        "name": "Module B sweep create"
+      },
+      "meaningful": {
+        "name": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "xero.payments.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "amount"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "xero.banktransactions.import",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "xero.reports.profitloss",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "xero.batch.invoices",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "clio.conflict.checklist",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "prospect_name",
+        "matter_type"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "clio.intake.tasks",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "matter_name"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "clio.matters.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "client_id",
+        "description",
+        "practice_area"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "clio.tasks.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "subject",
+        "matter_id",
+        "description",
+        "due_at"
+      ],
+      "coverable_keys": [
+        "subject"
+      ],
+      "message": "create a clio create titled \"Module B sweep create\"",
+      "extracted": {
+        "subject": "Module B sweep create",
+        "description": "Module B sweep create"
+      },
+      "meaningful": {
+        "subject": "Module B sweep create",
+        "description": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "clio.calendar_entries.list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "real_estate.mls.note",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "property_address",
+        "list_price"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "real_estate.handoff.brief",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "buyer_name",
+        "property_address"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "real_estate.listing.publish",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "listing_id"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "real_estate.mls.sync",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "plaid.link.token.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "client_name",
+        "user_id",
+        "products",
+        "language",
+        "country_codes"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "plaid.public_token.exchange",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "public_token"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "plaid.transactions.sync",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "plaid.identity.get",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "plaid.investments.holdings",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "slack.post_message",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "channel",
+        "text"
+      ],
+      "coverable_keys": [
+        "channel",
+        "text"
+      ],
+      "message": "post a slack post message to #module-b-sweep saying hello from sweep",
+      "extracted": {
+        "channel": "module-b-sweep"
+      },
+      "meaningful": {
+        "channel": "module-b-sweep"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "slack.conversations.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "name",
+        "is_private"
+      ],
+      "coverable_keys": [
+        "name"
+      ],
+      "message": "create a slack create titled \"Module B sweep create\"",
+      "extracted": {
+        "name": "Module B sweep create"
+      },
+      "meaningful": {
+        "name": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "slack.chat.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "channel",
+        "ts",
+        "text"
+      ],
+      "coverable_keys": [
+        "channel",
+        "text"
+      ],
+      "message": "post a slack update to #module-b-sweep saying hello from sweep",
+      "extracted": {
+        "channel": "module-b-sweep"
+      },
+      "meaningful": {
+        "channel": "module-b-sweep"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "slack.conversations.join",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "channel"
+      ],
+      "coverable_keys": [
+        "channel"
+      ],
+      "message": "post a slack join to #module-b-sweep saying hello from sweep",
+      "extracted": {
+        "channel": "module-b-sweep"
+      },
+      "meaningful": {
+        "channel": "module-b-sweep"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "slack.files.upload",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "slack.reactions.add",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "slack.workflows.trigger",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "microsoft_teams.messages.send",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "team_id",
+        "channel_id",
+        "content"
+      ],
+      "coverable_keys": [
+        "channel_id"
+      ],
+      "message": "post a microsoft teams send to #module-b-sweep saying hello from sweep",
+      "extracted": {
+        "channel_id": "module-b-sweep"
+      },
+      "meaningful": {
+        "channel_id": "module-b-sweep"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "microsoft_teams.meetings.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "subject",
+        "start",
+        "end"
+      ],
+      "coverable_keys": [
+        "subject"
+      ],
+      "message": "create a microsoft teams create titled \"Module B sweep create\"",
+      "extracted": {
+        "subject": "Module B sweep create"
+      },
+      "meaningful": {
+        "subject": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "microsoft_teams.tabs.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "microsoft_teams.members.add",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "microsoft_teams.presence.set",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "microsoft365.mail.send",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "to",
+        "subject",
+        "body"
+      ],
+      "coverable_keys": [
+        "to",
+        "subject",
+        "body"
+      ],
+      "message": "create a microsoft365 send titled \"Module B sweep send\"",
+      "extracted": {
+        "subject": "Module B sweep send",
+        "body": "Module B sweep send"
+      },
+      "meaningful": {
+        "subject": "Module B sweep send",
+        "body": "Module B sweep send"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "microsoft365.calendar.events.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "subject",
+        "start",
+        "end",
+        "body"
+      ],
+      "coverable_keys": [
+        "subject",
+        "body"
+      ],
+      "message": "create a microsoft365 create titled \"Module B sweep create\"",
+      "extracted": {
+        "subject": "Module B sweep create",
+        "body": "Module B sweep create"
+      },
+      "meaningful": {
+        "subject": "Module B sweep create",
+        "body": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "microsoft365.files.upload",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "filename",
+        "content",
+        "parent_id"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "microsoft365.teams.messages.send",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "team_id",
+        "channel_id",
+        "content"
+      ],
+      "coverable_keys": [
+        "channel_id"
+      ],
+      "message": "post a microsoft365 send to #module-b-sweep saying hello from sweep",
+      "extracted": {
+        "channel_id": "module-b-sweep"
+      },
+      "meaningful": {
+        "channel_id": "module-b-sweep"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "microsoft365.teams.meetings.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "subject",
+        "start",
+        "end"
+      ],
+      "coverable_keys": [
+        "subject"
+      ],
+      "message": "create a microsoft365 create titled \"Module B sweep create\"",
+      "extracted": {
+        "subject": "Module B sweep create"
+      },
+      "meaningful": {
+        "subject": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "microsoft365.excel.workbook.update",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "microsoft365.teams.notify",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "microsoft365.batch.mail",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "microsoft365.teams.tabs.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "microsoft365.teams.members.add",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "microsoft365.teams.presence.set",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "microsoft365.sharepoint.sites.list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "microsoft365.sharepoint.drives.list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "microsoft365.sharepoint.files.list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "microsoft365.sharepoint.files.upload",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "microsoft365.sharepoint.files.delete",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "gmail.messages.send",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "to",
+        "subject",
+        "body"
+      ],
+      "coverable_keys": [
+        "to",
+        "subject",
+        "body"
+      ],
+      "message": "create a gmail send titled \"Module B sweep send\"",
+      "extracted": {
+        "subject": "Module B sweep send",
+        "body": "Module B sweep send"
+      },
+      "meaningful": {
+        "subject": "Module B sweep send",
+        "body": "Module B sweep send"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "gmail.drafts.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "to",
+        "subject",
+        "body"
+      ],
+      "coverable_keys": [
+        "to",
+        "subject",
+        "body"
+      ],
+      "message": "create a gmail create titled \"Module B sweep create\"",
+      "extracted": {
+        "subject": "Module B sweep create",
+        "body": "Module B sweep create"
+      },
+      "meaningful": {
+        "subject": "Module B sweep create",
+        "body": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "gmail.labels.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "name"
+      ],
+      "coverable_keys": [
+        "name"
+      ],
+      "message": "create a gmail create titled \"Module B sweep create\"",
+      "extracted": {
+        "name": "Module B sweep create"
+      },
+      "meaningful": {
+        "name": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "gmail.threads.modify",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "gmail.messages.batch",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "gmail.watch.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "google_calendar.events.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "summary",
+        "start",
+        "end",
+        "calendar_id"
+      ],
+      "coverable_keys": [
+        "summary"
+      ],
+      "message": "create a google calendar create titled \"Module B sweep create\"",
+      "extracted": {
+        "summary": "Module B sweep create"
+      },
+      "meaningful": {
+        "summary": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "google_calendar.events.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "event_id",
+        "summary"
+      ],
+      "coverable_keys": [
+        "summary"
+      ],
+      "message": "create a google calendar update titled \"Module B sweep update\"",
+      "extracted": {
+        "summary": "Module B sweep update"
+      },
+      "meaningful": {
+        "summary": "Module B sweep update"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "google_calendar.events.delete",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "event_id",
+        "calendar_id"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "google_calendar.events.quick_add",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "google_calendar.acl.list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "google_calendar.batch.events",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "outlook.messages.send",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "to",
+        "subject",
+        "body"
+      ],
+      "coverable_keys": [
+        "to",
+        "subject",
+        "body"
+      ],
+      "message": "create a outlook send titled \"Module B sweep send\"",
+      "extracted": {
+        "subject": "Module B sweep send",
+        "body": "Module B sweep send"
+      },
+      "meaningful": {
+        "subject": "Module B sweep send",
+        "body": "Module B sweep send"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "outlook.messages.reply",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "message_id",
+        "body"
+      ],
+      "coverable_keys": [
+        "body"
+      ],
+      "message": "send a outlook reply saying \"Module B sweep body\"",
+      "extracted": {
+        "body": "Module B sweep body"
+      },
+      "meaningful": {
+        "body": "Module B sweep body"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "outlook.rules.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "outlook.categories.apply",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "outlook.batch.send",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "twilio.messages.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "to",
+        "body"
+      ],
+      "coverable_keys": [
+        "to",
+        "body"
+      ],
+      "message": "create a twilio create for sweep.moduleb@acme.test",
+      "extracted": {
+        "to": "sweep.moduleb@acme.test"
+      },
+      "meaningful": {
+        "to": "sweep.moduleb@acme.test"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "twilio.calls.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "to",
+        "url"
+      ],
+      "coverable_keys": [
+        "to"
+      ],
+      "message": "create a twilio create for sweep.moduleb@acme.test",
+      "extracted": {
+        "to": "sweep.moduleb@acme.test"
+      },
+      "meaningful": {
+        "to": "sweep.moduleb@acme.test"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "twilio.verify.check",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "twilio.conversations.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "twilio.studio.flows.execute",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "sendgrid.mail.send",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "to",
+        "subject",
+        "body"
+      ],
+      "coverable_keys": [
+        "to",
+        "subject",
+        "body"
+      ],
+      "message": "create a sendgrid send titled \"Module B sweep send\"",
+      "extracted": {
+        "subject": "Module B sweep send",
+        "body": "Module B sweep send"
+      },
+      "meaningful": {
+        "subject": "Module B sweep send",
+        "body": "Module B sweep send"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "sendgrid.contacts.upsert",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "email",
+        "payload"
+      ],
+      "coverable_keys": [
+        "email"
+      ],
+      "message": "create a sendgrid upsert for sweep.moduleb@acme.test",
+      "extracted": {
+        "email": "sweep.moduleb@acme.test"
+      },
+      "meaningful": {
+        "email": "sweep.moduleb@acme.test"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "sendgrid.campaigns.schedule",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "sendgrid.suppressions.add",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "sendgrid.batch.send",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "email.send",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "to",
+        "subject",
+        "body",
+        "content_type"
+      ],
+      "coverable_keys": [
+        "to",
+        "subject",
+        "body"
+      ],
+      "message": "create a email send titled \"Module B sweep send\"",
+      "extracted": {
+        "subject": "Module B sweep send",
+        "body": "Module B sweep send"
+      },
+      "meaningful": {
+        "subject": "Module B sweep send",
+        "body": "Module B sweep send"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "email.send.template",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "email.batch.send",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "pagerduty.incidents.acknowledge",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "incident_id"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "pagerduty.incidents.resolve",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "incident_id"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "pagerduty.incidents.add_note",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "incident_id",
+        "note"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "pagerduty.incidents.escalate",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "pagerduty.incidents.reassign",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "pagerduty.incidents.notes.list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "github.issues.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "title",
+        "body",
+        "repo"
+      ],
+      "coverable_keys": [
+        "title",
+        "body"
+      ],
+      "message": "create a github create titled \"Module B sweep create\"",
+      "extracted": {
+        "title": "Module B sweep create",
+        "body": "Module B sweep create"
+      },
+      "meaningful": {
+        "title": "Module B sweep create",
+        "body": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "github.issues.comment",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "issue_number",
+        "body"
+      ],
+      "coverable_keys": [
+        "body"
+      ],
+      "message": "send a github comment saying \"Module B sweep body\"",
+      "extracted": {
+        "body": "Module B sweep body"
+      },
+      "meaningful": {
+        "body": "Module B sweep body"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "github.issues.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "issue_number",
+        "title",
+        "repo"
+      ],
+      "coverable_keys": [
+        "title"
+      ],
+      "message": "create a github update titled \"Module B sweep update\"",
+      "extracted": {
+        "title": "Module B sweep update"
+      },
+      "meaningful": {
+        "title": "Module B sweep update"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "github.pulls.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "title",
+        "head",
+        "base",
+        "body",
+        "repo"
+      ],
+      "coverable_keys": [
+        "title",
+        "body"
+      ],
+      "message": "create a github create titled \"Module B sweep create\"",
+      "extracted": {
+        "title": "Module B sweep create",
+        "body": "Module B sweep create"
+      },
+      "meaningful": {
+        "title": "Module B sweep create",
+        "body": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "github.pulls.request_reviewer",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "pull_number",
+        "reviewer",
+        "repo"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "github.actions.dispatch",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "github.pulls.merge",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "github.releases.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "github.issues.list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "github.pulls.get",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "github.pulls.close",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "notion.pages.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "title",
+        "parent_id"
+      ],
+      "coverable_keys": [
+        "title"
+      ],
+      "message": "create a notion create titled \"Module B sweep create\"",
+      "extracted": {
+        "title": "Module B sweep create"
+      },
+      "meaningful": {
+        "title": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "notion.pages.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "page_id",
+        "properties"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "notion.blocks.append",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "block_id",
+        "children"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "notion.databases.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "notion.search",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "notion.comments.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "confluence.pages.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "space",
+        "title",
+        "body"
+      ],
+      "coverable_keys": [
+        "title",
+        "body"
+      ],
+      "message": "create a confluence create titled \"Module B sweep create\"",
+      "extracted": {
+        "title": "Module B sweep create",
+        "body": "Module B sweep create"
+      },
+      "meaningful": {
+        "title": "Module B sweep create",
+        "body": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "confluence.pages.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "page_id",
+        "title"
+      ],
+      "coverable_keys": [
+        "title"
+      ],
+      "message": "create a confluence update titled \"Module B sweep update\"",
+      "extracted": {
+        "title": "Module B sweep update"
+      },
+      "meaningful": {
+        "title": "Module B sweep update"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "confluence.labels.add",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "page_id",
+        "labels"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "confluence.attachments.upload",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "confluence.pages.move",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "confluence.export.pdf",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "jira.issues.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "project_key",
+        "summary",
+        "description",
+        "assignee"
+      ],
+      "coverable_keys": [
+        "project_key",
+        "summary"
+      ],
+      "message": "create a jira create titled \"Module B sweep create\"",
+      "extracted": {
+        "summary": "Module B sweep create",
+        "description": "Module B sweep create"
+      },
+      "meaningful": {
+        "summary": "Module B sweep create",
+        "description": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "jira.issues.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "issue_key",
+        "fields"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "jira.issues.comment",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "issue_key",
+        "body"
+      ],
+      "coverable_keys": [
+        "body"
+      ],
+      "message": "send a jira comment saying \"Module B sweep body\"",
+      "extracted": {
+        "body": "Module B sweep body"
+      },
+      "meaningful": {
+        "body": "Module B sweep body"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "jira.issues.transition",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "jira.issues.assign",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "jira.issues.transitions.list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "airtable.records.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "base_id",
+        "table",
+        "fields"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "airtable.records.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "base_id",
+        "table",
+        "record_id",
+        "fields"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "airtable.records.delete",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "airtable.webhooks.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "airtable.batch.records",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "asana.tasks.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "name",
+        "project",
+        "due_on",
+        "assignee_hint"
+      ],
+      "coverable_keys": [
+        "name",
+        "project"
+      ],
+      "message": "create a asana create titled \"Module B sweep create\"",
+      "extracted": {
+        "name": "Module B sweep create"
+      },
+      "meaningful": {
+        "name": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "asana.tasks.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "task_id",
+        "name"
+      ],
+      "coverable_keys": [
+        "name"
+      ],
+      "message": "create a asana update titled \"Module B sweep update\"",
+      "extracted": {
+        "name": "Module B sweep update"
+      },
+      "meaningful": {
+        "name": "Module B sweep update"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "asana.stories.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "task_id",
+        "text"
+      ],
+      "coverable_keys": [
+        "text"
+      ],
+      "message": "send a asana create saying \"Module B sweep body\"",
+      "extracted": {
+        "text": "Module B sweep body"
+      },
+      "meaningful": {
+        "text": "Module B sweep body"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "asana.tasks.add_project",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "asana.sections.move",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "asana.batch.tasks",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "asana.tasks.delete",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "asana.workspaces.list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "asana.tasks.search",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "monday.items.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "board_id",
+        "item_name"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "monday.items.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "board_id",
+        "item_id",
+        "column_id",
+        "value"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "monday.automations.trigger",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "monday.updates.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "monday.batch.items",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "monday.items.delete",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "monday.boards.get",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "monday.workspaces.list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "clickup.tasks.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "list_id",
+        "name"
+      ],
+      "coverable_keys": [
+        "list_id",
+        "name"
+      ],
+      "message": "create a clickup create titled \"Module B sweep create\"",
+      "extracted": {
+        "name": "Module B sweep create"
+      },
+      "meaningful": {
+        "name": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "clickup.tasks.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "task_id",
+        "payload"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "clickup.comments.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "task_id",
+        "comment_text"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "clickup.time_entries.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "clickup.goals.update",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "clickup.webhooks.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "clickup.tasks.delete",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "clickup.tasks.bulk_update",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "clickup.members.list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "zapier.zaps.enable",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "zap_id"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "zapier.hooks.trigger",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "url"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "zapier.tables.rows.upsert",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "zapier.batch.trigger",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "zapier.interfaces.submit",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "n8n.workflows.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "name"
+      ],
+      "coverable_keys": [
+        "name"
+      ],
+      "message": "create a n8n create titled \"Module B sweep create\"",
+      "extracted": {
+        "name": "Module B sweep create"
+      },
+      "meaningful": {
+        "name": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "n8n.workflows.activate",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "workflow_id"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "n8n.executions.retry",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "n8n.webhooks.trigger",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "n8n.batch.executions",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "motion.tasks.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "name"
+      ],
+      "coverable_keys": [
+        "name"
+      ],
+      "message": "create a motion create titled \"Module B sweep create\"",
+      "extracted": {
+        "name": "Module B sweep create"
+      },
+      "meaningful": {
+        "name": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "motion.tasks.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "task_id",
+        "payload"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "motion.calendar.optimize",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "motion.batch.reschedule",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "motion.focus.block",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "odoo.partners.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "name"
+      ],
+      "coverable_keys": [
+        "name"
+      ],
+      "message": "create a odoo create titled \"Module B sweep create\"",
+      "extracted": {
+        "name": "Module B sweep create"
+      },
+      "meaningful": {
+        "name": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "odoo.sales.orders.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "partner_id",
+        "lines"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "odoo.invoices.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "partner_id",
+        "lines"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "odoo.manufacturing.orders.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "odoo.crm.leads.convert",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "odoo.batch.partners",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "odoo.partners.update",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "odoo.sales.orders.confirm",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "odoo.invoices.post",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "zendesk.tickets.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "subject",
+        "comment"
+      ],
+      "coverable_keys": [
+        "subject"
+      ],
+      "message": "create a zendesk create titled \"Module B sweep create\"",
+      "extracted": {
+        "subject": "Module B sweep create",
+        "comment": "Module B sweep create"
+      },
+      "meaningful": {
+        "subject": "Module B sweep create",
+        "comment": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "zendesk.tickets.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "ticket_id",
+        "properties"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "zendesk.tickets.close",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "ticket_id",
+        "comment"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "zendesk.tickets.add_tags",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "ticket_id",
+        "tags"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "zendesk.tickets.merge",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "zendesk.macros.apply",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "zendesk.side_conversations.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "intercom.contacts.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "email"
+      ],
+      "coverable_keys": [
+        "email"
+      ],
+      "message": "create a intercom create for sweep.moduleb@acme.test",
+      "extracted": {
+        "email": "sweep.moduleb@acme.test"
+      },
+      "meaningful": {
+        "email": "sweep.moduleb@acme.test"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "intercom.conversations.reply",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "conversation_id",
+        "body"
+      ],
+      "coverable_keys": [
+        "body"
+      ],
+      "message": "send a intercom reply saying \"Module B sweep body\"",
+      "extracted": {
+        "body": "Module B sweep body"
+      },
+      "meaningful": {
+        "body": "Module B sweep body"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "intercom.tickets.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "title"
+      ],
+      "coverable_keys": [
+        "title"
+      ],
+      "message": "create a intercom create titled \"Module B sweep create\"",
+      "extracted": {
+        "title": "Module B sweep create"
+      },
+      "meaningful": {
+        "title": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "intercom.tags.apply",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "intercom.series.trigger",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "intercom.notes.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "intercom.contacts.search",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "intercom.companies.list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "intercom.contacts.delete",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "freshdesk.tickets.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "subject",
+        "description"
+      ],
+      "coverable_keys": [
+        "subject"
+      ],
+      "message": "create a freshdesk create titled \"Module B sweep create\"",
+      "extracted": {
+        "subject": "Module B sweep create",
+        "description": "Module B sweep create"
+      },
+      "meaningful": {
+        "subject": "Module B sweep create",
+        "description": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "freshdesk.tickets.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "ticket_id",
+        "subject"
+      ],
+      "coverable_keys": [
+        "subject"
+      ],
+      "message": "create a freshdesk update titled \"Module B sweep update\"",
+      "extracted": {
+        "subject": "Module B sweep update"
+      },
+      "meaningful": {
+        "subject": "Module B sweep update"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "freshdesk.notes.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "ticket_id",
+        "body"
+      ],
+      "coverable_keys": [
+        "body"
+      ],
+      "message": "send a freshdesk create saying \"Module B sweep body\"",
+      "extracted": {
+        "body": "Module B sweep body"
+      },
+      "meaningful": {
+        "body": "Module B sweep body"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "freshdesk.tickets.merge",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "freshdesk.automations.trigger",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "freshdesk.satisfaction.send",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "gorgias.tickets.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "subject",
+        "body"
+      ],
+      "coverable_keys": [
+        "subject",
+        "body"
+      ],
+      "message": "create a gorgias create titled \"Module B sweep create\"",
+      "extracted": {
+        "subject": "Module B sweep create",
+        "body": "Module B sweep create"
+      },
+      "meaningful": {
+        "subject": "Module B sweep create",
+        "body": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "gorgias.tickets.reply",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "ticket_id",
+        "body"
+      ],
+      "coverable_keys": [
+        "body"
+      ],
+      "message": "send a gorgias reply saying \"Module B sweep body\"",
+      "extracted": {
+        "body": "Module B sweep body"
+      },
+      "meaningful": {
+        "body": "Module B sweep body"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "gorgias.macros.apply",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "ticket_id",
+        "macro_id"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "gorgias.rules.trigger",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "gorgias.tags.apply",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "gorgias.satisfaction.request",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "workday.timeoff.request",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "worker_id",
+        "start_date",
+        "end_date",
+        "time_off_type_id"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "workday.jobs.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "worker_id",
+        "properties",
+        "job_profile_id"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "workday.timeoff.balance.get",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "workday.learning.enroll",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "workday.batch.workers.export",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "bamboohr.employees.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "firstname",
+        "lastname",
+        "email",
+        "properties"
+      ],
+      "coverable_keys": [
+        "email"
+      ],
+      "message": "create a bamboohr create for sweep.moduleb@acme.test",
+      "extracted": {
+        "email": "sweep.moduleb@acme.test",
+        "firstname": "create a bamboohr create for sweep.moduleb@acme.test",
+        "lastname": "create a bamboohr create for sweep.moduleb@acme.test"
+      },
+      "meaningful": {
+        "email": "sweep.moduleb@acme.test",
+        "firstname": "create a bamboohr create for sweep.moduleb@acme.test",
+        "lastname": "create a bamboohr create for sweep.moduleb@acme.test"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "bamboohr.timeoff.requests.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "employee_id",
+        "start_date",
+        "end_date",
+        "time_off_type",
+        "comment"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "bamboohr.onboarding.tasks.assign",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "bamboohr.reports.run",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "bamboohr.webhooks.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "greenhouse.candidates.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "first_name"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "greenhouse.offers.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "gusto.employees.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "firstname",
+        "lastname",
+        "email",
+        "properties"
+      ],
+      "coverable_keys": [
+        "email"
+      ],
+      "message": "create a gusto create for sweep.moduleb@acme.test",
+      "extracted": {
+        "email": "sweep.moduleb@acme.test",
+        "firstname": "create a gusto create for sweep.moduleb@acme.test",
+        "lastname": "create a gusto create for sweep.moduleb@acme.test"
+      },
+      "meaningful": {
+        "email": "sweep.moduleb@acme.test",
+        "firstname": "create a gusto create for sweep.moduleb@acme.test",
+        "lastname": "create a gusto create for sweep.moduleb@acme.test"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "gusto.payrolls.run",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "payroll_id",
+        "parameters"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "gusto.benefits.enroll",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "gusto.contractors.pay",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "gusto.reports.generate",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "adp.timecards.submit",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "timecard_id",
+        "comment",
+        "properties"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "adp.profile.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "profile_id",
+        "properties"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "adp.payroll.preview",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "adp.benefits.elect",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "adp.batch.workers.sync",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "aws_s3.objects.put",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "bucket",
+        "key",
+        "body"
+      ],
+      "coverable_keys": [
+        "body"
+      ],
+      "message": "send a aws s3 put saying \"Module B sweep body\"",
+      "extracted": {
+        "body": "Module B sweep body"
+      },
+      "meaningful": {
+        "body": "Module B sweep body"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "aws_s3.objects.delete",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "bucket",
+        "key"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "aws_s3.presigned.get",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "aws_s3.multipart.upload",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "aws_s3.batch.delete",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "postgresql.query.insert",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "table",
+        "rows"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "postgresql.query.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "table",
+        "set"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "postgresql.query.explain",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "postgresql.batch.upsert",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "postgresql.migrations.apply",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "mongodb.documents.insert",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "database",
+        "collection",
+        "documents"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "mongodb.documents.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "database",
+        "collection",
+        "filter"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "mongodb.aggregation.run",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "mongodb.change_streams.watch",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "mongodb.batch.bulk_write",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "snowflake.query.insert",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "table",
+        "rows"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "snowflake.stages.put",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "stage",
+        "path"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "snowflake.tasks.run",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "snowflake.pipes.refresh",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "snowflake.batch.copy",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "google_drive.files.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "name",
+        "content",
+        "mime_type"
+      ],
+      "coverable_keys": [
+        "name"
+      ],
+      "message": "create a google drive create titled \"Module B sweep create\"",
+      "extracted": {
+        "name": "Module B sweep create",
+        "content": "Module B sweep create"
+      },
+      "meaningful": {
+        "name": "Module B sweep create",
+        "content": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "google_drive.files.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "file_id",
+        "name"
+      ],
+      "coverable_keys": [
+        "name"
+      ],
+      "message": "create a google drive update titled \"Module B sweep update\"",
+      "extracted": {
+        "name": "Module B sweep update"
+      },
+      "meaningful": {
+        "name": "Module B sweep update"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "google_drive.permissions.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "file_id",
+        "role"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "google_drive.files.export",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "google_drive.changes.list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "google_drive.batch.permissions",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "google_docs.documents.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "title"
+      ],
+      "coverable_keys": [
+        "title"
+      ],
+      "message": "create a google docs create titled \"Module B sweep create\"",
+      "extracted": {
+        "title": "Module B sweep create"
+      },
+      "meaningful": {
+        "title": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "google_docs.documents.batch_update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "document_id",
+        "requests"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "google_docs.documents.replace_text",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "google_docs.documents.insert_table",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "google_docs.export.pdf",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "google_sheets.values.update",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "spreadsheet_id",
+        "range",
+        "values"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "google_sheets.values.append",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "spreadsheet_id",
+        "range",
+        "values"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "google_sheets.spreadsheets.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "title"
+      ],
+      "coverable_keys": [
+        "title"
+      ],
+      "message": "create a google sheets create titled \"Module B sweep create\"",
+      "extracted": {
+        "title": "Module B sweep create"
+      },
+      "meaningful": {
+        "title": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "google_sheets.values.batch_update",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "google_sheets.charts.add",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "google_sheets.pivot.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "absorb_lms.enrollments.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "course_id",
+        "user_id"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "absorb_lms.courses.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "name",
+        "description"
+      ],
+      "coverable_keys": [
+        "name"
+      ],
+      "message": "create a absorb lms create titled \"Module B sweep create\"",
+      "extracted": {
+        "name": "Module B sweep create",
+        "description": "Module B sweep create"
+      },
+      "meaningful": {
+        "name": "Module B sweep create",
+        "description": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "absorb_lms.certificates.issue",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "absorb_lms.reports.completion",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "absorb_lms.batch.enroll",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "canva.designs.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "payload",
+        "design_type",
+        "asset_id",
+        "title"
+      ],
+      "coverable_keys": [
+        "title"
+      ],
+      "message": "create a canva create titled \"Module B sweep create\"",
+      "extracted": {
+        "title": "Module B sweep create"
+      },
+      "meaningful": {
+        "title": "Module B sweep create"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "canva.exports.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "design_id",
+        "format"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "canva.autofill.create",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "canva.brand.templates.list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "canva.batch.exports",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "canva.exports.get",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "canva.brand.templates.get",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "canva.designs.delete",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "figma.comments.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "file_key",
+        "message"
+      ],
+      "coverable_keys": [
+        "message"
+      ],
+      "message": "send a figma create saying \"Module B sweep body\"",
+      "extracted": {
+        "message": "Module B sweep body",
+        "text": "Module B sweep body"
+      },
+      "meaningful": {
+        "message": "Module B sweep body",
+        "text": "Module B sweep body"
+      },
+      "verdict": "PASS"
+    },
+    {
+      "action": "figma.dev_resources.create",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "file_key",
+        "payload"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "figma.projects.files.list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "figma.comments.list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "figma.batch.images.export",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "figma.comments.delete",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "figma.files.versions.list",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "figma.users.me",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "fhir.prior_auth.checklist",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "patient_id",
+        "referral_reason",
+        "payer"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "fhir.coverage.eligibility",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "webhook.post",
+      "kind": "write",
+      "has_schema": true,
+      "schema_keys": [
+        "payload",
+        "path"
+      ],
+      "verdict": "SKIP_OPAQUE_KEYS",
+      "note": "Schema keys are ids/payloads outside FAST heuristic contract"
+    },
+    {
+      "action": "webhook.post.replay",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "fred.series.observations.get",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "nvd.cve.recent",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "cisa_kev.feed.diff",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "sec_edgar.filings.recent",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    },
+    {
+      "action": "platform.approval.latency.report",
+      "kind": "advanced",
+      "has_schema": false,
+      "verdict": "SKIP_NO_SCHEMA",
+      "note": "No workflow schema \u2014 schema-primary extract cannot run"
+    }
+  ],
+  "sweep_pass": true
+}

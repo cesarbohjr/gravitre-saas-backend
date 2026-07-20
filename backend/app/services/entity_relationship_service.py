@@ -58,32 +58,53 @@ async def get_related_entities(
         or []
     )
 
+    from app.services.confidence_honesty import (
+        CONFIDENCE_SOURCE_EDGE_HEURISTIC,
+        label_confidence,
+    )
+
     related: list[dict[str, Any]] = []
     for row in outgoing:
+        # Stored edge confidence is always a builder heuristic estimate (Module C).
+        raw_out = row.get("confidence")
+        labeled = label_confidence(
+            float(raw_out) if raw_out is not None else None,
+            source=CONFIDENCE_SOURCE_EDGE_HEURISTIC,
+            is_estimate=True,
+        )
         related.append(
             {
                 "direction": "outgoing",
                 "relationshipType": row.get("relationship_type"),
                 "entityType": row.get("target_entity_type"),
                 "entityId": row.get("target_entity_id"),
-                "confidence": float(row.get("confidence") or 0),
+                **labeled,
                 "evidenceCount": int(row.get("evidence_count") or 0),
             }
         )
     for row in incoming:
+        raw_in = row.get("confidence")
+        labeled = label_confidence(
+            float(raw_in) if raw_in is not None else None,
+            source=CONFIDENCE_SOURCE_EDGE_HEURISTIC,
+            is_estimate=True,
+        )
         related.append(
             {
                 "direction": "incoming",
                 "relationshipType": row.get("relationship_type"),
                 "entityType": row.get("source_entity_type"),
                 "entityId": row.get("source_entity_id"),
-                "confidence": float(row.get("confidence") or 0),
+                **labeled,
                 "evidenceCount": int(row.get("evidence_count") or 0),
             }
         )
 
     related.sort(
-        key=lambda item: (float(item["confidence"]), int(item["evidenceCount"])),
+        key=lambda item: (
+            float(item["confidence"]) if item.get("confidence") is not None else -1.0,
+            int(item.get("evidenceCount") or 0),
+        ),
         reverse=True,
     )
     return related[:limit]
@@ -114,18 +135,26 @@ async def _resolve_entity_label(
         row = glossary_by_id.get(entity_id)
         return str(row.get("term") or entity_id) if row else entity_id
     if entity_type == ENTITY_DEPARTMENT:
-        rows = (
-            db.table("departments")
-            .select("name")
-            .eq("org_id", org_id)
-            .eq("id", entity_id)
-            .limit(1)
-            .execute()
-            .data
-            or []
-        )
-        if rows:
-            return str(rows[0].get("name") or entity_id)
+        # Department edges often use slug ids (e.g. "sales"), not UUID PK rows.
+        try:
+            rows = (
+                db.table("departments")
+                .select("name")
+                .eq("org_id", org_id)
+                .eq("id", entity_id)
+                .limit(1)
+                .execute()
+                .data
+                or []
+            )
+            if rows:
+                return str(rows[0].get("name") or entity_id)
+        except Exception:  # noqa: BLE001 — non-UUID slug lookups must not 500 the API
+            logger.debug(
+                "department_label_lookup_skipped org_id=%s entity_id=%s",
+                org_id,
+                entity_id,
+            )
         return entity_id
     if entity_type == ENTITY_AGENT:
         rows = (
@@ -213,9 +242,11 @@ async def build_entity_context_section(
                 str(rel["entityId"]),
                 glossary_by_id,
             )
+            conf = rel.get("confidence")
+            conf_txt = f"{float(conf):.2f}" if conf is not None else "n/a"
             rel_bits.append(
                 f"{rel['relationshipType']} → {rel['entityType']} '{label}' "
-                f"(evidence={rel['evidenceCount']}, confidence={rel['confidence']:.2f})"
+                f"(evidence={rel['evidenceCount']}, confidence={conf_txt})"
             )
         lines.append(f"- '{term}': " + "; ".join(rel_bits))
 
@@ -287,9 +318,23 @@ async def load_entity_relationships_snapshot(
         for row in glossary
         if row.get("associated_department")
     }
+    from app.services.confidence_honesty import (
+        CONFIDENCE_SOURCE_EDGE_HEURISTIC,
+        label_confidence,
+    )
+
+    labeled_rows: list[dict[str, Any]] = []
+    for row in rows:
+        raw = row.get("confidence")
+        labeled = label_confidence(
+            float(raw) if raw is not None else None,
+            source=CONFIDENCE_SOURCE_EDGE_HEURISTIC,
+            is_estimate=True,
+        )
+        labeled_rows.append({**row, **labeled})
     return {
-        "total": len(rows),
-        "relationships": rows,
+        "total": len(labeled_rows),
+        "relationships": labeled_rows,
         "glossaryTerms": glossary,
         "departments": sorted(departments.keys()),
         "glossaryById": {

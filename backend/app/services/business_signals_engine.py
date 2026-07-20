@@ -7,6 +7,11 @@ from uuid import uuid4
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.services.confidence_honesty import (
+    CONFIDENCE_SOURCE_INSUFFICIENT,
+    CONFIDENCE_SOURCE_SIGNAL_HEURISTIC,
+    label_confidence,
+)
 from app.services.event_intelligence_service import get_event_intelligence_service
 from app.services.knowledge_graph_service import get_knowledge_graph_service
 from app.services.optimization_suggestion_service import get_optimization_suggestion_service
@@ -134,7 +139,7 @@ class BusinessSignalsEngine:
                             {
                                 "title": alert.get("title") or "Workflow alert",
                                 "summary": alert.get("message") or alert.get("summary") or "",
-                                "confidence": 0.7,
+                                **label_confidence(0.7, source=CONFIDENCE_SOURCE_SIGNAL_HEURISTIC),
                             },
                             source="org_context",
                             signal_type="alert",
@@ -152,7 +157,7 @@ class BusinessSignalsEngine:
                         {
                             "title": alert.get("title") or "Workflow failure risk",
                             "summary": alert.get("message") or alert.get("summary") or "",
-                            "confidence": 0.65,
+                            **label_confidence(0.65, source=CONFIDENCE_SOURCE_SIGNAL_HEURISTIC),
                         },
                         source="workflow_prediction",
                         signal_type="risk",
@@ -203,6 +208,21 @@ class BusinessSignalsEngine:
         signals = payload.get("signals") or []
         risks = [row for row in signals if row.get("signal_type") in {"risk", "alert"}][:3]
         opportunities = [row for row in signals if row.get("signal_type") == "opportunity"][:3]
+        conf_values = []
+        for row in signals[:5]:
+            raw_conf = row.get("quality_score")
+            if raw_conf is None:
+                raw_conf = row.get("confidence")
+            if raw_conf is not None:
+                conf_values.append(float(raw_conf))
+        if conf_values:
+            brief_confidence = label_confidence(
+                round(sum(conf_values) / len(conf_values), 4),
+                source=CONFIDENCE_SOURCE_SIGNAL_HEURISTIC,
+                is_estimate=True,
+            )
+        else:
+            brief_confidence = label_confidence(None, source=CONFIDENCE_SOURCE_INSUFFICIENT)
         return {
             "department": department,
             "what_changed": [row.get("title") for row in signals[:5]],
@@ -216,13 +236,7 @@ class BusinessSignalsEngine:
                 }
                 for row in opportunities
             ],
-            "confidence": round(
-                sum(float(row.get("quality_score") or row.get("confidence") or 0.5) for row in signals[:5])
-                / max(len(signals[:5]), 1),
-                4,
-            )
-            if signals
-            else 0.5,
+            **brief_confidence,
             "evidence": [{"source": row.get("source"), "title": row.get("title")} for row in signals[:5]],
             "generated_at": payload.get("collected_at"),
         }
@@ -256,11 +270,22 @@ class BusinessSignalsEngine:
 
     @staticmethod
     def _normalize_signal(raw: dict[str, Any], *, source: str, signal_type: str) -> dict[str, Any]:
+        raw_conf = raw.get("confidence")
+        if raw_conf is None:
+            raw_conf = raw.get("risk_score")
+        if raw_conf is None:
+            labeled = label_confidence(None, source=CONFIDENCE_SOURCE_INSUFFICIENT)
+        else:
+            labeled = label_confidence(
+                float(raw_conf),
+                source=str(raw.get("confidence_source") or CONFIDENCE_SOURCE_SIGNAL_HEURISTIC),
+                is_estimate=bool(raw.get("confidence_is_estimate", True)),
+            )
         return {
             "id": str(raw.get("id") or uuid4()),
             "title": str(raw.get("title") or raw.get("summary") or "Business signal")[:200],
             "summary": str(raw.get("summary") or raw.get("description") or raw.get("title") or "")[:500],
-            "confidence": float(raw.get("confidence") or raw.get("risk_score") or 0.55),
+            **labeled,
             "estimated_impact": raw.get("estimated_impact") or raw.get("estimatedImpact"),
             "source": source,
             "signal_type": signal_type,

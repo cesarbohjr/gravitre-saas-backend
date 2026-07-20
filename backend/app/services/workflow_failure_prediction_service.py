@@ -606,6 +606,115 @@ def _build_predictive_alerts(
     return alerts
 
 
+def _resolve_failure_correlation_keys(
+    client: Any,
+    *,
+    org_id: str,
+    run_id: str | None,
+    workflow_id: str | None,
+    integration: str | None = None,
+) -> tuple[str | None, str | None, str | None, str | None]:
+    """Return (workflow_id, connector_id, action_type, integration)."""
+    resolved_workflow_id = str(workflow_id or "").strip() or None
+    connector_id: str | None = None
+    action_type: str | None = None
+    resolved_integration = str(integration or "").strip() or None
+    if not run_id:
+        return resolved_workflow_id, connector_id, action_type, resolved_integration
+    try:
+        row = (
+            client.table("workflow_runs")
+            .select("workflow_id,parameters,definition_snapshot")
+            .eq("id", run_id)
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+        )
+        data = (row.data or [{}])[0]
+        if not resolved_workflow_id:
+            resolved_workflow_id = str(data.get("workflow_id") or "").strip() or None
+        params = data.get("parameters") if isinstance(data.get("parameters"), dict) else {}
+        connector_id = (
+            str(params.get("connector_id") or params.get("connectorId") or "").strip() or None
+        )
+        if not resolved_integration:
+            resolved_integration = (
+                str(params.get("integration") or params.get("vendor") or "").strip() or None
+            )
+        definition = (
+            data.get("definition_snapshot")
+            if isinstance(data.get("definition_snapshot"), dict)
+            else {}
+        )
+        for step in definition.get("steps") or []:
+            if not isinstance(step, dict):
+                continue
+            config = dict(step.get("config") or {})
+            step_type = str(step.get("type") or "").strip()
+            action = str(
+                config.get("action") or STEP_TYPE_TO_ACTION.get(step_type) or step_type or ""
+            ).strip()
+            if action and not action_type:
+                action_type = action
+            cid = str(config.get("connector_id") or config.get("connectorId") or "").strip()
+            if cid and not connector_id:
+                connector_id = cid
+            if action and "." in action and not resolved_integration:
+                resolved_integration = action.split(".", 1)[0]
+            if connector_id and action_type:
+                break
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("failure_alert_correlate_keys_skipped run=%s err=%s", run_id, exc)
+    return resolved_workflow_id, connector_id, action_type, resolved_integration
+
+
+def _open_observed_alerts(client: Any, *, org_id: str, limit: int = 50) -> list[dict[str, Any]]:
+    try:
+        existing = (
+            client.table("workflow_failure_alerts")
+            .select("id, workflow_id, connector_id, evidence, title, message")
+            .eq("org_id", org_id)
+            .eq("status", "open")
+            .eq("alert_type", "step_failure_risk")
+            .order("predicted_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return list(existing.data or [])
+    except Exception as exc:  # noqa: BLE001
+        if _is_missing_table_error(exc):
+            return []
+        logger.debug("failure_alert_list_open_skipped org=%s err=%s", org_id, exc)
+        return []
+
+
+def _alert_matches_correlation(
+    row: dict[str, Any],
+    *,
+    run_id: str | None,
+    connector_id: str | None,
+    action_type: str | None,
+    workflow_id: str | None,
+) -> str | None:
+    """Return match kind: same_run | connector | action | workflow | None."""
+    ev = row.get("evidence") if isinstance(row.get("evidence"), dict) else {}
+    if not ev.get("observed_run_failure"):
+        return None
+    run_ids = {str(ev.get("run_id") or "")}
+    run_ids.update(str(x) for x in (ev.get("correlated_run_ids") or []) if x)
+    if run_id and str(run_id) in run_ids:
+        return "same_run"
+    row_connector = str(row.get("connector_id") or ev.get("connector_id") or "").strip()
+    if connector_id and row_connector and row_connector == str(connector_id):
+        return "connector"
+    ev_action = str(ev.get("action_type") or "").strip()
+    if action_type and ev_action and ev_action == str(action_type):
+        return "action"
+    if workflow_id and str(row.get("workflow_id") or "") == str(workflow_id):
+        return "workflow"
+    return None
+
+
 def correlate_observed_run_failure(
     client: Any,
     *,
@@ -614,32 +723,119 @@ def correlate_observed_run_failure(
     run_id: str | None,
     error_summary: str | None = None,
     source: str | None = None,
+    connector_id: str | None = None,
+    action_type: str | None = None,
+    integration: str | None = None,
 ) -> bool:
     """Subscriber for Module A: react to a real terminal failure (not a heuristic scan).
 
-    Failure Alerts remains a distinct predictive product. This only correlates an
-    observed run failure into evidence so the surface can react to trustworthy
-    outcomes. Returns False when correlation is not applicable (e.g. no workflow_id).
+    Correlates by workflow_id (legacy), and also by connector_id / action_type so
+    vendor outages spanning multiple workflows collapse into one open signal.
+    Returns False when correlation is not applicable (no workflow_id to anchor insert).
     """
-    resolved_workflow_id = str(workflow_id or "").strip() or None
-    if not resolved_workflow_id and run_id:
-        try:
-            row = (
-                client.table("workflow_runs")
-                .select("workflow_id")
-                .eq("id", run_id)
-                .eq("org_id", org_id)
-                .limit(1)
-                .execute()
+    (
+        resolved_workflow_id,
+        resolved_connector_id,
+        resolved_action_type,
+        resolved_integration,
+    ) = _resolve_failure_correlation_keys(
+        client,
+        org_id=org_id,
+        run_id=run_id,
+        workflow_id=workflow_id,
+        integration=integration,
+    )
+    if connector_id:
+        resolved_connector_id = str(connector_id).strip() or resolved_connector_id
+    if action_type:
+        resolved_action_type = str(action_type).strip() or resolved_action_type
+
+    open_alerts = _open_observed_alerts(client, org_id=org_id)
+    for row in open_alerts:
+        kind = _alert_matches_correlation(
+            row,
+            run_id=run_id,
+            connector_id=resolved_connector_id,
+            action_type=resolved_action_type,
+            workflow_id=resolved_workflow_id,
+        )
+        if kind == "same_run":
+            return True
+        if kind in {"connector", "action", "workflow"}:
+            ev = dict(row.get("evidence") if isinstance(row.get("evidence"), dict) else {})
+            correlated_runs = [
+                str(x) for x in (ev.get("correlated_run_ids") or []) if str(x).strip()
+            ]
+            if run_id and str(run_id) not in correlated_runs and str(run_id) != str(ev.get("run_id") or ""):
+                correlated_runs.append(str(run_id))
+            correlated_wfs = [
+                str(x) for x in (ev.get("correlated_workflow_ids") or []) if str(x).strip()
+            ]
+            if resolved_workflow_id and str(resolved_workflow_id) not in correlated_wfs:
+                if str(row.get("workflow_id") or "") != str(resolved_workflow_id):
+                    correlated_wfs.append(str(resolved_workflow_id))
+            all_run_ids = {str(x) for x in correlated_runs if x}
+            if ev.get("run_id"):
+                all_run_ids.add(str(ev["run_id"]))
+            if run_id:
+                all_run_ids.add(str(run_id))
+            ev.update(
+                {
+                    "observed_run_failure": True,
+                    "correlated_run_ids": correlated_runs[-25:],
+                    "correlated_workflow_ids": correlated_wfs[-25:],
+                    "failure_count": len(all_run_ids),
+                    "connector_id": resolved_connector_id or ev.get("connector_id"),
+                    "action_type": resolved_action_type or ev.get("action_type"),
+                    "integration": resolved_integration or ev.get("integration"),
+                    "correlation_key": (
+                        f"connector:{resolved_connector_id}"
+                        if resolved_connector_id
+                        else (
+                            f"action:{resolved_action_type}"
+                            if resolved_action_type
+                            else f"workflow:{resolved_workflow_id}"
+                        )
+                    ),
+                    "last_correlated_at": _now_iso(),
+                    "last_error_summary": (error_summary or "")[:500],
+                    "subscriber": "finalize_execution_outcome",
+                }
             )
-            resolved_workflow_id = str((row.data or [{}])[0].get("workflow_id") or "").strip() or None
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("failure_alert_correlate_workflow_lookup_skipped run=%s err=%s", run_id, exc)
+            label = resolved_integration or resolved_action_type or "workflow"
+            title = (
+                f"Repeated {label} failures across workflows"
+                if kind in {"connector", "action"} and correlated_wfs
+                else (row.get("title") or "Observed workflow run failure")
+            )
+            message = (
+                f"{len(correlated_runs) + 1} related failures"
+                f"{f' on {label}' if label else ''}. "
+                f"Latest: {(error_summary or 'run failed')[:400]}"
+            )[:1000]
+            try:
+                client.table("workflow_failure_alerts").update(
+                    {
+                        "evidence": ev,
+                        "title": title[:200],
+                        "message": message,
+                        "severity": "critical" if len(correlated_runs) >= 2 else "high",
+                        "connector_id": resolved_connector_id or row.get("connector_id"),
+                        "updated_at": _now_iso(),
+                    }
+                ).eq("id", row["id"]).eq("org_id", org_id).execute()
+                return True
+            except Exception as exc:  # noqa: BLE001
+                logger.debug(
+                    "failure_alert_correlate_merge_skipped alert=%s err=%s",
+                    row.get("id"),
+                    exc,
+                )
+                break
 
     if not resolved_workflow_id:
-        # Chat orchestration and other run paths without a workflow_defs FK cannot
-        # persist into workflow_failure_alerts (workflow_id NOT NULL). Learning +
-        # Runs/Notifications/Audit still receive the outcome via Module A.
+        # Chat orch / assignment runs without workflow_defs FK cannot insert
+        # (workflow_id NOT NULL). Learning + Runs/Notifications/Audit still fan out.
         return False
 
     evidence = {
@@ -649,32 +845,34 @@ def correlate_observed_run_failure(
         "error_summary": (error_summary or "")[:500],
         "correlated_at": _now_iso(),
         "subscriber": "finalize_execution_outcome",
+        "connector_id": resolved_connector_id,
+        "action_type": resolved_action_type,
+        "integration": resolved_integration,
+        "correlated_run_ids": [],
+        "correlated_workflow_ids": [],
+        "failure_count": 1,
+        "correlation_key": (
+            f"connector:{resolved_connector_id}"
+            if resolved_connector_id
+            else (
+                f"action:{resolved_action_type}"
+                if resolved_action_type
+                else f"workflow:{resolved_workflow_id}"
+            )
+        ),
     }
+    label = resolved_integration or resolved_action_type or "workflow"
     alert = _alert_row(
         org_id=org_id,
         workflow_id=resolved_workflow_id,
         alert_type="step_failure_risk",
         severity="high",
-        title="Observed workflow run failure",
+        title=f"Observed {label} run failure",
         message=(error_summary or "A workflow run failed. Review the run for step-level errors.")[:1000],
         evidence=evidence,
+        connector_id=resolved_connector_id,
     )
     try:
-        # Dedup: skip if an open observed alert already cites this run_id.
-        existing = (
-            client.table("workflow_failure_alerts")
-            .select("id, evidence")
-            .eq("org_id", org_id)
-            .eq("workflow_id", resolved_workflow_id)
-            .eq("status", "open")
-            .eq("alert_type", "step_failure_risk")
-            .limit(25)
-            .execute()
-        )
-        for row in existing.data or []:
-            ev = row.get("evidence") if isinstance(row.get("evidence"), dict) else {}
-            if ev.get("observed_run_failure") and str(ev.get("run_id") or "") == str(run_id or ""):
-                return True
         client.table("workflow_failure_alerts").insert(alert).execute()
         return True
     except Exception as exc:  # noqa: BLE001

@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ESTIMATED_CONFIDENCE_SHORT } from "@/lib/outcome-labels"
 
 export type MesonPageId = "ai-chat" | "model-registry" | "model-detail" | "agent-detail" | string
 
@@ -55,7 +56,10 @@ function briefToSuggestions(brief: AdvisorBrief | null | undefined): MesonSugges
       nodeType: "advisory",
       label: (action.action ?? action.title ?? "").trim(),
       reason: action.reason ?? action.summary,
-      confidence: action.confidence,
+      confidence: action.confidence ?? undefined,
+      confidenceIsEstimate:
+        action.confidenceIsEstimate !== false && action.confidence_is_estimate !== false,
+      confidenceSource: action.confidenceSource ?? action.confidence_source ?? "advisor_signal_aggregate",
     }))
     .filter((s) => s.label.length > 0)
     .slice(0, 3)
@@ -257,6 +261,10 @@ export function MesonPagePanel({
               </div>
               {advisorBrief?.confidence != null ? (
                 <span className="shrink-0 rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400">
+                  {advisorBrief.confidenceIsEstimate !== false &&
+                  advisorBrief.confidence_is_estimate !== false
+                    ? `${ESTIMATED_CONFIDENCE_SHORT} `
+                    : ""}
                   {Math.round(advisorBrief.confidence * 100)}%
                 </span>
               ) : null}

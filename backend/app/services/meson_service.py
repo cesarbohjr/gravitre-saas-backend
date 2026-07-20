@@ -63,6 +63,9 @@ class MesonInterpretResult(BaseModel):
     output_types: list[str] = Field(default_factory=list, alias="outputTypes")
     generated_config: MesonGeneratedConfig = Field(alias="generatedConfig")
     confidence: float = 0.75
+    # Module C / STA-331: match MesonSuggestion — heuristic interpret scores are estimates.
+    confidence_is_estimate: bool = Field(default=True, alias="confidenceIsEstimate")
+    confidence_source: str = Field(default="heuristic", alias="confidenceSource")
     explanation: str | None = None
 
     model_config = {"populate_by_name": True}
@@ -175,7 +178,11 @@ class MesonInterpretPayload(BaseModel):
     workflows: list[str] = Field(default_factory=list)
     sample_outputs: list[str] = Field(default_factory=list)
     confidence: float = 0.75
+    confidence_is_estimate: bool = Field(default=True, alias="confidenceIsEstimate")
+    confidence_source: str = Field(default="heuristic", alias="confidenceSource")
     explanation: str | None = None
+
+    model_config = {"populate_by_name": True}
 
 
 class MesonService:
@@ -208,12 +215,15 @@ class MesonService:
             prefs = self.load_user_preferences(client, org_id, user_id)
             preference_context = self.format_preferences_for_prompt(prefs)
 
-        from app.services.gravitree_voice import apply_voice
+        from app.services.gravitree_voice import apply_voice, confidence_register_hint
 
-        # Same voice SoT as chat/ReAct; Meson→Module B planner unification is deferred.
+        # Same voice SoT as chat/ReAct (confidence register + humor budget included).
+        # Meson→Module B planner unification is deferred.
         prompt = apply_voice(
             "ROLE: You are Meson, Gravitre's system builder copilot.\n"
-            "Turn the user's build request into a concrete agent + enablement plan.\n\n"
+            "Turn the user's build request into a concrete agent + enablement plan.\n"
+            f"{confidence_register_hint('estimate')}\n"
+            "Humor budget: off for this planning turn (governance-adjacent build advice).\n\n"
             f"Intent: {cleaned_intent}\n"
             f"Department: {dept}\n"
             f"Selected systems: {selected_systems}\n"
@@ -264,6 +274,8 @@ class MesonService:
             outputTypes=selected_outputs,
             generatedConfig=generated,
             confidence=parsed.confidence,
+            confidenceIsEstimate=getattr(parsed, "confidence_is_estimate", True),
+            confidenceSource=getattr(parsed, "confidence_source", "heuristic"),
             explanation=parsed.explanation,
         )
         if client is not None and org_id and user_id:
@@ -655,11 +667,28 @@ class MesonService:
                 .limit(10)
                 .execute()
             )
+            from app.services.gravitree_voice import format_operator_message
+
             for run in failed_runs.data or []:
                 run_id = str(run.get("id") or "")
                 if any(a.id == f"run-failed-{run_id}" for a in alerts):
                     continue
-                message = str(run.get("error_message") or "Workflow run failed recently.")
+                raw = str(run.get("error_message") or "").strip()
+                # Pass through voice-shaped gate/execute errors; otherwise shape blocked.
+                if raw and (
+                    "Write blocked" in raw
+                    or "not Connected" in raw
+                    or raw.startswith("Blocked.")
+                ):
+                    message = raw
+                else:
+                    message = format_operator_message(
+                        "blocked",
+                        blocker=raw or "A workflow run failed recently.",
+                        next_action="Open the run, fix the blocker, then retry.",
+                        confidence_register="blocked",
+                        allow_humor=False,
+                    )
                 alerts.append(
                     MesonAlert(
                         id=f"run-failed-{run_id}",
@@ -2278,9 +2307,25 @@ class MesonService:
                 .execute()
             )
             if failed_run.data:
+                from app.services.gravitree_voice import format_operator_message
+
                 row = failed_run.data[0]
                 run_id = str(row.get("id") or "")
-                message = str(row.get("error_message") or "Latest run failed.")
+                raw = str(row.get("error_message") or "").strip()
+                if raw and (
+                    "Write blocked" in raw
+                    or "not Connected" in raw
+                    or raw.startswith("Blocked.")
+                ):
+                    message = raw
+                else:
+                    message = format_operator_message(
+                        "blocked",
+                        blocker=raw or "Latest run failed.",
+                        next_action="Open the run, fix the blocker, then retry.",
+                        confidence_register="blocked",
+                        allow_humor=False,
+                    )
                 insights.append(
                     MesonInsight(
                         id=f"workflow-last-failed-{run_id}" if run_id else "workflow-last-failed",
@@ -2293,11 +2338,18 @@ class MesonService:
             logger.debug("meson optimizations failed run lookup: %s", exc)
 
         if not insights:
+            from app.services.gravitree_voice import format_operator_message
+
             insights.append(
                 MesonInsight(
                     id="meson-workflow-ready",
                     title="Meson is watching this workflow",
-                    summary="No urgent optimizations detected. Keep building — Meson will suggest next steps as you add nodes.",
+                    summary=format_operator_message(
+                        "success_win",
+                        allow_humor=True,
+                        confidence_register="certain",
+                    )
+                    + " No urgent optimizations — keep building; Meson will suggest next steps as you add nodes.",
                     category="general",
                 )
             )

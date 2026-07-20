@@ -18,7 +18,10 @@ def adjust_registry_plan_for_prediction(
     query: str = "",
 ) -> ContextRegistryPlan:
     """Expand slices / top_k when intent signals need richer context ahead of generation."""
-    conf = float(classification.get("classification_confidence") or classification.get("confidence") or 0.55)
+    raw_conf = classification.get("classification_confidence")
+    if raw_conf is None:
+        raw_conf = classification.get("confidence")
+    conf = float(raw_conf) if raw_conf is not None else 0.55
     intent = str(classification.get("intent") or "").lower()
     requires_action = bool(classification.get("requires_action"))
     requires_graph = bool(classification.get("requires_graph"))

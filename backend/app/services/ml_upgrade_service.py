@@ -152,17 +152,25 @@ class MLUpgradeService:
     async def upgrade_confidence_calibration(self, org_id: str) -> dict[str, Any]:
         from app.services.confidence_calibrator import get_confidence_calibrator
         from app.services.ai_trust_layer import get_ai_trust_layer
+        from app.services.confidence_honesty import CONFIDENCE_SOURCE_HEURISTIC, annotate_confidence
 
         multiplier = get_confidence_calibrator(self.settings).get_multiplier(org_id, "assistant")
+        probe_confidence = 0.72
         sample = get_ai_trust_layer().wrap_response_calibrated(
             org_id,
             answer="Calibration probe",
             sources=[],
-            confidence=0.72,
+            confidence=probe_confidence,
             reasoning_summary="Calibration active",
             actions_taken=[],
             actions_pending_approval=[],
             advisory_only=True,
+        )
+        sample = annotate_confidence(
+            sample,
+            is_estimate=True,
+            source=CONFIDENCE_SOURCE_HEURISTIC,
+            value=probe_confidence,
         )
         return {
             "status": "live",

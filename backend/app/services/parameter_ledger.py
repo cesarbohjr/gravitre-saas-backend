@@ -19,7 +19,9 @@ from app.services.chat_connector_models import ConnectorActionPlan
 
 logger = get_logger(__name__)
 
-EMAIL_RE = re.compile(r"\b[\w.+-]+@[\w.-]+\.\w+\b")
+# Local-part must start at a non-dot boundary so we never match a suffix inside
+# a dotted address (e.g. moduleb@x inside sarah.chen.moduleb@x).
+EMAIL_RE = re.compile(r"(?<![\w.])([\w+-]+(?:\.[\w+-]+)*@[\w.-]+\.\w+)\b")
 SLACK_CHANNEL_RE = re.compile(
     r"(#[\w-]+)"
     r"|(?:\bin|to)\s+(?:the\s+)?([a-z0-9_-]+)\s+channel\b"
@@ -156,6 +158,22 @@ class ParameterLedger:
 
 def empty_ledger() -> ParameterLedger:
     return ParameterLedger()
+
+
+def extract_complete_emails(text: str) -> list[str]:
+    """Return complete email addresses from text (no local-part suffix false positives)."""
+    if not text:
+        return []
+    found = EMAIL_RE.findall(text)
+    # findall returns group 1 when pattern has one capturing group.
+    emails = [str(item) for item in found if str(item).strip()]
+    # Drop any residual that is a strict suffix of another match.
+    unique = list(dict.fromkeys(emails))
+    return [
+        email
+        for email in unique
+        if not any(email != other and other.endswith(email) for other in unique)
+    ]
 
 
 def get_ledger(task_state: dict[str, Any] | None) -> ParameterLedger:
@@ -343,7 +361,9 @@ def bind_args_from_ledger(
     schema = get_workflow_schema(invoke_action)
     fields = ()
     if schema:
-        fields = (*schema.required_fields, *schema.optional_fields)
+        from app.connectors.action_catalog.action_workflow_schema import iter_workflow_fields
+
+        fields = tuple(iter_workflow_fields(schema))
 
     if fields:
         for field_spec in fields:

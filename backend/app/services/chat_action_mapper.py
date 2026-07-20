@@ -211,10 +211,16 @@ class ChatActionMapper:
         if not mentioned:
             return None
         connected = {c.lower() for c in connected_integrations}
+        from app.services.gravitree_voice import format_operator_message
+
         for vendor in mentioned:
             if vendor not in connected:
-                label = vendor.replace("_", " ").title()
-                return f"Connect {label} in Gravitre to run this action."
+                return format_operator_message(
+                    "connector_connect_to_run",
+                    integration=vendor,
+                    confidence_register="blocked",
+                    allow_humor=False,
+                )
         match = self.match_segment(message, connected_integrations=connected_integrations)
         if match:
             return None

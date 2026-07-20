@@ -690,10 +690,14 @@ async def _notify_operator_job_finished(
     org_id = str(job.get("org_id") or "").strip()
     if not user_id or not org_id:
         return
-    from app.services.entity_link_service import build_entity_url
-    from app.services.notification_emitter import emit_notification
+    import hashlib
+    from uuid import uuid4
 
-    payload = job.get("payload") or {}
+    from app.services.entity_link_service import build_entity_url
+    from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
+    from app.workflows.repository import create_run
+
+    payload = job.get("payload") if isinstance(job.get("payload"), dict) else {}
     session_id = str(payload.get("session_id") or payload.get("sessionId") or "").strip()
     url = (
         build_entity_url("approval", str(job["id"]))
@@ -701,25 +705,84 @@ async def _notify_operator_job_finished(
         else (f"/ai?session={session_id}" if session_id else "/ai")
     )
     task = str(payload.get("task") or job.get("kind") or "operator task").strip()
-    notification_type = "task_completed" if job.get("status") == "completed" else "run_failed"
-    emit_notification(
+    job_status = str(job.get("status") or "").strip().lower()
+    terminal_status = "completed" if job_status == "completed" else "failed"
+    run_id = str(
+        payload.get("workflow_run_id")
+        or payload.get("run_id")
+        or result.get("workflow_run_id")
+        or result.get("run_id")
+        or ""
+    ).strip() or None
+    if not run_id:
+        job_id = str(job.get("id") or "")
+        label = (task or "Operator assignment")[:120]
+        try:
+            created = create_run(
+                client,
+                org_id=org_id,
+                triggered_by=user_id,
+                definition_snapshot={
+                    "name": label,
+                    "source": "assignment",
+                    "job_id": job_id,
+                    "steps": [],
+                },
+                parameters={
+                    "source": "assignment",
+                    "job_id": job_id,
+                    "task": task,
+                    "session_id": session_id or None,
+                },
+                run_hash=hashlib.sha256(
+                    f"assignment|{job_id}|{uuid4()}".encode("utf-8")
+                ).hexdigest()[:48],
+                workflow_id=None,
+                environment_name="production",
+                trigger_type="api",
+                run_type="execute",
+            )
+            run_id = str(created.get("id") or "") or None
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "operator_job_run_create_failed job_id=%s error=%s",
+                job.get("id"),
+                exc,
+            )
+            run_id = None
+
+    finalize_execution_outcome(
         client,
         org_id=org_id,
-        user_id=user_id,
-        event_type=notification_type,
-        title="Operator task completed" if notification_type == "task_completed" else "Operator task failed",
-        body=f"Finished: {task[:160]}. Open Gravitre to review the result.",
-        entity_ref={
-            "entity_type": "agent_job",
-            "entity_id": str(job.get("id") or ""),
-            "result_url": url,
-        },
+        status=terminal_status,
+        source="assignment",
+        actor_id=user_id,
+        run_id=run_id,
+        persist_run=bool(run_id),
+        error_summary=None if terminal_status == "completed" else (
+            str(result.get("error") or job.get("error") or f"Operator task failed: {task[:160]}")
+        ),
+        verified_output=VerifiedOutputRef(
+            summary=f"Finished: {task[:160]}",
+            result_url=url,
+            entity_type="workflow_run" if run_id else "agent_job",
+            entity_id=run_id or str(job.get("id") or ""),
+        ),
+        notification_title=(
+            "Operator task completed" if terminal_status == "completed" else "Operator task failed"
+        ),
+        notification_body=f"Finished: {task[:160]}. Open Gravitre to review the result.",
         channel_hints={"bell": True, "email": True},
         email_context={
             "kind": "assignment_completion",
             "job_id": str(job.get("id") or ""),
             "task_title": task[:120] or "Assignment",
             "requires_approval": bool(result.get("requires_approval")),
+        },
+        metadata={
+            "path": "agent_job",
+            "job_id": str(job.get("id") or ""),
+            "job_kind": job.get("kind"),
         },
     )
 
@@ -772,6 +835,9 @@ async def _process_job_id(settings: Settings, job_id: str) -> bool:
         refreshed = get_job(client, job["org_id"], str(job["id"])) or job
         if refreshed.get("status") == "failed":
             await _notify_swarm_job_finished(settings, client, refreshed)
+            await _notify_operator_job_finished(
+                settings, client, refreshed, {"error": "execution_timeout"}
+            )
         logger.warning("agent_job_timeout id=%s timeout_s=%s", job.get("id"), timeout_s)
     except Exception as exc:  # noqa: BLE001
         logger.warning("agent_job_failed id=%s error=%s", job.get("id"), str(exc))
@@ -779,6 +845,9 @@ async def _process_job_id(settings: Settings, job_id: str) -> bool:
         refreshed = get_job(client, job["org_id"], str(job["id"])) or job
         if refreshed.get("status") == "failed":
             await _notify_swarm_job_finished(settings, client, refreshed)
+            await _notify_operator_job_finished(
+                settings, client, refreshed, {"error": str(exc)}
+            )
     return True
 
 
@@ -816,6 +885,9 @@ async def _process_one(settings: Settings) -> bool:
         refreshed = get_job(client, job["org_id"], str(job["id"])) or job
         if refreshed.get("status") == "failed":
             await _notify_swarm_job_finished(settings, client, refreshed)
+            await _notify_operator_job_finished(
+                settings, client, refreshed, {"error": str(exc)}
+            )
     return True
 
 

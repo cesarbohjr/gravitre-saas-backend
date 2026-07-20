@@ -210,7 +210,9 @@ WORKFLOW_SCHEMAS_BATCH_25: dict[str, ActionWorkflowSchema] = {
             _req("issue number", "issue_number", "issueNumber"),
             _req("update fields", "title", "body", "state", "labels", validator="named_or_payload"),
         ),
-        optional_fields=(_opt("Repository", "repo", "repository")),
+        # Trailing comma required — without it Python treats the parens as grouping,
+        # not a 1-tuple, and optional_fields becomes a bare WorkflowFieldSpec.
+        optional_fields=(_opt("Repository", "repo", "repository"),),
     ),
     "clickup.tasks.create": ActionWorkflowSchema(
         intent_label="Create ClickUp task",

@@ -1376,8 +1376,9 @@ class AgentIntelligence:
             task_text,
             pipeline_classification,
         )
-        classification_confidence = float(
-            pipeline_classification.get("classification_confidence") or 0.55
+        _raw_classification_confidence = pipeline_classification.get("classification_confidence")
+        classification_confidence = (
+            float(_raw_classification_confidence) if _raw_classification_confidence is not None else 0.55
         )
         task_state = await get_conversation_state_service(active_settings).get_task_state(
             conversation_id or "",
@@ -2492,7 +2493,11 @@ class AgentIntelligence:
                 org_id=org_id,
                 recommendation_id=rec_id,
                 department=str(pipeline_classification.get("department") or ""),
-                confidence_score=float(row.get("confidence") or 0.55),
+                confidence_score=(
+                    float(row["confidence"])
+                    if row.get("confidence") is not None
+                    else None
+                ),
                 strategy_key=str(row.get("type") or ""),
             )
 

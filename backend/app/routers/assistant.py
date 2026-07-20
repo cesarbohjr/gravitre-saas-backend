@@ -938,6 +938,27 @@ async def assistant_chat(
                     turn_index=len(list((prior or {}).get("recent_user_messages") or [])) + 1,
                     ledger=get_ledger(prior),
                 )
+                # Phase 2 (flagged OFF): recall confirmed slots from prior conversations.
+                try:
+                    from app.services.cross_conversation_ledger_memory import (
+                        feature_enabled as _xconv_enabled,
+                        recall_slots_into_ledger,
+                    )
+
+                    if _xconv_enabled(settings):
+                        aliases = [last_user]
+                        for tok in (last_user or "").split():
+                            if len(tok) >= 3:
+                                aliases.append(tok.strip(",.!?"))
+                        ledger = recall_slots_into_ledger(
+                            get_supabase_client(settings),
+                            org_id=org_id,
+                            ledger=ledger,
+                            aliases=aliases,
+                            settings=settings,
+                        )
+                except Exception:  # noqa: BLE001
+                    pass
                 await state_svc.update_task_state(
                     conversation_id,
                     org_id,

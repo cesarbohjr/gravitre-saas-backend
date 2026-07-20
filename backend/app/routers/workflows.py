@@ -70,7 +70,6 @@ from app.workflows.repository import (
     emit_execute_pending_approval,
     emit_execute_rejected,
     emit_execute_started,
-    emit_execute_cancelled,
     get_approval_counts,
     get_run_with_steps,
     get_supabase_client,
@@ -98,7 +97,7 @@ from app.workflows.repository import (
     delete_workflow_node,
     delete_workflow_edge,
     delete_workflow_schedule,
-    update_run,
+    patch_workflow_run,
 )
 from app.connectors.repository import get_connector
 from app.operators.repository import get_operator
@@ -1216,6 +1215,37 @@ class OrgFailurePredictionScanResponse(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+@router.get("/execution-outcomes/ops-summary")
+async def execution_outcomes_ops_summary(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Module A ops consumer: 24h pass/fail rates by source and connector."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    from app.services.outcome_ops_summary import summarize_outcomes_last_24h
+
+    client = get_supabase_client(settings)
+    return summarize_outcomes_last_24h(client, org_id=org_id)
+
+
+@router.get("/execution-outcomes/executive-digest")
+async def execution_outcomes_executive_digest(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    allow_humor: bool = Query(default=False, alias="allowHumor"),
+) -> dict:
+    """Module D Executive Digest over Module A's last-24h outcome stream."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    from app.services.outcome_ops_summary import executive_digest_last_24h
+
+    client = get_supabase_client(settings)
+    return executive_digest_last_24h(client, org_id=org_id, allow_humor=allow_humor)
+
+
 @router.get("/failure-predictions")
 async def list_workflow_failure_predictions(
     _user: Annotated[dict, Depends(get_current_user)],
@@ -1794,6 +1824,7 @@ async def execute_workflow(
             required_approvals=required_approvals,
         )
         try:
+            from app.services.gravitree_voice import format_operator_message
             from app.services.notification_emitter import emit_notification
 
             emit_notification(
@@ -1801,8 +1832,17 @@ async def execute_workflow(
                 org_id=org_id,
                 user_id=current_user["user_id"],
                 event_type="approval_needed",
-                title="Workflow awaiting approval",
-                body=f"{str(wf_name or workflow_id)} is queued in the Decision Queue.",
+                title=format_operator_message(
+                    "approval_needed_requester_title",
+                    confidence_register="certain",
+                    allow_humor=False,
+                ),
+                body=format_operator_message(
+                    "approval_needed_requester",
+                    label=str(wf_name or workflow_id),
+                    confidence_register="certain",
+                    allow_humor=False,
+                ),
                 entity_ref={
                     "entity_type": "workflow_run",
                     "entity_id": run_id,
@@ -2538,9 +2578,29 @@ async def approve_run(
     approved_count, has_rejected = get_approval_counts(client, run_id_str)
     required = run.get("required_approvals") or 1
     if has_rejected:
-        update_run(client, run_id_str, status="cancelled", approval_status="rejected")
+        from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
+
+        # Rejection decision audit (distinct from terminal cancelled fanout).
         emit_execute_rejected(client, org_id, current_user["user_id"], run_id_str)
-        emit_execute_cancelled(client, org_id, current_user["user_id"], run_id_str)
+        finalize_execution_outcome(
+            client,
+            org_id=org_id,
+            status="cancelled",
+            source="api",
+            actor_id=current_user["user_id"],
+            run_id=run_id_str,
+            approval_status="rejected",
+            error_summary="Run rejected during approval",
+            verified_output=VerifiedOutputRef(
+                summary="Run rejected",
+                result_url=f"/runs/{run_id_str}",
+                entity_type="workflow_run",
+                entity_id=run_id_str,
+            ),
+            notification_title="Run rejected",
+            notification_body="Approval rejected — run cancelled.",
+            metadata={"path": "api_approve_has_rejected", "decision": "rejected"},
+        )
         return {
             "run_id": run_id_str,
             "status": "cancelled",
@@ -2676,9 +2736,29 @@ async def reject_run(
         status="rejected",
         reviewed_by=current_user["user_id"],
     )
-    update_run(client, run_id_str, status="cancelled", approval_status="rejected")
+    from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
+
+    # Rejection decision audit (distinct from terminal cancelled fanout).
     emit_execute_rejected(client, org_id, current_user["user_id"], run_id_str)
-    emit_execute_cancelled(client, org_id, current_user["user_id"], run_id_str)
+    finalize_execution_outcome(
+        client,
+        org_id=org_id,
+        status="cancelled",
+        source="api",
+        actor_id=current_user["user_id"],
+        run_id=run_id_str,
+        approval_status="rejected",
+        error_summary="Run rejected",
+        verified_output=VerifiedOutputRef(
+            summary="Run rejected",
+            result_url=f"/runs/{run_id_str}",
+            entity_type="workflow_run",
+            entity_id=run_id_str,
+        ),
+        notification_title="Run rejected",
+        notification_body=(body.comment or "Approval rejected — run cancelled.")[:2000],
+        metadata={"path": "api_reject", "decision": "rejected"},
+    )
     try:
         from app.services.transparency_service import record_human_override
 
@@ -3671,9 +3751,7 @@ async def retry_run_alias(
     )
     if not run:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
-    client.table("workflow_runs").update(
-        {"status": "running", "error_message": None}
-    ).eq("id", str(run_id)).eq("org_id", org_id).execute()
+    patch_workflow_run(client, str(run_id), {"status": "running", "error_message": None})
     return {"success": True}
 
 

@@ -63,7 +63,7 @@ def test_orchestration_run_fully_completed_rejects_all_skipped():
 def test_finalize_orchestration_run_failure_emits_audit_and_notification():
     client = MagicMock()
     with (
-        patch("app.services.chat_orchestration_runs.update_run") as update_run,
+        patch("app.workflows.repository.update_run") as update_run,
         patch("app.workflows.repository.emit_execute_failed") as emit_failed,
         patch("app.services.notification_emitter.emit_notification") as emit_note,
     ):
@@ -86,8 +86,9 @@ def test_finalize_orchestration_run_failure_emits_audit_and_notification():
 def test_finalize_orchestration_run_success_skips_failure_emit():
     client = MagicMock()
     with (
-        patch("app.services.chat_orchestration_runs.update_run") as update_run,
+        patch("app.workflows.repository.update_run") as update_run,
         patch("app.workflows.repository.emit_execute_failed") as emit_failed,
+        patch("app.workflows.repository.emit_execute_completed") as emit_completed,
         patch("app.services.notification_emitter.emit_notification") as emit_note,
     ):
         finalize_orchestration_run(
@@ -101,4 +102,6 @@ def test_finalize_orchestration_run_success_skips_failure_emit():
     update_run.assert_called_once()
     assert update_run.call_args.kwargs["status"] == "completed"
     emit_failed.assert_not_called()
-    emit_note.assert_not_called()
+    emit_completed.assert_called_once()
+    emit_note.assert_called_once()
+    assert emit_note.call_args.kwargs["event_type"] == "run_completed"

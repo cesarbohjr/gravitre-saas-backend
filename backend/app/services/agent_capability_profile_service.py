@@ -7,6 +7,11 @@ from app.config import Settings, get_settings
 from app.services.agent_knowledge_assignment_service import get_agent_knowledge_assignment_service
 from app.services.agent_memory_service import ensure_agent_in_org
 from app.services.agent_tool_permissions import list_agent_tool_permissions
+from app.services.confidence_honesty import (
+    CONFIDENCE_SOURCE_HEURISTIC,
+    CONFIDENCE_SOURCE_INSUFFICIENT,
+    label_confidence,
+)
 
 READ_SCOPES = {"read", "search", "lookup"}
 WRITE_SCOPES = {"write", "create", "update", "delete", "execute"}
@@ -60,6 +65,25 @@ class AgentCapabilityProfileService:
         memory_count = self._memory_count(client, org_id, agent_id)
         freshness = self._aggregate_freshness(assignments)
 
+        if assignments:
+            scores = [
+                float(row["confidenceScore"])
+                for row in assignments
+                if row.get("confidenceScore") is not None
+            ]
+            confidence_block = label_confidence(
+                round(sum(scores) / len(scores), 4) if scores else None,
+                source=CONFIDENCE_SOURCE_HEURISTIC if scores else CONFIDENCE_SOURCE_INSUFFICIENT,
+                is_estimate=True,
+                key="confidenceScore",
+            )
+        else:
+            confidence_block = label_confidence(
+                None,
+                source=CONFIDENCE_SOURCE_INSUFFICIENT,
+                key="confidenceScore",
+            )
+
         return {
             "agentId": agent_id,
             "department": agent.get("department"),
@@ -84,12 +108,7 @@ class AgentCapabilityProfileService:
                 (row.get("lastSyncedAt") for row in assignments if row.get("lastSyncedAt")),
                 default=None,
             ),
-            "confidenceScore": round(
-                sum(float(row.get("confidenceScore") or 0.75) for row in assignments) / max(len(assignments), 1),
-                4,
-            )
-            if assignments
-            else 0.75,
+            **confidence_block,
             "departmentScope": agent.get("department"),
             "planRestrictions": [],
             "canRecommend": True,
