@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI Transparency and Approval Hero</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 1200px;
+      height: 675px;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 45%, #f1f5f9 100%);
+      overflow: hidden;
+      position: relative;
+    }
+    .orb-1 {
+      position: absolute;
+      top: -120px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 700px;
+      height: 500px;
+      background: #d1fae5;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.55;
+    }
+    .orb-2 {
+      position: absolute;
+      top: 40px;
+      right: -80px;
+      width: 280px;
+      height: 280px;
+      background: #dbeafe;
+      border-radius: 50%;
+      filter: blur(60px);
+      opacity: 0.35;
+    }
+    .orb-3 {
+      position: absolute;
+      bottom: -60px;
+      left: -40px;
+      width: 240px;
+      height: 240px;
+      background: #e2e8f0;
+      border-radius: 50%;
+      filter: blur(60px);
+      opacity: 0.35;
+    }
+    .grid-dots {
+      position: absolute;
+      inset: 0;
+      opacity: 0.04;
+      background-image: radial-gradient(circle, #18181b 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    .container {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      padding: 48px 56px;
+      display: flex;
+      flex-direction: column;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      align-self: center;
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: 1px solid #a7f3d0;
+      background: rgba(236, 253, 245, 0.85);
+      color: #047857;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+    }
+    h1 {
+      text-align: center;
+      font-size: 34px;
+      font-weight: 700;
+      color: #18181b;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 8px;
+    }
+    h1 span {
+      background: linear-gradient(90deg, #059669, #14b8a6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      text-align: center;
+      font-size: 15px;
+      color: #71717a;
+      margin-bottom: 28px;
+      max-width: 720px;
+      align-self: center;
+      line-height: 1.45;
+    }
+    .tabs {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .tab {
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #71717a;
+      background: rgba(255,255,255,0.7);
+      border: 1px solid #e4e4e7;
+    }
+    .tab.active {
+      background: #18181b;
+      color: #fff;
+      border-color: #18181b;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      flex: 1;
+      align-items: start;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #e4e4e7;
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    .card-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+      font-size: 20px;
+    }
+    .card-icon.teal { background: #ccfbf1; }
+    .card-icon.blue { background: #dbeafe; }
+    .card-icon.purple { background: #ede9fe; }
+    .card-icon.slate { background: #e2e8f0; }
+    .card-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #18181b;
+      margin-bottom: 4px;
+      line-height: 1.3;
+    }
+    .card-meta {
+      font-size: 11px;
+      color: #a1a1aa;
+      margin-bottom: 10px;
+    }
+    .card-desc {
+      font-size: 11px;
+      color: #71717a;
+      line-height: 1.45;
+      flex: 1;
+      margin-bottom: 12px;
+    }
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .pill {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #f4f4f5;
+      color: #52525b;
+    }
+    .pill.verified {
+      background: #ecfdf5;
+      color: #047857;
+    }
+    .pill.queued {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .pill.logged {
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+    }
+    .steps {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 22px;
+    }
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-radius: 14px;
+      background: #fff;
+      border: 1px solid #e4e4e7;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .step-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: #d1fae5;
+      color: #047857;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #18181b;
+    }
+    .step-desc {
+      font-size: 10px;
+      color: #a1a1aa;
+    }
+  </style>
+</head>
+<body>
+  <div class="orb-1"></div>
+  <div class="orb-2"></div>
+  <div class="orb-3"></div>
+  <div class="grid-dots"></div>
+  <div class="container">
+    <div class="badge"><span class="badge-dot"></span> Gravitre Transparency</div>
+    <h1>Trust you can <span>verify</span>, not just feel</h1>
+    <p class="subtitle">Who approved this, what did the AI assume, and where is the record? Every write action, every path.</p>
+
+    <div class="tabs">
+      <div class="tab active">Chat</div>
+      <div class="tab">Guided task</div>
+      <div class="tab">Workflow</div>
+      <div class="tab">Intelligence</div>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-icon teal">✓</div>
+        <div class="card-title">Human approval</div>
+        <div class="card-meta">Same standard · every path</div>
+        <div class="card-desc">Write actions wait for sign-off. No side door for workflows. Queue if you lack approval rights.</div>
+        <div class="card-footer">
+          <span class="pill queued">Awaiting approval</span>
+          <span class="status-dot"></span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon blue">🔗</div>
+        <div class="card-title">Verified results</div>
+        <div class="card-meta">Proof · not checkmarks</div>
+        <div class="card-desc">Link to the record that changed, a clear summary, or an honest failed state — never a false success.</div>
+        <div class="card-footer">
+          <span class="pill verified">Verified</span>
+          <span class="status-dot"></span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon purple">💡</div>
+        <div class="card-title">Assumptions</div>
+        <div class="card-meta">Guesses · spelled out</div>
+        <div class="card-desc">When the AI fills in a detail you did not provide, it shows an Assumptions note separate from the outcome.</div>
+        <div class="card-footer">
+          <span class="pill">Default name used</span>
+          <span class="status-dot"></span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon slate">📋</div>
+        <div class="card-title">Audit trail</div>
+        <div class="card-meta">Review · filter · export</div>
+        <div class="card-desc">Every approval and action is logged. Investigate after the fact with a trace you can actually find.</div>
+        <div class="card-footer">
+          <span class="pill logged">Logged</span>
+          <span class="status-dot"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-label">Approve</div>
+          <div class="step-desc">Human sign-off on writes</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-label">Verify</div>
+          <div class="step-desc">Link or honest outcome</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-label">Record</div>
+          <div class="step-desc">Audit log you can export</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

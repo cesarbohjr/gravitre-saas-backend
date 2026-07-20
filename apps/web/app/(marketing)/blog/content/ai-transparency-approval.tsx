@@ -14,7 +14,7 @@ export const aiTransparencyApprovalPost: BlogPost = {
   author: GRAVITRE_BLOG_AUTHOR,
   ...createBlogDates("2026-07-17", "2026-07-18"),
   readTime: "6 min read",
-  heroImage: "",
+  heroImage: "/images/blog/ai-transparency-approval-hero.jpg",
   heroGradient: "from-emerald-50 via-white to-slate-100",
   heroAlt:
     "Diagram showing an AI action moving through an approval step, a verification check, and an audit log entry",
