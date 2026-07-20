@@ -1589,6 +1589,11 @@ class AgentIntelligence:
                 task_state = orchestration_turn.get("task_state") or task_state
                 response_text = str(orchestration_turn.get("message") or "")
                 dialogue_mode = str(orchestration_turn.get("dialogue_mode") or "answer")
+                orch_perf = orchestration_turn.get("orchestration_perf")
+                if not isinstance(orch_perf, dict):
+                    clarified = (task_state or {}).get("clarified_params") or {}
+                    if isinstance(clarified, dict):
+                        orch_perf = clarified.get("orchestration_perf")
                 if orchestration_turn.get("execution_result") or orchestration_turn.get("pending_task"):
                     yield sse_intelligence_metadata(
                         message_id=message_id,
@@ -1603,6 +1608,7 @@ class AgentIntelligence:
                         pipeline_tier=pipeline_tier,
                         routing_tier=routing_control.tier,
                         routing=routing_sse,
+                        react_perf=orch_perf if isinstance(orch_perf, dict) else None,
                     )
                 text_id, start_event = sse_text_start()
                 yield start_event
@@ -1625,6 +1631,7 @@ class AgentIntelligence:
                     pipeline_tier=pipeline_tier,
                     routing_tier=routing_control.tier,
                     routing=routing_sse,
+                    react_perf=orch_perf if isinstance(orch_perf, dict) else None,
                 )
                 yield AssistantStreamComplete(
                     full_content=response_text,

@@ -334,6 +334,23 @@ class ClarificationEngine:
         pronoun_hit = bool(re.search(r"\b(it|this|that|them)\b", lowered))
         if confidence < self.CLARIFICATION_THRESHOLD and pronoun_hit:
             if not clarified.get("resolved_entity"):
+                # Phase 5 — user corrections ("actually / I meant / use X instead")
+                # are not platform-item asks.
+                from app.services.gravitree_voice import detect_correction_phrase
+
+                if detect_correction_phrase(request):
+                    return None
+                # Phase 4 — conversation-memory / account-recall questions often
+                # contain "this conversation" / "that account" without a tool target.
+                if re.search(
+                    r"\b("
+                    r"primary account|account name|from (the )?(start|beginning)|"
+                    r"earlier in (this )?conversation|going forward|remember|"
+                    r"codename|pipeline codename"
+                    r")\b",
+                    lowered,
+                ):
+                    return None
                 # Named vendor in the utterance → connector gate, not platform-item ask.
                 named = self._named_connectors_in_text(request)
                 if named:

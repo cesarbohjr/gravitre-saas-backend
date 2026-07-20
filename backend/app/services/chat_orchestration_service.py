@@ -931,7 +931,28 @@ class ChatOrchestrationService:
                 environment_name=environment_name,
             )
 
-        results = await asyncio.gather(*[_run_one(step) for _, step in batch])
+        # Phase 2 A/B — honor X-Gravitree-React-Serial / GRAVITREE_REACT_SERIAL_TOOLS
+        # so orchestration multi-read batches share the same baseline as ReAct.
+        from app.operators.react_engine import _serial_tools_forced
+
+        import time as _time
+
+        started = _time.perf_counter()
+        if _serial_tools_forced():
+            results = []
+            for _, step in batch:
+                results.append(await _run_one(step))
+            parallel = False
+        else:
+            results = list(await asyncio.gather(*[_run_one(step) for _, step in batch]))
+            parallel = True
+        batch_elapsed_ms = int((_time.perf_counter() - started) * 1000)
+        params["orchestration_perf"] = {
+            "parallelBatch": parallel,
+            "batchSize": len(batch),
+            "batchElapsedMs": batch_elapsed_ms,
+            "steps": [step.label for _, step in batch],
+        }
         step_results = list(params.get("step_results") or [])
         for (step_idx, step), result in zip(batch, results, strict=True):
             step_results.append(_step_result_row(step, result))
@@ -1304,6 +1325,7 @@ class ChatOrchestrationService:
             ),
             "execution_result": serialize_execution_result(result),
             "task_state": refreshed,
+            "orchestration_perf": params.get("orchestration_perf"),
         }
 
     async def _clear_orchestration(self, conversation_id: str, org_id: str) -> None:

@@ -1,0 +1,84 @@
+{
+  "git_sha": "1504a6568702",
+  "conversation_id": "9cfff6ab-c7bc-4aaa-8104-eb6e9e7f79f7",
+  "http": 200,
+  "plan_before_tools": true,
+  "first_plan_idx": 2,
+  "first_tool_idx": null,
+  "progress_steps": [
+    "Routing tier: research",
+    "Reviewing Apollo",
+    "Loading memory and knowledge"
+  ],
+  "event_order_head": [
+    "start",
+    "start-step",
+    "data-intelligence",
+    "data-intelligence",
+    "text-start",
+    "text-delta",
+    "text-end",
+    "data-intelligence",
+    "finish-step",
+    "finish",
+    "data-suggestions"
+  ],
+  "transcript_head": [
+    {
+      "type": "start"
+    },
+    {
+      "type": "start-step"
+    },
+    {
+      "type": "data-intelligence",
+      "progressSteps": [
+        "Routing tier: research",
+        "Reviewing Apollo",
+        "Loading memory and knowledge"
+      ],
+      "strategicPlan": false,
+      "answerExplanation": "Analyzing your request\u2026",
+      "reactPerf": null,
+      "taskState": false
+    },
+    {
+      "type": "data-intelligence",
+      "progressSteps": [],
+      "strategicPlan": false,
+      "answerExplanation": "Multi-step connector orchestration",
+      "reactPerf": null,
+      "taskState": true
+    },
+    {
+      "type": "text-start"
+    },
+    {
+      "type": "text-delta",
+      "delta": "I planned a **2-step orchestration**:\n\n1. **Search people** (read, auto-run)\n2. \u25cb Hubspot (not connected) \u2014 *skipped* (Connect Hubspot at /connectors to run this action.)\n\nRead steps run automatically. Write steps require approval one at a "
+    },
+    {
+      "type": "text-end"
+    },
+    {
+      "type": "data-intelligence",
+      "progressSteps": [],
+      "strategicPlan": false,
+      "answerExplanation": "Multi-step connector orchestration",
+      "reactPerf": null,
+      "taskState": true
+    },
+    {
+      "type": "finish-step"
+    },
+    {
+      "type": "finish"
+    },
+    {
+      "type": "data-suggestions"
+    }
+  ],
+  "assistant_excerpt": "I planned a **2-step orchestration**:\n\n1. **Search people** (read, auto-run)\n2. \u25cb Hubspot (not connected) \u2014 *skipped* (Connect Hubspot at /connectors to run this action.)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change.",
+  "verdict": "PASS",
+  "recorded_at": "2026-07-20T09:19:27.801810+00:00"
+}

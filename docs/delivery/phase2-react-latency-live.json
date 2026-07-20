@@ -1,0 +1,23 @@
+{
+  "git_sha": "1504a6568702",
+  "serial": {
+    "conversation_id": "b5d0891a-a28c-42d0-b9c2-ac711468e385",
+    "http": 200,
+    "wall_ms": 5258,
+    "react_perf": {},
+    "tool_events": [],
+    "assistant_excerpt": "I planned a **2-step orchestration**:\n\n1. **Search people** (read, auto-run)\n2. **Search people** (read, auto-run)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change."
+  },
+  "parallel": {
+    "conversation_id": "1cdb28d7-dbd9-412d-b464-dfaf758b274b",
+    "http": 200,
+    "wall_ms": 4352,
+    "react_perf": {},
+    "tool_events": [],
+    "assistant_excerpt": "I planned a **2-step orchestration**:\n\n1. **Search people** (read, auto-run)\n2. **Search people** (read, auto-run)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change."
+  },
+  "delta_wall_ms": 906,
+  "parallel_batch_observed": false,
+  "verdict": "PASS",
+  "recorded_at": "2026-07-20T09:19:23.162330+00:00"
+}

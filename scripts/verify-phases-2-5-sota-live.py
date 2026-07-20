@@ -45,10 +45,9 @@ OUT_DIR = REPO / "docs" / "delivery"
 CHAT_TIMEOUT = int(os.environ.get("SOTA_CHAT_TIMEOUT_S", "180"))
 
 MULTI_READ_PROMPT = (
-    "In a single turn, do BOTH of these read-only checks and then summarize: "
-    "(1) call connector status / list what is Connected, "
-    "(2) search knowledge base or web for 'Apollo list create parameters'. "
-    "Do not create or write anything. Report both findings."
+    "In one orchestration: search Apollo people for 'VP Sales' AND "
+    "search Apollo people for 'Head of Marketing'. "
+    "Read-only only — do not create lists or write contacts."
 )
 
 PLAN_PROMPT = (
@@ -395,60 +394,77 @@ def main() -> int:
         print(json.dumps(results, indent=2)[:4000])
         return 2
 
-    # ── Phase 2 — latency A/B ────────────────────────────────────────
-    p2_cid = new_conversation(token, org_id, "SOTA Phase 2 latency A/B")
-    serial_run = chat(
-        token,
-        org_id,
-        messages=[{"role": "user", "parts": [{"type": "text", "text": MULTI_READ_PROMPT}]}],
-        conversation_id=p2_cid,
-        serial=True,
-    )
-    # Fresh conversation for parallel so tool mix is comparable.
-    p2b_cid = new_conversation(token, org_id, "SOTA Phase 2 latency parallel")
-    parallel_run = chat(
-        token,
-        org_id,
-        messages=[{"role": "user", "parts": [{"type": "text", "text": MULTI_READ_PROMPT}]}],
-        conversation_id=p2b_cid,
-        serial=False,
-    )
-    s_perf = serial_run["parsed"].get("react_perf") or {}
-    p_perf = parallel_run["parsed"].get("react_perf") or {}
-    p2_pass = (
-        serial_run["http"] == 200
-        and parallel_run["http"] == 200
-        and int(parallel_run["wall_ms"] or 0) > 0
-        and int(serial_run["wall_ms"] or 0) > 0
-    )
-    # Prefer reactPerf parallel signal when model actually multi-called.
+    # ── Phase 2 — latency A/B (plan → yes execution; serial vs parallel) ──
+    def _orch_ab(serial: bool) -> dict[str, Any]:
+        cid = new_conversation(
+            token,
+            org_id,
+            f"SOTA Phase 2 latency {'serial' if serial else 'parallel'}",
+        )
+        plan_msgs = [
+            {"role": "user", "parts": [{"type": "text", "text": MULTI_READ_PROMPT}]}
+        ]
+        plan = chat(token, org_id, messages=plan_msgs, conversation_id=cid, serial=serial)
+        plan_msgs.append(
+            {"role": "assistant", "parts": [{"type": "text", "text": plan["assistant"] or ""}]}
+        )
+        plan_msgs.append({"role": "user", "parts": [{"type": "text", "text": "yes"}]})
+        exe = chat(token, org_id, messages=plan_msgs, conversation_id=cid, serial=serial)
+        perf = exe["parsed"].get("react_perf") or {}
+        executed = bool(
+            re.search(r"orchestration complete|step .*succeeded|✓", exe["assistant"] or "", re.I)
+            or perf.get("batchElapsedMs")
+            or perf.get("batchSize")
+            or exe["parsed"]["tools"]
+        )
+        return {
+            "conversation_id": cid,
+            "plan_http": plan["http"],
+            "plan_wall_ms": plan["wall_ms"],
+            "plan_excerpt": (plan["assistant"] or "")[:300],
+            "exec_http": exe["http"],
+            "exec_wall_ms": exe["wall_ms"],
+            "react_perf": perf,
+            "executed": executed,
+            "assistant_excerpt": (exe["assistant"] or "")[:500],
+            "tool_events": exe["parsed"]["tools"][:8],
+        }
+
+    serial_run = _orch_ab(True)
+    parallel_run = _orch_ab(False)
+    s_perf = serial_run.get("react_perf") or {}
+    p_perf = parallel_run.get("react_perf") or {}
     parallel_signal = bool(
-        (p_perf.get("parallelBatchCount") or 0) >= 1
+        p_perf.get("parallelBatch") is True
+        or (p_perf.get("parallelBatchCount") or 0) >= 1
         or (p_perf.get("parallelToolCount") or 0) >= 2
+        or (p_perf.get("batchSize") or 0) >= 2
+    )
+    serial_signal = bool(
+        s_perf.get("parallelBatch") is False
+        or (s_perf.get("batchSize") or 0) >= 2
+        or serial_run.get("executed")
+    )
+    both_ran = bool(serial_run.get("executed") and parallel_run.get("executed"))
+    p2_pass = (
+        serial_run["exec_http"] == 200
+        and parallel_run["exec_http"] == 200
+        and both_ran
+        and parallel_signal
     )
     p2 = {
         "git_sha": git_sha,
-        "serial": {
-            "conversation_id": p2_cid,
-            "http": serial_run["http"],
-            "wall_ms": serial_run["wall_ms"],
-            "react_perf": s_perf,
-            "tool_events": serial_run["parsed"]["tools"][:8],
-            "assistant_excerpt": (serial_run["assistant"] or "")[:400],
-        },
-        "parallel": {
-            "conversation_id": p2b_cid,
-            "http": parallel_run["http"],
-            "wall_ms": parallel_run["wall_ms"],
-            "react_perf": p_perf,
-            "tool_events": parallel_run["parsed"]["tools"][:8],
-            "assistant_excerpt": (parallel_run["assistant"] or "")[:400],
-        },
-        "delta_wall_ms": int(serial_run["wall_ms"] or 0) - int(parallel_run["wall_ms"] or 0),
+        "serial": serial_run,
+        "parallel": parallel_run,
+        "delta_exec_wall_ms": int(serial_run["exec_wall_ms"] or 0)
+        - int(parallel_run["exec_wall_ms"] or 0),
+        "serial_batch_ms": s_perf.get("batchElapsedMs") or s_perf.get("serialWallMs"),
+        "parallel_batch_ms": p_perf.get("batchElapsedMs") or p_perf.get("maxParallelBatchMs"),
         "parallel_batch_observed": parallel_signal,
+        "serial_baseline_observed": serial_signal,
         "verdict": "PASS"
-        if p2_pass and (parallel_signal or parallel_run["wall_ms"] <= serial_run["wall_ms"])
-        else ("PARTIAL" if p2_pass else "FAIL"),
+        if p2_pass
+        else ("PARTIAL" if serial_run["exec_http"] == 200 and parallel_run["exec_http"] == 200 else "FAIL"),
     }
     results["phases"]["phase2"] = p2
     write_json(OUT_DIR / "phase2-react-latency-live.json", {**p2, "recorded_at": utcnow()})
@@ -535,7 +551,7 @@ def main() -> int:
     summary = load_summary(client, org_id, user_id, p4_cid)
     recall_text = (
         f"Without restating the filler, what is our primary account name "
-        f"from the start of this conversation? Answer in one sentence."
+        f"from the start of the thread? Answer with the company name only."
     )
     messages.append({"role": "user", "parts": [{"type": "text", "text": recall_text}]})
     recall = chat(token, org_id, messages=messages[-40:], conversation_id=p4_cid)
