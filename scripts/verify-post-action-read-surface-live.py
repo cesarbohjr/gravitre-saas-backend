@@ -134,16 +134,17 @@ def main() -> int:
     token = mint(env, uid, email)
     tip = health_sha()
 
+    run_tag = uuid.uuid4().hex[:8]
     _, raw = req(
         "POST",
         "/api/conversations",
         token,
         org,
-        {"org_id": org, "title": "post-action read surface"},
+        {"org_id": org, "title": f"post-action read surface {run_tag}"},
     )
     cid = json.loads(raw)["id"]
 
-    # Pronoun-free read (avoids \bthem\b ambiguous_entity trap).
+    # Pronoun-free read (avoids \bthem\b / "this org" ambiguous_entity traps).
     read_prompt = (
         "What connectors are Connected for this organization right now? "
         "For each connector, give the vendor name and health status."
@@ -156,6 +157,12 @@ def main() -> int:
     )
     read_lower = t1.lower()
     clarified_away = "which item did you mean" in read_lower or "ambiguous" in read_lower
+    # Must look like an inventory answer, not a leftover write-confirm from another turn.
+    looks_like_write_confirm = (
+        "reply **yes**" in read_lower
+        or "approve and create" in read_lower
+        or "awaiting" in read_lower
+    )
     names_apollo = "apollo" in read_lower
     structured = (
         names_apollo
@@ -163,8 +170,11 @@ def main() -> int:
             "connected" in read_lower
             or "healthy" in read_lower
             or "executable" in read_lower
+            or "health" in read_lower
+            or "status" in read_lower
         )
         and not clarified_away
+        and not looks_like_write_confirm
     )
 
     list_name = f"PostAction-ReadFollow-{uuid.uuid4().hex[:8]}"
