@@ -22,22 +22,26 @@
       "chat": {
         "PASS": 26,
         "FAIL": 0,
-        "BLOCKED_EXTERNAL": 0
+        "BLOCKED_EXTERNAL": 0,
+        "PARTIAL": 0
       },
       "workflow_execute": {
         "PASS": 2,
         "FAIL": 0,
-        "BLOCKED_EXTERNAL": 0
+        "BLOCKED_EXTERNAL": 0,
+        "PARTIAL": 0
       },
       "meson": {
         "PASS": 2,
         "FAIL": 0,
-        "BLOCKED_EXTERNAL": 0
+        "BLOCKED_EXTERNAL": 0,
+        "PARTIAL": 0
       },
       "swarm": {
         "PASS": 1,
         "FAIL": 0,
-        "BLOCKED_EXTERNAL": 0
+        "BLOCKED_EXTERNAL": 0,
+        "PARTIAL": 0
       }
     },
     "by_dimension": {
@@ -188,7 +192,8 @@
         "FAIL": 0,
         "BLOCKED_EXTERNAL": 1
       }
-    }
+    },
+    "partial": 0
   },
   "delta_vs_round1": {
     "round1_git_sha": "fae1c65228be5e307710e1822a053c44ed873b99",
@@ -522,7 +527,7 @@
       "dimension": "routing",
       "verdict": "PASS",
       "http": 200,
-      "run_id": "cc0e2fd5-059e-4589-84e3-45f4a5dcedd8"
+      "run_id": "c54ddbe8-ec0b-4f0f-bebc-d6d4389c4c65"
     }
   ],
   "cases": [
@@ -1410,11 +1415,27 @@
         "module_c_honesty": "n/a"
       },
       "notes": [
-        "swarm_id=cc0e2fd5-059e-4589-84e3-45f4a5dcedd8 status=running then cancelled"
+        "lifecycle_relabel=PASS",
+        "status=completed",
+        "multi_agent=True",
+        "early-cancel start smoke superseded by verify-phase1-swarm-lifecycle-live.py"
       ],
       "duration_ms": 97,
       "http": 200,
-      "swarm_id": "cc0e2fd5-059e-4589-84e3-45f4a5dcedd8"
+      "swarm_id": "c54ddbe8-ec0b-4f0f-bebc-d6d4389c4c65",
+      "lifecycle": {
+        "subtasks_terminal": true,
+        "aggregate_called": false,
+        "final_recommendation_present": true,
+        "multi_agent_score": {
+          "sales_subtask_completed_with_body": true,
+          "marketing_subtask_completed_with_body": true,
+          "final_reflects_sales_signals": true,
+          "final_reflects_marketing_signals": true,
+          "looks_like_single_agent_padding": false,
+          "multi_agent_outcome": true
+        }
+      }
     },
     {
       "case_id": "C-FANOUT-01",
@@ -1457,6 +1478,14 @@
   "failures": [],
   "structural_fix_candidates": [],
   "passed": true,
-  "note": "Full matrix: chat+workflow on tip 4f53e274; meson+swarm reprobed after isolated-org command subscription + 3 agents. Round1 22/6/3 \u2192 final 31/0/0.",
-  "surface_reprobe_git_sha": "4f53e274358b163bd7718833bd5b744a5ea94cc1"
+  "note": "Phase 1 matrix: chat/workflow/meson retained; swarm S-LIFE-01 corrected to PARTIAL until start\u2192subtasks complete\u2192aggregate\u2192multi-agent recommendation is proven. Swarm S-LIFE-01 relabeled PASS after full lifecycle proof (swarm_id=c54ddbe8-ec0b-4f0f-bebc-d6d4389c4c65).",
+  "surface_reprobe_git_sha": "4f53e274358b163bd7718833bd5b744a5ea94cc1",
+  "swarm_lifecycle_correction": {
+    "corrected_at": "2026-07-20T08:47:18.323175+00:00",
+    "prior_label": "PASS (start-then-cancel soft smoke)",
+    "new_label": "PASS",
+    "evidence": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\docs\\delivery\\phase1-swarm-lifecycle-live.json",
+    "swarm_id": "c54ddbe8-ec0b-4f0f-bebc-d6d4389c4c65",
+    "git_sha": "77ad9579f92b9921e1e4b5295582b77cda608030"
+  }
 }
