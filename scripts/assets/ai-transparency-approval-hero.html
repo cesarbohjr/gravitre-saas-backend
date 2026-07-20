@@ -9,327 +9,333 @@
       width: 1200px;
       height: 675px;
       font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 45%, #f1f5f9 100%);
+      background: linear-gradient(145deg, #ecfdf5 0%, #ffffff 42%, #f8fafc 100%);
       overflow: hidden;
       position: relative;
     }
     .orb-1 {
       position: absolute;
-      top: -120px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 700px;
-      height: 500px;
-      background: #d1fae5;
+      top: -100px;
+      right: -60px;
+      width: 520px;
+      height: 420px;
+      background: #a7f3d0;
       border-radius: 50%;
-      filter: blur(80px);
-      opacity: 0.55;
+      filter: blur(90px);
+      opacity: 0.45;
     }
     .orb-2 {
       position: absolute;
-      top: 40px;
-      right: -80px;
-      width: 280px;
-      height: 280px;
+      bottom: -80px;
+      left: -40px;
+      width: 360px;
+      height: 360px;
       background: #dbeafe;
       border-radius: 50%;
-      filter: blur(60px);
-      opacity: 0.35;
-    }
-    .orb-3 {
-      position: absolute;
-      bottom: -60px;
-      left: -40px;
-      width: 240px;
-      height: 240px;
-      background: #e2e8f0;
-      border-radius: 50%;
-      filter: blur(60px);
+      filter: blur(70px);
       opacity: 0.35;
     }
     .grid-dots {
       position: absolute;
       inset: 0;
-      opacity: 0.04;
+      opacity: 0.035;
       background-image: radial-gradient(circle, #18181b 1px, transparent 1px);
-      background-size: 24px 24px;
+      background-size: 22px 22px;
     }
     .container {
       position: relative;
       z-index: 1;
       height: 100%;
-      padding: 48px 56px;
+      padding: 36px 48px 32px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 16px;
+    }
+    .header {
       display: flex;
-      flex-direction: column;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .header-left {
+      max-width: 420px;
     }
     .badge {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      align-self: center;
-      padding: 8px 16px;
+      padding: 7px 14px;
       border-radius: 999px;
       border: 1px solid #a7f3d0;
-      background: rgba(236, 253, 245, 0.85);
+      background: rgba(236, 253, 245, 0.9);
       color: #047857;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
-      margin-bottom: 20px;
+      margin-bottom: 12px;
     }
     .badge-dot {
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
       background: #10b981;
     }
     h1 {
-      text-align: center;
-      font-size: 34px;
+      font-size: 28px;
       font-weight: 700;
       color: #18181b;
       letter-spacing: -0.02em;
       line-height: 1.15;
-      margin-bottom: 8px;
     }
     h1 span {
-      background: linear-gradient(90deg, #059669, #14b8a6);
+      background: linear-gradient(90deg, #059669, #0d9488);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
-    .subtitle {
-      text-align: center;
-      font-size: 15px;
-      color: #71717a;
-      margin-bottom: 28px;
-      max-width: 720px;
-      align-self: center;
-      line-height: 1.45;
-    }
-    .tabs {
-      display: flex;
-      justify-content: center;
-      gap: 8px;
-      margin-bottom: 24px;
-    }
-    .tab {
-      padding: 8px 14px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 500;
-      color: #71717a;
-      background: rgba(255,255,255,0.7);
-      border: 1px solid #e4e4e7;
-    }
-    .tab.active {
-      background: #18181b;
-      color: #fff;
-      border-color: #18181b;
-    }
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
-      flex: 1;
-      align-items: start;
-    }
-    .card {
-      background: #fff;
-      border: 1px solid #e4e4e7;
-      border-radius: 20px;
-      padding: 18px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
-      height: 100%;
+    .questions {
       display: flex;
       flex-direction: column;
-    }
-    .card-icon {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 12px;
-      font-size: 20px;
-    }
-    .card-icon.teal { background: #ccfbf1; }
-    .card-icon.blue { background: #dbeafe; }
-    .card-icon.purple { background: #ede9fe; }
-    .card-icon.slate { background: #e2e8f0; }
-    .card-title {
-      font-size: 14px;
-      font-weight: 700;
-      color: #18181b;
-      margin-bottom: 4px;
-      line-height: 1.3;
-    }
-    .card-meta {
-      font-size: 11px;
-      color: #a1a1aa;
-      margin-bottom: 10px;
-    }
-    .card-desc {
-      font-size: 11px;
-      color: #71717a;
-      line-height: 1.45;
-      flex: 1;
-      margin-bottom: 12px;
-    }
-    .card-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
       gap: 8px;
+      margin-top: 4px;
     }
-    .pill {
-      font-size: 10px;
-      font-weight: 600;
-      padding: 4px 8px;
-      border-radius: 999px;
-      background: #f4f4f5;
-      color: #52525b;
-    }
-    .pill.verified {
-      background: #ecfdf5;
-      color: #047857;
-    }
-    .pill.queued {
-      background: #fef3c7;
-      color: #92400e;
-    }
-    .pill.logged {
-      background: #eff6ff;
-      color: #1d4ed8;
-    }
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #10b981;
-      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
-    }
-    .steps {
-      display: flex;
-      justify-content: center;
-      gap: 12px;
-      margin-top: 22px;
-    }
-    .step {
+    .question {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 10px 16px;
-      border-radius: 14px;
-      background: #fff;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.85);
       border: 1px solid #e4e4e7;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+      font-size: 12px;
+      color: #52525b;
     }
-    .step-num {
-      width: 28px;
-      height: 28px;
-      border-radius: 8px;
+    .question-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 7px;
       background: #d1fae5;
       color: #047857;
-      font-size: 13px;
+      font-size: 11px;
       font-weight: 700;
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
     }
-    .step-label {
-      font-size: 12px;
-      font-weight: 600;
-      color: #18181b;
+    .diagram-wrap {
+      position: relative;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.72);
+      border: 1px solid #e4e4e7;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.06);
+      overflow: hidden;
+      min-height: 0;
     }
-    .step-desc {
-      font-size: 10px;
-      color: #a1a1aa;
+    .diagram-wrap svg {
+      display: block;
+      width: 100%;
+      height: 100%;
     }
+    .legend {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: #71717a;
+      font-weight: 500;
+    }
+    .legend-swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+    }
+    .legend-swatch.read { background: #94a3b8; }
+    .legend-swatch.write { background: #059669; }
+    .legend-swatch.gate { background: #f59e0b; }
+    .legend-swatch.audit { background: #6366f1; }
   </style>
 </head>
 <body>
   <div class="orb-1"></div>
   <div class="orb-2"></div>
-  <div class="orb-3"></div>
   <div class="grid-dots"></div>
+
   <div class="container">
-    <div class="badge"><span class="badge-dot"></span> Gravitre Transparency</div>
-    <h1>Trust you can <span>verify</span>, not just feel</h1>
-    <p class="subtitle">Who approved this, what did the AI assume, and where is the record? Every write action, every path.</p>
-
-    <div class="tabs">
-      <div class="tab active">Chat</div>
-      <div class="tab">Guided task</div>
-      <div class="tab">Workflow</div>
-      <div class="tab">Intelligence</div>
-    </div>
-
-    <div class="cards">
-      <div class="card">
-        <div class="card-icon teal">✓</div>
-        <div class="card-title">Human approval</div>
-        <div class="card-meta">Same standard · every path</div>
-        <div class="card-desc">Write actions wait for sign-off. No side door for workflows. Queue if you lack approval rights.</div>
-        <div class="card-footer">
-          <span class="pill queued">Awaiting approval</span>
-          <span class="status-dot"></span>
-        </div>
+    <div class="header">
+      <div class="header-left">
+        <div class="badge"><span class="badge-dot"></span> Platform governance</div>
+        <h1>How every AI write is <span>governed</span></h1>
       </div>
-      <div class="card">
-        <div class="card-icon blue">🔗</div>
-        <div class="card-title">Verified results</div>
-        <div class="card-meta">Proof · not checkmarks</div>
-        <div class="card-desc">Link to the record that changed, a clear summary, or an honest failed state — never a false success.</div>
-        <div class="card-footer">
-          <span class="pill verified">Verified</span>
-          <span class="status-dot"></span>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-icon purple">💡</div>
-        <div class="card-title">Assumptions</div>
-        <div class="card-meta">Guesses · spelled out</div>
-        <div class="card-desc">When the AI fills in a detail you did not provide, it shows an Assumptions note separate from the outcome.</div>
-        <div class="card-footer">
-          <span class="pill">Default name used</span>
-          <span class="status-dot"></span>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-icon slate">📋</div>
-        <div class="card-title">Audit trail</div>
-        <div class="card-meta">Review · filter · export</div>
-        <div class="card-desc">Every approval and action is logged. Investigate after the fact with a trace you can actually find.</div>
-        <div class="card-footer">
-          <span class="pill logged">Logged</span>
-          <span class="status-dot"></span>
-        </div>
+      <div class="questions">
+        <div class="question"><span class="question-num">1</span> Who approved this?</div>
+        <div class="question"><span class="question-num">2</span> What did the AI assume?</div>
+        <div class="question"><span class="question-num">3</span> Where is the record?</div>
       </div>
     </div>
 
-    <div class="steps">
-      <div class="step">
-        <div class="step-num">1</div>
-        <div>
-          <div class="step-label">Approve</div>
-          <div class="step-desc">Human sign-off on writes</div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">2</div>
-        <div>
-          <div class="step-label">Verify</div>
-          <div class="step-desc">Link or honest outcome</div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">3</div>
-        <div>
-          <div class="step-label">Record</div>
-          <div class="step-desc">Audit log you can export</div>
-        </div>
-      </div>
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 1104 380" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="pathGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#cbd5e1"/>
+            <stop offset="100%" stop-color="#059669"/>
+          </linearGradient>
+          <linearGradient id="gateGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#fef3c7"/>
+            <stop offset="100%" stop-color="#fde68a"/>
+          </linearGradient>
+          <linearGradient id="verifyGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#059669"/>
+            <stop offset="100%" stop-color="#14b8a6"/>
+          </linearGradient>
+          <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.08"/>
+          </filter>
+          <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#94a3b8"/>
+          </marker>
+          <marker id="arrowGreen" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#059669"/>
+          </marker>
+        </defs>
+
+        <!-- Background lanes -->
+        <rect x="24" y="24" width="1056" height="332" rx="16" fill="#fafafa" stroke="#f4f4f5"/>
+        <text x="552" y="52" text-anchor="middle" fill="#a1a1aa" font-size="11" font-weight="600" letter-spacing="0.08em">SAME APPROVAL STANDARD — NO SIDE DOORS</text>
+
+        <!-- Entry paths -->
+        <g filter="url(#softShadow)">
+          <rect x="48" y="78" width="128" height="56" rx="14" fill="#fff" stroke="#e4e4e7"/>
+          <text x="112" y="102" text-anchor="middle" fill="#18181b" font-size="13" font-weight="700">Chat</text>
+          <text x="112" y="118" text-anchor="middle" fill="#a1a1aa" font-size="10">Direct request</text>
+
+          <rect x="48" y="158" width="128" height="56" rx="14" fill="#fff" stroke="#e4e4e7"/>
+          <text x="112" y="182" text-anchor="middle" fill="#18181b" font-size="13" font-weight="700">Guided task</text>
+          <text x="112" y="198" text-anchor="middle" fill="#a1a1aa" font-size="10">Step-by-step</text>
+
+          <rect x="48" y="238" width="128" height="56" rx="14" fill="#fff" stroke="#e4e4e7"/>
+          <text x="112" y="262" text-anchor="middle" fill="#18181b" font-size="13" font-weight="700">Workflow</text>
+          <text x="112" y="278" text-anchor="middle" fill="#a1a1aa" font-size="10">Automated run</text>
+        </g>
+
+        <!-- Converging paths -->
+        <path d="M176 106 C 230 106, 230 190, 280 190" stroke="#cbd5e1" stroke-width="2.5" fill="none" marker-end="url(#arrow)"/>
+        <path d="M176 186 L 280 190" stroke="#cbd5e1" stroke-width="2.5" fill="none" marker-end="url(#arrow)"/>
+        <path d="M176 266 C 230 266, 230 190, 280 190" stroke="#cbd5e1" stroke-width="2.5" fill="none" marker-end="url(#arrow)"/>
+
+        <!-- Classifier -->
+        <g filter="url(#softShadow)">
+          <rect x="280" y="158" width="132" height="64" rx="14" fill="#fff" stroke="#d4d4d8"/>
+          <text x="346" y="184" text-anchor="middle" fill="#18181b" font-size="13" font-weight="700">Action type</text>
+          <text x="346" y="202" text-anchor="middle" fill="#71717a" font-size="10">Read or write?</text>
+        </g>
+
+        <!-- Read bypass -->
+        <path d="M346 158 L 346 110 L 520 110" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 4" fill="none" marker-end="url(#arrow)"/>
+        <g filter="url(#softShadow)">
+          <rect x="520" y="82" width="120" height="56" rx="14" fill="#f8fafc" stroke="#cbd5e1"/>
+          <text x="580" y="106" text-anchor="middle" fill="#64748b" font-size="12" font-weight="700">Read only</text>
+          <text x="580" y="122" text-anchor="middle" fill="#94a3b8" font-size="10">No approval needed</text>
+        </g>
+
+        <!-- Write path to gate -->
+        <path d="M412 190 L 468 190" stroke="url(#pathGrad)" stroke-width="3" fill="none" marker-end="url(#arrowGreen)"/>
+
+        <!-- Approval gate (central) -->
+        <g filter="url(#softShadow)">
+          <polygon points="552,130 612,190 552,250 492,190" fill="url(#gateGrad)" stroke="#f59e0b" stroke-width="2"/>
+          <circle cx="552" cy="172" r="14" fill="#fff" stroke="#f59e0b" stroke-width="1.5"/>
+          <!-- person icon -->
+          <circle cx="552" cy="168" r="4" fill="#92400e"/>
+          <path d="M546 176 Q552 172 558 176" stroke="#92400e" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <text x="552" y="214" text-anchor="middle" fill="#92400e" font-size="11" font-weight="700">Human approval</text>
+          <text x="552" y="228" text-anchor="middle" fill="#b45309" font-size="9">Policy + role based</text>
+        </g>
+
+        <!-- Queue branch -->
+        <path d="M552 250 L 552 300 L 468 300 L 468 222" stroke="#fbbf24" stroke-width="2" stroke-dasharray="5 4" fill="none"/>
+        <g>
+          <rect x="388" y="284" width="108" height="40" rx="10" fill="#fffbeb" stroke="#fcd34d"/>
+          <text x="442" y="302" text-anchor="middle" fill="#92400e" font-size="10" font-weight="600">Queued for approver</text>
+          <text x="442" y="314" text-anchor="middle" fill="#b45309" font-size="9">If no approval rights</text>
+        </g>
+
+        <!-- Execute write -->
+        <path d="M612 190 L 668 190" stroke="#059669" stroke-width="3" fill="none" marker-end="url(#arrowGreen)"/>
+        <g filter="url(#softShadow)">
+          <rect x="668" y="158" width="120" height="64" rx="14" fill="#ecfdf5" stroke="#6ee7b7"/>
+          <text x="728" y="184" text-anchor="middle" fill="#047857" font-size="13" font-weight="700">Execute write</text>
+          <text x="728" y="202" text-anchor="middle" fill="#059669" font-size="10">After sign-off</text>
+        </g>
+
+        <!-- Outcomes fork -->
+        <path d="M788 190 L 844 190" stroke="#059669" stroke-width="2.5" fill="none" marker-end="url(#arrowGreen)"/>
+
+        <!-- Verification outcomes -->
+        <g filter="url(#softShadow)">
+          <rect x="844" y="68" width="118" height="48" rx="12" fill="#fff" stroke="#6ee7b7"/>
+          <circle cx="862" cy="92" r="6" fill="#10b981"/>
+          <text x="920" y="88" text-anchor="middle" fill="#047857" font-size="11" font-weight="700">Verified</text>
+          <text x="920" y="102" text-anchor="middle" fill="#71717a" font-size="9">Link to record</text>
+
+          <rect x="844" y="128" width="118" height="48" rx="12" fill="#fff" stroke="#cbd5e1"/>
+          <text x="903" y="148" text-anchor="middle" fill="#18181b" font-size="11" font-weight="700">Completed</text>
+          <text x="903" y="162" text-anchor="middle" fill="#71717a" font-size="9">Summary only</text>
+
+          <rect x="844" y="188" width="118" height="48" rx="12" fill="#fff" stroke="#fca5a5"/>
+          <text x="903" y="208" text-anchor="middle" fill="#b91c1c" font-size="11" font-weight="700">Failed</text>
+          <text x="903" y="222" text-anchor="middle" fill="#71717a" font-size="9">Honest, not false ✓</text>
+        </g>
+
+        <path d="M903 158 L 903 128" stroke="#059669" stroke-width="2" fill="none"/>
+        <path d="M903 190 L 903 188" stroke="#059669" stroke-width="2" fill="none"/>
+        <path d="M788 190 C 820 190, 820 92, 844 92" stroke="#059669" stroke-width="2" fill="none"/>
+        <path d="M788 190 C 820 190, 820 152, 844 152" stroke="#059669" stroke-width="2" fill="none"/>
+        <path d="M788 190 C 820 190, 820 212, 844 212" stroke="#dc2626" stroke-width="2" fill="none"/>
+
+        <!-- Assumptions branch -->
+        <g filter="url(#softShadow)">
+          <rect x="844" y="258" width="118" height="48" rx="12" fill="#faf5ff" stroke="#c4b5fd"/>
+          <text x="903" y="278" text-anchor="middle" fill="#6d28d9" font-size="11" font-weight="700">Assumptions</text>
+          <text x="903" y="292" text-anchor="middle" fill="#71717a" font-size="9">AI guesses shown</text>
+        </g>
+        <path d="M728 222 L 728 282 L 844 282" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="5 4" fill="none" marker-end="url(#arrow)"/>
+
+        <!-- Audit trail -->
+        <path d="M962 92 L 1000 92 L 1000 190 L 980 190" stroke="#6366f1" stroke-width="2" fill="none"/>
+        <path d="M962 152 L 1000 152" stroke="#6366f1" stroke-width="2" fill="none"/>
+        <path d="M962 212 L 1000 212 L 1000 190" stroke="#6366f1" stroke-width="2" fill="none"/>
+        <path d="M962 282 L 1000 282 L 1000 230" stroke="#6366f1" stroke-width="2" fill="none"/>
+
+        <g filter="url(#softShadow)">
+          <rect x="980" y="130" width="100" height="120" rx="16" fill="#eef2ff" stroke="#a5b4fc"/>
+          <text x="1030" y="158" text-anchor="middle" fill="#4338ca" font-size="12" font-weight="700">Audit log</text>
+          <line x1="996" y1="168" x2="1064" y2="168" stroke="#c7d2fe" stroke-width="1"/>
+          <rect x="996" y="178" width="68" height="8" rx="2" fill="#c7d2fe" opacity="0.7"/>
+          <rect x="996" y="192" width="52" height="8" rx="2" fill="#c7d2fe" opacity="0.5"/>
+          <rect x="996" y="206" width="60" height="8" rx="2" fill="#c7d2fe" opacity="0.6"/>
+          <rect x="996" y="220" width="44" height="8" rx="2" fill="#c7d2fe" opacity="0.4"/>
+          <text x="1030" y="242" text-anchor="middle" fill="#6366f1" font-size="9" font-weight="600">Review · filter · export</text>
+        </g>
+
+        <!-- Bottom callout -->
+        <rect x="48" y="318" width="420" height="28" rx="8" fill="#ecfdf5" stroke="#a7f3d0"/>
+        <text x="258" y="336" text-anchor="middle" fill="#047857" font-size="10" font-weight="600">Suggestions &amp; Intelligence: advisory only — nothing executes without a human</text>
+      </svg>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><span class="legend-swatch read"></span> Read path bypasses approval</div>
+      <div class="legend-item"><span class="legend-swatch write"></span> Write path requires sign-off</div>
+      <div class="legend-item"><span class="legend-swatch gate"></span> Human approval gate</div>
+      <div class="legend-item"><span class="legend-swatch audit"></span> Permanent audit record</div>
     </div>
   </div>
 </body>
