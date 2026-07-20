@@ -1,0 +1,35 @@
+{
+  "recorded_at": "2026-07-20T18:58:20.045108+00:00",
+  "base": "https://api.gravitre.app",
+  "git_sha": "17b98075169f",
+  "target_sha": "17b98075",
+  "deployed_tip_matches_target": true,
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "user_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "conversation_id": "4ee6a338-cce8-424d-bd9b-5bab8dd3d44c",
+  "plan": {
+    "http": 200,
+    "excerpt": "I planned a **2-step orchestration**:\n\n1. **Search people** (read, auto-run)\n2. **Search people** (read, auto-run)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change.",
+    "pending_before_yes": {
+      "http": 200,
+      "status": "awaiting_plan_confirm",
+      "type": "connector_orchestration",
+      "has_steps": true
+    }
+  },
+  "yes_turn": {
+    "http": 200,
+    "confirm_token": "yes",
+    "excerpt": "I don't have enough information yet. Tell me what \u201cyes\u201d should confirm and I\u2019ll continue.\n\nCurrent known state from the provided org context: Apollo is Connected, and no action has been taken.\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document?\n\nNote: Parts of this answer may be model inference without retrieved sources.",
+    "react_perf": null,
+    "insufficient_info_fallback": true,
+    "pending_after_yes": {
+      "http": 200,
+      "status": "awaiting_plan_confirm",
+      "type": "connector_orchestration",
+      "has_steps": true
+    },
+    "confirm_registered": false
+  },
+  "verdict": "FAIL"
+}

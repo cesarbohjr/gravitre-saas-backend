@@ -1566,6 +1566,15 @@ class AgentIntelligence:
             )
             return
 
+        # Refresh before preflight so confirm/decline sees durable pending_task
+        # (in-memory snapshot can lag ledger writes).
+        if conversation_id:
+            task_state = await get_conversation_state_service(active_settings).get_task_state(
+                conversation_id,
+                org_id,
+                client=client,
+            )
+
         if should_run_connector_preflight(
             task_state,
             message=task_text,

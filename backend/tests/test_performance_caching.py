@@ -21,7 +21,12 @@ from app.services.performance_dashboard_service import compute_request_cost, loa
 from app.services.performance_tier import TIER_0, TIER_1, TIER_2, TIER_3, mode_to_tier
 from app.services.query_normalization import normalize_query
 from app.services.rag_cache_helpers import retrieval_cache_parts
-from app.services.tier0_cache import get_tier0_answer, is_cache_entry_stale, set_tier0_answer
+from app.services.tier0_cache import (
+    get_tier0_answer,
+    is_cache_entry_stale,
+    is_tier0_ineligible_query,
+    set_tier0_answer,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -251,3 +256,46 @@ async def test_set_tier0_answer_normalizes_query():
     hit = await cache.get("tier0_answer", "org-a", normalize_query("What's our churn rate?"))
     assert hit is not None
     assert hit["answer"] == "4.2%"
+
+
+def test_confirm_decline_queries_are_tier0_ineligible():
+    """Bare yes/no must not be org-cached — poisons awaiting_plan_confirm."""
+    assert is_tier0_ineligible_query("yes") is True
+    assert is_tier0_ineligible_query("YES") is True
+    assert is_tier0_ineligible_query("approve") is True
+    assert is_tier0_ineligible_query("no") is True
+    assert is_tier0_ineligible_query("What's our churn rate?") is False
+
+
+@pytest.mark.asyncio
+async def test_tier0_skips_poisoned_yes_cache_entry():
+    settings = SimpleNamespace()
+    cache = CacheService(settings=settings)
+    await cache.set(
+        "tier0_answer",
+        {
+            "answer": 'I don\'t have enough information yet. Tell me what "yes" should confirm.',
+            "cached_at": "2026-07-20T00:00:00+00:00",
+            "source_document_ids": [],
+            "source_fingerprint": "",
+        },
+        3600,
+        "org-a",
+        normalize_query("yes"),
+    )
+    with patch("app.services.tier0_cache.get_cache_service", return_value=cache):
+        hit = await get_tier0_answer(settings, org_id="org-a", query="yes")
+    assert hit is None
+    with patch("app.services.tier0_cache.get_cache_service", return_value=cache), patch(
+        "app.services.tier0_cache._source_fingerprint",
+        AsyncMock(return_value=""),
+    ):
+        await set_tier0_answer(
+            settings,
+            org_id="org-a",
+            query="yes",
+            answer="should not store",
+            source_document_ids=[],
+        )
+    # Prior poisoned entry may remain in store, but set must not refresh it via eligible path.
+    assert is_tier0_ineligible_query("yes") is True

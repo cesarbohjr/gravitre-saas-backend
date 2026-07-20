@@ -13,6 +13,48 @@ logger = get_logger(__name__)
 
 TIER0_TTL_SECONDS = 3600
 
+# Confirm/decline utterances are conversation-state dependent. Caching them by
+# normalized query alone poisons org-wide "yes"/"no" into unrelated threads
+# (orchestration awaiting_plan_confirm never runs).
+_CONFIRM_DECLINE_EXACT = frozenset(
+    {
+        "yes",
+        "y",
+        "yeah",
+        "yep",
+        "ok",
+        "okay",
+        "approve",
+        "approved",
+        "confirm",
+        "confirmed",
+        "sure",
+        "no",
+        "nope",
+        "cancel",
+        "stop",
+        "run",
+        "execute",
+    }
+)
+
+
+def is_tier0_ineligible_query(query: str) -> bool:
+    """True when the query must never be served/stored as a Tier-0 instant answer."""
+    text = (query or "").strip()
+    if not text:
+        return True
+    if text.lower() in _CONFIRM_DECLINE_EXACT:
+        return True
+    try:
+        from app.services.conversational_execution_service import CONFIRM_PATTERN, DECLINE_PATTERN
+
+        if CONFIRM_PATTERN.match(text) or DECLINE_PATTERN.match(text):
+            return True
+    except Exception:  # noqa: BLE001
+        pass
+    return False
+
 
 async def get_tier0_answer(
     settings: Any,
@@ -21,6 +63,8 @@ async def get_tier0_answer(
     query: str,
     client: Any | None = None,
 ) -> dict[str, Any] | None:
+    if is_tier0_ineligible_query(query):
+        return None
     normalized = normalize_query(query)
     if not normalized:
         return None
@@ -45,6 +89,8 @@ async def set_tier0_answer(
     answer_explanation: str | None = None,
     ttl_seconds: int = TIER0_TTL_SECONDS,
 ) -> None:
+    if is_tier0_ineligible_query(query):
+        return
     normalized = normalize_query(query)
     if not normalized or not (answer or "").strip():
         return
