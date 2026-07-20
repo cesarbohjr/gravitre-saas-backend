@@ -1,0 +1,17 @@
+{
+  "git_sha": "646dfc22f3d322ee2ab79b3325d995b6bb14f5f6",
+  "conversation_id": "e02e70d5-63a4-481d-b410-0c49bc893d62",
+  "http_status": 200,
+  "message_id": null,
+  "created_at": null,
+  "content": "When connector readiness is incomplete, I say, \u201cI don\u2019t have enough information yet,\u201d and then name what is still missing. If the context is partial, I keep it to Connected/Healthy language and mark it as an estimate rather than Verified.",
+  "voice_section_has_confidence_register": true,
+  "voice_section_has_humor_budget": true,
+  "markers": {
+    "mentions_connected_or_estimate": true,
+    "no_buzzwords": true,
+    "no_apology_loop": true,
+    "house_or_uncertainty": true
+  },
+  "llm_voice_shaped": true
+}

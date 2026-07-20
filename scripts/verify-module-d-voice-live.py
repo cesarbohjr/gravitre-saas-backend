@@ -29,6 +29,7 @@ sys.path.insert(0, str(ROOT / "backend"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from isolated_conversation_org import (  # noqa: E402
+    mark_smoke_run,
     resolve_isolated_conversation_actor,
     smoke_http_headers,
 )
@@ -126,9 +127,14 @@ def main() -> int:
     client = create_client(url, key)
     org_id, user_id, email = resolve_isolated_conversation_actor(env, client)
     token = _mint_token(env, user_id, email)
-    headers = smoke_http_headers(token, org_id)
+    headers = {
+        **smoke_http_headers(),
+        "Authorization": f"Bearer {token}",
+        "X-Org-Id": org_id,
+    }
     started_at = datetime.now(timezone.utc).isoformat()
     conversation_id = str(uuid.uuid4())
+    mark_smoke_run()
 
     # 1) Tip health
     health = httpx.get(f"{BASE}/health", timeout=30.0)
