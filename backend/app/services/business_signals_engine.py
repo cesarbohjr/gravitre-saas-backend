@@ -208,6 +208,21 @@ class BusinessSignalsEngine:
         signals = payload.get("signals") or []
         risks = [row for row in signals if row.get("signal_type") in {"risk", "alert"}][:3]
         opportunities = [row for row in signals if row.get("signal_type") == "opportunity"][:3]
+        conf_values = []
+        for row in signals[:5]:
+            raw_conf = row.get("quality_score")
+            if raw_conf is None:
+                raw_conf = row.get("confidence")
+            if raw_conf is not None:
+                conf_values.append(float(raw_conf))
+        if conf_values:
+            brief_confidence = label_confidence(
+                round(sum(conf_values) / len(conf_values), 4),
+                source=CONFIDENCE_SOURCE_SIGNAL_HEURISTIC,
+                is_estimate=True,
+            )
+        else:
+            brief_confidence = label_confidence(None, source=CONFIDENCE_SOURCE_INSUFFICIENT)
         return {
             "department": department,
             "what_changed": [row.get("title") for row in signals[:5]],
@@ -221,13 +236,7 @@ class BusinessSignalsEngine:
                 }
                 for row in opportunities
             ],
-            "confidence": round(
-                sum(float(row.get("quality_score") or row.get("confidence") or 0.5) for row in signals[:5])
-                / max(len(signals[:5]), 1),
-                4,
-            )
-            if signals
-            else 0.5,
+            **brief_confidence,
             "evidence": [{"source": row.get("source"), "title": row.get("title")} for row in signals[:5]],
             "generated_at": payload.get("collected_at"),
         }

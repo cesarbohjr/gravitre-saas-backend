@@ -6,6 +6,12 @@ import re
 from typing import Any
 
 from app.core.logging import get_logger
+from app.services.confidence_honesty import (
+    CONFIDENCE_SOURCE_HEURISTIC,
+    CONFIDENCE_SOURCE_INSUFFICIENT,
+    CONFIDENCE_SOURCE_MODEL,
+    label_confidence,
+)
 from app.services.model_router import TaskType, get_model_router
 
 logger = get_logger(__name__)
@@ -46,14 +52,14 @@ async def validate_grounded_answer(
             "is_valid": False,
             "issues": ["empty_answer"],
             "requires_human": True,
-            "confidence": 0.0,
+            **label_confidence(0.0, source=CONFIDENCE_SOURCE_INSUFFICIENT, is_estimate=False),
         }
     if not retrieved_context:
         return {
             "is_valid": False,
             "issues": ["no_retrieved_context"],
             "requires_human": True,
-            "confidence": 0.1,
+            **label_confidence(0.1, source=CONFIDENCE_SOURCE_HEURISTIC, is_estimate=True),
         }
 
     prompt = (
@@ -83,7 +89,11 @@ async def validate_grounded_answer(
                 "is_valid": is_valid,
                 "issues": list(parsed.get("issues") or []),
                 "requires_human": bool(parsed.get("requires_human")) or not is_valid,
-                "confidence": max(0.0, min(1.0, confidence)),
+                **label_confidence(
+                    max(0.0, min(1.0, confidence)),
+                    source=CONFIDENCE_SOURCE_MODEL,
+                    is_estimate=True,
+                ),
             }
     except Exception as exc:  # noqa: BLE001
         logger.debug("answer validation skipped org_id=%s error=%s", org_id, exc)
@@ -92,5 +102,5 @@ async def validate_grounded_answer(
         "is_valid": True,
         "issues": [],
         "requires_human": False,
-        "confidence": 0.5,
+        **label_confidence(0.5, source=CONFIDENCE_SOURCE_HEURISTIC, is_estimate=True),
     }

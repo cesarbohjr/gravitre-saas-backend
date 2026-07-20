@@ -28,6 +28,100 @@ def test_label_confidence_is_canonical_helper():
     assert missing["confidence_source"] == "insufficient_data"
 
 
+def test_wrap_response_stamps_estimate_provenance():
+    from app.services.ai_trust_layer import AITrustLayer
+
+    layer = AITrustLayer()
+    unlabeled = layer.wrap_response(
+        answer="do the thing",
+        sources=[],
+        confidence=0.5,
+        reasoning_summary="heuristic",
+        actions_taken=[],
+        actions_pending_approval=[],
+        advisory_only=True,
+    )
+    assert unlabeled["confidence"] == 0.5
+    assert unlabeled["confidence_is_estimate"] is True
+    assert unlabeled["confidence_source"] == "heuristic"
+
+    insufficient = layer.wrap_response(
+        answer="",
+        sources=[],
+        confidence=None,
+        reasoning_summary=None,
+        actions_taken=[],
+        actions_pending_approval=[],
+        advisory_only=True,
+    )
+    assert insufficient["confidence"] is None
+    assert insufficient["confidence_source"] == "insufficient_data"
+
+
+@pytest.mark.asyncio
+async def test_intelligence_recommend_never_invents_unlabeled_half():
+    from app.routers import intelligence_engine
+    from app.services.ai_trust_layer import AITrustLayer
+
+    settings = MagicMock()
+    service = MagicMock()
+    service.recommend_next_action = AsyncMock(
+        return_value={"recommendations": [{"action": "review queue", "reasoning": "idle"}]}
+    )
+    with (
+        patch(
+            "app.routers.intelligence_engine.get_decision_intelligence_service",
+            return_value=service,
+        ),
+        patch(
+            "app.routers.intelligence_engine.get_ai_trust_layer",
+            return_value=AITrustLayer(),
+        ),
+    ):
+        result = await intelligence_engine.intelligence_recommend(
+            body=intelligence_engine.RecommendRequest(context="next step"),
+            org_id="org-1",
+            _admin=("u1", "admin"),
+            settings=settings,
+        )
+    assert result["confidence"] is None
+    assert result["confidence_source"] == "insufficient_data"
+    assert "confidence_is_estimate" in result
+
+    service.recommend_next_action = AsyncMock(
+        return_value={
+            "recommendations": [
+                {
+                    "action": "nudge",
+                    "reasoning": "signal",
+                    "confidence": 0.5,
+                    "confidence_is_estimate": True,
+                    "confidence_source": "heuristic",
+                }
+            ]
+        }
+    )
+    with (
+        patch(
+            "app.routers.intelligence_engine.get_decision_intelligence_service",
+            return_value=service,
+        ),
+        patch(
+            "app.routers.intelligence_engine.get_ai_trust_layer",
+            return_value=AITrustLayer(),
+        ),
+    ):
+        labeled = await intelligence_engine.intelligence_recommend(
+            body=intelligence_engine.RecommendRequest(context="next step"),
+            org_id="org-1",
+            _admin=("u1", "admin"),
+            settings=settings,
+        )
+    assert labeled["confidence"] == 0.5
+    assert labeled["confidence_is_estimate"] is True
+    assert labeled["confidence_source"] == "heuristic"
+
+
 def test_estimated_vs_computed_helpers():
     est = estimated_confidence(0.8)
     assert est["confidence_is_estimate"] is True

@@ -6,6 +6,12 @@ from uuid import uuid4
 
 from app.config import Settings, get_settings
 from app.services.answer_explanation import generate_suggestion_explanation
+from app.services.confidence_honesty import (
+    CONFIDENCE_SOURCE_HEURISTIC,
+    CONFIDENCE_SOURCE_INSUFFICIENT,
+    estimated_confidence,
+    label_confidence,
+)
 from app.services.knowledge_graph_service import get_knowledge_graph_service
 from app.services.optimization_suggestion_service import get_optimization_suggestion_service
 from app.services.outcome_attribution_service import get_outcome_attribution_service
@@ -13,15 +19,15 @@ from app.services.source_reliability_resolver import resolve_average_source_reli
 from app.workflows.repository import get_supabase_client
 
 
-def _graph_recommendation_confidence(graph: dict[str, Any]) -> float:
+def _graph_recommendation_confidence(graph: dict[str, Any]) -> dict[str, Any]:
     explanation = graph.get("explanation") if isinstance(graph.get("explanation"), dict) else {}
     related = explanation.get("relatedEntities") or []
     signals = explanation.get("businessSignals") or []
     if signals:
-        return min(0.72, 0.5 + 0.04 * len(signals))
+        return estimated_confidence(min(0.72, 0.5 + 0.04 * len(signals)), source=CONFIDENCE_SOURCE_HEURISTIC)
     if related:
-        return min(0.65, 0.45 + 0.03 * len(related))
-    return 0.45
+        return estimated_confidence(min(0.65, 0.45 + 0.03 * len(related)), source=CONFIDENCE_SOURCE_HEURISTIC)
+    return estimated_confidence(0.45, source=CONFIDENCE_SOURCE_HEURISTIC)
 
 
 class DecisionIntelligenceService:
@@ -49,13 +55,18 @@ class DecisionIntelligenceService:
             if graph.get("status") == "ok":
                 entity = graph.get("identifiedEntity") or {}
                 evidence.append(f"knowledge_graph:{entity.get('entityType')}:{entity.get('entityId')}")
+            raw_conf = row.get("confidence")
             recommendations.append(
                 {
                     "id": row.get("id"),
                     "action": row.get("title") or row.get("suggestionType"),
                     "reasoning": row.get("description") or row.get("rationale"),
                     "evidence_sources": evidence,
-                    "confidence": float(row.get("confidence") or 0.55),
+                    **label_confidence(
+                        float(raw_conf) if raw_conf is not None else None,
+                        source=CONFIDENCE_SOURCE_HEURISTIC,
+                        is_estimate=True,
+                    ),
                     "requires_approval": True,
                     "estimated_impact": row.get("estimatedImpact"),
                 }
@@ -82,7 +93,7 @@ class DecisionIntelligenceService:
                                 "optimization_suggestions",
                                 signal.get("suggestion_type") or signal.get("suggestionType"),
                             ],
-                            "confidence": graph_confidence,
+                            **graph_confidence,
                             "requires_approval": True,
                             "estimated_impact": signal.get("estimated_impact") or signal.get("estimatedImpact"),
                         }
@@ -97,7 +108,7 @@ class DecisionIntelligenceService:
                             "knowledge_graph",
                             f"{entity.get('entityType')}:{entity.get('entityId')}",
                         ],
-                        "confidence": graph_confidence,
+                        **graph_confidence,
                         "requires_approval": True,
                         "estimated_impact": "Investigate related entities before acting",
                     }
@@ -112,7 +123,7 @@ class DecisionIntelligenceService:
                             "knowledge_graph",
                             f"{entity.get('entityType')}:{entity.get('entityId')}",
                         ],
-                        "confidence": graph_confidence,
+                        **graph_confidence,
                         "requires_approval": True,
                         "estimated_impact": "Investigate before acting",
                     }

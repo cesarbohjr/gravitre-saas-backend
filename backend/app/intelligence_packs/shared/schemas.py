@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import Any, TypedDict
 
+from app.services.confidence_honesty import CONFIDENCE_SOURCE_HEURISTIC, label_confidence
+
 
 class SourceResult(TypedDict, total=False):
     ok: bool
@@ -41,5 +43,9 @@ def ok_result(
         "error_code": None,
         "message": None,
         "provenance": provenance
-        or {"source": vendor, "available": True, "confidence": 0.85},
+        or {
+            "source": vendor,
+            "available": True,
+            **label_confidence(0.85, source=CONFIDENCE_SOURCE_HEURISTIC, is_estimate=True),
+        },
     }

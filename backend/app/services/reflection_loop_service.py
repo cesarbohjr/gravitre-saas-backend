@@ -23,7 +23,8 @@ class ReflectionLoopService:
     ) -> dict[str, Any]:
         critic = critic or {}
         confidence = confidence or {}
-        score = float(confidence.get("score") or 0.55)
+        raw_score = confidence.get("score")
+        score = float(raw_score) if raw_score is not None else 0.55
         issues = list(critic.get("issues") or [])
         passed = bool(critic.get("passed", True))
         failed_tools = [

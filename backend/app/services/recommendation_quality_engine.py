@@ -37,7 +37,10 @@ class RecommendationQualityEngine:
 
         ranked: list[tuple[float, dict[str, Any]]] = []
         for row in recommendations:
-            base = float(row.get("confidence") or row.get("score") or 0.5)
+            raw_conf = row.get("confidence")
+            if raw_conf is None:
+                raw_conf = row.get("score")
+            base = float(raw_conf) if raw_conf is not None else 0.5
             rec_id = str(row.get("id") or row.get("recommendation_id") or "")
             historical = await self._historical_success_rate(org_id, rec_id, row)
             quality = round(min(1.0, 0.55 * base + 0.25 * historical + 0.2 * dept_score), 4)
@@ -115,11 +118,12 @@ class RecommendationQualityEngine:
             payload = dict(row)
             payload["id"] = rec_id
             enriched.append(payload)
+            raw_conf = row.get("confidence")
             await self.record_recommendation_created(
                 org_id=org_id,
                 recommendation_id=rec_id,
                 department=department,
-                confidence_score=float(row.get("confidence") or 0.55),
+                confidence_score=float(raw_conf) if raw_conf is not None else None,
             )
         return await self.rank_recommendations(enriched, org_id=org_id, department=department)
 
@@ -179,7 +183,10 @@ class RecommendationQualityEngine:
                 )
                 if result.get("status") == "ok":
                     historical = float(result.get("score") or 0.5)
-            base = float(row.get("score") or row.get("confidence") or 0.55)
+            raw_base = row.get("score")
+            if raw_base is None:
+                raw_base = row.get("confidence")
+            base = float(raw_base) if raw_base is not None else 0.55
             quality = round(min(1.0, 0.5 * base + 0.3 * historical + 0.2 * dept_score), 4)
             enriched = dict(row)
             enriched["quality_score"] = quality

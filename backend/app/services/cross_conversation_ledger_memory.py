@@ -13,6 +13,7 @@ from typing import Any
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.services.confidence_honesty import CONFIDENCE_SOURCE_HEURISTIC, estimated_confidence
 from app.services.entity_resolution_store import lookup_resolutions, upsert_resolution
 from app.services.parameter_ledger import ParameterLedger, get_ledger
 
@@ -24,6 +25,11 @@ _CROSS_SLOT_TYPES: dict[str, str] = {
     "email": "email_recipient",
     "channel": "slack_channel",
 }
+
+
+def _ledger_edge_confidence() -> float:
+    """Module C: ledger promotions store a heuristic estimate, not a learned score."""
+    return float(estimated_confidence(0.9, source=CONFIDENCE_SOURCE_HEURISTIC)["confidence"])
 
 
 def feature_enabled(settings: Settings | None = None) -> bool:
@@ -65,7 +71,7 @@ def promote_confirmed_ledger_slots(
             entity_id=value,
             integration=integration if slot_key == "channel" else "email",
             source="parameter_ledger_confirmed",
-            confidence=0.9,
+            confidence=_ledger_edge_confidence(),
             conversation_id=conversation_id,
         )
         if ok:

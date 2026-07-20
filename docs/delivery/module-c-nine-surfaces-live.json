@@ -1,0 +1,124 @@
+{
+  "health": {
+    "status": "ok",
+    "timestamp": "2026-07-20T01:13:18.989186+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "646dfc22f3d322ee2ab79b3325d995b6bb14f5f6",
+    "ai_disabled": false,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "1_advisor_brief": {
+    "http": 200,
+    "brief": {
+      "confidence": 0.5454,
+      "confidenceIsEstimate": true,
+      "confidenceSource": "advisor_signal_aggregate"
+    },
+    "action0": {
+      "confidence": 0.5454,
+      "confidenceIsEstimate": true,
+      "confidenceSource": "business_signal_heuristic"
+    }
+  },
+  "2_meson_interpret": {
+    "http": 200,
+    "quote": {
+      "confidence": 0.86,
+      "confidenceIsEstimate": true,
+      "confidenceSource": "heuristic"
+    }
+  },
+  "1b_meson_page_context_suggestion": {
+    "http": 200,
+    "quote": {
+      "label": "Delegate a recurring workflow",
+      "confidence": 0.7,
+      "confidenceIsEstimate": true,
+      "confidenceSource": "heuristic"
+    }
+  },
+  "3_trust_summary": {
+    "http": 200,
+    "quote": {
+      "avg_confidence": null,
+      "low_confidence_rate": null,
+      "missing_context_rate": null,
+      "advisory_only_rate": 0.5,
+      "sources_cited_rate": null,
+      "period_days": 7
+    }
+  },
+  "4_forecast": {
+    "http": 200,
+    "quote": {
+      "confidence": 0.4923,
+      "confidenceIsEstimate": true,
+      "confidenceSource": "model_selection_heuristic",
+      "confidence_band": "low"
+    }
+  },
+  "5_business_signals": {
+    "http": 200,
+    "quote": {
+      "confidence": null,
+      "confidenceIsEstimate": null,
+      "confidenceSource": null,
+      "title": null
+    }
+  },
+  "6_entity_relationships": {
+    "http": 200,
+    "total": 0,
+    "relationships": [],
+    "note": "no edges in prod; cannot quote labeled score_relationship payload"
+  },
+  "7_contextual_understanding": {
+    "http": null,
+    "status": "NO_PUBLIC_JSON",
+    "note": "entities stamped via label_confidence in service; /intelligence/ask 500 on probed orgs"
+  },
+  "8_optimization": {
+    "http": 200,
+    "quote": {
+      "confidence": 0.45,
+      "confidenceIsEstimate": true,
+      "confidenceSource": "optimization_heuristic",
+      "title": "Data source temporarily unavailable"
+    }
+  },
+  "models_runtime": {
+    "http": 200,
+    "quote": {
+      "runtime_status": "heuristic",
+      "live_inference_path": "rule_based_classify_query",
+      "artifact_loaded": false,
+      "catalog_status": "trained"
+    }
+  },
+  "NEW_unlabeled_recommend": {
+    "http": 200,
+    "quote": {
+      "confidence": 0.5,
+      "confidenceIsEstimate": null,
+      "confidence_is_estimate": null,
+      "confidenceSource": null,
+      "confidence_source": null,
+      "confidence_band": "low"
+    }
+  },
+  "heuristics_card": {
+    "http": 200,
+    "quote": {
+      "confidence": 0.9,
+      "confidenceIsEstimate": true,
+      "confidenceSource": "heuristic",
+      "title": "Clio Demo (sandbox) is connected but not executable"
+    }
+  }
+}

@@ -77,25 +77,31 @@ def build_from_rag_row(
 
 
 def build_from_memory_row(row: dict[str, Any], *, plan: RetrievalPlan | None = None) -> dict[str, Any]:
+    raw_score = row.get("score")
+    if raw_score is None:
+        raw_score = row.get("relevance")
+    memory_conf = float(raw_score) if raw_score is not None else None
     return build_provenance_envelope(
         source_system="gravitre",
         source_name=str(row.get("title") or row.get("label") or row.get("memory_type") or "Agent memory"),
         source_type=str(row.get("memory_type") or row.get("category") or "agent_memory"),
         source_id=str(row.get("id") or ""),
-        confidence=float(row.get("score") or row.get("relevance") or 0.7),
+        confidence=memory_conf,
         reference_only=True,
         plan=plan,
         match_tier="memory",
+        weight_applied=memory_conf if memory_conf is not None else 0.0,
     )
 
 
 def build_from_graph_context(graph: dict[str, Any], *, plan: RetrievalPlan | None = None) -> dict[str, Any]:
+    raw_conf = graph.get("confidence")
     return build_provenance_envelope(
         source_system="gravitre",
         source_name=str(graph.get("summary") or graph.get("entity") or "Knowledge graph"),
         source_type="knowledge_graph",
         source_id=str(graph.get("entity_id") or graph.get("id") or ""),
-        confidence=float(graph.get("confidence") or 0.75),
+        confidence=float(raw_conf) if raw_conf is not None else None,
         reference_only=True,
         plan=plan,
         match_tier="graph",

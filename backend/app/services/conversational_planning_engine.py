@@ -127,11 +127,35 @@ class ConversationalPlanningEngine:
             for row in recommendations
             if row.get("estimated_impact")
         ]
-        plan["confidence"] = (
-            round(sum(float(row.get("confidence") or 0.55) for row in recommendations) / len(recommendations), 4)
-            if recommendations
-            else float(plan.get("confidence") or 0.6)
+        from app.services.confidence_honesty import (
+            CONFIDENCE_SOURCE_HEURISTIC,
+            CONFIDENCE_SOURCE_INSUFFICIENT,
+            label_confidence,
         )
+
+        if recommendations:
+            scores = [
+                float(row["confidence"])
+                for row in recommendations
+                if row.get("confidence") is not None
+            ]
+            if scores:
+                labeled = label_confidence(
+                    round(sum(scores) / len(scores), 4),
+                    source=CONFIDENCE_SOURCE_HEURISTIC,
+                    is_estimate=True,
+                )
+            else:
+                labeled = label_confidence(None, source=CONFIDENCE_SOURCE_INSUFFICIENT)
+        elif plan.get("confidence") is not None:
+            labeled = label_confidence(
+                float(plan["confidence"]),
+                source=str(plan.get("confidence_source") or CONFIDENCE_SOURCE_HEURISTIC),
+                is_estimate=bool(plan.get("confidence_is_estimate", True)),
+            )
+        else:
+            labeled = label_confidence(None, source=CONFIDENCE_SOURCE_INSUFFICIENT)
+        plan.update(labeled)
         plan["goal"] = goal
         return plan
 

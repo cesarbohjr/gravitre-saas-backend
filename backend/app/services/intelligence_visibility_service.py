@@ -13,6 +13,11 @@ from app.schemas.intelligence_visibility import (
     LearningConfidenceView,
 )
 from app.services.executive_intelligence_scoring_service import get_executive_intelligence_scoring_service
+from app.services.confidence_honesty import (
+    CONFIDENCE_SOURCE_HEURISTIC,
+    annotate_confidence,
+    estimated_confidence,
+)
 from app.services.intelligence_maturity_service import get_intelligence_maturity_service
 from app.services.intelligence_visibility_sanitizer import sanitize_envelope
 
@@ -42,8 +47,15 @@ class IntelligenceVisibilityService:
         from app.services.ai_trust_layer import get_ai_trust_layer
 
         trust = get_ai_trust_layer()
-        score = float(confidence or (response or {}).get("confidence") or 0.0)
-        band = trust.confidence_band(score)
+        score_raw = confidence
+        if score_raw is None:
+            score_raw = (response or {}).get("confidence")
+        if score_raw is None:
+            score = 0.0
+            band = "insufficient"
+        else:
+            score = round(float(score_raw), 4)
+            band = trust.confidence_band(score)
         ctx = context or {}
         resp = response or {}
         cls = classification or resp.get("classification") or {}
@@ -68,7 +80,7 @@ class IntelligenceVisibilityService:
 
         envelope = DecisionTransparencyEnvelope(
             decision_type=decision_type,
-            confidence=round(score, 4),
+            confidence=score,
             confidence_band=band,
             evidence_used=evidence_used,
             sources_used=sources_used,
@@ -98,10 +110,11 @@ class IntelligenceVisibilityService:
         decision_type: str = "answer",
     ) -> dict[str, Any]:
         sources = list(response.get("sources") or context.get("rag_context") or [])
+        raw_conf = response.get("confidence")
         return await self.build_decision_envelope(
             org_id,
             decision_type=decision_type,
-            confidence=float(response.get("confidence") or 0.0),
+            confidence=float(raw_conf) if raw_conf is not None else None,
             sources=sources,
             classification=classification,
             context=context,
@@ -121,13 +134,14 @@ class IntelligenceVisibilityService:
         if not self.is_enabled():
             return sanitize_envelope(legacy_envelope)
         score_text = legacy_envelope.get("confidence_note") or ""
-        score = 0.55
         if "High confidence" in score_text:
-            score = 0.8
+            score = float(estimated_confidence(0.8, source=CONFIDENCE_SOURCE_HEURISTIC)["confidence"])
         elif "Moderate confidence" in score_text:
-            score = 0.6
+            score = float(estimated_confidence(0.6, source=CONFIDENCE_SOURCE_HEURISTIC)["confidence"])
         elif "Lower confidence" in score_text:
-            score = 0.4
+            score = float(estimated_confidence(0.4, source=CONFIDENCE_SOURCE_HEURISTIC)["confidence"])
+        else:
+            score = float(estimated_confidence(0.55, source=CONFIDENCE_SOURCE_HEURISTIC)["confidence"])
         full = await self.build_decision_envelope(
             org_id,
             decision_type=str(legacy_envelope.get("response_type") or "answer"),
@@ -139,7 +153,14 @@ class IntelligenceVisibilityService:
             missing_context=list(legacy_envelope.get("missing_context") or []),
         )
         merged = {**legacy_envelope, **full}
-        return sanitize_envelope(merged)
+        return sanitize_envelope(
+            annotate_confidence(
+                merged,
+                is_estimate=True,
+                source=CONFIDENCE_SOURCE_HEURISTIC,
+                value=score,
+            )
+        )
 
     async def get_learning_health(self, org_id: str) -> dict[str, Any]:
         if not self.is_enabled():
@@ -208,7 +229,7 @@ class IntelligenceVisibilityService:
             "org_id": org_id,
             "confidence": {
                 "average": avg_confidence,
-                "band": trust.confidence_band(float(avg_confidence or 0.0)) if avg_confidence is not None else "insufficient",
+                "band": trust.confidence_band(float(avg_confidence)) if avg_confidence is not None else "insufficient",
             },
             "freshness": freshness_envelope,
             "stale_source_warnings": stale_warnings,
@@ -710,7 +731,7 @@ class IntelligenceVisibilityService:
     ) -> float | None:
         if learning_level == "insufficient_data" and freshness_label == "unknown":
             return None
-        score = 0.5
+        score = float(estimated_confidence(0.5, source=CONFIDENCE_SOURCE_HEURISTIC)["confidence"])
         if learning_level == "high":
             score += 0.25
         elif learning_level == "medium":

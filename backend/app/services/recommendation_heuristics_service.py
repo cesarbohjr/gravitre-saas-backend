@@ -81,7 +81,7 @@ def build_heuristic_recommendations(
                             "executable": False,
                             "lookbackDays": lookback_days,
                         },
-                        confidence=0.9,
+                        confidence=0.9,  # confidence-honesty-ok: stamped by _card → label_confidence
                         priority=95,
                         href="/connectors",
                     )
@@ -101,7 +101,7 @@ def build_heuristic_recommendations(
                             "invocations": 0,
                             "lookbackDays": lookback_days,
                         },
-                        confidence=0.75,
+                        confidence=0.75,  # confidence-honesty-ok: stamped by _card → label_confidence
                         priority=70,
                         href="/connectors",
                     )
@@ -129,7 +129,7 @@ def build_heuristic_recommendations(
                                 "suggestedPackId": pack_id,
                                 "lookbackDays": lookback_days,
                             },
-                            confidence=0.8,
+                            confidence=0.8,  # confidence-honesty-ok: stamped by _card → label_confidence
                             priority=80,
                             href="/marketplace",
                         )

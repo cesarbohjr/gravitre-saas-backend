@@ -13,6 +13,7 @@ from app.services.ai_trust_layer import get_ai_trust_layer
 from app.services.chat_dialogue_settings import load_chat_dialogue_settings
 from app.services.clarification_engine import get_clarification_engine
 from app.services.confidence_honesty import (
+    CONFIDENCE_SOURCE_HEURISTIC,
     CONFIDENCE_SOURCE_MODEL_SELECTION,
     annotate_confidence,
     model_selection_ml_confidence,
@@ -96,7 +97,19 @@ class IntelligenceRouter:
             request,
             self.settings,
         )
-        confidence = float(classification.get("classification_confidence") or 0.55)
+        raw_class_conf = classification.get("classification_confidence")
+        # Prefer real classification score; heuristic default is explicitly labeled below.
+        if raw_class_conf is None:
+            from app.services.confidence_honesty import CONFIDENCE_SOURCE_HEURISTIC, estimated_confidence
+
+            _est = estimated_confidence(0.55, source=CONFIDENCE_SOURCE_HEURISTIC)
+            confidence = float(_est["confidence"])
+            class_is_estimate = True
+            class_source = CONFIDENCE_SOURCE_HEURISTIC
+        else:
+            confidence = float(raw_class_conf)
+            class_is_estimate = bool(classification.get("confidence_is_estimate", True))
+            class_source = str(classification.get("confidence_source") or "heuristic")
 
         clarification = await self._clarification.should_clarify(
             classification,
@@ -115,8 +128,13 @@ class IntelligenceRouter:
                 actions_taken=[],
                 actions_pending_approval=[],
                 advisory_only=True,
+                confidence_is_estimate=class_is_estimate,
+                confidence_source=class_source,
             )
             wrapped["dialogue_mode"] = "clarify"
+            # Surface contextual entity extract labels when present (Module C live path).
+            if isinstance(understanding, dict) and understanding.get("entities"):
+                wrapped["entities"] = understanding["entities"]
             return wrapped
 
         context = await self._context_assembler.assemble(org_id, user_id, request, classification)
@@ -154,8 +172,12 @@ class IntelligenceRouter:
                 actions_taken=[],
                 actions_pending_approval=[],
                 advisory_only=True,
+                confidence_is_estimate=class_is_estimate,
+                confidence_source=class_source,
             )
             wrapped["dialogue_mode"] = "clarify"
+            if isinstance(understanding, dict) and understanding.get("entities"):
+                wrapped["entities"] = understanding["entities"]
             return wrapped
 
         model_selection = await self._model_selector.select(org_id, classification)
@@ -406,6 +428,12 @@ class IntelligenceRouter:
             data_freshness=freshness_label,
             stale_source_warnings=stale_warnings,
             knowledge_freshness=freshness_envelope,
+            confidence_is_estimate=True,
+            confidence_source=(
+                CONFIDENCE_SOURCE_MODEL_SELECTION
+                if ml_confidence is not None
+                else str(classification.get("confidence_source") or CONFIDENCE_SOURCE_HEURISTIC)
+            ),
         )
         wrapped["classification"] = classification
         wrapped["model_selection"] = model_selection
@@ -506,6 +534,8 @@ class IntelligenceRouter:
             simulation_summary=simulation_summary,
             action_safety_level=risk_level,
             routing_summary=str(classification.get("intent")),
+            confidence_is_estimate=True,
+            confidence_source=CONFIDENCE_SOURCE_HEURISTIC,
         )
         wrapped["simulation_summary"] = simulation_summary
         wrapped["classification"] = classification

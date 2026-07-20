@@ -7,6 +7,12 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.config import Settings
+from app.services.confidence_honesty import (
+    CONFIDENCE_SOURCE_HEURISTIC,
+    CONFIDENCE_SOURCE_MODEL,
+    annotate_confidence,
+    estimated_confidence,
+)
 from app.services.model_router import TaskType, get_model_router
 
 logger = logging.getLogger(__name__)
@@ -51,10 +57,13 @@ async def predict_step_outcome(
         "Predict the most likely output JSON this step would produce on a successful live run. "
         "Do not invent secrets or PII. Return strict JSON only."
     )
+    fallback_confidence = float(
+        estimated_confidence(0.5, source=CONFIDENCE_SOURCE_HEURISTIC)["confidence"]
+    )
     fallback = TwinStepPrediction(
         summary=f"{step_name} simulated with default twin prediction",
         predicted_output={"simulated": True, "stepType": step_type, "status": "predicted"},
-        confidence=0.5,
+        confidence=fallback_confidence,
         risks=["insufficient context for high-confidence prediction"],
     )
     router = get_model_router()
@@ -71,23 +80,31 @@ async def predict_step_outcome(
         )
         if response.parsed:
             parsed = TwinStepPrediction.model_validate(response.parsed)
-            return {
-                "simulated": True,
-                "source": "llm_prediction",
-                "predicted": True,
-                "summary": parsed.summary,
-                "confidence": parsed.confidence,
-                "risks": parsed.risks,
-                "output": parsed.predicted_output,
-            }
+            return annotate_confidence(
+                {
+                    "simulated": True,
+                    "source": "llm_prediction",
+                    "predicted": True,
+                    "summary": parsed.summary,
+                    "risks": parsed.risks,
+                    "output": parsed.predicted_output,
+                },
+                is_estimate=True,
+                source=CONFIDENCE_SOURCE_MODEL,
+                value=parsed.confidence,
+            )
     except Exception as exc:  # noqa: BLE001
         logger.warning("twin llm prediction fallback step=%s error=%s", step_type, str(exc))
-    return {
-        "simulated": True,
-        "source": "llm_prediction",
-        "predicted": True,
-        "summary": fallback.summary,
-        "confidence": fallback.confidence,
-        "risks": fallback.risks,
-        "output": fallback.predicted_output,
-    }
+    return annotate_confidence(
+        {
+            "simulated": True,
+            "source": "llm_prediction",
+            "predicted": True,
+            "summary": fallback.summary,
+            "risks": fallback.risks,
+            "output": fallback.predicted_output,
+        },
+        is_estimate=True,
+        source=CONFIDENCE_SOURCE_HEURISTIC,
+        value=fallback.confidence,
+    )

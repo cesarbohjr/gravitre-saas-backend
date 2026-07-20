@@ -36,6 +36,13 @@ export type DecisionTransparencyEnvelope = {
   decision_type?: string
   confidence?: number
   confidence_band?: string
+  /** Module C: heuristic scores must not look like live model confidence. */
+  confidence_is_estimate?: boolean
+  confidenceIsEstimate?: boolean
+  confidence_source?: string
+  confidenceSource?: string
+  /** Prefer runtime_status over catalog TRAINED when present. */
+  runtime_status?: string
   evidence_used?: Array<Record<string, unknown>>
   sources_used?: Array<Record<string, unknown>>
   freshness_status?: string | null

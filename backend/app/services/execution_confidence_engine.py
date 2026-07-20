@@ -3,6 +3,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.confidence_honesty import (
+    CONFIDENCE_SOURCE_HEURISTIC,
+    annotate_confidence,
+)
 from app.services.confidence_scorer import get_confidence_scorer
 from app.services.sync_confidence import compute_sync_confidence
 
@@ -33,17 +37,21 @@ class ExecutionConfidenceEngine:
         missing_context = self._missing_context(context_profile)
         risk = str(risk_level or "low").lower()
 
-        return {
-            "confidence": blended,
-            "score": blended,
-            "band": sync.get("band"),
-            "needs_clarification": bool(sync.get("needs_clarification")) or blended < 0.4,
-            "rag_quality_score": sync.get("rag_quality_score"),
-            "context_confidence": context_confidence,
-            "reason": self._reason(blended, missing_context, risk),
-            "missing_context": missing_context,
-            "risk_level": risk,
-        }
+        return annotate_confidence(
+            {
+                "score": blended,
+                "band": sync.get("band"),
+                "needs_clarification": bool(sync.get("needs_clarification")) or blended < 0.4,
+                "rag_quality_score": sync.get("rag_quality_score"),
+                "context_confidence": context_confidence,
+                "reason": self._reason(blended, missing_context, risk),
+                "missing_context": missing_context,
+                "risk_level": risk,
+            },
+            is_estimate=True,
+            source=CONFIDENCE_SOURCE_HEURISTIC,
+            value=blended,
+        )
 
     def assess_pre_execution(
         self,
@@ -53,16 +61,21 @@ class ExecutionConfidenceEngine:
         requires_approval: bool = False,
     ) -> dict[str, Any]:
         context_confidence = self._context_confidence(context_profile)
-        base = float(classification.get("classification_confidence") or 0.55)
+        raw_base = classification.get("classification_confidence")
+        base = float(raw_base) if raw_base is not None else 0.55
         approval_penalty = 0.05 if requires_approval else 0.0
         score = round(max(0.0, min(1.0, 0.6 * base + 0.4 * context_confidence - approval_penalty)), 4)
-        return {
-            "confidence": score,
-            "context_confidence": context_confidence,
-            "missing_context": self._missing_context(context_profile),
-            "risk_level": str(classification.get("risk_level") or "medium").lower(),
-            "requires_approval": requires_approval,
-        }
+        return annotate_confidence(
+            {
+                "context_confidence": context_confidence,
+                "missing_context": self._missing_context(context_profile),
+                "risk_level": str(classification.get("risk_level") or "medium").lower(),
+                "requires_approval": requires_approval,
+            },
+            is_estimate=True,
+            source=CONFIDENCE_SOURCE_HEURISTIC,
+            value=score,
+        )
 
     def assess_with_trust_signals(
         self,
@@ -74,11 +87,14 @@ class ExecutionConfidenceEngine:
         classification: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         scorer = get_confidence_scorer()
+        raw_classification_conf = (classification or {}).get("classification_confidence")
         weighted = scorer.compute(
             rag_quality=float(model_output.get("rag_quality_score") or 0.0),
             source_reliability=None,
             ml_confidence=None,
-            classification_confidence=float((classification or {}).get("classification_confidence") or 0.55),
+            classification_confidence=(
+                float(raw_classification_conf) if raw_classification_conf is not None else 0.55
+            ),
         )
         live = self.assess_response(
             query=query,
@@ -89,7 +105,7 @@ class ExecutionConfidenceEngine:
         )
         score = round((float(live["score"]) + float(weighted or 0.0)) / 2, 4)
         live["score"] = score
-        live["confidence"] = score
+        live = annotate_confidence(live, is_estimate=True, source=CONFIDENCE_SOURCE_HEURISTIC, value=score)
         live["trust_signals"] = {"score": weighted}
         return live
 
@@ -129,8 +145,10 @@ class ExecutionConfidenceEngine:
         risk_evaluation: dict[str, Any] | None = None,
         connector_readiness: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        score = float((pre_confidence or {}).get("confidence") or 0.55)
-        penalty = float((connector_readiness or {}).get("confidence_penalty") or 0.0)
+        raw_pre_conf = (pre_confidence or {}).get("confidence")
+        score = float(raw_pre_conf) if raw_pre_conf is not None else 0.55
+        raw_penalty = (connector_readiness or {}).get("confidence_penalty")
+        penalty = float(raw_penalty) if raw_penalty is not None else 0.0
         adjusted = round(max(0.0, min(1.0, score - penalty)), 4)
         requires_approval = bool((risk_evaluation or {}).get("requires_approval"))
         can_proceed = adjusted >= 0.35 and not (requires_approval and adjusted < 0.55)
@@ -139,13 +157,17 @@ class ExecutionConfidenceEngine:
             reason_parts.append(str(connector_readiness.get("reason") or "Connector not ready."))
         if requires_approval:
             reason_parts.append("Human approval required before write actions.")
-        return {
-            "confidence": adjusted,
-            "can_proceed": can_proceed,
-            "requires_approval": requires_approval,
-            "reason": " ".join(reason_parts),
-            "connector_readiness": connector_readiness,
-        }
+        return annotate_confidence(
+            {
+                "can_proceed": can_proceed,
+                "requires_approval": requires_approval,
+                "reason": " ".join(reason_parts),
+                "connector_readiness": connector_readiness,
+            },
+            is_estimate=True,
+            source=CONFIDENCE_SOURCE_HEURISTIC,
+            value=adjusted,
+        )
 
     @staticmethod
     def _context_confidence(context_profile: dict[str, Any] | None) -> float:

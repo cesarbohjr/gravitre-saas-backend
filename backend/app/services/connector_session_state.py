@@ -7,6 +7,7 @@ from dataclasses import dataclass, field, replace
 from typing import Any
 
 from app.services.chat_connector_models import ConnectorActionPlan
+from app.services.confidence_honesty import CONFIDENCE_SOURCE_HEURISTIC, estimated_confidence
 
 STEP_REF = re.compile(r"\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}")
 
@@ -219,7 +220,9 @@ def record_entity_from_execution(
                 structured={**attributes, **(structured or {})},
                 conversation_id=conversation_id,
                 source="tool_output",
-                confidence=0.85,
+                confidence=float(
+                    estimated_confidence(0.85, source=CONFIDENCE_SOURCE_HEURISTIC)["confidence"]
+                ),
             )
         except Exception:  # noqa: BLE001
             pass

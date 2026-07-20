@@ -28,7 +28,7 @@ class AITrustLayer:
         self,
         answer: str,
         sources: list[dict[str, Any]],
-        confidence: float,
+        confidence: float | None,
         reasoning_summary: str | None,
         actions_taken: list[dict[str, Any]],
         actions_pending_approval: list[dict[str, Any]],
@@ -50,11 +50,33 @@ class AITrustLayer:
         action_safety_level: str | None = None,
         stale_source_warnings: list[str] | None = None,
         knowledge_freshness: dict[str, Any] | None = None,
+        confidence_is_estimate: bool | None = None,
+        confidence_source: str | None = None,
     ) -> dict[str, Any]:
-        band = self.confidence_band(confidence)
+        """Compose the standard trust envelope.
+
+        Module C / STA-331: every confidence on this envelope is stamped with
+        estimate/source provenance. Callers that omit provenance are treated as
+        heuristic estimates — never a silent unlabeled float.
+        """
+        from app.services.confidence_honesty import (
+            CONFIDENCE_SOURCE_HEURISTIC,
+            CONFIDENCE_SOURCE_INSUFFICIENT,
+            label_confidence,
+        )
+
+        if confidence is None:
+            labeled = label_confidence(None, source=confidence_source or CONFIDENCE_SOURCE_INSUFFICIENT)
+            band = "insufficient"
+        else:
+            value = round(max(0.0, min(1.0, float(confidence))), 4)
+            is_est = True if confidence_is_estimate is None else bool(confidence_is_estimate)
+            source = confidence_source or CONFIDENCE_SOURCE_HEURISTIC
+            labeled = label_confidence(value, source=source, is_estimate=is_est)
+            band = self.confidence_band(value)
         base = {
             "answer": answer,
-            "confidence": round(max(0.0, min(1.0, float(confidence))), 4),
+            **labeled,
             "confidence_band": band,
             "sources": sources,
             "reasoning_summary": reasoning_summary,

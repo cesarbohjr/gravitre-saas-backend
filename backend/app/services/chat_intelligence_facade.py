@@ -5,6 +5,7 @@ from typing import Any
 
 from app.config import Settings, get_settings
 from app.services.ai_trust_layer import get_ai_trust_layer
+from app.services.confidence_honesty import CONFIDENCE_SOURCE_HEURISTIC
 from app.services.intelligence_router import IntelligenceRouter
 from app.services.knowledge_intelligence_service import enrich_classification_with_query_cluster
 from app.services.learning_strategy_keys import build_route_strategy_key, parse_segment_key
@@ -133,6 +134,8 @@ class ChatIntelligenceFacade:
                 actions_pending_approval=actions_pending_approval or [],
                 advisory_only=advisory_only,
                 assumptions=assumptions,
+                confidence_is_estimate=True,
+                confidence_source=CONFIDENCE_SOURCE_HEURISTIC,
             )
         return {
             "trust_envelope": {

@@ -9,6 +9,7 @@ from fastapi import HTTPException, status
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.agent_memory_service import ensure_agent_in_org
+from app.services.confidence_honesty import CONFIDENCE_SOURCE_HEURISTIC, label_confidence
 from app.services.knowledge_source_types import build_sync_rules, normalize_source_type, validate_source_type, validate_sync_frequency
 
 logger = get_logger(__name__)
@@ -494,7 +495,12 @@ class AgentKnowledgeAssignmentService:
             "provenanceRequired": bool(row.get("provenance_required", True)),
             "ownerUserId": row.get("owner_user_id"),
             "createdBy": row.get("created_by"),
-            "confidenceScore": float(row.get("confidence_score") or 0.75),
+            **label_confidence(
+                float(row["confidence_score"]) if row.get("confidence_score") is not None else None,
+                source=CONFIDENCE_SOURCE_HEURISTIC,
+                is_estimate=True,
+                key="confidenceScore",
+            ),
             "confidenceWeight": float(row.get("confidence_weight") or 1.0),
             "department": row.get("department"),
             "subdomain": row.get("subdomain"),

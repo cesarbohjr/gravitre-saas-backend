@@ -13,6 +13,10 @@ from app.domain.loader import (
     resolve_department_key,
     resolve_industry_key,
 )
+from app.services.confidence_honesty import (
+    CONFIDENCE_SOURCE_HEURISTIC,
+    label_confidence,
+)
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
@@ -216,14 +220,19 @@ class DomainIntelligenceService:
             parsed = json.loads(clean)
             if not isinstance(parsed, dict):
                 return rule_result
-            confidence = float(parsed.get("confidence") or 0.5)
+            parsed_conf = parsed.get("confidence")
+            confidence = float(parsed_conf) if parsed_conf is not None else None
             return {
                 "industry": resolve_industry_key(str(parsed.get("industry") or "")) or parsed.get("industry"),
                 "department": resolve_department_key(str(parsed.get("department") or "")) or parsed.get("department"),
                 "subdomain": str(parsed.get("subdomain") or "").lower().replace(" ", "_") or None,
                 "business_objective": parsed.get("business_objective"),
                 "execution_type": parsed.get("execution_type"),
-                "confidence": round(min(0.95, confidence), 3),
+                **label_confidence(
+                    round(min(0.95, confidence), 3) if confidence is not None else None,
+                    source=CONFIDENCE_SOURCE_HEURISTIC,
+                    is_estimate=True,
+                ),
                 "source": "llm",
                 "profile_id": None,
             }
@@ -254,6 +263,12 @@ class DomainIntelligenceService:
         if profile and not result.get("department"):
             result["department"] = profile.get("department")
         labels = self._resolve_labels(result)
+        result_conf = result.get("confidence")
+        labeled = label_confidence(
+            float(result_conf) if result_conf is not None else None,
+            source=str(result.get("source") or CONFIDENCE_SOURCE_HEURISTIC),
+            is_estimate=True,
+        )
         return {
             "industry": labels.get("industry_label") or result.get("industry"),
             "industry_key": result.get("industry"),
@@ -263,10 +278,10 @@ class DomainIntelligenceService:
             "subdomain_key": result.get("subdomain"),
             "business_objective": result.get("business_objective"),
             "execution_type": result.get("execution_type"),
-            "confidence": float(result.get("confidence") or 0.0),
+            **labeled,
             "source": result.get("source") or "default",
             "profile_id": profile.get("profile_id") if profile else profile_id,
-            "routing_active": float(result.get("confidence") or 0) >= DOMAIN_CONFIDENCE_THRESHOLD,
+            "routing_active": float(result_conf or 0) >= DOMAIN_CONFIDENCE_THRESHOLD,
         }
 
     @staticmethod

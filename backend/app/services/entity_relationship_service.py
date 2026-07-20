@@ -58,26 +58,44 @@ async def get_related_entities(
         or []
     )
 
+    from app.services.confidence_honesty import (
+        CONFIDENCE_SOURCE_EDGE_HEURISTIC,
+        label_confidence,
+    )
+
     related: list[dict[str, Any]] = []
     for row in outgoing:
+        # Stored edge confidence is always a builder heuristic estimate (Module C).
+        raw_out = row.get("confidence")
+        labeled = label_confidence(
+            float(raw_out) if raw_out is not None else None,
+            source=CONFIDENCE_SOURCE_EDGE_HEURISTIC,
+            is_estimate=True,
+        )
         related.append(
             {
                 "direction": "outgoing",
                 "relationshipType": row.get("relationship_type"),
                 "entityType": row.get("target_entity_type"),
                 "entityId": row.get("target_entity_id"),
-                "confidence": float(row.get("confidence") or 0),
+                **labeled,
                 "evidenceCount": int(row.get("evidence_count") or 0),
             }
         )
     for row in incoming:
+        raw_in = row.get("confidence")
+        labeled = label_confidence(
+            float(raw_in) if raw_in is not None else None,
+            source=CONFIDENCE_SOURCE_EDGE_HEURISTIC,
+            is_estimate=True,
+        )
         related.append(
             {
                 "direction": "incoming",
                 "relationshipType": row.get("relationship_type"),
                 "entityType": row.get("source_entity_type"),
                 "entityId": row.get("source_entity_id"),
-                "confidence": float(row.get("confidence") or 0),
+                **labeled,
                 "evidenceCount": int(row.get("evidence_count") or 0),
             }
         )
@@ -287,9 +305,23 @@ async def load_entity_relationships_snapshot(
         for row in glossary
         if row.get("associated_department")
     }
+    from app.services.confidence_honesty import (
+        CONFIDENCE_SOURCE_EDGE_HEURISTIC,
+        label_confidence,
+    )
+
+    labeled_rows: list[dict[str, Any]] = []
+    for row in rows:
+        raw = row.get("confidence")
+        labeled = label_confidence(
+            float(raw) if raw is not None else None,
+            source=CONFIDENCE_SOURCE_EDGE_HEURISTIC,
+            is_estimate=True,
+        )
+        labeled_rows.append({**row, **labeled})
     return {
-        "total": len(rows),
-        "relationships": rows,
+        "total": len(labeled_rows),
+        "relationships": labeled_rows,
         "glossaryTerms": glossary,
         "departments": sorted(departments.keys()),
         "glossaryById": {

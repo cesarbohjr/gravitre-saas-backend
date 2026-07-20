@@ -5,6 +5,12 @@ from typing import Any
 
 from app.config import Settings, get_settings
 from app.services.ai_trust_layer import get_ai_trust_layer
+from app.services.confidence_honesty import (
+    CONFIDENCE_SOURCE_HEURISTIC,
+    CONFIDENCE_SOURCE_INSUFFICIENT,
+    annotate_confidence,
+    label_confidence,
+)
 from app.services.decision_intelligence_service import get_decision_intelligence_service
 from app.services.knowledge_graph_service import get_knowledge_graph_service
 from app.services.rag_service import get_rag_service
@@ -54,20 +60,27 @@ class RetrievalAugmentedDecisionService:
         primary = recs[0] if recs else {
             "action": "Gather more org usage and feedback before recommending action.",
             "reasoning": "Insufficient structured recommendations available.",
-            "confidence": 0.3,
+            **label_confidence(0.3, source=CONFIDENCE_SOURCE_INSUFFICIENT, is_estimate=True),
         }
         sources = list(evidence)
         if graph_context:
             sources.append({"type": "knowledge_graph", "context": graph_context})
 
-        return get_ai_trust_layer().wrap_response(
+        confidence = float(primary.get("confidence") or 0.3)
+        envelope = get_ai_trust_layer().wrap_response(
             answer=str(primary.get("action") or ""),
             sources=sources,
-            confidence=float(primary.get("confidence") or 0.3),
+            confidence=confidence,
             reasoning_summary=str(primary.get("reasoning") or ""),
             actions_taken=[],
             actions_pending_approval=[primary] if primary.get("requires_approval", True) else [],
             advisory_only=True,
+        )
+        return annotate_confidence(
+            envelope,
+            is_estimate=bool(primary.get("confidence_is_estimate", True)),
+            source=str(primary.get("confidence_source") or CONFIDENCE_SOURCE_HEURISTIC),
+            value=confidence,
         )
 
 

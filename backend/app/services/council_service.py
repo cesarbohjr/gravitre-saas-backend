@@ -7,6 +7,12 @@ from pydantic import BaseModel, Field
 
 from app.config import get_settings
 from app.core.logging import get_logger
+from app.services.confidence_honesty import (
+    CONFIDENCE_SOURCE_HEURISTIC,
+    CONFIDENCE_SOURCE_MODEL,
+    annotate_confidence,
+    estimated_confidence,
+)
 from app.services.model_router import TaskType, get_model_router
 from app.workflows.repository import get_supabase_client
 
@@ -101,6 +107,14 @@ class AgentOpinion(BaseModel):
     vote_weight: float = 1.0
 
 
+def _labeled_opinion_payload(op: AgentOpinion, *, fallback: bool) -> dict[str, Any]:
+    return annotate_confidence(
+        op.model_dump(),
+        is_estimate=True,
+        source=CONFIDENCE_SOURCE_HEURISTIC if fallback else CONFIDENCE_SOURCE_MODEL,
+    )
+
+
 class CouncilSession(BaseModel):
     id: str
     workflow_id: str
@@ -135,10 +149,14 @@ class AgentCouncilService:
         rounds: list[dict] = []
         for idx in range(max(1, min(max_rounds, 5))):
             round_opinions: list[AgentOpinion] = []
+            labeled_opinions: list[dict[str, Any]] = []
             for agent in agents:
-                opinion = await self._generate_opinion(objective, options, agent, evidence, idx, org_id)
+                opinion, is_fallback = await self._generate_opinion(
+                    objective, options, agent, evidence, idx, org_id
+                )
                 round_opinions.append(opinion)
-            rounds.append({"round": idx + 1, "opinions": [op.model_dump() for op in round_opinions]})
+                labeled_opinions.append(_labeled_opinion_payload(opinion, fallback=is_fallback))
+            rounds.append({"round": idx + 1, "opinions": labeled_opinions})
             if self._has_consensus(round_opinions, decision_method):
                 break
 
@@ -169,7 +187,7 @@ class AgentCouncilService:
         evidence: dict | None,
         round_index: int,
         org_id: str,
-    ) -> AgentOpinion:
+    ) -> tuple[AgentOpinion, bool]:
         prompt = (
             f"Objective: {objective}\n"
             f"Options: {options}\n"
@@ -188,7 +206,9 @@ class AgentCouncilService:
             agent_name=str(agent.get("name") or "agent"),
             agent_role=coerce_council_agent_role(str(agent.get("role") or "analyst")),
             position=options[0] if options else "defer",
-            confidence=0.55,
+            confidence=float(
+                estimated_confidence(0.55, source=CONFIDENCE_SOURCE_HEURISTIC)["confidence"]
+            ),
             reasoning="Insufficient information; defaulting to first viable option.",
             key_points=["default selection"],
             concerns=["limited evidence"],
@@ -206,10 +226,10 @@ class AgentCouncilService:
                 parsed = AgentOpinion.model_validate(response.parsed)
                 parsed.agent_role = coerce_council_agent_role(parsed.agent_role.value)
                 parsed.vote_weight = float(agent.get("weight") or parsed.vote_weight or 1.0)
-                return parsed
+                return parsed, False
         except Exception as exc:  # noqa: BLE001
             logger.warning("council opinion fallback: %s", str(exc))
-        return fallback
+        return fallback, True
 
     def _has_consensus(self, opinions: list[AgentOpinion], method: DecisionMethod) -> bool:
         if not opinions:
@@ -238,11 +258,15 @@ class AgentCouncilService:
             chair_name = str(next((a.get("name") for a in agents if a.get("is_chair")), "") or "")
             for op in opinions:
                 if op.get("agent_name") == chair_name:
-                    return str(op.get("position") or "defer"), float(op.get("confidence") or 0.5)
+                    raw_conf = op.get("confidence")
+                    return str(op.get("position") or "defer"), (
+                        float(raw_conf) if raw_conf is not None else 0.5
+                    )
         weighted_scores: dict[str, float] = {}
         for op in opinions:
             weight = float(op.get("vote_weight") or 1.0)
-            conf = float(op.get("confidence") or 0.0)
+            raw_conf = op.get("confidence")
+            conf = float(raw_conf) if raw_conf is not None else 0.0
             position = str(op.get("position") or "defer")
             weighted_scores[position] = weighted_scores.get(position, 0.0) + (weight * conf)
         winner = max(weighted_scores, key=weighted_scores.get)
