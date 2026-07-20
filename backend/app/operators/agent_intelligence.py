@@ -2224,16 +2224,30 @@ class AgentIntelligence:
                 react_result = event.react_result
 
         if pending_write_from_react(react_result) and conversation_id:
-            approval_turn = await materialize_react_write_approval_turn(
-                settings=active_settings,
-                org_id=org_id,
-                conversation_id=conversation_id,
-                client=client,
-                react_result=react_result,
-                message=task_text,
-                task_state=task_state,
-                environment_name=environment_name,
+            # STA-305 / Phase 1 — list-create NL must not be stolen by platform
+            # execute_workflow/create_workflow (ReAct often picks those when the org
+            # has workflows). Fall through to governed connector fallback instead.
+            from app.services.chat_connector_models import LIST_CREATE_INTENT
+            from app.services.react_write_gate import PLATFORM_WRITE_TOOLS
+
+            _pending_write = pending_write_from_react(react_result) or {}
+            _pending_tool = str(_pending_write.get("tool") or "")
+            _list_create_stolen_by_platform = bool(
+                LIST_CREATE_INTENT.search(task_text or "")
+                and _pending_tool in PLATFORM_WRITE_TOOLS
             )
+            approval_turn = None
+            if not _list_create_stolen_by_platform:
+                approval_turn = await materialize_react_write_approval_turn(
+                    settings=active_settings,
+                    org_id=org_id,
+                    conversation_id=conversation_id,
+                    client=client,
+                    react_result=react_result,
+                    message=task_text,
+                    task_state=task_state,
+                    environment_name=environment_name,
+                )
             if approval_turn:
                 task_state = approval_turn.get("task_state") or task_state
                 response_text = str(approval_turn.get("message") or "")

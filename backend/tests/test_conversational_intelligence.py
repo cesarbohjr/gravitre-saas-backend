@@ -110,6 +110,44 @@ async def test_missing_connector_triggers_clarification(clarification_engine):
 
 
 @pytest.mark.asyncio
+async def test_waitlist_substring_it_does_not_trigger_ambiguous_item(clarification_engine):
+    """Phase 1 — 'it' inside 'waitlist' must not become 'Which item…'."""
+    clarification_engine._polish_question = AsyncMock(return_value=None)
+    result = await clarification_engine.should_clarify(
+        {
+            "request": "blast a SendGrid email to the waitlist",
+            "classification_confidence": 0.5,
+            "requires_action": True,
+            "intent": "connector_action",
+        },
+        {"connected_integrations": []},
+        [],
+    )
+    assert result.get("trigger_type") != "ambiguous_entity"
+    question = (result.get("question") or "").lower()
+    assert "workflow, agent, or connector" not in question
+
+
+@pytest.mark.asyncio
+async def test_named_twilio_with_them_routes_to_connector_unavailable(clarification_engine):
+    """Phase 1 — 'text them via Twilio' must name Twilio, not ask which workflow."""
+    clarification_engine._polish_question = AsyncMock(return_value=None)
+    result = await clarification_engine.should_clarify(
+        {
+            "request": "text them via Twilio that we're running late",
+            "classification_confidence": 0.5,
+            "requires_action": True,
+            "intent": "connector_action",
+        },
+        {"connected_integrations": ["apollo"]},
+        [],
+    )
+    assert result["should_clarify"] is True
+    assert result["trigger_type"] == "connector_unavailable"
+    assert "twilio" in (result.get("question") or "").lower()
+
+
+@pytest.mark.asyncio
 async def test_slack_send_asks_for_message_not_workflow_execution(clarification_engine):
     """Prod regression: 'send a message in slack general channel' must not leak intent."""
     clarification_engine._polish_question = AsyncMock(return_value=None)

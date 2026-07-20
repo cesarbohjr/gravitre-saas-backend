@@ -328,10 +328,33 @@ class ClarificationEngine:
                     },
                 }
 
-        if confidence < self.CLARIFICATION_THRESHOLD and any(
-            token in lowered for token in ("it", "this", "that", "them")
-        ):
+        # Word-boundary only — substring "it" in "waitlist" / "this" in free text
+        # used to fire a generic "Which item…" and drop named-vendor intents
+        # (Twilio/SendGrid/Gmail) onto the wrong clarify path (Phase 1 breadth).
+        pronoun_hit = bool(re.search(r"\b(it|this|that|them)\b", lowered))
+        if confidence < self.CLARIFICATION_THRESHOLD and pronoun_hit:
             if not clarified.get("resolved_entity"):
+                # Named vendor in the utterance → connector gate, not platform-item ask.
+                named = self._named_connectors_in_text(request)
+                if named:
+                    for connector in named:
+                        if connector.lower() not in connected and clarified.get(
+                            f"connector_{connector}"
+                        ) != "connected":
+                            return {
+                                "trigger_type": "connector_unavailable",
+                                "reason": f"Required connector {connector} is not connected.",
+                                "template_vars": {
+                                    "connector": connector.replace("_", " ").title()
+                                },
+                            }
+                    # Vendor named and connected — let mapper/ReAct proceed.
+                    return None
+                # Explicit email/slack write phrasing must not become "which workflow".
+                if self.EMAIL_SEND_PATTERN.search(request) or self.SLACK_SEND_PATTERN.search(
+                    request
+                ):
+                    return None
                 return {
                     "trigger_type": "ambiguous_entity",
                     "reason": "Pronoun reference with low confidence.",
@@ -356,6 +379,44 @@ class ClarificationEngine:
             }
 
         return None
+
+    # Aliases too generic to treat as an explicit vendor mention.
+    _GENERIC_VENDOR_ALIASES = frozenset(
+        {
+            "email",
+            "crm",
+            "design",
+            "analytics",
+            "wiki",
+            "spreadsheet",
+            "sheet",
+            "drive",
+            "calendar",
+            "teams",
+            "support ticket",
+            "support tickets",
+            "pull request",
+            "pull requests",
+        }
+    )
+
+    def _named_connectors_in_text(self, text: str) -> list[str]:
+        """Return catalog connector ids explicitly named in the user utterance."""
+        from app.services.chat_connector_models import INTEGRATION_ALIASES
+
+        found: list[str] = []
+        lowered = (text or "").lower()
+        for connector_id, aliases in INTEGRATION_ALIASES.items():
+            # Always accept the canonical id as a word.
+            needles = (connector_id.replace("_", " "), connector_id) + tuple(aliases)
+            for alias in needles:
+                a = str(alias or "").strip().lower()
+                if not a or a in self._GENERIC_VENDOR_ALIASES:
+                    continue
+                if re.search(rf"\b{re.escape(a)}\b", lowered):
+                    found.append(connector_id)
+                    break
+        return found
 
     def _humanize_action(self, value: str) -> str:
         """Never show snake_case classifier intents in user-facing copy."""
