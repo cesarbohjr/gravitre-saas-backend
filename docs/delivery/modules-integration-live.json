@@ -1,0 +1,180 @@
+{
+  "module": "0-A-B-C-D-integration",
+  "started_at": "2026-07-20T04:24:02.879481+00:00",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "actor": "conversation-smoke-sa@gravitre.app",
+  "user_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "health_git_sha": "cbd48aa86e1ebb6cb6a852980b04af3b763ecde1",
+  "local_git_sha": "cbd48aa86e1ebb6cb6a852980b04af3b763ecde1",
+  "sha_match_prefix": true,
+  "seams_closed": [
+    "Module A notification titles always use Module D house titles (no caller bypass)",
+    "Module A notification/audit failure copy shaped via Module D blocked/audit kinds",
+    "Module A failure-alert correlate copy shaped via Module D failure_alert_* kinds",
+    "Module 0 assert_org_write_allowed on invoke_tool + Meson deploy + platform write tools",
+    "assistant_chat connector terminals create workflow_run + full Module A fanout",
+    "connector-not-ready path routes through finalize_execution_outcome + Module D voice",
+    "Module C lint covers Module D format_confidence_for_voice / numeric confidence intercept",
+    "Executive Digest already consumes real intelligence_outcome_events (Module A stream)"
+  ],
+  "trace": {
+    "1_module_0_deny": {
+      "status": "PASS",
+      "error": "REFUSING conversation create: test/service credential cannot write into org 'cbbf993b-b22f-41ce-964b-1fc25e0dd9ea' (actor=a9f1240f-910a-42ca-aebf-38caeac288c3). Allow-listed org only: f07e57c0-1501-4000-8000-c04e57a00001 / gravitre-isolated-conversation-smoke. Do not use OAUTH_SMOKE_ORG_ID / operato",
+      "target_org": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    "2_omit_field": {
+      "conversation_id": "7130c92a-d30a-46d3-a238-3ea208b18f7b",
+      "user": "Send an email via Gmail \u2014 I haven't given you the recipient yet.",
+      "assistant": "To send gmail message, I need to know recipient, subject, body. Could you share that?",
+      "parameter_ledger": {
+        "slots": {},
+        "pending_missing": [
+          "recipient",
+          "subject",
+          "body"
+        ]
+      },
+      "clarify_engaged": true
+    },
+    "3_filler_turn": {
+      "user": "Quick side note: what connectors are Connected in this org right now?",
+      "assistant": "Connect Gmail at /connectors to run this action."
+    },
+    "4_provide_fields_and_fail": {
+      "user": "Back to the Gmail send: recipient integration.proof@acme.test, subject Integration proof, body Hello from the continuous 0-A-B-C-D trace.",
+      "assistant": "Connect Gmail at /connectors to run this action.",
+      "parameter_ledger": {
+        "slots": {
+          "to": {
+            "value": "integration.proof@acme.test",
+            "source": "schema_param_extractor",
+            "confidence": "high"
+          },
+          "body": {
+            "value": "Hello from the continuous 0-A-B-C-D trace",
+            "source": "schema_param_extractor",
+            "confidence": "high"
+          },
+          "email": {
+            "value": "integration.proof@acme.test",
+            "source": "user_message",
+            "confidence": "high"
+          },
+          "subject": {
+            "value": "Quick side note: what connectors are Connected in this org right now?",
+            "source": "schema_param_extractor",
+            "confidence": "high"
+          }
+        },
+        "pending_missing": []
+      },
+      "pending_task": {
+        "type": "connector_action",
+        "params": {
+          "to": "integration.proof@acme.test",
+          "args": {
+            "to": "integration.proof@acme.test",
+            "body": "Hello from the continuous 0-A-B-C-D trace",
+            "subject": "Quick side note: what connectors are Connected in this org right now?"
+          },
+          "body": "Hello from the continuous 0-A-B-C-D trace",
+          "kind": "write",
+          "label": "Send Gmail message",
+          "subject": "Quick side note: what connectors are Connected in this org right now?",
+          "tool_name": "gmail_messages_send",
+          "destructive": false,
+          "integration": "gmail",
+          "invoke_action": "gmail.messages.send",
+          "inferred_fields": [],
+          "inference_sources": {}
+        },
+        "status": "awaiting_params",
+        "resume_complete": true
+      },
+      "approve_turn": null
+    },
+    "5_module_a_fanout": {
+      "run_id": "7dd76ed0-a4bf-4646-87b8-3d17b86815b5",
+      "run_status": "failed",
+      "run_error_message": "Failed \u2014 Connect Gmail at /connectors to run this action.",
+      "audit_event_id": "ca4e74a3-3ea9-4c1d-bbd4-d8193440dfe1",
+      "notification_id": "cf2fb3ac-2015-4b61-8d14-5c28e21dd5b9",
+      "notification_title": "Workflow run failed",
+      "notification_body": "Connect Gmail at /connectors to run this action.",
+      "learning_record_id": "f73603d0-bb05-4bb2-8f70-97f8ee85e877",
+      "learning_outcome_event": "workflow_failed",
+      "fanout_complete": true
+    },
+    "6_voice_and_confidence": {
+      "user_facing_failure": "Connect Gmail at /connectors to run this action.",
+      "notification_title": "Workflow run failed",
+      "notification_body": "Connect Gmail at /connectors to run this action.",
+      "voice_register_ok": true,
+      "unlabeled_confidence_leak": false
+    },
+    "7_retry_ledger": {
+      "user": "Retry the Gmail send with the same details \u2014 do not ask me for the recipient again.",
+      "assistant": "Connect Gmail at /connectors to run this action.",
+      "parameter_ledger": {
+        "slots": {
+          "to": {
+            "value": "integration.proof@acme.test",
+            "source": "schema_param_extractor",
+            "confidence": "high"
+          },
+          "body": {
+            "value": "Hello from the continuous 0-A-B-C-D trace",
+            "source": "schema_param_extractor",
+            "confidence": "high"
+          },
+          "email": {
+            "value": "integration.proof@acme.test",
+            "source": "user_message",
+            "confidence": "high"
+          },
+          "subject": {
+            "value": "Quick side note: what connectors are Connected in this org right now?",
+            "source": "schema_param_extractor",
+            "confidence": "high"
+          }
+        },
+        "pending_missing": []
+      },
+      "to_retained": "integration.proof@acme.test",
+      "ledger_ok": true,
+      "reasked_recipient": false
+    },
+    "8_success_fanout": {
+      "status": "PASS",
+      "run_id": "4d14580d-266d-4691-833c-911720c574b6",
+      "notification_id": "3e0b3205-fb48-4d34-8976-b0220c571311",
+      "notification_title": "Workflow run completed",
+      "notification_body": "Integration proof success \u2014 Verified noop",
+      "learning_record_id": "358b71eb-4908-4e66-b366-c28260ad7d49"
+    },
+    "9_executive_digest": {
+      "http": 200,
+      "event_count": 44,
+      "digest_preview": "Executive Digest\nLast 24 hours\n\n2 completed \u00b7 36 failed \u00b7 0 cancelled \u00b7 6 other.\n\nFailures (blocked \u2014 fix these next):\n- Connect Gmail at /connectors to run this action. [assistant_chat] \u00b7 run 7dd76ed0\n- Connect Gmail at /connectors to run this action. [assistant_chat] \u00b7 run e867ad6a\n- Connect Gmail at /connectors to run this action. [assistant_chat] \u00b7 run 6289d80e\n- Connect Gmail at /connectors to run this action. [assistant_chat]\n- Connect Gmail at /connectors to run this action. [assistant_chat]\n- Connect Gmail at /connectors to run this action. [assistant_chat]\n- Invalid parameters for this Apollo action (apollo.lists.create). Check required fields and try again. [assistant_chat]\n- Write blocked: this canvas step needs an approved run (required_approvals>=1). In-graph approval alone is",
+      "mentions_fail_run": true,
+      "pass": true
+    }
+  },
+  "verdict": "ONE COHERENT SYSTEM \u2014 continuous chat\u2192ledger\u2192blocked write\u2192Module A fanout\u2192voice/D\u2192digest, with Module 0 deny and Module C honesty on the path",
+  "named_remaining_seam": null,
+  "checks": {
+    "module_0_deny": true,
+    "b_clarify": true,
+    "b_ledger_retain": true,
+    "a_fanout": true,
+    "d_voice": true,
+    "c_no_unlabeled_confidence": true,
+    "a_success_fanout": true,
+    "d_digest": true,
+    "deployed_sha_known": true
+  },
+  "finished_at": "2026-07-20T04:24:45.215526+00:00",
+  "passed": true
+}
