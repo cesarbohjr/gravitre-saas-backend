@@ -131,21 +131,38 @@ def main() -> int:
     else:
         inserted = (
             client.table("org_glossary_terms")
-            .insert(
+            .upsert(
                 {
                     "org_id": org_id,
                     "term": "module-c-acme",
-                    "definition": "Safe Module C probe entity (isolated org only)",
+                    "term_type": "named_entity",
+                    "frequency": 3,
+                    "example_context": "Safe Module C probe entity (isolated org only)",
                     "associated_department": "sales",
-                    "created_at": now,
-                    "updated_at": now,
-                }
+                    "source": "query",
+                    "status": "confirmed",
+                    "last_extracted_at": now,
+                },
+                on_conflict="org_id,term",
             )
             .execute()
             .data
             or []
         )
-        gloss_id = str(inserted[0]["id"]) if inserted else "module-c-acme"
+        if inserted:
+            gloss_id = str(inserted[0]["id"])
+        else:
+            gloss = (
+                client.table("org_glossary_terms")
+                .select("id")
+                .eq("org_id", org_id)
+                .eq("term", "module-c-acme")
+                .limit(1)
+                .execute()
+                .data
+                or []
+            )
+            gloss_id = str(gloss[0]["id"]) if gloss else "module-c-acme"
 
     edge_conf = float(estimated_confidence(0.72, source=CONFIDENCE_SOURCE_EDGE_HEURISTIC)["confidence"])
     _upsert_relationship(
@@ -167,6 +184,13 @@ def main() -> int:
     with urllib.request.urlopen(f"{API_BASE}/health", timeout=30) as resp:
         health = json.loads(resp.read().decode())
 
+    # Prefer snapshot (always labeled). Also probe entity-scoped list once edges exist.
+    code_snap, body_snap = _req(
+        "GET",
+        "/api/admin/intelligence/relationships?limit=10",
+        token,
+        org_id,
+    )
     code_rel, body_rel = _req(
         "GET",
         f"/api/admin/intelligence/relationships?entityType={ENTITY_GLOSSARY}&entityId={gloss_id}",
@@ -174,9 +198,12 @@ def main() -> int:
         org_id,
     )
     rel0 = {}
-    if isinstance(body_rel, dict):
-        rows = body_rel.get("relationships") or []
-        rel0 = rows[0] if rows else {}
+    for body in (body_snap, body_rel):
+        if isinstance(body, dict):
+            rows = body.get("relationships") or []
+            if rows:
+                rel0 = rows[0]
+                break
 
     code_ask, body_ask = _req(
         "POST",
@@ -186,12 +213,25 @@ def main() -> int:
         {"question": 'Clarify: what is "module-c-acme" in sales?', "mode": "standard"},
     )
     entities = []
+    domain_quote: dict[str, Any] = {}
     if isinstance(body_ask, dict):
         entities = body_ask.get("entities") or []
         if not entities:
             enrich = ((body_ask.get("enrichments") or {}).get("contextual") or {}).get("entities")
             if isinstance(enrich, list):
                 entities = enrich
+        if not entities:
+            und = body_ask.get("understanding") or {}
+            if isinstance(und, dict) and isinstance(und.get("entities"), list):
+                entities = und.get("entities") or []
+            if isinstance(und, dict) and isinstance(und.get("domain"), dict):
+                domain_quote = {
+                    "confidence": und["domain"].get("confidence"),
+                    "confidence_is_estimate": und["domain"].get("confidence_is_estimate")
+                    or und["domain"].get("confidenceIsEstimate"),
+                    "confidence_source": und["domain"].get("confidence_source")
+                    or und["domain"].get("confidenceSource"),
+                }
 
     report = {
         "pulled_at": datetime.now(timezone.utc).isoformat(),
@@ -200,8 +240,9 @@ def main() -> int:
         "seeded_glossary_id": gloss_id,
         "seeded_edge_confidence": edge_conf,
         "6_entity_relationships": {
-            "http": code_rel,
-            "total": (body_rel.get("total") if isinstance(body_rel, dict) else None),
+            "snapshot_http": code_snap,
+            "entity_scoped_http": code_rel,
+            "total": (body_snap.get("total") if isinstance(body_snap, dict) else None),
             "relationship0": {
                 "confidence": rel0.get("confidence"),
                 "confidence_is_estimate": rel0.get("confidence_is_estimate")
@@ -209,9 +250,24 @@ def main() -> int:
                 "confidence_source": rel0.get("confidence_source") or rel0.get("confidenceSource"),
             },
             "keys": sorted(rel0.keys())[:40] if isinstance(rel0, dict) else [],
+            "entity_scoped_error": body_rel if code_rel >= 400 else None,
         },
         "7_contextual_entities": {
             "http": code_ask,
+            "envelope": {
+                "confidence": body_ask.get("confidence") if isinstance(body_ask, dict) else None,
+                "confidence_is_estimate": (
+                    body_ask.get("confidence_is_estimate") or body_ask.get("confidenceIsEstimate")
+                )
+                if isinstance(body_ask, dict)
+                else None,
+                "confidence_source": (
+                    body_ask.get("confidence_source") or body_ask.get("confidenceSource")
+                )
+                if isinstance(body_ask, dict)
+                else None,
+            },
+            "domain": domain_quote,
             "entity0": {
                 "confidence": (entities[0] or {}).get("confidence") if entities else None,
                 "confidence_is_estimate": (entities[0] or {}).get("confidence_is_estimate")
@@ -237,13 +293,22 @@ def main() -> int:
     print(f"wrote {OUT}")
 
     rel_ok = (
-        code_rel < 400
+        code_snap < 400
         and rel0.get("confidence") is not None
         and bool(rel0.get("confidence_is_estimate") or rel0.get("confidenceIsEstimate"))
         and (rel0.get("confidence_source") or rel0.get("confidenceSource"))
         == CONFIDENCE_SOURCE_EDGE_HEURISTIC
     )
-    return 0 if rel_ok else 2
+    ctx_ok = (
+        code_ask < 400
+        and isinstance(body_ask, dict)
+        and body_ask.get("confidence_source")
+        and (
+            bool(body_ask.get("confidence_is_estimate") or body_ask.get("confidenceIsEstimate"))
+            or body_ask.get("confidence") is None
+        )
+    )
+    return 0 if (rel_ok and ctx_ok) else 2
 
 
 if __name__ == "__main__":

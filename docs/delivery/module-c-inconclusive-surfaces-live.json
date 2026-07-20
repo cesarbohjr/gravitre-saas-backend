@@ -1,0 +1,103 @@
+{
+  "pulled_at": "2026-07-20T03:28:08.914452+00:00",
+  "git_sha": "2ed2c59d6a37adeb6f58281dd7346ff5c23274e7",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "seeded_glossary_id": "f91a402c-7e7e-4030-b7f5-4a4564682286",
+  "seeded_edge_confidence": 0.72,
+  "6_entity_relationships": {
+    "snapshot_http": 200,
+    "entity_scoped_http": 500,
+    "total": 1,
+    "relationship0": {
+      "confidence": 0.72,
+      "confidence_is_estimate": true,
+      "confidence_source": "entity_relationship_heuristic"
+    },
+    "keys": [
+      "confidence",
+      "confidenceIsEstimate",
+      "confidenceSource",
+      "confidence_is_estimate",
+      "confidence_source",
+      "created_at",
+      "evidence_count",
+      "id",
+      "last_observed_at",
+      "org_id",
+      "relationship_type",
+      "source_entity_id",
+      "source_entity_type",
+      "target_entity_id",
+      "target_entity_type"
+    ],
+    "entity_scoped_error": {
+      "success": false,
+      "error": "An unexpected error occurred. Our team has been notified.",
+      "code": "INTERNAL_ERROR",
+      "details": {}
+    }
+  },
+  "7_contextual_entities": {
+    "http": 200,
+    "envelope": {
+      "confidence": 0.55,
+      "confidence_is_estimate": true,
+      "confidence_source": "heuristic"
+    },
+    "domain": {
+      "confidence": 0.7,
+      "confidence_is_estimate": true,
+      "confidence_source": "rules"
+    },
+    "entity0": {
+      "confidence": 0.8,
+      "confidence_is_estimate": true,
+      "confidence_source": "rule_based_entity_extract",
+      "text": "module-c-acme"
+    },
+    "entity_count": 1,
+    "answer_keys": [
+      "action_safety_level",
+      "actions_pending_approval",
+      "actions_taken",
+      "advisory_only",
+      "ai_systems_used",
+      "answer",
+      "assumptions",
+      "classification",
+      "confidence",
+      "confidenceIsEstimate",
+      "confidenceSource",
+      "confidence_band",
+      "confidence_is_estimate",
+      "confidence_source",
+      "data_freshness",
+      "dialogue_mode",
+      "domain",
+      "domain_routing",
+      "enrichments",
+      "knowledge_freshness",
+      "missing_context",
+      "ml_models_used",
+      "model_selection",
+      "proactive_suggestions",
+      "reasoning_summary",
+      "recommended_next_action",
+      "retrieval_effectiveness",
+      "retrieval_plan",
+      "risks",
+      "routing_summary",
+      "segment_key",
+      "sentiment",
+      "show_why_this_answer",
+      "simulation_summary",
+      "source_breakdown",
+      "sources",
+      "stale_source_warnings",
+      "strategy_key",
+      "surface",
+      "understanding"
+    ],
+    "error": null
+  }
+}
