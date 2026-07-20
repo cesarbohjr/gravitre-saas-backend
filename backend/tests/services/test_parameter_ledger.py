@@ -123,3 +123,84 @@ def test_ingest_title_is_unquoted():
         "title is Checkout fails on mobile for VIP accounts priority urgent"
     )
     assert "checkout" in (ledger.get("title") or "").lower()
+
+
+def test_filler_turn_does_not_pollute_subject():
+    """Phase 0.1 — side questions must not fill free-text subject via resume."""
+    plan = ConnectorActionPlan(
+        tool_name="gmail_send",
+        invoke_action="gmail.messages.send",
+        integration="gmail",
+        kind="write",
+        label="Send Gmail",
+        args={},
+    )
+    patch = stage_awaiting_params(plan, ("recipient", "subject", "body"))
+    task_state = {**patch, "recent_user_messages": ["Send an email via Gmail"]}
+    _, ledger, resume_patch = resume_awaiting_params(
+        "Quick side note: what connectors are Connected in this org right now?",
+        task_state,
+    )
+    assert ledger.get("subject") is None
+    args = (resume_patch.get("pending_task") or {}).get("params", {}).get("args") or {}
+    assert not str(args.get("subject") or "").strip() or "quick side" not in str(
+        args.get("subject") or ""
+    ).lower()
+
+
+def test_explicit_subject_repairs_resume_pollution():
+    """Write-protect + bind preference: user_message subject beats resume dump in args."""
+    from app.services.parameter_ledger import ParameterLedger, bind_args_from_ledger
+
+    ledger = ParameterLedger()
+    ledger.upsert(
+        "subject",
+        "Quick side note: what connectors are Connected?",
+        source="awaiting_params_resume",
+    )
+    ledger.upsert("subject", "Integration proof", source="user_message")
+    assert ledger.get("subject") == "Integration proof"
+    args = bind_args_from_ledger(
+        "gmail.messages.send",
+        {"subject": "Quick side note: what connectors are Connected?"},
+        ledger,
+    )
+    assert args.get("subject") == "Integration proof"
+
+
+def test_resume_pollution_then_explicit_fill_live_path():
+    plan = ConnectorActionPlan(
+        tool_name="gmail_send",
+        invoke_action="gmail.messages.send",
+        integration="gmail",
+        kind="write",
+        label="Send Gmail",
+        args={},
+    )
+    patch = stage_awaiting_params(plan, ("recipient", "subject", "body"))
+    task_state = {**patch, "recent_user_messages": ["Send an email via Gmail"]}
+    # If an older build polluted subject, explicit fill must repair it.
+    polluted = dict(task_state)
+    polluted["parameter_ledger"] = {
+        "slots": {
+            "subject": {
+                "value": "Quick side note: what connectors are Connected in this org right now?",
+                "source": "awaiting_params_resume",
+                "confidence": "high",
+            }
+        },
+        "pending_missing": ["recipient", "subject", "body"],
+    }
+    polluted["pending_task"]["params"]["args"] = {
+        "subject": "Quick side note: what connectors are Connected in this org right now?"
+    }
+    resumed, ledger, resume_patch = resume_awaiting_params(
+        "recipient integration.proof@acme.test, subject Integration proof, "
+        "body Hello from the continuous 0-A-B-C-D trace.",
+        polluted,
+    )
+    assert resumed is not None
+    assert ledger.get("subject") == "Integration proof"
+    args = (resume_patch.get("pending_task") or {}).get("params", {}).get("args") or {}
+    assert args.get("subject") == "Integration proof"
+    assert "quick side" not in (args.get("subject") or "").lower()

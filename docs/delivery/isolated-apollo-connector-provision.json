@@ -1,0 +1,10 @@
+{
+  "action": "created",
+  "isolated_org": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "connector_id": "8992743f-6632-4252-81a1-8d09c0482575",
+  "source_connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+  "secret_key": "oauth_tokens",
+  "status": "healthy",
+  "verified_at": "2026-07-20T07:00:47.929304+00:00",
+  "note": "Disposable Apollo in isolated org for Module A success fanout proofs"
+}

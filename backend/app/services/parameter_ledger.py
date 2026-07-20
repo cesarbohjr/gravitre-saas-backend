@@ -48,6 +48,23 @@ FREE_TEXT_ARG_KEYS = frozenset(
     }
 )
 
+# Source trust for free-text write-protection. Higher wins on conflict.
+# awaiting_params_resume is lowest — a whole-turn dump must never clobber an
+# explicit user/schema extract, and side questions must not invent subjects.
+_SLOT_SOURCE_RANK: dict[str, int] = {
+    "awaiting_params_resume": 1,
+    "staged_plan": 2,
+    "legacy_clarified_params": 2,
+    "schema_param_extractor": 3,
+    "user_message": 4,
+    "confidence_propose": 3,
+}
+
+
+def _source_rank(source: str | None) -> int:
+    return _SLOT_SOURCE_RANK.get(str(source or "").strip(), 2)
+
+
 # Semantic aliases — schema-driven binding, not vendor-driven.
 SLOT_ALIASES: dict[str, tuple[str, ...]] = {
     "to": ("to", "recipient", "email", "contact_email"),
@@ -144,10 +161,36 @@ class ParameterLedger:
         source: str = "user_message",
         turn_index: int | None = None,
         confidence: str = "high",
+        force: bool = False,
     ) -> None:
         cleaned = str(value or "").strip()
         if not cleaned or not key:
             return
+        existing = self.slots.get(key)
+        if (
+            not force
+            and existing
+            and existing.value
+            and existing.value != cleaned
+            and key in FREE_TEXT_ARG_KEYS
+        ):
+            # Write-protect: refuse lower-trust overwrite of free-text slots.
+            # Typed slots (to/email/channel) stay cue-gated by extractors.
+            if _source_rank(source) < _source_rank(existing.source):
+                logger.debug(
+                    "parameter_ledger_write_protect key=%s refused source=%s kept=%s",
+                    key,
+                    source,
+                    existing.source,
+                )
+                return
+            if source == "awaiting_params_resume" and existing.source != "awaiting_params_resume":
+                logger.debug(
+                    "parameter_ledger_write_protect key=%s refused resume over %s",
+                    key,
+                    existing.source,
+                )
+                return
         self.slots[key] = SlotValue(
             value=cleaned,
             source=source,
@@ -367,13 +410,13 @@ def bind_args_from_ledger(
 
     if fields:
         for field_spec in fields:
-            if _arg_present_for_keys(filled, field_spec.arg_keys):
-                continue
+            present = _arg_present_for_keys(filled, field_spec.arg_keys)
+            is_free = any(k in FREE_TEXT_ARG_KEYS for k in field_spec.arg_keys)
             value = _ledger_value_for_keys(ledger, field_spec.arg_keys)
             if value is None and "quoted" in field_spec.arg_keys:
                 value = ledger.get("quoted")
             # Free-text fields can consume the generic quoted slot.
-            if value is None and any(k in FREE_TEXT_ARG_KEYS for k in field_spec.arg_keys):
+            if value is None and is_free:
                 value = ledger.get("quoted")
             if value is None:
                 # Label-based alias: "recipient" → to/email
@@ -381,12 +424,29 @@ def bind_args_from_ledger(
                 value = ledger.get(label_key) or _ledger_value_for_keys(
                     ledger, SLOT_ALIASES.get(label_key, ())
                 )
-            if value is not None:
-                filled[field_spec.arg_keys[0]] = value
-                # Slack dual keys
-                if "message" in field_spec.arg_keys and "text" in field_spec.arg_keys:
-                    filled.setdefault("text", value)
-                    filled.setdefault("message", value)
+            if value is None:
+                continue
+            primary = field_spec.arg_keys[0]
+            current = str(filled.get(primary) or "").strip()
+            # Prefer higher-trust ledger free-text over stale pending_task.args
+            # (subject pollution class: resume dump stuck in args while ledger repaired).
+            if present and is_free and current and current != value:
+                slot = None
+                for k in field_spec.arg_keys:
+                    slot = ledger.slots.get(k)
+                    if slot and slot.value:
+                        break
+                # Explicit user/schema extracts repair resume pollution stuck in args.
+                if slot and slot.source in {"user_message", "schema_param_extractor"}:
+                    filled[primary] = value
+                continue
+            if present:
+                continue
+            filled[primary] = value
+            # Slack dual keys
+            if "message" in field_spec.arg_keys and "text" in field_spec.arg_keys:
+                filled.setdefault("text", value)
+                filled.setdefault("message", value)
     else:
         # No schema — bind common aliases into empty args.
         for key in ("to", "email", "channel", "subject", "body", "summary", "project_key", "name"):
@@ -654,6 +714,45 @@ def resume_awaiting_params(
     return plan, ledger, patch
 
 
+def _is_side_question_not_slot_answer(text: str) -> bool:
+    """True when the turn is meta/status chatter, not an answer to a missing field.
+
+    Structural guard for subject/body pollution: filler turns like
+    \"what connectors are Connected?\" must not fill free-text slots.
+    """
+    t = (text or "").strip()
+    if not t:
+        return False
+    lower = t.lower()
+    # Explicit slot cues mean this IS an answer (even if phrased as a question).
+    if re.search(
+        r"\b(subject|body|message|channel|recipient|to)\s*(?:is|=|:)\s*\S",
+        lower,
+    ):
+        return False
+    if re.search(
+        r"\b(subject|body)\s+[^?]{2,},?\s*body\b",
+        lower,
+    ):
+        return False
+    if re.search(r"\b(side note|by the way|btw|unrelated|quick note|quick side)\b", lower):
+        return True
+    if lower.endswith("?") or re.match(
+        r"^(what|which|who|how|why|when|where|are|is|do|does|can|could)\b",
+        lower,
+    ):
+        # Status / readiness questions are never subject/body answers.
+        if re.search(
+            r"\b(connector|connectors|connected|healthy|status|executable|verified)\b",
+            lower,
+        ):
+            return True
+        # Generic interrogatives without a slot cue — do not invent free-text.
+        if not re.search(r"\b(subject|body|message|email|recipient|channel)\b", lower):
+            return True
+    return False
+
+
 def _followup_fill_text(message: str) -> str | None:
     from app.services.chat_message_normalize import strip_assistant_scope_prefix
     from app.services.chat_connector_models import INTEGRATION_ALIASES
@@ -663,6 +762,8 @@ def _followup_fill_text(message: str) -> str | None:
         return None
     # Pure email reply — not free-text body.
     if EMAIL_RE.fullmatch(text.strip()):
+        return None
+    if _is_side_question_not_slot_answer(text):
         return None
     cleaned = re.sub(
         r"^(?:sure|ok|okay|yes|yep|yeah|please)[,!.]?\s+",
