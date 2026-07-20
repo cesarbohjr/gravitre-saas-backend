@@ -1544,6 +1544,13 @@ class AgentIntelligence:
                 get_chat_connector_execution_service,
             )
 
+            # Reload durable session so preview sees the just-completed write entity.
+            if conversation_id:
+                task_state = await get_conversation_state_service(active_settings).get_task_state(
+                    conversation_id,
+                    org_id,
+                    client=client,
+                )
             preview_turn = await get_chat_connector_execution_service(
                 active_settings
             ).process_turn(

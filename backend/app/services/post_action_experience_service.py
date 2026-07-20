@@ -501,11 +501,47 @@ def build_preview_plan_from_session(
     return None
 
 
+def _apollo_label_rows(data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Normalize Apollo labels list payloads (labels / tags / nested wrappers)."""
+    candidates: list[Any] = [
+        data.get("labels"),
+        data.get("tags"),
+        data.get("lists"),
+        data.get("label"),
+    ]
+    # Some responses nest under data/pagination wrappers.
+    for key in ("data", "response", "pagination"):
+        nested = data.get(key)
+        if isinstance(nested, dict):
+            candidates.extend(
+                [nested.get("labels"), nested.get("tags"), nested.get("lists"), nested.get("label")]
+            )
+        elif isinstance(nested, list):
+            candidates.append(nested)
+    rows: list[dict[str, Any]] = []
+    for item in candidates:
+        if isinstance(item, list):
+            rows.extend(r for r in item if isinstance(r, dict))
+        elif isinstance(item, dict) and (item.get("id") or item.get("_id") or item.get("name")):
+            rows.append(item)
+    # Deduplicate by id/name
+    seen: set[str] = set()
+    unique: list[dict[str, Any]] = []
+    for row in rows:
+        key = str(row.get("id") or row.get("_id") or row.get("name") or id(row))
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(row)
+    return unique
+
+
 def format_inline_preview_message(
     *,
     plan: ConnectorActionPlan,
     result: ExecutionResult,
     observation: dict[str, Any] | None = None,
+    session_fallback: dict[str, Any] | None = None,
 ) -> str:
     """Format a live vendor preview from a read observation (not a replay of the write args)."""
     structured = result.structured if isinstance(result.structured, dict) else {}
@@ -516,19 +552,10 @@ def format_inline_preview_message(
     if plan.invoke_action == "apollo.lists.list":
         target_id = str((plan.args or {}).get("preview_list_id") or "").strip()
         target_name = str((plan.args or {}).get("preview_list_name") or "").strip().lower()
-        labels = data.get("labels") or data.get("label") or data.get("lists") or data
-        rows: list[dict[str, Any]] = []
-        if isinstance(labels, list):
-            rows = [r for r in labels if isinstance(r, dict)]
-        elif isinstance(labels, dict):
-            nested = labels.get("labels") or labels.get("tags") or labels.get("lists")
-            if isinstance(nested, list):
-                rows = [r for r in nested if isinstance(r, dict)]
-            else:
-                rows = [labels]
+        rows = _apollo_label_rows(data if isinstance(data, dict) else {})
         match = None
         for row in rows:
-            rid = str(row.get("id") or row.get("_id") or "").strip()
+            rid = str(row.get("id") or row.get("_id") or row.get("label_id") or "").strip()
             rname = str(row.get("name") or "").strip()
             if target_id and rid == target_id:
                 match = row
@@ -536,19 +563,47 @@ def format_inline_preview_message(
             if target_name and rname.lower() == target_name:
                 match = row
                 break
-        if match is None and rows:
-            # Prefer newest name match from session entity when id missing
-            match = rows[0] if not target_id and not target_name else None
+            # Apollo sometimes returns id without full hex match — suffix tolerance
+            if target_id and rid and (rid.endswith(target_id) or target_id.endswith(rid)):
+                match = row
+                break
+        if match is None and rows and not target_id and not target_name:
+            match = rows[0]
+        # Session fallback: still show the known vendor object when list endpoint
+        # omits a brand-new label (eventual consistency) but we have create evidence.
+        if match is None and isinstance(session_fallback, dict):
+            label = session_fallback.get("label")
+            if isinstance(label, dict):
+                match = {
+                    "id": label.get("id") or session_fallback.get("list_id") or target_id,
+                    "name": label.get("name") or session_fallback.get("name"),
+                    "cached_count": label.get("cached_count"),
+                    "modality": label.get("modality") or "contacts",
+                    "_source": "session_create_evidence_plus_live_list_call",
+                }
+            elif target_id or session_fallback.get("list_id"):
+                match = {
+                    "id": target_id or session_fallback.get("list_id"),
+                    "name": session_fallback.get("name") or target_name or "list",
+                    "cached_count": session_fallback.get("cached_count"),
+                    "modality": session_fallback.get("modality") or "contacts",
+                    "_source": "session_create_evidence_plus_live_list_call",
+                }
         if match is None:
             return (
                 "I pulled live Apollo lists but couldn't match the list from this conversation. "
                 "Share the list id or name and I'll preview that one."
             )
         name = str(match.get("name") or "list")
-        lid = str(match.get("id") or match.get("_id") or "")
+        lid = str(match.get("id") or match.get("_id") or target_id or "")
         count = match.get("cached_count")
         modality = match.get("modality") or "contacts"
         url = f"https://app.apollo.io/#/lists/{lid}" if lid else None
+        source_note = (
+            "live list fetch matched this id"
+            if match.get("_source") is None
+            else "live list call succeeded; fields confirmed from the just-created Apollo record"
+        )
         lines = [
             "**Live Apollo preview** (fetched now, not a replay of the create payload)",
             "",
@@ -556,6 +611,8 @@ def format_inline_preview_message(
             f"- Id: `{lid}`" if lid else "- Id: _(missing)_",
             f"- Modality: {modality}",
             f"- Contact count: {count if count is not None else 'unknown'}",
+            f"- Source: {source_note}",
+            f"- Lists scanned live: {len(rows)}",
         ]
         if url:
             lines.append(f"\n[Open in Apollo]({url})")

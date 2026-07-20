@@ -290,13 +290,20 @@ def _legacy_step_outputs(task_state: dict[str, Any] | None) -> dict[str, dict[st
 
 def _extract_entity_attributes(structured: dict[str, Any]) -> dict[str, Any]:
     attrs: dict[str, Any] = {}
+    # Flatten nested Apollo/HubSpot wrappers so list_id/name bind after creates.
+    flat = dict(structured or {})
+    for nest_key in ("label", "list", "contact", "company", "deal"):
+        nested = flat.get(nest_key)
+        if isinstance(nested, dict):
+            for key, value in nested.items():
+                flat.setdefault(key, value)
     for key, aliases in COMMON_BIND_KEYS:
         for alias in aliases:
-            if alias in structured and structured[alias]:
-                attrs[key] = structured[alias]
+            if alias in flat and flat[alias]:
+                attrs[key] = flat[alias]
                 break
-    if structured.get("properties") and isinstance(structured["properties"], dict):
-        for key, value in structured["properties"].items():
+    if flat.get("properties") and isinstance(flat["properties"], dict):
+        for key, value in flat["properties"].items():
             if value:
                 attrs[str(key)] = value
     return attrs

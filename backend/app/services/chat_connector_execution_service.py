@@ -1701,7 +1701,30 @@ class ChatConnectorExecutionService:
             }
         # Re-attach preview filter args for formatter matching.
         preview_plan = replace(invoke_plan, args=dict(plan.args or {}))
-        body = format_inline_preview_message(plan=preview_plan, result=execution)
+        session_fallback: dict[str, Any] | None = None
+        pending = (task_state or {}).get("pending_task") or {}
+        pending_result = pending.get("result") if isinstance(pending, dict) else None
+        if isinstance(pending_result, dict):
+            structured = pending_result.get("structured")
+            if isinstance(structured, dict):
+                session_fallback = structured
+        if session_fallback is None:
+            from app.services.connector_session_state import load_connector_session
+
+            session = load_connector_session(task_state)
+            for entity in reversed(list(session.active_entities.values())):
+                attrs = entity.get("attributes") if isinstance(entity.get("attributes"), dict) else {}
+                if attrs:
+                    session_fallback = dict(attrs)
+                    if entity.get("entityId") and "list_id" not in session_fallback:
+                        # entityId may be connector id; prefer attrs.list_id when present
+                        pass
+                    break
+        body = format_inline_preview_message(
+            plan=preview_plan,
+            result=execution,
+            session_fallback=session_fallback,
+        )
         serialized = serialize_execution_result(execution)
         structured = dict(serialized.get("structured") or {})
         structured["inlinePreview"] = True

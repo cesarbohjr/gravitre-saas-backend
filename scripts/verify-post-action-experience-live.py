@@ -65,9 +65,21 @@ def req(method, path, token, org_id, body=None, timeout=180):
         r.add_header("Content-Type", "application/json")
     try:
         with urllib.request.urlopen(r, timeout=timeout) as resp:
-            return resp.status, resp.read().decode()
+            try:
+                return resp.status, resp.read().decode(errors="replace")
+            except Exception as exc:  # IncompleteRead / truncated SSE
+                partial = getattr(exc, "partial", b"") or b""
+                if isinstance(partial, bytes) and partial:
+                    return resp.status, partial.decode(errors="replace")
+                raise
     except urllib.error.HTTPError as exc:
         return exc.code, exc.read().decode(errors="replace")
+    except Exception as exc:
+        # Last-resort: bubble IncompleteRead with any partial bytes if present.
+        partial = getattr(exc, "partial", None)
+        if isinstance(partial, (bytes, bytearray)) and partial:
+            return 200, bytes(partial).decode(errors="replace")
+        raise
 
 
 def parse_sse(raw: str):
@@ -148,16 +160,21 @@ def main() -> int:
     cid = new_conv(token, org, f"post-action card {name}")
     prompt = f"Create a new Apollo contact list named '{name}'. Do not add contacts."
     t1, _, _ = chat(token, org, cid, [{"role": "user", "parts": [{"type": "text", "text": prompt}]}])
-    t2, er2, _ = chat(
-        token,
-        org,
-        cid,
-        [
-            {"role": "user", "parts": [{"type": "text", "text": prompt}]},
-            {"role": "assistant", "parts": [{"type": "text", "text": t1}]},
-            {"role": "user", "parts": [{"type": "text", "text": "yes"}]},
-        ],
-    )
+    t2, er2 = "", None
+    for _attempt in range(2):
+        t2, er2, _ = chat(
+            token,
+            org,
+            cid,
+            [
+                {"role": "user", "parts": [{"type": "text", "text": prompt}]},
+                {"role": "assistant", "parts": [{"type": "text", "text": t1}]},
+                {"role": "user", "parts": [{"type": "text", "text": "yes"}]},
+            ],
+        )
+        if t2.strip() and (er2 or {}).get("success") is not None:
+            break
+        time.sleep(2)
     structured = (er2 or {}).get("structured") or {}
     card = structured.get("completionCard") or {}
     rec = (er2 or {}).get("recommendation") or structured.get("recommendation")
