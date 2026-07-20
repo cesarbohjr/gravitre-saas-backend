@@ -198,7 +198,7 @@ export default async function BlogPostPage({
                 alt={post.heroAlt}
                 width={1200}
                 height={630}
-                className="aspect-video w-full object-cover"
+                className="aspect-video w-full object-contain bg-zinc-50"
               />
             ) : (
               <div

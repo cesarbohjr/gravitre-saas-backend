@@ -7,7 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const htmlPath = path.join(__dirname, "assets/ai-transparency-approval-hero.html")
 const outputPath = path.join(
   __dirname,
-  "../apps/web/public/images/blog/ai-transparency-approval-hero.jpg"
+  "../apps/web/public/images/blog/ai-transparency-governance-hero.jpg"
 )
 
 const browser = await chromium.launch()
