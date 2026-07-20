@@ -8,14 +8,39 @@ from app.services.gravitree_voice import (
     GRAVITREE_VOICE_RULES,
     HOUSE_PHRASING,
     VOICE_SECTION_HEADER,
+    anti_repeat_prompt_section,
     apply_voice,
     chev_term,
+    detect_correction_phrase,
     domain_focus_section,
     format_operator_message,
     format_outcome_digest,
     humor_permitted,
     voice_system_prompt_section,
 )
+
+
+def test_detect_correction_phrase_and_house_line():
+    snip = detect_correction_phrase("Actually use HubSpot instead of Apollo")
+    assert snip is not None
+    assert "HubSpot" in snip
+    assert detect_correction_phrase("What connectors are connected?") is None
+    msg = format_operator_message("correction_ack", correction=snip)
+    assert "Got it" in msg
+    assert "HubSpot" in msg
+
+
+def test_anti_repeat_prompt_section():
+    section = anti_repeat_prompt_section(
+        [
+            "Short",
+            "Connected HubSpot looks Healthy and Executable for list create.",
+            "Next move: approve the pending write and re-run.",
+        ]
+    )
+    assert "## Anti-repeat" in section
+    assert "Connected HubSpot" in section
+    assert anti_repeat_prompt_section(["hi"]) == ""
 
 
 def test_voice_section_contains_chev_and_core_traits():

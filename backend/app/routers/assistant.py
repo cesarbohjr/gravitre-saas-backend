@@ -18,7 +18,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict
 
@@ -105,7 +105,8 @@ ASSISTANT_SYSTEM_PROMPT = (
 
 _TOOL_DISPLAY_NAMES = TOOL_DISPLAY_NAMES
 _DEFAULT_TOOLS = DEFAULT_ASSISTANT_TOOLS
-_MAX_HISTORY = 12
+# Phase 4 — allow 30+ turn client histories into summarization (was 12).
+_MAX_HISTORY = 48
 _RESPONSE_CACHE_TTL = 30
 _RESPONSE_CACHE: dict[str, tuple[float, str, list[str]]] = {}
 
@@ -620,10 +621,21 @@ def _build_stream(
     preferred_persona: str | None = None,
     environment_name: str = "production",
     research_scope: str | None = None,
+    force_serial_tools: bool = False,
 ):
     """Yield AI SDK UI stream via AgentIntelligence + ReActEngine."""
 
     async def generator():
+        from app.operators.react_engine import force_serial_react_tools, reset_serial_react_tools
+
+        serial_token = force_serial_react_tools(force_serial_tools)
+        try:
+            async for line in _unified_stream_body():
+                yield line
+        finally:
+            reset_serial_react_tools(serial_token)
+
+    async def _unified_stream_body():
         perf = ChatPerfTimer()
         perf.start("total_response")
         start_ms = time.monotonic()
@@ -785,7 +797,7 @@ def _build_stream(
                 summary=complete.summary,
             )
 
-    return generator()
+    return generator()  # serial A/B contextvar is scoped inside generator()
 
 
 _STREAM_HEADERS = {
@@ -799,6 +811,7 @@ _STREAM_HEADERS = {
 @router.post("/chat")
 async def assistant_chat(
     body: AssistantChatRequest,
+    request: Request,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -1019,6 +1032,11 @@ async def assistant_chat(
         logger.error("assistant stream prepare failed org_id=%s error=%s", org_id, str(exc))
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Assistant request failed")
 
+    force_serial = str(request.headers.get("x-gravitree-react-serial") or "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
     return StreamingResponse(
         _build_stream(
             explicit_tools,
@@ -1035,6 +1053,7 @@ async def assistant_chat(
             preferred_persona=preferred_persona,
             environment_name=environment_name,
             research_scope=(body.research_scope or "").strip() or None,
+            force_serial_tools=force_serial,
         ),
         media_type="text/event-stream",
         headers=_STREAM_HEADERS,

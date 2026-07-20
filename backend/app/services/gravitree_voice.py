@@ -20,6 +20,7 @@ Executive Digest: format_outcome_digest() shapes Module A outcome batches
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any, Literal, Sequence
 
@@ -62,6 +63,42 @@ HOUSE_PHRASING: dict[str, str] = {
     # Phase 5 — correction acknowledgment (user said "actually / no I meant").
     "correction_ack": "Got it — updated to {correction}. Continuing with that.",
 }
+
+
+_CORRECTION_RE = re.compile(
+    r"(?i)\b(?:actually|no[, ]+i\s+meant|i\s+meant|wrong[, ]+use|change\s+that\s+to|"
+    r"use\s+.+?\s+instead|not\s+.+,?\s*(?:use|try))\b"
+)
+
+
+def detect_correction_phrase(text: str) -> str | None:
+    """Return a short correction snippet if the user is correcting a prior turn."""
+    raw = (text or "").strip()
+    if not raw or not _CORRECTION_RE.search(raw):
+        return None
+    cleaned = re.sub(r"\s+", " ", raw)
+    return cleaned[:160]
+
+
+def anti_repeat_prompt_section(recent_assistant: list[str] | None) -> str:
+    """Phase 5 — steer the model away from repeating recent assistant phrasing."""
+    lines: list[str] = []
+    for item in recent_assistant or []:
+        cleaned = re.sub(r"\s+", " ", str(item or "").strip())
+        if len(cleaned) < 24:
+            continue
+        lines.append(cleaned[:140])
+        if len(lines) >= 3:
+            break
+    if not lines:
+        return ""
+    bullets = "\n".join(f"- {line}" for line in lines)
+    return (
+        "## Anti-repeat\n"
+        "Do not reuse these recent assistant phrasings verbatim; vary wording while "
+        "keeping the same facts and next move:\n"
+        f"{bullets}"
+    )
 
 GRAVITREE_VOICE_RULES: tuple[str, ...] = (
     "Calm expert: capable operator, not a chatbot persona. Smart, cool geek — precise, not cute.",

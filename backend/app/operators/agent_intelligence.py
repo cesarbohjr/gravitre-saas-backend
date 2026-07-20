@@ -409,6 +409,52 @@ def _normalize_react_trace_step(step: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _react_perf_from_tool_calls(tool_calls: list[dict[str, Any]] | None) -> dict[str, Any] | None:
+    """Phase 2 — surface parallel-batch timing into SSE for live A/B proofs."""
+    rows = [c for c in (tool_calls or []) if isinstance(c, dict)]
+    if not rows:
+        return None
+    # Deduplicate by batch_id so multi-tool batches are not summed N times.
+    batches: dict[str, dict[str, Any]] = {}
+    for c in rows:
+        bid = str(c.get("batch_id") or f"solo-{c.get('tool')}-{id(c)}")
+        if bid not in batches:
+            batches[bid] = {
+                "parallel": bool(c.get("parallel_batch")),
+                "elapsed_ms": int(c["batch_elapsed_ms"])
+                if c.get("batch_elapsed_ms") is not None
+                else None,
+                "tools": [],
+            }
+        batches[bid]["tools"].append(c.get("tool"))
+    parallel_ms = [
+        b["elapsed_ms"]
+        for b in batches.values()
+        if b["parallel"] and b["elapsed_ms"] is not None
+    ]
+    serial_ms = [
+        b["elapsed_ms"]
+        for b in batches.values()
+        if (not b["parallel"]) and b["elapsed_ms"] is not None
+    ]
+    return {
+        "toolCallCount": len(rows),
+        "parallelBatchCount": sum(1 for b in batches.values() if b["parallel"] and len(b["tools"]) > 1),
+        "parallelToolCount": sum(len(b["tools"]) for b in batches.values() if b["parallel"]),
+        "maxParallelBatchMs": max(parallel_ms) if parallel_ms else None,
+        "serialWallMs": sum(serial_ms) if serial_ms else None,
+        "tools": [
+            {
+                "tool": c.get("tool"),
+                "parallelBatch": bool(c.get("parallel_batch")),
+                "batchId": c.get("batch_id"),
+                "batchElapsedMs": c.get("batch_elapsed_ms"),
+            }
+            for c in rows[:12]
+        ],
+    }
+
+
 def _confidence_from_react(react_status: ReActStatus, tool_calls: list[dict[str, Any]]) -> int:
     if react_status == ReActStatus.COMPLETED:
         if not tool_calls:
@@ -685,7 +731,11 @@ class AgentIntelligence:
         has_mcp_tools: bool = False,
     ) -> str:
         """Shared system prompt builder for execute_task() and execute_task_streaming()."""
-        from app.services.gravitree_voice import domain_focus_section, voice_system_prompt_section
+        from app.services.gravitree_voice import (
+            anti_repeat_prompt_section,
+            domain_focus_section,
+            voice_system_prompt_section,
+        )
 
         org_dict = org_context if isinstance(org_context, dict) else None
         persona_section = self._get_persona_text(
@@ -704,6 +754,12 @@ class AgentIntelligence:
             handoff_section = (
                 f"\n## Incoming Briefing\n{json.dumps(handoff_context, indent=2, default=str)[:8000]}"
             )
+        recent_assistant = [
+            str(m.get("content") or "")
+            for m in (task_history or [])
+            if isinstance(m, dict) and str(m.get("role") or "") == "assistant"
+        ][-3:]
+        anti_repeat = anti_repeat_prompt_section(recent_assistant)
 
         sections = [
             persona_section.strip(),
@@ -711,6 +767,8 @@ class AgentIntelligence:
             voice_system_prompt_section().strip(),
             "",
         ]
+        if anti_repeat:
+            sections.extend([anti_repeat, ""])
         domain_focus = domain_focus_section(persona_modifier)
         if domain_focus:
             sections.extend([domain_focus, ""])
@@ -1873,6 +1931,25 @@ class AgentIntelligence:
         )
         dialogue_mode = str(dialogue_policy.get("mode") or "answer")
 
+        from app.services.gravitree_voice import detect_correction_phrase, format_operator_message
+
+        correction_snip = detect_correction_phrase(task_text)
+        correction_ack = (
+            format_operator_message("correction_ack", correction=correction_snip)
+            if correction_snip
+            else None
+        )
+        # Phase 5 — acknowledge corrections before plan/tools so the user hears it first.
+        text_id: str | None = None
+        streamed_content = ""
+        full_content_parts: list[str] = []
+        if correction_ack:
+            text_id, start_event = sse_text_start()
+            yield start_event
+            yield sse_text_delta(text_id, correction_ack + "\n\n")
+            streamed_content = correction_ack + "\n\n"
+            full_content_parts.append(correction_ack + "\n\n")
+
         rag_sources, rag_conflicts = self._prepare_rag_sources(retrieval.rag_sources)
         rag_section = self._format_rag_context(
             rag_sources,
@@ -1912,6 +1989,7 @@ class AgentIntelligence:
             agent if agent_id else None,
             rag_sources,
             org_context,
+            task_history=conversation_history or None,
             handoff_context=None,
             connected_integrations=connected_list,
             org_context_block=org_context_block or None,
@@ -2052,8 +2130,10 @@ class AgentIntelligence:
                 web_attempted=False,
                 connected_integrations=connected_list,
             )
-            text_id, start_event = sse_text_start()
-            yield start_event
+            # Reuse Phase-5 correction text stream if already opened.
+            if text_id is None:
+                text_id, start_event = sse_text_start()
+                yield start_event
             yield sse_text_delta(text_id, bounded)
             yield sse_text_end(text_id)
             yield sse_intelligence_metadata(
@@ -2117,8 +2197,7 @@ class AgentIntelligence:
             connector_timeout_seconds=engine_settings.connector_timeout_seconds,
         )
 
-        text_id: str | None = None
-        full_content_parts: list[str] = []
+        # Preserve Phase-5 correction_ack prefix already streamed above.
         react_result = None
         generation_started = time.monotonic()
 
@@ -2556,6 +2635,9 @@ class AgentIntelligence:
                 # (that duplicated paragraphs mid-bubble). Keep what was already streamed.
             yield sse_text_end(text_id)
 
+        react_perf = _react_perf_from_tool_calls(
+            getattr(react_result, "tool_calls", None) if react_result else None
+        )
         yield sse_intelligence_metadata(
             message_id=message_id,
             confidence=finalized["confidence"],
@@ -2593,6 +2675,7 @@ class AgentIntelligence:
                 "escalations": list(routing_control.escalations),
             },
             research_cascade=turn_ctx.research_cascade if isinstance(turn_ctx.research_cascade, dict) else None,
+            react_perf=react_perf,
         )
 
         yield AssistantStreamComplete(

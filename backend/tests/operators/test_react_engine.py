@@ -448,6 +448,74 @@ async def test_parallel_independent_reads_share_one_batch(engine: ReActEngine, t
     assert len(started) == 2
 
 
+@pytest.mark.asyncio
+async def test_serial_force_runs_reads_sequentially(engine: ReActEngine, tool_ctx: ToolContext):
+    """Phase 2 A/B — X-Gravitree-React-Serial / contextvar disables gather."""
+    import asyncio
+
+    from app.operators.react_engine import force_serial_react_tools, reset_serial_react_tools
+
+    engine.registry.get_available_tools = AsyncMock(
+        return_value=[
+            {"type": "function", "function": {"name": "hubspot_search_contacts"}},
+            {"type": "function", "function": {"name": "assistant_connector_status"}},
+        ]
+    )
+    active = 0
+    max_active = 0
+
+    async def _exec(*, ctx, tool_name, args):  # noqa: ANN001
+        nonlocal active, max_active
+        active += 1
+        max_active = max(max_active, active)
+        await asyncio.sleep(0.04)
+        active -= 1
+        return {"success": True, "tool": tool_name, "result": {}}
+
+    engine.registry.execute_tool = AsyncMock(side_effect=_exec)
+
+    def _requires(name, _reg):
+        return (False, "", "", name)
+
+    engine.router._openai.chat.completions.create = AsyncMock(
+        side_effect=[
+            SimpleNamespace(
+                choices=[
+                    _choice(
+                        "",
+                        tool_calls=[
+                            _tool_call("hubspot_search_contacts", '{"query":"a"}', "c1"),
+                            _tool_call("assistant_connector_status", "{}", "c2"),
+                        ],
+                    )
+                ]
+            ),
+            SimpleNamespace(choices=[_choice("Serial done.")]),
+        ]
+    )
+    token = force_serial_react_tools(True)
+    try:
+        with patch(
+            "app.services.react_write_gate.tool_requires_user_write_approval",
+            side_effect=_requires,
+        ):
+            with patch("app.operators.react_engine.moderate_input", new=AsyncMock()):
+                with patch("app.operators.react_engine.write_audit_event"):
+                    result = await engine.run(
+                        ctx=tool_ctx,
+                        task="Check HubSpot and connector status",
+                        permitted_tools=["hubspot"],
+                        connected_integrations=["hubspot"],
+                    )
+    finally:
+        reset_serial_react_tools(token)
+    assert result.status == ReActStatus.COMPLETED
+    assert len(result.tool_calls) == 2
+    assert not any(c.get("parallel_batch") for c in result.tool_calls)
+    assert max_active == 1
+    assert all(c.get("batch_elapsed_ms") is not None for c in result.tool_calls)
+
+
 def test_resolve_permitted_tools_from_agent_systems():
     allowed = resolve_permitted_tools({"systems": ["hubspot", "slack"]})
     assert allowed == ["hubspot", "slack"]

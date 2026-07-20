@@ -5,12 +5,37 @@ Reason → Act → Observe loop with LLM tool calls routed through ToolRegistry 
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import json
+import os
 import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
+
+# Phase 2 A/B — when set, consecutive reads run serially (baseline latency).
+_FORCE_SERIAL_TOOLS: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "react_force_serial_tools", default=False
+)
+
+
+def force_serial_react_tools(enabled: bool) -> contextvars.Token[bool]:
+    return _FORCE_SERIAL_TOOLS.set(bool(enabled))
+
+
+def reset_serial_react_tools(token: contextvars.Token[bool]) -> None:
+    _FORCE_SERIAL_TOOLS.reset(token)
+
+
+def _serial_tools_forced() -> bool:
+    if _FORCE_SERIAL_TOOLS.get():
+        return True
+    return os.environ.get("GRAVITREE_REACT_SERIAL_TOOLS", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
 
 from app.config import MODEL_TIERS, Settings, get_settings
 from app.core.logging import get_logger
@@ -453,7 +478,8 @@ class ReActEngine:
                     while idx < len(prepared) and not prepared[idx][4]:
                         batch.append(prepared[idx])
                         idx += 1
-                    parallel = len(batch) > 1
+                    # A/B baseline: force serial even when multiple reads are present.
+                    parallel = len(batch) > 1 and not _serial_tools_forced()
 
                 for tc, tool_name, tool_args, call_id, requires_write in batch:
                     if routing_control is not None:
@@ -488,16 +514,19 @@ class ReActEngine:
                         )
                     )
                 else:
-                    _tc, tool_name, tool_args, _cid, _w = batch[0]
-                    observations = [
-                        await self._execute_tool_call(
-                            ctx,
-                            tool_name,
-                            tool_args,
-                            allowed_tool_names=allowed_tool_names,
+                    # Single tool, or Phase-2 A/B serial baseline for multi-read batches.
+                    observations = []
+                    for _tc, tool_name, tool_args, _cid, _w in batch:
+                        observations.append(
+                            await self._execute_tool_call(
+                                ctx,
+                                tool_name,
+                                tool_args,
+                                allowed_tool_names=allowed_tool_names,
+                            )
                         )
-                    ]
                 elapsed_ms = int((time.perf_counter() - started) * 1000)
+                batch_id = f"i{iteration}-b{idx}-{len(batch)}"
 
                 for (tc, tool_name, tool_args, call_id, _w), observation in zip(
                     batch, observations, strict=True
@@ -527,7 +556,9 @@ class ReActEngine:
                             "args": tool_args,
                             "result": observation,
                             "parallel_batch": parallel,
-                            "batch_elapsed_ms": elapsed_ms if parallel else None,
+                            "batch_id": batch_id,
+                            # Wall time for the whole batch (shared across members).
+                            "batch_elapsed_ms": elapsed_ms,
                         }
                     )
                     trace.append(
