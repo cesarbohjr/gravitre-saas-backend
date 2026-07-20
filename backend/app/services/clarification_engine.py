@@ -264,9 +264,14 @@ class ClarificationEngine:
             str(c).lower()
             for c in (context.get("connected_integrations") or context.get("connectedIntegrations") or [])
         }
+        # Advisory plan-first: never short-circuit on connector_unavailable — stage a
+        # plan that lists missing connectors as blockers instead of blocking turn 1.
+        from app.services.conversational_planning_engine import is_advisory_plan_first
+
+        advisory_plan = is_advisory_plan_first(request)
         # STA-307 — multi-connector asks belong to orchestration (correct labels +
         # zero-runnable blocked), not a single-connector unavailable clarify.
-        if len(connectors_needed) < 2:
+        if not advisory_plan and len(connectors_needed) < 2:
             for connector in connectors_needed:
                 if connector.lower() not in connected and clarified.get(f"connector_{connector}") != "connected":
                     return {
@@ -545,8 +550,14 @@ class ClarificationEngine:
         ledger: Any,
         task_state: dict[str, Any],
     ) -> None:
-        """Medium-confidence name→email from recent conversation context."""
-        from app.services.parameter_ledger import EMAIL_RE
+        """Medium-confidence name→email from recent conversation context.
+
+        Root-cause guard (Round-2 corruption): never embed EMAIL_RE after a
+        greedy ``[^@]+`` gap — that backtracks into local-part suffixes
+        (``moduleb@acme.test`` inside ``sarah.chen.moduleb@acme.test``).
+        Always extract complete emails first, then score name→local-part tokens.
+        """
+        from app.services.parameter_ledger import extract_complete_emails
 
         if ledger.get("to"):
             return
@@ -561,31 +572,35 @@ class ClarificationEngine:
             return
         recent = list(task_state.get("recent_user_messages") or [])
         corpus = "\n".join(str(m) for m in recent[-12:])
-        patterned = re.findall(
-            rf"\b{re.escape(first)}\b[^@\n]{{0,40}}({EMAIL_RE.pattern})",
-            corpus,
-            flags=re.I,
+        emails = extract_complete_emails(corpus)
+        if not emails:
+            return
+        first_l = first.lower()
+        name_hits: list[str] = []
+        for email in emails:
+            # Product-safety: proposed value must appear verbatim in context.
+            if email not in corpus:
+                continue
+            local = email.split("@", 1)[0].lower()
+            tokens = [tok for tok in re.split(r"[._+-]+", local) if tok]
+            if first_l in tokens or (len(emails) == 1 and first_l in corpus.lower()):
+                name_hits.append(email)
+        unique = list(dict.fromkeys(name_hits))
+        if len(unique) != 1:
+            return
+        chosen = unique[0]
+        ledger.upsert(
+            "to",
+            chosen,
+            source="likely_entity_match",
+            confidence="medium",
         )
-        if not patterned:
-            emails = EMAIL_RE.findall(corpus)
-            name_hits = [e for e in emails if first.lower() in e.lower().split("@")[0]]
-            patterned = name_hits
-            if not patterned and len(set(emails)) == 1 and first.lower() in corpus.lower():
-                patterned = [emails[0]]
-        unique = list(dict.fromkeys(patterned))
-        if len(unique) == 1:
-            ledger.upsert(
-                "to",
-                unique[0],
-                source="likely_entity_match",
-                confidence="medium",
-            )
-            ledger.upsert(
-                "email",
-                unique[0],
-                source="likely_entity_match",
-                confidence="medium",
-            )
+        ledger.upsert(
+            "email",
+            chosen,
+            source="likely_entity_match",
+            confidence="medium",
+        )
 
     def _infer_catalog_write_plan(self, request: str) -> Any | None:
         """Map NL write intent to a catalog action for generic clarify/stage."""

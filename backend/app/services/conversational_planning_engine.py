@@ -47,10 +47,27 @@ _STRATEGIC_PLAN_PHRASES = (
 )
 
 
+# Plan-first / advisory language — do not treat as execute-now connector write.
+ADVISORY_PLAN_FIRST = re.compile(
+    r"(?:show the plan first|do not execute(?:\s+yet)?|don'?t execute(?:\s+yet)?"
+    r"|\bplan only\b|\badvisory\b|without executing|before executing)",
+    re.I,
+)
+
+
+def is_advisory_plan_first(query: str) -> bool:
+    """True when the user asked for a plan without execution."""
+    return bool(ADVISORY_PLAN_FIRST.search(query or ""))
+
+
 def is_direct_connector_write_intent(query: str) -> bool:
     """True when the query is a concrete connector write, not multi-step strategy."""
     text = (query or "").strip()
     if not text:
+        return False
+    # Plan-first overrides list-create / send phrasing — stage advisory current_plan
+    # even when connectors are disconnected (product: short-circuit is for execute-now).
+    if is_advisory_plan_first(text):
         return False
     if LIST_CREATE_INTENT.search(text):
         return True
@@ -66,6 +83,10 @@ class ConversationalPlanningEngine:
         self._decision = get_decision_intelligence_service(self.settings)
 
     async def should_plan(self, classification: dict[str, Any], query: str) -> bool:
+        # Plan-first / advisory language always stages current_plan (even when the
+        # goal mentions disconnected connectors — blockers belong in the plan).
+        if is_advisory_plan_first(query):
+            return True
         # Shape (b): do not detour governed writes into advisory scaffolding.
         if is_direct_connector_write_intent(query):
             return False

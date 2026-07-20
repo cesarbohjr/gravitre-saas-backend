@@ -148,12 +148,24 @@ def get_workflow_schema(action_key: str) -> ActionWorkflowSchema | None:
     return None
 
 
+def iter_workflow_fields(schema: ActionWorkflowSchema):
+    """Yield required then optional fields (tolerates a bare WorkflowFieldSpec)."""
+    for group in (schema.required_fields, schema.optional_fields):
+        if group is None:
+            continue
+        if isinstance(group, WorkflowFieldSpec):
+            yield group
+            continue
+        for field in group:
+            yield field
+
+
 def list_non_inferrable_arg_keys(action_key: str) -> frozenset[str]:
     schema = get_workflow_schema(action_key)
     if not schema:
         return frozenset()
     keys: set[str] = set()
-    for field in (*schema.required_fields, *schema.optional_fields):
+    for field in iter_workflow_fields(schema):
         if field.sensitive or not field.inferrable:
             keys.update(field.arg_keys)
     return frozenset(keys)

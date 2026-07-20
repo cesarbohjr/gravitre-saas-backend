@@ -35,11 +35,13 @@ def _schema_field_keys(invoke_action: str) -> list[tuple[str, str]]:
     """Return (label, primary_arg_key) for required + optional workflow fields."""
     from app.connectors.action_catalog.action_workflow_schema import get_workflow_schema
 
+    from app.connectors.action_catalog.action_workflow_schema import iter_workflow_fields
+
     schema = get_workflow_schema(invoke_action)
     if not schema:
         return []
     out: list[tuple[str, str]] = []
-    for field in (*schema.required_fields, *schema.optional_fields):
+    for field in iter_workflow_fields(schema):
         if field.arg_keys:
             out.append((field.label, field.arg_keys[0]))
     return out

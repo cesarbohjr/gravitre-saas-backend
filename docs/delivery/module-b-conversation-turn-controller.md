@@ -95,9 +95,38 @@ Artifact: [`module-b-conversation-turn-controller-live.json`](module-b-conversat
 | Vendor `_extract_args` in mapper | **Kept as fallback only** — schemas do not yet cover every NL edge; shrinks over time |
 | `conversational_execution_service` agent/workflow param clarify | **Kept** — non-catalog create-agent/workflow dialogue; ledger is for catalog connector actions |
 
-## Tracked follow-up (do not start until phase 1 live-verified)
+## Architecture leftovers (permanent)
 
-**Cross-conversation entity memory (Module B phase 2 follow-up):** once in-conversation ledger is live-PASS, reuse `entity_resolution_store` / `org_entity_resolution_records` so a Slack channel or email recipient confirmed in conversation A can be recalled in a later conversation B. Explicitly gated — not built in this pass.
+See [`module-b-architecture-reference.md`](module-b-architecture-reference.md) for the
+intentional leftover set (vendor `_extract_args` fallback, conversational
+agent/workflow clarify, `_gmail_*` executors) and the connector-unavailable vs
+advisory plan-first product decision.
+
+## Confidence-propose corruption fix (Round-2)
+
+**Root cause:** greedy name→email regex
+`\b{name}\b[^@\n]{0,40}(EMAIL_RE)` backtracked into dotted local-part suffixes
+(`moduleb@acme.test` inside `sarah.chen.moduleb@acme.test`). Not truncation of a
+correct ledger value; wrong capture entirely.
+
+**Fix:** `extract_complete_emails()` + promote path that scores complete emails
+only; proposed value must appear verbatim in corpus. Regression:
+`backend/tests/services/test_confidence_propose_email_corruption.py`.
+
+## Advisory plan-first (test 4 root cause)
+
+Two bugs stacked: (1) Slack connector_unavailable short-circuit ignored
+“show the plan first”; (2) `should_plan` returned False because
+“strategic multi-step plan” did not match phrase `"make a plan"`. Fixed via
+`is_advisory_plan_first` → skip short-circuit/preflight + force `should_plan`.
+
+## Phase 2 — Cross-conversation entity memory (built, OFF by default)
+
+Reuse `entity_resolution_store` via
+`backend/app/services/cross_conversation_ledger_memory.py`.
+
+**Flag:** `Settings.cross_conversation_ledger_memory_enabled = False` until
+phase-1 live 4/4 + confidence-propose fix are confirmed on a deployed tip.
 
 ### Evidence (live prod cert — required Done bar)
 
