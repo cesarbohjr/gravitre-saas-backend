@@ -193,6 +193,8 @@ export function ChatTranscript({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.18 }}
+              id={`msg-${message.id}`}
+              data-message-id={message.id}
               className={cn(
                 "group/msg flex gap-2.5",
                 isUser ? "flex-row-reverse" : "flex-row",

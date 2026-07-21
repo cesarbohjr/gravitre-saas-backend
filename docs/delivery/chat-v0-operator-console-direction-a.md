@@ -12,14 +12,14 @@
 | Timestamps | Unchanged logic; quieter role labels + tooltip chrome |
 | Sidebar | Bucket label tracking tightened (logic frozen) |
 | Themes | 8 canvas washes via `data-chat-theme` + `localStorage` (`chat-canvas-themes.ts`) |
-| Actions | Copy text, Regenerate (resend prompt), Copy link (`/ai?c=&m=`), Save Question affordance |
+| Actions | Copy text, Regenerate (AI SDK), Copy link (`/ai?c=&m=` scroll), Save Question (durable API) |
 | BusinessOutcome | Chat density: document-inset left rule, calmer fill |
 
-## Explicit gaps (not fabricated)
+## Gaps closed (2026-07-21)
 
-1. **Save Question** — no durable API. Button shows toast explaining backend needed.
-2. **Copy Link** — copies `/ai?c={conversationId}&m={messageId}`. Conversation deep-link works; **message scroll-to (`m=`) is not wired** (presentation URL shape only until a small frontend deep-link handler is added).
-3. **Regenerate** — implemented as truncate-to-prompting-user + `runChat` (same append-only pattern as Edit & resend). Not a server-side regenerate endpoint.
+1. **Save Question** — `saved_questions` table + `POST/GET/DELETE /api/conversations/saved-questions`; UI persists via `conversationsApi.saveQuestion`.
+2. **Copy Link `m=`** — `page.tsx` reads `m`; after hydrate scrolls to `#msg-{id}` + brief highlight (`data-message-id`).
+3. **Regenerate** — uses AI SDK `regenerate({ messageId })` so the prompting user turn is kept (no duplicate user bubble).
 
 ## Frozen (untouched)
 

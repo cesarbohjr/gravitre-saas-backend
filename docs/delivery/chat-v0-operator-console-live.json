@@ -35,9 +35,19 @@
       "evidenceDir": "docs/delivery/chat-v0-operator-console-evidence/"
     }
   },
-  "gapsReported": [
-    "Save Question — no durable API; toast reports gap",
-    "Copy Link m= fragment — URL copied; scroll-to-message not wired",
-    "Regenerate — client truncate + runChat (append-only), not a dedicated regenerate endpoint"
-  ]
+  "gapsReported": [],
+  "gapsClosed": {
+    "saveQuestion": {
+      "migration": "supabase/migrations/20260721120000_saved_questions.sql",
+      "api": "POST/GET/DELETE /api/conversations/saved-questions",
+      "appliedProd": true
+    },
+    "deepLinkMessage": {
+      "url": "/ai?c={conversationId}&m={messageId}",
+      "behavior": "scrollIntoView #msg-{id} + ai-message-deep-link-target highlight after hydrate"
+    },
+    "regenerate": {
+      "behavior": "AI SDK regenerate({ messageId }) — keeps prompting user turn"
+    }
+  }
 }

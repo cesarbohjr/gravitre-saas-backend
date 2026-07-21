@@ -19,12 +19,14 @@ function AiPageContent() {
   const initialMode = parseInitialMode(searchParams.get("mode"))
   const initialPrompt = searchParams.get("prompt")?.trim() ?? ""
   const initialConversationId = searchParams.get("c")?.trim() || null
+  const initialMessageId = searchParams.get("m")?.trim() || null
 
   return (
     <AiWorkspace
       initialMode={initialMode}
       initialPrompt={initialPrompt}
       initialConversationId={initialConversationId}
+      initialMessageId={initialMessageId}
     />
   )
 }

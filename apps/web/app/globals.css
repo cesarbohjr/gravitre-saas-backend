@@ -436,6 +436,17 @@
       color-mix(in oklch, var(--muted-foreground) 2%, var(--background)) 100%
     );
   }
+
+  /* Deep-link scroll target for /ai?c=&m= */
+  [data-message-id] {
+    scroll-margin-block: 6rem;
+  }
+  [data-message-id].ai-message-deep-link-target {
+    outline: 1px solid color-mix(in oklch, var(--primary) 35%, transparent);
+    outline-offset: 3px;
+    border-radius: 0.5rem;
+    transition: outline-color 0.6s ease;
+  }
 }
 
 /* ============================================================

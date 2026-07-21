@@ -523,6 +523,181 @@ async def bulk_delete_conversations(
             raise
 
 
+class SaveQuestionRequest(BaseModel):
+    question_text: str = Field(..., min_length=1, max_length=20000)
+    conversation_id: str | None = None
+    message_id: str | None = None
+
+
+def _normalize_saved_question(row: dict) -> dict:
+    return {
+        "id": str(row.get("id") or ""),
+        "org_id": str(row.get("org_id") or ""),
+        "user_id": str(row.get("user_id") or ""),
+        "conversation_id": str(row.get("conversation_id") or "") or None,
+        "message_id": row.get("message_id"),
+        "question_text": row.get("question_text") or "",
+        "created_at": row.get("created_at") or _now_iso(),
+    }
+
+
+@router.get("/saved-questions")
+async def list_saved_questions(
+    user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    limit: int = Query(50, ge=1, le=200),
+) -> dict:
+    org_id = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        response = (
+            client.table("saved_questions")
+            .select("id, org_id, user_id, conversation_id, message_id, question_text, created_at")
+            .eq("org_id", org_id)
+            .eq("user_id", user["user_id"])
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+    except Exception as exc:  # noqa: BLE001
+        if _is_missing_table_error(exc):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Saved questions storage is not available",
+            ) from exc
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    error = response_error(response)
+    if error:
+        if _is_missing_table_error(error):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Saved questions storage is not available",
+            )
+        raise HTTPException(status_code=500, detail=str(error))
+    return {"saved_questions": [_normalize_saved_question(row) for row in (response.data or [])]}
+
+
+@router.post("/saved-questions", status_code=status.HTTP_201_CREATED)
+async def save_question(
+    body: SaveQuestionRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    org_id = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    question_text = body.question_text.strip()
+    if not question_text:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="question_text is required")
+    conversation_id = (body.conversation_id or "").strip() or None
+    message_id = (body.message_id or "").strip() or None
+    if conversation_id:
+        _get_owned_conversation(
+            client,
+            conversation_id=conversation_id,
+            org_id=org_id,
+            user_id=user["user_id"],
+        )
+    payload = {
+        "org_id": org_id,
+        "user_id": user["user_id"],
+        "conversation_id": conversation_id,
+        "message_id": message_id,
+        "question_text": question_text,
+    }
+    try:
+        if message_id:
+            existing = (
+                client.table("saved_questions")
+                .select("id, org_id, user_id, conversation_id, message_id, question_text, created_at")
+                .eq("org_id", org_id)
+                .eq("user_id", user["user_id"])
+                .eq("message_id", message_id)
+                .limit(1)
+                .execute()
+            )
+            if response_error(existing):
+                err = response_error(existing)
+                if _is_missing_table_error(err):
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="Saved questions storage is not available",
+                    )
+                raise HTTPException(status_code=500, detail=str(err))
+            if existing.data:
+                updated = (
+                    client.table("saved_questions")
+                    .update(
+                        {
+                            "question_text": question_text,
+                            "conversation_id": conversation_id,
+                        }
+                    )
+                    .eq("id", existing.data[0]["id"])
+                    .eq("org_id", org_id)
+                    .eq("user_id", user["user_id"])
+                    .execute()
+                )
+                if response_error(updated):
+                    raise HTTPException(status_code=500, detail=str(response_error(updated)))
+                row = (updated.data or existing.data)[0]
+                return _normalize_saved_question(row)
+
+        response = client.table("saved_questions").insert(payload).execute()
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        if _is_missing_table_error(exc):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Saved questions storage is not available",
+            ) from exc
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    error = response_error(response)
+    if error:
+        if _is_missing_table_error(error):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Saved questions storage is not available",
+            )
+        raise HTTPException(status_code=500, detail=str(error))
+    created = (response.data or [None])[0]
+    if not created:
+        raise HTTPException(status_code=500, detail="Saved question insert returned no row")
+    return _normalize_saved_question(created)
+
+
+@router.delete("/saved-questions/{saved_question_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_saved_question(
+    saved_question_id: str,
+    user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> None:
+    org_id = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        response = (
+            client.table("saved_questions")
+            .delete()
+            .eq("id", saved_question_id)
+            .eq("org_id", org_id)
+            .eq("user_id", user["user_id"])
+            .execute()
+        )
+    except Exception as exc:  # noqa: BLE001
+        if _is_missing_table_error(exc):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Saved questions storage is not available",
+            ) from exc
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    error = response_error(response)
+    if error:
+        raise HTTPException(status_code=500, detail=str(error))
+
+
 @router.get("/{conversation_id}")
 async def get_conversation(
     conversation_id: str,

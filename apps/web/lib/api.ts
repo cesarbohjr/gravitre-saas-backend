@@ -1390,6 +1390,29 @@ export const conversationsApi = {
   getMessages: (id: string) => fetcher<{ messages: ConversationMessage[] }>(apiUrl(`/api/conversations/${id}/messages`)),
   appendMessages: (id: string, messages: Array<{ role: "user" | "assistant"; content: string; tool_calls?: unknown[] }>) =>
     postJson<{ messages: ConversationMessage[] }>(apiUrl(`/api/conversations/${id}/messages`), { messages }),
+  listSavedQuestions: (limit = 50) =>
+    fetcher<{
+      saved_questions: Array<{
+        id: string
+        org_id: string
+        user_id: string
+        conversation_id: string | null
+        message_id: string | null
+        question_text: string
+        created_at: string
+      }>
+    }>(apiUrl(`/api/conversations/saved-questions?limit=${limit}`)),
+  saveQuestion: (data: { question_text: string; conversation_id?: string | null; message_id?: string | null }) =>
+    postJson<{
+      id: string
+      org_id: string
+      user_id: string
+      conversation_id: string | null
+      message_id: string | null
+      question_text: string
+      created_at: string
+    }>(apiUrl("/api/conversations/saved-questions"), data),
+  deleteSavedQuestion: (id: string) => deleteRequest(apiUrl(`/api/conversations/saved-questions/${id}`)),
 }
 
 export const assistantApi = {

@@ -168,6 +168,8 @@ type AiWorkspaceProps = {
   initialMode?: ModeId
   initialPrompt?: string
   initialConversationId?: string | null
+  /** Deep-link message id from /ai?c=&m= — scroll + brief highlight after hydrate. */
+  initialMessageId?: string | null
 }
 
 function normalizeChatText(message: UIMessage): string {
@@ -178,6 +180,7 @@ export function AiWorkspace({
   initialMode = "auto",
   initialPrompt = "",
   initialConversationId = null,
+  initialMessageId = null,
 }: AiWorkspaceProps) {
   const { user } = useAuth()
   const { data: authMe } = useSWR(user ? "auth-me-chat-approver" : null, () => authApi.me())
@@ -335,7 +338,7 @@ export function AiWorkspace({
     [chatMode, selectedDepartment],
   )
 
-  const { messages, sendMessage, status, setMessages, stop } = useChat({
+  const { messages, sendMessage, status, setMessages, stop, regenerate } = useChat({
     transport,
     onError: (error) => {
       submitLockRef.current = false
@@ -1050,37 +1053,43 @@ export function AiWorkspace({
   const handleRegenerateAssistant = useCallback(
     (assistantMessageId: string) => {
       const assistantIdx = messages.findIndex((message) => message.id === assistantMessageId)
-      if (assistantIdx < 0) return
-      let userIdx = -1
-      for (let i = assistantIdx - 1; i >= 0; i -= 1) {
-        if (messages[i]?.role === "user") {
-          userIdx = i
-          break
-        }
-      }
-      if (userIdx < 0) {
+      if (assistantIdx < 0) {
         toast.error("Nothing to regenerate")
         return
       }
-      const prompt = uiMessageText(messages[userIdx]).trim()
-      if (!prompt) {
+      const hasPriorUser = messages.slice(0, assistantIdx).some((message) => message.role === "user")
+      if (!hasPriorUser) {
         toast.error("Nothing to regenerate")
         return
       }
-      // Drop the prompting user turn and later messages locally; resend as a new turn.
-      setMessages(messages.slice(0, userIdx))
-      void runChat(prompt)
+      submitLockRef.current = true
+      setSessionBusy(true)
+      chatFirstTokenMarkedRef.current = false
+      startChatPerf("total_response")
+      startChatPerf("first_token")
+      // AI SDK regenerate keeps the prompting user turn and replaces the assistant reply.
+      void regenerate({ messageId: assistantMessageId })
     },
-    [messages, runChat, setMessages],
+    [messages, regenerate],
   )
 
-  const handleSaveQuestion = useCallback((_messageId: string, _text: string) => {
-    // No durable Save Question API on /ai yet — do not fake local persistence.
-    toast.message("Save Question needs a backend endpoint", {
-      description:
-        "Presentation affordance is ready. Persisting saved questions requires an explicit API — not fabricated in the client.",
-    })
-  }, [])
+  const handleSaveQuestion = useCallback(
+    async (messageId: string, text: string) => {
+      const questionText = text.trim()
+      if (!questionText) return
+      try {
+        await conversationsApi.saveQuestion({
+          question_text: questionText,
+          conversation_id: activeConversationId,
+          message_id: messageId,
+        })
+        toast.success("Question saved")
+      } catch (error) {
+        toast.error(error instanceof ApiError ? error.message : "Could not save question")
+      }
+    },
+    [activeConversationId],
+  )
 
   const handleResearchScopeSelect = useCallback(
     async (scope: string) => {
@@ -1449,6 +1458,24 @@ export function AiWorkspace({
     initialConversationHandledRef.current = true
     void handleSelectConversation(initialConversationId)
   }, [initialConversationId, user, orgReady, conversations, handleSelectConversation])
+
+  const deepLinkMessageHandledRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!initialMessageId || !messagesHydrated || conversationLoading) return
+    if (deepLinkMessageHandledRef.current === initialMessageId) return
+    if (!messages.some((message) => message.id === initialMessageId)) return
+    deepLinkMessageHandledRef.current = initialMessageId
+    const frame = window.requestAnimationFrame(() => {
+      const el = document.getElementById(`msg-${initialMessageId}`)
+      if (!el) return
+      el.scrollIntoView({ behavior: "smooth", block: "center" })
+      el.classList.add("ai-message-deep-link-target")
+      window.setTimeout(() => {
+        el.classList.remove("ai-message-deep-link-target")
+      }, 2200)
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [initialMessageId, messages, messagesHydrated, conversationLoading])
 
   useEffect(() => {
     if (!orgReady || !user || !activeConversationId || sessionBusy || isChatBusy || conversationLoading) {
@@ -1823,7 +1850,7 @@ export function AiWorkspace({
                 onCopyText={(text) => void handleCopyMessageText(text)}
                 onCopyLink={(messageId) => void handleCopyMessageLink(messageId)}
                 onRegenerate={handleRegenerateAssistant}
-                onSaveQuestion={handleSaveQuestion}
+                onSaveQuestion={(messageId, text) => void handleSaveQuestion(messageId, text)}
               />
               </>
             ) : null}
