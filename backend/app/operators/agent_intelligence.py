@@ -1989,6 +1989,21 @@ class AgentIntelligence:
             org_id=org_id,
             understanding=understanding,
         )
+        # Run-history must reach tools / honesty gate — not under-specified clarify.
+        from app.services.factual_claim_honesty import is_run_history_question
+
+        if clarification.get("should_clarify") and is_run_history_question(task_text):
+            logger.info(
+                "skip_clarify_for_run_history org_id=%s trigger=%s",
+                org_id,
+                clarification.get("trigger_type"),
+            )
+            clarification = {
+                "should_clarify": False,
+                "trigger_type": None,
+                "question": None,
+                "reason": "Run-history question; escalate tools / honesty instead of clarify.",
+            }
         if clarification.get("should_clarify"):
             # STA-304 / Wave 6–7 claim 2a: disconnected-connector clarify must still
             # emit a mid-stream ToolChip with a real errorCode (not text-only exit).

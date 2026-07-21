@@ -400,6 +400,15 @@ class ClarificationEngine:
             and classification.get("requires_action")
             and len(request.split()) < 6
         ):
+            # Run-history / recent-runs asks need workflow_runs (or honesty refusal),
+            # not an under-specified-action clarify trap.
+            try:
+                from app.services.factual_claim_honesty import is_run_history_question
+
+                if is_run_history_question(request):
+                    return None
+            except Exception:  # noqa: BLE001
+                pass
             return {
                 "trigger_type": "under_specified_action",
                 "reason": "Under-specified action request.",

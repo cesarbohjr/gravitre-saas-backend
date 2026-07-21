@@ -77,6 +77,24 @@ def test_honesty_gate_refuses_fabricated_zero_runs_from_agent_status():
     assert "not retrieved" in explanation.lower() or "workflow run" in explanation.lower()
 
 
+def test_clarification_skips_under_specified_for_run_history():
+    from app.services.clarification_engine import ClarificationEngine
+
+    engine = ClarificationEngine()
+    trigger = engine._rule_based_trigger(
+        {
+            "request": "What workflows have been ran?",
+            "requires_action": True,
+            "intent": "workflow_execution",
+        },
+        {"connected_integrations": []},
+        {},
+        {},
+        confidence=0.4,
+    )
+    assert trigger is None
+
+
 def test_honesty_gate_allows_answer_when_workflow_runs_tool_returned_data():
     answer = "You have 3 recent completed runs in the last 7 days."
     tool_results = [
