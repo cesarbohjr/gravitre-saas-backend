@@ -26,11 +26,19 @@ export const AI_MODES: ModeMeta[] = [
 ]
 
 export const AI_EXAMPLE_PROMPTS: Array<{ text: string; hint: AiEngine }> = [
+  {
+    text: "Search Google Drive for the quarterly report and summarize the first page",
+    hint: "chat",
+  },
   { text: "Search HubSpot for high-intent leads and draft a follow-up in Slack for approval", hint: "chat" },
   { text: "Find failed workflow runs from the last 24 hours", hint: "chat" },
   { text: "Summarize our pipeline health and flag stale deals", hint: "chat" },
   { text: "Create a task in Asana for Sarah to review the landing page by Friday", hint: "chat" },
 ]
+
+/** Prefill for composer “File lookup” — names Drive explicitly so connector routing can map search_files. */
+export const CONNECTED_FILE_LOOKUP_TEMPLATE =
+  "Search Google Drive for "
 
 export function getModeMeta(id: ModeId): ModeMeta {
   return AI_MODES.find((mode) => mode.id === id) ?? AI_MODES[0]

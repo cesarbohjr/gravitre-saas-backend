@@ -20,6 +20,7 @@ import {
   PanelRight,
   Palette,
   Square,
+  FolderOpen,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -116,7 +117,7 @@ import { AiExecuteResults } from "./ai-execute-results"
 import { AiFindResults } from "./ai-find-results"
 import { AiLanding } from "./ai-landing"
 import { AiLayoutPanelPicker } from "./ai-layout-panel-picker"
-import { AI_EXAMPLE_PROMPTS, AI_MODES, getModeMeta, type ModeId } from "./ai-mode-config"
+import { AI_EXAMPLE_PROMPTS, AI_MODES, CONNECTED_FILE_LOOKUP_TEMPLATE, getModeMeta, type ModeId } from "./ai-mode-config"
 import {
   type ChatExecutionResult,
   type ChatPendingTask,
@@ -1996,6 +1997,21 @@ export function AiWorkspace({
                       Stop
                     </Button>
                   ) : null}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs"
+                    disabled={routing || isChatBusy}
+                    title="Search connected cloud files (Drive, SharePoint, Slack, Notion, Confluence)"
+                    onClick={() => {
+                      setInput(CONNECTED_FILE_LOOKUP_TEMPLATE)
+                      inputRef.current?.focus()
+                    }}
+                  >
+                    <FolderOpen className="h-3.5 w-3.5" />
+                    File lookup
+                  </Button>
                   <VoiceInputButton
                     value={input}
                     onChange={setInput}
