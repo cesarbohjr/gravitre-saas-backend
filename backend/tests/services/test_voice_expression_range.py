@@ -31,18 +31,33 @@ def test_unbound_state_always_returns_first_variant():
 
 
 def test_bound_state_avoids_immediate_repeat():
+    # Three simulated turns (re-bind each time from prior snapshot).
     token = bind_voice_expression_state({})
     try:
         first = format_operator_message("connector_connect_to_run", integration="slack")
-        second = format_operator_message("connector_connect_to_run", integration="slack")
-        third = format_operator_message("connector_connect_to_run", integration="slack")
-        assert first != second
-        assert second != third
-        assert "Slack" in first and "Slack" in second and "/connectors" in third
+        # Same turn: second call must not rotate again.
+        first_again = format_operator_message("connector_connect_to_run", integration="slack")
+        assert first == first_again
         snap = voice_expression_state_snapshot()
-        assert snap["connector_connect_to_run"] == 2
     finally:
         reset_voice_expression_state(token)
+
+    token = bind_voice_expression_state({"voice_expression_last": snap})
+    try:
+        second = format_operator_message("connector_connect_to_run", integration="slack")
+        snap = voice_expression_state_snapshot()
+    finally:
+        reset_voice_expression_state(token)
+
+    token = bind_voice_expression_state({"voice_expression_last": snap})
+    try:
+        third = format_operator_message("connector_connect_to_run", integration="slack")
+    finally:
+        reset_voice_expression_state(token)
+
+    assert first != second
+    assert second != third
+    assert "Slack" in first and "Slack" in second and "/connectors" in third
 
 
 def test_same_history_reproduces_same_selection():

@@ -225,7 +225,11 @@ VOICE_EXPRESSION_STATE_KEY = "voice_expression_last"
 _voice_last_indices: contextvars.ContextVar[dict[str, int] | None] = contextvars.ContextVar(
     "gravitree_voice_expression_last", default=None
 )
-# Optional (conversation_id, org_id, client, settings) for fire-and-forget persist.
+# Category → index chosen this turn (same category must not rotate mid-turn).
+_voice_chosen_this_turn: contextvars.ContextVar[dict[str, int] | None] = contextvars.ContextVar(
+    "gravitree_voice_expression_chosen", default=None
+)
+# Optional (conversation_id, org_id, client, settings) for persist after rotation.
 _voice_persist_target: contextvars.ContextVar[
     tuple[str, str, Any, Any] | None
 ] = contextvars.ContextVar("gravitree_voice_expression_persist", default=None)
@@ -280,6 +284,7 @@ def bind_voice_expression_state(
                 except (TypeError, ValueError):
                     continue
     token = _voice_last_indices.set(raw)
+    _voice_chosen_this_turn.set({})
     if conversation_id and org_id:
         _voice_persist_target.set((str(conversation_id), str(org_id), client, settings))
     else:
@@ -290,40 +295,65 @@ def bind_voice_expression_state(
 def reset_voice_expression_state(token: contextvars.Token | None) -> None:
     if token is not None:
         _voice_last_indices.reset(token)
+    _voice_chosen_this_turn.set(None)
     _voice_persist_target.set(None)
 
 
-def _schedule_voice_persist() -> None:
+def _persist_voice_expression_sync() -> None:
+    """Write voice_expression_last immediately so the next HTTP turn can rotate."""
     target = _voice_persist_target.get()
     state = _voice_last_indices.get()
     if not target or not isinstance(state, dict) or not state:
         return
     conversation_id, org_id, client, settings = target
     snap = dict(state)
-
-    async def _persist() -> None:
-        try:
-            from app.config import get_settings
-            from app.services.conversation_state_service import get_conversation_state_service
-
-            await get_conversation_state_service(settings or get_settings()).update_task_state(
-                conversation_id,
-                org_id,
-                {VOICE_EXPRESSION_STATE_KEY: snap},
-                client=client,
-            )
-        except Exception:  # noqa: BLE001
-            logger.debug(
-                "voice_expression_last persist failed conversation_id=%s",
-                conversation_id,
-                exc_info=True,
-            )
-
     try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        return
-    loop.create_task(_persist())
+        from app.config import get_settings
+        from app.workflows.repository import get_supabase_client
+
+        sb = client or get_supabase_client(settings or get_settings())
+        rows = (
+            sb.table("conversations")
+            .select("task_state")
+            .eq("id", conversation_id)
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+        )
+        current = {}
+        if rows.data and isinstance(rows.data[0].get("task_state"), dict):
+            current = dict(rows.data[0]["task_state"])
+        current[VOICE_EXPRESSION_STATE_KEY] = snap
+        sb.table("conversations").update({"task_state": current}).eq(
+            "id", conversation_id
+        ).eq("org_id", org_id).execute()
+    except Exception:  # noqa: BLE001
+        logger.debug(
+            "voice_expression_last sync persist failed conversation_id=%s",
+            conversation_id,
+            exc_info=True,
+        )
+        # Fall back to async merge path.
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+
+        async def _persist() -> None:
+            try:
+                from app.config import get_settings
+                from app.services.conversation_state_service import get_conversation_state_service
+
+                await get_conversation_state_service(settings or get_settings()).update_task_state(
+                    conversation_id,
+                    org_id,
+                    {VOICE_EXPRESSION_STATE_KEY: snap},
+                    client=client,
+                )
+            except Exception:  # noqa: BLE001
+                logger.debug("voice_expression_last async persist failed", exc_info=True)
+
+        loop.create_task(_persist())
 
 
 def voice_expression_state_snapshot() -> dict[str, int]:
@@ -347,14 +377,20 @@ def pick_expression(
     if not bank:
         return None
     state = _voice_last_indices.get()
+    chosen = _voice_chosen_this_turn.get()
     if force_index is not None:
         idx = force_index % len(bank)
     elif state is None:
         idx = 0
+    elif chosen is not None and category in chosen:
+        # Same category asked twice in one turn — keep the same sentence.
+        idx = chosen[category] % len(bank)
     else:
         idx = next_variant_index(len(bank), state.get(category))
         state[category] = idx
-        _schedule_voice_persist()
+        if chosen is not None:
+            chosen[category] = idx
+        _persist_voice_expression_sync()
     template = bank[idx]
     if "{" not in template:
         return template

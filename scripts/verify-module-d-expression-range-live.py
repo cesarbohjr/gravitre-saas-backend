@@ -39,7 +39,7 @@ from isolated_conversation_org import (  # noqa: E402
 BASE = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
 OUT = ROOT / "docs" / "delivery" / "module-d-expression-range-live.json"
 CHAT_TIMEOUT = 300.0
-EXPECT_SHA = os.environ.get("EXPECT_SHA", "0d36b742")
+EXPECT_SHA = os.environ.get("EXPECT_SHA", "dcc9a9d7")
 
 
 def utcnow() -> str:
@@ -221,7 +221,8 @@ async def main() -> int:
                 message=prompt if i == 0 else f"{prompt} (retry {i+1})",
             )
             replies.append(str(turn.get("assistant") or ""))
-            await asyncio.sleep(0.5)
+            # Allow fire-and-forget voice_expression_last persist to land.
+            await asyncio.sleep(1.5)
 
     connectish = [
         r
