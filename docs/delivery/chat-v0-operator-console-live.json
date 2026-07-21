@@ -1,0 +1,43 @@
+{
+  "verdict": "PARTIAL",
+  "direction": "A_operator_console",
+  "checkedAt": "2026-07-21T07:53:00Z",
+  "shipCommit": "5aa4ea0797e2daf0cc3464b09da4288f0455c4e2",
+  "vercelDeploymentId": "dpl_2o2NK1rKRfKVWSPA6AeMH98qgDbz",
+  "vercelProductionSha": "5aa4ea0797e2daf0cc3464b09da4288f0455c4e2",
+  "vercelReadyAt": "2026-07-21T07:52:13Z",
+  "vercelAliases": ["gravitre.app"],
+  "apiHealthGitSha": "9f7771ac4cdd0a11a2edf8f575ecde32c38d6e47",
+  "apiHealthNote": "Backend tip unchanged — this ship is frontend presentation only; Railway redeploy not required for visual surface.",
+  "implementation": "docs/delivery/chat-v0-operator-console-direction-a.md",
+  "checks": {
+    "unitThemes": {
+      "verdict": "PASS",
+      "evidence": "pnpm vitest __tests__/lib/chat-canvas-themes.test.ts + chat-message-time.test.ts — 7 passed locally"
+    },
+    "codeShip": {
+      "verdict": "PASS",
+      "evidence": "Vercel production READY dpl_2o2NK1rKRfKVWSPA6AeMH98qgDbz @ sha 5aa4ea07 aliased to gravitre.app (ready ~2026-07-21T07:52:13Z)"
+    },
+    "functionalRegressionLive": {
+      "verdict": "NOT RUN",
+      "reason": "Agent browser not logged into gravitre.app; awaiting user session for live re-verify of timestamps/buckets/pin/archive/search/edit-resend on restyled components"
+    },
+    "liveScreenshots": {
+      "verdict": "NOT RUN",
+      "required": [
+        "light mode finished redesign",
+        "dark mode finished redesign",
+        "two different background themes",
+        "BusinessOutcome card in transcript",
+        "history sidebar with real bucket labels"
+      ],
+      "evidenceDir": "docs/delivery/chat-v0-operator-console-evidence/"
+    }
+  },
+  "gapsReported": [
+    "Save Question — no durable API; toast reports gap",
+    "Copy Link m= fragment — URL copied; scroll-to-message not wired",
+    "Regenerate — client truncate + runChat (append-only), not a dedicated regenerate endpoint"
+  ]
+}
