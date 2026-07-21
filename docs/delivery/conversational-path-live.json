@@ -1,20 +1,22 @@
 {
   "feature": "conversational_turn_path",
   "status": "PASS",
-  "checkedAt": "2026-07-21T18:11:38Z",
-  "git_sha": "8aca00b45fb38fb84d1920f7e5ef5dc4ae949c95",
+  "checkedAt": "2026-07-21T18:51:26Z",
+  "git_sha": "5fd67361837082a687f31a8fd229feaeb9be9480",
   "battery": {
     "verdict": "PASS",
     "passed": 20,
     "total": 20,
-    "artifact": "docs/delivery/conversational-path-battery-live.json"
+    "artifact": "docs/delivery/conversational-path-battery-live.json",
+    "script": "scripts/verify-conversational-path-live.py"
   },
   "phase0": "docs/delivery/conversational-path-phase0.md",
-  "gate": "backend/app/services/conversational_turn_gate.py",
-  "reply": "backend/app/services/conversational_reply_service.py",
-  "wire": "backend/app/operators/agent_intelligence.py",
-  "unitTests": "backend/tests/services/test_conversational_turn_gate.py",
-  "liveBattery": "scripts/verify-conversational-path-live.py",
+  "design": {
+    "gate": "backend/app/services/conversational_turn_gate.py",
+    "reply": "backend/app/services/conversational_reply_service.py",
+    "wire": "backend/app/operators/agent_intelligence.py",
+    "pendingSocialAside": "compose_pending_social_aside on unrelated/ambiguous hold paths"
+  },
   "standingRule": "Pending family never bypasses pending-reply classifier; task-shaped and data-casual stay on full pipeline",
-  "followUp": "Warm+sober pending social aside + deterministic mixed acks shipped after first 20/20; re-battery on next tip"
+  "evidence": "PASS — conversational-path battery 20/20 @ tip 5fd67361837082a687f31a8fd229feaeb9be9480 (api.gravitre.app /health 2026-07-21T18:51:26Z)"
 }
