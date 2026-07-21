@@ -33,6 +33,88 @@ EXPRESSION_EXCLUDED: frozenset[str] = frozenset(
 
 # 5–8 variants each. Placeholders use the same format keys as today.
 EXPRESSION_BANKS: dict[str, tuple[str, ...]] = {
+    # --- Conversational path (priority: known identical-fallback gap) ---
+    "conversational.greeting": (
+        "Hey — here when you need a connector run, a plan, or a quick check.",
+        "Good to hear from you. What should we look at?",
+        "Hi. Ready when you are — connector work, a plan, or a quick check.",
+        "Hello. Tell me what you want to run or review.",
+        "Hey there. I'm around for Connected tools, plans, or a status check.",
+        "Morning. What are we working on?",
+        "Hi — what do you need from Gravitree right now?",
+    ),
+    "conversational.small_talk": (
+        "Doing well — here when you need a connector run, a plan, or a quick check.",
+        "Good, thanks. What's on your mind?",
+        "Can't complain. What are we working on?",
+        "All good on my end. What do you need?",
+        "Steady here. Connector run, plan, or a quick check — your call.",
+        "Doing fine. What should we tackle?",
+        "All set on this side. How can I help?",
+    ),
+    "conversational.thanks": (
+        "You're welcome. Ready when you are.",
+        "Glad to help. What next?",
+        "Anytime. Tell me when you want to run something.",
+        "You bet. I'm here if you need another pass.",
+        "Happy to. Ready for the next step whenever you are.",
+        "Of course. What should we do next?",
+        "No problem. Ping me when you want to continue.",
+    ),
+    "conversational.banter": (
+        "Ha — noted. What should we tackle next?",
+        "Fair. What's the next move?",
+        "Got it. Where do you want to go from here?",
+        "Noted, dryly. What are we working on?",
+        "Alright then. Connector, plan, or something else?",
+        "Heard. Tell me the next ask.",
+        "Okay — I'm with you. What next?",
+    ),
+    "conversational.venting": (
+        "That friction is real. When you want to dig in, we can check the connector "
+        "at /connectors (Connected / Healthy / Authenticated) and retry the action.",
+        "Yeah, that kind of friction wears you down. We can inspect Connected / Healthy / "
+        "Authenticated at /connectors whenever you want to dig in.",
+        "Understood — that's annoying. Next useful step is usually a connector health check "
+        "at /connectors, then a clean retry.",
+        "I hear you. No need to force it right now; when you're ready we can verify the "
+        "connector at /connectors and retry.",
+        "That sounds rough. Grounded next step: check Connected / Healthy / Authenticated "
+        "at /connectors, then try the action again.",
+        "Friction like that is real. I'm here when you want a concrete connector check "
+        "at /connectors — no ticket theater.",
+        "Got it. Empathy first: that setup pain is real. Dig in at /connectors when you want.",
+    ),
+    "conversational.meta_capability": (
+        "I am Gravitree — a calm operator for your Connected tools. {capability}",
+        "I'm Gravitree: I run Connected connectors with write-authority and approval when needed. {capability}",
+        "Gravitree here — operator for your Connected stack, not a generic chatbot. {capability}",
+        "I'm the Gravitree operator for this org's Connected tools. {capability}",
+        "Think of me as a calm operator over Connected connectors and packs. {capability}",
+        "I help you run real Connected tools with explicit approval on writes. {capability}",
+    ),
+    "conversational.mixed_ack_banter": (
+        "Ha — noted.",
+        "Fair enough.",
+        "Got it.",
+        "Noted.",
+        "Alright.",
+        "Okay — on the task.",
+    ),
+    "conversational.mixed_ack_thanks": (
+        "You're welcome.",
+        "Glad to.",
+        "Anytime.",
+        "You bet.",
+        "Happy to.",
+    ),
+    "conversational.mixed_ack_greeting": (
+        "Hey — on it.",
+        "Hi — on it.",
+        "On it.",
+        "Got you — working it.",
+        "Sure — handling the ask.",
+    ),
     "connector_connect_to_run": (
         "Connect {integration} at /connectors to run this action.",
         "This needs {integration}, and it is not Connected yet. Set it up at /connectors, then try again.",

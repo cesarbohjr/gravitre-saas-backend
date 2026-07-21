@@ -181,7 +181,10 @@ CASES: list[dict[str, Any]] = [
         "bucket": "mixed",
         "message": "haha nice, also can you check on that HubSpot list",
         "pass_if": lambda r: bool(r.get("assistant"))
-        and re.search(r"(?i)\b(ha|noted|welcome|hey)\b", r.get("assistant") or "")
+        and re.search(
+            r"(?i)\b(ha|noted|welcome|hey|fair|got it|alright|okay|anytime|glad|on it|sure)\b",
+            r.get("assistant") or "",
+        )
         and (
             re.search(r"hubspot|list|connect|/connectors|Connected", r.get("assistant") or "", re.I)
             is not None
@@ -192,7 +195,10 @@ CASES: list[dict[str, Any]] = [
         "bucket": "mixed",
         "message": "lol cool — also post a Slack message to #general saying hi",
         "pass_if": lambda r: bool(r.get("assistant"))
-        and re.search(r"(?i)\b(ha|noted|welcome|hey)\b", r.get("assistant") or "")
+        and re.search(
+            r"(?i)\b(ha|noted|welcome|hey|fair|got it|alright|okay|on it|sure)\b",
+            r.get("assistant") or "",
+        )
         and re.search(r"slack|connect|#general|/connectors", r.get("assistant") or "", re.I),
     },
     {
@@ -200,7 +206,7 @@ CASES: list[dict[str, Any]] = [
         "bucket": "mixed",
         "message": "thanks, also search HubSpot for Acme contacts",
         "pass_if": lambda r: bool(r.get("assistant"))
-        and re.search(r"(?i)welcome|glad|ready", r.get("assistant") or "")
+        and re.search(r"(?i)welcome|glad|anytime|you bet|happy to", r.get("assistant") or "")
         and re.search(r"hubspot|acme|connect|contact", r.get("assistant") or "", re.I),
     },
     {
@@ -208,7 +214,10 @@ CASES: list[dict[str, Any]] = [
         "bucket": "mixed",
         "message": "you're funny — also draft a Gmail to demo@example.com",
         "pass_if": lambda r: bool(r.get("assistant"))
-        and re.search(r"(?i)\b(ha|noted|welcome|hey)\b", r.get("assistant") or "")
+        and re.search(
+            r"(?i)\b(ha|noted|welcome|hey|fair|got it|alright|okay|on it)\b",
+            r.get("assistant") or "",
+        )
         and re.search(r"gmail|demo@example|connect|email|draft", r.get("assistant") or "", re.I),
     },
     {
@@ -216,7 +225,10 @@ CASES: list[dict[str, Any]] = [
         "bucket": "mixed",
         "message": "hey — also create an Apollo contact list named ConvPath Battery",
         "pass_if": lambda r: bool(r.get("assistant"))
-        and re.search(r"(?i)\b(ha|noted|welcome|hey|on it)\b", r.get("assistant") or "")
+        and re.search(
+            r"(?i)\b(ha|noted|welcome|hey|on it|got you|sure|handling)\b",
+            r.get("assistant") or "",
+        )
         and re.search(r"apollo|list|connect|ConvPath|approval|yes", r.get("assistant") or "", re.I),
     },
     # Meta (3)
@@ -306,7 +318,10 @@ CASES: list[dict[str, Any]] = [
         "seed": "awaiting_confirm",
         "message": "haha you're funny",
         "pass_if": lambda r: bool(r.get("assistant"))
-        and re.search(r"(?i)\b(ha|noted|welcome|glad|got it)\b", r.get("assistant") or "")
+        and re.search(
+            r"(?i)\b(ha|noted|welcome|glad|got it|fair|alright|okay|heard)\b",
+            r.get("assistant") or "",
+        )
         and re.search(r"yes|cancel|approval|pending|Decision Queue|waiting", r.get("assistant") or "", re.I)
         and not re.search(r"\bI (sent|executed|completed)\b", r.get("assistant") or "", re.I),
     },
@@ -316,7 +331,10 @@ CASES: list[dict[str, Any]] = [
         "seed": "awaiting_confirm",
         "message": "lol cool thanks",
         "pass_if": lambda r: bool(r.get("assistant"))
-        and re.search(r"(?i)\b(ha|noted|welcome|glad|got it)\b", r.get("assistant") or "")
+        and re.search(
+            r"(?i)\b(ha|noted|welcome|glad|got it|fair|alright|okay|anytime)\b",
+            r.get("assistant") or "",
+        )
         and re.search(r"yes|cancel|approval|pending|Decision Queue|waiting|Gmail", r.get("assistant") or "", re.I),
     },
 ]

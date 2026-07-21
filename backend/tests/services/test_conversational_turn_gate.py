@@ -93,6 +93,10 @@ def test_sober_pending_note_for_approval():
 @pytest.mark.asyncio
 async def test_compose_pending_social_aside_warm_then_sober():
     from app.services.conversational_reply_service import compose_pending_social_aside
+    from app.services.voice_expression_range import (
+        bind_voice_expression_state,
+        reset_voice_expression_state,
+    )
 
     state = {
         "pending_task": {
@@ -100,14 +104,18 @@ async def test_compose_pending_social_aside_warm_then_sober():
             "params": {"label": "Send Gmail message"},
         }
     }
-    text = await compose_pending_social_aside(
-        "haha you're funny",
-        task_state=state,
-        sober_fallback="I still have **Send Gmail message** waiting for approval.",
-    )
+    token = bind_voice_expression_state({})
+    try:
+        text = await compose_pending_social_aside(
+            "haha you're funny",
+            task_state=state,
+            sober_fallback="I still have **Send Gmail message** waiting for approval.",
+        )
+    finally:
+        reset_voice_expression_state(token)
     assert text is not None
-    assert re.search(r"(?i)\b(ha|noted|welcome)\b", text)
-    assert "Send Gmail" in text or "waiting" in text.lower()
+    assert re.search(r"(?i)\b(ha|noted|fair|got it|alright|okay|heard)\b", text)
+    assert "Send Gmail" in text or "waiting" in text.lower() or "Decision Queue" in text
     # Task-shaped new ask must not get social-aside composition.
     assert (
         await compose_pending_social_aside(
@@ -117,3 +125,21 @@ async def test_compose_pending_social_aside_warm_then_sober():
         )
         is None
     )
+
+
+def test_phrase_banks_cover_priority_categories():
+    from app.services.conversational_reply_service import phrase_for_conversational_category
+    from app.services.voice_expression_range import (
+        EXPRESSION_BANKS,
+        bind_voice_expression_state,
+        reset_voice_expression_state,
+    )
+
+    for cat in ("greeting", "small_talk", "thanks", "banter", "venting"):
+        assert f"conversational.{cat}" in EXPRESSION_BANKS
+        token = bind_voice_expression_state({})
+        try:
+            text = phrase_for_conversational_category(cat)
+        finally:
+            reset_voice_expression_state(token)
+        assert text and len(text.split()) >= 2

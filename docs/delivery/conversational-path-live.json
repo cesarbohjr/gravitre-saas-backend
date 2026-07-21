@@ -18,5 +18,12 @@
     "pendingSocialAside": "compose_pending_social_aside on unrelated/ambiguous hold paths"
   },
   "standingRule": "Pending family never bypasses pending-reply classifier; task-shaped and data-casual stay on full pipeline",
-  "evidence": "PASS — conversational-path battery 20/20 @ tip 5fd67361837082a687f31a8fd229feaeb9be9480 (api.gravitre.app /health 2026-07-21T18:51:26Z)"
+  "evidence": "PASS — conversational-path battery 20/20 @ tip 5fd67361837082a687f31a8fd229feaeb9be9480 (api.gravitre.app /health 2026-07-21T18:51:26Z)",
+  "acceptedGap_phraseVariety": {
+    "status": "ADDRESSED",
+    "addressedBy": "docs/delivery/conversational-phrase-variety.md",
+    "observation": "Live battery social_greeting_1 / social_greeting_2 / social_smalltalk previously returned the same house line.",
+    "fix": "Bank-first conversational.* banks + voice_expression_last rotation in conversational_reply_service.py"
+  }
 }
+

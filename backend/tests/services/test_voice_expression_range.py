@@ -170,3 +170,51 @@ def test_task_state_normalize_keeps_voice_expression_last():
         {"voice_expression_last": {"connector_connect_to_run": 3}}
     )
     assert normalized["voice_expression_last"] == {"connector_connect_to_run": 3}
+
+
+def test_conversational_banks_rotate_without_immediate_repeat():
+    from app.services.conversational_reply_service import phrase_for_conversational_category
+
+    token = bind_voice_expression_state({})
+    try:
+        a = phrase_for_conversational_category("small_talk")
+        snap = voice_expression_state_snapshot()
+    finally:
+        reset_voice_expression_state(token)
+
+    token = bind_voice_expression_state({"voice_expression_last": snap})
+    try:
+        b = phrase_for_conversational_category("small_talk")
+        snap = voice_expression_state_snapshot()
+    finally:
+        reset_voice_expression_state(token)
+
+    token = bind_voice_expression_state({"voice_expression_last": snap})
+    try:
+        c = phrase_for_conversational_category("small_talk")
+    finally:
+        reset_voice_expression_state(token)
+
+    assert a != b != c
+    assert a != c
+    assert len({a, b, c}) == 3
+
+
+def test_conversational_fact_consistency_venting_and_meta():
+    vent = all_expressions("conversational.venting")
+    assert_fact_tokens_consistent(vent, ["/connectors"])
+    meta = all_expressions(
+        "conversational.meta_capability",
+        ctx={"capability": "Connected for this org right now: Apollo."},
+    )
+    assert_fact_tokens_consistent(meta, ["Apollo", "Connected"])
+    assert len(set(vent)) == len(vent)
+    assert len(set(meta)) == len(meta)
+
+
+def test_write_status_sample_still_fact_consistent():
+    variants = all_expressions(
+        "tool_error.connector_not_connected",
+        ctx={"integration": "Gmail", "action_suffix": ""},
+    )
+    assert_fact_tokens_consistent(variants, ["Gmail", "Connected", "/connectors"])
