@@ -83,6 +83,17 @@ def enrich_plan_inference_metadata(
         return plan
     args = dict(plan.args or {})
     name = str(args.get("name") or "").strip()
+    message_text = (message or "").strip()
+    if name and message_text and name.lower() == message_text.lower():
+        name = ""
+        args.pop("name", None)
+    elif name and re.search(
+        r"\bcreate\s+(?:a\s+)?(?:contact\s+)?(?:list|group|segment)\b",
+        name,
+        re.I,
+    ):
+        name = ""
+        args.pop("name", None)
     planned = ChatConnectorExecutionService._planned_details_from_message(
         message or "",
         "apollo",

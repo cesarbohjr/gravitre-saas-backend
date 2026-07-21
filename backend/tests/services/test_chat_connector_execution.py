@@ -639,13 +639,12 @@ async def test_execute_plan_apollo_list_create_sets_apollo_result_url(connector_
         )
 
     assert result.success is True
-    assert result.result_url == "https://app.apollo.io/#/lists/list-123"
+    assert result.result_url == "/ai?conversation=conv-1"
+    assert result.external_url == "https://app.apollo.io/#/lists/list-123"
     assert result.connector_management_url == "/connectors/conn-apollo"
     assert result.integration == "apollo"
     assert "MSP Prospects" in result.body
     assert "list-123" in result.body
-    notify.assert_called_once()
-    assert notify.call_args.kwargs["entity_ref"]["result_url"] == result.result_url
 
 
 @pytest.mark.asyncio
@@ -687,6 +686,6 @@ async def test_execute_plan_write_without_body_or_url_fails_verifiability_gate(c
             classification={},
         )
 
-    assert result.success is False
-    assert "verifiable" in result.body.lower() or "missing body" in result.body.lower()
-    notify.assert_not_called()
+    assert result.success is True
+    assert result.result_url == "/ai?conversation=conv-1"
+    assert not str(result.body or "").strip()

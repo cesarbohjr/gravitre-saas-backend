@@ -12,7 +12,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import PlainTextResponse
 
-from app.auth.deps import get_current_user, get_environment_context, get_org_context
+from app.auth.dependencies import get_current_user, get_environment_context, get_org_context
 from app.config import Settings, get_settings
 from app.services.business_outcome.pipeline import PipelineContext, run_business_outcome_pipeline
 from app.workflows.repository import get_run_with_steps, get_supabase_client

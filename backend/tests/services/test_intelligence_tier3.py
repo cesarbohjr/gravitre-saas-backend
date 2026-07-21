@@ -102,7 +102,8 @@ def test_artifact_registry_builds_connector_and_document_cards():
         entity_id="rec-1",
         title="Create HubSpot contact",
         body="Created contact Jane Doe",
-        result_url="https://app.hubspot.com/contacts/1",
+        result_url="/ai?conversation=conv-1",
+        external_url="https://app.hubspot.com/contacts/1",
         integration="hubspot",
         structured={"format": "markdown", "title": "Brief", "content": "# Brief\nHello"},
     )
