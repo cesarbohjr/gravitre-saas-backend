@@ -2186,6 +2186,8 @@ class AgentIntelligence:
                 )
             else:
                 question = str(clarification.get("question") or "Could you clarify?")
+            # Preserve mixed-turn social ack on clarify exits (e.g. connector not Connected).
+            question = _with_social(question)
             text_id, start_event = sse_text_start()
             yield start_event
             yield sse_text_delta(text_id, question)

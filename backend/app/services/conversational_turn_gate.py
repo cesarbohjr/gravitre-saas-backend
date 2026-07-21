@@ -37,9 +37,10 @@ _GREETING_RE = re.compile(
 
 _SOCIAL_HINT_RE = re.compile(
     r"(?i)\b("
+    r"hey|hi|hello|howdy|yo|"
     r"how'?s\s+it\s+going|how\s+are\s+you|what'?s\s+up|"
     r"thanks?(?:\s+you)?|thank\s+you|appreciate\s+it|"
-    r"haha+|lol|lmao|funny|joke|"
+    r"haha+|lol|lmao|funny|joke|cool|"
     r"good\s+morning|good\s+afternoon|good\s+evening|"
     r"how(?:'s|\s+is)\s+your\s+day|weather|"
     r"what\s+can\s+you\s+do|are\s+you\s+(?:an\s+)?ai|"

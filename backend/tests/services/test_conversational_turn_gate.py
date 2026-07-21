@@ -46,6 +46,15 @@ def test_mixed_small_talk_plus_task():
     assert decision.social_portion
 
 
+def test_mixed_hey_plus_apollo_task():
+    decision = heuristic_turn_shape(
+        "hey — also create an Apollo contact list named ConvPath Battery"
+    )
+    assert decision is not None
+    assert decision.shape == "mixed"
+    assert "Apollo" in decision.task_portion or "apollo" in decision.task_portion.lower()
+
+
 def test_gate_never_bypasses_when_pending():
     decision = heuristic_turn_shape("hey")
     assert decision is not None
