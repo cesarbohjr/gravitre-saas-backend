@@ -53,8 +53,11 @@ function formatTrainingError(error: unknown): string {
   if (/organization context|403/i.test(message)) {
     return "Organization membership required. Select an organization and retry."
   }
-  if (/500|schema|migration|does not exist|pgrst/i.test(message)) {
-    return "Training storage is not fully provisioned yet. You can still explore the hub; run database migrations if create actions fail."
+  if (/Backend unavailable|Could not reach the training backend|Backend request failed|502|503/i.test(message)) {
+    return "Could not reach the training backend. If chat works but Training does not, redeploy the web app or verify FASTAPI_BASE_URL on Vercel."
+  }
+  if (/500|schema|migration|does not exist|pgrst|not provisioned/i.test(message)) {
+    return "Training storage is not fully provisioned yet. Apply Supabase migrations for training_datasets, then retry."
   }
   return message
 }
@@ -231,7 +234,7 @@ function TrainingPageContent() {
       await mutateDatasets()
     } catch (error) {
       console.error("[v0] Create dataset failed:", error)
-      toast.error("Failed to create dataset")
+      toast.error(formatTrainingError(error) || "Failed to create dataset")
     } finally {
       setIsCreatingDataset(false)
     }

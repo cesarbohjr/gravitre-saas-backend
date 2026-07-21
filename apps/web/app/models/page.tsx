@@ -605,12 +605,20 @@ export default function ModelsPage() {
               </Select>
               {baseModelOptions.some((o) => o.availability === "requires_connection") ? (
                 <p className="text-xs text-amber-600 dark:text-amber-400/90">
-                  Some bases need a data connector.{" "}
+                  Platform LLMs (OpenAI, Anthropic, Google, xAI) are always selectable. Warehouse and
+                  tabular bases stay in the list but are disabled until you connect the matching
+                  source on{" "}
                   <Link href="/connectors" className="underline underline-offset-2">
-                    Connect data sources
+                    Connectors
                   </Link>
+                  .
                 </p>
-              ) : null}
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  All platform foundation models for this type are listed. Switch model type above to
+                  see classifier, forecaster, or anomaly bases.
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="task-type">Task profile (optional)</Label>

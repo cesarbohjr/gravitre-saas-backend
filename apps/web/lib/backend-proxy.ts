@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
+import { backendBaseUrl } from "@/lib/public-urls"
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" } as const
 const METHODS_WITH_BODY = new Set(["POST", "PUT", "PATCH", "DELETE"])
 
 function getFastApiBaseUrl() {
-  // Match next.config.mjs rewrite fallback so local `next dev` works without
-  // requiring FASTAPI_BASE_URL when the backend is on localhost:8000.
-  const value = (process.env.FASTAPI_BASE_URL?.trim() || "http://localhost:8000")
-    .replace(/[\r\n]+/g, "")
-  if (!value) {
-    throw new Error("FASTAPI_BASE_URL is not set")
+  // Prefer Railway prod when FASTAPI_BASE_URL is unset or still points at api.gravitre.app
+  // before DNS is live. Local dev falls back to localhost when nothing is configured.
+  const configured = process.env.FASTAPI_BASE_URL?.trim()
+  if (configured) {
+    return backendBaseUrl()
   }
-  return value.replace(/\/+$/, "")
+  return "http://localhost:8000"
 }
 
 function buildBackendUrl(baseUrl: string, backendPath: string, request: NextRequest) {

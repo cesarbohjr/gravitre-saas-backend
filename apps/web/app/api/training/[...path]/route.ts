@@ -18,15 +18,9 @@ function buildTarget(path: string[] | undefined): string {
   return `/api/training${suffix}`
 }
 
-function isProxyEnabled(): boolean {
-  return Boolean(process.env.FASTAPI_BASE_URL?.trim())
-}
-
-async function maybeProxy(request: NextRequest, target: string) {
-  if (!isProxyEnabled()) return null
-  const upstream = await proxyToFastApi(request, target)
-  if (upstream.ok || upstream.status < 500) return upstream
-  return null
+async function proxyTraining(request: NextRequest, target: string) {
+  if (shouldUseDemoRuntimeFallback()) return null
+  return proxyToFastApi(request, target)
 }
 
 function getPath(path: string[] | undefined): string[] {
@@ -39,7 +33,11 @@ async function readJson(request: NextRequest): Promise<Record<string, unknown>> 
 
 function backendUnavailable() {
   return NextResponse.json(
-    { detail: "Backend unavailable", error: "FASTAPI_BASE_URL is not configured" },
+    {
+      detail:
+        "Could not reach the training backend. Confirm FASTAPI_BASE_URL on Vercel points at the live Railway API, then retry.",
+      error: "Backend unavailable",
+    },
     { status: 503 },
   )
 }
@@ -47,7 +45,7 @@ function backendUnavailable() {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { path } = await params
   const target = buildTarget(path)
-  const proxied = await maybeProxy(request, target)
+  const proxied = await proxyTraining(request, target)
   if (proxied) return proxied
 
   if (!shouldUseDemoRuntimeFallback()) return backendUnavailable()
@@ -95,7 +93,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const { path } = await params
   const target = buildTarget(path)
-  const proxied = await maybeProxy(request, target)
+  const proxied = await proxyTraining(request, target)
   if (proxied) return proxied
 
   if (!shouldUseDemoRuntimeFallback()) return backendUnavailable()
@@ -167,7 +165,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const { path } = await params
   const target = buildTarget(path)
-  const proxied = await maybeProxy(request, target)
+  const proxied = await proxyTraining(request, target)
   if (proxied) return proxied
 
   if (!shouldUseDemoRuntimeFallback()) return backendUnavailable()
@@ -192,7 +190,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   const { path } = await params
   const target = buildTarget(path)
-  const proxied = await maybeProxy(request, target)
+  const proxied = await proxyTraining(request, target)
   if (proxied) return proxied
 
   if (!shouldUseDemoRuntimeFallback()) return backendUnavailable()
@@ -211,7 +209,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const { path } = await params
   const target = buildTarget(path)
-  const proxied = await maybeProxy(request, target)
+  const proxied = await proxyTraining(request, target)
   if (proxied) return proxied
 
   if (!shouldUseDemoRuntimeFallback()) return backendUnavailable()

@@ -42,15 +42,20 @@ const nextConfig = {
   // Proxy unmatched /api/* to FastAPI. Use `fallback` so App Router route handlers
   // (e.g. /api/agents, /api/agents/[id]) run first with Supabase BFF logic.
   async rewrites() {
-    const backendUrl = (process.env.FASTAPI_BASE_URL || "http://localhost:8000")
+    const raw = (process.env.FASTAPI_BASE_URL || "")
       .trim()
       .replace(/[\r\n]+/g, "")
       .replace(/\/+$/, "")
+    const backendUrl =
+      raw && !raw.includes("api.gravitre.app")
+        ? raw
+        : "https://gravitre-saas-backend-production.up.railway.app"
+    const resolvedBackendUrl = backendUrl || "http://localhost:8000"
     return {
       fallback: [
         {
           source: "/api/:path*",
-          destination: `${backendUrl}/api/:path*`,
+          destination: `${resolvedBackendUrl}/api/:path*`,
         },
       ],
     }
