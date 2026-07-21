@@ -197,6 +197,53 @@ def sha_is_ancestor(ancestor_prefix: str, descendant_sha: str) -> bool:
         return descendant_sha.lower().startswith(ancestor_prefix.lower())
 
 
+def _parse_env_lines(path: Path) -> dict[str, str]:
+    out: dict[str, str] = {}
+    text: str | None = None
+    for encoding in ("utf-8", "utf-8-sig", "latin-1", "cp1252"):
+        try:
+            text = path.read_text(encoding=encoding)
+            break
+        except UnicodeDecodeError:
+            continue
+    if text is None:
+        return out
+    for line in text.splitlines():
+        raw = line.strip()
+        if not raw or raw.startswith("#") or "=" not in raw:
+            continue
+        key, _, val = raw.partition("=")
+        key = key.strip()
+        val = val.strip().strip('"')
+        if key and val:
+            out[key] = val
+    return out
+
+
+def _load_railway_token_from_railway_variables(service: str) -> str | None:
+    """Read RAILWAY_TOKEN from Railway service variables (requires ``railway login``)."""
+    try:
+        proc = subprocess.run(
+            ["railway", "variables", "--service", service, "--json"],
+            capture_output=True,
+            text=True,
+            timeout=90,
+            check=False,
+        )
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    try:
+        data = json.loads(proc.stdout.strip() or "{}")
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(data, dict):
+        return None
+    token = str(data.get("RAILWAY_TOKEN") or "").strip()
+    return token or None
+
+
 def _load_operator_env() -> None:
     from dotenv import dotenv_values
 
@@ -204,12 +251,18 @@ def _load_operator_env() -> None:
     for path in (repo / "backend" / ".env.operator.local", repo / ".env.operator.local", repo / "backend" / ".env"):
         if not path.is_file():
             continue
+        parsed: dict[str, str] = {}
         try:
-            for key, value in dotenv_values(path).items():
+            parsed = {k: v for k, v in dotenv_values(path).items() if v}
+        except UnicodeDecodeError:
+            parsed = _parse_env_lines(path)
+        for key, value in parsed.items():
+            if value:
+                __import__("os").environ.setdefault(key, value)
+        if path.name == ".env.operator.local" and not parsed:
+            for key, value in _parse_env_lines(path).items():
                 if value:
                     __import__("os").environ.setdefault(key, value)
-        except UnicodeDecodeError:
-            continue
 
 
 def main() -> int:
@@ -224,9 +277,20 @@ def main() -> int:
     parser.add_argument("--json", dest="json_out", default=None)
     args = parser.parse_args()
 
-    token = (__import__("os").environ.get("RAILWAY_TOKEN") or "").strip()
+    os_mod = __import__("os")
+    if not (os_mod.environ.get("RAILWAY_TOKEN") or "").strip():
+        railway_token = _load_railway_token_from_railway_variables(args.service)
+        if railway_token:
+            os_mod.environ["RAILWAY_TOKEN"] = railway_token
+
+    token = (os_mod.environ.get("RAILWAY_TOKEN") or "").strip()
     if not token:
-        print("RAILWAY_TOKEN is required (Railway project token)", file=sys.stderr)
+        print(
+            "RAILWAY_TOKEN is required (Railway project token). "
+            "Set $env:RAILWAY_TOKEN, add to backend/.env.operator.local, "
+            f"or run `railway login` so this script can read RAILWAY_TOKEN from Railway service variables ({args.service}).",
+            file=sys.stderr,
+        )
         return 2
 
     ids = _resolve_ids(token, args.service)
