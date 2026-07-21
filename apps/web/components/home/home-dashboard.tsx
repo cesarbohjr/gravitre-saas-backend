@@ -148,7 +148,9 @@ export function HomeDashboard({
   ]
 
   return (
-    <div className="relative min-h-full overflow-hidden">
+    // overflow-x-hidden only — vertical overflow must reach AppShell <main>
+    // (overflow-y-auto). overflow-hidden here clipped the denser v0 layout.
+    <div className="relative w-full overflow-x-hidden">
       <GridPattern color="emerald" className="opacity-[0.3]" />
       <ParticleField count={28} color="emerald" className="opacity-50" />
       <GlowOrb color="emerald" size={340} className="-left-28 -top-10 opacity-40" />
@@ -158,7 +160,7 @@ export function HomeDashboard({
         variants={reduced ? undefined : container}
         initial="initial"
         animate="animate"
-        className="relative z-10 mx-auto max-w-6xl space-y-5 p-4 sm:p-6"
+        className="relative z-10 mx-auto max-w-6xl space-y-5 p-4 pb-8 sm:p-6 sm:pb-10"
       >
         {/* ---- Hero: greeting + live system status ---- */}
         <motion.section
