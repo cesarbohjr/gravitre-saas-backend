@@ -173,7 +173,11 @@ class ChatOrchestrationService:
     ) -> bool:
         pending = task_state.get("pending_task") or {}
         if str(pending.get("type") or "") == "connector_orchestration":
-            return True
+            # Only live approval gates keep the orch pipeline; completed/failed
+            # must not hijack unrelated turns or coincidental "yes" confirms.
+            status = str(pending.get("status") or "")
+            if status in {"awaiting_plan_confirm", "awaiting_step_confirm"}:
+                return True
         text = message.strip()
         if len(text) < 12:
             return False
@@ -231,11 +235,27 @@ class ChatOrchestrationService:
         except Exception:  # noqa: BLE001
             pass
 
-        if not self.is_orchestration_intent(message, task_state, connected_integrations):
-            return None
-
         pending = task_state.get("pending_task") or {}
         pending_type = str(pending.get("type") or "")
+        pending_status = str(pending.get("status") or "")
+
+        # Module B — resolved plans must close out; do not leave sticky state for
+        # a later bare "yes" or unrelated question to revive.
+        if pending_type == "connector_orchestration" and pending_status in {
+            "completed",
+            "failed",
+            "cancelled",
+        }:
+            await self._clear_orchestration(conversation_id, org_id)
+            task_state = await self._state.get_task_state(
+                conversation_id, org_id, client=client
+            )
+            pending = task_state.get("pending_task") or {}
+            pending_type = str(pending.get("type") or "")
+            pending_status = str(pending.get("status") or "")
+
+        if not self.is_orchestration_intent(message, task_state, connected_integrations):
+            return None
 
         if DECLINE_PATTERN.match(message.strip()):
             await self._clear_orchestration(conversation_id, org_id)
@@ -1319,13 +1339,15 @@ class ChatOrchestrationService:
             conversation_id,
             org_id,
             {
-                "clarified_params": params,
+                "clarified_params": {},
+                "current_plan": None,
                 "pending_task": {
                     "type": "connector_orchestration",
                     "status": "completed" if run_ok else "failed",
                     "result": serialize_execution_result(result),
                 },
                 "pending_steps": [],
+                "completed_steps": [],
             },
         )
         refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
@@ -1478,6 +1500,24 @@ class ChatOrchestrationService:
             return False
         if PLAN_TWEAK.search(text) and len(text) < 160:
             return False
+        # Informational / run-history asks are never orch confirms.
+        try:
+            from app.services.factual_claim_honesty import is_run_history_question
+
+            if is_run_history_question(text):
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+        if re.search(
+            r"\b(what|which|how\s+many|show\s+me|list|status|have\s+been)\b",
+            text,
+            re.I,
+        ) and not re.search(
+            r"\b(plan|step|orchestration|approve|confirm|yes|yep|ok)\b",
+            text,
+            re.I,
+        ):
+            return True
         params = dict(
             (task_state.get("clarified_params") or {})
             or ((task_state.get("pending_task") or {}).get("params") or {})

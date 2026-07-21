@@ -93,6 +93,30 @@ async def prepare_conversation_turn(
     pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
     pending_status = str(pending.get("status") or "")
     current_plan = state.get("current_plan") if isinstance(state.get("current_plan"), dict) else None
+    # Module B — terminal orch + sticky plan must not accept a later bare "yes".
+    if pending_status in {"completed", "failed", "cancelled"}:
+        if persist and conversation_id and org_id:
+            try:
+                await get_conversation_state_service(settings or get_settings()).update_task_state(
+                    conversation_id,
+                    org_id,
+                    {
+                        "pending_task": None,
+                        "current_plan": None,
+                        "clarified_params": {},
+                        "pending_steps": [],
+                        "completed_steps": [],
+                    },
+                    client=client,
+                )
+                state = await get_conversation_state_service(
+                    settings or get_settings()
+                ).get_task_state(conversation_id, org_id, client=client)
+            except Exception:  # noqa: BLE001
+                logger.debug("terminal_orch_close_skipped", exc_info=True)
+        current_plan = None
+        pending = {}
+        pending_status = ""
     voice_section = voice_system_prompt_section()
 
     pending_intent: PendingPlanIntent | None = None
@@ -100,13 +124,28 @@ async def prepare_conversation_turn(
         "awaiting_confirm",
         "awaiting_plan_confirm",
         "awaiting_admin_approval",
+        "awaiting_step_confirm",
     }:
         pending_intent = await classify_pending_plan_intent(
             text,
             current_plan=current_plan,
-            pending_task=pending,
+            pending_task=pending if pending else None,
             settings=settings,
         )
+        # Unrelated intervening turn — archive sticky advisory plan.
+        if pending_intent == "unclear" and current_plan and persist:
+            try:
+                from app.services.conversation_state_service import get_conversation_state_service
+
+                await get_conversation_state_service(settings or get_settings()).update_task_state(
+                    conversation_id,
+                    org_id,
+                    {"current_plan": None, "pending_steps": [], "completed_steps": []},
+                    client=client,
+                )
+                current_plan = None
+            except Exception:  # noqa: BLE001
+                logger.debug("stale_plan_supersede_skipped", exc_info=True)
 
     return TurnInterpretation(
         message=text,

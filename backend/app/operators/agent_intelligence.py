@@ -26,6 +26,11 @@ from app.operators.assistant_mode_config import (
     resolve_registry_permitted_tools,
     expand_registry_with_connected_integrations,
 )
+from app.services.factual_claim_honesty import (
+    apply_run_history_honesty_gate,
+    explanation_for_missing_run_history,
+    should_escalate_fast_for_run_history,
+)
 from app.services.connector_chat_routing import (
     run_connector_fallback_turn,
     should_attempt_connector_fallback,
@@ -951,6 +956,13 @@ class AgentIntelligence:
             trace = react_result.to_dict().get("trace") or []
         from app.services.intelligence_orchestrator import get_intelligence_orchestrator
 
+        # Hard honesty: never let moderate-confidence framing cover a run-count
+        # fabricated from an unrelated tool (e.g. agent_status under FAST).
+        content = apply_run_history_honesty_gate(
+            content,
+            query=query,
+            react_result=react_result,
+        )
         confidence = get_intelligence_orchestrator(settings).finalize_confidence(
             query=query,
             answer=content,
@@ -970,9 +982,20 @@ class AgentIntelligence:
         )
         if turn_context and turn_context.context_explanation:
             explanation = f"{explanation}\n\n{turn_context.context_explanation}".strip()
+        explanation = explanation_for_missing_run_history(
+            explanation,
+            query=query,
+            react_result=react_result,
+        )
         plain_content = format_plain_english(content, fallback=content).strip()
         if plain_content and not plain_content.startswith("{"):
             content = plain_content
+        # Re-apply after plain-English rewrite in case it reintroduced a count claim.
+        content = apply_run_history_honesty_gate(
+            content,
+            query=query,
+            react_result=react_result,
+        )
         return {
             "content": content,
             "validation": validation,
@@ -1204,6 +1227,16 @@ class AgentIntelligence:
             has_mcp_tools=bool(mcp_tools_early),
         )
         tool_names = resolve_assistant_tool_names(mode_key, requested_tools)
+        # Routing/tool-availability gap: pinned FAST omits workflow_runs. For
+        # run-history questions, escalate to standard toolset (not a FAST design flaw).
+        if should_escalate_fast_for_run_history(mode_key, task_text, tool_names):
+            mode_key = "standard"
+            tool_names = resolve_assistant_tool_names(mode_key, None)
+            logger.info(
+                "fast_run_history_tool_escalate org_id=%s from=fast to=standard tools=%s",
+                org_id,
+                tool_names,
+            )
         permitted_registry = resolve_registry_permitted_tools(tool_names)
         max_iterations = int(MODE_CONFIG[mode_key]["max_iterations"])
         message_id = str(uuid.uuid4())
@@ -1334,6 +1367,34 @@ class AgentIntelligence:
             )
             early_pending = early_state.get("pending_task")
             early_plan = early_state.get("current_plan")
+            # Module B — terminal orch must not leave sticky current_plan for a later bare "yes".
+            if isinstance(early_pending, dict) and early_pending:
+                terminal = str(early_pending.get("status") or "") in {
+                    "completed",
+                    "failed",
+                    "cancelled",
+                }
+                if terminal:
+                    await get_conversation_state_service(active_settings).update_task_state(
+                        conversation_id,
+                        org_id,
+                        {
+                            "pending_task": None,
+                            "current_plan": None,
+                            "clarified_params": {},
+                            "pending_steps": [],
+                            "completed_steps": [],
+                        },
+                        client=client,
+                    )
+                    logger.info(
+                        "terminal_orchestration_closed conversation_id=%s org_id=%s status=%s",
+                        conversation_id,
+                        org_id,
+                        early_pending.get("status"),
+                    )
+                    early_pending = None
+                    early_plan = None
             if (
                 isinstance(early_plan, dict)
                 and early_plan.get("goal")
@@ -1402,6 +1463,24 @@ class AgentIntelligence:
                         conversation_id,
                         org_id,
                         resume_goal[:120],
+                    )
+                elif plan_intent == "unclear":
+                    # Unrelated intervening turn — archive sticky plan so a later
+                    # coincidental "yes" cannot resume it.
+                    await get_conversation_state_service(active_settings).update_task_state(
+                        conversation_id,
+                        org_id,
+                        {
+                            "current_plan": None,
+                            "pending_steps": [],
+                            "completed_steps": [],
+                        },
+                        client=client,
+                    )
+                    logger.info(
+                        "orphan_strategic_plan_superseded conversation_id=%s org_id=%s",
+                        conversation_id,
+                        org_id,
                     )
 
         dialogue_settings = await load_chat_dialogue_settings(org_id, active_settings, client=client)
@@ -2720,6 +2799,20 @@ class AgentIntelligence:
                 ),
                 strategy_key=str(row.get("type") or ""),
             )
+
+        # Final honesty gate after critic/reflection — no fabricated run counts.
+        full_content = apply_run_history_honesty_gate(
+            full_content,
+            query=task_text,
+            tool_results=tool_results,
+            react_result=react_result,
+        )
+        finalized["explanation"] = explanation_for_missing_run_history(
+            str(finalized.get("explanation") or ""),
+            query=task_text,
+            tool_results=tool_results,
+            react_result=react_result,
+        )
 
         # Wave 5 — calibrated trust + assumption labels before final text emission.
         trust_meta = chat_facade.build_trust_metadata(
