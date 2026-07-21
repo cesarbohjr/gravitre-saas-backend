@@ -42,6 +42,7 @@ import {
   StatusBeacon,
 } from "@/components/gravitre/premium-effects"
 import { APP_ROUTES } from "@/lib/app-routes"
+import { relativeTime } from "@/lib/agent-job-result"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { cardVariants, useMotionPrefs } from "@/lib/animations"
 import { cn } from "@/lib/utils"
@@ -115,6 +116,7 @@ export function HomeDashboard({
   const queryPct = pct(queryRows, queryRowsNeeded || 50)
   const workflowPct = pct(workflowRows, workflowRowsNeeded || 30)
   const onlineSystems = aiSystemsOnline ?? mlActive ?? null
+  const lastCycleLabel = lastLearningCycle ? relativeTime(lastLearningCycle) : "—"
   const confidenceStart = confidenceSeries[0]?.confidence ?? 0
   const confidenceEnd = confidenceSeries[confidenceSeries.length - 1]?.confidence ?? 0
   const confidenceDelta = confidenceEnd - confidenceStart
@@ -245,7 +247,7 @@ export function HomeDashboard({
                 ))}
                 <div className="flex items-center gap-2 px-1 pt-1 text-[11px] text-muted-foreground">
                   <Clock className="h-3.5 w-3.5" />
-                  Last learning cycle: <span className="text-foreground">{lastLearningCycle ?? "—"}</span>
+                  Last learning cycle: <span className="text-foreground">{lastCycleLabel}</span>
                 </div>
               </div>
             </motion.div>
@@ -429,7 +431,7 @@ export function HomeDashboard({
               <div className="mt-4 grid gap-3 sm:grid-cols-3 text-sm">
                 <MiniStat label="AI systems online" value={onlineSystems ?? "—"} />
                 <MiniStat label="ML models active" value={mlActive ?? "—"} />
-                <MiniStat label="Last learning cycle" value={lastLearningCycle ?? "—"} />
+                <MiniStat label="Last learning cycle" value={lastCycleLabel} />
               </div>
             ) : (
               <div className="mt-4 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-4 py-8 text-center">
