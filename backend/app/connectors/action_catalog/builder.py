@@ -32,10 +32,28 @@ def action(
     requires_approval: bool = False,
     input_schema: dict | None = None,
     workflow_schema: ActionWorkflowSchema | None = None,
+    compensating_action: str | None = None,
+    supports_diff: bool | None = None,
 ) -> ActionSpec:
     desc = description or f"{name} via {vendor} API"
+    # Default compensating_action / supports_diff from catalog_reversal seed when unset,
+    # so ActionSpec always carries the BusinessOutcome Diff/Undo answer.
+    tool_id = f"{vendor}.{suffix}"
+    if compensating_action is None or supports_diff is None:
+        try:
+            from app.services.business_outcome.catalog_reversal import (
+                _SEED_COMPENSATING_ACTIONS,
+                _SEED_DIFF_ACTIONS,
+            )
+
+            if compensating_action is None:
+                compensating_action = _SEED_COMPENSATING_ACTIONS.get(tool_id)
+            if supports_diff is None:
+                supports_diff = tool_id in _SEED_DIFF_ACTIONS
+        except Exception:  # noqa: BLE001
+            pass
     return ActionSpec(
-        id=f"{vendor}.{suffix}",
+        id=tool_id,
         name=name,
         description=desc,
         tier=tier,
@@ -47,6 +65,8 @@ def action(
         requires_approval=requires_approval,
         input_schema=input_schema,
         workflow_schema=workflow_schema,
+        compensating_action=compensating_action,
+        supports_diff=supports_diff,
     )
 
 

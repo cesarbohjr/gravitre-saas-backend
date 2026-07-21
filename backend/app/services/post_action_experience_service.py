@@ -708,6 +708,61 @@ def enrich_execution_turn(
     serialized["recommendation"] = recommendation
     serialized["failure_bridge"] = failure_bridge
 
+    # Canonical BusinessOutcome projection (Module A view) — one shape for all surfaces.
+    try:
+        from app.services.business_outcome.pipeline import PipelineContext, run_business_outcome_pipeline
+
+        invoke = str(plan.invoke_action if plan else "") or None
+        bo = run_business_outcome_pipeline(
+            PipelineContext(
+                org_id=str(
+                    (task_state or {}).get("org_id")
+                    or (execution.structured or {}).get("org_id")
+                    or ""
+                )
+                or "unknown",
+                run={
+                    "id": execution.entity_id,
+                    "status": "completed" if execution.success else "failed",
+                    "approval_status": None,
+                    "parameters": {
+                        "invoke_action": invoke,
+                        "label": execution.title,
+                        "summary": execution.body,
+                        "integration": execution.integration,
+                        "conversation_id": (
+                            (execution.structured or {}).get("conversationId")
+                            if isinstance(execution.structured, dict)
+                            else None
+                        ),
+                        "step_results": step_results or [],
+                        "recommendation": recommendation,
+                        "what_this_means": means,
+                        "verified_output": {
+                            "summary": execution.body,
+                            "result_url": execution.result_url,
+                            "external_url": execution.external_url,
+                            "entity_type": execution.entity_type,
+                            "entity_id": execution.entity_id,
+                            "integration": execution.integration,
+                        },
+                        "notification_emitted": True,
+                    },
+                    "created_at": None,
+                },
+                steps=list(step_results or []),
+                execution_result=serialized,
+                invoke_action=invoke,
+                recommendation=recommendation,
+                notification_emitted=True,
+            )
+        )
+        serialized["business_outcome"] = bo.to_dict()
+        structured["businessOutcome"] = bo.to_dict()
+        serialized["structured"] = structured
+    except Exception:  # noqa: BLE001
+        pass
+
     if execution.success:
         link_line = ""
         if execution.result_url:

@@ -11,6 +11,8 @@ AUDIT_COMPENSATION_STARTED = "workflow.compensation.started"
 AUDIT_COMPENSATION_COMPLETED = "workflow.compensation.completed"
 AUDIT_COMPENSATION_NOTIFY = "workflow.compensation.notify"
 
+# Legacy frozensets retained only as fallbacks during ActionSpec migration.
+# Queries must prefer catalog_reversal (ActionSpec.compensating_action / supports_diff).
 FORWARD_ACTIONS_WITH_SNAPSHOT = frozenset(
     {
         "hubspot.contacts.update",
@@ -39,11 +41,15 @@ def _now() -> str:
 
 
 def should_track_compensation(ctx: Any, action: str) -> bool:
-    return bool(ctx.run_id) and action in COMPENSATABLE_FORWARD_ACTIONS
+    from app.services.business_outcome.catalog_reversal import get_compensating_action
+
+    return bool(ctx.run_id) and bool(get_compensating_action(action))
 
 
 def prepare_forward_snapshot(ctx: Any, action: str, params: dict[str, Any]) -> dict[str, Any] | None:
-    if action not in FORWARD_ACTIONS_WITH_SNAPSHOT:
+    from app.services.business_outcome.catalog_reversal import supports_vendor_diff
+
+    if not supports_vendor_diff(action):
         return None
     try:
         from app.services.tool_service import (
@@ -220,6 +226,32 @@ def list_compensation_records(
     return list(query.execute().data or [])
 
 
+def authorize_compensation_write(forward_action: str, compensating_action: str) -> None:
+    """Refuse undo writes that bypass catalog_write_authority / catalog reversal.
+
+    Every BusinessOutcome undo path must call this before invoke_tool.
+    """
+    from app.services.business_outcome.catalog_reversal import get_compensating_action
+    from app.services.catalog_write_authority import invoke_action_requires_write_approval
+
+    expected = get_compensating_action(forward_action)
+    if not expected:
+        raise PermissionError(
+            f"No catalog compensating action for forward write {forward_action!r}; undo blocked"
+        )
+    if str(compensating_action or "").strip() != str(expected).strip():
+        raise PermissionError(
+            f"Compensating action {compensating_action!r} does not match catalog "
+            f"counterpart {expected!r} for {forward_action!r}"
+        )
+    if not invoke_action_requires_write_approval(compensating_action):
+        # Compensating counterparts are writes; if catalog says otherwise, refuse.
+        raise PermissionError(
+            f"Compensating action {compensating_action!r} is not classified as a write "
+            "by catalog_write_authority; undo blocked"
+        )
+
+
 def execute_compensations(
     client: Any,
     settings: Any,
@@ -251,6 +283,7 @@ def execute_compensations(
     for record in records:
         record_id = str(record["id"])
         comp_action = str(record["compensating_action"])
+        forward_action = str(record.get("forward_action") or record.get("original_action") or "")
         comp_params = record.get("compensating_params") if isinstance(record.get("compensating_params"), dict) else {}
         ctx = ToolContext(
             settings=settings,
@@ -264,6 +297,16 @@ def execute_compensations(
             connector_id=str(record.get("connector_id") or comp_params.get("connector_id") or "") or None,
         )
         try:
+            if forward_action:
+                authorize_compensation_write(forward_action, comp_action)
+            else:
+                # Still require write classification when forward action is absent.
+                from app.services.catalog_write_authority import invoke_action_requires_write_approval
+
+                if not invoke_action_requires_write_approval(comp_action):
+                    raise PermissionError(
+                        f"Compensating action {comp_action!r} is not a catalog write; undo blocked"
+                    )
             outcome = invoke_tool(ctx, comp_action, comp_params)
             if outcome.success:
                 client.table("workflow_compensation_records").update(
