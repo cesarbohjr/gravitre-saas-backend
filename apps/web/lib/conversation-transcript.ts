@@ -13,11 +13,17 @@ function withStableId(message: ConversationMessage, index: number): Conversation
   return { ...message, id: stableMessageId(message, index) }
 }
 
-function syntheticUserMessage(text: string, anchorId: string): UIMessage {
+function syntheticUserMessage(
+  text: string,
+  anchorId: string,
+  createdAt?: string | null,
+): UIMessage {
+  const iso = (createdAt || "").trim() || undefined
   return {
     id: `user-inferred-${anchorId}`,
     role: "user",
     parts: [{ type: "text", text }],
+    metadata: iso ? { created_at: iso } : undefined,
   }
 }
 
@@ -50,7 +56,7 @@ export function buildConversationTranscript(
         if (priorUser?.role === "user" && priorUser.content.trim()) {
           transcript.push(conversationMessageToUI(priorUser))
         } else if (titleFallback && transcript.length === 0) {
-          transcript.push(syntheticUserMessage(titleFallback, ui.id))
+          transcript.push(syntheticUserMessage(titleFallback, ui.id, row.created_at))
         }
       }
     }

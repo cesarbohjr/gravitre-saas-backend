@@ -46,7 +46,77 @@ def _normalize_conversation(row: dict) -> dict:
         "updated_at": row.get("updated_at") or row.get("created_at") or _now_iso(),
         "message_count": int(row.get("message_count") or 0),
         "archived_at": row.get("archived_at"),
+        "pinned_at": row.get("pinned_at"),
     }
+
+
+def _missing_column_error(error: Exception | None) -> bool:
+    if error is None:
+        return False
+    message = str(error).lower()
+    return "column" in message and "does not exist" in message
+
+
+def _conversation_sort_key(row: dict) -> tuple:
+    """Pinned first, then updated_at DESC (ISO strings sort lexicographically)."""
+    pinned = "1" if row.get("pinned_at") else "0"
+    return (pinned, str(row.get("updated_at") or row.get("created_at") or ""))
+
+
+def _merge_conversation_rows(*groups: list[dict]) -> list[dict]:
+    by_id: dict[str, dict] = {}
+    for group in groups:
+        for row in group:
+            conv_id = str(row.get("id") or "")
+            if conv_id:
+                by_id[conv_id] = row
+    return sorted(by_id.values(), key=_conversation_sort_key, reverse=True)
+
+
+def _conversation_ids_matching_message_content(
+    client: Any,
+    *,
+    org_id: str,
+    user_id: str,
+    term: str,
+    limit: int = 200,
+) -> list[str]:
+    owned = (
+        client.table("conversations")
+        .select("id")
+        .eq("org_id", org_id)
+        .eq("user_id", user_id)
+        .is_("deleted_at", "null")
+        .limit(500)
+        .execute()
+    )
+    if response_error(owned) or _is_missing_table_error(response_error(owned)):
+        return []
+    owned_ids = [str(row.get("id")) for row in (owned.data or []) if row.get("id")]
+    if not owned_ids:
+        return []
+    matched: set[str] = set()
+    # PostgREST in_ filters are practical in chunks.
+    chunk_size = 100
+    for index in range(0, len(owned_ids), chunk_size):
+        chunk = owned_ids[index : index + chunk_size]
+        response = (
+            client.table("conversation_messages")
+            .select("conversation_id")
+            .in_("conversation_id", chunk)
+            .ilike("content", f"%{term}%")
+            .limit(limit)
+            .execute()
+        )
+        if response_error(response) or _is_missing_table_error(response_error(response)):
+            break
+        for row in response.data or []:
+            conv_id = row.get("conversation_id")
+            if conv_id:
+                matched.add(str(conv_id))
+        if len(matched) >= limit:
+            break
+    return list(matched)
 
 
 def _normalize_message(row: dict) -> dict:
@@ -86,11 +156,6 @@ def _require_org(org_id: str | None) -> str:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     return org_id
-
-
-def _missing_column_error(error: Any) -> bool:
-    message = str(error).lower()
-    return "column" in message and "does not exist" in message
 
 
 def _hard_delete_owned_conversation(
@@ -239,6 +304,26 @@ def _find_duplicate_conversation(
     return rows[0] if rows else None
 
 
+def _list_conversations_query(
+    client: Any,
+    *,
+    org_id: str,
+    user_id: str,
+    include_archived: bool,
+    select_cols: str,
+):
+    query = (
+        client.table("conversations")
+        .select(select_cols)
+        .eq("org_id", org_id)
+        .eq("user_id", user_id)
+        .is_("deleted_at", "null")
+    )
+    if not include_archived:
+        query = query.is_("archived_at", "null")
+    return query
+
+
 @router.get("")
 async def list_conversations(
     user: Annotated[dict, Depends(get_current_user)],
@@ -251,31 +336,99 @@ async def list_conversations(
 ) -> dict:
     org_id = _require_org(org_id)
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    query = (
-        client.table("conversations")
-        .select("id, title, preview, message_count, created_at, updated_at, archived_at")
-        .eq("org_id", org_id)
-        .eq("user_id", user["user_id"])
-        .is_("deleted_at", "null")
+    select_cols = "id, title, preview, message_count, created_at, updated_at, archived_at, pinned_at"
+    select_fallback = "id, title, preview, message_count, created_at, updated_at, archived_at"
+    term = (search or "").strip()
+
+    def _order_rows(query: Any, *, page: bool = True):
+        # Pinned first (non-null pinned_at), then recency. Frontend groups; does not re-sort.
+        try:
+            ordered = query.order("pinned_at", desc=True, nullsfirst=False).order(
+                "updated_at", desc=True
+            )
+        except TypeError:
+            ordered = query.order("updated_at", desc=True)
+        if page:
+            return ordered.range(offset, offset + limit - 1).execute()
+        return ordered.limit(min(200, max(limit + offset, limit))).execute()
+
+    if term:
+        title_query = _list_conversations_query(
+            client,
+            org_id=org_id,
+            user_id=user["user_id"],
+            include_archived=include_archived,
+            select_cols=select_cols,
+        ).ilike("title", f"%{term}%")
+        title_response = _order_rows(title_query, page=False)
+        title_error = response_error(title_response)
+        if title_error and _missing_column_error(title_error):
+            title_query = _list_conversations_query(
+                client,
+                org_id=org_id,
+                user_id=user["user_id"],
+                include_archived=include_archived,
+                select_cols=select_fallback,
+            ).ilike("title", f"%{term}%")
+            title_response = title_query.order("updated_at", desc=True).limit(200).execute()
+        if _is_missing_table_error(response_error(title_response)):
+            return {"conversations": []}
+        if response_error(title_response):
+            raise HTTPException(status_code=500, detail=str(response_error(title_response)))
+
+        content_ids = _conversation_ids_matching_message_content(
+            client,
+            org_id=org_id,
+            user_id=user["user_id"],
+            term=term,
+        )
+        content_rows: list[dict] = []
+        if content_ids:
+            content_query = _list_conversations_query(
+                client,
+                org_id=org_id,
+                user_id=user["user_id"],
+                include_archived=include_archived,
+                select_cols=select_cols,
+            ).in_("id", content_ids)
+            content_response = _order_rows(content_query, page=False)
+            content_error = response_error(content_response)
+            if content_error and _missing_column_error(content_error):
+                content_query = _list_conversations_query(
+                    client,
+                    org_id=org_id,
+                    user_id=user["user_id"],
+                    include_archived=include_archived,
+                    select_cols=select_fallback,
+                ).in_("id", content_ids)
+                content_response = content_query.order("updated_at", desc=True).limit(200).execute()
+            if not response_error(content_response):
+                content_rows = content_response.data or []
+
+        merged = _merge_conversation_rows(title_response.data or [], content_rows)
+        page = merged[offset : offset + limit]
+        return {"conversations": [_normalize_conversation(row) for row in page]}
+
+    query = _list_conversations_query(
+        client,
+        org_id=org_id,
+        user_id=user["user_id"],
+        include_archived=include_archived,
+        select_cols=select_cols,
     )
-    if not include_archived:
-        query = query.is_("archived_at", "null")
-    if search and search.strip():
-        query = query.ilike("title", f"%{search.strip()}%")
-    response = query.order("updated_at", desc=True).range(offset, offset + limit - 1).execute()
+    response = _order_rows(query, page=True)
     list_error = response_error(response)
     if list_error and _missing_column_error(list_error):
-        fallback_query = (
-            client.table("conversations")
-            .select("id, title, preview, message_count, created_at, updated_at, archived_at")
-            .eq("org_id", org_id)
-            .eq("user_id", user["user_id"])
+        fallback_query = _list_conversations_query(
+            client,
+            org_id=org_id,
+            user_id=user["user_id"],
+            include_archived=include_archived,
+            select_cols=select_fallback,
         )
-        if not include_archived:
-            fallback_query = fallback_query.is_("archived_at", "null")
-        if search and search.strip():
-            fallback_query = fallback_query.ilike("title", f"%{search.strip()}%")
-        response = fallback_query.order("updated_at", desc=True).range(offset, offset + limit - 1).execute()
+        response = fallback_query.order("updated_at", desc=True).range(
+            offset, offset + limit - 1
+        ).execute()
         if response_error(response):
             raise HTTPException(status_code=500, detail=str(response_error(response)))
         return {"conversations": [_normalize_conversation(row) for row in (response.data or [])]}
@@ -458,6 +611,112 @@ async def archive_conversation(
     return _normalize_conversation(updated)
 
 
+@router.post("/{conversation_id}/unarchive")
+async def unarchive_conversation(
+    conversation_id: str,
+    user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    org_id = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    _get_owned_conversation(
+        client,
+        conversation_id=conversation_id,
+        org_id=org_id,
+        user_id=user["user_id"],
+    )
+    now = _now_iso()
+    response = (
+        client.table("conversations")
+        .update({"archived_at": None, "updated_at": now})
+        .eq("id", conversation_id)
+        .eq("org_id", org_id)
+        .eq("user_id", user["user_id"])
+        .execute()
+    )
+    if response_error(response):
+        raise HTTPException(status_code=500, detail=str(response_error(response)))
+    updated = (response.data or [None])[0]
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+    return _normalize_conversation(updated)
+
+
+@router.post("/{conversation_id}/pin")
+async def pin_conversation(
+    conversation_id: str,
+    user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    org_id = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    _get_owned_conversation(
+        client,
+        conversation_id=conversation_id,
+        org_id=org_id,
+        user_id=user["user_id"],
+    )
+    now = _now_iso()
+    response = (
+        client.table("conversations")
+        .update({"pinned_at": now, "updated_at": now})
+        .eq("id", conversation_id)
+        .eq("org_id", org_id)
+        .eq("user_id", user["user_id"])
+        .execute()
+    )
+    if response_error(response):
+        if _missing_column_error(response_error(response)):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Conversation pin storage is not available",
+            )
+        raise HTTPException(status_code=500, detail=str(response_error(response)))
+    updated = (response.data or [None])[0]
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+    return _normalize_conversation(updated)
+
+
+@router.post("/{conversation_id}/unpin")
+async def unpin_conversation(
+    conversation_id: str,
+    user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    org_id = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    _get_owned_conversation(
+        client,
+        conversation_id=conversation_id,
+        org_id=org_id,
+        user_id=user["user_id"],
+    )
+    now = _now_iso()
+    response = (
+        client.table("conversations")
+        .update({"pinned_at": None, "updated_at": now})
+        .eq("id", conversation_id)
+        .eq("org_id", org_id)
+        .eq("user_id", user["user_id"])
+        .execute()
+    )
+    if response_error(response):
+        if _missing_column_error(response_error(response)):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Conversation pin storage is not available",
+            )
+        raise HTTPException(status_code=500, detail=str(response_error(response)))
+    updated = (response.data or [None])[0]
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+    return _normalize_conversation(updated)
+
+
 @router.delete("/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_conversation(
     conversation_id: str,
@@ -533,23 +792,25 @@ async def append_conversation_messages(
         org_id=org_id,
         user_id=user["user_id"],
     )
-    now = _now_iso()
+    base_time = datetime.now(timezone.utc)
     rows: list[dict[str, Any]] = []
     preview = owned.get("preview")
-    for message in body.messages:
+    for index, message in enumerate(body.messages):
         role = (message.role or "").strip().lower()
         if role not in {"user", "assistant"}:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid message role")
         content = message.content or ""
         if role == "assistant" and content.strip():
             preview = content[:200]
+        # Distinct created_at per row so audit timestamps stay ordered within a batch.
+        created_at = (base_time + timedelta(milliseconds=index)).isoformat()
         rows.append(
             {
                 "conversation_id": conversation_id,
                 "role": role,
                 "content": content,
                 "tool_calls": message.tool_calls,
-                "created_at": now,
+                "created_at": created_at,
             }
         )
     response = client.table("conversation_messages").insert(rows).execute()
@@ -562,6 +823,7 @@ async def append_conversation_messages(
         raise HTTPException(status_code=500, detail=str(response_error(response)))
     inserted = response.data or []
     current_count = int(owned.get("message_count") or 0)
+    now = base_time.isoformat()
     client.table("conversations").update(
         {
             "preview": preview,
