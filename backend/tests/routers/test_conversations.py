@@ -292,6 +292,92 @@ def test_archive_conversation(monkeypatch):
     assert response.json()["id"] == "conv-1"
 
 
+def test_pin_conversation(monkeypatch):
+    _authenticate()
+    owned = _table_chain(
+        [
+            {
+                "id": "conv-1",
+                "org_id": "org-1",
+                "user_id": "user-1",
+                "title": "Thread",
+                "preview": None,
+                "message_count": 0,
+                "created_at": "2026-06-04T12:00:00+00:00",
+                "updated_at": "2026-06-04T12:00:00+00:00",
+            }
+        ]
+    )
+    pinned = _table_chain(
+        [
+            {
+                "id": "conv-1",
+                "title": "Thread",
+                "preview": None,
+                "message_count": 0,
+                "created_at": "2026-06-04T12:00:00+00:00",
+                "updated_at": "2026-07-20T12:00:00+00:00",
+                "pinned_at": "2026-07-20T12:00:00+00:00",
+            }
+        ]
+    )
+    supabase = MagicMock()
+    supabase.table.side_effect = [owned, pinned]
+    monkeypatch.setattr(
+        "app.routers.conversations.create_client",
+        lambda *_args, **_kwargs: supabase,
+    )
+    response = client.post("/api/conversations/conv-1/pin")
+    assert response.status_code == 200
+    assert response.json()["pinned_at"] == "2026-07-20T12:00:00+00:00"
+
+
+def test_list_conversations_search_includes_message_content(monkeypatch):
+    _authenticate()
+    title_chain = _table_chain(
+        [
+            {
+                "id": "conv-title",
+                "title": "Budget planning",
+                "preview": None,
+                "message_count": 1,
+                "created_at": "2026-07-20T10:00:00+00:00",
+                "updated_at": "2026-07-20T11:00:00+00:00",
+                "archived_at": None,
+                "pinned_at": None,
+            }
+        ]
+    )
+    owned_ids = _table_chain([{"id": "conv-content"}, {"id": "conv-title"}])
+    message_hits = _table_chain([{"conversation_id": "conv-content"}])
+    content_chain = _table_chain(
+        [
+            {
+                "id": "conv-content",
+                "title": "Ops sync",
+                "preview": "mentions apollo lists",
+                "message_count": 2,
+                "created_at": "2026-07-19T10:00:00+00:00",
+                "updated_at": "2026-07-20T12:00:00+00:00",
+                "archived_at": None,
+                "pinned_at": None,
+            }
+        ]
+    )
+    supabase = MagicMock()
+    # title search query, owned ids for content search, message content query, content conv fetch
+    supabase.table.side_effect = [title_chain, owned_ids, message_hits, content_chain]
+    monkeypatch.setattr(
+        "app.routers.conversations.create_client",
+        lambda *_args, **_kwargs: supabase,
+    )
+    response = client.get("/api/conversations", params={"search": "apollo"})
+    assert response.status_code == 200
+    ids = [row["id"] for row in response.json()["conversations"]]
+    assert "conv-content" in ids
+    assert "conv-title" in ids
+
+
 def test_delete_conversation_soft_delete(monkeypatch):
     _authenticate()
     soft_deleted = _table_chain([{"id": "conv-1"}])

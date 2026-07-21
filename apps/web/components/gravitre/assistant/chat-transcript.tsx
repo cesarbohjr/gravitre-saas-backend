@@ -4,9 +4,16 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { motion } from "framer-motion"
 import Image from "next/image"
-import { Loader2 } from "lucide-react"
+import { Loader2, Pencil } from "lucide-react"
 import type { UIMessage } from "ai"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { polishAssistantText } from "@/lib/plain-english"
 import {
   CHAT_ASSISTANT_BUBBLE_CLASS,
@@ -25,6 +32,12 @@ import {
 } from "@/components/gravitre/assistant/chat-execution-panel"
 import { ToolChip, type ToolInvocation } from "@/components/gravitre/assistant/tool-chip"
 import { uiMessageText } from "@/lib/chat-messages"
+import {
+  formatMessageExactTime,
+  formatMessageRelativeTime,
+  messageCreatedAt,
+  shouldShowClusterTimestamp,
+} from "@/lib/chat-message-time"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 
 function extractToolInvocations(message: UIMessage): ToolInvocation[] {
@@ -82,6 +95,8 @@ type ChatTranscriptProps = {
   confirmExecuting?: boolean
   onConfirmExecution?: () => void
   canApprove?: boolean
+  /** Edit a prior user message and resend as a new turn (history not overwritten). */
+  onEditResend?: (messageId: string, text: string) => void
 }
 
 export function ChatTranscript({
@@ -95,24 +110,39 @@ export function ChatTranscript({
   confirmExecuting = false,
   onConfirmExecution,
   canApprove = false,
+  onEditResend,
 }: ChatTranscriptProps) {
   const lastAssistantId = [...messages].reverse().find((row) => row.role === "assistant")?.id
+  // Indices into the rendered list (after empty-bubble filters) for cluster stamps.
+  const visible = messages
+    .map((message, index) => ({ message, index }))
+    .filter(({ message }) => {
+      const isUser = message.role === "user"
+      const text = uiMessageText(message)
+      const toolInvocations = !isUser ? extractToolInvocations(message) : []
+      if (isUser && !text.trim()) return false
+      if (!isUser && !text.trim() && toolInvocations.length === 0) return false
+      return true
+    })
+  const visibleMessages = visible.map((row) => row.message)
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div className="mx-auto flex w-full max-w-[920px] flex-col gap-6 px-1 py-2">
-      {messages.map((message) => {
+      {visible.map(({ message, index: sourceIndex }, visibleIndex) => {
         const isUser = message.role === "user"
         const text = uiMessageText(message)
         const toolInvocations = !isUser ? extractToolInvocations(message) : []
-        if (isUser && !text.trim()) return null
-        // Wave 6 — keep tool-only assistant bubbles so live tool chips are visible mid-stream.
-        if (!isUser && !text.trim() && toolInvocations.length === 0) return null
         const displayText = isUser ? text : polishAssistantText(text)
         const isLastAssistant = message.id === lastAssistantId
+        const createdAt = messageCreatedAt(message)
+        const showRelative = shouldShowClusterTimestamp(visibleMessages, visibleIndex)
+        const exactTitle = createdAt ? formatMessageExactTime(createdAt) : undefined
+        const relativeLabel = createdAt ? formatMessageRelativeTime(createdAt) : null
 
         return (
           <motion.div
-            key={message.id}
+            key={message.id || `msg-${sourceIndex}`}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.22 }}
@@ -121,14 +151,41 @@ export function ChatTranscript({
             {isUser ? <UserAccountAvatar useCurrentUser size="lg" /> : <GravitreAvatar />}
 
             <div className={cn("flex min-w-0 max-w-[min(760px,88%)] flex-col", isUser ? "items-end" : "items-start")}>
-              <p className={CHAT_ROLE_LABEL_CLASS}>
-                {isUser ? "You" : "Gravitre AI"}
-              </p>
+              <div
+                className={cn(
+                  "flex items-baseline gap-2",
+                  isUser ? "flex-row-reverse" : "flex-row",
+                )}
+              >
+                <p className={CHAT_ROLE_LABEL_CLASS}>
+                  {isUser ? "You" : "Gravitre AI"}
+                </p>
+                {createdAt ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <time
+                        dateTime={createdAt}
+                        title={exactTitle}
+                        className={cn(
+                          "cursor-default text-[11px] text-muted-foreground tabular-nums",
+                          !showRelative && "sr-only",
+                        )}
+                      >
+                        {showRelative ? relativeLabel : exactTitle}
+                      </time>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs">
+                      {exactTitle}
+                    </TooltipContent>
+                  </Tooltip>
+                ) : null}
+              </div>
               <div
                 className={cn(
                   CHAT_BUBBLE_BASE_CLASS,
                   isUser ? CHAT_USER_BUBBLE_CLASS : CHAT_ASSISTANT_BUBBLE_CLASS,
                 )}
+                title={exactTitle}
               >
                 {isUser ? (
                   <p className="whitespace-pre-wrap">{text}</p>
@@ -165,6 +222,18 @@ export function ChatTranscript({
                   </div>
                 )}
               </div>
+              {isUser && onEditResend && text.trim() ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="mt-1 h-7 px-2 text-[11px] text-muted-foreground"
+                  onClick={() => onEditResend(message.id, text)}
+                >
+                  <Pencil className="mr-1 h-3 w-3" />
+                  Edit & resend
+                </Button>
+              ) : null}
             </div>
           </motion.div>
         )
@@ -183,5 +252,6 @@ export function ChatTranscript({
         </div>
       ) : null}
     </div>
+    </TooltipProvider>
   )
 }

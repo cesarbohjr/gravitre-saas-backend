@@ -108,12 +108,14 @@ def _require_org_admin(client, org_id: str, user_id: str) -> None:
 
 
 def _normalize_org_row(row: dict) -> dict:
+    settings = row.get("settings") if isinstance(row.get("settings"), dict) else {}
+    # organizations has no plan/logo_url columns — derive from settings when present.
     return {
         "id": str(row.get("id")),
         "name": row.get("name"),
         "slug": row.get("slug"),
-        "logo_url": row.get("logo_url"),
-        "plan": row.get("plan"),
+        "logo_url": row.get("logo_url") or settings.get("logoUrl") or settings.get("logo_url"),
+        "plan": row.get("plan") or settings.get("plan") or settings.get("planCode"),
         "created_at": row.get("created_at"),
     }
 
@@ -302,7 +304,7 @@ async def list_organizations(
 
     roles_by_org = {str(item["org_id"]): (item.get("role") or "member") for item in memberships.data}
     org_ids = list(roles_by_org.keys())
-    orgs = client.table("organizations").select("id, name, slug, plan, created_at").in_("id", org_ids).execute()
+    orgs = client.table("organizations").select("id, name, slug, settings, created_at").in_("id", org_ids).execute()
     rows = [_normalize_org_row(row) for row in (orgs.data or [])]
     for row in rows:
         row["role"] = roles_by_org.get(row["id"], "member")
@@ -320,7 +322,7 @@ async def get_organization(
     _require_org_member(client, org_id_str, current_user["user_id"])
     org = (
         client.table("organizations")
-        .select("id, name, slug, logo_url, plan, created_at")
+        .select("id, name, slug, settings, created_at")
         .eq("id", org_id_str)
         .limit(1)
         .execute()
@@ -341,7 +343,7 @@ async def create_organization(
     created = (
         client.table("organizations")
         .insert({"name": body.name.strip(), "slug": slug, "status": "active"})
-        .select("id, name, slug, logo_url, plan, created_at")
+        .select("id, name, slug, settings, created_at")
         .limit(1)
         .execute()
     )
@@ -372,7 +374,7 @@ async def update_organization(
     if not payload:
         existing = (
             client.table("organizations")
-            .select("id, name, slug, logo_url, plan, created_at")
+            .select("id, name, slug, settings, created_at")
             .eq("id", org_id_str)
             .limit(1)
             .execute()
@@ -385,7 +387,7 @@ async def update_organization(
         client.table("organizations")
         .update(payload)
         .eq("id", org_id_str)
-        .select("id, name, slug, logo_url, plan, created_at")
+        .select("id, name, slug, settings, created_at")
         .limit(1)
         .execute()
     )

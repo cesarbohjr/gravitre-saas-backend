@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
@@ -43,6 +44,7 @@ import {
 import { endChatPerf, startChatPerf } from "@/lib/chat-performance"
 import { buildConversationTranscript, mergeTranscriptWithLiveMessages } from "@/lib/conversation-transcript"
 import { uiMessageText } from "@/lib/chat-messages"
+import { messageCreatedAt } from "@/lib/chat-message-time"
 import {
   serializeInlineTurn,
   splitConversationMessages,
@@ -264,14 +266,21 @@ export function AiWorkspace({
 
   const activeMode = useMemo(() => getModeMeta(mode), [mode])
 
+  const [historySearch, setHistorySearch] = useState("")
+  const deferredHistorySearch = useDeferredValue(historySearch.trim())
   const {
     data: conversationsData,
     error: conversationsError,
     isLoading: conversationsLoading,
     mutate: mutateConversations,
   } = useSWR(
-    user && orgReady ? "ai-conversations" : null,
-    () => conversationsApi.list({ limit: 100, includeArchived: true }),
+    user && orgReady ? ["ai-conversations", deferredHistorySearch] : null,
+    () =>
+      conversationsApi.list({
+        limit: 100,
+        includeArchived: true,
+        search: deferredHistorySearch || undefined,
+      }),
     { revalidateOnFocus: false },
   )
   const conversations = conversationsData?.conversations ?? []
@@ -313,11 +322,23 @@ export function AiWorkspace({
     onFinish: ({ messages: finishedMessages }) => {
       submitLockRef.current = false
       setSessionBusy(false)
+      // Stamp provisional created_at when missing so live bubbles show a time until hydrate.
+      const stamped = finishedMessages.map((message) => {
+        if (messageCreatedAt(message)) return message
+        return {
+          ...message,
+          metadata: {
+            ...(typeof message.metadata === "object" && message.metadata ? message.metadata : {}),
+            created_at: new Date().toISOString(),
+          },
+        }
+      })
+      setMessages(stamped)
       const conversationId = activeConversationIdRef.current
-      if (conversationId && finishedMessages.length > 0) {
-        writeCachedConversationMessages(conversationId, finishedMessages)
+      if (conversationId && stamped.length > 0) {
+        writeCachedConversationMessages(conversationId, stamped)
       }
-      void persistChatTurn(finishedMessages)
+      void persistChatTurn(stamped)
       void mutateConversations()
     },
     onData: (dataPart) => {
@@ -956,9 +977,23 @@ export function AiWorkspace({
       startChatPerf("first_token")
       lastUserPromptRef.current = prompt
       await ensureConversation(prompt)
-      sendMessage({ text: prompt })
+      sendMessage({
+        text: prompt,
+        metadata: { created_at: new Date().toISOString() },
+      })
     },
     [ensureConversation, sendMessage],
+  )
+
+  const handleEditResend = useCallback(
+    (messageId: string, text: string) => {
+      const idx = messages.findIndex((message) => message.id === messageId)
+      if (idx < 0) return
+      // Truncate local UI from the edited message; prior DB rows remain recoverable.
+      setMessages(messages.slice(0, idx))
+      void runChat(text.trim())
+    },
+    [messages, runChat, setMessages],
   )
 
   const handleResearchScopeSelect = useCallback(
@@ -1250,6 +1285,30 @@ export function AiWorkspace({
     [activeConversationId, handleNewConversation, mutateConversations],
   )
 
+  const handleUnarchiveConversation = useCallback(
+    async (id: string) => {
+      await conversationsApi.unarchive(id)
+      void mutateConversations()
+    },
+    [mutateConversations],
+  )
+
+  const handlePinConversation = useCallback(
+    async (id: string) => {
+      await conversationsApi.pin(id)
+      void mutateConversations()
+    },
+    [mutateConversations],
+  )
+
+  const handleUnpinConversation = useCallback(
+    async (id: string) => {
+      await conversationsApi.unpin(id)
+      void mutateConversations()
+    },
+    [mutateConversations],
+  )
+
   const handleRenameConversation = useCallback(
     async (id: string, title: string) => {
       await conversationsApi.update(id, { title })
@@ -1445,6 +1504,9 @@ export function AiWorkspace({
         onNew={handleNewConversation}
         onDelete={(id) => void handleDeleteConversation(id)}
         onArchive={(id) => void handleArchiveConversation(id)}
+        onUnarchive={(id) => void handleUnarchiveConversation(id)}
+        onPin={(id) => void handlePinConversation(id)}
+        onUnpin={(id) => void handleUnpinConversation(id)}
         onRename={(id, title) => void handleRenameConversation(id, title)}
         onBulkDelete={(ids) => void handleBulkDeleteConversations(ids)}
         isOpen={sidebarOpen}
@@ -1452,6 +1514,8 @@ export function AiWorkspace({
         isLoading={showConversationsSkeleton}
         loadError={showConversationsError ? conversationsError : undefined}
         onRetry={() => void mutateConversations()}
+        searchQuery={historySearch}
+        onSearchQueryChange={setHistorySearch}
       />
 
       <div className="ai-surface-shell flex min-h-0 min-w-0 flex-1 flex-col">
@@ -1632,6 +1696,7 @@ export function AiWorkspace({
                 confirmExecuting={confirmExecuting}
                 onConfirmExecution={() => void handleConfirmExecution()}
                 canApprove={canApproveWrites}
+                onEditResend={handleEditResend}
               />
               </>
             ) : null}

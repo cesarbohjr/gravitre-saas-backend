@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useMotionPrefs } from "@/lib/animations"
 import {
   Archive,
+  ArchiveRestore,
   Check,
   CheckCheck,
   Filter,
@@ -13,6 +14,8 @@ import {
   MessageSquarePlus,
   MoreHorizontal,
   Pencil,
+  Pin,
+  PinOff,
   Search,
   Share2,
   Trash2,
@@ -48,6 +51,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import type { Conversation } from "@/types/api"
+import { groupConversationsByRecency } from "@/lib/conversation-history-groups"
 
 type HistoryDateFilter = "all" | "today" | "week" | "archived"
 
@@ -83,33 +87,6 @@ function emptyHistoryMessage(filter: HistoryDateFilter, searchQuery: string): st
   if (filter === "today") return "No conversations from today"
   if (filter === "week") return "No conversations this week"
   return "No conversations yet"
-}
-
-function groupConversationsByDate(conversations: Conversation[]) {
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
-  const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
-  const lastMonth = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
-
-  const groups: { label: string; conversations: Conversation[] }[] = [
-    { label: "Today", conversations: [] },
-    { label: "Yesterday", conversations: [] },
-    { label: "Previous 7 days", conversations: [] },
-    { label: "Previous 30 days", conversations: [] },
-    { label: "Older", conversations: [] },
-  ]
-
-  for (const conv of conversations) {
-    const date = new Date(conv.updated_at)
-    if (date >= today) groups[0].conversations.push(conv)
-    else if (date >= yesterday) groups[1].conversations.push(conv)
-    else if (date >= lastWeek) groups[2].conversations.push(conv)
-    else if (date >= lastMonth) groups[3].conversations.push(conv)
-    else groups[4].conversations.push(conv)
-  }
-
-  return groups.filter((g) => g.conversations.length > 0)
 }
 
 function formatRelativeTime(dateStr: string): string {
@@ -150,6 +127,9 @@ export function ConversationSidebar({
   onNew,
   onDelete,
   onArchive,
+  onUnarchive,
+  onPin,
+  onUnpin,
   onRename,
   onBulkDelete,
   isOpen,
@@ -157,6 +137,8 @@ export function ConversationSidebar({
   isLoading = false,
   loadError,
   onRetry,
+  searchQuery = "",
+  onSearchQueryChange,
 }: {
   conversations: Conversation[]
   activeConversationId: string | null
@@ -164,6 +146,9 @@ export function ConversationSidebar({
   onNew: () => void
   onDelete: (id: string) => void | Promise<void>
   onArchive: (id: string) => void
+  onUnarchive?: (id: string) => void
+  onPin?: (id: string) => void
+  onUnpin?: (id: string) => void
   onRename: (id: string, title: string) => void
   onBulkDelete: (ids: string[]) => void | Promise<void>
   isOpen: boolean
@@ -171,9 +156,11 @@ export function ConversationSidebar({
   isLoading?: boolean
   loadError?: unknown
   onRetry?: () => void
+  searchQuery?: string
+  onSearchQueryChange?: (query: string) => void
 }) {
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchOpen, setSearchOpen] = useState(Boolean(searchQuery.trim()))
+  const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery)
   const [dateFilter, setDateFilter] = useState<HistoryDateFilter>("all")
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -186,16 +173,27 @@ export function ConversationSidebar({
   const [renameValue, setRenameValue] = useState("")
   const { reduced } = useMotionPrefs()
 
+  const activeSearch = onSearchQueryChange ? searchQuery : localSearchQuery
+  const setActiveSearch = (value: string) => {
+    if (onSearchQueryChange) onSearchQueryChange(value)
+    else setLocalSearchQuery(value)
+  }
+
+  // Date/archive filters stay client-side; title+content search is server-driven when wired.
   const filtered = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase()
+    const q = onSearchQueryChange ? "" : activeSearch.trim().toLowerCase()
     return conversations.filter((conversation) => {
       if (!matchesHistoryDateFilter(conversation, dateFilter)) return false
       if (!q) return true
-      return (conversation.title || "").toLowerCase().includes(q)
+      return (
+        (conversation.title || "").toLowerCase().includes(q) ||
+        (conversation.preview || "").toLowerCase().includes(q)
+      )
     })
-  }, [conversations, searchQuery, dateFilter])
+  }, [conversations, activeSearch, dateFilter, onSearchQueryChange])
 
-  const grouped = useMemo(() => groupConversationsByDate(filtered), [filtered])
+  // Preserve API order (pinned first, then updated_at DESC); only bucket for display.
+  const grouped = useMemo(() => groupConversationsByRecency(filtered), [filtered])
 
   const allSelected = filtered.length > 0 && selectedIds.size === filtered.length
 
@@ -425,14 +423,14 @@ export function ConversationSidebar({
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search conversations..."
+                value={activeSearch}
+                onChange={(e) => setActiveSearch(e.target.value)}
+                placeholder="Search titles and messages..."
                 className="h-8 pl-8 pr-8 text-xs"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === "Escape") {
-                    setSearchQuery("")
+                    setActiveSearch("")
                     setSearchOpen(false)
                   }
                 }}
@@ -440,7 +438,7 @@ export function ConversationSidebar({
               <button
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 onClick={() => {
-                  setSearchQuery("")
+                  setActiveSearch("")
                   setSearchOpen(false)
                 }}
                 aria-label="Close search"
@@ -484,9 +482,9 @@ export function ConversationSidebar({
                 <MessageCircle className="h-5 w-5 text-muted-foreground" />
               </div>
               <p className="mb-1 text-sm font-medium text-foreground">
-                {emptyHistoryMessage(dateFilter, searchQuery)}
+                {emptyHistoryMessage(dateFilter, activeSearch)}
               </p>
-              {!searchQuery && dateFilter === "all" && (
+              {!activeSearch && dateFilter === "all" && (
                 <p className="text-xs text-muted-foreground">Start a new chat to begin</p>
               )}
             </div>
@@ -543,6 +541,13 @@ export function ConversationSidebar({
                               >
                                 {isSelected && <Check className="h-3 w-3" strokeWidth={3} />}
                               </span>
+                            ) : conv.pinned_at ? (
+                              <Pin
+                                className={cn(
+                                  "h-4 w-4 shrink-0",
+                                  isActive ? "text-emerald-500" : "text-muted-foreground",
+                                )}
+                              />
                             ) : (
                               <MessageCircle
                                 className={cn(
@@ -613,9 +618,28 @@ export function ConversationSidebar({
                                   >
                                     <Pencil className="h-3.5 w-3.5 mr-2" /> Rename
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => onArchive(conv.id)}>
-                                    <Archive className="h-3.5 w-3.5 mr-2" /> Archive
-                                  </DropdownMenuItem>
+                                  {conv.pinned_at
+                                    ? onUnpin && (
+                                        <DropdownMenuItem onClick={() => onUnpin(conv.id)}>
+                                          <PinOff className="h-3.5 w-3.5 mr-2" /> Unpin
+                                        </DropdownMenuItem>
+                                      )
+                                    : onPin && (
+                                        <DropdownMenuItem onClick={() => onPin(conv.id)}>
+                                          <Pin className="h-3.5 w-3.5 mr-2" /> Pin
+                                        </DropdownMenuItem>
+                                      )}
+                                  {isConversationArchived(conv)
+                                    ? onUnarchive && (
+                                        <DropdownMenuItem onClick={() => onUnarchive(conv.id)}>
+                                          <ArchiveRestore className="h-3.5 w-3.5 mr-2" /> Unarchive
+                                        </DropdownMenuItem>
+                                      )
+                                    : (
+                                        <DropdownMenuItem onClick={() => onArchive(conv.id)}>
+                                          <Archive className="h-3.5 w-3.5 mr-2" /> Archive
+                                        </DropdownMenuItem>
+                                      )}
                                   <DropdownMenuItem onClick={() => shareLink(conv.id)}>
                                     <Share2 className="h-3.5 w-3.5 mr-2" /> Copy link
                                   </DropdownMenuItem>

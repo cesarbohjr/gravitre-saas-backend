@@ -50,11 +50,18 @@ function toolCallsToParts(message: ConversationMessage): UIMessage["parts"] {
   return parts
 }
 
+export type ChatUIMessageMetadata = {
+  /** ISO timestamptz from conversation_messages.created_at (or provisional client stamp). */
+  created_at?: string
+}
+
 export function conversationMessageToUI(message: ConversationMessage): UIMessage {
+  const createdAt = (message.created_at || "").trim() || undefined
   return {
     id: message.id,
     role: message.role === "assistant" ? "assistant" : "user",
     parts: toolCallsToParts(message),
+    metadata: createdAt ? ({ created_at: createdAt } satisfies ChatUIMessageMetadata) : undefined,
   }
 }
 

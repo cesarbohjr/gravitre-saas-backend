@@ -47,6 +47,9 @@ class ActionSpec:
     requires_approval: bool = False
     input_schema: dict[str, Any] | None = None
     workflow_schema: ActionWorkflowSchema | None = None
+    # BusinessOutcome Diff/Undo — real catalog property (None = irreversible / no diff).
+    compensating_action: str | None = None
+    supports_diff: bool | None = None
 
     @property
     def tool(self) -> str:
@@ -80,6 +83,8 @@ class ActionSpec:
             "requiresApproval": self.requires_approval,
             "implemented": implemented,
             "inputSchema": schema,
+            "compensatingAction": self.compensating_action,
+            "supportsDiff": self.supports_diff,
         }
         return payload
 

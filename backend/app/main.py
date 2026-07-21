@@ -38,6 +38,7 @@ from app.routers import (
     audit,
     billing,
     billing_sync,
+    business_outcomes,
     connector_oauth,
     connectors,
     marketplace,
@@ -480,6 +481,7 @@ app.include_router(org.organizations_router)
 app.include_router(billing.router)
 app.include_router(billing_sync.internal_router)
 app.include_router(billing_sync.admin_router)
+app.include_router(business_outcomes.router)
 app.include_router(ops_internal.router)
 app.include_router(knowledge_sync.internal_router)
 app.include_router(knowledge_sync.admin_router)

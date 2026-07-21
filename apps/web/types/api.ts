@@ -450,6 +450,7 @@ export interface Conversation {
   updated_at: string
   message_count: number
   archived_at?: string | null
+  pinned_at?: string | null
 }
 
 export interface ConversationMessage {
