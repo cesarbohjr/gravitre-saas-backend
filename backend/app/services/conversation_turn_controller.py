@@ -20,6 +20,7 @@ from app.services.chat_connector_models import ConnectorActionPlan
 from app.services.gravitree_voice import format_operator_message, voice_system_prompt_section
 from app.services.parameter_ledger import (
     ParameterLedger,
+    classify_awaiting_params_intent,
     get_ledger,
     ingest_message_slots,
     is_awaiting_params,
@@ -29,6 +30,7 @@ from app.services.parameter_ledger import (
 logger = get_logger(__name__)
 
 PendingPlanIntent = Literal["continue", "modify", "cancel", "unclear"]
+AwaitingParamsIntent = Literal["slot_answer", "meta_clarify", "unrelated"]
 
 
 class PendingPlanIntentResult(BaseModel):
@@ -47,6 +49,7 @@ class TurnInterpretation:
     pending_confirm: bool = False
     has_current_plan: bool = False
     pending_plan_intent: PendingPlanIntent | None = None
+    awaiting_params_intent: AwaitingParamsIntent | None = None
     structured_plan: ConnectorActionPlan | None = None
     source: str = "chat"
     voice_section: str = ""
@@ -147,6 +150,17 @@ async def prepare_conversation_turn(
             except Exception:  # noqa: BLE001
                 logger.debug("stale_plan_supersede_skipped", exc_info=True)
 
+    # awaiting_params is a third pending family: slot fill vs meta-question vs unrelated.
+    params_intent: AwaitingParamsIntent | None = None
+    if is_awaiting_params(state):
+        missing = list(ledger.pending_missing or [])
+        raw_intent = classify_awaiting_params_intent(text, missing)
+        params_intent = raw_intent if raw_intent in {
+            "slot_answer",
+            "meta_clarify",
+            "unrelated",
+        } else "slot_answer"
+
     return TurnInterpretation(
         message=text,
         task_state=state,
@@ -156,6 +170,7 @@ async def prepare_conversation_turn(
         in {"awaiting_confirm", "awaiting_plan_confirm", "awaiting_admin_approval"},
         has_current_plan=bool(current_plan),
         pending_plan_intent=pending_intent,
+        awaiting_params_intent=params_intent,
         structured_plan=structured_plan,
         source=source,
         voice_section=voice_section,

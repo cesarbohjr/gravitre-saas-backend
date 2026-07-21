@@ -1,0 +1,35 @@
+{
+  "bug": "awaiting_params_meta_clarify",
+  "verdict": "ROOT_CAUSE_CONFIRMED",
+  "fixStatus": "CODE_FIXED_LOCAL_UNDEPLOYED",
+  "checkedAt": "2026-07-21T08:28:00Z",
+  "apiHealthAtConfirm": "GET /health git_sha=184a9850485ef102838e65dec7d992294a9f1ee7 @ 2026-07-21T08:20:03Z",
+  "prodScreenshot": "user-attached 2026-07-21 clarifying-question loop on Send Gmail message",
+  "reproduction": {
+    "pending": "awaiting_params for gmail.messages.send missing recipient",
+    "user": "do you need the email address or name?",
+    "observed": "byte-identical Still needed: recipient re-prompt; no answer to the question"
+  },
+  "rootCause": {
+    "summary": "awaiting_params resume had only slot-fill vs no-fill buckets; questions ABOUT pending fields were treated as failed fills and re-validated into the same format_operator_response copy. classify_pending_plan_intent never runs for awaiting_params.",
+    "evidenceLocal": {
+      "classifyBefore": "_is_side_question_not_slot_answer('do you need the email address or name?') == False (email/recipient cue short-circuit)",
+      "pollutionBefore": "resume_awaiting_params filled subject with the question text when subject was still missing",
+      "turnControllerGap": "conversation_turn_controller.prepare_conversation_turn only classifies awaiting_confirm* / sticky plan — not awaiting_params (lines ~123-128 pre-fix)"
+    },
+    "sharedWithStalePlan": true,
+    "sharedClass": "turn-controller classification gap — need slot_answer | meta_clarify | unrelated (stale-plan already has continue|modify|cancel|unclear for plans only)"
+  },
+  "fix": {
+    "generic": true,
+    "notGmailSpecific": true,
+    "files": [
+      "backend/app/services/parameter_ledger.py",
+      "backend/app/services/conversation_turn_controller.py",
+      "backend/app/services/chat_connector_execution_service.py"
+    ],
+    "behavior": "meta_clarify → answer (email address preferred) + keep awaiting_params; do not re-emit identical Still needed; do not pollute free-text slots",
+    "localTests": "tests/services/test_parameter_ledger.py::test_meta_clarify_about_recipient_is_not_slot_answer + test_conversation_turn_controller awaiting_params three buckets",
+    "liveProdReverify": "NOT RUN — requires merge → Railway redeploy → fresh awaiting_params turn"
+  }
+}

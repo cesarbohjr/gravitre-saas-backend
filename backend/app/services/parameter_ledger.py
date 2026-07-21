@@ -719,11 +719,59 @@ def resume_awaiting_params(
     return plan, ledger, patch
 
 
+def _is_interrogative(text: str) -> bool:
+    lower = (text or "").strip().lower()
+    if not lower:
+        return False
+    if lower.endswith("?"):
+        return True
+    return bool(
+        re.match(
+            r"^(what|which|who|how|why|when|where|are|is|do|does|did|can|could|should|would)\b",
+            lower,
+        )
+    )
+
+
+def _is_meta_field_clarify_question(text: str) -> bool:
+    """True when the user asks ABOUT a missing field (form/format), not supplying it.
+
+    Generic across connectors — recipient/email/name, subject, channel, etc.
+    """
+    lower = (text or "").strip().lower()
+    if not lower or not _is_interrogative(lower):
+        return False
+    # Explicit value assignment is never meta.
+    if re.search(
+        r"\b(subject|body|message|channel|recipient|to|email)\s*(?:is|=|:)\s*\S",
+        lower,
+    ):
+        return False
+    if EMAIL_RE.search(lower):
+        return False
+    return bool(
+        re.search(
+            r"\b("
+            r"do you need|what (?:do you |should i )?need|what(?:'s| is) (?:still )?needed|"
+            r"which (?:one|format|field|value)|"
+            r"email address or name|name or (?:the )?email|address or name|"
+            r"what (?:format|kind|type)(?: of)?"
+            r"|how should i (?:provide|send|give|format|specify)"
+            r"|should i (?:provide|send|give|use|include)"
+            r"|did you (?:want|mean|need)"
+            r"|is that (?:an? )?(?:email|name|address|subject|channel)"
+            r")\b",
+            lower,
+        )
+    )
+
+
 def _is_side_question_not_slot_answer(text: str) -> bool:
     """True when the turn is meta/status chatter, not an answer to a missing field.
 
     Structural guard for subject/body pollution: filler turns like
     \"what connectors are Connected?\" must not fill free-text slots.
+    Also covers clarifying questions ABOUT pending fields (name vs email).
     """
     t = (text or "").strip()
     if not t:
@@ -742,10 +790,9 @@ def _is_side_question_not_slot_answer(text: str) -> bool:
         return False
     if re.search(r"\b(side note|by the way|btw|unrelated|quick note|quick side)\b", lower):
         return True
-    if lower.endswith("?") or re.match(
-        r"^(what|which|who|how|why|when|where|are|is|do|does|can|could)\b",
-        lower,
-    ):
+    if _is_meta_field_clarify_question(t):
+        return True
+    if _is_interrogative(lower):
         # Status / readiness questions are never subject/body answers.
         if re.search(
             r"\b(connector|connectors|connected|healthy|status|executable|verified)\b",
@@ -756,6 +803,72 @@ def _is_side_question_not_slot_answer(text: str) -> bool:
         if not re.search(r"\b(subject|body|message|email|recipient|channel)\b", lower):
             return True
     return False
+
+
+AwaitingParamsIntent = str  # "slot_answer" | "meta_clarify" | "unrelated"
+
+
+def classify_awaiting_params_intent(
+    message: str,
+    pending_missing: list[str] | None = None,
+) -> str:
+    """Three-way intent for awaiting_params turns (Module B turn-controller).
+
+    - slot_answer: user is supplying (or attempting to supply) missing values
+    - meta_clarify: user is asking ABOUT what is being asked of them
+    - unrelated: side question / new request that should not fill slots
+    """
+    from app.services.chat_message_normalize import strip_assistant_scope_prefix
+
+    text = strip_assistant_scope_prefix(message or "").strip()
+    if not text:
+        return "slot_answer"
+    if _is_meta_field_clarify_question(text):
+        return "meta_clarify"
+    if _is_side_question_not_slot_answer(text):
+        return "unrelated"
+    # Bare email / explicit slot fills / free-text body → slot answer.
+    return "slot_answer"
+
+
+def format_awaiting_params_meta_answer(
+    pending_missing: list[str] | None,
+    *,
+    action_label: str | None = None,
+) -> str:
+    """Answer a clarifying question about pending fields — keep awaiting_params."""
+    missing = [str(m).strip().lower() for m in (pending_missing or []) if str(m).strip()]
+    label = (action_label or "this action").strip() or "this action"
+    lines: list[str] = []
+
+    if any(m in {"recipient", "to", "email", "email address"} for m in missing) or any(
+        "recipient" in m or "email" in m for m in missing
+    ):
+        lines.append(
+            "I need the **email address** (for example `name@company.com`). "
+            "A display name alone is not enough unless I can resolve it to an address."
+        )
+    if any(m in {"subject", "title"} for m in missing) or any("subject" in m for m in missing):
+        lines.append("For **subject**, send the subject line text (plain string).")
+    if any(m in {"body", "message", "text", "content", "html_body"} for m in missing) or any(
+        m in {"body", "message"} for m in missing
+    ):
+        lines.append("For the **message body**, send the text you want delivered.")
+    if any(m in {"channel"} for m in missing) or any("channel" in m for m in missing):
+        lines.append("For **channel**, send the channel name or `#channel`.")
+
+    if not lines:
+        pretty = ", ".join(pending_missing or missing) or "the missing fields"
+        lines.append(
+            f"I still need **{pretty}** for {label}. "
+            "Reply with the values themselves (not a question about the fields)."
+        )
+    else:
+        still = ", ".join(str(m) for m in (pending_missing or []) if str(m).strip())
+        if still:
+            lines.append(f"Still needed for {label}: {still}.")
+
+    return "\n".join(lines).strip()
 
 
 def _followup_fill_text(message: str) -> str | None:

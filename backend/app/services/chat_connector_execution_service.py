@@ -838,8 +838,11 @@ class ChatConnectorExecutionService:
     ) -> dict[str, Any] | None:
         from app.services.chat_message_normalize import strip_assistant_scope_prefix
         from app.services.parameter_ledger import (
+            classify_awaiting_params_intent,
+            format_awaiting_params_meta_answer,
             get_ledger,
             ingest_message_slots,
+            is_awaiting_params,
             ledger_patch,
             stage_awaiting_params,
         )
@@ -866,6 +869,32 @@ class ChatConnectorExecutionService:
             )
         except Exception as exc:  # noqa: BLE001
             logger.debug("parameter ledger ingest persist skipped: %s", exc)
+
+        # Module B — awaiting_params third case: question ABOUT the pending ask.
+        # Must answer (and keep pending) instead of re-emitting identical Still needed.
+        if is_awaiting_params(task_state):
+            missing = list(get_ledger(task_state).pending_missing or [])
+            params_intent = classify_awaiting_params_intent(message, missing)
+            if params_intent == "meta_clarify":
+                pending = task_state.get("pending_task") if isinstance(
+                    task_state.get("pending_task"), dict
+                ) else {}
+                params = dict((pending or {}).get("params") or {})
+                action_label = str(
+                    params.get("label") or params.get("invoke_action") or "this action"
+                )
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": "clarifying",
+                    "message": format_awaiting_params_meta_answer(
+                        missing,
+                        action_label=action_label,
+                    ),
+                    "task_state": task_state,
+                    "pending_task": pending,
+                    "workflow_status": "needs clarification",
+                    "awaiting_params_intent": "meta_clarify",
+                }
 
         # Post-action inline preview — live vendor read from session entity (no new write path).
         preview_turn = await self._try_inline_preview_turn(

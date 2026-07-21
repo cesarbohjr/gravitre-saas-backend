@@ -9,7 +9,12 @@ from app.services.conversation_turn_controller import (
     prepare_conversation_turn,
     re_modify_hint,
 )
-from app.services.parameter_ledger import ingest_message_slots
+from app.services.parameter_ledger import (
+    classify_awaiting_params_intent,
+    ingest_message_slots,
+    stage_awaiting_params,
+)
+from app.services.chat_connector_models import ConnectorActionPlan
 
 
 @pytest.mark.asyncio
@@ -68,3 +73,41 @@ def test_bind_canvas_step_args_from_ledger():
     params = cfg.get("params") or {}
     assert params.get("channel") == "sales"
     assert "hello" in (params.get("message") or params.get("text") or "").lower() or True
+
+
+def test_awaiting_params_intent_three_buckets():
+    assert (
+        classify_awaiting_params_intent("do you need the email address or name?", ["recipient"])
+        == "meta_clarify"
+    )
+    assert classify_awaiting_params_intent("alex@acme.com", ["recipient"]) == "slot_answer"
+    assert (
+        classify_awaiting_params_intent(
+            "what connectors are Connected in this org?",
+            ["recipient"],
+        )
+        == "unrelated"
+    )
+
+
+@pytest.mark.asyncio
+async def test_prepare_turn_sets_awaiting_params_meta_intent():
+    plan = ConnectorActionPlan(
+        tool_name="gmail_send",
+        invoke_action="gmail.messages.send",
+        integration="gmail",
+        kind="write",
+        label="Send Gmail",
+        args={},
+    )
+    staged = stage_awaiting_params(plan, ("recipient",))
+    interp = await prepare_conversation_turn(
+        message="do you need the email address or name?",
+        org_id="org-1",
+        conversation_id="",
+        task_state=staged,
+        persist=False,
+        source="chat",
+    )
+    assert interp.awaiting_params is True
+    assert interp.awaiting_params_intent == "meta_clarify"

@@ -464,8 +464,9 @@ export function ConversationSidebar({
           </div>
         )}
 
-        {/* List */}
-        <ScrollArea className="min-h-0 flex-1 overflow-hidden">
+        {/* List — viewport child must be block (not Radix table) so short lists
+            stay top-aligned under bucket labels instead of looking clipped. */}
+        <ScrollArea className="min-h-0 flex-1 overflow-hidden [&_[data-slot=scroll-area-viewport]>div]:!block [&_[data-slot=scroll-area-viewport]>div]:!min-h-0">
           {isLoading ? (
             <ConversationListSkeleton />
           ) : loadError ? (
@@ -489,15 +490,15 @@ export function ConversationSidebar({
               )}
             </div>
           ) : (
-            <div className="py-2">
+            <div className="flex flex-col gap-3 py-3">
               {grouped.map((group) => (
-                <div key={group.label} className="mb-2">
-                  <div className="px-4 pb-1 pt-2">
+                <div key={group.label} className="flex flex-col gap-1">
+                  <div className="px-4 pb-0.5 pt-1">
                     <span className="text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground/90">
                       {group.label}
                     </span>
                   </div>
-                  <div className="px-2">
+                  <div className="flex flex-col gap-0.5 px-2">
                     <AnimatePresence initial={false}>
                       {group.conversations.map((conv) => {
                         const isActive = activeConversationId === conv.id
@@ -512,12 +513,12 @@ export function ConversationSidebar({
                             exit={reduced ? { opacity: 0 } : { opacity: 0, x: -12, height: 0 }}
                             transition={{ type: "spring", stiffness: 420, damping: 34 }}
                             className={cn(
-                              "relative group flex items-center gap-2 rounded-lg px-2.5 py-2 cursor-pointer transition-colors min-w-0",
+                              "relative group flex min-w-0 cursor-pointer items-center gap-2 overflow-hidden rounded-md px-2.5 py-2 transition-colors",
                               isActive && !selectionMode
-                                ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"
+                                ? "bg-sidebar-accent text-sidebar-accent-foreground"
                                 : isSelected
                                   ? "bg-emerald-500/10"
-                                  : "hover:bg-sidebar-accent",
+                                  : "hover:bg-sidebar-accent/80",
                             )}
                             onClick={() => handleRowClick(conv.id)}
                             onContextMenu={(e) => e.preventDefault()}
@@ -582,10 +583,8 @@ export function ConversationSidebar({
                                   <p
                                     title={conv.title || "New conversation"}
                                     className={cn(
-                                      "min-w-0 flex-1 truncate text-sm leading-snug",
-                                      isActive && !selectionMode
-                                        ? "font-medium text-emerald-700 dark:text-emerald-300"
-                                        : "text-sidebar-foreground",
+                                      "min-w-0 flex-1 truncate text-sm leading-snug text-sidebar-foreground",
+                                      isActive && !selectionMode && "font-medium",
                                     )}
                                   >
                                     {conv.title || "New conversation"}

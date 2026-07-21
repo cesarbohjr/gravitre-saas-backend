@@ -1,0 +1,261 @@
+{
+  "checkedAt": "2026-07-21T08:20:57.462509+00:00",
+  "apiBase": "https://api.gravitre.app",
+  "orgId": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "actor": "conversation-smoke-sa@gravitre.app",
+  "expectSha": "184a9850",
+  "fixCommit": "481f9862",
+  "repros": {
+    "fastRunHistory": {
+      "conversationId": "cffcaea4-5690-42ef-926c-7e0242add9e9",
+      "turn": {
+        "http": 200,
+        "assistant": "I can help with do that. What is the target and desired outcome?",
+        "tools": [],
+        "intel": [
+          {
+            "effectiveMode": "standard",
+            "answerExplanation": "Analyzing your request\u2026",
+            "pendingTask": null,
+            "routing": {
+              "routingTier": "simple",
+              "modelTier": "low",
+              "latencyBudgetMs": {
+                "ttft": 800,
+                "total": 8000
+              },
+              "maxToolRounds": 6,
+              "pinnedFast": true,
+              "reasons": [
+                "fast_or_explicit_simple"
+              ]
+            }
+          },
+          {
+            "effectiveMode": "standard",
+            "answerExplanation": "Reviewing connected systems and knowledge\u2026",
+            "pendingTask": null,
+            "routing": {
+              "routingTier": "simple",
+              "modelTier": "low",
+              "latencyBudgetMs": {
+                "ttft": 800,
+                "total": 8000
+              },
+              "maxToolRounds": 6,
+              "pinnedFast": true,
+              "reasons": [
+                "fast_or_explicit_simple"
+              ]
+            }
+          },
+          {
+            "effectiveMode": "standard",
+            "answerExplanation": "Clarification needed: Under-specified action request.",
+            "pendingTask": null,
+            "routing": {
+              "routingTier": "simple",
+              "modelTier": "low",
+              "latencyBudgetMs": {
+                "ttft": 800,
+                "total": 8000
+              },
+              "maxToolRounds": 6,
+              "pinnedFast": true,
+              "reasons": [
+                "fast_or_explicit_simple"
+              ],
+              "escalations": []
+            }
+          }
+        ],
+        "at": "2026-07-21T08:21:36.698790+00:00",
+        "error": null
+      },
+      "judgment": {
+        "verdict": "INCONCLUSIVE",
+        "why": "no fabricated zero, but neither refusal nor workflow_runs evidence",
+        "fabricatedZeroRuns": false,
+        "refused": false,
+        "usedWorkflowRunsTool": false,
+        "toolNames": [],
+        "effectiveMode": "standard",
+        "explanationSnippet": "Clarification needed: Under-specified action request."
+      }
+    },
+    "stalePlanSequence": {
+      "conversationId": "a17df359-c609-408c-842d-cc70489af3c8",
+      "bootstrapHttp": 200,
+      "seededStickyCompletedPlan": true,
+      "turns": [
+        {
+          "user": "What workflows have been ran?",
+          "http": 200,
+          "assistant": "I can help with do that. What is the target and desired outcome?",
+          "pending": null,
+          "current_plan": {
+            "goal": "What workflows have been ran?",
+            "steps": [
+              {
+                "step_id": "step_1",
+                "description": "Clarify success criteria and constraints",
+                "dependencies": [],
+                "requires_approval": false,
+                "estimated_complexity": "low",
+                "connector_requirements": []
+              },
+              {
+                "step_id": "step_2",
+                "description": "Gather evidence from RAG and connectors",
+                "dependencies": [
+                  "step_1"
+                ],
+                "requires_approval": false,
+                "estimated_complexity": "medium",
+                "connector_requirements": []
+              },
+              {
+                "step_id": "step_3",
+                "description": "Draft plan for human review",
+                "dependencies": [
+                  "step_2"
+                ],
+                "requires_approval": true,
+                "estimated_complexity": "medium",
+                "connector_requirements": []
+              },
+              {
+                "step_id": "step_4",
+                "description": "Execute only after explicit approval",
+                "dependencies": [
+                  "step_3"
+                ],
+                "requires_approval": true,
+                "estimated_complexity": "medium",
+                "connector_requirements": []
+              }
+            ],
+            "status": "ok",
+            "requires_human_review": true
+          },
+          "tools": [],
+          "at": "2026-07-21T08:22:03.902829+00:00"
+        },
+        {
+          "user": "yes",
+          "http": 200,
+          "assistant": "I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue.",
+          "pending": null,
+          "current_plan": {
+            "goal": "What workflows have been ran?",
+            "steps": [
+              {
+                "step_id": "step_1",
+                "description": "Clarify success criteria and constraints",
+                "dependencies": [],
+                "requires_approval": false,
+                "estimated_complexity": "low",
+                "connector_requirements": []
+              },
+              {
+                "step_id": "step_2",
+                "description": "Gather evidence from RAG and connectors",
+                "dependencies": [
+                  "step_1"
+                ],
+                "requires_approval": false,
+                "estimated_complexity": "medium",
+                "connector_requirements": []
+              },
+              {
+                "step_id": "step_3",
+                "description": "Draft plan for human review",
+                "dependencies": [
+                  "step_2"
+                ],
+                "requires_approval": true,
+                "estimated_complexity": "medium",
+                "connector_requirements": []
+              },
+              {
+                "step_id": "step_4",
+                "description": "Execute only after explicit approval",
+                "dependencies": [
+                  "step_3"
+                ],
+                "requires_approval": true,
+                "estimated_complexity": "medium",
+                "connector_requirements": []
+              }
+            ],
+            "status": "ok",
+            "requires_human_review": true
+          },
+          "tools": [
+            "searchKnowledgeBase"
+          ],
+          "at": "2026-07-21T08:22:43.604636+00:00"
+        }
+      ],
+      "judgment": {
+        "verdict": "FAIL",
+        "reminderOnUnrelated": false,
+        "hubspotToolOnYes": false,
+        "pendingStatusAfterYes": null,
+        "currentPlanAfterYes": {
+          "goal": "What workflows have been ran?",
+          "steps": [
+            {
+              "step_id": "step_1",
+              "description": "Clarify success criteria and constraints",
+              "dependencies": [],
+              "requires_approval": false,
+              "estimated_complexity": "low",
+              "connector_requirements": []
+            },
+            {
+              "step_id": "step_2",
+              "description": "Gather evidence from RAG and connectors",
+              "dependencies": [
+                "step_1"
+              ],
+              "requires_approval": false,
+              "estimated_complexity": "medium",
+              "connector_requirements": []
+            },
+            {
+              "step_id": "step_3",
+              "description": "Draft plan for human review",
+              "dependencies": [
+                "step_2"
+              ],
+              "requires_approval": true,
+              "estimated_complexity": "medium",
+              "connector_requirements": []
+            },
+            {
+              "step_id": "step_4",
+              "description": "Execute only after explicit approval",
+              "dependencies": [
+                "step_3"
+              ],
+              "requires_approval": true,
+              "estimated_complexity": "medium",
+              "connector_requirements": []
+            }
+          ],
+          "status": "ok",
+          "requires_human_review": true
+        },
+        "unrelatedAssistantSnippet": "I can help with do that. What is the target and desired outcome?",
+        "yesAssistantSnippet": "I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue."
+      }
+    }
+  },
+  "tipShaObserved": "184a9850485ef102838e65dec7d992294a9f1ee7",
+  "auditSample": [],
+  "overall": {
+    "fastRunHistory": "INCONCLUSIVE",
+    "stalePlanSequence": "FAIL"
+  }
+}

@@ -57,6 +57,21 @@ cancel) call `format_operator_message` — not per-surface copy.
 - `classify_pending_plan_intent` replaces CONFIRM_PATTERN-only trapping for orphan strategic plans
 - Off-script modify language clears advisory `current_plan` and continues with the user’s instruction
 
+### Phase 4.1 — awaiting_params meta-clarify (2026-07-21)
+
+Third pending-family case (generic, not Gmail-specific):
+
+| Intent | Meaning |
+|--------|---------|
+| `slot_answer` | User is supplying missing field values |
+| `meta_clarify` | User asks ABOUT the pending ask (e.g. email vs name) → answer, keep `awaiting_params` |
+| `unrelated` | Side question / new request — must not fill free-text slots |
+
+Wired in `classify_awaiting_params_intent` + `process_turn` early return for `meta_clarify`.
+Shares root-cause class with stale-plan (classification too thin). Live stale-plan sequence
+still FAIL on tip `184a9850` — see `run-history-stale-plan-live.json` and
+`awaiting-params-meta-clarify-live.json`.
+
 ## Verification
 
 Run:

@@ -5,6 +5,8 @@ from app.services.chat_connector_models import ConnectorActionPlan
 from app.services.parameter_ledger import (
     apply_ledger_to_plan,
     bind_args_from_ledger,
+    classify_awaiting_params_intent,
+    format_awaiting_params_meta_answer,
     get_ledger,
     ingest_message_slots,
     is_awaiting_params,
@@ -157,6 +159,31 @@ def test_filler_turn_does_not_pollute_subject():
     assert not str(args.get("subject") or "").strip() or "quick side" not in str(
         args.get("subject") or ""
     ).lower()
+
+
+def test_meta_clarify_about_recipient_is_not_slot_answer():
+    """Pending-param clarifying questions must not re-fill or pollute free-text."""
+    q = "do you need the email address or name?"
+    assert classify_awaiting_params_intent(q, ["recipient"]) == "meta_clarify"
+    plan = ConnectorActionPlan(
+        tool_name="gmail_send",
+        invoke_action="gmail.messages.send",
+        integration="gmail",
+        kind="write",
+        label="Send Gmail message",
+        args={"subject": "test"},
+    )
+    patch = stage_awaiting_params(plan, ("recipient",), ledger=ingest_message_slots("send mail"))
+    _, ledger, resume_patch = resume_awaiting_params(q, {**patch})
+    args = (resume_patch.get("pending_task") or {}).get("params", {}).get("args") or {}
+    assert "email address or name" not in str(args.get("subject") or "").lower()
+    assert "email address or name" not in str(args.get("body") or "").lower()
+    assert ledger.get("subject") in {None, "test"} or "email address" not in (
+        ledger.get("subject") or ""
+    ).lower()
+    answer = format_awaiting_params_meta_answer(["recipient"], action_label="Send Gmail message")
+    assert "email address" in answer.lower()
+    assert "still needed" in answer.lower()
 
 
 def test_explicit_subject_repairs_resume_pollution():
