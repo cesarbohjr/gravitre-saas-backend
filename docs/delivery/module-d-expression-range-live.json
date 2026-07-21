@@ -1,10 +1,10 @@
 {
-  "checkedAt": "2026-07-21T10:26:47.665643+00:00",
+  "checkedAt": "2026-07-21T10:43:04.443090+00:00",
   "apiBase": "https://api.gravitre.app",
-  "git_sha": "0d36b74268155fcdf9341b7e598cd2c27161a3d5",
-  "expectSha": "0d36b742",
+  "git_sha": "44d13f3b2dd23c0d40e92168c081615e0fc6f813",
+  "expectSha": "44d13f3b",
   "tip_ok": true,
-  "conversationId": "f8d01b6a-66c1-4823-98a9-29a423712d24",
+  "conversationId": "205c2e0c-bc66-4a73-b312-e77af3ba531b",
   "factConsistency": {
     "ok": true,
     "variantCount": 6
@@ -19,15 +19,15 @@
       "preview": "Slack is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again."
     },
     {
-      "preview": "Slack is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again."
+      "preview": "Slack is not Connected here. Connect it at /connectors (or reply **yes** for the connect flow), then retry."
     },
     {
-      "preview": "Slack is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again."
+      "preview": "No Connected Slack for this organization. Open /connectors or reply **yes** to connect, then try again."
     }
   ],
-  "connectishDistinct": 1,
-  "variety_ok": false,
+  "connectishDistinct": 3,
+  "variety_ok": true,
   "classifierUntouched": true,
-  "broad_pass": false,
-  "verdict": "PARTIAL"
+  "broad_pass": true,
+  "verdict": "PASS"
 }

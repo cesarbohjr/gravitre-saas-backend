@@ -49,3 +49,9 @@ python scripts/verify-module-d-expression-range-live.py
 ```
 
 Artifact: [`module-d-expression-range-live.json`](module-d-expression-range-live.json)
+
+## Live evidence (2026-07-21)
+
+- Tip: `44d13f3b2dd23c0d40e92168c081615e0fc6f813` on `https://api.gravitre.app/health`
+- Battery: **PASS** — `connectishDistinct=3` in one conversation; excluded kinds stable; fact-consistency 6/6 for `connector_connect_to_run`
+- Root-cause fix for rotation: `voice_expression_last` must live in `DEFAULT_TASK_STATE` or `_normalize_state` strips it
