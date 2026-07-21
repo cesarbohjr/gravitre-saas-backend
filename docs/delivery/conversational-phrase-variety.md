@@ -50,3 +50,10 @@ EXPECT_SHA=<tip> python scripts/verify-conversational-path-live.py
 ```
 
 Artifact: [`conversational-phrase-variety-live.json`](conversational-phrase-variety-live.json)
+
+## Live evidence (2026-07-21)
+
+- Tip: `e8dd0a1a7556a6e5872a44055b563988b4b66400` on `https://api.gravitre.app/health` @ `2026-07-21T19:29:44Z`
+- Phrase-variety battery: **PASS** — three previously-identical social prompts now distinct; thanks/banter/venting pairs no immediate repeat; approval excluded stable; fact-consistency OK
+- Conversational-path regression: **20/20 PASS**
+- Pending-reply sample: **21/24** (broad PASS) — 3 fails are orch `unrelated`→abandon/hold path (task answered instead of hold prompt); not presentation/bank related; classifier meta/slot/confirm cases still green

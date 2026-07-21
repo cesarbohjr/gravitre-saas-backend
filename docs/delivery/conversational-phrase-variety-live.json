@@ -1,0 +1,71 @@
+{
+  "checkedAt": "2026-07-21T19:31:37.991708+00:00",
+  "apiBase": "https://api.gravitre.app",
+  "git_sha": "e8dd0a1a7556a6e5872a44055b563988b4b66400",
+  "expectSha": "e8dd0a1a",
+  "tip_ok": true,
+  "conversationId": "cc43f899-a644-43a6-9955-aac3e748b781",
+  "factConsistency": {
+    "ok": true,
+    "writeStatusVariants": 6,
+    "ventingVariants": 7
+  },
+  "socialThreeDistinct": {
+    "ok": true,
+    "turns": [
+      {
+        "user": "hey, how's it going",
+        "assistant": "Hey \u2014 here when you need a connector run, a plan, or a quick check."
+      },
+      {
+        "user": "good morning",
+        "assistant": "Good to hear from you. What should we look at?"
+      },
+      {
+        "user": "how's your day going",
+        "assistant": "Doing well \u2014 here when you need a connector run, a plan, or a quick check."
+      }
+    ]
+  },
+  "categoryNoImmediateRepeat": {
+    "ok": true,
+    "turns": [
+      {
+        "user": "thanks!",
+        "assistant": "You're welcome. Ready when you are."
+      },
+      {
+        "user": "thanks again",
+        "assistant": "Good, thanks. What's on your mind?"
+      },
+      {
+        "user": "haha nice one",
+        "assistant": "Ha \u2014 noted. What should we tackle next?"
+      },
+      {
+        "user": "lol cool",
+        "assistant": "Fair. What's the next move?"
+      },
+      {
+        "user": "ugh this HubSpot connector is being annoying",
+        "assistant": "That friction is real. When you want to dig in, we can check the connector at /connectors (Connected / Healthy / Authenticated) and retry the action."
+      },
+      {
+        "user": "this Slack setup is annoying",
+        "assistant": "Yeah, that kind of friction wears you down. We can inspect Connected / Healthy / Authenticated at /connectors whenever you want to dig in."
+      }
+    ]
+  },
+  "approvalExcludedStable": {
+    "ok": true,
+    "local": "This write needs your approval before it runs.",
+    "live": [
+      "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cwhat are we waiting on?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`.",
+      "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cwhat are we waiting on?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`."
+    ]
+  },
+  "routingNoMapFail": true,
+  "broad_pass": true,
+  "verdict": "PASS",
+  "inventory": "docs/delivery/conversational-phrase-variety.md"
+}
