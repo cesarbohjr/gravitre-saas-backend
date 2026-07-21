@@ -72,6 +72,7 @@ class PendingSnapshot:
     pending_type: str = ""
     action_label: str = ""
     invoke_action: str = ""
+    integration: str = ""
     pending_missing: list[str] = field(default_factory=list)
     plan_goal: str = ""
     has_current_plan: bool = False
@@ -82,6 +83,7 @@ class PendingSnapshot:
             f"status={self.status or '(none)'}",
             f"type={self.pending_type or '(none)'}",
             f"action={self.action_label or self.invoke_action or '(none)'}",
+            f"integration={self.integration or '(none)'}",
         ]
         if self.pending_missing:
             bits.append(f"missing={', '.join(self.pending_missing)}")
@@ -105,11 +107,16 @@ def build_pending_snapshot(task_state: dict[str, Any] | None) -> PendingSnapshot
             if isinstance(raw, (list, tuple)):
                 missing = [str(x) for x in raw if str(x).strip()]
                 break
+    invoke = str(params.get("invoke_action") or "")
+    integration = str(params.get("integration") or "")
+    if not integration and "." in invoke:
+        integration = invoke.split(".", 1)[0]
     return PendingSnapshot(
         status=str(pending.get("status") or ""),
         pending_type=str(pending.get("type") or ""),
         action_label=str(params.get("label") or params.get("invoke_action") or ""),
-        invoke_action=str(params.get("invoke_action") or ""),
+        invoke_action=invoke,
+        integration=integration.lower(),
         pending_missing=missing,
         plan_goal=str((current_plan or {}).get("goal") or (current_plan or {}).get("summary") or ""),
         has_current_plan=bool(current_plan),
@@ -228,32 +235,47 @@ def classify_pending_reply_fast(
     if _modify_hint(text):
         return "modify"
 
-    if _looks_like_slot_answer(text, snap) and snap.status in {
-        "awaiting_params",
-        "collecting",
-    }:
-        return "slot_answer"
-
-    # Clear unrelated: side-question / new connector ask while something is pending.
-    if _is_side_question_not_slot_answer(text):
-        # Meta about fields already handled; remaining side Qs are unrelated.
-        if not _is_meta_field_clarify_question(text):
-            return "unrelated"
-
-    if re.search(
-        r"\b(create|post|send|search|list|how many|what workflows|run history)\b",
-        text,
-        re.I,
-    ) and snap.status in {
+    # Different-connector / run-history imperatives before broad free-text slot fill.
+    if snap.status in {
         "awaiting_params",
         "awaiting_confirm",
         "awaiting_plan_confirm",
         "awaiting_step_confirm",
         "awaiting_admin_approval",
     }:
-        # New imperative while pending — likely unrelated unless it fills slots.
-        if not _looks_like_slot_answer(text, snap):
+        lower = text.lower()
+        other_connectors = {
+            "hubspot",
+            "apollo",
+            "slack",
+            "gmail",
+            "asana",
+            "salesforce",
+            "notion",
+        }
+        if snap.integration:
+            other_connectors.discard(snap.integration)
+        mentions_other = any(re.search(rf"\b{re.escape(c)}\b", lower) for c in other_connectors)
+        run_history_ish = bool(
+            re.search(r"\b(how many|what workflows|run history|workflows?\s+have)\b", lower)
+        )
+        if (mentions_other or run_history_ish) and not EMAIL_RE.search(text):
+            if not re.search(
+                r"\b(subject|body|message|channel|recipient|to|email)\s*(?:is|=|:)\s*\S",
+                lower,
+            ):
+                return "unrelated"
+
+    # Clear unrelated: side-question while something is pending.
+    if _is_side_question_not_slot_answer(text):
+        if not _is_meta_field_clarify_question(text):
             return "unrelated"
+
+    if _looks_like_slot_answer(text, snap) and snap.status in {
+        "awaiting_params",
+        "collecting",
+    }:
+        return "slot_answer"
 
     return None
 

@@ -123,6 +123,15 @@ def test_orch_plan_confirm_snapshot():
     )
 
 
+def test_other_connector_imperative_is_unrelated():
+    state = _gmail_awaiting_params_state()
+    snap = build_pending_snapshot(state)
+    assert (
+        classify_pending_reply_fast("search HubSpot for Acme contacts", snap)
+        == "unrelated"
+    )
+
+
 def test_known_bug_phrasings_classified():
     """The three known bugs must land in the expanded ontology."""
     gmail = _gmail_awaiting_params_state()
