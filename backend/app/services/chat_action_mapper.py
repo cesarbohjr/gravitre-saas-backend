@@ -99,13 +99,12 @@ class ChatActionMapper:
                         args = schema_args
                 except Exception:  # noqa: BLE001
                     pass
-            if args is None or not args:
-                vendor_args = self._extract_args(text, entry)
-                if vendor_args:
-                    # Schema keys win; vendor fills gaps the schema has not covered yet.
-                    args = {**vendor_args, **(args or {})}
-                elif args is None:
-                    args = vendor_args
+            vendor_args = self._extract_args(text, entry)
+            if vendor_args:
+                # Vendor regex/heuristics win over schema fallthrough (full-message dumps).
+                args = {**(args or {}), **vendor_args}
+            elif args is None:
+                args = vendor_args
             if args is None:
                 if write_intent and entry.kind != "read":
                     candidate_wo = ActionMatch(
@@ -281,6 +280,13 @@ class ChatActionMapper:
         if entry.connector_id in {"google_drive", "google_sheets"} and "files.list" in entry.action_key:
             if "sheet" in text and READ_VERBS.search(text):
                 score += 28.0
+            if re.search(r"\blist\s+files?\b", text, re.I):
+                score += 32.0
+        if entry.connector_id == "google_drive" and "search_files" in entry.action_key:
+            if re.search(r"\blist\s+files?\b", text, re.I):
+                score -= 28.0
+            if re.search(r"\b(find|search|look\s+for)\b", text, re.I):
+                score += 18.0
         if entry.connector_id == "google_sheets" and "values.get" in entry.action_key:
             if "find" in text or "search" in text or "summarize" in text:
                 score -= 24.0

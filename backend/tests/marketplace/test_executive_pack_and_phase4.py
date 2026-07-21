@@ -34,6 +34,7 @@ def test_hubspot_lists_create_executor(monkeypatch):
     )
     with (
         patch("app.services.tool_service._hubspot_connector_and_token", return_value=("conn-1", "token")),
+        patch("app.services.tool_service._hubspot_hub_id", return_value="12345678"),
         patch(
             "app.connectors.hubspot.create_list",
             return_value={"listId": "99", "name": "Phase4 Smoke"},

@@ -88,7 +88,9 @@ async def test_supersede_stale_orch_for_unrelated_slack(orchestration_service):
         "current_plan": None,
         "pending_steps": [],
     }
-    orchestration_service._state.get_task_state = AsyncMock(return_value=cleared)
+    orchestration_service._state.get_task_state = AsyncMock(
+        side_effect=[task_state, cleared, cleared]
+    )
     orchestration_service._state.update_task_state = AsyncMock()
 
     result = await orchestration_service.process_turn(

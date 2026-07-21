@@ -39,6 +39,7 @@ _STRATEGIC_PLAN_PHRASES = (
     "draft a plan",
     "build a plan",
     "create a plan",
+    "multi-step plan",
     "planning roadmap",
     "how can we",
     "what should we",
@@ -65,12 +66,15 @@ def is_direct_connector_write_intent(query: str) -> bool:
     text = (query or "").strip()
     if not text:
         return False
-    # Plan-first overrides list-create / send phrasing — stage advisory current_plan
-    # even when connectors are disconnected (product: short-circuit is for execute-now).
+    if LIST_CREATE_INTENT.search(text):
+        # Imperative list-create ("Create a contact list…") is execute-now even with plan-first phrasing.
+        if re.match(r"^\s*(?:create|add)\b", text, re.I):
+            return True
+        if is_advisory_plan_first(text):
+            return False
+        return True
     if is_advisory_plan_first(text):
         return False
-    if LIST_CREATE_INTENT.search(text):
-        return True
     return bool(_DIRECT_CONNECTOR_WRITE_INTENT.search(text))
 
 
@@ -83,13 +87,13 @@ class ConversationalPlanningEngine:
         self._decision = get_decision_intelligence_service(self.settings)
 
     async def should_plan(self, classification: dict[str, Any], query: str) -> bool:
-        # Plan-first / advisory language always stages current_plan (even when the
-        # goal mentions disconnected connectors — blockers belong in the plan).
-        if is_advisory_plan_first(query):
-            return True
         # Shape (b): do not detour governed writes into advisory scaffolding.
         if is_direct_connector_write_intent(query):
             return False
+        # Plan-first / advisory language stages current_plan when paired with a strategic goal.
+        if is_advisory_plan_first(query):
+            lowered = query.lower()
+            return any(phrase in lowered for phrase in _STRATEGIC_PLAN_PHRASES)
         intent = str(classification.get("intent") or "")
         if classification.get("requires_action") and intent in {"workflow_execution", "optimization"}:
             return True

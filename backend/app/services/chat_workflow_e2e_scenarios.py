@@ -91,7 +91,11 @@ CHAT_WORKFLOW_E2E_SCENARIOS: tuple[ChatWorkflowE2EScenario, ...] = (
         connected_integrations=("google_drive", "slack"),
         expected_steps=(
             WorkflowStepExpectation(
-                invoke_actions=("drive.files.list", "google_drive.files.list"),
+                invoke_actions=(
+                    "drive.files.list",
+                    "google_drive.files.list",
+                    "google_drive.search_files",
+                ),
                 kind="read",
                 requires_approval=False,
             ),

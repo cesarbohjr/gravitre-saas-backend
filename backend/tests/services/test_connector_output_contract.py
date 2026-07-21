@@ -169,7 +169,8 @@ async def test_verified_engagebay_contact_create_summary_is_non_empty():
         )
 
     assert_execution_result_verifiable(result)
-    assert result.result_url is None  # EngageBay: summary-only is the verified contract
+    assert result.result_url == "/ai?conversation=conv-1"
+    assert result.external_url is None  # EngageBay: summary-only is the verified contract
     assert "Ada" in result.body
     assert "eb-42" in result.body
     assert "EngageBay" in result.body

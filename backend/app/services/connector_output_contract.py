@@ -209,12 +209,21 @@ def collect_pending_output_schemas() -> frozenset[str]:
     return collect_write_action_keys() - VERIFIED_OUTPUT_ACTIONS
 
 
+def _is_gravitre_conversation_only_url(url: str | None) -> bool:
+    text = str(url or "").strip()
+    return text == "/ai" or text.startswith("/ai?conversation=")
+
+
 def assert_execution_result_verifiable(result: ExecutionResult) -> None:
     """Completed write actions must surface inline value or a resolvable deep link."""
     if not result.success:
         return
     body = str(result.body or "").strip()
-    if body or result.result_url:
+    if body:
+        return
+    if str(result.external_url or "").strip():
+        return
+    if result.result_url and not _is_gravitre_conversation_only_url(result.result_url):
         return
     raise AssertionError(
         "ExecutionResult success=true requires non-empty body or non-null result_url "

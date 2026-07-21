@@ -67,6 +67,7 @@ def extract_action_args_heuristic(
     active = ledger or ParameterLedger()
     active = ingest_message_slots(text, ledger=active)
     args = bind_args_from_ledger(invoke_action, dict(existing_args or {}), active)
+    from app.services.connector_action_workflows import extract_asana_assignee_only
 
     field_keys = _schema_field_keys(invoke_action)
     if not field_keys:
@@ -82,6 +83,12 @@ def extract_action_args_heuristic(
         if str(args.get(key) or "").strip():
             continue
         label_l = label.lower()
+        if (
+            key == "name"
+            and "asana" in invoke_action
+            and extract_asana_assignee_only(text)
+        ):
+            continue
         if key in {"to", "email"} or "recipient" in label_l or "email" in label_l:
             if email:
                 args[key] = email.group(0)
@@ -145,7 +152,7 @@ def extract_action_args_heuristic(
                         cleaned
                         and len(cleaned.split()) >= 2
                         and not re.search(
-                            r"\b(create|send|post)\s+(?:an?\s+)?(?:issue|email|message)\b",
+                            r"\b(create|send|post)\s+(?:an?\s+)?(?:issue|email|message|task|deal|list|contact)\b",
                             cleaned,
                             re.I,
                         )

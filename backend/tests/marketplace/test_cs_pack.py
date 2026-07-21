@@ -50,6 +50,7 @@ def test_hubspot_pipelines_list_result_url(monkeypatch):
     )
     with (
         patch("app.services.tool_service._hubspot_connector_and_token", return_value=("conn-1", "token")),
+        patch("app.services.tool_service._hubspot_hub_id", return_value="12345678"),
         patch(
             "app.services.tool_service.list_deal_pipelines",
             return_value={"results": [{"id": "default", "label": "Sales Pipeline"}]},
@@ -77,6 +78,7 @@ def test_hubspot_deals_list_result_url(monkeypatch):
     )
     with (
         patch("app.services.tool_service._hubspot_connector_and_token", return_value=("conn-1", "token")),
+        patch("app.services.tool_service._hubspot_hub_id", return_value="12345678"),
         patch(
             "app.services.tool_service.list_deals",
             return_value={"results": [{"id": "d1"}]},

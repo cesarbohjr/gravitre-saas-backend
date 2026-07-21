@@ -38,7 +38,7 @@ async def test_generate_opinion_falls_back_with_demo_agent_role():
     service = AgentCouncilService.__new__(AgentCouncilService)
     service.model_router = AsyncMock()
     service.model_router.complete = AsyncMock(side_effect=RuntimeError("llm unavailable"))
-    opinion = await service._generate_opinion(  # noqa: SLF001
+    opinion, is_fallback = await service._generate_opinion(  # noqa: SLF001
         "Assess vendor risk",
         ["proceed", "defer"],
         {"name": "Revenue Ops Agent", "role": "Revenue Operations", "weight": 1.0},
@@ -46,6 +46,7 @@ async def test_generate_opinion_falls_back_with_demo_agent_role():
         0,
         "org-1",
     )
+    assert is_fallback is True
     assert opinion.position == "proceed"
     assert opinion.agent_role == AgentRole.STRATEGIST
 
@@ -107,7 +108,9 @@ async def test_start_council_completes_and_persists():
         concerns=[],
         vote_weight=1.0,
     )
-    with patch.object(full_service, "_generate_opinion", AsyncMock(return_value=mock_opinion)):
+    with patch.object(
+        full_service, "_generate_opinion", AsyncMock(return_value=(mock_opinion, False))
+    ):
         with patch.object(full_service, "_persist_session") as persist:
             session = await full_service.start_council(
                 org_id="org-1",

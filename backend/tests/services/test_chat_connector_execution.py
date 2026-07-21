@@ -627,7 +627,10 @@ async def test_execute_plan_apollo_list_create_sets_apollo_result_url(connector_
             )
         ),
     ), patch.object(connector_service, "_record_outcomes", AsyncMock()), patch(
-        "app.services.chat_connector_execution_service.emit_notification"
+        "app.workflows.repository.create_run",
+        return_value={"id": "run-test-1"},
+    ), patch(
+        "app.services.notification_emitter.emit_notification"
     ) as notify:
         result = await connector_service.execute_plan(
             org_id="org-1",
@@ -639,7 +642,8 @@ async def test_execute_plan_apollo_list_create_sets_apollo_result_url(connector_
         )
 
     assert result.success is True
-    assert result.result_url == "https://app.apollo.io/#/lists/list-123"
+    assert result.result_url == "/ai?conversation=conv-1"
+    assert result.external_url == "https://app.apollo.io/#/lists/list-123"
     assert result.connector_management_url == "/connectors/conn-apollo"
     assert result.integration == "apollo"
     assert "MSP Prospects" in result.body
