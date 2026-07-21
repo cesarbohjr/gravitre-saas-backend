@@ -29,6 +29,7 @@ from app.operators.assistant_mode_config import (
 from app.services.factual_claim_honesty import (
     apply_run_history_honesty_gate,
     explanation_for_missing_run_history,
+    is_run_history_question,
     should_escalate_fast_for_run_history,
 )
 from app.services.connector_chat_routing import (
@@ -1232,6 +1233,9 @@ class AgentIntelligence:
         if should_escalate_fast_for_run_history(mode_key, task_text, tool_names):
             mode_key = "standard"
             tool_names = resolve_assistant_tool_names(mode_key, None)
+            # Prefer the tool that actually answers run-history over KB/org-context synthesis.
+            if "workflow_runs" in tool_names:
+                tool_names = ["workflow_runs"] + [t for t in tool_names if t != "workflow_runs"]
             logger.info(
                 "fast_run_history_tool_escalate org_id=%s from=fast to=standard tools=%s",
                 org_id,
@@ -1990,8 +1994,6 @@ class AgentIntelligence:
             understanding=understanding,
         )
         # Run-history must reach tools / honesty gate — not under-specified clarify.
-        from app.services.factual_claim_honesty import is_run_history_question
-
         if clarification.get("should_clarify") and is_run_history_question(task_text):
             logger.info(
                 "skip_clarify_for_run_history org_id=%s trigger=%s",
@@ -2515,11 +2517,14 @@ class AgentIntelligence:
                     observation=observation,
                 )
             elif event.kind == "text_delta" and event.content:
-                if text_id is None:
-                    text_id, start_event = sse_text_start()
-                    yield start_event
                 full_content_parts.append(event.content)
-                yield sse_text_delta(text_id, event.content)
+                # Buffer run-history answers until the honesty gate — streaming a
+                # fabricated count then silently rewriting leaves the client with the lie.
+                if not is_run_history_question(task_text):
+                    if text_id is None:
+                        text_id, start_event = sse_text_start()
+                        yield start_event
+                    yield sse_text_delta(text_id, event.content)
             elif event.kind == "done":
                 react_result = event.react_result
 
@@ -2866,8 +2871,13 @@ class AgentIntelligence:
                     suffix = full_content[len(streamed_content) :]
                     if suffix.strip():
                         yield sse_text_delta(text_id, suffix)
-                # Wholesale rewrite after streaming: do not append the full answer again
-                # (that duplicated paragraphs mid-bubble). Keep what was already streamed.
+                elif is_run_history_question(task_text):
+                    # Honesty (or other) wholesale rewrite must replace the bubble.
+                    yield sse_text_end(text_id)
+                    text_id, start_event = sse_text_start()
+                    yield start_event
+                    yield sse_text_delta(text_id, full_content)
+                # Other wholesale rewrites: keep streamed text (avoid duplicate paragraphs).
             yield sse_text_end(text_id)
 
         react_perf = _react_perf_from_tool_calls(
