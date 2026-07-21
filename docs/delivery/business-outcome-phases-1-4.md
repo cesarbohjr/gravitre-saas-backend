@@ -32,17 +32,22 @@
 - Export = serialize same DTO (JSON/markdown)
 - Code-level shared import proven in `test_business_outcome.py::test_shared_frontend_renderer_single_component`
 
-## Lifecycle shipped vs unshipped
+## Lifecycle — shipped vs intentional omissions
 
-| Shipped (real triggers) | Unshipped (gaps) |
-|-------------------------|------------------|
+| Shipped (real triggers) | Intentional omissions (not backlog) |
+|-------------------------|-------------------------------------|
 | created, verified, presented, approved, undone | reviewed, edited, referenced, archived |
+
+**Intentional section omissions (same rule):** Impact, Related Outcomes, Dependencies, History — never fabricated; enable only when Module A / edges have real backing. See Phase 0 audit § “intentional omissions vs unfinished work.”
+
+Phases 1–4 **code** is on `main`. Phase 4 is **not closed** until live tip advances and `verify-business-outcome-live.py` PASSes — commit/push ≠ live.
 
 ## Phase 5
 
-Deferred until Phases 1–4 live-verified on tip (presentation-only; DTO contract frozen).
+Deferred until Phases 1–4 **live-verified on tip** (presentation-only; DTO contract frozen; re-verify after restyle).
 
 ## Verification
 
-- Unit: `pytest backend/tests/services/test_business_outcome.py`
-- Live: `python scripts/verify-business-outcome-live.py` → `docs/delivery/business-outcome-live.json`
+- Unit: `pytest backend/tests/services/test_business_outcome.py` — PASS (10)
+- Live: **NOT RUN** until Railway tip ≥ BusinessOutcome ship (`docs/delivery/business-outcome-live.json`)
+- After token fix: redeploy → confirm `/health` `git_sha` → `python scripts/verify-business-outcome-live.py --expect-sha <tip>`

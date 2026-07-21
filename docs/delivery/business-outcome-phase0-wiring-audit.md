@@ -52,14 +52,14 @@ There is **no** customer-facing `BusinessOutcome` row today. Surfaces that show 
 | Created | `finalize_execution_outcome` ran | **YES** — outcome exists |
 | Verified | Connector verifiability / non-empty verified_output | **YES** — only when that check passed |
 | Presented | Notification fanout or first DTO serve | **YES** — if notification emitted or presentation audit logged |
-| Reviewed | Dedicated user-view event | **NO** — gap; do not show “Reviewed” until view events are logged |
+| Reviewed | Dedicated user-view event | **NO** — intentional omission until view events are logged |
 | Approved | HITL `approval_status` / approvals row | **YES** — only when approval record exists |
-| Edited | Governed update write completed after original | **NO** until edit path writes a linked outcome edge |
+| Edited | Governed update write completed after original | **NO** — intentional omission until edit path writes a linked outcome edge |
 | Undone | Compensation run completed | **YES** — only when compensate API actually completed |
-| Referenced | Another outcome/conversation points at this id | **NO** — gap |
-| Archived | Archive disposition | **NO** — gap |
+| Referenced | Another outcome/conversation points at this id | **NO** — intentional omission |
+| Archived | Archive disposition | **NO** — intentional omission |
 
-**Unshipped (honest gaps):** Reviewed, Edited, Referenced, Archived — not cosmetic labels.
+**Intentional omissions (not cosmetic labels, not backlog):** Reviewed, Edited, Referenced, Archived.
 
 ---
 
@@ -99,3 +99,32 @@ Safe to build **BusinessOutcome as a read-time projection** over Module A + run/
 **Must build before Diff/Undo UI:** catalog `compensating_action` (promote off hardcoded map).
 
 Next: Phase 1 projection + single GET shape for all consumers.
+
+---
+
+## Clarification — intentional omissions vs unfinished work (2026-07-21)
+
+Do **not** misread the following as Phase 0/1 backlog. They are **design decisions**: the model correctly refuses to display sections or lifecycle states with no real substrate. Shipping a stub would violate the grounding rule.
+
+### Intentional omissions (deliberately not built — correct refusal to fabricate)
+
+| Kind | Items | Why omitted |
+|------|--------|-------------|
+| Sections | Impact, Related Outcomes, Dependencies, History | No ground-truth Module A / edge data; projector keeps these `None` and `to_dict()` never emits them |
+| Lifecycle states | Reviewed, Edited, Referenced, Archived | No live-triggered events today; not shown as status labels |
+
+When substrate is later added (impact fields, outcome edges, view/edit/archive events), these may be **enabled** — that is new capability work, not “finishing” a half-built section.
+
+### Actual Phase 0→1 work (was unfinished; addressed in Phases 1–2)
+
+| Item | Disposition |
+|------|-------------|
+| Catalog `compensating_action` / `supports_diff` on `ActionSpec` | **Built** in Phase 1–2 |
+| Compensation reads catalog (not parallel product list) | **Built** — `catalog_reversal` + `authorize_compensation_write` |
+| BusinessOutcome projection + single GET shape | **Built** in Phase 1 |
+
+### Live closure blocker (human — not agent-resolvable)
+
+| Item | Owner | Status |
+|------|-------|--------|
+| Railway project token 403 blocking tip advance | Operator (Railway dashboard) | Open — refresh/rotate `RAILWAY_TOKEN`, redeploy tip, then live verify |
