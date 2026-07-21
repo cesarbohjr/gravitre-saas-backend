@@ -117,7 +117,9 @@ import { AiExecuteResults } from "./ai-execute-results"
 import { AiFindResults } from "./ai-find-results"
 import { AiLanding } from "./ai-landing"
 import { AiLayoutPanelPicker } from "./ai-layout-panel-picker"
-import { AI_EXAMPLE_PROMPTS, AI_MODES, CONNECTED_FILE_LOOKUP_TEMPLATE, getModeMeta, type ModeId } from "./ai-mode-config"
+import { AI_EXAMPLE_PROMPTS, AI_MODES, getModeMeta, type ModeId } from "./ai-mode-config"
+import { ConnectedFilePickerDialog } from "./connected-file-picker-dialog"
+import type { ConnectedFileAttachment } from "@/lib/connected-files-api"
 import {
   type ChatExecutionResult,
   type ChatPendingTask,
@@ -291,6 +293,9 @@ export function AiWorkspace({
   const chatFirstTokenMarkedRef = useRef(false)
   const persistedTurnIdsRef = useRef<Set<string>>(new Set())
   const persistedChatPairIdsRef = useRef<Set<string>>(new Set())
+  const connectedFileRefsRef = useRef<ConnectedFileAttachment[]>([])
+  const [connectedFilePickerOpen, setConnectedFilePickerOpen] = useState(false)
+  const [connectedFileAttachments, setConnectedFileAttachments] = useState<ConnectedFileAttachment[]>([])
 
   const activeMode = useMemo(() => getModeMeta(mode), [mode])
 
@@ -335,6 +340,8 @@ export function AiWorkspace({
           department: selectedDepartment === "all" ? undefined : selectedDepartment,
           cross_department: crossDepartmentRef.current,
           research_scope: researchScopeRef.current ?? undefined,
+          connected_file_refs:
+            connectedFileRefsRef.current.length > 0 ? connectedFileRefsRef.current : undefined,
         }),
       }),
     [chatMode, selectedDepartment],
@@ -343,11 +350,13 @@ export function AiWorkspace({
   const { messages, sendMessage, status, setMessages, stop, regenerate } = useChat({
     transport,
     onError: (error) => {
+      connectedFileRefsRef.current = []
       submitLockRef.current = false
       setSessionBusy(false)
       toast.error(parseChatError(error instanceof Error ? error : new Error(String(error))))
     },
     onFinish: ({ messages: finishedMessages }) => {
+      connectedFileRefsRef.current = []
       submitLockRef.current = false
       setSessionBusy(false)
       // Stamp provisional created_at when missing so live bubbles show a time until hydrate.
@@ -997,13 +1006,14 @@ export function AiWorkspace({
   )
 
   const runChat = useCallback(
-    async (prompt: string) => {
+    async (prompt: string, attachments: ConnectedFileAttachment[] = []) => {
       submitLockRef.current = true
       setSessionBusy(true)
       chatFirstTokenMarkedRef.current = false
       startChatPerf("total_response")
       startChatPerf("first_token")
       lastUserPromptRef.current = prompt
+      connectedFileRefsRef.current = attachments
       await ensureConversation(prompt)
       sendMessage({
         text: prompt,
@@ -1223,24 +1233,30 @@ export function AiWorkspace({
   const submitPrompt = useCallback(
     async (rawPrompt: string) => {
       const prompt = rawPrompt.trim()
-      if (!prompt || routing || submitLockRef.current) return
+      const attachments = connectedFileAttachments
+      if ((!prompt && attachments.length === 0) || routing || submitLockRef.current) return
       if (!user) {
         toast.error("Sign in to use Chat")
         return
       }
 
+      const effectivePrompt =
+        prompt ||
+        "Please read the attached connected file(s) and summarize the key points I should know."
+
       setSessionBusy(true)
       await ensureSelectedOrg()
-      crossDepartmentRef.current = isCrossDepartmentPrompt(prompt)
+      crossDepartmentRef.current = isCrossDepartmentPrompt(effectivePrompt)
       researchScopeRef.current = null
       setResearchCascade(null)
       setResearchProgressSteps([])
-      await ensureConversation(prompt)
-      const engine = await resolveEngine(prompt, mode)
+      await ensureConversation(effectivePrompt)
+      const engine = await resolveEngine(effectivePrompt, mode)
       setInput("")
+      setConnectedFileAttachments([])
 
       if (engine === "chat") {
-        await runChat(prompt)
+        await runChat(effectivePrompt, attachments)
         return
       }
 
@@ -1261,7 +1277,7 @@ export function AiWorkspace({
         await runFind(prompt, turnId)
       }
     },
-    [mode, resolveEngine, routing, runChat, runExecute, runFind, user, ensureConversation],
+    [mode, resolveEngine, routing, runChat, runExecute, runFind, user, ensureConversation, connectedFileAttachments],
   )
 
   useEffect(() => {
@@ -1975,6 +1991,36 @@ export function AiWorkspace({
                   "focus-within:border-emerald-500/35 focus-within:ring-emerald-500/20",
                 )}
               >
+                {connectedFileAttachments.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5 px-2 pt-1">
+                    {connectedFileAttachments.map((file) => (
+                      <span
+                        key={`${file.vendor}-${file.file_id}`}
+                        className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1 text-xs"
+                        title={
+                          file.web_link
+                            ? `${file.name} — stays in your connected account (read-only for this chat)`
+                            : file.name
+                        }
+                      >
+                        <FolderOpen className="h-3 w-3 shrink-0 text-emerald-700 dark:text-emerald-400" />
+                        <span className="truncate">{file.name}</span>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-foreground"
+                          aria-label={`Remove ${file.name}`}
+                          onClick={() =>
+                            setConnectedFileAttachments((prev) =>
+                              prev.filter((f) => !(f.vendor === file.vendor && f.file_id === file.file_id)),
+                            )
+                          }
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
                 <textarea
                   ref={inputRef}
                   value={input}
@@ -2003,14 +2049,11 @@ export function AiWorkspace({
                     size="sm"
                     className="h-8 gap-1.5 text-xs"
                     disabled={routing || isChatBusy}
-                    title="Search connected cloud files (Drive, SharePoint, Slack, Notion, Confluence)"
-                    onClick={() => {
-                      setInput(CONNECTED_FILE_LOOKUP_TEMPLATE)
-                      inputRef.current?.focus()
-                    }}
+                    title="Browse connected cloud files (read-only — not uploaded to Gravitre)"
+                    onClick={() => setConnectedFilePickerOpen(true)}
                   >
                     <FolderOpen className="h-3.5 w-3.5" />
-                    File lookup
+                    Browse files
                   </Button>
                   <VoiceInputButton
                     value={input}
@@ -2022,7 +2065,7 @@ export function AiWorkspace({
                   />
                   <button
                     type="submit"
-                    disabled={!input.trim() || routing || isChatBusy}
+                    disabled={(!input.trim() && connectedFileAttachments.length === 0) || routing || isChatBusy}
                     className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-500 text-primary-foreground shadow-sm transition-all hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-40 dark:from-emerald-500 dark:to-emerald-400"
                     aria-label="Send"
                   >
@@ -2060,6 +2103,12 @@ export function AiWorkspace({
         />
       </>
       ) : null}
+      <ConnectedFilePickerDialog
+        open={connectedFilePickerOpen}
+        onOpenChange={setConnectedFilePickerOpen}
+        selected={connectedFileAttachments}
+        onConfirm={(files) => setConnectedFileAttachments(files)}
+      />
     </div>
   )
 }

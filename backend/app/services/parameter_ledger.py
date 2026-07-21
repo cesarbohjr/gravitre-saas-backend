@@ -1000,6 +1000,8 @@ def ingest_connected_file_hits(
             "web_link": hit.get("web_link"),
             "path": hit.get("path"),
         }
+        if hit.get("connector_id"):
+            ref["connector_id"] = str(hit.get("connector_id"))
         refs.append(ref)
     if not refs:
         return task_state if isinstance(task_state, dict) else {}

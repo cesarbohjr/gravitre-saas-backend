@@ -41,6 +41,7 @@ from app.routers import (
     business_outcomes,
     connector_oauth,
     connectors,
+    connected_files,
     marketplace,
     conversations,
     meson,
@@ -491,6 +492,7 @@ app.include_router(workflow_schedules_internal.router)
 app.include_router(platform_cs_internal.router)
 app.include_router(connectors.router)
 app.include_router(connectors.connectors_router)
+app.include_router(connected_files.router)
 app.include_router(connector_oauth.router)
 app.include_router(marketplace.router)
 app.include_router(rag.router)

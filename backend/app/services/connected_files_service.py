@@ -7,7 +7,10 @@ Permission checks always hit the vendor API — never a cached permission snapsh
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from app.services.tool_types import ToolContext
 
 from app.core.logging import get_logger
 from app.rag.file_extract import UnsupportedFileTypeError, extract_text_from_bytes
@@ -326,3 +329,101 @@ def fetch_google_drive_content(access_token: str, file_id: str, *, mime_type: st
                 code="permission_denied",
             ) from exc
         raise ConnectedFileError(str(exc), code="vendor_error") from exc
+
+
+MAX_CHAT_ATTACHED_FILES = 5
+_MAX_ATTACHMENT_EXCERPT_CHARS = 12_000
+
+
+def refs_to_connected_file_hits(refs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    hits: list[dict[str, Any]] = []
+    for ref in refs[:MAX_CHAT_ATTACHED_FILES]:
+        if not isinstance(ref, dict):
+            continue
+        file_id = str(ref.get("file_id") or ref.get("id") or "").strip()
+        vendor = str(ref.get("vendor") or "").strip().lower()
+        if not file_id or not vendor:
+            continue
+        hits.append(
+            {
+                "file_id": file_id,
+                "name": str(ref.get("name") or "Untitled"),
+                "vendor": vendor,
+                "web_link": ref.get("web_link"),
+                "path": ref.get("path") or ref.get("name"),
+                "connector_id": ref.get("connector_id"),
+            }
+        )
+    return hits
+
+
+def build_connected_file_attachment_prompt(
+    *,
+    excerpts: list[dict[str, Any]],
+) -> str:
+    if not excerpts:
+        return ""
+    lines = [
+        "Connected files (read-only for this turn): Gravitre did not upload or copy these files.",
+        "They remain in the user's connected account; cite the vendor link when answering.",
+        "",
+    ]
+    for item in excerpts:
+        name = item.get("name") or "Untitled"
+        vendor = item.get("vendor") or ""
+        link = item.get("web_link") or ""
+        lines.append(f"--- File: {name} ({vendor}) ---")
+        if link:
+            lines.append(f"Source link: {link}")
+        text = str(item.get("text") or "").strip()
+        if text:
+            lines.append(text[:_MAX_ATTACHMENT_EXCERPT_CHARS])
+        elif item.get("error"):
+            lines.append(f"(Could not read content: {item.get('error')})")
+        lines.append("")
+    return "\n".join(lines).strip()
+
+
+async def prefetch_connected_file_attachments(
+    ctx: "ToolContext",
+    refs: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], str]:
+    """Fetch live file text for composer attachments (transient only)."""
+    import asyncio
+
+    from app.services.connected_files_tools import CONNECTED_FILE_TOOLS
+    from app.services.tool_types import ToolContext as ToolContextCls
+
+    if not isinstance(ctx, ToolContextCls):
+        raise TypeError("ctx must be ToolContext")
+
+    hits = refs_to_connected_file_hits(refs)
+    excerpts: list[dict[str, Any]] = []
+
+    for hit in hits:
+        vendor = hit["vendor"]
+        action = f"{vendor}.get_file_content"
+        executor = CONNECTED_FILE_TOOLS.get(action)
+        if not executor:
+            excerpts.append({**hit, "error": f"No reader for {vendor}"})
+            continue
+        params: dict[str, Any] = {"file_id": hit["file_id"]}
+        if hit.get("connector_id"):
+            params["connector_id"] = hit["connector_id"]
+        try:
+            result = await asyncio.to_thread(executor, ctx, params)
+            data = result.data if hasattr(result, "data") else {}
+            text = str((data or {}).get("text") or "")
+            excerpts.append(
+                {
+                    **hit,
+                    "text": text,
+                    "truncated": bool((data or {}).get("truncated")),
+                    "citation": (data or {}).get("citation"),
+                }
+            )
+        except Exception as exc:  # noqa: BLE001
+            excerpts.append({**hit, "error": str(exc)})
+
+    prompt_block = build_connected_file_attachment_prompt(excerpts=excerpts)
+    return hits, prompt_block

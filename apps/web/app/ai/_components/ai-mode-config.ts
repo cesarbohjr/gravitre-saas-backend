@@ -36,8 +36,9 @@ export const AI_EXAMPLE_PROMPTS: Array<{ text: string; hint: AiEngine }> = [
   { text: "Create a task in Asana for Sarah to review the landing page by Friday", hint: "chat" },
 ]
 
-/** Prefill for composer “File lookup” — names Drive explicitly so connector routing can map search_files. */
+/** @deprecated Use Browse files picker — composer no longer inserts search templates. */
 export const CONNECTED_FILE_LOOKUP_TEMPLATE =
+  "Search Google Drive for "
   "Search Google Drive for "
 
 export function getModeMeta(id: ModeId): ModeMeta {

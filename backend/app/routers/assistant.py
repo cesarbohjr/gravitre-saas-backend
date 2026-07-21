@@ -20,7 +20,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context
 from app.billing.service import (
@@ -117,6 +117,15 @@ class UserPreferencesUpdate(BaseModel):
     preferred_persona: str | None = None
 
 
+class ConnectedFileRef(BaseModel):
+    vendor: str = Field(..., min_length=1)
+    file_id: str = Field(..., min_length=1)
+    name: str = Field(..., min_length=1)
+    connector_id: str | None = None
+    web_link: str | None = None
+    path: str | None = None
+
+
 class AssistantChatRequest(BaseModel):
     # messages are AI SDK UIMessage objects (id/role/parts/...) — kept as loose
     # dicts so the wire shape can evolve without breaking the endpoint.
@@ -131,6 +140,7 @@ class AssistantChatRequest(BaseModel):
     department: str | None = None
     cross_department: bool | None = None
     research_scope: str | None = None
+    connected_file_refs: list[ConnectedFileRef] | None = None
 
     model_config = ConfigDict(extra="ignore")
 
@@ -936,7 +946,7 @@ async def assistant_chat(
         # Module B — write-on-mention into the conversation ledger BEFORE streaming.
         # Must not depend on agent_intelligence reaching the mid-pipeline ingest
         # (fast-path / early returns / swallowed errors were dropping unprompted emails).
-        if conversation_id and (last_user or "").strip():
+        if conversation_id and ((last_user or "").strip() or body.connected_file_refs):
             try:
                 from app.services.parameter_ledger import (
                     get_ledger,
@@ -946,11 +956,37 @@ async def assistant_chat(
 
                 state_svc = get_conversation_state_service(settings)
                 prior = await state_svc.get_task_state(conversation_id, org_id)
+                connected_attachment_prompt = ""
                 ledger = ingest_message_slots(
                     last_user,
                     turn_index=len(list((prior or {}).get("recent_user_messages") or [])) + 1,
                     ledger=get_ledger(prior),
                 )
+                if body.connected_file_refs:
+                    from app.core.db import get_supabase_client
+                    from app.services.connected_files_service import prefetch_connected_file_attachments
+                    from app.services.parameter_ledger import ingest_connected_file_hits, merge_ledger_into_task_state
+                    from app.services.tool_types import ToolContext
+
+                    ref_dicts = [ref.model_dump() for ref in body.connected_file_refs]
+                    file_ctx = ToolContext(
+                        settings=settings,
+                        client=get_supabase_client(settings),
+                        org_id=org_id,
+                        actor_id=user_id,
+                        environment_name=environment_name,
+                    )
+                    hits, connected_attachment_prompt = await prefetch_connected_file_attachments(
+                        file_ctx, ref_dicts
+                    )
+                    if hits:
+                        merged_state = merge_ledger_into_task_state(prior, ledger)
+                        merged_state = ingest_connected_file_hits(
+                            merged_state,
+                            hits,
+                            turn_index=len(list((prior or {}).get("recent_user_messages") or [])) + 1,
+                        )
+                        ledger = get_ledger(merged_state)
                 # Phase 2 (flagged OFF): recall confirmed slots from prior conversations.
                 try:
                     from app.services.cross_conversation_ledger_memory import (
@@ -980,6 +1016,8 @@ async def assistant_chat(
                         "recent_user_messages": [last_user],
                     },
                 )
+                if connected_attachment_prompt:
+                    system_prompt = f"{system_prompt}\n\n{connected_attachment_prompt}"
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
                     "parameter_ledger pre-stream ingest failed conversation_id=%s error=%s",
