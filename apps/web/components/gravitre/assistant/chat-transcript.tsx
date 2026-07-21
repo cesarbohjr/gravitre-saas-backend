@@ -26,6 +26,7 @@ import {
 import { ToolChip, type ToolInvocation } from "@/components/gravitre/assistant/tool-chip"
 import { uiMessageText } from "@/lib/chat-messages"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
+import { ReadAloudButton } from "@/components/gravitre/assistant/read-aloud-button"
 
 function extractToolInvocations(message: UIMessage): ToolInvocation[] {
   const invocations: ToolInvocation[] = []
@@ -143,6 +144,11 @@ export function ChatTranscript({
                     ) : null}
                     {displayText.trim() ? (
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText}</ReactMarkdown>
+                    ) : null}
+                    {displayText.trim() ? (
+                      <div className="not-prose mt-2 flex items-center gap-2">
+                        <ReadAloudButton messageId={message.id} text={displayText} />
+                      </div>
                     ) : null}
                     <AssistantSourceLinks invocations={toolInvocations} />
                     {isLastAssistant ? (

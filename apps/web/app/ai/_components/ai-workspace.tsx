@@ -43,6 +43,7 @@ import {
 import { endChatPerf, startChatPerf } from "@/lib/chat-performance"
 import { buildConversationTranscript, mergeTranscriptWithLiveMessages } from "@/lib/conversation-transcript"
 import { uiMessageText } from "@/lib/chat-messages"
+import { VoiceInputButton } from "@/components/gravitre/assistant/voice-input-button"
 import {
   serializeInlineTurn,
   splitConversationMessages,
@@ -1776,6 +1777,14 @@ export function AiWorkspace({
                       Stop
                     </Button>
                   ) : null}
+                  <VoiceInputButton
+                    value={input}
+                    onChange={setInput}
+                    disabled={routing || isChatBusy}
+                    onError={(message) => {
+                      if (message) toast.error(message)
+                    }}
+                  />
                   <button
                     type="submit"
                     disabled={!input.trim() || routing || isChatBusy}

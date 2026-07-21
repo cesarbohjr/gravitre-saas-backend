@@ -10,6 +10,8 @@ import {
 } from "@phosphor-icons/react"
 import type { AiEngine } from "@/lib/ai-surface-handoff"
 import { AI_EXAMPLE_PROMPTS, AI_MODES, getModeMeta, type ModeId } from "./ai-mode-config"
+import { VoiceInputButton } from "@/components/gravitre/assistant/voice-input-button"
+import { toast } from "sonner"
 
 function ModeIconBadge({
   modeId,
@@ -119,6 +121,14 @@ export function AiLanding({
               className="w-full min-h-[88px] resize-none bg-transparent px-3 py-4 text-center text-sm text-foreground outline-none placeholder:text-muted-foreground/70"
             />
             <div className="flex items-center justify-end gap-3 px-2 pb-1">
+              <VoiceInputButton
+                value={input}
+                onChange={onInputChange}
+                disabled={routing}
+                onError={(message) => {
+                  if (message) toast.error(message)
+                }}
+              />
               <button
                 type="button"
                 onClick={onSubmit}

@@ -35,6 +35,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { useAuth, getAccessToken } from "@/lib/auth-context"
 import { toast } from "sonner"
+import { VoiceInputButton } from "@/components/gravitre/assistant/voice-input-button"
+import { ReadAloudButton } from "@/components/gravitre/assistant/read-aloud-button"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import rehypeHighlight from "rehype-highlight"
@@ -294,6 +296,7 @@ function ChatMessage({
         {/* Message actions */}
         {!isUser && showActions && (
           <div className="flex items-center gap-1 mt-2 pt-2 border-t border-zinc-100">
+            <ReadAloudButton messageId={message.id} text={displayText} compact />
             <button
               onClick={handleCopyMessage}
               className="flex items-center gap-1 px-2 py-1 rounded text-xs text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
@@ -716,6 +719,15 @@ export default function AgentChatPage({
                 }}
               />
               
+              <VoiceInputButton
+                value={input}
+                onChange={setInput}
+                disabled={!user || isLoading}
+                onError={(message) => {
+                  if (message) toast.error(message)
+                }}
+              />
+
               {isStreaming ? (
                 <Button
                   type="button"
