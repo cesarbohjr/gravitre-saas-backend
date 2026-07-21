@@ -14,10 +14,10 @@ export const aiTransparencyApprovalPost: BlogPost = {
   author: GRAVITRE_BLOG_AUTHOR,
   ...createBlogDates("2026-07-17", "2026-07-18"),
   readTime: "6 min read",
-  heroImage: "",
+  heroImage: "/images/blog/ai-transparency-governance-hero.jpg",
   heroGradient: "from-emerald-50 via-white to-slate-100",
   heroAlt:
-    "Diagram showing an AI action moving through an approval step, a verification check, and an audit log entry",
+    "Governance flow diagram showing chat, guided task, and workflow paths converging on a human approval gate, with verification outcomes, assumptions notes, and an audit log",
   keywords: [
     "AI transparency",
     "human in the loop approval",
