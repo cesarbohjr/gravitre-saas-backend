@@ -369,12 +369,37 @@ async def run_connector_turn(
         refreshed = await state_svc.get_task_state(
             conversation_id, org_id, client=client
         )
+        hold = format_unrelated_hold_prompt(
+            snap, new_request=interpretation.message
+        )
+        # Social aside while something is pending: warm ack + sober hold (still via
+        # pending-reply unrelated — does not bypass the classifier).
+        message_out = hold
+        try:
+            from app.services.conversational_turn_gate import heuristic_turn_shape
+            from app.services.conversational_reply_service import (
+                generate_conversational_reply,
+                sober_pending_approval_note,
+            )
+
+            social = heuristic_turn_shape(interpretation.message)
+            if social and social.shape == "conversational":
+                sober = sober_pending_approval_note(refreshed) or hold
+                message_out = await generate_conversational_reply(
+                    interpretation.message,
+                    decision=social,
+                    settings=settings,
+                    org_id=org_id,
+                    task_state=refreshed,
+                    allow_humor=social.category in {"banter", "greeting", "thanks"},
+                    pending_sober_note=sober,
+                )
+        except Exception:  # noqa: BLE001
+            message_out = hold
         return {
             "stop_pipeline": True,
             "dialogue_mode": "clarifying",
-            "message": format_unrelated_hold_prompt(
-                snap, new_request=interpretation.message
-            ),
+            "message": message_out,
             "voice_section": interpretation.voice_section or voice_system_prompt_section(),
             "task_state": refreshed,
             "pending_task": refreshed.get("pending_task"),

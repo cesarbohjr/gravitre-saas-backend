@@ -1589,6 +1589,96 @@ class AgentIntelligence:
             explicit_persona=explicit_persona,
         )
 
+        # Conversational path (additive): only when nothing is pending. Pending-reply
+        # classifier remains the owner for awaiting_* / sticky plans.
+        conversational_prefix = ""
+        from app.services.conversational_turn_gate import (
+            classify_turn_shape,
+            should_offer_conversational_path,
+        )
+        from app.services.pending_reply_classifier import has_pending_family
+
+        pending_family_active = has_pending_family(task_state)
+        turn_shape = await classify_turn_shape(
+            task_text,
+            settings=active_settings,
+            org_id=org_id,
+            conversation_summary=" | ".join(
+                str(x) for x in list((task_state or {}).get("recent_user_messages") or [])[-3:]
+            ),
+        )
+        if should_offer_conversational_path(turn_shape, has_pending=pending_family_active):
+            from app.services.conversational_reply_service import generate_conversational_reply
+
+            response_text = await generate_conversational_reply(
+                task_text,
+                decision=turn_shape,
+                settings=active_settings,
+                org_id=org_id,
+                task_state=task_state,
+                conversation_history=conversation_history,
+                connected_integrations=list(connected_early or []),
+                client=client,
+                allow_humor=turn_shape.category in {"banter", "greeting", "thanks"},
+            )
+            yield sse_intelligence_metadata(
+                message_id=message_id,
+                confidence={"score": 0.9, "needs_clarification": False},
+                answer_explanation="Conversational path (non-task)",
+                dialogue_mode="answer",
+                persona_key=str(persona.get("persona_key") or ""),
+                task_state=task_state,
+                effective_mode=mode_key,
+                pipeline_tier=pipeline_tier,
+                routing_tier=routing_control.tier,
+                routing={
+                    **(routing_sse if isinstance(routing_sse, dict) else {}),
+                    "turnShape": turn_shape.shape,
+                    "conversationalCategory": turn_shape.category,
+                },
+            )
+            text_id, start_event = sse_text_start()
+            yield start_event
+            yield sse_text_delta(text_id, response_text)
+            yield sse_text_end(text_id)
+            yield AssistantStreamComplete(
+                full_content=response_text,
+                tool_results=[],
+                react_result=None,
+                model="conversational_path",
+                message_id=message_id,
+                confidence={"score": 0.9, "needs_clarification": False},
+                answer_explanation="Conversational path (non-task)",
+                dialogue_mode="answer",
+                persona_key=str(persona.get("persona_key") or ""),
+                proactive_suggestions=[],
+                task_state=task_state,
+            )
+            return
+
+        if (
+            not pending_family_active
+            and turn_shape.shape == "mixed"
+            and (turn_shape.task_portion or "").strip()
+        ):
+            from app.services.conversational_reply_service import generate_social_ack
+
+            conversational_prefix = await generate_social_ack(
+                turn_shape.social_portion or task_text,
+                org_id=org_id,
+                settings=active_settings,
+            )
+            task_text = turn_shape.task_portion.strip()
+
+        def _with_social(text: str) -> str:
+            body = (text or "").strip()
+            prefix = (conversational_prefix or "").strip()
+            if not prefix:
+                return body
+            if not body:
+                return prefix
+            return f"{prefix}\n\n{body}"
+
         # Post-action: swarm step-level transparency (before ReAct invents missing evidence).
         from app.services.post_action_experience_service import (
             is_inline_preview_intent,
@@ -1714,7 +1804,7 @@ class AgentIntelligence:
         )
         if conv_turn and conv_turn.get("stop_pipeline"):
             task_state = conv_turn.get("task_state") or task_state
-            response_text = str(conv_turn.get("message") or "")
+            response_text = _with_social(str(conv_turn.get("message") or ""))
             dialogue_mode = str(conv_turn.get("dialogue_mode") or "answer")
             # Wave 7 — stream verify/relay (execution + pending) before answer text.
             if conv_turn.get("execution_result") or conv_turn.get("pending_task"):
@@ -1801,7 +1891,7 @@ class AgentIntelligence:
             )
             if orchestration_turn and orchestration_turn.get("stop_pipeline"):
                 task_state = orchestration_turn.get("task_state") or task_state
-                response_text = str(orchestration_turn.get("message") or "")
+                response_text = _with_social(str(orchestration_turn.get("message") or ""))
                 dialogue_mode = str(orchestration_turn.get("dialogue_mode") or "answer")
                 orch_perf = orchestration_turn.get("orchestration_perf")
                 if not isinstance(orch_perf, dict):
@@ -1882,7 +1972,7 @@ class AgentIntelligence:
             )
             if connector_turn and connector_turn.get("stop_pipeline"):
                 task_state = connector_turn.get("task_state") or task_state
-                response_text = str(connector_turn.get("message") or "")
+                response_text = _with_social(str(connector_turn.get("message") or ""))
                 dialogue_mode = str(connector_turn.get("dialogue_mode") or "answer")
                 if connector_turn.get("execution_result") or connector_turn.get("pending_task"):
                     yield sse_intelligence_metadata(
@@ -2725,7 +2815,7 @@ class AgentIntelligence:
             refined_query=refined_query,
             turn_context=turn_ctx,
         )
-        full_content = finalized["content"]
+        full_content = _with_social(str(finalized["content"] or ""))
         if finalized["confidence"].get("needs_clarification") and mode_key != "fast":
             clarification_suffix = (
                 "\n\nI may be missing context — could you clarify or point me to a specific record or document?"

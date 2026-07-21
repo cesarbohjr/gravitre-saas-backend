@@ -1,0 +1,12 @@
+{
+  "feature": "conversational_turn_path",
+  "status": "CODE_COMPLETE_AWAITING_DEPLOY_BATTERY",
+  "phase0": "docs/delivery/conversational-path-phase0.md",
+  "gate": "backend/app/services/conversational_turn_gate.py",
+  "reply": "backend/app/services/conversational_reply_service.py",
+  "wire": "backend/app/operators/agent_intelligence.py",
+  "unitTests": "backend/tests/services/test_conversational_turn_gate.py",
+  "liveBattery": "scripts/verify-conversational-path-live.py",
+  "liveArtifact": "docs/delivery/conversational-path-battery-live.json",
+  "standingRule": "Pending family never bypasses pending-reply classifier; task-shaped and data-casual stay on full pipeline"
+}
