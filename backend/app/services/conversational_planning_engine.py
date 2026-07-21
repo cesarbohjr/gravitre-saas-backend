@@ -39,6 +39,7 @@ _STRATEGIC_PLAN_PHRASES = (
     "draft a plan",
     "build a plan",
     "create a plan",
+    "multi-step plan",
     "planning roadmap",
     "how can we",
     "what should we",
@@ -54,13 +55,6 @@ ADVISORY_PLAN_FIRST = re.compile(
     re.I,
 )
 
-# Multi-step / explicit deferral — overrides bare list-create phrasing.
-STRONG_ADVISORY_PLAN = re.compile(
-    r"\b(?:multi-step|strategic\s+(?:multi-step\s+)?plan|show the plan first"
-    r"|do not execute(?:\s+yet)?|don'?t execute(?:\s+yet)?|\bplan only\b)\b",
-    re.I,
-)
-
 
 def is_advisory_plan_first(query: str) -> bool:
     """True when the user asked for a plan without execution."""
@@ -72,10 +66,15 @@ def is_direct_connector_write_intent(query: str) -> bool:
     text = (query or "").strip()
     if not text:
         return False
-    if STRONG_ADVISORY_PLAN.search(text):
-        return False
     if LIST_CREATE_INTENT.search(text):
+        # Imperative list-create ("Create a contact list…") is execute-now even with plan-first phrasing.
+        if re.match(r"^\s*(?:create|add)\b", text, re.I):
+            return True
+        if is_advisory_plan_first(text):
+            return False
         return True
+    if is_advisory_plan_first(text):
+        return False
     return bool(_DIRECT_CONNECTOR_WRITE_INTENT.search(text))
 
 
@@ -91,9 +90,10 @@ class ConversationalPlanningEngine:
         # Shape (b): do not detour governed writes into advisory scaffolding.
         if is_direct_connector_write_intent(query):
             return False
-        # Multi-step / explicit deferral stages current_plan (even when connectors are disconnected).
-        if STRONG_ADVISORY_PLAN.search(query or ""):
-            return True
+        # Plan-first / advisory language stages current_plan when paired with a strategic goal.
+        if is_advisory_plan_first(query):
+            lowered = query.lower()
+            return any(phrase in lowered for phrase in _STRATEGIC_PLAN_PHRASES)
         intent = str(classification.get("intent") or "")
         if classification.get("requires_action") and intent in {"workflow_execution", "optimization"}:
             return True

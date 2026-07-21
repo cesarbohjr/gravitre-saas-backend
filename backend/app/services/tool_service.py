@@ -3886,6 +3886,7 @@ from app.services.odoo_tools import ODOO_TOOL_EXECUTORS
 from app.services.canva_tools import CANVA_TOOL_EXECUTORS
 from app.services.figma_tools import FIGMA_TOOL_EXECUTORS
 from app.services.microsoft365_teams_tools import MICROSOFT365_TEAMS_SHAREPOINT_TOOLS
+from app.services.connected_files_tools import CONNECTED_FILE_TOOLS
 from app.services.apollo_tools import APOLLO_TOOL_EXECUTORS
 from app.services.clay_tools import CLAY_TOOL_EXECUTORS
 from app.services.engagebay_tools import ENGAGEBAY_TOOL_EXECUTORS
@@ -3919,6 +3920,7 @@ _TOOL_REGISTRY.update(ODOO_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(CANVA_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(FIGMA_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(MICROSOFT365_TEAMS_SHAREPOINT_TOOLS)
+_TOOL_REGISTRY.update(CONNECTED_FILE_TOOLS)
 _TOOL_REGISTRY.update(APOLLO_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(CLAY_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(ENGAGEBAY_TOOL_EXECUTORS)

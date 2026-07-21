@@ -84,10 +84,8 @@ class ChatActionMapper:
             score = self._score(text, entry)
             if score <= 0:
                 continue
-            # Fix 3 — schema fills gaps; vendor regex wins on write conflicts.
+            # Fix 3 — schema-constrained extraction is primary; vendor regex is fallback.
             args: dict[str, Any] | None = None
-            schema_args: dict[str, Any] | None = None
-            vendor_args = self._extract_args(text, entry)
             if write_intent and entry.kind != "read":
                 try:
                     from app.services.schema_param_extractor import extract_action_args_heuristic
@@ -97,13 +95,15 @@ class ChatActionMapper:
                         text,
                         existing_args={},
                     )
+                    if schema_args:
+                        args = schema_args
                 except Exception:  # noqa: BLE001
-                    schema_args = None
-                if schema_args or vendor_args:
-                    args = {**(schema_args or {}), **(vendor_args or {})}
-                    if vendor_args and "assignee_hint" in vendor_args and "name" not in vendor_args:
-                        args.pop("name", None)
-            else:
+                    pass
+            vendor_args = self._extract_args(text, entry)
+            if vendor_args:
+                # Vendor regex/heuristics win over schema fallthrough (full-message dumps).
+                args = {**(args or {}), **vendor_args}
+            elif args is None:
                 args = vendor_args
             if args is None:
                 if write_intent and entry.kind != "read":
@@ -280,6 +280,13 @@ class ChatActionMapper:
         if entry.connector_id in {"google_drive", "google_sheets"} and "files.list" in entry.action_key:
             if "sheet" in text and READ_VERBS.search(text):
                 score += 28.0
+            if re.search(r"\blist\s+files?\b", text, re.I):
+                score += 32.0
+        if entry.connector_id == "google_drive" and "search_files" in entry.action_key:
+            if re.search(r"\blist\s+files?\b", text, re.I):
+                score -= 28.0
+            if re.search(r"\b(find|search|look\s+for)\b", text, re.I):
+                score += 18.0
         if entry.connector_id == "google_sheets" and "values.get" in entry.action_key:
             if "find" in text or "search" in text or "summarize" in text:
                 score -= 24.0

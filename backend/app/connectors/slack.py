@@ -200,6 +200,43 @@ def upload_file(
     return payload
 
 
+def list_files(
+    token: str,
+    *,
+    query: str | None = None,
+    channel: str | None = None,
+    count: int = 20,
+) -> dict[str, Any]:
+    params: dict[str, Any] = {"count": min(max(int(count), 1), 100)}
+    if query:
+        params["query"] = str(query).strip()
+    if channel:
+        params["channel"] = str(channel).strip()
+    return slack_api_call(token, "files.list", params=params)
+
+
+def get_file_info(token: str, file_id: str) -> dict[str, Any]:
+    file_id = (file_id or "").strip()
+    if not file_id:
+        raise ValueError("Slack file_id is required")
+    return slack_api_call(token, "files.info", params={"file": file_id})
+
+
+def download_file(token: str, file_id: str) -> tuple[bytes, str | None]:
+    payload = get_file_info(token, file_id)
+    file_obj = payload.get("file") if isinstance(payload.get("file"), dict) else {}
+    url = str(file_obj.get("url_private_download") or file_obj.get("url_private") or "").strip()
+    if not url:
+        raise ValueError("Slack file has no download URL (missing files:read scope or access revoked)")
+    filename = str(file_obj.get("name") or "").strip() or None
+    headers = {"Authorization": f"Bearer {token.strip()}"}
+    with httpx.Client(timeout=TIMEOUT_SEC) as client:
+        response = client.get(url, headers=headers)
+    if not response.is_success:
+        raise ValueError(f"Slack file download failed: http_{response.status_code}")
+    return response.content, filename
+
+
 def add_reaction(
     token: str,
     channel: str,

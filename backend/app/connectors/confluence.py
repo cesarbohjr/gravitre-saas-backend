@@ -180,13 +180,7 @@ def list_space_pages(
 
 def get_page_view_text(access_token: str, cloud_id: str, page_id: str) -> tuple[str, str, str | None]:
     """Return (title, plain_text_body, version_created_at)."""
-    data = _request(
-        "GET",
-        cloud_id,
-        access_token,
-        f"/pages/{page_id}",
-        params={"body-format": "view"},
-    )
+    data = get_page(access_token, cloud_id, page_id)
     title = str(data.get("title") or page_id)
     body = data.get("body") if isinstance(data.get("body"), dict) else {}
     view = body.get("view") if isinstance(body.get("view"), dict) else {}
@@ -195,3 +189,38 @@ def get_page_view_text(access_token: str, cloud_id: str, page_id: str) -> tuple[
     version = data.get("version") if isinstance(data.get("version"), dict) else {}
     created_at = version.get("createdAt")
     return title, text, str(created_at) if created_at else None
+
+
+def get_page(access_token: str, cloud_id: str, page_id: str) -> dict[str, Any]:
+    return _request(
+        "GET",
+        cloud_id,
+        access_token,
+        f"/pages/{page_id}",
+        params={"body-format": "view"},
+    )
+
+
+def search_pages(
+    access_token: str,
+    cloud_id: str,
+    *,
+    query: str,
+    limit: int = 25,
+) -> dict[str, Any]:
+    needle = (query or "").strip().lower()
+    if not needle:
+        raise ConfluenceAPIError("search query is required")
+    spaces = list_spaces(access_token, cloud_id, limit=50)
+    matches: list[dict[str, Any]] = []
+    for space in spaces:
+        space_id = str(space.get("id") or "")
+        if not space_id:
+            continue
+        for page in list_space_pages(access_token, cloud_id, space_id, limit=100):
+            title = str(page.get("title") or "")
+            if needle in title.lower():
+                matches.append({**page, "_links": {"webui": f"/spaces/{space.get('key')}/pages/{page.get('id')}"}})
+                if len(matches) >= limit:
+                    return {"results": matches}
+    return {"results": matches}

@@ -111,7 +111,8 @@ def test_artifact_registry_builds_connector_and_document_cards():
     kinds = {row["kind"] for row in artifacts}
     assert "record" in kinds
     assert "document" in kinds
-    assert "link" in kinds
+    record = next(row for row in artifacts if row["kind"] == "record")
+    assert record.get("metadata", {}).get("external_url") == "https://app.hubspot.com/contacts/1"
 
 
 def test_serialize_execution_result_attaches_artifacts():

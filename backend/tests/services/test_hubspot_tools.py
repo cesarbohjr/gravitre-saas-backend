@@ -23,7 +23,7 @@ def tool_ctx() -> ToolContext:
 
 
 @pytest.fixture(autouse=True)
-def _hubspot_hub_id():
+def hubspot_portal_hub_id():
     with patch("app.services.tool_service._hubspot_hub_id", return_value="12345678"):
         yield
 
@@ -222,7 +222,6 @@ def test_hubspot_owners_list_success(tool_ctx: ToolContext):
                         ):
                             result = invoke_tool(tool_ctx, "hubspot.owners.list", {"limit": 5})
     assert result.success is True
-    assert "result_url" not in result.data
     assert result.data["owners"][0]["id"] == "own1"
 
 

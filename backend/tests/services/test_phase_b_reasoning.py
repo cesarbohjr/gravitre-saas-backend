@@ -103,7 +103,8 @@ async def test_resolve_source_credibility_uses_org_scores():
 
 def test_graph_recommendation_confidence_scales_with_signals():
     graph = {"explanation": {"businessSignals": [{}, {}, {}], "relatedEntities": []}}
-    assert _graph_recommendation_confidence(graph)["confidence"] > 0.5
+    payload = _graph_recommendation_confidence(graph)
+    assert payload["confidence"] > 0.5
 
 
 @pytest.mark.asyncio

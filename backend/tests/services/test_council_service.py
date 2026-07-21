@@ -108,7 +108,9 @@ async def test_start_council_completes_and_persists():
         concerns=[],
         vote_weight=1.0,
     )
-    with patch.object(full_service, "_generate_opinion", AsyncMock(return_value=(mock_opinion, False))):
+    with patch.object(
+        full_service, "_generate_opinion", AsyncMock(return_value=(mock_opinion, False))
+    ):
         with patch.object(full_service, "_persist_session") as persist:
             session = await full_service.start_council(
                 org_id="org-1",

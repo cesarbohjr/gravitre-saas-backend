@@ -23,7 +23,7 @@ def list_files(
 ) -> dict[str, Any]:
     params: dict[str, Any] = {
         "pageSize": page_size,
-        "fields": "files(id,name,mimeType,modifiedTime,webViewLink),nextPageToken",
+        "fields": "files(id,name,mimeType,modifiedTime,webViewLink,parents,size),nextPageToken",
     }
     if query:
         params["q"] = query
@@ -46,7 +46,12 @@ def get_file(access_token: str, file_id: str) -> dict[str, Any]:
         response = client.get(
             f"{DRIVE_API}/files/{file_id}",
             headers={"Authorization": f"Bearer {access_token}"},
-            params={"fields": "id,name,mimeType,modifiedTime,webViewLink,size"},
+            params={
+                "fields": (
+                    "id,name,mimeType,modifiedTime,webViewLink,webContentLink,"
+                    "size,parents,owners,path"
+                )
+            },
         )
     if response.status_code >= 400:
         raise GoogleDriveAPIError(
@@ -142,6 +147,45 @@ def create_permission(
     if response.status_code >= 400:
         raise GoogleDriveAPIError(f"Drive API {response.status_code}", status_code=response.status_code)
     return response.json()
+
+
+def search_files(
+    access_token: str,
+    *,
+    query: str,
+    scope: str | None = None,
+    page_size: int = 25,
+) -> dict[str, Any]:
+    """Search Drive files by natural-language query within connected-account scope."""
+    text = (query or "").strip()
+    if not text:
+        raise GoogleDriveAPIError("search query is required")
+    escaped = text.replace("'", "\\'")
+    clauses = [
+        "trashed = false",
+        f"(fullText contains '{escaped}' or name contains '{escaped}')",
+    ]
+    scope_text = (scope or "").strip()
+    if scope_text:
+        scope_escaped = scope_text.replace("'", "\\'")
+        clauses.append(f"'{scope_escaped}' in parents")
+    drive_query = " and ".join(clauses)
+    return list_files(access_token, page_size=page_size, query=drive_query)
+
+
+def download_file(access_token: str, file_id: str) -> bytes:
+    with httpx.Client(timeout=TIMEOUT_SEC) as client:
+        response = client.get(
+            f"{DRIVE_API}/files/{file_id}",
+            headers={"Authorization": f"Bearer {access_token}"},
+            params={"alt": "media"},
+        )
+    if response.status_code >= 400:
+        raise GoogleDriveAPIError(
+            f"Drive API {response.status_code}",
+            status_code=response.status_code,
+        )
+    return response.content
 
 
 def export_file(

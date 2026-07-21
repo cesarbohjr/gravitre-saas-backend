@@ -254,6 +254,18 @@ class ChatOrchestrationService:
             pending_type = str(pending.get("type") or "")
             pending_status = str(pending.get("status") or "")
 
+        if (
+            pending_type == "connector_orchestration"
+            and pending_status in {"awaiting_plan_confirm", "awaiting_step_confirm"}
+            and self._should_supersede_pending_orchestration(
+                message,
+                task_state,
+                connected_integrations,
+            )
+        ):
+            await self._clear_orchestration(conversation_id, org_id)
+            return None
+
         if not self.is_orchestration_intent(message, task_state, connected_integrations):
             return None
 

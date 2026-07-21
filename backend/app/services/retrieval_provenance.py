@@ -73,6 +73,15 @@ def build_from_rag_row(
         plan=plan,
         match_tier=match_tier,
         weight_applied=score,
+        extra={
+            "file_path": meta.get("path") or meta.get("original_filename"),
+            "file_name": row.get("title") or meta.get("original_filename"),
+            "web_link": meta.get("web_link") or meta.get("url"),
+            "page": meta.get("page"),
+            "section": meta.get("section"),
+            "vendor": meta.get("vendor"),
+            "file_id": meta.get("file_id"),
+        },
     )
 
 

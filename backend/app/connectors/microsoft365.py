@@ -371,3 +371,110 @@ def delete_drive_item(access_token: str, *, drive_id: str, item_id: str) -> dict
     if not drive_id or not item_id:
         raise Microsoft365APIError("drive_id and item_id are required")
     return _request(access_token, "DELETE", f"/drives/{drive_id}/items/{item_id}")
+
+
+def get_drive_item(
+    access_token: str,
+    *,
+    drive_id: str,
+    item_id: str,
+) -> dict[str, Any]:
+    if not drive_id or not item_id:
+        raise Microsoft365APIError("drive_id and item_id are required")
+    return _request(access_token, "GET", f"/drives/{drive_id}/items/{item_id}")
+
+
+def search_drive_items(
+    access_token: str,
+    *,
+    drive_id: str,
+    query: str,
+    top: int = 25,
+) -> dict[str, Any]:
+    if not drive_id:
+        raise Microsoft365APIError("drive_id is required")
+    text = (query or "").strip()
+    if not text:
+        raise Microsoft365APIError("search query is required")
+    return _request(
+        access_token,
+        "GET",
+        f"/drives/{drive_id}/root/search(q='{text.replace(chr(39), chr(39)+chr(39))}')",
+        params={"$top": min(max(int(top), 1), 50)},
+    )
+
+
+def download_drive_item_content(
+    access_token: str,
+    *,
+    drive_id: str,
+    item_id: str,
+) -> bytes:
+    if not drive_id or not item_id:
+        raise Microsoft365APIError("drive_id and item_id are required")
+    meta = get_drive_item(access_token, drive_id=drive_id, item_id=item_id)
+    download_url = str(meta.get("@microsoft.graph.downloadUrl") or "").strip()
+    if not download_url:
+        raise Microsoft365APIError("No download URL for drive item (permission or folder)")
+    with httpx.Client(timeout=TIMEOUT_SEC) as client:
+        response = client.get(download_url)
+    if response.status_code >= 400:
+        raise Microsoft365APIError(
+            f"Microsoft Graph download {response.status_code}",
+            status_code=response.status_code,
+        )
+    return response.content
+
+
+def list_onedrive_items(
+    access_token: str,
+    *,
+    item_id: str | None = None,
+    top: int = 25,
+) -> dict[str, Any]:
+    if item_id:
+        path = f"/me/drive/items/{item_id}/children"
+    else:
+        path = "/me/drive/root/children"
+    return _request(access_token, "GET", path, params={"$top": min(max(int(top), 1), 50)})
+
+
+def search_onedrive_items(
+    access_token: str,
+    *,
+    query: str,
+    top: int = 25,
+) -> dict[str, Any]:
+    text = (query or "").strip()
+    if not text:
+        raise Microsoft365APIError("search query is required")
+    escaped = text.replace("'", "''")
+    return _request(
+        access_token,
+        "GET",
+        f"/me/drive/root/search(q='{escaped}')",
+        params={"$top": min(max(int(top), 1), 50)},
+    )
+
+
+def get_onedrive_item(access_token: str, *, item_id: str) -> dict[str, Any]:
+    if not item_id:
+        raise Microsoft365APIError("item_id is required")
+    return _request(access_token, "GET", f"/me/drive/items/{item_id}")
+
+
+def download_onedrive_item_content(access_token: str, *, item_id: str) -> bytes:
+    if not item_id:
+        raise Microsoft365APIError("item_id is required")
+    meta = get_onedrive_item(access_token, item_id=item_id)
+    download_url = str(meta.get("@microsoft.graph.downloadUrl") or "").strip()
+    if not download_url:
+        raise Microsoft365APIError("No download URL for OneDrive item (permission or folder)")
+    with httpx.Client(timeout=TIMEOUT_SEC) as client:
+        response = client.get(download_url)
+    if response.status_code >= 400:
+        raise Microsoft365APIError(
+            f"Microsoft Graph download {response.status_code}",
+            status_code=response.status_code,
+        )
+    return response.content
