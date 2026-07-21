@@ -405,7 +405,12 @@ def _action_suffix(action: str | None) -> str:
     value = str(action or "").strip()
     if not value:
         return ""
-    return f" ({value})"
+    from app.services.user_facing_copy_guard import humanize_catalog_action_key
+
+    human = humanize_catalog_action_key(value)
+    if not human or human == value:
+        return ""
+    return f" ({human})"
 
 
 def _apply_register(text: str, register: ConfidenceRegister | str | None) -> str:

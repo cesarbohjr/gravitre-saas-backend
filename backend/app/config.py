@@ -94,6 +94,15 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("INTELLIGENCE_VISIBILITY_ENABLED", "intelligence_visibility_enabled"),
     )
+    # Unified turn reasoning (Phase 1 shadow — parallel to classical pipeline).
+    unified_turn_shadow_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("UNIFIED_TURN_SHADOW_ENABLED", "unified_turn_shadow_enabled"),
+    )
+    unified_turn_shadow_max_tools: int = Field(
+        default=32,
+        validation_alias=AliasChoices("UNIFIED_TURN_SHADOW_MAX_TOOLS", "unified_turn_shadow_max_tools"),
+    )
     rag_uploads_bucket: str = "rag-uploads"
     rag_store_raw_files: bool = True
     blob_read_write_token: str = ""

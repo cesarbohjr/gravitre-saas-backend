@@ -1589,6 +1589,21 @@ class AgentIntelligence:
             explicit_persona=explicit_persona,
         )
 
+        if getattr(active_settings, "unified_turn_shadow_enabled", False):
+            from app.services.unified_turn_reasoning_service import schedule_unified_turn_shadow
+
+            schedule_unified_turn_shadow(
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                message=task_text,
+                task_state=task_state,
+                conversation_history=conversation_history,
+                connected_integrations=list(connected_early or []),
+                client=client,
+                settings=active_settings,
+            )
+
         # Conversational path (additive): only when nothing is pending. Pending-reply
         # classifier remains the owner for awaiting_* / sticky plans.
         conversational_prefix = ""

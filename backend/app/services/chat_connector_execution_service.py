@@ -413,8 +413,8 @@ class ChatConnectorExecutionService:
                     payload = build_not_executable(
                         "unsupported_action",
                         next_step=(
-                            f"The {vendor_label} connector has no list/group creation action yet. "
-                            f"Recommended implementation: `{missing_action}`."
+                            f"The {vendor_label} connector can't create that type of list yet. "
+                            "Describe the outcome you want and I'll suggest the closest supported step."
                         ),
                         metadata={
                             "operator_format": True,

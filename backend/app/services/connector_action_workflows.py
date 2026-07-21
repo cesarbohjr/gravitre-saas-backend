@@ -141,7 +141,10 @@ def format_capability_fallback_message(
         planned=planned or None,
         result="\n".join([summary, "", "**Capability check:**", *check_lines]) if check_lines else summary,
         available_actions=available_actions or [],
-        next_step=f"Missing action: `{resolved_missing}`. Use available actions above.",
+        next_step=(
+            "I can't create that kind of list in this integration yet. "
+            "Tell me what you want to accomplish and I'll use one of the options above."
+        ),
     )
 
 

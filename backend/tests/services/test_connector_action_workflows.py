@@ -58,7 +58,7 @@ def test_missing_parameters_returns_clarification_not_failure():
     assert "due date" in check.missing
     assert "task title" in check.missing
     assert check.known.get("Assignee") == "Sarah"
-    assert "needs clarification" in check.message
+    assert "few more details" in check.message.lower()
 
 
 def test_write_action_approval_message_format():
@@ -118,7 +118,7 @@ def test_capability_fallback_for_apollo_list_when_create_unavailable():
     )
     assert "cannot create Apollo lists yet" in message
     assert "Can create list? no" in message
-    assert "apollo.lists.create" in message
+    assert "apollo.lists.create" not in message
 
 
 def test_capability_gaps_when_apollo_list_create_available():

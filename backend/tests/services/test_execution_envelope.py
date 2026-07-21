@@ -34,5 +34,5 @@ def test_format_operator_envelope_message():
     text = format_not_executable_message(payload)
     assert "Create Asana task" in text
     assert "Asana" in text
-    assert "isn't ready" in text or "can't run" in text.lower()
     assert "Sarah" in text
+    assert "/connectors" in text

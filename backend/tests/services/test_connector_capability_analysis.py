@@ -63,7 +63,7 @@ def test_capability_fallback_message_is_catalog_driven():
     )
     assert "cannot create Apollo lists yet" in message
     assert "Can create list? no" in message
-    assert "apollo.lists.create" in message
+    assert "apollo.lists.create" not in message
 
 
 def test_capability_fallback_when_list_create_cataloged_but_not_wired():
@@ -75,5 +75,5 @@ def test_capability_fallback_when_list_create_cataloged_but_not_wired():
     )
     assert "hubspot" in message.lower()
     assert "cannot create hubspot lists yet" in message.lower()
-    assert "hubspot.lists.create" in message
+    assert "hubspot.lists.create" not in message
     assert "list creation is not cataloged" not in message.lower()

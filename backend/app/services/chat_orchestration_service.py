@@ -768,7 +768,7 @@ class ChatOrchestrationService:
             return OrchestrationStep(
                 step_id=step_id,
                 segment=segment,
-                label=f"Could not map: {segment[:80]}",
+                label=(segment[:80].strip() or "This step"),
                 kind="write",
                 supported=False,
                 requires_approval=False,
@@ -1379,14 +1379,20 @@ class ChatOrchestrationService:
                     },
                 )
                 refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
+                from app.services.user_facing_copy_guard import finalize_user_facing_message
+
+                approval_body = (
+                    f"**Step {idx + 1} of {len(steps)}** requires approval:\n\n"
+                    f"**{step.label}**\n\n"
+                    f"{step.plan.approval_reason or 'This step changes data in a connected system.'}\n\n"
+                    "Reply **yes** to run this step, or **no** to cancel."
+                )
                 return {
                     "stop_pipeline": True,
                     "dialogue_mode": "confirm",
-                    "message": (
-                        f"**Step {idx + 1} of {len(steps)}** requires approval:\n\n"
-                        f"**{step.label}** ({step.plan.invoke_action})\n\n"
-                        f"{step.plan.approval_reason or 'This step changes data in a connected system.'}\n\n"
-                        "Reply **yes** to run this step, or **no** to cancel."
+                    "message": finalize_user_facing_message(
+                        approval_body,
+                        context="orchestration_step_approval",
                     ),
                     "task_state": refreshed,
                     "pending_task": self._pending_task_payload(refreshed),

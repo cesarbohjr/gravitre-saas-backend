@@ -43,26 +43,50 @@ def format_operator_response(
     next_step: str = "",
     planned: dict[str, Any] | None = None,
 ) -> str:
-    """Conversational operator reply — status + next step without rigid field labels."""
-    status_clean = status.replace("blocked — ", "").strip()
-    lines: list[str] = []
+    """Conversational operator reply — Module D voice; never expose catalog action ids."""
+    from app.services.gravitree_voice import format_operator_message
+    from app.services.user_facing_copy_guard import (
+        finalize_user_facing_message,
+        user_facing_available_action_labels,
+    )
 
-    if "connector not ready" in status or missing_connector:
+    status_clean = status.replace("blocked — ", "").strip()
+    status_l = status.lower()
+    lines: list[str] = []
+    voice_kwargs = {"confidence_register": "blocked", "allow_humor": False}
+
+    if "connector not ready" in status_l or missing_connector:
         connector = missing_connector or "that integration"
-        lines.append(f"I can't run **{intent}** yet because {connector} isn't ready.")
-    elif "action not matched" in status and matched_action:
         lines.append(
-            f"I understand you want to **{intent}**, and `{matched_action}` is available — "
-            "I just need a clearer phrasing to map it safely."
+            format_operator_message(
+                "connector_connect_to_run",
+                integration=connector,
+                **voice_kwargs,
+            )
         )
-    elif "action not in catalog" in status or missing_action:
-        lines.append(f"I can't complete **{intent}** with the actions that are currently wired up.")
-        if missing_action:
-            lines.append(f"The missing capability is `{missing_action}`.")
-    elif "no matching catalog action" in status:
-        lines.append(f"I couldn't map **{intent}** to a specific connector action yet.")
+        if intent:
+            lines.append(f"I was working on: **{intent}**.")
+    elif "needs clarification" in status_l:
+        lines.append(f"I can help with **{intent}** once I have a few more details.")
+    elif (
+        "action not matched" in status_l
+        or "action not in catalog" in status_l
+        or "no matching catalog action" in status_l
+        or missing_action
+        or matched_action
+    ):
+        lines.append(format_operator_message("no_executable_action", **voice_kwargs))
+        if intent:
+            lines.append(f"What you asked for: **{intent}**.")
     else:
-        lines.append(f"Here's where things stand on **{intent}**: {status_clean}.")
+        lines.append(
+            format_operator_message(
+                "blocked",
+                blocker=f"Here's where things stand on **{intent}**: {status_clean}.",
+                next_action="Tell me which connected app should handle this, in plain language.",
+                **voice_kwargs,
+            )
+        )
 
     if result:
         lines.append("")
@@ -80,9 +104,7 @@ def format_operator_response(
 
     if missing_parameters:
         lines.append("")
-        from app.services.gravitree_voice import format_operator_message
-
-        lines.append(format_operator_message("missing_parameters_header"))
+        lines.append(format_operator_message("missing_parameters_header", **voice_kwargs))
         for item in missing_parameters:
             lines.append(f"- {item}")
 
@@ -93,24 +115,31 @@ def format_operator_response(
             lines.append(f"- {option}")
 
     if available_actions and (
-        "action not" in status or "no matching" in status or missing_action
+        "action not" in status_l or "no matching" in status_l or missing_action
     ):
-        lines.append("")
-        lines.append("Available actions on this connector:")
-        for action in available_actions[:8]:
-            lines.append(f"- {action}")
+        labels = user_facing_available_action_labels(available_actions)
+        if labels:
+            lines.append("")
+            lines.append("Here's what I can do with this integration right now:")
+            for label in labels[:8]:
+                lines.append(f"- {label}")
 
     if next_step:
         lines.append("")
         lines.append(next_step)
 
-    return "\n".join(lines).strip()
+    return finalize_user_facing_message(
+        "\n".join(lines).strip(),
+        context="format_operator_response",
+    )
 
 
 def format_not_executable_message(payload: dict[str, Any]) -> str:
+    from app.services.user_facing_copy_guard import finalize_user_facing_message
+
     metadata = payload.get("metadata") or {}
     if metadata.get("operator_format"):
-        return format_operator_response(
+        text = format_operator_response(
             intent=str(metadata.get("intent") or "Connector action"),
             status=str(metadata.get("status") or "blocked"),
             matched_action=metadata.get("matched_action"),
@@ -124,12 +153,13 @@ def format_not_executable_message(payload: dict[str, Any]) -> str:
             next_step=str(payload.get("next_step") or metadata.get("next_step") or ""),
             planned=metadata.get("planned"),
         )
+        return finalize_user_facing_message(text, context="format_not_executable_message")
 
     from app.services.gravitree_voice import format_operator_message
 
     reason = str(payload.get("reason") or "not_implemented")
     next_step = str(payload.get("next_step") or "").strip()
-    # Route through Module D — blocked register, no humor.
+    voice_kwargs = {"confidence_register": "blocked", "allow_humor": False}
     if reason == "missing_connector":
         integration = payload.get("missing_connector") or (payload.get("metadata") or {}).get(
             "missing_connector"
@@ -137,52 +167,46 @@ def format_not_executable_message(payload: dict[str, Any]) -> str:
         base = format_operator_message(
             "connector_connect_to_run",
             integration=integration or "the connector",
-            confidence_register="blocked",
-            allow_humor=False,
+            **voice_kwargs,
         )
     elif reason == "requires_approval":
         base = format_operator_message(
             "tool_error",
             error_code="write_approval_required",
-            confidence_register="blocked",
-            allow_humor=False,
+            **voice_kwargs,
         )
     elif reason == "token_expired":
         base = format_operator_message(
             "tool_error",
             error_code="auth_expired",
             integration=(payload.get("metadata") or {}).get("integration"),
-            confidence_register="blocked",
-            allow_humor=False,
+            **voice_kwargs,
         )
     elif reason == "missing_scope":
         base = format_operator_message(
             "tool_error",
             error_code="missing_scope",
             integration=(payload.get("metadata") or {}).get("integration"),
-            confidence_register="blocked",
-            allow_humor=False,
+            **voice_kwargs,
         )
     elif reason in {"not_implemented", "unsupported_action"}:
-        base = format_operator_message(
-            "no_executable_action",
-            confidence_register="blocked",
-            allow_humor=False,
-        )
+        base = format_operator_message("no_executable_action", **voice_kwargs)
     elif reason == "missing_permission":
         base = format_operator_message(
             "tool_error",
             error_code="permission_denied",
-            confidence_register="blocked",
-            allow_humor=False,
+            **voice_kwargs,
         )
     else:
         base = format_operator_message(
             "blocked",
             blocker="This action cannot run right now.",
             next_action=next_step or "Check connectors and try again.",
-            confidence_register="blocked",
-            allow_humor=False,
+            **voice_kwargs,
         )
-        return base
-    return f"{base} {next_step}".strip()
+        return finalize_user_facing_message(
+            f"{base} {next_step}".strip(),
+            context="format_not_executable_message",
+        )
+    combined = f"{base} {next_step}".strip()
+    return finalize_user_facing_message(combined, context="format_not_executable_message")
