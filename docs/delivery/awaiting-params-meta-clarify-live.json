@@ -1,9 +1,12 @@
 {
   "bug": "awaiting_params_meta_clarify",
   "verdict": "ROOT_CAUSE_CONFIRMED",
-  "fixStatus": "CODE_FIXED_LOCAL_UNDEPLOYED",
-  "checkedAt": "2026-07-21T08:28:00Z",
+  "fixStatus": "DEPLOYED_AWAITING_LIVE_REPRO",
+  "checkedAt": "2026-07-21T08:54:35Z",
+  "shipCommit": "5cdc3db77855bd283ead4038b91b1f52dae15028",
   "apiHealthAtConfirm": "GET /health git_sha=184a9850485ef102838e65dec7d992294a9f1ee7 @ 2026-07-21T08:20:03Z",
+  "apiHealthAfterDeploy": "GET /health git_sha=5cdc3db77855bd283ead4038b91b1f52dae15028 @ 2026-07-21T08:54:35Z",
+  "vercelDeploy": "READY dpl_83JT5GkLTdNtgar3Xijbhz98xqPL @ sha 5cdc3db7 aliased to gravitre.app",
   "prodScreenshot": "user-attached 2026-07-21 clarifying-question loop on Send Gmail message",
   "reproduction": {
     "pending": "awaiting_params for gmail.messages.send missing recipient",
@@ -30,6 +33,6 @@
     ],
     "behavior": "meta_clarify → answer (email address preferred) + keep awaiting_params; do not re-emit identical Still needed; do not pollute free-text slots",
     "localTests": "tests/services/test_parameter_ledger.py::test_meta_clarify_about_recipient_is_not_slot_answer + test_conversation_turn_controller awaiting_params three buckets",
-    "liveProdReverify": "NOT RUN — requires merge → Railway redeploy → fresh awaiting_params turn"
+    "liveProdReverify": "NOT RUN — tip 5cdc3db7 is live; need fresh awaiting_params meta Q in prod chat"
   }
 }

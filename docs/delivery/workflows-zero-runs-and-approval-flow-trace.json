@@ -1,0 +1,73 @@
+{
+  "checkedAt": "2026-07-21T07:45:00Z",
+  "conversationId": "d608c44d-e4e3-475e-89d2-33aaa6f68990",
+  "orgId": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "tipGitShaObserved": "9f7771ac4cdd0a11a2edf8f575ecde32c38d6e47",
+  "question1_zeroRecentRuns": {
+    "verdict": "BUG",
+    "chatClaim": "8 workflows configured and active; 0 recent runs; 0 open alerts",
+    "canonicalData": {
+      "source": "workflow_runs + workflows (org-scoped)",
+      "workflowsTotalInOrg": 28,
+      "workflowsActiveStatusApprox": 16,
+      "workflowRunsProduction": 53,
+      "statusBreakdownProduction": {
+        "cancelled": 41,
+        "running": 4,
+        "completed": 3,
+        "failed": 3,
+        "awaiting_approval": 1,
+        "pending_approval": 1
+      },
+      "recentCompletedExample": {
+        "id": "59bd13f4-97ef-4b34-b51f-97382eecf089",
+        "status": "completed",
+        "created_at": "2026-07-20T20:58:52.634357+00:00"
+      },
+      "orgContextLimit5WouldReturn": 5
+    },
+    "toolPathActuallyUsed": {
+      "mode": "FAST (UI badge; MODE_CONFIG.fast.tool_names excludes workflow_runs)",
+      "audit": "agent.react.iteration @ 2026-07-21T07:32:06.604669Z toolName=assistant_agent_status",
+      "notCalled": "assistant_workflow_runs / tool_workflow_runs (reads workflow_runs)",
+      "evidence": "ReAct observation admits tool result is active agents, not workflow execution history"
+    },
+    "rootCause": "Wrong tool under FAST mode + synthesis of '0 recent runs' despite canonical workflow_runs containing 53 production rows for this org. Not 'none have executed yet'."
+  },
+  "question2_approvalFlow": {
+    "verdict": "BUG",
+    "timeline": [
+      {
+        "at": "2026-07-19T10:26:23Z",
+        "event": "User asked HubSpot high-intent leads + Slack follow-up; 2-step plan staged"
+      },
+      {
+        "at": "2026-07-19T10:26:30Z",
+        "event": "Step 1 executed (hubspot.contacts.search); run 67fc68c9 completed; Slack skipped; task_state.pending_task.status=completed; current_plan still holds HubSpot goal"
+      },
+      {
+        "at": "2026-07-20T20:58:28Z",
+        "event": "User asked unrelated: 'What workflows have been ran?'"
+      },
+      {
+        "at": "2026-07-20T20:58:28Z",
+        "event": "Assistant message incorrectly stored as 'Reply yes to approve Search contacts (step 1 of 2)' — stale orchestration UX on unrelated question"
+      },
+      {
+        "at": "2026-07-20T20:58:52Z",
+        "event": "hubspot.contacts.search tool.invoke.completed again; workflow_run 59bd13f4 completed (0 contacts). Step 1 re-executed despite unrelated prompt"
+      },
+      {
+        "at": "2026-07-21T07:32:37Z",
+        "event": "User replied 'yes' (thinking they were approving step 1)"
+      },
+      {
+        "at": "2026-07-21T07:32:06Z",
+        "event": "ReAct FAST: assistant_agent_status only; answered workflows question with false 0 runs — did not continue orchestration or report step-1 result"
+      }
+    ],
+    "didStep1ExecuteOnYes": false,
+    "why": "By the time user said yes, pending_task was already status=completed (orchestration finished 1/2 on Jul 19, re-ran Jul 20). Turn controller only classifies continue/modify/cancel when current_plan/pending awaiting_confirm; completed state + unrelated 'yes' fell through to ReAct, which re-answered the workflows question instead of advancing step 2 or summarizing step 1.",
+    "moduleBIssue": "Stale current_plan not superseded on unrelated follow-up; approval prompt shown after work already completed; yes not bound to a live awaiting_confirm gate"
+  }
+}
