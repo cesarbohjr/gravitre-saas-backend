@@ -17,7 +17,14 @@ from pydantic import BaseModel, Field
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.chat_connector_models import ConnectorActionPlan
-from app.services.gravitree_voice import format_operator_message, voice_system_prompt_section
+from app.services.gravitree_voice import (
+    bind_voice_expression_state,
+    format_operator_message,
+    reset_voice_expression_state,
+    voice_expression_state_snapshot,
+    voice_system_prompt_section,
+)
+from app.services.voice_expression_range import VOICE_EXPRESSION_STATE_KEY
 from app.services.parameter_ledger import (
     ParameterLedger,
     get_ledger,
@@ -544,19 +551,39 @@ async def run_connector_turn(
         )
 
     connector = get_chat_connector_execution_service(settings)
-    turn = await connector.process_turn(
-        org_id=org_id,
-        user_id=user_id,
-        conversation_id=conversation_id,
-        message=interpretation.message,
-        classification=classification,
-        task_state=interpretation.task_state,
-        connected_integrations=connected_integrations,
-        client=client,
-        environment_name=environment_name,
-        structured_plan=structured_plan,
-        pending_reply_intent=interpretation.pending_reply_intent,
-    )
+    # Module D expression range: rotate house phrases within this conversation.
+    voice_token = bind_voice_expression_state(interpretation.task_state)
+    try:
+        turn = await connector.process_turn(
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            message=interpretation.message,
+            classification=classification,
+            task_state=interpretation.task_state,
+            connected_integrations=connected_integrations,
+            client=client,
+            environment_name=environment_name,
+            structured_plan=structured_plan,
+            pending_reply_intent=interpretation.pending_reply_intent,
+        )
+        voice_snap = voice_expression_state_snapshot()
+        if voice_snap and conversation_id and org_id:
+            try:
+                await get_conversation_state_service(settings or get_settings()).update_task_state(
+                    conversation_id,
+                    org_id,
+                    {VOICE_EXPRESSION_STATE_KEY: voice_snap},
+                    client=client,
+                )
+            except Exception:  # noqa: BLE001
+                logger.debug(
+                    "voice_expression_last persist skipped conversation_id=%s",
+                    conversation_id,
+                    exc_info=True,
+                )
+    finally:
+        reset_voice_expression_state(voice_token)
     if turn:
         turn = {
             **turn,

@@ -80,7 +80,9 @@ def format_operator_response(
 
     if missing_parameters:
         lines.append("")
-        lines.append("Still needed:")
+        from app.services.gravitree_voice import format_operator_message
+
+        lines.append(format_operator_message("missing_parameters_header"))
         for item in missing_parameters:
             lines.append(f"- {item}")
 

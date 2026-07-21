@@ -24,6 +24,44 @@ import re
 from dataclasses import dataclass
 from typing import Any, Literal, Sequence
 
+from app.services.voice_expression_range import (  # noqa: F401 — re-export for adapters
+    EXPRESSION_BANKS,
+    EXPRESSION_EXCLUDED,
+    VOICE_EXPRESSION_STATE_KEY,
+    bind_voice_expression_state,
+    pick_expression,
+    reset_voice_expression_state,
+    voice_expression_state_snapshot,
+)
+
+__all__ = (
+    "CHEV_TERMS",
+    "EXPRESSION_BANKS",
+    "EXPRESSION_EXCLUDED",
+    "GRAVITREE_VOICE_RULES",
+    "HOUSE_PHRASING",
+    "VOICE_EXPRESSION_STATE_KEY",
+    "VOICE_SECTION_HEADER",
+    "OutcomeDigestItem",
+    "anti_repeat_prompt_section",
+    "apply_voice",
+    "bind_voice_expression_state",
+    "chev_term",
+    "coerce_outcome_digest_item",
+    "confidence_register_hint",
+    "detect_correction_phrase",
+    "domain_focus_section",
+    "format_confidence_for_voice",
+    "format_operator_message",
+    "format_outcome_digest",
+    "house_phrase",
+    "humor_permitted",
+    "reset_voice_expression_state",
+    "tool_error_template",
+    "voice_expression_state_snapshot",
+    "voice_system_prompt_section",
+)
+
 VOICE_SECTION_HEADER = "## Voice"
 
 ConfidenceRegister = Literal["certain", "estimate", "blocked"]
@@ -38,30 +76,27 @@ CHEV_TERMS: dict[str, str] = {
     "authenticated": "Authenticated",
 }
 
-# Curated house style — recognizably Gravitree, not generic LLM hedges.
+# Canonical first variant of each bank (prompt fingerprint + backward-compatible SoT).
+# Expression range lives in voice_expression_range.EXPRESSION_BANKS; format_operator_message
+# rotates when conversation task_state.voice_expression_last is bound.
 HOUSE_PHRASING: dict[str, str] = {
-    "insufficient_info": (
-        "I don't have enough information yet. Tell me the missing detail and I'll continue."
-    ),
-    "assumption_flag": (
-        "Assumption — based on what's Connected so far; say if that is wrong."
-    ),
-    "success_win": "Done. Verified output is ready.",
-    "success_win_light": "Done — clean run.",
-    "blocked_generic": "Blocked. {blocker} Next: {next_action}",
-    "estimate_prefix": "Estimate — based on what's Connected so far:",
-    "connector_connect_to_run": (
-        "Connect {integration} at /connectors to run this action."
-    ),
-    "skipped_unsupported": "Skipped — no Executable action matched this step.",
-    "no_executable_action": "No Executable action matched this request.",
-    "skipped_connector": "Skipped — {integration} is not Connected.",
+    "insufficient_info": EXPRESSION_BANKS["insufficient_info"][0],
+    "assumption_flag": EXPRESSION_BANKS["assumption_flag"][0],
+    "success_win": EXPRESSION_BANKS["success_win"][0],
+    "success_win_light": EXPRESSION_BANKS["success_win_light"][0],
+    "blocked_generic": EXPRESSION_BANKS["blocked_generic"][0],
+    "estimate_prefix": EXPRESSION_BANKS["estimate_prefix"][0],
+    "connector_connect_to_run": EXPRESSION_BANKS["connector_connect_to_run"][0],
+    "skipped_unsupported": EXPRESSION_BANKS["skipped_unsupported"][0],
+    "no_executable_action": EXPRESSION_BANKS["no_executable_action"][0],
+    "skipped_connector": EXPRESSION_BANKS["skipped_connector"][0],
     "canvas_write_blocked": (
         "Write blocked: this canvas step needs an approved run "
         "(required_approvals>=1). In-graph approval alone is not enough."
     ),
-    # Phase 5 — correction acknowledgment (user said "actually / no I meant").
-    "correction_ack": "Got it — updated to {correction}. Continuing with that.",
+    "correction_ack": EXPRESSION_BANKS["correction_ack"][0],
+    "pending_plan_cancelled": EXPRESSION_BANKS["pending_plan_cancelled"][0],
+    "missing_parameters_header": EXPRESSION_BANKS["missing_parameters_header"][0],
 }
 
 
@@ -144,51 +179,22 @@ _VOICE_SECTION_BODY = (
     "- Refuse safety or governance limits plainly. Never invent names, states, or metrics."
 )
 
+# First-variant templates (SoT for tool_error_template() / adapters). Rotation uses
+# EXPRESSION_BANKS["tool_error.<code>"] via pick_expression when state is bound.
 _TOOL_ERROR_TEMPLATES: dict[str, str] = {
-    "auth_expired": (
-        "{integration} authentication expired. "
-        "Reconnect it at /connectors, then try again."
-    ),
-    "permission_denied": (
-        "You do not have permission to run this action"
-        "{action_suffix}. Ask an admin to grant access, or pick a different tool."
-    ),
-    "connector_not_connected": (
-        "{integration} is not Connected for this organization. "
-        "Connect it now at /connectors, or reply **yes** to open the connect flow, then try again."
-    ),
-    "channel_not_found": (
-        "That Slack channel was not found (or the bot is not a member). "
-        "Use a public channel name/id the bot can access, invite the bot, then try again."
-    ),
-    "missing_scope": (
-        "{integration} is Connected but missing required permissions"
-        "{action_suffix}. Reconnect it at /connectors and approve the requested scopes."
-    ),
-    "validation_error": (
-        "Invalid parameters for this {integration} action{action_suffix}. "
-        "Check required fields and try again."
-    ),
-    "rate_limited": (
-        "{integration} rate-limited the request. Wait a moment and try again."
-    ),
-    "connector_timeout": (
-        "{integration} did not respond in time. Try again shortly."
-    ),
-    "write_approval_required": ("This write needs your approval before it runs."),
-    "tool_not_available": (
-        "That tool is not Connected or permitted for this agent. "
-        "Connect it at /connectors or switch mode."
-    ),
-    "action_not_found": ("This action is not implemented yet for {integration}."),
-    "tool_error": (
-        "{integration} returned an error{action_suffix}. "
-        "Check connector health at /connectors — it may not be Healthy."
-    ),
-    "unverifiable_output": (
-        "The connector action completed but returned no Verified output "
-        "(missing body and result link)."
-    ),
+    "auth_expired": EXPRESSION_BANKS["tool_error.auth_expired"][0],
+    "permission_denied": EXPRESSION_BANKS["tool_error.permission_denied"][0],
+    "connector_not_connected": EXPRESSION_BANKS["tool_error.connector_not_connected"][0],
+    "channel_not_found": EXPRESSION_BANKS["tool_error.channel_not_found"][0],
+    "missing_scope": EXPRESSION_BANKS["tool_error.missing_scope"][0],
+    "validation_error": EXPRESSION_BANKS["tool_error.validation_error"][0],
+    "rate_limited": EXPRESSION_BANKS["tool_error.rate_limited"][0],
+    "connector_timeout": EXPRESSION_BANKS["tool_error.connector_timeout"][0],
+    "write_approval_required": "This write needs your approval before it runs.",
+    "tool_not_available": EXPRESSION_BANKS["tool_error.tool_not_available"][0],
+    "action_not_found": EXPRESSION_BANKS["tool_error.action_not_found"][0],
+    "tool_error": EXPRESSION_BANKS["tool_error.tool_error"][0],
+    "unverifiable_output": EXPRESSION_BANKS["tool_error.unverifiable_output"][0],
     "canvas_write_authority_blocked": HOUSE_PHRASING["canvas_write_blocked"],
 }
 
@@ -294,7 +300,14 @@ def chev_term(status: str | None) -> str:
 
 
 def house_phrase(key: str, **ctx: Any) -> str:
-    """Return a curated house-style line; raises KeyError for unknown keys."""
+    """Return a curated house-style line; raises KeyError for unknown keys.
+
+    When expression state is bound for the conversation, rotates among variants
+    for eligible keys. Otherwise returns the canonical first variant.
+    """
+    varied = pick_expression(key, ctx=ctx)
+    if varied is not None:
+        return varied
     template = HOUSE_PHRASING[key]
     if "{" in template:
         return template.format(**{k: (v if v is not None else "") for k, v in ctx.items()})
@@ -401,7 +414,8 @@ def _apply_register(text: str, register: ConfidenceRegister | str | None) -> str
     if not body:
         return body
     if key == "estimate" and not body.lower().startswith("estimate"):
-        return f"{HOUSE_PHRASING['estimate_prefix']} {body}"
+        prefix = pick_expression("estimate_prefix") or HOUSE_PHRASING["estimate_prefix"]
+        return f"{prefix} {body}"
     return body
 
 
@@ -474,24 +488,24 @@ def format_operator_message(
     flourish_ok = humor_permitted(kind=key, allow_humor=allow_humor)
 
     if key == "pending_plan_cancelled":
-        return "Cancelled the pending plan. What should we do instead?"
+        return house_phrase("pending_plan_cancelled")
 
     if key == "house" or key == "house_phrase":
         phrase_key = str(ctx.get("phrase") or ctx.get("key") or "").strip()
         return house_phrase(phrase_key, **{k: v for k, v in ctx.items() if k not in {"phrase", "key"}})
 
     if key == "insufficient_info":
-        return HOUSE_PHRASING["insufficient_info"]
+        return house_phrase("insufficient_info")
 
     if key == "assumption_flag":
         detail = str(ctx.get("detail") or "").strip()
-        base = HOUSE_PHRASING["assumption_flag"]
+        base = house_phrase("assumption_flag")
         return f"{base} {detail}".strip() if detail else base
 
     if key == "success_win":
         if flourish_ok:
-            return HOUSE_PHRASING["success_win_light"]
-        return HOUSE_PHRASING["success_win"]
+            return house_phrase("success_win_light")
+        return house_phrase("success_win")
 
     if key == "connector_connect_to_run":
         return house_phrase(
@@ -506,12 +520,16 @@ def format_operator_message(
         )
 
     if key == "skipped_unsupported":
-        return HOUSE_PHRASING["skipped_unsupported"]
+        return house_phrase("skipped_unsupported")
 
     if key == "no_executable_action":
-        return HOUSE_PHRASING["no_executable_action"]
+        return house_phrase("no_executable_action")
+
+    if key == "missing_parameters_header":
+        return house_phrase("missing_parameters_header")
 
     if key == "canvas_write_blocked":
+        # Excluded from expression range — governance precision.
         return HOUSE_PHRASING["canvas_write_blocked"]
 
     if key == "correction_ack":
@@ -525,6 +543,24 @@ def format_operator_message(
 
     if key == "tool_error":
         code = str(ctx.get("error_code") or "").strip().lower()
+        # Excluded codes stay on the fixed single template.
+        if code in EXPRESSION_EXCLUDED or code == "write_approval_required":
+            template = _TOOL_ERROR_TEMPLATES.get(code)
+            if template:
+                return template.format(
+                    integration=_integration_label(ctx.get("integration")),
+                    action_suffix=_action_suffix(ctx.get("action")),
+                ).strip()
+        bank_key = f"tool_error.{code}" if code else ""
+        varied = pick_expression(
+            bank_key,
+            ctx={
+                "integration": _integration_label(ctx.get("integration")),
+                "action_suffix": _action_suffix(ctx.get("action")),
+            },
+        )
+        if varied:
+            return varied.strip()
         template = _TOOL_ERROR_TEMPLATES.get(code)
         if template:
             return template.format(

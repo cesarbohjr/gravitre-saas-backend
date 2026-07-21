@@ -53,3 +53,10 @@ pytest backend/tests/services/test_gravitree_voice.py \
 ```
 
 **Done bar:** merge → Railway redeploy → canvas write-blocked tip run shows voice string; digest endpoint returns real last-24h copy.
+
+## Expression range (2026-07-21)
+
+Phrase variety for recurring categories — see
+[`module-d-expression-range.md`](module-d-expression-range.md).
+Selection: `task_state.voice_expression_last` + deterministic rotation.
+Does not change Module B classification.
