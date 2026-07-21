@@ -1,0 +1,12 @@
+# Force Dockerfile builds so nested requirements-*.txt includes resolve.
+# Railpack's default Python plan only copies requirements.txt into the install layer.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+startCommand = "python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
