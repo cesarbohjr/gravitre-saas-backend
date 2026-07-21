@@ -54,6 +54,13 @@ ADVISORY_PLAN_FIRST = re.compile(
     re.I,
 )
 
+# Multi-step / explicit deferral — overrides bare list-create phrasing.
+STRONG_ADVISORY_PLAN = re.compile(
+    r"\b(?:multi-step|strategic\s+(?:multi-step\s+)?plan|show the plan first"
+    r"|do not execute(?:\s+yet)?|don'?t execute(?:\s+yet)?|\bplan only\b)\b",
+    re.I,
+)
+
 
 def is_advisory_plan_first(query: str) -> bool:
     """True when the user asked for a plan without execution."""
@@ -65,9 +72,7 @@ def is_direct_connector_write_intent(query: str) -> bool:
     text = (query or "").strip()
     if not text:
         return False
-    # Plan-first overrides list-create / send phrasing — stage advisory current_plan
-    # even when connectors are disconnected (product: short-circuit is for execute-now).
-    if is_advisory_plan_first(text):
+    if STRONG_ADVISORY_PLAN.search(text):
         return False
     if LIST_CREATE_INTENT.search(text):
         return True
@@ -83,13 +88,12 @@ class ConversationalPlanningEngine:
         self._decision = get_decision_intelligence_service(self.settings)
 
     async def should_plan(self, classification: dict[str, Any], query: str) -> bool:
-        # Plan-first / advisory language always stages current_plan (even when the
-        # goal mentions disconnected connectors — blockers belong in the plan).
-        if is_advisory_plan_first(query):
-            return True
         # Shape (b): do not detour governed writes into advisory scaffolding.
         if is_direct_connector_write_intent(query):
             return False
+        # Multi-step / explicit deferral stages current_plan (even when connectors are disconnected).
+        if STRONG_ADVISORY_PLAN.search(query or ""):
+            return True
         intent = str(classification.get("intent") or "")
         if classification.get("requires_action") and intent in {"workflow_execution", "optimization"}:
             return True

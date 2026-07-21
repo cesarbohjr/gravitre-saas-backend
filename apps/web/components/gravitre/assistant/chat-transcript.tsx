@@ -48,6 +48,7 @@ import {
   shouldShowClusterTimestamp,
 } from "@/lib/chat-message-time"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
+import { ReadAloudButton } from "@/components/gravitre/assistant/read-aloud-button"
 
 function extractToolInvocations(message: UIMessage): ToolInvocation[] {
   const invocations: ToolInvocation[] = []
@@ -279,6 +280,9 @@ export function ChatTranscript({
                 </div>
 
                 <div className={cn(CHAT_ACTION_RAIL_CLASS, isUser && "flex-row-reverse")}>
+                  {!isUser && displayText.trim() ? (
+                    <ReadAloudButton messageId={message.id} text={displayText} compact />
+                  ) : null}
                   {text.trim() && onCopyText ? (
                     <ActionIconButton label="Copy text" onClick={() => onCopyText(text)}>
                       <Copy className="h-3.5 w-3.5" />
