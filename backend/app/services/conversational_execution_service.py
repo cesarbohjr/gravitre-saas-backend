@@ -226,9 +226,74 @@ class ConversationalExecutionService:
         if not task_type:
             return None
 
+        pending_early = task_state.get("pending_task") if isinstance(task_state.get("pending_task"), dict) else {}
+        pending_status = str(pending_early.get("status") or "")
+        # Shared 7-way classifier for platform collecting / confirm — before param dump.
+        if pending_status in {"collecting", "awaiting_confirm"}:
+            from app.services.pending_reply_classifier import (
+                build_pending_snapshot,
+                classify_pending_reply,
+                emit_pending_reply_audit,
+                format_ambiguous_clarify,
+                format_pending_meta_answer,
+                format_unrelated_hold_prompt,
+            )
+
+            snap = build_pending_snapshot(task_state)
+            intent = await classify_pending_reply(
+                message,
+                task_state=task_state,
+                settings=self.settings,
+                org_id=org_id,
+                use_model=False,
+            )
+            emit_pending_reply_audit(
+                client=client,
+                org_id=org_id,
+                actor_id=user_id,
+                conversation_id=conversation_id,
+                intent=intent,
+                snap=snap,
+            )
+            if intent == "meta_clarify":
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": "clarifying",
+                    "message": format_pending_meta_answer(snap),
+                    "task_state": task_state,
+                    "pending_reply_intent": intent,
+                }
+            if intent == "unrelated":
+                patch = {
+                    "pending_hold_prompt": True,
+                    "pending_hold_new_request": message,
+                    "last_pending_reply_intent": intent,
+                }
+                await self._state.update_task_state(
+                    conversation_id, org_id, patch, client=client
+                )
+                refreshed = await self._state.get_task_state(
+                    conversation_id, org_id, client=client
+                )
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": "clarifying",
+                    "message": format_unrelated_hold_prompt(snap, new_request=message),
+                    "task_state": refreshed,
+                    "pending_reply_intent": intent,
+                }
+            if intent == "ambiguous":
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": "clarifying",
+                    "message": format_ambiguous_clarify(snap),
+                    "task_state": task_state,
+                    "pending_reply_intent": intent,
+                    "block_fabrication": True,
+                }
+
         clarified = dict(task_state.get("clarified_params") or {})
         # ReAct platform materialize stores params on pending_task — merge so confirm works.
-        pending_early = task_state.get("pending_task") if isinstance(task_state.get("pending_task"), dict) else {}
         if pending_early.get("params") and isinstance(pending_early["params"], dict):
             merged = dict(pending_early["params"])
             merged.update(clarified)

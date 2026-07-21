@@ -1,0 +1,19 @@
+{
+  "feature": "pending_reply_classifier_7way",
+  "status": "CODE_COMPLETE_AWAITING_DEPLOY_BATTERY",
+  "part1Map": "docs/delivery/pending-reply-classifier-part1-map.md",
+  "module": "backend/app/services/pending_reply_classifier.py",
+  "intents": [
+    "slot_answer",
+    "confirm",
+    "reject",
+    "meta_clarify",
+    "modify",
+    "unrelated",
+    "ambiguous"
+  ],
+  "auditAction": "pending_reply.classified",
+  "unitTests": "backend/tests/services/test_pending_reply_classifier.py",
+  "liveBatteryScript": "scripts/verify-pending-reply-classifier-live.py",
+  "liveBatteryArtifact": "docs/delivery/pending-reply-classifier-battery-live.json"
+}

@@ -20,11 +20,21 @@ from app.services.chat_connector_models import ConnectorActionPlan
 from app.services.gravitree_voice import format_operator_message, voice_system_prompt_section
 from app.services.parameter_ledger import (
     ParameterLedger,
-    classify_awaiting_params_intent,
     get_ledger,
     ingest_message_slots,
     is_awaiting_params,
     ledger_patch,
+)
+from app.services.pending_reply_classifier import (
+    PendingReplyIntent,
+    build_pending_snapshot,
+    classify_pending_reply,
+    emit_pending_reply_audit,
+    format_ambiguous_clarify,
+    format_pending_meta_answer,
+    format_unrelated_hold_prompt,
+    has_pending_family,
+    map_legacy_plan_intent,
 )
 
 logger = get_logger(__name__)
@@ -50,6 +60,7 @@ class TurnInterpretation:
     has_current_plan: bool = False
     pending_plan_intent: PendingPlanIntent | None = None
     awaiting_params_intent: AwaitingParamsIntent | None = None
+    pending_reply_intent: PendingReplyIntent | None = None
     structured_plan: ConnectorActionPlan | None = None
     source: str = "chat"
     voice_section: str = ""
@@ -122,44 +133,27 @@ async def prepare_conversation_turn(
         pending_status = ""
     voice_section = voice_system_prompt_section()
 
+    # Structural Module B — one 7-way classifier for every pending family.
+    reply_intent: PendingReplyIntent | None = None
     pending_intent: PendingPlanIntent | None = None
-    if current_plan or pending_status in {
-        "awaiting_confirm",
-        "awaiting_plan_confirm",
-        "awaiting_admin_approval",
-        "awaiting_step_confirm",
-    }:
-        pending_intent = await classify_pending_plan_intent(
-            text,
-            current_plan=current_plan,
-            pending_task=pending if pending else None,
-            settings=settings,
-        )
-        # Unrelated intervening turn — archive sticky advisory plan.
-        if pending_intent == "unclear" and current_plan and persist:
-            try:
-                from app.services.conversation_state_service import get_conversation_state_service
-
-                await get_conversation_state_service(settings or get_settings()).update_task_state(
-                    conversation_id,
-                    org_id,
-                    {"current_plan": None, "pending_steps": [], "completed_steps": []},
-                    client=client,
-                )
-                current_plan = None
-            except Exception:  # noqa: BLE001
-                logger.debug("stale_plan_supersede_skipped", exc_info=True)
-
-    # awaiting_params is a third pending family: slot fill vs meta-question vs unrelated.
     params_intent: AwaitingParamsIntent | None = None
-    if is_awaiting_params(state):
-        missing = list(ledger.pending_missing or [])
-        raw_intent = classify_awaiting_params_intent(text, missing)
-        params_intent = raw_intent if raw_intent in {
-            "slot_answer",
-            "meta_clarify",
-            "unrelated",
-        } else "slot_answer"
+    if has_pending_family(state):
+        reply_intent = await classify_pending_reply(
+            text,
+            task_state=state,
+            settings=settings,
+            org_id=org_id,
+            use_model=True,
+        )
+        state = {
+            **state,
+            "last_pending_reply_intent": reply_intent,
+        }
+        pending_intent = map_legacy_plan_intent(reply_intent)  # type: ignore[assignment]
+        if reply_intent in {"slot_answer", "meta_clarify", "unrelated"}:
+            params_intent = reply_intent  # type: ignore[assignment]
+        # Do not silently archive sticky plans on unclear — unrelated/ambiguous
+        # handlers ask explicitly (hold vs abandon).
 
     return TurnInterpretation(
         message=text,
@@ -171,9 +165,11 @@ async def prepare_conversation_turn(
         has_current_plan=bool(current_plan),
         pending_plan_intent=pending_intent,
         awaiting_params_intent=params_intent,
+        pending_reply_intent=reply_intent,
         structured_plan=structured_plan,
         source=source,
         voice_section=voice_section,
+        metadata={"pending_reply_intent": reply_intent} if reply_intent else {},
     )
 
 
@@ -326,14 +322,170 @@ async def run_connector_turn(
         persist=True,
     )
 
-    # Phase 4 — modify/cancel pending strategic plans instead of stalling on CONFIRM_PATTERN.
-    if interpretation.pending_plan_intent == "cancel" and interpretation.has_current_plan:
-        from app.services.conversation_state_service import get_conversation_state_service
+    from app.services.conversation_state_service import get_conversation_state_service
 
-        await get_conversation_state_service(settings or get_settings()).update_task_state(
+    state_svc = get_conversation_state_service(settings or get_settings())
+    snap = build_pending_snapshot(interpretation.task_state)
+    intent = interpretation.pending_reply_intent
+    if intent:
+        emit_pending_reply_audit(
+            client=client,
+            org_id=org_id,
+            actor_id=user_id,
+            conversation_id=conversation_id,
+            intent=intent,
+            snap=snap,
+        )
+
+    # Shared dispatch — meta / unrelated / ambiguous / reject-with-plan before connector traps.
+    if intent == "meta_clarify" and has_pending_family(interpretation.task_state):
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "clarifying",
+            "message": format_pending_meta_answer(snap),
+            "voice_section": interpretation.voice_section or voice_system_prompt_section(),
+            "task_state": interpretation.task_state,
+            "pending_task": (interpretation.task_state or {}).get("pending_task"),
+            "pending_reply_intent": intent,
+            "workflow_status": "needs clarification",
+        }
+
+    if intent == "unrelated" and has_pending_family(interpretation.task_state):
+        patch = {
+            "pending_hold_prompt": True,
+            "pending_hold_new_request": interpretation.message,
+            "last_pending_reply_intent": intent,
+        }
+        await state_svc.update_task_state(
+            conversation_id, org_id, patch, client=client
+        )
+        refreshed = await state_svc.get_task_state(
+            conversation_id, org_id, client=client
+        )
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "clarifying",
+            "message": format_unrelated_hold_prompt(
+                snap, new_request=interpretation.message
+            ),
+            "voice_section": interpretation.voice_section or voice_system_prompt_section(),
+            "task_state": refreshed,
+            "pending_task": refreshed.get("pending_task"),
+            "pending_reply_intent": intent,
+        }
+
+    if intent == "ambiguous" and has_pending_family(interpretation.task_state):
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "clarifying",
+            "message": format_ambiguous_clarify(snap),
+            "voice_section": interpretation.voice_section or voice_system_prompt_section(),
+            "task_state": interpretation.task_state,
+            "pending_task": (interpretation.task_state or {}).get("pending_task"),
+            "pending_reply_intent": intent,
+            "block_fabrication": True,
+        }
+
+    # Hold-prompt resolution: reject=abandon pending; confirm=hold pending + continue new ask.
+    if snap.hold_prompt_active:
+        held_request = str(
+            (interpretation.task_state or {}).get("pending_hold_new_request") or ""
+        ).strip()
+        if intent == "reject":
+            await state_svc.update_task_state(
+                conversation_id,
+                org_id,
+                {
+                    "pending_task": None,
+                    "current_plan": None,
+                    "pending_hold_prompt": False,
+                    "pending_hold_new_request": None,
+                    "pending_steps": [],
+                    "completed_steps": [],
+                },
+                client=client,
+            )
+            refreshed = await state_svc.get_task_state(
+                conversation_id, org_id, client=client
+            )
+            # Fall through with the held new request (or current message).
+            interpretation = TurnInterpretation(
+                message=held_request or interpretation.message,
+                task_state=refreshed,
+                ledger=interpretation.ledger,
+                awaiting_params=False,
+                pending_confirm=False,
+                has_current_plan=False,
+                pending_plan_intent=None,
+                awaiting_params_intent=None,
+                pending_reply_intent=intent,
+                structured_plan=structured_plan,
+                source=source,
+                voice_section=interpretation.voice_section or voice_system_prompt_section(),
+            )
+        elif intent == "confirm":
+            # Hold pending aside: clear hold flag only; keep pending_task for later.
+            await state_svc.update_task_state(
+                conversation_id,
+                org_id,
+                {
+                    "pending_hold_prompt": False,
+                    "pending_on_hold": True,
+                    "pending_hold_new_request": None,
+                },
+                client=client,
+            )
+            # Park pending_task under pending_on_hold_task and clear active pending
+            # so the new request can proceed cleanly.
+            parked = (interpretation.task_state or {}).get("pending_task")
+            parked_plan = (interpretation.task_state or {}).get("current_plan")
+            await state_svc.update_task_state(
+                conversation_id,
+                org_id,
+                {
+                    "pending_on_hold_task": parked,
+                    "pending_on_hold_plan": parked_plan,
+                    "pending_task": None,
+                    "current_plan": None,
+                    "pending_hold_prompt": False,
+                    "pending_on_hold": True,
+                },
+                client=client,
+            )
+            refreshed = await state_svc.get_task_state(
+                conversation_id, org_id, client=client
+            )
+            interpretation = TurnInterpretation(
+                message=held_request or interpretation.message,
+                task_state=refreshed,
+                ledger=interpretation.ledger,
+                awaiting_params=False,
+                pending_confirm=False,
+                has_current_plan=False,
+                pending_plan_intent=None,
+                awaiting_params_intent=None,
+                pending_reply_intent=intent,
+                structured_plan=structured_plan,
+                source=source,
+                voice_section=interpretation.voice_section or voice_system_prompt_section(),
+            )
+
+    if intent == "reject" and (
+        interpretation.has_current_plan
+        or interpretation.awaiting_params
+        or interpretation.pending_confirm
+        or has_pending_family(interpretation.task_state)
+    ):
+        await state_svc.update_task_state(
             conversation_id,
             org_id,
-            {"current_plan": None, "pending_task": None},
+            {
+                "current_plan": None,
+                "pending_task": None,
+                "pending_hold_prompt": False,
+                "pending_steps": [],
+                "completed_steps": [],
+            },
             client=client,
         )
         return {
@@ -341,40 +493,51 @@ async def run_connector_turn(
             "dialogue_mode": "answer",
             "message": format_operator_message("pending_plan_cancelled"),
             "voice_section": interpretation.voice_section or voice_system_prompt_section(),
-            "task_state": await get_conversation_state_service(
-                settings or get_settings()
-            ).get_task_state(conversation_id, org_id, client=client),
+            "task_state": await state_svc.get_task_state(
+                conversation_id, org_id, client=client
+            ),
             "pending_plan_intent": "cancel",
+            "pending_reply_intent": "reject",
         }
 
-    if interpretation.pending_plan_intent == "modify" and interpretation.has_current_plan:
-        from app.services.conversation_state_service import get_conversation_state_service
-
-        # Clear advisory plan so the new instruction can stage a real write/action.
+    if intent == "modify" and (
+        interpretation.has_current_plan or has_pending_family(interpretation.task_state)
+    ):
         plan_goal = ""
         current = interpretation.task_state.get("current_plan")
         if isinstance(current, dict):
             plan_goal = str(current.get("goal") or "")
-        await get_conversation_state_service(settings or get_settings()).update_task_state(
-            conversation_id,
-            org_id,
-            {"current_plan": None},
-            client=client,
+        # Clear advisory plan / confirm traps so modify can re-stage; keep awaiting_params
+        # args so slot patches can bind on resume.
+        clear_patch: dict[str, Any] = {"current_plan": None, "pending_hold_prompt": False}
+        pending = interpretation.task_state.get("pending_task")
+        if isinstance(pending, dict) and str(pending.get("status") or "") in {
+            "awaiting_confirm",
+            "awaiting_plan_confirm",
+            "awaiting_admin_approval",
+            "awaiting_step_confirm",
+        }:
+            clear_patch["pending_task"] = None
+        await state_svc.update_task_state(
+            conversation_id, org_id, clear_patch, client=client
         )
-        # Rewrite message to carry modify intent + original goal for downstream planning.
         rewrite = interpretation.message
         if plan_goal:
             rewrite = f"{interpretation.message} (regarding plan: {plan_goal})"
         interpretation = TurnInterpretation(
             message=rewrite,
-            task_state=await get_conversation_state_service(
-                settings or get_settings()
-            ).get_task_state(conversation_id, org_id, client=client),
+            task_state=await state_svc.get_task_state(
+                conversation_id, org_id, client=client
+            ),
             ledger=interpretation.ledger,
-            awaiting_params=interpretation.awaiting_params,
+            awaiting_params=is_awaiting_params(
+                await state_svc.get_task_state(conversation_id, org_id, client=client)
+            ),
             pending_confirm=False,
             has_current_plan=False,
             pending_plan_intent="modify",
+            awaiting_params_intent=interpretation.awaiting_params_intent,
+            pending_reply_intent="modify",
             structured_plan=structured_plan,
             source=source,
             voice_section=interpretation.voice_section or voice_system_prompt_section(),
@@ -392,6 +555,7 @@ async def run_connector_turn(
         client=client,
         environment_name=environment_name,
         structured_plan=structured_plan,
+        pending_reply_intent=interpretation.pending_reply_intent,
     )
     if turn:
         turn = {
@@ -400,6 +564,8 @@ async def run_connector_turn(
         }
         if interpretation.pending_plan_intent:
             turn = {**turn, "pending_plan_intent": interpretation.pending_plan_intent}
+        if interpretation.pending_reply_intent:
+            turn = {**turn, "pending_reply_intent": interpretation.pending_reply_intent}
     return turn
 
 

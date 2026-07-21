@@ -59,18 +59,28 @@ cancel) call `format_operator_message` — not per-surface copy.
 
 ### Phase 4.1 — awaiting_params meta-clarify (2026-07-21)
 
-Third pending-family case (generic, not Gmail-specific):
+Third pending-family case (generic, not Gmail-specific) — superseded by Phase 5.
 
-| Intent | Meaning |
-|--------|---------|
-| `slot_answer` | User is supplying missing field values |
-| `meta_clarify` | User asks ABOUT the pending ask (e.g. email vs name) → answer, keep `awaiting_params` |
-| `unrelated` | Side question / new request — must not fill free-text slots |
+### Phase 5 — Shared 7-way pending-reply classifier (2026-07-21)
 
-Wired in `classify_awaiting_params_intent` + `process_turn` early return for `meta_clarify`.
-Shares root-cause class with stale-plan (classification too thin). Live stale-plan sequence
-still FAIL on tip `184a9850` — see `run-history-stale-plan-live.json` and
-`awaiting-params-meta-clarify-live.json`.
+One ontology for **every** pending family (params, confirm, orch, platform collecting,
+sticky `current_plan`), before connector/orch/platform traps:
+
+| Intent | Behavior |
+|--------|----------|
+| `slot_answer` | Resume / bind values |
+| `confirm` | Execute / advance |
+| `reject` | Clear pending cleanly |
+| `meta_clarify` | Schema-aware answer; keep pending; never verbatim status repeat |
+| `modify` | Clear advisory traps; continue with rewrite |
+| `unrelated` | Explicit hold-vs-abandon prompt |
+| `ambiguous` | Specific follow-up; `block_fabrication` |
+
+Module: [`pending_reply_classifier.py`](../../backend/app/services/pending_reply_classifier.py)  
+Entry: `prepare_conversation_turn` + dispatch in `run_connector_turn` / orch / platform.  
+Audit: `pending_reply.classified`.  
+Live battery: `scripts/verify-pending-reply-classifier-live.py` →
+`docs/delivery/pending-reply-classifier-battery-live.json`.
 
 ## Verification
 

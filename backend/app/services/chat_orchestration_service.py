@@ -257,6 +257,137 @@ class ChatOrchestrationService:
         if not self.is_orchestration_intent(message, task_state, connected_integrations):
             return None
 
+        from app.services.pending_reply_classifier import (
+            build_pending_snapshot,
+            classify_pending_reply,
+            emit_pending_reply_audit,
+            format_ambiguous_clarify,
+            format_pending_meta_answer,
+            format_unrelated_hold_prompt,
+            has_pending_family,
+        )
+
+        status = str(pending.get("status") or "")
+        # Shared 7-way classifier for active orch pending — before reminder traps.
+        if pending_type == "connector_orchestration" and status in {
+            "awaiting_plan_confirm",
+            "awaiting_step_confirm",
+        }:
+            snap = build_pending_snapshot(task_state)
+            intent = await classify_pending_reply(
+                message,
+                task_state=task_state,
+                settings=self.settings,
+                org_id=org_id,
+                use_model=True,
+            )
+            emit_pending_reply_audit(
+                client=client,
+                org_id=org_id,
+                actor_id=user_id,
+                conversation_id=conversation_id,
+                intent=intent,
+                snap=snap,
+            )
+            try:
+                await self._state.update_task_state(
+                    conversation_id,
+                    org_id,
+                    {"last_pending_reply_intent": intent},
+                    client=client,
+                )
+            except Exception:  # noqa: BLE001
+                pass
+
+            if intent == "reject":
+                await self._clear_orchestration(conversation_id, org_id)
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": "answer",
+                    "message": (
+                        "Cancelled — I won't run that orchestration. "
+                        "Tell me if you'd like a different approach."
+                    ),
+                    "task_state": await self._state.get_task_state(
+                        conversation_id, org_id, client=client
+                    ),
+                    "pending_reply_intent": intent,
+                }
+
+            if intent == "meta_clarify":
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": "clarifying",
+                    "message": format_pending_meta_answer(snap),
+                    "task_state": task_state,
+                    "pending_task": self._pending_task_payload(task_state),
+                    "pending_reply_intent": intent,
+                }
+
+            if intent == "unrelated":
+                patch = {
+                    "pending_hold_prompt": True,
+                    "pending_hold_new_request": message,
+                    "last_pending_reply_intent": intent,
+                }
+                await self._state.update_task_state(
+                    conversation_id, org_id, patch, client=client
+                )
+                refreshed = await self._state.get_task_state(
+                    conversation_id, org_id, client=client
+                )
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": "clarifying",
+                    "message": format_unrelated_hold_prompt(snap, new_request=message),
+                    "task_state": refreshed,
+                    "pending_task": self._pending_task_payload(refreshed),
+                    "pending_reply_intent": intent,
+                }
+
+            if intent == "ambiguous":
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": "clarifying",
+                    "message": format_ambiguous_clarify(snap),
+                    "task_state": task_state,
+                    "pending_task": self._pending_task_payload(task_state),
+                    "pending_reply_intent": intent,
+                    "block_fabrication": True,
+                }
+
+            if intent == "modify":
+                await self._clear_orchestration(conversation_id, org_id)
+                # Fall through to build a new plan from the modify instruction.
+                pending_type = ""
+                pending = {}
+                status = ""
+                task_state = await self._state.get_task_state(
+                    conversation_id, org_id, client=client
+                )
+
+            if intent == "confirm":
+                if status == "awaiting_plan_confirm":
+                    return await self._start_execution(
+                        org_id=org_id,
+                        user_id=user_id,
+                        conversation_id=conversation_id,
+                        task_state=task_state,
+                        classification=classification,
+                        client=client,
+                        environment_name=environment_name,
+                    )
+                if status == "awaiting_step_confirm":
+                    return await self._execute_current_step(
+                        org_id=org_id,
+                        user_id=user_id,
+                        conversation_id=conversation_id,
+                        task_state=task_state,
+                        classification=classification,
+                        client=client,
+                        environment_name=environment_name,
+                    )
+
         if DECLINE_PATTERN.match(message.strip()):
             await self._clear_orchestration(conversation_id, org_id)
             return {
@@ -325,43 +456,28 @@ class ChatOrchestrationService:
             )
 
         if status in {"awaiting_plan_confirm", "awaiting_step_confirm"}:
-            # STA-304 — unrelated new asks (e.g. Slack post after Apollo orch confirm)
-            # must not trap the pipeline in a "reply yes" reminder. Clear and let
-            # clarification / ReAct run (connector_unavailable ToolChip path).
-            if self._should_supersede_pending_orchestration(
-                message,
-                task_state,
-                connected_integrations,
-            ):
-                await self._clear_orchestration(conversation_id, org_id)
-                cleared = await self._state.get_task_state(
+            # Fallback: prefer hold/abandon prompt over silent supersede or yes-reminder.
+            snap = build_pending_snapshot(task_state)
+            if has_pending_family(task_state):
+                patch = {
+                    "pending_hold_prompt": True,
+                    "pending_hold_new_request": message,
+                    "last_pending_reply_intent": "unrelated",
+                }
+                await self._state.update_task_state(
+                    conversation_id, org_id, patch, client=client
+                )
+                refreshed = await self._state.get_task_state(
                     conversation_id, org_id, client=client
                 )
-                if not self.is_orchestration_intent(
-                    message, cleared, connected_integrations
-                ):
-                    return None
-                steps = await self._build_plan(
-                    message, connected_integrations, org_id, user_id, classification
-                )
-                if len(steps) < 2:
-                    return None
-                if not any(step.supported for step in steps):
-                    return await self._present_all_blocked_plan(
-                        conversation_id,
-                        org_id,
-                        message,
-                        steps,
-                        client,
-                    )
-                return await self._present_plan_confirm(
-                    conversation_id,
-                    org_id,
-                    user_id,
-                    message,
-                    steps,
-                    client,
-                )
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": "clarifying",
+                    "message": format_unrelated_hold_prompt(snap, new_request=message),
+                    "task_state": refreshed,
+                    "pending_task": self._pending_task_payload(refreshed),
+                    "pending_reply_intent": "unrelated",
+                }
             refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
             return {
                 "stop_pipeline": True,

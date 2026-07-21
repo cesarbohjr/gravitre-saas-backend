@@ -835,16 +835,22 @@ class ChatConnectorExecutionService:
         client: Any,
         environment_name: str = "production",
         structured_plan: ConnectorActionPlan | None = None,
+        pending_reply_intent: str | None = None,
     ) -> dict[str, Any] | None:
         from app.services.chat_message_normalize import strip_assistant_scope_prefix
         from app.services.parameter_ledger import (
-            classify_awaiting_params_intent,
-            format_awaiting_params_meta_answer,
             get_ledger,
             ingest_message_slots,
             is_awaiting_params,
             ledger_patch,
             stage_awaiting_params,
+        )
+        from app.services.pending_reply_classifier import (
+            build_pending_snapshot,
+            classify_pending_reply,
+            format_ambiguous_clarify,
+            format_pending_meta_answer,
+            format_unrelated_hold_prompt,
         )
 
         # Scope banners belong in the system prompt, not connector task text.
@@ -870,31 +876,81 @@ class ChatConnectorExecutionService:
         except Exception as exc:  # noqa: BLE001
             logger.debug("parameter ledger ingest persist skipped: %s", exc)
 
-        # Module B — awaiting_params third case: question ABOUT the pending ask.
-        # Must answer (and keep pending) instead of re-emitting identical Still needed.
-        if is_awaiting_params(task_state):
-            missing = list(get_ledger(task_state).pending_missing or [])
-            params_intent = classify_awaiting_params_intent(message, missing)
-            if params_intent == "meta_clarify":
-                pending = task_state.get("pending_task") if isinstance(
-                    task_state.get("pending_task"), dict
-                ) else {}
-                params = dict((pending or {}).get("params") or {})
-                action_label = str(
-                    params.get("label") or params.get("invoke_action") or "this action"
+        # Shared 7-way intents when caller did not already dispatch (direct process_turn).
+        intent = pending_reply_intent or (task_state or {}).get("last_pending_reply_intent")
+        if is_awaiting_params(task_state) and not intent:
+            intent = await classify_pending_reply(
+                message,
+                task_state=task_state,
+                settings=self.settings,
+                org_id=org_id,
+                use_model=False,
+            )
+        snap = build_pending_snapshot(task_state)
+        if intent == "meta_clarify" and is_awaiting_params(task_state):
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "clarifying",
+                "message": format_pending_meta_answer(snap),
+                "task_state": task_state,
+                "pending_task": task_state.get("pending_task"),
+                "workflow_status": "needs clarification",
+                "pending_reply_intent": "meta_clarify",
+                "awaiting_params_intent": "meta_clarify",
+            }
+        if intent == "unrelated" and is_awaiting_params(task_state):
+            patch = {
+                "pending_hold_prompt": True,
+                "pending_hold_new_request": message,
+                "last_pending_reply_intent": "unrelated",
+            }
+            try:
+                await self._state.update_task_state(
+                    conversation_id, org_id, patch, client=client
                 )
-                return {
-                    "stop_pipeline": True,
-                    "dialogue_mode": "clarifying",
-                    "message": format_awaiting_params_meta_answer(
-                        missing,
-                        action_label=action_label,
-                    ),
-                    "task_state": task_state,
-                    "pending_task": pending,
-                    "workflow_status": "needs clarification",
-                    "awaiting_params_intent": "meta_clarify",
-                }
+                task_state = {**task_state, **patch}
+            except Exception:  # noqa: BLE001
+                task_state = {**task_state, **patch}
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "clarifying",
+                "message": format_unrelated_hold_prompt(snap, new_request=message),
+                "task_state": task_state,
+                "pending_task": task_state.get("pending_task"),
+                "pending_reply_intent": "unrelated",
+            }
+        if intent == "ambiguous" and is_awaiting_params(task_state):
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "clarifying",
+                "message": format_ambiguous_clarify(snap),
+                "task_state": task_state,
+                "pending_task": task_state.get("pending_task"),
+                "pending_reply_intent": "ambiguous",
+                "block_fabrication": True,
+            }
+        # reject while awaiting_params — honor cancel (previously ignored).
+        if intent == "reject" and is_awaiting_params(task_state):
+            try:
+                await self._state.update_task_state(
+                    conversation_id,
+                    org_id,
+                    {"pending_task": None, "pending_hold_prompt": False},
+                    client=client,
+                )
+            except Exception:  # noqa: BLE001
+                pass
+            from app.services.gravitree_voice import format_operator_message
+
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "answer",
+                "message": format_operator_message("pending_plan_cancelled"),
+                "task_state": await self._state.get_task_state(
+                    conversation_id, org_id, client=client
+                ),
+                "pending_reply_intent": "reject",
+            }
 
         # Post-action inline preview — live vendor read from session entity (no new write path).
         preview_turn = await self._try_inline_preview_turn(
