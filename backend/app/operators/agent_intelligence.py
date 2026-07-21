@@ -1526,6 +1526,17 @@ class AgentIntelligence:
             org_id,
             client=client,
         )
+        # Module D expression range — bind conversation-scoped phrase rotation for
+        # the whole stream (connector + ReAct tool_error + house phrases).
+        from app.services.gravitree_voice import bind_voice_expression_state
+
+        bind_voice_expression_state(
+            task_state,
+            conversation_id=conversation_id or "",
+            org_id=org_id,
+            client=client,
+            settings=active_settings,
+        )
         # Module B — refresh ledger (assistant router pre-stream ingest is primary;
         # this backfills and keeps in-memory task_state aligned).
         try:

@@ -8,9 +8,13 @@ Precision-critical kinds are excluded — see ``EXPRESSION_EXCLUDED``.
 """
 from __future__ import annotations
 
+import asyncio
 import contextvars
+import logging
 import re
 from typing import Any, Mapping, Sequence
+
+logger = logging.getLogger(__name__)
 
 # Categories where variation would hurt clarity / auditability.
 EXPRESSION_EXCLUDED: frozenset[str] = frozenset(
@@ -221,6 +225,10 @@ VOICE_EXPRESSION_STATE_KEY = "voice_expression_last"
 _voice_last_indices: contextvars.ContextVar[dict[str, int] | None] = contextvars.ContextVar(
     "gravitree_voice_expression_last", default=None
 )
+# Optional (conversation_id, org_id, client, settings) for fire-and-forget persist.
+_voice_persist_target: contextvars.ContextVar[
+    tuple[str, str, Any, Any] | None
+] = contextvars.ContextVar("gravitree_voice_expression_persist", default=None)
 
 
 def next_variant_index(count: int, last_index: int | None) -> int:
@@ -243,8 +251,25 @@ def bank_for(category: str) -> tuple[str, ...] | None:
     return EXPRESSION_BANKS.get(key)
 
 
-def bind_voice_expression_state(task_state: Mapping[str, Any] | None) -> contextvars.Token:
-    """Bind mutable last-index map from conversation task_state for this turn."""
+def bind_voice_expression_state(
+    task_state: Mapping[str, Any] | None,
+    *,
+    reuse_if_bound: bool = False,
+    conversation_id: str | None = None,
+    org_id: str | None = None,
+    client: Any = None,
+    settings: Any = None,
+) -> contextvars.Token | None:
+    """Bind mutable last-index map from conversation task_state for this turn.
+
+    When ``reuse_if_bound`` and a parent turn already bound state, returns None
+    (caller must not reset). Optional conversation/org enable async persist after
+    each rotation so ReAct/tool_error paths keep variety across turns.
+    """
+    if reuse_if_bound and _voice_last_indices.get() is not None:
+        if conversation_id and org_id:
+            _voice_persist_target.set((str(conversation_id), str(org_id), client, settings))
+        return None
     raw: dict[str, int] = {}
     if isinstance(task_state, Mapping):
         existing = task_state.get(VOICE_EXPRESSION_STATE_KEY)
@@ -254,11 +279,51 @@ def bind_voice_expression_state(task_state: Mapping[str, Any] | None) -> context
                     raw[str(key)] = int(value)
                 except (TypeError, ValueError):
                     continue
-    return _voice_last_indices.set(raw)
+    token = _voice_last_indices.set(raw)
+    if conversation_id and org_id:
+        _voice_persist_target.set((str(conversation_id), str(org_id), client, settings))
+    else:
+        _voice_persist_target.set(None)
+    return token
 
 
-def reset_voice_expression_state(token: contextvars.Token) -> None:
-    _voice_last_indices.reset(token)
+def reset_voice_expression_state(token: contextvars.Token | None) -> None:
+    if token is not None:
+        _voice_last_indices.reset(token)
+    _voice_persist_target.set(None)
+
+
+def _schedule_voice_persist() -> None:
+    target = _voice_persist_target.get()
+    state = _voice_last_indices.get()
+    if not target or not isinstance(state, dict) or not state:
+        return
+    conversation_id, org_id, client, settings = target
+    snap = dict(state)
+
+    async def _persist() -> None:
+        try:
+            from app.config import get_settings
+            from app.services.conversation_state_service import get_conversation_state_service
+
+            await get_conversation_state_service(settings or get_settings()).update_task_state(
+                conversation_id,
+                org_id,
+                {VOICE_EXPRESSION_STATE_KEY: snap},
+                client=client,
+            )
+        except Exception:  # noqa: BLE001
+            logger.debug(
+                "voice_expression_last persist failed conversation_id=%s",
+                conversation_id,
+                exc_info=True,
+            )
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return
+    loop.create_task(_persist())
 
 
 def voice_expression_state_snapshot() -> dict[str, int]:
@@ -289,6 +354,7 @@ def pick_expression(
     else:
         idx = next_variant_index(len(bank), state.get(category))
         state[category] = idx
+        _schedule_voice_persist()
     template = bank[idx]
     if "{" not in template:
         return template

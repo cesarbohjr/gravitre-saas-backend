@@ -1,0 +1,33 @@
+{
+  "checkedAt": "2026-07-21T10:26:47.665643+00:00",
+  "apiBase": "https://api.gravitre.app",
+  "git_sha": "0d36b74268155fcdf9341b7e598cd2c27161a3d5",
+  "expectSha": "0d36b742",
+  "tip_ok": true,
+  "conversationId": "f8d01b6a-66c1-4823-98a9-29a423712d24",
+  "factConsistency": {
+    "ok": true,
+    "variantCount": 6
+  },
+  "excludedStable": {
+    "ok": true,
+    "write_approval_required": "This write needs your approval before it runs.",
+    "canvas_write_blocked": "Write blocked: this canvas step needs an approved run (required_approvals>=1). In-graph approval alone is not enough."
+  },
+  "liveConnectReplies": [
+    {
+      "preview": "Slack is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again."
+    },
+    {
+      "preview": "Slack is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again."
+    },
+    {
+      "preview": "Slack is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again."
+    }
+  ],
+  "connectishDistinct": 1,
+  "variety_ok": false,
+  "classifierUntouched": true,
+  "broad_pass": false,
+  "verdict": "PARTIAL"
+}

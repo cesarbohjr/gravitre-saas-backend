@@ -39,7 +39,7 @@ from isolated_conversation_org import (  # noqa: E402
 BASE = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
 OUT = ROOT / "docs" / "delivery" / "module-d-expression-range-live.json"
 CHAT_TIMEOUT = 300.0
-EXPECT_SHA = os.environ.get("EXPECT_SHA", "4c61b8b7")  # updated after ship
+EXPECT_SHA = os.environ.get("EXPECT_SHA", "0d36b742")
 
 
 def utcnow() -> str:
@@ -261,7 +261,16 @@ async def main() -> int:
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(artifact, indent=2), encoding="utf-8")
-    print(json.dumps({k: artifact[k] for k in ("verdict", "tip_ok", "variety_ok", "factConsistency", "excludedStable", "connectishDistinct", "out") if k in artifact or k == "out"} | {"out": str(OUT)}, indent=2))
+    summary = {
+        "verdict": artifact["verdict"],
+        "tip_ok": tip_ok,
+        "variety_ok": variety_ok,
+        "factConsistency": artifact["factConsistency"],
+        "excludedStable": {"ok": excluded_ok},
+        "connectishDistinct": len(set(connectish)),
+        "out": str(OUT),
+    }
+    print(json.dumps(summary, indent=2))
     return 0 if broad else 1
 
 

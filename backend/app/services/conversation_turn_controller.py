@@ -551,8 +551,15 @@ async def run_connector_turn(
         )
 
     connector = get_chat_connector_execution_service(settings)
-    # Module D expression range: rotate house phrases within this conversation.
-    voice_token = bind_voice_expression_state(interpretation.task_state)
+    # Module D expression range — reuse parent bind from agent_intelligence when present.
+    voice_token = bind_voice_expression_state(
+        interpretation.task_state,
+        reuse_if_bound=True,
+        conversation_id=conversation_id,
+        org_id=org_id,
+        client=client,
+        settings=settings,
+    )
     try:
         turn = await connector.process_turn(
             org_id=org_id,
@@ -568,7 +575,7 @@ async def run_connector_turn(
             pending_reply_intent=interpretation.pending_reply_intent,
         )
         voice_snap = voice_expression_state_snapshot()
-        if voice_snap and conversation_id and org_id:
+        if voice_snap and conversation_id and org_id and voice_token is not None:
             try:
                 await get_conversation_state_service(settings or get_settings()).update_task_state(
                     conversation_id,
