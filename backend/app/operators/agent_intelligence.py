@@ -1656,6 +1656,7 @@ class AgentIntelligence:
             )
             return
 
+        social_ack_emitted = False
         if (
             not pending_family_active
             and turn_shape.shape == "mixed"
@@ -1669,9 +1670,21 @@ class AgentIntelligence:
                 settings=active_settings,
             )
             task_text = turn_shape.task_portion.strip()
+            # Emit social beat immediately so ReAct / approval / fallback streams
+            # (which may not go through _with_social on every text-delta) still
+            # include it in the client-visible transcript.
+            prefix_now = (conversational_prefix or "").strip()
+            if prefix_now:
+                social_id, social_start = sse_text_start()
+                yield social_start
+                yield sse_text_delta(social_id, prefix_now + "\n\n")
+                yield sse_text_end(social_id)
+                social_ack_emitted = True
 
         def _with_social(text: str) -> str:
             body = (text or "").strip()
+            if social_ack_emitted:
+                return body
             prefix = (conversational_prefix or "").strip()
             if not prefix:
                 return body
@@ -2658,7 +2671,7 @@ class AgentIntelligence:
                 )
             if approval_turn:
                 task_state = approval_turn.get("task_state") or task_state
-                response_text = str(approval_turn.get("message") or "")
+                response_text = _with_social(str(approval_turn.get("message") or ""))
                 dialogue_mode = str(approval_turn.get("dialogue_mode") or "confirm")
                 text_id, start_event = sse_text_start()
                 yield start_event
@@ -2720,7 +2733,7 @@ class AgentIntelligence:
             )
             if fallback_turn:
                 task_state = fallback_turn.get("task_state") or task_state
-                response_text = str(fallback_turn.get("message") or "")
+                response_text = _with_social(str(fallback_turn.get("message") or ""))
                 dialogue_mode = str(fallback_turn.get("dialogue_mode") or "answer")
                 pending_from_fallback = (
                     fallback_turn.get("pending_task")

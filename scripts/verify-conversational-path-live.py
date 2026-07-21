@@ -402,7 +402,7 @@ async def main() -> int:
     total = len(results)
     failed = [r["id"] for r in results if not r.get("pass")]
     tip_ok = (not EXPECT_SHA) or tip.startswith(EXPECT_SHA)
-    broad = tip_ok and passed >= 18 and (passed / max(total, 1)) >= 0.85
+    broad = tip_ok and passed == total and total >= 20
     artifact = {
         "checkedAt": utcnow(),
         "apiBase": BASE,
@@ -413,7 +413,7 @@ async def main() -> int:
         "total": total,
         "failed": failed,
         "broad_pass": broad,
-        "verdict": "PASS" if broad else "PARTIAL",
+        "verdict": "PASS" if broad else ("PARTIAL" if passed >= 18 else "FAIL"),
         "phase0": "docs/delivery/conversational-path-phase0.md",
         "cases": results,
     }
