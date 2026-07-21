@@ -88,10 +88,13 @@
     }
   },
   "v0Handoff": {
-    "status": "READY",
+    "status": "IN_PROGRESS_DIRECTION_A",
     "unblockedAt": "2026-07-21T07:34:00Z",
+    "directionChosenAt": "2026-07-21T07:39:00Z",
+    "direction": "A_operator_console",
     "bundle": "chat timestamps/history + chat-window redesign (backgrounds, message actions) + BusinessOutcome presentation cohesion — single visual pass, presentation only",
     "prompt": "docs/design/V0_CHAT_WINDOW_COMBINED_VISUAL_PROMPT.md",
+    "implementationNote": "docs/delivery/chat-v0-operator-console-direction-a.md",
     "blockedOn": []
   }
 }

@@ -18,6 +18,7 @@ import {
   PanelLeft,
   PanelLeftClose,
   PanelRight,
+  Palette,
   Square,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -64,6 +65,14 @@ import type { AiEngine } from "@/lib/ai-surface-handoff"
 import type { SearchResult } from "@/types/api"
 import { ChatTranscript } from "@/components/gravitre/assistant/chat-transcript"
 import {
+  CHAT_CANVAS_THEME_IDS,
+  CHAT_CANVAS_THEME_META,
+  DEFAULT_CHAT_CANVAS_THEME,
+  readChatCanvasTheme,
+  writeChatCanvasTheme,
+  type ChatCanvasThemeId,
+} from "@/lib/chat-canvas-themes"
+import {
   ResearchScopePrompt,
   type ResearchCascadePayload,
 } from "@/components/gravitre/assistant/research-scope-prompt"
@@ -79,6 +88,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { usePreferredPersona } from "@/hooks/use-preferred-persona"
 import { useAsyncJob, type AgentJob } from "@/hooks/use-async-job"
 import {
@@ -204,9 +222,14 @@ export function AiWorkspace({
   })
   const [conversationTitle, setConversationTitle] = useState("Chat")
   const [chatMode, setChatMode] = useState<"fast" | "deep">("fast")
+  const [chatCanvasTheme, setChatCanvasTheme] = useState<ChatCanvasThemeId>(DEFAULT_CHAT_CANVAS_THEME)
   const [selectedDepartment, setSelectedDepartment] = useState(() =>
     typeof window === "undefined" ? "all" : getQuickDepartment(),
   )
+
+  useEffect(() => {
+    setChatCanvasTheme(readChatCanvasTheme())
+  }, [])
   const operatorContextRef = useRef<string | null>(null)
   const [dialogueMode, setDialogueMode] = useState<string | null>(null)
   const [pendingTask, setPendingTask] = useState<ChatPendingTask | null>(null)
@@ -996,6 +1019,69 @@ export function AiWorkspace({
     [messages, runChat, setMessages],
   )
 
+  const handleChatCanvasThemeChange = useCallback((theme: ChatCanvasThemeId) => {
+    setChatCanvasTheme(theme)
+    writeChatCanvasTheme(theme)
+  }, [])
+
+  const handleCopyMessageText = useCallback(async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success("Copied")
+    } catch {
+      toast.error("Could not copy")
+    }
+  }, [])
+
+  const handleCopyMessageLink = useCallback(
+    async (messageId: string) => {
+      if (!activeConversationId) return
+      const url = `${window.location.origin}/ai?c=${encodeURIComponent(activeConversationId)}&m=${encodeURIComponent(messageId)}`
+      try {
+        await navigator.clipboard.writeText(url)
+        toast.success("Link copied")
+      } catch {
+        toast.error("Could not copy link")
+      }
+    },
+    [activeConversationId],
+  )
+
+  const handleRegenerateAssistant = useCallback(
+    (assistantMessageId: string) => {
+      const assistantIdx = messages.findIndex((message) => message.id === assistantMessageId)
+      if (assistantIdx < 0) return
+      let userIdx = -1
+      for (let i = assistantIdx - 1; i >= 0; i -= 1) {
+        if (messages[i]?.role === "user") {
+          userIdx = i
+          break
+        }
+      }
+      if (userIdx < 0) {
+        toast.error("Nothing to regenerate")
+        return
+      }
+      const prompt = uiMessageText(messages[userIdx]).trim()
+      if (!prompt) {
+        toast.error("Nothing to regenerate")
+        return
+      }
+      // Drop the prompting user turn and later messages locally; resend as a new turn.
+      setMessages(messages.slice(0, userIdx))
+      void runChat(prompt)
+    },
+    [messages, runChat, setMessages],
+  )
+
+  const handleSaveQuestion = useCallback((_messageId: string, _text: string) => {
+    // No durable Save Question API on /ai yet — do not fake local persistence.
+    toast.message("Save Question needs a backend endpoint", {
+      description:
+        "Presentation affordance is ready. Persisting saved questions requires an explicit API — not fabricated in the client.",
+    })
+  }, [])
+
   const handleResearchScopeSelect = useCallback(
     async (scope: string) => {
       researchScopeRef.current = scope
@@ -1519,7 +1605,7 @@ export function AiWorkspace({
       />
 
       <div className="ai-surface-shell flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="shrink-0 border-b border-emerald-500/15 bg-card/80 backdrop-blur-md">
+        <div className="shrink-0 border-b border-border/70 bg-card/90 backdrop-blur-md">
           <div className="flex h-9 items-center gap-1.5 overflow-x-auto px-2 md:gap-2 md:px-3">
             <Button
               variant="ghost"
@@ -1564,6 +1650,39 @@ export function AiWorkspace({
             </div>
 
             <div className="ml-auto flex shrink-0 items-center gap-1">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0 text-muted-foreground"
+                    aria-label="Chat background theme"
+                    title="Background theme"
+                  >
+                    <Palette className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="z-[60] w-48">
+                  <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Background
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuRadioGroup
+                    value={chatCanvasTheme}
+                    onValueChange={(value) => {
+                      if ((CHAT_CANVAS_THEME_IDS as readonly string[]).includes(value)) {
+                        handleChatCanvasThemeChange(value as ChatCanvasThemeId)
+                      }
+                    }}
+                  >
+                    {CHAT_CANVAS_THEME_IDS.map((themeId) => (
+                      <DropdownMenuRadioItem key={themeId} value={themeId} className="text-xs">
+                        {CHAT_CANVAS_THEME_META[themeId].label}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <a
                 href="/ai/help/control"
                 className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -1645,7 +1764,10 @@ export function AiWorkspace({
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col">
-        <div className="ai-chat-canvas min-h-0 flex-1 overflow-y-auto px-3 py-3 md:px-5 md:py-4">
+        <div
+          className="ai-chat-canvas min-h-0 flex-1 overflow-y-auto px-3 py-3 md:px-5 md:py-4"
+          data-chat-theme={chatCanvasTheme}
+        >
           <div className="mx-auto w-full">
             {showLanding ? (
               <AiLanding
@@ -1697,6 +1819,11 @@ export function AiWorkspace({
                 onConfirmExecution={() => void handleConfirmExecution()}
                 canApprove={canApproveWrites}
                 onEditResend={handleEditResend}
+                conversationId={activeConversationId}
+                onCopyText={(text) => void handleCopyMessageText(text)}
+                onCopyLink={(messageId) => void handleCopyMessageLink(messageId)}
+                onRegenerate={handleRegenerateAssistant}
+                onSaveQuestion={handleSaveQuestion}
               />
               </>
             ) : null}
@@ -1724,9 +1851,9 @@ export function AiWorkspace({
               ? inlineTurns.map((turn) => (
               <div key={turn.id} className="space-y-4">
                 <div className="flex justify-end">
-                  <div className={cn("max-w-[min(720px,92%)] rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-500 px-4 py-3.5 text-primary-foreground shadow-sm dark:from-emerald-500 dark:to-emerald-400", CHAT_BUBBLE_BASE_CLASS, CHAT_USER_BUBBLE_CLASS)}>
+                  <div className={cn("max-w-[min(720px,92%)]", CHAT_BUBBLE_BASE_CLASS, CHAT_USER_BUBBLE_CLASS)}>
                     <p className="whitespace-pre-wrap">{turn.prompt}</p>
-                    <p className="mt-1 text-[10px] uppercase tracking-wide opacity-70">
+                    <p className="mt-1 text-[10px] uppercase tracking-wide text-muted-foreground">
                       {getModeMeta(turn.engine).badge}
                     </p>
                   </div>

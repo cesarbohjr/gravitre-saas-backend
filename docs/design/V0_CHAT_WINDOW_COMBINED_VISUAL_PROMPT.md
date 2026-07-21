@@ -62,6 +62,8 @@ Dark-first default; transcript centered with generous max-width; sidebar collaps
 
 **Default recommendation if no preference stated: Direction A.**
 
+**CHOSEN 2026-07-21: Direction A — Operator Console** (see `docs/delivery/chat-v0-operator-console-direction-a.md`).
+
 ---
 
 ## Visual requirements (all directions)

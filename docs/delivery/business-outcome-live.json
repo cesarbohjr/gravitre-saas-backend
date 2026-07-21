@@ -5,9 +5,11 @@
   "checkedAt": "2026-07-21T07:16:29.738063+00:00",
   "tipGitSha": "9f7771ac4cdd0a11a2edf8f575ecde32c38d6e47",
   "visualPass": {
-    "status": "PENDING_DIRECTION_CHOICE",
+    "status": "IN_PROGRESS_DIRECTION_A",
+    "direction": "A_operator_console",
     "bundle": "docs/design/V0_CHAT_WINDOW_COMBINED_VISUAL_PROMPT.md",
-    "note": "Functional Phases 1–4 closed on tip 9f7771ac. Presentation polish is part of the combined chat v0 pass; DTO/renderer logic frozen."
+    "implementationNote": "docs/delivery/chat-v0-operator-console-direction-a.md",
+    "note": "Functional Phases 1–4 closed on tip 9f7771ac. Direction A presentation polish in flight; DTO/renderer logic frozen. Done only after live tip + regression screenshots."
   },
   "outcomeId": "e37c312d-0b9b-4066-a8ac-e7788ae1084c",
   "getStatus": 200,

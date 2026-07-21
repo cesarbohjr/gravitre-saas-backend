@@ -493,7 +493,7 @@ export function ConversationSidebar({
               {grouped.map((group) => (
                 <div key={group.label} className="mb-2">
                   <div className="px-4 pb-1 pt-2">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <span className="text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground/90">
                       {group.label}
                     </span>
                   </div>

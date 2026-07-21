@@ -93,10 +93,14 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
   return (
     <div
       className={cn(
-        "rounded-xl border px-4 py-3 text-sm",
-        failed ? "border-red-500/25 bg-red-500/5" : "border-emerald-500/20 bg-emerald-500/5",
-        density === "timeline" && "rounded-lg",
-        density === "export" && "border-border bg-background",
+        "rounded-lg border px-3.5 py-3 text-sm",
+        failed
+          ? "border-red-500/20 bg-red-500/[0.04]"
+          : "border-border/80 bg-background/70 dark:bg-card/50",
+        density === "chat" && !failed && "border-l-2 border-l-emerald-600/50 dark:border-l-emerald-400/40",
+        density === "chat" && failed && "border-l-2 border-l-red-500/50",
+        density === "timeline" && "rounded-md",
+        density === "export" && "border-border bg-background border-l-0",
         className,
       )}
       data-business-outcome-id={outcome.id}

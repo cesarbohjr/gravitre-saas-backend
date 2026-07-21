@@ -1,10 +1,18 @@
 "use client"
 
+import type { ReactNode } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { motion } from "framer-motion"
 import Image from "next/image"
-import { Loader2, Pencil } from "lucide-react"
+import {
+  BookmarkPlus,
+  Copy,
+  Link2,
+  Loader2,
+  Pencil,
+  RefreshCw,
+} from "lucide-react"
 import type { UIMessage } from "ai"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -16,6 +24,7 @@ import {
 } from "@/components/ui/tooltip"
 import { polishAssistantText } from "@/lib/plain-english"
 import {
+  CHAT_ACTION_RAIL_CLASS,
   CHAT_ASSISTANT_BUBBLE_CLASS,
   CHAT_BUBBLE_BASE_CLASS,
   CHAT_PROSE_CLASS,
@@ -67,13 +76,13 @@ function extractToolInvocations(message: UIMessage): ToolInvocation[] {
 
 function GravitreAvatar() {
   return (
-    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#0d3b36] ring-2 ring-emerald-500/15 shadow-sm">
+    <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-emerald-500/20 bg-[#0d3b36] shadow-none">
       <Image
         src="/images/gravitre-icon-white.png"
         alt="Gravitre"
-        width={24}
-        height={24}
-        className="h-6 w-6 object-contain"
+        width={20}
+        height={20}
+        className="h-5 w-5 object-contain"
       />
     </div>
   )
@@ -97,6 +106,40 @@ type ChatTranscriptProps = {
   canApprove?: boolean
   /** Edit a prior user message and resend as a new turn (history not overwritten). */
   onEditResend?: (messageId: string, text: string) => void
+  conversationId?: string | null
+  onRegenerate?: (assistantMessageId: string) => void
+  onCopyText?: (text: string) => void
+  onCopyLink?: (messageId: string) => void
+  /** Honest no-op reporter when Save Question has no backend — parent shows toast. */
+  onSaveQuestion?: (userMessageId: string, text: string) => void
+}
+
+function ActionIconButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label={label}
+          onClick={onClick}
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="text-xs">
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  )
 }
 
 export function ChatTranscript({
@@ -111,9 +154,13 @@ export function ChatTranscript({
   onConfirmExecution,
   canApprove = false,
   onEditResend,
+  conversationId,
+  onRegenerate,
+  onCopyText,
+  onCopyLink,
+  onSaveQuestion,
 }: ChatTranscriptProps) {
   const lastAssistantId = [...messages].reverse().find((row) => row.role === "assistant")?.id
-  // Indices into the rendered list (after empty-bubble filters) for cluster stamps.
   const visible = messages
     .map((message, index) => ({ message, index }))
     .filter(({ message }) => {
@@ -128,130 +175,175 @@ export function ChatTranscript({
 
   return (
     <TooltipProvider delayDuration={200}>
-    <div className="mx-auto flex w-full max-w-[920px] flex-col gap-6 px-1 py-2">
-      {visible.map(({ message, index: sourceIndex }, visibleIndex) => {
-        const isUser = message.role === "user"
-        const text = uiMessageText(message)
-        const toolInvocations = !isUser ? extractToolInvocations(message) : []
-        const displayText = isUser ? text : polishAssistantText(text)
-        const isLastAssistant = message.id === lastAssistantId
-        const createdAt = messageCreatedAt(message)
-        const showRelative = shouldShowClusterTimestamp(visibleMessages, visibleIndex)
-        const exactTitle = createdAt ? formatMessageExactTime(createdAt) : undefined
-        const relativeLabel = createdAt ? formatMessageRelativeTime(createdAt) : null
+      <div className="mx-auto flex w-full max-w-[880px] flex-col gap-5 px-1 py-2">
+        {visible.map(({ message, index: sourceIndex }, visibleIndex) => {
+          const isUser = message.role === "user"
+          const text = uiMessageText(message)
+          const toolInvocations = !isUser ? extractToolInvocations(message) : []
+          const displayText = isUser ? text : polishAssistantText(text)
+          const isLastAssistant = message.id === lastAssistantId
+          const createdAt = messageCreatedAt(message)
+          const showRelative = shouldShowClusterTimestamp(visibleMessages, visibleIndex)
+          const exactTitle = createdAt ? formatMessageExactTime(createdAt) : undefined
+          const relativeLabel = createdAt ? formatMessageRelativeTime(createdAt) : null
 
-        return (
-          <motion.div
-            key={message.id || `msg-${sourceIndex}`}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.22 }}
-            className={cn("flex gap-3", isUser ? "flex-row-reverse" : "flex-row")}
-          >
-            {isUser ? <UserAccountAvatar useCurrentUser size="lg" /> : <GravitreAvatar />}
+          return (
+            <motion.div
+              key={message.id || `msg-${sourceIndex}`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.18 }}
+              className={cn(
+                "group/msg flex gap-2.5",
+                isUser ? "flex-row-reverse" : "flex-row",
+              )}
+            >
+              {isUser ? <UserAccountAvatar useCurrentUser size="md" /> : <GravitreAvatar />}
 
-            <div className={cn("flex min-w-0 max-w-[min(760px,88%)] flex-col", isUser ? "items-end" : "items-start")}>
               <div
                 className={cn(
-                  "flex items-baseline gap-2",
-                  isUser ? "flex-row-reverse" : "flex-row",
+                  "flex min-w-0 max-w-[min(720px,90%)] flex-col",
+                  isUser ? "items-end" : "items-start",
                 )}
               >
-                <p className={CHAT_ROLE_LABEL_CLASS}>
-                  {isUser ? "You" : "Gravitre AI"}
-                </p>
-                {createdAt ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <time
-                        dateTime={createdAt}
-                        title={exactTitle}
-                        className={cn(
-                          "cursor-default text-[11px] text-muted-foreground tabular-nums",
-                          !showRelative && "sr-only",
-                        )}
-                      >
-                        {showRelative ? relativeLabel : exactTitle}
-                      </time>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="text-xs">
-                      {exactTitle}
-                    </TooltipContent>
-                  </Tooltip>
-                ) : null}
+                <div
+                  className={cn(
+                    "flex items-baseline gap-2",
+                    isUser ? "flex-row-reverse" : "flex-row",
+                  )}
+                >
+                  <p className={CHAT_ROLE_LABEL_CLASS}>{isUser ? "You" : "Gravitre"}</p>
+                  {createdAt ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <time
+                          dateTime={createdAt}
+                          title={exactTitle}
+                          className={cn(
+                            "cursor-default text-[11px] text-muted-foreground tabular-nums",
+                            !showRelative && "sr-only",
+                          )}
+                        >
+                          {showRelative ? relativeLabel : exactTitle}
+                        </time>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs font-normal tabular-nums">
+                        {exactTitle}
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : null}
+                </div>
+                <div
+                  className={cn(
+                    CHAT_BUBBLE_BASE_CLASS,
+                    isUser ? CHAT_USER_BUBBLE_CLASS : CHAT_ASSISTANT_BUBBLE_CLASS,
+                  )}
+                  title={exactTitle}
+                >
+                  {isUser ? (
+                    <p className="whitespace-pre-wrap">{text}</p>
+                  ) : (
+                    <div className={CHAT_PROSE_CLASS}>
+                      {toolInvocations.length > 0 ? (
+                        <div className="not-prose mb-2 space-y-1">
+                          {toolInvocations.map((invocation) => (
+                            <ToolChip key={invocation.toolCallId} invocation={invocation} />
+                          ))}
+                        </div>
+                      ) : null}
+                      {displayText.trim() ? (
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText}</ReactMarkdown>
+                      ) : null}
+                      <AssistantSourceLinks invocations={toolInvocations} />
+                      {isLastAssistant ? (
+                        <>
+                          <ChatExecutionPanel
+                            dialogueMode={dialogueMode}
+                            executionResult={executionResult}
+                            pendingTask={pendingTask}
+                            confirming={confirmExecuting}
+                            onConfirm={onConfirmExecution}
+                            canApprove={canApprove}
+                          />
+                          <ExplainabilityPanel
+                            explanation={explainability}
+                            contextExplanation={contextExplanation}
+                            toolInvocations={[]}
+                          />
+                        </>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+
+                <div className={cn(CHAT_ACTION_RAIL_CLASS, isUser && "flex-row-reverse")}>
+                  {text.trim() && onCopyText ? (
+                    <ActionIconButton label="Copy text" onClick={() => onCopyText(text)}>
+                      <Copy className="h-3.5 w-3.5" />
+                    </ActionIconButton>
+                  ) : null}
+                  {!isUser && isLastAssistant && onRegenerate ? (
+                    <ActionIconButton
+                      label="Regenerate"
+                      onClick={() => onRegenerate(message.id)}
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                    </ActionIconButton>
+                  ) : null}
+                  {conversationId && onCopyLink ? (
+                    <ActionIconButton
+                      label="Copy link"
+                      onClick={() => onCopyLink(message.id)}
+                    >
+                      <Link2 className="h-3.5 w-3.5" />
+                    </ActionIconButton>
+                  ) : null}
+                  {isUser && text.trim() && onSaveQuestion ? (
+                    <ActionIconButton
+                      label="Save question"
+                      onClick={() => onSaveQuestion(message.id, text)}
+                    >
+                      <BookmarkPlus className="h-3.5 w-3.5" />
+                    </ActionIconButton>
+                  ) : null}
+                  {isUser && onEditResend && text.trim() ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-[11px] text-muted-foreground"
+                      onClick={() => onEditResend(message.id, text)}
+                    >
+                      <Pencil className="mr-1 h-3 w-3" />
+                      Edit & resend
+                    </Button>
+                  ) : null}
+                </div>
               </div>
+            </motion.div>
+          )
+        })}
+
+        {showWaiting ? (
+          <div className="flex gap-2.5">
+            <GravitreAvatar />
+            <div className="flex min-w-0 max-w-[min(720px,90%)] flex-col items-start">
+              <p className={CHAT_ROLE_LABEL_CLASS}>Gravitre</p>
               <div
                 className={cn(
                   CHAT_BUBBLE_BASE_CLASS,
-                  isUser ? CHAT_USER_BUBBLE_CLASS : CHAT_ASSISTANT_BUBBLE_CLASS,
+                  CHAT_ASSISTANT_BUBBLE_CLASS,
+                  "flex items-center gap-2",
+                  CHAT_WAITING_CLASS,
                 )}
-                title={exactTitle}
               >
-                {isUser ? (
-                  <p className="whitespace-pre-wrap">{text}</p>
-                ) : (
-                  <div className={CHAT_PROSE_CLASS}>
-                    {toolInvocations.length > 0 ? (
-                      <div className="not-prose mb-2 space-y-1">
-                        {toolInvocations.map((invocation) => (
-                          <ToolChip key={invocation.toolCallId} invocation={invocation} />
-                        ))}
-                      </div>
-                    ) : null}
-                    {displayText.trim() ? (
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText}</ReactMarkdown>
-                    ) : null}
-                    <AssistantSourceLinks invocations={toolInvocations} />
-                    {isLastAssistant ? (
-                      <>
-                        <ChatExecutionPanel
-                          dialogueMode={dialogueMode}
-                          executionResult={executionResult}
-                          pendingTask={pendingTask}
-                          confirming={confirmExecuting}
-                          onConfirm={onConfirmExecution}
-                          canApprove={canApprove}
-                        />
-                        <ExplainabilityPanel
-                          explanation={explainability}
-                          contextExplanation={contextExplanation}
-                          toolInvocations={[]}
-                        />
-                      </>
-                    ) : null}
-                  </div>
-                )}
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600 dark:text-emerald-400" />
+                Working…
               </div>
-              {isUser && onEditResend && text.trim() ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="mt-1 h-7 px-2 text-[11px] text-muted-foreground"
-                  onClick={() => onEditResend(message.id, text)}
-                >
-                  <Pencil className="mr-1 h-3 w-3" />
-                  Edit & resend
-                </Button>
-              ) : null}
-            </div>
-          </motion.div>
-        )
-      })}
-
-      {showWaiting ? (
-        <div className="flex gap-3">
-          <GravitreAvatar />
-          <div className="flex min-w-0 max-w-[min(760px,88%)] flex-col items-start">
-            <p className={CHAT_ROLE_LABEL_CLASS}>Gravitre AI</p>
-            <div className={cn(CHAT_BUBBLE_BASE_CLASS, CHAT_ASSISTANT_BUBBLE_CLASS, "flex items-center gap-2", CHAT_WAITING_CLASS)}>
-              <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
-              Gravitre is thinking…
             </div>
           </div>
-        </div>
-      ) : null}
-    </div>
+        ) : null}
+      </div>
     </TooltipProvider>
   )
 }
