@@ -1,28 +1,66 @@
 {
-  "verdict": "NOT RUN",
-  "reason": "Production tip still at 5997045b; BusinessOutcome code is on main through 797a9228. Railway deploy via scripts/railway_prod_deploy.py returned HTTP 403 (RAILWAY_TOKEN forbidden). This is a human Railway-dashboard action (token expired/rotated/insufficient scope), not agent-resolvable. Live GET/export identity check deferred until tip advances.",
-  "checkedAt": "2026-07-21T04:29:06Z",
-  "tipGitShaObserved": "5997045ba85685f48fd0491135399e2041b4ff03",
-  "expectedTipPrefix": "797a9228",
-  "blocker": {
-    "type": "railway_project_token_403",
-    "owner": "human_operator",
-    "action": "In Railway dashboard: confirm/rotate project token, update RAILWAY_TOKEN where scripts/railway_prod_deploy.py reads it (env / operator local dotenv), redeploy tip, then re-run live verify."
+  "verdict": "PASS",
+  "status": "CLOSED",
+  "closedAt": "2026-07-21T07:34:00Z",
+  "checkedAt": "2026-07-21T07:16:29.738063+00:00",
+  "tipGitSha": "9f7771ac4cdd0a11a2edf8f575ecde32c38d6e47",
+  "visualPass": {
+    "status": "PENDING_DIRECTION_CHOICE",
+    "bundle": "docs/design/V0_CHAT_WINDOW_COMBINED_VISUAL_PROMPT.md",
+    "note": "Functional Phases 1–4 closed on tip 9f7771ac. Presentation polish is part of the combined chat v0 pass; DTO/renderer logic frozen."
   },
-  "pushedCommits": [
-    "cf060112 Document BusinessOutcome Phase 0 wiring audit.",
-    "88fabb94 Add BusinessOutcome projection pipeline and catalog-governed undo.",
-    "6b2ed3dc Wire shared BusinessOutcomeView into chat, timeline, and export.",
-    "0095c15d Merge origin/main into BusinessOutcome work.",
-    "094c2df8 Fix BusinessOutcome live verify harness HTTP auth.",
-    "797a9228 Record BusinessOutcome live verify as NOT RUN pending tip."
+  "outcomeId": "e37c312d-0b9b-4066-a8ac-e7788ae1084c",
+  "getStatus": 200,
+  "exportStatus": 200,
+  "projection": "business_outcome",
+  "pipelineStagesCompleted": [
+    "verify",
+    "normalize",
+    "business_outcome",
+    "memory",
+    "recommendation",
+    "notification"
   ],
-  "localUnitTests": "PASS — pytest backend/tests/services/test_business_outcome.py (10 passed)",
-  "intentionalOmissions": {
-    "sections": ["impact", "related_outcomes", "dependencies", "history"],
-    "lifecycleStates": ["reviewed", "edited", "referenced", "archived"],
-    "note": "Design decisions — correct refusal to fabricate. Not unfinished Phase 0/1 work. See docs/delivery/business-outcome-phase0-wiring-audit.md"
+  "lifecycleState": "presented",
+  "lifecycleStatesReached": [
+    "created",
+    "verified",
+    "presented"
+  ],
+  "getExportBusinessContentIdentical": true,
+  "unshippedLifecycleStates": [
+    "reviewed",
+    "edited",
+    "referenced",
+    "archived"
+  ],
+  "catalogUndo": {
+    "gmail.messages.send": {
+      "available": false,
+      "compensating_action": null,
+      "honest_unavailable_reason": "No catalog compensating action exists for this write. Undo is not available \u2014 the vendor change cannot be reversed through Gravitree."
+    },
+    "hubspot.contacts.create": {
+      "available": true,
+      "compensating_action": "hubspot.contacts.delete",
+      "honest_unavailable_reason": null
+    }
   },
-  "phase4Closed": false,
-  "phase5": "Deferred until Phases 1-4 live-verified on tip (presentation-only; DTO frozen)"
+  "sectionsPresent": [
+    "diff",
+    "evidence",
+    "metadata",
+    "undo",
+    "verification"
+  ],
+  "omittedFabricated": {
+    "impact": true,
+    "related": true,
+    "history": true
+  },
+  "detailSnippet": {
+    "title": "Completed work",
+    "kind": "other",
+    "status": "completed"
+  }
 }

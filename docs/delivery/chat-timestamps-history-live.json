@@ -1,0 +1,97 @@
+{
+  "verdict": "PASS",
+  "status": "CLOSED",
+  "closedAt": "2026-07-21T07:34:00Z",
+  "checkedAt": "2026-07-21T07:34:00Z",
+  "tipGitShaObserved": "9f7771ac4cdd0a11a2edf8f575ecde32c38d6e47",
+  "tipNote": "Functional closure on tip 9f7771ac (includes e1ccd3f6 chat timestamps/history + subsequent deploy fixes).",
+  "vercelProductionSha": "9f7771ac4cdd0a11a2edf8f575ecde32c38d6e47",
+  "closureBasis": {
+    "apiLevel": "PASS — timestamp match vs DB, bucket logic vs seeded data, pin/archive/search endpoints via live API",
+    "uiLevelWithScreenshots": "PASS — relative timestamps, bucket label rendering, Edit & resend (artifacts under docs/delivery/chat-timestamps-history-evidence/)",
+    "uiLevelUserObservationOnly": "PASS — exact hover tooltip and pin/archive/content-search UI confirmed by Cesar in live prod; not screenshot artifacts"
+  },
+  "checks": {
+    "messageTimestampSpotCheck": {
+      "verdict": "PASS",
+      "messageId": "028e47cb-3ea4-4a14-9c80-05643b83fc56",
+      "conversationId": "d608c44d-e4e3-475e-89d2-33aaa6f68990",
+      "dbCreatedAt": "2026-07-20 20:58:28.8994+00",
+      "apiCreatedAt": "2026-07-20T20:58:28.8994+00:00",
+      "match": true,
+      "evidence": "GET /api/conversations/{id}/messages returned created_at identical to conversation_messages.created_at"
+    },
+    "relativeTimestampsUi": {
+      "verdict": "PASS",
+      "evidence": "Live /ai screenshots show '10h ago' on latest user bubble and '10h' in history row; older bubbles show 'Sun at 3:26 a.m.'",
+      "screenshots": [
+        "docs/delivery/chat-timestamps-history-evidence/ui-timestamps-edit-resend.png",
+        "docs/delivery/chat-timestamps-history-evidence/ui-yesterday-bucket-sidebar.png"
+      ]
+    },
+    "exactTimestampHoverUi": {
+      "verdict": "PASS",
+      "evidenceMethod": "direct_user_observation_prod",
+      "evidence": "verified by direct user observation in prod, not by captured screenshot",
+      "screenshots": [],
+      "note": "Do not imply screenshot evidence exists for this check. Cesar confirmed exact-time tooltip on hover in live production /ai."
+    },
+    "historyBucketLogic": {
+      "verdict": "PASS",
+      "claim": "Frontend groups API order into Pinned/Today/Yesterday/Previous 7 Days/Previous 30 Days/Month without re-sorting",
+      "evidence": "Seeded six conversations with deliberate updated_at/pinned_at on tip 9f7771ac; grouping yielded expected buckets",
+      "bucketGroups": {
+        "Pinned": ["bucket-pinned"],
+        "Today": ["bucket-today"],
+        "Yesterday": ["bucket-yesterday"],
+        "Previous 7 Days": ["bucket-week"],
+        "Previous 30 Days": ["bucket-month"],
+        "Month": ["bucket-older-month"]
+      }
+    },
+    "historyBucketUiRender": {
+      "verdict": "PASS",
+      "claim": "UI correctly renders the bucket label the backend/grouping assigns for a conversation",
+      "evidence": "Live sidebar shows 'YESTERDAY' above 'What workflows have been ran?' with relative '10h'",
+      "screenshots": [
+        "docs/delivery/chat-timestamps-history-evidence/ui-yesterday-bucket-sidebar.png"
+      ],
+      "note": "Multi-bucket collage not required; bucket logic and UI render treated as two separate satisfied claims per operator decision 2026-07-21"
+    },
+    "editResendUi": {
+      "verdict": "PASS",
+      "evidence": "Live bubble shows 'Edit & resend' affordance under user message",
+      "screenshots": [
+        "docs/delivery/chat-timestamps-history-evidence/ui-timestamps-edit-resend.png",
+        "docs/delivery/chat-timestamps-history-evidence/ui-yesterday-bucket-sidebar.png"
+      ]
+    },
+    "pinArchiveSearchApi": {
+      "verdict": "PASS",
+      "tipGitSha": "9f7771ac4cdd0a11a2edf8f575ecde32c38d6e47",
+      "conversationId": "f59a9ba2-1621-44e1-9307-bcef7b3c693e",
+      "pin": "POST /pin 200 pinned_at=2026-07-21T07:17:01.923743+00:00",
+      "contentSearch": "GET /api/conversations?search=unique-search-token-apollo-lists-xyz hit=true",
+      "archive": "POST /archive 200 archived_at set",
+      "unarchive": "POST /unarchive 200 archived_at=null"
+    },
+    "pinArchiveSearchUi": {
+      "verdict": "PASS",
+      "evidenceMethod": "direct_user_observation_prod",
+      "evidence": "verified by direct user observation in prod, not by captured screenshot",
+      "screenshots": [],
+      "note": "Do not imply screenshot evidence exists for this check. Cesar confirmed pin→Pinned section, archive leaves main list, and content search on message-body-only token in live production /ai. API-level PASS remains recorded separately under pinArchiveSearchApi."
+    },
+    "editResendApi": {
+      "verdict": "PASS",
+      "evidence": "append-only: prior user content still present after new edited turn; message_count=4"
+    }
+  },
+  "v0Handoff": {
+    "status": "READY",
+    "unblockedAt": "2026-07-21T07:34:00Z",
+    "bundle": "chat timestamps/history + chat-window redesign (backgrounds, message actions) + BusinessOutcome presentation cohesion — single visual pass, presentation only",
+    "prompt": "docs/design/V0_CHAT_WINDOW_COMBINED_VISUAL_PROMPT.md",
+    "blockedOn": []
+  }
+}
