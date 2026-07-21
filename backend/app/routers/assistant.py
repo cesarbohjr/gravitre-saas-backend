@@ -963,7 +963,6 @@ async def assistant_chat(
                     ledger=get_ledger(prior),
                 )
                 if body.connected_file_refs:
-                    from app.core.db import get_supabase_client
                     from app.services.connected_files_service import prefetch_connected_file_attachments
                     from app.services.parameter_ledger import ingest_connected_file_hits, merge_ledger_into_task_state
                     from app.services.tool_types import ToolContext
