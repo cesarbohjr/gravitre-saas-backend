@@ -33,6 +33,8 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     "recent_user_messages": [],
     # Module B — conversation-scoped parameter ledger (canonical slot store).
     "parameter_ledger": {"slots": {}, "pending_missing": []},
+    # Module D — last expression-range variant index per category (phrase variety).
+    "voice_expression_last": {},
 }
 
 

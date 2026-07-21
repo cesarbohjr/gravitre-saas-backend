@@ -311,7 +311,9 @@ def _persist_voice_expression_sync() -> None:
         from app.config import get_settings
         from app.workflows.repository import get_supabase_client
 
-        sb = client or get_supabase_client(settings or get_settings())
+        # Always use the sync service-role client — request-scoped clients may be
+        # async wrappers that silently no-op on .execute().
+        sb = get_supabase_client(settings or get_settings())
         rows = (
             sb.table("conversations")
             .select("task_state")
@@ -328,12 +330,11 @@ def _persist_voice_expression_sync() -> None:
             "id", conversation_id
         ).eq("org_id", org_id).execute()
     except Exception:  # noqa: BLE001
-        logger.debug(
+        logger.warning(
             "voice_expression_last sync persist failed conversation_id=%s",
             conversation_id,
             exc_info=True,
         )
-        # Fall back to async merge path.
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:

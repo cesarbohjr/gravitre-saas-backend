@@ -161,3 +161,12 @@ def test_every_bank_has_maintainable_size():
     for key, bank in EXPRESSION_BANKS.items():
         assert 5 <= len(bank) <= 8, key
         assert len(set(bank)) == len(bank), f"duplicate variants in {key}"
+
+
+def test_task_state_normalize_keeps_voice_expression_last():
+    from app.services.conversation_state_service import ConversationStateService
+
+    normalized = ConversationStateService._normalize_state(
+        {"voice_expression_last": {"connector_connect_to_run": 3}}
+    )
+    assert normalized["voice_expression_last"] == {"connector_connect_to_run": 3}

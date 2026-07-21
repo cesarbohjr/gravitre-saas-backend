@@ -39,7 +39,7 @@ from isolated_conversation_org import (  # noqa: E402
 BASE = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
 OUT = ROOT / "docs" / "delivery" / "module-d-expression-range-live.json"
 CHAT_TIMEOUT = 300.0
-EXPECT_SHA = os.environ.get("EXPECT_SHA", "dcc9a9d7")
+EXPECT_SHA = os.environ.get("EXPECT_SHA", "d45908a1")
 
 
 def utcnow() -> str:
