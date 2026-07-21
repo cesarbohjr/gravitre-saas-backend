@@ -8,6 +8,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
+from postgrest.exceptions import APIError
 from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_org_context
@@ -20,10 +21,23 @@ from app.services.notification_preference_service import (
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 
 
-def _is_missing_table_error(error: Exception | None) -> bool:
+def _is_missing_table_error(error: object | None) -> bool:
     if error is None:
         return False
     return "does not exist" in str(error).lower()
+
+
+def _execute(query: Any) -> Any:
+    """Run a PostgREST query; map missing-table to None, other API errors to HTTP 500.
+
+    Newer supabase-py raises APIError on failure and success responses have no `.error`.
+    """
+    try:
+        return query.execute()
+    except APIError as exc:
+        if _is_missing_table_error(exc):
+            return None
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 def _normalize_notification(row: dict) -> dict:
@@ -101,26 +115,19 @@ async def list_notifications(
     )
     if unread_only:
         query = query.eq("is_read", False)
-    response = query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
-    if _is_missing_table_error(response.error):
+    response = _execute(query.order("created_at", desc=True).range(offset, offset + limit - 1))
+    if response is None:
         return {"notifications": [], "unread_count": 0}
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
 
-    unread = (
+    unread = _execute(
         client.table("notifications")
         .select("id", count="exact")
         .eq("org_id", org_id)
         .eq("user_id", user_id)
         .eq("is_read", False)
         .eq("is_archived", False)
-        .execute()
     )
-    unread_count = 0
-    if unread.error and not _is_missing_table_error(unread.error):
-        raise HTTPException(status_code=500, detail=str(unread.error))
-    if not unread.error:
-        unread_count = int(unread.count or 0)
+    unread_count = int(unread.count or 0) if unread is not None else 0
     return {
         "notifications": [_normalize_notification(row) for row in (response.data or [])],
         "unread_count": unread_count,
@@ -137,19 +144,16 @@ async def get_unread_count(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     user_id = _user["user_id"]
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    response = (
+    response = _execute(
         client.table("notifications")
         .select("id", count="exact")
         .eq("org_id", org_id)
         .eq("user_id", user_id)
         .eq("is_read", False)
         .eq("is_archived", False)
-        .execute()
     )
-    if _is_missing_table_error(response.error):
+    if response is None:
         return {"count": 0}
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
     return {"count": int(response.count or 0)}
 
 
@@ -164,18 +168,13 @@ async def mark_read(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     user_id = _user["user_id"]
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    response = (
+    _execute(
         client.table("notifications")
         .update({"is_read": True})
         .eq("id", notification_id)
         .eq("org_id", org_id)
         .eq("user_id", user_id)
-        .execute()
     )
-    if _is_missing_table_error(response.error):
-        return {"ok": True}
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
     return {"ok": True}
 
 
@@ -189,18 +188,13 @@ async def mark_all_read(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     user_id = _user["user_id"]
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    response = (
+    _execute(
         client.table("notifications")
         .update({"is_read": True})
         .eq("org_id", org_id)
         .eq("user_id", user_id)
         .eq("is_read", False)
-        .execute()
     )
-    if _is_missing_table_error(response.error):
-        return {"ok": True}
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
     return {"ok": True}
 
 
@@ -215,18 +209,13 @@ async def archive_notification(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     user_id = _user["user_id"]
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    response = (
+    _execute(
         client.table("notifications")
         .update({"is_archived": True})
         .eq("id", notification_id)
         .eq("org_id", org_id)
         .eq("user_id", user_id)
-        .execute()
     )
-    if _is_missing_table_error(response.error):
-        return {"ok": True}
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
     return {"ok": True}
 
 
@@ -241,18 +230,13 @@ async def delete_notification(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     user_id = _user["user_id"]
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    response = (
+    _execute(
         client.table("notifications")
         .delete()
         .eq("id", notification_id)
         .eq("org_id", org_id)
         .eq("user_id", user_id)
-        .execute()
     )
-    if _is_missing_table_error(response.error):
-        return {"ok": True}
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
     return {"ok": True}
 
 
@@ -266,19 +250,14 @@ async def get_notification_preferences(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     user_id = _user["user_id"]
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    response = (
+    response = _execute(
         client.table("notification_preferences")
         .select("preferences")
         .eq("org_id", org_id)
         .eq("user_id", user_id)
         .limit(1)
-        .execute()
     )
-    if _is_missing_table_error(response.error):
-        return {"preferences": {}}
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
-    if not response.data:
+    if response is None or not response.data:
         return {"preferences": structured_preferences({})}
     raw = response.data[0].get("preferences") or {}
     return {"preferences": structured_preferences(raw if isinstance(raw, dict) else {})}
@@ -300,13 +279,7 @@ async def update_notification_preferences(
         "user_id": user_id,
         "preferences": flatten_structured_preferences(preferences),
     }
-    response = (
-        client.table("notification_preferences")
-        .upsert(payload, on_conflict="org_id,user_id")
-        .execute()
+    _execute(
+        client.table("notification_preferences").upsert(payload, on_conflict="org_id,user_id")
     )
-    if _is_missing_table_error(response.error):
-        return {"ok": True}
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
     return {"ok": True}
