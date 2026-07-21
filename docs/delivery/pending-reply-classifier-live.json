@@ -1,6 +1,6 @@
 {
   "feature": "pending_reply_classifier_7way",
-  "status": "CODE_COMPLETE_AWAITING_DEPLOY_BATTERY",
+  "status": "LIVE_BROAD_PASS",
   "part1Map": "docs/delivery/pending-reply-classifier-part1-map.md",
   "module": "backend/app/services/pending_reply_classifier.py",
   "intents": [
@@ -15,5 +15,15 @@
   "auditAction": "pending_reply.classified",
   "unitTests": "backend/tests/services/test_pending_reply_classifier.py",
   "liveBatteryScript": "scripts/verify-pending-reply-classifier-live.py",
-  "liveBatteryArtifact": "docs/delivery/pending-reply-classifier-battery-live.json"
+  "liveBatteryArtifact": "docs/delivery/pending-reply-classifier-battery-live.json",
+  "liveEvidence": {
+    "checkedAt": "2026-07-21T10:05:00Z",
+    "apiBase": "https://api.gravitre.app",
+    "git_sha": "35a32f7a37c6c42646b1804336fbee4b7a4b2b91",
+    "passed": 24,
+    "total": 24,
+    "broad_pass": true,
+    "verdict": "PASS",
+    "note": "unrelated_search_hubspot PASS after 35a32f7a other-connector unrelated fix; battery harness uses /api/assistant/chat + JWT"
+  }
 }

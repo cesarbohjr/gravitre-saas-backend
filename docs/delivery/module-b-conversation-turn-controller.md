@@ -82,6 +82,11 @@ Audit: `pending_reply.classified`.
 Live battery: `scripts/verify-pending-reply-classifier-live.py` →
 `docs/delivery/pending-reply-classifier-battery-live.json`.
 
+**Live broad-pass (2026-07-21):** tip `35a32f7a37c6c42646b1804336fbee4b7a4b2b91` on
+`https://api.gravitre.app/health` — battery **24/24 PASS** (`broad_pass=true`), including
+`unrelated_search_hubspot` after the other-connector unrelated fix. Artifact:
+[`pending-reply-classifier-battery-live.json`](pending-reply-classifier-battery-live.json).
+
 ## Verification
 
 Run:
