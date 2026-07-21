@@ -9,6 +9,7 @@ every surface calls in.
 """
 from __future__ import annotations
 
+import json
 import re
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -80,6 +81,9 @@ SLOT_ALIASES: dict[str, tuple[str, ...]] = {
     "project_key": ("project_key", "project", "project_id"),
     "project": ("project", "project_key", "project_id"),
     "quoted": ("quoted",),
+    "file_id": ("file_id", "item_id", "page_id"),
+    "file_name": ("file_name", "filename", "document_name"),
+    "file_vendor": ("file_vendor", "vendor"),
 }
 
 
@@ -379,6 +383,16 @@ def ingest_message_slots(
         if titled and not result.get("summary"):
             result.upsert("summary", titled, source="user_message", turn_index=turn_index)
 
+    ref = resolve_file_reference(text, result)
+    if ref and ref.get("file_id"):
+        result.upsert("file_id", str(ref["file_id"]), source="user_message", turn_index=turn_index)
+        if ref.get("name"):
+            result.upsert("file_name", str(ref["name"]), source="user_message", turn_index=turn_index)
+        if ref.get("vendor"):
+            result.upsert("file_vendor", str(ref["vendor"]), source="user_message", turn_index=turn_index)
+        if ref.get("web_link"):
+            result.upsert("file_link", str(ref["web_link"]), source="user_message", turn_index=turn_index)
+
     return result
 
 
@@ -460,6 +474,7 @@ def bind_args_from_ledger(
                 if value:
                     filled[key] = value
 
+    filled = bind_connected_file_args(invoke_action, filled, ledger)
     return filled
 
 
@@ -832,3 +847,117 @@ def merge_ledger_into_task_state(
     state = deepcopy(task_state) if isinstance(task_state, dict) else {}
     state["parameter_ledger"] = ledger.to_dict()
     return state
+
+
+_FILE_ORDINAL_RE = re.compile(
+    r"\b(?:the\s+)?(?:(\d+)(?:st|nd|rd|th)|first|second|third|fourth|fifth|last)\b(?:\s+(?:one|file|result|document|page))?",
+    re.I,
+)
+_ORDINAL_WORDS = {
+    "first": 1,
+    "second": 2,
+    "third": 3,
+    "fourth": 4,
+    "fifth": 5,
+}
+
+
+def ingest_connected_file_hits(
+    task_state: dict[str, Any] | None,
+    hits: list[dict[str, Any]],
+    *,
+    turn_index: int | None = None,
+) -> dict[str, Any]:
+    """Persist connected-file search hits in the parameter ledger for follow-up turns."""
+    if not hits:
+        return task_state if isinstance(task_state, dict) else {}
+    ledger = get_ledger(task_state)
+    refs: list[dict[str, Any]] = []
+    for index, hit in enumerate(hits[:10], start=1):
+        if not isinstance(hit, dict):
+            continue
+        file_id = str(hit.get("file_id") or hit.get("id") or "").strip()
+        if not file_id:
+            continue
+        ref = {
+            "index": index,
+            "file_id": file_id,
+            "name": str(hit.get("name") or "Untitled"),
+            "vendor": str(hit.get("vendor") or ""),
+            "web_link": hit.get("web_link"),
+            "path": hit.get("path"),
+        }
+        refs.append(ref)
+    if not refs:
+        return task_state if isinstance(task_state, dict) else {}
+    ledger.upsert("file_refs_json", json.dumps(refs), source="connected_files", turn_index=turn_index)
+    primary = refs[0]
+    ledger.upsert("file_id", primary["file_id"], source="connected_files", turn_index=turn_index)
+    ledger.upsert("file_name", primary["name"], source="connected_files", turn_index=turn_index)
+    if primary.get("vendor"):
+        ledger.upsert("file_vendor", primary["vendor"], source="connected_files", turn_index=turn_index)
+    if primary.get("web_link"):
+        ledger.upsert("file_link", str(primary["web_link"]), source="connected_files", turn_index=turn_index)
+    return merge_ledger_into_task_state(task_state, ledger)
+
+
+def resolve_file_reference(message: str, ledger: ParameterLedger | None = None) -> dict[str, Any] | None:
+    """Resolve ordinal follow-ups ('the second one') to a prior connected-file hit."""
+    active = ledger or ParameterLedger()
+    raw = active.get("file_refs_json")
+    if not raw:
+        return None
+    try:
+        refs = json.loads(raw)
+    except (TypeError, json.JSONDecodeError):
+        return None
+    if not isinstance(refs, list) or not refs:
+        return None
+    text = (message or "").strip().lower()
+    if not text:
+        return refs[0] if refs else None
+    match = _FILE_ORDINAL_RE.search(text)
+    if not match:
+        if re.search(r"\b(that|this|same)\s+(?:file|document|page|one)\b", text):
+            return refs[0]
+        return None
+    word = (match.group(0) or "").lower()
+    if "last" in word:
+        return refs[-1]
+    numeric = match.group(1)
+    if numeric:
+        idx = int(numeric)
+    else:
+        idx = next((v for k, v in _ORDINAL_WORDS.items() if k in word), 1)
+    if idx < 1 or idx > len(refs):
+        return None
+    return refs[idx - 1]
+
+
+def bind_connected_file_args(
+    invoke_action: str,
+    args: dict[str, Any],
+    ledger: ParameterLedger,
+    message: str | None = None,
+) -> dict[str, Any]:
+    """Fill file_id/vendor from ledger when follow-up omits explicit ids."""
+    action = str(invoke_action or "").lower()
+    if "get_file" not in action and "files.content" not in action:
+        return args
+    bound = dict(args or {})
+    if bound.get("file_id") or bound.get("fileId") or bound.get("page_id"):
+        return bound
+    ref = resolve_file_reference(message or "", ledger)
+    if not ref:
+        file_id = ledger.get("file_id")
+        if file_id:
+            bound["file_id"] = file_id
+            vendor = ledger.get("file_vendor")
+            if vendor and not bound.get("vendor"):
+                bound["vendor"] = vendor
+            return bound
+        return bound
+    bound["file_id"] = ref.get("file_id")
+    if ref.get("vendor") and not bound.get("vendor"):
+        bound["vendor"] = ref.get("vendor")
+    return bound

@@ -719,6 +719,9 @@ VENDOR_DEFINITIONS: tuple = (
             action("slack", "conversations.history", "Read channel messages", tier="v1", kind="read", scope_suffix="messages:read", idempotent=True),
             action("slack", "users.list", "List workspace users", tier="v1", kind="read", scope_suffix="users:read", idempotent=True),
             action("slack", "users.info", "Get user profile", tier="v1", kind="read", scope_suffix="users:read", idempotent=True),
+            action("slack", "search_files", "Search shared files", tier="v1", kind="read", scope_suffix="files:read", idempotent=True),
+            action("slack", "get_file_metadata", "Get shared file metadata", tier="v1", kind="read", scope_suffix="files:read", idempotent=True),
+            action("slack", "get_file_content", "Read shared file content", tier="v1", kind="read", scope_suffix="files:read", idempotent=True),
         ),
         v2=(
             action(
@@ -786,6 +789,9 @@ VENDOR_DEFINITIONS: tuple = (
             action("microsoft365", "teams.list", "List joined Teams", tier="v1", kind="read", scope_suffix="teams:read", idempotent=True),
             action("microsoft365", "teams.channels.list", "List team channels", tier="v1", kind="read", scope_suffix="channels:read", idempotent=True),
             action("microsoft365", "teams.messages.list", "List channel messages", tier="v1", kind="read", scope_suffix="messages:read", idempotent=True),
+            action("microsoft365", "search_files", "Search OneDrive/SharePoint files", tier="v1", kind="read", scope_suffix="files:read", idempotent=True),
+            action("microsoft365", "get_file_metadata", "Get connected file metadata", tier="v1", kind="read", scope_suffix="files:read", idempotent=True),
+            action("microsoft365", "get_file_content", "Read connected file content", tier="v1", kind="read", scope_suffix="files:read", idempotent=True),
         ),
         v2=(
             action("microsoft365", "mail.send", "Send email", tier="v2", kind="write", scope_suffix="mail:send", destructive=True),
@@ -1007,6 +1013,9 @@ VENDOR_DEFINITIONS: tuple = (
             action("notion", "pages.get", "Get page", tier="v1", kind="read", scope_suffix="pages:read", idempotent=True),
             action("notion", "databases.query", "Query database", tier="v1", kind="read", scope_suffix="databases:read", idempotent=True),
             action("notion", "users.list", "List users", tier="v1", kind="read", scope_suffix="users:read", idempotent=True),
+            action("notion", "search_files", "Search workspace pages", tier="v1", kind="read", scope_suffix="pages:read", idempotent=True),
+            action("notion", "get_file_metadata", "Get page metadata", tier="v1", kind="read", scope_suffix="pages:read", idempotent=True),
+            action("notion", "get_file_content", "Read page content", tier="v1", kind="read", scope_suffix="pages:read", idempotent=True),
         ),
         v2=(
             action("notion", "pages.create", "Create page", tier="v2", kind="write", scope_suffix="pages:write", destructive=True),
@@ -1030,6 +1039,9 @@ VENDOR_DEFINITIONS: tuple = (
             action("confluence", "pages.get", "Get page", tier="v1", kind="read", scope_suffix="pages:read", idempotent=True),
             action("confluence", "spaces.list", "List spaces", tier="v1", kind="read", scope_suffix="spaces:read", idempotent=True),
             action("confluence", "pages.search", "Search pages", tier="v1", kind="read", scope_suffix="pages:read", idempotent=True),
+            action("confluence", "search_files", "Search wiki pages", tier="v1", kind="read", scope_suffix="pages:read", idempotent=True),
+            action("confluence", "get_file_metadata", "Get page metadata", tier="v1", kind="read", scope_suffix="pages:read", idempotent=True),
+            action("confluence", "get_file_content", "Read page content", tier="v1", kind="read", scope_suffix="pages:read", idempotent=True),
         ),
         v2=(
             action("confluence", "pages.create", "Create page", tier="v2", kind="write", scope_suffix="pages:write", destructive=True),
@@ -1577,6 +1589,9 @@ VENDOR_DEFINITIONS: tuple = (
         v1=(
             action("google_drive", "files.list", "List files", tier="v1", kind="read", scope_suffix="read", idempotent=True),
             action("google_drive", "files.get", "Get file metadata", tier="v1", kind="read", scope_suffix="read", idempotent=True),
+            action("google_drive", "search_files", "Search files", tier="v1", kind="read", scope_suffix="read", idempotent=True),
+            action("google_drive", "get_file_metadata", "Get connected file metadata", tier="v1", kind="read", scope_suffix="read", idempotent=True),
+            action("google_drive", "get_file_content", "Read connected file content", tier="v1", kind="read", scope_suffix="read", idempotent=True),
             action("google_drive", "permissions.list", "List permissions", tier="v1", kind="read", scope_suffix="read", idempotent=True),
         ),
         v2=(

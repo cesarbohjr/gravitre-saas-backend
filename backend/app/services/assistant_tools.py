@@ -92,6 +92,22 @@ def knowledge_base_output_from_retrieval(
         if url:
             result_row["url"] = url
             source_row["url"] = url
+        file_path = str(item.get("file_path") or item.get("path") or "").strip() or None
+        file_name = str(item.get("file_name") or item.get("fileName") or "").strip() or None
+        page = item.get("page")
+        section = str(item.get("section") or "").strip() or None
+        if file_path:
+            result_row["filePath"] = file_path
+            source_row["filePath"] = file_path
+        if file_name:
+            result_row["fileName"] = file_name
+            source_row["fileName"] = file_name
+        if page is not None:
+            result_row["page"] = page
+            source_row["page"] = page
+        if section:
+            result_row["section"] = section
+            source_row["section"] = section
         results.append(result_row)
         sources.append(source_row)
     memory_hits: list[dict[str, Any]] = []

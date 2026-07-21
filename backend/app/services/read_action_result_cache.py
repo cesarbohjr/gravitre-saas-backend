@@ -28,6 +28,10 @@ def is_read_invoke_action(invoke_action: str) -> bool:
     action = str(invoke_action or "").strip().lower()
     if not action:
         return False
+    from app.services.connected_files_service import is_permission_sensitive_file_action
+
+    if is_permission_sensitive_file_action(action):
+        return False
     if any(marker in action for marker in (".create", ".update", ".delete", ".send", ".post", ".write")):
         return False
     return any(action.endswith(marker) or marker in action for marker in _READ_ACTION_MARKERS)

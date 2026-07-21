@@ -1510,6 +1510,13 @@ class ChatConnectorExecutionService:
         )
 
         prior_state = await self._state.get_task_state(conversation_id, org_id, client=client)
+        file_ledger_patch: dict[str, Any] = {}
+        if "search_files" in str(plan.invoke_action) and isinstance(result_data.get("files"), list):
+            from app.services.parameter_ledger import ingest_connected_file_hits
+
+            merged = ingest_connected_file_hits(prior_state, result_data["files"])
+            if isinstance(merged.get("parameter_ledger"), dict):
+                file_ledger_patch["parameter_ledger"] = merged["parameter_ledger"]
         await self._state.update_task_state(
             conversation_id,
             org_id,
@@ -1538,6 +1545,7 @@ class ChatConnectorExecutionService:
                         "external_url": result.external_url,
                     }
                 ],
+                **file_ledger_patch,
                 **self._session_updates_after_execution(
                     prior_state,
                     plan,
