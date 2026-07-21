@@ -1,12 +1,14 @@
 {
   "verdict": "PARTIAL",
   "direction": "A_operator_console",
-  "checkedAt": "2026-07-21T07:53:00Z",
+  "checkedAt": "2026-07-21T08:15:00Z",
   "shipCommit": "184a9850485ef102838e65dec7d992294a9f1ee7",
   "gapsShipCommit": "184a9850485ef102838e65dec7d992294a9f1ee7",
   "apiHealthGitSha": "184a9850485ef102838e65dec7d992294a9f1ee7",
   "apiHealthEvidence": "GET /health git_sha=184a9850485ef102838e65dec7d992294a9f1ee7 @ 2026-07-21T08:12:05Z",
   "apiHealthNote": "Gaps fix tip includes saved_questions API + frontend deep-link/regenerate; Railway redeployed.",
+  "canvas": "chat-v0-visual-directions.canvas.tsx",
+  "canvasUpdatedAt": "2026-07-21T08:15:00Z",
   "implementation": "docs/delivery/chat-v0-operator-console-direction-a.md",
   "checks": {
     "unitThemes": {
