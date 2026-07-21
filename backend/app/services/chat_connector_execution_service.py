@@ -922,19 +922,55 @@ class ChatConnectorExecutionService:
                 task_state = {**task_state, **patch}
             except Exception:  # noqa: BLE001
                 task_state = {**task_state, **patch}
+            hold = format_unrelated_hold_prompt(snap, new_request=message)
+            message_out = hold
+            try:
+                from app.services.conversational_reply_service import (
+                    compose_pending_social_aside,
+                )
+
+                composed = await compose_pending_social_aside(
+                    message,
+                    task_state=task_state,
+                    sober_fallback=hold,
+                    settings=self.settings,
+                    org_id=org_id,
+                )
+                if composed:
+                    message_out = composed
+            except Exception:  # noqa: BLE001
+                message_out = hold
             return {
                 "stop_pipeline": True,
                 "dialogue_mode": "clarifying",
-                "message": format_unrelated_hold_prompt(snap, new_request=message),
+                "message": message_out,
                 "task_state": task_state,
                 "pending_task": task_state.get("pending_task"),
                 "pending_reply_intent": "unrelated",
             }
         if intent == "ambiguous" and is_awaiting_params(task_state):
+            clarify = format_ambiguous_clarify(snap)
+            message_out = clarify
+            try:
+                from app.services.conversational_reply_service import (
+                    compose_pending_social_aside,
+                )
+
+                composed = await compose_pending_social_aside(
+                    message,
+                    task_state=task_state,
+                    sober_fallback=clarify,
+                    settings=self.settings,
+                    org_id=org_id,
+                )
+                if composed:
+                    message_out = composed
+            except Exception:  # noqa: BLE001
+                message_out = clarify
             return {
                 "stop_pipeline": True,
                 "dialogue_mode": "clarifying",
-                "message": format_ambiguous_clarify(snap),
+                "message": message_out,
                 "task_state": task_state,
                 "pending_task": task_state.get("pending_task"),
                 "pending_reply_intent": "ambiguous",

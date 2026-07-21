@@ -348,20 +348,56 @@ class ChatOrchestrationService:
                 refreshed = await self._state.get_task_state(
                     conversation_id, org_id, client=client
                 )
+                hold = format_unrelated_hold_prompt(snap, new_request=message)
+                message_out = hold
+                try:
+                    from app.services.conversational_reply_service import (
+                        compose_pending_social_aside,
+                    )
+
+                    composed = await compose_pending_social_aside(
+                        message,
+                        task_state=refreshed,
+                        sober_fallback=hold,
+                        settings=self.settings,
+                        org_id=org_id,
+                    )
+                    if composed:
+                        message_out = composed
+                except Exception:  # noqa: BLE001
+                    message_out = hold
                 return {
                     "stop_pipeline": True,
                     "dialogue_mode": "clarifying",
-                    "message": format_unrelated_hold_prompt(snap, new_request=message),
+                    "message": message_out,
                     "task_state": refreshed,
                     "pending_task": self._pending_task_payload(refreshed),
                     "pending_reply_intent": intent,
                 }
 
             if intent == "ambiguous":
+                clarify = format_ambiguous_clarify(snap)
+                message_out = clarify
+                try:
+                    from app.services.conversational_reply_service import (
+                        compose_pending_social_aside,
+                    )
+
+                    composed = await compose_pending_social_aside(
+                        message,
+                        task_state=task_state,
+                        sober_fallback=clarify,
+                        settings=self.settings,
+                        org_id=org_id,
+                    )
+                    if composed:
+                        message_out = composed
+                except Exception:  # noqa: BLE001
+                    message_out = clarify
                 return {
                     "stop_pipeline": True,
                     "dialogue_mode": "clarifying",
-                    "message": format_ambiguous_clarify(snap),
+                    "message": message_out,
                     "task_state": task_state,
                     "pending_task": self._pending_task_payload(task_state),
                     "pending_reply_intent": intent,

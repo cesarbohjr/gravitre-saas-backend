@@ -1,12 +1,20 @@
 {
   "feature": "conversational_turn_path",
-  "status": "CODE_COMPLETE_AWAITING_DEPLOY_BATTERY",
+  "status": "PASS",
+  "checkedAt": "2026-07-21T18:11:38Z",
+  "git_sha": "8aca00b45fb38fb84d1920f7e5ef5dc4ae949c95",
+  "battery": {
+    "verdict": "PASS",
+    "passed": 20,
+    "total": 20,
+    "artifact": "docs/delivery/conversational-path-battery-live.json"
+  },
   "phase0": "docs/delivery/conversational-path-phase0.md",
   "gate": "backend/app/services/conversational_turn_gate.py",
   "reply": "backend/app/services/conversational_reply_service.py",
   "wire": "backend/app/operators/agent_intelligence.py",
   "unitTests": "backend/tests/services/test_conversational_turn_gate.py",
   "liveBattery": "scripts/verify-conversational-path-live.py",
-  "liveArtifact": "docs/delivery/conversational-path-battery-live.json",
-  "standingRule": "Pending family never bypasses pending-reply classifier; task-shaped and data-casual stay on full pipeline"
+  "standingRule": "Pending family never bypasses pending-reply classifier; task-shaped and data-casual stay on full pipeline",
+  "followUp": "Warm+sober pending social aside + deterministic mixed acks shipped after first 20/20; re-battery on next tip"
 }

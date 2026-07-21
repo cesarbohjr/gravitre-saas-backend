@@ -376,24 +376,19 @@ async def run_connector_turn(
         # pending-reply unrelated — does not bypass the classifier).
         message_out = hold
         try:
-            from app.services.conversational_turn_gate import heuristic_turn_shape
             from app.services.conversational_reply_service import (
-                generate_conversational_reply,
-                sober_pending_approval_note,
+                compose_pending_social_aside,
             )
 
-            social = heuristic_turn_shape(interpretation.message)
-            if social and social.shape == "conversational":
-                sober = sober_pending_approval_note(refreshed) or hold
-                message_out = await generate_conversational_reply(
-                    interpretation.message,
-                    decision=social,
-                    settings=settings,
-                    org_id=org_id,
-                    task_state=refreshed,
-                    allow_humor=social.category in {"banter", "greeting", "thanks"},
-                    pending_sober_note=sober,
-                )
+            composed = await compose_pending_social_aside(
+                interpretation.message,
+                task_state=refreshed,
+                sober_fallback=hold,
+                settings=settings,
+                org_id=org_id,
+            )
+            if composed:
+                message_out = composed
         except Exception:  # noqa: BLE001
             message_out = hold
         return {
@@ -407,10 +402,28 @@ async def run_connector_turn(
         }
 
     if intent == "ambiguous" and has_pending_family(interpretation.task_state):
+        clarify = format_ambiguous_clarify(snap)
+        message_out = clarify
+        try:
+            from app.services.conversational_reply_service import (
+                compose_pending_social_aside,
+            )
+
+            composed = await compose_pending_social_aside(
+                interpretation.message,
+                task_state=interpretation.task_state,
+                sober_fallback=clarify,
+                settings=settings,
+                org_id=org_id,
+            )
+            if composed:
+                message_out = composed
+        except Exception:  # noqa: BLE001
+            message_out = clarify
         return {
             "stop_pipeline": True,
             "dialogue_mode": "clarifying",
-            "message": format_ambiguous_clarify(snap),
+            "message": message_out,
             "voice_section": interpretation.voice_section or voice_system_prompt_section(),
             "task_state": interpretation.task_state,
             "pending_task": (interpretation.task_state or {}).get("pending_task"),

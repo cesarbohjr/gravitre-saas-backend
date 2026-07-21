@@ -188,11 +188,19 @@ def _fallback_reply(
 
 async def generate_social_ack(social_portion: str, *, org_id: str | None = None, settings: Settings | None = None) -> str:
     """One short warm line for mixed turns (task continues separately)."""
+    text = (social_portion or "").strip().lower()
+    # Deterministic first — mixed turns must always keep a social beat.
+    if any(x in text for x in ("haha", "lol", "lmao", "funny", "nice one", "nice")):
+        return "Ha — noted."
+    if "thank" in text or text in {"ty", "thx"}:
+        return "You're welcome."
+    if any(x in text for x in ("hey", "hi", "hello", "good morning", "good afternoon")):
+        return "Hey — on it."
     decision = ConversationalGateDecision(
         shape="conversational",
         reason="mixed_social_ack",
         social_portion=social_portion,
-        category="banter" if any(x in social_portion.lower() for x in ("haha", "lol", "nice")) else "small_talk",
+        category="banter" if any(x in text for x in ("haha", "lol", "nice")) else "small_talk",
     )
     reply = await generate_conversational_reply(
         social_portion,
@@ -201,8 +209,40 @@ async def generate_social_ack(social_portion: str, *, org_id: str | None = None,
         org_id=org_id,
         allow_humor=True,
     )
-    # Keep ack to one sentence for mixed turns.
     return reply.split("\n")[0].strip()[:280]
+
+
+async def compose_pending_social_aside(
+    message: str,
+    *,
+    task_state: dict[str, Any] | None,
+    sober_fallback: str,
+    settings: Settings | None = None,
+    org_id: str | None = None,
+) -> str | None:
+    """Warm social beat + sober pending note. None when the message is task-shaped.
+
+    Does not bypass the pending-reply classifier — callers invoke this only after
+    the classifier already chose unrelated/ambiguous. Pure task-shaped asides
+    keep the classifier's abandon/hold or clarify copy unchanged.
+    """
+    from app.services.conversational_turn_gate import heuristic_turn_shape
+
+    social = heuristic_turn_shape(message)
+    if not social or social.shape != "conversational":
+        return None
+    sober = sober_pending_approval_note(task_state) or (sober_fallback or "").strip()
+    if not sober:
+        return None
+    return await generate_conversational_reply(
+        message,
+        decision=social,
+        settings=settings,
+        org_id=org_id,
+        task_state=task_state,
+        allow_humor=social.category in {"banter", "greeting", "thanks"},
+        pending_sober_note=sober,
+    )
 
 
 def sober_pending_approval_note(task_state: dict[str, Any] | None) -> str | None:

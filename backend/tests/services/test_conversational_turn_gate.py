@@ -1,6 +1,8 @@
 """Unit tests for conversational vs task-shaped turn gate."""
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from app.services.conversational_turn_gate import (
@@ -77,3 +79,32 @@ def test_sober_pending_note_for_approval():
     assert note is not None
     assert "Create HubSpot deal" in note or "Decision Queue" in note
     assert "yes" in note.lower()
+
+
+@pytest.mark.asyncio
+async def test_compose_pending_social_aside_warm_then_sober():
+    from app.services.conversational_reply_service import compose_pending_social_aside
+
+    state = {
+        "pending_task": {
+            "status": "awaiting_confirm",
+            "params": {"label": "Send Gmail message"},
+        }
+    }
+    text = await compose_pending_social_aside(
+        "haha you're funny",
+        task_state=state,
+        sober_fallback="I still have **Send Gmail message** waiting for approval.",
+    )
+    assert text is not None
+    assert re.search(r"(?i)\b(ha|noted|welcome)\b", text)
+    assert "Send Gmail" in text or "waiting" in text.lower()
+    # Task-shaped new ask must not get social-aside composition.
+    assert (
+        await compose_pending_social_aside(
+            "What workflows have been ran?",
+            task_state=state,
+            sober_fallback="hold",
+        )
+        is None
+    )

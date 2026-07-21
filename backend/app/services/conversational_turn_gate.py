@@ -29,7 +29,7 @@ _GREETING_RE = re.compile(
     r"how'?s\s+it\s+going|how\s+are\s+you|how\s+are\s+things|"
     r"what'?s\s+up|whats\s+up|"
     r"thanks?(?:\s+you)?|thx|ty|"
-    r"(?:lol|haha+|heh+|lmao|rofl)(?:\s+\w+){0,3}|"
+    r"(?:lol|haha+|heh+|lmao|rofl)(?:\s+[\w']+){0,4}|"
     r"nice(?:\s+one)?|cool|awesome|great\s+job|well\s+done|"
     r"gm|gn"
     r")[\s!.?]*$"
