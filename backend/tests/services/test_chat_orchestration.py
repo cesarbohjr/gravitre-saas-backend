@@ -64,8 +64,8 @@ def test_meta_plan_segment_detection(orchestration_service):
 
 
 @pytest.mark.asyncio
-async def test_supersede_stale_orch_for_unrelated_slack(orchestration_service):
-    """STA-304 — awaiting Apollo orch must not trap a later Slack post."""
+async def test_unrelated_slack_asks_hold_abandon_not_silent_supersede(orchestration_service):
+    """Module B — awaiting orch must offer abandon/hold, not silent-clear + None."""
     params = {
         "goal": "Using Apollo, list my contact lists",
         "steps": [],
@@ -75,21 +75,20 @@ async def test_supersede_stale_orch_for_unrelated_slack(orchestration_service):
     }
     task_state = {
         "clarified_params": params,
+        "current_plan": {"goal": params["goal"]},
         "pending_task": {
             "type": "connector_orchestration",
             "status": "awaiting_plan_confirm",
             "params": params,
         },
     }
-    cleared = {
-        "clarified_params": {},
-        "pending_task": None,
-        "completed_steps": [],
-        "current_plan": None,
-        "pending_steps": [],
+    refreshed = {
+        **task_state,
+        "pending_hold_prompt": True,
+        "pending_hold_new_request": "Post a Slack message",
     }
     orchestration_service._state.get_task_state = AsyncMock(
-        side_effect=[task_state, cleared, cleared]
+        side_effect=[task_state, refreshed, refreshed]
     )
     orchestration_service._state.update_task_state = AsyncMock()
 
@@ -107,11 +106,17 @@ async def test_supersede_stale_orch_for_unrelated_slack(orchestration_service):
         client=MagicMock(),
     )
 
-    assert result is None
-    orchestration_service._state.update_task_state.assert_awaited()
-    # Cleared pending_task so clarify / ReAct can emit connector_unavailable chips.
-    clear_patch = orchestration_service._state.update_task_state.await_args.args[2]
-    assert clear_patch.get("pending_task") is None
+    assert result is not None
+    assert result.get("stop_pipeline") is True
+    msg = str(result.get("message") or "").lower()
+    assert "abandon" in msg and "hold" in msg
+    # Must not silent-clear before the user chooses.
+    patches = [
+        c.args[2]
+        for c in orchestration_service._state.update_task_state.await_args_list
+        if len(c.args) >= 3 and isinstance(c.args[2], dict)
+    ]
+    assert any(p.get("pending_hold_prompt") is True for p in patches)
 
 
 def test_should_not_supersede_plan_tweak(orchestration_service):

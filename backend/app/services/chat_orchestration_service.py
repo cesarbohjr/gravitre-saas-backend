@@ -254,17 +254,10 @@ class ChatOrchestrationService:
             pending_type = str(pending.get("type") or "")
             pending_status = str(pending.get("status") or "")
 
-        if (
-            pending_type == "connector_orchestration"
-            and pending_status in {"awaiting_plan_confirm", "awaiting_step_confirm"}
-            and self._should_supersede_pending_orchestration(
-                message,
-                task_state,
-                connected_integrations,
-            )
-        ):
-            await self._clear_orchestration(conversation_id, org_id)
-            return None
+        # Module B: do NOT silent-supersede awaiting_plan/step orch. That bypass
+        # cleared pending before the pending-reply classifier and answered the new
+        # ask with no abandon/hold prompt (broke orch-seeded unrelated battery cases).
+        # Unrelated new requests must go through classify → hold/abandon.
 
         if not self.is_orchestration_intent(message, task_state, connected_integrations):
             return None
@@ -310,6 +303,96 @@ class ChatOrchestrationService:
                 )
             except Exception:  # noqa: BLE001
                 pass
+
+            # Hold/abandon prompt resolution — must run before confirm→execute, or a
+            # bare "yes" would start the parked plan instead of resolving hold/abandon.
+            if snap.hold_prompt_active:
+                held_request = str(
+                    (task_state or {}).get("pending_hold_new_request") or ""
+                ).strip()
+                held_note = (
+                    f" Your other request was: “{held_request[:160]}” — send it again to run it."
+                    if held_request
+                    else ""
+                )
+                if intent == "reject":
+                    await self._clear_orchestration(conversation_id, org_id)
+                    await self._state.update_task_state(
+                        conversation_id,
+                        org_id,
+                        {
+                            "pending_hold_prompt": False,
+                            "pending_hold_new_request": None,
+                        },
+                        client=client,
+                    )
+                    return {
+                        "stop_pipeline": True,
+                        "dialogue_mode": "answer",
+                        "message": (
+                            "Cleared the pending plan."
+                            + (held_note or " Tell me what you'd like to do next.")
+                        ),
+                        "task_state": await self._state.get_task_state(
+                            conversation_id, org_id, client=client
+                        ),
+                        "pending_reply_intent": intent,
+                    }
+                if intent == "confirm":
+                    # Hold pending aside — do NOT execute the plan on bare yes/hold.
+                    parked = (task_state or {}).get("pending_task")
+                    parked_plan = (task_state or {}).get("current_plan")
+                    await self._state.update_task_state(
+                        conversation_id,
+                        org_id,
+                        {
+                            "pending_on_hold_task": parked,
+                            "pending_on_hold_plan": parked_plan,
+                            "pending_task": None,
+                            "current_plan": None,
+                            "pending_hold_prompt": False,
+                            "pending_hold_new_request": None,
+                            "pending_on_hold": True,
+                            "clarified_params": {},
+                            "pending_steps": [],
+                            "completed_steps": [],
+                        },
+                        client=client,
+                    )
+                    return {
+                        "stop_pipeline": True,
+                        "dialogue_mode": "answer",
+                        "message": (
+                            "Pending plan is on hold."
+                            + (held_note or " What should we do instead?")
+                        ),
+                        "task_state": await self._state.get_task_state(
+                            conversation_id, org_id, client=client
+                        ),
+                        "pending_reply_intent": intent,
+                    }
+                if intent == "ambiguous":
+                    return {
+                        "stop_pipeline": True,
+                        "dialogue_mode": "clarifying",
+                        "message": (
+                            "Reply `abandon` to drop the pending plan and handle the new "
+                            "request, or `hold` to keep the plan aside and proceed with the new request."
+                        ),
+                        "task_state": task_state,
+                        "pending_task": self._pending_task_payload(task_state),
+                        "pending_reply_intent": intent,
+                        "block_fabrication": True,
+                    }
+                if intent == "meta_clarify":
+                    return {
+                        "stop_pipeline": True,
+                        "dialogue_mode": "clarifying",
+                        "message": format_pending_meta_answer(snap),
+                        "task_state": task_state,
+                        "pending_task": self._pending_task_payload(task_state),
+                        "pending_reply_intent": intent,
+                    }
 
             if intent == "reject":
                 await self._clear_orchestration(conversation_id, org_id)

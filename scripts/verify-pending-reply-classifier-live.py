@@ -557,7 +557,8 @@ async def main() -> int:
     failed = [r["id"] for r in results if not r["judgment"]["ok"]]
     total = len(results)
     tip_ok = bool(EXPECT_SHA) and tip.startswith(EXPECT_SHA)
-    broad_pass = tip_ok and passed >= 20 and (passed / total) >= 0.85
+    # Strict: presentation/routing regressions must not hide behind "broad pass".
+    broad_pass = tip_ok and passed == total and total >= 24
     artifact = {
         "checkedAt": utcnow(),
         "apiBase": BASE,
