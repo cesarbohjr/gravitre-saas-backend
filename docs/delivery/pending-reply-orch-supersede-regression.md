@@ -31,3 +31,12 @@ The conversational gate also does not short-circuit when `has_pending_family` is
 ## Verification
 
 Full live `scripts/verify-pending-reply-classifier-live.py` must be **24/24**, not 21/24 broad pass.
+
+### Live evidence (2026-07-21)
+
+- Tip: `5d99f9efc5dd33cdedfeb61280d45b39164a313a` (`/health` @ `2026-07-21T20:59:44Z`) — includes orch fix `d2865974` + unrelated `427ae8c3` chat UnboundLocalError fix
+- Battery: **24/24 PASS** — `docs/delivery/pending-reply-classifier-battery-live.json`
+- Previously failing orch unrelated cases now return abandon/hold:
+  - `known_stale_yes_after_unrelated` — HubSpot enrich then deal + abandon/hold
+  - `unrelated_apollo` — abandon/hold
+  - `unrelated_how_many_runs` — abandon/hold
