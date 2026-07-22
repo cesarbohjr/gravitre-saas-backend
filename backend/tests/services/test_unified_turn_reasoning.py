@@ -1,6 +1,7 @@
 """Unified turn reasoning — shadow path and pending context."""
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -13,6 +14,50 @@ from app.services.unified_turn_pending_context import build_unified_turn_pending
 from app.services.unified_turn_reasoning_service import (
     run_unified_turn_shadow,
 )
+
+
+def _mock_stream_client(*, content: str = "", tool_calls: list | None = None) -> MagicMock:
+    """OpenAI client mock that returns a stream of deltas (Phase 3 TTFT path)."""
+
+    async def _stream(**kwargs):
+        assert kwargs.get("stream") is True
+
+        async def _gen():
+            if content:
+                # Two deltas so TTFT != full completion latency in real runs.
+                mid = max(1, len(content) // 2)
+                yield SimpleNamespace(
+                    choices=[SimpleNamespace(delta=SimpleNamespace(content=content[:mid], tool_calls=None))]
+                )
+                yield SimpleNamespace(
+                    choices=[SimpleNamespace(delta=SimpleNamespace(content=content[mid:], tool_calls=None))]
+                )
+            for idx, tc in enumerate(tool_calls or []):
+                yield SimpleNamespace(
+                    choices=[
+                        SimpleNamespace(
+                            delta=SimpleNamespace(
+                                content=None,
+                                tool_calls=[
+                                    SimpleNamespace(
+                                        index=idx,
+                                        id=f"call_{idx}",
+                                        function=SimpleNamespace(
+                                            name=tc.function.name,
+                                            arguments=tc.function.arguments,
+                                        ),
+                                    )
+                                ],
+                            )
+                        )
+                    ]
+                )
+
+        return _gen()
+
+    mock_client = MagicMock()
+    mock_client.chat.completions.create = AsyncMock(side_effect=_stream)
+    return mock_client
 
 
 def test_module_d_unified_spec_has_knowledge_boundary_and_drift():
@@ -68,15 +113,7 @@ async def test_run_unified_turn_shadow_skipped_when_disabled():
 
 @pytest.mark.asyncio
 async def test_run_unified_turn_shadow_conversational_reply():
-    mock_choice = MagicMock()
-    mock_choice.message.content = "You're welcome — what should we tackle next?"
-    mock_choice.message.tool_calls = []
-    mock_response = MagicMock()
-    mock_response.choices = [mock_choice]
-
-    mock_client = MagicMock()
-    mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
-
+    mock_client = _mock_stream_client(content="You're welcome — what should we tackle next?")
     mock_router = MagicMock()
     mock_router._openai = mock_client
 
@@ -107,8 +144,11 @@ async def test_run_unified_turn_shadow_conversational_reply():
 
     assert result.outcome_kind in {"conversational_reply", "clarifying_question"}
     assert "gmail." not in result.user_message
+    assert result.streamed is True
+    assert result.first_token_proxy_ms is not None
     mock_client.chat.completions.create.assert_awaited_once()
     call_kwargs = mock_client.chat.completions.create.await_args.kwargs
+    assert call_kwargs.get("stream") is True
     system = call_kwargs["messages"][0]["content"]
     assert "NEVER state a specific number" in system
     assert "AVAILABLE TOOLS THIS TURN" in call_kwargs["messages"][-1]["content"]
@@ -116,17 +156,12 @@ async def test_run_unified_turn_shadow_conversational_reply():
 
 @pytest.mark.asyncio
 async def test_run_unified_turn_shadow_knowledge_boundary_kind():
-    mock_choice = MagicMock()
-    mock_choice.message.content = (
-        "I don't have that count yet — run history was not retrieved this turn. "
-        "I can fetch it with the workflow runs tool if you want."
+    mock_client = _mock_stream_client(
+        content=(
+            "I don't have that count yet — run history was not retrieved this turn. "
+            "I can fetch it with the workflow runs tool if you want."
+        )
     )
-    mock_choice.message.tool_calls = []
-    mock_response = MagicMock()
-    mock_response.choices = [mock_choice]
-
-    mock_client = MagicMock()
-    mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
     mock_router = MagicMock()
     mock_router._openai = mock_client
     settings = MagicMock(
@@ -160,18 +195,13 @@ async def test_run_unified_turn_shadow_knowledge_boundary_kind():
 
 @pytest.mark.asyncio
 async def test_run_unified_turn_shadow_tool_proposal():
-    mock_tc = MagicMock()
-    mock_tc.function.name = "gmail_messages_send"
-    mock_tc.function.arguments = '{"to":"a@b.com","subject":"Hi","body":"Hello"}'
-    mock_choice = MagicMock()
-    mock_choice.message.content = ""
-    mock_choice.message.tool_calls = [mock_tc]
-    mock_response = MagicMock()
-    mock_response.choices = [mock_choice]
-
-    mock_client = MagicMock()
-    mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
-
+    mock_tc = SimpleNamespace(
+        function=SimpleNamespace(
+            name="gmail_messages_send",
+            arguments='{"to":"a@b.com","subject":"Hi","body":"Hello"}',
+        )
+    )
+    mock_client = _mock_stream_client(tool_calls=[mock_tc])
     mock_router = MagicMock()
     mock_router._openai = mock_client
 

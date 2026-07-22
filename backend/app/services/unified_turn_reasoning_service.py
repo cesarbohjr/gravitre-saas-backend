@@ -9,6 +9,7 @@ import asyncio
 import json
 import time
 from dataclasses import asdict, dataclass, field
+from types import SimpleNamespace
 from typing import Any, Literal
 
 from app.config import Settings, get_settings
@@ -48,7 +49,8 @@ class UnifiedTurnShadowResult:
     tool_stats: dict[str, Any] = field(default_factory=dict)
     model: str = ""
     error: str | None = None
-    first_token_proxy_ms: int | None = None  # completion latency until first usable content
+    first_token_proxy_ms: int | None = None  # true TTFT when streamed
+    streamed: bool = False
 
     def to_audit_payload(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -62,6 +64,88 @@ class UnifiedTurnShadowResult:
         payload["classical_path_active"] = True
         payload["shadow_executes_tools"] = False
         return payload
+
+
+@dataclass
+class _StreamedCompletion:
+    content: str
+    tool_calls: list[Any]
+    first_token_ms: int | None
+    latency_ms: int
+    streamed: bool
+
+
+async def _complete_unified_turn_stream(
+    openai_client: Any,
+    *,
+    kwargs: dict[str, Any],
+    start: float,
+) -> _StreamedCompletion:
+    """Stream the shadow completion; record TTFT on first content or tool-call delta."""
+    stream_kwargs = {**kwargs, "stream": True}
+    content_parts: list[str] = []
+    tool_acc: dict[int, dict[str, Any]] = {}
+    first_token_ms: int | None = None
+
+    stream = await openai_client.chat.completions.create(**stream_kwargs)
+    async for chunk in stream:
+        choices = getattr(chunk, "choices", None) or []
+        if not choices:
+            continue
+        delta = getattr(choices[0], "delta", None)
+        if delta is None:
+            continue
+        piece = getattr(delta, "content", None) or ""
+        if piece:
+            if first_token_ms is None:
+                first_token_ms = int((time.perf_counter() - start) * 1000)
+            content_parts.append(str(piece))
+        for tc_delta in getattr(delta, "tool_calls", None) or []:
+            if first_token_ms is None:
+                first_token_ms = int((time.perf_counter() - start) * 1000)
+            idx = int(getattr(tc_delta, "index", 0) or 0)
+            slot = tool_acc.setdefault(
+                idx,
+                {"id": None, "function": {"name": "", "arguments": ""}},
+            )
+            if getattr(tc_delta, "id", None):
+                slot["id"] = tc_delta.id
+            fn = getattr(tc_delta, "function", None)
+            if fn is not None:
+                if getattr(fn, "name", None):
+                    slot["function"]["name"] = str(fn.name or "")
+                if getattr(fn, "arguments", None):
+                    slot["function"]["arguments"] = (
+                        str(slot["function"].get("arguments") or "") + str(fn.arguments or "")
+                    )
+
+    tool_calls: list[Any] = []
+    for idx in sorted(tool_acc):
+        slot = tool_acc[idx]
+        name = str(slot["function"].get("name") or "")
+        if not name:
+            continue
+        tool_calls.append(
+            SimpleNamespace(
+                id=slot.get("id"),
+                type="function",
+                function=SimpleNamespace(
+                    name=name,
+                    arguments=slot["function"].get("arguments") or "{}",
+                ),
+            )
+        )
+
+    latency_ms = int((time.perf_counter() - start) * 1000)
+    if first_token_ms is None and (content_parts or tool_calls):
+        first_token_ms = latency_ms
+    return _StreamedCompletion(
+        content="".join(content_parts).strip(),
+        tool_calls=tool_calls,
+        first_token_ms=first_token_ms,
+        latency_ms=latency_ms,
+        streamed=True,
+    )
 
 
 def _history_to_messages(
@@ -182,7 +266,9 @@ async def run_unified_turn_shadow(
         kwargs["temperature"] = 0.2
 
     try:
-        response = await openai_client.chat.completions.create(**kwargs)
+        completion = await _complete_unified_turn_stream(
+            openai_client, kwargs=kwargs, start=start
+        )
     except Exception as exc:  # noqa: BLE001
         logger.warning("unified_turn_shadow model call failed: %s", exc)
         return UnifiedTurnShadowResult(
@@ -193,14 +279,14 @@ async def run_unified_turn_shadow(
             model=model,
         )
 
-    choice = response.choices[0].message
-    content = (choice.content or "").strip()
-    tool_calls = choice.tool_calls or []
-    latency_ms = int((time.perf_counter() - start) * 1000)
+    content = completion.content
+    tool_calls = completion.tool_calls
+    latency_ms = completion.latency_ms
 
     result = UnifiedTurnShadowResult(
         latency_ms=latency_ms,
-        first_token_proxy_ms=latency_ms,  # non-streaming shadow; Phase 3 upgrades to true TTFT
+        first_token_proxy_ms=completion.first_token_ms,
+        streamed=completion.streamed,
         tool_stats=tool_stats,
         model=model,
     )
