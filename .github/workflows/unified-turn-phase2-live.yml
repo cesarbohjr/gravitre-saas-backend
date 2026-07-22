@@ -11,6 +11,10 @@ on:
         description: "Set UNIFIED_TURN_SHADOW_ENABLED=true on Railway"
         required: false
         default: "true"
+      railway_environment:
+        description: "Railway environment name"
+        required: false
+        default: "production"
 
 concurrency:
   group: unified-turn-phase2-live
@@ -41,9 +45,10 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli@4.65.0
 
-      - name: Force railway up rebuild + wait for tip health
+      - name: Force railway up on production + verify tip
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_ENV: ${{ inputs.railway_environment }}
         run: |
           set -euo pipefail
           SHA="${{ inputs.commit_sha }}"
@@ -51,35 +56,48 @@ jobs:
             SHA="$(git rev-parse --short=8 HEAD)"
           fi
           FULL="$(git rev-parse HEAD)"
-          echo "Expect health git_sha prefix=$SHA full=$FULL"
+          ENV_NAME="${RAILWAY_ENV:-production}"
+          SVC="gravitre-saas-backend"
+          echo "Expect health git_sha prefix=$SHA full=$FULL env=$ENV_NAME"
 
-          # Stamp tip into GIT_SHA so /health reports tip after restart.
-          railway variables set "GIT_SHA=$FULL" --service gravitre-saas-backend
+          railway whoami || true
+          railway status --json || true
+
+          # Explicit production environment — prior runs may have targeted a non-prod env.
+          railway variables set "GIT_SHA=$FULL" --service "$SVC" --environment "$ENV_NAME"
           if [ "${{ inputs.enable_shadow }}" = "true" ]; then
-            railway variables set "UNIFIED_TURN_SHADOW_ENABLED=true" --service gravitre-saas-backend
+            railway variables set "UNIFIED_TURN_SHADOW_ENABLED=true" --service "$SVC" --environment "$ENV_NAME"
           fi
+          echo "GIT_SHA now (from railway variables):"
+          railway variables --service "$SVC" --environment "$ENV_NAME" --json | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('GIT_SHA','(missing)'))"
 
-          # Cloudflare blocks GraphQL from Actions (error 1010). Use CLI upload only.
-          # Prior runs skipped build ("no changes detected in watch paths") — force a
-          # content change every deploy so Metal builder cannot skip.
           echo "$FULL $(date -u +%Y-%m-%dT%H:%M:%SZ)" > backend/.railway-deploy-stamp
           echo "stamp=$(cat backend/.railway-deploy-stamp)"
 
-          railway up ./backend --path-as-root --ci --service gravitre-saas-backend --message "unified-turn-phase2 $SHA"
+          railway up ./backend --path-as-root --ci \
+            --service "$SVC" \
+            --environment "$ENV_NAME" \
+            --message "unified-turn-phase2 $SHA"
 
-          # Poll both public edge and Railway hostname (catch CDN/proxy lag).
+          echo "Recent deployments:"
+          railway deployment list --service "$SVC" --environment "$ENV_NAME" --json 2>/dev/null \
+            | python3 -c "import sys,json; rows=json.load(sys.stdin); 
+print('\n'.join(f\"{r.get('id','')} status={r.get('status','')} created={r.get('createdAt','')}\" for r in (rows[:5] if isinstance(rows,list) else [])))" || true
+
           python3 scripts/railway_prod_deploy.py \
             --wait-health-only \
             --timeout-s 1200 \
-            --health-url https://api.gravitre.app/health \
-            --commit-sha "$SHA" \
-            || python3 scripts/railway_prod_deploy.py \
-              --wait-health-only \
-              --timeout-s 300 \
-              --health-url https://gravitre-saas-backend-production.up.railway.app/health \
-              --commit-sha "$SHA"
+            --health-url https://gravitre-saas-backend-production.up.railway.app/health \
+            --commit-sha "$SHA"
 
-      - name: Phase 2 live cards (classical + shadow)
+          # Confirm public edge matches Railway hostname.
+          python3 scripts/railway_prod_deploy.py \
+            --wait-health-only \
+            --timeout-s 180 \
+            --health-url https://api.gravitre.app/health \
+            --commit-sha "$SHA"
+
+      - name: Phase 2 live batteries (classical + shadow)
         env:
           LIVE_API_BASE: https://api.gravitre.app
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
