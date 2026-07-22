@@ -1,0 +1,212 @@
+name: Unified Turn Phase 4 Cutover
+
+on:
+  workflow_dispatch:
+    inputs:
+      enable_live:
+        description: "Set UNIFIED_TURN_LIVE_ENABLED (true/false)"
+        required: true
+        default: "true"
+      railway_environment:
+        description: "Railway environment name"
+        required: false
+        default: "production"
+
+concurrency:
+  group: unified-turn-phase4-cutover
+  cancel-in-progress: true
+
+jobs:
+  cutover:
+    name: Enable LIVE + redeploy + probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend deps
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli@4.65.0
+
+      - name: Set LIVE flag and redeploy
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_ENV: ${{ inputs.railway_environment }}
+        run: |
+          set -euo pipefail
+          ENV_NAME="${RAILWAY_ENV:-production}"
+          SVC="gravitre-saas-backend"
+          LIVE="${{ inputs.enable_live }}"
+          echo "Setting UNIFIED_TURN_LIVE_ENABLED=$LIVE on $SVC / $ENV_NAME"
+          railway variables set "UNIFIED_TURN_LIVE_ENABLED=$LIVE" --service "$SVC" --environment "$ENV_NAME"
+          railway variables set "UNIFIED_TURN_SHADOW_ENABLED=true" --service "$SVC" --environment "$ENV_NAME"
+          echo "Redeploying so Settings reload"
+          railway redeploy --service "$SVC" --environment "$ENV_NAME" --yes
+          echo "Waiting for health..."
+          for i in $(seq 1 60); do
+            SHA="$(curl -fsS https://api.gravitre.app/health | python3 -c 'import sys,json; print(json.load(sys.stdin).get("git_sha",""))' || true)"
+            echo "attempt=$i sha=$SHA"
+            if [ -n "$SHA" ] && [ "$SHA" != "unknown" ]; then
+              break
+            fi
+            sleep 10
+          done
+          echo "health_sha=$SHA"
+
+      - name: Probe unified_turn.live.completed
+        if: inputs.enable_live == 'true'
+        env:
+          LIVE_API_BASE: https://api.gravitre.app
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          OAUTH_SMOKE_ORG_ID: ${{ secrets.OAUTH_SMOKE_ORG_ID }}
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import asyncio, json, os, sys, time, uuid
+          from datetime import datetime, timezone
+          from pathlib import Path
+          import httpx, jwt
+          from dotenv import dotenv_values
+          from supabase import create_client
+
+          ROOT = Path(".").resolve()
+          BACKEND = ROOT / "backend"
+          sys.path[:0] = [str(BACKEND), str(ROOT / "scripts")]
+          from isolated_conversation_org import resolve_isolated_conversation_actor, smoke_http_headers
+
+          env = {k: v for k, v in os.environ.items() if v}
+          sb = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
+          org_id, user_id, email = resolve_isolated_conversation_actor(env, sb)
+          url = env["SUPABASE_URL"].rstrip("/")
+          tok = jwt.encode(
+              {
+                  "sub": user_id,
+                  "email": email,
+                  "aud": "authenticated",
+                  "iss": f"{url}/auth/v1",
+                  "iat": int(time.time()),
+                  "exp": int(time.time()) + 3600,
+                  "role": "authenticated",
+              },
+              env["SUPABASE_JWT_SECRET"],
+              algorithm="HS256",
+          )
+          headers = {
+              **smoke_http_headers(),
+              "Authorization": f"Bearer {tok}",
+              "X-Org-Id": org_id,
+              "X-Environment": "production",
+              "Accept": "text/event-stream",
+          }
+          BASE = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
+          out = ROOT / "docs" / "delivery" / "unified-turn-phase4-live-probe.json"
+
+          async def main() -> int:
+              report = {"started_at": datetime.now(timezone.utc).isoformat(), "probes": []}
+              async with httpx.AsyncClient() as client:
+                  health = (await client.get(f"{BASE}/health", timeout=30)).json()
+                  report["health"] = health
+                  for msg in ("Hey", "Thank you"):
+                      r = await client.post(
+                          f"{BASE}/api/conversations",
+                          headers=headers,
+                          json={"title": f"phase4-{uuid.uuid4().hex[:8]}"},
+                          timeout=60,
+                      )
+                      r.raise_for_status()
+                      cid = str(r.json()["id"])
+                      after = datetime.now(timezone.utc).isoformat()
+                      body = {
+                          "messages": [{"role": "user", "parts": [{"type": "text", "text": msg}]}],
+                          "org_id": org_id,
+                          "mode": "standard",
+                          "conversation_id": cid,
+                      }
+                      async with client.stream(
+                          "POST",
+                          f"{BASE}/api/assistant/chat",
+                          json=body,
+                          headers=headers,
+                          timeout=300,
+                      ) as resp:
+                          http = resp.status_code
+                          async for _ in resp.aiter_bytes():
+                              pass
+                      row = None
+                      for _ in range(20):
+                          await asyncio.sleep(1)
+                          rows = (
+                              sb.table("audit_events")
+                              .select("action,created_at,metadata")
+                              .eq("org_id", org_id)
+                              .eq("resource_id", cid)
+                              .in_(
+                                  "action",
+                                  [
+                                      "unified_turn.live.completed",
+                                      "unified_turn.shadow.completed",
+                                  ],
+                              )
+                              .gte("created_at", after)
+                              .order("created_at", desc=True)
+                              .limit(1)
+                              .execute()
+                          )
+                          data = rows.data or []
+                          if data:
+                              row = data[0]
+                              break
+                      meta = (row or {}).get("metadata") or {}
+                      if isinstance(meta, str):
+                          try:
+                              meta = json.loads(meta)
+                          except json.JSONDecodeError:
+                              meta = {}
+                      probe = {
+                          "message": msg,
+                          "conversation_id": cid,
+                          "http": http,
+                          "action": (row or {}).get("action"),
+                          "created_at": (row or {}).get("created_at"),
+                          "live_served": meta.get("live_served"),
+                          "outcome_kind": meta.get("outcome_kind"),
+                          "first_token_ms": meta.get("first_token_proxy_ms"),
+                      }
+                      report["probes"].append(probe)
+                      print(json.dumps(probe))
+              live_n = sum(
+                  1
+                  for p in report["probes"]
+                  if p.get("action") == "unified_turn.live.completed" and p.get("live_served")
+              )
+              report["ok"] = live_n >= 1
+              report["finished_at"] = datetime.now(timezone.utc).isoformat()
+              out.parent.mkdir(parents=True, exist_ok=True)
+              out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+              print(json.dumps({"ok": report["ok"], "live_n": live_n, "out": str(out)}, indent=2))
+              return 0 if report["ok"] else 1
+
+          raise SystemExit(asyncio.run(main()))
+          PY
+
+      - name: Upload Phase 4 probe
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unified-turn-phase4-cutover
+          path: docs/delivery/unified-turn-phase4-live-probe.json
+          if-no-files-found: ignore
