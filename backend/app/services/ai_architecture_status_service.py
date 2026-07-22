@@ -33,9 +33,9 @@ class AIArchitectureStatusService:
 
         runs = (
             client.table("org_intelligence_runs")
-            .select("id, status, completed_at, created_at")
+            .select("id, status, completed_at, started_at")
             .eq("org_id", org_id)
-            .order("created_at", desc=True)
+            .order("started_at", desc=True)
             .limit(1)
             .execute()
             .data
@@ -57,7 +57,7 @@ class AIArchitectureStatusService:
             .eq("status", "pending")
             .execute()
         )
-        last_run = runs[0].get("completed_at") or runs[0].get("created_at") if runs else None
+        last_run = runs[0].get("completed_at") or runs[0].get("started_at") if runs else None
         snapshot_updated = snapshots[0].get("updated_at") if snapshots else None
         freshness = "missing"
         if snapshot_updated:
@@ -108,7 +108,7 @@ class AIArchitectureStatusService:
             client.table("org_intelligence_runs")
             .select("id", count="exact")
             .eq("org_id", org_id)
-            .gte("created_at", since_7d)
+            .gte("started_at", since_7d)
             .execute()
         )
         ranker_examples = (
@@ -142,16 +142,16 @@ class AIArchitectureStatusService:
         client = self._client()
         snapshot = (
             client.table("org_intelligence_snapshots")
-            .select("payload_json, updated_at")
+            .select("signals_json, updated_at")
             .eq("org_id", org_id)
             .limit(1)
             .execute()
             .data
             or []
         )
-        payload = snapshot[0].get("payload_json") if snapshot else {}
-        if not isinstance(payload, dict):
-            payload = {}
+        # Migration column is signals_json (not payload_json).
+        raw_signals = snapshot[0].get("signals_json") if snapshot else None
+        payload = raw_signals if isinstance(raw_signals, dict) else {}
         last_computed = snapshot[0].get("updated_at") if snapshot else None
         freshness = "missing"
         if last_computed:
@@ -165,7 +165,7 @@ class AIArchitectureStatusService:
         return {
             "at_risk_workflows": payload.get("workflowAnomalies") or payload.get("anomalies") or [],
             "duration_forecasts": payload.get("workflowForecasts") or payload.get("forecasts") or [],
-            "anomalies_detected": payload.get("workflowAnomalies") or [],
+            "anomalies_detected": payload.get("workflowAnomalies") or payload.get("anomalies") or [],
             "churn_risk_signals": payload.get("churnRiskSignals") or [],
             "last_computed": last_computed,
             "data_freshness": freshness,
