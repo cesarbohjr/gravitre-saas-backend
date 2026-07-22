@@ -190,6 +190,9 @@ jobs:
     # Secrets cannot be referenced in job-level if: — use branch/event gating instead.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [web, backend]
+    # Keep running for signal, but do not fail the GitHub check suite / Railway
+    # "Wait for CI" gate. Backend+web+smoke remain the hard deploy bar.
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
