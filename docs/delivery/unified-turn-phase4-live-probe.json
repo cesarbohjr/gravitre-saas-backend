@@ -1,0 +1,43 @@
+{
+  "started_at": "2026-07-22T22:57:29.811835+00:00",
+  "probes": [
+    {
+      "message": "Hey",
+      "conversation_id": "6e39a470-4270-4717-b6ab-cbcb38ddd34f",
+      "http": 200,
+      "action": "unified_turn.live.completed",
+      "created_at": "2026-07-22T22:57:35.668737+00:00",
+      "live_served": true,
+      "outcome_kind": "conversational_reply",
+      "first_token_ms": 642
+    },
+    {
+      "message": "Thank you",
+      "conversation_id": "b618f965-ae57-43d3-8c8b-2e2189470188",
+      "http": 200,
+      "action": "unified_turn.live.completed",
+      "created_at": "2026-07-22T22:57:42.327375+00:00",
+      "live_served": true,
+      "outcome_kind": "conversational_reply",
+      "first_token_ms": 338
+    }
+  ],
+  "health": {
+    "status": "ok",
+    "timestamp": "2026-07-22T22:57:29.519390+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "83c23f272f9c7f24139169a6befa25474f55d9d2",
+    "ai_disabled": false,
+    "unified_turn_shadow_enabled": true,
+    "unified_turn_live_enabled": true,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "ok": true,
+  "finished_at": "2026-07-22T22:57:46.753028+00:00"
+}

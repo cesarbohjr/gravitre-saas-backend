@@ -1,8 +1,15 @@
 # Force Dockerfile builds so nested requirements-*.txt includes resolve.
 # Railpack's default Python plan only copies requirements.txt into the install layer.
+#
+# Railway monorepo (gravitre-saas-backend):
+#   Root Directory = backend
+#   Config-as-Code path = /railway.toml  (file is backend/railway.toml in git)
+#   If dashboard uses /backend/railway.toml instead, keep backend/backend/railway.toml shim.
+#   dockerfilePath must stay "Dockerfile" — NOT backend/Dockerfile.
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
+watchPatterns = ["**"]
 
 [deploy]
 healthcheckPath = "/health"

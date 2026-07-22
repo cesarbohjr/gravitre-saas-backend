@@ -1,0 +1,62 @@
+# Reliable backend deploy when GitHub-connected Railway builds fail on monorepo path
+# (fsutil.NewFS .../backend: no such file or directory). Uses CLI upload with backend as root.
+name: Railway backend production
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: railway-backend-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: railway up backend (production)
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli@4.65.0
+
+      - name: Deploy gravitre-saas-backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          set -euo pipefail
+          SHA="$(git rev-parse --short=8 HEAD)"
+          FULL="$(git rev-parse HEAD)"
+          railway up ./backend --path-as-root --ci \
+            --service gravitre-saas-backend \
+            --environment production \
+            --message "main $SHA"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Wait for /health git_sha
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          set -euo pipefail
+          SHA="$(git rev-parse --short=8 HEAD)"
+          python3 scripts/railway_prod_deploy.py \
+            --wait-health-only \
+            --timeout-s 900 \
+            --health-url https://gravitre-saas-backend-production.up.railway.app/health \
+            --commit-sha "$SHA"
+          python3 scripts/railway_prod_deploy.py \
+            --wait-health-only \
+            --timeout-s 120 \
+            --health-url https://api.gravitre.app/health \
+            --commit-sha "$SHA"

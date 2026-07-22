@@ -3,6 +3,16 @@
 ## Before Every Deploy
 
 ### Backend (Railway)
+
+**Monorepo service settings** (`gravitre-saas-backend` / `api.gravitre.app`):
+
+- [ ] **Root Directory** = `backend` (Settings → Source)
+- [ ] **Config-as-Code file** = `/railway.toml` with Root Directory `backend` (same file as `backend/railway.toml` in git). If the dashboard uses `/backend/railway.toml`, the repo includes `backend/backend/railway.toml` as a shim until you switch the path.
+- [ ] **Do not** set Dockerfile path to `backend/Dockerfile` in the dashboard when Root Directory is already `backend` — use `Dockerfile` via `backend/railway.toml` only
+- [ ] If Root Directory is repo root instead, use root `railway.json` (`dockerfilePath`: `backend/Dockerfile`, `watchPatterns`: `backend/**`)
+
+Failed build with `fsutil.NewFS(.../snapshot-target-unpack/backend): no such file or directory` almost always means Root Directory and Dockerfile path are double-prefixed (`backend` + `backend/Dockerfile`). Fix the dashboard paths above or deploy with `railway up ./backend --path-as-root` (see `.github/workflows/railway-backend-production.yml`).
+
 - [ ] All env vars set (see `backend/.env.example`)
 - [ ] `TAVILY_API_KEY` set for assistant web search (`npm run tavily:fill-env` or Railway Variables)
 - [ ] `DISABLE_AI=false` (unless intentional)
