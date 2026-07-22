@@ -54,12 +54,13 @@ jobs:
           railway variables set "UNIFIED_TURN_LIVE_ENABLED=${ENABLE_LIVE}" --service "$SVC" --environment "$ENV_NAME"
           railway variables set "UNIFIED_TURN_SHADOW_ENABLED=true" --service "$SVC" --environment "$ENV_NAME"
           # Never set GIT_SHA — it pins /health when RAILWAY_GIT_COMMIT_SHA is absent.
-          # Prefer deleting a stale GIT_SHA so GitHub auto-deploy tip is visible.
           railway variables delete GIT_SHA --service "$SVC" --environment "$ENV_NAME" || true
+          # Force a config change so Railway must restart even if the image digest is unchanged.
+          NONCE="$(date -u +%Y%m%dT%H%M%SZ)-$RANDOM"
+          railway variables set "UNIFIED_TURN_RESTART_NONCE=${NONCE}" --service "$SVC" --environment "$ENV_NAME"
+          echo "restart_nonce=$NONCE"
           railway variables --service "$SVC" --environment "$ENV_NAME" --json > /tmp/vars.json || true
           python3 scripts/print_unified_turn_railway_vars.py /tmp/vars.json
-          # redeploy alone has NOT loaded LIVE in prod (still shadow-only on tip 444371f9).
-          # Kick redeploy anyway; tip advance requires GitHub→Railway after green CI.
           set +e
           railway redeploy --service "$SVC" --environment "$ENV_NAME" --yes
           echo "railway_redeploy_exit=$?"
