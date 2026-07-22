@@ -63,7 +63,9 @@ def health(request: Request) -> dict:
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "version": request.app.version,
         "environment": os.environ.get("APP_ENV") or os.environ.get("ENVIRONMENT") or "production",
-        "git_sha": os.environ.get("GIT_SHA") or os.environ.get("RAILWAY_GIT_COMMIT_SHA") or "unknown",
+        "git_sha": os.environ.get("RAILWAY_GIT_COMMIT_SHA")
+        or os.environ.get("GIT_SHA")
+        or "unknown",
         "ai_disabled": _ai_disabled_flag(),
         "checks": checks,
     }

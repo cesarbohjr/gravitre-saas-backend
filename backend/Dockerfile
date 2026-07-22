@@ -16,5 +16,8 @@ RUN python -m venv /app/.venv \
 
 COPY . .
 
+ARG GIT_SHA=unknown
+ENV GIT_SHA=${GIT_SHA}
+
 EXPOSE 8080
 CMD ["sh", "-c", "python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]

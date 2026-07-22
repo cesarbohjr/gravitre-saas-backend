@@ -1,35 +1,43 @@
 # Unified turn Phase 2 — live verification status
 
-## Deploy + shadow enable
+Updated: 2026-07-22
 
-| Step | Status | Evidence |
-|------|--------|----------|
-| Prod `git_sha` starts with `3cef41f5` / `03f2fa4f` | **NOT RUN** | `GET https://api.gravitre.app/health` @ 2026-07-22T00:29Z → `5d99f9ef…` |
-| `UNIFIED_TURN_SHADOW_ENABLED=true` on Railway | **NOT RUN** | Blocked on deploy |
-| Local `railway_prod_deploy.py` | **FAILED** | Railway GraphQL **403** (project token invalid/expired) |
-| GitHub Actions `Unified Turn Phase 2 Live` run [29880132964](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/29880132964) | **FAILED** | `RAILWAY_TOKEN` secret **empty** in workflow env |
+## What we learned from CLI / GitHub Actions
 
-**Operator unblock (required before live Phase 2):**
+| Finding | Detail |
+|---------|--------|
+| GraphQL deploy | **403 / Cloudflare 1010** — project token cannot deploy via Public API from Actions |
+| `railway redeploy` | Returns ok but **restarts the same image** — `git_sha` stays `5d99f9ef…` |
+| `railway up` | **Works** — uploads backend and starts a build (example: service `20c41db0…` deployment `481aa63f…`) |
+| Health stuck | `/health` still reports `5d99f9ef…` — almost certainly a **pinned `GIT_SHA` service variable** (health used to prefer `GIT_SHA` over `RAILWAY_GIT_COMMIT_SHA`) |
+| Shadow flag | You set `UNIFIED_TURN_SHADOW_ENABLED=true` in Railway UI — good; code not live until tip advances |
 
-1. Railway → project → **Settings → Tokens** → create/rotate a **project access token**.
-2. Set GitHub repo secret **`RAILWAY_TOKEN`** to that token (and refresh `backend/.env.operator.local` if you deploy locally).
-3. Redeploy backend from `main` tip (`03f2fa4f` or later) — Railway dashboard “Deploy” on linked repo, or re-run workflow **`unified-turn-phase2-live.yml`** with `commit_sha=03f2fa4f`.
-4. Confirm `/health` `git_sha` prefix matches deployed commit.
+## One manual step that unblocks everything (do this now)
 
-Shadow flag is set by the workflow step `railway variables set UNIFIED_TURN_SHADOW_ENABLED=true` (or set manually in Railway service variables).
+1. Open Railway service **gravitre-saas-backend** → **Variables**.
+2. Find **`GIT_SHA`**:
+   - Either **delete it**, or set it to tip **`858bb4d9`** / full `858bb4d9…` (current `main` when this doc was written; check `git rev-parse HEAD` after pull).
+3. Open the latest failed workflow deploy’s **Build Logs** link (from Actions), or trigger a fresh deploy:
+   - [Unified Turn Phase 2 Live](https://github.com/cesarbohjr/gravitre-saas-backend/actions/workflows/unified-turn-phase2-live.yml) → Run workflow, leave `commit_sha` empty, `enable_shadow=true`.
+4. Confirm [https://api.gravitre.app/health](https://api.gravitre.app/health) `git_sha` starts with the tip (not `5d99f9ef`).
 
-## Phase 2 batteries
+Optional better token: replace GitHub secret `RAILWAY_TOKEN` with an **account/team** token from [https://railway.com/account/tokens](https://railway.com/account/tokens) so CLI can set variables without the dashboard.
+
+## Code fixes shipped on `main`
+
+- Deploy workflow uses **`railway up ./backend --path-as-root --ci`** (waits for build), not GraphQL / bare redeploy.
+- Health prefers **`RAILWAY_GIT_COMMIT_SHA` then `GIT_SHA`**.
+- Dockerfile accepts build-time `GIT_SHA` ARG.
+- Phase 2 battery: `scripts/verify-unified-turn-phase2-live.py`.
+
+## Batteries
 
 | Battery | Status |
 |---------|--------|
-| Pending-reply 24-case (`verify-pending-reply-classifier-live.py`) | **NOT RUN** (prod tip + shadow) |
-| Conversational 20-case (`verify-conversational-path-live.py`) | **NOT RUN** |
-| Unified shadow matrix (`verify-unified-turn-phase2-live.py`) | **NOT RUN** |
+| Deploy tip + shadow | **BLOCKED** on pinned `GIT_SHA` / tip advance |
+| Pending-reply 24 + conversational 20 + shadow audits | **NOT RUN** until tip matches |
 
-Orchestration: `scripts/verify-unified-turn-phase2-live.py` (targeted shadow audit cases + invokes both classical batteries). Workflow: `.github/workflows/unified-turn-phase2-live.yml`.
+Latest Actions runs:
 
-## Code on `main`
-
-- Shadow path: `3cef41f5` + CI/workflow fixes `03f2fa4f` (pending push fix for last test).
-
-After deploy + shadow enabled, expect audit rows: `unified_turn.shadow.completed` on `audit_events` per chat turn (conversation resource).
+- [29893361361](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/29893361361) — `railway up` uploaded; health wait timed out on `5d99f9ef`
+- [29892352732](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/29892352732) — GraphQL 1010 → redeploy; same stuck SHA

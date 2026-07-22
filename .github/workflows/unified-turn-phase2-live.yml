@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       commit_sha:
-        description: "Expected health git_sha prefix after deploy"
+        description: "Expected health git_sha prefix (empty = this checkout)"
         required: false
         default: ""
       enable_shadow:
@@ -41,7 +41,7 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli@4.65.0
 
-      - name: Deploy tip via railway up (new build, not restart)
+      - name: Deploy tip via railway up (stream build)
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
@@ -50,13 +50,20 @@ jobs:
           if [ -z "$SHA" ]; then
             SHA="$(git rev-parse --short=8 HEAD)"
           fi
-          echo "Deploying tip; expect health git_sha prefix=$SHA"
-          # Project tokens cannot call GraphQL deploy (Cloudflare 1010 / 403).
-          # `railway redeploy` only restarts the current image — SHA stays stale.
-          # `railway up` uploads this checkout and triggers a new build.
-          railway variables set "GIT_SHA=$SHA" --service gravitre-saas-backend || true
-          # Dockerfile lives under backend/; upload that tree as the service root.
-          railway up ./backend --path-as-root --detach --ci --service gravitre-saas-backend --message "unified-turn-phase2 $SHA"
+          FULL="$(git rev-parse HEAD)"
+          echo "Deploying tip; expect health git_sha prefix=$SHA full=$FULL"
+          echo "Build URL will be printed by railway up"
+
+          # Prefer unsetting a stale pinned GIT_SHA so RAILWAY_GIT_COMMIT_SHA / build ARG can win.
+          # Project tokens may not allow variable mutations — fail loudly if so.
+          if ! railway variables set "GIT_SHA=$FULL" --service gravitre-saas-backend; then
+            echo "::warning::Could not set GIT_SHA via CLI (token may be project-scoped)."
+            echo "::warning::In Railway Variables, set GIT_SHA=$FULL or delete GIT_SHA so health can update."
+          fi
+
+          # Stream build to completion (do not detach — prior detach raced a 15m health wait).
+          railway up ./backend --path-as-root --ci --service gravitre-saas-backend --message "unified-turn-phase2 $SHA"
+
           python3 scripts/railway_prod_deploy.py \
             --wait-health-only \
             --timeout-s 900 \
@@ -69,8 +76,9 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           set -euo pipefail
-          railway variables set "UNIFIED_TURN_SHADOW_ENABLED=true" --service gravitre-saas-backend
-          # Variable change alone may restart; wait until tip still matches.
+          if ! railway variables set "UNIFIED_TURN_SHADOW_ENABLED=true" --service gravitre-saas-backend; then
+            echo "::warning::Could not set UNIFIED_TURN_SHADOW_ENABLED via CLI; confirm it is true in Railway UI."
+          fi
           SHA="${{ inputs.commit_sha }}"
           if [ -z "$SHA" ]; then
             SHA="$(git rev-parse --short=8 HEAD)"
