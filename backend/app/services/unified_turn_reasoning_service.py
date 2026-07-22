@@ -26,6 +26,10 @@ from app.services.user_facing_copy_guard import assert_no_raw_catalog_action_key
 
 logger = get_logger(__name__)
 
+# Keep strong refs so fire-and-forget shadow tasks are not GC'd when the chat
+# request ends quickly (conversational early-exit).
+_SHADOW_BACKGROUND_TASKS: set[asyncio.Task[Any]] = set()
+
 UnifiedOutcomeKind = Literal[
     "conversational_reply",
     "clarifying_question",
@@ -452,6 +456,8 @@ def schedule_unified_turn_shadow(
 
     try:
         loop = asyncio.get_running_loop()
-        loop.create_task(_runner())
+        task = loop.create_task(_runner())
+        _SHADOW_BACKGROUND_TASKS.add(task)
+        task.add_done_callback(_SHADOW_BACKGROUND_TASKS.discard)
     except RuntimeError:
         asyncio.run(_runner())

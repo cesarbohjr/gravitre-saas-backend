@@ -1,36 +1,107 @@
 {
-  "checkedAt": "2026-07-21T08:20:57.462509+00:00",
+  "checkedAt": "2026-07-22T10:06:38.851044+00:00",
   "apiBase": "https://api.gravitre.app",
   "orgId": "f07e57c0-1501-4000-8000-c04e57a00001",
   "actor": "conversation-smoke-sa@gravitre.app",
-  "expectSha": "184a9850",
+  "expectSha": "acb44e3b",
   "fixCommit": "481f9862",
   "repros": {
     "fastRunHistory": {
-      "conversationId": "cffcaea4-5690-42ef-926c-7e0242add9e9",
+      "conversationId": "dba4fc8c-1d82-43e0-85f9-65c74f6532ad",
       "turn": {
         "http": 200,
-        "assistant": "I can help with do that. What is the target and desired outcome?",
-        "tools": [],
-        "intel": [
+        "assistant": "",
+        "tools": [
           {
-            "effectiveMode": "standard",
-            "answerExplanation": "Analyzing your request\u2026",
-            "pendingTask": null,
-            "routing": {
-              "routingTier": "simple",
-              "modelTier": "low",
-              "latencyBudgetMs": {
-                "ttft": 800,
-                "total": 8000
-              },
-              "maxToolRounds": 6,
-              "pinnedFast": true,
-              "reasons": [
-                "fast_or_explicit_simple"
-              ]
+            "type": "tool-input-available",
+            "toolName": "searchKnowledgeBase",
+            "toolCallId": "call-640ee12952c2",
+            "input": {
+              "query": "What workflows have been ran?",
+              "limit": 5
             }
           },
+          {
+            "type": "tool-output-available",
+            "toolCallId": "call-640ee12952c2",
+            "output": {
+              "results": [],
+              "sources": [],
+              "totalResults": 0,
+              "method": "unified_retrieval",
+              "scope": "organization"
+            }
+          },
+          {
+            "type": "tool-input-available",
+            "toolName": "getWorkflowRuns",
+            "toolCallId": "call-5f23d85d9aab",
+            "input": {
+              "limit": 5
+            }
+          },
+          {
+            "type": "tool-output-available",
+            "toolCallId": "call-5f23d85d9aab",
+            "output": {
+              "runs": [
+                {
+                  "id": "f059439d-393a-428f-ba63-465a8b8337bd",
+                  "workflowId": null,
+                  "workflowName": null,
+                  "status": "failed",
+                  "runType": "execute",
+                  "createdAt": "2026-07-22T10:03:19.149389+00:00",
+                  "completedAt": "2026-07-22T10:03:19.209303+00:00",
+                  "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
+                },
+                {
+                  "id": "d83f0286-cff2-432d-b791-57aef20c4e6f",
+                  "workflowId": null,
+                  "workflowName": null,
+                  "status": "failed",
+                  "runType": "execute",
+                  "createdAt": "2026-07-22T10:03:12.487879+00:00",
+                  "completedAt": "2026-07-22T10:03:12.546509+00:00",
+                  "errorMessage": "Failed \u2014 Connect Slack at /connectors to run this action."
+                },
+                {
+                  "id": "b0eac8e4-1645-4a41-b6b9-d6c99a74b067",
+                  "workflowId": null,
+                  "workflowName": null,
+                  "status": "failed",
+                  "runType": "execute",
+                  "createdAt": "2026-07-22T10:03:01.443113+00:00",
+                  "completedAt": "2026-07-22T10:03:01.537725+00:00",
+                  "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
+                },
+                {
+                  "id": "dcdff9ce-d981-49fc-ac6b-7a24da4fc83c",
+                  "workflowId": null,
+                  "workflowName": null,
+                  "status": "failed",
+                  "runType": "execute",
+                  "createdAt": "2026-07-22T10:02:54.427013+00:00",
+                  "completedAt": "2026-07-22T10:02:54.483849+00:00",
+                  "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
+                },
+                {
+                  "id": "03233cbf-950b-4764-a5f0-413e6f56e221",
+                  "workflowId": null,
+                  "workflowName": null,
+                  "status": "failed",
+                  "runType": "execute",
+                  "createdAt": "2026-07-22T10:02:38.634737+00:00",
+                  "completedAt": "2026-07-22T10:02:38.754654+00:00",
+                  "errorMessage": "Failed \u2014 Connect Slack at /connectors to run this action."
+                }
+              ],
+              "total": 5,
+              "success": true
+            }
+          }
+        ],
+        "intel": [
           {
             "effectiveMode": "standard",
             "answerExplanation": "Reviewing connected systems and knowledge\u2026",
@@ -51,7 +122,7 @@
           },
           {
             "effectiveMode": "standard",
-            "answerExplanation": "Clarification needed: Under-specified action request.",
+            "answerExplanation": "Routing classified",
             "pendingTask": null,
             "routing": {
               "routingTier": "simple",
@@ -64,34 +135,54 @@
               "pinnedFast": true,
               "reasons": [
                 "fast_or_explicit_simple"
-              ],
-              "escalations": []
+              ]
+            }
+          },
+          {
+            "effectiveMode": "standard",
+            "answerExplanation": "Plan ready \u2014 running tools",
+            "pendingTask": null,
+            "routing": {
+              "routingTier": "simple",
+              "modelTier": "low",
+              "latencyBudgetMs": {
+                "ttft": 800,
+                "total": 8000
+              },
+              "maxToolRounds": 6,
+              "pinnedFast": true,
+              "reasons": [
+                "fast_or_explicit_simple"
+              ]
             }
           }
         ],
-        "at": "2026-07-21T08:21:36.698790+00:00",
+        "at": "2026-07-22T10:06:57.271922+00:00",
         "error": null
       },
       "judgment": {
-        "verdict": "INCONCLUSIVE",
-        "why": "no fabricated zero, but neither refusal nor workflow_runs evidence",
+        "verdict": "PASS",
+        "why": "workflow_runs tool used; no fabricated zero-run claim",
         "fabricatedZeroRuns": false,
         "refused": false,
-        "usedWorkflowRunsTool": false,
-        "toolNames": [],
+        "usedWorkflowRunsTool": true,
+        "toolNames": [
+          "searchknowledgebase",
+          "getworkflowruns"
+        ],
         "effectiveMode": "standard",
-        "explanationSnippet": "Clarification needed: Under-specified action request."
+        "explanationSnippet": "Plan ready \u2014 running tools"
       }
     },
     "stalePlanSequence": {
-      "conversationId": "a17df359-c609-408c-842d-cc70489af3c8",
+      "conversationId": "5c8c6bea-9a87-4bd8-bfbe-5055e080a626",
       "bootstrapHttp": 200,
       "seededStickyCompletedPlan": true,
       "turns": [
         {
           "user": "What workflows have been ran?",
           "http": 200,
-          "assistant": "I can help with do that. What is the target and desired outcome?",
+          "assistant": "",
           "pending": null,
           "current_plan": {
             "goal": "What workflows have been ran?",
@@ -138,13 +229,16 @@
             "status": "ok",
             "requires_human_review": true
           },
-          "tools": [],
-          "at": "2026-07-21T08:22:03.902829+00:00"
+          "tools": [
+            "searchKnowledgeBase",
+            "getWorkflowRuns"
+          ],
+          "at": "2026-07-22T10:07:26.213215+00:00"
         },
         {
           "user": "yes",
           "http": 200,
-          "assistant": "I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue.",
+          "assistant": "I have enough context, but the task itself is just \u201cyes,\u201d which is not actionable.\n\nFrom the org context: Apollo is Connected and execution is available, 5 agents are active, 3 workflows are active, and there is 1 open alert about an elevated failure rate on \u201cApollo create list (write)\u201d in workflow `f91610f0-7d3a-43aa-bc6e-7185c08f9182`.\n\nTell me the actual operation you want, such as:\n- check agent status\n- check connector health\n- inspect the failing workflow or alert\n- search Apollo people or",
           "pending": null,
           "current_plan": {
             "goal": "What workflows have been ran?",
@@ -194,68 +288,25 @@
           "tools": [
             "searchKnowledgeBase"
           ],
-          "at": "2026-07-21T08:22:43.604636+00:00"
+          "at": "2026-07-22T10:07:35.704262+00:00"
         }
       ],
       "judgment": {
-        "verdict": "FAIL",
+        "verdict": "PASS",
         "reminderOnUnrelated": false,
         "hubspotToolOnYes": false,
         "pendingStatusAfterYes": null,
-        "currentPlanAfterYes": {
-          "goal": "What workflows have been ran?",
-          "steps": [
-            {
-              "step_id": "step_1",
-              "description": "Clarify success criteria and constraints",
-              "dependencies": [],
-              "requires_approval": false,
-              "estimated_complexity": "low",
-              "connector_requirements": []
-            },
-            {
-              "step_id": "step_2",
-              "description": "Gather evidence from RAG and connectors",
-              "dependencies": [
-                "step_1"
-              ],
-              "requires_approval": false,
-              "estimated_complexity": "medium",
-              "connector_requirements": []
-            },
-            {
-              "step_id": "step_3",
-              "description": "Draft plan for human review",
-              "dependencies": [
-                "step_2"
-              ],
-              "requires_approval": true,
-              "estimated_complexity": "medium",
-              "connector_requirements": []
-            },
-            {
-              "step_id": "step_4",
-              "description": "Execute only after explicit approval",
-              "dependencies": [
-                "step_3"
-              ],
-              "requires_approval": true,
-              "estimated_complexity": "medium",
-              "connector_requirements": []
-            }
-          ],
-          "status": "ok",
-          "requires_human_review": true
-        },
-        "unrelatedAssistantSnippet": "I can help with do that. What is the target and desired outcome?",
-        "yesAssistantSnippet": "I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue."
+        "oldHubspotPlanAlive": false,
+        "currentPlanGoalAfterYes": "What workflows have been ran?",
+        "unrelatedAssistantSnippet": "",
+        "yesAssistantSnippet": "I have enough context, but the task itself is just \u201cyes,\u201d which is not actionable.\n\nFrom the org context: Apollo is Connected and execution is available, 5 agents are active, 3 workflows are active, and there is 1 open alert about an elevated failure rate on \u201cApollo create list (write)\u201d in workflow `f91610f0-7d3a-43aa-bc6e-7185c08f9182`.\n\nTell me the actual operation you want, such as:\n- check age"
       }
     }
   },
-  "tipShaObserved": "184a9850485ef102838e65dec7d992294a9f1ee7",
+  "tipShaObserved": "acb44e3b0fef44845897f96808ff562fcc5a032c",
   "auditSample": [],
   "overall": {
-    "fastRunHistory": "INCONCLUSIVE",
-    "stalePlanSequence": "FAIL"
+    "fastRunHistory": "PASS",
+    "stalePlanSequence": "PASS"
   }
 }

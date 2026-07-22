@@ -1,5 +1,6 @@
 {
-  "started_at": "2026-07-22T09:46:09.491669+00:00",
+  "feature": "unified_turn_phase2_batteries",
+  "started_at": "2026-07-22T09:59:25.887993+00:00",
   "expect_sha": "acb44e3b",
   "api_base": "https://api.gravitre.app",
   "cases": [
@@ -8,74 +9,23 @@
       "ok": true,
       "failures": [],
       "assistant_snippet": "Hey \u2014 here when you need a connector run, a plan, or a quick check.",
+      "shadow_outcome": "conversational_reply",
+      "shadow_latency_ms": 828,
+      "shadow_first_token_proxy_ms": 828,
       "shadow": {
         "action": "unified_turn.shadow.completed",
-        "created_at": "2026-07-22T09:46:16.287442+00:00",
-        "metadata": {
-          "error": null,
-          "model": "gpt-4o-mini",
-          "tool_name": null,
-          "latency_ms": 1572,
-          "tool_stats": {
-            "compressed": true,
-            "totalTools": 26,
-            "visibleTools": 13,
-            "actionRequired": false,
-            "focusedConnectors": [
-              "apollo"
-            ]
-          },
-          "outcome_kind": "conversational_reply",
-          "user_message": "Good, thanks. What's on your mind?",
-          "tool_arguments": {},
-          "tool_invoke_action": null,
-          "first_token_proxy_ms": 1572,
-          "requires_write_approval": false
-        }
+        "created_at": "2026-07-22T09:59:31.155479+00:00",
+        "outcome_kind": "conversational_reply",
+        "latency_ms": 828,
+        "user_message_preview": "Good, thanks. What's on your mind?",
+        "tool_name": null
       },
+      "conversation_id": "113b13ab-8f1d-437e-99ee-b9269d18abe6",
       "turn": {
         "http": 200,
         "assistant": "Hey \u2014 here when you need a connector run, a plan, or a quick check.",
-        "intel": [
-          {
-            "answerExplanation": "Analyzing your request\u2026",
-            "routing": {
-              "routingTier": "simple",
-              "modelTier": "low",
-              "latencyBudgetMs": {
-                "ttft": 800,
-                "total": 8000
-              },
-              "maxToolRounds": 15,
-              "pinnedFast": false,
-              "reasons": [
-                "default_length"
-              ]
-            },
-            "pendingReplyIntent": null
-          },
-          {
-            "answerExplanation": "Conversational path (non-task)",
-            "routing": {
-              "routingTier": "simple",
-              "modelTier": "low",
-              "latencyBudgetMs": {
-                "ttft": 800,
-                "total": 8000
-              },
-              "maxToolRounds": 15,
-              "pinnedFast": false,
-              "reasons": [
-                "default_length"
-              ],
-              "turnShape": "conversational",
-              "conversationalCategory": "greeting"
-            },
-            "pendingReplyIntent": null
-          }
-        ],
-        "error": null,
-        "at": "2026-07-22T09:46:17.568837+00:00"
+        "at": "2026-07-22T09:59:33.176836+00:00",
+        "error": null
       }
     },
     {
@@ -83,74 +33,23 @@
       "ok": true,
       "failures": [],
       "assistant_snippet": "You're welcome. Ready when you are.",
+      "shadow_outcome": "conversational_reply",
+      "shadow_latency_ms": 809,
+      "shadow_first_token_proxy_ms": 809,
       "shadow": {
         "action": "unified_turn.shadow.completed",
-        "created_at": "2026-07-22T09:46:30.250849+00:00",
-        "metadata": {
-          "error": null,
-          "model": "gpt-4o-mini",
-          "tool_name": null,
-          "latency_ms": 952,
-          "tool_stats": {
-            "compressed": true,
-            "totalTools": 26,
-            "visibleTools": 13,
-            "actionRequired": false,
-            "focusedConnectors": [
-              "apollo"
-            ]
-          },
-          "outcome_kind": "conversational_reply",
-          "user_message": "Anytime. What\u2019s on your mind?",
-          "tool_arguments": {},
-          "tool_invoke_action": null,
-          "first_token_proxy_ms": 952,
-          "requires_write_approval": false
-        }
+        "created_at": "2026-07-22T09:59:44.646218+00:00",
+        "outcome_kind": "conversational_reply",
+        "latency_ms": 809,
+        "user_message_preview": "Anytime. What\u2019s on your mind?",
+        "tool_name": null
       },
+      "conversation_id": "d02f354a-d922-4b63-b615-003324b964fb",
       "turn": {
         "http": 200,
         "assistant": "You're welcome. Ready when you are.",
-        "intel": [
-          {
-            "answerExplanation": "Analyzing your request\u2026",
-            "routing": {
-              "routingTier": "simple",
-              "modelTier": "low",
-              "latencyBudgetMs": {
-                "ttft": 800,
-                "total": 8000
-              },
-              "maxToolRounds": 15,
-              "pinnedFast": false,
-              "reasons": [
-                "default_length"
-              ]
-            },
-            "pendingReplyIntent": null
-          },
-          {
-            "answerExplanation": "Conversational path (non-task)",
-            "routing": {
-              "routingTier": "simple",
-              "modelTier": "low",
-              "latencyBudgetMs": {
-                "ttft": 800,
-                "total": 8000
-              },
-              "maxToolRounds": 15,
-              "pinnedFast": false,
-              "reasons": [
-                "default_length"
-              ],
-              "turnShape": "conversational",
-              "conversationalCategory": "thanks"
-            },
-            "pendingReplyIntent": null
-          }
-        ],
-        "error": null,
-        "at": "2026-07-22T09:46:31.396818+00:00"
+        "at": "2026-07-22T09:59:47.397569+00:00",
+        "error": null
       }
     },
     {
@@ -158,90 +57,23 @@
       "ok": true,
       "failures": [],
       "assistant_snippet": "To send gmail message, I need to know recipient, subject, body. Could you share that?",
+      "shadow_outcome": "clarifying_question",
+      "shadow_latency_ms": 5681,
+      "shadow_first_token_proxy_ms": 5681,
       "shadow": {
         "action": "unified_turn.shadow.completed",
-        "created_at": "2026-07-22T09:46:46.523885+00:00",
-        "metadata": {
-          "error": null,
-          "model": "gpt-4o-mini",
-          "tool_name": null,
-          "latency_ms": 3705,
-          "tool_stats": {
-            "compressed": true,
-            "totalTools": 26,
-            "visibleTools": 13,
-            "actionRequired": true,
-            "focusedConnectors": [
-              "apollo"
-            ]
-          },
-          "outcome_kind": "clarifying_question",
-          "user_message": "I need a bit more information to draft that email. Could you provide the purpose and key points you'd like to include in the message?",
-          "tool_arguments": {},
-          "tool_invoke_action": null,
-          "first_token_proxy_ms": 3705,
-          "requires_write_approval": false
-        }
+        "created_at": "2026-07-22T10:00:03.556116+00:00",
+        "outcome_kind": "clarifying_question",
+        "latency_ms": 5681,
+        "user_message_preview": "I need a bit more information to draft that email. Could you provide the purpose and key points you'd like to include in the message?",
+        "tool_name": null
       },
+      "conversation_id": "c7785880-3670-479b-a4ea-f97204314cab",
       "turn": {
         "http": 200,
         "assistant": "To send gmail message, I need to know recipient, subject, body. Could you share that?",
-        "intel": [
-          {
-            "answerExplanation": "Analyzing your request\u2026",
-            "routing": {
-              "routingTier": "multi_step",
-              "modelTier": "medium",
-              "latencyBudgetMs": {
-                "ttft": 1500,
-                "total": 20000
-              },
-              "maxToolRounds": 15,
-              "pinnedFast": false,
-              "reasons": [
-                "write_intent_with_connector"
-              ]
-            },
-            "pendingReplyIntent": null
-          },
-          {
-            "answerExplanation": "Reviewing connected systems and knowledge\u2026",
-            "routing": {
-              "routingTier": "multi_step",
-              "modelTier": "medium",
-              "latencyBudgetMs": {
-                "ttft": 1500,
-                "total": 20000
-              },
-              "maxToolRounds": 15,
-              "pinnedFast": false,
-              "reasons": [
-                "write_intent_with_connector"
-              ]
-            },
-            "pendingReplyIntent": null
-          },
-          {
-            "answerExplanation": "Clarification needed: Send Gmail message missing recipient, subject, body (live ledger consulted).",
-            "routing": {
-              "routingTier": "multi_step",
-              "modelTier": "medium",
-              "latencyBudgetMs": {
-                "ttft": 1500,
-                "total": 20000
-              },
-              "maxToolRounds": 15,
-              "pinnedFast": false,
-              "reasons": [
-                "write_intent_with_connector"
-              ],
-              "escalations": []
-            },
-            "pendingReplyIntent": null
-          }
-        ],
-        "error": null,
-        "at": "2026-07-22T09:46:56.322208+00:00"
+        "at": "2026-07-22T10:00:12.390786+00:00",
+        "error": null
       }
     },
     {
@@ -249,90 +81,116 @@
       "ok": true,
       "failures": [],
       "assistant_snippet": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cDid you send it yet?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`.",
+      "shadow_outcome": "confirmation_request",
+      "shadow_latency_ms": 957,
+      "shadow_first_token_proxy_ms": 957,
       "shadow": {
         "action": "unified_turn.shadow.completed",
-        "created_at": "2026-07-22T09:47:08.962893+00:00",
-        "metadata": {
-          "error": null,
-          "model": "gpt-4o-mini",
-          "tool_name": null,
-          "latency_ms": 1991,
-          "tool_stats": {
-            "compressed": true,
-            "totalTools": 26,
-            "visibleTools": 13,
-            "actionRequired": true,
-            "focusedConnectors": [
-              "apollo"
-            ]
-          },
-          "outcome_kind": "confirmation_request",
-          "user_message": "Not yet \u2014 the **Send Gmail message** action is still awaiting your confirmation. Reply **yes** to send it, or **cancel** to drop it.",
-          "tool_arguments": {},
-          "tool_invoke_action": null,
-          "first_token_proxy_ms": 1991,
-          "requires_write_approval": false
-        }
+        "created_at": "2026-07-22T10:00:24.86923+00:00",
+        "outcome_kind": "confirmation_request",
+        "latency_ms": 957,
+        "user_message_preview": "Not yet \u2014 the **Send Gmail message** action is still awaiting your confirmation. Reply **yes** to send it, or **cancel** to drop it.",
+        "tool_name": null
       },
+      "conversation_id": "2f0c1632-964d-495b-b1f1-7a68fb5f7f6a",
       "turn": {
         "http": 200,
         "assistant": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cDid you send it yet?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`.",
-        "intel": [
-          {
-            "answerExplanation": "Analyzing your request\u2026",
-            "routing": {
-              "routingTier": "multi_step",
-              "modelTier": "medium",
-              "latencyBudgetMs": {
-                "ttft": 1500,
-                "total": 20000
-              },
-              "maxToolRounds": 15,
-              "pinnedFast": false,
-              "reasons": [
-                "write_intent_with_connector"
-              ]
-            },
-            "pendingReplyIntent": null
-          },
-          {
-            "answerExplanation": "Conversational operator execution",
-            "routing": {
-              "routingTier": "multi_step",
-              "modelTier": "medium",
-              "latencyBudgetMs": {
-                "ttft": 1500,
-                "total": 20000
-              },
-              "maxToolRounds": 15,
-              "pinnedFast": false,
-              "reasons": [
-                "write_intent_with_connector"
-              ]
-            },
-            "pendingReplyIntent": null
-          }
-        ],
-        "error": null,
-        "at": "2026-07-22T09:47:08.988408+00:00"
+        "at": "2026-07-22T10:00:26.859828+00:00",
+        "error": null
+      }
+    },
+    {
+      "case": "knowledge_boundary_run_history_fast",
+      "ok": true,
+      "failures": [],
+      "assistant_snippet": "",
+      "shadow_outcome": "knowledge_boundary",
+      "shadow_latency_ms": 2866,
+      "shadow_first_token_proxy_ms": 2866,
+      "shadow": {
+        "action": "unified_turn.shadow.completed",
+        "created_at": "2026-07-22T10:00:40.855766+00:00",
+        "outcome_kind": "knowledge_boundary",
+        "latency_ms": 2866,
+        "user_message_preview": "I don't have that count yet \u2014 run history wasn't retrieved this turn. I can fetch it with the workflow runs tool if you want.",
+        "tool_name": null
+      },
+      "conversation_id": "2696bd7b-6cd1-493a-b00a-79583235f085",
+      "turn": {
+        "http": 200,
+        "assistant": "",
+        "at": "2026-07-22T10:00:52.706801+00:00",
+        "error": null
       }
     }
   ],
   "classical_batteries": {
     "pending_reply": {
       "exit_code": 0,
-      "stdout_tail": "**) that isn't finished. Your new message looks l\"\nPASS unrelated_how_many_runs http=200 :: \"You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks l\"\nPASS unrelated_search_hubspot http=200 :: \"You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a \"\nPASS modify_subject_q3 http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS modify_skip_step http=200 :: 'I can\u2019t create the deal from the Connected tools available here.\\n\\nSource: connector status shows onl'\nPASS modify_change_channel http=200 :: \"I couldn't complete that: Connect Slack at /connectors to run this action.\\n\\nSlack isn't ready. Conne\"\nPASS modify_rather_cancel_body http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS modify_dont_include_cc http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS ambiguous_hmm http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS ambiguous_maybe http=200 :: 'I still have a plan open (**Search HubSpot then create a deal**). Say **yes** to continue, **cancel*'\nPASS ambiguous_ok_then http=200 :: \"I couldn't complete that: Connect Slack at /connectors to run this action.\\n\\nSlack isn't ready. Conne\"\nPASS slot_email http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS reject_cancel http=200 :: 'Cancelled the pending plan. What should we do instead?'\nPASS confirm_orch_yes http=200 :: 'The orchestration plan is empty.'\n{\n  \"verdict\": \"PASS\",\n  \"passed\": 24,\n  \"total\": 24,\n  \"failed\": [],\n  \"tip_ok\": true,\n  \"broad_pass\": true,\n  \"out\": \"/home/runner/work/gravitre-saas-backend/gravitre-saas-backend/docs/delivery/pending-reply-classifier-battery-live.json\"\n}\n",
+      "stdout_tail": "then deal**) that isn't finished. Your new message looks l\"\nPASS unrelated_how_many_runs http=200 :: \"You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks l\"\nPASS unrelated_search_hubspot http=200 :: \"You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a \"\nPASS modify_subject_q3 http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS modify_skip_step http=200 :: 'I can\u2019t create the deal from the Connected tools available here.\\n\\nSource: connector status shows onl'\nPASS modify_change_channel http=200 :: \"I couldn't complete that: Connect Slack at /connectors to run this action.\\n\\nSlack isn't ready. Conne\"\nPASS modify_rather_cancel_body http=200 :: 'Understood. The shorter body should remove the signature.\\n\\nIf you want, I can rewrite the full messa'\nPASS modify_dont_include_cc http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS ambiguous_hmm http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS ambiguous_maybe http=200 :: 'I still have a plan open (**Search HubSpot then create a deal**). Say **yes** to continue, **cancel*'\nPASS ambiguous_ok_then http=200 :: \"I couldn't complete that: Connect Slack at /connectors to run this action.\\n\\nSlack isn't ready. Conne\"\nPASS slot_email http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS reject_cancel http=200 :: 'Cancelled the pending plan. What should we do instead?'\nPASS confirm_orch_yes http=200 :: 'The orchestration plan is empty.'\n{\n  \"verdict\": \"PASS\",\n  \"passed\": 24,\n  \"total\": 24,\n  \"failed\": [],\n  \"tip_ok\": true,\n  \"broad_pass\": true,\n  \"out\": \"C:\\\\Users\\\\Cesar\\\\Downloads\\\\Gravitre Operator AI\\\\docs\\\\delivery\\\\pending-reply-classifier-battery-live.json\"\n}\n",
       "stderr_tail": ""
     },
     "conversational_path": {
       "exit_code": 0,
-      "stdout_tail": "t it now at /connectors, or reply'\nPASS mixed_slack :: 'Ha \u2014 noted.\\n\\nSlack is not Connected for this organization. Connect it now at /connectors, or reply *'\nPASS mixed_thanks_search :: \"You're welcome.\\n\\nHubspot is not Connected for this organization. Connect it now at /connectors, or r\"\nPASS mixed_banter_gmail :: 'Ha \u2014 noted.\\n\\nI don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue.\\n\\nTo '\nPASS mixed_hey_apollo :: 'Hey \u2014 on it.\\n\\nI can create a contact list named **ConvPath Battery** in Apollo.\\n\\nReply **yes** to ap'\nPASS meta_what_can_you_do :: 'I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo.'\nPASS meta_are_you_ai :: 'I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo.'\nPASS meta_who_are_you :: 'I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo.'\nPASS vent_hubspot :: 'That friction is real. When you want to dig in, we can check the connector at /connectors (Connected'\nPASS vent_generic :: 'That friction is real. When you want to dig in, we can check the connector at /connectors (Connected'\nPASS vent_slack :: 'That friction is real. When you want to dig in, we can check the connector at /connectors (Connected'\nPASS data_deals :: 'I don\u2019t have enough information yet to tell how the deals are looking. The org context only shows on'\nPASS data_pipeline :: 'Which item did you mean \u2014 the specific workflow, agent, or connector you mean?'\nPASS pending_playful_1 :: 'Ha \u2014 noted. What should we tackle next?\\n\\nSend Gmail message is waiting in the Decision Queue. Reply '\nPASS pending_playful_2 :: 'Ha \u2014 noted. What should we tackle next?\\n\\nSend Gmail message is waiting in the Decision Queue. Reply '\n{\n  \"verdict\": \"PASS\",\n  \"passed\": 20,\n  \"total\": 20,\n  \"failed\": [],\n  \"out\": \"/home/runner/work/gravitre-saas-backend/gravitre-saas-backend/docs/delivery/conversational-path-battery-live.json\"\n}\n",
+      "stdout_tail": "ion. Connect it now at /connectors, or reply'\nPASS mixed_slack :: 'Ha \u2014 noted.\\n\\nSlack is not Connected for this organization. Connect it now at /connectors, or reply *'\nPASS mixed_thanks_search :: \"You're welcome.\\n\\nHubspot is not Connected for this organization. Connect it now at /connectors, or r\"\nPASS mixed_banter_gmail :: 'Ha \u2014 noted.\\n\\nI can\u2019t create a Gmail draft in the mailbox because Gmail is not Connected. The org con'\nPASS mixed_hey_apollo :: 'Hey \u2014 on it.\\n\\nI can create a contact list named **ConvPath Battery** in Apollo.\\n\\nReply **yes** to ap'\nPASS meta_what_can_you_do :: 'I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo.'\nPASS meta_are_you_ai :: 'I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo.'\nPASS meta_who_are_you :: 'I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo.'\nPASS vent_hubspot :: 'That friction is real. When you want to dig in, we can check the connector at /connectors (Connected'\nPASS vent_generic :: 'That friction is real. When you want to dig in, we can check the connector at /connectors (Connected'\nPASS vent_slack :: 'That friction is real. When you want to dig in, we can check the connector at /connectors (Connected'\nPASS data_deals :: 'I don\u2019t have enough information yet to tell how the deals are looking. The org context only shows on'\nPASS data_pipeline :: 'Which item did you mean \u2014 the specific workflow, agent, or connector you mean?'\nPASS pending_playful_1 :: 'Ha \u2014 noted. What should we tackle next?\\n\\nSend Gmail message is waiting in the Decision Queue. Reply '\nPASS pending_playful_2 :: 'Ha \u2014 noted. What should we tackle next?\\n\\nSend Gmail message is waiting in the Decision Queue. Reply '\n{\n  \"verdict\": \"PASS\",\n  \"passed\": 20,\n  \"total\": 20,\n  \"failed\": [],\n  \"out\": \"C:\\\\Users\\\\Cesar\\\\Downloads\\\\Gravitre Operator AI\\\\docs\\\\delivery\\\\conversational-path-battery-live.json\"\n}\n",
+      "stderr_tail": ""
+    },
+    "run_history_stale_plan": {
+      "exit_code": 0,
+      "stdout_tail": "health tip=acb44e3b0fef44845897f96808ff562fcc5a032c\n{\n  \"fastRunHistory\": \"PASS\",\n  \"stalePlanSequence\": \"PASS\"\n}\nwrote C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\docs\\delivery\\run-history-stale-plan-live.json\ntip=acb44e3b0fef44845897f96808ff562fcc5a032c conv1=dba4fc8c-1d82-43e0-85f9-65c74f6532ad conv2=5c8c6bea-9a87-4bd8-bfbe-5055e080a626\n",
+      "stderr_tail": ""
+    },
+    "sta305_slack_omit_detail": {
+      "exit_code": 0,
+      "stdout_tail": "verdict PASS conv 3ce08268-7692-4eb7-bebf-c5735e72c70a tip acb44e3b (re-run after dotenv encoding fix)",
+      "stderr_tail": "",
+      "rerun_note": "2026-07-22T10:09:20Z STA305_LIVE=1 PASS"
+    },
+    "persona_drift_30": {
+      "exit_code": 0,
+      "verdict": "PARTIAL",
+      "stdout_tail": "passed 15/30 missing_shadow=15 hard=0 conv 4162b2ff-282a-43b1-a3fb-b0eac7564128",
       "stderr_tail": ""
     }
   },
+  "ttft": {
+    "note": "Shadow path is non-streaming today; latency_ms / first_token_proxy_ms are full-completion proxies. Phase 3 requires true streamed TTFT < 200ms.",
+    "target_ms": 200,
+    "samples_ms": [
+      828,
+      809,
+      5681,
+      957,
+      2866
+    ],
+    "p50_ms": 957,
+    "max_ms": 5681,
+    "phase3_streaming_gate": "NOT RUN \u2014 shadow not yet token-streaming",
+    "proxy_under_target": false
+  },
+  "cutover_gates": {
+    "phase2_batteries_clean": false,
+    "phase2_core_batteries_clean": true,
+    "phase3_ttft_streaming": false,
+    "phase4_cutover_authorized": false,
+    "standing_rule": "Do not remove conversational_turn_gate / pending_reply_classifier / mapper regex / phrase-banks until Phase 4 after clean Phase 2+3",
+    "write_authority_unchanged": true
+  },
+  "matrix": {
+    "targeted_shadow_cases": "5/5 targeted cases",
+    "pending_reply_24": "PASS 24/24",
+    "conversational_path_20": "PASS 20/20",
+    "knowledge_boundary_run_history": true,
+    "sta305_omit_detail": 0,
+    "run_history_stale_plan": 0,
+    "persona_drift_30_turn": "PARTIAL",
+    "full_email_flow_multi_step": "PARTIAL \u2014 single-turn email intent only",
+    "ttft_streaming_lt_200ms": "NOT RUN \u2014 Phase 3"
+  },
   "health": {
     "status": "ok",
-    "timestamp": "2026-07-22T09:46:09.623213+00:00",
+    "timestamp": "2026-07-22T09:59:26.275346+00:00",
     "version": "0.1.0",
     "environment": "prod",
     "git_sha": "acb44e3b0fef44845897f96808ff562fcc5a032c",
@@ -344,7 +202,11 @@
       "clickhouse": "configured"
     }
   },
-  "summary": "4/4 targeted cases",
-  "finished_at": "2026-07-22T09:53:19.447727+00:00",
-  "ok": true
+  "git_sha": "acb44e3b0fef44845897f96808ff562fcc5a032c",
+  "summary": "5/5 targeted cases",
+  "finished_at": "2026-07-22T10:07:41.071008+00:00",
+  "ok": true,
+  "verdict": "PASS_CORE",
+  "expanded_verdict": "PARTIAL \u2014 persona-drift / full email / Phase 3 TTFT open",
+  "finished_at_patch": "2026-07-22T10:30:00+00:00"
 }

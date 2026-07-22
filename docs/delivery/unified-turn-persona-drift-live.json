@@ -1,0 +1,328 @@
+{
+  "feature": "unified_turn_persona_drift",
+  "checkedAt": "2026-07-22T10:27:37.054701+00:00",
+  "git_sha": "acb44e3b0fef44845897f96808ff562fcc5a032c",
+  "conversationId": "4162b2ff-282a-43b1-a3fb-b0eac7564128",
+  "turns": 30,
+  "passed": 15,
+  "failures": [
+    "t3:missing_shadow",
+    "t6:missing_shadow",
+    "t7:missing_shadow",
+    "t9:missing_shadow",
+    "t10:missing_shadow",
+    "t13:missing_shadow",
+    "t16:missing_shadow",
+    "t17:missing_shadow",
+    "t19:missing_shadow",
+    "t20:missing_shadow",
+    "t23:missing_shadow",
+    "t26:missing_shadow",
+    "t27:missing_shadow",
+    "t29:missing_shadow",
+    "t30:missing_shadow"
+  ],
+  "verdict": "PARTIAL",
+  "rows": [
+    {
+      "turn": 1,
+      "user": "hey",
+      "ok": true,
+      "failures": [],
+      "assistant_preview": "Hey \u2014 here when you need a connector run, a plan, or a quick check.",
+      "shadow_outcome": "conversational_reply",
+      "shadow_preview": "Good, thanks. What's on your mind?"
+    },
+    {
+      "turn": 2,
+      "user": "how's it going",
+      "ok": true,
+      "failures": [],
+      "assistant_preview": "Good to hear from you. What should we look at?",
+      "shadow_outcome": "conversational_reply",
+      "shadow_preview": "Good, thanks. What's on your mind?"
+    },
+    {
+      "turn": 3,
+      "user": "what can you help with",
+      "ok": false,
+      "failures": [
+        "missing_shadow"
+      ],
+      "assistant_preview": "I can help you manage agents, workflows, connectors, and data sources for your organization.\n\nWhat that means in practice:\n- Check agent, connector, and workflow status\n- Run or cr",
+      "shadow_outcome": null,
+      "shadow_preview": ""
+    },
+    {
+      "turn": 4,
+      "user": "thanks",
+      "ok": true,
+      "failures": [],
+      "assistant_preview": "You're welcome. Ready when you are.",
+      "shadow_outcome": "conversational_reply",
+      "shadow_preview": "Anytime. What\u2019s on your mind?"
+    },
+    {
+      "turn": 5,
+      "user": "ok cool",
+      "ok": true,
+      "failures": [],
+      "assistant_preview": "Doing well \u2014 here when you need a connector run, a plan, or a quick check.",
+      "shadow_outcome": "conversational_reply",
+      "shadow_preview": "Great! If there's anything specific you want to dive into or any tasks you need help with, just let me know."
+    },
+    {
+      "turn": 6,
+      "user": "busy day",
+      "ok": false,
+      "failures": [
+        "missing_shadow"
+      ],
+      "assistant_preview": "I have enough context to summarize the org state, but not enough to act on \u201cbusy day\u201d because no task was specified.\n\nWhat\u2019s Connected and available:\n- Apollo is Connected and exec",
+      "shadow_outcome": null,
+      "shadow_preview": ""
+    },
+    {
+      "turn": 7,
+      "user": "remind me what you are",
+      "ok": false,
+      "failures": [
+        "missing_shadow"
+      ],
+      "assistant_preview": "I\u2019m Gravitre AI, the operator for your organization\u2019s agents, workflows, connectors, and data sources.\n\nIn this conversation, I can help you manage your org\u2019s connected automation ",
+      "shadow_outcome": null,
+      "shadow_preview": ""
+    },
+    {
+      "turn": 8,
+      "user": "got it",
+      "ok": true,
+      "failures": [],
+      "assistant_preview": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
+      "shadow_outcome": "conversational_reply",
+      "shadow_preview": "Great! If there's anything specific you need help with, just let me know."
+    },
+    {
+      "turn": 9,
+      "user": "interesting",
+      "ok": false,
+      "failures": [
+        "missing_shadow"
+      ],
+      "assistant_preview": "I don\u2019t have enough information yet. The task is just \u201cinteresting,\u201d so there\u2019s nothing actionable to process.\n\nFrom the org context, I can see:\n- Apollo is Connected and execution",
+      "shadow_outcome": null,
+      "shadow_preview": ""
+    },
+    {
+      "turn": 10,
+      "user": "alright",
+      "ok": false,
+      "failures": [
+        "missing_shadow"
+      ],
+      "assistant_preview": "I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue.\n\nFrom the org context, the Apollo connector is Connected and execution is available, but the requ",
+      "shadow_outcome": null,
+      "shadow_preview": ""
+    },
+    {
+      "turn": 11,
+      "user": "hey",
+      "ok": true,
+      "failures": [],
+      "assistant_preview": "Hi. Ready when you are \u2014 connector work, a plan, or a quick check.",
+      "shadow_outcome": "conversational_reply",
+      "shadow_preview": "Good, thanks. What's on your mind?"
+    },
+    {
+      "turn": 12,
+      "user": "how's it going",
+      "ok": true,
+      "failures": [],
+      "assistant_preview": "Hello. Tell me what you want to run or review.",
+      "shadow_outcome": "conversational_reply",
+      "shadow_preview": "Good, thanks. What's on your mind?"
+    },
+    {
+      "turn": 13,
+      "user": "what can you help with",
+      "ok": false,
+      "failures": [
+        "missing_shadow"
+      ],
+      "assistant_preview": "I can help you manage agents, workflows, connectors, and data sources for your organization.\n\nWhat that means in practice:\n- Check agent, connector, and workflow status\n- Run or cr",
+      "shadow_outcome": null,
+      "shadow_preview": ""
+    },
+    {
+      "turn": 14,
+      "user": "thanks",
+      "ok": true,
+      "failures": [],
+      "assistant_preview": "Glad to help. What next?",
+      "shadow_outcome": "conversational_reply",
+      "shadow_preview": "Anytime. What\u2019s on your mind?"
+    },
+    {
+      "turn": 15,
+      "user": "ok cool",
+      "ok": true,
+      "failures": [],
+      "assistant_preview": "Good, thanks. What's on your mind?",
+      "shadow_outcome": "conversational_reply",
+      "shadow_preview": "Great! If there's anything specific you want to dive into or any tasks you need help with, just let me know."
+    },
+    {
+      "turn": 16,
+      "user": "busy day",
+      "ok": false,
+      "failures": [
+        "missing_shadow"
+      ],
+      "assistant_preview": "I have enough context to summarize the org state, but not enough to act on \u201cbusy day\u201d because no task was specified.\n\nWhat\u2019s Connected and available:\n- Apollo is Connected and exec",
+      "shadow_outcome": null,
+      "shadow_preview": ""
+    },
+    {
+      "turn": 17,
+      "user": "remind me what you are",
+      "ok": false,
+      "failures": [
+        "missing_shadow"
+      ],
+      "assistant_preview": "I\u2019m Gravitre AI, the operator for your organization\u2019s agents, workflows, connectors, and data sources.\n\nIn this conversation, I can help you manage your org\u2019s connected automation ",
+      "shadow_outcome": null,
+      "shadow_preview": ""
+    },
+    {
+      "turn": 18,
+      "user": "got it",
+      "ok": true,
+      "failures": [],
+      "assistant_preview": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
+      "shadow_outcome": "conversational_reply",
+      "shadow_preview": "Great! If there's anything specific you need help with, just let me know."
+    },
+    {
+      "turn": 19,
+      "user": "interesting",
+      "ok": false,
+      "failures": [
+        "missing_shadow"
+      ],
+      "assistant_preview": "I don\u2019t have enough information yet. The task is just \u201cinteresting,\u201d so there\u2019s nothing actionable to process.\n\nFrom the org context, I can see:\n- Apollo is Connected and execution",
+      "shadow_outcome": null,
+      "shadow_preview": ""
+    },
+    {
+      "turn": 20,
+      "user": "alright",
+      "ok": false,
+      "failures": [
+        "missing_shadow"
+      ],
+      "assistant_preview": "I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue.\n\nFrom the org context, the Apollo connector is Connected and execution is available, but the requ",
+      "shadow_outcome": null,
+      "shadow_preview": ""
+    },
+    {
+      "turn": 21,
+      "user": "hey",
+      "ok": true,
+      "failures": [],
+      "assistant_preview": "Hey there. I'm around for Connected tools, plans, or a status check.",
+      "shadow_outcome": "conversational_reply",
+      "shadow_preview": "Good, thanks. What's on your mind?"
+    },
+    {
+      "turn": 22,
+      "user": "how's it going",
+      "ok": true,
+      "failures": [],
+      "assistant_preview": "Morning. What are we working on?",
+      "shadow_outcome": "conversational_reply",
+      "shadow_preview": "Good, thanks. What's on your mind?"
+    },
+    {
+      "turn": 23,
+      "user": "what can you help with",
+      "ok": false,
+      "failures": [
+        "missing_shadow"
+      ],
+      "assistant_preview": "I can help you manage agents, workflows, connectors, and data sources for your organization.\n\nWhat that means in practice:\n- Check agent, connector, and workflow status\n- Run or cr",
+      "shadow_outcome": null,
+      "shadow_preview": ""
+    },
+    {
+      "turn": 24,
+      "user": "thanks",
+      "ok": true,
+      "failures": [],
+      "assistant_preview": "Anytime. Tell me when you want to run something.",
+      "shadow_outcome": "conversational_reply",
+      "shadow_preview": "Anytime. What\u2019s on your mind?"
+    },
+    {
+      "turn": 25,
+      "user": "ok cool",
+      "ok": true,
+      "failures": [],
+      "assistant_preview": "Can't complain. What are we working on?",
+      "shadow_outcome": "conversational_reply",
+      "shadow_preview": "Great! If there's anything specific you want to tackle or explore, just let me know."
+    },
+    {
+      "turn": 26,
+      "user": "busy day",
+      "ok": false,
+      "failures": [
+        "missing_shadow"
+      ],
+      "assistant_preview": "I have enough context to summarize the org state, but not enough to act on \u201cbusy day\u201d because no task was specified.\n\nWhat\u2019s Connected and available:\n- Apollo is Connected and exec",
+      "shadow_outcome": null,
+      "shadow_preview": ""
+    },
+    {
+      "turn": 27,
+      "user": "remind me what you are",
+      "ok": false,
+      "failures": [
+        "missing_shadow"
+      ],
+      "assistant_preview": "I\u2019m Gravitre AI, the operator for your organization\u2019s agents, workflows, connectors, and data sources.\n\nIn this conversation, I can help you manage your org\u2019s connected automation ",
+      "shadow_outcome": null,
+      "shadow_preview": ""
+    },
+    {
+      "turn": 28,
+      "user": "got it",
+      "ok": true,
+      "failures": [],
+      "assistant_preview": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
+      "shadow_outcome": "conversational_reply",
+      "shadow_preview": "Great! If there's anything specific you need help with, just let me know."
+    },
+    {
+      "turn": 29,
+      "user": "interesting",
+      "ok": false,
+      "failures": [
+        "missing_shadow"
+      ],
+      "assistant_preview": "I don\u2019t have enough information yet. The task is just \u201cinteresting,\u201d so there\u2019s nothing actionable to process.\n\nFrom the org context, I can see:\n- Apollo is Connected and execution",
+      "shadow_outcome": null,
+      "shadow_preview": ""
+    },
+    {
+      "turn": 30,
+      "user": "alright",
+      "ok": false,
+      "failures": [
+        "missing_shadow"
+      ],
+      "assistant_preview": "I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue.\n\nFrom the org context, the Apollo connector is Connected and execution is available, but the requ",
+      "shadow_outcome": null,
+      "shadow_preview": ""
+    }
+  ]
+}

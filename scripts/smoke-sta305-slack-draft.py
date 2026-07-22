@@ -50,7 +50,14 @@ def load_env() -> None:
     ):
         if not p.is_file():
             continue
-        for k, v in dotenv_values(p).items():
+        loaded: dict[str, str | None] = {}
+        for enc in ("utf-8", "utf-8-sig", "cp1252", "latin-1"):
+            try:
+                loaded = dotenv_values(p, encoding=enc)
+                break
+            except UnicodeDecodeError:
+                continue
+        for k, v in loaded.items():
             if v:
                 os.environ.setdefault(k, v)
 
