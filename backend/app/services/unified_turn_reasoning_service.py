@@ -16,10 +16,10 @@ from app.core.logging import get_logger
 from app.services.agent_platform_optimizer import narrow_tools_for_turn
 from app.services.gravitree_voice import apply_voice, voice_system_prompt_section
 from app.services.model_router import get_model_router
+from app.services.module_d_unified_voice_spec import build_module_d_unified_system_prompt
 from app.services.providers.openai_adapter import _supports_custom_temperature
 from app.services.react_write_gate import tool_requires_user_write_approval
 from app.services.tool_registry import get_tool_registry
-from app.services.tool_types import ToolContext
 from app.services.unified_turn_pending_context import build_unified_turn_pending_context
 from app.services.user_facing_copy_guard import assert_no_raw_catalog_action_keys, finalize_user_facing_message
 
@@ -30,6 +30,7 @@ UnifiedOutcomeKind = Literal[
     "clarifying_question",
     "confirmation_request",
     "connector_tool_proposal",
+    "knowledge_boundary",
     "error",
     "skipped",
 ]
@@ -47,6 +48,7 @@ class UnifiedTurnShadowResult:
     tool_stats: dict[str, Any] = field(default_factory=dict)
     model: str = ""
     error: str | None = None
+    first_token_proxy_ms: int | None = None  # completion latency until first usable content
 
     def to_audit_payload(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -56,25 +58,6 @@ class UnifiedTurnShadowResult:
                 k: str(v)[:200] for k, v in list(self.tool_arguments.items())[:20]
             }
         return payload
-
-
-_UNIFIED_TURN_INSTRUCTIONS = """
-You are Gravitree's single-turn operator brain for this message.
-
-Decide ONE outcome:
-1) Reply conversationally (greeting, thanks, small talk, empathy) with no tool call.
-2) Ask ONE clear clarifying question (missing slot, which contact, which connected service).
-3) Ask for confirmation before a mutating action (when args are complete but approval is required).
-4) Call exactly ONE connector tool when you have enough structured arguments to proceed.
-
-Rules:
-- Never show the user raw catalog ids (patterns like vendor.resource.verb).
-- Never dump a list of internal method names.
-- Do not repeat your immediately prior sentence structure when a recent assistant line is provided.
-- Use pending-state context to interpret short replies (slot answers, yes/no, unrelated new requests).
-- Prefer plain language; connected systems are named by product (Gmail, HubSpot), not API paths.
-- If the user starts an unrelated task while something is pending, ask whether to hold or abandon pending work.
-"""
 
 
 def _history_to_messages(
@@ -143,12 +126,35 @@ async def run_unified_turn_shadow(
         task_state,
         last_assistant_message=_last_assistant_snippet(conversation_history),
     )
+    # Full Module D spec is the system instruction (not a post-hoc phrase bank).
     system = apply_voice(
-        f"{_UNIFIED_TURN_INSTRUCTIONS.strip()}\n\n{voice_system_prompt_section()}"
+        build_module_d_unified_system_prompt(
+            extra_operator_rules=voice_system_prompt_section(),
+        )
     )
     user_parts = []
     if pending_block:
         user_parts.append(pending_block)
+    # Explicit tool inventory note for knowledge-boundary honesty.
+    if visible:
+        names = sorted(
+            {
+                str(t.get("function", {}).get("name") or t.get("name") or "")
+                for t in visible
+                if isinstance(t, dict)
+            }
+        )
+        names = [n for n in names if n][:40]
+        user_parts.append(
+            "AVAILABLE TOOLS THIS TURN (schemas attached as functions; "
+            "you have NO other live data sources):\n- "
+            + "\n- ".join(names)
+        )
+    else:
+        user_parts.append(
+            "AVAILABLE TOOLS THIS TURN: none. Do not invent metrics, run counts, "
+            "or connector results."
+        )
     user_parts.append(f"USER MESSAGE:\n{(message or '').strip()}")
     user_content = "\n\n".join(user_parts)
 
@@ -190,6 +196,7 @@ async def run_unified_turn_shadow(
 
     result = UnifiedTurnShadowResult(
         latency_ms=latency_ms,
+        first_token_proxy_ms=latency_ms,  # non-streaming shadow; Phase 3 upgrades to true TTFT
         tool_stats=tool_stats,
         model=model,
     )
@@ -233,9 +240,25 @@ async def run_unified_turn_shadow(
         return result
 
     lower = safe.lower()
-    if "?" in safe and any(
+    knowledge_boundary_markers = (
+        "don't have that information",
+        "do not have that information",
+        "don't have that count",
+        "do not have that count",
+        "don't have visibility",
+        "do not have visibility",
+        "no visibility into",
+        "wasn't retrieved",
+        "was not retrieved",
+        "not retrieved this turn",
+        "can't report a",
+        "cannot report a",
+    )
+    if any(marker in lower for marker in knowledge_boundary_markers):
+        result.outcome_kind = "knowledge_boundary"
+    elif "?" in safe and any(
         token in lower
-        for token in ("which", "what ", "who ", "could you", "can you", "should i", "hold or")
+        for token in ("which", "what ", "who ", "could you", "can you", "should i", "hold or", "abandon")
     ):
         result.outcome_kind = "clarifying_question"
     elif any(token in lower for token in ("approve", "confirm", "go ahead", "should i send", "proceed")):
