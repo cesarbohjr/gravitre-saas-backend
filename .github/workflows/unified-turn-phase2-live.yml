@@ -41,7 +41,7 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli@4.65.0
 
-      - name: Deploy tip (GraphQL account token, fallback railway up)
+      - name: Force railway up rebuild + wait for tip health
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
@@ -53,33 +53,33 @@ jobs:
           FULL="$(git rev-parse HEAD)"
           echo "Expect health git_sha prefix=$SHA full=$FULL"
 
-          # Account token should allow variable mutations. Stamp tip into GIT_SHA so
-          # /health cannot stay on a stale pinned value after restart.
+          # Stamp tip into GIT_SHA so /health reports tip after restart.
           railway variables set "GIT_SHA=$FULL" --service gravitre-saas-backend
           if [ "${{ inputs.enable_shadow }}" = "true" ]; then
             railway variables set "UNIFIED_TURN_SHADOW_ENABLED=true" --service gravitre-saas-backend
           fi
 
-          # Prefer GitHub-connected latest commit deploy (account token + Bearer).
-          if python3 scripts/railway_prod_deploy.py \
-              --latest-commit \
-              --wait-health \
-              --timeout-s 900 \
-              --health-url https://api.gravitre.app/health \
-              --commit-sha "$SHA"; then
-            echo "GraphQL latest-commit deploy healthy"
-            exit 0
-          fi
+          # Cloudflare blocks GraphQL from Actions (error 1010). Use CLI upload only.
+          # Prior runs skipped build ("no changes detected in watch paths") — force a
+          # content change every deploy so Metal builder cannot skip.
+          echo "$FULL $(date -u +%Y-%m-%dT%H:%M:%SZ)" > backend/.railway-deploy-stamp
+          echo "stamp=$(cat backend/.railway-deploy-stamp)"
 
-          echo "::warning::GraphQL latest-commit failed; falling back to railway up (new build from this checkout)"
           railway up ./backend --path-as-root --ci --service gravitre-saas-backend --message "unified-turn-phase2 $SHA"
+
+          # Poll both public edge and Railway hostname (catch CDN/proxy lag).
           python3 scripts/railway_prod_deploy.py \
             --wait-health-only \
-            --timeout-s 900 \
+            --timeout-s 1200 \
             --health-url https://api.gravitre.app/health \
-            --commit-sha "$SHA"
+            --commit-sha "$SHA" \
+            || python3 scripts/railway_prod_deploy.py \
+              --wait-health-only \
+              --timeout-s 300 \
+              --health-url https://gravitre-saas-backend-production.up.railway.app/health \
+              --commit-sha "$SHA"
 
-      - name: Phase 2 live batteries (classical + shadow)
+      - name: Phase 2 live cards (classical + shadow)
         env:
           LIVE_API_BASE: https://api.gravitre.app
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
