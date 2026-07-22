@@ -1,0 +1,30 @@
+{
+  "feature": "unified_turn_phase1_shadow",
+  "checkedAt": "2026-07-22T09:48:28.916568+00:00",
+  "apiBase": "https://api.gravitre.app",
+  "git_sha": "acb44e3b0fef44845897f96808ff562fcc5a032c",
+  "expectMinSha": "2645c011",
+  "tip_ok": true,
+  "shadowUserVisible": false,
+  "classicalPathServesUser": true,
+  "classicalAssistantPreview": "Hey \u2014 here when you need a connector run, a plan, or a quick check.",
+  "conversationId": "51b39f39-f770-46f4-92ee-3584da9bda06",
+  "shadowAudit": {
+    "action": "unified_turn.shadow.completed",
+    "created_at": "2026-07-22T09:48:20.674876+00:00",
+    "outcome_kind": "conversational_reply",
+    "latency_ms": 615,
+    "model": "gpt-4o-mini",
+    "user_message_preview": "Good, thanks. What's on your mind?"
+  },
+  "unifiedTurnShadowEnabledInferred": true,
+  "standingRule": "catalog_write_authority / approval / Module A outcomes unchanged; shadow proposes tools only and does not execute",
+  "deliverables": [
+    "backend/app/services/unified_turn_reasoning_service.py",
+    "backend/app/services/unified_turn_pending_context.py",
+    "backend/app/services/module_d_unified_voice_spec.py",
+    "docs/delivery/unified-turn-reasoning-phase0.md"
+  ],
+  "verdict": "PASS",
+  "notes": "PASS = tip has Phase 1 code, classical chat works, shadow audit fired. PARTIAL = code+classical OK but no shadow audit (flag off or audit lag). Shadow never replaces user-visible SSE."
+}

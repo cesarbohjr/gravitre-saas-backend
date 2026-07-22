@@ -57,6 +57,10 @@ class UnifiedTurnShadowResult:
             payload["tool_arguments"] = {
                 k: str(v)[:200] for k, v in list(self.tool_arguments.items())[:20]
             }
+        # Phase 1 dual-path markers: classical still serves the user; shadow never executes.
+        payload["shadow_user_visible"] = False
+        payload["classical_path_active"] = True
+        payload["shadow_executes_tools"] = False
         return payload
 
 

@@ -111,3 +111,9 @@ Future: embedding-based tool routing at 600+ scale (brief semantic-tool-routing)
 Phases 2–4 remain gated on battery + latency + cutover per program prompt.
 
 **Deploy note:** prod tip must advance past any pinned `GIT_SHA` for shadow audits to run live (`UNIFIED_TURN_SHADOW_ENABLED=true` alone is not enough if the image is stale).
+
+### Phase 1 closed (2026-07-22)
+
+See [`unified-turn-phase1.md`](unified-turn-phase1.md). Live PASS:
+`unified_turn.shadow.completed` @ `2026-07-22T09:48:20.674876Z` on tip `acb44e3b…`
+(conversation `51b39f39-f770-46f4-92ee-3584da9bda06`).

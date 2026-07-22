@@ -2,45 +2,38 @@
 
 Updated: 2026-07-22
 
-## Status summary
+## Phase 1 (closed)
+
+**PASS** — shadow live, inactive to users, Module D system prompt, audits firing.
+
+Evidence: [`unified-turn-phase1-live.json`](unified-turn-phase1-live.json) /
+[`unified-turn-phase1.md`](unified-turn-phase1.md)
+
+- Prod tip at smoke: `acb44e3b…` (includes `2645c011` Module D voice)
+- `unified_turn.shadow.completed` @ `2026-07-22T09:48:20.674876Z`
+- Conversation `51b39f39-f770-46f4-92ee-3584da9bda06`
+- Classical path still served the SSE reply
+
+## Phase 2 status
 
 | Step | Status |
 |------|--------|
-| GitHub `RAILWAY_TOKEN` secret | Present (updated 2026-07-22) |
-| Railway `UNIFIED_TURN_SHADOW_ENABLED=true` | Set by you in UI |
-| Code on `main` | Tip **`500f8224`** (unified-turn shadow + copy guard + deploy via `railway up`) |
-| Prod `git_sha` | **STUCK** at **`5d99f9ef…`** — tip **not** live |
-| Phase 2 batteries | **NOT RUN** (blocked on tip) |
+| Railway `UNIFIED_TURN_SHADOW_ENABLED=true` | Confirmed by live shadow audit |
+| Phase 1 shadow code on prod | **PASS** @ `acb44e3b…` |
+| Main tip vs prod tip | Main may be ahead (`c9b40c65…`); Phase 2 batteries want tip with latest shadow + copy-guard as needed |
+| Phase 2 batteries | **NOT RUN** — next |
 
-Active run: [29894310148](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/29894310148)
+## After tip is current enough for Phase 2
 
-## Root cause (confirmed from Actions logs)
+```bash
+python scripts/verify-unified-turn-phase2-live.py
+python scripts/verify-pending-reply-classifier-live.py
+python scripts/verify-conversational-path-live.py
+```
 
-1. GraphQL deploy → **Cloudflare 1010 / 403** (project token cannot mutate via Public API).
-2. `railway redeploy` → ok but **same image**, SHA unchanged.
-3. `railway up ./backend` → **upload + build starts** (e.g. deployment `481aa63f…` on service `20c41db0…`) but `/health` still shows `5d99f9ef…`.
-4. That pattern means a **pinned Railway service variable `GIT_SHA=5d99f9ef…`** (or equivalent) is winning, or the new build never becomes the production traffic target.
-
-Health now prefers `RAILWAY_GIT_COMMIT_SHA` then `GIT_SHA` (commit `500f8224`), but **that code is not on prod until tip advances**.
-
-## Do this in Railway (required)
-
-1. Open project → service **`gravitre-saas-backend`** → **Variables**.
-2. Find **`GIT_SHA`**:
-   - **Delete it**, or set to **`500f8224`** / full SHA of current `main`.
-3. Confirm **`UNIFIED_TURN_SHADOW_ENABLED=true`** is still set.
-4. Open Deployments → ensure the latest **`railway up` / GitHub** deployment is **Success** and **Promoted** (not failed / rolled back).
-5. Hard-refresh [https://api.gravitre.app/health](https://api.gravitre.app/health) — `git_sha` must **not** be `5d99f9ef…`.
-
-Optional: replace GitHub secret `RAILWAY_TOKEN` with an **account token** from [https://railway.com/account/tokens](https://railway.com/account/tokens) so Actions can set variables without the dashboard.
-
-## After tip moves
-
-Re-run workflow (or wait for [29894310148](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/29894310148)):
-
-[Unified Turn Phase 2 Live](https://github.com/cesarbohjr/gravitre-saas-backend/actions/workflows/unified-turn-phase2-live.yml)
-
-Artifacts will include:
+Artifacts:
 
 - `docs/delivery/unified-turn-phase2-battery-live.json`
 - pending-reply + conversational battery JSON
+
+Workflow: [Unified Turn Phase 2 Live](https://github.com/cesarbohjr/gravitre-saas-backend/actions/workflows/unified-turn-phase2-live.yml)
