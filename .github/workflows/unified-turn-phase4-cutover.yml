@@ -39,7 +39,7 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli@4.65.0
 
-      - name: Set LIVE flag and redeploy
+      - name: Set LIVE flag and force new deploy
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_ENV: ${{ inputs.railway_environment }}
@@ -48,21 +48,43 @@ jobs:
           ENV_NAME="${RAILWAY_ENV:-production}"
           SVC="gravitre-saas-backend"
           LIVE="${{ inputs.enable_live }}"
-          echo "Setting UNIFIED_TURN_LIVE_ENABLED=$LIVE on $SVC / $ENV_NAME"
+          FULL="$(git rev-parse HEAD)"
+          echo "Setting UNIFIED_TURN_LIVE_ENABLED=$LIVE on $SVC / $ENV_NAME tip=$FULL"
           railway variables set "UNIFIED_TURN_LIVE_ENABLED=$LIVE" --service "$SVC" --environment "$ENV_NAME"
           railway variables set "UNIFIED_TURN_SHADOW_ENABLED=true" --service "$SVC" --environment "$ENV_NAME"
-          echo "Redeploying so Settings reload"
-          railway redeploy --service "$SVC" --environment "$ENV_NAME" --yes
-          echo "Waiting for health..."
-          for i in $(seq 1 60); do
-            SHA="$(curl -fsS https://api.gravitre.app/health | python3 -c 'import sys,json; print(json.load(sys.stdin).get("git_sha",""))' || true)"
-            echo "attempt=$i sha=$SHA"
-            if [ -n "$SHA" ] && [ "$SHA" != "unknown" ]; then
+          railway variables set "GIT_SHA=$FULL" --service "$SVC" --environment "$ENV_NAME"
+          echo "$FULL $(date -u +%Y-%m-%dT%H:%M:%SZ)" > backend/.railway-deploy-stamp
+          railway variables --service "$SVC" --environment "$ENV_NAME" --json > /tmp/vars.json || true
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path("/tmp/vars.json").read_text() or "{}")
+          for k in ("UNIFIED_TURN_LIVE_ENABLED", "UNIFIED_TURN_SHADOW_ENABLED", "GIT_SHA"):
+              print(f"{k}={data.get(k)!r}")
+          PY
+          # Force a new image/process so Settings() reloads (redeploy alone left LIVE=false).
+          railway up ./backend --path-as-root --ci \
+            --service "$SVC" \
+            --environment "$ENV_NAME" \
+            --message "unified-turn-phase4-live $LIVE"
+          echo "Waiting for health tip + LIVE flag..."
+          WANT_PREFIX="$(echo "$FULL" | cut -c1-8)"
+          for i in $(seq 1 90); do
+            curl -fsS https://api.gravitre.app/health -o /tmp/health.json || echo '{}' > /tmp/health.json
+            echo -n "attempt=$i "; cat /tmp/health.json; echo
+            if python3 -c "
+import json,sys
+h=json.load(open('/tmp/health.json'))
+sha=str(h.get('git_sha') or '')
+live=h.get('unified_turn_live_enabled')
+print('parsed', sha[:12], 'live', live)
+sys.exit(0 if sha.startswith('$WANT_PREFIX') and (live is True or live is None) else 1)
+"; then
+              echo "health gate passed"
               break
             fi
             sleep 10
           done
-          echo "health_sha=$SHA"
 
       - name: Probe unified_turn.live.completed
         if: inputs.enable_live == 'true'
@@ -75,6 +97,13 @@ jobs:
           OAUTH_SMOKE_ORG_ID: ${{ secrets.OAUTH_SMOKE_ORG_ID }}
         run: |
           set -euo pipefail
+          python3 - <<'PY'
+          import json, urllib.request
+          h = json.load(urllib.request.urlopen("https://api.gravitre.app/health", timeout=30))
+          print("pre_probe_health", json.dumps({k: h.get(k) for k in ("git_sha", "unified_turn_live_enabled", "unified_turn_shadow_enabled", "timestamp")}))
+          if h.get("unified_turn_live_enabled") is False:
+              raise SystemExit("UNIFIED_TURN_LIVE_ENABLED still false in /health after deploy")
+          PY
           python3 <<'PY'
           import asyncio, json, os, sys, time, uuid
           from datetime import datetime, timezone

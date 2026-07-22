@@ -58,6 +58,26 @@ def health(request: Request) -> dict:
     checks = _dependency_checks()
     db_ok = checks.get("database") == "healthy"
     status = "ok" if db_ok else "degraded"
+    unified_shadow = False
+    unified_live = False
+    try:
+        from app.config import get_settings
+
+        s = get_settings()
+        unified_shadow = bool(getattr(s, "unified_turn_shadow_enabled", False))
+        unified_live = bool(getattr(s, "unified_turn_live_enabled", False))
+    except Exception:  # noqa: BLE001
+        unified_shadow = (os.environ.get("UNIFIED_TURN_SHADOW_ENABLED") or "").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+        unified_live = (os.environ.get("UNIFIED_TURN_LIVE_ENABLED") or "").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+
     return {
         "status": status,
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -67,5 +87,7 @@ def health(request: Request) -> dict:
         or os.environ.get("GIT_SHA")
         or "unknown",
         "ai_disabled": _ai_disabled_flag(),
+        "unified_turn_shadow_enabled": unified_shadow,
+        "unified_turn_live_enabled": unified_live,
         "checks": checks,
     }
