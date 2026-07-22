@@ -386,6 +386,11 @@ def main() -> int:
     _load_operator_env()
     parser = argparse.ArgumentParser(description="Deploy a specific commit to Railway prod")
     parser.add_argument("--redeploy-cli", action="store_true", help="Use `railway redeploy` instead of GraphQL")
+    parser.add_argument(
+        "--wait-health-only",
+        action="store_true",
+        help="Skip deploy; only poll /health until commit_sha matches",
+    )
     parser.add_argument("--commit-sha", default=None, help="Full or prefix git SHA to deploy")
     parser.add_argument("--latest-commit", action="store_true", help="Deploy latest main commit")
     parser.add_argument("--service", default=DEFAULT_SERVICE)
@@ -402,64 +407,61 @@ def main() -> int:
             os_mod.environ["RAILWAY_TOKEN"] = railway_token
 
     token = (os_mod.environ.get("RAILWAY_TOKEN") or "").strip()
-    if not token:
+    if not token and not args.wait_health_only:
         print(
             "RAILWAY_TOKEN is required (Railway account/team token from "
-            "https://railway.com/account/tokens, or project token for read-only). "
+            "https://railway.com/account/tokens, or project token for CLI redeploy). "
             "Set $env:RAILWAY_TOKEN, add to backend/.env.operator.local, "
             f"or run `railway login` so this script can read RAILWAY_TOKEN from Railway service variables ({args.service}).",
             file=sys.stderr,
         )
         return 2
 
-    if args.redeploy_cli:
-        deployment_id = redeploy_via_cli(args.service, token)
-        ids = {"project_id": "", "environment_id": "", "service_id": args.service}
-    else:
-        try:
-            ids = _resolve_ids(token, args.service)
-            deployment_id = deploy_commit(
-                token,
-                service_id=ids["service_id"],
-                environment_id=ids["environment_id"],
-                commit_sha=args.commit_sha,
-                latest_commit=args.latest_commit,
-            )
-        except (urllib.error.HTTPError, RuntimeError) as exc:
-            print(f"GraphQL deploy failed ({exc}); falling back to railway redeploy CLI.", file=sys.stderr)
-            deployment_id = redeploy_via_cli(args.service, token)
-            ids = {"project_id": "", "environment_id": "", "service_id": args.service}
-
     report: dict[str, Any] = {
-        "deployment_id": deployment_id,
         "commit_sha_requested": args.commit_sha,
         "latest_commit": args.latest_commit,
-        **ids,
+        "wait_health_only": bool(args.wait_health_only),
     }
 
-    if args.wait_health:
-        if args.commit_sha:
-            health = wait_for_health(
-                args.health_url,
-                sha_prefix=args.commit_sha[:8],
-                timeout_s=args.timeout_s,
-            )
+    if not args.wait_health_only:
+        if args.redeploy_cli:
+            deployment_id = redeploy_via_cli(args.service, token)
+            ids = {"project_id": "", "environment_id": "", "service_id": args.service}
         else:
-            health = wait_for_health(
-                args.health_url,
-                exclude_sha_prefix="09e57595",
-                timeout_s=args.timeout_s,
-            )
+            try:
+                ids = _resolve_ids(token, args.service)
+                deployment_id = deploy_commit(
+                    token,
+                    service_id=ids["service_id"],
+                    environment_id=ids["environment_id"],
+                    commit_sha=args.commit_sha,
+                    latest_commit=args.latest_commit,
+                )
+            except (urllib.error.HTTPError, RuntimeError) as exc:
+                print(f"GraphQL deploy failed ({exc}); falling back to railway redeploy CLI.", file=sys.stderr)
+                deployment_id = redeploy_via_cli(args.service, token)
+                ids = {"project_id": "", "environment_id": "", "service_id": args.service}
+        report["deployment_id"] = deployment_id
+        report.update(ids)
+
+    if args.wait_health or args.wait_health_only:
+        if not args.commit_sha:
+            print("--commit-sha is required with --wait-health / --wait-health-only", file=sys.stderr)
+            return 2
+        health = wait_for_health(
+            args.health_url,
+            sha_prefix=args.commit_sha[:8],
+            timeout_s=args.timeout_s,
+        )
         report["health"] = health
         deployed = str(health.get("git_sha") or "")
-        if args.commit_sha:
-            prefix = args.commit_sha[:8]
-            if not (
-                deployed.lower().startswith(prefix.lower())
-                or sha_is_ancestor(prefix, deployed)
-            ):
-                print(f"Deployed SHA {deployed} does not match requested {args.commit_sha}", file=sys.stderr)
-                return 1
+        prefix = args.commit_sha[:8]
+        if not (
+            deployed.lower().startswith(prefix.lower())
+            or sha_is_ancestor(prefix, deployed)
+        ):
+            print(f"Deployed SHA {deployed} does not match requested {args.commit_sha}", file=sys.stderr)
+            return 1
 
     text = json.dumps(report, indent=2)
     print(text)

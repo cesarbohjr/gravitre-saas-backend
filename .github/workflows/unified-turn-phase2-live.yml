@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       commit_sha:
-        description: "Deploy this git SHA prefix (default 3cef41f5)"
+        description: "Expected health git_sha prefix after deploy"
         required: false
-        default: "a244b98a"
+        default: ""
       enable_shadow:
         description: "Set UNIFIED_TURN_SHADOW_ENABLED=true on Railway"
         required: false
@@ -41,13 +41,27 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli@4.65.0
 
-      - name: Deploy commit to Railway prod
+      - name: Deploy tip via railway up (new build, not restart)
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           set -euo pipefail
           SHA="${{ inputs.commit_sha }}"
-          python3 scripts/railway_prod_deploy.py --latest-commit --wait-health --timeout-s 900 --health-url https://api.gravitre.app/health --commit-sha "$SHA"
+          if [ -z "$SHA" ]; then
+            SHA="$(git rev-parse --short=8 HEAD)"
+          fi
+          echo "Deploying tip; expect health git_sha prefix=$SHA"
+          # Project tokens cannot call GraphQL deploy (Cloudflare 1010 / 403).
+          # `railway redeploy` only restarts the current image — SHA stays stale.
+          # `railway up` uploads this checkout and triggers a new build.
+          railway variables set "GIT_SHA=$SHA" --service gravitre-saas-backend || true
+          # Dockerfile lives under backend/; upload that tree as the service root.
+          railway up ./backend --path-as-root --detach --ci --service gravitre-saas-backend --message "unified-turn-phase2 $SHA"
+          python3 scripts/railway_prod_deploy.py \
+            --wait-health-only \
+            --timeout-s 900 \
+            --health-url https://api.gravitre.app/health \
+            --commit-sha "$SHA"
 
       - name: Enable unified-turn shadow on Railway
         if: inputs.enable_shadow == 'true'
@@ -56,11 +70,19 @@ jobs:
         run: |
           set -euo pipefail
           railway variables set "UNIFIED_TURN_SHADOW_ENABLED=true" --service gravitre-saas-backend
-          python3 scripts/railway_prod_deploy.py --commit-sha "${{ inputs.commit_sha }}" --wait-health --timeout-s 900 --health-url https://api.gravitre.app/health
+          # Variable change alone may restart; wait until tip still matches.
+          SHA="${{ inputs.commit_sha }}"
+          if [ -z "$SHA" ]; then
+            SHA="$(git rev-parse --short=8 HEAD)"
+          fi
+          python3 scripts/railway_prod_deploy.py \
+            --wait-health-only \
+            --timeout-s 600 \
+            --health-url https://api.gravitre.app/health \
+            --commit-sha "$SHA"
 
       - name: Phase 2 live batteries (classical + shadow)
         env:
-          EXPECT_SHA: ${{ inputs.commit_sha }}
           LIVE_API_BASE: https://api.gravitre.app
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -69,6 +91,12 @@ jobs:
           OAUTH_SMOKE_ORG_ID: ${{ secrets.OAUTH_SMOKE_ORG_ID }}
         run: |
           set -euo pipefail
+          if [ -n "${{ inputs.commit_sha }}" ]; then
+            export EXPECT_SHA="${{ inputs.commit_sha }}"
+          else
+            export EXPECT_SHA="$(git rev-parse --short=8 HEAD)"
+          fi
+          echo "EXPECT_SHA=$EXPECT_SHA"
           python3 scripts/verify-unified-turn-phase2-live.py
 
       - name: Upload Phase 2 artifacts
