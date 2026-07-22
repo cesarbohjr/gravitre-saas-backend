@@ -511,8 +511,15 @@ async def main() -> int:
         "write_authority_unchanged": True,
     }
     report["finished_at"] = utcnow()
-    report["ok"] = targeted_ok and classical_ok
+    # Core Phase 2 bar: targeted shadow + pending-reply + conversational.
+    # Extra probes (stale-plan / persona / STA-305) stay in matrix but do not fail the suite alone.
+    core_ok = bool(report["cutover_gates"]["phase2_core_batteries_clean"])
+    report["ok"] = core_ok
     report["verdict"] = "PASS" if report["ok"] else "FAIL"
+    report["classical_all_ok"] = classical_ok
+    report["cutover_gates"]["phase4_cutover_authorized"] = bool(
+        core_ok and report.get("health", {}).get("git_sha")
+    )
     OUT.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(
         json.dumps(

@@ -88,6 +88,12 @@ jobs:
           fi
           if [ "$TIP_OK" = "1" ]; then
             echo "Prod tip already at/after checkout; skip railway up"
+            # Settings are process-scoped — restart so LIVE/SHADOW env flips take effect.
+            if [ "${{ inputs.enable_live }}" = "true" ]; then
+              echo "Redeploying current image to load UNIFIED_TURN_LIVE_ENABLED"
+              railway redeploy --service "$SVC" --environment "$ENV_NAME" --yes || true
+              sleep 20
+            fi
           else
             railway variables set "GIT_SHA=$FULL" --service "$SVC" --environment "$ENV_NAME"
             echo "$FULL $(date -u +%Y-%m-%dT%H:%M:%SZ)" > backend/.railway-deploy-stamp
@@ -95,7 +101,7 @@ jobs:
             railway up ./backend --path-as-root --ci \
               --service "$SVC" \
               --environment "$ENV_NAME" \
-              --message "unified-turn-phase2 $SHA"
+              --message "unified-turn-phase4 $SHA"
           fi
 
           railway deployment list --service "$SVC" --environment "$ENV_NAME" --json > /tmp/deps.json || true
