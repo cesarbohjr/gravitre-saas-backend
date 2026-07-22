@@ -112,6 +112,7 @@ jobs:
               print(f"{r.get('id','')} status={r.get('status','')} created={r.get('createdAt','')}")
           PY
 
+          # Wait for tip at/after requested SHA (descendant tips count as success).
           python3 scripts/railway_prod_deploy.py \
             --wait-health-only \
             --timeout-s 1200 \
@@ -134,12 +135,16 @@ jobs:
           OAUTH_SMOKE_ORG_ID: ${{ secrets.OAUTH_SMOKE_ORG_ID }}
         run: |
           set -euo pipefail
+          # Prefer live tip prefix so batteries don't fail when tip raced ahead of input SHA.
+          LIVE_SHA="$(curl -fsS https://api.gravitre.app/health | python3 -c 'import sys,json; print(json.load(sys.stdin).get("git_sha","")[:8])')"
           if [ -n "${{ inputs.commit_sha }}" ]; then
             export EXPECT_SHA="${{ inputs.commit_sha }}"
+          elif [ -n "$LIVE_SHA" ]; then
+            export EXPECT_SHA="$LIVE_SHA"
           else
             export EXPECT_SHA="$(git rev-parse --short=8 HEAD)"
           fi
-          echo "EXPECT_SHA=$EXPECT_SHA"
+          echo "EXPECT_SHA=$EXPECT_SHA LIVE_SHA=$LIVE_SHA"
           python3 scripts/verify-unified-turn-phase2-live.py
 
       - name: Upload Phase 2 artifacts

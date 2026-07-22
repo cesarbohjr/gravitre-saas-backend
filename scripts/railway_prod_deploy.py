@@ -282,7 +282,10 @@ def wait_for_health(
         sha = str(last.get("git_sha") or "").lower()
         ok = True
         if sha_prefix:
-            ok = sha.startswith(sha_prefix.lower())
+            prefix = sha_prefix.lower()
+            # Exact prefix match, or tip already moved past the requested SHA
+            # (common when GitHub auto-deploy races railway up).
+            ok = sha.startswith(prefix) or sha_is_ancestor(prefix, sha)
             if ok and exclude_sha_prefix:
                 ok = not sha.startswith(exclude_sha_prefix.lower())
         if not sha_prefix and exclude_sha_prefix:
