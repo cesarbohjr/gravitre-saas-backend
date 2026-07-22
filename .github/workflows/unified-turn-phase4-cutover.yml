@@ -53,27 +53,16 @@ jobs:
           echo "LIVE=$ENABLE_LIVE svc=$SVC env=$ENV_NAME"
           railway variables set "UNIFIED_TURN_LIVE_ENABLED=${ENABLE_LIVE}" --service "$SVC" --environment "$ENV_NAME"
           railway variables set "UNIFIED_TURN_SHADOW_ENABLED=true" --service "$SVC" --environment "$ENV_NAME"
-          # Keep GIT_SHA honest to the currently serving tip (do not pin unshipped HEAD).
-          CURRENT="$(curl -fsS https://api.gravitre.app/health | python3 -c 'import sys,json; print(json.load(sys.stdin).get("git_sha",""))')"
-          echo "current_health_sha=$CURRENT"
-          if [ -n "$CURRENT" ]; then
-            railway variables set "GIT_SHA=${CURRENT}" --service "$SVC" --environment "$ENV_NAME"
-          fi
+          # Never set GIT_SHA — it pins /health when RAILWAY_GIT_COMMIT_SHA is absent.
+          # Prefer deleting a stale GIT_SHA so GitHub auto-deploy tip is visible.
+          railway variables delete GIT_SHA --service "$SVC" --environment "$ENV_NAME" || true
           railway variables --service "$SVC" --environment "$ENV_NAME" --json > /tmp/vars.json || true
           python3 scripts/print_unified_turn_railway_vars.py /tmp/vars.json
-          # railway up Metal log streaming is flaky; redeploy reloads env into the live image.
+          # redeploy alone has NOT loaded LIVE in prod (still shadow-only on tip 444371f9).
+          # Kick redeploy anyway; tip advance requires GitHub→Railway after green CI.
           set +e
           railway redeploy --service "$SVC" --environment "$ENV_NAME" --yes
-          REDEPLOY_RC=$?
-          set -e
-          echo "railway_redeploy_exit=$REDEPLOY_RC"
-          # Optional CLI upload — never fail the job on stream errors.
-          set +e
-          railway up ./backend --path-as-root --ci \
-            --service "$SVC" \
-            --environment "$ENV_NAME" \
-            --message "unified-turn-phase4-live ${ENABLE_LIVE}"
-          echo "railway_up_exit=$?"
+          echo "railway_redeploy_exit=$?"
           set -e
 
       - name: Wait for LIVE (health flags and/or tip) then probe
