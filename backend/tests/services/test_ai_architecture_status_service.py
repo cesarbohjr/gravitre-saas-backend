@@ -102,7 +102,7 @@ async def test_learning_status_filters_intel_runs_by_started_at(monkeypatch):
     runs_q = _FakeQuery(count=2)
     examples_q = _FakeQuery(count=0)
     tables = {
-        "response_feedback": feedback_q,
+        "message_feedback": feedback_q,
         "agent_memory_promotion_audit": promo_q,
         "org_intelligence_runs": runs_q,
         "retrieval_ranker_examples": examples_q,

@@ -63,30 +63,26 @@ jobs:
           railway whoami || true
           railway status --json || true
 
-          railway variables set "GIT_SHA=$FULL" --service "$SVC" --environment "$ENV_NAME"
+          # Do not pin a stale GIT_SHA. Prefer Railway's commit SHA from a GitHub
+          # deploy; only set GIT_SHA to this tip when health is still on an old tip
+          # (CLI upload path does not always populate RAILWAY_GIT_COMMIT_SHA).
           if [ "${{ inputs.enable_shadow }}" = "true" ]; then
             railway variables set "UNIFIED_TURN_SHADOW_ENABLED=true" --service "$SVC" --environment "$ENV_NAME"
           fi
 
-          python3 - <<'PY'
-          import json, os, subprocess
-          svc = "gravitre-saas-backend"
-          env = os.environ.get("RAILWAY_ENV", "production")
-          raw = subprocess.check_output(
-              ["railway", "variables", "--service", svc, "--environment", env, "--json"],
-              text=True,
-          )
-          data = json.loads(raw or "{}")
-          print("GIT_SHA now:", data.get("GIT_SHA", "(missing)"))
-          PY
-
-          echo "$FULL $(date -u +%Y-%m-%dT%H:%M:%SZ)" > backend/.railway-deploy-stamp
-          echo "stamp=$(cat backend/.railway-deploy-stamp)"
-
-          railway up ./backend --path-as-root --ci \
-            --service "$SVC" \
-            --environment "$ENV_NAME" \
-            --message "unified-turn-phase2 $SHA"
+          CURRENT="$(curl -fsS https://api.gravitre.app/health | python3 -c 'import sys,json; print(json.load(sys.stdin).get("git_sha",""))' || true)"
+          echo "current_health_sha=$CURRENT"
+          if [[ "$CURRENT" == "$FULL"* ]] || [[ "$CURRENT" == "$SHA"* ]]; then
+            echo "Prod tip already matches checkout; skip railway up"
+          else
+            railway variables set "GIT_SHA=$FULL" --service "$SVC" --environment "$ENV_NAME"
+            echo "$FULL $(date -u +%Y-%m-%dT%H:%M:%SZ)" > backend/.railway-deploy-stamp
+            echo "stamp=$(cat backend/.railway-deploy-stamp)"
+            railway up ./backend --path-as-root --ci \
+              --service "$SVC" \
+              --environment "$ENV_NAME" \
+              --message "unified-turn-phase2 $SHA"
+          fi
 
           railway deployment list --service "$SVC" --environment "$ENV_NAME" --json > /tmp/deps.json || true
           python3 - <<'PY'

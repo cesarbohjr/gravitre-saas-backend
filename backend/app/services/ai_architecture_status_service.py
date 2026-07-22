@@ -90,7 +90,7 @@ class AIArchitectureStatusService:
         since_7d = self._since(7)
 
         feedback = (
-            client.table("response_feedback")
+            client.table("message_feedback")
             .select("id", count="exact")
             .eq("org_id", org_id)
             .gte("created_at", since_7d)
