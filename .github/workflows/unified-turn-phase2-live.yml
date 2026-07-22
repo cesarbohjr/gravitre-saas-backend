@@ -6,7 +6,7 @@ on:
       commit_sha:
         description: "Deploy this git SHA prefix (default 3cef41f5)"
         required: false
-        default: "3cef41f5"
+        default: "03f2fa4f"
       enable_shadow:
         description: "Set UNIFIED_TURN_SHADOW_ENABLED=true on Railway"
         required: false
