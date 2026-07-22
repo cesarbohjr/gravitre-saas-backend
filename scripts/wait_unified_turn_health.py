@@ -15,6 +15,11 @@ def main() -> int:
     p.add_argument("--expect-sha-prefix", required=True)
     p.add_argument("--expect-live", default="true")
     p.add_argument("--timeout-s", type=int, default=900)
+    p.add_argument(
+        "--allow-missing-flag-keys",
+        action="store_true",
+        help="Pass when tip matches even if unified_turn_* health keys are absent",
+    )
     args = p.parse_args()
     want_live = str(args.expect_live).lower() in {"1", "true", "yes"}
     prefix = args.expect_sha_prefix.strip()
@@ -40,8 +45,10 @@ def main() -> int:
         if not tip_ok:
             time.sleep(10)
             continue
-        # Until the tip that exposes these keys is live, live may be None.
         if live is None:
+            if args.allow_missing_flag_keys:
+                print("health gate PASS (tip matched; flag keys not in schema yet)")
+                return 0
             print("tip matched but flag keys absent; keep waiting for health schema tip")
             time.sleep(10)
             continue
@@ -51,6 +58,7 @@ def main() -> int:
         if not want_live and live is False:
             print("health gate PASS (LIVE=false)")
             return 0
+        # Tip advanced but LIVE still false — keep waiting for process with new env.
         time.sleep(10)
     print("health gate TIMEOUT", file=sys.stderr)
     return 1

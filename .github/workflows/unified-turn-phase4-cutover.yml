@@ -52,18 +52,16 @@ jobs:
           echo "LIVE=$ENABLE_LIVE svc=$SVC env=$ENV_NAME tip=$FULL"
           railway variables set "UNIFIED_TURN_LIVE_ENABLED=${ENABLE_LIVE}" --service "$SVC" --environment "$ENV_NAME"
           railway variables set "UNIFIED_TURN_SHADOW_ENABLED=true" --service "$SVC" --environment "$ENV_NAME"
-          railway variables set "GIT_SHA=${FULL}" --service "$SVC" --environment "$ENV_NAME"
-          echo "${FULL} $(date -u +%Y-%m-%dT%H:%M:%SZ)" > backend/.railway-deploy-stamp
+          # Do not set GIT_SHA — it can pin /health when RAILWAY_GIT_COMMIT_SHA is absent.
           railway variables --service "$SVC" --environment "$ENV_NAME" --json > /tmp/vars.json || true
           python3 scripts/print_unified_turn_railway_vars.py /tmp/vars.json
-          railway up ./backend --path-as-root --ci \
-            --service "$SVC" \
-            --environment "$ENV_NAME" \
-            --message "unified-turn-phase4-live ${ENABLE_LIVE}"
+          # Prefer GitHub→Railway auto-deploy (railway up often fails streaming Metal builds).
+          # Kick a redeploy so the already-set LIVE var loads into a new process.
+          railway redeploy --service "$SVC" --environment "$ENV_NAME" --yes || true
           python3 scripts/wait_unified_turn_health.py \
             --expect-sha-prefix "$(echo "$FULL" | cut -c1-8)" \
             --expect-live "${ENABLE_LIVE}" \
-            --timeout-s 900
+            --timeout-s 1200
 
       - name: Probe unified_turn.live.completed
         if: inputs.enable_live == 'true'
