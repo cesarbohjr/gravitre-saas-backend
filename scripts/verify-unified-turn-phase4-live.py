@@ -33,11 +33,32 @@ def utcnow() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _load_env() -> dict[str, str]:
+    from dotenv import dotenv_values
+
+    merged: dict[str, str] = {}
+    for p in (BACKEND / ".env", ROOT / ".env", BACKEND / ".env.operator.local"):
+        if not p.is_file():
+            continue
+        for enc in ("utf-8", "utf-8-sig", "cp1252", "latin-1"):
+            try:
+                loaded = dotenv_values(p, encoding=enc)
+                merged.update({k: v for k, v in loaded.items() if v})
+                break
+            except UnicodeDecodeError:
+                continue
+    for k, v in os.environ.items():
+        if v:
+            merged[k] = v
+    return merged
+
+
 async def main() -> int:
-    env = {k: v for k, v in os.environ.items() if v}
+    env = _load_env()
     for key in ("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_JWT_SECRET"):
         if not env.get(key):
             raise SystemExit(f"missing {key}")
+        os.environ[key] = env[key]
     sb = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
     org_id, user_id, email = resolve_isolated_conversation_actor(env, sb)
     url = env["SUPABASE_URL"].rstrip("/")

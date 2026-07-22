@@ -6,32 +6,32 @@ Updated: 2026-07-22
 
 | Gate | Status |
 |------|--------|
-| Phase 2 core batteries | **PASS** — pending 24/24 + conversational 20/20 + shadow cases (workflow [29909107895](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/29909107895), tip `acb44e3b`; re-run on `444371f9` core still clean) |
-| Phase 3 streamed TTFT | **PASS (measured)** — [phase3](unified-turn-phase3-latency-status.md); **200ms target MISS** (p50 ~1258ms) |
+| Phase 2 core batteries | **PASS** on tip `444371f9…` |
+| Phase 3 streamed TTFT | **Measured** — p50 ~2.0s; **200ms target MISS** (documented) |
 
-## Cutover design (shipped on tip `444371f9`)
+## Cutover design
 
-| Flag | Default | Meaning |
-|------|---------|---------|
-| `UNIFIED_TURN_LIVE_ENABLED` | `false` | When `true`, unified-turn text + write-approval outcomes serve the user |
-| `UNIFIED_TURN_SHADOW_ENABLED` | ops | Shadow-only; skipped when live is on |
+| Flag | Meaning |
+|------|---------|
+| `UNIFIED_TURN_LIVE_ENABLED` | When `true`, unified-turn text + write-approval outcomes serve the user |
+| `UNIFIED_TURN_SHADOW_ENABLED` | Shadow audits; skipped when live already ran the call |
 
-- Classical pipeline remains for rollback (`LIVE=false` or live returns `None`).
-- Writes stage `awaiting_confirm` — no execute bypass.
-- Audits: `unified_turn.live.completed` when user-visible.
+Classical pipeline remains rollback (`LIVE=false` or live returns `None`). Writes stage `awaiting_confirm`.
 
-## Live enable
+## Progress
 
 | Step | Status | Evidence |
 |------|--------|----------|
-| Code on prod tip | **PASS** | `git_sha=444371f9…` |
-| `UNIFIED_TURN_LIVE_ENABLED` loaded in process | **NOT RUN** | Probe @ `2026-07-22T18:10:42Z` still `unified_turn.shadow.completed` / `live_served=false` — env flip needs redeploy |
-| `unified_turn.live.completed` | **NOT RUN** | Blocked on process restart with LIVE=true |
+| Cutover code on prod | **PASS** | tip `444371f9…` |
+| Railway vars LIVE=true | **PASS** | Actions log [29949446998](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/29949446998): `UNIFIED_TURN_LIVE_ENABLED='true'` |
+| Process reload / tip with health flags | **BLOCKED** | `railway up` failed streaming Metal build logs; `/health` still lacks `unified_turn_*` keys (schema tip not deployed) |
+| `unified_turn.live.completed` | **NOT RUN** | Blocked on process restart with LIVE env |
 | Monitoring window | **NOT RUN** | |
 
 ## Next
 
-1. Redeploy current image after `UNIFIED_TURN_LIVE_ENABLED=true` (workflow now calls `railway redeploy` when `enable_live=true`).
-2. Confirm audit `unified_turn.live.completed` with `live_served=true`.
-3. Monitor copy leaks / write approvals / TTFT vs Phase 3 baselines.
-4. Rollback: set `UNIFIED_TURN_LIVE_ENABLED=false` + redeploy.
+1. Redeploy current serving image (no Metal log stream) so LIVE env loads into `444371f9` process.
+2. Probe `unified_turn.live.completed` with `live_served=true`.
+3. Rollback: `UNIFIED_TURN_LIVE_ENABLED=false` + redeploy.
+
+Workflow: [unified-turn-phase4-cutover.yml](../../.github/workflows/unified-turn-phase4-cutover.yml) (redeploy-first; `railway up` best-effort).
