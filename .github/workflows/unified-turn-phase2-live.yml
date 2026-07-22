@@ -6,7 +6,7 @@ on:
       commit_sha:
         description: "Deploy this git SHA prefix (default 3cef41f5)"
         required: false
-        default: "03f2fa4f"
+        default: "09fb7120"
       enable_shadow:
         description: "Set UNIFIED_TURN_SHADOW_ENABLED=true on Railway"
         required: false
@@ -47,7 +47,7 @@ jobs:
         run: |
           set -euo pipefail
           SHA="${{ inputs.commit_sha }}"
-          python3 scripts/railway_prod_deploy.py --commit-sha "$SHA" --wait-health --timeout-s 900
+          python3 scripts/railway_prod_deploy.py --commit-sha "$SHA" --wait-health --timeout-s 900 --health-url https://api.gravitre.app/health
 
       - name: Enable unified-turn shadow on Railway
         if: inputs.enable_shadow == 'true'
@@ -56,7 +56,7 @@ jobs:
         run: |
           set -euo pipefail
           railway variables set "UNIFIED_TURN_SHADOW_ENABLED=true" --service gravitre-saas-backend
-          python3 scripts/railway_prod_deploy.py --commit-sha "${{ inputs.commit_sha }}" --wait-health --timeout-s 900
+          python3 scripts/railway_prod_deploy.py --commit-sha "${{ inputs.commit_sha }}" --wait-health --timeout-s 900 --health-url https://api.gravitre.app/health
 
       - name: Phase 2 live batteries (classical + shadow)
         env:

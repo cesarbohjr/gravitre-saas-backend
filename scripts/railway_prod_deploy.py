@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Brief prod deploy/restore via Railway GraphQL (OIL/claim3 rollback pattern).
 
-Uses a Railway *project* token (Project-Access-Token header). Discovers project,
-environment, and service IDs when not supplied via env.
+Uses a Railway API token. Deploy mutations require an account or team token
+(https://railway.com/account/tokens) with Authorization: Bearer. Project-scoped
+tokens (Project-Access-Token) can resolve IDs but may not redeploy.
 
 Examples:
   python scripts/railway_prod_deploy.py --commit-sha 09e57595 --wait-health
@@ -22,10 +23,10 @@ from typing import Any
 
 RAILWAY_GQL = "https://backboard.railway.com/graphql/v2"
 DEFAULT_SERVICE = "gravitre-saas-backend"
-DEFAULT_HEALTH_URL = "https://gravitre-saas-backend-production.up.railway.app/health"
+DEFAULT_HEALTH_URL = "https://api.gravitre.app/health"
 
 
-def _gql(token: str, query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]:
+def _gql_raw(headers: dict[str, str], query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]:
     body: dict[str, Any] = {"query": query}
     if variables:
         body["variables"] = variables
@@ -33,10 +34,7 @@ def _gql(token: str, query: str, variables: dict[str, Any] | None = None) -> dic
         RAILWAY_GQL,
         data=json.dumps(body).encode("utf-8"),
         method="POST",
-        headers={
-            "Project-Access-Token": token,
-            "Content-Type": "application/json",
-        },
+        headers=headers,
     )
     with urllib.request.urlopen(req, timeout=60) as resp:
         payload = json.loads(resp.read().decode("utf-8"))
@@ -45,20 +43,109 @@ def _gql(token: str, query: str, variables: dict[str, Any] | None = None) -> dic
     return payload.get("data") or {}
 
 
-def _resolve_ids(token: str, service_name: str) -> dict[str, str]:
+def _gql(token: str, query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Try account/team Bearer auth first, then project token header."""
+    attempts = [
+        {"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        {"Project-Access-Token": token, "Content-Type": "application/json"},
+    ]
+    last_http: urllib.error.HTTPError | None = None
+    for headers in attempts:
+        try:
+            return _gql_raw(headers, query, variables)
+        except urllib.error.HTTPError as exc:
+            last_http = exc
+            if exc.code in (401, 403):
+                continue
+            raise
+    if last_http is not None:
+        raise last_http
+    raise RuntimeError("Railway GraphQL request failed")
+
+
+def _pick_environment(env_edges: list[Any]) -> str:
+    for edge in env_edges:
+        node = edge.get("node") or {}
+        name = str(node.get("name") or "").lower()
+        if name in {"production", "prod"}:
+            return str(node.get("id") or "")
+    if env_edges:
+        return str(((env_edges[0].get("node") or {}).get("id")) or "")
+    return ""
+
+
+def _resolve_ids_from_projects(token: str, service_name: str) -> dict[str, str]:
     data = _gql(
         token,
         """
-        query projectToken {
-          projectToken { projectId environmentId }
+        query listProjects {
+          projects {
+            edges {
+              node {
+                id
+                name
+                environments { edges { node { id name } } }
+                services { edges { node { id name } } }
+              }
+            }
+          }
         }
         """,
     )
-    pt = data.get("projectToken") or {}
-    project_id = str(pt.get("projectId") or "")
-    environment_id = str(pt.get("environmentId") or "")
+    for edge in (data.get("projects") or {}).get("edges") or []:
+        project = edge.get("node") or {}
+        project_id = str(project.get("id") or "")
+        env_id = _pick_environment((project.get("environments") or {}).get("edges") or [])
+        service_id = ""
+        for svc_edge in (project.get("services") or {}).get("edges") or []:
+            node = svc_edge.get("node") or {}
+            name = str(node.get("name") or "")
+            if name == service_name or service_name in name:
+                service_id = str(node.get("id") or "")
+                break
+        if service_id and project_id and env_id:
+            return {
+                "project_id": project_id,
+                "environment_id": env_id,
+                "service_id": service_id,
+            }
+    raise RuntimeError(
+        f"Service '{service_name}' not found via account token. "
+        "Set RAILWAY_PROJECT_ID and RAILWAY_ENVIRONMENT_ID or check token scope."
+    )
+
+
+def _resolve_ids(token: str, service_name: str) -> dict[str, str]:
+    os_mod = __import__("os")
+    project_id = str(os_mod.environ.get("RAILWAY_PROJECT_ID") or "").strip()
+    environment_id = str(os_mod.environ.get("RAILWAY_ENVIRONMENT_ID") or "").strip()
+    service_id = str(os_mod.environ.get("RAILWAY_SERVICE_ID") or "").strip()
+
+    if project_id and environment_id and service_id:
+        return {
+            "project_id": project_id,
+            "environment_id": environment_id,
+            "service_id": service_id,
+        }
+
+    try:
+        data = _gql(
+            token,
+            """
+            query projectToken {
+              projectToken { projectId environmentId }
+            }
+            """,
+        )
+        pt = data.get("projectToken") or {}
+        project_id = str(pt.get("projectId") or "")
+        environment_id = str(pt.get("environmentId") or "")
+    except urllib.error.HTTPError:
+        project_id = ""
+        environment_id = ""
+
     if not project_id or not environment_id:
-        raise RuntimeError("Could not resolve projectId/environmentId from project token")
+        return _resolve_ids_from_projects(token, service_name)
 
     services_data = _gql(
         token,
@@ -286,7 +373,8 @@ def main() -> int:
     token = (os_mod.environ.get("RAILWAY_TOKEN") or "").strip()
     if not token:
         print(
-            "RAILWAY_TOKEN is required (Railway project token). "
+            "RAILWAY_TOKEN is required (Railway account/team token from "
+            "https://railway.com/account/tokens, or project token for read-only). "
             "Set $env:RAILWAY_TOKEN, add to backend/.env.operator.local, "
             f"or run `railway login` so this script can read RAILWAY_TOKEN from Railway service variables ({args.service}).",
             file=sys.stderr,
