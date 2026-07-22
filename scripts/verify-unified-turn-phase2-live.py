@@ -178,7 +178,7 @@ def fetch_shadow_audit(sb: Any, *, org_id: str, conversation_id: str, after_iso:
         .eq("org_id", org_id)
         .eq("resource_type", "conversation")
         .eq("resource_id", conversation_id)
-        .eq("action", "unified_turn.shadow.completed")
+        .in_("action", ["unified_turn.shadow.completed", "unified_turn.live.completed"])
         .gte("created_at", after_iso)
         .order("created_at", desc=True)
         .limit(1)

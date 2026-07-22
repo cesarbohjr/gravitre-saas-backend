@@ -55,6 +55,7 @@ class UnifiedTurnShadowResult:
     error: str | None = None
     first_token_proxy_ms: int | None = None  # true TTFT when streamed
     streamed: bool = False
+    live_served: bool = False  # Phase 4: outcome used for user-visible response
 
     def to_audit_payload(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -63,10 +64,10 @@ class UnifiedTurnShadowResult:
             payload["tool_arguments"] = {
                 k: str(v)[:200] for k, v in list(self.tool_arguments.items())[:20]
             }
-        # Phase 1 dual-path markers: classical still serves the user; shadow never executes.
-        payload["shadow_user_visible"] = False
-        payload["classical_path_active"] = True
-        payload["shadow_executes_tools"] = False
+        live = bool(self.live_served)
+        payload["shadow_user_visible"] = live
+        payload["classical_path_active"] = not live
+        payload["shadow_executes_tools"] = False  # tools still go through write/execute gates
         return payload
 
 
@@ -193,9 +194,11 @@ async def run_unified_turn_shadow(
     client: Any = None,
     settings: Settings | None = None,
 ) -> UnifiedTurnShadowResult:
-    """One model call; does not execute tools or return to the user."""
+    """One model call; does not execute tools (Phase 4 may serve text to the user)."""
     active = settings or get_settings()
-    if not getattr(active, "unified_turn_shadow_enabled", False):
+    shadow_on = bool(getattr(active, "unified_turn_shadow_enabled", False))
+    live_on = bool(getattr(active, "unified_turn_live_enabled", False))
+    if not shadow_on and not live_on:
         return UnifiedTurnShadowResult(outcome_kind="skipped")
 
     if not (active.openai_api_key or "").strip():
@@ -376,17 +379,203 @@ def emit_unified_turn_shadow_audit(
     try:
         from app.workflows.audit import write_audit_event
 
+        action = (
+            "unified_turn.live.completed"
+            if result.live_served
+            else "unified_turn.shadow.completed"
+        )
         write_audit_event(
             client,
             org_id,
             actor_id or org_id,
-            "unified_turn.shadow.completed",
+            action,
             "conversation",
             conversation_id or org_id,
             result.to_audit_payload(),
         )
     except Exception as exc:  # noqa: BLE001
         logger.debug("unified_turn shadow audit skipped: %s", exc)
+
+
+async def apply_unified_turn_live(
+    *,
+    org_id: str,
+    user_id: str,
+    conversation_id: str | None,
+    message: str,
+    task_state: dict[str, Any] | None,
+    conversation_history: list[dict[str, Any]] | None,
+    connected_integrations: list[str] | None,
+    client: Any = None,
+    settings: Settings | None = None,
+    environment_name: str = "production",
+) -> dict[str, Any] | None:
+    """Phase 4: run unified turn and map to a stop_pipeline turn when safe.
+
+    Returns None to fall through to the classical pipeline (rollback path).
+    Write tool proposals stage ``awaiting_confirm`` — never bypass approval.
+    """
+    active = settings or get_settings()
+    if not getattr(active, "unified_turn_live_enabled", False):
+        return None
+
+    result = await run_unified_turn_shadow(
+        org_id=org_id,
+        user_id=user_id,
+        conversation_id=conversation_id,
+        message=message,
+        task_state=task_state,
+        conversation_history=conversation_history,
+        connected_integrations=connected_integrations,
+        client=client,
+        settings=active,
+    )
+    if result.outcome_kind in {"skipped", "error"}:
+        emit_unified_turn_shadow_audit(
+            client=client,
+            org_id=org_id,
+            actor_id=user_id,
+            conversation_id=conversation_id,
+            result=result,
+        )
+        return None
+
+    text_kinds = {
+        "conversational_reply",
+        "clarifying_question",
+        "knowledge_boundary",
+        "confirmation_request",
+    }
+    if result.outcome_kind in text_kinds and (result.user_message or "").strip():
+        result.live_served = True
+        emit_unified_turn_shadow_audit(
+            client=client,
+            org_id=org_id,
+            actor_id=user_id,
+            conversation_id=conversation_id,
+            result=result,
+        )
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "confirm" if result.outcome_kind == "confirmation_request" else "answer",
+            "message": result.user_message,
+            "task_state": task_state,
+            "answer_explanation": f"Unified turn live ({result.outcome_kind})",
+            "model": result.model or "unified_turn_live",
+            "unified_outcome_kind": result.outcome_kind,
+            "latency_ms": result.latency_ms,
+            "first_token_ms": result.first_token_proxy_ms,
+        }
+
+    if result.outcome_kind == "connector_tool_proposal" and result.tool_name:
+        from app.services.react_write_gate import plan_from_react_tool_call
+        from app.services.tool_registry import get_tool_registry
+
+        registry = get_tool_registry()
+        plan = plan_from_react_tool_call(
+            result.tool_name,
+            result.tool_arguments,
+            registry,
+            requires_approval=bool(result.requires_write_approval),
+        )
+        if plan is None or not conversation_id:
+            emit_unified_turn_shadow_audit(
+                client=client,
+                org_id=org_id,
+                actor_id=user_id,
+                conversation_id=conversation_id,
+                result=result,
+            )
+            return None
+
+        if plan.requires_approval or result.requires_write_approval:
+            from app.services.chat_connector_execution_service import (
+                ChatConnectorExecutionService,
+                enrich_plan_inference_metadata,
+            )
+            from app.services.connector_action_workflows import format_write_approval_message
+            from app.services.connector_parameter_inference import (
+                ParameterInferenceContext,
+                infer_missing_parameters,
+            )
+            from app.services.connector_session_state import load_connector_session
+            from app.services.conversation_state_service import get_conversation_state_service
+
+            plan = enrich_plan_inference_metadata(plan, message=message or "")
+            plan = infer_missing_parameters(
+                plan,
+                ParameterInferenceContext(
+                    message=message or "",
+                    conversation_history=list((task_state or {}).get("recent_user_messages") or []),
+                    task_state=task_state or {},
+                    connector_session=load_connector_session(task_state or {}),
+                    client=client,
+                    org_id=org_id,
+                    settings=active,
+                    environment_name=environment_name,
+                ),
+            )
+            pending_params = {
+                **ChatConnectorExecutionService.plan_to_dict(plan),
+                "status": "awaiting_confirm",
+                "source": "unified_turn_live",
+            }
+            state = get_conversation_state_service(active)
+            await state.update_task_state(
+                conversation_id,
+                org_id,
+                {
+                    "pending_task": {
+                        "type": "connector_action",
+                        "status": "awaiting_confirm",
+                        "params": pending_params,
+                    }
+                },
+                client=client,
+            )
+            refreshed = await state.get_task_state(conversation_id, org_id, client=client)
+            confirm_message = format_write_approval_message(plan)
+            if result.user_message:
+                confirm_message = f"{result.user_message.strip()}\n\n{confirm_message}"
+            result.live_served = True
+            emit_unified_turn_shadow_audit(
+                client=client,
+                org_id=org_id,
+                actor_id=user_id,
+                conversation_id=conversation_id,
+                result=result,
+            )
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "confirm",
+                "message": finalize_user_facing_message(
+                    confirm_message, context="unified_turn_live_approval"
+                ),
+                "task_state": refreshed,
+                "pending_task": (refreshed or {}).get("pending_task"),
+                "answer_explanation": "Unified turn live (write approval)",
+                "model": result.model or "unified_turn_live",
+                "unified_outcome_kind": result.outcome_kind,
+            }
+
+        # Read tool proposals: fall through to classical governed execution (no bypass).
+        emit_unified_turn_shadow_audit(
+            client=client,
+            org_id=org_id,
+            actor_id=user_id,
+            conversation_id=conversation_id,
+            result=result,
+        )
+        return None
+
+    emit_unified_turn_shadow_audit(
+        client=client,
+        org_id=org_id,
+        actor_id=user_id,
+        conversation_id=conversation_id,
+        result=result,
+    )
+    return None
 
 
 async def run_unified_turn_shadow_and_audit(
@@ -435,6 +624,9 @@ def schedule_unified_turn_shadow(
 ) -> None:
     """Fire-and-forget shadow run (does not block the classical pipeline)."""
     active = settings or get_settings()
+    # Live cutover already awaits the same call — avoid a duplicate shadow.
+    if getattr(active, "unified_turn_live_enabled", False):
+        return
     if not getattr(active, "unified_turn_shadow_enabled", False):
         return
 

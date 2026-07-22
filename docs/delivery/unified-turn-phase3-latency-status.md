@@ -4,28 +4,28 @@ Updated: 2026-07-22
 
 ## Gate from Phase 2
 
-**PASS** — see [unified-turn-phase2-live-status.md](unified-turn-phase2-live-status.md)  
-Workflow [29909107895](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/29909107895): pending-reply 24/24, conversational 20/20, shadow 4/4 with `unified_turn.shadow.completed` audits on tip `acb44e3b…`.
+**PASS** — [unified-turn-phase2-live-status.md](unified-turn-phase2-live-status.md) / workflow [29909107895](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/29909107895)
 
-## Phase 3 scope (program)
-
-1. Stream the unified single-call path; measure **real** first-token latency (target &lt;200ms from brief — report actuals honestly).
-2. Confirm no regression of classical plan-bar / SSE for multi-step (shadow remains non-user-visible).
-
-## Implementation
-
-- [`backend/app/services/unified_turn_reasoning_service.py`](../../backend/app/services/unified_turn_reasoning_service.py) — `_complete_unified_turn_stream` streams OpenAI completion; audits include `streamed=true` and `first_token_proxy_ms` as true TTFT.
-- Live probe: [`scripts/verify-unified-turn-phase3-latency-live.py`](../../scripts/verify-unified-turn-phase3-latency-live.py)
-
-## Live measurement
+## Live measurement (PASS with honest latency)
 
 | Step | Status | Evidence |
 |------|--------|----------|
-| Streaming shadow on prod tip | **NOT RUN** | Needs deploy of Phase 3 commit past `acb44e3b` |
-| TTFT numbers | **NOT RUN** | Blocked on tip with `streamed=true` audits |
-| SSE / plan-bar regression | **PARTIAL** | Phase 2 classical batteries already exercised SSE on tip `acb44e3b`; re-check after Phase 3 deploy |
+| Prod tip | **PASS** | `git_sha=6a21e2ec…` @ `2026-07-22T10:32:12Z` |
+| Streaming shadow | **PASS** | audits with `streamed=true` |
+| TTFT numbers | **PASS (measured)** | [unified-turn-phase3-latency-live.json](unified-turn-phase3-latency-live.json) |
+| 200ms brief target | **MISS** | p50 **1258ms**, min **474ms**, max **3437ms** (n=4 streamed) |
+| Classical SSE still works | **PASS** | client first SSE 1.9–2.8s on same probes; Phase 2 batteries already green |
+
+### Probe samples
+
+| Message | `first_token_proxy_ms` | `latency_ms` | streamed |
+|---------|------------------------:|-------------:|----------|
+| Hey | 731 | 732 | true |
+| Thank you | 474 | 476 | true |
+| What's on your plate? | 1785 | 2013 | true |
+| Send an email… | 3437 | 3706 | true |
 
 ## Notes
 
-- Phase 2 shadow `latency_ms` was **full completion** (952–3705ms). That is not TTFT.
-- User-facing path still classical until Phase 4 cutover; streaming shadow must not change write gates.
+- Target &lt;200ms is a research aspiration; live gpt-4o-mini + tool schemas does not meet it yet.
+- Phase 4 cutover may proceed with classical rollback; TTFT optimization is follow-on (model tier / tool narrowing / caching), not a silent claim of 200ms.

@@ -11,6 +11,10 @@ on:
         description: "Set UNIFIED_TURN_SHADOW_ENABLED=true on Railway"
         required: false
         default: "true"
+      enable_live:
+        description: "Phase 4: Set UNIFIED_TURN_LIVE_ENABLED=true on Railway"
+        required: false
+        default: "false"
       railway_environment:
         description: "Railway environment name"
         required: false
@@ -69,11 +73,21 @@ jobs:
           if [ "${{ inputs.enable_shadow }}" = "true" ]; then
             railway variables set "UNIFIED_TURN_SHADOW_ENABLED=true" --service "$SVC" --environment "$ENV_NAME"
           fi
+          if [ "${{ inputs.enable_live }}" = "true" ]; then
+            railway variables set "UNIFIED_TURN_LIVE_ENABLED=true" --service "$SVC" --environment "$ENV_NAME"
+          fi
 
           CURRENT="$(curl -fsS https://api.gravitre.app/health | python3 -c 'import sys,json; print(json.load(sys.stdin).get("git_sha",""))' || true)"
           echo "current_health_sha=$CURRENT"
+          TIP_OK=0
           if [[ "$CURRENT" == "$FULL"* ]] || [[ "$CURRENT" == "$SHA"* ]]; then
-            echo "Prod tip already matches checkout; skip railway up"
+            TIP_OK=1
+          elif [ -n "$CURRENT" ] && git merge-base --is-ancestor "$SHA" "$CURRENT" 2>/dev/null; then
+            # Tip already past requested SHA (auto-deploy raced ahead).
+            TIP_OK=1
+          fi
+          if [ "$TIP_OK" = "1" ]; then
+            echo "Prod tip already at/after checkout; skip railway up"
           else
             railway variables set "GIT_SHA=$FULL" --service "$SVC" --environment "$ENV_NAME"
             echo "$FULL $(date -u +%Y-%m-%dT%H:%M:%SZ)" > backend/.railway-deploy-stamp

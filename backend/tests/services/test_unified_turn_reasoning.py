@@ -12,7 +12,9 @@ from app.services.module_d_unified_voice_spec import (
 )
 from app.services.unified_turn_pending_context import build_unified_turn_pending_context
 from app.services.unified_turn_reasoning_service import (
+    apply_unified_turn_live,
     run_unified_turn_shadow,
+    schedule_unified_turn_shadow,
 )
 
 
@@ -106,9 +108,72 @@ async def test_run_unified_turn_shadow_skipped_when_disabled():
         task_state={},
         conversation_history=[],
         connected_integrations=["gmail"],
-        settings=MagicMock(unified_turn_shadow_enabled=False),
+        settings=MagicMock(
+            unified_turn_shadow_enabled=False,
+            unified_turn_live_enabled=False,
+        ),
     )
     assert result.outcome_kind == "skipped"
+
+
+@pytest.mark.asyncio
+async def test_apply_unified_turn_live_serves_conversational_text():
+    mock_client = _mock_stream_client(content="Hey — here when you need me.")
+    mock_router = MagicMock()
+    mock_router._openai = mock_client
+    settings = MagicMock(
+        unified_turn_shadow_enabled=False,
+        unified_turn_live_enabled=True,
+        unified_turn_shadow_max_tools=24,
+        openai_api_key="sk-test",
+    )
+    with patch("app.services.unified_turn_reasoning_service.get_tool_registry") as reg_patch, patch(
+        "app.services.unified_turn_reasoning_service.get_model_router",
+        return_value=mock_router,
+    ), patch(
+        "app.services.unified_turn_reasoning_service.narrow_tools_for_turn",
+        return_value=([], {"visibleTools": 0}),
+    ), patch(
+        "app.services.unified_turn_reasoning_service.emit_unified_turn_shadow_audit"
+    ) as audit:
+        reg_patch.return_value.get_tools_for_agent.return_value = []
+        turn = await apply_unified_turn_live(
+            org_id="org",
+            user_id="user",
+            conversation_id="conv",
+            message="hey",
+            task_state={},
+            conversation_history=[],
+            connected_integrations=["gmail"],
+            client=MagicMock(),
+            settings=settings,
+        )
+    assert turn is not None
+    assert turn["stop_pipeline"] is True
+    assert "Hey" in turn["message"]
+    assert turn["unified_outcome_kind"] == "conversational_reply"
+    audit.assert_called_once()
+    assert audit.call_args.kwargs["result"].live_served is True
+
+
+def test_schedule_unified_turn_shadow_noop_when_live_enabled():
+    with patch(
+        "app.services.unified_turn_reasoning_service.asyncio.get_running_loop"
+    ) as loop_patch:
+        schedule_unified_turn_shadow(
+            org_id="org",
+            user_id="user",
+            conversation_id="conv",
+            message="hey",
+            task_state={},
+            conversation_history=[],
+            connected_integrations=[],
+            settings=MagicMock(
+                unified_turn_shadow_enabled=True,
+                unified_turn_live_enabled=True,
+            ),
+        )
+    loop_patch.assert_not_called()
 
 
 @pytest.mark.asyncio

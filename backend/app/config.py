@@ -103,6 +103,11 @@ class Settings(BaseSettings):
         default=32,
         validation_alias=AliasChoices("UNIFIED_TURN_SHADOW_MAX_TOOLS", "unified_turn_shadow_max_tools"),
     )
+    # Phase 4 cutover — when true, unified-turn outcomes serve the user (classical = rollback).
+    unified_turn_live_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("UNIFIED_TURN_LIVE_ENABLED", "unified_turn_live_enabled"),
+    )
     rag_uploads_bucket: str = "rag-uploads"
     rag_store_raw_files: bool = True
     blob_read_write_token: str = ""

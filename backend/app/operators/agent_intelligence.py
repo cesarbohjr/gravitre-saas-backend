@@ -1589,6 +1589,67 @@ class AgentIntelligence:
             explicit_persona=explicit_persona,
         )
 
+        # Phase 4 cutover (flagged): unified turn serves the user; classical remains rollback.
+        if getattr(active_settings, "unified_turn_live_enabled", False):
+            from app.services.unified_turn_reasoning_service import apply_unified_turn_live
+
+            live_turn = await apply_unified_turn_live(
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                message=task_text,
+                task_state=task_state,
+                conversation_history=conversation_history,
+                connected_integrations=list(connected_early or []),
+                client=client,
+                settings=active_settings,
+                environment_name=environment_name,
+            )
+            if live_turn and live_turn.get("stop_pipeline"):
+                task_state = live_turn.get("task_state") or task_state
+                response_text = str(live_turn.get("message") or "")
+                dialogue_mode = str(live_turn.get("dialogue_mode") or "answer")
+                yield sse_intelligence_metadata(
+                    message_id=message_id,
+                    confidence={"score": 0.9, "needs_clarification": dialogue_mode == "confirm"},
+                    answer_explanation=str(
+                        live_turn.get("answer_explanation") or "Unified turn live"
+                    ),
+                    dialogue_mode=dialogue_mode,
+                    persona_key=str(persona.get("persona_key") or ""),
+                    task_state=task_state,
+                    pending_task=live_turn.get("pending_task"),
+                    effective_mode=mode_key,
+                    pipeline_tier=pipeline_tier,
+                    routing_tier=routing_control.tier,
+                    routing={
+                        **(routing_sse if isinstance(routing_sse, dict) else {}),
+                        "unifiedTurnLive": True,
+                        "unifiedOutcomeKind": live_turn.get("unified_outcome_kind"),
+                    },
+                )
+                text_id, start_event = sse_text_start()
+                yield start_event
+                yield sse_text_delta(text_id, response_text)
+                yield sse_text_end(text_id)
+                yield AssistantStreamComplete(
+                    full_content=response_text,
+                    tool_results=[],
+                    react_result=None,
+                    model=str(live_turn.get("model") or "unified_turn_live"),
+                    message_id=message_id,
+                    confidence={"score": 0.9, "needs_clarification": dialogue_mode == "confirm"},
+                    answer_explanation=str(
+                        live_turn.get("answer_explanation") or "Unified turn live"
+                    ),
+                    dialogue_mode=dialogue_mode,
+                    persona_key=str(persona.get("persona_key") or ""),
+                    proactive_suggestions=[],
+                    task_state=task_state,
+                    pending_task=live_turn.get("pending_task"),
+                )
+                return
+
         if getattr(active_settings, "unified_turn_shadow_enabled", False):
             from app.services.unified_turn_reasoning_service import schedule_unified_turn_shadow
 
