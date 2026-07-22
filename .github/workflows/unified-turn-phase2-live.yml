@@ -1,0 +1,82 @@
+name: Unified Turn Phase 2 Live
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Deploy this git SHA prefix (default 3cef41f5)"
+        required: false
+        default: "3cef41f5"
+      enable_shadow:
+        description: "Set UNIFIED_TURN_SHADOW_ENABLED=true on Railway"
+        required: false
+        default: "true"
+
+concurrency:
+  group: unified-turn-phase2-live
+  cancel-in-progress: false
+
+jobs:
+  deploy-and-battery:
+    name: Deploy prod, enable shadow, run live batteries
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend deps
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli@4.65.0
+
+      - name: Deploy commit to Railway prod
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          set -euo pipefail
+          SHA="${{ inputs.commit_sha }}"
+          python3 scripts/railway_prod_deploy.py --commit-sha "$SHA" --wait-health --timeout-s 900
+
+      - name: Enable unified-turn shadow on Railway
+        if: inputs.enable_shadow == 'true'
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          set -euo pipefail
+          railway variables set "UNIFIED_TURN_SHADOW_ENABLED=true" --service gravitre-saas-backend
+          python3 scripts/railway_prod_deploy.py --commit-sha "${{ inputs.commit_sha }}" --wait-health --timeout-s 900
+
+      - name: Phase 2 live batteries (classical + shadow)
+        env:
+          EXPECT_SHA: ${{ inputs.commit_sha }}
+          LIVE_API_BASE: https://api.gravitre.app
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          OAUTH_SMOKE_ORG_ID: ${{ secrets.OAUTH_SMOKE_ORG_ID }}
+        run: |
+          set -euo pipefail
+          python3 scripts/verify-unified-turn-phase2-live.py
+
+      - name: Upload Phase 2 artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unified-turn-phase2-live
+          path: |
+            docs/delivery/unified-turn-phase2-battery-live.json
+            docs/delivery/pending-reply-classifier-battery-live.json
+            docs/delivery/conversational-path-battery-live.json

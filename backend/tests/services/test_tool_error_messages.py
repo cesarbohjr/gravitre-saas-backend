@@ -18,7 +18,8 @@ def test_auth_expired_mentions_reconnect():
 def test_permission_denied_is_actionable():
     msg = format_tool_error_for_user("permission_denied", None, action="apollo.lists.create")
     assert "permission" in msg.lower()
-    assert "apollo.lists.create" in msg
+    assert "apollo.lists.create" not in msg
+    assert "contact list" in msg.lower() or "lists" in msg.lower()
 
 
 def test_unknown_code_falls_back_to_message():

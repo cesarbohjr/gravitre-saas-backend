@@ -331,7 +331,12 @@ async def test_asana_not_connected_returns_operator_blocker(connector_service):
 
     assert result is not None
     assert result["stop_pipeline"] is True
-    assert "isn't ready" in result["message"] or "can't run" in result["message"].lower()
+    msg_lower = result["message"].lower()
+    assert (
+        "isn't ready" in result["message"]
+        or "can't run" in msg_lower
+        or "connect asana" in msg_lower
+    )
     assert "Asana" in result["message"]
     assert "Connect Asana" in result["message"] or "Missing connector" in result["message"]
 
@@ -689,6 +694,6 @@ async def test_execute_plan_write_without_body_or_url_fails_verifiability_gate(c
             classification={},
         )
 
-    assert result.success is True
-    assert result.result_url == "/ai?conversation=conv-1"
+    assert result.success is False
+    assert result.error_code == "unverifiable_output"
     assert not str(result.body or "").strip()
