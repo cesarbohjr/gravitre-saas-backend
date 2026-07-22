@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import subprocess
 import sys
 import time
@@ -54,7 +55,14 @@ def _gql(token: str, query: str, variables: dict[str, Any] | None = None) -> dic
         try:
             return _gql_raw(headers, query, variables)
         except urllib.error.HTTPError as exc:
-            last_http = exc
+            body = ""
+            try:
+                body = exc.read().decode("utf-8", errors="replace")[:500]
+            except Exception:  # noqa: BLE001
+                pass
+            last_http = urllib.error.HTTPError(
+                exc.url, exc.code, f"{exc.reason} {body}", exc.headers, None
+            )
             if exc.code in (401, 403):
                 continue
             raise
@@ -227,6 +235,28 @@ def deploy_commit(
     return deployment_id
 
 
+def redeploy_via_cli(service: str, token: str) -> str:
+    """Trigger Railway redeploy (GitHub-connected latest). Works with project tokens in CLI."""
+    railway = shutil.which("railway") or shutil.which("railway.cmd")
+    if not railway:
+        raise RuntimeError("railway CLI not found on PATH")
+    env = __import__("os").environ.copy()
+    env["RAILWAY_TOKEN"] = token
+    proc = subprocess.run(
+        [railway, "redeploy", "-y", "-s", service],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=300,
+        check=False,
+    )
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout or "").strip()
+        raise RuntimeError(f"railway redeploy failed (exit {proc.returncode}): {detail[:500]}")
+    print(f"railway redeploy ok: {(proc.stdout or proc.stderr or '').strip()[:200]}", flush=True)
+    return "cli-redeploy"
+
+
 def wait_for_health(
     health_url: str,
     *,
@@ -355,6 +385,7 @@ def _load_operator_env() -> None:
 def main() -> int:
     _load_operator_env()
     parser = argparse.ArgumentParser(description="Deploy a specific commit to Railway prod")
+    parser.add_argument("--redeploy-cli", action="store_true", help="Use `railway redeploy` instead of GraphQL")
     parser.add_argument("--commit-sha", default=None, help="Full or prefix git SHA to deploy")
     parser.add_argument("--latest-commit", action="store_true", help="Deploy latest main commit")
     parser.add_argument("--service", default=DEFAULT_SERVICE)
@@ -381,14 +412,23 @@ def main() -> int:
         )
         return 2
 
-    ids = _resolve_ids(token, args.service)
-    deployment_id = deploy_commit(
-        token,
-        service_id=ids["service_id"],
-        environment_id=ids["environment_id"],
-        commit_sha=args.commit_sha,
-        latest_commit=args.latest_commit,
-    )
+    if args.redeploy_cli:
+        deployment_id = redeploy_via_cli(args.service, token)
+        ids = {"project_id": "", "environment_id": "", "service_id": args.service}
+    else:
+        try:
+            ids = _resolve_ids(token, args.service)
+            deployment_id = deploy_commit(
+                token,
+                service_id=ids["service_id"],
+                environment_id=ids["environment_id"],
+                commit_sha=args.commit_sha,
+                latest_commit=args.latest_commit,
+            )
+        except (urllib.error.HTTPError, RuntimeError) as exc:
+            print(f"GraphQL deploy failed ({exc}); falling back to railway redeploy CLI.", file=sys.stderr)
+            deployment_id = redeploy_via_cli(args.service, token)
+            ids = {"project_id": "", "environment_id": "", "service_id": args.service}
 
     report: dict[str, Any] = {
         "deployment_id": deployment_id,

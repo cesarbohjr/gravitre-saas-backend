@@ -6,7 +6,7 @@ on:
       commit_sha:
         description: "Deploy this git SHA prefix (default 3cef41f5)"
         required: false
-        default: "09fb7120"
+        default: "a244b98a"
       enable_shadow:
         description: "Set UNIFIED_TURN_SHADOW_ENABLED=true on Railway"
         required: false
@@ -47,7 +47,7 @@ jobs:
         run: |
           set -euo pipefail
           SHA="${{ inputs.commit_sha }}"
-          python3 scripts/railway_prod_deploy.py --commit-sha "$SHA" --wait-health --timeout-s 900 --health-url https://api.gravitre.app/health
+          python3 scripts/railway_prod_deploy.py --latest-commit --wait-health --timeout-s 900 --health-url https://api.gravitre.app/health --commit-sha "$SHA"
 
       - name: Enable unified-turn shadow on Railway
         if: inputs.enable_shadow == 'true'
