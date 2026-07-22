@@ -1,7 +1,7 @@
 {
   "feature": "unified_turn_phase2_batteries",
-  "started_at": "2026-07-22T09:59:25.887993+00:00",
-  "expect_sha": "acb44e3b",
+  "started_at": "2026-07-22T17:48:53.761654+00:00",
+  "expect_sha": "444371f9",
   "api_base": "https://api.gravitre.app",
   "cases": [
     {
@@ -10,21 +10,21 @@
       "failures": [],
       "assistant_snippet": "Hey \u2014 here when you need a connector run, a plan, or a quick check.",
       "shadow_outcome": "conversational_reply",
-      "shadow_latency_ms": 828,
-      "shadow_first_token_proxy_ms": 828,
+      "shadow_latency_ms": 749,
+      "shadow_first_token_proxy_ms": 666,
       "shadow": {
         "action": "unified_turn.shadow.completed",
-        "created_at": "2026-07-22T09:59:31.155479+00:00",
+        "created_at": "2026-07-22T17:48:59.658189+00:00",
         "outcome_kind": "conversational_reply",
-        "latency_ms": 828,
+        "latency_ms": 749,
         "user_message_preview": "Good, thanks. What's on your mind?",
         "tool_name": null
       },
-      "conversation_id": "113b13ab-8f1d-437e-99ee-b9269d18abe6",
+      "conversation_id": "158c72c6-db9f-45af-ac25-37c5a8430322",
       "turn": {
         "http": 200,
         "assistant": "Hey \u2014 here when you need a connector run, a plan, or a quick check.",
-        "at": "2026-07-22T09:59:33.176836+00:00",
+        "at": "2026-07-22T17:49:03.159215+00:00",
         "error": null
       }
     },
@@ -34,21 +34,21 @@
       "failures": [],
       "assistant_snippet": "You're welcome. Ready when you are.",
       "shadow_outcome": "conversational_reply",
-      "shadow_latency_ms": 809,
-      "shadow_first_token_proxy_ms": 809,
+      "shadow_latency_ms": 1103,
+      "shadow_first_token_proxy_ms": 878,
       "shadow": {
         "action": "unified_turn.shadow.completed",
-        "created_at": "2026-07-22T09:59:44.646218+00:00",
+        "created_at": "2026-07-22T17:49:15.804097+00:00",
         "outcome_kind": "conversational_reply",
-        "latency_ms": 809,
+        "latency_ms": 1103,
         "user_message_preview": "Anytime. What\u2019s on your mind?",
         "tool_name": null
       },
-      "conversation_id": "d02f354a-d922-4b63-b615-003324b964fb",
+      "conversation_id": "ae50c1c1-627f-4428-9e9a-24aedea2ac80",
       "turn": {
         "http": 200,
         "assistant": "You're welcome. Ready when you are.",
-        "at": "2026-07-22T09:59:47.397569+00:00",
+        "at": "2026-07-22T17:49:18.629907+00:00",
         "error": null
       }
     },
@@ -58,21 +58,21 @@
       "failures": [],
       "assistant_snippet": "To send gmail message, I need to know recipient, subject, body. Could you share that?",
       "shadow_outcome": "clarifying_question",
-      "shadow_latency_ms": 5681,
-      "shadow_first_token_proxy_ms": 5681,
+      "shadow_latency_ms": 4848,
+      "shadow_first_token_proxy_ms": 4311,
       "shadow": {
         "action": "unified_turn.shadow.completed",
-        "created_at": "2026-07-22T10:00:03.556116+00:00",
+        "created_at": "2026-07-22T17:49:34.622751+00:00",
         "outcome_kind": "clarifying_question",
-        "latency_ms": 5681,
+        "latency_ms": 4848,
         "user_message_preview": "I need a bit more information to draft that email. Could you provide the purpose and key points you'd like to include in the message?",
         "tool_name": null
       },
-      "conversation_id": "c7785880-3670-479b-a4ea-f97204314cab",
+      "conversation_id": "f3ab5bb3-d298-47ef-9b2f-2efa61e8d664",
       "turn": {
         "http": 200,
         "assistant": "To send gmail message, I need to know recipient, subject, body. Could you share that?",
-        "at": "2026-07-22T10:00:12.390786+00:00",
+        "at": "2026-07-22T17:49:49.265171+00:00",
         "error": null
       }
     },
@@ -82,21 +82,21 @@
       "failures": [],
       "assistant_snippet": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cDid you send it yet?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`.",
       "shadow_outcome": "confirmation_request",
-      "shadow_latency_ms": 957,
-      "shadow_first_token_proxy_ms": 957,
+      "shadow_latency_ms": 1802,
+      "shadow_first_token_proxy_ms": 1509,
       "shadow": {
         "action": "unified_turn.shadow.completed",
-        "created_at": "2026-07-22T10:00:24.86923+00:00",
+        "created_at": "2026-07-22T17:50:04.725489+00:00",
         "outcome_kind": "confirmation_request",
-        "latency_ms": 957,
+        "latency_ms": 1802,
         "user_message_preview": "Not yet \u2014 the **Send Gmail message** action is still awaiting your confirmation. Reply **yes** to send it, or **cancel** to drop it.",
         "tool_name": null
       },
-      "conversation_id": "2f0c1632-964d-495b-b1f1-7a68fb5f7f6a",
+      "conversation_id": "48947397-cc3e-485b-a909-a4fb5abf374f",
       "turn": {
         "http": 200,
         "assistant": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cDid you send it yet?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`.",
-        "at": "2026-07-22T10:00:26.859828+00:00",
+        "at": "2026-07-22T17:50:08.035756+00:00",
         "error": null
       }
     },
@@ -106,21 +106,21 @@
       "failures": [],
       "assistant_snippet": "",
       "shadow_outcome": "knowledge_boundary",
-      "shadow_latency_ms": 2866,
-      "shadow_first_token_proxy_ms": 2866,
+      "shadow_latency_ms": 3801,
+      "shadow_first_token_proxy_ms": 3454,
       "shadow": {
         "action": "unified_turn.shadow.completed",
-        "created_at": "2026-07-22T10:00:40.855766+00:00",
+        "created_at": "2026-07-22T17:50:23.503556+00:00",
         "outcome_kind": "knowledge_boundary",
-        "latency_ms": 2866,
+        "latency_ms": 3801,
         "user_message_preview": "I don't have that count yet \u2014 run history wasn't retrieved this turn. I can fetch it with the workflow runs tool if you want.",
         "tool_name": null
       },
-      "conversation_id": "2696bd7b-6cd1-493a-b00a-79583235f085",
+      "conversation_id": "538a5910-55c1-4a1e-a2a5-1f9be51a9746",
       "turn": {
         "http": 200,
         "assistant": "",
-        "at": "2026-07-22T10:00:52.706801+00:00",
+        "at": "2026-07-22T17:50:39.395148+00:00",
         "error": null
       }
     }
@@ -128,29 +128,27 @@
   "classical_batteries": {
     "pending_reply": {
       "exit_code": 0,
-      "stdout_tail": "then deal**) that isn't finished. Your new message looks l\"\nPASS unrelated_how_many_runs http=200 :: \"You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks l\"\nPASS unrelated_search_hubspot http=200 :: \"You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a \"\nPASS modify_subject_q3 http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS modify_skip_step http=200 :: 'I can\u2019t create the deal from the Connected tools available here.\\n\\nSource: connector status shows onl'\nPASS modify_change_channel http=200 :: \"I couldn't complete that: Connect Slack at /connectors to run this action.\\n\\nSlack isn't ready. Conne\"\nPASS modify_rather_cancel_body http=200 :: 'Understood. The shorter body should remove the signature.\\n\\nIf you want, I can rewrite the full messa'\nPASS modify_dont_include_cc http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS ambiguous_hmm http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS ambiguous_maybe http=200 :: 'I still have a plan open (**Search HubSpot then create a deal**). Say **yes** to continue, **cancel*'\nPASS ambiguous_ok_then http=200 :: \"I couldn't complete that: Connect Slack at /connectors to run this action.\\n\\nSlack isn't ready. Conne\"\nPASS slot_email http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS reject_cancel http=200 :: 'Cancelled the pending plan. What should we do instead?'\nPASS confirm_orch_yes http=200 :: 'The orchestration plan is empty.'\n{\n  \"verdict\": \"PASS\",\n  \"passed\": 24,\n  \"total\": 24,\n  \"failed\": [],\n  \"tip_ok\": true,\n  \"broad_pass\": true,\n  \"out\": \"C:\\\\Users\\\\Cesar\\\\Downloads\\\\Gravitre Operator AI\\\\docs\\\\delivery\\\\pending-reply-classifier-battery-live.json\"\n}\n",
+      "stdout_tail": "then deal**) that isn't finished. Your new message looks l\"\nPASS unrelated_how_many_runs http=200 :: \"You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks l\"\nPASS unrelated_search_hubspot http=200 :: \"You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a \"\nPASS modify_subject_q3 http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS modify_skip_step http=200 :: 'I can\u2019t create the deal from the connected tools available.\\n\\nSource: connector status shows Apollo i'\nPASS modify_change_channel http=200 :: \"I couldn't complete that: Connect Slack at /connectors to run this action.\\n\\nSlack isn't ready. Conne\"\nPASS modify_rather_cancel_body http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS modify_dont_include_cc http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS ambiguous_hmm http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS ambiguous_maybe http=200 :: 'I still have a plan open (**Search HubSpot then create a deal**). Say **yes** to continue, **cancel*'\nPASS ambiguous_ok_then http=200 :: \"I couldn't complete that: Connect Slack at /connectors to run this action.\\n\\nSlack isn't ready. Conne\"\nPASS slot_email http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS reject_cancel http=200 :: 'Cancelled the pending plan. What should we do instead?'\nPASS confirm_orch_yes http=200 :: 'The orchestration plan is empty.'\n{\n  \"verdict\": \"PASS\",\n  \"passed\": 24,\n  \"total\": 24,\n  \"failed\": [],\n  \"tip_ok\": true,\n  \"broad_pass\": true,\n  \"out\": \"C:\\\\Users\\\\Cesar\\\\Downloads\\\\Gravitre Operator AI\\\\docs\\\\delivery\\\\pending-reply-classifier-battery-live.json\"\n}\n",
       "stderr_tail": ""
     },
     "conversational_path": {
       "exit_code": 0,
-      "stdout_tail": "ion. Connect it now at /connectors, or reply'\nPASS mixed_slack :: 'Ha \u2014 noted.\\n\\nSlack is not Connected for this organization. Connect it now at /connectors, or reply *'\nPASS mixed_thanks_search :: \"You're welcome.\\n\\nHubspot is not Connected for this organization. Connect it now at /connectors, or r\"\nPASS mixed_banter_gmail :: 'Ha \u2014 noted.\\n\\nI can\u2019t create a Gmail draft in the mailbox because Gmail is not Connected. The org con'\nPASS mixed_hey_apollo :: 'Hey \u2014 on it.\\n\\nI can create a contact list named **ConvPath Battery** in Apollo.\\n\\nReply **yes** to ap'\nPASS meta_what_can_you_do :: 'I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo.'\nPASS meta_are_you_ai :: 'I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo.'\nPASS meta_who_are_you :: 'I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo.'\nPASS vent_hubspot :: 'That friction is real. When you want to dig in, we can check the connector at /connectors (Connected'\nPASS vent_generic :: 'That friction is real. When you want to dig in, we can check the connector at /connectors (Connected'\nPASS vent_slack :: 'That friction is real. When you want to dig in, we can check the connector at /connectors (Connected'\nPASS data_deals :: 'I don\u2019t have enough information yet to tell how the deals are looking. The org context only shows on'\nPASS data_pipeline :: 'Which item did you mean \u2014 the specific workflow, agent, or connector you mean?'\nPASS pending_playful_1 :: 'Ha \u2014 noted. What should we tackle next?\\n\\nSend Gmail message is waiting in the Decision Queue. Reply '\nPASS pending_playful_2 :: 'Ha \u2014 noted. What should we tackle next?\\n\\nSend Gmail message is waiting in the Decision Queue. Reply '\n{\n  \"verdict\": \"PASS\",\n  \"passed\": 20,\n  \"total\": 20,\n  \"failed\": [],\n  \"out\": \"C:\\\\Users\\\\Cesar\\\\Downloads\\\\Gravitre Operator AI\\\\docs\\\\delivery\\\\conversational-path-battery-live.json\"\n}\n",
+      "stdout_tail": "n. Connect it now at /connectors, or reply'\nPASS mixed_slack :: 'Ha \u2014 noted.\\n\\nSlack is not Connected for this organization. Connect it now at /connectors, or reply *'\nPASS mixed_thanks_search :: \"You're welcome.\\n\\nHubspot is not Connected for this organization. Connect it now at /connectors, or r\"\nPASS mixed_banter_gmail :: 'Ha \u2014 noted.\\n\\nI can draft the email text, but I cannot create a Gmail draft because Gmail is not Conn'\nPASS mixed_hey_apollo :: 'Hey \u2014 on it.\\n\\nI can create a contact list named **ConvPath Battery** in Apollo.\\n\\nReply **yes** to ap'\nPASS meta_what_can_you_do :: 'I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo.'\nPASS meta_are_you_ai :: 'I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo.'\nPASS meta_who_are_you :: 'I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo.'\nPASS vent_hubspot :: 'That friction is real. When you want to dig in, we can check the connector at /connectors (Connected'\nPASS vent_generic :: 'That friction is real. When you want to dig in, we can check the connector at /connectors (Connected'\nPASS vent_slack :: 'That friction is real. When you want to dig in, we can check the connector at /connectors (Connected'\nPASS data_deals :: 'The deals picture is not healthy right now.\\n\\n- Last 7 days: 126 runs, 17 completed, 103 failed, 4 ru'\nPASS data_pipeline :: 'Which item did you mean \u2014 the specific workflow, agent, or connector you mean?'\nPASS pending_playful_1 :: 'Ha \u2014 noted. What should we tackle next?\\n\\nSend Gmail message is waiting in the Decision Queue. Reply '\nPASS pending_playful_2 :: 'Ha \u2014 noted. What should we tackle next?\\n\\nSend Gmail message is waiting in the Decision Queue. Reply '\n{\n  \"verdict\": \"PASS\",\n  \"passed\": 20,\n  \"total\": 20,\n  \"failed\": [],\n  \"out\": \"C:\\\\Users\\\\Cesar\\\\Downloads\\\\Gravitre Operator AI\\\\docs\\\\delivery\\\\conversational-path-battery-live.json\"\n}\n",
       "stderr_tail": ""
     },
     "run_history_stale_plan": {
       "exit_code": 0,
-      "stdout_tail": "health tip=acb44e3b0fef44845897f96808ff562fcc5a032c\n{\n  \"fastRunHistory\": \"PASS\",\n  \"stalePlanSequence\": \"PASS\"\n}\nwrote C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\docs\\delivery\\run-history-stale-plan-live.json\ntip=acb44e3b0fef44845897f96808ff562fcc5a032c conv1=dba4fc8c-1d82-43e0-85f9-65c74f6532ad conv2=5c8c6bea-9a87-4bd8-bfbe-5055e080a626\n",
+      "stdout_tail": "health tip=444371f960571d83c2d7af89def200fa241d4c51\n{\n  \"fastRunHistory\": \"PASS\",\n  \"stalePlanSequence\": \"PASS\"\n}\nwrote C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\docs\\delivery\\run-history-stale-plan-live.json\ntip=444371f960571d83c2d7af89def200fa241d4c51 conv1=021f6897-e88f-41b2-8eaf-d9f1b0e52c1e conv2=f29a5ba9-c584-4934-82eb-a34cc81ea6d1\n",
       "stderr_tail": ""
     },
     "sta305_slack_omit_detail": {
       "exit_code": 0,
-      "stdout_tail": "verdict PASS conv 3ce08268-7692-4eb7-bebf-c5735e72c70a tip acb44e3b (re-run after dotenv encoding fix)",
-      "stderr_tail": "",
-      "rerun_note": "2026-07-22T10:09:20Z STA305_LIVE=1 PASS"
+      "stdout_tail": "{\n  \"ticket\": \"STA-305\",\n  \"probed_at\": \"2026-07-22T17:59:43.187932+00:00\",\n  \"local_mapper\": {\n    \"segment\": \"draft a follow-up in Slack for approval\",\n    \"matched_action\": \"slack.post_message\",\n    \"kind\": \"write\",\n    \"score\": 48.0,\n    \"args\": {\n      \"channel\": \"general\",\n      \"message\": \"follow-up\",\n      \"text\": \"follow-up\"\n    },\n    \"pass\": true\n  },\n  \"live\": {\n    \"sha\": \"444371f960571d83c2d7af89def200fa241d4c51\",\n    \"conversation_id\": \"5a603a72-fc0f-40fc-9876-84d16eff9fab\",\n    \"marker\": \"dae3511e\",\n    \"http\": 200,\n    \"elapsed_ms\": 5842,\n    \"labels\": [\n      \"Hubspot (not connected)\",\n      \"Slack (not connected)\",\n      \"Orchestration blocked \\\\u2014 zero runnable steps\"\n    ],\n    \"text_head\": \"I planned a **2-step orchestration**, but **nothing is runnable** \\u2014 every step is blocked:\\n\\n1. \\u25cb Hubspot (not connected) \\u2014 *skipped* (Connect Hubspot at /connectors to run this action.)\\n2. \\u25cb Slack (not connected) \\u2014 *skipped* (Connect Slack at /connectors to run this action.)\\n\\nConnect the required tools at /connectors (or rephrase with connectors you already have), then ask again. No approval is needed until at least one step can run.\\n\\nBlocked because: Connect Hubspot at /connectors to run this a\",\n    \"list_channels_seen\": false,\n    \"post_like_seen\": false,\n    \"pass\": true\n  },\n  \"verdict\": \"PASS\"\n}\n",
+      "stderr_tail": ""
     },
     "persona_drift_30": {
       "exit_code": 0,
-      "verdict": "PARTIAL",
-      "stdout_tail": "passed 15/30 missing_shadow=15 hard=0 conv 4162b2ff-282a-43b1-a3fb-b0eac7564128",
+      "stdout_tail": "{\n  \"verdict\": \"PARTIAL\",\n  \"passed\": 20,\n  \"turns\": 30,\n  \"hard_failures\": [],\n  \"missing_shadow\": 10,\n  \"out\": \"C:\\\\Users\\\\Cesar\\\\Downloads\\\\Gravitre Operator AI\\\\docs\\\\delivery\\\\unified-turn-persona-drift-live.json\"\n}\n",
       "stderr_tail": ""
     }
   },
@@ -158,19 +156,19 @@
     "note": "Shadow path is non-streaming today; latency_ms / first_token_proxy_ms are full-completion proxies. Phase 3 requires true streamed TTFT < 200ms.",
     "target_ms": 200,
     "samples_ms": [
-      828,
-      809,
-      5681,
-      957,
-      2866
+      749,
+      1103,
+      4848,
+      1802,
+      3801
     ],
-    "p50_ms": 957,
-    "max_ms": 5681,
+    "p50_ms": 1802,
+    "max_ms": 4848,
     "phase3_streaming_gate": "NOT RUN \u2014 shadow not yet token-streaming",
     "proxy_under_target": false
   },
   "cutover_gates": {
-    "phase2_batteries_clean": false,
+    "phase2_batteries_clean": true,
     "phase2_core_batteries_clean": true,
     "phase3_ttft_streaming": false,
     "phase4_cutover_authorized": false,
@@ -179,21 +177,21 @@
   },
   "matrix": {
     "targeted_shadow_cases": "5/5 targeted cases",
-    "pending_reply_24": "PASS 24/24",
-    "conversational_path_20": "PASS 20/20",
+    "pending_reply_24": "see classical_batteries.pending_reply",
+    "conversational_path_20": "see classical_batteries.conversational_path",
     "knowledge_boundary_run_history": true,
     "sta305_omit_detail": 0,
     "run_history_stale_plan": 0,
-    "persona_drift_30_turn": "PARTIAL",
+    "persona_drift_30_turn": 0,
     "full_email_flow_multi_step": "PARTIAL \u2014 single-turn email intent only",
-    "ttft_streaming_lt_200ms": "NOT RUN \u2014 Phase 3"
+    "ttft_streaming_lt_200ms": "NOT RUN \u2014 shadow not yet token-streaming"
   },
   "health": {
     "status": "ok",
-    "timestamp": "2026-07-22T09:59:26.275346+00:00",
+    "timestamp": "2026-07-22T17:48:53.624217+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "acb44e3b0fef44845897f96808ff562fcc5a032c",
+    "git_sha": "444371f960571d83c2d7af89def200fa241d4c51",
     "ai_disabled": false,
     "checks": {
       "database": "healthy",
@@ -202,11 +200,9 @@
       "clickhouse": "configured"
     }
   },
-  "git_sha": "acb44e3b0fef44845897f96808ff562fcc5a032c",
+  "git_sha": "444371f960571d83c2d7af89def200fa241d4c51",
   "summary": "5/5 targeted cases",
-  "finished_at": "2026-07-22T10:07:41.071008+00:00",
+  "finished_at": "2026-07-22T18:08:18.300537+00:00",
   "ok": true,
-  "verdict": "PASS_CORE",
-  "expanded_verdict": "PARTIAL \u2014 persona-drift / full email / Phase 3 TTFT open",
-  "finished_at_patch": "2026-07-22T10:30:00+00:00"
+  "verdict": "PASS"
 }

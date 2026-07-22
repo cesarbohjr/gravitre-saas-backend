@@ -1,16 +1,11 @@
 {
   "feature": "unified_turn_persona_drift",
-  "checkedAt": "2026-07-22T10:27:37.054701+00:00",
-  "git_sha": "acb44e3b0fef44845897f96808ff562fcc5a032c",
-  "conversationId": "4162b2ff-282a-43b1-a3fb-b0eac7564128",
+  "checkedAt": "2026-07-22T18:08:18.159764+00:00",
+  "git_sha": "444371f960571d83c2d7af89def200fa241d4c51",
+  "conversationId": "8d2bf618-8807-4c71-872f-e08a4b53628c",
   "turns": 30,
-  "passed": 15,
+  "passed": 20,
   "failures": [
-    "t3:missing_shadow",
-    "t6:missing_shadow",
-    "t7:missing_shadow",
-    "t9:missing_shadow",
-    "t10:missing_shadow",
     "t13:missing_shadow",
     "t16:missing_shadow",
     "t17:missing_shadow",
@@ -45,13 +40,11 @@
     {
       "turn": 3,
       "user": "what can you help with",
-      "ok": false,
-      "failures": [
-        "missing_shadow"
-      ],
-      "assistant_preview": "I can help you manage agents, workflows, connectors, and data sources for your organization.\n\nWhat that means in practice:\n- Check agent, connector, and workflow status\n- Run or cr",
-      "shadow_outcome": null,
-      "shadow_preview": ""
+      "ok": true,
+      "failures": [],
+      "assistant_preview": "I can help with agents, workflows, connectors, and Apollo data tasks for your organization.\n\nFrom your org context, Apollo is Connected and execution is available. You also have 5 ",
+      "shadow_outcome": "conversational_reply",
+      "shadow_preview": "I can assist with various tasks related to managing contacts, organizations, and sequences using Apollo. Here are some specific actions I can help with:\n\n- Search for people or org"
     },
     {
       "turn": 4,
@@ -69,29 +62,25 @@
       "failures": [],
       "assistant_preview": "Doing well \u2014 here when you need a connector run, a plan, or a quick check.",
       "shadow_outcome": "conversational_reply",
-      "shadow_preview": "Great! If there's anything specific you want to dive into or any tasks you need help with, just let me know."
+      "shadow_preview": "Great! If there's anything specific you want to dive into or ask about, just let me know."
     },
     {
       "turn": 6,
       "user": "busy day",
-      "ok": false,
-      "failures": [
-        "missing_shadow"
-      ],
-      "assistant_preview": "I have enough context to summarize the org state, but not enough to act on \u201cbusy day\u201d because no task was specified.\n\nWhat\u2019s Connected and available:\n- Apollo is Connected and exec",
-      "shadow_outcome": null,
-      "shadow_preview": ""
+      "ok": true,
+      "failures": [],
+      "assistant_preview": "I don\u2019t have enough information yet. \u201cbusy day\u201d isn\u2019t a specific task.\n\nFrom the org context, Apollo is Connected and executable, and there\u2019s one open alert on \u201cApollo create list ",
+      "shadow_outcome": "conversational_reply",
+      "shadow_preview": "I hear you. If there's anything specific you need help with to lighten the load, just let me know."
     },
     {
       "turn": 7,
       "user": "remind me what you are",
-      "ok": false,
-      "failures": [
-        "missing_shadow"
-      ],
-      "assistant_preview": "I\u2019m Gravitre AI, the operator for your organization\u2019s agents, workflows, connectors, and data sources.\n\nIn this conversation, I can help you manage your org\u2019s connected automation ",
-      "shadow_outcome": null,
-      "shadow_preview": ""
+      "ok": true,
+      "failures": [],
+      "assistant_preview": "I\u2019m Gravitre AI, the operator for your organization\u2019s agents, workflows, connectors, and data sources.\n\nI may be missing context \u2014 could you clarify or point me to a specific recor",
+      "shadow_outcome": "conversational_reply",
+      "shadow_preview": "I'm Gravitree, your calm and sharp operator for enterprise automation. I help you manage tasks and streamline processes, ensuring everything runs smoothly. If you have any specific"
     },
     {
       "turn": 8,
@@ -105,24 +94,20 @@
     {
       "turn": 9,
       "user": "interesting",
-      "ok": false,
-      "failures": [
-        "missing_shadow"
-      ],
-      "assistant_preview": "I don\u2019t have enough information yet. The task is just \u201cinteresting,\u201d so there\u2019s nothing actionable to process.\n\nFrom the org context, I can see:\n- Apollo is Connected and execution",
-      "shadow_outcome": null,
-      "shadow_preview": ""
+      "ok": true,
+      "failures": [],
+      "assistant_preview": "I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue.\n\nFrom the org context, the Apollo connector is Connected and execution is available. There\u2019s also",
+      "shadow_outcome": "clarifying_question",
+      "shadow_preview": "What caught your interest? If there's something specific you'd like to explore or ask about, let me know!"
     },
     {
       "turn": 10,
       "user": "alright",
-      "ok": false,
-      "failures": [
-        "missing_shadow"
-      ],
-      "assistant_preview": "I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue.\n\nFrom the org context, the Apollo connector is Connected and execution is available, but the requ",
-      "shadow_outcome": null,
-      "shadow_preview": ""
+      "ok": true,
+      "failures": [],
+      "assistant_preview": "Understood. There\u2019s no actionable task in the input beyond \u201calright.\u201d\n\nFrom the org context, Apollo is Connected and execution is available. There\u2019s also one open medium alert: ele",
+      "shadow_outcome": "conversational_reply",
+      "shadow_preview": "What's on your mind?"
     },
     {
       "turn": 11,
@@ -149,7 +134,7 @@
       "failures": [
         "missing_shadow"
       ],
-      "assistant_preview": "I can help you manage agents, workflows, connectors, and data sources for your organization.\n\nWhat that means in practice:\n- Check agent, connector, and workflow status\n- Run or cr",
+      "assistant_preview": "I can help with agents, workflows, connectors, and Apollo data tasks for your organization.\n\nFrom your org context, Apollo is Connected and execution is available. You also have 5 ",
       "shadow_outcome": null,
       "shadow_preview": ""
     },
@@ -169,7 +154,7 @@
       "failures": [],
       "assistant_preview": "Good, thanks. What's on your mind?",
       "shadow_outcome": "conversational_reply",
-      "shadow_preview": "Great! If there's anything specific you want to dive into or any tasks you need help with, just let me know."
+      "shadow_preview": "Great! If there's anything specific you want to dive into or any task you need help with, just let me know."
     },
     {
       "turn": 16,
@@ -178,7 +163,7 @@
       "failures": [
         "missing_shadow"
       ],
-      "assistant_preview": "I have enough context to summarize the org state, but not enough to act on \u201cbusy day\u201d because no task was specified.\n\nWhat\u2019s Connected and available:\n- Apollo is Connected and exec",
+      "assistant_preview": "I don\u2019t have enough information yet. \u201cbusy day\u201d isn\u2019t a specific task.\n\nFrom the org context, Apollo is Connected and executable, and there\u2019s one open alert on \u201cApollo create list ",
       "shadow_outcome": null,
       "shadow_preview": ""
     },
@@ -189,7 +174,7 @@
       "failures": [
         "missing_shadow"
       ],
-      "assistant_preview": "I\u2019m Gravitre AI, the operator for your organization\u2019s agents, workflows, connectors, and data sources.\n\nIn this conversation, I can help you manage your org\u2019s connected automation ",
+      "assistant_preview": "I\u2019m Gravitre AI, the operator for your organization\u2019s agents, workflows, connectors, and data sources.\n\nI may be missing context \u2014 could you clarify or point me to a specific recor",
       "shadow_outcome": null,
       "shadow_preview": ""
     },
@@ -209,7 +194,7 @@
       "failures": [
         "missing_shadow"
       ],
-      "assistant_preview": "I don\u2019t have enough information yet. The task is just \u201cinteresting,\u201d so there\u2019s nothing actionable to process.\n\nFrom the org context, I can see:\n- Apollo is Connected and execution",
+      "assistant_preview": "I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue.\n\nFrom the org context, the Apollo connector is Connected and execution is available. There\u2019s also",
       "shadow_outcome": null,
       "shadow_preview": ""
     },
@@ -220,7 +205,7 @@
       "failures": [
         "missing_shadow"
       ],
-      "assistant_preview": "I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue.\n\nFrom the org context, the Apollo connector is Connected and execution is available, but the requ",
+      "assistant_preview": "Understood. There\u2019s no actionable task in the input beyond \u201calright.\u201d\n\nFrom the org context, Apollo is Connected and execution is available. There\u2019s also one open medium alert: ele",
       "shadow_outcome": null,
       "shadow_preview": ""
     },
@@ -249,7 +234,7 @@
       "failures": [
         "missing_shadow"
       ],
-      "assistant_preview": "I can help you manage agents, workflows, connectors, and data sources for your organization.\n\nWhat that means in practice:\n- Check agent, connector, and workflow status\n- Run or cr",
+      "assistant_preview": "I can help with agents, workflows, connectors, and Apollo data tasks for your organization.\n\nFrom your org context, Apollo is Connected and execution is available. You also have 5 ",
       "shadow_outcome": null,
       "shadow_preview": ""
     },
@@ -269,7 +254,7 @@
       "failures": [],
       "assistant_preview": "Can't complain. What are we working on?",
       "shadow_outcome": "conversational_reply",
-      "shadow_preview": "Great! If there's anything specific you want to tackle or explore, just let me know."
+      "shadow_preview": "Great! If you have something specific in mind, just let me know how I can assist you."
     },
     {
       "turn": 26,
@@ -278,7 +263,7 @@
       "failures": [
         "missing_shadow"
       ],
-      "assistant_preview": "I have enough context to summarize the org state, but not enough to act on \u201cbusy day\u201d because no task was specified.\n\nWhat\u2019s Connected and available:\n- Apollo is Connected and exec",
+      "assistant_preview": "I don\u2019t have enough information yet. \u201cbusy day\u201d isn\u2019t a specific task.\n\nFrom the org context, Apollo is Connected and executable, and there\u2019s one open alert on \u201cApollo create list ",
       "shadow_outcome": null,
       "shadow_preview": ""
     },
@@ -289,7 +274,7 @@
       "failures": [
         "missing_shadow"
       ],
-      "assistant_preview": "I\u2019m Gravitre AI, the operator for your organization\u2019s agents, workflows, connectors, and data sources.\n\nIn this conversation, I can help you manage your org\u2019s connected automation ",
+      "assistant_preview": "I\u2019m Gravitre AI, the operator for your organization\u2019s agents, workflows, connectors, and data sources.\n\nI may be missing context \u2014 could you clarify or point me to a specific recor",
       "shadow_outcome": null,
       "shadow_preview": ""
     },
@@ -309,7 +294,7 @@
       "failures": [
         "missing_shadow"
       ],
-      "assistant_preview": "I don\u2019t have enough information yet. The task is just \u201cinteresting,\u201d so there\u2019s nothing actionable to process.\n\nFrom the org context, I can see:\n- Apollo is Connected and execution",
+      "assistant_preview": "I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue.\n\nFrom the org context, the Apollo connector is Connected and execution is available. There\u2019s also",
       "shadow_outcome": null,
       "shadow_preview": ""
     },
@@ -320,7 +305,7 @@
       "failures": [
         "missing_shadow"
       ],
-      "assistant_preview": "I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue.\n\nFrom the org context, the Apollo connector is Connected and execution is available, but the requ",
+      "assistant_preview": "Understood. There\u2019s no actionable task in the input beyond \u201calright.\u201d\n\nFrom the org context, Apollo is Connected and execution is available. There\u2019s also one open medium alert: ele",
       "shadow_outcome": null,
       "shadow_preview": ""
     }

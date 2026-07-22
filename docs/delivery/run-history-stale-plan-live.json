@@ -1,13 +1,13 @@
 {
-  "checkedAt": "2026-07-22T10:06:38.851044+00:00",
+  "checkedAt": "2026-07-22T17:58:31.478863+00:00",
   "apiBase": "https://api.gravitre.app",
   "orgId": "f07e57c0-1501-4000-8000-c04e57a00001",
   "actor": "conversation-smoke-sa@gravitre.app",
-  "expectSha": "acb44e3b",
+  "expectSha": "444371f9",
   "fixCommit": "481f9862",
   "repros": {
     "fastRunHistory": {
-      "conversationId": "dba4fc8c-1d82-43e0-85f9-65c74f6532ad",
+      "conversationId": "021f6897-e88f-41b2-8eaf-d9f1b0e52c1e",
       "turn": {
         "http": 200,
         "assistant": "",
@@ -15,7 +15,7 @@
           {
             "type": "tool-input-available",
             "toolName": "searchKnowledgeBase",
-            "toolCallId": "call-640ee12952c2",
+            "toolCallId": "call-21f20e7eba88",
             "input": {
               "query": "What workflows have been ran?",
               "limit": 5
@@ -23,7 +23,7 @@
           },
           {
             "type": "tool-output-available",
-            "toolCallId": "call-640ee12952c2",
+            "toolCallId": "call-21f20e7eba88",
             "output": {
               "results": [],
               "sources": [],
@@ -35,16 +35,86 @@
           {
             "type": "tool-input-available",
             "toolName": "getWorkflowRuns",
-            "toolCallId": "call-5f23d85d9aab",
+            "toolCallId": "call-1b7f82d0f735",
             "input": {
-              "limit": 5
+              "limit": 10
             }
           },
           {
             "type": "tool-output-available",
-            "toolCallId": "call-5f23d85d9aab",
+            "toolCallId": "call-1b7f82d0f735",
             "output": {
               "runs": [
+                {
+                  "id": "a9ab516d-cdf5-49a1-9b08-f86e3cfb8e4c",
+                  "workflowId": null,
+                  "workflowName": null,
+                  "status": "failed",
+                  "runType": "execute",
+                  "createdAt": "2026-07-22T17:54:07.407664+00:00",
+                  "completedAt": "2026-07-22T17:54:07.519304+00:00",
+                  "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
+                },
+                {
+                  "id": "c94c75cd-a004-4b11-87d4-2086c49d898c",
+                  "workflowId": null,
+                  "workflowName": null,
+                  "status": "failed",
+                  "runType": "execute",
+                  "createdAt": "2026-07-22T17:53:58.827695+00:00",
+                  "completedAt": "2026-07-22T17:53:58.89866+00:00",
+                  "errorMessage": "Failed \u2014 Connect Slack at /connectors to run this action."
+                },
+                {
+                  "id": "b59be4f4-c3d4-4947-bec4-6a9c01e0da6c",
+                  "workflowId": null,
+                  "workflowName": null,
+                  "status": "failed",
+                  "runType": "execute",
+                  "createdAt": "2026-07-22T17:53:44.56605+00:00",
+                  "completedAt": "2026-07-22T17:53:44.636616+00:00",
+                  "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
+                },
+                {
+                  "id": "bf871e6f-2cdb-48f9-8a34-077fce0643f5",
+                  "workflowId": null,
+                  "workflowName": null,
+                  "status": "failed",
+                  "runType": "execute",
+                  "createdAt": "2026-07-22T17:53:36.486489+00:00",
+                  "completedAt": "2026-07-22T17:53:36.559699+00:00",
+                  "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
+                },
+                {
+                  "id": "8525f6f6-6de1-4162-b588-72d81f3f8a59",
+                  "workflowId": null,
+                  "workflowName": null,
+                  "status": "failed",
+                  "runType": "execute",
+                  "createdAt": "2026-07-22T17:53:27.530447+00:00",
+                  "completedAt": "2026-07-22T17:53:27.604187+00:00",
+                  "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
+                },
+                {
+                  "id": "8632eeb4-7f0d-4daa-8ccd-eb5a68d5cda2",
+                  "workflowId": null,
+                  "workflowName": null,
+                  "status": "failed",
+                  "runType": "execute",
+                  "createdAt": "2026-07-22T17:53:18.981881+00:00",
+                  "completedAt": "2026-07-22T17:53:19.076376+00:00",
+                  "errorMessage": "Failed \u2014 Connect Slack at /connectors to run this action."
+                },
+                {
+                  "id": "de3c39b4-1159-4b2b-a32f-9560be2f967e",
+                  "workflowId": null,
+                  "workflowName": null,
+                  "status": "failed",
+                  "runType": "execute",
+                  "createdAt": "2026-07-22T17:52:34.061961+00:00",
+                  "completedAt": "2026-07-22T17:52:34.271466+00:00",
+                  "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
+                },
                 {
                   "id": "f059439d-393a-428f-ba63-465a8b8337bd",
                   "workflowId": null,
@@ -74,29 +144,9 @@
                   "createdAt": "2026-07-22T10:03:01.443113+00:00",
                   "completedAt": "2026-07-22T10:03:01.537725+00:00",
                   "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
-                },
-                {
-                  "id": "dcdff9ce-d981-49fc-ac6b-7a24da4fc83c",
-                  "workflowId": null,
-                  "workflowName": null,
-                  "status": "failed",
-                  "runType": "execute",
-                  "createdAt": "2026-07-22T10:02:54.427013+00:00",
-                  "completedAt": "2026-07-22T10:02:54.483849+00:00",
-                  "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
-                },
-                {
-                  "id": "03233cbf-950b-4764-a5f0-413e6f56e221",
-                  "workflowId": null,
-                  "workflowName": null,
-                  "status": "failed",
-                  "runType": "execute",
-                  "createdAt": "2026-07-22T10:02:38.634737+00:00",
-                  "completedAt": "2026-07-22T10:02:38.754654+00:00",
-                  "errorMessage": "Failed \u2014 Connect Slack at /connectors to run this action."
                 }
               ],
-              "total": 5,
+              "total": 10,
               "success": true
             }
           }
@@ -157,7 +207,7 @@
             }
           }
         ],
-        "at": "2026-07-22T10:06:57.271922+00:00",
+        "at": "2026-07-22T17:58:54.950606+00:00",
         "error": null
       },
       "judgment": {
@@ -175,7 +225,7 @@
       }
     },
     "stalePlanSequence": {
-      "conversationId": "5c8c6bea-9a87-4bd8-bfbe-5055e080a626",
+      "conversationId": "f29a5ba9-c584-4934-82eb-a34cc81ea6d1",
       "bootstrapHttp": 200,
       "seededStickyCompletedPlan": true,
       "turns": [
@@ -233,12 +283,12 @@
             "searchKnowledgeBase",
             "getWorkflowRuns"
           ],
-          "at": "2026-07-22T10:07:26.213215+00:00"
+          "at": "2026-07-22T17:59:32.199804+00:00"
         },
         {
           "user": "yes",
           "http": 200,
-          "assistant": "I have enough context, but the task itself is just \u201cyes,\u201d which is not actionable.\n\nFrom the org context: Apollo is Connected and execution is available, 5 agents are active, 3 workflows are active, and there is 1 open alert about an elevated failure rate on \u201cApollo create list (write)\u201d in workflow `f91610f0-7d3a-43aa-bc6e-7185c08f9182`.\n\nTell me the actual operation you want, such as:\n- check agent status\n- check connector health\n- inspect the failing workflow or alert\n- search Apollo people or",
+          "assistant": "Yes.",
           "pending": null,
           "current_plan": {
             "goal": "What workflows have been ran?",
@@ -288,7 +338,7 @@
           "tools": [
             "searchKnowledgeBase"
           ],
-          "at": "2026-07-22T10:07:35.704262+00:00"
+          "at": "2026-07-22T17:59:42.298885+00:00"
         }
       ],
       "judgment": {
@@ -299,11 +349,11 @@
         "oldHubspotPlanAlive": false,
         "currentPlanGoalAfterYes": "What workflows have been ran?",
         "unrelatedAssistantSnippet": "",
-        "yesAssistantSnippet": "I have enough context, but the task itself is just \u201cyes,\u201d which is not actionable.\n\nFrom the org context: Apollo is Connected and execution is available, 5 agents are active, 3 workflows are active, and there is 1 open alert about an elevated failure rate on \u201cApollo create list (write)\u201d in workflow `f91610f0-7d3a-43aa-bc6e-7185c08f9182`.\n\nTell me the actual operation you want, such as:\n- check age"
+        "yesAssistantSnippet": "Yes."
       }
     }
   },
-  "tipShaObserved": "acb44e3b0fef44845897f96808ff562fcc5a032c",
+  "tipShaObserved": "444371f960571d83c2d7af89def200fa241d4c51",
   "auditSample": [],
   "overall": {
     "fastRunHistory": "PASS",

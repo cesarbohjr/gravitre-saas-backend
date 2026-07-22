@@ -1,106 +1,106 @@
 {
-  "started_at": "2026-07-22T10:33:18.334514+00:00",
-  "expect_sha": "6a21e2ec",
+  "started_at": "2026-07-22T17:33:27.386404+00:00",
+  "expect_sha": "444371f9",
   "api_base": "https://api.gravitre.app",
   "ttft_target_ms": 200,
   "probes": [
     {
       "message": "Hey",
-      "conversation_id": "a0573f3a-9b81-4a62-9098-9bd47b16049a",
+      "conversation_id": "d234170f-4ab0-4b28-bc7d-0f16a116f946",
       "turn": {
         "http": 200,
         "error": null,
-        "client_first_sse_ms": 2815,
+        "client_first_sse_ms": 5000,
         "saw_plan_or_intel": true,
-        "raw_bytes": 3125,
-        "at": "2026-07-22T10:33:25.737550+00:00"
+        "raw_bytes": 2952,
+        "at": "2026-07-22T17:33:38.171037+00:00"
       },
-      "shadow_created_at": "2026-07-22T10:33:23.434423+00:00",
+      "shadow_created_at": "2026-07-22T17:33:35.497378+00:00",
       "shadow_streamed": true,
-      "shadow_first_token_ms": 731,
-      "shadow_latency_ms": 732,
+      "shadow_first_token_ms": 1303,
+      "shadow_latency_ms": 1442,
       "shadow_outcome_kind": "conversational_reply",
       "shadow_model": "gpt-4o-mini"
     },
     {
       "message": "Thank you",
-      "conversation_id": "51071d0b-ab92-4a8f-964e-fc733a3ba15a",
+      "conversation_id": "4ff90783-e3e1-4a24-8dac-b0323dcf10ba",
       "turn": {
         "http": 200,
         "error": null,
-        "client_first_sse_ms": 2018,
+        "client_first_sse_ms": 2614,
         "saw_plan_or_intel": true,
-        "raw_bytes": 3095,
-        "at": "2026-07-22T10:33:32.459853+00:00"
+        "raw_bytes": 2925,
+        "at": "2026-07-22T17:33:46.535299+00:00"
       },
-      "shadow_created_at": "2026-07-22T10:33:29.871463+00:00",
+      "shadow_created_at": "2026-07-22T17:33:43.315276+00:00",
       "shadow_streamed": true,
-      "shadow_first_token_ms": 474,
-      "shadow_latency_ms": 476,
+      "shadow_first_token_ms": 876,
+      "shadow_latency_ms": 878,
       "shadow_outcome_kind": "conversational_reply",
       "shadow_model": "gpt-4o-mini"
     },
     {
       "message": "What's on your plate?",
-      "conversation_id": "13c639dd-a338-41a9-a9fd-7a93121ac997",
+      "conversation_id": "649d82e7-9ca8-4fa1-aff3-d9b309d6f4c0",
       "turn": {
         "http": 200,
         "error": null,
-        "client_first_sse_ms": 2741,
+        "client_first_sse_ms": 2481,
         "saw_plan_or_intel": true,
-        "raw_bytes": 16085,
-        "at": "2026-07-22T10:33:45.926515+00:00"
+        "raw_bytes": 15443,
+        "at": "2026-07-22T17:34:27.509306+00:00"
       },
-      "shadow_created_at": "2026-07-22T10:33:39.128744+00:00",
+      "shadow_created_at": "2026-07-22T17:33:53.129025+00:00",
       "shadow_streamed": true,
-      "shadow_first_token_ms": 1785,
-      "shadow_latency_ms": 2013,
+      "shadow_first_token_ms": 2062,
+      "shadow_latency_ms": 2551,
       "shadow_outcome_kind": "clarifying_question",
       "shadow_model": "gpt-4o-mini"
     },
     {
       "message": "Send an email to Stephanie about the proposal",
-      "conversation_id": "5d1dc37e-c3c6-49ea-b3c0-d8cd9ee6a4c4",
+      "conversation_id": "ca990aef-d765-4507-8189-4dad8fee3fce",
       "turn": {
         "http": 200,
         "error": null,
-        "client_first_sse_ms": 1945,
+        "client_first_sse_ms": 3350,
         "saw_plan_or_intel": true,
-        "raw_bytes": 3935,
-        "at": "2026-07-22T10:34:04.723495+00:00"
+        "raw_bytes": 3931,
+        "at": "2026-07-22T17:34:51.663722+00:00"
       },
-      "shadow_created_at": "2026-07-22T10:33:53.24839+00:00",
+      "shadow_created_at": "2026-07-22T17:34:37.034893+00:00",
       "shadow_streamed": true,
-      "shadow_first_token_ms": 3437,
-      "shadow_latency_ms": 3706,
+      "shadow_first_token_ms": 4240,
+      "shadow_latency_ms": 4485,
       "shadow_outcome_kind": "clarifying_question",
       "shadow_model": "gpt-4o-mini"
     },
     {
       "message": "How are the deals looking?",
-      "conversation_id": "c41cbba3-5c0b-47ce-92d3-f09dea43665f",
+      "conversation_id": "4d0f7bc5-0184-4e7c-95fd-ad2f67ce9b63",
       "turn": {
         "http": 200,
         "error": null,
-        "client_first_sse_ms": 2143,
+        "client_first_sse_ms": 2309,
         "saw_plan_or_intel": true,
-        "raw_bytes": 3932,
-        "at": "2026-07-22T10:34:11.193716+00:00"
+        "raw_bytes": 24791,
+        "at": "2026-07-22T17:35:25.383230+00:00"
       },
-      "shadow_created_at": null,
-      "shadow_streamed": false,
-      "shadow_first_token_ms": null,
-      "shadow_latency_ms": null,
-      "shadow_outcome_kind": null,
-      "shadow_model": null
+      "shadow_created_at": "2026-07-22T17:35:05.176783+00:00",
+      "shadow_streamed": true,
+      "shadow_first_token_ms": 3940,
+      "shadow_latency_ms": 4858,
+      "shadow_outcome_kind": "conversational_reply",
+      "shadow_model": "gpt-4o-mini"
     }
   ],
   "health": {
     "status": "ok",
-    "timestamp": "2026-07-22T10:33:18.344001+00:00",
+    "timestamp": "2026-07-22T17:33:27.156790+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "6a21e2ec6c4a1da94935eb948a85a468a4c36f34",
+    "git_sha": "444371f960571d83c2d7af89def200fa241d4c51",
     "ai_disabled": false,
     "checks": {
       "database": "healthy",
@@ -110,13 +110,13 @@
     }
   },
   "stats": {
-    "n_streamed_ttft": 4,
-    "ttft_min_ms": 474,
-    "ttft_max_ms": 3437,
-    "ttft_mean_ms": 1606,
-    "ttft_p50_ms": 1258,
+    "n_streamed_ttft": 5,
+    "ttft_min_ms": 876,
+    "ttft_max_ms": 4240,
+    "ttft_mean_ms": 2484,
+    "ttft_p50_ms": 2062,
     "meets_200ms_target": false
   },
   "ok": true,
-  "finished_at": "2026-07-22T10:34:25.148252+00:00"
+  "finished_at": "2026-07-22T17:35:26.526023+00:00"
 }

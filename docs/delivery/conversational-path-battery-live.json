@@ -1,8 +1,8 @@
 {
-  "checkedAt": "2026-07-22T10:06:32.620333+00:00",
+  "checkedAt": "2026-07-22T17:58:26.824514+00:00",
   "apiBase": "https://api.gravitre.app",
-  "git_sha": "acb44e3b0fef44845897f96808ff562fcc5a032c",
-  "expectSha": "acb44e3b",
+  "git_sha": "444371f960571d83c2d7af89def200fa241d4c51",
+  "expectSha": "444371f9",
   "tip_ok": true,
   "passed": 20,
   "total": 20,
@@ -15,7 +15,7 @@
       "id": "social_greeting_1",
       "bucket": "social",
       "user": "hey, how's it going",
-      "conversationId": "f028a334-6081-4099-aad9-7447b119fc1a",
+      "conversationId": "01f5e8d9-5383-470e-9d28-5b073ef2b6bc",
       "http": 200,
       "assistant": "Hey \u2014 here when you need a connector run, a plan, or a quick check.",
       "pass": true
@@ -24,7 +24,7 @@
       "id": "social_greeting_2",
       "bucket": "social",
       "user": "good morning",
-      "conversationId": "1cf350ac-e808-42e1-bdc2-38347d0e07e5",
+      "conversationId": "7db0834d-6ebd-4770-9fa3-5de0f1f8f354",
       "http": 200,
       "assistant": "Hey \u2014 here when you need a connector run, a plan, or a quick check.",
       "pass": true
@@ -33,7 +33,7 @@
       "id": "social_thanks",
       "bucket": "social",
       "user": "thanks!",
-      "conversationId": "ebda140c-a341-4313-bcb3-ea29ad6ecffe",
+      "conversationId": "19799c20-1608-45b3-a60f-8204b44d9cad",
       "http": 200,
       "assistant": "You're welcome. Ready when you are.",
       "pass": true
@@ -42,7 +42,7 @@
       "id": "social_banter",
       "bucket": "social",
       "user": "haha nice one",
-      "conversationId": "e8687955-bbc5-4197-878e-354610eedc39",
+      "conversationId": "61fab478-d64b-42e2-8efb-db98092fdae3",
       "http": 200,
       "assistant": "Ha \u2014 noted. What should we tackle next?",
       "pass": true
@@ -51,7 +51,7 @@
       "id": "social_smalltalk",
       "bucket": "social",
       "user": "how's your day going",
-      "conversationId": "f6d9940f-fbb1-41ed-8590-332133570fb8",
+      "conversationId": "8d2fd721-43c3-428f-9480-57bd6ce41de8",
       "http": 200,
       "assistant": "Doing well \u2014 here when you need a connector run, a plan, or a quick check.",
       "pass": true
@@ -60,7 +60,7 @@
       "id": "mixed_hubspot_list",
       "bucket": "mixed",
       "user": "haha nice, also can you check on that HubSpot list",
-      "conversationId": "92883689-e7ca-4ffd-a236-82097037e2e7",
+      "conversationId": "48e23e53-b080-4b2b-be96-3b3dbca31df0",
       "http": 200,
       "assistant": "Ha \u2014 noted.\n\nHubspot is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again.",
       "pass": true
@@ -69,7 +69,7 @@
       "id": "mixed_slack",
       "bucket": "mixed",
       "user": "lol cool \u2014 also post a Slack message to #general saying hi",
-      "conversationId": "bd929cf0-5828-4765-bf75-125c5baf7418",
+      "conversationId": "14f73471-8caa-46b8-9a3c-142ee2be7009",
       "http": 200,
       "assistant": "Ha \u2014 noted.\n\nSlack is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again.",
       "pass": true
@@ -78,7 +78,7 @@
       "id": "mixed_thanks_search",
       "bucket": "mixed",
       "user": "thanks, also search HubSpot for Acme contacts",
-      "conversationId": "a5d2b816-4c2d-475f-805e-007081022e25",
+      "conversationId": "eeacc215-63ad-4793-acdd-9b36b0d2df7d",
       "http": 200,
       "assistant": "You're welcome.\n\nHubspot is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again.",
       "pass": true
@@ -87,16 +87,16 @@
       "id": "mixed_banter_gmail",
       "bucket": "mixed",
       "user": "you're funny \u2014 also draft a Gmail to demo@example.com",
-      "conversationId": "4f7d1f65-94b9-4502-8548-c2f18785345f",
+      "conversationId": "67b3e6dd-2090-4b4c-a492-a5c88cf6bcc1",
       "http": 200,
-      "assistant": "Ha \u2014 noted.\n\nI can\u2019t create a Gmail draft in the mailbox because Gmail is not Connected. The org context shows only Apollo is Connected and Executable.\n\nI can still write the email text here. I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue:\n\n- Purpose of the email\n- Recipient name, if available\n- Key points or desired outcome\n- Tone: concise, friendly, formal, sales, support\n- Sender name/signature to useConnect Gmail at /connectors to run this action.\nI was working on: **draft a Gmail to demo@example.com**.\n\nNo Gmail connector is configured for this organization. Add and connect Gmail under Connectors, then retry.\n\nConnect Gmail at /connectors, then retry this request.",
+      "assistant": "Ha \u2014 noted.\n\nI can draft the email text, but I cannot create a Gmail draft because Gmail is not Connected for this org.\n\nChecked connector status: Apollo is Connected and Healthy; Gmail is not listed.\n\nI don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue:\n\n- Purpose of the email\n- Recipient name, if you want it personalized\n- Tone: formal, friendly, brief, sales, support, etc.\n- Any key points or call to action\n- Subject line preference\n\nIf you want a neutral placeholder draft, use this:\n\nSubject: Quick follow-up\n\nHi [Name],\n\nI wanted to reach out and share a quick note. Please let me know if you\u2019re available to discuss this further, or if there\u2019s someone else I should coordinate with.\n\nBest,  \n[Your Name]Connect Gmail at /connectors to run this action.\nI was working on: **draft a Gmail to demo@example.com**.\n\nNo Gmail connector is configured for this organiz",
       "pass": true
     },
     {
       "id": "mixed_hey_apollo",
       "bucket": "mixed",
       "user": "hey \u2014 also create an Apollo contact list named ConvPath Battery",
-      "conversationId": "37473b22-8d6c-4ddd-83f3-a909dd2bad2d",
+      "conversationId": "a7adf360-aeda-48b4-9add-b9b2406d2167",
       "http": 200,
       "assistant": "Hey \u2014 on it.\n\nI can create a contact list named **ConvPath Battery** in Apollo.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
       "pass": true
@@ -105,7 +105,7 @@
       "id": "meta_what_can_you_do",
       "bucket": "meta",
       "user": "what can you do?",
-      "conversationId": "068ee375-f8a0-4ec8-99c3-14bcf0da51f4",
+      "conversationId": "4a34b6ed-2346-46b4-a916-429cab73dfa0",
       "http": 200,
       "assistant": "I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo. Writes go through catalog write-authority with explicit approval when required (Decision Queue / reply **yes**). I can also help with multi-step plans, run history, and marketplace intelligence packs once connectors are Connected.",
       "pass": true
@@ -114,7 +114,7 @@
       "id": "meta_are_you_ai",
       "bucket": "meta",
       "user": "are you an AI?",
-      "conversationId": "18d15ae4-299b-4c84-8503-6748df439c03",
+      "conversationId": "ea149118-d1fa-4070-8fee-1a5769d70738",
       "http": 200,
       "assistant": "I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo. Writes go through catalog write-authority with explicit approval when required (Decision Queue / reply **yes**). I can also help with multi-step plans, run history, and marketplace intelligence packs once connectors are Connected.",
       "pass": true
@@ -123,7 +123,7 @@
       "id": "meta_who_are_you",
       "bucket": "meta",
       "user": "who are you?",
-      "conversationId": "45a757de-8631-4ea0-ab88-3103ecf5a9a7",
+      "conversationId": "751d2a78-3acf-4752-b43b-115245d65726",
       "http": 200,
       "assistant": "I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo. Writes go through catalog write-authority with explicit approval when required (Decision Queue / reply **yes**). I can also help with multi-step plans, run history, and marketplace intelligence packs once connectors are Connected.",
       "pass": true
@@ -132,7 +132,7 @@
       "id": "vent_hubspot",
       "bucket": "venting",
       "user": "ugh this HubSpot connector is being annoying",
-      "conversationId": "b0e8d023-abc6-4d96-8226-c8af565b5918",
+      "conversationId": "a8345d73-28ac-4355-812d-1ca44c4d427e",
       "http": 200,
       "assistant": "That friction is real. When you want to dig in, we can check the connector at /connectors (Connected / Healthy / Authenticated) and retry the action.",
       "pass": true
@@ -141,7 +141,7 @@
       "id": "vent_generic",
       "bucket": "venting",
       "user": "ugh this is so frustrating today",
-      "conversationId": "88e1c564-f736-4ce7-baf8-7aa0ce7733ae",
+      "conversationId": "e4f6ac7a-65ac-441d-a6f3-7b80503286b6",
       "http": 200,
       "assistant": "That friction is real. When you want to dig in, we can check the connector at /connectors (Connected / Healthy / Authenticated) and retry the action.",
       "pass": true
@@ -150,7 +150,7 @@
       "id": "vent_slack",
       "bucket": "venting",
       "user": "this Slack setup is annoying",
-      "conversationId": "1a47fc67-99c2-4200-bb73-53246f2263f2",
+      "conversationId": "b5717bf5-cad5-43c7-a946-f09e821f7870",
       "http": 200,
       "assistant": "That friction is real. When you want to dig in, we can check the connector at /connectors (Connected / Healthy / Authenticated) and retry the action.",
       "pass": true
@@ -159,16 +159,16 @@
       "id": "data_deals",
       "bucket": "data_guard",
       "user": "how are the deals looking",
-      "conversationId": "a6ea68d7-0643-4129-9c3d-3ba0e65d61be",
+      "conversationId": "c7d4657a-25d2-46af-9509-3ed582c68f9c",
       "http": 200,
-      "assistant": "I don\u2019t have enough information yet to tell how the deals are looking. The org context only shows one open alert on an Apollo write step and some recent failed runs; it does not include deal pipeline data.\n\nBest next move: I can check Apollo for your deal/list data if you tell me where the deals live in your setup, or I can inspect connector status and recent workflow runs for anything deal-related.\nI don\u2019t have enough information yet to tell how the deals are looking. The org context only shows an open Apollo write-step alert and failed runs, not deal pipeline metrics.\n\nBest next move: tell me where the deals are tracked in your setup, or I can inspect the connected Apollo data and recent workflow runs for deal-related activity.\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document?",
+      "assistant": "The deals picture is not healthy right now.\n\n- Last 7 days: 126 runs, 17 completed, 103 failed, 4 running, 1 pending approval.\n- Success rate: 13.5% overall.\n- Recent runs are all failures, and the errors point to missing connector access for Gmail and Slack.\n- Apollo is Connected and Healthy, but discovery is plan-limited: search people and companies are not available on this account.\n- There is 1 open alert: \u201cApollo create list (write)\u201d has failed in 3 of the last 8 runs.\n\nSource: org analytics, recent workflow runs, and connector status.\n\nBest next move: fix the missing Gmail/Slack connector access first, then re-check the Apollo write step alert. If you want, I can also pull the specific workflows that are failing most.\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document?",
       "pass": true
     },
     {
       "id": "data_pipeline",
       "bucket": "data_guard",
       "user": "how's our pipeline looking this week",
-      "conversationId": "ac472d9b-e4e4-4c7e-a08c-81961336c136",
+      "conversationId": "da03cbfa-939a-476c-97c2-76be46087939",
       "http": 200,
       "assistant": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
       "pass": true
@@ -177,7 +177,7 @@
       "id": "pending_playful_1",
       "bucket": "pending_playful",
       "user": "haha you're funny",
-      "conversationId": "2663b221-55d4-4628-8683-b0357cdeec2c",
+      "conversationId": "d81940e6-0a81-4f60-8b44-89231ef6aa34",
       "http": 200,
       "assistant": "Ha \u2014 noted. What should we tackle next?\n\nSend Gmail message is waiting in the Decision Queue. Reply **yes** to approve, or **cancel** to drop it.",
       "pass": true
@@ -186,7 +186,7 @@
       "id": "pending_playful_2",
       "bucket": "pending_playful",
       "user": "lol cool thanks",
-      "conversationId": "707c3cf5-6e25-4681-9c4f-aa18c2e445fa",
+      "conversationId": "341bee3a-5f9f-48b1-b1ae-c6dd87046ac2",
       "http": 200,
       "assistant": "Ha \u2014 noted. What should we tackle next?\n\nSend Gmail message is waiting in the Decision Queue. Reply **yes** to approve, or **cancel** to drop it.",
       "pass": true

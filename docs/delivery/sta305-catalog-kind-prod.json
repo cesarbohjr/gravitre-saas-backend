@@ -1,6 +1,6 @@
 {
   "ticket": "STA-305",
-  "probed_at": "2026-07-22T10:09:20.792891+00:00",
+  "probed_at": "2026-07-22T17:59:43.187932+00:00",
   "local_mapper": {
     "segment": "draft a follow-up in Slack for approval",
     "matched_action": "slack.post_message",
@@ -14,11 +14,11 @@
     "pass": true
   },
   "live": {
-    "sha": "acb44e3b0fef44845897f96808ff562fcc5a032c",
-    "conversation_id": "3ce08268-7692-4eb7-bebf-c5735e72c70a",
-    "marker": "b6d2f01d",
+    "sha": "444371f960571d83c2d7af89def200fa241d4c51",
+    "conversation_id": "5a603a72-fc0f-40fc-9876-84d16eff9fab",
+    "marker": "dae3511e",
     "http": 200,
-    "elapsed_ms": 8135,
+    "elapsed_ms": 5842,
     "labels": [
       "Hubspot (not connected)",
       "Slack (not connected)",

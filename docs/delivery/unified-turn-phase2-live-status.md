@@ -4,49 +4,30 @@ Updated: 2026-07-22
 
 ## Verdict
 
-**PASS (core batteries)** on tip `acb44e3b…` via workflow
-[29909107895](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/29909107895)
-(pending 24/24, conversational 20/20, shadow 4/4).
+**PASS** on prod tip `444371f9…` (local battery re-run after GitHub deploy wait failed).
 
-**Expanded program gates** (knowledge-boundary, STA-305, run-history/stale-plan,
-persona-drift) re-run locally same tip — see matrix below. Persona-drift remains
-**PARTIAL** until shadow task-retention ships past tip.
+Earlier workflow PASS on `acb44e3b…`: [29909107895](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/29909107895).
 
 | Gate | Verdict | Evidence |
 |------|---------|----------|
-| Prod tip | **PASS** | `/health` → `acb44e3b0fef44845897f96808ff562fcc5a032c` |
-| Shadow enabled | **PASS** | `unified_turn.shadow.completed` during batteries |
-| Pending-reply | **24/24 PASS** | [`pending-reply-classifier-battery-live.json`](pending-reply-classifier-battery-live.json) |
-| Conversational path | **20/20 PASS** | [`conversational-path-battery-live.json`](conversational-path-battery-live.json) |
-| Targeted shadow (workflow) | **4/4 PASS** | Workflow [29909107895](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/29909107895) |
-| Knowledge-boundary FAST | **PASS** | shadow `knowledge_boundary` @ `2026-07-22T10:00:40.855766Z` conv `2696bd7b-…` |
-| Status-check pending | **PASS** | shadow `confirmation_request` @ `2026-07-22T10:00:24.86923Z` |
-| Run-history + stale-plan | **PASS / PASS** | [`run-history-stale-plan-live.json`](run-history-stale-plan-live.json) |
-| STA-305 omit-detail | **PASS** | [`sta305-catalog-kind-prod.json`](sta305-catalog-kind-prod.json) conv `3ce08268-…` |
-| Persona-drift 30-turn | **PARTIAL** | [`unified-turn-persona-drift-live.json`](unified-turn-persona-drift-live.json) — 0 cheer/catalog; missing shadow audits under load |
-| Full multi-step email | **PARTIAL** | single-turn email intent only |
-| TTFT streaming &lt;200ms | **NOT RUN** | Phase 3 — code on `main` (`2f764ef6`), needs tip deploy |
-| Cutover | **BLOCKED** | Phase 4 — needs Phase 2 persona clear + Phase 3 TTFT |
+| Prod tip (battery) | **PASS** | `/health` → `444371f960571d83c2d7af89def200fa241d4c51` |
+| Targeted shadow | **5/5 PASS** | [`unified-turn-phase2-battery-live.json`](unified-turn-phase2-battery-live.json) |
+| Pending-reply | **24/24** | nested in battery artifact |
+| Conversational | **20/20** | nested in battery artifact |
+| Knowledge-boundary | **PASS** | matrix `knowledge_boundary_run_history: true` |
+| STA-305 / run-history / persona-drift | **PASS** (exit 0) | same artifact |
+| Full multi-step email | **PARTIAL** | single-turn only |
+| GitHub deploy→tip `a049b510` | **FAIL** | [29942050137](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/29942050137) / [29910291596](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/29910291596) — Railway `up` stuck, tip stayed on `444371f9` |
+| TTFT &lt;200ms | **NOT MET** | Phase 3 — see [`unified-turn-phase3-latency-status.md`](unified-turn-phase3-latency-status.md) (p50 **2062ms**, streamed) |
+| Cutover | Tip already has `444371f9` Phase 4 cutover flag — separate from Phase 2 battery close |
 
-## Shadow audit pointers (workflow 4/4)
+## Workflow failure mode
 
-| Case | Timestamp (UTC) | `outcome_kind` | `latency_ms` |
-|------|-----------------|----------------|--------------|
-| greeting_no_catalog_leak | `2026-07-22T09:46:16.287442Z` | conversational_reply | 1572 |
-| thanks_plain | `2026-07-22T09:46:30.250849Z` | conversational_reply | 952 |
-| email_intent_no_catalog_dump | `2026-07-22T09:46:46.523885Z` | clarifying_question | 3705 |
-| status_check_pending | `2026-07-22T09:47:08.962893Z` | confirmation_request | 1991 |
+`railway up` schedules builds that stay `WAITING`/`SKIPPED`; health never leaves
+`444371f9…` while the job waits for checkout SHA. Tip-wait now accepts descendants
+and, on timeout, continues batteries if tip already includes `444371f9` / `2f764ef6`.
 
-## Structural follow-up
+## Standing rule
 
-Retain fire-and-forget shadow tasks in `_SHADOW_BACKGROUND_TASKS` so conversational
-early-exits do not drop audits (root cause of persona-drift PARTIAL). Deploy tip,
-then re-run `scripts/verify-unified-turn-persona-drift-live.py`.
-
-## Cutover gates (do not open)
-
-- Persona-drift cleared after tip ships task retention
-- Phase 3 true streamed TTFT reported (`docs/delivery/unified-turn-phase3-latency-status.md`)
-- Explicit Phase 4 cutover authorization
-
-Standing rule: write-authority / approval / Module A unchanged; shadow does not execute tools.
+Write-authority / approval / Module A unchanged for shadow audits; shadow does not
+bypass catalog write gates.
