@@ -661,6 +661,13 @@ async def apply_unified_turn_live(
         )
         return _unified_live_turn_payload(pending_result, task_state)
 
+    # confirm/reject/modify/slot_answer return None from the pending resolver so
+    # classical Module B can execute them. Do not let shadow invent a yes/hold.
+    from app.services.pending_reply_classifier import has_pending_family
+
+    if has_pending_family(task_state):
+        return None
+
     result = await run_unified_turn_shadow(
         org_id=org_id,
         user_id=user_id,
