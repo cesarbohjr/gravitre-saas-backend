@@ -239,7 +239,10 @@ async def run_unified_turn_shadow(
     t_after_registry = time.perf_counter()
 
     use_embed, shape_label, retrieval_query = is_task_shaped_for_retrieval(message or "")
-    embed_on = bool(getattr(active, "unified_turn_embedding_tool_retrieval", True)) and use_embed
+    embed_flag = bool(getattr(active, "unified_turn_embedding_tool_retrieval", True))
+    min_catalog = int(getattr(active, "unified_turn_embed_min_catalog_tools", 40) or 40)
+    catalog_large_enough = len(all_tools) >= min_catalog
+    embed_on = embed_flag and use_embed and catalog_large_enough
     if use_embed:
         max_tools = int(
             getattr(active, "unified_turn_task_max_tools", None)
@@ -262,15 +265,19 @@ async def run_unified_turn_shadow(
     else:
         visible, tool_stats = narrow_tools_for_turn(
             all_tools,
-            query=message,
+            query=retrieval_query or message,
             connected_integrations=connected,
             requires_action=None,
             max_tools=max_tools,
         )
+        skip_reason = None
+        if embed_flag and use_embed and not catalog_large_enough:
+            skip_reason = f"catalog_below_embed_min:{len(all_tools)}<{min_catalog}"
         tool_stats = {
             **(tool_stats or {}),
             "retrievalMethod": "keyword_narrow_tools_for_turn",
             "embeddingToolRetrieval": False,
+            "embeddingSkippedReason": skip_reason,
         }
     t_after_narrow = time.perf_counter()
 

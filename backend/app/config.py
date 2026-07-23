@@ -120,6 +120,14 @@ class Settings(BaseSettings):
         default=16,
         validation_alias=AliasChoices("UNIFIED_TURN_TASK_MAX_TOOLS", "unified_turn_task_max_tools"),
     )
+    # Skip query-embed RTT when connected catalog is small (keyword already cheap).
+    unified_turn_embed_min_catalog_tools: int = Field(
+        default=40,
+        validation_alias=AliasChoices(
+            "UNIFIED_TURN_EMBED_MIN_CATALOG_TOOLS",
+            "unified_turn_embed_min_catalog_tools",
+        ),
+    )
     # MODEL_TIERS key for task/mixed unified calls (e.g. low → gpt-5.4-mini). Empty = gpt-4o-mini.
     unified_turn_task_model_tier: str = Field(
         default="",
