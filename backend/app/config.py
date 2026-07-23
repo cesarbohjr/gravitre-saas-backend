@@ -121,6 +121,9 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("UNIFIED_TURN_TASK_MAX_TOOLS", "unified_turn_task_max_tools"),
     )
     # Skip query-embed RTT when connected catalog is small (keyword already cheap).
+    # Default 40 is a conservative estimate from the 26-tool live result (embed hurt
+    # wall TTFT); NOT an empirically validated crossover from a 30/40/50 sweep.
+    # Revisit with real A/B once an org crosses this threshold.
     unified_turn_embed_min_catalog_tools: int = Field(
         default=40,
         validation_alias=AliasChoices(

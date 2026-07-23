@@ -15,6 +15,7 @@ Tip (final measure): `182b91b3…` · `UNIFIED_TURN_TASK_MODEL_TIER=low` · LIVE
 
 - **Metric:** task-shaped / mixed TTFT — not social greetings.
 - **C:** embedding tool retrieval for task/mixed when connected catalog ≥ `UNIFIED_TURN_EMBED_MIN_CATALOG_TOOLS` (default **40**). Below that, keyword (query-embed RTT dominates on small catalogs).
+  - **Gate threshold provenance:** **40 is a conservative estimate, not an empirically validated crossover.** Live data exists only for the current prod connected set (**26 tools**): warm embed improved `model_ttft` (~671→488ms) but worsened wall (~673→798ms) due to ~300ms query-embed RTT. No sweep at 30 / 40 / 50 (or other sizes) was run to find where payload savings outweigh that fixed RTT. Default 40 = “safely above 26 with margin.” **Revisit with real A/B once an org’s connected catalog crosses this threshold** — do not treat 40 as measured optimum.
 - **D:** `UNIFIED_TURN_TASK_MODEL_TIER` for task/mixed. Empty → `gpt-4o-mini`; `low` → `gpt-5.4-mini`.
 - Shape hint selects retrieval/model only — **reasoning call always runs** (Option A rejected).
 
@@ -51,7 +52,7 @@ Artifact: [`unified-turn-task-ttft-after-embed-warm.json`](unified-turn-task-ttf
 - functional: **5/5** (cold first pass had 4/5 flaky Apollo connect copy; warm 5/5)
 - **Finding:** `model_ttft` improved (~671→488) via slightly smaller schemas; **wall worsened** because each turn pays OpenAI **query-embed** RTT (~300ms) in `narrow_tools_ms`. On a 26-tool connected set that overhead dominates.
 
-**Mitigation shipped:** skip embedding when `total_tools < UNIFIED_TURN_EMBED_MIN_CATALOG_TOOLS` (default 40). Embedding remains for larger catalogs where payload reduction can beat query-embed cost.
+**Mitigation shipped:** skip embedding when `total_tools < UNIFIED_TURN_EMBED_MIN_CATALOG_TOOLS` (default 40). Embedding remains for larger catalogs where payload reduction *may* beat query-embed cost — **crossover not measured at multiple catalog sizes; see gate threshold provenance above.**
 
 Cold-start evidence (first request after deploy): wall 6196 / 4899 with `narrow_tools_ms` 4–4.5s while tool vectors cache — [`unified-turn-task-ttft-after-embed.json`](unified-turn-task-ttft-after-embed.json).
 
