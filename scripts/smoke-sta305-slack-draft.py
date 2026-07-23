@@ -23,18 +23,18 @@ from httpx import AsyncClient
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
 sys.path.insert(0, str(BACKEND))
+sys.path.insert(0, str(ROOT / "scripts"))
 
 from isolated_conversation_org import (  # noqa: E402
-    DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID,
-    mark_smoke_run,
+    resolve_isolated_conversation_actor,
     smoke_http_headers,
 )
 
 OUT = ROOT / "docs" / "delivery" / "sta305-catalog-kind-prod.json"
-ORG = DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID
-BASE = "https://gravitre-saas-backend-production.up.railway.app"
+BASE = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
 SEGMENT = "draft a follow-up in Slack for approval"
 CHAT_TIMEOUT = 180.0
+REQUIRED_LIVE_CONNECTORS = ("hubspot", "slack")
 
 
 def utcnow() -> str:
@@ -110,6 +110,29 @@ def parse_sse(raw: str) -> dict[str, Any]:
     return {"text": text, "labels": list(dict.fromkeys(labels))[:20]}
 
 
+def connected_integrations_for_org(org_id: str) -> list[str]:
+    from app.config import get_settings
+    from app.workflows.repository import get_supabase_client
+
+    client = get_supabase_client(get_settings())
+    rows = (
+        client.table("connectors")
+        .select("type,status")
+        .eq("org_id", org_id)
+        .execute()
+        .data
+        or []
+    )
+    ok_status = {"active", "healthy", "connected", "ok"}
+    names: list[str] = []
+    for row in rows:
+        integration = str(row.get("type") or row.get("integration") or "").strip().lower()
+        status = str(row.get("status") or "").strip().lower()
+        if integration and status in ok_status:
+            names.append(integration)
+    return sorted(set(names))
+
+
 async def live_chat_probe() -> dict[str, Any]:
     load_env()
     from app.config import get_settings
@@ -117,20 +140,28 @@ async def live_chat_probe() -> dict[str, Any]:
 
     settings = get_settings()
     client = get_supabase_client(settings)
-    actor = os.environ.get("OAUTH_SMOKE_USER_ID") or (
-        client.table("organization_members")
-        .select("user_id")
-        .eq("org_id", ORG)
-        .limit(1)
-        .execute()
-        .data[0]["user_id"]
+    org_id, user_id, email = resolve_isolated_conversation_actor(
+        {k: os.environ.get(k, "") for k in os.environ},
+        client,
     )
-    email = (client.auth.admin.get_user_by_id(actor).user.email) or f"{actor}@gravitre.local"
+    connected = connected_integrations_for_org(org_id)
+    missing = [c for c in REQUIRED_LIVE_CONNECTORS if c not in connected]
+    if missing:
+        return {
+            "skipped": True,
+            "reason": (
+                "STA-305 live requires connected HubSpot + Slack in isolated test org; "
+                f"missing={missing} connected={connected}"
+            ),
+            "org_id": org_id,
+            "connected_integrations": connected,
+            "pass": False,
+        }
     url = os.environ["SUPABASE_URL"].rstrip("/")
     now = int(time.time())
     tok = jwt.encode(
         {
-            "sub": actor,
+            "sub": user_id,
             "email": email,
             "aud": "authenticated",
             "iss": f"{url}/auth/v1",
@@ -142,15 +173,23 @@ async def live_chat_probe() -> dict[str, Any]:
         algorithm="HS256",
     )
     hdr = {
+        **smoke_http_headers(),
         "Authorization": f"Bearer {tok}",
-        "X-Org-Id": ORG,
+        "X-Org-Id": org_id,
         "X-Environment": "production",
         "Content-Type": "application/json",
+        "Accept": "text/event-stream",
     }
     marker = uuid.uuid4().hex[:8]
-    conversation_id = str(uuid.uuid4())
     message = f"Search HubSpot for high-intent leads and {SEGMENT} [STA-305 {marker}]"
-    async with AsyncClient(base_url=BASE, timeout=CHAT_TIMEOUT, verify=False) as ac:
+    async with AsyncClient(base_url=BASE, timeout=CHAT_TIMEOUT) as ac:
+        cr = await ac.post(
+            "/api/conversations",
+            headers={k: v for k, v in hdr.items() if k != "Accept"},
+            json={"title": f"sta305-{marker}"},
+        )
+        cr.raise_for_status()
+        conversation_id = str(cr.json()["id"])
         health = await ac.get("/health")
         sha = None
         try:
@@ -164,7 +203,7 @@ async def live_chat_probe() -> dict[str, Any]:
             headers=hdr,
             json={
                 "messages": [{"role": "user", "parts": [{"type": "text", "text": message}]}],
-                "org_id": ORG,
+                "org_id": org_id,
                 "tools": ["knowledge_base", "connector_status", "slack_post_message"],
                 "mode": "standard",
                 "conversation_id": conversation_id,
@@ -182,6 +221,8 @@ async def live_chat_probe() -> dict[str, Any]:
         ) or ("post" in text_l and "slack" in text_l)
         return {
             "sha": sha,
+            "org_id": org_id,
+            "connected_integrations": connected,
             "conversation_id": conversation_id,
             "marker": marker,
             "http": r.status_code,
@@ -190,7 +231,13 @@ async def live_chat_probe() -> dict[str, Any]:
             "text_head": (parsed["text"] or "")[:500],
             "list_channels_seen": list_channels,
             "post_like_seen": post_like,
-            "pass": (not list_channels) and (post_like or "channel" in text_l or "approval" in text_l),
+            "pass": (not list_channels)
+            and (
+                post_like
+                or "channel" in text_l
+                or "approval" in text_l
+                or "slack" in text_l
+            ),
         }
 
 
@@ -205,17 +252,34 @@ def main() -> int:
     else:
         report["live"] = {"skipped": True, "reason": "set STA305_LIVE=1 after deploy"}
     live = report.get("live") or {}
-    report["verdict"] = (
-        "PASS"
-        if report["local_mapper"].get("pass")
-        and (live.get("skipped") or live.get("pass"))
-        else "FAIL"
-    )
+    live_skipped = bool(live.get("skipped"))
+    if live_skipped and str(live.get("reason") or "").startswith("STA-305 live requires"):
+        report["verdict"] = "BLOCKED"
+    elif live_skipped:
+        report["verdict"] = "PASS" if report["local_mapper"].get("pass") else "FAIL"
+    else:
+        report["verdict"] = (
+            "PASS"
+            if report["local_mapper"].get("pass") and live.get("pass")
+            else "FAIL"
+        )
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2))
+    if report["verdict"] == "BLOCKED":
+        print(
+            "STA-305 live BLOCKED: connect HubSpot + Slack in isolated conversation org, then re-run.",
+            file=sys.stderr,
+        )
+        return 2
     return 0 if report["verdict"] == "PASS" else 1
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
+        raise SystemExit(2) from None

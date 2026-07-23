@@ -3,6 +3,14 @@
 Updated: 2026-07-23  
 Tip (final measure): `182b91b3…` · `UNIFIED_TURN_TASK_MODEL_TIER=low` · LIVE=true
 
+## Pending LIVE + Module B (2026-07-23)
+
+**Deliberate scoped exception:** When `has_pending_family`, unified LIVE runs `classify_pending_reply` **before** the single reasoning call and may return formatted hold/abandon/meta/ambiguous copy without invoking the model — this is **not** a return to general classify-then-route; task-shaped turns without pending still use one unified reasoning call only.
+
+**Rationale (one line):** Pending interrupt semantics are safety-critical and already owned by Module B; deterministic classification prevents LIVE from bypassing hold/abandon while the rest of the turn stays unified.
+
+---
+
 ## Scope
 
 - **Metric:** task-shaped / mixed TTFT — not social greetings.
@@ -46,6 +54,8 @@ Artifact: [`unified-turn-task-ttft-after-embed-warm.json`](unified-turn-task-ttf
 **Mitigation shipped:** skip embedding when `total_tools < UNIFIED_TURN_EMBED_MIN_CATALOG_TOOLS` (default 40). Embedding remains for larger catalogs where payload reduction can beat query-embed cost.
 
 Cold-start evidence (first request after deploy): wall 6196 / 4899 with `narrow_tools_ms` 4–4.5s while tool vectors cache — [`unified-turn-task-ttft-after-embed.json`](unified-turn-task-ttft-after-embed.json).
+
+**Startup warm (2026-07-23):** `warm_tool_document_embeddings()` runs on app lifespan (background thread) when AI enabled — pre-populates `_TOOL_EMBED_CACHE` so large-catalog embedding path avoids first-request cold embed storm. Keyword path on small catalogs unchanged.
 
 ### After D — keyword (catalog&lt;40) + `gpt-5.4-mini` (tip `182b91b3…`, tier=low)
 

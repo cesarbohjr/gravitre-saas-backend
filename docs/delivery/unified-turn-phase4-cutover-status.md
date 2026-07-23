@@ -47,7 +47,10 @@ Rollback: `UNIFIED_TURN_LIVE_ENABLED=false` + redeploy (or bump `UNIFIED_TURN_RE
 
 ## Next
 
+**Primary (post social-TTFT decision):** Task-shaped latency **C** (embedding retrieval when catalog ≥ min) + **D** (`UNIFIED_TURN_TASK_MODEL_TIER`) — status and live artifacts in [unified-turn-task-latency-cd-status.md](unified-turn-task-latency-cd-status.md). Re-run `scripts/verify-unified-turn-task-ttft-live.py` after each prod promote.
+
 1. Optional: wire monitor script into `workflow_dispatch` for soak re-runs.
 2. Keep tip promoting via green CI + Railway when auto-deploy stalls.
 3. Do not remove classical pipeline until a longer soak is acceptable.
-4. Do not claim 200ms TTFT.
+4. Do not claim 200ms TTFT on social or full tool-aware turns.
+5. **Separate:** Phase 2 battery regressions under LIVE (pending-reply bypass, etc.) — not C/D scope.

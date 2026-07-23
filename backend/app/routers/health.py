@@ -62,6 +62,7 @@ def health(request: Request) -> dict:
     unified_live = False
     unified_embed_tools = False
     unified_task_tier = ""
+    unified_embed_min_catalog = None
     try:
         from app.config import get_settings
 
@@ -70,6 +71,7 @@ def health(request: Request) -> dict:
         unified_live = bool(getattr(s, "unified_turn_live_enabled", False))
         unified_embed_tools = bool(getattr(s, "unified_turn_embedding_tool_retrieval", False))
         unified_task_tier = str(getattr(s, "unified_turn_task_model_tier", "") or "")
+        unified_embed_min_catalog = int(getattr(s, "unified_turn_embed_min_catalog_tools", 40) or 40)
     except Exception:  # noqa: BLE001
         unified_shadow = (os.environ.get("UNIFIED_TURN_SHADOW_ENABLED") or "").lower() in {
             "1",
@@ -100,6 +102,7 @@ def health(request: Request) -> dict:
         "unified_turn_shadow_enabled": unified_shadow,
         "unified_turn_live_enabled": unified_live,
         "unified_turn_embedding_tool_retrieval": unified_embed_tools,
+        "unified_turn_embed_min_catalog_tools": unified_embed_min_catalog,
         "unified_turn_task_model_tier": unified_task_tier or None,
         "checks": checks,
     }

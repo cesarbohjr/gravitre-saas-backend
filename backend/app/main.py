@@ -269,6 +269,18 @@ async def lifespan(app: FastAPI):
         app.state.temporal_worker_task = None
     app.state.memory_expiration_task = start_memory_expiration_scheduler()
     app.state.cache_warming_task = start_cache_warming_scheduler()
+
+    async def _warm_unified_tool_embeds() -> None:
+        from app.config import get_settings
+        from app.services.unified_turn_tool_retrieval import warm_tool_document_embeddings
+
+        await asyncio.to_thread(warm_tool_document_embeddings, settings=get_settings())
+
+    from app.config import get_settings as _get_settings_lifespan
+
+    if not _get_settings_lifespan().disable_ai:
+        asyncio.create_task(_warm_unified_tool_embeds())
+
     app.state.agent_job_task = start_agent_job_worker()
     app.state.workflow_run_task = start_workflow_run_worker()
     _log_billing_startup_config()

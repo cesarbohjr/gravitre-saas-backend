@@ -235,6 +235,21 @@ def classify_pending_reply_fast(
     if _modify_hint(text):
         return "modify"
 
+    # Clear unrelated: connector inventory / status while another action is pending.
+    if snap.status in {
+        "awaiting_params",
+        "awaiting_confirm",
+        "awaiting_plan_confirm",
+        "awaiting_step_confirm",
+        "awaiting_admin_approval",
+    }:
+        lower = text.lower()
+        if re.search(
+            r"\b(what|which)\s+connectors?\b|\bconnectors?\s+(?:are|is)\s+connected\b|\bconnected right now\b",
+            lower,
+        ):
+            return "unrelated"
+
     # Different-connector / run-history imperatives before broad free-text slot fill.
     if snap.status in {
         "awaiting_params",

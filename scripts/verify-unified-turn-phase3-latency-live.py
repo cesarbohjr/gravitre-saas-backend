@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Phase 3 live: measure streamed first-token latency for unified-turn shadow.
+"""Phase 3 live: measure streamed first-token latency from unified-turn audits.
 
-Requires prod tip with streaming shadow (streamed=true in audit metadata) and
-UNIFIED_TURN_SHADOW_ENABLED=true.
+When UNIFIED_TURN_LIVE_ENABLED=true (Phase 4 cutover), reads
+unified_turn.live.completed metadata. Otherwise unified_turn.shadow.completed.
 
 Writes docs/delivery/unified-turn-phase3-latency-live.json
 """
@@ -33,6 +33,7 @@ from isolated_conversation_org import (  # noqa: E402
     resolve_isolated_conversation_actor,
     smoke_http_headers,
 )
+from unified_turn_audit_live import unified_turn_completed_actions  # noqa: E402
 
 BASE = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
 OUT = ROOT / "docs" / "delivery" / "unified-turn-phase3-latency-live.json"
@@ -126,22 +127,31 @@ async def chat_turn(
     }
 
 
-def fetch_shadow(sb: Any, *, org_id: str, conversation_id: str, after_iso: str) -> dict | None:
-    # Shadow runs async; allow a short settle window via retries in caller.
-    rows = (
-        sb.table("audit_events")
-        .select("action,created_at,metadata")
-        .eq("org_id", org_id)
-        .eq("resource_type", "conversation")
-        .eq("resource_id", conversation_id)
-        .eq("action", "unified_turn.shadow.completed")
-        .gte("created_at", after_iso)
-        .order("created_at", desc=True)
-        .limit(1)
-        .execute()
-    )
-    data = rows.data or []
-    return data[0] if data else None
+def fetch_unified_turn_audit(
+    sb: Any,
+    *,
+    org_id: str,
+    conversation_id: str,
+    after_iso: str,
+    actions: list[str],
+) -> dict | None:
+    for action in actions:
+        rows = (
+            sb.table("audit_events")
+            .select("action,created_at,metadata")
+            .eq("org_id", org_id)
+            .eq("resource_type", "conversation")
+            .eq("resource_id", conversation_id)
+            .eq("action", action)
+            .gte("created_at", after_iso)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        data = rows.data or []
+        if data:
+            return data[0]
+    return None
 
 
 async def main() -> int:
@@ -189,6 +199,10 @@ async def main() -> int:
             print(report["error"])
             return 2
 
+        audit_actions = unified_turn_completed_actions(health)
+        report["unified_turn_audit_actions"] = audit_actions
+        report["unified_turn_live_enabled"] = bool(health.get("unified_turn_live_enabled"))
+
         for msg in PROBES:
             title = f"phase3-latency-{uuid.uuid4().hex[:8]}"
             r = await client.post(
@@ -207,25 +221,37 @@ async def main() -> int:
                 org_id=org_id,
                 message=msg,
             )
-            shadow = None
+            audit_row = None
             for _ in range(12):
                 await asyncio.sleep(1.0)
-                shadow = fetch_shadow(
-                    sb, org_id=org_id, conversation_id=conversation_id, after_iso=after
+                audit_row = fetch_unified_turn_audit(
+                    sb,
+                    org_id=org_id,
+                    conversation_id=conversation_id,
+                    after_iso=after,
+                    actions=audit_actions,
                 )
-                if shadow:
+                if audit_row:
                     break
-            meta = shadow.get("metadata") if shadow else {}
+            meta = audit_row.get("metadata") if audit_row else {}
             if isinstance(meta, str):
                 try:
                     meta = json.loads(meta)
                 except json.JSONDecodeError:
                     meta = {}
+            audit_action = (audit_row or {}).get("action")
             probe = {
                 "message": msg,
                 "conversation_id": conversation_id,
                 "turn": turn,
-                "shadow_created_at": (shadow or {}).get("created_at"),
+                "audit_action": audit_action,
+                "audit_created_at": (audit_row or {}).get("created_at"),
+                "audit_streamed": bool((meta or {}).get("streamed")),
+                "audit_first_token_ms": (meta or {}).get("first_token_proxy_ms"),
+                "audit_latency_ms": (meta or {}).get("latency_ms"),
+                "audit_outcome_kind": (meta or {}).get("outcome_kind"),
+                "audit_model": (meta or {}).get("model"),
+                "shadow_created_at": (audit_row or {}).get("created_at"),
                 "shadow_streamed": bool((meta or {}).get("streamed")),
                 "shadow_first_token_ms": (meta or {}).get("first_token_proxy_ms"),
                 "shadow_latency_ms": (meta or {}).get("latency_ms"),
@@ -234,15 +260,16 @@ async def main() -> int:
             }
             report["probes"].append(probe)
             print(
-                f"probe ok_shadow={shadow is not None} streamed={probe['shadow_streamed']} "
-                f"ttft={probe['shadow_first_token_ms']} total={probe['shadow_latency_ms']} "
+                f"probe ok_audit={audit_row is not None} action={audit_action} "
+                f"streamed={probe['audit_streamed']} "
+                f"ttft={probe['audit_first_token_ms']} total={probe['audit_latency_ms']} "
                 f"client_sse={turn.get('client_first_sse_ms')} :: {msg[:40]!r}"
             )
 
     ttfts = [
-        int(p["shadow_first_token_ms"])
+        int(p["audit_first_token_ms"])
         for p in report["probes"]
-        if p.get("shadow_first_token_ms") is not None and p.get("shadow_streamed")
+        if p.get("audit_first_token_ms") is not None and p.get("audit_streamed")
     ]
     report["stats"] = {
         "n_streamed_ttft": len(ttfts),
@@ -264,4 +291,10 @@ async def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(asyncio.run(main()))
+    try:
+        raise SystemExit(asyncio.run(main()))
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
+        raise SystemExit(2) from None

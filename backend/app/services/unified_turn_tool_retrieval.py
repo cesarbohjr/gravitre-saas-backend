@@ -220,6 +220,39 @@ def embed_narrow_tools_for_turn(
         return visible, stats
 
 
+def warm_tool_document_embeddings(*, settings: Settings | None = None) -> int:
+    """Pre-embed catalog tool docs at process start (C path cold-start mitigation).
+
+    Best-effort; no-op when embedding retrieval is disabled or OpenAI is unset.
+    """
+    active = settings or get_settings()
+    if not bool(getattr(active, "unified_turn_embedding_tool_retrieval", True)):
+        return 0
+    if not (active.openai_api_key or "").strip():
+        return 0
+    try:
+        from app.services.tool_registry import get_tool_registry
+
+        registry = get_tool_registry()
+        tools: list[dict[str, Any]] = []
+        for name in registry.list_tool_names():
+            spec = registry.get_spec(name)
+            if spec is None:
+                continue
+            invoke = str(spec.invoke_action or "")
+            if not registry._action_implemented(spec, invoke):  # noqa: SLF001
+                continue
+            tools.append(spec.to_openai_tool())
+        if not tools:
+            return 0
+        _embed_tools(tools, settings=active, org_id=None)
+        logger.info("unified_turn_tool_doc_cache_warmed count=%s", len(tools))
+        return len(tools)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("warm_tool_document_embeddings skipped: %s", exc)
+        return 0
+
+
 def is_task_shaped_for_retrieval(message: str) -> tuple[bool, str, str]:
     """Lightweight shape hint for retrieval/model tier only — never skips the reasoning call.
 

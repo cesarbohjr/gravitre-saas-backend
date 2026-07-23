@@ -12,6 +12,7 @@ from app.services.module_d_unified_voice_spec import (
 )
 from app.services.unified_turn_pending_context import build_unified_turn_pending_context
 from app.services.unified_turn_reasoning_service import (
+    UnifiedTurnShadowResult,
     apply_unified_turn_live,
     run_unified_turn_shadow,
     schedule_unified_turn_shadow,
@@ -328,3 +329,104 @@ async def test_run_unified_turn_shadow_tool_proposal():
     assert result.tool_name == "gmail_messages_send"
     assert result.requires_write_approval is True
     assert result.tool_arguments.get("to") == "a@b.com"
+
+
+@pytest.mark.asyncio
+async def test_apply_unified_live_pending_unrelated_uses_hold_prompt():
+    state = {
+        "pending_task": {
+            "status": "awaiting_params",
+            "type": "connector_action",
+            "params": {"label": "Send Gmail message", "integration": "gmail"},
+        },
+        "parameter_ledger": {"pending_missing": ["recipient", "body"]},
+    }
+    settings = MagicMock(unified_turn_live_enabled=True, openai_api_key="sk-test")
+
+    with patch(
+        "app.services.unified_turn_pending_live.classify_pending_reply",
+        new=AsyncMock(return_value="unrelated"),
+    ), patch(
+        "app.services.unified_turn_reasoning_service.run_unified_turn_shadow",
+        new=AsyncMock(),
+    ) as mock_shadow, patch(
+        "app.services.unified_turn_reasoning_service.emit_unified_turn_shadow_audit",
+    ):
+        out = await apply_unified_turn_live(
+            org_id="org",
+            user_id="user",
+            conversation_id="conv",
+            message="what connectors are Connected right now?",
+            task_state=state,
+            conversation_history=[],
+            connected_integrations=["apollo"],
+            settings=settings,
+        )
+
+    mock_shadow.assert_not_called()
+    assert out is not None
+    assert out["stop_pipeline"] is True
+    assert "abandon" in out["message"].lower()
+    assert "hold" in out["message"].lower()
+    assert "Send Gmail message" in out["message"]
+
+
+@pytest.mark.asyncio
+async def test_apply_unified_live_meta_capability_uses_expression_path():
+    settings = MagicMock(unified_turn_live_enabled=True, openai_api_key="sk-test")
+    meta_text = (
+        "I am Gravitree — a calm operator for your Connected tools. Connected for this org right now: Apollo."
+    )
+
+    with patch(
+        "app.services.conversational_reply_service.generate_conversational_reply",
+        new=AsyncMock(return_value=meta_text),
+    ), patch(
+        "app.services.unified_turn_reasoning_service.run_unified_turn_shadow",
+        new=AsyncMock(),
+    ) as mock_shadow:
+        out = await apply_unified_turn_live(
+            org_id="org",
+            user_id="user",
+            conversation_id="conv",
+            message="what can you do?",
+            task_state={},
+            conversation_history=[],
+            connected_integrations=["apollo"],
+            settings=settings,
+        )
+
+    mock_shadow.assert_not_called()
+    assert out is not None
+    assert "Connected tools" in out["message"]
+
+
+@pytest.mark.asyncio
+async def test_apply_unified_live_rejects_phantom_hold_abandon():
+    settings = MagicMock(unified_turn_live_enabled=True, openai_api_key="sk-test")
+    bad = UnifiedTurnShadowResult(
+        outcome_kind="clarifying_question",
+        user_message=(
+            "You have a pending item that isn't finished. Should I **abandon** it "
+            "and check on the HubSpot list, or **hold** it aside? Reply `abandon` or `hold`."
+        ),
+    )
+
+    with patch(
+        "app.services.unified_turn_reasoning_service.run_unified_turn_shadow",
+        new=AsyncMock(return_value=bad),
+    ), patch(
+        "app.services.unified_turn_reasoning_service.emit_unified_turn_shadow_audit",
+    ):
+        out = await apply_unified_turn_live(
+            org_id="org",
+            user_id="user",
+            conversation_id="conv",
+            message="haha nice, also check that HubSpot list",
+            task_state={},
+            conversation_history=[],
+            connected_integrations=["hubspot"],
+            settings=settings,
+        )
+
+    assert out is None

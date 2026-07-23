@@ -53,6 +53,10 @@ def test_fast_path_seven_intents_gmail_params():
         classify_pending_reply_fast("What workflows have been ran?", snap) == "unrelated"
     )
     assert (
+        classify_pending_reply_fast("what connectors are Connected right now?", snap)
+        == "unrelated"
+    )
+    assert (
         classify_pending_reply_fast("actually make the subject Q3 instead", snap)
         == "modify"
     )

@@ -740,17 +740,27 @@ async def main() -> int:
             child_env = {**os.environ, "EXPECT_SHA": str(expect_for_children)}
             if key == "sta305_slack_omit_detail":
                 child_env["STA305_LIVE"] = "1"
+            if key == "persona_drift_30":
+                child_env.setdefault("LIVE_API_BASE", BASE)
             proc = subprocess.run(
                 [sys.executable, str(path)],
                 env=child_env,
                 capture_output=True,
                 text=True,
                 timeout=3600,
+                cwd=str(ROOT),
             )
+            stdout_tail = (proc.stdout or "")[-2000:]
+            stderr_tail = (proc.stderr or "")[-1500:]
+            if proc.returncode != 0 and not stdout_tail.strip() and not stderr_tail.strip():
+                stderr_tail = (
+                    "child exited with no stdout/stderr (likely crash before main); "
+                    f"script={script} returncode={proc.returncode}"
+                )
             report["classical_batteries"][key] = {
                 "exit_code": proc.returncode,
-                "stdout_tail": (proc.stdout or "")[-2000:],
-                "stderr_tail": (proc.stderr or "")[-1500:],
+                "stdout_tail": stdout_tail,
+                "stderr_tail": stderr_tail,
             }
 
     targeted_ok = passed == len(results) and len(results) > 0

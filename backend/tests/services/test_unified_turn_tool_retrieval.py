@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 from app.services.unified_turn_tool_retrieval import (
     embed_narrow_tools_for_turn,
     is_task_shaped_for_retrieval,
+    warm_tool_document_embeddings,
 )
 
 
@@ -112,3 +113,8 @@ def test_embed_narrow_falls_back_to_keyword_on_error():
     assert stats.get("retrievalMethod") == "keyword_narrow_tools_for_turn"
     assert stats.get("embeddingFallbackReason")
     assert any(t["function"]["name"] == "apollo_lists_create" for t in visible)
+
+
+def test_warm_tool_document_embeddings_noop_when_disabled():
+    settings = MagicMock(unified_turn_embedding_tool_retrieval=False, openai_api_key="sk-test")
+    assert warm_tool_document_embeddings(settings=settings) == 0

@@ -294,6 +294,10 @@ async def run_unified_turn_shadow(
     user_parts = []
     if pending_block:
         user_parts.append(pending_block)
+    else:
+        user_parts.append(
+            "NO PENDING STATE this turn. Do not mention abandon/hold or a pending item."
+        )
     # Explicit tool inventory note for knowledge-boundary honesty.
     if visible:
         names = sorted(
@@ -514,6 +518,23 @@ def emit_unified_turn_shadow_audit(
         logger.debug("unified_turn shadow audit skipped: %s", exc)
 
 
+def _unified_live_turn_payload(
+    result: UnifiedTurnShadowResult,
+    task_state: dict[str, Any] | None,
+) -> dict[str, Any]:
+    return {
+        "stop_pipeline": True,
+        "dialogue_mode": "confirm" if result.outcome_kind == "confirmation_request" else "answer",
+        "message": result.user_message,
+        "task_state": task_state,
+        "answer_explanation": f"Unified turn live ({result.outcome_kind})",
+        "model": result.model or "unified_turn_live",
+        "unified_outcome_kind": result.outcome_kind,
+        "latency_ms": result.latency_ms,
+        "first_token_ms": result.first_token_proxy_ms,
+    }
+
+
 async def apply_unified_turn_live(
     *,
     org_id: str,
@@ -535,6 +556,51 @@ async def apply_unified_turn_live(
     active = settings or get_settings()
     if not getattr(active, "unified_turn_live_enabled", False):
         return None
+
+    from app.services.unified_turn_pending_live import (
+        resolve_unified_live_meta_capability_reply,
+        resolve_unified_live_pending_reply,
+        unified_live_message_violates_no_pending_hold,
+    )
+
+    meta_result = await resolve_unified_live_meta_capability_reply(
+        message=message,
+        task_state=task_state,
+        org_id=org_id,
+        connected_integrations=connected_integrations,
+        client=client,
+        settings=active,
+    )
+    if meta_result and (meta_result.user_message or "").strip():
+        meta_result.live_served = True
+        emit_unified_turn_shadow_audit(
+            client=client,
+            org_id=org_id,
+            actor_id=user_id,
+            conversation_id=conversation_id,
+            result=meta_result,
+        )
+        return _unified_live_turn_payload(meta_result, task_state)
+
+    pending_result = await resolve_unified_live_pending_reply(
+        message=message,
+        task_state=task_state,
+        org_id=org_id,
+        user_id=user_id,
+        conversation_id=conversation_id,
+        client=client,
+        settings=active,
+    )
+    if pending_result and (pending_result.user_message or "").strip():
+        pending_result.live_served = True
+        emit_unified_turn_shadow_audit(
+            client=client,
+            org_id=org_id,
+            actor_id=user_id,
+            conversation_id=conversation_id,
+            result=pending_result,
+        )
+        return _unified_live_turn_payload(pending_result, task_state)
 
     result = await run_unified_turn_shadow(
         org_id=org_id,
@@ -564,6 +630,17 @@ async def apply_unified_turn_live(
         "confirmation_request",
     }
     if result.outcome_kind in text_kinds and (result.user_message or "").strip():
+        if unified_live_message_violates_no_pending_hold(
+            message=result.user_message, task_state=task_state
+        ):
+            emit_unified_turn_shadow_audit(
+                client=client,
+                org_id=org_id,
+                actor_id=user_id,
+                conversation_id=conversation_id,
+                result=result,
+            )
+            return None
         result.live_served = True
         emit_unified_turn_shadow_audit(
             client=client,
@@ -572,17 +649,7 @@ async def apply_unified_turn_live(
             conversation_id=conversation_id,
             result=result,
         )
-        return {
-            "stop_pipeline": True,
-            "dialogue_mode": "confirm" if result.outcome_kind == "confirmation_request" else "answer",
-            "message": result.user_message,
-            "task_state": task_state,
-            "answer_explanation": f"Unified turn live ({result.outcome_kind})",
-            "model": result.model or "unified_turn_live",
-            "unified_outcome_kind": result.outcome_kind,
-            "latency_ms": result.latency_ms,
-            "first_token_ms": result.first_token_proxy_ms,
-        }
+        return _unified_live_turn_payload(result, task_state)
 
     if result.outcome_kind == "connector_tool_proposal" and result.tool_name:
         from app.services.react_write_gate import plan_from_react_tool_call

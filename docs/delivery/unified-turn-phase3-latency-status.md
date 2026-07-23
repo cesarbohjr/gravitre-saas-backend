@@ -26,4 +26,5 @@ Classical plan-bar / SSE: probes saw intelligence/plan events (`saw_plan_or_inte
 
 - Streaming shadow is live on tip that includes `2f764ef6`.
 - 200ms target is not met on `gpt-4o-mini` full tool-aware completion; report honest numbers rather than soft-pass.
-- Next lever: faster model tier for social turns, or stream user-visible path after cutover with early tokens before tool resolution.
+- **Social TTFT decision (2026-07-23):** Option A rejected — accept ~500–750ms social; do not chase social &lt;200ms via classify-then-route. **Active latency lane:** task-shaped **C/D** — see [unified-turn-task-latency-cd-status.md](unified-turn-task-latency-cd-status.md) and [unified-turn-ttft-investigation.md](unified-turn-ttft-investigation.md).
+- **Phase 3 script:** `verify-unified-turn-phase3-latency-live.py` reads `unified_turn.live.completed` when LIVE is on (not shadow-only).

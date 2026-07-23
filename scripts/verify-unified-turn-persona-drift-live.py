@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Phase 2 live probe: 30-turn persona/register consistency under Module D shadow.
+"""Phase 2 live probe: 30-turn persona/register consistency under unified turn.
 
 Sends short conversational turns, then checks:
 - classical replies have no raw catalog keys / no performative cheer
-- shadow audits fire each turn (or most turns)
-- shadow user_message avoids emoji cheer / customer-service scripts
+- unified_turn live (or shadow) audits fire each turn when expected
+- model user_message avoids emoji cheer / customer-service scripts
 
 Writes docs/delivery/unified-turn-persona-drift-live.json
 """
@@ -35,6 +35,7 @@ from isolated_conversation_org import (  # noqa: E402
     resolve_isolated_conversation_actor,
     smoke_http_headers,
 )
+from unified_turn_audit_live import unified_turn_completed_action  # noqa: E402
 
 BASE = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
 OUT = ROOT / "docs" / "delivery" / "unified-turn-persona-drift-live.json"
@@ -102,6 +103,10 @@ def parse_assistant(raw: str) -> str:
 
 async def main() -> int:
     env = load_env()
+    for key in ("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_JWT_SECRET"):
+        if not (env.get(key) or os.environ.get(key)):
+            print(f"fatal: missing {key} for persona drift live probe", file=sys.stderr)
+            return 2
     sb = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
     org_id, user_id, email = resolve_isolated_conversation_actor(env, sb)
     url = env["SUPABASE_URL"].rstrip("/")
@@ -134,7 +139,9 @@ async def main() -> int:
     async with httpx.AsyncClient() as client:
         h = await client.get(f"{BASE}/health", timeout=30.0)
         h.raise_for_status()
-        tip = str(h.json().get("git_sha") or "")
+        health = h.json()
+        tip = str(health.get("git_sha") or "")
+        audit_action = unified_turn_completed_action(health)
         if EXPECT_SHA and not tip.lower().startswith(EXPECT_SHA.lower()):
             OUT.write_text(
                 json.dumps(
@@ -174,32 +181,32 @@ async def main() -> int:
                     chunks.append(part)
                 status = r.status_code
             assistant = parse_assistant(b"".join(chunks).decode("utf-8", errors="replace"))
-            shadow = None
+            audit_row = None
             for _ in range(8):
                 await asyncio.sleep(2.0)
                 audit = (
                     sb.table("audit_events")
-                    .select("created_at,metadata")
+                    .select("created_at,metadata,action")
                     .eq("org_id", org_id)
                     .eq("resource_id", conv_id)
-                    .eq("action", "unified_turn.shadow.completed")
+                    .eq("action", audit_action)
                     .gte("created_at", started)
                     .order("created_at", desc=True)
                     .limit(1)
                     .execute()
                 )
-                shadow = (audit.data or [None])[0]
-                if shadow:
+                audit_row = (audit.data or [None])[0]
+                if audit_row:
                     break
             meta = {}
-            if shadow:
-                meta = shadow.get("metadata") or {}
+            if audit_row:
+                meta = audit_row.get("metadata") or {}
                 if isinstance(meta, str):
                     try:
                         meta = json.loads(meta)
                     except json.JSONDecodeError:
                         meta = {}
-            shadow_msg = str(meta.get("user_message") or "")
+            model_msg = str(meta.get("user_message") or "")
             turn_fail: list[str] = []
             if status != 200:
                 turn_fail.append(f"http:{status}")
@@ -207,12 +214,12 @@ async def main() -> int:
                 turn_fail.append("classical_catalog_leak")
             if CHEER.search(assistant or ""):
                 turn_fail.append("classical_cheer")
-            if shadow is None:
-                turn_fail.append("missing_shadow")
-            elif CHEER.search(shadow_msg):
-                turn_fail.append("shadow_cheer")
-            elif RAW_CATALOG_KEY.search(shadow_msg):
-                turn_fail.append("shadow_catalog_leak")
+            if audit_row is None:
+                turn_fail.append("missing_unified_turn_audit")
+            elif CHEER.search(model_msg):
+                turn_fail.append("model_cheer")
+            elif RAW_CATALOG_KEY.search(model_msg):
+                turn_fail.append("model_catalog_leak")
             if turn_fail:
                 failures.append(f"t{i+1}:{','.join(turn_fail)}")
             rows_out.append(
@@ -222,16 +229,17 @@ async def main() -> int:
                     "ok": not turn_fail,
                     "failures": turn_fail,
                     "assistant_preview": (assistant or "")[:180],
+                    "audit_action": audit_action,
+                    "audit_outcome": meta.get("outcome_kind"),
+                    "model_preview": model_msg[:180],
                     "shadow_outcome": meta.get("outcome_kind"),
-                    "shadow_preview": shadow_msg[:180],
+                    "shadow_preview": model_msg[:180],
                 }
             )
 
     passed = sum(1 for r in rows_out if r["ok"])
-    # Cheer/catalog leaks are hard fails. Missing shadow audits under load are
-    # PARTIAL (shadow is fire-and-forget), not a persona-register failure.
     hard = [f for f in failures if "cheer" in f or "catalog" in f]
-    miss = [f for f in failures if "missing_shadow" in f]
+    miss = [f for f in failures if "missing_unified_turn_audit" in f]
     if hard:
         verdict = "FAIL"
     elif passed >= TURNS and not miss:
@@ -246,6 +254,7 @@ async def main() -> int:
         "feature": "unified_turn_persona_drift",
         "checkedAt": utcnow(),
         "git_sha": tip,
+        "unified_turn_audit_action": audit_action,
         "conversationId": conv_id,
         "turns": TURNS,
         "passed": passed,
@@ -262,6 +271,7 @@ async def main() -> int:
                 "passed": passed,
                 "turns": TURNS,
                 "hard_failures": hard,
+                "missing_unified_turn_audit": len(miss),
                 "missing_shadow": len(miss),
                 "out": str(OUT),
             },
@@ -272,4 +282,10 @@ async def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(asyncio.run(main()))
+    try:
+        raise SystemExit(asyncio.run(main()))
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
+        raise SystemExit(2) from None
