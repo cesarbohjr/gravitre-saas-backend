@@ -29,6 +29,9 @@ ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
 sys.path.insert(0, str(BACKEND))
 sys.path.insert(0, str(ROOT))
+
+from isolated_conversation_org import DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID  # noqa: E402
+
 OUT = Path(
     os.environ.get(
         "ROUTING_WAVE_JSON_OUT",
@@ -259,7 +262,6 @@ async def main() -> int:
     sys.path.insert(0, str(BACKEND))
 
     from isolated_conversation_org import (  # noqa: E402
-        DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID,
         mark_smoke_run,
         smoke_http_headers,
     )
