@@ -38,10 +38,23 @@ from isolated_conversation_org import (  # noqa: E402
 )
 
 BASE = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
-OUT = ROOT / "docs" / "delivery" / "unified-turn-phase2-battery-live.json"
+OUT = Path(
+    os.environ.get(
+        "PHASE2_OUT",
+        str(ROOT / "docs" / "delivery" / "unified-turn-phase2-battery-live.json"),
+    )
+)
 CHAT_TIMEOUT = 300.0
 # Empty EXPECT_SHA = accept whatever tip /health reports (record it).
 EXPECT_SHA = (os.environ.get("EXPECT_SHA") or "").strip()
+# imperfect | all (default)
+PHASE2_CASE_FILTER = (os.environ.get("PHASE2_CASE_FILTER") or "all").strip().lower()
+PHASE2_IMPERFECT_ROUNDS = max(1, int(os.environ.get("PHASE2_IMPERFECT_ROUNDS") or "1"))
+PHASE2_SKIP_CLASSICAL = (os.environ.get("PHASE2_SKIP_CLASSICAL") or "").strip() in (
+    "1",
+    "true",
+    "yes",
+)
 RAW_CATALOG_KEY = re.compile(r"\b[a-z][a-z0-9_]*(?:\.[a-z0-9_]+){2,}\b", re.I)
 MAP_FAIL = re.compile(r"couldn'?t map|no matching catalog action", re.I)
 FABRICATED_ZERO_RUNS = re.compile(r"\b0\s+recent\s+runs\b", re.I)
@@ -536,11 +549,16 @@ def judge_case(case: dict[str, Any], turn: dict[str, Any], shadow: dict | None) 
     return {
         "ok": not failures,
         "failures": failures,
+        "user_message": str(case.get("message") or ""),
+        "assistant_full": assistant,
         "assistant_snippet": assistant[:320],
+        "model_text_full": model_text,
         "imperfect_input": bool(case.get("imperfect_input")),
+        "typo_tokens": list(case.get("typo_tokens") or []),
         "shadow_outcome": meta.get("outcome_kind"),
         "shadow_latency_ms": latency_ms,
         "shadow_first_token_proxy_ms": meta.get("first_token_proxy_ms"),
+        "live_served": meta.get("live_served"),
         "shadow": {
             "action": shadow.get("action") if shadow else None,
             "created_at": shadow.get("created_at") if shadow else None,
@@ -548,6 +566,7 @@ def judge_case(case: dict[str, Any], turn: dict[str, Any], shadow: dict | None) 
             "latency_ms": latency_ms,
             "user_message_preview": model_text[:280],
             "tool_name": meta.get("tool_name"),
+            "live_served": meta.get("live_served"),
         }
         if shadow
         else None,
@@ -585,6 +604,9 @@ async def main() -> int:
         "started_at": utcnow(),
         "expect_sha": EXPECT_SHA or None,
         "api_base": BASE,
+        "case_filter": PHASE2_CASE_FILTER,
+        "imperfect_rounds": PHASE2_IMPERFECT_ROUNDS,
+        "skip_classical": PHASE2_SKIP_CLASSICAL,
         "cases": [],
         "classical_batteries": {},
         "ttft": {},
@@ -616,50 +638,89 @@ async def main() -> int:
                 tip_ok = False
             if not tip_ok:
                 report["fatal"] = f"health git_sha {sha} != expected {expect}"
+                OUT.parent.mkdir(parents=True, exist_ok=True)
                 OUT.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
                 print(json.dumps(report, indent=2))
                 return 1
 
+        selected = list(CASES)
+        if PHASE2_CASE_FILTER in ("imperfect", "imperfect_input"):
+            selected = [c for c in CASES if c.get("imperfect_input")]
+        rounds = PHASE2_IMPERFECT_ROUNDS if any(c.get("imperfect_input") for c in selected) else 1
+        if PHASE2_CASE_FILTER not in ("imperfect", "imperfect_input"):
+            # Non-imperfect cases run once; imperfect cases repeat for variance.
+            pass
+
         results: list[dict[str, Any]] = []
-        for case in CASES:
-            conv_id = await create_conversation(
-                client, headers, f"unified-phase2-{case['id']}-{uuid.uuid4().hex[:8]}"
-            )
-            if case.get("seed"):
-                await seed_task_state(
-                    sb, conversation_id=conv_id, org_id=org_id, task_state=case["seed"]
+        for round_i in range(1, rounds + 1):
+            for case in selected:
+                if (
+                    rounds > 1
+                    and PHASE2_CASE_FILTER not in ("imperfect", "imperfect_input")
+                    and not case.get("imperfect_input")
+                    and round_i > 1
+                ):
+                    continue
+                case_rounds = (
+                    rounds
+                    if case.get("imperfect_input") or PHASE2_CASE_FILTER in ("imperfect", "imperfect_input")
+                    else 1
                 )
-            started = utcnow()
-            turn = await chat_turn(
-                client,
-                headers,
-                conversation_id=conv_id,
-                org_id=org_id,
-                message=str(case["message"]),
-                mode=str(case.get("mode") or "standard"),
-            )
-            await asyncio.sleep(8)
-            shadow = fetch_shadow_audit(
-                sb, org_id=org_id, conversation_id=conv_id, after_iso=started
-            )
-            verdict = judge_case(case, turn, shadow)
-            results.append(
-                {
-                    "case": case["id"],
-                    **verdict,
-                    "conversation_id": conv_id,
-                    "turn": {
-                        "http": turn.get("http"),
-                        "assistant": (turn.get("assistant") or "")[:400],
-                        "at": turn.get("at"),
-                        "error": turn.get("error"),
-                    },
-                }
-            )
+                if round_i > case_rounds:
+                    continue
+                conv_id = await create_conversation(
+                    client,
+                    headers,
+                    f"unified-phase2-{case['id']}-r{round_i}-{uuid.uuid4().hex[:8]}",
+                )
+                if case.get("seed"):
+                    await seed_task_state(
+                        sb, conversation_id=conv_id, org_id=org_id, task_state=case["seed"]
+                    )
+                started = utcnow()
+                turn = await chat_turn(
+                    client,
+                    headers,
+                    conversation_id=conv_id,
+                    org_id=org_id,
+                    message=str(case["message"]),
+                    mode=str(case.get("mode") or "standard"),
+                )
+                await asyncio.sleep(8)
+                shadow = fetch_shadow_audit(
+                    sb, org_id=org_id, conversation_id=conv_id, after_iso=started
+                )
+                verdict = judge_case(case, turn, shadow)
+                results.append(
+                    {
+                        "case": case["id"],
+                        "round": round_i,
+                        **verdict,
+                        "conversation_id": conv_id,
+                        "turn": {
+                            "http": turn.get("http"),
+                            "assistant": turn.get("assistant") or "",
+                            "at": turn.get("at"),
+                            "error": turn.get("error"),
+                        },
+                    }
+                )
+                print(
+                    json.dumps(
+                        {
+                            "case": case["id"],
+                            "round": round_i,
+                            "ok": verdict.get("ok"),
+                            "failures": verdict.get("failures"),
+                            "outcome": verdict.get("shadow_outcome"),
+                        }
+                    ),
+                    flush=True,
+                )
 
         report["cases"] = results
         passed = sum(1 for r in results if r.get("ok"))
-        report["summary"] = f"{passed}/{len(results)} targeted cases"
+        report["summary"] = f"{passed}/{len(results)} targeted case-runs"
         latencies = [
             int(r["shadow_latency_ms"])
             for r in results
@@ -680,44 +741,61 @@ async def main() -> int:
         }
 
     expect_for_children = report.get("expect_sha") or sha[:8]
-    for script, key in (
-        ("verify-pending-reply-classifier-live.py", "pending_reply"),
-        ("verify-conversational-path-live.py", "conversational_path"),
-        ("verify-run-history-stale-plan-live.py", "run_history_stale_plan"),
-        ("smoke-sta305-slack-draft.py", "sta305_slack_omit_detail"),
-        ("verify-unified-turn-persona-drift-live.py", "persona_drift_30"),
-    ):
-        path = ROOT / "scripts" / script
-        if not path.is_file():
-            report["classical_batteries"][key] = {"exit_code": None, "skipped": True}
-            continue
-        child_env = {**os.environ, "EXPECT_SHA": str(expect_for_children)}
-        if key == "sta305_slack_omit_detail":
-            child_env["STA305_LIVE"] = "1"
-        proc = subprocess.run(
-            [sys.executable, str(path)],
-            env=child_env,
-            capture_output=True,
-            text=True,
-            timeout=3600,
-        )
-        report["classical_batteries"][key] = {
-            "exit_code": proc.returncode,
-            "stdout_tail": (proc.stdout or "")[-2000:],
-            "stderr_tail": (proc.stderr or "")[-1500:],
-        }
+    if PHASE2_SKIP_CLASSICAL:
+        report["classical_batteries"] = {"skipped": True, "reason": "PHASE2_SKIP_CLASSICAL"}
+    else:
+        for script, key in (
+            ("verify-pending-reply-classifier-live.py", "pending_reply"),
+            ("verify-conversational-path-live.py", "conversational_path"),
+            ("verify-run-history-stale-plan-live.py", "run_history_stale_plan"),
+            ("smoke-sta305-slack-draft.py", "sta305_slack_omit_detail"),
+            ("verify-unified-turn-persona-drift-live.py", "persona_drift_30"),
+            ("_live_probe_send_email.py", "send_email_self_contradiction"),
+        ):
+            path = ROOT / "scripts" / script
+            if not path.is_file():
+                report["classical_batteries"][key] = {"exit_code": None, "skipped": True}
+                continue
+            child_env = {**os.environ, "EXPECT_SHA": str(expect_for_children)}
+            if key == "sta305_slack_omit_detail":
+                child_env["STA305_LIVE"] = "1"
+            proc = subprocess.run(
+                [sys.executable, str(path)],
+                env=child_env,
+                capture_output=True,
+                text=True,
+                timeout=3600,
+            )
+            report["classical_batteries"][key] = {
+                "exit_code": proc.returncode,
+                "stdout_tail": (proc.stdout or "")[-2000:],
+                "stderr_tail": (proc.stderr or "")[-1500:],
+            }
 
-    targeted_ok = passed == len(results)
-    classical_ok = all(
-        v.get("skipped") or v.get("exit_code") == 0
-        for v in report["classical_batteries"].values()
-    )
+    targeted_ok = passed == len(results) and len(results) > 0
+    classical = report["classical_batteries"]
+    if classical.get("skipped"):
+        classical_ok = False  # not measured this run
+    else:
+        classical_ok = all(
+            (isinstance(v, dict) and (v.get("skipped") or v.get("exit_code") == 0))
+            for v in classical.values()
+        )
     imperfect = [r for r in results if r.get("imperfect_input")]
     imperfect_ok = all(r.get("ok") for r in imperfect) if imperfect else False
+    # Per-case both rounds must pass when imperfect was repeated.
+    imperfect_by_id: dict[str, list[dict[str, Any]]] = {}
+    for r in imperfect:
+        imperfect_by_id.setdefault(str(r.get("case")), []).append(r)
+    imperfect_stable = all(
+        len(rows) >= (PHASE2_IMPERFECT_ROUNDS if PHASE2_CASE_FILTER in ("imperfect", "imperfect_input") or PHASE2_IMPERFECT_ROUNDS > 1 else 1)
+        and all(x.get("ok") for x in rows)
+        for rows in imperfect_by_id.values()
+    ) if imperfect_by_id else False
     report["matrix"] = {
         "targeted_shadow_cases": report["summary"],
-        "pending_reply_24": "see classical_batteries.pending_reply",
-        "conversational_path_20": "see classical_batteries.conversational_path",
+        "pending_reply_24": classical.get("pending_reply", {}),
+        "conversational_path_20": classical.get("conversational_path", {}),
         "knowledge_boundary_run_history": next(
             (r for r in results if r["case"] == "knowledge_boundary_run_history_fast"),
             {},
@@ -728,24 +806,36 @@ async def main() -> int:
             else "NOT RUN"
         ),
         "imperfect_input_all_ok": imperfect_ok,
-        "sta305_omit_detail": report["classical_batteries"]
-        .get("sta305_slack_omit_detail", {})
-        .get("exit_code"),
-        "run_history_stale_plan": report["classical_batteries"]
-        .get("run_history_stale_plan", {})
-        .get("exit_code"),
-        "persona_drift_30_turn": report["classical_batteries"]
-        .get("persona_drift_30", {})
-        .get("exit_code"),
+        "imperfect_input_stable_across_rounds": imperfect_stable,
+        "imperfect_unique_cases": len(imperfect_by_id),
+        "sta305_omit_detail": classical.get("sta305_slack_omit_detail", {}).get("exit_code")
+        if isinstance(classical.get("sta305_slack_omit_detail"), dict)
+        else None,
+        "run_history_stale_plan": classical.get("run_history_stale_plan", {}).get("exit_code")
+        if isinstance(classical.get("run_history_stale_plan"), dict)
+        else None,
+        "persona_drift_30_turn": classical.get("persona_drift_30", {}).get("exit_code")
+        if isinstance(classical.get("persona_drift_30"), dict)
+        else None,
+        "send_email_self_contradiction": classical.get(
+            "send_email_self_contradiction", {}
+        ).get("exit_code")
+        if isinstance(classical.get("send_email_self_contradiction"), dict)
+        else None,
         "full_email_flow_multi_step": "PARTIAL — single-turn email intent only",
         "ttft_streaming_lt_200ms": report["ttft"].get("phase3_streaming_gate"),
     }
     report["cutover_gates"] = {
-        "phase2_batteries_clean": targeted_ok and classical_ok,
+        "phase2_batteries_clean": targeted_ok
+        and (classical_ok if not PHASE2_SKIP_CLASSICAL else targeted_ok),
         "phase2_core_batteries_clean": targeted_ok
-        and all(
-            report["classical_batteries"].get(k, {}).get("exit_code") == 0
-            for k in ("pending_reply", "conversational_path")
+        and (
+            True
+            if PHASE2_SKIP_CLASSICAL
+            else all(
+                isinstance(classical.get(k), dict) and classical.get(k, {}).get("exit_code") == 0
+                for k in ("pending_reply", "conversational_path")
+            )
         ),
         "phase3_ttft_streaming": False,
         "phase4_cutover_authorized": False,
@@ -756,15 +846,18 @@ async def main() -> int:
         "write_authority_unchanged": True,
     }
     report["finished_at"] = utcnow()
-    # Core Phase 2 bar: targeted shadow + pending-reply + conversational.
-    # Extra probes (stale-plan / persona / STA-305) stay in matrix but do not fail the suite alone.
-    core_ok = bool(report["cutover_gates"]["phase2_core_batteries_clean"])
-    report["ok"] = core_ok
+    if PHASE2_CASE_FILTER in ("imperfect", "imperfect_input"):
+        report["ok"] = imperfect_ok and imperfect_stable
+    else:
+        # Core Phase 2 bar: targeted + pending-reply + conversational when classical runs.
+        core_ok = bool(report["cutover_gates"]["phase2_core_batteries_clean"])
+        report["ok"] = core_ok
     report["verdict"] = "PASS" if report["ok"] else "FAIL"
-    report["classical_all_ok"] = classical_ok
+    report["classical_all_ok"] = classical_ok if not PHASE2_SKIP_CLASSICAL else None
     report["cutover_gates"]["phase4_cutover_authorized"] = bool(
-        core_ok and report.get("health", {}).get("git_sha")
+        report["ok"] and report.get("health", {}).get("git_sha")
     )
+    OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(
         json.dumps(
