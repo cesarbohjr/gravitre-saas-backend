@@ -292,6 +292,16 @@ def classify_pending_reply_fast(
     }:
         return "slot_answer"
 
+    # Pure social/banter while pending → ambiguous (warm ack + pending note), not model free-form.
+    try:
+        from app.services.conversational_turn_gate import heuristic_turn_shape
+
+        shape = heuristic_turn_shape(text)
+        if shape and shape.shape == "conversational":
+            return "ambiguous"
+    except Exception:  # noqa: BLE001
+        pass
+
     return None
 
 

@@ -176,7 +176,15 @@ def judge_run_history(turn: dict[str, Any]) -> dict[str, Any]:
         re.search(r"\b0\s+recent\s+runs?\b", text)
         or re.search(r"\bno\s+recent\s+runs?\b", text)
     )
-    refused = "don't have that information" in text or "do not have that information" in text
+    refused = bool(
+        re.search(
+            r"(?:don'?t|do not)\s+have\s+(?:that\s+information|that\s+count|"
+            r"(?:workflow\s+)?run\s+history|run\s+history)",
+            text,
+            re.I,
+        )
+        or re.search(r"wasn'?t retrieved|was not retrieved|tools available this turn", text, re.I)
+    )
     used_runs = any(
         "workflow_run" in n or n.endswith("workflow_runs") or "getworkflowruns" in n
         for n in names

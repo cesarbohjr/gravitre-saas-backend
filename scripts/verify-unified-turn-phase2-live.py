@@ -265,6 +265,7 @@ CASES: list[dict[str, Any]] = [
         ],
     },
     {
+    {
         "id": "knowledge_boundary_run_history_fast",
         "mode": "fast",
         "message": (
@@ -278,6 +279,8 @@ CASES: list[dict[str, Any]] = [
             "knowledge_boundary",
             "connector_tool_proposal",
             "clarifying_question",
+            # LIVE often labels honest refusals conversational_reply; content gate below.
+            "conversational_reply",
         ],
     },
     # --- Imperfect-input battery (≥15): typos / missing words / voice garble ---

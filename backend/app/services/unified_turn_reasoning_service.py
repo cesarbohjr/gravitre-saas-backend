@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import time
 from dataclasses import asdict, dataclass, field
 from types import SimpleNamespace
@@ -535,6 +536,45 @@ def _unified_live_turn_payload(
     }
 
 
+async def _maybe_prepend_mixed_social_ack(
+    *,
+    message: str,
+    body: str,
+    task_state: dict[str, Any] | None,
+    org_id: str,
+    settings: Settings,
+) -> str:
+    """Port classical mixed-turn social ack onto LIVE-served copy."""
+    from app.services.conversational_reply_service import generate_social_ack
+    from app.services.conversational_turn_gate import classify_turn_shape
+    from app.services.pending_reply_classifier import has_pending_family
+
+    text = (body or "").strip()
+    if not text or has_pending_family(task_state):
+        return text
+    turn_shape = await classify_turn_shape(
+        message,
+        settings=settings,
+        org_id=org_id,
+    )
+    if turn_shape.shape != "mixed" or not (turn_shape.task_portion or "").strip():
+        return text
+    # Avoid double-acking when the model already opened with a social beat.
+    if re.search(
+        r"(?i)^\s*(ha\b|hey\b|noted|anytime|you're welcome|you are welcome|on it|sure[, ])",
+        text,
+    ):
+        return text
+    ack = (await generate_social_ack(
+        turn_shape.social_portion or message,
+        org_id=org_id,
+        settings=settings,
+    )).strip()
+    if not ack:
+        return text
+    return f"{ack}\n\n{text}"
+
+
 async def apply_unified_turn_live(
     *,
     org_id: str,
@@ -641,6 +681,13 @@ async def apply_unified_turn_live(
                 result=result,
             )
             return None
+        result.user_message = await _maybe_prepend_mixed_social_ack(
+            message=message,
+            body=result.user_message,
+            task_state=task_state,
+            org_id=org_id,
+            settings=active,
+        )
         result.live_served = True
         emit_unified_turn_shadow_audit(
             client=client,
@@ -652,6 +699,32 @@ async def apply_unified_turn_live(
         return _unified_live_turn_payload(result, task_state)
 
     if result.outcome_kind == "connector_tool_proposal" and result.tool_name:
+        from app.services.pending_reply_classifier import (
+            build_pending_snapshot,
+            format_unrelated_hold_prompt,
+            has_pending_family,
+        )
+
+        if has_pending_family(task_state):
+            snap = build_pending_snapshot(task_state)
+            pending_action = str(snap.invoke_action or "").strip().lower()
+            proposed = str(result.tool_name or "").replace("_", ".").lower()
+            # Staging a different write while something is pending must ask hold/abandon first.
+            if pending_action and proposed and pending_action not in proposed and proposed not in pending_action:
+                hold = UnifiedTurnShadowResult(
+                    outcome_kind="clarifying_question",
+                    user_message=format_unrelated_hold_prompt(snap, new_request=message),
+                    live_served=True,
+                    model="pending_reply_classifier",
+                )
+                emit_unified_turn_shadow_audit(
+                    client=client,
+                    org_id=org_id,
+                    actor_id=user_id,
+                    conversation_id=conversation_id,
+                    result=hold,
+                )
+                return _unified_live_turn_payload(hold, task_state)
         from app.services.react_write_gate import plan_from_react_tool_call
         from app.services.tool_registry import get_tool_registry
 
@@ -721,6 +794,13 @@ async def apply_unified_turn_live(
             confirm_message = format_write_approval_message(plan)
             if result.user_message:
                 confirm_message = f"{result.user_message.strip()}\n\n{confirm_message}"
+            confirm_message = await _maybe_prepend_mixed_social_ack(
+                message=message,
+                body=confirm_message,
+                task_state=task_state,
+                org_id=org_id,
+                settings=active,
+            )
             result.live_served = True
             emit_unified_turn_shadow_audit(
                 client=client,

@@ -402,6 +402,49 @@ async def test_apply_unified_live_meta_capability_uses_expression_path():
 
 
 @pytest.mark.asyncio
+async def test_apply_unified_live_prepends_mixed_social_ack():
+    settings = MagicMock(unified_turn_live_enabled=True, openai_api_key="sk-test")
+    body = UnifiedTurnShadowResult(
+        outcome_kind="conversational_reply",
+        user_message="HubSpot isn't Connected here. Connect it at /connectors.",
+    )
+
+    with patch(
+        "app.services.unified_turn_reasoning_service.run_unified_turn_shadow",
+        new=AsyncMock(return_value=body),
+    ), patch(
+        "app.services.unified_turn_reasoning_service.emit_unified_turn_shadow_audit",
+    ), patch(
+        "app.services.conversational_turn_gate.classify_turn_shape",
+        new=AsyncMock(
+            return_value=SimpleNamespace(
+                shape="mixed",
+                social_portion="haha nice",
+                task_portion="check that HubSpot list",
+                category="banter",
+            )
+        ),
+    ), patch(
+        "app.services.conversational_reply_service.generate_social_ack",
+        new=AsyncMock(return_value="Ha — noted."),
+    ):
+        out = await apply_unified_turn_live(
+            org_id="org",
+            user_id="user",
+            conversation_id="conv",
+            message="haha nice, also can you check on that HubSpot list",
+            task_state={},
+            conversation_history=[],
+            connected_integrations=["apollo"],
+            settings=settings,
+        )
+
+    assert out is not None
+    assert out["message"].startswith("Ha — noted.")
+    assert "HubSpot" in out["message"]
+
+
+@pytest.mark.asyncio
 async def test_apply_unified_live_rejects_phantom_hold_abandon():
     settings = MagicMock(unified_turn_live_enabled=True, openai_api_key="sk-test")
     bad = UnifiedTurnShadowResult(
