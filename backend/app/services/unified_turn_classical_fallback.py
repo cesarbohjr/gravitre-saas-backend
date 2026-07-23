@@ -9,14 +9,6 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.operators.assistant_mode_config import normalize_mode
-from app.services.conversational_planning_engine import is_direct_connector_write_intent
-
-# Modes that always use classical ReAct/tool SSE for non-pending fresh turns.
-# Intentionally excludes ``standard`` — Phase 4 LIVE owns pure conversational
-# replies there; only tool-shaped utterances defer (see message patterns below).
-_CLASSICAL_TOOL_SSE_MODES = frozenset({"reasoning", "agent"})
-
 _MESSAGE_TOOL_SSE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\bconnectors?\b.*\bconnected\b", re.I),
     re.compile(r"\bwhat connectors\b", re.I),
@@ -38,11 +30,15 @@ _MESSAGE_TOOL_SSE_PATTERNS: tuple[re.Pattern[str], ...] = (
 
 
 def message_requires_classical_tool_sse(message: str) -> bool:
+    """Utterances that need classical tool SSE / wave67 probe events.
+
+    Does not include generic write phrasing (e.g. \"Send an email…\") — those
+    often resolve to LIVE clarifying_question text. Connector write proposals
+    still defer via outcome_kind == connector_tool_proposal.
+    """
     text = (message or "").strip()
     if not text:
         return False
-    if is_direct_connector_write_intent(text):
-        return True
     return any(p.search(text) for p in _MESSAGE_TOOL_SSE_PATTERNS)
 
 
@@ -53,10 +49,15 @@ def should_defer_unified_turn_live_to_classical(
     message: str,
     classification: dict[str, Any] | None = None,
 ) -> bool:
-    """Return True to skip unified live and run the classical pipeline."""
+    """Return True to skip unified live and run the classical pipeline.
+
+    Text kinds (greeting/thanks/clarify) stay on LIVE even when connectors upgrade
+    ``standard`` → ``agent`` via ``resolve_effective_intelligence_mode``. Only
+    tool-shaped utterances and connector write proposals defer.
+    """
     kind = str(outcome_kind or "").strip().lower()
-    mode = normalize_mode(mode_key or "standard")
     msg = message or ""
+    _ = (mode_key, classification)  # mode no longer blankets text-kind defer
 
     if kind == "connector_tool_proposal":
         # Classical path emits tool SSE + react_write_gate; unified only stages pending text.
@@ -70,15 +71,5 @@ def should_defer_unified_turn_live_to_classical(
     }:
         return False
 
-    # Reasoning/agent: keep classical as primary for non-pending turns.
-    if mode in _CLASSICAL_TOOL_SSE_MODES:
-        return True
-
-    # Standard + fast: defer only when the utterance needs tool SSE / write chips.
-    # Do not use classification.requires_action here — it over-fires on greetings
-    # ("Hey") and forced LIVE fallthrough after R1 skipped phrase-bank primary.
-    if message_requires_classical_tool_sse(msg):
-        return True
-
-    _ = classification  # reserved for future structured defer signals
-    return False
+    # Defer text kinds only when the utterance needs tool SSE / write chips.
+    return message_requires_classical_tool_sse(msg)

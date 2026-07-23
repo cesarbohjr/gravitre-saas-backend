@@ -11,8 +11,17 @@ def test_message_requires_classical_tool_sse_connectors():
     assert message_requires_classical_tool_sse("What connectors are connected right now?")
 
 
-def test_defer_reasoning_mode_conversational_reply():
-    assert should_defer_unified_turn_live_to_classical(
+def test_agent_mode_pure_chat_not_deferred():
+    """Connectors upgrade standard→agent; LIVE must still own greetings."""
+    assert not should_defer_unified_turn_live_to_classical(
+        mode_key="agent",
+        outcome_kind="conversational_reply",
+        message="Hey",
+    )
+
+
+def test_reasoning_mode_pure_chat_not_deferred():
+    assert not should_defer_unified_turn_live_to_classical(
         mode_key="reasoning",
         outcome_kind="conversational_reply",
         message="hello",
@@ -20,7 +29,6 @@ def test_defer_reasoning_mode_conversational_reply():
 
 
 def test_standard_mode_pure_chat_not_deferred():
-    """LIVE owns standard-mode greetings; blanket defer was over-broad (4261014e)."""
     assert not should_defer_unified_turn_live_to_classical(
         mode_key="standard",
         outcome_kind="conversational_reply",
@@ -64,6 +72,14 @@ def test_fast_mode_connector_query_deferred():
 def test_standard_mode_connector_query_deferred():
     assert should_defer_unified_turn_live_to_classical(
         mode_key="standard",
+        outcome_kind="conversational_reply",
+        message="What connectors are connected right now?",
+    )
+
+
+def test_agent_mode_connector_query_deferred():
+    assert should_defer_unified_turn_live_to_classical(
+        mode_key="agent",
         outcome_kind="conversational_reply",
         message="What connectors are connected right now?",
     )
