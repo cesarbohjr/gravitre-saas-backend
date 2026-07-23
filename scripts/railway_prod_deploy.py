@@ -365,16 +365,22 @@ def _load_railway_token_from_railway_variables(service: str) -> str | None:
 
 
 def _load_operator_env() -> None:
-    from dotenv import dotenv_values
+    try:
+        from dotenv import dotenv_values
+    except ImportError:
+        dotenv_values = None  # type: ignore[misc, assignment]
 
     repo = Path(__file__).resolve().parent.parent
     for path in (repo / "backend" / ".env.operator.local", repo / ".env.operator.local", repo / "backend" / ".env"):
         if not path.is_file():
             continue
         parsed: dict[str, str] = {}
-        try:
-            parsed = {k: v for k, v in dotenv_values(path).items() if v}
-        except UnicodeDecodeError:
+        if dotenv_values is not None:
+            try:
+                parsed = {k: v for k, v in dotenv_values(path).items() if v}
+            except UnicodeDecodeError:
+                parsed = _parse_env_lines(path)
+        else:
             parsed = _parse_env_lines(path)
         for key, value in parsed.items():
             if value:
