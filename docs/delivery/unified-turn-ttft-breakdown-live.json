@@ -1,0 +1,206 @@
+{
+  "feature": "unified_turn_ttft_breakdown",
+  "started_at": "2026-07-23T01:58:38.047777+00:00",
+  "catalog_offline": {
+    "connected_assumed": [
+      "gmail",
+      "apollo",
+      "hubspot",
+      "slack",
+      "notion"
+    ],
+    "total_registered_for_connected": 93,
+    "rows": [
+      {
+        "message": "Hey",
+        "total_tools": 93,
+        "visible_tools": 28,
+        "max_tools_cap": 32,
+        "visible_payload_bytes": 10082,
+        "full_catalog_payload_bytes": 50021,
+        "narrow_ms": 1,
+        "stats": {
+          "totalTools": 93,
+          "visibleTools": 28,
+          "focusedConnectors": [
+            "apollo",
+            "gmail",
+            "hubspot"
+          ],
+          "actionRequired": false,
+          "compressed": true
+        },
+        "retrieval_method": "keyword_narrow_tools_for_turn",
+        "embedding_tool_retrieval": false
+      },
+      {
+        "message": "Thank you",
+        "total_tools": 93,
+        "visible_tools": 28,
+        "max_tools_cap": 32,
+        "visible_payload_bytes": 10082,
+        "full_catalog_payload_bytes": 50021,
+        "narrow_ms": 0,
+        "stats": {
+          "totalTools": 93,
+          "visibleTools": 28,
+          "focusedConnectors": [
+            "apollo",
+            "gmail",
+            "hubspot"
+          ],
+          "actionRequired": false,
+          "compressed": true
+        },
+        "retrieval_method": "keyword_narrow_tools_for_turn",
+        "embedding_tool_retrieval": false
+      },
+      {
+        "message": "What's on your plate?",
+        "total_tools": 93,
+        "visible_tools": 28,
+        "max_tools_cap": 32,
+        "visible_payload_bytes": 10082,
+        "full_catalog_payload_bytes": 50021,
+        "narrow_ms": 0,
+        "stats": {
+          "totalTools": 93,
+          "visibleTools": 28,
+          "focusedConnectors": [
+            "apollo",
+            "gmail",
+            "hubspot"
+          ],
+          "actionRequired": false,
+          "compressed": true
+        },
+        "retrieval_method": "keyword_narrow_tools_for_turn",
+        "embedding_tool_retrieval": false
+      }
+    ],
+    "note": "Embedding-based tool retrieval is NOT implemented. Phase 0 chose keyword narrow_tools_for_turn (cap default 32)."
+  },
+  "classical_baseline": {
+    "samples": [
+      {
+        "message": "Hey",
+        "heuristic_hit": true,
+        "used_model_classify": false,
+        "shape": "conversational",
+        "category": "greeting",
+        "offered_conversational_path": true,
+        "reply_preview": "Hey \u2014 here when you need a connector run, a plan, or a quick check.",
+        "heuristic_ms": 0,
+        "classify_ms": 0,
+        "total_ms": 6,
+        "path": "phrase_bank_no_llm"
+      },
+      {
+        "message": "Thank you",
+        "heuristic_hit": true,
+        "used_model_classify": false,
+        "shape": "conversational",
+        "category": "thanks",
+        "offered_conversational_path": true,
+        "reply_preview": "You're welcome. Ready when you are.",
+        "heuristic_ms": 0,
+        "classify_ms": 0,
+        "total_ms": 0,
+        "path": "phrase_bank_no_llm"
+      },
+      {
+        "message": "What's on your plate?",
+        "heuristic_hit": false,
+        "used_model_classify": false,
+        "shape": "task_shaped",
+        "category": "other",
+        "offered_conversational_path": false,
+        "reply_preview": "",
+        "heuristic_ms": 0,
+        "classify_ms": 1009,
+        "total_ms": 1009,
+        "path": "classify_may_use_llm"
+      }
+    ],
+    "p50_total_ms": 6,
+    "note": "Fair baseline for Hey/Thank you: classical path is heuristic + phrase bank (no tool schemas, usually no LLM). Unified always pays a tool-aware model call."
+  },
+  "unified_live": {
+    "probes": [
+      {
+        "message": "Hey",
+        "conversation_id": "ea672d1a-304a-4153-85dd-3f14eb9350a9",
+        "http": 200,
+        "client_first_sse_ms": 2138,
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T01:58:46.788615+00:00",
+        "live_served": true,
+        "first_token_proxy_ms": 1121,
+        "tool_stats": {
+          "compressed": true,
+          "totalTools": 26,
+          "visibleTools": 13,
+          "actionRequired": false,
+          "focusedConnectors": [
+            "apollo"
+          ]
+        },
+        "latency_breakdown": {}
+      },
+      {
+        "message": "Thank you",
+        "conversation_id": "3580fea3-0010-4e5d-a950-36f8e29e3f0b",
+        "http": 200,
+        "client_first_sse_ms": 2026,
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T01:58:55.237898+00:00",
+        "live_served": true,
+        "first_token_proxy_ms": 396,
+        "tool_stats": {
+          "compressed": true,
+          "totalTools": 26,
+          "visibleTools": 13,
+          "actionRequired": false,
+          "focusedConnectors": [
+            "apollo"
+          ]
+        },
+        "latency_breakdown": {}
+      },
+      {
+        "message": "What's on your plate?",
+        "conversation_id": "013a8d92-4ac5-4ffe-b4c2-ab8e8c4eb35c",
+        "http": 200,
+        "client_first_sse_ms": 2611,
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T01:59:02.966519+00:00",
+        "live_served": true,
+        "first_token_proxy_ms": 407,
+        "tool_stats": {
+          "compressed": true,
+          "totalTools": 26,
+          "visibleTools": 13,
+          "actionRequired": false,
+          "focusedConnectors": [
+            "apollo"
+          ]
+        },
+        "latency_breakdown": {}
+      }
+    ],
+    "instrumentation_present": false,
+    "wall_ttft_p50_ms": 407
+  },
+  "health": {
+    "git_sha": "c81d12009cd66e066831a2e20ef146cda189bd62",
+    "unified_turn_live_enabled": true,
+    "timestamp": "2026-07-23T01:58:42.202151+00:00"
+  },
+  "findings": {
+    "full_catalog_sent_every_call": false,
+    "retrieval": "keyword_narrow_tools_for_turn (NOT embedding)",
+    "classical_social_uses_llm_tools": false,
+    "ttft_200ms_gate": "MISS until model_ttft/payload work re-measured under target"
+  },
+  "finished_at": "2026-07-23T01:59:06.150306+00:00"
+}

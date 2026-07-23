@@ -69,6 +69,9 @@ def test_module_d_unified_spec_has_knowledge_boundary_and_drift():
     assert "drift" in text.lower()
     assert "hold" in text.lower() and "abandon" in text.lower()
     assert "vendor.resource.verb" in text or "catalog" in text.lower()
+    assert "Imperfect input" in MODULE_D_UNIFIED_SYSTEM_SPEC
+    assert "I think you meant" in MODULE_D_UNIFIED_SYSTEM_SPEC
+    assert "sned emial" in text.lower()
 
 
 def test_build_unified_turn_pending_context_empty_when_no_pending():
@@ -211,6 +214,10 @@ async def test_run_unified_turn_shadow_conversational_reply():
     assert "gmail." not in result.user_message
     assert result.streamed is True
     assert result.first_token_proxy_ms is not None
+    assert result.latency_breakdown.get("retrieval_method") == "keyword_narrow_tools_for_turn"
+    assert result.latency_breakdown.get("embedding_tool_retrieval") is False
+    assert "model_ttft_ms" in result.latency_breakdown
+    assert "pre_model_ms" in result.latency_breakdown
     mock_client.chat.completions.create.assert_awaited_once()
     call_kwargs = mock_client.chat.completions.create.await_args.kwargs
     assert call_kwargs.get("stream") is True

@@ -53,9 +53,11 @@ class UnifiedTurnShadowResult:
     tool_stats: dict[str, Any] = field(default_factory=dict)
     model: str = ""
     error: str | None = None
-    first_token_proxy_ms: int | None = None  # true TTFT when streamed
+    first_token_proxy_ms: int | None = None  # wall clock: shadow start → first stream delta
     streamed: bool = False
     live_served: bool = False  # Phase 4: outcome used for user-visible response
+    # Phase timings + tool payload (see latency_breakdown keys in run_unified_turn_shadow).
+    latency_breakdown: dict[str, Any] = field(default_factory=dict)
 
     def to_audit_payload(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -75,8 +77,10 @@ class UnifiedTurnShadowResult:
 class _StreamedCompletion:
     content: str
     tool_calls: list[Any]
-    first_token_ms: int | None
-    latency_ms: int
+    first_token_ms: int | None  # relative to wall_start
+    model_ttft_ms: int | None  # relative to model_start (create() call)
+    latency_ms: int  # wall_start → stream end
+    model_total_ms: int  # model_start → stream end
     streamed: bool
 
 
@@ -84,13 +88,15 @@ async def _complete_unified_turn_stream(
     openai_client: Any,
     *,
     kwargs: dict[str, Any],
-    start: float,
+    wall_start: float,
+    model_start: float,
 ) -> _StreamedCompletion:
-    """Stream the shadow completion; record TTFT on first content or tool-call delta."""
+    """Stream the shadow completion; record wall TTFT and model-only TTFT."""
     stream_kwargs = {**kwargs, "stream": True}
     content_parts: list[str] = []
     tool_acc: dict[int, dict[str, Any]] = {}
     first_token_ms: int | None = None
+    model_ttft_ms: int | None = None
 
     stream = await openai_client.chat.completions.create(**stream_kwargs)
     async for chunk in stream:
@@ -103,11 +109,15 @@ async def _complete_unified_turn_stream(
         piece = getattr(delta, "content", None) or ""
         if piece:
             if first_token_ms is None:
-                first_token_ms = int((time.perf_counter() - start) * 1000)
+                now = time.perf_counter()
+                first_token_ms = int((now - wall_start) * 1000)
+                model_ttft_ms = int((now - model_start) * 1000)
             content_parts.append(str(piece))
         for tc_delta in getattr(delta, "tool_calls", None) or []:
             if first_token_ms is None:
-                first_token_ms = int((time.perf_counter() - start) * 1000)
+                now = time.perf_counter()
+                first_token_ms = int((now - wall_start) * 1000)
+                model_ttft_ms = int((now - model_start) * 1000)
             idx = int(getattr(tc_delta, "index", 0) or 0)
             slot = tool_acc.setdefault(
                 idx,
@@ -141,14 +151,19 @@ async def _complete_unified_turn_stream(
             )
         )
 
-    latency_ms = int((time.perf_counter() - start) * 1000)
+    end = time.perf_counter()
+    latency_ms = int((end - wall_start) * 1000)
+    model_total_ms = int((end - model_start) * 1000)
     if first_token_ms is None and (content_parts or tool_calls):
         first_token_ms = latency_ms
+        model_ttft_ms = model_total_ms
     return _StreamedCompletion(
         content="".join(content_parts).strip(),
         tool_calls=tool_calls,
         first_token_ms=first_token_ms,
+        model_ttft_ms=model_ttft_ms,
         latency_ms=latency_ms,
+        model_total_ms=model_total_ms,
         streamed=True,
     )
 
@@ -204,18 +219,22 @@ async def run_unified_turn_shadow(
     if not (active.openai_api_key or "").strip():
         return UnifiedTurnShadowResult(outcome_kind="error", error="openai_not_configured")
 
-    start = time.perf_counter()
+    wall_start = time.perf_counter()
     registry = get_tool_registry()
     permitted = ["*"]
     connected = [str(c).strip().lower() for c in (connected_integrations or []) if str(c).strip()]
     all_tools = registry.get_tools_for_agent(permitted, connected)
+    t_after_registry = time.perf_counter()
+
+    max_tools = int(getattr(active, "unified_turn_shadow_max_tools", 32) or 32)
     visible, tool_stats = narrow_tools_for_turn(
         all_tools,
         query=message,
         connected_integrations=connected,
         requires_action=None,
-        max_tools=int(getattr(active, "unified_turn_shadow_max_tools", 32) or 32),
+        max_tools=max_tools,
     )
+    t_after_narrow = time.perf_counter()
 
     pending_block = build_unified_turn_pending_context(
         task_state,
@@ -256,6 +275,13 @@ async def run_unified_turn_shadow(
     messages: list[dict[str, Any]] = [{"role": "system", "content": system}]
     messages.extend(_history_to_messages(conversation_history))
     messages.append({"role": "user", "content": user_content})
+    t_after_prompt = time.perf_counter()
+
+    tools_payload_bytes = len(json.dumps(visible, separators=(",", ":")).encode("utf-8"))
+    messages_chars = sum(len(str(m.get("content") or "")) for m in messages)
+    system_prompt_chars = len(system or "")
+    # Hypothetical full-catalog payload for the same connected set (not sent).
+    full_catalog_bytes = len(json.dumps(all_tools, separators=(",", ":")).encode("utf-8"))
 
     model = _resolve_model(active)
     router = get_model_router()
@@ -272,23 +298,62 @@ async def run_unified_turn_shadow(
     if _supports_custom_temperature(model):
         kwargs["temperature"] = 0.2
 
+    breakdown: dict[str, Any] = {
+        "registry_tools_ms": int((t_after_registry - wall_start) * 1000),
+        "narrow_tools_ms": int((t_after_narrow - t_after_registry) * 1000),
+        "context_prompt_ms": int((t_after_prompt - t_after_narrow) * 1000),
+        "pre_model_ms": int((t_after_prompt - wall_start) * 1000),
+        "tools_payload_bytes": tools_payload_bytes,
+        "full_catalog_payload_bytes": full_catalog_bytes,
+        "system_prompt_chars": system_prompt_chars,
+        "messages_chars": messages_chars,
+        "total_tools": len(all_tools),
+        "visible_tools": len(visible),
+        "max_tools_cap": max_tools,
+        # Phase 0 chose keyword narrow now; embedding retrieval is NOT implemented.
+        "retrieval_method": "keyword_narrow_tools_for_turn",
+        "embedding_tool_retrieval": False,
+    }
+    tool_stats = {
+        **(tool_stats or {}),
+        "retrievalMethod": "keyword_narrow_tools_for_turn",
+        "embeddingToolRetrieval": False,
+        "toolsPayloadBytes": tools_payload_bytes,
+        "fullCatalogPayloadBytes": full_catalog_bytes,
+    }
+
     try:
+        model_start = time.perf_counter()
+        breakdown["openai_create_schedule_ms"] = int((model_start - t_after_prompt) * 1000)
         completion = await _complete_unified_turn_stream(
-            openai_client, kwargs=kwargs, start=start
+            openai_client,
+            kwargs=kwargs,
+            wall_start=wall_start,
+            model_start=model_start,
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("unified_turn_shadow model call failed: %s", exc)
+        breakdown["error"] = str(exc)[:200]
         return UnifiedTurnShadowResult(
             outcome_kind="error",
             error=str(exc)[:500],
-            latency_ms=int((time.perf_counter() - start) * 1000),
+            latency_ms=int((time.perf_counter() - wall_start) * 1000),
             tool_stats=tool_stats,
             model=model,
+            latency_breakdown=breakdown,
         )
 
     content = completion.content
     tool_calls = completion.tool_calls
     latency_ms = completion.latency_ms
+    breakdown["model_ttft_ms"] = completion.model_ttft_ms
+    breakdown["model_total_ms"] = completion.model_total_ms
+    breakdown["wall_to_first_token_ms"] = completion.first_token_ms
+    # Residual after model_ttft inside wall TTFT ≈ pre_model + network/queue inside create().
+    if completion.first_token_ms is not None and completion.model_ttft_ms is not None:
+        breakdown["pre_first_token_overhead_ms"] = max(
+            0, int(completion.first_token_ms) - int(completion.model_ttft_ms)
+        )
 
     result = UnifiedTurnShadowResult(
         latency_ms=latency_ms,
@@ -296,6 +361,7 @@ async def run_unified_turn_shadow(
         streamed=completion.streamed,
         tool_stats=tool_stats,
         model=model,
+        latency_breakdown=breakdown,
     )
 
     if tool_calls:
