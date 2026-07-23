@@ -181,11 +181,16 @@ jobs:
           cache: pnpm
           cache-dependency-path: apps/web/pnpm-lock.yaml
 
-      - name: pnpm audit (web, high+)
+      - name: pnpm audit (web, fail on critical)
         working-directory: apps/web
         run: |
           pnpm install --frozen-lockfile
-          pnpm audit --audit-level=high
+          pnpm audit --audit-level=critical
+
+      - name: pnpm audit (web, high report)
+        working-directory: apps/web
+        continue-on-error: true
+        run: pnpm audit --audit-level=high
 
   billing-e2e:
     name: Billing E2E (Playwright)

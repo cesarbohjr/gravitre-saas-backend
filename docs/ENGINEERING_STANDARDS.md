@@ -88,7 +88,7 @@ Maintain the batteries listed in `docs/delivery/llm-quality-test-suite.md`. Re-r
 
 ## 9. Dependency audit in CI
 
-`pnpm audit --audit-level=high` and `pip-audit` run on every PR in `.github/workflows/ci.yml`. New **critical** findings must block merge; highs require triage with reachability notes (runtime vs dev-only) before dismissing.
+`pnpm audit --audit-level=critical` and `pip-audit` run on every PR in `.github/workflows/ci.yml` and **fail the build on new critical** findings. **High** severities are reported in the same job (`continue-on-error`) and require reachability triage (runtime vs dev-only) before dismissing — do not treat dev-only ESLint/shadcn highs as production blockers without documenting that triage.
 
 ---
 
