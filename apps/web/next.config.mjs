@@ -78,6 +78,18 @@ const nextConfig = {
       { source: "/docs/workspaces", destination: "/docs/concepts/environments", permanent: true },
       { source: "/docs/security", destination: "/docs/concepts/security", permanent: true },
       { source: "/docs/api/reference", destination: "/docs/api/swagger", permanent: true },
+      // Legacy marketing hub slugs (bookmarks + external links) → canonical docs
+      { source: "/support/getting-started", destination: "/docs/getting-started/quickstart", permanent: true },
+      { source: "/guides/create-your-first-ai-agent", destination: "/docs/guides/how-to/agents", permanent: true },
+      {
+        source: "/docs/guides/how-to-create-your-first-agent",
+        destination: "/docs/guides/how-to/agents",
+        permanent: true,
+      },
+      { source: "/docs/sdk/node", destination: "/docs/api/quickstart", permanent: true },
+      { source: "/docs/sdk/python", destination: "/docs/api/quickstart", permanent: true },
+      { source: "/docs/sdk/go", destination: "/docs/api/quickstart", permanent: true },
+      { source: "/docs/sdk/:lang", destination: "/docs/api/quickstart", permanent: true },
       { source: "/chat", destination: "/search", permanent: true },
       { source: "/operator", destination: "/ai", permanent: true },
       { source: "/command-center", destination: "/ai", permanent: true },

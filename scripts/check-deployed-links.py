@@ -50,6 +50,12 @@ KNOWN_ASSERTIONS: list[dict[str, Any]] = [
         "must_not_contain": ["noindex"],
         "note": "Popular article slug was empty/noindex",
     },
+    {
+        "url": "/docs/sdk/node",
+        "max_status": 399,
+        "min_text_len": 120,
+        "note": "SDK stub redirected to REST quickstart",
+    },
 ]
 
 METADATA_PAGES: list[dict[str, str]] = [
