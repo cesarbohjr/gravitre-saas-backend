@@ -19,6 +19,15 @@ def test_defer_reasoning_mode_conversational_reply():
     )
 
 
+def test_standard_mode_pure_chat_not_deferred():
+    """LIVE owns standard-mode greetings; blanket defer was over-broad (4261014e)."""
+    assert not should_defer_unified_turn_live_to_classical(
+        mode_key="standard",
+        outcome_kind="conversational_reply",
+        message="hello",
+    )
+
+
 def test_defer_connector_tool_proposal_all_modes():
     assert should_defer_unified_turn_live_to_classical(
         mode_key="fast",
@@ -38,6 +47,14 @@ def test_fast_mode_pure_chat_not_deferred():
 def test_fast_mode_connector_query_deferred():
     assert should_defer_unified_turn_live_to_classical(
         mode_key="fast",
+        outcome_kind="conversational_reply",
+        message="What connectors are connected right now?",
+    )
+
+
+def test_standard_mode_connector_query_deferred():
+    assert should_defer_unified_turn_live_to_classical(
+        mode_key="standard",
         outcome_kind="conversational_reply",
         message="What connectors are connected right now?",
     )

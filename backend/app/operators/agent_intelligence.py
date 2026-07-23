@@ -1676,7 +1676,12 @@ class AgentIntelligence:
 
         # Conversational path (additive): only when nothing is pending. Pending-reply
         # classifier remains the owner for awaiting_* / sticky plans.
+        #
+        # R1 (STA-334): when LIVE is enabled, skip phrase-bank-as-primary early-exit —
+        # LIVE already owns meta/pending/pure chat. Keep turn_shape + mixed social ack
+        # for classical tool fallthrough. Rollback: UNIFIED_TURN_LIVE_ENABLED=false.
         conversational_prefix = ""
+        live_enabled = bool(getattr(active_settings, "unified_turn_live_enabled", False))
         from app.services.conversational_turn_gate import (
             classify_turn_shape,
             should_offer_conversational_path,
@@ -1692,7 +1697,10 @@ class AgentIntelligence:
                 str(x) for x in list((task_state or {}).get("recent_user_messages") or [])[-3:]
             ),
         )
-        if should_offer_conversational_path(turn_shape, has_pending=pending_family_active):
+        if (
+            not live_enabled
+            and should_offer_conversational_path(turn_shape, has_pending=pending_family_active)
+        ):
             from app.services.conversational_reply_service import generate_conversational_reply
 
             response_text = await generate_conversational_reply(

@@ -12,8 +12,10 @@ from typing import Any
 from app.operators.assistant_mode_config import normalize_mode
 from app.services.conversational_planning_engine import is_direct_connector_write_intent
 
-# Modes that always use classical tool SSE for non-pending fresh turns.
-_CLASSICAL_TOOL_SSE_MODES = frozenset({"reasoning", "agent", "standard"})
+# Modes that always use classical ReAct/tool SSE for non-pending fresh turns.
+# Intentionally excludes ``standard`` — Phase 4 LIVE owns pure conversational
+# replies there; only tool-shaped utterances defer (see message patterns below).
+_CLASSICAL_TOOL_SSE_MODES = frozenset({"reasoning", "agent"})
 
 _MESSAGE_TOOL_SSE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\bconnectors?\b.*\bconnected\b", re.I),
@@ -71,10 +73,12 @@ def should_defer_unified_turn_live_to_classical(
     if classification and classification.get("requires_action"):
         return True
 
+    # Reasoning/agent: keep classical as primary for non-pending turns.
     if mode in _CLASSICAL_TOOL_SSE_MODES:
         return True
 
-    if mode == "fast" and message_requires_classical_tool_sse(msg):
+    # Standard + fast: defer only when the utterance needs tool SSE / write chips.
+    if message_requires_classical_tool_sse(msg):
         return True
 
     return False

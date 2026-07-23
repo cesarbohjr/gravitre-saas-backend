@@ -63,6 +63,8 @@ class UnifiedTurnShadowResult:
     live_served: bool = False  # Phase 4: outcome used for user-visible response
     # Phase timings + tool payload (see latency_breakdown keys in run_unified_turn_shadow).
     latency_breakdown: dict[str, Any] = field(default_factory=dict)
+    # R1: why LIVE returned None (intentional tool defer vs error). Empty when served.
+    fallthrough_reason: str | None = None
 
     def to_audit_payload(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -75,6 +77,8 @@ class UnifiedTurnShadowResult:
         payload["shadow_user_visible"] = live
         payload["classical_path_active"] = not live
         payload["shadow_executes_tools"] = False  # tools still go through write/execute gates
+        if self.fallthrough_reason:
+            payload["fallthrough_reason"] = self.fallthrough_reason
         return payload
 
 
@@ -496,16 +500,20 @@ def emit_unified_turn_shadow_audit(
     conversation_id: str | None,
     result: UnifiedTurnShadowResult,
 ) -> None:
-    if client is None or not org_id or result.outcome_kind == "skipped":
+    if client is None or not org_id:
+        return
+    # Shadow-only skips stay quiet; LIVE fallthrough always emits (R1 metrics).
+    if result.outcome_kind == "skipped" and not result.fallthrough_reason:
         return
     try:
         from app.workflows.audit import write_audit_event
 
-        action = (
-            "unified_turn.live.completed"
-            if result.live_served
-            else "unified_turn.shadow.completed"
-        )
+        if result.live_served:
+            action = "unified_turn.live.completed"
+        elif result.fallthrough_reason:
+            action = "unified_turn.live.fallthrough"
+        else:
+            action = "unified_turn.shadow.completed"
         write_audit_event(
             client,
             org_id,
@@ -517,6 +525,15 @@ def emit_unified_turn_shadow_audit(
         )
     except Exception as exc:  # noqa: BLE001
         logger.debug("unified_turn shadow audit skipped: %s", exc)
+
+
+def _mark_live_fallthrough(
+    result: UnifiedTurnShadowResult,
+    reason: str,
+) -> UnifiedTurnShadowResult:
+    result.live_served = False
+    result.fallthrough_reason = reason
+    return result
 
 
 def _unified_live_turn_payload(
@@ -656,6 +673,7 @@ async def apply_unified_turn_live(
         settings=active,
     )
     if result.outcome_kind in {"skipped", "error"}:
+        _mark_live_fallthrough(result, f"outcome_{result.outcome_kind}")
         emit_unified_turn_shadow_audit(
             client=client,
             org_id=org_id,
@@ -675,6 +693,12 @@ async def apply_unified_turn_live(
         message=message,
         classification=classification,
     ):
+        defer_reason = (
+            "defer_connector_tool_proposal"
+            if str(result.outcome_kind or "") == "connector_tool_proposal"
+            else "defer_classical_tool_sse"
+        )
+        _mark_live_fallthrough(result, defer_reason)
         emit_unified_turn_shadow_audit(
             client=client,
             org_id=org_id,
@@ -694,6 +718,7 @@ async def apply_unified_turn_live(
         if unified_live_message_violates_no_pending_hold(
             message=result.user_message, task_state=task_state
         ):
+            _mark_live_fallthrough(result, "violates_no_pending_hold")
             emit_unified_turn_shadow_audit(
                 client=client,
                 org_id=org_id,
@@ -757,6 +782,7 @@ async def apply_unified_turn_live(
             requires_approval=bool(result.requires_write_approval),
         )
         if plan is None or not conversation_id:
+            _mark_live_fallthrough(result, "write_plan_unavailable")
             emit_unified_turn_shadow_audit(
                 client=client,
                 org_id=org_id,
@@ -844,6 +870,7 @@ async def apply_unified_turn_live(
             }
 
         # Read tool proposals: fall through to classical governed execution (no bypass).
+        _mark_live_fallthrough(result, "read_tool_classical")
         emit_unified_turn_shadow_audit(
             client=client,
             org_id=org_id,
@@ -853,6 +880,7 @@ async def apply_unified_turn_live(
         )
         return None
 
+    _mark_live_fallthrough(result, f"unhandled_kind_{result.outcome_kind}")
     emit_unified_turn_shadow_audit(
         client=client,
         org_id=org_id,
