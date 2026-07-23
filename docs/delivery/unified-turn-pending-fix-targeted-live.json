@@ -1,0 +1,74 @@
+{
+  "started_at": "2026-07-23T06:41:00.225836+00:00",
+  "expect_sha": "19bdf7d2",
+  "api_base": "https://api.gravitre.app",
+  "cases": [
+    {
+      "id": "mixed_hubspot_list",
+      "user": "haha nice, also can you check on that HubSpot list",
+      "conversationId": "56a02dcd-9697-4e9d-b77d-908c461f9d8b",
+      "http": 200,
+      "assistant": "I don\u2019t have a HubSpot connector in this turn, so I can\u2019t check that list here.\n\nIf you want, I can check Apollo lists instead, or you can connect HubSpot and I\u2019ll take it from there.",
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "pending_playful_1",
+      "user": "haha you're funny",
+      "conversationId": "e52ea495-e460-4e34-8540-ec61cb83f289",
+      "http": 200,
+      "assistant": "Ha \u2014 noted. What should we tackle next?\n\nSend Gmail message is waiting in the Decision Queue. Reply **yes** to approve, or **cancel** to drop it.",
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "unrelated_connectors",
+      "user": "what connectors are Connected right now?",
+      "conversationId": "6cbc089a-8927-4ace-b867-f31502ad21be",
+      "http": 200,
+      "assistant": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cwhat connectors are Connected right now?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`.",
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "unrelated_how_many_runs",
+      "user": "how many runs happened this week?",
+      "conversationId": "06be8baf-0cae-4c42-9a1f-e827676adeb8",
+      "http": 200,
+      "assistant": "You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks like a different request (\u201chow many runs happened this week?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`.",
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "meta_what_can_you_do",
+      "user": "what can you do?",
+      "conversationId": "3eafa73c-a473-461e-89eb-01ba3c6223c9",
+      "http": 200,
+      "assistant": "I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo. Writes go through catalog write-authority with explicit approval when required (Decision Queue / reply **yes**). I can also help with multi-step plans, run history, and marketplace intelligence packs once connectors are Connected.",
+      "pass": true,
+      "failures": []
+    }
+  ],
+  "health": {
+    "status": "ok",
+    "timestamp": "2026-07-23T06:41:00.837791+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "19bdf7d286ed49f26fc5e26a919b148584abe122",
+    "ai_disabled": false,
+    "unified_turn_shadow_enabled": true,
+    "unified_turn_live_enabled": true,
+    "unified_turn_embedding_tool_retrieval": true,
+    "unified_turn_embed_min_catalog_tools": 40,
+    "unified_turn_task_model_tier": "low",
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "git_sha": "19bdf7d286ed49f26fc5e26a919b148584abe122",
+  "finished_at": "2026-07-23T06:41:29.513193+00:00",
+  "ok": true
+}

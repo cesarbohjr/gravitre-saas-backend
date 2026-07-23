@@ -15,7 +15,10 @@ supabase/.temp
 supabase/.env
 supabase/supabase/
 
-# OS and IDE
+# Delivery smoke scratch (canonical artifacts live in docs/delivery/*.json)
+docs/delivery/_phase*/
+.git-tmp.txt
+
 .DS_Store
 Thumbs.db
 .cursor-tmp/
