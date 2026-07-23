@@ -1,0 +1,30 @@
+{
+  "feature": "unified_turn_phase4_cutover",
+  "checkedAt": "2026-07-22T18:44:35.429941+00:00",
+  "apiBase": "https://api.gravitre.app",
+  "git_sha": "444371f960571d83c2d7af89def200fa241d4c51",
+  "expectMinSha": "444371f9",
+  "tip_ok": true,
+  "conversationId": "8e084545-bf30-496a-a8c9-21eecd9de6b5",
+  "http": 200,
+  "assistantPreview": "Hey \u2014 here when you need a connector run, a plan, or a quick check.",
+  "routing": {
+    "routingTier": "simple",
+    "modelTier": "low",
+    "latencyBudgetMs": {
+      "ttft": 800,
+      "total": 8000
+    },
+    "maxToolRounds": 15,
+    "pinnedFast": false,
+    "reasons": [
+      "default_length"
+    ],
+    "turnShape": "conversational",
+    "conversationalCategory": "greeting"
+  },
+  "liveAudit": null,
+  "shadowAuditPresent": true,
+  "verdict": "PARTIAL",
+  "notes": "PASS = tip has cutover code, chat works, unified_turn.live.completed with live_served. PARTIAL = tip+chat OK but no live audit (LIVE env not loaded or still shadow-only)."
+}
