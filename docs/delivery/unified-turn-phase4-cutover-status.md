@@ -39,9 +39,15 @@ Rollback: `UNIFIED_TURN_LIVE_ENABLED=false` + redeploy (or bump `UNIFIED_TURN_RE
 
 ## Next steps (separate from this sign-off)
 
-1. Connect HubSpot + Slack in the isolated org (still the one remaining human action, unchanged across several rounds now).
-2. Run the real STA-305 live flow once connected — get an actual conversation ID and Slack draft transcript.
-3. Schedule removal of the old pipeline code (`conversational_turn_gate`, `chat_action_mapper` regex path, the old phrase-bank-as-primary-generator), per the original Phase 4 plan, as its own reviewed step now that sign-off has happened — **not** bundled into this close.
+| # | Step | Status | Notes |
+|---|------|--------|-------|
+| 1 | Connect HubSpot + Slack in isolated org `f07e57c0-1501-4000-8000-c04e57a00001` | **BLOCKED — human** | DB check 2026-07-23: only `apollo` `healthy`. OAuth at `/connectors` (or admin connect) into that org — not agent-simulatable. |
+| 2 | Run real STA-305 live (`STA305_LIVE=1`) | **WAITING on #1** | Need conversation id + Slack draft transcript; mapper-only is not enough. |
+| 3 | Old pipeline removal (reviewed step) | **SCHEDULED** | Plan: [`unified-turn-phase4-old-pipeline-removal.md`](unified-turn-phase4-old-pipeline-removal.md) — R0 soak → R1 flags → R2 deletes. Not started. |
+
+### Human action for #1
+
+Sign in as an actor that can write connectors for org `f07e57c0-…` (conversation-smoke / isolated test org — **not** the operator customer org). Connect **HubSpot** and **Slack** until both show Connected/Healthy. Then say go — agent will re-query connectors and run `STA305_LIVE=1 python scripts/smoke-sta305-slack-draft.py`.
 
 ## Monitoring window (closed earlier 2026-07-23)
 
