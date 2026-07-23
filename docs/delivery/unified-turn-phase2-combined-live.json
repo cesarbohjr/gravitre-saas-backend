@@ -731,7 +731,9 @@
     "sta305_slack_omit_detail": {
       "exit_code": 0,
       "stdout_tail": "{\n  \"ticket\": \"STA-305\",\n  \"probed_at\": \"2026-07-23T07:56:25.369751+00:00\",\n  \"local_mapper\": {\n    \"segment\": \"draft a follow-up in Slack for approval\",\n    \"matched_action\": \"slack.post_message\",\n    \"kind\": \"write\",\n    \"score\": 48.0,\n    \"args\": {\n      \"channel\": \"general\",\n      \"message\": \"follow-up\",\n      \"text\": \"follow-up\"\n    },\n    \"pass\": true\n  },\n  \"live\": {\n    \"skipped\": true,\n    \"reason\": \"STA-305 live requires connected HubSpot + Slack in isolated test org; missing=['hubspot', 'slack'] connected=['apollo']\",\n    \"org_id\": \"f07e57c0-1501-4000-8000-c04e57a00001\",\n    \"connected_integrations\": [\n      \"apollo\"\n    ],\n    \"pass\": false\n  },\n  \"verdict\": \"BLOCKED\"\n}\n",
-      "stderr_tail": "STA-305 live BLOCKED: connect HubSpot + Slack in isolated conversation org, then re-run.\n"
+      "stderr_tail": "STA-305 live BLOCKED: connect HubSpot + Slack in isolated conversation org, then re-run.\n",
+      "dashboard_label": "BLOCKED \u2014 OPEN (not live PASS)",
+      "note": "exit_code 0 in this historical run was harness softening; reverted to exit 2 for BLOCKED going forward"
     },
     "persona_drift_30": {
       "exit_code": 0,
@@ -800,7 +802,7 @@
     "imperfect_input_all_ok": true,
     "imperfect_input_stable_across_rounds": true,
     "imperfect_unique_cases": 16,
-    "sta305_omit_detail": 0,
+    "sta305_omit_detail": "BLOCKED \u2014 OPEN (HubSpot+Slack not connected in isolated org; local mapper-only; NOT a live PASS)",
     "run_history_stale_plan": 0,
     "persona_drift_30_turn": 0,
     "send_email_self_contradiction": 0,
@@ -833,5 +835,6 @@
   "finished_at": "2026-07-23T08:00:53.709271+00:00",
   "ok": true,
   "verdict": "PASS",
-  "classical_all_ok": true
+  "classical_all_ok": true,
+  "sta305_live_open": true
 }
