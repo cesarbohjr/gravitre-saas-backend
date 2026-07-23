@@ -43,7 +43,7 @@ Rollback: `UNIFIED_TURN_LIVE_ENABLED=false` + redeploy (or bump `UNIFIED_TURN_RE
 |---|------|--------|-------|
 | 1 | Connect HubSpot + Slack in isolated org `f07e57c0-1501-4000-8000-c04e57a00001` | **PASS** | [STA-333](https://linear.app/staqbot/issue/STA-333). OAuth clones from operator workspace via `scripts/provision-isolated-hubspot-slack-connectors.py` (not UI OAuth). Artifact: [`isolated-hubspot-slack-connector-provision.json`](isolated-hubspot-slack-connector-provision.json). |
 | 2 | Run real STA-305 live (`STA305_LIVE=1`) | **PASS** | Same ticket. See **STA-305 live exception cleared** below. |
-| 3 | Old pipeline removal (reviewed step) | **R1 shipping** | [STA-334](https://linear.app/staqbot/issue/STA-334). R1: narrow standard defer + skip phrase-bank primary when LIVE on + `live.fallthrough` audits. R2 deletes wait on soak. Plan: [`unified-turn-phase4-old-pipeline-removal.md`](unified-turn-phase4-old-pipeline-removal.md). |
+| 3 | Old pipeline removal (reviewed step) | **R1 PASS** | [STA-334](https://linear.app/staqbot/issue/STA-334). Tips `23dfa298` / `6801a82f` — LIVE conversational + fallthrough audits + pending modify → classical. Phase 4 monitor PASS; imperfect 16/16. R2 deletes wait on soak. |
 
 ## STA-305 live exception cleared (2026-07-23)
 

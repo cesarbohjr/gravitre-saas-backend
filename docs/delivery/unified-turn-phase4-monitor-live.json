@@ -1,52 +1,52 @@
 {
   "feature": "unified_turn_phase4_monitor",
-  "started_at": "2026-07-23T09:33:53.538564+00:00",
+  "started_at": "2026-07-23T19:11:13.501854+00:00",
   "ttft_target_ms": 200,
   "copy_cases": [
     {
       "id": "greeting",
-      "conversation_id": "106eb8cb-b4db-4d05-81a1-e96716c7ee88",
+      "conversation_id": "8f62144b-2abb-4a0a-8ab4-27d98bb659e1",
       "http": 200,
-      "action": "unified_turn.live.fallthrough",
-      "created_at": "2026-07-23T09:34:02.259553+00:00",
-      "live_served": false,
+      "action": "unified_turn.live.completed",
+      "created_at": "2026-07-23T19:11:18.065207+00:00",
+      "live_served": true,
       "outcome_kind": "conversational_reply",
-      "first_token_ms": 704,
-      "assistant_preview": "Hey.\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document?",
+      "first_token_ms": 647,
+      "assistant_preview": "Good, thanks. What\u2019s on your mind?",
       "leaks": [],
-      "ok": false
+      "ok": true
     },
     {
       "id": "thanks",
-      "conversation_id": "64e9c2d9-2e1a-4a6e-a4a6-2027aafd9342",
+      "conversation_id": "6639dc5c-f1be-4d2a-9714-4f310e5b0969",
       "http": 200,
-      "action": "unified_turn.live.fallthrough",
-      "created_at": "2026-07-23T09:35:21.717575+00:00",
-      "live_served": false,
-      "outcome_kind": "clarifying_question",
-      "first_token_ms": 451,
-      "assistant_preview": "You\u2019re welcome.\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document?",
+      "action": "unified_turn.live.completed",
+      "created_at": "2026-07-23T19:11:25.635563+00:00",
+      "live_served": true,
+      "outcome_kind": "conversational_reply",
+      "first_token_ms": 826,
+      "assistant_preview": "Anytime. What\u2019s on your mind?",
       "leaks": [],
-      "ok": false
+      "ok": true
     },
     {
       "id": "email_intent",
-      "conversation_id": "ed84c702-eadd-4fa7-9dff-355cf37098ef",
+      "conversation_id": "c3516771-84ab-4350-a117-d247b345e841",
       "http": 200,
-      "action": "unified_turn.live.fallthrough",
-      "created_at": "2026-07-23T09:35:42.923974+00:00",
-      "live_served": false,
+      "action": "unified_turn.live.completed",
+      "created_at": "2026-07-23T19:11:32.810062+00:00",
+      "live_served": true,
       "outcome_kind": "conversational_reply",
-      "first_token_ms": 6348,
-      "assistant_preview": "To send gmail message, I need to know recipient, subject, body. Could you share that?",
+      "first_token_ms": 799,
+      "assistant_preview": "I can draft it, but I need two things first:\n\n- what you want the email to say\n- Stephanie\u2019s email address, if you want me to send it rather than just draft it",
       "leaks": [],
-      "ok": false
+      "ok": true
     }
   ],
   "write_case": {
-    "conversation_id": "ed9f619e-4dc6-4442-8daf-06e3ee3951f9",
+    "conversation_id": "9a89326b-d75b-426a-9ba0-e7ade0150062",
     "http": 200,
-    "list_name": "gravitre-p4-mon-e4ff46a8",
+    "list_name": "gravitre-p4-mon-07617e37",
     "pending_status": "awaiting_confirm",
     "invoke_action": "apollo.lists.create",
     "approval_copy": true,
@@ -54,36 +54,36 @@
     "live_action": "unified_turn.live.fallthrough",
     "live_served": false,
     "outcome_kind": "connector_tool_proposal",
-    "assistant_preview": "I can create a contact list named **gravitre-p4-mon-e4ff46a8** in Apollo.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
+    "assistant_preview": "I can create a contact list named **gravitre-p4-mon-07617e37** in Apollo.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
     "ok": true
   },
   "ttft": {
     "n": 4,
-    "min_ms": 451,
-    "p50_ms": 735,
-    "max_ms": 6348,
+    "min_ms": 647,
+    "p50_ms": 812,
+    "max_ms": 900,
     "samples_ms": [
-      451,
-      704,
-      766,
-      6348
+      647,
+      799,
+      826,
+      900
     ],
     "target_ms": 200,
     "target_met": false
   },
   "gates": {
     "live_enabled": "PASS",
-    "copy_leaks": "FAIL",
+    "copy_leaks": "PASS",
     "write_approval_staged": "PASS",
     "ttft_200ms": "MISS"
   },
   "health": {
-    "git_sha": "2bb0957110e120fe4e1fbc16997bfe4755ab4d61",
+    "git_sha": "6801a82f19a581def6aa5694c45d370cd7c0957f",
     "unified_turn_live_enabled": true,
     "unified_turn_shadow_enabled": true,
-    "timestamp": "2026-07-23T09:33:54.467423+00:00"
+    "timestamp": "2026-07-23T19:11:13.794915+00:00"
   },
-  "ok": false,
-  "finished_at": "2026-07-23T09:36:31.331123+00:00",
+  "ok": true,
+  "finished_at": "2026-07-23T19:12:05.213712+00:00",
   "rollback": "Set UNIFIED_TURN_LIVE_ENABLED=false then redeploy (or bump UNIFIED_TURN_RESTART_NONCE)."
 }
