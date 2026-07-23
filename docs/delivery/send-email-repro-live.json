@@ -1,0 +1,50 @@
+{
+  "started_at": "2026-07-23T08:00:28.226730+00:00",
+  "probes": [
+    {
+      "message": "send an email",
+      "conversation_id": "c32b4e74-4766-41c7-a104-100a11aba2b9",
+      "http": 200,
+      "assistant": "I need the recipient, subject, and what you want the email to say.",
+      "unified_turn_live_sse": true,
+      "audit_action": "unified_turn.live.completed",
+      "audit_created_at": "2026-07-23T08:00:34.463302+00:00",
+      "outcome_kind": "conversational_reply",
+      "live_served": true,
+      "contradiction_map_fail_plus_send_listed": false,
+      "ok": true
+    },
+    {
+      "message": "Send an email",
+      "conversation_id": "a3f75617-31fa-4e34-95d6-ebca8c23982d",
+      "http": 200,
+      "assistant": "I need the recipient, subject, and message.",
+      "unified_turn_live_sse": true,
+      "audit_action": "unified_turn.live.completed",
+      "audit_created_at": "2026-07-23T08:00:42.457938+00:00",
+      "outcome_kind": "conversational_reply",
+      "live_served": true,
+      "contradiction_map_fail_plus_send_listed": false,
+      "ok": true
+    },
+    {
+      "message": "Send an email to Stephanie about the proposal",
+      "conversation_id": "ce90ebeb-0abf-4f22-8c23-121be6cc5a68",
+      "http": 200,
+      "assistant": "I can draft it, but I need two things first:\n\n- Stephanie\u2019s email address\n- The main points you want in the proposal email\n\nIf you want, I can also make it concise and formal.",
+      "unified_turn_live_sse": true,
+      "audit_action": "unified_turn.live.completed",
+      "audit_created_at": "2026-07-23T08:00:50.231745+00:00",
+      "outcome_kind": "conversational_reply",
+      "live_served": true,
+      "contradiction_map_fail_plus_send_listed": false,
+      "ok": true
+    }
+  ],
+  "health": {
+    "git_sha": "e58861233291c61452ddf480f13dc0fa782ec3f7",
+    "live": true,
+    "shadow": true
+  },
+  "finished_at": "2026-07-23T08:00:53.546684+00:00"
+}

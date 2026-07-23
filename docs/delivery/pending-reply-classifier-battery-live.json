@@ -1,10 +1,10 @@
 {
-  "checkedAt": "2026-07-22T17:54:25.836993+00:00",
+  "checkedAt": "2026-07-23T07:53:28.419794+00:00",
   "apiBase": "https://api.gravitre.app",
   "orgId": "f07e57c0-1501-4000-8000-c04e57a00001",
   "actor": "conversation-smoke-sa@gravitre.app",
-  "git_sha": "444371f960571d83c2d7af89def200fa241d4c51",
-  "expectSha": "444371f9",
+  "git_sha": "e58861233291c61452ddf480f13dc0fa782ec3f7",
+  "expectSha": "e5886123",
   "tip_ok": true,
   "caseCount": 24,
   "passed": 24,
@@ -16,10 +16,10 @@
       "id": "known_meta_email_or_name",
       "seed": "gmail",
       "user": "do you need the email address or name?",
-      "conversationId": "1bbcb70d-fbf0-4e8d-b4dd-905c18ea1a46",
+      "conversationId": "bc902ef4-ef7f-4530-8387-275e5e6df113",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:50:59.007759+00:00",
+        "at": "2026-07-23T07:50:59.656947+00:00",
         "assistant": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body."
       },
       "judgment": {
@@ -35,10 +35,10 @@
       "id": "known_unrelated_workflows",
       "seed": "gmail",
       "user": "What workflows have been ran?",
-      "conversationId": "470ad839-67a2-4bab-8e3f-fc65e83f7ec4",
+      "conversationId": "72e808b0-ef69-471e-b71a-5f5fbe589ea7",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:51:06.915301+00:00",
+        "at": "2026-07-23T07:51:05.720340+00:00",
         "assistant": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cWhat workflows have been ran?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`."
       },
       "judgment": {
@@ -54,10 +54,10 @@
       "id": "known_stale_yes_after_unrelated",
       "seed": "orch",
       "user": "What workflows have been ran?",
-      "conversationId": "eea2e34a-b3fa-4c02-866e-e8049fc16c71",
+      "conversationId": "e64325b9-46df-49ef-89f3-642d2c353e8d",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:51:13.820126+00:00",
+        "at": "2026-07-23T07:51:11.084734+00:00",
         "assistant": "You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks like a different request (\u201cWhat workflows have been ran?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`."
       },
       "judgment": {
@@ -68,7 +68,7 @@
         "assistant_snippet": "You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks like a different request (\u201cWhat workflows have been ran?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with t"
       },
       "followup": {
-        "assistant_snippet": "The orchestration plan is empty.",
+        "assistant_snippet": "I need the missing HubSpot details before I can continue.\n\nWhat record should I search or enrich, and what deal should be created?",
         "ok": true,
         "failures": []
       }
@@ -77,10 +77,10 @@
       "id": "meta_what_format",
       "seed": "gmail",
       "user": "what format?",
-      "conversationId": "5a8bac6f-0405-4b53-8d6c-abb7ed145275",
+      "conversationId": "760a02d5-2dd0-403a-b0ee-554cb3e13156",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:51:26.663698+00:00",
+        "at": "2026-07-23T07:51:22.876531+00:00",
         "assistant": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body."
       },
       "judgment": {
@@ -96,10 +96,10 @@
       "id": "meta_which_one",
       "seed": "gmail",
       "user": "which one do you mean?",
-      "conversationId": "437648d7-83d8-45be-9b91-76d19452e854",
+      "conversationId": "ed20a5e7-75ea-4dab-b67e-bba15f9876ab",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:51:33.708958+00:00",
+        "at": "2026-07-23T07:51:28.868734+00:00",
         "assistant": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body."
       },
       "judgment": {
@@ -115,10 +115,10 @@
       "id": "meta_why_need",
       "seed": "gmail",
       "user": "why do you need that?",
-      "conversationId": "26758ff6-bc73-484f-9019-65b106afd55d",
+      "conversationId": "b4e90712-b51d-4976-b644-7375db9b8fb1",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:51:41.765191+00:00",
+        "at": "2026-07-23T07:51:35.144102+00:00",
         "assistant": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body."
       },
       "judgment": {
@@ -134,10 +134,10 @@
       "id": "meta_should_i_provide_email",
       "seed": "gmail",
       "user": "should I provide the email or a name?",
-      "conversationId": "c4a081c3-50d2-4fcb-949f-8f8a8804336c",
+      "conversationId": "32f2e6b9-6fe4-4c4e-ab91-91ed6a692288",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:51:48.306418+00:00",
+        "at": "2026-07-23T07:51:40.401918+00:00",
         "assistant": "I need the **email address** (for example `name@company.com`). A display name alone is not enough unless I can resolve it to an address.\nFor the **message body**, send the text you want delivered.\nStill needed for Send Gmail message: recipient, body."
       },
       "judgment": {
@@ -153,10 +153,10 @@
       "id": "meta_slack_what_message",
       "seed": "slack",
       "user": "what should I put in the message body?",
-      "conversationId": "cf14a6e4-a2e1-4e2b-b313-e9160163b2aa",
+      "conversationId": "9a4f43ee-764f-4f6a-9302-2956b2192c56",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:51:55.284910+00:00",
+        "at": "2026-07-23T07:51:46.119156+00:00",
         "assistant": "For the **message body**, send the text you want delivered.\nStill needed for Post Slack message: message."
       },
       "judgment": {
@@ -172,10 +172,10 @@
       "id": "unrelated_connectors",
       "seed": "gmail",
       "user": "what connectors are Connected right now?",
-      "conversationId": "3358faea-e993-4a27-acf4-a207c72074a1",
+      "conversationId": "da794a69-79a5-4b75-93e6-6dd68441ec02",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:52:02.009699+00:00",
+        "at": "2026-07-23T07:51:51.501178+00:00",
         "assistant": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cwhat connectors are Connected right now?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`."
       },
       "judgment": {
@@ -191,18 +191,18 @@
       "id": "unrelated_weather",
       "seed": "slack",
       "user": "what's the weather in Seattle?",
-      "conversationId": "d146ad7b-feff-4a6b-ac61-1d755b66fda2",
+      "conversationId": "4673e6c0-d61b-4c90-89f5-385ad37e0e05",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:52:09.441066+00:00",
-        "assistant": "Doing well \u2014 here when you need a connector run, a plan, or a quick check.\n\nYou have a pending item (**Post Slack message**) that isn't finished. Your new message looks like a different request (\u201cwhat's the weather in Seattle?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`."
+        "at": "2026-07-23T07:51:57.150833+00:00",
+        "assistant": "You have a pending item (**Post Slack message**) that isn't finished. Your new message looks like a different request (\u201cwhat's the weather in Seattle?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`."
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": "unrelated",
         "expect_intent": null,
-        "assistant_snippet": "Doing well \u2014 here when you need a connector run, a plan, or a quick check.\n\nYou have a pending item (**Post Slack message**) that isn't finished. Your new message looks like a different request (\u201cwhat's the weather in Seattle?\u201d).\n\nShould I **abandon** the pending item and handle "
+        "assistant_snippet": "You have a pending item (**Post Slack message**) that isn't finished. Your new message looks like a different request (\u201cwhat's the weather in Seattle?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the ne"
       },
       "followup": null
     },
@@ -210,10 +210,10 @@
       "id": "unrelated_apollo",
       "seed": "orch",
       "user": "Create an Apollo contact list named Battery Interrupt",
-      "conversationId": "de47e5d6-97c7-43bd-8948-e3ced25e1d33",
+      "conversationId": "fbeea56b-5c87-4442-a0fa-2a3017ebf02a",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:52:16.161965+00:00",
+        "at": "2026-07-23T07:52:03.376696+00:00",
         "assistant": "You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks like a different request (\u201cCreate an Apollo contact list named Battery Interrupt\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`."
       },
       "judgment": {
@@ -229,10 +229,10 @@
       "id": "unrelated_how_many_runs",
       "seed": "orch",
       "user": "how many runs happened this week?",
-      "conversationId": "cd929205-a9f7-4445-bfcb-36dee68dd4d9",
+      "conversationId": "50898b96-a78c-4883-89ff-9f545f026b65",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:52:23.194910+00:00",
+        "at": "2026-07-23T07:52:09.146139+00:00",
         "assistant": "You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks like a different request (\u201chow many runs happened this week?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`."
       },
       "judgment": {
@@ -248,10 +248,10 @@
       "id": "unrelated_search_hubspot",
       "seed": "gmail",
       "user": "search HubSpot for Acme contacts",
-      "conversationId": "ab835fa5-8eb8-4614-a526-fd2a7ed300d4",
+      "conversationId": "9d463502-19f9-4729-8d79-e072a43c1b37",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:52:29.561466+00:00",
+        "at": "2026-07-23T07:52:14.508550+00:00",
         "assistant": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201csearch HubSpot for Acme contacts\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`."
       },
       "judgment": {
@@ -267,18 +267,18 @@
       "id": "modify_subject_q3",
       "seed": "gmail",
       "user": "actually make the subject about Q3 instead",
-      "conversationId": "0af414c7-a2db-4f3d-9844-443242c2a872",
+      "conversationId": "23993b16-f651-438e-94d8-01b2246870b0",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:52:38.070610+00:00",
-        "assistant": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors)."
+        "at": "2026-07-23T07:52:20.458020+00:00",
+        "assistant": "Got it. I still need the recipient and the body."
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": "modify",
-        "assistant_snippet": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors)."
+        "assistant_snippet": "Got it. I still need the recipient and the body."
       },
       "followup": null
     },
@@ -286,18 +286,18 @@
       "id": "modify_skip_step",
       "seed": "orch",
       "user": "skip step 1 and just create the deal",
-      "conversationId": "e9161b94-6902-4a1a-aaa6-21d17801037e",
+      "conversationId": "038ba7f3-83c1-4042-b3ab-47586082bae2",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:53:13.889058+00:00",
-        "assistant": "I can\u2019t create the deal from the connected tools available.\n\nSource: connector status shows Apollo is Connected, Healthy, Authenticated, and write-capable, but the available Apollo actions are contacts, lists, tasks, people search, company search, and enrichment. No deal-creation action or CRM deal connector is available.\n\nNext move: connect or enable the CRM/deal connector, then provide the deal details:\n\n- Deal name\n- Company or account\n- Contact\n- Value\n- Stage\n- Close date\n- Owner, if requir"
+        "at": "2026-07-23T07:52:31.489158+00:00",
+        "assistant": "I can\u2019t skip the lookup. The deal step depends on the HubSpot enrichment first.\n\nReply with **hold** if you want to keep the current plan open, or give me the contact/company details and I\u2019ll continue."
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": "modify",
-        "assistant_snippet": "I can\u2019t create the deal from the connected tools available.\n\nSource: connector status shows Apollo is Connected, Healthy, Authenticated, and write-capable, but the available Apollo actions are contacts, lists, tasks, people search, company search, and enrichment. No deal-creation"
+        "assistant_snippet": "I can\u2019t skip the lookup. The deal step depends on the HubSpot enrichment first.\n\nReply with **hold** if you want to keep the current plan open, or give me the contact/company details and I\u2019ll continue."
       },
       "followup": null
     },
@@ -305,18 +305,18 @@
       "id": "modify_change_channel",
       "seed": "slack",
       "user": "change the channel to #sales instead",
-      "conversationId": "0d41393f-60e0-4603-a488-363577863613",
+      "conversationId": "2dafba1d-9e73-4b54-b4b3-23be6e9f8329",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:53:22.927694+00:00",
-        "assistant": "I couldn't complete that: Connect Slack at /connectors to run this action.\n\nSlack isn't ready. Connect it now? Reply **yes** or open [Connect Slack](/connectors)."
+        "at": "2026-07-23T07:52:38.299086+00:00",
+        "assistant": "I can do that, but the pending Slack message still needs the message text.\n\nReply with the message, and I\u2019ll use **#sales**."
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": "modify",
-        "assistant_snippet": "I couldn't complete that: Connect Slack at /connectors to run this action.\n\nSlack isn't ready. Connect it now? Reply **yes** or open [Connect Slack](/connectors)."
+        "assistant_snippet": "I can do that, but the pending Slack message still needs the message text.\n\nReply with the message, and I\u2019ll use **#sales**."
       },
       "followup": null
     },
@@ -324,18 +324,18 @@
       "id": "modify_rather_cancel_body",
       "seed": "gmail",
       "user": "rather use a shorter body without the signature",
-      "conversationId": "6fc524b4-f8fd-4ba3-add4-252dc921ce3b",
+      "conversationId": "b7732a03-d3c3-416f-98c9-89444faa4c95",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:53:31.570839+00:00",
-        "assistant": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors)."
+        "at": "2026-07-23T07:52:45.028406+00:00",
+        "assistant": "Sure. Send me the recipient, and I\u2019ll keep the Gmail body short with no signature."
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": "modify",
-        "assistant_snippet": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors)."
+        "assistant_snippet": "Sure. Send me the recipient, and I\u2019ll keep the Gmail body short with no signature."
       },
       "followup": null
     },
@@ -343,18 +343,18 @@
       "id": "modify_dont_include_cc",
       "seed": "gmail",
       "user": "don't include a CC, just the recipient",
-      "conversationId": "75b10fab-7be0-419c-88d8-093802b09519",
+      "conversationId": "4c371e26-c4a1-4856-88ee-a44a4c1f6494",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:53:40.305671+00:00",
-        "assistant": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors)."
+        "at": "2026-07-23T07:52:51.590907+00:00",
+        "assistant": "Got it \u2014 just the recipient. Who should it go to?"
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": "modify",
-        "assistant_snippet": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors)."
+        "assistant_snippet": "Got it \u2014 just the recipient. Who should it go to?"
       },
       "followup": null
     },
@@ -362,18 +362,18 @@
       "id": "ambiguous_hmm",
       "seed": "gmail",
       "user": "hmm",
-      "conversationId": "c0b54a79-871e-4d99-aecc-13f1173006c9",
+      "conversationId": "588f3fc9-3198-43ae-a574-db40f36495f4",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:53:48.175233+00:00",
-        "assistant": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors)."
+        "at": "2026-07-23T07:52:57.779914+00:00",
+        "assistant": "Still waiting on the Gmail recipient and body."
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": null,
-        "assistant_snippet": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors)."
+        "assistant_snippet": "Still waiting on the Gmail recipient and body."
       },
       "followup": null
     },
@@ -381,10 +381,10 @@
       "id": "ambiguous_maybe",
       "seed": "orch",
       "user": "maybe",
-      "conversationId": "07adaa20-1d77-4c4d-9025-af419baca7b8",
+      "conversationId": "a8f9c075-65e3-4731-870c-e3ff731e088b",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:53:54.634436+00:00",
+        "at": "2026-07-23T07:53:03.532386+00:00",
         "assistant": "I still have a plan open (**Search HubSpot then create a deal**). Say **yes** to continue, **cancel** to drop it, or tell me what to change."
       },
       "judgment": {
@@ -400,18 +400,18 @@
       "id": "ambiguous_ok_then",
       "seed": "slack",
       "user": "ok then\u2026",
-      "conversationId": "1085b6fc-37ca-4ba6-8b63-efeb001f491b",
+      "conversationId": "8e64d160-5e9f-491d-aeb1-17caa58890af",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:54:02.796155+00:00",
-        "assistant": "I couldn't complete that: Connect Slack at /connectors to run this action.\n\nSlack isn't ready. Connect it now? Reply **yes** or open [Connect Slack](/connectors)."
+        "at": "2026-07-23T07:53:10.689171+00:00",
+        "assistant": "What message should I post in Slack?"
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": null,
-        "assistant_snippet": "I couldn't complete that: Connect Slack at /connectors to run this action.\n\nSlack isn't ready. Connect it now? Reply **yes** or open [Connect Slack](/connectors)."
+        "assistant_snippet": "What message should I post in Slack?"
       },
       "followup": null
     },
@@ -419,18 +419,18 @@
       "id": "slot_email",
       "seed": "gmail",
       "user": "recipient is battery.probe@acme.test",
-      "conversationId": "79e17977-523d-455a-abd1-fccfdda7340a",
+      "conversationId": "d9e1faef-f784-4079-b646-2697aafb7410",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:54:11.280955+00:00",
-        "assistant": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors)."
+        "at": "2026-07-23T07:53:16.508712+00:00",
+        "assistant": "Got it. I still need the email body."
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": "slot_answer",
-        "assistant_snippet": "I couldn't complete that: Connect Gmail at /connectors to run this action.\n\nGmail isn't ready. Connect it now? Reply **yes** or open [Connect Gmail](/connectors)."
+        "assistant_snippet": "Got it. I still need the email body."
       },
       "followup": null
     },
@@ -438,18 +438,18 @@
       "id": "reject_cancel",
       "seed": "gmail",
       "user": "cancel that",
-      "conversationId": "525335de-58f8-4941-b23c-324cadbdaf5d",
+      "conversationId": "511018b5-b5c7-43cf-ba58-84885e403ff9",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:54:18.407909+00:00",
-        "assistant": "Cancelled the pending plan. What should we do instead?"
+        "at": "2026-07-23T07:53:22.557984+00:00",
+        "assistant": "Canceled. The Gmail message is dropped."
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": "reject",
-        "assistant_snippet": "Cancelled the pending plan. What should we do instead?"
+        "assistant_snippet": "Canceled. The Gmail message is dropped."
       },
       "followup": null
     },
@@ -457,18 +457,18 @@
       "id": "confirm_orch_yes",
       "seed": "orch",
       "user": "yes",
-      "conversationId": "705bf38c-9adf-4cc3-b5bd-5d1026f0a202",
+      "conversationId": "12417673-7637-4f6d-9dc4-173b9b33d12d",
       "turn": {
         "http": 200,
-        "at": "2026-07-22T17:54:25.836617+00:00",
-        "assistant": "The orchestration plan is empty."
+        "at": "2026-07-23T07:53:28.419335+00:00",
+        "assistant": "Approved. I\u2019ll wait for the HubSpot step to be run."
       },
       "judgment": {
         "ok": true,
         "failures": [],
         "inferred_intent": null,
         "expect_intent": "confirm",
-        "assistant_snippet": "The orchestration plan is empty."
+        "assistant_snippet": "Approved. I\u2019ll wait for the HubSpot step to be run."
       },
       "followup": null
     }

@@ -4,21 +4,17 @@ Updated: 2026-07-23
 
 ## Verdict
 
-**Imperfect-input: PASS** on tip `22a573c5…` (16×2).  
-**Combined functional close: NOT clean** — see [`unified-turn-phase2-combined-live-status.md`](unified-turn-phase2-combined-live-status.md).
+**PASS** — combined functional matrix clean on tip `e5886123…`.
 
 | Gate | Verdict | Evidence |
 |------|---------|----------|
-| Prod tip (imperfect dual) | **PASS** | `/health` → `22a573c59505d01135f4d5d4d83f6bbbf54e026e` |
-| Imperfect-input 16×2 | **PASS 32/32** | [`unified-turn-imperfect-input-dual-live.json`](unified-turn-imperfect-input-dual-live.json) — 0 typo echo, 0 spelling narration |
-| Combined suite tip | tip advanced to `e749a88b…` mid-run (descendant; LIVE on) | [`unified-turn-phase2-combined-live.json`](unified-turn-phase2-combined-live.json) |
-| Pending-reply | **PARTIAL 20/24** | nested classical battery |
-| Conversational | **FAIL 14/20** | nested classical battery |
-| Knowledge-boundary targeted | **FAIL** (outcome allow-list) | combined matrix |
-| STA-305 / run-history | exit 2 | same artifact |
-| Persona drift / send-email repro | **PASS** (exit 0) | same artifact |
-| TTFT &lt;200ms | **NOT MET** | Phase 3 |
+| Prod tip | **PASS** | `/health` → `e58861233291c61452ddf480f13dc0fa782ec3f7` |
+| Targeted + imperfect | **21/21** (16 imperfect) | [`unified-turn-phase2-combined-live.json`](unified-turn-phase2-combined-live.json) |
+| Pending-reply | **24/24** | nested classical battery |
+| Conversational | **20/20** | nested classical battery |
+| Knowledge-boundary | **PASS** | matrix |
+| STA-305 / run-history / persona / send-email | **PASS** (exit 0) | same artifact |
+| Full multi-step email | **PARTIAL** | single-turn only |
+| TTFT &lt;200ms | Phase 3 | still MISS |
 
-## Standing rule
-
-Write-authority / approval / Module A unchanged. Imperfect-input PASS does **not** close the older functional matrix.
+Details: [`unified-turn-phase2-combined-live-status.md`](unified-turn-phase2-combined-live-status.md).

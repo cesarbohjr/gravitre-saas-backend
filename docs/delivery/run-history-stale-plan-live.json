@@ -1,160 +1,21 @@
 {
-  "checkedAt": "2026-07-22T17:58:31.478863+00:00",
+  "checkedAt": "2026-07-23T07:55:58.573402+00:00",
   "apiBase": "https://api.gravitre.app",
   "orgId": "f07e57c0-1501-4000-8000-c04e57a00001",
   "actor": "conversation-smoke-sa@gravitre.app",
-  "expectSha": "444371f9",
+  "expectSha": "e5886123",
   "fixCommit": "481f9862",
   "repros": {
     "fastRunHistory": {
-      "conversationId": "021f6897-e88f-41b2-8eaf-d9f1b0e52c1e",
+      "conversationId": "3ab8b207-cd85-423f-bae6-51833c181aab",
       "turn": {
         "http": 200,
-        "assistant": "",
-        "tools": [
-          {
-            "type": "tool-input-available",
-            "toolName": "searchKnowledgeBase",
-            "toolCallId": "call-21f20e7eba88",
-            "input": {
-              "query": "What workflows have been ran?",
-              "limit": 5
-            }
-          },
-          {
-            "type": "tool-output-available",
-            "toolCallId": "call-21f20e7eba88",
-            "output": {
-              "results": [],
-              "sources": [],
-              "totalResults": 0,
-              "method": "unified_retrieval",
-              "scope": "organization"
-            }
-          },
-          {
-            "type": "tool-input-available",
-            "toolName": "getWorkflowRuns",
-            "toolCallId": "call-1b7f82d0f735",
-            "input": {
-              "limit": 10
-            }
-          },
-          {
-            "type": "tool-output-available",
-            "toolCallId": "call-1b7f82d0f735",
-            "output": {
-              "runs": [
-                {
-                  "id": "a9ab516d-cdf5-49a1-9b08-f86e3cfb8e4c",
-                  "workflowId": null,
-                  "workflowName": null,
-                  "status": "failed",
-                  "runType": "execute",
-                  "createdAt": "2026-07-22T17:54:07.407664+00:00",
-                  "completedAt": "2026-07-22T17:54:07.519304+00:00",
-                  "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
-                },
-                {
-                  "id": "c94c75cd-a004-4b11-87d4-2086c49d898c",
-                  "workflowId": null,
-                  "workflowName": null,
-                  "status": "failed",
-                  "runType": "execute",
-                  "createdAt": "2026-07-22T17:53:58.827695+00:00",
-                  "completedAt": "2026-07-22T17:53:58.89866+00:00",
-                  "errorMessage": "Failed \u2014 Connect Slack at /connectors to run this action."
-                },
-                {
-                  "id": "b59be4f4-c3d4-4947-bec4-6a9c01e0da6c",
-                  "workflowId": null,
-                  "workflowName": null,
-                  "status": "failed",
-                  "runType": "execute",
-                  "createdAt": "2026-07-22T17:53:44.56605+00:00",
-                  "completedAt": "2026-07-22T17:53:44.636616+00:00",
-                  "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
-                },
-                {
-                  "id": "bf871e6f-2cdb-48f9-8a34-077fce0643f5",
-                  "workflowId": null,
-                  "workflowName": null,
-                  "status": "failed",
-                  "runType": "execute",
-                  "createdAt": "2026-07-22T17:53:36.486489+00:00",
-                  "completedAt": "2026-07-22T17:53:36.559699+00:00",
-                  "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
-                },
-                {
-                  "id": "8525f6f6-6de1-4162-b588-72d81f3f8a59",
-                  "workflowId": null,
-                  "workflowName": null,
-                  "status": "failed",
-                  "runType": "execute",
-                  "createdAt": "2026-07-22T17:53:27.530447+00:00",
-                  "completedAt": "2026-07-22T17:53:27.604187+00:00",
-                  "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
-                },
-                {
-                  "id": "8632eeb4-7f0d-4daa-8ccd-eb5a68d5cda2",
-                  "workflowId": null,
-                  "workflowName": null,
-                  "status": "failed",
-                  "runType": "execute",
-                  "createdAt": "2026-07-22T17:53:18.981881+00:00",
-                  "completedAt": "2026-07-22T17:53:19.076376+00:00",
-                  "errorMessage": "Failed \u2014 Connect Slack at /connectors to run this action."
-                },
-                {
-                  "id": "de3c39b4-1159-4b2b-a32f-9560be2f967e",
-                  "workflowId": null,
-                  "workflowName": null,
-                  "status": "failed",
-                  "runType": "execute",
-                  "createdAt": "2026-07-22T17:52:34.061961+00:00",
-                  "completedAt": "2026-07-22T17:52:34.271466+00:00",
-                  "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
-                },
-                {
-                  "id": "f059439d-393a-428f-ba63-465a8b8337bd",
-                  "workflowId": null,
-                  "workflowName": null,
-                  "status": "failed",
-                  "runType": "execute",
-                  "createdAt": "2026-07-22T10:03:19.149389+00:00",
-                  "completedAt": "2026-07-22T10:03:19.209303+00:00",
-                  "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
-                },
-                {
-                  "id": "d83f0286-cff2-432d-b791-57aef20c4e6f",
-                  "workflowId": null,
-                  "workflowName": null,
-                  "status": "failed",
-                  "runType": "execute",
-                  "createdAt": "2026-07-22T10:03:12.487879+00:00",
-                  "completedAt": "2026-07-22T10:03:12.546509+00:00",
-                  "errorMessage": "Failed \u2014 Connect Slack at /connectors to run this action."
-                },
-                {
-                  "id": "b0eac8e4-1645-4a41-b6b9-d6c99a74b067",
-                  "workflowId": null,
-                  "workflowName": null,
-                  "status": "failed",
-                  "runType": "execute",
-                  "createdAt": "2026-07-22T10:03:01.443113+00:00",
-                  "completedAt": "2026-07-22T10:03:01.537725+00:00",
-                  "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
-                }
-              ],
-              "total": 10,
-              "success": true
-            }
-          }
-        ],
+        "assistant": "I don\u2019t have workflow run history in the tools available this turn. If you want, I can look for it in the system that stores runs.",
+        "tools": [],
         "intel": [
           {
             "effectiveMode": "standard",
-            "answerExplanation": "Reviewing connected systems and knowledge\u2026",
+            "answerExplanation": "Analyzing your request\u2026",
             "pendingTask": null,
             "routing": {
               "routingTier": "simple",
@@ -172,7 +33,7 @@
           },
           {
             "effectiveMode": "standard",
-            "answerExplanation": "Routing classified",
+            "answerExplanation": "Unified turn live (conversational_reply)",
             "pendingTask": null,
             "routing": {
               "routingTier": "simple",
@@ -185,160 +46,48 @@
               "pinnedFast": true,
               "reasons": [
                 "fast_or_explicit_simple"
-              ]
-            }
-          },
-          {
-            "effectiveMode": "standard",
-            "answerExplanation": "Plan ready \u2014 running tools",
-            "pendingTask": null,
-            "routing": {
-              "routingTier": "simple",
-              "modelTier": "low",
-              "latencyBudgetMs": {
-                "ttft": 800,
-                "total": 8000
-              },
-              "maxToolRounds": 6,
-              "pinnedFast": true,
-              "reasons": [
-                "fast_or_explicit_simple"
-              ]
+              ],
+              "unifiedTurnLive": true,
+              "unifiedOutcomeKind": "conversational_reply"
             }
           }
         ],
-        "at": "2026-07-22T17:58:54.950606+00:00",
+        "at": "2026-07-23T07:56:06.347865+00:00",
         "error": null
       },
       "judgment": {
         "verdict": "PASS",
-        "why": "workflow_runs tool used; no fabricated zero-run claim",
+        "why": "honesty refusal without fabricated run count",
         "fabricatedZeroRuns": false,
-        "refused": false,
-        "usedWorkflowRunsTool": true,
-        "toolNames": [
-          "searchknowledgebase",
-          "getworkflowruns"
-        ],
+        "refused": true,
+        "usedWorkflowRunsTool": false,
+        "toolNames": [],
         "effectiveMode": "standard",
-        "explanationSnippet": "Plan ready \u2014 running tools"
+        "explanationSnippet": "Unified turn live (conversational_reply)"
       }
     },
     "stalePlanSequence": {
-      "conversationId": "f29a5ba9-c584-4934-82eb-a34cc81ea6d1",
+      "conversationId": "2415daae-eb04-402d-86d3-15896b32b895",
       "bootstrapHttp": 200,
       "seededStickyCompletedPlan": true,
       "turns": [
         {
           "user": "What workflows have been ran?",
           "http": 200,
-          "assistant": "",
+          "assistant": "I don\u2019t have workflow run history in the tools available this turn.\n\nIf you want the actual runs, I need a workflow/run-history source or permission to fetch it from the system that stores runs.",
           "pending": null,
-          "current_plan": {
-            "goal": "What workflows have been ran?",
-            "steps": [
-              {
-                "step_id": "step_1",
-                "description": "Clarify success criteria and constraints",
-                "dependencies": [],
-                "requires_approval": false,
-                "estimated_complexity": "low",
-                "connector_requirements": []
-              },
-              {
-                "step_id": "step_2",
-                "description": "Gather evidence from RAG and connectors",
-                "dependencies": [
-                  "step_1"
-                ],
-                "requires_approval": false,
-                "estimated_complexity": "medium",
-                "connector_requirements": []
-              },
-              {
-                "step_id": "step_3",
-                "description": "Draft plan for human review",
-                "dependencies": [
-                  "step_2"
-                ],
-                "requires_approval": true,
-                "estimated_complexity": "medium",
-                "connector_requirements": []
-              },
-              {
-                "step_id": "step_4",
-                "description": "Execute only after explicit approval",
-                "dependencies": [
-                  "step_3"
-                ],
-                "requires_approval": true,
-                "estimated_complexity": "medium",
-                "connector_requirements": []
-              }
-            ],
-            "status": "ok",
-            "requires_human_review": true
-          },
-          "tools": [
-            "searchKnowledgeBase",
-            "getWorkflowRuns"
-          ],
-          "at": "2026-07-22T17:59:32.199804+00:00"
+          "current_plan": null,
+          "tools": [],
+          "at": "2026-07-23T07:56:18.671779+00:00"
         },
         {
           "user": "yes",
           "http": 200,
-          "assistant": "Yes.",
+          "assistant": "What are we sending?",
           "pending": null,
-          "current_plan": {
-            "goal": "What workflows have been ran?",
-            "steps": [
-              {
-                "step_id": "step_1",
-                "description": "Clarify success criteria and constraints",
-                "dependencies": [],
-                "requires_approval": false,
-                "estimated_complexity": "low",
-                "connector_requirements": []
-              },
-              {
-                "step_id": "step_2",
-                "description": "Gather evidence from RAG and connectors",
-                "dependencies": [
-                  "step_1"
-                ],
-                "requires_approval": false,
-                "estimated_complexity": "medium",
-                "connector_requirements": []
-              },
-              {
-                "step_id": "step_3",
-                "description": "Draft plan for human review",
-                "dependencies": [
-                  "step_2"
-                ],
-                "requires_approval": true,
-                "estimated_complexity": "medium",
-                "connector_requirements": []
-              },
-              {
-                "step_id": "step_4",
-                "description": "Execute only after explicit approval",
-                "dependencies": [
-                  "step_3"
-                ],
-                "requires_approval": true,
-                "estimated_complexity": "medium",
-                "connector_requirements": []
-              }
-            ],
-            "status": "ok",
-            "requires_human_review": true
-          },
-          "tools": [
-            "searchKnowledgeBase"
-          ],
-          "at": "2026-07-22T17:59:42.298885+00:00"
+          "current_plan": null,
+          "tools": [],
+          "at": "2026-07-23T07:56:24.527314+00:00"
         }
       ],
       "judgment": {
@@ -347,13 +96,13 @@
         "hubspotToolOnYes": false,
         "pendingStatusAfterYes": null,
         "oldHubspotPlanAlive": false,
-        "currentPlanGoalAfterYes": "What workflows have been ran?",
-        "unrelatedAssistantSnippet": "",
-        "yesAssistantSnippet": "Yes."
+        "currentPlanGoalAfterYes": null,
+        "unrelatedAssistantSnippet": "I don\u2019t have workflow run history in the tools available this turn.\n\nIf you want the actual runs, I need a workflow/run-history source or permission to fetch it from the system that stores runs.",
+        "yesAssistantSnippet": "What are we sending?"
       }
     }
   },
-  "tipShaObserved": "444371f960571d83c2d7af89def200fa241d4c51",
+  "tipShaObserved": "e58861233291c61452ddf480f13dc0fa782ec3f7",
   "auditSample": [],
   "overall": {
     "fastRunHistory": "PASS",
