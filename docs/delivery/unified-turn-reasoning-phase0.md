@@ -103,7 +103,7 @@ Future: embedding-based tool routing at 600+ scale (brief semantic-tool-routing)
 
 - `unified_turn_reasoning_service.py` — single-call shadow runner (no user output, no tool execution).
 - `unified_turn_pending_context.py` — structured pending summary.
-- `module_d_unified_voice_spec.py` — **full Module D system instruction** (registers, knowledge boundaries, drift self-check, few-shots) wired as the shadow call's system prompt — not a post-hoc phrase bank.
+- `module_d_unified_voice_spec.py` — **full Module D system instruction** (registers, knowledge boundaries, imperfect-input silence, drift self-check, few-shots) wired as the reasoning-call system prompt — not a post-hoc phrase bank.
 - Settings: `UNIFIED_TURN_SHADOW_ENABLED` (default false).
 - Hook in `execute_task_streaming` — async audit `unified_turn.shadow.completed`.
 - Tests with mocked model response + knowledge-boundary classification.

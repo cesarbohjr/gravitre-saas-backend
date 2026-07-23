@@ -15,6 +15,7 @@ Earlier workflow PASS on `acb44e3b…`: [29909107895](https://github.com/cesarbo
 | Pending-reply | **24/24** | nested in battery artifact |
 | Conversational | **20/20** | nested in battery artifact |
 | Knowledge-boundary | **PASS** | matrix `knowledge_boundary_run_history: true` |
+| Imperfect input (≥15) | **NOT RUN** on tip with new Module D rule — deploy tip including imperfect-input spec, then re-run battery | matrix `imperfect_input_understanding` |
 | STA-305 / run-history / persona-drift | **PASS** (exit 0) | same artifact |
 | Full multi-step email | **PARTIAL** | single-turn only |
 | GitHub deploy→tip `a049b510` | **FAIL** | [29942050137](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/29942050137) / [29910291596](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/29910291596) — Railway `up` stuck, tip stayed on `444371f9` |

@@ -1,6 +1,6 @@
 {
   "feature": "unified_turn_ttft_breakdown",
-  "started_at": "2026-07-23T01:58:38.047777+00:00",
+  "started_at": "2026-07-23T05:14:27.302924+00:00",
   "catalog_offline": {
     "connected_assumed": [
       "gmail",
@@ -18,7 +18,7 @@
         "max_tools_cap": 32,
         "visible_payload_bytes": 10082,
         "full_catalog_payload_bytes": 50021,
-        "narrow_ms": 1,
+        "narrow_ms": 0,
         "stats": {
           "totalTools": 93,
           "visibleTools": 28,
@@ -92,7 +92,7 @@
         "reply_preview": "Hey \u2014 here when you need a connector run, a plan, or a quick check.",
         "heuristic_ms": 0,
         "classify_ms": 0,
-        "total_ms": 6,
+        "total_ms": 20,
         "path": "phrase_bank_no_llm"
       },
       {
@@ -117,84 +117,154 @@
         "offered_conversational_path": false,
         "reply_preview": "",
         "heuristic_ms": 0,
-        "classify_ms": 1009,
-        "total_ms": 1009,
+        "classify_ms": 883,
+        "total_ms": 883,
         "path": "classify_may_use_llm"
       }
     ],
-    "p50_total_ms": 6,
+    "p50_total_ms": 20,
     "note": "Fair baseline for Hey/Thank you: classical path is heuristic + phrase bank (no tool schemas, usually no LLM). Unified always pays a tool-aware model call."
   },
   "unified_live": {
     "probes": [
       {
         "message": "Hey",
-        "conversation_id": "ea672d1a-304a-4153-85dd-3f14eb9350a9",
+        "conversation_id": "0df67710-8c71-4c57-a5b9-f71751595b01",
         "http": 200,
-        "client_first_sse_ms": 2138,
+        "client_first_sse_ms": 2229,
         "action": "unified_turn.live.completed",
-        "created_at": "2026-07-23T01:58:46.788615+00:00",
+        "created_at": "2026-07-23T05:14:35.04788+00:00",
         "live_served": true,
-        "first_token_proxy_ms": 1121,
+        "first_token_proxy_ms": 494,
         "tool_stats": {
           "compressed": true,
           "totalTools": 26,
           "visibleTools": 13,
           "actionRequired": false,
+          "retrievalMethod": "keyword_narrow_tools_for_turn",
           "focusedConnectors": [
             "apollo"
-          ]
+          ],
+          "toolsPayloadBytes": 4965,
+          "embeddingToolRetrieval": false,
+          "fullCatalogPayloadBytes": 14367
         },
-        "latency_breakdown": {}
+        "latency_breakdown": {
+          "total_tools": 26,
+          "pre_model_ms": 0,
+          "max_tools_cap": 32,
+          "model_ttft_ms": 492,
+          "visible_tools": 13,
+          "messages_chars": 9232,
+          "model_total_ms": 570,
+          "narrow_tools_ms": 0,
+          "retrieval_method": "keyword_narrow_tools_for_turn",
+          "context_prompt_ms": 0,
+          "registry_tools_ms": 0,
+          "system_prompt_chars": 8811,
+          "tools_payload_bytes": 4965,
+          "wall_to_first_token_ms": 494,
+          "embedding_tool_retrieval": false,
+          "openai_create_schedule_ms": 0,
+          "full_catalog_payload_bytes": 14367,
+          "pre_first_token_overhead_ms": 2
+        }
       },
       {
         "message": "Thank you",
-        "conversation_id": "3580fea3-0010-4e5d-a950-36f8e29e3f0b",
+        "conversation_id": "d0b64a27-f374-47fa-a0fa-b7950a61ed6c",
         "http": 200,
-        "client_first_sse_ms": 2026,
+        "client_first_sse_ms": 3057,
         "action": "unified_turn.live.completed",
-        "created_at": "2026-07-23T01:58:55.237898+00:00",
+        "created_at": "2026-07-23T05:14:45.059866+00:00",
         "live_served": true,
-        "first_token_proxy_ms": 396,
+        "first_token_proxy_ms": 749,
         "tool_stats": {
           "compressed": true,
           "totalTools": 26,
           "visibleTools": 13,
           "actionRequired": false,
+          "retrievalMethod": "keyword_narrow_tools_for_turn",
           "focusedConnectors": [
             "apollo"
-          ]
+          ],
+          "toolsPayloadBytes": 4965,
+          "embeddingToolRetrieval": false,
+          "fullCatalogPayloadBytes": 14367
         },
-        "latency_breakdown": {}
+        "latency_breakdown": {
+          "total_tools": 26,
+          "pre_model_ms": 1,
+          "max_tools_cap": 32,
+          "model_ttft_ms": 746,
+          "visible_tools": 13,
+          "messages_chars": 9238,
+          "model_total_ms": 943,
+          "narrow_tools_ms": 0,
+          "retrieval_method": "keyword_narrow_tools_for_turn",
+          "context_prompt_ms": 0,
+          "registry_tools_ms": 0,
+          "system_prompt_chars": 8811,
+          "tools_payload_bytes": 4965,
+          "wall_to_first_token_ms": 749,
+          "embedding_tool_retrieval": false,
+          "openai_create_schedule_ms": 1,
+          "full_catalog_payload_bytes": 14367,
+          "pre_first_token_overhead_ms": 3
+        }
       },
       {
         "message": "What's on your plate?",
-        "conversation_id": "013a8d92-4ac5-4ffe-b4c2-ab8e8c4eb35c",
+        "conversation_id": "2ef23add-5fca-4c3c-a7e0-336a2082e50d",
         "http": 200,
-        "client_first_sse_ms": 2611,
+        "client_first_sse_ms": 1664,
         "action": "unified_turn.live.completed",
-        "created_at": "2026-07-23T01:59:02.966519+00:00",
+        "created_at": "2026-07-23T05:14:51.268529+00:00",
         "live_served": true,
-        "first_token_proxy_ms": 407,
+        "first_token_proxy_ms": 546,
         "tool_stats": {
           "compressed": true,
           "totalTools": 26,
           "visibleTools": 13,
           "actionRequired": false,
+          "retrievalMethod": "keyword_narrow_tools_for_turn",
           "focusedConnectors": [
             "apollo"
-          ]
+          ],
+          "toolsPayloadBytes": 4965,
+          "embeddingToolRetrieval": false,
+          "fullCatalogPayloadBytes": 14367
         },
-        "latency_breakdown": {}
+        "latency_breakdown": {
+          "total_tools": 26,
+          "pre_model_ms": 1,
+          "max_tools_cap": 32,
+          "model_ttft_ms": 545,
+          "visible_tools": 13,
+          "messages_chars": 9250,
+          "model_total_ms": 833,
+          "narrow_tools_ms": 0,
+          "retrieval_method": "keyword_narrow_tools_for_turn",
+          "context_prompt_ms": 0,
+          "registry_tools_ms": 0,
+          "system_prompt_chars": 8811,
+          "tools_payload_bytes": 4965,
+          "wall_to_first_token_ms": 546,
+          "embedding_tool_retrieval": false,
+          "openai_create_schedule_ms": 0,
+          "full_catalog_payload_bytes": 14367,
+          "pre_first_token_overhead_ms": 1
+        }
       }
     ],
-    "instrumentation_present": false,
-    "wall_ttft_p50_ms": 407
+    "instrumentation_present": true,
+    "wall_ttft_p50_ms": 546,
+    "model_ttft_p50_ms": 545
   },
   "health": {
-    "git_sha": "c81d12009cd66e066831a2e20ef146cda189bd62",
+    "git_sha": "6457ba7c650befbce9e9fe8e278bd8b6203475d0",
     "unified_turn_live_enabled": true,
-    "timestamp": "2026-07-23T01:58:42.202151+00:00"
+    "timestamp": "2026-07-23T05:14:31.120906+00:00"
   },
   "findings": {
     "full_catalog_sent_every_call": false,
@@ -202,5 +272,5 @@
     "classical_social_uses_llm_tools": false,
     "ttft_200ms_gate": "MISS until model_ttft/payload work re-measured under target"
   },
-  "finished_at": "2026-07-23T01:59:06.150306+00:00"
+  "finished_at": "2026-07-23T05:14:54.128565+00:00"
 }

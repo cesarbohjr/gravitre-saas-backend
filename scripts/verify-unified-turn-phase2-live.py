@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Phase 2 live battery: unified-turn shadow vs classical path on prod.
+"""Phase 2 live battery: unified-turn shadow/live vs classical path on prod.
 
-Requires prod at EXPECT_SHA with UNIFIED_TURN_SHADOW_ENABLED=true.
-Runs targeted chat cases, checks assistant copy (no catalog keys), and
-confirms unified_turn.shadow.completed audit rows exist per conversation.
+Requires prod tip with unified-turn enabled (LIVE and/or SHADOW).
+Runs targeted chat cases (incl. ≥15 imperfect-input), checks assistant copy
+(no catalog keys / no typo echo / no spelling-correction narration), and
+confirms unified_turn.live.completed or unified_turn.shadow.completed audits.
 
 Writes docs/delivery/unified-turn-phase2-battery-live.json
 """
@@ -48,7 +49,33 @@ FABRICATED_RUN_COUNT = re.compile(
     r"\b(?:there\s+(?:are|were)|you\s+have|found|showing)\s+\d+\s+(?:recent\s+)?(?:workflow\s+)?runs?\b",
     re.I,
 )
+# Module D imperfect-input: never narrate recovery or correct the user.
+SPELLING_CORRECTION_NARRATE = re.compile(
+    r"(?:i\s+think\s+you\s+meant|did\s+you\s+mean|just\s+to\s+clarify[, ]+you\s+meant|"
+    r"assuming\s+you\s+meant|correcting\s+your\s+(?:spelling|typo|grammar)|"
+    r"you\s+probably\s+meant|looks\s+like\s+a\s+typo)",
+    re.I,
+)
 TTFT_TARGET_MS = int(os.environ.get("UNIFIED_TURN_TTFT_TARGET_MS", "200"))
+TASKISH_OUTCOMES = [
+    "clarifying_question",
+    "confirmation_request",
+    "connector_tool_proposal",
+    "conversational_reply",
+    "knowledge_boundary",
+]
+GMAIL_PENDING_SEED = {
+    "pending_task": {
+        "type": "connector_action",
+        "status": "awaiting_confirm",
+        "params": {
+            "label": "Send Gmail message",
+            "integration": "gmail",
+            "invoke_action": "gmail.messages.send",
+            "kind": "write",
+        },
+    }
+}
 
 
 def utcnow() -> str:
@@ -214,18 +241,7 @@ CASES: list[dict[str, Any]] = [
     },
     {
         "id": "status_check_pending",
-        "seed": {
-            "pending_task": {
-                "type": "connector_action",
-                "status": "awaiting_confirm",
-                "params": {
-                    "label": "Send Gmail message",
-                    "integration": "gmail",
-                    "invoke_action": "gmail.messages.send",
-                    "kind": "write",
-                },
-            }
-        },
+        "seed": GMAIL_PENDING_SEED,
         "message": "Did you send it yet?",
         "must_not_match": [RAW_CATALOG_KEY],
         "shadow_outcome_any": [
@@ -249,6 +265,209 @@ CASES: list[dict[str, Any]] = [
             "knowledge_boundary",
             "connector_tool_proposal",
             "clarifying_question",
+        ],
+    },
+    # --- Imperfect-input battery (≥15): typos / missing words / voice garble ---
+    # Proves single-reasoning-call understanding; regex mapper cannot pass these.
+    {
+        "id": "imperfect_sned_emial",
+        "imperfect_input": True,
+        "message": "sned emial to stephanie about the meeting",
+        "typo_tokens": ["sned", "emial"],
+        "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
+        "shadow_outcome_any": [
+            "clarifying_question",
+            "confirmation_request",
+            "connector_tool_proposal",
+        ],
+    },
+    {
+        "id": "imperfect_creat_contct",
+        "imperfect_input": True,
+        "message": "creat a contct named Jordan Lee in HubSpot",
+        "typo_tokens": ["creat", "contct"],
+        "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
+        "shadow_outcome_any": [
+            "clarifying_question",
+            "confirmation_request",
+            "connector_tool_proposal",
+        ],
+    },
+    {
+        "id": "imperfect_aprove_pending",
+        "imperfect_input": True,
+        "seed": GMAIL_PENDING_SEED,
+        "message": "aprove",
+        "typo_tokens": ["aprove"],
+        "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
+        "shadow_outcome_any": [
+            "confirmation_request",
+            "conversational_reply",
+            "connector_tool_proposal",
+            "clarifying_question",
+        ],
+    },
+    {
+        "id": "imperfect_shedule",
+        "imperfect_input": True,
+        "message": "shedule a follow up email for tomorrow morning",
+        "typo_tokens": ["shedule"],
+        "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
+        "shadow_outcome_any": [
+            "clarifying_question",
+            "confirmation_request",
+            "connector_tool_proposal",
+        ],
+    },
+    {
+        "id": "imperfect_creaet_list",
+        "imperfect_input": True,
+        "message": "creaet an Apollo list called Q3 outbound",
+        "typo_tokens": ["creaet"],
+        "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
+        "shadow_outcome_any": [
+            "clarifying_question",
+            "confirmation_request",
+            "connector_tool_proposal",
+        ],
+    },
+    {
+        "id": "imperfect_connectr",
+        "imperfect_input": True,
+        "message": "is the slack connectr Connected right now",
+        "typo_tokens": ["connectr"],
+        "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
+        "shadow_outcome_any": TASKISH_OUTCOMES,
+    },
+    {
+        "id": "imperfect_mix_hubspot_creatd",
+        "imperfect_input": True,
+        "message": "can you chekc if teh HubSpot list got creatd",
+        "typo_tokens": ["chekc", "teh", "creatd"],
+        "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
+        "shadow_outcome_any": [
+            "clarifying_question",
+            "confirmation_request",
+            "connector_tool_proposal",
+            "knowledge_boundary",
+            "conversational_reply",
+        ],
+    },
+    {
+        "id": "imperfect_missing_to_words",
+        "imperfect_input": True,
+        "message": "send email stephanie about meeting",
+        "typo_tokens": [],
+        "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
+        "shadow_outcome_any": [
+            "clarifying_question",
+            "confirmation_request",
+            "connector_tool_proposal",
+        ],
+    },
+    {
+        "id": "imperfect_disordered_hubspot",
+        "imperfect_input": True,
+        "message": "hubspot contact create for alex@example.com please",
+        "typo_tokens": [],
+        "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
+        "shadow_outcome_any": [
+            "clarifying_question",
+            "confirmation_request",
+            "connector_tool_proposal",
+        ],
+    },
+    {
+        "id": "imperfect_doubled_drafte",
+        "imperfect_input": True,
+        "message": "pleasse drafte a gmail to demo@example.com about pricing",
+        "typo_tokens": ["pleasse", "drafte"],
+        "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
+        "shadow_outcome_any": [
+            "clarifying_question",
+            "confirmation_request",
+            "connector_tool_proposal",
+        ],
+    },
+    {
+        "id": "imperfect_adjacent_senf_mesage",
+        "imperfect_input": True,
+        "message": "senf a slack mesage to #general saying kickoff is at 3",
+        "typo_tokens": ["senf", "mesage"],
+        "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
+        "shadow_outcome_any": [
+            "clarifying_question",
+            "confirmation_request",
+            "connector_tool_proposal",
+        ],
+    },
+    {
+        "id": "imperfect_thansk_then_task",
+        "imperfect_input": True,
+        "message": "thansk — also sned that hubspot note to maria",
+        "typo_tokens": ["thansk", "sned"],
+        "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
+        "shadow_outcome_any": [
+            "clarifying_question",
+            "confirmation_request",
+            "connector_tool_proposal",
+            "conversational_reply",
+        ],
+    },
+    {
+        "id": "imperfect_voice_um_email",
+        "imperfect_input": True,
+        "message": "um so can you send an email to jordan about the deck",
+        "typo_tokens": [],
+        "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
+        "assistant_must_not_contain": [" um ", "Um "],
+        "shadow_outcome_any": [
+            "clarifying_question",
+            "confirmation_request",
+            "connector_tool_proposal",
+        ],
+    },
+    {
+        "id": "imperfect_voice_runon_list",
+        "imperfect_input": True,
+        "message": (
+            "yeah so create a hubspot contact list named summer leads "
+            "when you get a chance"
+        ),
+        "typo_tokens": [],
+        "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
+        "shadow_outcome_any": [
+            "clarifying_question",
+            "confirmation_request",
+            "connector_tool_proposal",
+        ],
+    },
+    {
+        "id": "imperfect_voice_filler_aprove",
+        "imperfect_input": True,
+        "seed": GMAIL_PENDING_SEED,
+        "message": "um yeah go ahead and aprove it",
+        "typo_tokens": ["aprove"],
+        "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
+        "shadow_outcome_any": [
+            "confirmation_request",
+            "conversational_reply",
+            "connector_tool_proposal",
+            "clarifying_question",
+        ],
+    },
+    {
+        "id": "imperfect_stauts_pending",
+        "imperfect_input": True,
+        "seed": GMAIL_PENDING_SEED,
+        "message": "whats teh stauts of that gmail",
+        "typo_tokens": ["teh", "stauts"],
+        "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
+        "shadow_outcome_any": [
+            "clarifying_question",
+            "confirmation_request",
+            "conversational_reply",
+            "knowledge_boundary",
         ],
     },
 ]
@@ -277,8 +496,26 @@ def judge_case(case: dict[str, Any], turn: dict[str, Any], shadow: dict | None) 
     for pat in case.get("classical_must_not") or []:
         if pat.search(assistant):
             failures.append(f"classical_fabrication:{pat.pattern[:40]}")
+    for fragment in case.get("assistant_must_not_contain") or []:
+        if fragment and fragment in assistant:
+            failures.append(f"assistant_echo_fragment:{fragment!r}")
     meta = _shadow_meta(shadow)
     latency_ms = meta.get("latency_ms")
+    model_text = str(meta.get("user_message") or "")
+    check_texts = [assistant, model_text]
+    if case.get("imperfect_input"):
+        # Never echo distinctive garbled tokens; never narrate spelling recovery.
+        for token in case.get("typo_tokens") or []:
+            tok = str(token).strip()
+            if len(tok) < 3:
+                continue
+            pat = re.compile(rf"\b{re.escape(tok)}\b", re.I)
+            if any(pat.search(t) for t in check_texts if t):
+                failures.append(f"typo_echo:{tok}")
+        if any(SPELLING_CORRECTION_NARRATE.search(t) for t in check_texts if t):
+            failures.append("spelling_correction_narration")
+        if not (assistant or "").strip() and not model_text.strip():
+            failures.append("empty_imperfect_reply")
     if shadow is None:
         failures.append("missing_shadow_audit")
     else:
@@ -286,21 +523,21 @@ def judge_case(case: dict[str, Any], turn: dict[str, Any], shadow: dict | None) 
         allowed = case.get("shadow_outcome_any")
         if allowed and outcome not in allowed:
             failures.append(f"shadow_outcome:{outcome}")
-        user_msg = str(meta.get("user_message") or "")
-        if RAW_CATALOG_KEY.search(user_msg):
+        if RAW_CATALOG_KEY.search(model_text):
             failures.append("shadow_message_catalog_leak")
         if case.get("shadow_knowledge_boundary"):
             # Must not invent a run count; knowledge_boundary or a real tool proposal only.
-            if FABRICATED_ZERO_RUNS.search(user_msg) or (
-                FABRICATED_RUN_COUNT.search(user_msg) and outcome != "connector_tool_proposal"
+            if FABRICATED_ZERO_RUNS.search(model_text) or (
+                FABRICATED_RUN_COUNT.search(model_text) and outcome != "connector_tool_proposal"
             ):
                 failures.append("shadow_fabricated_run_count")
-            if outcome == "conversational_reply" and FABRICATED_RUN_COUNT.search(user_msg):
+            if outcome == "conversational_reply" and FABRICATED_RUN_COUNT.search(model_text):
                 failures.append("shadow_conversational_fabrication")
     return {
         "ok": not failures,
         "failures": failures,
         "assistant_snippet": assistant[:320],
+        "imperfect_input": bool(case.get("imperfect_input")),
         "shadow_outcome": meta.get("outcome_kind"),
         "shadow_latency_ms": latency_ms,
         "shadow_first_token_proxy_ms": meta.get("first_token_proxy_ms"),
@@ -309,7 +546,7 @@ def judge_case(case: dict[str, Any], turn: dict[str, Any], shadow: dict | None) 
             "created_at": shadow.get("created_at") if shadow else None,
             "outcome_kind": meta.get("outcome_kind"),
             "latency_ms": latency_ms,
-            "user_message_preview": str(meta.get("user_message") or "")[:280],
+            "user_message_preview": model_text[:280],
             "tool_name": meta.get("tool_name"),
         }
         if shadow
@@ -475,6 +712,8 @@ async def main() -> int:
         v.get("skipped") or v.get("exit_code") == 0
         for v in report["classical_batteries"].values()
     )
+    imperfect = [r for r in results if r.get("imperfect_input")]
+    imperfect_ok = all(r.get("ok") for r in imperfect) if imperfect else False
     report["matrix"] = {
         "targeted_shadow_cases": report["summary"],
         "pending_reply_24": "see classical_batteries.pending_reply",
@@ -483,6 +722,12 @@ async def main() -> int:
             (r for r in results if r["case"] == "knowledge_boundary_run_history_fast"),
             {},
         ).get("ok"),
+        "imperfect_input_understanding": (
+            f"{sum(1 for r in imperfect if r.get('ok'))}/{len(imperfect)}"
+            if imperfect
+            else "NOT RUN"
+        ),
+        "imperfect_input_all_ok": imperfect_ok,
         "sta305_omit_detail": report["classical_batteries"]
         .get("sta305_slack_omit_detail", {})
         .get("exit_code"),

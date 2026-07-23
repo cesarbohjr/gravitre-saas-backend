@@ -60,3 +60,11 @@ Phrase variety for recurring categories — see
 [`module-d-expression-range.md`](module-d-expression-range.md).
 Selection: `task_state.voice_expression_last` + deterministic rotation.
 Does not change Module B classification.
+
+## Unified-turn imperfect input (2026-07-22)
+
+On the single-reasoning-call path, Module D’s system instruction
+(`module_d_unified_voice_spec.py`) includes a HARD rule: silently understand
+typos, missing words, disordered phrasing, and voice-garble; **never** correct
+spelling/grammar or narrate recovery (“I think you meant…”). Verified in the
+Phase 2 imperfect-input battery (`verify-unified-turn-phase2-live.py`).
