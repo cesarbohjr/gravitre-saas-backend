@@ -69,6 +69,7 @@ def summarize_usage_records_billing(
     research_total = totals["research_lookups"]
     overage_research = max(research_total - included_research, 0)
     overage_research_usd = round(overage_research * research_rate, 2)
+    remaining_research = max(included_research - research_total, 0)
 
     internet_research_enabled = bool(
         settings and getattr(settings, "internet_research_enabled", False)
@@ -83,6 +84,7 @@ def summarize_usage_records_billing(
         "overage_outputs": overage_outputs,
         "overage_cost_usd": overage_cost_usd,
         "included_research_lookups": included_research,
+        "remaining_research_lookups": remaining_research,
         "overage_research_lookups": overage_research,
         "overage_research_cost_usd": overage_research_usd,
         "research_lookup_overage_rate_usd": research_rate,

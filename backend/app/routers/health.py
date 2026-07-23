@@ -63,6 +63,8 @@ def health(request: Request) -> dict:
     unified_embed_tools = False
     unified_task_tier = ""
     unified_embed_min_catalog = None
+    internet_research_enabled = False
+    web_research_provider_configured = False
     try:
         from app.config import get_settings
 
@@ -72,6 +74,10 @@ def health(request: Request) -> dict:
         unified_embed_tools = bool(getattr(s, "unified_turn_embedding_tool_retrieval", False))
         unified_task_tier = str(getattr(s, "unified_turn_task_model_tier", "") or "")
         unified_embed_min_catalog = int(getattr(s, "unified_turn_embed_min_catalog_tools", 40) or 40)
+        internet_research_enabled = bool(getattr(s, "internet_research_enabled", False))
+        from app.services.web_research import is_web_research_provider_configured
+
+        web_research_provider_configured = is_web_research_provider_configured(s)
     except Exception:  # noqa: BLE001
         unified_shadow = (os.environ.get("UNIFIED_TURN_SHADOW_ENABLED") or "").lower() in {
             "1",
@@ -89,6 +95,15 @@ def health(request: Request) -> dict:
             "yes",
         }
         unified_task_tier = os.environ.get("UNIFIED_TURN_TASK_MODEL_TIER") or ""
+        internet_research_enabled = (os.environ.get("INTERNET_RESEARCH_ENABLED") or "").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+        web_research_provider_configured = bool(
+            (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or "").strip()
+            or (os.environ.get("TAVILY_API_KEY") or "").strip()
+        )
 
     return {
         "status": status,
@@ -104,5 +119,7 @@ def health(request: Request) -> dict:
         "unified_turn_embedding_tool_retrieval": unified_embed_tools,
         "unified_turn_embed_min_catalog_tools": unified_embed_min_catalog,
         "unified_turn_task_model_tier": unified_task_tier or None,
+        "internet_research_enabled": internet_research_enabled,
+        "web_research_provider_configured": web_research_provider_configured,
         "checks": checks,
     }

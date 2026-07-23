@@ -1551,6 +1551,8 @@ function BillingUsageSettings() {
   const showResearch = Boolean(usage.research_lookups_billing_visible)
   const researchUsed = totals.research_lookups ?? 0
   const researchIncluded = usage.included_research_lookups ?? 0
+  const researchRemaining =
+    usage.remaining_research_lookups ?? Math.max(researchIncluded - researchUsed, 0)
   const researchOverage = usage.overage_research_lookups ?? 0
   const outputOverageUsd = Number(usage.overage_cost_usd ?? 0)
   const researchOverageUsd = Number(usage.overage_research_cost_usd ?? 0)
@@ -1573,8 +1575,9 @@ function BillingUsageSettings() {
         <div className="rounded-lg border border-border bg-card p-4">
           <p className="text-sm font-medium text-foreground">Research Lookups this cycle</p>
           <p className="text-xs text-muted-foreground mt-1">
-            {researchUsed} of {researchIncluded} included · {researchOverage} overage @ $
-            {(usage.research_lookup_overage_rate_usd ?? 0.35).toFixed(2)}/lookup
+            Used {researchUsed} · Included {researchIncluded} · Remaining {researchRemaining} ·
+            Overage {researchOverage} @ ${(usage.research_lookup_overage_rate_usd ?? 0.35).toFixed(2)}
+            /lookup
           </p>
           <p className="text-xs text-muted-foreground mt-2">
             Separate from AI Credits (LLM token usage). Research Lookups bill live internet grounding only.

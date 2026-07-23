@@ -933,6 +933,7 @@ export interface BillingUsageResponse {
   overage_outputs: number
   overage_cost_usd: number
   included_research_lookups?: number
+  remaining_research_lookups?: number
   overage_research_lookups?: number
   overage_research_cost_usd?: number
   research_lookup_overage_rate_usd?: number
