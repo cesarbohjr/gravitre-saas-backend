@@ -1604,6 +1604,8 @@ class AgentIntelligence:
                 client=client,
                 settings=active_settings,
                 environment_name=environment_name,
+                mode_key=mode_key,
+                classification=pipeline_classification,
             )
             if live_turn and live_turn.get("stop_pipeline"):
                 task_state = live_turn.get("task_state") or task_state

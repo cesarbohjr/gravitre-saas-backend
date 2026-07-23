@@ -587,6 +587,8 @@ async def apply_unified_turn_live(
     client: Any = None,
     settings: Settings | None = None,
     environment_name: str = "production",
+    mode_key: str | None = None,
+    classification: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Phase 4: run unified turn and map to a stop_pipeline turn when safe.
 
@@ -654,6 +656,25 @@ async def apply_unified_turn_live(
         settings=active,
     )
     if result.outcome_kind in {"skipped", "error"}:
+        emit_unified_turn_shadow_audit(
+            client=client,
+            org_id=org_id,
+            actor_id=user_id,
+            conversation_id=conversation_id,
+            result=result,
+        )
+        return None
+
+    from app.services.unified_turn_classical_fallback import (
+        should_defer_unified_turn_live_to_classical,
+    )
+
+    if should_defer_unified_turn_live_to_classical(
+        mode_key=mode_key,
+        outcome_kind=str(result.outcome_kind or ""),
+        message=message,
+        classification=classification,
+    ):
         emit_unified_turn_shadow_audit(
             client=client,
             org_id=org_id,

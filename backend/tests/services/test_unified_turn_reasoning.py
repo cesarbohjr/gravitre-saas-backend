@@ -154,6 +154,7 @@ async def test_apply_unified_turn_live_serves_conversational_text():
             connected_integrations=["gmail"],
             client=MagicMock(),
             settings=settings,
+            mode_key="fast",
         )
     assert turn is not None
     assert turn["stop_pipeline"] is True
@@ -437,6 +438,7 @@ async def test_apply_unified_live_prepends_mixed_social_ack():
             conversation_history=[],
             connected_integrations=["apollo"],
             settings=settings,
+            mode_key="fast",
         )
 
     assert out is not None
