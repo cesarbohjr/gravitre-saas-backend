@@ -1,0 +1,89 @@
+{
+  "feature": "unified_turn_phase4_monitor",
+  "started_at": "2026-07-23T01:30:12.101816+00:00",
+  "ttft_target_ms": 200,
+  "copy_cases": [
+    {
+      "id": "greeting",
+      "conversation_id": "84df687c-dbae-4f6d-848e-aa46e89a6631",
+      "http": 200,
+      "action": "unified_turn.live.completed",
+      "created_at": "2026-07-23T01:30:19.60872+00:00",
+      "live_served": true,
+      "outcome_kind": "conversational_reply",
+      "first_token_ms": 471,
+      "assistant_preview": "Good, thanks. What's on your mind?",
+      "leaks": [],
+      "ok": true
+    },
+    {
+      "id": "thanks",
+      "conversation_id": "8789dc88-ce8b-4702-b8ea-3f136614adc9",
+      "http": 200,
+      "action": "unified_turn.live.completed",
+      "created_at": "2026-07-23T01:30:30.763364+00:00",
+      "live_served": true,
+      "outcome_kind": "conversational_reply",
+      "first_token_ms": 2184,
+      "assistant_preview": "Anytime. What\u2019s on your mind?",
+      "leaks": [],
+      "ok": true
+    },
+    {
+      "id": "email_intent",
+      "conversation_id": "0e40fde8-dc89-4642-83b1-8aae2adaf031",
+      "http": 200,
+      "action": "unified_turn.live.completed",
+      "created_at": "2026-07-23T01:30:38.443055+00:00",
+      "live_served": true,
+      "outcome_kind": "clarifying_question",
+      "first_token_ms": 369,
+      "assistant_preview": "I need a bit more information to draft that email. Could you provide the purpose and key points you'd like to include? Also, please confirm that Gmail is connected, or let me know if I should check that first.",
+      "leaks": [],
+      "ok": true
+    }
+  ],
+  "write_case": {
+    "conversation_id": "a447beb5-6e3e-4240-ac89-145a26e4ab05",
+    "http": 200,
+    "list_name": "gravitre-p4-mon-3aa643f4",
+    "pending_status": "awaiting_confirm",
+    "invoke_action": "apollo.lists.create",
+    "approval_copy": true,
+    "tool_invoke_completed_n": 0,
+    "live_action": "unified_turn.live.completed",
+    "live_served": true,
+    "outcome_kind": "connector_tool_proposal",
+    "assistant_preview": "I can create a contact list named **gravitre-p4-mon-3aa643f4** in Apollo.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
+    "ok": true
+  },
+  "ttft": {
+    "n": 4,
+    "min_ms": 369,
+    "p50_ms": 481,
+    "max_ms": 2184,
+    "samples_ms": [
+      369,
+      471,
+      492,
+      2184
+    ],
+    "target_ms": 200,
+    "target_met": false
+  },
+  "gates": {
+    "live_enabled": "PASS",
+    "copy_leaks": "PASS",
+    "write_approval_staged": "PASS",
+    "ttft_200ms": "MISS"
+  },
+  "health": {
+    "git_sha": "e0210cf4c68f12b1250a9771269e8f96b4898cad",
+    "unified_turn_live_enabled": true,
+    "unified_turn_shadow_enabled": true,
+    "timestamp": "2026-07-23T01:30:13.794893+00:00"
+  },
+  "ok": true,
+  "finished_at": "2026-07-23T01:30:49.635260+00:00",
+  "rollback": "Set UNIFIED_TURN_LIVE_ENABLED=false then redeploy (or bump UNIFIED_TURN_RESTART_NONCE)."
+}
