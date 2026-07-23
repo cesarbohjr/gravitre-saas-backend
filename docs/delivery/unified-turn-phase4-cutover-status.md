@@ -41,9 +41,9 @@ Rollback: `UNIFIED_TURN_LIVE_ENABLED=false` + redeploy (or bump `UNIFIED_TURN_RE
 
 | # | Step | Status | Notes |
 |---|------|--------|-------|
-| 1 | Connect HubSpot + Slack in isolated org `f07e57c0-1501-4000-8000-c04e57a00001` | **BLOCKED — human** | DB check 2026-07-23: only `apollo` `healthy`. OAuth at `/connectors` (or admin connect) into that org — not agent-simulatable. |
-| 2 | Run real STA-305 live (`STA305_LIVE=1`) | **WAITING on #1** | Need conversation id + Slack draft transcript; mapper-only is not enough. |
-| 3 | Old pipeline removal (reviewed step) | **SCHEDULED** | Plan: [`unified-turn-phase4-old-pipeline-removal.md`](unified-turn-phase4-old-pipeline-removal.md) — R0 soak → R1 flags → R2 deletes. Not started. |
+| 1 | Connect HubSpot + Slack in isolated org `f07e57c0-1501-4000-8000-c04e57a00001` | **BLOCKED — human** | [STA-333](https://linear.app/staqbot/issue/STA-333). DB check 2026-07-23: only `apollo` `healthy`. OAuth at `/connectors` into that org — not agent-simulatable. |
+| 2 | Run real STA-305 live (`STA305_LIVE=1`) | **WAITING on #1** | Same ticket STA-333. Need conversation id + Slack draft transcript; mapper-only is not enough. |
+| 3 | Old pipeline removal (reviewed step) | **SCHEDULED** | [STA-334](https://linear.app/staqbot/issue/STA-334). Plan: [`unified-turn-phase4-old-pipeline-removal.md`](unified-turn-phase4-old-pipeline-removal.md) — R0 soak → R1 flags → R2 deletes. Not started. |
 
 ### Human action for #1
 
