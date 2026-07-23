@@ -1,34 +1,24 @@
 # Unified turn Phase 2 — live verification status
 
-Updated: 2026-07-22
+Updated: 2026-07-23
 
 ## Verdict
 
-**PASS** on prod tip `444371f9…` (local battery re-run after GitHub deploy wait failed).
-
-Earlier workflow PASS on `acb44e3b…`: [29909107895](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/29909107895).
+**Imperfect-input: PASS** on tip `22a573c5…` (16×2).  
+**Combined functional close: NOT clean** — see [`unified-turn-phase2-combined-live-status.md`](unified-turn-phase2-combined-live-status.md).
 
 | Gate | Verdict | Evidence |
 |------|---------|----------|
-| Prod tip (battery) | **PASS** | `/health` → `444371f960571d83c2d7af89def200fa241d4c51` |
-| Targeted shadow | **5/5 PASS** | [`unified-turn-phase2-battery-live.json`](unified-turn-phase2-battery-live.json) |
-| Pending-reply | **24/24** | nested in battery artifact |
-| Conversational | **20/20** | nested in battery artifact |
-| Knowledge-boundary | **PASS** | matrix `knowledge_boundary_run_history: true` |
-| Imperfect input (≥15) | **NOT RUN** on tip with new Module D rule — deploy tip including imperfect-input spec, then re-run battery | matrix `imperfect_input_understanding` |
-| STA-305 / run-history / persona-drift | **PASS** (exit 0) | same artifact |
-| Full multi-step email | **PARTIAL** | single-turn only |
-| GitHub deploy→tip `a049b510` | **FAIL** | [29942050137](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/29942050137) / [29910291596](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/29910291596) — Railway `up` stuck, tip stayed on `444371f9` |
-| TTFT &lt;200ms | **NOT MET** | Phase 3 — see [`unified-turn-phase3-latency-status.md`](unified-turn-phase3-latency-status.md) (p50 **2062ms**, streamed) |
-| Cutover | Tip already has `444371f9` Phase 4 cutover flag — separate from Phase 2 battery close |
-
-## Workflow failure mode
-
-`railway up` schedules builds that stay `WAITING`/`SKIPPED`; health never leaves
-`444371f9…` while the job waits for checkout SHA. Tip-wait now accepts descendants
-and, on timeout, continues batteries if tip already includes `444371f9` / `2f764ef6`.
+| Prod tip (imperfect dual) | **PASS** | `/health` → `22a573c59505d01135f4d5d4d83f6bbbf54e026e` |
+| Imperfect-input 16×2 | **PASS 32/32** | [`unified-turn-imperfect-input-dual-live.json`](unified-turn-imperfect-input-dual-live.json) — 0 typo echo, 0 spelling narration |
+| Combined suite tip | tip advanced to `e749a88b…` mid-run (descendant; LIVE on) | [`unified-turn-phase2-combined-live.json`](unified-turn-phase2-combined-live.json) |
+| Pending-reply | **PARTIAL 20/24** | nested classical battery |
+| Conversational | **FAIL 14/20** | nested classical battery |
+| Knowledge-boundary targeted | **FAIL** (outcome allow-list) | combined matrix |
+| STA-305 / run-history | exit 2 | same artifact |
+| Persona drift / send-email repro | **PASS** (exit 0) | same artifact |
+| TTFT &lt;200ms | **NOT MET** | Phase 3 |
 
 ## Standing rule
 
-Write-authority / approval / Module A unchanged for shadow audits; shadow does not
-bypass catalog write gates.
+Write-authority / approval / Module A unchanged. Imperfect-input PASS does **not** close the older functional matrix.
