@@ -77,4 +77,4 @@ if (Get-Command vercel -ErrorAction SilentlyContinue) {
     Write-Host "Vercel CLI not found — set NEXT_PUBLIC_INTERNET_RESEARCH_ENABLED=true manually." -ForegroundColor Yellow
 }
 
-Write-Host "Done. Verify: Invoke-RestMethod https://api.gravitre.app/health | internet_research_enabled" -ForegroundColor Green
+Write-Host "Done. Verify GET https://api.gravitre.app/health (internet_research_enabled should be true)." -ForegroundColor Green
