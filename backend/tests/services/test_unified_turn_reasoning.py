@@ -128,6 +128,9 @@ async def test_apply_unified_turn_live_serves_conversational_text():
         unified_turn_shadow_enabled=False,
         unified_turn_live_enabled=True,
         unified_turn_shadow_max_tools=24,
+        unified_turn_embedding_tool_retrieval=False,
+        unified_turn_task_max_tools=16,
+        unified_turn_task_model_tier="",
         openai_api_key="sk-test",
     )
     with patch("app.services.unified_turn_reasoning_service.get_tool_registry") as reg_patch, patch(
@@ -188,6 +191,9 @@ async def test_run_unified_turn_shadow_conversational_reply():
     settings = MagicMock(
         unified_turn_shadow_enabled=True,
         unified_turn_shadow_max_tools=24,
+        unified_turn_embedding_tool_retrieval=False,
+        unified_turn_task_max_tools=16,
+        unified_turn_task_model_tier="",
         openai_api_key="sk-test",
     )
 
@@ -239,6 +245,9 @@ async def test_run_unified_turn_shadow_knowledge_boundary_kind():
     settings = MagicMock(
         unified_turn_shadow_enabled=True,
         unified_turn_shadow_max_tools=24,
+        unified_turn_embedding_tool_retrieval=False,
+        unified_turn_task_max_tools=16,
+        unified_turn_task_model_tier="",
         openai_api_key="sk-test",
     )
 
@@ -285,6 +294,9 @@ async def test_run_unified_turn_shadow_tool_proposal():
     settings = MagicMock(
         unified_turn_shadow_enabled=True,
         unified_turn_shadow_max_tools=24,
+        unified_turn_embedding_tool_retrieval=False,
+        unified_turn_task_max_tools=16,
+        unified_turn_task_model_tier="",
         openai_api_key="sk-test",
     )
 

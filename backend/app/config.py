@@ -108,6 +108,26 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("UNIFIED_TURN_LIVE_ENABLED", "unified_turn_live_enabled"),
     )
+    # Task-shaped turns: semantic tool retrieval (Phase 0 Future). Social keeps keyword narrow.
+    unified_turn_embedding_tool_retrieval: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "UNIFIED_TURN_EMBEDDING_TOOL_RETRIEVAL",
+            "unified_turn_embedding_tool_retrieval",
+        ),
+    )
+    unified_turn_task_max_tools: int = Field(
+        default=16,
+        validation_alias=AliasChoices("UNIFIED_TURN_TASK_MAX_TOOLS", "unified_turn_task_max_tools"),
+    )
+    # MODEL_TIERS key for task/mixed unified calls (e.g. low → gpt-5.4-mini). Empty = gpt-4o-mini.
+    unified_turn_task_model_tier: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "UNIFIED_TURN_TASK_MODEL_TIER",
+            "unified_turn_task_model_tier",
+        ),
+    )
     rag_uploads_bucket: str = "rag-uploads"
     rag_store_raw_files: bool = True
     blob_read_write_token: str = ""

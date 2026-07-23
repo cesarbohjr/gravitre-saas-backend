@@ -22,6 +22,10 @@ from app.services.providers.openai_adapter import _supports_custom_temperature
 from app.services.react_write_gate import tool_requires_user_write_approval
 from app.services.tool_registry import get_tool_registry
 from app.services.unified_turn_pending_context import build_unified_turn_pending_context
+from app.services.unified_turn_tool_retrieval import (
+    embed_narrow_tools_for_turn,
+    is_task_shaped_for_retrieval,
+)
 from app.services.user_facing_copy_guard import assert_no_raw_catalog_action_keys, finalize_user_facing_message
 
 logger = get_logger(__name__)
@@ -190,9 +194,17 @@ def _last_assistant_snippet(conversation_history: list[dict[str, Any]] | None) -
     return None
 
 
-def _resolve_model(settings: Settings) -> str:
+def _resolve_model(settings: Settings, *, task_shaped: bool = False) -> str:
     from app.config import MODEL_TIERS
 
+    if task_shaped:
+        tier_name = str(getattr(settings, "unified_turn_task_model_tier", "") or "").strip().lower()
+        if tier_name:
+            tier = MODEL_TIERS.get(tier_name) or {}
+            model = str(tier.get("openai") or "").strip()
+            if model:
+                return model
+    # Historical default for unified turn (social + unset task tier).
     tier = MODEL_TIERS.get("standard") or MODEL_TIERS.get("fast") or {}
     return str(tier.get("openai") or "gpt-4o-mini")
 
@@ -226,14 +238,40 @@ async def run_unified_turn_shadow(
     all_tools = registry.get_tools_for_agent(permitted, connected)
     t_after_registry = time.perf_counter()
 
-    max_tools = int(getattr(active, "unified_turn_shadow_max_tools", 32) or 32)
-    visible, tool_stats = narrow_tools_for_turn(
-        all_tools,
-        query=message,
-        connected_integrations=connected,
-        requires_action=None,
-        max_tools=max_tools,
-    )
+    use_embed, shape_label, retrieval_query = is_task_shaped_for_retrieval(message or "")
+    embed_on = bool(getattr(active, "unified_turn_embedding_tool_retrieval", True)) and use_embed
+    if use_embed:
+        max_tools = int(
+            getattr(active, "unified_turn_task_max_tools", None)
+            or getattr(active, "unified_turn_shadow_max_tools", 32)
+            or 16
+        )
+    else:
+        max_tools = int(getattr(active, "unified_turn_shadow_max_tools", 32) or 32)
+
+    if embed_on:
+        visible, tool_stats = embed_narrow_tools_for_turn(
+            all_tools,
+            query=retrieval_query or message,
+            settings=active,
+            org_id=org_id,
+            connected_integrations=connected,
+            requires_action=None,
+            max_tools=max_tools,
+        )
+    else:
+        visible, tool_stats = narrow_tools_for_turn(
+            all_tools,
+            query=message,
+            connected_integrations=connected,
+            requires_action=None,
+            max_tools=max_tools,
+        )
+        tool_stats = {
+            **(tool_stats or {}),
+            "retrievalMethod": "keyword_narrow_tools_for_turn",
+            "embeddingToolRetrieval": False,
+        }
     t_after_narrow = time.perf_counter()
 
     pending_block = build_unified_turn_pending_context(
@@ -283,7 +321,7 @@ async def run_unified_turn_shadow(
     # Hypothetical full-catalog payload for the same connected set (not sent).
     full_catalog_bytes = len(json.dumps(all_tools, separators=(",", ":")).encode("utf-8"))
 
-    model = _resolve_model(active)
+    model = _resolve_model(active, task_shaped=use_embed)
     router = get_model_router()
     openai_client = router._openai  # noqa: SLF001 — same pattern as react_engine
     if openai_client is None:
@@ -298,6 +336,11 @@ async def run_unified_turn_shadow(
     if _supports_custom_temperature(model):
         kwargs["temperature"] = 0.2
 
+    retrieval_method = str(
+        (tool_stats or {}).get("retrievalMethod")
+        or ("embedding_narrow_tools_for_turn" if embed_on else "keyword_narrow_tools_for_turn")
+    )
+    embedding_used = bool((tool_stats or {}).get("embeddingToolRetrieval"))
     breakdown: dict[str, Any] = {
         "registry_tools_ms": int((t_after_registry - wall_start) * 1000),
         "narrow_tools_ms": int((t_after_narrow - t_after_registry) * 1000),
@@ -310,16 +353,17 @@ async def run_unified_turn_shadow(
         "total_tools": len(all_tools),
         "visible_tools": len(visible),
         "max_tools_cap": max_tools,
-        # Phase 0 chose keyword narrow now; embedding retrieval is NOT implemented.
-        "retrieval_method": "keyword_narrow_tools_for_turn",
-        "embedding_tool_retrieval": False,
+        "retrieval_method": retrieval_method,
+        "embedding_tool_retrieval": embedding_used,
+        "turn_shape_hint": shape_label,
+        "retrieval_query": (retrieval_query or "")[:240],
+        "task_model_tier": str(getattr(active, "unified_turn_task_model_tier", "") or "") or None,
     }
     tool_stats = {
         **(tool_stats or {}),
-        "retrievalMethod": "keyword_narrow_tools_for_turn",
-        "embeddingToolRetrieval": False,
         "toolsPayloadBytes": tools_payload_bytes,
         "fullCatalogPayloadBytes": full_catalog_bytes,
+        "turnShapeHint": shape_label,
     }
 
     try:

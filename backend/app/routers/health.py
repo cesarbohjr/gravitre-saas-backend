@@ -60,12 +60,16 @@ def health(request: Request) -> dict:
     status = "ok" if db_ok else "degraded"
     unified_shadow = False
     unified_live = False
+    unified_embed_tools = False
+    unified_task_tier = ""
     try:
         from app.config import get_settings
 
         s = get_settings()
         unified_shadow = bool(getattr(s, "unified_turn_shadow_enabled", False))
         unified_live = bool(getattr(s, "unified_turn_live_enabled", False))
+        unified_embed_tools = bool(getattr(s, "unified_turn_embedding_tool_retrieval", False))
+        unified_task_tier = str(getattr(s, "unified_turn_task_model_tier", "") or "")
     except Exception:  # noqa: BLE001
         unified_shadow = (os.environ.get("UNIFIED_TURN_SHADOW_ENABLED") or "").lower() in {
             "1",
@@ -77,6 +81,12 @@ def health(request: Request) -> dict:
             "true",
             "yes",
         }
+        unified_embed_tools = (os.environ.get("UNIFIED_TURN_EMBEDDING_TOOL_RETRIEVAL") or "true").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+        unified_task_tier = os.environ.get("UNIFIED_TURN_TASK_MODEL_TIER") or ""
 
     return {
         "status": status,
@@ -89,5 +99,7 @@ def health(request: Request) -> dict:
         "ai_disabled": _ai_disabled_flag(),
         "unified_turn_shadow_enabled": unified_shadow,
         "unified_turn_live_enabled": unified_live,
+        "unified_turn_embedding_tool_retrieval": unified_embed_tools,
+        "unified_turn_task_model_tier": unified_task_tier or None,
         "checks": checks,
     }
