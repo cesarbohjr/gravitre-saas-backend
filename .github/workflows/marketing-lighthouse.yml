@@ -1,0 +1,53 @@
+name: Marketing Lighthouse CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - ".github/workflows/marketing-lighthouse.yml"
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - ".github/workflows/marketing-lighthouse.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: marketing-lighthouse-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lighthouse:
+    name: Lighthouse (home + pricing)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Production build
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          FASTAPI_BASE_URL: http://127.0.0.1:8000
+
+      - name: Run Lighthouse CI
+        run: |
+          npx --yes @lhci/cli@0.14.0 autorun --config=lighthouserc.json
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.GITHUB_TOKEN }}

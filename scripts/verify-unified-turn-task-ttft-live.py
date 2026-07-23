@@ -226,6 +226,8 @@ async def main() -> int:
             bd = meta.get("latency_breakdown") or {}
             ft = meta.get("first_token_proxy_ms")
             mt = bd.get("model_ttft_ms") if isinstance(bd, dict) else None
+            cached_tok = bd.get("cached_prompt_tokens") if isinstance(bd, dict) else None
+            cached_ratio = bd.get("cached_prompt_ratio") if isinstance(bd, dict) else None
             if isinstance(ft, (int, float)):
                 wall.append(int(ft))
             if isinstance(mt, (int, float)):
@@ -271,6 +273,8 @@ async def main() -> int:
                 "model": meta.get("model"),
                 "first_token_proxy_ms": ft,
                 "latency_breakdown": bd,
+                "cached_prompt_tokens": cached_tok,
+                "cached_prompt_ratio": cached_ratio,
                 "pending_status": pending_status,
                 "assistant_preview": assistant[:280],
                 "functional_ok": functional_ok,
@@ -282,6 +286,8 @@ async def main() -> int:
                         "id": case["id"],
                         "wall": ft,
                         "model_ttft": mt,
+                        "cached_prompt_tokens": cached_tok,
+                        "cached_prompt_ratio": cached_ratio,
                         "retrieval": bd.get("retrieval_method") if isinstance(bd, dict) else None,
                         "visible": bd.get("visible_tools") if isinstance(bd, dict) else None,
                         "payload_b": bd.get("tools_payload_bytes") if isinstance(bd, dict) else None,

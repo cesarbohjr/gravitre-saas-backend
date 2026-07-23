@@ -69,6 +69,29 @@ Do not document or demo Memory Phase 1 as fuzzy person disambiguation.
 
 ---
 
+## 6. Test pyramid and shift-left
+
+- **Pyramid weight:** Many fast unit tests (backend pytest + web vitest), fewer integration tests, smallest live-prod battery surface. Run `python scripts/audit-test-pyramid.py --json docs/delivery/test-pyramid-audit-latest.json` when assessing debt.
+- **Inverted pyramid anti-pattern:** When live batteries (`verify-unified-turn-*-live.py`, `smoke-*-live.py`) catch regressions that cheap local tests should catch first, add or strengthen **unit/contract tests** before expanding batteries.
+- **Shift-left:** Phase 0 investigation and evidence-linked PASS (sections 1–5) apply at design time — not only at release.
+
+## 7. Flaky tests and harness honesty
+
+- **Flaky test SLA:** Treat intermittent failures as defects — fix or delete within **7 days**; do not rely on silent re-runs until green.
+- **No silent softening:** Any change that makes a test pass more easily (looser assertion, exit code `2`→`0`, expanded allowlist) requires an **explicit justification in the same commit**, reviewed like production code. (STA-305 exit-code regression is the canonical example.)
+
+## 8. LLM product quality (standing suites)
+
+Maintain the batteries listed in `docs/delivery/llm-quality-test-suite.md`. Re-run the **full combined battery** after any change to Module D voice spec, unified-turn prompt assembly, or task model tier — not ad hoc spot checks only.
+
+**Gap:** prompt-injection resistance battery is **not yet implemented** — track before claiming LLM QA complete.
+
+## 9. Dependency audit in CI
+
+`pnpm audit --audit-level=high` and `pip-audit` run on every PR in `.github/workflows/ci.yml`. New **critical** findings must block merge; highs require triage with reachability notes (runtime vs dev-only) before dismissing.
+
+---
+
 ## How to cite
 
 When closing tickets, prefer: *“PASS against [artifact] on prod SHA [sha]”*

@@ -91,6 +91,9 @@ class _StreamedCompletion:
     latency_ms: int  # wall_start → stream end
     model_total_ms: int  # model_start → stream end
     streamed: bool
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    cached_tokens: int = 0
 
 
 async def _complete_unified_turn_stream(
@@ -101,14 +104,28 @@ async def _complete_unified_turn_stream(
     model_start: float,
 ) -> _StreamedCompletion:
     """Stream the shadow completion; record wall TTFT and model-only TTFT."""
-    stream_kwargs = {**kwargs, "stream": True}
+    stream_kwargs = {
+        **kwargs,
+        "stream": True,
+        "stream_options": {"include_usage": True},
+    }
     content_parts: list[str] = []
     tool_acc: dict[int, dict[str, Any]] = {}
     first_token_ms: int | None = None
     model_ttft_ms: int | None = None
+    prompt_tokens = 0
+    completion_tokens = 0
+    cached_tokens = 0
 
     stream = await openai_client.chat.completions.create(**stream_kwargs)
     async for chunk in stream:
+        usage = getattr(chunk, "usage", None)
+        if usage is not None:
+            prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
+            completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
+            details = getattr(usage, "prompt_tokens_details", None)
+            if details is not None:
+                cached_tokens = int(getattr(details, "cached_tokens", 0) or 0)
         choices = getattr(chunk, "choices", None) or []
         if not choices:
             continue
@@ -174,7 +191,22 @@ async def _complete_unified_turn_stream(
         latency_ms=latency_ms,
         model_total_ms=model_total_ms,
         streamed=True,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        cached_tokens=cached_tokens,
     )
+
+
+def _stable_tool_list(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Stable ordering so OpenAI automatic prefix caching can hit across turns."""
+
+    def _name(tool: dict[str, Any]) -> str:
+        fn = tool.get("function")
+        if isinstance(fn, dict):
+            return str(fn.get("name") or "")
+        return str(tool.get("name") or "")
+
+    return sorted(tools, key=_name)
 
 
 def _history_to_messages(
@@ -284,6 +316,7 @@ async def run_unified_turn_shadow(
             "embeddingToolRetrieval": False,
             "embeddingSkippedReason": skip_reason,
         }
+    visible = _stable_tool_list(list(visible or []))
     t_after_narrow = time.perf_counter()
 
     pending_block = build_unified_turn_pending_context(
@@ -409,6 +442,14 @@ async def run_unified_turn_shadow(
     breakdown["model_ttft_ms"] = completion.model_ttft_ms
     breakdown["model_total_ms"] = completion.model_total_ms
     breakdown["wall_to_first_token_ms"] = completion.first_token_ms
+    breakdown["prompt_tokens"] = completion.prompt_tokens
+    breakdown["completion_tokens"] = completion.completion_tokens
+    breakdown["cached_prompt_tokens"] = completion.cached_tokens
+    if completion.prompt_tokens:
+        breakdown["cached_prompt_ratio"] = round(
+            completion.cached_tokens / max(1, completion.prompt_tokens),
+            4,
+        )
     # Residual after model_ttft inside wall TTFT ≈ pre_model + network/queue inside create().
     if completion.first_token_ms is not None and completion.model_ttft_ms is not None:
         breakdown["pre_first_token_overhead_ms"] = max(
