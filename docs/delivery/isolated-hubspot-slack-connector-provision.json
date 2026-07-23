@@ -1,0 +1,39 @@
+{
+  "isolated_org": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "operator_org_read_only": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "clones": [
+    {
+      "action": "created",
+      "type": "hubspot",
+      "connector_id": "41175658-a119-4f3f-949d-0b927e7c0b78",
+      "source_connector_id": "547cdda5-2637-4a2b-b087-d5ea89486575",
+      "secret_keys": [
+        "oauth_tokens"
+      ],
+      "status": "healthy"
+    },
+    {
+      "action": "created",
+      "type": "slack",
+      "connector_id": "98d82730-17d0-4a4d-af23-9fd738ebad58",
+      "source_connector_id": "fe7433c3-6475-474a-863f-91b98d17a0b8",
+      "secret_keys": [
+        "oauth_tokens",
+        "token"
+      ],
+      "status": "healthy"
+    }
+  ],
+  "connected_integrations": [
+    "apollo",
+    "hubspot",
+    "slack"
+  ],
+  "required": [
+    "hubspot",
+    "slack"
+  ],
+  "pass": true,
+  "verified_at": "2026-07-23T08:57:14.891229+00:00",
+  "note": "Disposable HubSpot+Slack OAuth clones for STA-305 live in isolated org; tokens shared with operator install"
+}

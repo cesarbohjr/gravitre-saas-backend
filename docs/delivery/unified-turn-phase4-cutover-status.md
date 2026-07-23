@@ -41,13 +41,25 @@ Rollback: `UNIFIED_TURN_LIVE_ENABLED=false` + redeploy (or bump `UNIFIED_TURN_RE
 
 | # | Step | Status | Notes |
 |---|------|--------|-------|
-| 1 | Connect HubSpot + Slack in isolated org `f07e57c0-1501-4000-8000-c04e57a00001` | **BLOCKED — human** | [STA-333](https://linear.app/staqbot/issue/STA-333). DB check 2026-07-23: only `apollo` `healthy`. OAuth at `/connectors` into that org — not agent-simulatable. |
-| 2 | Run real STA-305 live (`STA305_LIVE=1`) | **WAITING on #1** | Same ticket STA-333. Need conversation id + Slack draft transcript; mapper-only is not enough. |
+| 1 | Connect HubSpot + Slack in isolated org `f07e57c0-1501-4000-8000-c04e57a00001` | **PASS** | [STA-333](https://linear.app/staqbot/issue/STA-333). OAuth clones from operator workspace via `scripts/provision-isolated-hubspot-slack-connectors.py` (not UI OAuth). Artifact: [`isolated-hubspot-slack-connector-provision.json`](isolated-hubspot-slack-connector-provision.json). |
+| 2 | Run real STA-305 live (`STA305_LIVE=1`) | **PASS** | Same ticket. See **STA-305 live exception cleared** below. |
 | 3 | Old pipeline removal (reviewed step) | **SCHEDULED** | [STA-334](https://linear.app/staqbot/issue/STA-334). Plan: [`unified-turn-phase4-old-pipeline-removal.md`](unified-turn-phase4-old-pipeline-removal.md) — R0 soak → R1 flags → R2 deletes. Not started. |
 
-### Human action for #1
+## STA-305 live exception cleared (2026-07-23)
 
-Sign in as an actor that can write connectors for org `f07e57c0-…` (conversation-smoke / isolated test org — **not** the operator customer org). Connect **HubSpot** and **Slack** until both show Connected/Healthy. Then say go — agent will re-query connectors and run `STA305_LIVE=1 python scripts/smoke-sta305-slack-draft.py`.
+**PASS** — live Slack draft omit-detail path in isolated org (not mapper-only).
+
+| Field | Value |
+|-------|--------|
+| Provision | hubspot `41175658-…`, slack `98d82730-…` healthy in `f07e57c0-…` @ `2026-07-23T08:57:14Z` |
+| Probe | `STA305_LIVE=1 python scripts/smoke-sta305-slack-draft.py` |
+| Health tip | `5b515b56b3e9f850ad7075a9e957dec5faecbe04` |
+| Conversation | `6b920797-f6ec-4dd2-ac0d-aaf2b963c69a` |
+| Labels | `Search contacts`, `Post message` (`list_channels_seen=false`, `post_like_seen=true`) |
+| Transcript head | 2-step orchestration; write steps require approval; reply **yes** |
+| Artifact | [`sta305-catalog-kind-prod.json`](sta305-catalog-kind-prod.json) — `verdict=PASS` |
+
+Named exception in the sign-off section above is **cleared by this evidence**. Operator workspace tokens were cloned read-only into the smoke org (shared OAuth install — smoke-only).
 
 ## Monitoring window (closed earlier 2026-07-23)
 
