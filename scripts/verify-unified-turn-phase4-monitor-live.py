@@ -242,7 +242,11 @@ async def main() -> int:
                     .eq("resource_id", cid)
                     .in_(
                         "action",
-                        ["unified_turn.live.completed", "unified_turn.shadow.completed"],
+                        [
+                            "unified_turn.live.completed",
+                            "unified_turn.live.fallthrough",
+                            "unified_turn.shadow.completed",
+                        ],
                     )
                     .gte("created_at", after)
                     .order("created_at", desc=True)
@@ -343,7 +347,14 @@ async def main() -> int:
             .select("action,created_at,metadata")
             .eq("org_id", org_id)
             .eq("resource_id", wcid)
-            .in_("action", ["unified_turn.live.completed", "unified_turn.shadow.completed"])
+            .in_(
+                "action",
+                [
+                    "unified_turn.live.completed",
+                    "unified_turn.live.fallthrough",
+                    "unified_turn.shadow.completed",
+                ],
+            )
             .gte("created_at", after_w)
             .order("created_at", desc=True)
             .limit(1)

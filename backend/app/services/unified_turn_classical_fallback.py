@@ -70,15 +70,15 @@ def should_defer_unified_turn_live_to_classical(
     }:
         return False
 
-    if classification and classification.get("requires_action"):
-        return True
-
     # Reasoning/agent: keep classical as primary for non-pending turns.
     if mode in _CLASSICAL_TOOL_SSE_MODES:
         return True
 
     # Standard + fast: defer only when the utterance needs tool SSE / write chips.
+    # Do not use classification.requires_action here — it over-fires on greetings
+    # ("Hey") and forced LIVE fallthrough after R1 skipped phrase-bank primary.
     if message_requires_classical_tool_sse(msg):
         return True
 
+    _ = classification  # reserved for future structured defer signals
     return False

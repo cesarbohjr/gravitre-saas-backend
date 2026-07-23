@@ -28,6 +28,15 @@ def test_standard_mode_pure_chat_not_deferred():
     )
 
 
+def test_standard_greeting_not_deferred_when_requires_action_flag_set():
+    assert not should_defer_unified_turn_live_to_classical(
+        mode_key="standard",
+        outcome_kind="conversational_reply",
+        message="Hey",
+        classification={"requires_action": True},
+    )
+
+
 def test_defer_connector_tool_proposal_all_modes():
     assert should_defer_unified_turn_live_to_classical(
         mode_key="fast",
