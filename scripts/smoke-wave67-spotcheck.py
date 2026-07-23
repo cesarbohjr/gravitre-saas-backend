@@ -334,8 +334,8 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any]:
             token=token,
             conversation_id=conv,
             text=(
-                "Using Apollo, list my contact lists and summarize the first few names. "
-                "Then outline a short plan before calling tools."
+                f"Using Apollo, list my contact lists and summarize the first few names. "
+                f"Then outline a short plan before calling tools. (wave67 plan/read {uuid.uuid4().hex[:8]})"
             ),
         )
         s1 = _summarize_stream(events1, wall1)

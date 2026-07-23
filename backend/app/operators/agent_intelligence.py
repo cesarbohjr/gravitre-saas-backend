@@ -1296,7 +1296,14 @@ class AgentIntelligence:
         )
 
         tier0_started = time.monotonic()
-        if tier0_enabled(engine_settings):
+        tier0_skip = mode_key in {"reasoning", "agent"}
+        if not tier0_skip:
+            from app.services.unified_turn_classical_fallback import (
+                message_requires_classical_tool_sse,
+            )
+
+            tier0_skip = message_requires_classical_tool_sse(task_text)
+        if tier0_enabled(engine_settings) and not tier0_skip:
             tier0_hit = await get_tier0_answer(
                 active_settings,
                 org_id=org_id,

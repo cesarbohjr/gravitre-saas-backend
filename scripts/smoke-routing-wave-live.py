@@ -258,11 +258,11 @@ async def main() -> int:
     sys.path.insert(0, str(ROOT))
     sys.path.insert(0, str(BACKEND))
 
-from isolated_conversation_org import (  # noqa: E402
-    DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID,
-    mark_smoke_run,
-    smoke_http_headers,
-)
+    from isolated_conversation_org import (  # noqa: E402
+        DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID,
+        mark_smoke_run,
+        smoke_http_headers,
+    )
     from app.config import get_settings
     from app.workflows.repository import get_supabase_client
 
