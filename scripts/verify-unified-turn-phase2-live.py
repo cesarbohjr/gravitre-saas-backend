@@ -265,7 +265,6 @@ CASES: list[dict[str, Any]] = [
         ],
     },
     {
-    {
         "id": "knowledge_boundary_run_history_fast",
         "mode": "fast",
         "message": (
