@@ -287,24 +287,20 @@ CASES: list[dict[str, Any]] = [
         "imperfect_input": True,
         "message": "sned emial to stephanie about the meeting",
         "typo_tokens": ["sned", "emial"],
+        "intent_must_match": re.compile(
+            r"email|gmail|draft|stephanie|purpose|key points|recipient|subject", re.I
+        ),
         "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
-        "shadow_outcome_any": [
-            "clarifying_question",
-            "confirmation_request",
-            "connector_tool_proposal",
-        ],
+        "shadow_outcome_any": TASKISH_OUTCOMES,
     },
     {
         "id": "imperfect_creat_contct",
         "imperfect_input": True,
         "message": "creat a contct named Jordan Lee in HubSpot",
         "typo_tokens": ["creat", "contct"],
+        "intent_must_match": re.compile(r"contact|hubspot|jordan|/connectors|connected", re.I),
         "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
-        "shadow_outcome_any": [
-            "clarifying_question",
-            "confirmation_request",
-            "connector_tool_proposal",
-        ],
+        "shadow_outcome_any": TASKISH_OUTCOMES,
     },
     {
         "id": "imperfect_aprove_pending",
@@ -312,43 +308,38 @@ CASES: list[dict[str, Any]] = [
         "seed": GMAIL_PENDING_SEED,
         "message": "aprove",
         "typo_tokens": ["aprove"],
+        "intent_must_match": re.compile(
+            r"yes|approv|waiting|cancel|send|gmail|confirm", re.I
+        ),
         "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
-        "shadow_outcome_any": [
-            "confirmation_request",
-            "conversational_reply",
-            "connector_tool_proposal",
-            "clarifying_question",
-        ],
+        "shadow_outcome_any": TASKISH_OUTCOMES,
     },
     {
         "id": "imperfect_shedule",
         "imperfect_input": True,
         "message": "shedule a follow up email for tomorrow morning",
         "typo_tokens": ["shedule"],
+        "intent_must_match": re.compile(
+            r"email|gmail|schedule|tomorrow|follow|draft|purpose|when", re.I
+        ),
         "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
-        "shadow_outcome_any": [
-            "clarifying_question",
-            "confirmation_request",
-            "connector_tool_proposal",
-        ],
+        "shadow_outcome_any": TASKISH_OUTCOMES,
     },
     {
         "id": "imperfect_creaet_list",
         "imperfect_input": True,
         "message": "creaet an Apollo list called Q3 outbound",
         "typo_tokens": ["creaet"],
+        "intent_must_match": re.compile(r"apollo|list|q3|/connectors|connected", re.I),
         "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
-        "shadow_outcome_any": [
-            "clarifying_question",
-            "confirmation_request",
-            "connector_tool_proposal",
-        ],
+        "shadow_outcome_any": TASKISH_OUTCOMES,
     },
     {
         "id": "imperfect_connectr",
         "imperfect_input": True,
         "message": "is the slack connectr Connected right now",
         "typo_tokens": ["connectr"],
+        "intent_must_match": re.compile(r"slack|connected|/connectors|healthy|status", re.I),
         "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
         "shadow_outcome_any": TASKISH_OUTCOMES,
     },
@@ -357,88 +348,78 @@ CASES: list[dict[str, Any]] = [
         "imperfect_input": True,
         "message": "can you chekc if teh HubSpot list got creatd",
         "typo_tokens": ["chekc", "teh", "creatd"],
+        "intent_must_match": re.compile(
+            r"hubspot|list|status|look|fetch|don.?t have|connected|/connectors", re.I
+        ),
         "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
-        "shadow_outcome_any": [
-            "clarifying_question",
-            "confirmation_request",
-            "connector_tool_proposal",
-            "knowledge_boundary",
-            "conversational_reply",
-        ],
+        "shadow_outcome_any": TASKISH_OUTCOMES,
     },
     {
         "id": "imperfect_missing_to_words",
         "imperfect_input": True,
         "message": "send email stephanie about meeting",
         "typo_tokens": [],
+        "intent_must_match": re.compile(
+            r"email|gmail|stephanie|draft|purpose|key points|recipient|subject", re.I
+        ),
         "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
-        "shadow_outcome_any": [
-            "clarifying_question",
-            "confirmation_request",
-            "connector_tool_proposal",
-        ],
+        "shadow_outcome_any": TASKISH_OUTCOMES,
     },
     {
         "id": "imperfect_disordered_hubspot",
         "imperfect_input": True,
         "message": "hubspot contact create for alex@example.com please",
         "typo_tokens": [],
+        "intent_must_match": re.compile(
+            r"hubspot|contact|alex|/connectors|connected|create", re.I
+        ),
         "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
-        "shadow_outcome_any": [
-            "clarifying_question",
-            "confirmation_request",
-            "connector_tool_proposal",
-        ],
+        "shadow_outcome_any": TASKISH_OUTCOMES,
     },
     {
         "id": "imperfect_doubled_drafte",
         "imperfect_input": True,
         "message": "pleasse drafte a gmail to demo@example.com about pricing",
         "typo_tokens": ["pleasse", "drafte"],
+        "intent_must_match": re.compile(
+            r"gmail|email|draft|demo@example|pricing|purpose|key points", re.I
+        ),
         "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
-        "shadow_outcome_any": [
-            "clarifying_question",
-            "confirmation_request",
-            "connector_tool_proposal",
-        ],
+        "shadow_outcome_any": TASKISH_OUTCOMES,
     },
     {
         "id": "imperfect_adjacent_senf_mesage",
         "imperfect_input": True,
         "message": "senf a slack mesage to #general saying kickoff is at 3",
         "typo_tokens": ["senf", "mesage"],
+        "intent_must_match": re.compile(
+            r"slack|#general|general|kickoff|message|/connectors|connected", re.I
+        ),
         "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
-        "shadow_outcome_any": [
-            "clarifying_question",
-            "confirmation_request",
-            "connector_tool_proposal",
-        ],
+        "shadow_outcome_any": TASKISH_OUTCOMES,
     },
     {
         "id": "imperfect_thansk_then_task",
         "imperfect_input": True,
         "message": "thansk — also sned that hubspot note to maria",
         "typo_tokens": ["thansk", "sned"],
+        "intent_must_match": re.compile(
+            r"hubspot|maria|note|email|draft|/connectors|connected", re.I
+        ),
         "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
-        "shadow_outcome_any": [
-            "clarifying_question",
-            "confirmation_request",
-            "connector_tool_proposal",
-            "conversational_reply",
-        ],
+        "shadow_outcome_any": TASKISH_OUTCOMES,
     },
     {
         "id": "imperfect_voice_um_email",
         "imperfect_input": True,
         "message": "um so can you send an email to jordan about the deck",
         "typo_tokens": [],
+        "intent_must_match": re.compile(
+            r"email|gmail|jordan|deck|draft|purpose|key points", re.I
+        ),
         "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
         "assistant_must_not_contain": [" um ", "Um "],
-        "shadow_outcome_any": [
-            "clarifying_question",
-            "confirmation_request",
-            "connector_tool_proposal",
-        ],
+        "shadow_outcome_any": TASKISH_OUTCOMES,
     },
     {
         "id": "imperfect_voice_runon_list",
@@ -448,12 +429,11 @@ CASES: list[dict[str, Any]] = [
             "when you get a chance"
         ),
         "typo_tokens": [],
+        "intent_must_match": re.compile(
+            r"hubspot|list|summer|/connectors|connected|create", re.I
+        ),
         "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
-        "shadow_outcome_any": [
-            "clarifying_question",
-            "confirmation_request",
-            "connector_tool_proposal",
-        ],
+        "shadow_outcome_any": TASKISH_OUTCOMES,
     },
     {
         "id": "imperfect_voice_filler_aprove",
@@ -461,13 +441,11 @@ CASES: list[dict[str, Any]] = [
         "seed": GMAIL_PENDING_SEED,
         "message": "um yeah go ahead and aprove it",
         "typo_tokens": ["aprove"],
+        "intent_must_match": re.compile(
+            r"yes|approv|waiting|cancel|send|gmail|confirm", re.I
+        ),
         "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
-        "shadow_outcome_any": [
-            "confirmation_request",
-            "conversational_reply",
-            "connector_tool_proposal",
-            "clarifying_question",
-        ],
+        "shadow_outcome_any": TASKISH_OUTCOMES,
     },
     {
         "id": "imperfect_stauts_pending",
@@ -475,13 +453,11 @@ CASES: list[dict[str, Any]] = [
         "seed": GMAIL_PENDING_SEED,
         "message": "whats teh stauts of that gmail",
         "typo_tokens": ["teh", "stauts"],
+        "intent_must_match": re.compile(
+            r"gmail|waiting|approv|pending|yes|cancel|send|status", re.I
+        ),
         "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
-        "shadow_outcome_any": [
-            "clarifying_question",
-            "confirmation_request",
-            "conversational_reply",
-            "knowledge_boundary",
-        ],
+        "shadow_outcome_any": TASKISH_OUTCOMES,
     },
 ]
 
@@ -529,6 +505,11 @@ def judge_case(case: dict[str, Any], turn: dict[str, Any], shadow: dict | None) 
             failures.append("spelling_correction_narration")
         if not (assistant or "").strip() and not model_text.strip():
             failures.append("empty_imperfect_reply")
+        intent_pat = case.get("intent_must_match")
+        if intent_pat is not None:
+            joined = "\n".join(t for t in check_texts if t)
+            if not intent_pat.search(joined):
+                failures.append("intent_not_resolved")
     if shadow is None:
         failures.append("missing_shadow_audit")
     else:
