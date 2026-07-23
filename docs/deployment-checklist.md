@@ -13,6 +13,8 @@
 
 Failed build with `fsutil.NewFS(.../snapshot-target-unpack/backend): no such file or directory` almost always means Root Directory and Dockerfile path are double-prefixed (`backend` + `backend/Dockerfile`). Fix the dashboard paths above or deploy with `railway up ./backend --path-as-root` (see `.github/workflows/railway-backend-production.yml`).
 
+**Red CI on “Railway backend production” while prod `/health` matches `main`:** usually **not** fsutil — duplicate deploy (GitHub auto-deploy + workflow `railway up --ci`). See [`docs/delivery/railway-github-actions-deploy-status.md`](delivery/railway-github-actions-deploy-status.md). The workflow passes/fails on `/health` `git_sha`, not CLI exit code alone.
+
 - [ ] All env vars set (see `backend/.env.example`)
 - [ ] `TAVILY_API_KEY` set for assistant web search (`npm run tavily:fill-env` or Railway Variables)
 - [ ] `DISABLE_AI=false` (unless intentional)

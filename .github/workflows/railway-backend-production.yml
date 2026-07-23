@@ -1,5 +1,8 @@
 # Reliable backend deploy when GitHub-connected Railway builds fail on monorepo path
 # (fsutil.NewFS .../backend: no such file or directory). Uses CLI upload with backend as root.
+#
+# When GitHub auto-deploy is also enabled, `railway up --ci` may exit 1 while prod still
+# updates (duplicate deploy race). Pass/fail is /health git_sha — see docs/delivery/railway-github-actions-deploy-status.md
 name: Railway backend production
 
 on:
@@ -24,27 +27,53 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
       - name: Install Railway CLI
         run: npm install -g @railway/cli@4.65.0
 
-      - name: Deploy gravitre-saas-backend
+      - name: Deploy gravitre-saas-backend (optional CLI upload)
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           set -euo pipefail
           SHA="$(git rev-parse --short=8 HEAD)"
           FULL="$(git rev-parse HEAD)"
-          railway up ./backend --path-as-root --ci \
-            --service gravitre-saas-backend \
-            --environment production \
-            --message "main $SHA"
+          SVC="gravitre-saas-backend"
+          ENV_NAME="production"
+          echo "ci_commit_sha=$SHA full=$FULL"
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+          CURRENT="$(curl -fsS https://api.gravitre.app/health | python3 -c 'import sys,json; print(json.load(sys.stdin).get("git_sha",""))' || true)"
+          echo "health_before=$CURRENT"
+          SKIP_UP=0
+          if [[ "$CURRENT" == "$FULL"* ]] || [[ "$CURRENT" == "$SHA"* ]]; then
+            SKIP_UP=1
+            echo "Health already on this commit — skip railway up (GitHub auto-deploy likely won)."
+          elif [ -n "$CURRENT" ] && git merge-base --is-ancestor "$SHA" "$CURRENT" 2>/dev/null; then
+            SKIP_UP=1
+            echo "Health already past this commit — skip railway up."
+          fi
 
-      - name: Wait for /health git_sha
+          if [ "$SKIP_UP" = "0" ]; then
+            set +e
+            railway up ./backend --path-as-root --ci \
+              --service "$SVC" \
+              --environment "$ENV_NAME" \
+              --message "main $SHA"
+            UP_RC=$?
+            set -e
+            echo "railway_up_exit=$UP_RC"
+            if [ "$UP_RC" != "0" ]; then
+              echo "::warning::railway up --ci exited $UP_RC (often duplicate deploy with GitHub auto-deploy). Health gate decides job outcome."
+              railway deployment list --service "$SVC" --environment "$ENV_NAME" --json 2>/dev/null | head -c 4000 || true
+            fi
+          fi
+
+      - name: Verify production /health git_sha (authoritative)
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
