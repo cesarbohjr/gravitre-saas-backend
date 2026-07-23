@@ -1,29 +1,29 @@
 {
-  "checkedAt": "2026-07-21T19:31:37.991708+00:00",
+  "checkedAt": "2026-07-23T01:53:17.167841+00:00",
   "apiBase": "https://api.gravitre.app",
-  "git_sha": "e8dd0a1a7556a6e5872a44055b563988b4b66400",
-  "expectSha": "e8dd0a1a",
+  "git_sha": "c81d12009cd66e066831a2e20ef146cda189bd62",
+  "expectSha": "c81d1200",
   "tip_ok": true,
-  "conversationId": "cc43f899-a644-43a6-9955-aac3e748b781",
+  "conversationId": "032ed9b8-211e-481c-af0f-f6e133dd6c1b",
   "factConsistency": {
     "ok": true,
     "writeStatusVariants": 6,
     "ventingVariants": 7
   },
   "socialThreeDistinct": {
-    "ok": true,
+    "ok": false,
     "turns": [
       {
         "user": "hey, how's it going",
-        "assistant": "Hey \u2014 here when you need a connector run, a plan, or a quick check."
+        "assistant": "Good, thanks. What's on your mind?"
       },
       {
         "user": "good morning",
-        "assistant": "Good to hear from you. What should we look at?"
+        "assistant": "Good morning! How can I assist you today?"
       },
       {
         "user": "how's your day going",
-        "assistant": "Doing well \u2014 here when you need a connector run, a plan, or a quick check."
+        "assistant": "Good, thanks. What's on your mind?"
       }
     ]
   },
@@ -32,40 +32,40 @@
     "turns": [
       {
         "user": "thanks!",
-        "assistant": "You're welcome. Ready when you are."
+        "assistant": "Anytime. What\u2019s on your mind?"
       },
       {
         "user": "thanks again",
-        "assistant": "Good, thanks. What's on your mind?"
+        "assistant": "Anytime. What do you need help with today?"
       },
       {
         "user": "haha nice one",
-        "assistant": "Ha \u2014 noted. What should we tackle next?"
+        "assistant": "Glad you liked it! What\u2019s on your mind today?"
       },
       {
         "user": "lol cool",
-        "assistant": "Fair. What's the next move?"
+        "assistant": "Glad you think so! What\u2019s on your mind?"
       },
       {
         "user": "ugh this HubSpot connector is being annoying",
-        "assistant": "That friction is real. When you want to dig in, we can check the connector at /connectors (Connected / Healthy / Authenticated) and retry the action."
+        "assistant": "I understand that can be frustrating. When you're ready, we can check the HubSpot connector status or troubleshoot any specific issues. Just let me know what you need."
       },
       {
         "user": "this Slack setup is annoying",
-        "assistant": "Yeah, that kind of friction wears you down. We can inspect Connected / Healthy / Authenticated at /connectors whenever you want to dig in."
+        "assistant": "I get that. If you want, we can check the Slack connector's status or troubleshoot the setup. Just let me know what you'd like to do."
       }
     ]
   },
   "approvalExcludedStable": {
-    "ok": true,
+    "ok": false,
     "local": "This write needs your approval before it runs.",
     "live": [
-      "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cwhat are we waiting on?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`.",
-      "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cwhat are we waiting on?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`."
+      "We're waiting for your confirmation to send the Gmail message. Reply **yes** to send it, or **cancel** to drop it.",
+      "We're waiting for your approval to send the Gmail message. Reply **yes** to send it, or **cancel** to drop it."
     ]
   },
-  "routingNoMapFail": true,
-  "broad_pass": true,
-  "verdict": "PASS",
+  "routingNoMapFail": false,
+  "broad_pass": false,
+  "verdict": "PARTIAL",
   "inventory": "docs/delivery/conversational-phrase-variety.md"
 }

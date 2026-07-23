@@ -1,11 +1,11 @@
 {
-  "started_at": "2026-07-19T04:07:46.534903+00:00",
-  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
-  "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
-  "conversation_id": "f224589c-e256-490b-8d8b-8767784710dc",
-  "list_name": "gravitre-wave67-spotcheck-20260719",
-  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
-  "branch_note": "production API https://gravitre-saas-backend-production.up.railway.app",
+  "started_at": "2026-07-23T08:35:51.660234+00:00",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "conversation_id": "84d8ca31-e0c0-481b-9477-6507d09926a5",
+  "list_name": "gravitre-wave67-spotcheck-20260723",
+  "base_url": "https://api.gravitre.app",
+  "branch_note": "production API https://api.gravitre.app",
   "claims": {
     "1_plan_before_tools": {
       "status": "PASS",
@@ -18,7 +18,7 @@
           "has_current_plan": false,
           "has_execution_result": false,
           "has_pending_task": false,
-          "wall_start": "2026-07-19T04:07:47.417682+00:00"
+          "wall_start": "2026-07-23T08:35:52.851855+00:00"
         },
         "first_tool_start_sse": {
           "i": 6,
@@ -27,7 +27,7 @@
         },
         "plan_before_tools": true,
         "plan_only_in_final": false,
-        "wall_start": "2026-07-19T04:07:47.417682+00:00"
+        "wall_start": "2026-07-23T08:35:52.851855+00:00"
       }
     },
     "2_tool_chips_error_code": {
@@ -45,12 +45,12 @@
           "i": 5,
           "type": "tool-output-available",
           "toolName": null,
-          "errorCode": "auth_expired",
+          "errorCode": "connector_not_connected",
           "success": false,
-          "error": "Authentication expired for Slack. Reconnect it at /connectors, then try again."
+          "error": "Slack is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again."
         },
         "success_before_text": true,
-        "slack_wall_start": "2026-07-19T04:08:05.281176+00:00"
+        "slack_wall_start": "2026-07-23T08:36:24.999986+00:00"
       }
     },
     "3_approval_panel_result_url": {
@@ -58,13 +58,18 @@
       "evidence": {
         "react_gate": null,
         "approved_execution": {
-          "user_approval_at": "2026-07-19T04:08:40.743363+00:00",
-          "completed_at": "2026-07-19T04:08:47.943340+00:00",
+          "user_approval_at": "2026-07-23T08:37:09.148961+00:00",
+          "completed_at": "2026-07-23T08:37:19.640145+00:00",
           "success": true,
           "error_code": null,
-          "result_url": "/ai?conversation=f224589c-e256-490b-8d8b-8767784710dc",
-          "assumption_notes": null,
-          "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260719\" (id: 6a5c42c99a59ae000cdacfde).",
+          "result_url": "/ai?conversation=84d8ca31-e0c0-481b-9477-6507d09926a5",
+          "assumption_notes": [
+            "Assumed email=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+            "Assumed contact_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+            "Assumed company_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+            "Assumed list_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)"
+          ],
+          "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260723\" (id: 6a61cb9b27d1e6001435d9e6).",
           "via": "chat_yes"
         },
         "result_url_is_deep_link": false,
@@ -78,34 +83,76 @@
         "claim4_execution": {
           "i": 7,
           "success": true,
-          "result_url": "/ai?conversation=9f1f07fe-b9fd-4f60-b81f-adbc755b886a",
+          "result_url": "/ai?conversation=6f27ce83-a111-40e5-b51f-ab549715133f",
           "error_code": null,
           "assumption_notes": [
-            "Assumed name=MSP Prospects (from message_or_default_hint)"
+            "Assumed name=MSP Prospects (from message_or_default_hint)",
+            "Assumed email=6a4d6a98461b000010c5ae7b (from org entity cache)",
+            "Assumed contact_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+            "Assumed company_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+            "Assumed list_id=6a4d6a98461b000010c5ae7b (from org entity cache)"
           ],
           "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
         },
         "execution_result_assumption_notes": [
-          "Assumed name=MSP Prospects (from message_or_default_hint)"
+          "Assumed name=MSP Prospects (from message_or_default_hint)",
+          "Assumed email=6a4d6a98461b000010c5ae7b (from org entity cache)",
+          "Assumed contact_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+          "Assumed company_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+          "Assumed list_id=6a4d6a98461b000010c5ae7b (from org entity cache)"
         ],
         "sse_execution_results_with_notes": [
           {
             "i": 3,
             "success": true,
-            "result_url": "/ai?conversation=9f1f07fe-b9fd-4f60-b81f-adbc755b886a",
+            "result_url": "/ai?conversation=84d8ca31-e0c0-481b-9477-6507d09926a5",
             "error_code": null,
             "assumption_notes": [
-              "Assumed name=MSP Prospects (from message_or_default_hint)"
+              "Assumed email=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+              "Assumed contact_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+              "Assumed company_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+              "Assumed list_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)"
+            ],
+            "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260723\" (id: 6a61cb9b27d1e6001435d9e6)."
+          },
+          {
+            "i": 7,
+            "success": true,
+            "result_url": "/ai?conversation=84d8ca31-e0c0-481b-9477-6507d09926a5",
+            "error_code": null,
+            "assumption_notes": [
+              "Assumed email=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+              "Assumed contact_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+              "Assumed company_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+              "Assumed list_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)"
+            ],
+            "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260723\" (id: 6a61cb9b27d1e6001435d9e6)."
+          },
+          {
+            "i": 3,
+            "success": true,
+            "result_url": "/ai?conversation=6f27ce83-a111-40e5-b51f-ab549715133f",
+            "error_code": null,
+            "assumption_notes": [
+              "Assumed name=MSP Prospects (from message_or_default_hint)",
+              "Assumed email=6a4d6a98461b000010c5ae7b (from org entity cache)",
+              "Assumed contact_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+              "Assumed company_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+              "Assumed list_id=6a4d6a98461b000010c5ae7b (from org entity cache)"
             ],
             "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
           },
           {
             "i": 7,
             "success": true,
-            "result_url": "/ai?conversation=9f1f07fe-b9fd-4f60-b81f-adbc755b886a",
+            "result_url": "/ai?conversation=6f27ce83-a111-40e5-b51f-ab549715133f",
             "error_code": null,
             "assumption_notes": [
-              "Assumed name=MSP Prospects (from message_or_default_hint)"
+              "Assumed name=MSP Prospects (from message_or_default_hint)",
+              "Assumed email=6a4d6a98461b000010c5ae7b (from org entity cache)",
+              "Assumed contact_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+              "Assumed company_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+              "Assumed list_id=6a4d6a98461b000010c5ae7b (from org entity cache)"
             ],
             "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
           }
@@ -116,11 +163,18 @@
   },
   "prod_health": {
     "status": "ok",
-    "timestamp": "2026-07-19T04:07:46.652430+00:00",
+    "timestamp": "2026-07-23T08:35:52.282703+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+    "git_sha": "5b515b56b3e9f850ad7075a9e957dec5faecbe04",
     "ai_disabled": false,
+    "unified_turn_shadow_enabled": true,
+    "unified_turn_live_enabled": true,
+    "unified_turn_embedding_tool_retrieval": true,
+    "unified_turn_embed_min_catalog_tools": 40,
+    "unified_turn_task_model_tier": "low",
+    "internet_research_enabled": true,
+    "web_research_provider_configured": true,
     "checks": {
       "database": "healthy",
       "cache": "healthy",
@@ -131,8 +185,8 @@
   "turn_plan_read": {
     "http": "http_200",
     "summary": {
-      "wall_start": "2026-07-19T04:07:47.417682+00:00",
-      "event_count": 47,
+      "wall_start": "2026-07-23T08:35:52.851855+00:00",
+      "event_count": 41,
       "first_plan_sse": {
         "i": 5,
         "type": "data-intelligence",
@@ -141,7 +195,7 @@
         "has_current_plan": false,
         "has_execution_result": false,
         "has_pending_task": false,
-        "wall_start": "2026-07-19T04:07:47.417682+00:00"
+        "wall_start": "2026-07-23T08:35:52.851855+00:00"
       },
       "first_tool_start_sse": {
         "i": 6,
@@ -161,9 +215,9 @@
         "type": "text-start"
       },
       "final_meta_sse": {
-        "i": 5,
+        "i": 37,
         "type": "data-intelligence",
-        "answerExplanation": "Plan ready \u2014 running tools",
+        "answerExplanation": "Live data came from apollo_lists_list (1 call).\n\nThis answer drew on 3 internal sources, including Organization snapshot and Connected systems.",
         "dialogueMode": "guide",
         "has_current_plan": false,
         "has_execution_result": false,
@@ -368,46 +422,27 @@
         },
         {
           "i": 36,
-          "type": "text-delta"
+          "type": "text-end"
         },
         {
           "i": 37,
-          "type": "text-delta"
+          "type": "data-intelligence",
+          "answerExplanation": "Live data came from apollo_lists_list (1 call).\n\nThis answer drew on 3 internal sources, including Organization snapshot and Connected systems.",
+          "dialogueMode": "guide",
+          "has_current_plan": false,
+          "has_execution_result": false,
+          "has_pending_task": false
         },
         {
           "i": 38,
-          "type": "text-delta"
-        },
-        {
-          "i": 39,
-          "type": "text-delta"
-        },
-        {
-          "i": 40,
-          "type": "text-delta"
-        },
-        {
-          "i": 41,
-          "type": "text-delta"
-        },
-        {
-          "i": 42,
-          "type": "text-delta"
-        },
-        {
-          "i": 43,
-          "type": "text-delta"
-        },
-        {
-          "i": 44,
           "type": "finish-step"
         },
         {
-          "i": 45,
+          "i": 39,
           "type": "finish"
         },
         {
-          "i": 46,
+          "i": 40,
           "type": "data-suggestions"
         }
       ]
@@ -416,7 +451,7 @@
   "turn_slack_fail": {
     "http": "http_200",
     "summary": {
-      "wall_start": "2026-07-19T04:08:05.281176+00:00",
+      "wall_start": "2026-07-23T08:36:24.999986+00:00",
       "event_count": 13,
       "first_plan_sse": null,
       "first_tool_start_sse": {
@@ -428,9 +463,9 @@
         "i": 5,
         "type": "tool-output-available",
         "toolName": null,
-        "errorCode": "auth_expired",
+        "errorCode": "connector_not_connected",
         "success": false,
-        "error": "Authentication expired for Slack. Reconnect it at /connectors, then try again."
+        "error": "Slack is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again."
       },
       "first_text_sse": {
         "i": 6,
@@ -450,9 +485,9 @@
           "i": 5,
           "type": "tool-output-available",
           "toolName": null,
-          "errorCode": "auth_expired",
+          "errorCode": "connector_not_connected",
           "success": false,
-          "error": "Authentication expired for Slack. Reconnect it at /connectors, then try again."
+          "error": "Slack is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again."
         }
       ],
       "execution_results": [],
@@ -495,9 +530,9 @@
           "i": 5,
           "type": "tool-output-available",
           "toolName": null,
-          "errorCode": "auth_expired",
+          "errorCode": "connector_not_connected",
           "success": false,
-          "error": "Authentication expired for Slack. Reconnect it at /connectors, then try again."
+          "error": "Slack is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again."
         },
         {
           "i": 6,
@@ -538,7 +573,7 @@
   "turn_apollo_write_gate": {
     "http": "http_200",
     "summary": {
-      "wall_start": "2026-07-19T04:08:19.369607+00:00",
+      "wall_start": "2026-07-23T08:36:41.255713+00:00",
       "event_count": 17,
       "first_plan_sse": {
         "i": 5,
@@ -548,7 +583,7 @@
         "has_current_plan": false,
         "has_execution_result": false,
         "has_pending_task": false,
-        "wall_start": "2026-07-19T04:08:19.369607+00:00"
+        "wall_start": "2026-07-23T08:36:41.255713+00:00"
       },
       "first_tool_start_sse": {
         "i": 6,
@@ -602,8 +637,13 @@
             "type": "connector_action",
             "params": {
               "args": {
-                "name": "gravitre-wave67-spotcheck-20260719",
-                "list_name": "gravitre-wave67-spotcheck-20260719"
+                "name": "gravitre-wave67-spotcheck-20260723",
+                "email": "8992743f-6632-4252-81a1-8d09c0482575",
+                "list_id": "8992743f-6632-4252-81a1-8d09c0482575",
+                "list_name": "gravitre-wave67-spotcheck-20260723",
+                "company_id": "8992743f-6632-4252-81a1-8d09c0482575",
+                "contact_id": "8992743f-6632-4252-81a1-8d09c0482575",
+                "connector_id": "8992743f-6632-4252-81a1-8d09c0482575"
               },
               "kind": "write",
               "label": "Create contact list",
@@ -614,8 +654,18 @@
               "integration": "apollo",
               "invoke_action": "apollo.lists.create",
               "approval_reason": "react_write_gate",
-              "inferred_fields": [],
-              "inference_sources": {},
+              "inferred_fields": [
+                "email",
+                "contact_id",
+                "company_id",
+                "list_id"
+              ],
+              "inference_sources": {
+                "email": "org entity cache",
+                "list_id": "org entity cache",
+                "company_id": "org entity cache",
+                "contact_id": "org entity cache"
+              },
               "requires_approval": true
             },
             "status": "awaiting_confirm"
@@ -734,7 +784,7 @@
   "turn_apollo_approve": {
     "http": "http_200",
     "summary": {
-      "wall_start": "2026-07-19T04:08:40.743363+00:00",
+      "wall_start": "2026-07-23T08:37:09.148961+00:00",
       "event_count": 11,
       "first_plan_sse": null,
       "first_tool_start_sse": null,
@@ -757,18 +807,28 @@
         {
           "i": 3,
           "success": true,
-          "result_url": "/ai?conversation=f224589c-e256-490b-8d8b-8767784710dc",
+          "result_url": "/ai?conversation=84d8ca31-e0c0-481b-9477-6507d09926a5",
           "error_code": null,
-          "assumption_notes": null,
-          "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260719\" (id: 6a5c42c99a59ae000cdacfde)."
+          "assumption_notes": [
+            "Assumed email=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+            "Assumed contact_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+            "Assumed company_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+            "Assumed list_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)"
+          ],
+          "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260723\" (id: 6a61cb9b27d1e6001435d9e6)."
         },
         {
           "i": 7,
           "success": true,
-          "result_url": "/ai?conversation=f224589c-e256-490b-8d8b-8767784710dc",
+          "result_url": "/ai?conversation=84d8ca31-e0c0-481b-9477-6507d09926a5",
           "error_code": null,
-          "assumption_notes": null,
-          "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260719\" (id: 6a5c42c99a59ae000cdacfde)."
+          "assumption_notes": [
+            "Assumed email=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+            "Assumed contact_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+            "Assumed company_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+            "Assumed list_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)"
+          ],
+          "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260723\" (id: 6a61cb9b27d1e6001435d9e6)."
         }
       ],
       "pending_tasks": [],
@@ -838,20 +898,25 @@
     }
   },
   "approved_execution": {
-    "user_approval_at": "2026-07-19T04:08:40.743363+00:00",
-    "completed_at": "2026-07-19T04:08:47.943340+00:00",
+    "user_approval_at": "2026-07-23T08:37:09.148961+00:00",
+    "completed_at": "2026-07-23T08:37:19.640145+00:00",
     "success": true,
     "error_code": null,
-    "result_url": "/ai?conversation=f224589c-e256-490b-8d8b-8767784710dc",
-    "assumption_notes": null,
-    "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260719\" (id: 6a5c42c99a59ae000cdacfde).",
+    "result_url": "/ai?conversation=84d8ca31-e0c0-481b-9477-6507d09926a5",
+    "assumption_notes": [
+      "Assumed email=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+      "Assumed contact_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+      "Assumed company_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+      "Assumed list_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)"
+    ],
+    "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260723\" (id: 6a61cb9b27d1e6001435d9e6).",
     "via": "chat_yes"
   },
   "turn_claim4_omit_name": {
     "http": "http_200",
     "summary": {
-      "wall_start": "2026-07-19T04:08:47.943340+00:00",
-      "event_count": 22,
+      "wall_start": "2026-07-23T08:37:19.640207+00:00",
+      "event_count": 19,
       "first_plan_sse": {
         "i": 5,
         "type": "data-intelligence",
@@ -860,7 +925,7 @@
         "has_current_plan": false,
         "has_execution_result": false,
         "has_pending_task": false,
-        "wall_start": "2026-07-19T04:08:47.943340+00:00"
+        "wall_start": "2026-07-23T08:37:19.640207+00:00"
       },
       "first_tool_start_sse": {
         "i": 6,
@@ -880,7 +945,7 @@
         "type": "text-start"
       },
       "final_meta_sse": {
-        "i": 18,
+        "i": 16,
         "type": "data-intelligence",
         "answerExplanation": "Connector fallback after ReAct",
         "dialogueMode": "confirm",
@@ -901,7 +966,7 @@
       "execution_results": [],
       "pending_tasks": [
         {
-          "i": 18,
+          "i": 16,
           "pending": {
             "type": "connector_action",
             "status": "awaiting_confirm",
@@ -1013,7 +1078,7 @@
         },
         {
           "i": 13,
-          "type": "text-delta"
+          "type": "text-start"
         },
         {
           "i": 14,
@@ -1021,18 +1086,10 @@
         },
         {
           "i": 15,
-          "type": "text-start"
-        },
-        {
-          "i": 16,
-          "type": "text-delta"
-        },
-        {
-          "i": 17,
           "type": "text-end"
         },
         {
-          "i": 18,
+          "i": 16,
           "type": "data-intelligence",
           "answerExplanation": "Connector fallback after ReAct",
           "dialogueMode": "confirm",
@@ -1041,16 +1098,12 @@
           "has_pending_task": true
         },
         {
-          "i": 19,
+          "i": 17,
           "type": "finish-step"
         },
         {
-          "i": 20,
+          "i": 18,
           "type": "finish"
-        },
-        {
-          "i": 21,
-          "type": "data-suggestions"
         }
       ]
     },
@@ -1059,7 +1112,7 @@
   "turn_claim4_approve": {
     "http": "http_200",
     "summary": {
-      "wall_start": "2026-07-19T04:09:13.506977+00:00",
+      "wall_start": "2026-07-23T08:37:52.483685+00:00",
       "event_count": 11,
       "first_plan_sse": null,
       "first_tool_start_sse": null,
@@ -1082,20 +1135,28 @@
         {
           "i": 3,
           "success": true,
-          "result_url": "/ai?conversation=9f1f07fe-b9fd-4f60-b81f-adbc755b886a",
+          "result_url": "/ai?conversation=6f27ce83-a111-40e5-b51f-ab549715133f",
           "error_code": null,
           "assumption_notes": [
-            "Assumed name=MSP Prospects (from message_or_default_hint)"
+            "Assumed name=MSP Prospects (from message_or_default_hint)",
+            "Assumed email=6a4d6a98461b000010c5ae7b (from org entity cache)",
+            "Assumed contact_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+            "Assumed company_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+            "Assumed list_id=6a4d6a98461b000010c5ae7b (from org entity cache)"
           ],
           "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
         },
         {
           "i": 7,
           "success": true,
-          "result_url": "/ai?conversation=9f1f07fe-b9fd-4f60-b81f-adbc755b886a",
+          "result_url": "/ai?conversation=6f27ce83-a111-40e5-b51f-ab549715133f",
           "error_code": null,
           "assumption_notes": [
-            "Assumed name=MSP Prospects (from message_or_default_hint)"
+            "Assumed name=MSP Prospects (from message_or_default_hint)",
+            "Assumed email=6a4d6a98461b000010c5ae7b (from org entity cache)",
+            "Assumed contact_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+            "Assumed company_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+            "Assumed list_id=6a4d6a98461b000010c5ae7b (from org entity cache)"
           ],
           "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
         }
@@ -1169,12 +1230,16 @@
   "claim4_execution": {
     "i": 7,
     "success": true,
-    "result_url": "/ai?conversation=9f1f07fe-b9fd-4f60-b81f-adbc755b886a",
+    "result_url": "/ai?conversation=6f27ce83-a111-40e5-b51f-ab549715133f",
     "error_code": null,
     "assumption_notes": [
-      "Assumed name=MSP Prospects (from message_or_default_hint)"
+      "Assumed name=MSP Prospects (from message_or_default_hint)",
+      "Assumed email=6a4d6a98461b000010c5ae7b (from org entity cache)",
+      "Assumed contact_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+      "Assumed company_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+      "Assumed list_id=6a4d6a98461b000010c5ae7b (from org entity cache)"
     ],
     "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
   },
-  "finished_at": "2026-07-19T04:09:20.523826+00:00"
+  "finished_at": "2026-07-23T08:38:03.295296+00:00"
 }

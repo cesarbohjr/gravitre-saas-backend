@@ -1,7 +1,8 @@
 {
   "record": "internet_research_pricing_proposal",
   "updated_at": "2026-07-18T20:00:00+00:00",
-  "status": "PROPOSAL_RECORDED_NOT_BUILT",
+  "status": "SHIPPED_HYBRID_INCLUDED_THEN_OVERAGE",
+  "shipped_note": "Included allotments on billing_plans (10/60/200 node/control/command); overage via Stripe meter research_lookups_used. Cesar sign-off 2026-07-23.",
   "gate_2_validation_required": true,
   "gate_3_build_required": true,
   "pricing_page_source": {

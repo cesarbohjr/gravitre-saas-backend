@@ -1,0 +1,90 @@
+{
+  "record": "hybrid_research_lookups_phase0_3",
+  "updated_at": "2026-07-23T05:50:00Z",
+  "decision": "Hybrid pricing: included monthly research lookups per plan tier, then existing metered overage (Stripe research_lookups_used, $0.35/lookup, circuit breaker unchanged).",
+  "allotments_sign_off": {
+    "confirmed_by": "Cesar",
+    "confirmed_at": "2026-07-23",
+    "node": 10,
+    "control": 60,
+    "command": 200,
+    "enterprise": 200,
+    "source_of_truth": "public.billing_plans.features.research_lookups_per_month (migration 20260719120000_billing_plans_research_lookups.sql)"
+  },
+  "phase_0_tip_resolution": {
+    "status": "RESOLVED",
+    "prior_check_sha": "5997045b",
+    "prior_check_at": "2026-07-21",
+    "explanation": "5997045b was an older deploy at that time, not cache or wrong env. Always use https://api.gravitre.app/health (Railway direct URL may hit expired TLS cert).",
+    "local_main_tip_at_audit_start": "182b91b3deeaee9d3da6e9116947c7a98baf1b7e",
+    "prod_health_sha_at_audit_start": "182b91b3deeaee9d3da6e9116947c7a98baf1b7e",
+    "prod_health_sha_during_combined_pass": "e749a88b7a676b00a030be1d99eecc74bd0139d1",
+    "prod_health_at_combined_pass": "2026-07-23T05:54:18Z",
+    "note": "Prod redeployed mid-milestone1 run; verify hybrid pricing against e749a88b (current prod at time of live probes)."
+  },
+  "phase_0_audit_hybrid_already_built": {
+    "included_allotment_exists": true,
+    "not_pure_payg_from_zero": true,
+    "evidence": [
+      "supabase/migrations/20260719120000_billing_plans_research_lookups.sql",
+      "backend/app/billing/research_lookup_plan_rates.py",
+      "backend/app/billing/usage_records_summary.py",
+      "backend/app/billing/stripe_research_lookup_metering.py (reports OVERAGE only)",
+      "backend/app/services/research_lookup_metering.py"
+    ],
+    "prior_misleading_doc": "docs/delivery/internet-research-pricing-proposal.json had status PROPOSAL_RECORDED_NOT_BUILT — corrected to SHIPPED_HYBRID_INCLUDED_THEN_OVERAGE"
+  },
+  "phase_0_metering_infrastructure": {
+    "stripe_meter": "research_lookups_used",
+    "circuit_breaker": "check_org_grounding_circuit before external call (web_research.py) — applies to all lookups, not billing-boundary",
+    "billing_ui_fields": "included_research_lookups, remaining_research_lookups (added 2026-07-23), overage_research_lookups, separate from ai_credits",
+    "additive_only": true
+  },
+  "phase_1_implementation": {
+    "status": "ALREADY_SHIPPED_ON_TIP",
+    "code_changes_this_pass": [
+      "remaining_research_lookups in usage_records_summary + billing router + settings billing UI"
+    ],
+    "no_second_allotment_mechanism": true
+  },
+  "phase_2_surface_pricing": {
+    "status": "BUILT_FLAG_GATED",
+    "marketing_pricing": "apps/web/app/(marketing)/pricing/page.tsx — tier cards + comparison table when NEXT_PUBLIC_INTERNET_RESEARCH_ENABLED=true",
+    "constants_mirror_db": "apps/web/lib/internet-research-pricing.ts (10/60/200 + $0.35 overage)",
+    "in_app_billing": "apps/web/app/settings/page.tsx BillingUsageSettings — Used / Included / Remaining / Overage, distinct from AI Tokens",
+    "go_live_rule": "Show research pricing only when INTERNET_RESEARCH_ENABLED + NEXT_PUBLIC_INTERNET_RESEARCH_ENABLED both true on deployed tip"
+  },
+  "phase_3_combined_live_verification": {
+    "status": "PARTIAL",
+    "prod_tip_for_live_probes": "e749a88b7a676b00a030be1d99eecc74bd0139d1",
+    "combined_pass_artifact": "docs/delivery/milestone1-live-reverify-latest.json",
+    "combined_pass_started_at": "2026-07-23T05:51:50Z",
+    "overall_milestone1_pass": false,
+    "hybrid_research_rows": {
+      "internet_research_enabled_on_prod": {
+        "status": "PASS",
+        "evidence": "milestone1 research_cascade trace_scoped internet_research_enabled=true @ prod git_sha e749a88b"
+      },
+      "external_grounding_cited_urls": {
+        "status": "PASS",
+        "evidence": "internet_research.ran=true result_count=5 provider=tavily; top_sources URLs e.g. customerexperiencedive.com @ conversation 289fa948-c5f5-4833-b05a-32ab339a5d86"
+      },
+      "billing_ui_included_remaining_overage": {
+        "status": "NOT RUN",
+        "reason": "Requires authenticated Settings → Billing Usage after deploy of remaining_research_lookups field (code change this pass, not yet on e749a88b unless redeployed)"
+      },
+      "overage_stripe_beyond_included": {
+        "status": "NOT RUN",
+        "reason": "Requires deliberate overage burn + billing sync; infrastructure code path stripe_research_lookup_metering.report_research_lookup_overage_to_stripe unchanged"
+      }
+    },
+    "pending_same_combined_pass": [
+      "Full functional battery (unified-turn-phase2/phase4 live JSON)",
+      "Imperfect-input battery",
+      "C/D latency (unified-turn-phase3-latency-live.json)",
+      "wave67 / routing / retrieval_ab milestone1 failures on e749a88b",
+      "Billing UI + overage after deploy includes remaining_research_lookups"
+    ],
+    "single_matrix_rule": "Append hybrid rows to the same combined matrix — do not open a separate tracking doc."
+  }
+}

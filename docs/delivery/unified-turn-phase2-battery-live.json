@@ -1,30 +1,31 @@
 {
   "feature": "unified_turn_phase2_batteries",
-  "started_at": "2026-07-22T17:48:53.761654+00:00",
-  "expect_sha": "444371f9",
+  "started_at": "2026-07-23T05:12:58.070247+00:00",
+  "expect_sha": "c81d1200",
   "api_base": "https://api.gravitre.app",
   "cases": [
     {
       "case": "greeting_no_catalog_leak",
       "ok": true,
       "failures": [],
-      "assistant_snippet": "Hey \u2014 here when you need a connector run, a plan, or a quick check.",
+      "assistant_snippet": "Good, thanks. What's on your mind?",
+      "imperfect_input": false,
       "shadow_outcome": "conversational_reply",
-      "shadow_latency_ms": 749,
-      "shadow_first_token_proxy_ms": 666,
+      "shadow_latency_ms": 694,
+      "shadow_first_token_proxy_ms": 634,
       "shadow": {
-        "action": "unified_turn.shadow.completed",
-        "created_at": "2026-07-22T17:48:59.658189+00:00",
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T05:13:04.929971+00:00",
         "outcome_kind": "conversational_reply",
-        "latency_ms": 749,
+        "latency_ms": 694,
         "user_message_preview": "Good, thanks. What's on your mind?",
         "tool_name": null
       },
-      "conversation_id": "158c72c6-db9f-45af-ac25-37c5a8430322",
+      "conversation_id": "b1c2d0ae-1401-421a-8739-12f0c5fc73f2",
       "turn": {
         "http": 200,
-        "assistant": "Hey \u2014 here when you need a connector run, a plan, or a quick check.",
-        "at": "2026-07-22T17:49:03.159215+00:00",
+        "assistant": "Good, thanks. What's on your mind?",
+        "at": "2026-07-23T05:13:06.885357+00:00",
         "error": null
       }
     },
@@ -32,23 +33,24 @@
       "case": "thanks_plain",
       "ok": true,
       "failures": [],
-      "assistant_snippet": "You're welcome. Ready when you are.",
+      "assistant_snippet": "Anytime. What\u2019s on your mind?",
+      "imperfect_input": false,
       "shadow_outcome": "conversational_reply",
-      "shadow_latency_ms": 1103,
-      "shadow_first_token_proxy_ms": 878,
+      "shadow_latency_ms": 689,
+      "shadow_first_token_proxy_ms": 510,
       "shadow": {
-        "action": "unified_turn.shadow.completed",
-        "created_at": "2026-07-22T17:49:15.804097+00:00",
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T05:13:21.566321+00:00",
         "outcome_kind": "conversational_reply",
-        "latency_ms": 1103,
+        "latency_ms": 689,
         "user_message_preview": "Anytime. What\u2019s on your mind?",
         "tool_name": null
       },
-      "conversation_id": "ae50c1c1-627f-4428-9e9a-24aedea2ac80",
+      "conversation_id": "c242d5d8-85bf-4215-8e28-fbe1e3ac4e5d",
       "turn": {
         "http": 200,
-        "assistant": "You're welcome. Ready when you are.",
-        "at": "2026-07-22T17:49:18.629907+00:00",
+        "assistant": "Anytime. What\u2019s on your mind?",
+        "at": "2026-07-23T05:13:23.965893+00:00",
         "error": null
       }
     },
@@ -56,23 +58,24 @@
       "case": "email_intent_no_catalog_dump",
       "ok": true,
       "failures": [],
-      "assistant_snippet": "To send gmail message, I need to know recipient, subject, body. Could you share that?",
-      "shadow_outcome": "clarifying_question",
-      "shadow_latency_ms": 4848,
-      "shadow_first_token_proxy_ms": 4311,
+      "assistant_snippet": "Gmail isn't connected right now. You can connect it at /connectors, and then I can help you draft that email.",
+      "imperfect_input": false,
+      "shadow_outcome": "conversational_reply",
+      "shadow_latency_ms": 792,
+      "shadow_first_token_proxy_ms": 515,
       "shadow": {
-        "action": "unified_turn.shadow.completed",
-        "created_at": "2026-07-22T17:49:34.622751+00:00",
-        "outcome_kind": "clarifying_question",
-        "latency_ms": 4848,
-        "user_message_preview": "I need a bit more information to draft that email. Could you provide the purpose and key points you'd like to include in the message?",
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T05:13:38.051256+00:00",
+        "outcome_kind": "conversational_reply",
+        "latency_ms": 792,
+        "user_message_preview": "Gmail isn't connected right now. You can connect it at /connectors, and then I can help you draft that email.",
         "tool_name": null
       },
-      "conversation_id": "f3ab5bb3-d298-47ef-9b2f-2efa61e8d664",
+      "conversation_id": "ddcdc431-f6cf-4f78-9632-23dc3a835277",
       "turn": {
         "http": 200,
-        "assistant": "To send gmail message, I need to know recipient, subject, body. Could you share that?",
-        "at": "2026-07-22T17:49:49.265171+00:00",
+        "assistant": "Gmail isn't connected right now. You can connect it at /connectors, and then I can help you draft that email.",
+        "at": "2026-07-23T05:13:40.411068+00:00",
         "error": null
       }
     },
@@ -80,23 +83,24 @@
       "case": "status_check_pending",
       "ok": true,
       "failures": [],
-      "assistant_snippet": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cDid you send it yet?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`.",
+      "assistant_snippet": "Not yet \u2014 the **Send Gmail message** action is still awaiting your confirmation. Reply **yes** to send, or **cancel** to drop it.",
+      "imperfect_input": false,
       "shadow_outcome": "confirmation_request",
-      "shadow_latency_ms": 1802,
-      "shadow_first_token_proxy_ms": 1509,
+      "shadow_latency_ms": 1728,
+      "shadow_first_token_proxy_ms": 1420,
       "shadow": {
-        "action": "unified_turn.shadow.completed",
-        "created_at": "2026-07-22T17:50:04.725489+00:00",
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T05:13:55.48372+00:00",
         "outcome_kind": "confirmation_request",
-        "latency_ms": 1802,
-        "user_message_preview": "Not yet \u2014 the **Send Gmail message** action is still awaiting your confirmation. Reply **yes** to send it, or **cancel** to drop it.",
+        "latency_ms": 1728,
+        "user_message_preview": "Not yet \u2014 the **Send Gmail message** action is still awaiting your confirmation. Reply **yes** to send, or **cancel** to drop it.",
         "tool_name": null
       },
-      "conversation_id": "48947397-cc3e-485b-a909-a4fb5abf374f",
+      "conversation_id": "20dc6732-d168-4f48-9cc2-e36d2d916a0e",
       "turn": {
         "http": 200,
-        "assistant": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cDid you send it yet?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`.",
-        "at": "2026-07-22T17:50:08.035756+00:00",
+        "assistant": "Not yet \u2014 the **Send Gmail message** action is still awaiting your confirmation. Reply **yes** to send, or **cancel** to drop it.",
+        "at": "2026-07-23T05:13:58.363498+00:00",
         "error": null
       }
     },
@@ -104,51 +108,464 @@
       "case": "knowledge_boundary_run_history_fast",
       "ok": true,
       "failures": [],
-      "assistant_snippet": "",
+      "assistant_snippet": "I don't have that count yet \u2014 run history wasn't retrieved this turn. I can fetch it with the workflow runs tool if you want.",
+      "imperfect_input": false,
       "shadow_outcome": "knowledge_boundary",
-      "shadow_latency_ms": 3801,
-      "shadow_first_token_proxy_ms": 3454,
+      "shadow_latency_ms": 1123,
+      "shadow_first_token_proxy_ms": 552,
       "shadow": {
-        "action": "unified_turn.shadow.completed",
-        "created_at": "2026-07-22T17:50:23.503556+00:00",
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T05:14:12.029354+00:00",
         "outcome_kind": "knowledge_boundary",
-        "latency_ms": 3801,
+        "latency_ms": 1123,
         "user_message_preview": "I don't have that count yet \u2014 run history wasn't retrieved this turn. I can fetch it with the workflow runs tool if you want.",
         "tool_name": null
       },
-      "conversation_id": "538a5910-55c1-4a1e-a2a5-1f9be51a9746",
+      "conversation_id": "95febf88-2a37-4432-91f5-d23f812c77d8",
       "turn": {
         "http": 200,
-        "assistant": "",
-        "at": "2026-07-22T17:50:39.395148+00:00",
+        "assistant": "I don't have that count yet \u2014 run history wasn't retrieved this turn. I can fetch it with the workflow runs tool if you want.",
+        "at": "2026-07-23T05:14:13.665790+00:00",
+        "error": null
+      }
+    },
+    {
+      "case": "imperfect_sned_emial",
+      "ok": true,
+      "failures": [],
+      "assistant_snippet": "I need a bit more information to draft that email. Could you provide the key points or purpose you'd like to include in the message? Also, please confirm that Gmail is connected, or connect it at /connectors.",
+      "imperfect_input": true,
+      "shadow_outcome": "clarifying_question",
+      "shadow_latency_ms": 951,
+      "shadow_first_token_proxy_ms": 524,
+      "shadow": {
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T05:14:26.825888+00:00",
+        "outcome_kind": "clarifying_question",
+        "latency_ms": 951,
+        "user_message_preview": "I need a bit more information to draft that email. Could you provide the key points or purpose you'd like to include in the message? Also, please confirm that Gmail is connected, or connect it at /connectors.",
+        "tool_name": null
+      },
+      "conversation_id": "ea8e6e81-8109-4963-a477-13092657c142",
+      "turn": {
+        "http": 200,
+        "assistant": "I need a bit more information to draft that email. Could you provide the key points or purpose you'd like to include in the message? Also, please confirm that Gmail is connected, or connect it at /connectors.",
+        "at": "2026-07-23T05:14:29.000280+00:00",
+        "error": null
+      }
+    },
+    {
+      "case": "imperfect_creat_contct",
+      "ok": false,
+      "failures": [
+        "shadow_outcome:conversational_reply"
+      ],
+      "assistant_snippet": "HubSpot isn't connected. Connect it at /connectors, then let me know when you're ready to create the contact.",
+      "imperfect_input": true,
+      "shadow_outcome": "conversational_reply",
+      "shadow_latency_ms": 2195,
+      "shadow_first_token_proxy_ms": 1451,
+      "shadow": {
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T05:14:44.351013+00:00",
+        "outcome_kind": "conversational_reply",
+        "latency_ms": 2195,
+        "user_message_preview": "HubSpot isn't connected. Connect it at /connectors, then let me know when you're ready to create the contact.",
+        "tool_name": null
+      },
+      "conversation_id": "2b5a8b5c-0773-4735-ab55-9f9a8ffa8a1a",
+      "turn": {
+        "http": 200,
+        "assistant": "HubSpot isn't connected. Connect it at /connectors, then let me know when you're ready to create the contact.",
+        "at": "2026-07-23T05:14:46.023519+00:00",
+        "error": null
+      }
+    },
+    {
+      "case": "imperfect_aprove_pending",
+      "ok": true,
+      "failures": [],
+      "assistant_snippet": "Replying with **yes** to send the Gmail message now. \n\nSending...",
+      "imperfect_input": true,
+      "shadow_outcome": "conversational_reply",
+      "shadow_latency_ms": 1489,
+      "shadow_first_token_proxy_ms": 537,
+      "shadow": {
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T05:14:58.734007+00:00",
+        "outcome_kind": "conversational_reply",
+        "latency_ms": 1489,
+        "user_message_preview": "Replying with **yes** to send the Gmail message now. \n\nSending...",
+        "tool_name": null
+      },
+      "conversation_id": "cf8081f4-aa25-479b-8148-7109381c15ed",
+      "turn": {
+        "http": 200,
+        "assistant": "Replying with **yes** to send the Gmail message now. \n\nSending...",
+        "at": "2026-07-23T05:15:01.836703+00:00",
+        "error": null
+      }
+    },
+    {
+      "case": "imperfect_shedule",
+      "ok": true,
+      "failures": [],
+      "assistant_snippet": "I need a bit more information to schedule that follow-up email. Could you provide the recipient's email address, the subject, and the key points you'd like to include in the message?",
+      "imperfect_input": true,
+      "shadow_outcome": "clarifying_question",
+      "shadow_latency_ms": 865,
+      "shadow_first_token_proxy_ms": 476,
+      "shadow": {
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T05:15:16.529597+00:00",
+        "outcome_kind": "clarifying_question",
+        "latency_ms": 865,
+        "user_message_preview": "I need a bit more information to schedule that follow-up email. Could you provide the recipient's email address, the subject, and the key points you'd like to include in the message?",
+        "tool_name": null
+      },
+      "conversation_id": "b2a3949c-fdf5-4508-bd29-cefb5dd89e40",
+      "turn": {
+        "http": 200,
+        "assistant": "I need a bit more information to schedule that follow-up email. Could you provide the recipient's email address, the subject, and the key points you'd like to include in the message?",
+        "at": "2026-07-23T05:15:20.342096+00:00",
+        "error": null
+      }
+    },
+    {
+      "case": "imperfect_creaet_list",
+      "ok": false,
+      "failures": [
+        "shadow_outcome:conversational_reply"
+      ],
+      "assistant_snippet": "Apollo isn't Connected. Connect it at /connectors, then I can create the list for you.",
+      "imperfect_input": true,
+      "shadow_outcome": "conversational_reply",
+      "shadow_latency_ms": 804,
+      "shadow_first_token_proxy_ms": 802,
+      "shadow": {
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T05:15:34.023222+00:00",
+        "outcome_kind": "conversational_reply",
+        "latency_ms": 804,
+        "user_message_preview": "Apollo isn't Connected. Connect it at /connectors, then I can create the list for you.",
+        "tool_name": null
+      },
+      "conversation_id": "aa17f243-e8f8-4f1a-9e66-9bd005d151cc",
+      "turn": {
+        "http": 200,
+        "assistant": "Apollo isn't Connected. Connect it at /connectors, then I can create the list for you.",
+        "at": "2026-07-23T05:15:36.500059+00:00",
+        "error": null
+      }
+    },
+    {
+      "case": "imperfect_connectr",
+      "ok": true,
+      "failures": [],
+      "assistant_snippet": "I don't have enough information yet. Tell me the missing detail and I'll continue.",
+      "imperfect_input": true,
+      "shadow_outcome": "conversational_reply",
+      "shadow_latency_ms": 653,
+      "shadow_first_token_proxy_ms": 452,
+      "shadow": {
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T05:15:49.684028+00:00",
+        "outcome_kind": "conversational_reply",
+        "latency_ms": 653,
+        "user_message_preview": "I don't have enough information yet. Tell me the missing detail and I'll continue.",
+        "tool_name": null
+      },
+      "conversation_id": "a028d64a-3645-414d-a605-2e6974a9d85d",
+      "turn": {
+        "http": 200,
+        "assistant": "I don't have enough information yet. Tell me the missing detail and I'll continue.",
+        "at": "2026-07-23T05:15:51.578186+00:00",
+        "error": null
+      }
+    },
+    {
+      "case": "imperfect_mix_hubspot_creatd",
+      "ok": true,
+      "failures": [],
+      "assistant_snippet": "I don't have enough information yet. Please provide the name of the HubSpot list you want to check, and I'll continue.",
+      "imperfect_input": true,
+      "shadow_outcome": "conversational_reply",
+      "shadow_latency_ms": 958,
+      "shadow_first_token_proxy_ms": 704,
+      "shadow": {
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T05:16:04.33336+00:00",
+        "outcome_kind": "conversational_reply",
+        "latency_ms": 958,
+        "user_message_preview": "I don't have enough information yet. Please provide the name of the HubSpot list you want to check, and I'll continue.",
+        "tool_name": null
+      },
+      "conversation_id": "00df8436-ed10-4cd6-bd4a-36489b3f3d4b",
+      "turn": {
+        "http": 200,
+        "assistant": "I don't have enough information yet. Please provide the name of the HubSpot list you want to check, and I'll continue.",
+        "at": "2026-07-23T05:16:06.397920+00:00",
+        "error": null
+      }
+    },
+    {
+      "case": "imperfect_missing_to_words",
+      "ok": true,
+      "failures": [],
+      "assistant_snippet": "I need a bit more information to draft that email. Could you provide the purpose of the email and any key points you'd like to include?",
+      "imperfect_input": true,
+      "shadow_outcome": "clarifying_question",
+      "shadow_latency_ms": 1356,
+      "shadow_first_token_proxy_ms": 892,
+      "shadow": {
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T05:16:19.194915+00:00",
+        "outcome_kind": "clarifying_question",
+        "latency_ms": 1356,
+        "user_message_preview": "I need a bit more information to draft that email. Could you provide the purpose of the email and any key points you'd like to include?",
+        "tool_name": null
+      },
+      "conversation_id": "e5017af9-a239-4656-98f3-032f8ac27e66",
+      "turn": {
+        "http": 200,
+        "assistant": "I need a bit more information to draft that email. Could you provide the purpose of the email and any key points you'd like to include?",
+        "at": "2026-07-23T05:16:22.383779+00:00",
+        "error": null
+      }
+    },
+    {
+      "case": "imperfect_disordered_hubspot",
+      "ok": false,
+      "failures": [
+        "shadow_outcome:conversational_reply"
+      ],
+      "assistant_snippet": "HubSpot isn't connected right now. Connect it at /connectors, and then I can help you create that contact.",
+      "imperfect_input": true,
+      "shadow_outcome": "conversational_reply",
+      "shadow_latency_ms": 1240,
+      "shadow_first_token_proxy_ms": 655,
+      "shadow": {
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T05:16:35.476311+00:00",
+        "outcome_kind": "conversational_reply",
+        "latency_ms": 1240,
+        "user_message_preview": "HubSpot isn't connected right now. Connect it at /connectors, and then I can help you create that contact.",
+        "tool_name": null
+      },
+      "conversation_id": "082cf34a-ce76-47c7-82e3-353465e15702",
+      "turn": {
+        "http": 200,
+        "assistant": "HubSpot isn't connected right now. Connect it at /connectors, and then I can help you create that contact.",
+        "at": "2026-07-23T05:16:37.445893+00:00",
+        "error": null
+      }
+    },
+    {
+      "case": "imperfect_doubled_drafte",
+      "ok": false,
+      "failures": [
+        "shadow_outcome:conversational_reply"
+      ],
+      "assistant_snippet": "I need the purpose and key points you'd like to include in the email draft. Also, note that Gmail isn't connected here \u2014 connect it at /connectors when you're ready.",
+      "imperfect_input": true,
+      "shadow_outcome": "conversational_reply",
+      "shadow_latency_ms": 1754,
+      "shadow_first_token_proxy_ms": 758,
+      "shadow": {
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T05:16:50.175897+00:00",
+        "outcome_kind": "conversational_reply",
+        "latency_ms": 1754,
+        "user_message_preview": "I need the purpose and key points you'd like to include in the email draft. Also, note that Gmail isn't connected here \u2014 connect it at /connectors when you're ready.",
+        "tool_name": null
+      },
+      "conversation_id": "0a7750d6-1cd9-4ae7-bcbe-78f82cd644bb",
+      "turn": {
+        "http": 200,
+        "assistant": "I need the purpose and key points you'd like to include in the email draft. Also, note that Gmail isn't connected here \u2014 connect it at /connectors when you're ready.",
+        "at": "2026-07-23T05:16:53.249227+00:00",
+        "error": null
+      }
+    },
+    {
+      "case": "imperfect_adjacent_senf_mesage",
+      "ok": false,
+      "failures": [
+        "shadow_outcome:conversational_reply"
+      ],
+      "assistant_snippet": "The Slack connector isn't connected. You can connect it at /connectors, and then I can send that message for you.",
+      "imperfect_input": true,
+      "shadow_outcome": "conversational_reply",
+      "shadow_latency_ms": 849,
+      "shadow_first_token_proxy_ms": 579,
+      "shadow": {
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T05:17:07.037236+00:00",
+        "outcome_kind": "conversational_reply",
+        "latency_ms": 849,
+        "user_message_preview": "The Slack connector isn't connected. You can connect it at /connectors, and then I can send that message for you.",
+        "tool_name": null
+      },
+      "conversation_id": "6d89ebc9-200e-436e-893b-dce9258e59e8",
+      "turn": {
+        "http": 200,
+        "assistant": "The Slack connector isn't connected. You can connect it at /connectors, and then I can send that message for you.",
+        "at": "2026-07-23T05:17:10.323898+00:00",
+        "error": null
+      }
+    },
+    {
+      "case": "imperfect_thansk_then_task",
+      "ok": true,
+      "failures": [],
+      "assistant_snippet": "I can draft that note for Maria. What are the key points you'd like to include in the message?",
+      "imperfect_input": true,
+      "shadow_outcome": "clarifying_question",
+      "shadow_latency_ms": 1548,
+      "shadow_first_token_proxy_ms": 1544,
+      "shadow": {
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T05:17:27.375976+00:00",
+        "outcome_kind": "clarifying_question",
+        "latency_ms": 1548,
+        "user_message_preview": "I can draft that note for Maria. What are the key points you'd like to include in the message?",
+        "tool_name": null
+      },
+      "conversation_id": "1cd6a625-fdad-48dd-9681-f96d5b3b7034",
+      "turn": {
+        "http": 200,
+        "assistant": "I can draft that note for Maria. What are the key points you'd like to include in the message?",
+        "at": "2026-07-23T05:17:29.503483+00:00",
+        "error": null
+      }
+    },
+    {
+      "case": "imperfect_voice_um_email",
+      "ok": true,
+      "failures": [],
+      "assistant_snippet": "I can draft that email for Jordan. What key points or details would you like to include?",
+      "imperfect_input": true,
+      "shadow_outcome": "clarifying_question",
+      "shadow_latency_ms": 743,
+      "shadow_first_token_proxy_ms": 559,
+      "shadow": {
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T05:17:43.861665+00:00",
+        "outcome_kind": "clarifying_question",
+        "latency_ms": 743,
+        "user_message_preview": "I can draft that email for Jordan. What key points or details would you like to include?",
+        "tool_name": null
+      },
+      "conversation_id": "21ca1c54-7db7-42c1-8b73-28780a98318b",
+      "turn": {
+        "http": 200,
+        "assistant": "I can draft that email for Jordan. What key points or details would you like to include?",
+        "at": "2026-07-23T05:17:46.232564+00:00",
+        "error": null
+      }
+    },
+    {
+      "case": "imperfect_voice_runon_list",
+      "ok": false,
+      "failures": [
+        "shadow_outcome:conversational_reply"
+      ],
+      "assistant_snippet": "HubSpot isn't connected right now. Connect it at /connectors, and then I can create that contact list for you.",
+      "imperfect_input": true,
+      "shadow_outcome": "conversational_reply",
+      "shadow_latency_ms": 700,
+      "shadow_first_token_proxy_ms": 487,
+      "shadow": {
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T05:17:58.416848+00:00",
+        "outcome_kind": "conversational_reply",
+        "latency_ms": 700,
+        "user_message_preview": "HubSpot isn't connected right now. Connect it at /connectors, and then I can create that contact list for you.",
+        "tool_name": null
+      },
+      "conversation_id": "d63814ea-d49f-492b-9eee-8a3c20efd39a",
+      "turn": {
+        "http": 200,
+        "assistant": "HubSpot isn't connected right now. Connect it at /connectors, and then I can create that contact list for you.",
+        "at": "2026-07-23T05:18:02.497344+00:00",
+        "error": null
+      }
+    },
+    {
+      "case": "imperfect_voice_filler_aprove",
+      "ok": true,
+      "failures": [],
+      "assistant_snippet": "Reply **yes** to approve sending the Gmail message, or **cancel** to drop it.",
+      "imperfect_input": true,
+      "shadow_outcome": "confirmation_request",
+      "shadow_latency_ms": 7037,
+      "shadow_first_token_proxy_ms": 954,
+      "shadow": {
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T05:18:21.969449+00:00",
+        "outcome_kind": "confirmation_request",
+        "latency_ms": 7037,
+        "user_message_preview": "Reply **yes** to approve sending the Gmail message, or **cancel** to drop it.",
+        "tool_name": null
+      },
+      "conversation_id": "26561b32-7957-4024-8121-a70ac2691210",
+      "turn": {
+        "http": 200,
+        "assistant": "Reply **yes** to approve sending the Gmail message, or **cancel** to drop it.",
+        "at": "2026-07-23T05:18:25.005548+00:00",
+        "error": null
+      }
+    },
+    {
+      "case": "imperfect_stauts_pending",
+      "ok": true,
+      "failures": [],
+      "assistant_snippet": "The Gmail message is still awaiting your confirmation to send. Reply **yes** to proceed, or **cancel** to drop it.",
+      "imperfect_input": true,
+      "shadow_outcome": "confirmation_request",
+      "shadow_latency_ms": 2877,
+      "shadow_first_token_proxy_ms": 2350,
+      "shadow": {
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-23T05:18:40.318214+00:00",
+        "outcome_kind": "confirmation_request",
+        "latency_ms": 2877,
+        "user_message_preview": "The Gmail message is still awaiting your confirmation to send. Reply **yes** to proceed, or **cancel** to drop it.",
+        "tool_name": null
+      },
+      "conversation_id": "8e800f76-a254-4523-814b-ca2a54e7196b",
+      "turn": {
+        "http": 200,
+        "assistant": "The Gmail message is still awaiting your confirmation to send. Reply **yes** to proceed, or **cancel** to drop it.",
+        "at": "2026-07-23T05:18:42.252048+00:00",
         "error": null
       }
     }
   ],
   "classical_batteries": {
     "pending_reply": {
-      "exit_code": 0,
-      "stdout_tail": "then deal**) that isn't finished. Your new message looks l\"\nPASS unrelated_how_many_runs http=200 :: \"You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks l\"\nPASS unrelated_search_hubspot http=200 :: \"You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a \"\nPASS modify_subject_q3 http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS modify_skip_step http=200 :: 'I can\u2019t create the deal from the connected tools available.\\n\\nSource: connector status shows Apollo i'\nPASS modify_change_channel http=200 :: \"I couldn't complete that: Connect Slack at /connectors to run this action.\\n\\nSlack isn't ready. Conne\"\nPASS modify_rather_cancel_body http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS modify_dont_include_cc http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS ambiguous_hmm http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS ambiguous_maybe http=200 :: 'I still have a plan open (**Search HubSpot then create a deal**). Say **yes** to continue, **cancel*'\nPASS ambiguous_ok_then http=200 :: \"I couldn't complete that: Connect Slack at /connectors to run this action.\\n\\nSlack isn't ready. Conne\"\nPASS slot_email http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS reject_cancel http=200 :: 'Cancelled the pending plan. What should we do instead?'\nPASS confirm_orch_yes http=200 :: 'The orchestration plan is empty.'\n{\n  \"verdict\": \"PASS\",\n  \"passed\": 24,\n  \"total\": 24,\n  \"failed\": [],\n  \"tip_ok\": true,\n  \"broad_pass\": true,\n  \"out\": \"C:\\\\Users\\\\Cesar\\\\Downloads\\\\Gravitre Operator AI\\\\docs\\\\delivery\\\\pending-reply-classifier-battery-live.json\"\n}\n",
+      "exit_code": 1,
+      "stdout_tail": "run history wasn't retrieved this turn. If you want, I can look it\"\nPASS unrelated_search_hubspot http=200 :: \"You have a pending action to send a Gmail message that isn't finished. Should I **abandon** that and\"\nPASS modify_subject_q3 http=200 :: \"I still need the recipient and body for the Gmail message. Please provide those details, and I'll up\"\nPASS modify_skip_step http=200 :: \"I can't skip the enrichment step \u2014 it's required before creating the deal in HubSpot. If you want to\"\nPASS modify_change_channel http=200 :: 'I need the message content to post in the #sales channel. What would you like to say?'\nPASS modify_rather_cancel_body http=200 :: \"I can adjust the email body for you. Please provide the recipient's email address and the new body t\"\nPASS modify_dont_include_cc http=200 :: \"Got it. I still need the recipient's email address and the body of the message to complete the Gmail\"\nPASS ambiguous_hmm http=200 :: \"It looks like you're pondering something. If you're ready to send that Gmail, I still need the recip\"\nPASS ambiguous_maybe http=200 :: \"It looks like you're considering something, but I need a bit more context to assist you. What would \"\nPASS ambiguous_ok_then http=200 :: \"It looks like I'm still waiting for the message content to post to Slack. What would you like the me\"\nPASS slot_email http=200 :: 'I still need the body of the email to complete the Gmail message. What would you like to include in '\nPASS reject_cancel http=200 :: 'The pending Gmail message is now canceled. If you need anything else, just let me know.'\nPASS confirm_orch_yes http=200 :: \"It looks like you're confirming the plan to enrich contacts in HubSpot and then create a deal. I can\"\n{\n  \"verdict\": \"PARTIAL\",\n  \"passed\": 22,\n  \"total\": 24,\n  \"failed\": [\n    \"unrelated_connectors\",\n    \"unrelated_how_many_runs\"\n  ],\n  \"tip_ok\": false,\n  \"broad_pass\": false,\n  \"out\": \"C:\\\\Users\\\\Cesar\\\\Downloads\\\\Gravitre Operator AI\\\\docs\\\\delivery\\\\pending-reply-classifier-battery-live.json\"\n}\n",
       "stderr_tail": ""
     },
     "conversational_path": {
-      "exit_code": 0,
-      "stdout_tail": "n. Connect it now at /connectors, or reply'\nPASS mixed_slack :: 'Ha \u2014 noted.\\n\\nSlack is not Connected for this organization. Connect it now at /connectors, or reply *'\nPASS mixed_thanks_search :: \"You're welcome.\\n\\nHubspot is not Connected for this organization. Connect it now at /connectors, or r\"\nPASS mixed_banter_gmail :: 'Ha \u2014 noted.\\n\\nI can draft the email text, but I cannot create a Gmail draft because Gmail is not Conn'\nPASS mixed_hey_apollo :: 'Hey \u2014 on it.\\n\\nI can create a contact list named **ConvPath Battery** in Apollo.\\n\\nReply **yes** to ap'\nPASS meta_what_can_you_do :: 'I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo.'\nPASS meta_are_you_ai :: 'I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo.'\nPASS meta_who_are_you :: 'I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo.'\nPASS vent_hubspot :: 'That friction is real. When you want to dig in, we can check the connector at /connectors (Connected'\nPASS vent_generic :: 'That friction is real. When you want to dig in, we can check the connector at /connectors (Connected'\nPASS vent_slack :: 'That friction is real. When you want to dig in, we can check the connector at /connectors (Connected'\nPASS data_deals :: 'The deals picture is not healthy right now.\\n\\n- Last 7 days: 126 runs, 17 completed, 103 failed, 4 ru'\nPASS data_pipeline :: 'Which item did you mean \u2014 the specific workflow, agent, or connector you mean?'\nPASS pending_playful_1 :: 'Ha \u2014 noted. What should we tackle next?\\n\\nSend Gmail message is waiting in the Decision Queue. Reply '\nPASS pending_playful_2 :: 'Ha \u2014 noted. What should we tackle next?\\n\\nSend Gmail message is waiting in the Decision Queue. Reply '\n{\n  \"verdict\": \"PASS\",\n  \"passed\": 20,\n  \"total\": 20,\n  \"failed\": [],\n  \"out\": \"C:\\\\Users\\\\Cesar\\\\Downloads\\\\Gravitre Operator AI\\\\docs\\\\delivery\\\\conversational-path-battery-live.json\"\n}\n",
+      "exit_code": 1,
+      "stdout_tail": " you're ready to post\"\nFAIL mixed_thanks_search :: \"I don't have enough information yet. Tell me the missing detail, like what specific information you'\"\nFAIL mixed_banter_gmail :: 'Thanks! I can draft that email for you. What\u2019s the purpose and key points you want to include in the'\nFAIL mixed_hey_apollo :: \"The Apollo connector isn't connected. Please connect it at /connectors, and then I can create the co\"\nFAIL meta_what_can_you_do :: 'I can assist with a variety of tasks related to managing contacts, organizations, and sequences thro'\nPASS meta_are_you_ai :: \"Yes, I'm an AI designed to help with enterprise automation and operations. How can I assist you toda\"\nPASS meta_who_are_you :: \"I'm Gravitree, your calm expert operator for enterprise automation. I'm here to help you manage task\"\nPASS vent_hubspot :: \"That sounds frustrating. When you're ready, we can check the HubSpot connector's status or troublesh\"\nPASS vent_generic :: \"I hear you. It sounds like you're dealing with some challenges. What's on your mind?\"\nPASS vent_slack :: \"I understand that can be frustrating. When you're ready, we can check the Slack connector status at \"\nPASS data_deals :: \"I don't have access to deal data directly. You might want to check your CRM or sales platform for th\"\nPASS data_pipeline :: \"I don't have that information yet. You might want to check your CRM or pipeline management tool for \"\nFAIL pending_playful_1 :: 'Thanks! Just keeping it straightforward. Is there anything else on your mind?'\nPASS pending_playful_2 :: \"You're welcome! Just a reminder, the **Send Gmail message** is still awaiting your confirmation. If \"\n{\n  \"verdict\": \"FAIL\",\n  \"passed\": 13,\n  \"total\": 20,\n  \"failed\": [\n    \"mixed_hubspot_list\",\n    \"mixed_slack\",\n    \"mixed_thanks_search\",\n    \"mixed_banter_gmail\",\n    \"mixed_hey_apollo\",\n    \"meta_what_can_you_do\",\n    \"pending_playful_1\"\n  ],\n  \"out\": \"C:\\\\Users\\\\Cesar\\\\Downloads\\\\Gravitre Operator AI\\\\docs\\\\delivery\\\\conversational-path-battery-live.json\"\n}\n",
       "stderr_tail": ""
     },
     "run_history_stale_plan": {
-      "exit_code": 0,
-      "stdout_tail": "health tip=444371f960571d83c2d7af89def200fa241d4c51\n{\n  \"fastRunHistory\": \"PASS\",\n  \"stalePlanSequence\": \"PASS\"\n}\nwrote C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\docs\\delivery\\run-history-stale-plan-live.json\ntip=444371f960571d83c2d7af89def200fa241d4c51 conv1=021f6897-e88f-41b2-8eaf-d9f1b0e52c1e conv2=f29a5ba9-c584-4934-82eb-a34cc81ea6d1\n",
+      "exit_code": 4,
+      "stdout_tail": "fc0cd38cec64541522cfeb960\nhealth tip=1c0eee8eda6d88afc0cd38cec64541522cfeb960\nhealth tip=1c0eee8eda6d88afc0cd38cec64541522cfeb960\nhealth tip=1c0eee8eda6d88afc0cd38cec64541522cfeb960\nhealth tip=1c0eee8eda6d88afc0cd38cec64541522cfeb960\nhealth tip=1c0eee8eda6d88afc0cd38cec64541522cfeb960\nhealth tip=1c0eee8eda6d88afc0cd38cec64541522cfeb960\nhealth tip=1c0eee8eda6d88afc0cd38cec64541522cfeb960\nhealth tip=1c0eee8eda6d88afc0cd38cec64541522cfeb960\nhealth tip=1c0eee8eda6d88afc0cd38cec64541522cfeb960\nhealth tip=1c0eee8eda6d88afc0cd38cec64541522cfeb960\nhealth tip=1c0eee8eda6d88afc0cd38cec64541522cfeb960\nhealth tip=1c0eee8eda6d88afc0cd38cec64541522cfeb960\nhealth tip=1c0eee8eda6d88afc0cd38cec64541522cfeb960\nhealth tip=1c0eee8eda6d88afc0cd38cec64541522cfeb960\nhealth tip=1c0eee8eda6d88afc0cd38cec64541522cfeb960\nhealth tip=1c0eee8eda6d88afc0cd38cec64541522cfeb960\nhealth tip=1c0eee8eda6d88afc0cd38cec64541522cfeb960\nhealth tip=8ebe81e29357c2b13e3414640f8dc05c14df4b8c\nhealth tip=8ebe81e29357c2b13e3414640f8dc05c14df4b8c\nhealth tip=8ebe81e29357c2b13e3414640f8dc05c14df4b8c\nhealth tip=8ebe81e29357c2b13e3414640f8dc05c14df4b8c\nhealth tip=8ebe81e29357c2b13e3414640f8dc05c14df4b8c\nhealth tip=8ebe81e29357c2b13e3414640f8dc05c14df4b8c\nhealth tip=8ebe81e29357c2b13e3414640f8dc05c14df4b8c\nhealth tip=8ebe81e29357c2b13e3414640f8dc05c14df4b8c\nhealth tip=8ebe81e29357c2b13e3414640f8dc05c14df4b8c\nhealth tip=8ebe81e29357c2b13e3414640f8dc05c14df4b8c\nhealth tip=22a573c59505d01135f4d5d4d83f6bbbf54e026e\nhealth tip=22a573c59505d01135f4d5d4d83f6bbbf54e026e\nhealth tip=22a573c59505d01135f4d5d4d83f6bbbf54e026e\nhealth tip=22a573c59505d01135f4d5d4d83f6bbbf54e026e\nhealth tip=22a573c59505d01135f4d5d4d83f6bbbf54e026e\nhealth tip=22a573c59505d01135f4d5d4d83f6bbbf54e026e\nhealth tip=182b91b3deeaee9d3da6e9116947c7a98baf1b7e\nhealth tip=182b91b3deeaee9d3da6e9116947c7a98baf1b7e\n{\n  \"fastRunHistory\": \"NOT RUN\",\n  \"stalePlanSequence\": \"NOT RUN\",\n  \"reason\": \"tip 182b91b3deeaee9d3da6e9116947c7a98baf1b7e does not include c81d1200\"\n}\n",
       "stderr_tail": ""
     },
     "sta305_slack_omit_detail": {
-      "exit_code": 0,
-      "stdout_tail": "{\n  \"ticket\": \"STA-305\",\n  \"probed_at\": \"2026-07-22T17:59:43.187932+00:00\",\n  \"local_mapper\": {\n    \"segment\": \"draft a follow-up in Slack for approval\",\n    \"matched_action\": \"slack.post_message\",\n    \"kind\": \"write\",\n    \"score\": 48.0,\n    \"args\": {\n      \"channel\": \"general\",\n      \"message\": \"follow-up\",\n      \"text\": \"follow-up\"\n    },\n    \"pass\": true\n  },\n  \"live\": {\n    \"sha\": \"444371f960571d83c2d7af89def200fa241d4c51\",\n    \"conversation_id\": \"5a603a72-fc0f-40fc-9876-84d16eff9fab\",\n    \"marker\": \"dae3511e\",\n    \"http\": 200,\n    \"elapsed_ms\": 5842,\n    \"labels\": [\n      \"Hubspot (not connected)\",\n      \"Slack (not connected)\",\n      \"Orchestration blocked \\\\u2014 zero runnable steps\"\n    ],\n    \"text_head\": \"I planned a **2-step orchestration**, but **nothing is runnable** \\u2014 every step is blocked:\\n\\n1. \\u25cb Hubspot (not connected) \\u2014 *skipped* (Connect Hubspot at /connectors to run this action.)\\n2. \\u25cb Slack (not connected) \\u2014 *skipped* (Connect Slack at /connectors to run this action.)\\n\\nConnect the required tools at /connectors (or rephrase with connectors you already have), then ask again. No approval is needed until at least one step can run.\\n\\nBlocked because: Connect Hubspot at /connectors to run this a\",\n    \"list_channels_seen\": false,\n    \"post_like_seen\": false,\n    \"pass\": true\n  },\n  \"verdict\": \"PASS\"\n}\n",
+      "exit_code": 1,
+      "stdout_tail": "{\n  \"ticket\": \"STA-305\",\n  \"probed_at\": \"2026-07-23T05:40:04.785425+00:00\",\n  \"local_mapper\": {\n    \"segment\": \"draft a follow-up in Slack for approval\",\n    \"matched_action\": \"slack.post_message\",\n    \"kind\": \"write\",\n    \"score\": 48.0,\n    \"args\": {\n      \"channel\": \"general\",\n      \"message\": \"follow-up\",\n      \"text\": \"follow-up\"\n    },\n    \"pass\": true\n  },\n  \"live\": {\n    \"sha\": \"182b91b3deeaee9d3da6e9116947c7a98baf1b7e\",\n    \"conversation_id\": \"3cf81f65-bc22-4cc8-80a6-ae1cc242de3a\",\n    \"marker\": \"30f92228\",\n    \"http\": 200,\n    \"elapsed_ms\": 5404,\n    \"labels\": [],\n    \"text_head\": \"HubSpot isn't connected right now. You can connect it at /connectors, and then we can proceed with searching for high-intent leads. After that, I can help draft the follow-up in Slack.\",\n    \"list_channels_seen\": false,\n    \"post_like_seen\": false,\n    \"pass\": false\n  },\n  \"verdict\": \"FAIL\"\n}\n",
       "stderr_tail": ""
     },
     "persona_drift_30": {
-      "exit_code": 0,
-      "stdout_tail": "{\n  \"verdict\": \"PARTIAL\",\n  \"passed\": 20,\n  \"turns\": 30,\n  \"hard_failures\": [],\n  \"missing_shadow\": 10,\n  \"out\": \"C:\\\\Users\\\\Cesar\\\\Downloads\\\\Gravitre Operator AI\\\\docs\\\\delivery\\\\unified-turn-persona-drift-live.json\"\n}\n",
+      "exit_code": 1,
+      "stdout_tail": "",
       "stderr_tail": ""
     }
   },
@@ -156,43 +573,63 @@
     "note": "Shadow path is non-streaming today; latency_ms / first_token_proxy_ms are full-completion proxies. Phase 3 requires true streamed TTFT < 200ms.",
     "target_ms": 200,
     "samples_ms": [
-      749,
-      1103,
-      4848,
-      1802,
-      3801
+      694,
+      689,
+      792,
+      1728,
+      1123,
+      951,
+      2195,
+      1489,
+      865,
+      804,
+      653,
+      958,
+      1356,
+      1240,
+      1754,
+      849,
+      1548,
+      743,
+      700,
+      7037,
+      2877
     ],
-    "p50_ms": 1802,
-    "max_ms": 4848,
+    "p50_ms": 958,
+    "max_ms": 7037,
     "phase3_streaming_gate": "NOT RUN \u2014 shadow not yet token-streaming",
     "proxy_under_target": false
   },
   "cutover_gates": {
-    "phase2_batteries_clean": true,
-    "phase2_core_batteries_clean": true,
+    "phase2_batteries_clean": false,
+    "phase2_core_batteries_clean": false,
     "phase3_ttft_streaming": false,
     "phase4_cutover_authorized": false,
     "standing_rule": "Do not remove conversational_turn_gate / pending_reply_classifier / mapper regex / phrase-banks until Phase 4 after clean Phase 2+3",
     "write_authority_unchanged": true
   },
   "matrix": {
-    "targeted_shadow_cases": "5/5 targeted cases",
+    "targeted_shadow_cases": "15/21 targeted cases",
     "pending_reply_24": "see classical_batteries.pending_reply",
     "conversational_path_20": "see classical_batteries.conversational_path",
     "knowledge_boundary_run_history": true,
-    "sta305_omit_detail": 0,
-    "run_history_stale_plan": 0,
-    "persona_drift_30_turn": 0,
+    "imperfect_input_understanding": "10/16",
+    "imperfect_input_all_ok": false,
+    "sta305_omit_detail": 1,
+    "run_history_stale_plan": 4,
+    "persona_drift_30_turn": 1,
     "full_email_flow_multi_step": "PARTIAL \u2014 single-turn email intent only",
     "ttft_streaming_lt_200ms": "NOT RUN \u2014 shadow not yet token-streaming"
   },
   "health": {
     "status": "ok",
-    "timestamp": "2026-07-22T17:48:53.624217+00:00",
+    "timestamp": "2026-07-23T05:13:00.806601+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "444371f960571d83c2d7af89def200fa241d4c51",
+    "git_sha": "c81d12009cd66e066831a2e20ef146cda189bd62",
     "ai_disabled": false,
+    "unified_turn_shadow_enabled": true,
+    "unified_turn_live_enabled": true,
     "checks": {
       "database": "healthy",
       "cache": "healthy",
@@ -200,9 +637,10 @@
       "clickhouse": "configured"
     }
   },
-  "git_sha": "444371f960571d83c2d7af89def200fa241d4c51",
-  "summary": "5/5 targeted cases",
-  "finished_at": "2026-07-22T18:08:18.300537+00:00",
-  "ok": true,
-  "verdict": "PASS"
+  "git_sha": "c81d12009cd66e066831a2e20ef146cda189bd62",
+  "summary": "15/21 targeted cases",
+  "finished_at": "2026-07-23T05:40:16.525730+00:00",
+  "ok": false,
+  "verdict": "FAIL",
+  "classical_all_ok": false
 }

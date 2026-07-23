@@ -1,9 +1,9 @@
 {
-  "started_at": "2026-07-18T03:46:52.943103+00:00",
-  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
-  "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
-  "conversation_id": "09f2591a-0dae-41cc-9f01-addc6fa09166",
-  "list_name": "gravitre-wave67-spotcheck-20260718",
+  "started_at": "2026-07-23T08:04:24.484451+00:00",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "conversation_id": "af6228e2-9cac-4424-a69c-2c2f8fe7da57",
+  "list_name": "gravitre-wave67-spotcheck-20260723",
   "base_url": "https://api.gravitre.app",
   "branch_note": "production API https://api.gravitre.app",
   "claims": {
@@ -18,7 +18,7 @@
           "has_current_plan": false,
           "has_execution_result": false,
           "has_pending_task": false,
-          "wall_start": "2026-07-18T03:46:54.114662+00:00"
+          "wall_start": "2026-07-23T08:04:25.696515+00:00"
         },
         "first_tool_start_sse": {
           "i": 6,
@@ -27,7 +27,7 @@
         },
         "plan_before_tools": true,
         "plan_only_in_final": false,
-        "wall_start": "2026-07-18T03:46:54.114662+00:00"
+        "wall_start": "2026-07-23T08:04:25.696515+00:00"
       }
     },
     "2_tool_chips_error_code": {
@@ -45,29 +45,29 @@
           "i": 5,
           "type": "tool-output-available",
           "toolName": null,
-          "errorCode": "auth_expired",
+          "errorCode": "connector_not_connected",
           "success": false,
-          "error": "Authentication expired for Slack. Reconnect it at /connectors, then try again."
+          "error": "Slack is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again."
         },
         "success_before_text": true,
-        "slack_wall_start": "2026-07-18T03:47:14.463575+00:00"
+        "slack_wall_start": "2026-07-23T08:05:40.760633+00:00"
       }
     },
     "3_approval_panel_result_url": {
-      "status": "PASS",
+      "status": "PARTIAL",
       "evidence": {
         "react_gate": null,
         "approved_execution": {
-          "user_approval_at": "2026-07-18T03:47:47.769017+00:00",
-          "completed_at": "2026-07-18T03:47:54.586347+00:00",
+          "user_approval_at": "2026-07-23T08:06:42.758656+00:00",
+          "completed_at": "2026-07-23T08:06:56.351025+00:00",
           "success": true,
           "error_code": null,
-          "result_url": "https://app.apollo.io/#/lists/6a5af7675fa81d00106f7d97",
+          "result_url": "/ai?conversation=af6228e2-9cac-4424-a69c-2c2f8fe7da57",
           "assumption_notes": null,
-          "body": "Created contact list \"gravitre-wave67-spotcheck-20260718\" (id: 6a5af7675fa81d00106f7d97).",
+          "body": "Created contact list \"gravitre-wave67-spotcheck-20260723\" (id: 6a61cb9b27d1e6001435d9e6).",
           "via": "chat_yes"
         },
-        "result_url_is_deep_link": true,
+        "result_url_is_deep_link": false,
         "not_connector_conflation": true
       }
     },
@@ -78,7 +78,7 @@
         "claim4_execution": {
           "i": 7,
           "success": true,
-          "result_url": "https://app.apollo.io/#/lists/6a4d6a98461b000010c5ae7b",
+          "result_url": "/ai?conversation=b41afaab-aca8-4398-a21c-1426df960b33",
           "error_code": null,
           "assumption_notes": [
             "Assumed name=MSP Prospects (from message_or_default_hint)"
@@ -92,7 +92,7 @@
           {
             "i": 3,
             "success": true,
-            "result_url": "https://app.apollo.io/#/lists/6a4d6a98461b000010c5ae7b",
+            "result_url": "/ai?conversation=b41afaab-aca8-4398-a21c-1426df960b33",
             "error_code": null,
             "assumption_notes": [
               "Assumed name=MSP Prospects (from message_or_default_hint)"
@@ -102,7 +102,7 @@
           {
             "i": 7,
             "success": true,
-            "result_url": "https://app.apollo.io/#/lists/6a4d6a98461b000010c5ae7b",
+            "result_url": "/ai?conversation=b41afaab-aca8-4398-a21c-1426df960b33",
             "error_code": null,
             "assumption_notes": [
               "Assumed name=MSP Prospects (from message_or_default_hint)"
@@ -116,11 +116,18 @@
   },
   "prod_health": {
     "status": "ok",
-    "timestamp": "2026-07-18T03:46:53.212185+00:00",
+    "timestamp": "2026-07-23T08:04:25.189780+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "91f785db13144da67c79ff5d97095d22a21e8736",
+    "git_sha": "4261014e744b3ecf38abc1db828b769f6d99811a",
     "ai_disabled": false,
+    "unified_turn_shadow_enabled": true,
+    "unified_turn_live_enabled": true,
+    "unified_turn_embedding_tool_retrieval": true,
+    "unified_turn_embed_min_catalog_tools": 40,
+    "unified_turn_task_model_tier": "low",
+    "internet_research_enabled": true,
+    "web_research_provider_configured": true,
     "checks": {
       "database": "healthy",
       "cache": "healthy",
@@ -131,8 +138,8 @@
   "turn_plan_read": {
     "http": "http_200",
     "summary": {
-      "wall_start": "2026-07-18T03:46:54.114662+00:00",
-      "event_count": 57,
+      "wall_start": "2026-07-23T08:04:25.696515+00:00",
+      "event_count": 65,
       "first_plan_sse": {
         "i": 5,
         "type": "data-intelligence",
@@ -141,7 +148,7 @@
         "has_current_plan": false,
         "has_execution_result": false,
         "has_pending_task": false,
-        "wall_start": "2026-07-18T03:46:54.114662+00:00"
+        "wall_start": "2026-07-23T08:04:25.696515+00:00"
       },
       "first_tool_start_sse": {
         "i": 6,
@@ -161,9 +168,9 @@
         "type": "text-start"
       },
       "final_meta_sse": {
-        "i": 5,
+        "i": 62,
         "type": "data-intelligence",
-        "answerExplanation": "Plan ready \u2014 running tools",
+        "answerExplanation": "Live data came from apollo_lists_list (1 call).\n\nThis answer drew on 4 internal sources, including Business signals and Organization snapshot.",
         "dialogueMode": "guide",
         "has_current_plan": false,
         "has_execution_result": false,
@@ -440,15 +447,52 @@
         },
         {
           "i": 54,
-          "type": "finish-step"
+          "type": "text-delta"
         },
         {
           "i": 55,
-          "type": "finish"
+          "type": "text-delta"
         },
         {
           "i": 56,
-          "type": "data-suggestions"
+          "type": "text-delta"
+        },
+        {
+          "i": 57,
+          "type": "text-delta"
+        },
+        {
+          "i": 58,
+          "type": "text-delta"
+        },
+        {
+          "i": 59,
+          "type": "text-delta"
+        },
+        {
+          "i": 60,
+          "type": "text-delta"
+        },
+        {
+          "i": 61,
+          "type": "text-end"
+        },
+        {
+          "i": 62,
+          "type": "data-intelligence",
+          "answerExplanation": "Live data came from apollo_lists_list (1 call).\n\nThis answer drew on 4 internal sources, including Business signals and Organization snapshot.",
+          "dialogueMode": "guide",
+          "has_current_plan": false,
+          "has_execution_result": false,
+          "has_pending_task": false
+        },
+        {
+          "i": 63,
+          "type": "finish-step"
+        },
+        {
+          "i": 64,
+          "type": "finish"
         }
       ]
     }
@@ -456,7 +500,7 @@
   "turn_slack_fail": {
     "http": "http_200",
     "summary": {
-      "wall_start": "2026-07-18T03:47:14.463575+00:00",
+      "wall_start": "2026-07-23T08:05:40.760633+00:00",
       "event_count": 13,
       "first_plan_sse": null,
       "first_tool_start_sse": {
@@ -468,9 +512,9 @@
         "i": 5,
         "type": "tool-output-available",
         "toolName": null,
-        "errorCode": "auth_expired",
+        "errorCode": "connector_not_connected",
         "success": false,
-        "error": "Authentication expired for Slack. Reconnect it at /connectors, then try again."
+        "error": "Slack is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again."
       },
       "first_text_sse": {
         "i": 6,
@@ -490,9 +534,9 @@
           "i": 5,
           "type": "tool-output-available",
           "toolName": null,
-          "errorCode": "auth_expired",
+          "errorCode": "connector_not_connected",
           "success": false,
-          "error": "Authentication expired for Slack. Reconnect it at /connectors, then try again."
+          "error": "Slack is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again."
         }
       ],
       "execution_results": [],
@@ -535,9 +579,9 @@
           "i": 5,
           "type": "tool-output-available",
           "toolName": null,
-          "errorCode": "auth_expired",
+          "errorCode": "connector_not_connected",
           "success": false,
-          "error": "Authentication expired for Slack. Reconnect it at /connectors, then try again."
+          "error": "Slack is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again."
         },
         {
           "i": 6,
@@ -578,7 +622,7 @@
   "turn_apollo_write_gate": {
     "http": "http_200",
     "summary": {
-      "wall_start": "2026-07-18T03:47:28.902272+00:00",
+      "wall_start": "2026-07-23T08:06:07.563716+00:00",
       "event_count": 17,
       "first_plan_sse": {
         "i": 5,
@@ -588,7 +632,7 @@
         "has_current_plan": false,
         "has_execution_result": false,
         "has_pending_task": false,
-        "wall_start": "2026-07-18T03:47:28.902272+00:00"
+        "wall_start": "2026-07-23T08:06:07.563716+00:00"
       },
       "first_tool_start_sse": {
         "i": 6,
@@ -642,8 +686,9 @@
             "type": "connector_action",
             "params": {
               "args": {
-                "name": "gravitre-wave67-spotcheck-20260718",
-                "list_name": "gravitre-wave67-spotcheck-20260718"
+                "name": "gravitre-wave67-spotcheck-20260723",
+                "list_name": "gravitre-wave67-spotcheck-20260723",
+                "connector_id": "8992743f-6632-4252-81a1-8d09c0482575"
               },
               "kind": "write",
               "label": "Create contact list",
@@ -774,7 +819,7 @@
   "turn_apollo_approve": {
     "http": "http_200",
     "summary": {
-      "wall_start": "2026-07-18T03:47:47.769017+00:00",
+      "wall_start": "2026-07-23T08:06:42.758656+00:00",
       "event_count": 11,
       "first_plan_sse": null,
       "first_tool_start_sse": null,
@@ -797,18 +842,18 @@
         {
           "i": 3,
           "success": true,
-          "result_url": "https://app.apollo.io/#/lists/6a5af7675fa81d00106f7d97",
+          "result_url": "/ai?conversation=af6228e2-9cac-4424-a69c-2c2f8fe7da57",
           "error_code": null,
           "assumption_notes": null,
-          "body": "Created contact list \"gravitre-wave67-spotcheck-20260718\" (id: 6a5af7675fa81d00106f7d97)."
+          "body": "Created contact list \"gravitre-wave67-spotcheck-20260723\" (id: 6a61cb9b27d1e6001435d9e6)."
         },
         {
           "i": 7,
           "success": true,
-          "result_url": "https://app.apollo.io/#/lists/6a5af7675fa81d00106f7d97",
+          "result_url": "/ai?conversation=af6228e2-9cac-4424-a69c-2c2f8fe7da57",
           "error_code": null,
           "assumption_notes": null,
-          "body": "Created contact list \"gravitre-wave67-spotcheck-20260718\" (id: 6a5af7675fa81d00106f7d97)."
+          "body": "Created contact list \"gravitre-wave67-spotcheck-20260723\" (id: 6a61cb9b27d1e6001435d9e6)."
         }
       ],
       "pending_tasks": [],
@@ -878,20 +923,20 @@
     }
   },
   "approved_execution": {
-    "user_approval_at": "2026-07-18T03:47:47.769017+00:00",
-    "completed_at": "2026-07-18T03:47:54.586347+00:00",
+    "user_approval_at": "2026-07-23T08:06:42.758656+00:00",
+    "completed_at": "2026-07-23T08:06:56.351025+00:00",
     "success": true,
     "error_code": null,
-    "result_url": "https://app.apollo.io/#/lists/6a5af7675fa81d00106f7d97",
+    "result_url": "/ai?conversation=af6228e2-9cac-4424-a69c-2c2f8fe7da57",
     "assumption_notes": null,
-    "body": "Created contact list \"gravitre-wave67-spotcheck-20260718\" (id: 6a5af7675fa81d00106f7d97).",
+    "body": "Created contact list \"gravitre-wave67-spotcheck-20260723\" (id: 6a61cb9b27d1e6001435d9e6).",
     "via": "chat_yes"
   },
   "turn_claim4_omit_name": {
     "http": "http_200",
     "summary": {
-      "wall_start": "2026-07-18T03:47:54.586426+00:00",
-      "event_count": 21,
+      "wall_start": "2026-07-23T08:06:56.351095+00:00",
+      "event_count": 25,
       "first_plan_sse": {
         "i": 5,
         "type": "data-intelligence",
@@ -900,7 +945,7 @@
         "has_current_plan": false,
         "has_execution_result": false,
         "has_pending_task": false,
-        "wall_start": "2026-07-18T03:47:54.586426+00:00"
+        "wall_start": "2026-07-23T08:06:56.351095+00:00"
       },
       "first_tool_start_sse": {
         "i": 6,
@@ -920,7 +965,7 @@
         "type": "text-start"
       },
       "final_meta_sse": {
-        "i": 17,
+        "i": 21,
         "type": "data-intelligence",
         "answerExplanation": "Connector fallback after ReAct",
         "dialogueMode": "confirm",
@@ -941,7 +986,7 @@
       "execution_results": [],
       "pending_tasks": [
         {
-          "i": 17,
+          "i": 21,
           "pending": {
             "type": "connector_action",
             "status": "awaiting_confirm",
@@ -1057,7 +1102,7 @@
         },
         {
           "i": 14,
-          "type": "text-start"
+          "type": "text-delta"
         },
         {
           "i": 15,
@@ -1065,10 +1110,26 @@
         },
         {
           "i": 16,
-          "type": "text-end"
+          "type": "text-delta"
         },
         {
           "i": 17,
+          "type": "text-delta"
+        },
+        {
+          "i": 18,
+          "type": "text-start"
+        },
+        {
+          "i": 19,
+          "type": "text-delta"
+        },
+        {
+          "i": 20,
+          "type": "text-end"
+        },
+        {
+          "i": 21,
           "type": "data-intelligence",
           "answerExplanation": "Connector fallback after ReAct",
           "dialogueMode": "confirm",
@@ -1077,15 +1138,15 @@
           "has_pending_task": true
         },
         {
-          "i": 18,
+          "i": 22,
           "type": "finish-step"
         },
         {
-          "i": 19,
+          "i": 23,
           "type": "finish"
         },
         {
-          "i": 20,
+          "i": 24,
           "type": "data-suggestions"
         }
       ]
@@ -1095,7 +1156,7 @@
   "turn_claim4_approve": {
     "http": "http_200",
     "summary": {
-      "wall_start": "2026-07-18T03:48:15.598697+00:00",
+      "wall_start": "2026-07-23T08:07:31.946685+00:00",
       "event_count": 11,
       "first_plan_sse": null,
       "first_tool_start_sse": null,
@@ -1118,7 +1179,7 @@
         {
           "i": 3,
           "success": true,
-          "result_url": "https://app.apollo.io/#/lists/6a4d6a98461b000010c5ae7b",
+          "result_url": "/ai?conversation=b41afaab-aca8-4398-a21c-1426df960b33",
           "error_code": null,
           "assumption_notes": [
             "Assumed name=MSP Prospects (from message_or_default_hint)"
@@ -1128,7 +1189,7 @@
         {
           "i": 7,
           "success": true,
-          "result_url": "https://app.apollo.io/#/lists/6a4d6a98461b000010c5ae7b",
+          "result_url": "/ai?conversation=b41afaab-aca8-4398-a21c-1426df960b33",
           "error_code": null,
           "assumption_notes": [
             "Assumed name=MSP Prospects (from message_or_default_hint)"
@@ -1205,12 +1266,12 @@
   "claim4_execution": {
     "i": 7,
     "success": true,
-    "result_url": "https://app.apollo.io/#/lists/6a4d6a98461b000010c5ae7b",
+    "result_url": "/ai?conversation=b41afaab-aca8-4398-a21c-1426df960b33",
     "error_code": null,
     "assumption_notes": [
       "Assumed name=MSP Prospects (from message_or_default_hint)"
     ],
     "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
   },
-  "finished_at": "2026-07-18T03:48:21.630782+00:00"
+  "finished_at": "2026-07-23T08:07:42.784575+00:00"
 }

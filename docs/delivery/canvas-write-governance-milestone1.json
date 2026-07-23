@@ -1,11 +1,11 @@
 {
   "claim": "canvas_write_governance_step1",
-  "started_at": "2026-07-19T04:07:34.990774+00:00",
-  "api_base": "https://gravitre-saas-backend-production.up.railway.app",
-  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
-  "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
-  "list_name": "CanvasGovProbe 20260719-040734 286786",
-  "apollo_connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+  "started_at": "2026-07-23T08:35:39.010459+00:00",
+  "api_base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "list_name": "CanvasGovProbe 20260723-083538 add219",
+  "apollo_connector_id": "8992743f-6632-4252-81a1-8d09c0482575",
   "graph": {
     "has_approval_node": false,
     "write_action": "apollo.lists.create",
@@ -14,11 +14,18 @@
   "prod_health": {
     "http": 200,
     "status": "ok",
-    "timestamp": "2026-07-19T04:07:35.233190+00:00",
+    "timestamp": "2026-07-23T08:35:39.211232+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+    "git_sha": "5b515b56b3e9f850ad7075a9e957dec5faecbe04",
     "ai_disabled": false,
+    "unified_turn_shadow_enabled": true,
+    "unified_turn_live_enabled": true,
+    "unified_turn_embedding_tool_retrieval": true,
+    "unified_turn_embed_min_catalog_tools": 40,
+    "unified_turn_task_model_tier": "low",
+    "internet_research_enabled": true,
+    "web_research_provider_configured": true,
     "checks": {
       "database": "healthy",
       "cache": "healthy",
@@ -26,7 +33,7 @@
       "clickhouse": "configured"
     }
   },
-  "workflow_id": "8ea32dce-7f6a-4fdf-be0d-c3097ff5b095",
+  "workflow_id": "f91610f0-7d3a-43aa-bc6e-7185c08f9182",
   "definition_steps": [
     {
       "id": "apollo_list_create",
@@ -34,17 +41,17 @@
       "type": "invoke_tool",
       "config": {
         "action": "apollo.lists.create",
-        "connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
-        "name": "CanvasGovProbe 20260719-040734 286786"
+        "connector_id": "8992743f-6632-4252-81a1-8d09c0482575",
+        "name": "CanvasGovProbe 20260723-083538 add219"
       }
     }
   ],
   "cleared_active_runs": [
-    "8bc40c29-7aa1-4be7-a2bc-6489c86e8d9c"
+    "911285ad-74c6-4e09-8c11-8a642df5591a"
   ],
   "test_a_be20_required_approvals_1": {
     "http": 200,
-    "run_id": "ee3a33ef-d7d0-45a1-aee6-cd1f0c5723a5",
+    "run_id": "3b46c7cc-2321-4108-af5a-5385717753f4",
     "status": "pending_approval",
     "response_keys": [
       "approval_required",
@@ -73,7 +80,7 @@
   ],
   "test_b_required_approvals_0": {
     "http": 200,
-    "run_id": "9c2e8b29-5ba8-4d66-a06c-2b19d20559c0",
+    "run_id": "7c7e935c-a249-4f70-9886-66073658d50e",
     "execute_status": "pending_approval",
     "final_status": "pending_approval",
     "steps_api_count": 0,
@@ -89,5 +96,5 @@
   "verdict": "ALTERNATE_BLOCKER_BE20_ALWAYS",
   "severity": "lower_but_unify",
   "severity_rationale": "Even with required_approvals=0, execute stayed pending_approval \u2014 unexpected; investigate.",
-  "finished_at": "2026-07-19T04:07:44.563024+00:00"
+  "finished_at": "2026-07-23T08:35:48.760465+00:00"
 }

@@ -1,13 +1,13 @@
 {
-  "probe_started_at": "2026-07-19T04:07:06.757634+00:00",
-  "list_name": "gravitre-react-gate-probe-20260719",
-  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
-  "conversation_id": "13025535-4ea0-4303-b1b2-66ae175663e7",
-  "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+  "probe_started_at": "2026-07-23T08:35:10.256684+00:00",
+  "list_name": "gravitre-react-gate-probe-20260723",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "conversation_id": "d1d4a632-14c7-4eea-9e51-8bb522cbda45",
+  "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
   "path": "react_write_gate -> awaiting_confirm -> execute_plan",
   "agent_id": "synthetic-default",
   "react_gate": {
-    "at": "2026-07-19T04:07:07.088542+00:00",
+    "at": "2026-07-23T08:35:10.700549+00:00",
     "latency_ms": 0,
     "success": false,
     "error_code": "write_approval_required",
@@ -16,28 +16,28 @@
     "tool": "apollo_lists_create"
   },
   "approval_plan": {
-    "at": "2026-07-19T04:07:07.088542+00:00",
+    "at": "2026-07-23T08:35:10.700895+00:00",
     "invoke_action": "apollo.lists.create",
     "requires_approval": true,
     "label": "Create contact list",
     "args": {
-      "name": "gravitre-react-gate-probe-20260719",
+      "name": "gravitre-react-gate-probe-20260723",
       "modality": "contacts"
     },
     "source": "react_write_gate",
     "dialogue_mode": "confirm",
     "ci_auto_approve": true
   },
-  "pending_persisted_at": "2026-07-19T04:07:07.641880+00:00",
-  "user_approval_at": "2026-07-19T04:07:07.641880+00:00",
+  "pending_persisted_at": "2026-07-23T08:35:11.353022+00:00",
+  "user_approval_at": "2026-07-23T08:35:11.353039+00:00",
   "execution": {
-    "at": "2026-07-19T04:07:13.388550+00:00",
-    "latency_ms": 5746,
+    "at": "2026-07-23T08:35:20.507766+00:00",
+    "latency_ms": 9154,
     "success": true,
     "error_code": null,
-    "entity_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
-    "result_url": "/ai?conversation=13025535-4ea0-4303-b1b2-66ae175663e7",
-    "body": "Found existing contact list \"gravitre-react-gate-probe-20260719\" (id: 6a5c423ee913380018aacf3b).",
+    "entity_id": "8992743f-6632-4252-81a1-8d09c0482575",
+    "result_url": "/ai?conversation=d1d4a632-14c7-4eea-9e51-8bb522cbda45",
+    "body": "Found existing contact list \"gravitre-react-gate-probe-20260723\" (id: 6a61ac0e917ae8001c50c450).",
     "integration": "apollo",
     "task_label": "Create contact list"
   }

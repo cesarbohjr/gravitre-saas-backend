@@ -1,107 +1,109 @@
 {
-  "started_at": "2026-07-22T17:33:27.386404+00:00",
-  "expect_sha": "444371f9",
+  "started_at": "2026-07-23T01:56:28.066439+00:00",
+  "expect_sha": "c81d1200",
   "api_base": "https://api.gravitre.app",
   "ttft_target_ms": 200,
   "probes": [
     {
       "message": "Hey",
-      "conversation_id": "d234170f-4ab0-4b28-bc7d-0f16a116f946",
+      "conversation_id": "6383744e-c70d-4f7b-b810-1ee61ccf3746",
       "turn": {
         "http": 200,
         "error": null,
-        "client_first_sse_ms": 5000,
+        "client_first_sse_ms": 2001,
         "saw_plan_or_intel": true,
-        "raw_bytes": 2952,
-        "at": "2026-07-22T17:33:38.171037+00:00"
+        "raw_bytes": 2926,
+        "at": "2026-07-23T01:56:37.234593+00:00"
       },
-      "shadow_created_at": "2026-07-22T17:33:35.497378+00:00",
-      "shadow_streamed": true,
-      "shadow_first_token_ms": 1303,
-      "shadow_latency_ms": 1442,
-      "shadow_outcome_kind": "conversational_reply",
-      "shadow_model": "gpt-4o-mini"
+      "shadow_created_at": null,
+      "shadow_streamed": false,
+      "shadow_first_token_ms": null,
+      "shadow_latency_ms": null,
+      "shadow_outcome_kind": null,
+      "shadow_model": null
     },
     {
       "message": "Thank you",
-      "conversation_id": "4ff90783-e3e1-4a24-8dac-b0323dcf10ba",
+      "conversation_id": "417b5a6d-8eb2-490e-852b-16c86e0be62c",
       "turn": {
         "http": 200,
         "error": null,
-        "client_first_sse_ms": 2614,
+        "client_first_sse_ms": 3015,
         "saw_plan_or_intel": true,
-        "raw_bytes": 2925,
-        "at": "2026-07-22T17:33:46.535299+00:00"
+        "raw_bytes": 2933,
+        "at": "2026-07-23T01:56:59.560770+00:00"
       },
-      "shadow_created_at": "2026-07-22T17:33:43.315276+00:00",
-      "shadow_streamed": true,
-      "shadow_first_token_ms": 876,
-      "shadow_latency_ms": 878,
-      "shadow_outcome_kind": "conversational_reply",
-      "shadow_model": "gpt-4o-mini"
+      "shadow_created_at": null,
+      "shadow_streamed": false,
+      "shadow_first_token_ms": null,
+      "shadow_latency_ms": null,
+      "shadow_outcome_kind": null,
+      "shadow_model": null
     },
     {
       "message": "What's on your plate?",
-      "conversation_id": "649d82e7-9ca8-4fa1-aff3-d9b309d6f4c0",
+      "conversation_id": "5e85b1e2-5ba7-4234-8d9a-59abbdc4197f",
       "turn": {
         "http": 200,
         "error": null,
-        "client_first_sse_ms": 2481,
+        "client_first_sse_ms": 2362,
         "saw_plan_or_intel": true,
-        "raw_bytes": 15443,
-        "at": "2026-07-22T17:34:27.509306+00:00"
+        "raw_bytes": 3092,
+        "at": "2026-07-23T01:57:21.111550+00:00"
       },
-      "shadow_created_at": "2026-07-22T17:33:53.129025+00:00",
-      "shadow_streamed": true,
-      "shadow_first_token_ms": 2062,
-      "shadow_latency_ms": 2551,
-      "shadow_outcome_kind": "clarifying_question",
-      "shadow_model": "gpt-4o-mini"
+      "shadow_created_at": null,
+      "shadow_streamed": false,
+      "shadow_first_token_ms": null,
+      "shadow_latency_ms": null,
+      "shadow_outcome_kind": null,
+      "shadow_model": null
     },
     {
       "message": "Send an email to Stephanie about the proposal",
-      "conversation_id": "ca990aef-d765-4507-8189-4dad8fee3fce",
+      "conversation_id": "e4eaa7d6-2c57-4807-be9a-3fefa89c4749",
       "turn": {
         "http": 200,
         "error": null,
-        "client_first_sse_ms": 3350,
+        "client_first_sse_ms": 1839,
         "saw_plan_or_intel": true,
-        "raw_bytes": 3931,
-        "at": "2026-07-22T17:34:51.663722+00:00"
+        "raw_bytes": 3342,
+        "at": "2026-07-23T01:57:40.561248+00:00"
       },
-      "shadow_created_at": "2026-07-22T17:34:37.034893+00:00",
-      "shadow_streamed": true,
-      "shadow_first_token_ms": 4240,
-      "shadow_latency_ms": 4485,
-      "shadow_outcome_kind": "clarifying_question",
-      "shadow_model": "gpt-4o-mini"
+      "shadow_created_at": null,
+      "shadow_streamed": false,
+      "shadow_first_token_ms": null,
+      "shadow_latency_ms": null,
+      "shadow_outcome_kind": null,
+      "shadow_model": null
     },
     {
       "message": "How are the deals looking?",
-      "conversation_id": "4d0f7bc5-0184-4e7c-95fd-ad2f67ce9b63",
+      "conversation_id": "799d46c2-b350-49a7-bdd4-2cb3dc7a408e",
       "turn": {
         "http": 200,
         "error": null,
-        "client_first_sse_ms": 2309,
+        "client_first_sse_ms": 3388,
         "saw_plan_or_intel": true,
-        "raw_bytes": 24791,
-        "at": "2026-07-22T17:35:25.383230+00:00"
+        "raw_bytes": 3273,
+        "at": "2026-07-23T01:58:05.743878+00:00"
       },
-      "shadow_created_at": "2026-07-22T17:35:05.176783+00:00",
-      "shadow_streamed": true,
-      "shadow_first_token_ms": 3940,
-      "shadow_latency_ms": 4858,
-      "shadow_outcome_kind": "conversational_reply",
-      "shadow_model": "gpt-4o-mini"
+      "shadow_created_at": null,
+      "shadow_streamed": false,
+      "shadow_first_token_ms": null,
+      "shadow_latency_ms": null,
+      "shadow_outcome_kind": null,
+      "shadow_model": null
     }
   ],
   "health": {
     "status": "ok",
-    "timestamp": "2026-07-22T17:33:27.156790+00:00",
+    "timestamp": "2026-07-23T01:56:29.352212+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "444371f960571d83c2d7af89def200fa241d4c51",
+    "git_sha": "c81d12009cd66e066831a2e20ef146cda189bd62",
     "ai_disabled": false,
+    "unified_turn_shadow_enabled": true,
+    "unified_turn_live_enabled": true,
     "checks": {
       "database": "healthy",
       "cache": "healthy",
@@ -110,13 +112,13 @@
     }
   },
   "stats": {
-    "n_streamed_ttft": 5,
-    "ttft_min_ms": 876,
-    "ttft_max_ms": 4240,
-    "ttft_mean_ms": 2484,
-    "ttft_p50_ms": 2062,
+    "n_streamed_ttft": 0,
+    "ttft_min_ms": null,
+    "ttft_max_ms": null,
+    "ttft_mean_ms": null,
+    "ttft_p50_ms": null,
     "meets_200ms_target": false
   },
-  "ok": true,
-  "finished_at": "2026-07-22T17:35:26.526023+00:00"
+  "ok": false,
+  "finished_at": "2026-07-23T01:58:18.887183+00:00"
 }

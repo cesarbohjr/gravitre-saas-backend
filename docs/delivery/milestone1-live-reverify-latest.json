@@ -1,14 +1,21 @@
 {
   "probe": "milestone1_live_reverify",
-  "started_at": "2026-07-19T04:07:01.148630+00:00",
-  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "started_at": "2026-07-23T08:34:58.164479+00:00",
+  "base_url": "https://api.gravitre.app",
   "health_at_start": {
     "status": "ok",
-    "timestamp": "2026-07-19T04:07:01.375110+00:00",
+    "timestamp": "2026-07-23T08:34:58.409187+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+    "git_sha": "5b515b56b3e9f850ad7075a9e957dec5faecbe04",
     "ai_disabled": false,
+    "unified_turn_shadow_enabled": true,
+    "unified_turn_live_enabled": true,
+    "unified_turn_embedding_tool_retrieval": true,
+    "unified_turn_embed_min_catalog_tools": 40,
+    "unified_turn_task_model_tier": "low",
+    "internet_research_enabled": true,
+    "web_research_provider_configured": true,
     "checks": {
       "database": "healthy",
       "cache": "healthy",
@@ -24,11 +31,11 @@
       "artifact": "docs\\delivery\\react-write-live-milestone1.json",
       "summary": {
         "claim": null,
-        "conversation_id": "13025535-4ea0-4303-b1b2-66ae175663e7",
-        "result_url": "/ai?conversation=13025535-4ea0-4303-b1b2-66ae175663e7",
+        "conversation_id": "d1d4a632-14c7-4eea-9e51-8bb522cbda45",
+        "result_url": "/ai?conversation=d1d4a632-14c7-4eea-9e51-8bb522cbda45",
         "audit_action": null
       },
-      "tail_output": "PROBE_START 2026-07-19T04:07:03.535583+00:00\nLIST_NAME gravitre-react-gate-probe-20260719\nORG cbbf993b-b22f-41ce-964b-1fc25e0dd9ea\nACTOR f7e32f06-49df-4e73-8962-f41c21850762\nREACT_GATE {\n  \"at\": \"2026-07-19T04:07:07.088542+00:00\",\n  \"latency_ms\": 0,\n  \"success\": false,\n  \"error_code\": \"write_approval_required\",\n  \"pending_approval\": true,\n  \"action\": \"apollo.lists.create\",\n  \"tool\": \"apollo_lists_create\"\n}\nAPPROVAL_PLAN {\n  \"at\": \"2026-07-19T04:07:07.088542+00:00\",\n  \"invoke_action\": \"apollo.lists.create\",\n  \"requires_approval\": true,\n  \"label\": \"Create contact list\",\n  \"args\": {\n    \"name\": \"gravitre-react-gate-probe-20260719\",\n    \"modality\": \"contacts\"\n  },\n  \"source\": \"react_write_gate\",\n  \"dialogue_mode\": \"confirm\",\n  \"ci_auto_approve\": true\n}\n2026-07-18 21:07:13,357 [WARNING] app.services.clickhouse_service request_id= user_id= org_id= CLICKHOUSE_HOST not set \u2014 analytics events will not be written to ClickHouse. Dashboards fall back to Postgres.\nEXECUTION {\n  \"at\": \"2026-07-19T04:07:13.388550+00:00\",\n  \"latency_ms\": 5746,\n  \"success\": true,\n  \"error_code\": null,\n  \"entity_id\": \"30f734a2-dbdb-45aa-9112-19c6d604d451\",\n  \"result_url\": \"/ai?conversation=13025535-4ea0-4303-b1b2-66ae175663e7\",\n  \"body\": \"Found existing contact list \\\"gravitre-react-gate-probe-20260719\\\" (id: 6a5c423ee913380018aacf3b).\",\n  \"integration\": \"apollo\",\n  \"task_label\": \"Create contact list\"\n}\nWROTE docs\\delivery\\react-write-live-milestone1.json\nPASS react write chain completed\nC:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\backend\\app\\billing\\service.py:12: StarletteDeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.\n  from app.core.errors import error_detail\n"
+      "tail_output": "PROBE_START 2026-07-23T08:35:01.157671+00:00\nLIST_NAME gravitre-react-gate-probe-20260723\nORG f07e57c0-1501-4000-8000-c04e57a00001\nACTOR a9f1240f-910a-42ca-aebf-38caeac288c3\nREACT_GATE {\n  \"at\": \"2026-07-23T08:35:10.700549+00:00\",\n  \"latency_ms\": 0,\n  \"success\": false,\n  \"error_code\": \"write_approval_required\",\n  \"pending_approval\": true,\n  \"action\": \"apollo.lists.create\",\n  \"tool\": \"apollo_lists_create\"\n}\nAPPROVAL_PLAN {\n  \"at\": \"2026-07-23T08:35:10.700895+00:00\",\n  \"invoke_action\": \"apollo.lists.create\",\n  \"requires_approval\": true,\n  \"label\": \"Create contact list\",\n  \"args\": {\n    \"name\": \"gravitre-react-gate-probe-20260723\",\n    \"modality\": \"contacts\"\n  },\n  \"source\": \"react_write_gate\",\n  \"dialogue_mode\": \"confirm\",\n  \"ci_auto_approve\": true\n}\n2026-07-23 01:35:16,357 [INFO] app.services.execution_outcome request_id= user_id= org_id= execution_outcome_finalized org_id=f07e57c0-1501-4000-8000-c04e57a00001 run_id=7c188d78-73d7-47ab-adb3-232748c27ce9 status=completed source=assistant_chat schema_version=1.0.0 fanout={'run_persisted': True, 'audit_written': True, 'notification_emitted': True, 'learning_recorded': True, 'failure_alert_correlated': False, 'outcome_stream_published': True}\n2026-07-23 01:35:20,459 [WARNING] app.services.clickhouse_service request_id= user_id= org_id= CLICKHOUSE_HOST not set \u2014 analytics events will not be written to ClickHouse. Dashboards fall back to Postgres.\nEXECUTION {\n  \"at\": \"2026-07-23T08:35:20.507766+00:00\",\n  \"latency_ms\": 9154,\n  \"success\": true,\n  \"error_code\": null,\n  \"entity_id\": \"8992743f-6632-4252-81a1-8d09c0482575\",\n  \"result_url\": \"/ai?conversation=d1d4a632-14c7-4eea-9e51-8bb522cbda45\",\n  \"body\": \"Found existing contact list \\\"gravitre-react-gate-probe-20260723\\\" (id: 6a61ac0e917ae8001c50c450).\",\n  \"integration\": \"apollo\",\n  \"task_label\": \"Create contact list\"\n}\nWROTE docs\\delivery\\react-write-live-milestone1.json\nPASS react write chain completed\n"
     },
     "canvas_write_authority": {
       "pass": true,
@@ -46,7 +53,7 @@
       "exit_code": 0,
       "artifact": "docs\\delivery\\wave67-spotcheck-milestone1.json",
       "summary": {
-        "conversation_id": "f224589c-e256-490b-8d8b-8767784710dc",
+        "conversation_id": "84d8ca31-e0c0-481b-9477-6507d09926a5",
         "claims": {
           "1_plan_before_tools": {
             "status": "PASS",
@@ -59,7 +66,7 @@
                 "has_current_plan": false,
                 "has_execution_result": false,
                 "has_pending_task": false,
-                "wall_start": "2026-07-19T04:07:47.417682+00:00"
+                "wall_start": "2026-07-23T08:35:52.851855+00:00"
               },
               "first_tool_start_sse": {
                 "i": 6,
@@ -68,7 +75,7 @@
               },
               "plan_before_tools": true,
               "plan_only_in_final": false,
-              "wall_start": "2026-07-19T04:07:47.417682+00:00"
+              "wall_start": "2026-07-23T08:35:52.851855+00:00"
             }
           },
           "2_tool_chips_error_code": {
@@ -86,12 +93,12 @@
                 "i": 5,
                 "type": "tool-output-available",
                 "toolName": null,
-                "errorCode": "auth_expired",
+                "errorCode": "connector_not_connected",
                 "success": false,
-                "error": "Authentication expired for Slack. Reconnect it at /connectors, then try again."
+                "error": "Slack is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again."
               },
               "success_before_text": true,
-              "slack_wall_start": "2026-07-19T04:08:05.281176+00:00"
+              "slack_wall_start": "2026-07-23T08:36:24.999986+00:00"
             }
           },
           "3_approval_panel_result_url": {
@@ -99,13 +106,18 @@
             "evidence": {
               "react_gate": null,
               "approved_execution": {
-                "user_approval_at": "2026-07-19T04:08:40.743363+00:00",
-                "completed_at": "2026-07-19T04:08:47.943340+00:00",
+                "user_approval_at": "2026-07-23T08:37:09.148961+00:00",
+                "completed_at": "2026-07-23T08:37:19.640145+00:00",
                 "success": true,
                 "error_code": null,
-                "result_url": "/ai?conversation=f224589c-e256-490b-8d8b-8767784710dc",
-                "assumption_notes": null,
-                "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260719\" (id: 6a5c42c99a59ae000cdacfde).",
+                "result_url": "/ai?conversation=84d8ca31-e0c0-481b-9477-6507d09926a5",
+                "assumption_notes": [
+                  "Assumed email=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                  "Assumed contact_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                  "Assumed company_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                  "Assumed list_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)"
+                ],
+                "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260723\" (id: 6a61cb9b27d1e6001435d9e6).",
                 "via": "chat_yes"
               },
               "result_url_is_deep_link": false,
@@ -119,34 +131,76 @@
               "claim4_execution": {
                 "i": 7,
                 "success": true,
-                "result_url": "/ai?conversation=9f1f07fe-b9fd-4f60-b81f-adbc755b886a",
+                "result_url": "/ai?conversation=6f27ce83-a111-40e5-b51f-ab549715133f",
                 "error_code": null,
                 "assumption_notes": [
-                  "Assumed name=MSP Prospects (from message_or_default_hint)"
+                  "Assumed name=MSP Prospects (from message_or_default_hint)",
+                  "Assumed email=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                  "Assumed contact_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                  "Assumed company_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                  "Assumed list_id=6a4d6a98461b000010c5ae7b (from org entity cache)"
                 ],
                 "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
               },
               "execution_result_assumption_notes": [
-                "Assumed name=MSP Prospects (from message_or_default_hint)"
+                "Assumed name=MSP Prospects (from message_or_default_hint)",
+                "Assumed email=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                "Assumed contact_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                "Assumed company_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                "Assumed list_id=6a4d6a98461b000010c5ae7b (from org entity cache)"
               ],
               "sse_execution_results_with_notes": [
                 {
                   "i": 3,
                   "success": true,
-                  "result_url": "/ai?conversation=9f1f07fe-b9fd-4f60-b81f-adbc755b886a",
+                  "result_url": "/ai?conversation=84d8ca31-e0c0-481b-9477-6507d09926a5",
                   "error_code": null,
                   "assumption_notes": [
-                    "Assumed name=MSP Prospects (from message_or_default_hint)"
+                    "Assumed email=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                    "Assumed contact_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                    "Assumed company_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                    "Assumed list_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)"
+                  ],
+                  "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260723\" (id: 6a61cb9b27d1e6001435d9e6)."
+                },
+                {
+                  "i": 7,
+                  "success": true,
+                  "result_url": "/ai?conversation=84d8ca31-e0c0-481b-9477-6507d09926a5",
+                  "error_code": null,
+                  "assumption_notes": [
+                    "Assumed email=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                    "Assumed contact_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                    "Assumed company_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                    "Assumed list_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)"
+                  ],
+                  "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260723\" (id: 6a61cb9b27d1e6001435d9e6)."
+                },
+                {
+                  "i": 3,
+                  "success": true,
+                  "result_url": "/ai?conversation=6f27ce83-a111-40e5-b51f-ab549715133f",
+                  "error_code": null,
+                  "assumption_notes": [
+                    "Assumed name=MSP Prospects (from message_or_default_hint)",
+                    "Assumed email=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                    "Assumed contact_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                    "Assumed company_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                    "Assumed list_id=6a4d6a98461b000010c5ae7b (from org entity cache)"
                   ],
                   "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
                 },
                 {
                   "i": 7,
                   "success": true,
-                  "result_url": "/ai?conversation=9f1f07fe-b9fd-4f60-b81f-adbc755b886a",
+                  "result_url": "/ai?conversation=6f27ce83-a111-40e5-b51f-ab549715133f",
                   "error_code": null,
                   "assumption_notes": [
-                    "Assumed name=MSP Prospects (from message_or_default_hint)"
+                    "Assumed name=MSP Prospects (from message_or_default_hint)",
+                    "Assumed email=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                    "Assumed contact_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                    "Assumed company_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                    "Assumed list_id=6a4d6a98461b000010c5ae7b (from org entity cache)"
                   ],
                   "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
                 }
@@ -155,9 +209,9 @@
             }
           }
         },
-        "approved_result_url": "/ai?conversation=f224589c-e256-490b-8d8b-8767784710dc"
+        "approved_result_url": "/ai?conversation=84d8ca31-e0c0-481b-9477-6507d09926a5"
       },
-      "tail_output": " \"error_code\": null,\n        \"result_url\": \"/ai?conversation=f224589c-e256-490b-8d8b-8767784710dc\",\n        \"assumption_notes\": null,\n        \"body\": \"Found existing contact list \\\"gravitre-wave67-spotcheck-20260719\\\" (id: 6a5c42c99a59ae000cdacfde).\",\n        \"via\": \"chat_yes\"\n      },\n      \"result_url_is_deep_link\": false,\n      \"not_connector_conflation\": true\n    }\n  },\n  \"4_assumption_notes_ui\": {\n    \"status\": \"PASS\",\n    \"evidence\": {\n      \"omit_name_pending\": true,\n      \"claim4_execution\": {\n        \"i\": 7,\n        \"success\": true,\n        \"result_url\": \"/ai?conversation=9f1f07fe-b9fd-4f60-b81f-adbc755b886a\",\n        \"error_code\": null,\n        \"assumption_notes\": [\n          \"Assumed name=MSP Prospects (from message_or_default_hint)\"\n        ],\n        \"body\": \"Found existing contact list \\\"MSP Prospects\\\" (id: 6a4d6a98461b000010c5ae7b).\"\n      },\n      \"execution_result_assumption_notes\": [\n        \"Assumed name=MSP Prospects (from message_or_default_hint)\"\n      ],\n      \"sse_execution_results_with_notes\": [\n        {\n          \"i\": 3,\n          \"success\": true,\n          \"result_url\": \"/ai?conversation=9f1f07fe-b9fd-4f60-b81f-adbc755b886a\",\n          \"error_code\": null,\n          \"assumption_notes\": [\n            \"Assumed name=MSP Prospects (from message_or_default_hint)\"\n          ],\n          \"body\": \"Found existing contact list \\\"MSP Prospects\\\" (id: 6a4d6a98461b000010c5ae7b).\"\n        },\n        {\n          \"i\": 7,\n          \"success\": true,\n          \"result_url\": \"/ai?conversation=9f1f07fe-b9fd-4f60-b81f-adbc755b886a\",\n          \"error_code\": null,\n          \"assumption_notes\": [\n            \"Assumed name=MSP Prospects (from message_or_default_hint)\"\n          ],\n          \"body\": \"Found existing contact list \\\"MSP Prospects\\\" (id: 6a4d6a98461b000010c5ae7b).\"\n        }\n      ],\n      \"note\": \"PASS requires omit-name turn \\u2192 inferred plan and/or assumption_notes on prod SSE. PARTIAL if only non-causal notes or gate without notes.\"\n    }\n  }\n}\n"
+      "tail_output": "2743f-6632-4252-81a1-8d09c0482575 (from org entity cache)\",\n            \"Assumed company_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)\",\n            \"Assumed list_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)\"\n          ],\n          \"body\": \"Found existing contact list \\\"gravitre-wave67-spotcheck-20260723\\\" (id: 6a61cb9b27d1e6001435d9e6).\"\n        },\n        {\n          \"i\": 3,\n          \"success\": true,\n          \"result_url\": \"/ai?conversation=6f27ce83-a111-40e5-b51f-ab549715133f\",\n          \"error_code\": null,\n          \"assumption_notes\": [\n            \"Assumed name=MSP Prospects (from message_or_default_hint)\",\n            \"Assumed email=6a4d6a98461b000010c5ae7b (from org entity cache)\",\n            \"Assumed contact_id=6a4d6a98461b000010c5ae7b (from org entity cache)\",\n            \"Assumed company_id=6a4d6a98461b000010c5ae7b (from org entity cache)\",\n            \"Assumed list_id=6a4d6a98461b000010c5ae7b (from org entity cache)\"\n          ],\n          \"body\": \"Found existing contact list \\\"MSP Prospects\\\" (id: 6a4d6a98461b000010c5ae7b).\"\n        },\n        {\n          \"i\": 7,\n          \"success\": true,\n          \"result_url\": \"/ai?conversation=6f27ce83-a111-40e5-b51f-ab549715133f\",\n          \"error_code\": null,\n          \"assumption_notes\": [\n            \"Assumed name=MSP Prospects (from message_or_default_hint)\",\n            \"Assumed email=6a4d6a98461b000010c5ae7b (from org entity cache)\",\n            \"Assumed contact_id=6a4d6a98461b000010c5ae7b (from org entity cache)\",\n            \"Assumed company_id=6a4d6a98461b000010c5ae7b (from org entity cache)\",\n            \"Assumed list_id=6a4d6a98461b000010c5ae7b (from org entity cache)\"\n          ],\n          \"body\": \"Found existing contact list \\\"MSP Prospects\\\" (id: 6a4d6a98461b000010c5ae7b).\"\n        }\n      ],\n      \"note\": \"PASS requires omit-name turn \\u2192 inferred plan and/or assumption_notes on prod SSE. PARTIAL if only non-causal notes or gate without notes.\"\n    }\n  }\n}\n"
     },
     "routing_wave_abcd": {
       "pass": true,
@@ -168,12 +222,12 @@
         "B": true,
         "C": true,
         "D_escalation_count": 0,
-        "prod_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+        "prod_sha": "5b515b56b3e9f850ad7075a9e957dec5faecbe04",
         "verdict": "PASS",
         "evidence": {
           "A_effectiveMode": "fast",
           "A_routingTier": "simple",
-          "A_conversation_id": "12aa1e3f-bc5a-4067-be40-c788932f29e4",
+          "A_conversation_id": "1d599c53-1880-4185-af0f-c57d982a4b15",
           "B_routingTier": "multi_step",
           "B_tiers_seen": [
             "multi_step",
@@ -183,24 +237,24 @@
             "multi_step"
           ],
           "B_pending": true,
-          "B_conversation_id": "c6189cd0-768d-4648-8cf4-13948d807873",
+          "B_conversation_id": "983b3bc7-e41d-48c5-a6af-1ea72cba5d5f",
           "C_routingTier": "research",
           "C_tiers_seen": [
             "research",
             "research",
             "research"
           ],
-          "C_conversation_id": "7b3394c5-4fad-421d-810b-5f4abb518620"
+          "C_conversation_id": "9f37a73e-42c6-437d-9bed-6e21ec10dab6"
         }
       },
-      "tail_output": "{\n  \"A\": true,\n  \"B\": true,\n  \"C\": true,\n  \"D_escalation_count\": 0,\n  \"prod_sha\": \"c36f92d3cfdf80cc6eb581f81a7c0223a95d56be\",\n  \"verdict\": \"PASS\",\n  \"evidence\": {\n    \"A_effectiveMode\": \"fast\",\n    \"A_routingTier\": \"simple\",\n    \"A_conversation_id\": \"12aa1e3f-bc5a-4067-be40-c788932f29e4\",\n    \"B_routingTier\": \"multi_step\",\n    \"B_tiers_seen\": [\n      \"multi_step\",\n      \"multi_step\",\n      \"multi_step\",\n      \"multi_step\",\n      \"multi_step\"\n    ],\n    \"B_pending\": true,\n    \"B_conversation_id\": \"c6189cd0-768d-4648-8cf4-13948d807873\",\n    \"C_routingTier\": \"research\",\n    \"C_tiers_seen\": [\n      \"research\",\n      \"research\",\n      \"research\"\n    ],\n    \"C_conversation_id\": \"7b3394c5-4fad-421d-810b-5f4abb518620\"\n  }\n}\n{\n  \"verdict\": \"PASS\",\n  \"prod_sha\": \"c36f92d3cfdf80cc6eb581f81a7c0223a95d56be\",\n  \"wrote\": \"C:\\\\Users\\\\Cesar\\\\Downloads\\\\Gravitre Operator AI\\\\docs\\\\delivery\\\\routing-wave-milestone1-live.json\"\n}\nWROTE C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\docs\\delivery\\routing-wave-milestone1-live.json\n"
+      "tail_output": "{\n  \"A\": true,\n  \"B\": true,\n  \"C\": true,\n  \"D_escalation_count\": 0,\n  \"prod_sha\": \"5b515b56b3e9f850ad7075a9e957dec5faecbe04\",\n  \"verdict\": \"PASS\",\n  \"evidence\": {\n    \"A_effectiveMode\": \"fast\",\n    \"A_routingTier\": \"simple\",\n    \"A_conversation_id\": \"1d599c53-1880-4185-af0f-c57d982a4b15\",\n    \"B_routingTier\": \"multi_step\",\n    \"B_tiers_seen\": [\n      \"multi_step\",\n      \"multi_step\",\n      \"multi_step\",\n      \"multi_step\",\n      \"multi_step\"\n    ],\n    \"B_pending\": true,\n    \"B_conversation_id\": \"983b3bc7-e41d-48c5-a6af-1ea72cba5d5f\",\n    \"C_routingTier\": \"research\",\n    \"C_tiers_seen\": [\n      \"research\",\n      \"research\",\n      \"research\"\n    ],\n    \"C_conversation_id\": \"9f37a73e-42c6-437d-9bed-6e21ec10dab6\"\n  }\n}\n{\n  \"verdict\": \"PASS\",\n  \"prod_sha\": \"5b515b56b3e9f850ad7075a9e957dec5faecbe04\",\n  \"wrote\": \"C:\\\\Users\\\\Cesar\\\\Downloads\\\\Gravitre Operator AI\\\\docs\\\\delivery\\\\routing-wave-milestone1-live.json\"\n}\nWROTE C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\docs\\delivery\\routing-wave-milestone1-live.json\n"
     },
     "retrieval_ab": {
       "pass": true,
       "exit_code": 0,
       "artifact": "docs\\delivery\\retrieval-ab-live-latest.json",
       "summary": {
-        "git_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+        "git_sha": "5b515b56b3e9f850ad7075a9e957dec5faecbe04",
         "queries": {
           "A_fast_connectors": true,
           "B_write_intent_gate": true,
@@ -209,26 +263,26 @@
           "E_fast_honesty": true
         }
       },
-      "tail_output": "pleted\",\n              \"detail\": null\n            },\n            {\n              \"stage\": \"connectors\",\n              \"label\": \"Connectors\",\n              \"status\": \"completed\",\n              \"detail\": null\n            },\n            {\n              \"stage\": \"reasoning\",\n              \"label\": \"Reasoning\",\n              \"status\": \"pending\",\n              \"detail\": null\n            }\n          ],\n          \"progress_steps\": [\n            \"Conversation Memory complete\",\n            \"Internal Rag complete\",\n            \"Knowledge Graph complete\",\n            \"Connectors complete\",\n            \"Reasoning\\u2026\"\n          ],\n          \"research_manager\": true,\n          \"cascade_stopped_at\": null,\n          \"confidence_sufficient\": false,\n          \"skip_graph\": false,\n          \"skip_external\": false,\n          \"planned_stages\": [\n            \"conversation_memory\",\n            \"internal_rag\",\n            \"knowledge_graph\",\n            \"connectors\",\n            \"reasoning\"\n          ]\n        },\n        \"text_head\": \"I\\u2019m in retrieval-ab E 202607190410 mode.\",\n        \"event_types\": [\n          \"data-intelligence\",\n          \"data-suggestions\",\n          \"finish\",\n          \"finish-step\",\n          \"start\",\n          \"start-step\",\n          \"text-delta\",\n          \"text-end\",\n          \"text-start\",\n          \"tool-input-available\",\n          \"tool-output-available\"\n        ]\n      },\n      \"reasons\": [],\n      \"message\": \"Reply with one sentence: what mode are you in? (retrieval-ab E 202607190410)\"\n    }\n  },\n  \"pass\": true,\n  \"health\": {\n    \"status\": \"ok\",\n    \"timestamp\": \"2026-07-19T04:10:17.922723+00:00\",\n    \"version\": \"0.1.0\",\n    \"environment\": \"prod\",\n    \"git_sha\": \"c36f92d3cfdf80cc6eb581f81a7c0223a95d56be\",\n    \"ai_disabled\": false,\n    \"checks\": {\n      \"database\": \"healthy\",\n      \"cache\": \"healthy\",\n      \"temporal\": \"configured\",\n      \"clickhouse\": \"configured\"\n    }\n  },\n  \"deploy_sha_ok\": true,\n  \"finished_at\": \"2026-07-19T04:12:30.401320+00:00\"\n}\n"
+      "tail_output": "   \"text-end\",\n          \"text-start\",\n          \"tool-input-available\",\n          \"tool-output-available\"\n        ]\n      },\n      \"reasons\": [],\n      \"message\": \"What is the exact Q3 2027 revenue forecast for our fictional subsidiary Zephyr Dynamics in Antarctica? Use only internal org knowledge. (retrieval-ab D 202607230839)\"\n    },\n    \"E_fast_honesty\": {\n      \"pass\": true,\n      \"http\": 200,\n      \"conversation_fingerprint\": {\n        \"tool_names\": [],\n        \"error_codes\": [],\n        \"routing_tiers\": [\n          \"simple\",\n          \"simple\"\n        ],\n        \"effective_modes\": [\n          \"fast\",\n          \"fast\"\n        ],\n        \"final_routingTier\": \"simple\",\n        \"final_effectiveMode\": \"fast\",\n        \"pending_seen\": false,\n        \"research_cascade_final\": null,\n        \"text_head\": \"Operational mode: conversational, with no tool use.\",\n        \"event_types\": [\n          \"data-intelligence\",\n          \"finish\",\n          \"finish-step\",\n          \"start\",\n          \"start-step\",\n          \"text-delta\",\n          \"text-end\",\n          \"text-start\"\n        ]\n      },\n      \"reasons\": [],\n      \"message\": \"Reply with one sentence: what mode are you in? (retrieval-ab E 202607230839)\"\n    }\n  },\n  \"pass\": true,\n  \"health\": {\n    \"status\": \"ok\",\n    \"timestamp\": \"2026-07-23T08:39:29.231676+00:00\",\n    \"version\": \"0.1.0\",\n    \"environment\": \"prod\",\n    \"git_sha\": \"5b515b56b3e9f850ad7075a9e957dec5faecbe04\",\n    \"ai_disabled\": false,\n    \"unified_turn_shadow_enabled\": true,\n    \"unified_turn_live_enabled\": true,\n    \"unified_turn_embedding_tool_retrieval\": true,\n    \"unified_turn_embed_min_catalog_tools\": 40,\n    \"unified_turn_task_model_tier\": \"low\",\n    \"internet_research_enabled\": true,\n    \"web_research_provider_configured\": true,\n    \"checks\": {\n      \"database\": \"healthy\",\n      \"cache\": \"healthy\",\n      \"temporal\": \"configured\",\n      \"clickhouse\": \"configured\"\n    }\n  },\n  \"deploy_sha_ok\": true,\n  \"finished_at\": \"2026-07-23T08:41:26.746400+00:00\"\n}\n"
     },
     "research_cascade": {
       "pass": true,
-      "exit_code": 1,
+      "exit_code": 0,
       "artifact": "docs\\delivery\\smoke-research-cascade-prod-latest.json",
       "summary": {
-        "git_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+        "git_sha": "5b515b56b3e9f850ad7075a9e957dec5faecbe04",
         "checks": {
           "deploy_sha": {
             "pass": true,
-            "git_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+            "git_sha": "5b515b56b3e9f850ad7075a9e957dec5faecbe04",
             "required_prefix": "716864e6"
           },
           "thin_suggest_broaden": {
-            "pass": false,
+            "pass": true,
             "detail": "suggest_broaden or internal_thin in researchCascade SSE"
           },
           "scoped_enrichment": {
-            "pass": false,
+            "pass": true,
             "detail": "confidence_band/source_breakdown/stage_progress in final researchCascade"
           },
           "progress_steps_sse": {
@@ -236,22 +290,22 @@
             "detail": "progressSteps in mid/final SSE"
           }
         },
-        "conversation_id": "b102e668-d1f1-4bd5-b826-76a082095b38"
+        "conversation_id": "6967718a-1614-461b-8b9f-2d504b1c80cd"
       },
-      "tail_output": "{\n  \"started_at\": \"2026-07-19T04:12:33.157737+00:00\",\n  \"base_url\": \"https://gravitre-saas-backend-production.up.railway.app\",\n  \"org_id\": \"cbbf993b-b22f-41ce-964b-1fc25e0dd9ea\",\n  \"conversation_id\": \"b102e668-d1f1-4bd5-b826-76a082095b38\",\n  \"min_sha_prefix\": \"716864e6\",\n  \"checks\": {\n    \"deploy_sha\": {\n      \"pass\": true,\n      \"git_sha\": \"c36f92d3cfdf80cc6eb581f81a7c0223a95d56be\",\n      \"required_prefix\": \"716864e6\"\n    },\n    \"thin_suggest_broaden\": {\n      \"pass\": false,\n      \"detail\": \"suggest_broaden or internal_thin in researchCascade SSE\"\n    },\n    \"scoped_enrichment\": {\n      \"pass\": false,\n      \"detail\": \"confidence_band/source_breakdown/stage_progress in final researchCascade\"\n    },\n    \"progress_steps_sse\": {\n      \"pass\": true,\n      \"detail\": \"progressSteps in mid/final SSE\"\n    }\n  },\n  \"pass\": false,\n  \"health\": {\n    \"status\": \"ok\",\n    \"timestamp\": \"2026-07-19T04:12:33.499948+00:00\",\n    \"version\": \"0.1.0\",\n    \"environment\": \"prod\",\n    \"git_sha\": \"c36f92d3cfdf80cc6eb581f81a7c0223a95d56be\",\n    \"ai_disabled\": false,\n    \"checks\": {\n      \"database\": \"healthy\",\n      \"cache\": \"healthy\",\n      \"temporal\": \"configured\",\n      \"clickhouse\": \"configured\"\n    }\n  },\n  \"trace_thin\": {\n    \"http_status\": 200,\n    \"cascade_count\": 0,\n    \"cascade\": {},\n    \"event_count\": 10\n  },\n  \"trace_scoped\": {\n    \"http_status\": 200,\n    \"cascade_count\": 0,\n    \"cascade\": {},\n    \"event_count\": 10\n  },\n  \"finished_at\": \"2026-07-19T04:12:40.775221+00:00\"\n}\n"
+      "tail_output": "ample-return-policy-ecommerce-stores\"\n        }\n      ],\n      \"source_breakdown\": {\n        \"internet\": 5\n      },\n      \"stage_progress\": [\n        {\n          \"stage\": \"conversation_memory\",\n          \"label\": \"Conversation Memory\",\n          \"status\": \"completed\",\n          \"detail\": null\n        },\n        {\n          \"stage\": \"internal_rag\",\n          \"label\": \"Internal Rag\",\n          \"status\": \"completed\",\n          \"detail\": null\n        },\n        {\n          \"stage\": \"knowledge_graph\",\n          \"label\": \"Knowledge Graph\",\n          \"status\": \"completed\",\n          \"detail\": null\n        },\n        {\n          \"stage\": \"connectors\",\n          \"label\": \"Connectors\",\n          \"status\": \"completed\",\n          \"detail\": null\n        },\n        {\n          \"stage\": \"intelligence_packs\",\n          \"label\": \"Intelligence Packs\",\n          \"status\": \"skipped\",\n          \"detail\": \"no pack assignments\"\n        },\n        {\n          \"stage\": \"internet_research\",\n          \"label\": \"Internet Research\",\n          \"status\": \"completed\",\n          \"detail\": \"5 web results\"\n        },\n        {\n          \"stage\": \"reasoning\",\n          \"label\": \"Reasoning\",\n          \"status\": \"pending\",\n          \"detail\": null\n        }\n      ],\n      \"progress_steps\": [\n        \"Conversation Memory complete\",\n        \"Internal Rag complete\",\n        \"Knowledge Graph complete\",\n        \"Connectors complete\",\n        \"Intelligence Packs skipped (no pack assignments)\",\n        \"Internet Research complete (5 web results)\",\n        \"Reasoning\\u2026\"\n      ],\n      \"research_manager\": true,\n      \"cascade_stopped_at\": null,\n      \"confidence_sufficient\": false,\n      \"skip_graph\": false,\n      \"skip_external\": false,\n      \"planned_stages\": [\n        \"conversation_memory\",\n        \"internal_rag\",\n        \"knowledge_graph\",\n        \"connectors\",\n        \"internet_research\",\n        \"reasoning\"\n      ]\n    },\n    \"event_count\": 61\n  },\n  \"finished_at\": \"2026-07-23T08:42:14.703060+00:00\"\n}\n"
     }
   },
   "artifacts": {
     "react_write_gate": {
-      "probe_started_at": "2026-07-19T04:07:06.757634+00:00",
-      "list_name": "gravitre-react-gate-probe-20260719",
-      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
-      "conversation_id": "13025535-4ea0-4303-b1b2-66ae175663e7",
-      "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "probe_started_at": "2026-07-23T08:35:10.256684+00:00",
+      "list_name": "gravitre-react-gate-probe-20260723",
+      "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+      "conversation_id": "d1d4a632-14c7-4eea-9e51-8bb522cbda45",
+      "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
       "path": "react_write_gate -> awaiting_confirm -> execute_plan",
       "agent_id": "synthetic-default",
       "react_gate": {
-        "at": "2026-07-19T04:07:07.088542+00:00",
+        "at": "2026-07-23T08:35:10.700549+00:00",
         "latency_ms": 0,
         "success": false,
         "error_code": "write_approval_required",
@@ -260,40 +314,40 @@
         "tool": "apollo_lists_create"
       },
       "approval_plan": {
-        "at": "2026-07-19T04:07:07.088542+00:00",
+        "at": "2026-07-23T08:35:10.700895+00:00",
         "invoke_action": "apollo.lists.create",
         "requires_approval": true,
         "label": "Create contact list",
         "args": {
-          "name": "gravitre-react-gate-probe-20260719",
+          "name": "gravitre-react-gate-probe-20260723",
           "modality": "contacts"
         },
         "source": "react_write_gate",
         "dialogue_mode": "confirm",
         "ci_auto_approve": true
       },
-      "pending_persisted_at": "2026-07-19T04:07:07.641880+00:00",
-      "user_approval_at": "2026-07-19T04:07:07.641880+00:00",
+      "pending_persisted_at": "2026-07-23T08:35:11.353022+00:00",
+      "user_approval_at": "2026-07-23T08:35:11.353039+00:00",
       "execution": {
-        "at": "2026-07-19T04:07:13.388550+00:00",
-        "latency_ms": 5746,
+        "at": "2026-07-23T08:35:20.507766+00:00",
+        "latency_ms": 9154,
         "success": true,
         "error_code": null,
-        "entity_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
-        "result_url": "/ai?conversation=13025535-4ea0-4303-b1b2-66ae175663e7",
-        "body": "Found existing contact list \"gravitre-react-gate-probe-20260719\" (id: 6a5c423ee913380018aacf3b).",
+        "entity_id": "8992743f-6632-4252-81a1-8d09c0482575",
+        "result_url": "/ai?conversation=d1d4a632-14c7-4eea-9e51-8bb522cbda45",
+        "body": "Found existing contact list \"gravitre-react-gate-probe-20260723\" (id: 6a61ac0e917ae8001c50c450).",
         "integration": "apollo",
         "task_label": "Create contact list"
       }
     },
     "canvas_write_authority": {
       "claim": "canvas_write_governance_step1",
-      "started_at": "2026-07-19T04:07:34.990774+00:00",
-      "api_base": "https://gravitre-saas-backend-production.up.railway.app",
-      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
-      "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
-      "list_name": "CanvasGovProbe 20260719-040734 286786",
-      "apollo_connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+      "started_at": "2026-07-23T08:35:39.010459+00:00",
+      "api_base": "https://api.gravitre.app",
+      "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+      "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+      "list_name": "CanvasGovProbe 20260723-083538 add219",
+      "apollo_connector_id": "8992743f-6632-4252-81a1-8d09c0482575",
       "graph": {
         "has_approval_node": false,
         "write_action": "apollo.lists.create",
@@ -302,11 +356,18 @@
       "prod_health": {
         "http": 200,
         "status": "ok",
-        "timestamp": "2026-07-19T04:07:35.233190+00:00",
+        "timestamp": "2026-07-23T08:35:39.211232+00:00",
         "version": "0.1.0",
         "environment": "prod",
-        "git_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+        "git_sha": "5b515b56b3e9f850ad7075a9e957dec5faecbe04",
         "ai_disabled": false,
+        "unified_turn_shadow_enabled": true,
+        "unified_turn_live_enabled": true,
+        "unified_turn_embedding_tool_retrieval": true,
+        "unified_turn_embed_min_catalog_tools": 40,
+        "unified_turn_task_model_tier": "low",
+        "internet_research_enabled": true,
+        "web_research_provider_configured": true,
         "checks": {
           "database": "healthy",
           "cache": "healthy",
@@ -314,7 +375,7 @@
           "clickhouse": "configured"
         }
       },
-      "workflow_id": "8ea32dce-7f6a-4fdf-be0d-c3097ff5b095",
+      "workflow_id": "f91610f0-7d3a-43aa-bc6e-7185c08f9182",
       "definition_steps": [
         {
           "id": "apollo_list_create",
@@ -322,17 +383,17 @@
           "type": "invoke_tool",
           "config": {
             "action": "apollo.lists.create",
-            "connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
-            "name": "CanvasGovProbe 20260719-040734 286786"
+            "connector_id": "8992743f-6632-4252-81a1-8d09c0482575",
+            "name": "CanvasGovProbe 20260723-083538 add219"
           }
         }
       ],
       "cleared_active_runs": [
-        "8bc40c29-7aa1-4be7-a2bc-6489c86e8d9c"
+        "911285ad-74c6-4e09-8c11-8a642df5591a"
       ],
       "test_a_be20_required_approvals_1": {
         "http": 200,
-        "run_id": "ee3a33ef-d7d0-45a1-aee6-cd1f0c5723a5",
+        "run_id": "3b46c7cc-2321-4108-af5a-5385717753f4",
         "status": "pending_approval",
         "response_keys": [
           "approval_required",
@@ -361,7 +422,7 @@
       ],
       "test_b_required_approvals_0": {
         "http": 200,
-        "run_id": "9c2e8b29-5ba8-4d66-a06c-2b19d20559c0",
+        "run_id": "7c7e935c-a249-4f70-9886-66073658d50e",
         "execute_status": "pending_approval",
         "final_status": "pending_approval",
         "steps_api_count": 0,
@@ -377,16 +438,16 @@
       "verdict": "ALTERNATE_BLOCKER_BE20_ALWAYS",
       "severity": "lower_but_unify",
       "severity_rationale": "Even with required_approvals=0, execute stayed pending_approval \u2014 unexpected; investigate.",
-      "finished_at": "2026-07-19T04:07:44.563024+00:00"
+      "finished_at": "2026-07-23T08:35:48.760465+00:00"
     },
     "wave67_spotcheck": {
-      "started_at": "2026-07-19T04:07:46.534903+00:00",
-      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
-      "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
-      "conversation_id": "f224589c-e256-490b-8d8b-8767784710dc",
-      "list_name": "gravitre-wave67-spotcheck-20260719",
-      "base_url": "https://gravitre-saas-backend-production.up.railway.app",
-      "branch_note": "production API https://gravitre-saas-backend-production.up.railway.app",
+      "started_at": "2026-07-23T08:35:51.660234+00:00",
+      "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+      "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+      "conversation_id": "84d8ca31-e0c0-481b-9477-6507d09926a5",
+      "list_name": "gravitre-wave67-spotcheck-20260723",
+      "base_url": "https://api.gravitre.app",
+      "branch_note": "production API https://api.gravitre.app",
       "claims": {
         "1_plan_before_tools": {
           "status": "PASS",
@@ -399,7 +460,7 @@
               "has_current_plan": false,
               "has_execution_result": false,
               "has_pending_task": false,
-              "wall_start": "2026-07-19T04:07:47.417682+00:00"
+              "wall_start": "2026-07-23T08:35:52.851855+00:00"
             },
             "first_tool_start_sse": {
               "i": 6,
@@ -408,7 +469,7 @@
             },
             "plan_before_tools": true,
             "plan_only_in_final": false,
-            "wall_start": "2026-07-19T04:07:47.417682+00:00"
+            "wall_start": "2026-07-23T08:35:52.851855+00:00"
           }
         },
         "2_tool_chips_error_code": {
@@ -426,12 +487,12 @@
               "i": 5,
               "type": "tool-output-available",
               "toolName": null,
-              "errorCode": "auth_expired",
+              "errorCode": "connector_not_connected",
               "success": false,
-              "error": "Authentication expired for Slack. Reconnect it at /connectors, then try again."
+              "error": "Slack is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again."
             },
             "success_before_text": true,
-            "slack_wall_start": "2026-07-19T04:08:05.281176+00:00"
+            "slack_wall_start": "2026-07-23T08:36:24.999986+00:00"
           }
         },
         "3_approval_panel_result_url": {
@@ -439,13 +500,18 @@
           "evidence": {
             "react_gate": null,
             "approved_execution": {
-              "user_approval_at": "2026-07-19T04:08:40.743363+00:00",
-              "completed_at": "2026-07-19T04:08:47.943340+00:00",
+              "user_approval_at": "2026-07-23T08:37:09.148961+00:00",
+              "completed_at": "2026-07-23T08:37:19.640145+00:00",
               "success": true,
               "error_code": null,
-              "result_url": "/ai?conversation=f224589c-e256-490b-8d8b-8767784710dc",
-              "assumption_notes": null,
-              "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260719\" (id: 6a5c42c99a59ae000cdacfde).",
+              "result_url": "/ai?conversation=84d8ca31-e0c0-481b-9477-6507d09926a5",
+              "assumption_notes": [
+                "Assumed email=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                "Assumed contact_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                "Assumed company_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                "Assumed list_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)"
+              ],
+              "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260723\" (id: 6a61cb9b27d1e6001435d9e6).",
               "via": "chat_yes"
             },
             "result_url_is_deep_link": false,
@@ -459,34 +525,76 @@
             "claim4_execution": {
               "i": 7,
               "success": true,
-              "result_url": "/ai?conversation=9f1f07fe-b9fd-4f60-b81f-adbc755b886a",
+              "result_url": "/ai?conversation=6f27ce83-a111-40e5-b51f-ab549715133f",
               "error_code": null,
               "assumption_notes": [
-                "Assumed name=MSP Prospects (from message_or_default_hint)"
+                "Assumed name=MSP Prospects (from message_or_default_hint)",
+                "Assumed email=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                "Assumed contact_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                "Assumed company_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                "Assumed list_id=6a4d6a98461b000010c5ae7b (from org entity cache)"
               ],
               "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
             },
             "execution_result_assumption_notes": [
-              "Assumed name=MSP Prospects (from message_or_default_hint)"
+              "Assumed name=MSP Prospects (from message_or_default_hint)",
+              "Assumed email=6a4d6a98461b000010c5ae7b (from org entity cache)",
+              "Assumed contact_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+              "Assumed company_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+              "Assumed list_id=6a4d6a98461b000010c5ae7b (from org entity cache)"
             ],
             "sse_execution_results_with_notes": [
               {
                 "i": 3,
                 "success": true,
-                "result_url": "/ai?conversation=9f1f07fe-b9fd-4f60-b81f-adbc755b886a",
+                "result_url": "/ai?conversation=84d8ca31-e0c0-481b-9477-6507d09926a5",
                 "error_code": null,
                 "assumption_notes": [
-                  "Assumed name=MSP Prospects (from message_or_default_hint)"
+                  "Assumed email=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                  "Assumed contact_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                  "Assumed company_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                  "Assumed list_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)"
+                ],
+                "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260723\" (id: 6a61cb9b27d1e6001435d9e6)."
+              },
+              {
+                "i": 7,
+                "success": true,
+                "result_url": "/ai?conversation=84d8ca31-e0c0-481b-9477-6507d09926a5",
+                "error_code": null,
+                "assumption_notes": [
+                  "Assumed email=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                  "Assumed contact_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                  "Assumed company_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                  "Assumed list_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)"
+                ],
+                "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260723\" (id: 6a61cb9b27d1e6001435d9e6)."
+              },
+              {
+                "i": 3,
+                "success": true,
+                "result_url": "/ai?conversation=6f27ce83-a111-40e5-b51f-ab549715133f",
+                "error_code": null,
+                "assumption_notes": [
+                  "Assumed name=MSP Prospects (from message_or_default_hint)",
+                  "Assumed email=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                  "Assumed contact_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                  "Assumed company_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                  "Assumed list_id=6a4d6a98461b000010c5ae7b (from org entity cache)"
                 ],
                 "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
               },
               {
                 "i": 7,
                 "success": true,
-                "result_url": "/ai?conversation=9f1f07fe-b9fd-4f60-b81f-adbc755b886a",
+                "result_url": "/ai?conversation=6f27ce83-a111-40e5-b51f-ab549715133f",
                 "error_code": null,
                 "assumption_notes": [
-                  "Assumed name=MSP Prospects (from message_or_default_hint)"
+                  "Assumed name=MSP Prospects (from message_or_default_hint)",
+                  "Assumed email=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                  "Assumed contact_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                  "Assumed company_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                  "Assumed list_id=6a4d6a98461b000010c5ae7b (from org entity cache)"
                 ],
                 "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
               }
@@ -497,11 +605,18 @@
       },
       "prod_health": {
         "status": "ok",
-        "timestamp": "2026-07-19T04:07:46.652430+00:00",
+        "timestamp": "2026-07-23T08:35:52.282703+00:00",
         "version": "0.1.0",
         "environment": "prod",
-        "git_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+        "git_sha": "5b515b56b3e9f850ad7075a9e957dec5faecbe04",
         "ai_disabled": false,
+        "unified_turn_shadow_enabled": true,
+        "unified_turn_live_enabled": true,
+        "unified_turn_embedding_tool_retrieval": true,
+        "unified_turn_embed_min_catalog_tools": 40,
+        "unified_turn_task_model_tier": "low",
+        "internet_research_enabled": true,
+        "web_research_provider_configured": true,
         "checks": {
           "database": "healthy",
           "cache": "healthy",
@@ -512,8 +627,8 @@
       "turn_plan_read": {
         "http": "http_200",
         "summary": {
-          "wall_start": "2026-07-19T04:07:47.417682+00:00",
-          "event_count": 47,
+          "wall_start": "2026-07-23T08:35:52.851855+00:00",
+          "event_count": 41,
           "first_plan_sse": {
             "i": 5,
             "type": "data-intelligence",
@@ -522,7 +637,7 @@
             "has_current_plan": false,
             "has_execution_result": false,
             "has_pending_task": false,
-            "wall_start": "2026-07-19T04:07:47.417682+00:00"
+            "wall_start": "2026-07-23T08:35:52.851855+00:00"
           },
           "first_tool_start_sse": {
             "i": 6,
@@ -542,9 +657,9 @@
             "type": "text-start"
           },
           "final_meta_sse": {
-            "i": 5,
+            "i": 37,
             "type": "data-intelligence",
-            "answerExplanation": "Plan ready \u2014 running tools",
+            "answerExplanation": "Live data came from apollo_lists_list (1 call).\n\nThis answer drew on 3 internal sources, including Organization snapshot and Connected systems.",
             "dialogueMode": "guide",
             "has_current_plan": false,
             "has_execution_result": false,
@@ -749,46 +864,27 @@
             },
             {
               "i": 36,
-              "type": "text-delta"
+              "type": "text-end"
             },
             {
               "i": 37,
-              "type": "text-delta"
+              "type": "data-intelligence",
+              "answerExplanation": "Live data came from apollo_lists_list (1 call).\n\nThis answer drew on 3 internal sources, including Organization snapshot and Connected systems.",
+              "dialogueMode": "guide",
+              "has_current_plan": false,
+              "has_execution_result": false,
+              "has_pending_task": false
             },
             {
               "i": 38,
-              "type": "text-delta"
-            },
-            {
-              "i": 39,
-              "type": "text-delta"
-            },
-            {
-              "i": 40,
-              "type": "text-delta"
-            },
-            {
-              "i": 41,
-              "type": "text-delta"
-            },
-            {
-              "i": 42,
-              "type": "text-delta"
-            },
-            {
-              "i": 43,
-              "type": "text-delta"
-            },
-            {
-              "i": 44,
               "type": "finish-step"
             },
             {
-              "i": 45,
+              "i": 39,
               "type": "finish"
             },
             {
-              "i": 46,
+              "i": 40,
               "type": "data-suggestions"
             }
           ]
@@ -797,7 +893,7 @@
       "turn_slack_fail": {
         "http": "http_200",
         "summary": {
-          "wall_start": "2026-07-19T04:08:05.281176+00:00",
+          "wall_start": "2026-07-23T08:36:24.999986+00:00",
           "event_count": 13,
           "first_plan_sse": null,
           "first_tool_start_sse": {
@@ -809,9 +905,9 @@
             "i": 5,
             "type": "tool-output-available",
             "toolName": null,
-            "errorCode": "auth_expired",
+            "errorCode": "connector_not_connected",
             "success": false,
-            "error": "Authentication expired for Slack. Reconnect it at /connectors, then try again."
+            "error": "Slack is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again."
           },
           "first_text_sse": {
             "i": 6,
@@ -831,9 +927,9 @@
               "i": 5,
               "type": "tool-output-available",
               "toolName": null,
-              "errorCode": "auth_expired",
+              "errorCode": "connector_not_connected",
               "success": false,
-              "error": "Authentication expired for Slack. Reconnect it at /connectors, then try again."
+              "error": "Slack is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again."
             }
           ],
           "execution_results": [],
@@ -876,9 +972,9 @@
               "i": 5,
               "type": "tool-output-available",
               "toolName": null,
-              "errorCode": "auth_expired",
+              "errorCode": "connector_not_connected",
               "success": false,
-              "error": "Authentication expired for Slack. Reconnect it at /connectors, then try again."
+              "error": "Slack is not Connected for this organization. Connect it now at /connectors, or reply **yes** to open the connect flow, then try again."
             },
             {
               "i": 6,
@@ -919,7 +1015,7 @@
       "turn_apollo_write_gate": {
         "http": "http_200",
         "summary": {
-          "wall_start": "2026-07-19T04:08:19.369607+00:00",
+          "wall_start": "2026-07-23T08:36:41.255713+00:00",
           "event_count": 17,
           "first_plan_sse": {
             "i": 5,
@@ -929,7 +1025,7 @@
             "has_current_plan": false,
             "has_execution_result": false,
             "has_pending_task": false,
-            "wall_start": "2026-07-19T04:08:19.369607+00:00"
+            "wall_start": "2026-07-23T08:36:41.255713+00:00"
           },
           "first_tool_start_sse": {
             "i": 6,
@@ -983,8 +1079,13 @@
                 "type": "connector_action",
                 "params": {
                   "args": {
-                    "name": "gravitre-wave67-spotcheck-20260719",
-                    "list_name": "gravitre-wave67-spotcheck-20260719"
+                    "name": "gravitre-wave67-spotcheck-20260723",
+                    "email": "8992743f-6632-4252-81a1-8d09c0482575",
+                    "list_id": "8992743f-6632-4252-81a1-8d09c0482575",
+                    "list_name": "gravitre-wave67-spotcheck-20260723",
+                    "company_id": "8992743f-6632-4252-81a1-8d09c0482575",
+                    "contact_id": "8992743f-6632-4252-81a1-8d09c0482575",
+                    "connector_id": "8992743f-6632-4252-81a1-8d09c0482575"
                   },
                   "kind": "write",
                   "label": "Create contact list",
@@ -995,8 +1096,18 @@
                   "integration": "apollo",
                   "invoke_action": "apollo.lists.create",
                   "approval_reason": "react_write_gate",
-                  "inferred_fields": [],
-                  "inference_sources": {},
+                  "inferred_fields": [
+                    "email",
+                    "contact_id",
+                    "company_id",
+                    "list_id"
+                  ],
+                  "inference_sources": {
+                    "email": "org entity cache",
+                    "list_id": "org entity cache",
+                    "company_id": "org entity cache",
+                    "contact_id": "org entity cache"
+                  },
                   "requires_approval": true
                 },
                 "status": "awaiting_confirm"
@@ -1115,7 +1226,7 @@
       "turn_apollo_approve": {
         "http": "http_200",
         "summary": {
-          "wall_start": "2026-07-19T04:08:40.743363+00:00",
+          "wall_start": "2026-07-23T08:37:09.148961+00:00",
           "event_count": 11,
           "first_plan_sse": null,
           "first_tool_start_sse": null,
@@ -1138,18 +1249,28 @@
             {
               "i": 3,
               "success": true,
-              "result_url": "/ai?conversation=f224589c-e256-490b-8d8b-8767784710dc",
+              "result_url": "/ai?conversation=84d8ca31-e0c0-481b-9477-6507d09926a5",
               "error_code": null,
-              "assumption_notes": null,
-              "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260719\" (id: 6a5c42c99a59ae000cdacfde)."
+              "assumption_notes": [
+                "Assumed email=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                "Assumed contact_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                "Assumed company_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                "Assumed list_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)"
+              ],
+              "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260723\" (id: 6a61cb9b27d1e6001435d9e6)."
             },
             {
               "i": 7,
               "success": true,
-              "result_url": "/ai?conversation=f224589c-e256-490b-8d8b-8767784710dc",
+              "result_url": "/ai?conversation=84d8ca31-e0c0-481b-9477-6507d09926a5",
               "error_code": null,
-              "assumption_notes": null,
-              "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260719\" (id: 6a5c42c99a59ae000cdacfde)."
+              "assumption_notes": [
+                "Assumed email=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                "Assumed contact_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                "Assumed company_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+                "Assumed list_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)"
+              ],
+              "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260723\" (id: 6a61cb9b27d1e6001435d9e6)."
             }
           ],
           "pending_tasks": [],
@@ -1219,20 +1340,25 @@
         }
       },
       "approved_execution": {
-        "user_approval_at": "2026-07-19T04:08:40.743363+00:00",
-        "completed_at": "2026-07-19T04:08:47.943340+00:00",
+        "user_approval_at": "2026-07-23T08:37:09.148961+00:00",
+        "completed_at": "2026-07-23T08:37:19.640145+00:00",
         "success": true,
         "error_code": null,
-        "result_url": "/ai?conversation=f224589c-e256-490b-8d8b-8767784710dc",
-        "assumption_notes": null,
-        "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260719\" (id: 6a5c42c99a59ae000cdacfde).",
+        "result_url": "/ai?conversation=84d8ca31-e0c0-481b-9477-6507d09926a5",
+        "assumption_notes": [
+          "Assumed email=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+          "Assumed contact_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+          "Assumed company_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)",
+          "Assumed list_id=8992743f-6632-4252-81a1-8d09c0482575 (from org entity cache)"
+        ],
+        "body": "Found existing contact list \"gravitre-wave67-spotcheck-20260723\" (id: 6a61cb9b27d1e6001435d9e6).",
         "via": "chat_yes"
       },
       "turn_claim4_omit_name": {
         "http": "http_200",
         "summary": {
-          "wall_start": "2026-07-19T04:08:47.943340+00:00",
-          "event_count": 22,
+          "wall_start": "2026-07-23T08:37:19.640207+00:00",
+          "event_count": 19,
           "first_plan_sse": {
             "i": 5,
             "type": "data-intelligence",
@@ -1241,7 +1367,7 @@
             "has_current_plan": false,
             "has_execution_result": false,
             "has_pending_task": false,
-            "wall_start": "2026-07-19T04:08:47.943340+00:00"
+            "wall_start": "2026-07-23T08:37:19.640207+00:00"
           },
           "first_tool_start_sse": {
             "i": 6,
@@ -1261,7 +1387,7 @@
             "type": "text-start"
           },
           "final_meta_sse": {
-            "i": 18,
+            "i": 16,
             "type": "data-intelligence",
             "answerExplanation": "Connector fallback after ReAct",
             "dialogueMode": "confirm",
@@ -1282,7 +1408,7 @@
           "execution_results": [],
           "pending_tasks": [
             {
-              "i": 18,
+              "i": 16,
               "pending": {
                 "type": "connector_action",
                 "status": "awaiting_confirm",
@@ -1394,7 +1520,7 @@
             },
             {
               "i": 13,
-              "type": "text-delta"
+              "type": "text-start"
             },
             {
               "i": 14,
@@ -1402,18 +1528,10 @@
             },
             {
               "i": 15,
-              "type": "text-start"
-            },
-            {
-              "i": 16,
-              "type": "text-delta"
-            },
-            {
-              "i": 17,
               "type": "text-end"
             },
             {
-              "i": 18,
+              "i": 16,
               "type": "data-intelligence",
               "answerExplanation": "Connector fallback after ReAct",
               "dialogueMode": "confirm",
@@ -1422,16 +1540,12 @@
               "has_pending_task": true
             },
             {
-              "i": 19,
+              "i": 17,
               "type": "finish-step"
             },
             {
-              "i": 20,
+              "i": 18,
               "type": "finish"
-            },
-            {
-              "i": 21,
-              "type": "data-suggestions"
             }
           ]
         },
@@ -1440,7 +1554,7 @@
       "turn_claim4_approve": {
         "http": "http_200",
         "summary": {
-          "wall_start": "2026-07-19T04:09:13.506977+00:00",
+          "wall_start": "2026-07-23T08:37:52.483685+00:00",
           "event_count": 11,
           "first_plan_sse": null,
           "first_tool_start_sse": null,
@@ -1463,20 +1577,28 @@
             {
               "i": 3,
               "success": true,
-              "result_url": "/ai?conversation=9f1f07fe-b9fd-4f60-b81f-adbc755b886a",
+              "result_url": "/ai?conversation=6f27ce83-a111-40e5-b51f-ab549715133f",
               "error_code": null,
               "assumption_notes": [
-                "Assumed name=MSP Prospects (from message_or_default_hint)"
+                "Assumed name=MSP Prospects (from message_or_default_hint)",
+                "Assumed email=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                "Assumed contact_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                "Assumed company_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                "Assumed list_id=6a4d6a98461b000010c5ae7b (from org entity cache)"
               ],
               "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
             },
             {
               "i": 7,
               "success": true,
-              "result_url": "/ai?conversation=9f1f07fe-b9fd-4f60-b81f-adbc755b886a",
+              "result_url": "/ai?conversation=6f27ce83-a111-40e5-b51f-ab549715133f",
               "error_code": null,
               "assumption_notes": [
-                "Assumed name=MSP Prospects (from message_or_default_hint)"
+                "Assumed name=MSP Prospects (from message_or_default_hint)",
+                "Assumed email=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                "Assumed contact_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                "Assumed company_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+                "Assumed list_id=6a4d6a98461b000010c5ae7b (from org entity cache)"
               ],
               "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
             }
@@ -1550,52 +1672,56 @@
       "claim4_execution": {
         "i": 7,
         "success": true,
-        "result_url": "/ai?conversation=9f1f07fe-b9fd-4f60-b81f-adbc755b886a",
+        "result_url": "/ai?conversation=6f27ce83-a111-40e5-b51f-ab549715133f",
         "error_code": null,
         "assumption_notes": [
-          "Assumed name=MSP Prospects (from message_or_default_hint)"
+          "Assumed name=MSP Prospects (from message_or_default_hint)",
+          "Assumed email=6a4d6a98461b000010c5ae7b (from org entity cache)",
+          "Assumed contact_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+          "Assumed company_id=6a4d6a98461b000010c5ae7b (from org entity cache)",
+          "Assumed list_id=6a4d6a98461b000010c5ae7b (from org entity cache)"
         ],
         "body": "Found existing contact list \"MSP Prospects\" (id: 6a4d6a98461b000010c5ae7b)."
       },
-      "finished_at": "2026-07-19T04:09:20.523826+00:00"
+      "finished_at": "2026-07-23T08:38:03.295296+00:00"
     },
     "routing_wave_abcd": {
       "probe": "routing_wave_prod_live",
       "pr": 97,
       "expected_sha_prefix": "65998eb7",
-      "started_at": "2026-07-19T04:09:22.617339+00:00",
+      "started_at": "2026-07-23T08:38:06.492465+00:00",
       "base_url": "https://api.gravitre.app",
-      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
-      "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+      "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
       "traces": {
         "A_fast_honesty": {
           "pass": true,
           "criteria": "effectiveMode=fast AND routingTier=simple; must NOT upgrade to agent",
-          "conversation_id": "12aa1e3f-bc5a-4067-be40-c788932f29e4",
+          "conversation_id": "1d599c53-1880-4185-af0f-c57d982a4b15",
           "result": {
             "http": 200,
-            "conversation_id": "12aa1e3f-bc5a-4067-be40-c788932f29e4",
+            "conversation_id": "1d599c53-1880-4185-af0f-c57d982a4b15",
             "mode_requested": "fast",
-            "message": "What connectors are connected? (routing-wave A 3dfda40a)",
-            "text": "These connectors are connected in your workspace: Apollo, Google Search Console, HubSpot, Microsoft 365, and Pipedrive.\n\nI also checked the live connector health, and one additional connector is showing as connected right now:\n- AI Visibility UI\n\nWhat\u2019s blocked:\n- Several other connectors are disconnected or waiting on auth, including Ahrefs, Finseo, Mailchimp, Gusto, Greenhouse, BambooHR, Workday, Plaid, NetSuite, and Xero.\n- There\u2019s also a critical OAuth token issue affecting multiple connectors.\n\nIf you want, I can next narrow this down to the exact connected vs. disconnected list with the ",
+            "message": "What connectors are connected? (routing-wave A 2b2521bc)",
+            "text": "Apollo is connected and healthy.\n\n- Connector: `apollo-isolated-smoke`\n- Status: connected\n- Authenticated: yes\n- Token valid: yes\n- Scopes valid: yes\n- Execution available: yes\n- Read available: yes\n- Write available: yes\n\nSource: connector status check for your org. The only connected integration shown is Apollo. Discovery search is plan-limited, so company/contact search is not available on this account right now.",
             "tools_seen": [
               {
                 "type": "tool-input-available",
                 "toolName": "searchKnowledgeBase",
-                "toolCallId": "call-519ec9fa4b46"
+                "toolCallId": "call-bfc06f5823a1"
               },
               {
                 "type": "tool-output-available",
-                "toolCallId": "call-519ec9fa4b46"
+                "toolCallId": "call-bfc06f5823a1"
               },
               {
                 "type": "tool-input-available",
                 "toolName": "getConnectorStatus",
-                "toolCallId": "call-3b1bbe3b2b1a"
+                "toolCallId": "call-71e0e349605a"
               },
               {
                 "type": "tool-output-available",
-                "toolCallId": "call-3b1bbe3b2b1a"
+                "toolCallId": "call-71e0e349605a"
               }
             ],
             "intel_count": 5,
@@ -1615,7 +1741,9 @@
               "pending_task",
               "connector_session",
               "resolved_entities",
-              "recent_user_messages"
+              "recent_user_messages",
+              "parameter_ledger",
+              "voice_expression_last"
             ],
             "routing_tiers_seen": [
               "simple",
@@ -1659,7 +1787,7 @@
                 ],
                 "escalations": []
               },
-              "expl": "Live data came from assistant_connector_status (1 call).\n\nThis answer drew on 3 internal sources, including Business signals and Organization snapshot.",
+              "expl": "Live data came from apollo_lists_list (1 call).\n\nThis answer drew on 2 internal sources, including Organization snapshot and Company intelligence.",
               "pending": null
             },
             "attempt": 1
@@ -1669,31 +1797,31 @@
         "B_write_intent": {
           "pass": true,
           "criteria": "routingTier multi_step OR research (not simple); pending approval OK (not confirmed)",
-          "conversation_id": "c6189cd0-768d-4648-8cf4-13948d807873",
+          "conversation_id": "983b3bc7-e41d-48c5-a6af-1ea72cba5d5f",
           "result": {
             "http": 200,
-            "conversation_id": "c6189cd0-768d-4648-8cf4-13948d807873",
+            "conversation_id": "983b3bc7-e41d-48c5-a6af-1ea72cba5d5f",
             "mode_requested": "standard",
             "message": "In Apollo, create a contact list named Routing Wave Live.",
-            "text": "I can create a contact list named **Routing Wave Live** in Apollo.\n\nReply **yes** to create it, or tell me what to change (name, modality, or follow-up criteria to populate it).",
+            "text": "I can create a contact list named **Routing Wave Live** in Apollo.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
             "tools_seen": [
               {
                 "type": "tool-input-available",
                 "toolName": "searchKnowledgeBase",
-                "toolCallId": "call-b7d37e53d562"
+                "toolCallId": "call-96e991371521"
               },
               {
                 "type": "tool-output-available",
-                "toolCallId": "call-b7d37e53d562"
+                "toolCallId": "call-96e991371521"
               },
               {
                 "type": "tool-input-available",
                 "toolName": "apollo_lists_create",
-                "toolCallId": "call-dd90ce5d0904"
+                "toolCallId": "call-dbbdddb38302"
               },
               {
                 "type": "tool-output-available",
-                "toolCallId": "call-dd90ce5d0904"
+                "toolCallId": "call-dbbdddb38302"
               }
             ],
             "intel_count": 5,
@@ -1702,7 +1830,8 @@
               "params": {
                 "args": {
                   "name": "Routing Wave Live",
-                  "list_name": "Routing Wave Live"
+                  "list_name": "Routing Wave Live",
+                  "connector_id": "8992743f-6632-4252-81a1-8d09c0482575"
                 },
                 "kind": "write",
                 "label": "Create contact list",
@@ -1724,7 +1853,8 @@
               "params": {
                 "args": {
                   "name": "Routing Wave Live",
-                  "list_name": "Routing Wave Live"
+                  "list_name": "Routing Wave Live",
+                  "connector_id": "8992743f-6632-4252-81a1-8d09c0482575"
                 },
                 "kind": "write",
                 "label": "Create contact list",
@@ -1755,7 +1885,9 @@
               "pending_task",
               "connector_session",
               "resolved_entities",
-              "recent_user_messages"
+              "recent_user_messages",
+              "parameter_ledger",
+              "voice_expression_last"
             ],
             "routing_tiers_seen": [
               "multi_step",
@@ -1804,7 +1936,8 @@
                 "params": {
                   "args": {
                     "name": "Routing Wave Live",
-                    "list_name": "Routing Wave Live"
+                    "list_name": "Routing Wave Live",
+                    "connector_id": "8992743f-6632-4252-81a1-8d09c0482575"
                   },
                   "kind": "write",
                   "label": "Create contact list",
@@ -1828,7 +1961,8 @@
             "params": {
               "args": {
                 "name": "Routing Wave Live",
-                "list_name": "Routing Wave Live"
+                "list_name": "Routing Wave Live",
+                "connector_id": "8992743f-6632-4252-81a1-8d09c0482575"
               },
               "kind": "write",
               "label": "Create contact list",
@@ -1851,12 +1985,12 @@
         "C_deepen_research": {
           "pass": true,
           "criteria": "routingTier=research OR escalation to research",
-          "conversation_id": "7b3394c5-4fad-421d-810b-5f4abb518620",
+          "conversation_id": "9f37a73e-42c6-437d-9bed-6e21ec10dab6",
           "attempts": [
             {
               "attempt": 1,
               "mode": "standard",
-              "conversation_id": "7b3394c5-4fad-421d-810b-5f4abb518620",
+              "conversation_id": "9f37a73e-42c6-437d-9bed-6e21ec10dab6",
               "final_routingTier": "research",
               "tiers_seen": [
                 "research",
@@ -1865,22 +1999,22 @@
               ],
               "effectiveMode": "agent",
               "http": 200,
-              "text_head": "I planned a **2-step orchestration**:\n\n1. **Search people** (read, auto-run)\n2. **List deals** (read, auto-run)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes*",
+              "text_head": "I planned a **2-step orchestration**:\n\n1. **Search people** (read, auto-run)\n2. \u25cb Pipedrive (not connected) \u2014 *skipped* (Connect Pipedrive at /connectors to run this action.)\n\nRead steps run automatic",
               "expl": "Multi-step connector orchestration"
             }
           ],
           "result": {
             "http": 200,
-            "conversation_id": "7b3394c5-4fad-421d-810b-5f4abb518620",
+            "conversation_id": "9f37a73e-42c6-437d-9bed-6e21ec10dab6",
             "mode_requested": "standard",
-            "message": "go deeper with a full analysis comparing our Apollo and Pipedrive pipeline health [routing-wave C c8a8c30d]",
-            "text": "I planned a **2-step orchestration**:\n\n1. **Search people** (read, auto-run)\n2. **List deals** (read, auto-run)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change.",
+            "message": "go deeper with a full analysis comparing our Apollo and Pipedrive pipeline health [routing-wave C fc9cb887]",
+            "text": "I planned a **2-step orchestration**:\n\n1. **Search people** (read, auto-run)\n2. \u25cb Pipedrive (not connected) \u2014 *skipped* (Connect Pipedrive at /connectors to run this action.)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change.",
             "tools_seen": [],
             "intel_count": 3,
             "sse_pending": {
               "type": "connector_orchestration",
               "params": {
-                "goal": "go deeper with a full analysis comparing our Apollo and Pipedrive pipeline health [routing-wave C c8a8c30d]",
+                "goal": "go deeper with a full analysis comparing our Apollo and Pipedrive pipeline health [routing-wave C fc9cb887]",
                 "steps": [
                   {
                     "kind": "read",
@@ -1908,28 +2042,12 @@
                     "requires_approval": false
                   },
                   {
-                    "kind": "read",
-                    "plan": {
-                      "args": {
-                        "limit": 10,
-                        "query": "Pipedrive pipeline health [routing-wave C c8a8c30d]"
-                      },
-                      "kind": "read",
-                      "label": "List deals",
-                      "tool_name": "pipedrive_deals_list",
-                      "destructive": false,
-                      "integration": "pipedrive",
-                      "invoke_action": "pipedrive.deals.list",
-                      "approval_reason": null,
-                      "inferred_fields": [],
-                      "inference_sources": {},
-                      "requires_approval": false
-                    },
-                    "label": "List deals",
-                    "segment": "Pipedrive pipeline health [routing-wave C c8a8c30d]",
+                    "kind": "write",
+                    "label": "Pipedrive (not connected)",
+                    "segment": "Pipedrive pipeline health [routing-wave C fc9cb887]",
                     "step_id": "step_2",
-                    "supported": true,
-                    "skip_reason": null,
+                    "supported": false,
+                    "skip_reason": "Connect Pipedrive at /connectors to run this action.",
                     "requires_approval": false
                   }
                 ],
@@ -1942,7 +2060,7 @@
             "db_pending": {
               "type": "connector_orchestration",
               "params": {
-                "goal": "go deeper with a full analysis comparing our Apollo and Pipedrive pipeline health [routing-wave C c8a8c30d]",
+                "goal": "go deeper with a full analysis comparing our Apollo and Pipedrive pipeline health [routing-wave C fc9cb887]",
                 "steps": [
                   {
                     "kind": "read",
@@ -1970,28 +2088,12 @@
                     "requires_approval": false
                   },
                   {
-                    "kind": "read",
-                    "plan": {
-                      "args": {
-                        "limit": 10,
-                        "query": "Pipedrive pipeline health [routing-wave C c8a8c30d]"
-                      },
-                      "kind": "read",
-                      "label": "List deals",
-                      "tool_name": "pipedrive_deals_list",
-                      "destructive": false,
-                      "integration": "pipedrive",
-                      "invoke_action": "pipedrive.deals.list",
-                      "approval_reason": null,
-                      "inferred_fields": [],
-                      "inference_sources": {},
-                      "requires_approval": false
-                    },
-                    "label": "List deals",
-                    "segment": "Pipedrive pipeline health [routing-wave C c8a8c30d]",
+                    "kind": "write",
+                    "label": "Pipedrive (not connected)",
+                    "segment": "Pipedrive pipeline health [routing-wave C fc9cb887]",
                     "step_id": "step_2",
-                    "supported": true,
-                    "skip_reason": null,
+                    "supported": false,
+                    "skip_reason": "Connect Pipedrive at /connectors to run this action.",
                     "requires_approval": false
                   }
                 ],
@@ -2015,7 +2117,9 @@
               "pending_task",
               "connector_session",
               "resolved_entities",
-              "recent_user_messages"
+              "recent_user_messages",
+              "parameter_ledger",
+              "voice_expression_last"
             ],
             "routing_tiers_seen": [
               "research",
@@ -2056,7 +2160,7 @@
               "pending": {
                 "type": "connector_orchestration",
                 "params": {
-                  "goal": "go deeper with a full analysis comparing our Apollo and Pipedrive pipeline health [routing-wave C c8a8c30d]",
+                  "goal": "go deeper with a full analysis comparing our Apollo and Pipedrive pipeline health [routing-wave C fc9cb887]",
                   "steps": [
                     {
                       "kind": "read",
@@ -2084,28 +2188,12 @@
                       "requires_approval": false
                     },
                     {
-                      "kind": "read",
-                      "plan": {
-                        "args": {
-                          "limit": 10,
-                          "query": "Pipedrive pipeline health [routing-wave C c8a8c30d]"
-                        },
-                        "kind": "read",
-                        "label": "List deals",
-                        "tool_name": "pipedrive_deals_list",
-                        "destructive": false,
-                        "integration": "pipedrive",
-                        "invoke_action": "pipedrive.deals.list",
-                        "approval_reason": null,
-                        "inferred_fields": [],
-                        "inference_sources": {},
-                        "requires_approval": false
-                      },
-                      "label": "List deals",
-                      "segment": "Pipedrive pipeline health [routing-wave C c8a8c30d]",
+                      "kind": "write",
+                      "label": "Pipedrive (not connected)",
+                      "segment": "Pipedrive pipeline health [routing-wave C fc9cb887]",
                       "step_id": "step_2",
-                      "supported": true,
-                      "skip_reason": null,
+                      "supported": false,
+                      "skip_reason": "Connect Pipedrive at /connectors to run this action.",
                       "requires_approval": false
                     }
                   ],
@@ -2130,11 +2218,18 @@
       },
       "prod_health": {
         "status": "ok",
-        "timestamp": "2026-07-19T04:09:22.461674+00:00",
+        "timestamp": "2026-07-23T08:38:06.774723+00:00",
         "version": "0.1.0",
         "environment": "prod",
-        "git_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+        "git_sha": "5b515b56b3e9f850ad7075a9e957dec5faecbe04",
         "ai_disabled": false,
+        "unified_turn_shadow_enabled": true,
+        "unified_turn_live_enabled": true,
+        "unified_turn_embedding_tool_retrieval": true,
+        "unified_turn_embed_min_catalog_tools": 40,
+        "unified_turn_task_model_tier": "low",
+        "internet_research_enabled": true,
+        "web_research_provider_configured": true,
         "checks": {
           "database": "healthy",
           "cache": "healthy",
@@ -2142,7 +2237,7 @@
           "clickhouse": "configured"
         }
       },
-      "prod_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+      "prod_sha": "5b515b56b3e9f850ad7075a9e957dec5faecbe04",
       "prod_sha_ok": true,
       "accept_sha_prefixes": [
         "65998eb7",
@@ -2153,19 +2248,19 @@
       ],
       "allow_any_prod_sha": true,
       "contains_pr97_note": "3aff41ad merges main after 65998eb7 (#97); follow-up clarify-SSE fix may supersede",
-      "finished_at": "2026-07-19T04:10:15.281249+00:00",
+      "finished_at": "2026-07-23T08:39:26.432236+00:00",
       "verdict": "PASS",
       "summary": {
         "A": true,
         "B": true,
         "C": true,
         "D_escalation_count": 0,
-        "prod_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+        "prod_sha": "5b515b56b3e9f850ad7075a9e957dec5faecbe04",
         "verdict": "PASS",
         "evidence": {
           "A_effectiveMode": "fast",
           "A_routingTier": "simple",
-          "A_conversation_id": "12aa1e3f-bc5a-4067-be40-c788932f29e4",
+          "A_conversation_id": "1d599c53-1880-4185-af0f-c57d982a4b15",
           "B_routingTier": "multi_step",
           "B_tiers_seen": [
             "multi_step",
@@ -2175,23 +2270,23 @@
             "multi_step"
           ],
           "B_pending": true,
-          "B_conversation_id": "c6189cd0-768d-4648-8cf4-13948d807873",
+          "B_conversation_id": "983b3bc7-e41d-48c5-a6af-1ea72cba5d5f",
           "C_routingTier": "research",
           "C_tiers_seen": [
             "research",
             "research",
             "research"
           ],
-          "C_conversation_id": "7b3394c5-4fad-421d-810b-5f4abb518620"
+          "C_conversation_id": "9f37a73e-42c6-437d-9bed-6e21ec10dab6"
         }
       }
     },
     "retrieval_ab": {
       "probe": "retrieval_ab_live",
-      "started_at": "2026-07-19T04:10:17.543255+00:00",
-      "base_url": "https://gravitre-saas-backend-production.up.railway.app",
-      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
-      "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+      "started_at": "2026-07-23T08:39:28.932533+00:00",
+      "base_url": "https://api.gravitre.app",
+      "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+      "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
       "min_sha_prefix": "4eb6adbe",
       "queries": {
         "A_fast_connectors": {
@@ -2241,8 +2336,8 @@
                   "scope": "internet_research",
                   "label": "+ Live Internet Research",
                   "description": "Search the public web when governance allows.",
-                  "enabled": false,
-                  "disabled_reason": "Pending governance approval \u2014 internet research is not enabled for this environment."
+                  "enabled": true,
+                  "disabled_reason": null
                 },
                 {
                   "scope": "everything",
@@ -2268,7 +2363,158 @@
                 "internet_research",
                 "reasoning"
               ],
-              "internet_research_enabled": false,
+              "internet_research_enabled": true,
+              "retrieval_score": null,
+              "source_count": 0,
+              "confidence_band": "unknown",
+              "top_sources": [],
+              "source_breakdown": {},
+              "stage_progress": [
+                {
+                  "stage": "conversation_memory",
+                  "label": "Conversation Memory",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "internal_rag",
+                  "label": "Internal Rag",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "knowledge_graph",
+                  "label": "Knowledge Graph",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "connectors",
+                  "label": "Connectors",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "reasoning",
+                  "label": "Reasoning",
+                  "status": "pending",
+                  "detail": null
+                }
+              ],
+              "progress_steps": [
+                "Conversation Memory complete",
+                "Internal Rag complete",
+                "Knowledge Graph complete",
+                "Connectors complete",
+                "Reasoning\u2026"
+              ],
+              "research_manager": true,
+              "cascade_stopped_at": null,
+              "confidence_sufficient": false,
+              "skip_graph": false,
+              "skip_external": false,
+              "planned_stages": [
+                "conversation_memory",
+                "internal_rag",
+                "knowledge_graph",
+                "connectors",
+                "reasoning"
+              ]
+            },
+            "text_head": "Connected connectors: Apollo.\n\n- Apollo \u2014 Connected, Healthy, Configured, Authenticated, and Execution Available.\n- Discovery search is limited by the Apollo plan: company/contact search is not available from this connector right now. Creation/list actions may still work.\n\nSource: connector status check for this org.",
+            "event_types": [
+              "data-intelligence",
+              "finish",
+              "finish-step",
+              "start",
+              "start-step",
+              "text-delta",
+              "text-end",
+              "text-start",
+              "tool-input-available",
+              "tool-output-available"
+            ]
+          },
+          "reasons": [],
+          "message": "What connectors are connected? (retrieval-ab A 202607230839)"
+        },
+        "B_write_intent_gate": {
+          "pass": true,
+          "http": 200,
+          "conversation_fingerprint": {
+            "tool_names": [
+              "searchKnowledgeBase",
+              "apollo_lists_create"
+            ],
+            "error_codes": [
+              "write_approval_required"
+            ],
+            "routing_tiers": [
+              "simple",
+              "simple",
+              "simple",
+              "simple",
+              "simple"
+            ],
+            "effective_modes": [
+              "fast",
+              "fast",
+              "fast",
+              "fast",
+              "fast"
+            ],
+            "final_routingTier": "simple",
+            "final_effectiveMode": "fast",
+            "pending_seen": true,
+            "research_cascade_final": {
+              "internal_thin": true,
+              "suggest_broaden": true,
+              "prompt_message": "I found limited information within your organization's connected knowledge. I can broaden my research.",
+              "options": [
+                {
+                  "scope": "internal_only",
+                  "label": "Internal only",
+                  "description": "Stay with your connected knowledge, memory, and graph.",
+                  "enabled": true
+                },
+                {
+                  "scope": "intelligence_packs",
+                  "label": "+ Intelligence Packs",
+                  "description": "Add curated pack signals and external source hints.",
+                  "enabled": true
+                },
+                {
+                  "scope": "internet_research",
+                  "label": "+ Live Internet Research",
+                  "description": "Search the public web when governance allows.",
+                  "enabled": true,
+                  "disabled_reason": null
+                },
+                {
+                  "scope": "everything",
+                  "label": "Everything available",
+                  "description": "Use all enabled internal and pack sources.",
+                  "enabled": true
+                }
+              ],
+              "research_scope": "internal_only",
+              "active_stages": [
+                "conversation_memory",
+                "internal_rag",
+                "knowledge_graph",
+                "connectors",
+                "reasoning"
+              ],
+              "stage_order": [
+                "conversation_memory",
+                "internal_rag",
+                "knowledge_graph",
+                "connectors",
+                "intelligence_packs",
+                "internet_research",
+                "reasoning"
+              ],
+              "internet_research_enabled": true,
               "retrieval_score": null,
               "source_count": 1,
               "confidence_band": "unknown",
@@ -2337,7 +2583,155 @@
                 "reasoning"
               ]
             },
-            "text_head": "Here\u2019s what\u2019s connected in your workspace right now: Apollo, Google Search Console, HubSpot, Microsoft 365, and Pipedrive.\n\nI also checked the live connector status, and the only connector currently showing as connected in the detailed health view is AI Visibility UI. The others in that snapshot are either disconnected, pending auth, or error state.\n\nThe one best next move is to reconnect the auth",
+            "text_head": "I can create a contact list named **gravitre-retrieval-ab-202607230839** in Apollo.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
+            "event_types": [
+              "data-intelligence",
+              "finish",
+              "finish-step",
+              "start",
+              "start-step",
+              "text-delta",
+              "text-end",
+              "text-start",
+              "tool-input-available",
+              "tool-output-available"
+            ]
+          },
+          "reasons": [],
+          "message": "Create an Apollo contact list named exactly 'gravitre-retrieval-ab-202607230839' with no contacts. Use Apollo only."
+        },
+        "C_org_kb": {
+          "pass": true,
+          "http": 200,
+          "conversation_fingerprint": {
+            "tool_names": [
+              "searchKnowledgeBase"
+            ],
+            "error_codes": [],
+            "routing_tiers": [
+              "simple",
+              "simple",
+              "simple",
+              "simple",
+              "simple"
+            ],
+            "effective_modes": [
+              "fast",
+              "fast",
+              "fast",
+              "fast",
+              "fast"
+            ],
+            "final_routingTier": "simple",
+            "final_effectiveMode": "fast",
+            "pending_seen": false,
+            "research_cascade_final": {
+              "internal_thin": true,
+              "suggest_broaden": true,
+              "prompt_message": "I found limited information within your organization's connected knowledge. I can broaden my research.",
+              "options": [
+                {
+                  "scope": "internal_only",
+                  "label": "Internal only",
+                  "description": "Stay with your connected knowledge, memory, and graph.",
+                  "enabled": true
+                },
+                {
+                  "scope": "intelligence_packs",
+                  "label": "+ Intelligence Packs",
+                  "description": "Add curated pack signals and external source hints.",
+                  "enabled": true
+                },
+                {
+                  "scope": "internet_research",
+                  "label": "+ Live Internet Research",
+                  "description": "Search the public web when governance allows.",
+                  "enabled": true,
+                  "disabled_reason": null
+                },
+                {
+                  "scope": "everything",
+                  "label": "Everything available",
+                  "description": "Use all enabled internal and pack sources.",
+                  "enabled": true
+                }
+              ],
+              "research_scope": "internal_only",
+              "active_stages": [
+                "conversation_memory",
+                "internal_rag",
+                "knowledge_graph",
+                "connectors",
+                "reasoning"
+              ],
+              "stage_order": [
+                "conversation_memory",
+                "internal_rag",
+                "knowledge_graph",
+                "connectors",
+                "intelligence_packs",
+                "internet_research",
+                "reasoning"
+              ],
+              "internet_research_enabled": true,
+              "retrieval_score": null,
+              "source_count": 0,
+              "confidence_band": "unknown",
+              "top_sources": [],
+              "source_breakdown": {},
+              "stage_progress": [
+                {
+                  "stage": "conversation_memory",
+                  "label": "Conversation Memory",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "internal_rag",
+                  "label": "Internal Rag",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "knowledge_graph",
+                  "label": "Knowledge Graph",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "connectors",
+                  "label": "Connectors",
+                  "status": "completed",
+                  "detail": null
+                },
+                {
+                  "stage": "reasoning",
+                  "label": "Reasoning",
+                  "status": "pending",
+                  "detail": null
+                }
+              ],
+              "progress_steps": [
+                "Conversation Memory complete",
+                "Internal Rag complete",
+                "Knowledge Graph complete",
+                "Connectors complete",
+                "Reasoning\u2026"
+              ],
+              "research_manager": true,
+              "cascade_stopped_at": null,
+              "confidence_sufficient": false,
+              "skip_graph": false,
+              "skip_external": false,
+              "planned_stages": [
+                "conversation_memory",
+                "internal_rag",
+                "knowledge_graph",
+                "connectors",
+                "reasoning"
+              ]
+            },
+            "text_head": "I don\u2019t have enough information yet. There\u2019s no internal policy excerpt in the provided context, so I can\u2019t answer the refund policy from internal knowledge alone.\n\nIf you want, I can look for it in the organization\u2019s connected sources.\nI don\u2019t have enough information yet. There\u2019s no internal policy excerpt in the provided context, so I can\u2019t answer the refund policy from internal knowledge alone.",
             "event_types": [
               "data-intelligence",
               "data-suggestions",
@@ -2353,45 +2747,9 @@
             ]
           },
           "reasons": [],
-          "message": "What connectors are connected? (retrieval-ab A 202607190410)"
+          "message": "What is our refund policy? Answer from internal knowledge only. (retrieval-ab C 202607230839)"
         },
-        "B_write_intent_gate": {
-          "pass": true,
-          "http": 200,
-          "conversation_fingerprint": {
-            "tool_names": [],
-            "error_codes": [],
-            "routing_tiers": [
-              "simple",
-              "simple",
-              "simple"
-            ],
-            "effective_modes": [
-              "fast",
-              "fast",
-              "fast"
-            ],
-            "final_routingTier": "simple",
-            "final_effectiveMode": "fast",
-            "pending_seen": true,
-            "research_cascade_final": null,
-            "text_head": "I can create a contact list named **gravitre-retrieval-ab-202607190410** in Apollo.\n\nApprove below to create it, or tell me what to change (name, modality, or follow-up criteria to populate it).",
-            "event_types": [
-              "data-intelligence",
-              "data-suggestions",
-              "finish",
-              "finish-step",
-              "start",
-              "start-step",
-              "text-delta",
-              "text-end",
-              "text-start"
-            ]
-          },
-          "reasons": [],
-          "message": "Create an Apollo contact list named exactly 'gravitre-retrieval-ab-202607190410' with no contacts. Use Apollo only."
-        },
-        "C_org_kb": {
+        "D_thin_broaden": {
           "pass": true,
           "http": 200,
           "conversation_fingerprint": {
@@ -2438,8 +2796,8 @@
                   "scope": "internet_research",
                   "label": "+ Live Internet Research",
                   "description": "Search the public web when governance allows.",
-                  "enabled": false,
-                  "disabled_reason": "Pending governance approval \u2014 internet research is not enabled for this environment."
+                  "enabled": true,
+                  "disabled_reason": null
                 },
                 {
                   "scope": "everything",
@@ -2465,7 +2823,7 @@
                 "internet_research",
                 "reasoning"
               ],
-              "internet_research_enabled": false,
+              "internet_research_enabled": true,
               "retrieval_score": null,
               "source_count": 0,
               "confidence_band": "unknown",
@@ -2523,10 +2881,9 @@
                 "reasoning"
               ]
             },
-            "text_head": "I can\u2019t answer the refund policy from internal knowledge right now because no knowledge excerpts were retrieved for this organization.\n\nWhat I do see is that your connected sources are mostly operational connectors like HubSpot, Apollo, Microsoft 365, Pipedrive, and Google Search Console, but there isn\u2019t an ingested internal policy source available to read from here. To get the policy into reach, ",
+            "text_head": "I don\u2019t have enough information yet. Use only internal org knowledge does not give a forecast for Zephyr Dynamics, and the connected Apollo source is Healthy but not Executable for company/contact discovery here, so I can\u2019t verify that subsidiary or its Q3 2027 revenue.\n\nIf you want me to continue, give me one of these:\n- the internal source or record that contains the forecast\n- the exact subsidi",
             "event_types": [
               "data-intelligence",
-              "data-suggestions",
               "finish",
               "finish-step",
               "start",
@@ -2539,315 +2896,57 @@
             ]
           },
           "reasons": [],
-          "message": "What is our refund policy? Answer from internal knowledge only. (retrieval-ab C 202607190410)"
-        },
-        "D_thin_broaden": {
-          "pass": true,
-          "http": 200,
-          "conversation_fingerprint": {
-            "tool_names": [
-              "searchKnowledgeBase"
-            ],
-            "error_codes": [],
-            "routing_tiers": [
-              "simple",
-              "simple",
-              "simple",
-              "simple",
-              "simple"
-            ],
-            "effective_modes": [
-              "fast",
-              "fast",
-              "fast",
-              "fast",
-              "fast"
-            ],
-            "final_routingTier": "simple",
-            "final_effectiveMode": "fast",
-            "pending_seen": false,
-            "research_cascade_final": {
-              "internal_thin": true,
-              "suggest_broaden": true,
-              "prompt_message": "I found limited information within your organization's connected knowledge. I can broaden my research.",
-              "options": [
-                {
-                  "scope": "internal_only",
-                  "label": "Internal only",
-                  "description": "Stay with your connected knowledge, memory, and graph.",
-                  "enabled": true
-                },
-                {
-                  "scope": "intelligence_packs",
-                  "label": "+ Intelligence Packs",
-                  "description": "Add curated pack signals and external source hints.",
-                  "enabled": true
-                },
-                {
-                  "scope": "internet_research",
-                  "label": "+ Live Internet Research",
-                  "description": "Search the public web when governance allows.",
-                  "enabled": false,
-                  "disabled_reason": "Pending governance approval \u2014 internet research is not enabled for this environment."
-                },
-                {
-                  "scope": "everything",
-                  "label": "Everything available",
-                  "description": "Use all enabled internal and pack sources.",
-                  "enabled": true
-                }
-              ],
-              "research_scope": "internal_only",
-              "active_stages": [
-                "conversation_memory",
-                "internal_rag",
-                "knowledge_graph",
-                "connectors",
-                "reasoning"
-              ],
-              "stage_order": [
-                "conversation_memory",
-                "internal_rag",
-                "knowledge_graph",
-                "connectors",
-                "intelligence_packs",
-                "internet_research",
-                "reasoning"
-              ],
-              "internet_research_enabled": false,
-              "retrieval_score": null,
-              "source_count": 0,
-              "confidence_band": "unknown",
-              "top_sources": [],
-              "source_breakdown": {},
-              "stage_progress": [
-                {
-                  "stage": "conversation_memory",
-                  "label": "Conversation Memory",
-                  "status": "completed",
-                  "detail": null
-                },
-                {
-                  "stage": "internal_rag",
-                  "label": "Internal Rag",
-                  "status": "completed",
-                  "detail": null
-                },
-                {
-                  "stage": "knowledge_graph",
-                  "label": "Knowledge Graph",
-                  "status": "completed",
-                  "detail": null
-                },
-                {
-                  "stage": "connectors",
-                  "label": "Connectors",
-                  "status": "completed",
-                  "detail": null
-                },
-                {
-                  "stage": "reasoning",
-                  "label": "Reasoning",
-                  "status": "pending",
-                  "detail": null
-                }
-              ],
-              "progress_steps": [
-                "Conversation Memory complete",
-                "Internal Rag complete",
-                "Knowledge Graph complete",
-                "Connectors complete",
-                "Reasoning\u2026"
-              ],
-              "research_manager": true,
-              "cascade_stopped_at": null,
-              "confidence_sufficient": false,
-              "skip_graph": false,
-              "skip_external": false,
-              "planned_stages": [
-                "conversation_memory",
-                "internal_rag",
-                "knowledge_graph",
-                "connectors",
-                "reasoning"
-              ]
-            },
-            "text_head": "I can\u2019t determine an exact Q3 2027 revenue forecast for \u201cZephyr Dynamics in Antarctica\u201d from the information available here. There\u2019s no internal knowledge excerpt for that subsidiary, and the request appears to refer to a fictional entity that isn\u2019t present in the org context.\n\nIf you want, I can help in one of two ways:\n- look for any internal references to Zephyr Dynamics across your connected s",
-            "event_types": [
-              "data-intelligence",
-              "data-suggestions",
-              "finish",
-              "finish-step",
-              "start",
-              "start-step",
-              "text-delta",
-              "text-end",
-              "text-start",
-              "tool-input-available",
-              "tool-output-available"
-            ]
-          },
-          "reasons": [],
-          "message": "What is the exact Q3 2027 revenue forecast for our fictional subsidiary Zephyr Dynamics in Antarctica? Use only internal org knowledge. (retrieval-ab D 202607190410)"
+          "message": "What is the exact Q3 2027 revenue forecast for our fictional subsidiary Zephyr Dynamics in Antarctica? Use only internal org knowledge. (retrieval-ab D 202607230839)"
         },
         "E_fast_honesty": {
           "pass": true,
           "http": 200,
           "conversation_fingerprint": {
-            "tool_names": [
-              "searchKnowledgeBase"
-            ],
+            "tool_names": [],
             "error_codes": [],
             "routing_tiers": [
-              "simple",
-              "simple",
-              "simple",
               "simple",
               "simple"
             ],
             "effective_modes": [
-              "fast",
-              "fast",
-              "fast",
               "fast",
               "fast"
             ],
             "final_routingTier": "simple",
             "final_effectiveMode": "fast",
             "pending_seen": false,
-            "research_cascade_final": {
-              "internal_thin": true,
-              "suggest_broaden": true,
-              "prompt_message": "I found limited information within your organization's connected knowledge. I can broaden my research.",
-              "options": [
-                {
-                  "scope": "internal_only",
-                  "label": "Internal only",
-                  "description": "Stay with your connected knowledge, memory, and graph.",
-                  "enabled": true
-                },
-                {
-                  "scope": "intelligence_packs",
-                  "label": "+ Intelligence Packs",
-                  "description": "Add curated pack signals and external source hints.",
-                  "enabled": true
-                },
-                {
-                  "scope": "internet_research",
-                  "label": "+ Live Internet Research",
-                  "description": "Search the public web when governance allows.",
-                  "enabled": false,
-                  "disabled_reason": "Pending governance approval \u2014 internet research is not enabled for this environment."
-                },
-                {
-                  "scope": "everything",
-                  "label": "Everything available",
-                  "description": "Use all enabled internal and pack sources.",
-                  "enabled": true
-                }
-              ],
-              "research_scope": "internal_only",
-              "active_stages": [
-                "conversation_memory",
-                "internal_rag",
-                "knowledge_graph",
-                "connectors",
-                "reasoning"
-              ],
-              "stage_order": [
-                "conversation_memory",
-                "internal_rag",
-                "knowledge_graph",
-                "connectors",
-                "intelligence_packs",
-                "internet_research",
-                "reasoning"
-              ],
-              "internet_research_enabled": false,
-              "retrieval_score": null,
-              "source_count": 0,
-              "confidence_band": "unknown",
-              "top_sources": [],
-              "source_breakdown": {},
-              "stage_progress": [
-                {
-                  "stage": "conversation_memory",
-                  "label": "Conversation Memory",
-                  "status": "completed",
-                  "detail": null
-                },
-                {
-                  "stage": "internal_rag",
-                  "label": "Internal Rag",
-                  "status": "completed",
-                  "detail": null
-                },
-                {
-                  "stage": "knowledge_graph",
-                  "label": "Knowledge Graph",
-                  "status": "completed",
-                  "detail": null
-                },
-                {
-                  "stage": "connectors",
-                  "label": "Connectors",
-                  "status": "completed",
-                  "detail": null
-                },
-                {
-                  "stage": "reasoning",
-                  "label": "Reasoning",
-                  "status": "pending",
-                  "detail": null
-                }
-              ],
-              "progress_steps": [
-                "Conversation Memory complete",
-                "Internal Rag complete",
-                "Knowledge Graph complete",
-                "Connectors complete",
-                "Reasoning\u2026"
-              ],
-              "research_manager": true,
-              "cascade_stopped_at": null,
-              "confidence_sufficient": false,
-              "skip_graph": false,
-              "skip_external": false,
-              "planned_stages": [
-                "conversation_memory",
-                "internal_rag",
-                "knowledge_graph",
-                "connectors",
-                "reasoning"
-              ]
-            },
-            "text_head": "I\u2019m in retrieval-ab E 202607190410 mode.",
+            "research_cascade_final": null,
+            "text_head": "Operational mode: conversational, with no tool use.",
             "event_types": [
               "data-intelligence",
-              "data-suggestions",
               "finish",
               "finish-step",
               "start",
               "start-step",
               "text-delta",
               "text-end",
-              "text-start",
-              "tool-input-available",
-              "tool-output-available"
+              "text-start"
             ]
           },
           "reasons": [],
-          "message": "Reply with one sentence: what mode are you in? (retrieval-ab E 202607190410)"
+          "message": "Reply with one sentence: what mode are you in? (retrieval-ab E 202607230839)"
         }
       },
       "pass": true,
       "health": {
         "status": "ok",
-        "timestamp": "2026-07-19T04:10:17.922723+00:00",
+        "timestamp": "2026-07-23T08:39:29.231676+00:00",
         "version": "0.1.0",
         "environment": "prod",
-        "git_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+        "git_sha": "5b515b56b3e9f850ad7075a9e957dec5faecbe04",
         "ai_disabled": false,
+        "unified_turn_shadow_enabled": true,
+        "unified_turn_live_enabled": true,
+        "unified_turn_embedding_tool_retrieval": true,
+        "unified_turn_embed_min_catalog_tools": 40,
+        "unified_turn_task_model_tier": "low",
+        "internet_research_enabled": true,
+        "web_research_provider_configured": true,
         "checks": {
           "database": "healthy",
           "cache": "healthy",
@@ -2856,26 +2955,26 @@
         }
       },
       "deploy_sha_ok": true,
-      "finished_at": "2026-07-19T04:12:30.401320+00:00"
+      "finished_at": "2026-07-23T08:41:26.746400+00:00"
     },
     "research_cascade": {
-      "started_at": "2026-07-19T04:12:33.157737+00:00",
-      "base_url": "https://gravitre-saas-backend-production.up.railway.app",
-      "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
-      "conversation_id": "b102e668-d1f1-4bd5-b826-76a082095b38",
+      "started_at": "2026-07-23T08:41:29.528552+00:00",
+      "base_url": "https://api.gravitre.app",
+      "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+      "conversation_id": "6967718a-1614-461b-8b9f-2d504b1c80cd",
       "min_sha_prefix": "716864e6",
       "checks": {
         "deploy_sha": {
           "pass": true,
-          "git_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+          "git_sha": "5b515b56b3e9f850ad7075a9e957dec5faecbe04",
           "required_prefix": "716864e6"
         },
         "thin_suggest_broaden": {
-          "pass": false,
+          "pass": true,
           "detail": "suggest_broaden or internal_thin in researchCascade SSE"
         },
         "scoped_enrichment": {
-          "pass": false,
+          "pass": true,
           "detail": "confidence_band/source_breakdown/stage_progress in final researchCascade"
         },
         "progress_steps_sse": {
@@ -2883,14 +2982,21 @@
           "detail": "progressSteps in mid/final SSE"
         }
       },
-      "pass": false,
+      "pass": true,
       "health": {
         "status": "ok",
-        "timestamp": "2026-07-19T04:12:33.499948+00:00",
+        "timestamp": "2026-07-23T08:41:29.717251+00:00",
         "version": "0.1.0",
         "environment": "prod",
-        "git_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+        "git_sha": "5b515b56b3e9f850ad7075a9e957dec5faecbe04",
         "ai_disabled": false,
+        "unified_turn_shadow_enabled": true,
+        "unified_turn_live_enabled": true,
+        "unified_turn_embedding_tool_retrieval": true,
+        "unified_turn_embed_min_catalog_tools": 40,
+        "unified_turn_task_model_tier": "low",
+        "internet_research_enabled": true,
+        "web_research_provider_configured": true,
         "checks": {
           "database": "healthy",
           "cache": "healthy",
@@ -2900,33 +3006,288 @@
       },
       "trace_thin": {
         "http_status": 200,
-        "cascade_count": 0,
-        "cascade": {},
-        "event_count": 10
+        "cascade_count": 1,
+        "cascade": {
+          "internal_thin": true,
+          "suggest_broaden": true,
+          "prompt_message": "I found limited information within your organization's connected knowledge. I can broaden my research.",
+          "options": [
+            {
+              "scope": "internal_only",
+              "label": "Internal only",
+              "description": "Stay with your connected knowledge, memory, and graph.",
+              "enabled": true
+            },
+            {
+              "scope": "intelligence_packs",
+              "label": "+ Intelligence Packs",
+              "description": "Add curated pack signals and external source hints.",
+              "enabled": true
+            },
+            {
+              "scope": "internet_research",
+              "label": "+ Live Internet Research",
+              "description": "Search the public web when governance allows.",
+              "enabled": true,
+              "disabled_reason": null
+            },
+            {
+              "scope": "everything",
+              "label": "Everything available",
+              "description": "Use all enabled internal and pack sources.",
+              "enabled": true
+            }
+          ],
+          "research_scope": "internal_only",
+          "active_stages": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "reasoning"
+          ],
+          "stage_order": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "intelligence_packs",
+            "internet_research",
+            "reasoning"
+          ],
+          "internet_research_enabled": true,
+          "retrieval_score": null,
+          "source_count": 0,
+          "confidence_band": "unknown",
+          "top_sources": [],
+          "source_breakdown": {},
+          "stage_progress": [
+            {
+              "stage": "conversation_memory",
+              "label": "Conversation Memory",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "internal_rag",
+              "label": "Internal Rag",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "knowledge_graph",
+              "label": "Knowledge Graph",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "connectors",
+              "label": "Connectors",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "reasoning",
+              "label": "Reasoning",
+              "status": "pending",
+              "detail": null
+            }
+          ],
+          "progress_steps": [
+            "Conversation Memory complete",
+            "Internal Rag complete",
+            "Knowledge Graph complete",
+            "Connectors complete",
+            "Reasoning\u2026"
+          ],
+          "research_manager": true,
+          "cascade_stopped_at": null,
+          "confidence_sufficient": false,
+          "skip_graph": false,
+          "skip_external": false,
+          "planned_stages": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "reasoning"
+          ]
+        },
+        "event_count": 69
       },
       "trace_scoped": {
         "http_status": 200,
-        "cascade_count": 0,
-        "cascade": {},
-        "event_count": 10
+        "cascade_count": 1,
+        "cascade": {
+          "internal_thin": false,
+          "suggest_broaden": false,
+          "prompt_message": null,
+          "options": [],
+          "research_scope": "everything",
+          "active_stages": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "intelligence_packs",
+            "internet_research",
+            "reasoning"
+          ],
+          "stage_order": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "intelligence_packs",
+            "internet_research",
+            "reasoning"
+          ],
+          "internet_research_enabled": true,
+          "retrieval_score": 0.55,
+          "source_count": 5,
+          "internet_research": {
+            "ran": true,
+            "skipped_reason": null,
+            "result_count": 5,
+            "error": null,
+            "provider": "tavily"
+          },
+          "confidence_band": "medium",
+          "top_sources": [
+            {
+              "source_name": "Customers check returns policies before they buy, study finds | CX Dive",
+              "source_type": "internet",
+              "assignment_id": null,
+              "score": 0.55,
+              "match_tier": null,
+              "url": "https://www.customerexperiencedive.com/news/customers-check-returns-policies-before-buy/815353"
+            },
+            {
+              "source_name": "How Refund Policies Encourage Us To Spend More (based on the studies)",
+              "source_type": "internet",
+              "assignment_id": null,
+              "score": 0.55,
+              "match_tier": null,
+              "url": "https://www.becomingminimalist.com/return"
+            },
+            {
+              "source_name": "Money Back Guarantee: Do You Need One?",
+              "source_type": "internet",
+              "assignment_id": null,
+              "score": 0.55,
+              "match_tier": null,
+              "url": "https://termly.io/resources/articles/money-back-guarantee"
+            },
+            {
+              "source_name": "Refund Policy | IgMin Research - A BioMedical Engineering Open Access Journal",
+              "source_type": "internet",
+              "assignment_id": null,
+              "score": 0.55,
+              "match_tier": null,
+              "url": "https://www.igminresearch.com/pages/policies/refund-policy"
+            },
+            {
+              "source_name": "Return & Refund Policy Template",
+              "source_type": "internet",
+              "assignment_id": null,
+              "score": 0.55,
+              "match_tier": null,
+              "url": "https://www.termsfeed.com/blog/sample-return-policy-ecommerce-stores"
+            }
+          ],
+          "source_breakdown": {
+            "internet": 5
+          },
+          "stage_progress": [
+            {
+              "stage": "conversation_memory",
+              "label": "Conversation Memory",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "internal_rag",
+              "label": "Internal Rag",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "knowledge_graph",
+              "label": "Knowledge Graph",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "connectors",
+              "label": "Connectors",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "intelligence_packs",
+              "label": "Intelligence Packs",
+              "status": "skipped",
+              "detail": "no pack assignments"
+            },
+            {
+              "stage": "internet_research",
+              "label": "Internet Research",
+              "status": "completed",
+              "detail": "5 web results"
+            },
+            {
+              "stage": "reasoning",
+              "label": "Reasoning",
+              "status": "pending",
+              "detail": null
+            }
+          ],
+          "progress_steps": [
+            "Conversation Memory complete",
+            "Internal Rag complete",
+            "Knowledge Graph complete",
+            "Connectors complete",
+            "Intelligence Packs skipped (no pack assignments)",
+            "Internet Research complete (5 web results)",
+            "Reasoning\u2026"
+          ],
+          "research_manager": true,
+          "cascade_stopped_at": null,
+          "confidence_sufficient": false,
+          "skip_graph": false,
+          "skip_external": false,
+          "planned_stages": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "internet_research",
+            "reasoning"
+          ]
+        },
+        "event_count": 61
       },
-      "finished_at": "2026-07-19T04:12:40.775221+00:00"
+      "finished_at": "2026-07-23T08:42:14.703060+00:00"
     }
   },
   "pass": true,
   "partial_checks": {
     "wave67_spotcheck": "claim_3_approval_result_url_partial"
   },
-  "delegated_checks": {
-    "research_cascade": "thin/scoped cascade UI validated via retrieval_ab D_thin_broaden + progress_steps_sse"
-  },
   "health_at_end": {
     "status": "ok",
-    "timestamp": "2026-07-19T04:12:40.715802+00:00",
+    "timestamp": "2026-07-23T08:42:14.989208+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "c36f92d3cfdf80cc6eb581f81a7c0223a95d56be",
+    "git_sha": "5b515b56b3e9f850ad7075a9e957dec5faecbe04",
     "ai_disabled": false,
+    "unified_turn_shadow_enabled": true,
+    "unified_turn_live_enabled": true,
+    "unified_turn_embedding_tool_retrieval": true,
+    "unified_turn_embed_min_catalog_tools": 40,
+    "unified_turn_task_model_tier": "low",
+    "internet_research_enabled": true,
+    "web_research_provider_configured": true,
     "checks": {
       "database": "healthy",
       "cache": "healthy",
@@ -2934,6 +3295,6 @@
       "clickhouse": "configured"
     }
   },
-  "finished_at": "2026-07-19T04:12:41.155286+00:00",
+  "finished_at": "2026-07-23T08:42:15.160197+00:00",
   "ci_run_url": "https://github.com"
 }
