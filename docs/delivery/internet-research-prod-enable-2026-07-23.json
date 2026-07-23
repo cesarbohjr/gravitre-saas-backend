@@ -1,0 +1,19 @@
+{
+  "record": "internet_research_prod_enable_verification",
+  "verified_at": "2026-07-23T07:34:23Z",
+  "prod_git_sha": "021b72b81681deb72d2bf6431457a36c19cc13ac",
+  "health_url": "https://api.gravitre.app/health",
+  "internet_research_enabled": true,
+  "web_research_provider_configured": true,
+  "railway": {
+    "INTERNET_RESEARCH_ENABLED": "true",
+    "provider_keys_present": true
+  },
+  "verdict": "PASS — prod flag and provider readiness confirmed on /health",
+  "notes": [
+    "Hybrid allotments 10/60/200 already on billing_plans; Stripe overage path unchanged.",
+    "Billing UI remaining_research_lookups shipped in commit 021b72b8.",
+    "Local smoke-internet-research-live.py uses local Settings (no prod keys in workspace parse) — use prod /health + chat cascade for live grounding evidence."
+  ],
+  "prior_live_grounding": "docs/delivery/milestone1-live-reverify-latest.json research_cascade internet_research.ran=true @ e749a88b"
+}
