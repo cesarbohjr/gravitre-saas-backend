@@ -7,6 +7,11 @@ on:
         description: "Lookback window for conversation hunt"
         required: false
         default: "96"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/probe-gmail-live-bugs-audit.py"
+      - ".github/workflows/probe-gmail-live-bugs-audit.yml"
 
 concurrency:
   group: probe-gmail-live-bugs-audit
