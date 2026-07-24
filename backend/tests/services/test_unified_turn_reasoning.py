@@ -475,3 +475,44 @@ async def test_apply_unified_live_rejects_phantom_hold_abandon():
         )
 
     assert out is None
+
+
+@pytest.mark.asyncio
+async def test_apply_unified_live_rejects_false_gmail_disconnect_claim():
+    settings = MagicMock(unified_turn_live_enabled=True, openai_api_key="sk-test")
+    bad = UnifiedTurnShadowResult(
+        outcome_kind="conversational_reply",
+        user_message="Gmail isn't Connected here. Connect it at /connectors.",
+        connected_integrations=["gmail"],
+    )
+
+    with patch(
+        "app.services.unified_turn_reasoning_service.run_unified_turn_shadow",
+        new=AsyncMock(return_value=bad),
+    ), patch(
+        "app.services.unified_turn_reasoning_service.emit_unified_turn_shadow_audit",
+    ) as audit:
+        out = await apply_unified_turn_live(
+            org_id="org",
+            user_id="user",
+            conversation_id="conv",
+            message="send email to demo@example.com",
+            task_state={},
+            conversation_history=[],
+            connected_integrations=["gmail"],
+            settings=settings,
+        )
+
+    assert out is None
+    assert bad.fallthrough_reason == "false_connector_disconnect_claim"
+
+
+def test_unified_turn_audit_payload_includes_connected_integrations():
+    result = UnifiedTurnShadowResult(
+        outcome_kind="conversational_reply",
+        user_message="Ready when you are.",
+        connected_integrations=["gmail", "hubspot"],
+        live_served=True,
+    )
+    payload = result.to_audit_payload()
+    assert payload["connected_integrations"] == ["gmail", "hubspot"]

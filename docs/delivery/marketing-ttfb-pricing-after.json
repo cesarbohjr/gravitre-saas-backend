@@ -1,0 +1,27 @@
+{
+  "feature": "marketing_ttfb",
+  "label": "pricing-after",
+  "measured_at": "2026-07-24T06:46:30.166646+00:00",
+  "url": "https://gravitre.app/pricing",
+  "samples": 5,
+  "statuses": [
+    200,
+    200,
+    200,
+    200,
+    200
+  ],
+  "ttfb_ms": {
+    "min": 733.3,
+    "p50": 887.8,
+    "p90": 1419.0,
+    "max": 2043.3,
+    "all": [
+      2043.3,
+      887.8,
+      1419.0,
+      839.1,
+      733.3
+    ]
+  }
+}

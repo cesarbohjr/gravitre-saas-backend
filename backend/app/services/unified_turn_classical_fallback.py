@@ -60,8 +60,9 @@ def should_defer_unified_turn_live_to_classical(
     _ = (mode_key, classification)  # mode no longer blankets text-kind defer
 
     if kind == "connector_tool_proposal":
-        # Classical path emits tool SSE + react_write_gate; unified only stages pending text.
-        return True
+        # Unified LIVE stages write approval + pending_task; classical was misrouting
+        # Gmail sends into HubSpot clarify (defer_connector_tool_proposal bug).
+        return False
 
     if kind not in {
         "conversational_reply",

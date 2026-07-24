@@ -1,0 +1,27 @@
+{
+  "feature": "marketing_ttfb",
+  "label": "home-after",
+  "measured_at": "2026-07-24T06:46:36.422824+00:00",
+  "url": "https://gravitre.app/",
+  "samples": 5,
+  "statuses": [
+    200,
+    200,
+    200,
+    200,
+    200
+  ],
+  "ttfb_ms": {
+    "min": 630.4,
+    "p50": 703.6,
+    "p90": 872.6,
+    "max": 1430.4,
+    "all": [
+      1430.4,
+      703.6,
+      872.6,
+      642.5,
+      630.4
+    ]
+  }
+}
