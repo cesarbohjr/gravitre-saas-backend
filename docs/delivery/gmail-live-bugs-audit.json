@@ -1,0 +1,2049 @@
+{
+  "probe": "gmail_live_bugs_audit",
+  "started_at": "2026-07-24T06:19:28.578821+00:00",
+  "since": "2026-07-20T06:19:28.578792+00:00",
+  "since_hours": 96,
+  "prod_git_sha": "fc50f4da7166f17330b4b870ef1653723e646572",
+  "unified_turn_live_enabled": true,
+  "hunt": {
+    "direct_search_hit_count": 2,
+    "user_no_use_gmail_hits": [
+      {
+        "message_id": "50687ab0-f8e4-4d88-b701-002d5a4edaf0",
+        "conversation_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+        "created_at": "2026-07-24T03:05:54.753382+00:00",
+        "role": "user",
+        "content_head": "No use Gmail.",
+        "search_pattern": "%no use gmail%",
+        "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+        "conversation_title": "Gmail is connected"
+      },
+      {
+        "message_id": "50687ab0-f8e4-4d88-b701-002d5a4edaf0",
+        "conversation_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+        "created_at": "2026-07-24T03:05:54.753382+00:00",
+        "role": "user",
+        "content_head": "No use Gmail.",
+        "search_pattern": "%No use Gmail%",
+        "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+        "conversation_title": "Gmail is connected"
+      }
+    ],
+    "assistant_gmail_disconnected_hits": []
+  },
+  "bug1_gmail_disconnected_while_ui_green": [],
+  "bug2_no_use_gmail_correction": [
+    {
+      "hit": {
+        "message_id": "50687ab0-f8e4-4d88-b701-002d5a4edaf0",
+        "conversation_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+        "created_at": "2026-07-24T03:05:54.753382+00:00",
+        "role": "user",
+        "content_head": "No use Gmail.",
+        "search_pattern": "%no use gmail%",
+        "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+        "conversation_title": "Gmail is connected"
+      },
+      "conversation": {
+        "id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+        "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+        "task_state": {
+          "current_plan": null,
+          "pending_task": null,
+          "pending_steps": [],
+          "preferred_tone": null,
+          "completed_steps": [],
+          "approved_actions": [],
+          "clarified_params": {},
+          "parameter_ledger": {
+            "slots": {
+              "to": {
+                "value": "Stephaniekhan2002@gmail.com",
+                "source": "user_message",
+                "confidence": "high",
+                "turn_index": 4
+              },
+              "body": {
+                "value": "of the email is: I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s Ai chat",
+                "source": "user_message",
+                "confidence": "high",
+                "turn_index": 4
+              },
+              "email": {
+                "value": "Stephaniekhan2002@gmail.com",
+                "source": "user_message",
+                "confidence": "high",
+                "turn_index": 4
+              },
+              "subject": {
+                "value": ": Test the",
+                "source": "user_message",
+                "confidence": "high",
+                "turn_index": 4
+              }
+            },
+            "pending_missing": []
+          },
+          "persona_override": null,
+          "rejected_options": [],
+          "unresolved_tasks": [],
+          "connector_session": {},
+          "resolved_entities": {},
+          "recent_user_messages": [
+            "Send an email",
+            "Send an email",
+            "The recipient is Stephaniekhan2002@gmail.com and subject is: Test the body of the email is: I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s Ai chat.",
+            "The recipient is Stephaniekhan2002@gmail.com and subject is: Test the body of the email is: I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s Ai chat.",
+            "No goal. Just send",
+            "No goal. Just send",
+            "No use Gmail.",
+            "No use Gmail.",
+            "Gmail is connected",
+            "Gmail is connected"
+          ],
+          "voice_expression_last": {},
+          "suppressed_suggestions": []
+        },
+        "title": "Gmail is connected",
+        "updated_at": "2026-07-24T03:09:32.702659+00:00"
+      },
+      "correction_analysis": {
+        "correction_message": "No use Gmail.",
+        "correction_index": 6,
+        "detect_correction_phrase": null,
+        "detect_correction_matched": false,
+        "pending_task_integration": null,
+        "pending_task": null,
+        "classify_pending_reply_after_correction": null,
+        "assistant_messages_after_correction": [
+          {
+            "created_at": "2026-07-24T03:05:54.754382+00:00",
+            "content_head": "Gmail isn\u2019t Connected here. I can\u2019t send it from this turn.\n\nIf you want, I can help draft the exact email text, or you can connect Gmail and I\u2019ll continue.",
+            "mentions_gmail": true,
+            "asks_email_params": false
+          }
+        ]
+      },
+      "thread": [
+        {
+          "id": "62c2bcd6-266b-455c-873b-614c66c26e0f",
+          "role": "user",
+          "created_at": "2026-07-24T03:03:19.01595+00:00",
+          "content": "Send an email",
+          "tool_calls": null
+        },
+        {
+          "id": "b2681844-e751-43be-85fb-d56c247f4ba1",
+          "role": "assistant",
+          "created_at": "2026-07-24T03:03:19.01695+00:00",
+          "content": "I need the recipient, subject, and body.",
+          "tool_calls": null
+        },
+        {
+          "id": "55ad5bac-2097-410a-aa3f-9fef93116410",
+          "role": "user",
+          "created_at": "2026-07-24T03:04:43.696833+00:00",
+          "content": "The recipient is Stephaniekhan2002@gmail.com and subject is: Test the body of the email is: I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s Ai chat.",
+          "tool_calls": null
+        },
+        {
+          "id": "3a8992ea-8c21-4ea6-a10f-25f780b30e04",
+          "role": "assistant",
+          "created_at": "2026-07-24T03:04:43.697833+00:00",
+          "content": "I still need the tone and goal of the email.",
+          "tool_calls": null
+        },
+        {
+          "id": "28ce95a1-1d8b-4e9e-a484-3fb7fb59e790",
+          "role": "user",
+          "created_at": "2026-07-24T03:05:25.448225+00:00",
+          "content": "No goal. Just send",
+          "tool_calls": null
+        },
+        {
+          "id": "37a2ab5c-7def-4104-a16f-476c8bee9c90",
+          "role": "assistant",
+          "created_at": "2026-07-24T03:05:25.449225+00:00",
+          "content": "To do that, I need to know a specific target \u2014 reply with a name, ID, or link, or ask me to search HubSpot/contacts first and pick from results. Could you share that?",
+          "tool_calls": null
+        },
+        {
+          "id": "50687ab0-f8e4-4d88-b701-002d5a4edaf0",
+          "role": "user",
+          "created_at": "2026-07-24T03:05:54.753382+00:00",
+          "content": "No use Gmail.",
+          "tool_calls": null
+        },
+        {
+          "id": "81c40a56-f1a9-4d27-87fb-03b07468c4b7",
+          "role": "assistant",
+          "created_at": "2026-07-24T03:05:54.754382+00:00",
+          "content": "Gmail isn\u2019t Connected here. I can\u2019t send it from this turn.\n\nIf you want, I can help draft the exact email text, or you can connect Gmail and I\u2019ll continue.",
+          "tool_calls": null
+        }
+      ],
+      "audit_event_count": 5,
+      "unified_turn_audits": [
+        {
+          "id": "6d3b5a88-7a64-4a3b-9743-c1148094b98a",
+          "action": "unified_turn.live.completed",
+          "created_at": "2026-07-24T03:03:13.842784+00:00",
+          "resource_type": "conversation",
+          "resource_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+          "metadata": {
+            "error": null,
+            "model": "gpt-5.4-mini",
+            "streamed": true,
+            "tool_name": null,
+            "latency_ms": 2613,
+            "tool_stats": {
+              "compressed": true,
+              "totalTools": 106,
+              "visibleTools": 16,
+              "topSimilarity": 0.4966,
+              "turnShapeHint": "task_shaped",
+              "actionRequired": true,
+              "retrievalMethod": "embedding_narrow_tools_for_turn",
+              "focusedConnectors": [
+                "apollo",
+                "gmail",
+                "google_search_console"
+              ],
+              "toolsPayloadBytes": 6201,
+              "embeddingToolRetrieval": true,
+              "embeddingCandidateCount": 24,
+              "fullCatalogPayloadBytes": 60917
+            },
+            "live_served": true,
+            "outcome_kind": "conversational_reply",
+            "user_message": "I need the recipient, subject, and body.",
+            "tool_arguments": {},
+            "latency_breakdown": {
+              "total_tools": 106,
+              "pre_model_ms": 967,
+              "max_tools_cap": 16,
+              "model_ttft_ms": 1513,
+              "prompt_tokens": 3356,
+              "visible_tools": 16,
+              "messages_chars": 10641,
+              "model_total_ms": 1645,
+              "narrow_tools_ms": 966,
+              "retrieval_query": "Send an email",
+              "task_model_tier": "low",
+              "turn_shape_hint": "task_shaped",
+              "retrieval_method": "embedding_narrow_tools_for_turn",
+              "completion_tokens": 13,
+              "context_prompt_ms": 0,
+              "registry_tools_ms": 1,
+              "cached_prompt_ratio": 0.0,
+              "system_prompt_chars": 10087,
+              "tools_payload_bytes": 6201,
+              "cached_prompt_tokens": 0,
+              "wall_to_first_token_ms": 2481,
+              "embedding_tool_retrieval": true,
+              "openai_create_schedule_ms": 0,
+              "full_catalog_payload_bytes": 60917,
+              "pre_first_token_overhead_ms": 968
+            },
+            "fallthrough_reason": null,
+            "tool_invoke_action": null,
+            "shadow_user_visible": true,
+            "first_token_proxy_ms": 2481,
+            "classical_path_active": false,
+            "shadow_executes_tools": false,
+            "requires_write_approval": false
+          }
+        },
+        {
+          "id": "a3954490-9845-4b35-a8d6-ff4dc839dc91",
+          "action": "unified_turn.live.completed",
+          "created_at": "2026-07-24T03:04:39.129259+00:00",
+          "resource_type": "conversation",
+          "resource_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+          "metadata": {
+            "error": null,
+            "model": "gpt-5.4-mini",
+            "streamed": true,
+            "tool_name": null,
+            "latency_ms": 1231,
+            "tool_stats": {
+              "compressed": true,
+              "totalTools": 106,
+              "visibleTools": 8,
+              "topSimilarity": 0.3501,
+              "turnShapeHint": "task_shaped",
+              "actionRequired": false,
+              "retrievalMethod": "embedding_narrow_tools_for_turn",
+              "focusedConnectors": [
+                "gmail"
+              ],
+              "toolsPayloadBytes": 2780,
+              "embeddingToolRetrieval": true,
+              "embeddingCandidateCount": 5,
+              "fullCatalogPayloadBytes": 60917
+            },
+            "live_served": true,
+            "outcome_kind": "conversational_reply",
+            "user_message": "I still need the tone and goal of the email.",
+            "tool_arguments": {},
+            "latency_breakdown": {
+              "total_tools": 106,
+              "pre_model_ms": 435,
+              "max_tools_cap": 16,
+              "model_ttft_ms": 672,
+              "prompt_tokens": 2902,
+              "visible_tools": 8,
+              "messages_chars": 10666,
+              "model_total_ms": 795,
+              "narrow_tools_ms": 434,
+              "retrieval_query": "The recipient is [REDACTED_EMAIL] and subject is: Test the body of the email is: I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s Ai chat.",
+              "task_model_tier": "low",
+              "turn_shape_hint": "task_shaped",
+              "retrieval_method": "embedding_narrow_tools_for_turn",
+              "completion_tokens": 14,
+              "context_prompt_ms": 0,
+              "registry_tools_ms": 0,
+              "cached_prompt_ratio": 0.5734,
+              "system_prompt_chars": 10087,
+              "tools_payload_bytes": 2780,
+              "cached_prompt_tokens": 1664,
+              "wall_to_first_token_ms": 1108,
+              "embedding_tool_retrieval": true,
+              "openai_create_schedule_ms": 0,
+              "full_catalog_payload_bytes": 60917,
+              "pre_first_token_overhead_ms": 436
+            },
+            "fallthrough_reason": null,
+            "tool_invoke_action": null,
+            "shadow_user_visible": true,
+            "first_token_proxy_ms": 1108,
+            "classical_path_active": false,
+            "shadow_executes_tools": false,
+            "requires_write_approval": false
+          }
+        },
+        {
+          "id": "a26617e7-7d5f-430d-8395-c98cc71af556",
+          "action": "unified_turn.live.fallthrough",
+          "created_at": "2026-07-24T03:05:01.830316+00:00",
+          "resource_type": "conversation",
+          "resource_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+          "metadata": {
+            "error": null,
+            "model": "gpt-5.4-mini",
+            "streamed": true,
+            "tool_name": "gmail_messages_send",
+            "latency_ms": 1576,
+            "tool_stats": {
+              "compressed": true,
+              "totalTools": 106,
+              "visibleTools": 16,
+              "topSimilarity": 0.3193,
+              "turnShapeHint": "task_shaped",
+              "actionRequired": true,
+              "retrievalMethod": "embedding_narrow_tools_for_turn",
+              "focusedConnectors": [
+                "apollo",
+                "gmail",
+                "google_search_console"
+              ],
+              "toolsPayloadBytes": 6330,
+              "embeddingToolRetrieval": true,
+              "embeddingCandidateCount": 24,
+              "fullCatalogPayloadBytes": 60917
+            },
+            "live_served": false,
+            "outcome_kind": "connector_tool_proposal",
+            "user_message": "",
+            "tool_arguments": {
+              "to": "[REDACTED_EMAIL]",
+              "body": "I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s AI chat.",
+              "subject": "Test"
+            },
+            "latency_breakdown": {
+              "total_tools": 106,
+              "pre_model_ms": 525,
+              "max_tools_cap": 16,
+              "model_ttft_ms": 715,
+              "prompt_tokens": 3474,
+              "visible_tools": 16,
+              "messages_chars": 10918,
+              "model_total_ms": 1050,
+              "narrow_tools_ms": 523,
+              "retrieval_query": "No goal. Just send",
+              "task_model_tier": "low",
+              "turn_shape_hint": "task_shaped",
+              "retrieval_method": "embedding_narrow_tools_for_turn",
+              "completion_tokens": 52,
+              "context_prompt_ms": 0,
+              "registry_tools_ms": 1,
+              "cached_prompt_ratio": 0.479,
+              "system_prompt_chars": 10087,
+              "tools_payload_bytes": 6330,
+              "cached_prompt_tokens": 1664,
+              "wall_to_first_token_ms": 1241,
+              "embedding_tool_retrieval": true,
+              "openai_create_schedule_ms": 0,
+              "full_catalog_payload_bytes": 60917,
+              "pre_first_token_overhead_ms": 526
+            },
+            "fallthrough_reason": "defer_connector_tool_proposal",
+            "tool_invoke_action": "gmail.messages.send",
+            "shadow_user_visible": false,
+            "first_token_proxy_ms": 1241,
+            "classical_path_active": true,
+            "shadow_executes_tools": false,
+            "requires_write_approval": true
+          }
+        },
+        {
+          "id": "3fadd3a5-a0ff-4442-8921-d2db725003f1",
+          "action": "unified_turn.live.completed",
+          "created_at": "2026-07-24T03:05:50.061686+00:00",
+          "resource_type": "conversation",
+          "resource_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+          "metadata": {
+            "error": null,
+            "model": "gpt-5.4-mini",
+            "streamed": true,
+            "tool_name": null,
+            "latency_ms": 1336,
+            "tool_stats": {
+              "compressed": true,
+              "totalTools": 106,
+              "visibleTools": 8,
+              "topSimilarity": 0.4176,
+              "turnShapeHint": "task_shaped",
+              "actionRequired": false,
+              "retrievalMethod": "embedding_narrow_tools_for_turn",
+              "focusedConnectors": [
+                "gmail"
+              ],
+              "toolsPayloadBytes": 2780,
+              "embeddingToolRetrieval": true,
+              "embeddingCandidateCount": 5,
+              "fullCatalogPayloadBytes": 60917
+            },
+            "live_served": true,
+            "outcome_kind": "conversational_reply",
+            "user_message": "Gmail isn\u2019t Connected here. I can\u2019t send it from this turn.\n\nIf you want, I can help draft the exact email text, or you can connect Gmail and I\u2019ll continue.",
+            "tool_arguments": {},
+            "latency_breakdown": {
+              "total_tools": 106,
+              "pre_model_ms": 417,
+              "max_tools_cap": 16,
+              "model_ttft_ms": 623,
+              "prompt_tokens": 2984,
+              "visible_tools": 8,
+              "messages_chars": 10907,
+              "model_total_ms": 918,
+              "narrow_tools_ms": 416,
+              "retrieval_query": "No use Gmail.",
+              "task_model_tier": "low",
+              "turn_shape_hint": "task_shaped",
+              "retrieval_method": "embedding_narrow_tools_for_turn",
+              "completion_tokens": 48,
+              "context_prompt_ms": 0,
+              "registry_tools_ms": 0,
+              "cached_prompt_ratio": 0.9008,
+              "system_prompt_chars": 10087,
+              "tools_payload_bytes": 2780,
+              "cached_prompt_tokens": 2688,
+              "wall_to_first_token_ms": 1041,
+              "embedding_tool_retrieval": true,
+              "openai_create_schedule_ms": 0,
+              "full_catalog_payload_bytes": 60917,
+              "pre_first_token_overhead_ms": 418
+            },
+            "fallthrough_reason": null,
+            "tool_invoke_action": null,
+            "shadow_user_visible": true,
+            "first_token_proxy_ms": 1041,
+            "classical_path_active": false,
+            "shadow_executes_tools": false,
+            "requires_write_approval": false
+          }
+        },
+        {
+          "id": "3eba2983-63cf-44be-943c-9f1ed0b3e53c",
+          "action": "unified_turn.live.completed",
+          "created_at": "2026-07-24T03:11:50.489615+00:00",
+          "resource_type": "conversation",
+          "resource_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+          "metadata": {
+            "error": null,
+            "model": "gpt-5.4-mini",
+            "streamed": true,
+            "tool_name": null,
+            "latency_ms": 8062,
+            "tool_stats": {
+              "compressed": true,
+              "totalTools": 106,
+              "visibleTools": 8,
+              "topSimilarity": 0.4685,
+              "turnShapeHint": "task_shaped",
+              "actionRequired": false,
+              "retrievalMethod": "embedding_narrow_tools_for_turn",
+              "focusedConnectors": [
+                "gmail"
+              ],
+              "toolsPayloadBytes": 2780,
+              "embeddingToolRetrieval": true,
+              "embeddingCandidateCount": 5,
+              "fullCatalogPayloadBytes": 60917
+            },
+            "live_served": true,
+            "outcome_kind": "conversational_reply",
+            "user_message": "Good. I still need your approval to send it.\n\nReply **yes** to send, or **cancel** to stop.",
+            "tool_arguments": {},
+            "latency_breakdown": {
+              "total_tools": 106,
+              "pre_model_ms": 344,
+              "max_tools_cap": 16,
+              "model_ttft_ms": 7647,
+              "prompt_tokens": 3037,
+              "visible_tools": 8,
+              "messages_chars": 11081,
+              "model_total_ms": 7716,
+              "narrow_tools_ms": 343,
+              "retrieval_query": "Gmail is connected",
+              "task_model_tier": "low",
+              "turn_shape_hint": "task_shaped",
+              "retrieval_method": "embedding_narrow_tools_for_turn",
+              "completion_tokens": 34,
+              "context_prompt_ms": 0,
+              "registry_tools_ms": 0,
+              "cached_prompt_ratio": 0.8851,
+              "system_prompt_chars": 10087,
+              "tools_payload_bytes": 2780,
+              "cached_prompt_tokens": 2688,
+              "wall_to_first_token_ms": 7992,
+              "embedding_tool_retrieval": true,
+              "openai_create_schedule_ms": 0,
+              "full_catalog_payload_bytes": 60917,
+              "pre_first_token_overhead_ms": 345
+            },
+            "fallthrough_reason": null,
+            "tool_invoke_action": null,
+            "shadow_user_visible": true,
+            "first_token_proxy_ms": 7992,
+            "classical_path_active": false,
+            "shadow_executes_tools": false,
+            "requires_write_approval": false
+          }
+        }
+      ]
+    },
+    {
+      "hit": {
+        "message_id": "50687ab0-f8e4-4d88-b701-002d5a4edaf0",
+        "conversation_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+        "created_at": "2026-07-24T03:05:54.753382+00:00",
+        "role": "user",
+        "content_head": "No use Gmail.",
+        "search_pattern": "%No use Gmail%",
+        "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+        "conversation_title": "Gmail is connected"
+      },
+      "conversation": {
+        "id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+        "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+        "task_state": {
+          "current_plan": null,
+          "pending_task": null,
+          "pending_steps": [],
+          "preferred_tone": null,
+          "completed_steps": [],
+          "approved_actions": [],
+          "clarified_params": {},
+          "parameter_ledger": {
+            "slots": {
+              "to": {
+                "value": "Stephaniekhan2002@gmail.com",
+                "source": "user_message",
+                "confidence": "high",
+                "turn_index": 4
+              },
+              "body": {
+                "value": "of the email is: I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s Ai chat",
+                "source": "user_message",
+                "confidence": "high",
+                "turn_index": 4
+              },
+              "email": {
+                "value": "Stephaniekhan2002@gmail.com",
+                "source": "user_message",
+                "confidence": "high",
+                "turn_index": 4
+              },
+              "subject": {
+                "value": ": Test the",
+                "source": "user_message",
+                "confidence": "high",
+                "turn_index": 4
+              }
+            },
+            "pending_missing": []
+          },
+          "persona_override": null,
+          "rejected_options": [],
+          "unresolved_tasks": [],
+          "connector_session": {},
+          "resolved_entities": {},
+          "recent_user_messages": [
+            "Send an email",
+            "Send an email",
+            "The recipient is Stephaniekhan2002@gmail.com and subject is: Test the body of the email is: I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s Ai chat.",
+            "The recipient is Stephaniekhan2002@gmail.com and subject is: Test the body of the email is: I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s Ai chat.",
+            "No goal. Just send",
+            "No goal. Just send",
+            "No use Gmail.",
+            "No use Gmail.",
+            "Gmail is connected",
+            "Gmail is connected"
+          ],
+          "voice_expression_last": {},
+          "suppressed_suggestions": []
+        },
+        "title": "Gmail is connected",
+        "updated_at": "2026-07-24T03:09:32.702659+00:00"
+      },
+      "correction_analysis": {
+        "correction_message": "No use Gmail.",
+        "correction_index": 6,
+        "detect_correction_phrase": null,
+        "detect_correction_matched": false,
+        "pending_task_integration": null,
+        "pending_task": null,
+        "classify_pending_reply_after_correction": null,
+        "assistant_messages_after_correction": [
+          {
+            "created_at": "2026-07-24T03:05:54.754382+00:00",
+            "content_head": "Gmail isn\u2019t Connected here. I can\u2019t send it from this turn.\n\nIf you want, I can help draft the exact email text, or you can connect Gmail and I\u2019ll continue.",
+            "mentions_gmail": true,
+            "asks_email_params": false
+          }
+        ]
+      },
+      "thread": [
+        {
+          "id": "62c2bcd6-266b-455c-873b-614c66c26e0f",
+          "role": "user",
+          "created_at": "2026-07-24T03:03:19.01595+00:00",
+          "content": "Send an email",
+          "tool_calls": null
+        },
+        {
+          "id": "b2681844-e751-43be-85fb-d56c247f4ba1",
+          "role": "assistant",
+          "created_at": "2026-07-24T03:03:19.01695+00:00",
+          "content": "I need the recipient, subject, and body.",
+          "tool_calls": null
+        },
+        {
+          "id": "55ad5bac-2097-410a-aa3f-9fef93116410",
+          "role": "user",
+          "created_at": "2026-07-24T03:04:43.696833+00:00",
+          "content": "The recipient is Stephaniekhan2002@gmail.com and subject is: Test the body of the email is: I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s Ai chat.",
+          "tool_calls": null
+        },
+        {
+          "id": "3a8992ea-8c21-4ea6-a10f-25f780b30e04",
+          "role": "assistant",
+          "created_at": "2026-07-24T03:04:43.697833+00:00",
+          "content": "I still need the tone and goal of the email.",
+          "tool_calls": null
+        },
+        {
+          "id": "28ce95a1-1d8b-4e9e-a484-3fb7fb59e790",
+          "role": "user",
+          "created_at": "2026-07-24T03:05:25.448225+00:00",
+          "content": "No goal. Just send",
+          "tool_calls": null
+        },
+        {
+          "id": "37a2ab5c-7def-4104-a16f-476c8bee9c90",
+          "role": "assistant",
+          "created_at": "2026-07-24T03:05:25.449225+00:00",
+          "content": "To do that, I need to know a specific target \u2014 reply with a name, ID, or link, or ask me to search HubSpot/contacts first and pick from results. Could you share that?",
+          "tool_calls": null
+        },
+        {
+          "id": "50687ab0-f8e4-4d88-b701-002d5a4edaf0",
+          "role": "user",
+          "created_at": "2026-07-24T03:05:54.753382+00:00",
+          "content": "No use Gmail.",
+          "tool_calls": null
+        },
+        {
+          "id": "81c40a56-f1a9-4d27-87fb-03b07468c4b7",
+          "role": "assistant",
+          "created_at": "2026-07-24T03:05:54.754382+00:00",
+          "content": "Gmail isn\u2019t Connected here. I can\u2019t send it from this turn.\n\nIf you want, I can help draft the exact email text, or you can connect Gmail and I\u2019ll continue.",
+          "tool_calls": null
+        }
+      ],
+      "audit_event_count": 5,
+      "unified_turn_audits": [
+        {
+          "id": "6d3b5a88-7a64-4a3b-9743-c1148094b98a",
+          "action": "unified_turn.live.completed",
+          "created_at": "2026-07-24T03:03:13.842784+00:00",
+          "resource_type": "conversation",
+          "resource_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+          "metadata": {
+            "error": null,
+            "model": "gpt-5.4-mini",
+            "streamed": true,
+            "tool_name": null,
+            "latency_ms": 2613,
+            "tool_stats": {
+              "compressed": true,
+              "totalTools": 106,
+              "visibleTools": 16,
+              "topSimilarity": 0.4966,
+              "turnShapeHint": "task_shaped",
+              "actionRequired": true,
+              "retrievalMethod": "embedding_narrow_tools_for_turn",
+              "focusedConnectors": [
+                "apollo",
+                "gmail",
+                "google_search_console"
+              ],
+              "toolsPayloadBytes": 6201,
+              "embeddingToolRetrieval": true,
+              "embeddingCandidateCount": 24,
+              "fullCatalogPayloadBytes": 60917
+            },
+            "live_served": true,
+            "outcome_kind": "conversational_reply",
+            "user_message": "I need the recipient, subject, and body.",
+            "tool_arguments": {},
+            "latency_breakdown": {
+              "total_tools": 106,
+              "pre_model_ms": 967,
+              "max_tools_cap": 16,
+              "model_ttft_ms": 1513,
+              "prompt_tokens": 3356,
+              "visible_tools": 16,
+              "messages_chars": 10641,
+              "model_total_ms": 1645,
+              "narrow_tools_ms": 966,
+              "retrieval_query": "Send an email",
+              "task_model_tier": "low",
+              "turn_shape_hint": "task_shaped",
+              "retrieval_method": "embedding_narrow_tools_for_turn",
+              "completion_tokens": 13,
+              "context_prompt_ms": 0,
+              "registry_tools_ms": 1,
+              "cached_prompt_ratio": 0.0,
+              "system_prompt_chars": 10087,
+              "tools_payload_bytes": 6201,
+              "cached_prompt_tokens": 0,
+              "wall_to_first_token_ms": 2481,
+              "embedding_tool_retrieval": true,
+              "openai_create_schedule_ms": 0,
+              "full_catalog_payload_bytes": 60917,
+              "pre_first_token_overhead_ms": 968
+            },
+            "fallthrough_reason": null,
+            "tool_invoke_action": null,
+            "shadow_user_visible": true,
+            "first_token_proxy_ms": 2481,
+            "classical_path_active": false,
+            "shadow_executes_tools": false,
+            "requires_write_approval": false
+          }
+        },
+        {
+          "id": "a3954490-9845-4b35-a8d6-ff4dc839dc91",
+          "action": "unified_turn.live.completed",
+          "created_at": "2026-07-24T03:04:39.129259+00:00",
+          "resource_type": "conversation",
+          "resource_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+          "metadata": {
+            "error": null,
+            "model": "gpt-5.4-mini",
+            "streamed": true,
+            "tool_name": null,
+            "latency_ms": 1231,
+            "tool_stats": {
+              "compressed": true,
+              "totalTools": 106,
+              "visibleTools": 8,
+              "topSimilarity": 0.3501,
+              "turnShapeHint": "task_shaped",
+              "actionRequired": false,
+              "retrievalMethod": "embedding_narrow_tools_for_turn",
+              "focusedConnectors": [
+                "gmail"
+              ],
+              "toolsPayloadBytes": 2780,
+              "embeddingToolRetrieval": true,
+              "embeddingCandidateCount": 5,
+              "fullCatalogPayloadBytes": 60917
+            },
+            "live_served": true,
+            "outcome_kind": "conversational_reply",
+            "user_message": "I still need the tone and goal of the email.",
+            "tool_arguments": {},
+            "latency_breakdown": {
+              "total_tools": 106,
+              "pre_model_ms": 435,
+              "max_tools_cap": 16,
+              "model_ttft_ms": 672,
+              "prompt_tokens": 2902,
+              "visible_tools": 8,
+              "messages_chars": 10666,
+              "model_total_ms": 795,
+              "narrow_tools_ms": 434,
+              "retrieval_query": "The recipient is [REDACTED_EMAIL] and subject is: Test the body of the email is: I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s Ai chat.",
+              "task_model_tier": "low",
+              "turn_shape_hint": "task_shaped",
+              "retrieval_method": "embedding_narrow_tools_for_turn",
+              "completion_tokens": 14,
+              "context_prompt_ms": 0,
+              "registry_tools_ms": 0,
+              "cached_prompt_ratio": 0.5734,
+              "system_prompt_chars": 10087,
+              "tools_payload_bytes": 2780,
+              "cached_prompt_tokens": 1664,
+              "wall_to_first_token_ms": 1108,
+              "embedding_tool_retrieval": true,
+              "openai_create_schedule_ms": 0,
+              "full_catalog_payload_bytes": 60917,
+              "pre_first_token_overhead_ms": 436
+            },
+            "fallthrough_reason": null,
+            "tool_invoke_action": null,
+            "shadow_user_visible": true,
+            "first_token_proxy_ms": 1108,
+            "classical_path_active": false,
+            "shadow_executes_tools": false,
+            "requires_write_approval": false
+          }
+        },
+        {
+          "id": "a26617e7-7d5f-430d-8395-c98cc71af556",
+          "action": "unified_turn.live.fallthrough",
+          "created_at": "2026-07-24T03:05:01.830316+00:00",
+          "resource_type": "conversation",
+          "resource_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+          "metadata": {
+            "error": null,
+            "model": "gpt-5.4-mini",
+            "streamed": true,
+            "tool_name": "gmail_messages_send",
+            "latency_ms": 1576,
+            "tool_stats": {
+              "compressed": true,
+              "totalTools": 106,
+              "visibleTools": 16,
+              "topSimilarity": 0.3193,
+              "turnShapeHint": "task_shaped",
+              "actionRequired": true,
+              "retrievalMethod": "embedding_narrow_tools_for_turn",
+              "focusedConnectors": [
+                "apollo",
+                "gmail",
+                "google_search_console"
+              ],
+              "toolsPayloadBytes": 6330,
+              "embeddingToolRetrieval": true,
+              "embeddingCandidateCount": 24,
+              "fullCatalogPayloadBytes": 60917
+            },
+            "live_served": false,
+            "outcome_kind": "connector_tool_proposal",
+            "user_message": "",
+            "tool_arguments": {
+              "to": "[REDACTED_EMAIL]",
+              "body": "I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s AI chat.",
+              "subject": "Test"
+            },
+            "latency_breakdown": {
+              "total_tools": 106,
+              "pre_model_ms": 525,
+              "max_tools_cap": 16,
+              "model_ttft_ms": 715,
+              "prompt_tokens": 3474,
+              "visible_tools": 16,
+              "messages_chars": 10918,
+              "model_total_ms": 1050,
+              "narrow_tools_ms": 523,
+              "retrieval_query": "No goal. Just send",
+              "task_model_tier": "low",
+              "turn_shape_hint": "task_shaped",
+              "retrieval_method": "embedding_narrow_tools_for_turn",
+              "completion_tokens": 52,
+              "context_prompt_ms": 0,
+              "registry_tools_ms": 1,
+              "cached_prompt_ratio": 0.479,
+              "system_prompt_chars": 10087,
+              "tools_payload_bytes": 6330,
+              "cached_prompt_tokens": 1664,
+              "wall_to_first_token_ms": 1241,
+              "embedding_tool_retrieval": true,
+              "openai_create_schedule_ms": 0,
+              "full_catalog_payload_bytes": 60917,
+              "pre_first_token_overhead_ms": 526
+            },
+            "fallthrough_reason": "defer_connector_tool_proposal",
+            "tool_invoke_action": "gmail.messages.send",
+            "shadow_user_visible": false,
+            "first_token_proxy_ms": 1241,
+            "classical_path_active": true,
+            "shadow_executes_tools": false,
+            "requires_write_approval": true
+          }
+        },
+        {
+          "id": "3fadd3a5-a0ff-4442-8921-d2db725003f1",
+          "action": "unified_turn.live.completed",
+          "created_at": "2026-07-24T03:05:50.061686+00:00",
+          "resource_type": "conversation",
+          "resource_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+          "metadata": {
+            "error": null,
+            "model": "gpt-5.4-mini",
+            "streamed": true,
+            "tool_name": null,
+            "latency_ms": 1336,
+            "tool_stats": {
+              "compressed": true,
+              "totalTools": 106,
+              "visibleTools": 8,
+              "topSimilarity": 0.4176,
+              "turnShapeHint": "task_shaped",
+              "actionRequired": false,
+              "retrievalMethod": "embedding_narrow_tools_for_turn",
+              "focusedConnectors": [
+                "gmail"
+              ],
+              "toolsPayloadBytes": 2780,
+              "embeddingToolRetrieval": true,
+              "embeddingCandidateCount": 5,
+              "fullCatalogPayloadBytes": 60917
+            },
+            "live_served": true,
+            "outcome_kind": "conversational_reply",
+            "user_message": "Gmail isn\u2019t Connected here. I can\u2019t send it from this turn.\n\nIf you want, I can help draft the exact email text, or you can connect Gmail and I\u2019ll continue.",
+            "tool_arguments": {},
+            "latency_breakdown": {
+              "total_tools": 106,
+              "pre_model_ms": 417,
+              "max_tools_cap": 16,
+              "model_ttft_ms": 623,
+              "prompt_tokens": 2984,
+              "visible_tools": 8,
+              "messages_chars": 10907,
+              "model_total_ms": 918,
+              "narrow_tools_ms": 416,
+              "retrieval_query": "No use Gmail.",
+              "task_model_tier": "low",
+              "turn_shape_hint": "task_shaped",
+              "retrieval_method": "embedding_narrow_tools_for_turn",
+              "completion_tokens": 48,
+              "context_prompt_ms": 0,
+              "registry_tools_ms": 0,
+              "cached_prompt_ratio": 0.9008,
+              "system_prompt_chars": 10087,
+              "tools_payload_bytes": 2780,
+              "cached_prompt_tokens": 2688,
+              "wall_to_first_token_ms": 1041,
+              "embedding_tool_retrieval": true,
+              "openai_create_schedule_ms": 0,
+              "full_catalog_payload_bytes": 60917,
+              "pre_first_token_overhead_ms": 418
+            },
+            "fallthrough_reason": null,
+            "tool_invoke_action": null,
+            "shadow_user_visible": true,
+            "first_token_proxy_ms": 1041,
+            "classical_path_active": false,
+            "shadow_executes_tools": false,
+            "requires_write_approval": false
+          }
+        },
+        {
+          "id": "3eba2983-63cf-44be-943c-9f1ed0b3e53c",
+          "action": "unified_turn.live.completed",
+          "created_at": "2026-07-24T03:11:50.489615+00:00",
+          "resource_type": "conversation",
+          "resource_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+          "metadata": {
+            "error": null,
+            "model": "gpt-5.4-mini",
+            "streamed": true,
+            "tool_name": null,
+            "latency_ms": 8062,
+            "tool_stats": {
+              "compressed": true,
+              "totalTools": 106,
+              "visibleTools": 8,
+              "topSimilarity": 0.4685,
+              "turnShapeHint": "task_shaped",
+              "actionRequired": false,
+              "retrievalMethod": "embedding_narrow_tools_for_turn",
+              "focusedConnectors": [
+                "gmail"
+              ],
+              "toolsPayloadBytes": 2780,
+              "embeddingToolRetrieval": true,
+              "embeddingCandidateCount": 5,
+              "fullCatalogPayloadBytes": 60917
+            },
+            "live_served": true,
+            "outcome_kind": "conversational_reply",
+            "user_message": "Good. I still need your approval to send it.\n\nReply **yes** to send, or **cancel** to stop.",
+            "tool_arguments": {},
+            "latency_breakdown": {
+              "total_tools": 106,
+              "pre_model_ms": 344,
+              "max_tools_cap": 16,
+              "model_ttft_ms": 7647,
+              "prompt_tokens": 3037,
+              "visible_tools": 8,
+              "messages_chars": 11081,
+              "model_total_ms": 7716,
+              "narrow_tools_ms": 343,
+              "retrieval_query": "Gmail is connected",
+              "task_model_tier": "low",
+              "turn_shape_hint": "task_shaped",
+              "retrieval_method": "embedding_narrow_tools_for_turn",
+              "completion_tokens": 34,
+              "context_prompt_ms": 0,
+              "registry_tools_ms": 0,
+              "cached_prompt_ratio": 0.8851,
+              "system_prompt_chars": 10087,
+              "tools_payload_bytes": 2780,
+              "cached_prompt_tokens": 2688,
+              "wall_to_first_token_ms": 7992,
+              "embedding_tool_retrieval": true,
+              "openai_create_schedule_ms": 0,
+              "full_catalog_payload_bytes": 60917,
+              "pre_first_token_overhead_ms": 345
+            },
+            "fallthrough_reason": null,
+            "tool_invoke_action": null,
+            "shadow_user_visible": true,
+            "first_token_proxy_ms": 7992,
+            "classical_path_active": false,
+            "shadow_executes_tools": false,
+            "requires_write_approval": false
+          }
+        }
+      ]
+    }
+  ],
+  "verdicts": {
+    "bug1": [],
+    "bug2": [
+      {
+        "hit": {
+          "message_id": "50687ab0-f8e4-4d88-b701-002d5a4edaf0",
+          "conversation_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+          "created_at": "2026-07-24T03:05:54.753382+00:00",
+          "role": "user",
+          "content_head": "No use Gmail.",
+          "search_pattern": "%no use gmail%",
+          "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "conversation_title": "Gmail is connected"
+        },
+        "conversation": {
+          "id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+          "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "task_state": {
+            "current_plan": null,
+            "pending_task": null,
+            "pending_steps": [],
+            "preferred_tone": null,
+            "completed_steps": [],
+            "approved_actions": [],
+            "clarified_params": {},
+            "parameter_ledger": {
+              "slots": {
+                "to": {
+                  "value": "Stephaniekhan2002@gmail.com",
+                  "source": "user_message",
+                  "confidence": "high",
+                  "turn_index": 4
+                },
+                "body": {
+                  "value": "of the email is: I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s Ai chat",
+                  "source": "user_message",
+                  "confidence": "high",
+                  "turn_index": 4
+                },
+                "email": {
+                  "value": "Stephaniekhan2002@gmail.com",
+                  "source": "user_message",
+                  "confidence": "high",
+                  "turn_index": 4
+                },
+                "subject": {
+                  "value": ": Test the",
+                  "source": "user_message",
+                  "confidence": "high",
+                  "turn_index": 4
+                }
+              },
+              "pending_missing": []
+            },
+            "persona_override": null,
+            "rejected_options": [],
+            "unresolved_tasks": [],
+            "connector_session": {},
+            "resolved_entities": {},
+            "recent_user_messages": [
+              "Send an email",
+              "Send an email",
+              "The recipient is Stephaniekhan2002@gmail.com and subject is: Test the body of the email is: I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s Ai chat.",
+              "The recipient is Stephaniekhan2002@gmail.com and subject is: Test the body of the email is: I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s Ai chat.",
+              "No goal. Just send",
+              "No goal. Just send",
+              "No use Gmail.",
+              "No use Gmail.",
+              "Gmail is connected",
+              "Gmail is connected"
+            ],
+            "voice_expression_last": {},
+            "suppressed_suggestions": []
+          },
+          "title": "Gmail is connected",
+          "updated_at": "2026-07-24T03:09:32.702659+00:00"
+        },
+        "correction_analysis": {
+          "correction_message": "No use Gmail.",
+          "correction_index": 6,
+          "detect_correction_phrase": null,
+          "detect_correction_matched": false,
+          "pending_task_integration": null,
+          "pending_task": null,
+          "classify_pending_reply_after_correction": null,
+          "assistant_messages_after_correction": [
+            {
+              "created_at": "2026-07-24T03:05:54.754382+00:00",
+              "content_head": "Gmail isn\u2019t Connected here. I can\u2019t send it from this turn.\n\nIf you want, I can help draft the exact email text, or you can connect Gmail and I\u2019ll continue.",
+              "mentions_gmail": true,
+              "asks_email_params": false
+            }
+          ]
+        },
+        "thread": [
+          {
+            "id": "62c2bcd6-266b-455c-873b-614c66c26e0f",
+            "role": "user",
+            "created_at": "2026-07-24T03:03:19.01595+00:00",
+            "content": "Send an email",
+            "tool_calls": null
+          },
+          {
+            "id": "b2681844-e751-43be-85fb-d56c247f4ba1",
+            "role": "assistant",
+            "created_at": "2026-07-24T03:03:19.01695+00:00",
+            "content": "I need the recipient, subject, and body.",
+            "tool_calls": null
+          },
+          {
+            "id": "55ad5bac-2097-410a-aa3f-9fef93116410",
+            "role": "user",
+            "created_at": "2026-07-24T03:04:43.696833+00:00",
+            "content": "The recipient is Stephaniekhan2002@gmail.com and subject is: Test the body of the email is: I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s Ai chat.",
+            "tool_calls": null
+          },
+          {
+            "id": "3a8992ea-8c21-4ea6-a10f-25f780b30e04",
+            "role": "assistant",
+            "created_at": "2026-07-24T03:04:43.697833+00:00",
+            "content": "I still need the tone and goal of the email.",
+            "tool_calls": null
+          },
+          {
+            "id": "28ce95a1-1d8b-4e9e-a484-3fb7fb59e790",
+            "role": "user",
+            "created_at": "2026-07-24T03:05:25.448225+00:00",
+            "content": "No goal. Just send",
+            "tool_calls": null
+          },
+          {
+            "id": "37a2ab5c-7def-4104-a16f-476c8bee9c90",
+            "role": "assistant",
+            "created_at": "2026-07-24T03:05:25.449225+00:00",
+            "content": "To do that, I need to know a specific target \u2014 reply with a name, ID, or link, or ask me to search HubSpot/contacts first and pick from results. Could you share that?",
+            "tool_calls": null
+          },
+          {
+            "id": "50687ab0-f8e4-4d88-b701-002d5a4edaf0",
+            "role": "user",
+            "created_at": "2026-07-24T03:05:54.753382+00:00",
+            "content": "No use Gmail.",
+            "tool_calls": null
+          },
+          {
+            "id": "81c40a56-f1a9-4d27-87fb-03b07468c4b7",
+            "role": "assistant",
+            "created_at": "2026-07-24T03:05:54.754382+00:00",
+            "content": "Gmail isn\u2019t Connected here. I can\u2019t send it from this turn.\n\nIf you want, I can help draft the exact email text, or you can connect Gmail and I\u2019ll continue.",
+            "tool_calls": null
+          }
+        ],
+        "audit_event_count": 5,
+        "unified_turn_audits": [
+          {
+            "id": "6d3b5a88-7a64-4a3b-9743-c1148094b98a",
+            "action": "unified_turn.live.completed",
+            "created_at": "2026-07-24T03:03:13.842784+00:00",
+            "resource_type": "conversation",
+            "resource_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+            "metadata": {
+              "error": null,
+              "model": "gpt-5.4-mini",
+              "streamed": true,
+              "tool_name": null,
+              "latency_ms": 2613,
+              "tool_stats": {
+                "compressed": true,
+                "totalTools": 106,
+                "visibleTools": 16,
+                "topSimilarity": 0.4966,
+                "turnShapeHint": "task_shaped",
+                "actionRequired": true,
+                "retrievalMethod": "embedding_narrow_tools_for_turn",
+                "focusedConnectors": [
+                  "apollo",
+                  "gmail",
+                  "google_search_console"
+                ],
+                "toolsPayloadBytes": 6201,
+                "embeddingToolRetrieval": true,
+                "embeddingCandidateCount": 24,
+                "fullCatalogPayloadBytes": 60917
+              },
+              "live_served": true,
+              "outcome_kind": "conversational_reply",
+              "user_message": "I need the recipient, subject, and body.",
+              "tool_arguments": {},
+              "latency_breakdown": {
+                "total_tools": 106,
+                "pre_model_ms": 967,
+                "max_tools_cap": 16,
+                "model_ttft_ms": 1513,
+                "prompt_tokens": 3356,
+                "visible_tools": 16,
+                "messages_chars": 10641,
+                "model_total_ms": 1645,
+                "narrow_tools_ms": 966,
+                "retrieval_query": "Send an email",
+                "task_model_tier": "low",
+                "turn_shape_hint": "task_shaped",
+                "retrieval_method": "embedding_narrow_tools_for_turn",
+                "completion_tokens": 13,
+                "context_prompt_ms": 0,
+                "registry_tools_ms": 1,
+                "cached_prompt_ratio": 0.0,
+                "system_prompt_chars": 10087,
+                "tools_payload_bytes": 6201,
+                "cached_prompt_tokens": 0,
+                "wall_to_first_token_ms": 2481,
+                "embedding_tool_retrieval": true,
+                "openai_create_schedule_ms": 0,
+                "full_catalog_payload_bytes": 60917,
+                "pre_first_token_overhead_ms": 968
+              },
+              "fallthrough_reason": null,
+              "tool_invoke_action": null,
+              "shadow_user_visible": true,
+              "first_token_proxy_ms": 2481,
+              "classical_path_active": false,
+              "shadow_executes_tools": false,
+              "requires_write_approval": false
+            }
+          },
+          {
+            "id": "a3954490-9845-4b35-a8d6-ff4dc839dc91",
+            "action": "unified_turn.live.completed",
+            "created_at": "2026-07-24T03:04:39.129259+00:00",
+            "resource_type": "conversation",
+            "resource_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+            "metadata": {
+              "error": null,
+              "model": "gpt-5.4-mini",
+              "streamed": true,
+              "tool_name": null,
+              "latency_ms": 1231,
+              "tool_stats": {
+                "compressed": true,
+                "totalTools": 106,
+                "visibleTools": 8,
+                "topSimilarity": 0.3501,
+                "turnShapeHint": "task_shaped",
+                "actionRequired": false,
+                "retrievalMethod": "embedding_narrow_tools_for_turn",
+                "focusedConnectors": [
+                  "gmail"
+                ],
+                "toolsPayloadBytes": 2780,
+                "embeddingToolRetrieval": true,
+                "embeddingCandidateCount": 5,
+                "fullCatalogPayloadBytes": 60917
+              },
+              "live_served": true,
+              "outcome_kind": "conversational_reply",
+              "user_message": "I still need the tone and goal of the email.",
+              "tool_arguments": {},
+              "latency_breakdown": {
+                "total_tools": 106,
+                "pre_model_ms": 435,
+                "max_tools_cap": 16,
+                "model_ttft_ms": 672,
+                "prompt_tokens": 2902,
+                "visible_tools": 8,
+                "messages_chars": 10666,
+                "model_total_ms": 795,
+                "narrow_tools_ms": 434,
+                "retrieval_query": "The recipient is [REDACTED_EMAIL] and subject is: Test the body of the email is: I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s Ai chat.",
+                "task_model_tier": "low",
+                "turn_shape_hint": "task_shaped",
+                "retrieval_method": "embedding_narrow_tools_for_turn",
+                "completion_tokens": 14,
+                "context_prompt_ms": 0,
+                "registry_tools_ms": 0,
+                "cached_prompt_ratio": 0.5734,
+                "system_prompt_chars": 10087,
+                "tools_payload_bytes": 2780,
+                "cached_prompt_tokens": 1664,
+                "wall_to_first_token_ms": 1108,
+                "embedding_tool_retrieval": true,
+                "openai_create_schedule_ms": 0,
+                "full_catalog_payload_bytes": 60917,
+                "pre_first_token_overhead_ms": 436
+              },
+              "fallthrough_reason": null,
+              "tool_invoke_action": null,
+              "shadow_user_visible": true,
+              "first_token_proxy_ms": 1108,
+              "classical_path_active": false,
+              "shadow_executes_tools": false,
+              "requires_write_approval": false
+            }
+          },
+          {
+            "id": "a26617e7-7d5f-430d-8395-c98cc71af556",
+            "action": "unified_turn.live.fallthrough",
+            "created_at": "2026-07-24T03:05:01.830316+00:00",
+            "resource_type": "conversation",
+            "resource_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+            "metadata": {
+              "error": null,
+              "model": "gpt-5.4-mini",
+              "streamed": true,
+              "tool_name": "gmail_messages_send",
+              "latency_ms": 1576,
+              "tool_stats": {
+                "compressed": true,
+                "totalTools": 106,
+                "visibleTools": 16,
+                "topSimilarity": 0.3193,
+                "turnShapeHint": "task_shaped",
+                "actionRequired": true,
+                "retrievalMethod": "embedding_narrow_tools_for_turn",
+                "focusedConnectors": [
+                  "apollo",
+                  "gmail",
+                  "google_search_console"
+                ],
+                "toolsPayloadBytes": 6330,
+                "embeddingToolRetrieval": true,
+                "embeddingCandidateCount": 24,
+                "fullCatalogPayloadBytes": 60917
+              },
+              "live_served": false,
+              "outcome_kind": "connector_tool_proposal",
+              "user_message": "",
+              "tool_arguments": {
+                "to": "[REDACTED_EMAIL]",
+                "body": "I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s AI chat.",
+                "subject": "Test"
+              },
+              "latency_breakdown": {
+                "total_tools": 106,
+                "pre_model_ms": 525,
+                "max_tools_cap": 16,
+                "model_ttft_ms": 715,
+                "prompt_tokens": 3474,
+                "visible_tools": 16,
+                "messages_chars": 10918,
+                "model_total_ms": 1050,
+                "narrow_tools_ms": 523,
+                "retrieval_query": "No goal. Just send",
+                "task_model_tier": "low",
+                "turn_shape_hint": "task_shaped",
+                "retrieval_method": "embedding_narrow_tools_for_turn",
+                "completion_tokens": 52,
+                "context_prompt_ms": 0,
+                "registry_tools_ms": 1,
+                "cached_prompt_ratio": 0.479,
+                "system_prompt_chars": 10087,
+                "tools_payload_bytes": 6330,
+                "cached_prompt_tokens": 1664,
+                "wall_to_first_token_ms": 1241,
+                "embedding_tool_retrieval": true,
+                "openai_create_schedule_ms": 0,
+                "full_catalog_payload_bytes": 60917,
+                "pre_first_token_overhead_ms": 526
+              },
+              "fallthrough_reason": "defer_connector_tool_proposal",
+              "tool_invoke_action": "gmail.messages.send",
+              "shadow_user_visible": false,
+              "first_token_proxy_ms": 1241,
+              "classical_path_active": true,
+              "shadow_executes_tools": false,
+              "requires_write_approval": true
+            }
+          },
+          {
+            "id": "3fadd3a5-a0ff-4442-8921-d2db725003f1",
+            "action": "unified_turn.live.completed",
+            "created_at": "2026-07-24T03:05:50.061686+00:00",
+            "resource_type": "conversation",
+            "resource_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+            "metadata": {
+              "error": null,
+              "model": "gpt-5.4-mini",
+              "streamed": true,
+              "tool_name": null,
+              "latency_ms": 1336,
+              "tool_stats": {
+                "compressed": true,
+                "totalTools": 106,
+                "visibleTools": 8,
+                "topSimilarity": 0.4176,
+                "turnShapeHint": "task_shaped",
+                "actionRequired": false,
+                "retrievalMethod": "embedding_narrow_tools_for_turn",
+                "focusedConnectors": [
+                  "gmail"
+                ],
+                "toolsPayloadBytes": 2780,
+                "embeddingToolRetrieval": true,
+                "embeddingCandidateCount": 5,
+                "fullCatalogPayloadBytes": 60917
+              },
+              "live_served": true,
+              "outcome_kind": "conversational_reply",
+              "user_message": "Gmail isn\u2019t Connected here. I can\u2019t send it from this turn.\n\nIf you want, I can help draft the exact email text, or you can connect Gmail and I\u2019ll continue.",
+              "tool_arguments": {},
+              "latency_breakdown": {
+                "total_tools": 106,
+                "pre_model_ms": 417,
+                "max_tools_cap": 16,
+                "model_ttft_ms": 623,
+                "prompt_tokens": 2984,
+                "visible_tools": 8,
+                "messages_chars": 10907,
+                "model_total_ms": 918,
+                "narrow_tools_ms": 416,
+                "retrieval_query": "No use Gmail.",
+                "task_model_tier": "low",
+                "turn_shape_hint": "task_shaped",
+                "retrieval_method": "embedding_narrow_tools_for_turn",
+                "completion_tokens": 48,
+                "context_prompt_ms": 0,
+                "registry_tools_ms": 0,
+                "cached_prompt_ratio": 0.9008,
+                "system_prompt_chars": 10087,
+                "tools_payload_bytes": 2780,
+                "cached_prompt_tokens": 2688,
+                "wall_to_first_token_ms": 1041,
+                "embedding_tool_retrieval": true,
+                "openai_create_schedule_ms": 0,
+                "full_catalog_payload_bytes": 60917,
+                "pre_first_token_overhead_ms": 418
+              },
+              "fallthrough_reason": null,
+              "tool_invoke_action": null,
+              "shadow_user_visible": true,
+              "first_token_proxy_ms": 1041,
+              "classical_path_active": false,
+              "shadow_executes_tools": false,
+              "requires_write_approval": false
+            }
+          },
+          {
+            "id": "3eba2983-63cf-44be-943c-9f1ed0b3e53c",
+            "action": "unified_turn.live.completed",
+            "created_at": "2026-07-24T03:11:50.489615+00:00",
+            "resource_type": "conversation",
+            "resource_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+            "metadata": {
+              "error": null,
+              "model": "gpt-5.4-mini",
+              "streamed": true,
+              "tool_name": null,
+              "latency_ms": 8062,
+              "tool_stats": {
+                "compressed": true,
+                "totalTools": 106,
+                "visibleTools": 8,
+                "topSimilarity": 0.4685,
+                "turnShapeHint": "task_shaped",
+                "actionRequired": false,
+                "retrievalMethod": "embedding_narrow_tools_for_turn",
+                "focusedConnectors": [
+                  "gmail"
+                ],
+                "toolsPayloadBytes": 2780,
+                "embeddingToolRetrieval": true,
+                "embeddingCandidateCount": 5,
+                "fullCatalogPayloadBytes": 60917
+              },
+              "live_served": true,
+              "outcome_kind": "conversational_reply",
+              "user_message": "Good. I still need your approval to send it.\n\nReply **yes** to send, or **cancel** to stop.",
+              "tool_arguments": {},
+              "latency_breakdown": {
+                "total_tools": 106,
+                "pre_model_ms": 344,
+                "max_tools_cap": 16,
+                "model_ttft_ms": 7647,
+                "prompt_tokens": 3037,
+                "visible_tools": 8,
+                "messages_chars": 11081,
+                "model_total_ms": 7716,
+                "narrow_tools_ms": 343,
+                "retrieval_query": "Gmail is connected",
+                "task_model_tier": "low",
+                "turn_shape_hint": "task_shaped",
+                "retrieval_method": "embedding_narrow_tools_for_turn",
+                "completion_tokens": 34,
+                "context_prompt_ms": 0,
+                "registry_tools_ms": 0,
+                "cached_prompt_ratio": 0.8851,
+                "system_prompt_chars": 10087,
+                "tools_payload_bytes": 2780,
+                "cached_prompt_tokens": 2688,
+                "wall_to_first_token_ms": 7992,
+                "embedding_tool_retrieval": true,
+                "openai_create_schedule_ms": 0,
+                "full_catalog_payload_bytes": 60917,
+                "pre_first_token_overhead_ms": 345
+              },
+              "fallthrough_reason": null,
+              "tool_invoke_action": null,
+              "shadow_user_visible": true,
+              "first_token_proxy_ms": 7992,
+              "classical_path_active": false,
+              "shadow_executes_tools": false,
+              "requires_write_approval": false
+            }
+          }
+        ],
+        "verdict": "CORRECTION_NOT_PARSED"
+      },
+      {
+        "hit": {
+          "message_id": "50687ab0-f8e4-4d88-b701-002d5a4edaf0",
+          "conversation_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+          "created_at": "2026-07-24T03:05:54.753382+00:00",
+          "role": "user",
+          "content_head": "No use Gmail.",
+          "search_pattern": "%No use Gmail%",
+          "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "conversation_title": "Gmail is connected"
+        },
+        "conversation": {
+          "id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+          "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "task_state": {
+            "current_plan": null,
+            "pending_task": null,
+            "pending_steps": [],
+            "preferred_tone": null,
+            "completed_steps": [],
+            "approved_actions": [],
+            "clarified_params": {},
+            "parameter_ledger": {
+              "slots": {
+                "to": {
+                  "value": "Stephaniekhan2002@gmail.com",
+                  "source": "user_message",
+                  "confidence": "high",
+                  "turn_index": 4
+                },
+                "body": {
+                  "value": "of the email is: I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s Ai chat",
+                  "source": "user_message",
+                  "confidence": "high",
+                  "turn_index": 4
+                },
+                "email": {
+                  "value": "Stephaniekhan2002@gmail.com",
+                  "source": "user_message",
+                  "confidence": "high",
+                  "turn_index": 4
+                },
+                "subject": {
+                  "value": ": Test the",
+                  "source": "user_message",
+                  "confidence": "high",
+                  "turn_index": 4
+                }
+              },
+              "pending_missing": []
+            },
+            "persona_override": null,
+            "rejected_options": [],
+            "unresolved_tasks": [],
+            "connector_session": {},
+            "resolved_entities": {},
+            "recent_user_messages": [
+              "Send an email",
+              "Send an email",
+              "The recipient is Stephaniekhan2002@gmail.com and subject is: Test the body of the email is: I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s Ai chat.",
+              "The recipient is Stephaniekhan2002@gmail.com and subject is: Test the body of the email is: I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s Ai chat.",
+              "No goal. Just send",
+              "No goal. Just send",
+              "No use Gmail.",
+              "No use Gmail.",
+              "Gmail is connected",
+              "Gmail is connected"
+            ],
+            "voice_expression_last": {},
+            "suppressed_suggestions": []
+          },
+          "title": "Gmail is connected",
+          "updated_at": "2026-07-24T03:09:32.702659+00:00"
+        },
+        "correction_analysis": {
+          "correction_message": "No use Gmail.",
+          "correction_index": 6,
+          "detect_correction_phrase": null,
+          "detect_correction_matched": false,
+          "pending_task_integration": null,
+          "pending_task": null,
+          "classify_pending_reply_after_correction": null,
+          "assistant_messages_after_correction": [
+            {
+              "created_at": "2026-07-24T03:05:54.754382+00:00",
+              "content_head": "Gmail isn\u2019t Connected here. I can\u2019t send it from this turn.\n\nIf you want, I can help draft the exact email text, or you can connect Gmail and I\u2019ll continue.",
+              "mentions_gmail": true,
+              "asks_email_params": false
+            }
+          ]
+        },
+        "thread": [
+          {
+            "id": "62c2bcd6-266b-455c-873b-614c66c26e0f",
+            "role": "user",
+            "created_at": "2026-07-24T03:03:19.01595+00:00",
+            "content": "Send an email",
+            "tool_calls": null
+          },
+          {
+            "id": "b2681844-e751-43be-85fb-d56c247f4ba1",
+            "role": "assistant",
+            "created_at": "2026-07-24T03:03:19.01695+00:00",
+            "content": "I need the recipient, subject, and body.",
+            "tool_calls": null
+          },
+          {
+            "id": "55ad5bac-2097-410a-aa3f-9fef93116410",
+            "role": "user",
+            "created_at": "2026-07-24T03:04:43.696833+00:00",
+            "content": "The recipient is Stephaniekhan2002@gmail.com and subject is: Test the body of the email is: I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s Ai chat.",
+            "tool_calls": null
+          },
+          {
+            "id": "3a8992ea-8c21-4ea6-a10f-25f780b30e04",
+            "role": "assistant",
+            "created_at": "2026-07-24T03:04:43.697833+00:00",
+            "content": "I still need the tone and goal of the email.",
+            "tool_calls": null
+          },
+          {
+            "id": "28ce95a1-1d8b-4e9e-a484-3fb7fb59e790",
+            "role": "user",
+            "created_at": "2026-07-24T03:05:25.448225+00:00",
+            "content": "No goal. Just send",
+            "tool_calls": null
+          },
+          {
+            "id": "37a2ab5c-7def-4104-a16f-476c8bee9c90",
+            "role": "assistant",
+            "created_at": "2026-07-24T03:05:25.449225+00:00",
+            "content": "To do that, I need to know a specific target \u2014 reply with a name, ID, or link, or ask me to search HubSpot/contacts first and pick from results. Could you share that?",
+            "tool_calls": null
+          },
+          {
+            "id": "50687ab0-f8e4-4d88-b701-002d5a4edaf0",
+            "role": "user",
+            "created_at": "2026-07-24T03:05:54.753382+00:00",
+            "content": "No use Gmail.",
+            "tool_calls": null
+          },
+          {
+            "id": "81c40a56-f1a9-4d27-87fb-03b07468c4b7",
+            "role": "assistant",
+            "created_at": "2026-07-24T03:05:54.754382+00:00",
+            "content": "Gmail isn\u2019t Connected here. I can\u2019t send it from this turn.\n\nIf you want, I can help draft the exact email text, or you can connect Gmail and I\u2019ll continue.",
+            "tool_calls": null
+          }
+        ],
+        "audit_event_count": 5,
+        "unified_turn_audits": [
+          {
+            "id": "6d3b5a88-7a64-4a3b-9743-c1148094b98a",
+            "action": "unified_turn.live.completed",
+            "created_at": "2026-07-24T03:03:13.842784+00:00",
+            "resource_type": "conversation",
+            "resource_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+            "metadata": {
+              "error": null,
+              "model": "gpt-5.4-mini",
+              "streamed": true,
+              "tool_name": null,
+              "latency_ms": 2613,
+              "tool_stats": {
+                "compressed": true,
+                "totalTools": 106,
+                "visibleTools": 16,
+                "topSimilarity": 0.4966,
+                "turnShapeHint": "task_shaped",
+                "actionRequired": true,
+                "retrievalMethod": "embedding_narrow_tools_for_turn",
+                "focusedConnectors": [
+                  "apollo",
+                  "gmail",
+                  "google_search_console"
+                ],
+                "toolsPayloadBytes": 6201,
+                "embeddingToolRetrieval": true,
+                "embeddingCandidateCount": 24,
+                "fullCatalogPayloadBytes": 60917
+              },
+              "live_served": true,
+              "outcome_kind": "conversational_reply",
+              "user_message": "I need the recipient, subject, and body.",
+              "tool_arguments": {},
+              "latency_breakdown": {
+                "total_tools": 106,
+                "pre_model_ms": 967,
+                "max_tools_cap": 16,
+                "model_ttft_ms": 1513,
+                "prompt_tokens": 3356,
+                "visible_tools": 16,
+                "messages_chars": 10641,
+                "model_total_ms": 1645,
+                "narrow_tools_ms": 966,
+                "retrieval_query": "Send an email",
+                "task_model_tier": "low",
+                "turn_shape_hint": "task_shaped",
+                "retrieval_method": "embedding_narrow_tools_for_turn",
+                "completion_tokens": 13,
+                "context_prompt_ms": 0,
+                "registry_tools_ms": 1,
+                "cached_prompt_ratio": 0.0,
+                "system_prompt_chars": 10087,
+                "tools_payload_bytes": 6201,
+                "cached_prompt_tokens": 0,
+                "wall_to_first_token_ms": 2481,
+                "embedding_tool_retrieval": true,
+                "openai_create_schedule_ms": 0,
+                "full_catalog_payload_bytes": 60917,
+                "pre_first_token_overhead_ms": 968
+              },
+              "fallthrough_reason": null,
+              "tool_invoke_action": null,
+              "shadow_user_visible": true,
+              "first_token_proxy_ms": 2481,
+              "classical_path_active": false,
+              "shadow_executes_tools": false,
+              "requires_write_approval": false
+            }
+          },
+          {
+            "id": "a3954490-9845-4b35-a8d6-ff4dc839dc91",
+            "action": "unified_turn.live.completed",
+            "created_at": "2026-07-24T03:04:39.129259+00:00",
+            "resource_type": "conversation",
+            "resource_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+            "metadata": {
+              "error": null,
+              "model": "gpt-5.4-mini",
+              "streamed": true,
+              "tool_name": null,
+              "latency_ms": 1231,
+              "tool_stats": {
+                "compressed": true,
+                "totalTools": 106,
+                "visibleTools": 8,
+                "topSimilarity": 0.3501,
+                "turnShapeHint": "task_shaped",
+                "actionRequired": false,
+                "retrievalMethod": "embedding_narrow_tools_for_turn",
+                "focusedConnectors": [
+                  "gmail"
+                ],
+                "toolsPayloadBytes": 2780,
+                "embeddingToolRetrieval": true,
+                "embeddingCandidateCount": 5,
+                "fullCatalogPayloadBytes": 60917
+              },
+              "live_served": true,
+              "outcome_kind": "conversational_reply",
+              "user_message": "I still need the tone and goal of the email.",
+              "tool_arguments": {},
+              "latency_breakdown": {
+                "total_tools": 106,
+                "pre_model_ms": 435,
+                "max_tools_cap": 16,
+                "model_ttft_ms": 672,
+                "prompt_tokens": 2902,
+                "visible_tools": 8,
+                "messages_chars": 10666,
+                "model_total_ms": 795,
+                "narrow_tools_ms": 434,
+                "retrieval_query": "The recipient is [REDACTED_EMAIL] and subject is: Test the body of the email is: I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s Ai chat.",
+                "task_model_tier": "low",
+                "turn_shape_hint": "task_shaped",
+                "retrieval_method": "embedding_narrow_tools_for_turn",
+                "completion_tokens": 14,
+                "context_prompt_ms": 0,
+                "registry_tools_ms": 0,
+                "cached_prompt_ratio": 0.5734,
+                "system_prompt_chars": 10087,
+                "tools_payload_bytes": 2780,
+                "cached_prompt_tokens": 1664,
+                "wall_to_first_token_ms": 1108,
+                "embedding_tool_retrieval": true,
+                "openai_create_schedule_ms": 0,
+                "full_catalog_payload_bytes": 60917,
+                "pre_first_token_overhead_ms": 436
+              },
+              "fallthrough_reason": null,
+              "tool_invoke_action": null,
+              "shadow_user_visible": true,
+              "first_token_proxy_ms": 1108,
+              "classical_path_active": false,
+              "shadow_executes_tools": false,
+              "requires_write_approval": false
+            }
+          },
+          {
+            "id": "a26617e7-7d5f-430d-8395-c98cc71af556",
+            "action": "unified_turn.live.fallthrough",
+            "created_at": "2026-07-24T03:05:01.830316+00:00",
+            "resource_type": "conversation",
+            "resource_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+            "metadata": {
+              "error": null,
+              "model": "gpt-5.4-mini",
+              "streamed": true,
+              "tool_name": "gmail_messages_send",
+              "latency_ms": 1576,
+              "tool_stats": {
+                "compressed": true,
+                "totalTools": 106,
+                "visibleTools": 16,
+                "topSimilarity": 0.3193,
+                "turnShapeHint": "task_shaped",
+                "actionRequired": true,
+                "retrievalMethod": "embedding_narrow_tools_for_turn",
+                "focusedConnectors": [
+                  "apollo",
+                  "gmail",
+                  "google_search_console"
+                ],
+                "toolsPayloadBytes": 6330,
+                "embeddingToolRetrieval": true,
+                "embeddingCandidateCount": 24,
+                "fullCatalogPayloadBytes": 60917
+              },
+              "live_served": false,
+              "outcome_kind": "connector_tool_proposal",
+              "user_message": "",
+              "tool_arguments": {
+                "to": "[REDACTED_EMAIL]",
+                "body": "I\u2019m running a test through Gravitre. This email was sent by Gravitre\u2019s AI chat.",
+                "subject": "Test"
+              },
+              "latency_breakdown": {
+                "total_tools": 106,
+                "pre_model_ms": 525,
+                "max_tools_cap": 16,
+                "model_ttft_ms": 715,
+                "prompt_tokens": 3474,
+                "visible_tools": 16,
+                "messages_chars": 10918,
+                "model_total_ms": 1050,
+                "narrow_tools_ms": 523,
+                "retrieval_query": "No goal. Just send",
+                "task_model_tier": "low",
+                "turn_shape_hint": "task_shaped",
+                "retrieval_method": "embedding_narrow_tools_for_turn",
+                "completion_tokens": 52,
+                "context_prompt_ms": 0,
+                "registry_tools_ms": 1,
+                "cached_prompt_ratio": 0.479,
+                "system_prompt_chars": 10087,
+                "tools_payload_bytes": 6330,
+                "cached_prompt_tokens": 1664,
+                "wall_to_first_token_ms": 1241,
+                "embedding_tool_retrieval": true,
+                "openai_create_schedule_ms": 0,
+                "full_catalog_payload_bytes": 60917,
+                "pre_first_token_overhead_ms": 526
+              },
+              "fallthrough_reason": "defer_connector_tool_proposal",
+              "tool_invoke_action": "gmail.messages.send",
+              "shadow_user_visible": false,
+              "first_token_proxy_ms": 1241,
+              "classical_path_active": true,
+              "shadow_executes_tools": false,
+              "requires_write_approval": true
+            }
+          },
+          {
+            "id": "3fadd3a5-a0ff-4442-8921-d2db725003f1",
+            "action": "unified_turn.live.completed",
+            "created_at": "2026-07-24T03:05:50.061686+00:00",
+            "resource_type": "conversation",
+            "resource_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+            "metadata": {
+              "error": null,
+              "model": "gpt-5.4-mini",
+              "streamed": true,
+              "tool_name": null,
+              "latency_ms": 1336,
+              "tool_stats": {
+                "compressed": true,
+                "totalTools": 106,
+                "visibleTools": 8,
+                "topSimilarity": 0.4176,
+                "turnShapeHint": "task_shaped",
+                "actionRequired": false,
+                "retrievalMethod": "embedding_narrow_tools_for_turn",
+                "focusedConnectors": [
+                  "gmail"
+                ],
+                "toolsPayloadBytes": 2780,
+                "embeddingToolRetrieval": true,
+                "embeddingCandidateCount": 5,
+                "fullCatalogPayloadBytes": 60917
+              },
+              "live_served": true,
+              "outcome_kind": "conversational_reply",
+              "user_message": "Gmail isn\u2019t Connected here. I can\u2019t send it from this turn.\n\nIf you want, I can help draft the exact email text, or you can connect Gmail and I\u2019ll continue.",
+              "tool_arguments": {},
+              "latency_breakdown": {
+                "total_tools": 106,
+                "pre_model_ms": 417,
+                "max_tools_cap": 16,
+                "model_ttft_ms": 623,
+                "prompt_tokens": 2984,
+                "visible_tools": 8,
+                "messages_chars": 10907,
+                "model_total_ms": 918,
+                "narrow_tools_ms": 416,
+                "retrieval_query": "No use Gmail.",
+                "task_model_tier": "low",
+                "turn_shape_hint": "task_shaped",
+                "retrieval_method": "embedding_narrow_tools_for_turn",
+                "completion_tokens": 48,
+                "context_prompt_ms": 0,
+                "registry_tools_ms": 0,
+                "cached_prompt_ratio": 0.9008,
+                "system_prompt_chars": 10087,
+                "tools_payload_bytes": 2780,
+                "cached_prompt_tokens": 2688,
+                "wall_to_first_token_ms": 1041,
+                "embedding_tool_retrieval": true,
+                "openai_create_schedule_ms": 0,
+                "full_catalog_payload_bytes": 60917,
+                "pre_first_token_overhead_ms": 418
+              },
+              "fallthrough_reason": null,
+              "tool_invoke_action": null,
+              "shadow_user_visible": true,
+              "first_token_proxy_ms": 1041,
+              "classical_path_active": false,
+              "shadow_executes_tools": false,
+              "requires_write_approval": false
+            }
+          },
+          {
+            "id": "3eba2983-63cf-44be-943c-9f1ed0b3e53c",
+            "action": "unified_turn.live.completed",
+            "created_at": "2026-07-24T03:11:50.489615+00:00",
+            "resource_type": "conversation",
+            "resource_id": "a0f36e87-a594-4291-ba57-9a5c6b205d63",
+            "metadata": {
+              "error": null,
+              "model": "gpt-5.4-mini",
+              "streamed": true,
+              "tool_name": null,
+              "latency_ms": 8062,
+              "tool_stats": {
+                "compressed": true,
+                "totalTools": 106,
+                "visibleTools": 8,
+                "topSimilarity": 0.4685,
+                "turnShapeHint": "task_shaped",
+                "actionRequired": false,
+                "retrievalMethod": "embedding_narrow_tools_for_turn",
+                "focusedConnectors": [
+                  "gmail"
+                ],
+                "toolsPayloadBytes": 2780,
+                "embeddingToolRetrieval": true,
+                "embeddingCandidateCount": 5,
+                "fullCatalogPayloadBytes": 60917
+              },
+              "live_served": true,
+              "outcome_kind": "conversational_reply",
+              "user_message": "Good. I still need your approval to send it.\n\nReply **yes** to send, or **cancel** to stop.",
+              "tool_arguments": {},
+              "latency_breakdown": {
+                "total_tools": 106,
+                "pre_model_ms": 344,
+                "max_tools_cap": 16,
+                "model_ttft_ms": 7647,
+                "prompt_tokens": 3037,
+                "visible_tools": 8,
+                "messages_chars": 11081,
+                "model_total_ms": 7716,
+                "narrow_tools_ms": 343,
+                "retrieval_query": "Gmail is connected",
+                "task_model_tier": "low",
+                "turn_shape_hint": "task_shaped",
+                "retrieval_method": "embedding_narrow_tools_for_turn",
+                "completion_tokens": 34,
+                "context_prompt_ms": 0,
+                "registry_tools_ms": 0,
+                "cached_prompt_ratio": 0.8851,
+                "system_prompt_chars": 10087,
+                "tools_payload_bytes": 2780,
+                "cached_prompt_tokens": 2688,
+                "wall_to_first_token_ms": 7992,
+                "embedding_tool_retrieval": true,
+                "openai_create_schedule_ms": 0,
+                "full_catalog_payload_bytes": 60917,
+                "pre_first_token_overhead_ms": 345
+              },
+              "fallthrough_reason": null,
+              "tool_invoke_action": null,
+              "shadow_user_visible": true,
+              "first_token_proxy_ms": 7992,
+              "classical_path_active": false,
+              "shadow_executes_tools": false,
+              "requires_write_approval": false
+            }
+          }
+        ],
+        "verdict": "CORRECTION_NOT_PARSED"
+      }
+    ]
+  },
+  "finished_at": "2026-07-24T06:19:29.159794+00:00"
+}
