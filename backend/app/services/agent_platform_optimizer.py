@@ -93,6 +93,7 @@ def _ensure_connected_tool_coverage(
     max_tools: int,
     platform_count: int,
     action_required: bool,
+    query: str = "",
 ) -> list[dict[str, Any]]:
     """Keep at least one tool per connected vendor in the visible set (gap 1)."""
     skip = {"platform", "mcp", "browser", "webhook", "email"}
@@ -263,6 +264,7 @@ def narrow_tools_for_turn(
         max_tools=max_tools,
         platform_count=len(platform_tools),
         action_required=action_required,
+        query=query,
     )
 
     visible = platform_tools + selected_connector
