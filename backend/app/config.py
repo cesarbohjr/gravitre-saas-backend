@@ -121,10 +121,10 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("UNIFIED_TURN_TASK_MAX_TOOLS", "unified_turn_task_max_tools"),
     )
     # Skip query-embed RTT when connected catalog is below threshold (keyword narrow instead).
-    # Embedding tool-retrieval measured WORSE than keyword at both 26 and 70 connected tools.
-    # No catalog size has yet shown a win. Threshold 200 is a placeholder — NOT because a new
-    # crossover was found. Revisit only if a future measurement shows real benefit.
-    # (Prior default 40 was an estimate at 26 tools, never empirically validated.)
+    # Post-fix embed latency (9496cedf, 70 tools, warm cache): narrow_tools_ms≈434 (embed_query_ms≈427;
+    # tool-doc cache 49/49 hits). Keyword still wins end-to-end wall (840 vs 1269ms on email_intent)
+    # despite smaller embed payload. Threshold 200 keeps keyword path until catalog scale shifts crossover.
+    # Prior default 40 was an estimate at 26 tools, never empirically validated as a win.
     unified_turn_embed_min_catalog_tools: int = Field(
         default=200,
         validation_alias=AliasChoices(

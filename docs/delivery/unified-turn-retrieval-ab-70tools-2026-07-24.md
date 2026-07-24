@@ -78,6 +78,18 @@ At prod catalog ~70 tools, unified task turns stay on **keyword** narrow until c
 
 Prefix-cache win on email_intent turn-2 holds (−294ms); deals_status turn-2 flat (+40ms) at this sample.
 
+## Post-fix latency (2026-07-24, `9496cedf`)
+
+Real fix shipped: shared OpenAI client, batch tool-doc embeds, parallel query+docs, await boot warm, Phase 0 sub-timings. Full write-up: [`unified-turn-embed-latency-fix-2026-07-24.md`](unified-turn-embed-latency-fix-2026-07-24.md).
+
+| Path | `narrow_tools_ms` | `embed_query_ms` | `model_ttft_ms` | wall |
+|------|------------------:|-----------------:|----------------:|-----:|
+| Embedding pre-fix | 1048 | — | 1024 | 2073 |
+| **Embedding post-fix** | **434** | **427** | 830 | 1269 |
+| Keyword (same tip) | 1 | — | 837 | 840 |
+
+**Threshold stays 200** — fix cut embed overhead ~59% but keyword still wins end-to-end at 70 tools.
+
 ## Scripts
 
 - `scripts/verify-unified-turn-task-ttft-live.py` — `TTFT_SKIP_FOLLOW_UP=1`, `unified_live_probes` summary
