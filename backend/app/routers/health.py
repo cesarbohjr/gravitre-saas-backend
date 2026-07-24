@@ -73,7 +73,7 @@ def health(request: Request) -> dict:
         unified_live = bool(getattr(s, "unified_turn_live_enabled", False))
         unified_embed_tools = bool(getattr(s, "unified_turn_embedding_tool_retrieval", False))
         unified_task_tier = str(getattr(s, "unified_turn_task_model_tier", "") or "")
-        unified_embed_min_catalog = int(getattr(s, "unified_turn_embed_min_catalog_tools", 40) or 40)
+        unified_embed_min_catalog = int(getattr(s, "unified_turn_embed_min_catalog_tools", 200) or 200)
         internet_research_enabled = bool(getattr(s, "internet_research_enabled", False))
         from app.services.web_research import is_web_research_provider_configured
 

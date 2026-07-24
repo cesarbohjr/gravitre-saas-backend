@@ -120,12 +120,13 @@ class Settings(BaseSettings):
         default=16,
         validation_alias=AliasChoices("UNIFIED_TURN_TASK_MAX_TOOLS", "unified_turn_task_max_tools"),
     )
-    # Skip query-embed RTT when connected catalog is small (keyword already cheap).
-    # Default 40 is a conservative estimate from the 26-tool live result (embed hurt
-    # wall TTFT); NOT an empirically validated crossover from a 30/40/50 sweep.
-    # Revisit with real A/B once an org crosses this threshold.
+    # Skip query-embed RTT when connected catalog is below threshold (keyword narrow instead).
+    # Embedding tool-retrieval measured WORSE than keyword at both 26 and 70 connected tools.
+    # No catalog size has yet shown a win. Threshold 200 is a placeholder — NOT because a new
+    # crossover was found. Revisit only if a future measurement shows real benefit.
+    # (Prior default 40 was an estimate at 26 tools, never empirically validated.)
     unified_turn_embed_min_catalog_tools: int = Field(
-        default=40,
+        default=200,
         validation_alias=AliasChoices(
             "UNIFIED_TURN_EMBED_MIN_CATALOG_TOOLS",
             "unified_turn_embed_min_catalog_tools",

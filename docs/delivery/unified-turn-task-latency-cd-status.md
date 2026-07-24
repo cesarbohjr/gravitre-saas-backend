@@ -14,8 +14,8 @@ Tip (final measure): `182b91b3…` · `UNIFIED_TURN_TASK_MODEL_TIER=low` · LIVE
 ## Scope
 
 - **Metric:** task-shaped / mixed TTFT — not social greetings.
-- **C:** embedding tool retrieval for task/mixed when connected catalog ≥ `UNIFIED_TURN_EMBED_MIN_CATALOG_TOOLS` (default **40**). Below that, keyword (query-embed RTT dominates on small catalogs).
-  - **Gate threshold provenance:** **40 is a conservative estimate, not an empirically validated crossover.** Live data exists only for the current prod connected set (**26 tools**): warm embed improved `model_ttft` (~671→488ms) but worsened wall (~673→798ms) due to ~300ms query-embed RTT. No sweep at 30 / 40 / 50 (or other sizes) was run to find where payload savings outweigh that fixed RTT. Default 40 = “safely above 26 with margin.” **Revisit with real A/B once an org’s connected catalog crosses this threshold** — do not treat 40 as measured optimum.
+- **C:** embedding tool retrieval for task/mixed when connected catalog ≥ `UNIFIED_TURN_EMBED_MIN_CATALOG_TOOLS` (default **200**, shipped 2026-07-24). Below that, keyword.
+  - **Gate threshold provenance:** Embedding tool-retrieval measured **WORSE than keyword** at both **26** and **70** connected tools. No catalog size has yet shown a win. Default **200** is a placeholder — not because a new crossover was found; revisit only if a future measurement shows real benefit. (Prior default **40** was an estimate at 26 tools, never empirically validated.)
 - **D:** `UNIFIED_TURN_TASK_MODEL_TIER` for task/mixed. Empty → `gpt-4o-mini`; `low` → `gpt-5.4-mini`.
 - Shape hint selects retrieval/model only — **reasoning call always runs** (Option A rejected).
 
@@ -52,7 +52,7 @@ Artifact: [`unified-turn-task-ttft-after-embed-warm.json`](unified-turn-task-ttf
 - functional: **5/5** (cold first pass had 4/5 flaky Apollo connect copy; warm 5/5)
 - **Finding:** `model_ttft` improved (~671→488) via slightly smaller schemas; **wall worsened** because each turn pays OpenAI **query-embed** RTT (~300ms) in `narrow_tools_ms`. On a 26-tool connected set that overhead dominates.
 
-**Mitigation shipped:** skip embedding when `total_tools < UNIFIED_TURN_EMBED_MIN_CATALOG_TOOLS` (default 40). Embedding remains for larger catalogs where payload reduction *may* beat query-embed cost — **crossover not measured at multiple catalog sizes; see gate threshold provenance above.**
+**Mitigation shipped:** skip embedding when `total_tools < UNIFIED_TURN_EMBED_MIN_CATALOG_TOOLS` (default **200** as of 2026-07-24). At prod ~70 tools, keyword narrow is the live path. See [`unified-turn-retrieval-ab-70tools-2026-07-24.md`](unified-turn-retrieval-ab-70tools-2026-07-24.md).
 
 Cold-start evidence (first request after deploy): wall 6196 / 4899 with `narrow_tools_ms` 4–4.5s while tool vectors cache — [`unified-turn-task-ttft-after-embed.json`](unified-turn-task-ttft-after-embed.json).
 
@@ -77,7 +77,7 @@ Artifact: [`unified-turn-task-ttft-after-embed-gate-or-low-tier.json`](unified-t
 
 | Work | Result |
 |------|--------|
-| **C embedding** | **Built + live.** Correct path for large catalogs. On current prod connected set (26 tools), gated off by default min=40 because query-embed RTT &gt; schema savings for wall TTFT. |
+| **C embedding** | **Built; gated off at prod catalog size.** Measured worse than keyword at 26 and 70 tools. Default min catalog **200** (2026-07-24) — placeholder, not a measured crossover. |
 | **D model tier `low`** | **PASS** — same 5/5 functional; task model_ttft p50 **671→436ms** (~35% faster); wall p50 **673→438ms**. Kept on prod (`UNIFIED_TURN_TASK_MODEL_TIER=low`). |
 
 ## Settings
@@ -85,7 +85,7 @@ Artifact: [`unified-turn-task-ttft-after-embed-gate-or-low-tier.json`](unified-t
 | Env | Default | Meaning |
 |-----|---------|---------|
 | `UNIFIED_TURN_EMBEDDING_TOOL_RETRIEVAL` | `true` | Enable semantic path when catalog large enough |
-| `UNIFIED_TURN_EMBED_MIN_CATALOG_TOOLS` | `40` | Below → keyword (avoid query-embed tax) |
+| `UNIFIED_TURN_EMBED_MIN_CATALOG_TOOLS` | `200` | Below → keyword; 200 = placeholder (no measured embed win yet) |
 | `UNIFIED_TURN_TASK_MAX_TOOLS` | `16` | Cap for task-shaped |
 | `UNIFIED_TURN_TASK_MODEL_TIER` | `low` in prod after D | `MODEL_TIERS` key; empty → `gpt-4o-mini` |
 
