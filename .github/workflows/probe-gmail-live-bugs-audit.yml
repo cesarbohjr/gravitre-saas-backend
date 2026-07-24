@@ -1,0 +1,56 @@
+name: Probe Gmail Live Bugs Audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      since_hours:
+        description: "Lookback window for conversation hunt"
+        required: false
+        default: "96"
+
+concurrency:
+  group: probe-gmail-live-bugs-audit
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    name: Pull prod audit traces for Gmail bugs
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run Gmail live bugs audit probe
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+          CONNECTOR_SECRETS_ENCRYPTION_KEY: ${{ secrets.CONNECTOR_SECRETS_ENCRYPTION_KEY }}
+          GMAIL_BUG_SINCE_HOURS: ${{ github.event.inputs.since_hours || '96' }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "Missing SUPABASE secrets" >&2
+            exit 1
+          fi
+          python scripts/probe-gmail-live-bugs-audit.py
+
+      - name: Upload audit artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gmail-live-bugs-audit
+          path: docs/delivery/gmail-live-bugs-audit.json
+          if-no-files-found: ignore
