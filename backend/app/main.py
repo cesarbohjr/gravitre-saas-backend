@@ -279,7 +279,7 @@ async def lifespan(app: FastAPI):
     from app.config import get_settings as _get_settings_lifespan
 
     if not _get_settings_lifespan().disable_ai:
-        asyncio.create_task(_warm_unified_tool_embeds())
+        await _warm_unified_tool_embeds()
 
     app.state.agent_job_task = start_agent_job_worker()
     app.state.workflow_run_task = start_workflow_run_worker()

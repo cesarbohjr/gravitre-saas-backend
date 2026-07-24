@@ -426,6 +426,20 @@ async def run_unified_turn_shadow(
         "retrieval_query": (retrieval_query or "")[:240],
         "task_model_tier": str(getattr(active, "unified_turn_task_model_tier", "") or "") or None,
     }
+    for _embed_key in (
+        "embed_query_ms",
+        "embed_tool_docs_ms",
+        "embed_tool_doc_cache_hits",
+        "embed_tool_doc_cache_misses",
+        "embed_tool_doc_batch_api_calls",
+        "embed_tool_doc_cache_lookup_ms",
+        "embed_similarity_rank_ms",
+        "embed_narrow_total_ms",
+        "embeddingCandidateCount",
+        "topSimilarity",
+    ):
+        if _embed_key in (tool_stats or {}):
+            breakdown[_embed_key] = tool_stats[_embed_key]
     tool_stats = {
         **(tool_stats or {}),
         "toolsPayloadBytes": tools_payload_bytes,

@@ -8,6 +8,10 @@ failover chain.
 """
 from __future__ import annotations
 
+import time
+
+from openai import OpenAI
+
 from app.config import Settings
 from app.core.logging import get_logger
 
@@ -16,6 +20,10 @@ logger = get_logger(__name__)
 EMBEDDING_REQUEST_TIMEOUT_S = 30.0
 OPENAI_CORPUS_DIMENSION = 1536
 VOYAGE_EMBEDDING_DIMENSION = 1024
+
+# Reused sync client for embedding RTT (avoid fresh TCP/TLS per call).
+_sync_openai_client: OpenAI | None = None
+_sync_openai_client_key: str | None = None
 
 # Per-1K-token embedding pricing by method.
 _EMBEDDING_RATE_PER_1K: dict[str, float] = {
@@ -81,6 +89,29 @@ def record_embedding_cost(
         logger.warning("embedding cost record failed org_id=%s error=%s", org_id, str(exc))
 
 
+def _get_sync_openai_client(settings: Settings) -> OpenAI:
+    """Return a process-wide sync OpenAI client (connection reuse for embeddings)."""
+    global _sync_openai_client, _sync_openai_client_key
+    api_key = (settings.openai_api_key or "").strip()
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY is not configured")
+    if _sync_openai_client is None or _sync_openai_client_key != api_key:
+        _sync_openai_client = OpenAI(
+            api_key=api_key,
+            timeout=EMBEDDING_REQUEST_TIMEOUT_S,
+            max_retries=2,
+        )
+        _sync_openai_client_key = api_key
+    return _sync_openai_client
+
+
+def reset_sync_openai_client_for_tests() -> None:
+    """Clear cached sync client (tests only)."""
+    global _sync_openai_client, _sync_openai_client_key
+    _sync_openai_client = None
+    _sync_openai_client_key = None
+
+
 def embed_with_failover(
     text: str,
     settings: Settings,
@@ -93,18 +124,14 @@ def embed_with_failover(
     when Voyage is enabled but the corpus dimension is incompatible.
     """
     from app.services.providers.anthropic_adapter import AnthropicAdapter
-    from app.services.providers.openai_adapter import OpenAIAdapter
 
     errors: list[str] = []
 
     if (settings.openai_api_key or "").strip():
         try:
-            adapter = OpenAIAdapter(
-                client_getter=lambda: None,
-                api_key_getter=lambda: (settings.openai_api_key or "").strip(),
-                timeout_s=EMBEDDING_REQUEST_TIMEOUT_S,
-            )
-            vector = adapter.embed(text, settings.embedding_model)
+            client = _get_sync_openai_client(settings)
+            resp = client.embeddings.create(model=settings.embedding_model, input=text)
+            vector = list(resp.data[0].embedding)
             record_embedding_cost(settings, org_id, "openai", settings.embedding_model, _estimate_tokens(text))
             return vector, "openai"
         except Exception as exc:  # noqa: BLE001
@@ -146,3 +173,45 @@ def get_embedding(text: str, settings: Settings, org_id: str | None = None) -> l
     """Return embedding vector for text (OpenAI primary, Voyage when enabled)."""
     vector, _method = embed_with_failover(text, settings, org_id=org_id)
     return vector
+
+
+def get_embedding_timed(
+    text: str,
+    settings: Settings,
+    org_id: str | None = None,
+) -> tuple[list[float], int]:
+    """Return (embedding vector, wall_ms) for latency instrumentation."""
+    start = time.perf_counter()
+    vector = get_embedding(text, settings, org_id=org_id)
+    return vector, int((time.perf_counter() - start) * 1000)
+
+
+def embed_texts_batch_openai(
+    texts: list[str],
+    settings: Settings,
+    org_id: str | None = None,
+) -> list[list[float]]:
+    """Batch OpenAI embeddings in one API call (single connection, amortized RTT)."""
+    cleaned = [str(t or "").strip() or " " for t in texts]
+    if not cleaned:
+        return []
+    if len(cleaned) == 1:
+        return [get_embedding(cleaned[0], settings, org_id=org_id)]
+    if not (settings.openai_api_key or "").strip():
+        raise ValueError("OPENAI_API_KEY is not configured")
+    client = _get_sync_openai_client(settings)
+    resp = client.embeddings.create(model=settings.embedding_model, input=cleaned)
+    ordered = sorted(resp.data, key=lambda d: int(getattr(d, "index", 0) or 0))
+    vectors = [list(row.embedding) for row in ordered]
+    if len(vectors) != len(cleaned):
+        raise ValueError(
+            f"embedding batch size mismatch: sent={len(cleaned)} got={len(vectors)}"
+        )
+    record_embedding_cost(
+        settings,
+        org_id,
+        "openai",
+        settings.embedding_model,
+        sum(_estimate_tokens(t) for t in cleaned),
+    )
+    return vectors

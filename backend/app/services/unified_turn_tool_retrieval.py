@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import math
 import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
-from app.config import Settings
+from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.agent_platform_optimizer import (
     compress_tool_definitions,
@@ -68,12 +70,15 @@ def _embed_tools(
     *,
     settings: Settings,
     org_id: str | None,
+    stats_out: dict[str, Any] | None = None,
 ) -> list[tuple[dict[str, Any], list[float]]]:
-    from app.rag.embedding import get_embedding
+    from app.rag.embedding import embed_texts_batch_openai
 
     model = str(getattr(settings, "embedding_model", None) or "text-embedding-3-small")
     out: list[tuple[dict[str, Any], list[float]]] = []
     missing: list[tuple[dict[str, Any], str, str]] = []
+    cache_hits = 0
+    t_cache = time.perf_counter()
     with _CACHE_LOCK:
         for tool in tools:
             name = _tool_name(tool)
@@ -81,15 +86,37 @@ def _embed_tools(
             key = _cache_key(model, name, doc)
             cached = _TOOL_EMBED_CACHE.get(key)
             if cached is not None:
+                cache_hits += 1
                 out.append((tool, cached))
             else:
                 missing.append((tool, name, doc))
-    for tool, name, doc in missing:
-        vector = get_embedding(doc, settings, org_id=org_id)
-        key = _cache_key(model, name, doc)
+    cache_lookup_ms = int((time.perf_counter() - t_cache) * 1000)
+
+    tool_docs_ms = 0
+    batch_api_calls = 0
+    if missing:
+        t_batch = time.perf_counter()
+        docs = [doc for _, _, doc in missing]
+        vectors = embed_texts_batch_openai(docs, settings, org_id=org_id)
+        tool_docs_ms = int((time.perf_counter() - t_batch) * 1000)
+        batch_api_calls = 1
         with _CACHE_LOCK:
-            _TOOL_EMBED_CACHE[key] = vector
-        out.append((tool, vector))
+            for (tool, name, doc), vector in zip(missing, vectors, strict=True):
+                key = _cache_key(model, name, doc)
+                _TOOL_EMBED_CACHE[key] = vector
+                out.append((tool, vector))
+
+    if stats_out is not None:
+        stats_out.update(
+            {
+                "embed_tool_doc_cache_hits": cache_hits,
+                "embed_tool_doc_cache_misses": len(missing),
+                "embed_tool_docs_ms": tool_docs_ms,
+                "embed_tool_doc_batch_api_calls": batch_api_calls,
+                "embed_tool_doc_cache_lookup_ms": cache_lookup_ms,
+                "embed_tool_doc_vectors": len(out),
+            }
+        )
     return out
 
 
@@ -115,8 +142,9 @@ def embed_narrow_tools_for_turn(
         }
 
     try:
-        from app.rag.embedding import get_embedding
+        from app.rag.embedding import get_embedding_timed
 
+        narrow_start = time.perf_counter()
         connected = [str(c).strip().lower() for c in (connected_integrations or []) if str(c).strip()]
         platform_tools = [t for t in tools if _is_platform_tool(t)]
         connector_tools = [t for t in tools if not _is_platform_tool(t)]
@@ -138,8 +166,6 @@ def embed_narrow_tools_for_turn(
             if focus and integration not in focus and integration not in {"platform", "mcp", "browser"}:
                 continue
             if not action_required and _is_write_tool(tool):
-                # Still allow write tools into the semantic pool when action words present
-                # already handled; if not action_required, skip pure writes like keyword path.
                 continue
             candidates.append(tool)
 
@@ -156,10 +182,26 @@ def embed_narrow_tools_for_turn(
         if not candidates:
             candidates = list(connector_tools)
 
-        query_vec = get_embedding((query or "").strip() or "task", settings, org_id=org_id)
-        scored = _embed_tools(candidates, settings=settings, org_id=org_id)
+        query_text = (query or "").strip() or "task"
+        tool_partial: dict[str, Any] = {}
+
+        def _load_tool_vectors() -> list[tuple[dict[str, Any], list[float]]]:
+            return _embed_tools(
+                candidates,
+                settings=settings,
+                org_id=org_id,
+                stats_out=tool_partial,
+            )
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            query_future = pool.submit(get_embedding_timed, query_text, settings, org_id)
+            tools_future = pool.submit(_load_tool_vectors)
+            query_vec, query_ms = query_future.result()
+            scored = tools_future.result()
+
+        t_rank = time.perf_counter()
         ranked = sorted(
-            (( _cosine(query_vec, vec), tool) for tool, vec in scored),
+            ((_cosine(query_vec, vec), tool) for tool, vec in scored),
             key=lambda row: row[0],
             reverse=True,
         )
@@ -179,13 +221,15 @@ def embed_narrow_tools_for_turn(
                 break
 
         if len(selected) < 3 and len(candidates) > len(selected):
-            # Pad with next-best semantic hits ignoring per-connector soft cap.
             for score, tool in ranked:
                 if tool in selected:
                     continue
                 selected.append(tool)
                 if len(selected) >= min(budget, max(3, budget)):
                     break
+
+        similarity_ms = int((time.perf_counter() - t_rank) * 1000)
+        narrow_total_ms = int((time.perf_counter() - narrow_start) * 1000)
 
         visible = compress_tool_definitions(platform_tools + selected)
         stats = {
@@ -198,6 +242,10 @@ def embed_narrow_tools_for_turn(
             "embeddingToolRetrieval": True,
             "embeddingCandidateCount": len(candidates),
             "topSimilarity": round(float(ranked[0][0]), 4) if ranked else None,
+            "embed_query_ms": query_ms,
+            "embed_similarity_rank_ms": similarity_ms,
+            "embed_narrow_total_ms": narrow_total_ms,
+            **tool_partial,
         }
         return visible, stats
     except Exception as exc:  # noqa: BLE001
@@ -245,8 +293,14 @@ def warm_tool_document_embeddings(*, settings: Settings | None = None) -> int:
             tools.append(spec.to_openai_tool())
         if not tools:
             return 0
-        _embed_tools(tools, settings=active, org_id=None)
-        logger.info("unified_turn_tool_doc_cache_warmed count=%s", len(tools))
+        partial: dict[str, Any] = {}
+        _embed_tools(tools, settings=active, org_id=None, stats_out=partial)
+        logger.info(
+            "unified_turn_tool_doc_cache_warmed count=%s misses=%s batch_calls=%s",
+            len(tools),
+            partial.get("embed_tool_doc_cache_misses"),
+            partial.get("embed_tool_doc_batch_api_calls"),
+        )
         return len(tools)
     except Exception as exc:  # noqa: BLE001
         logger.warning("warm_tool_document_embeddings skipped: %s", exc)

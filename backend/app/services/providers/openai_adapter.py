@@ -217,11 +217,16 @@ class OpenAIAdapter(ProviderAdapter):
         )
 
     def embed(self, text: str, model: str = "text-embedding-3-small") -> list[float]:
+        from app.rag.embedding import _get_sync_openai_client
+
         api_key = self._api_key_getter()
         if not api_key:
             raise ProviderUnavailableError("openai", "OPENAI_API_KEY is not configured")
         try:
-            client = OpenAI(api_key=api_key, timeout=self._timeout_s, max_retries=2)
+            # Reuse process-wide sync client (embed() used to create a new client per call).
+            from app.config import get_settings
+
+            client = _get_sync_openai_client(get_settings())
             resp = client.embeddings.create(model=model, input=text)
             return list(resp.data[0].embedding)
         except (BadRequestError, PermissionDeniedError) as exc:

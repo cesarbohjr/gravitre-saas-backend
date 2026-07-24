@@ -67,9 +67,16 @@ def test_embed_narrow_ranks_relevant_tools():
         return [0.05, 0.05, 0.05]
 
     settings = MagicMock(embedding_model="text-embedding-3-small")
+
+    def fake_batch(texts, settings, org_id=None):
+        return [fake_embed(t, settings, org_id) for t in texts]
+
     with patch.dict("app.services.unified_turn_tool_retrieval._TOOL_EMBED_CACHE", {}, clear=True), patch(
-        "app.rag.embedding.get_embedding",
-        side_effect=fake_embed,
+        "app.rag.embedding.get_embedding_timed",
+        side_effect=lambda text, settings, org_id=None: (fake_embed(text, settings, org_id), 1),
+    ), patch(
+        "app.rag.embedding.embed_texts_batch_openai",
+        side_effect=fake_batch,
     ):
         # Clear module cache explicitly
         from app.services import unified_turn_tool_retrieval as mod
@@ -87,6 +94,8 @@ def test_embed_narrow_ranks_relevant_tools():
     names = {row["function"]["name"] for row in visible}
     assert stats["embeddingToolRetrieval"] is True
     assert stats["retrievalMethod"] == "embedding_narrow_tools_for_turn"
+    assert stats.get("embed_query_ms") == 1
+    assert stats.get("embed_tool_doc_batch_api_calls") == 1
     assert "apollo_lists_create" in names
     assert "slack_post_message" not in names
 
@@ -98,7 +107,7 @@ def test_embed_narrow_falls_back_to_keyword_on_error():
     ]
     settings = MagicMock(embedding_model="text-embedding-3-small")
     with patch(
-        "app.rag.embedding.get_embedding",
+        "app.rag.embedding.get_embedding_timed",
         side_effect=RuntimeError("no provider"),
     ):
         visible, stats = embed_narrow_tools_for_turn(
