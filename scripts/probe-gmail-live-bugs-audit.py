@@ -112,58 +112,68 @@ def _connected_payload(client, org_id: str, environment: str) -> dict[str, Any]:
 
 def hunt_messages(client, since_iso: str) -> dict[str, Any]:
     """Scan recent assistant/user messages for bug signatures."""
-    # Pull recent user messages with correction phrase (narrow scan)
     user_hits: list[dict[str, Any]] = []
     assistant_hits: list[dict[str, Any]] = []
 
-    # Recent conversations updated since window — cap for safety
-    conv_rows = (
-        client.table("conversations")
-        .select("id,org_id,user_id,title,updated_at,task_state")
-        .gte("updated_at", since_iso)
-        .order("updated_at", desc=True)
-        .limit(400)
-        .execute()
-        .data
-        or []
-    )
-    conv_by_id = {str(c["id"]): c for c in conv_rows if c.get("id")}
-    conv_ids = list(conv_by_id.keys())
+    # Direct content search (broader than conversation window cap)
+    for pattern, role, store in (
+        ("%no use gmail%", "user", user_hits),
+        ("%No use Gmail%", "user", user_hits),
+        ("%Gmail isn't connected here%", "assistant", assistant_hits),
+        ("%Gmail isn't Connected here%", "assistant", assistant_hits),
+        ("%isn't connected here%Gmail%", "assistant", assistant_hits),
+    ):
+        try:
+            q = (
+                client.table("conversation_messages")
+                .select("id,conversation_id,role,content,created_at")
+                .eq("role", role)
+                .gte("created_at", since_iso)
+                .ilike("content", pattern)
+                .order("created_at", desc=True)
+                .limit(20)
+                .execute()
+            )
+            for m in q.data or []:
+                store.append(
+                    {
+                        "message_id": m.get("id"),
+                        "conversation_id": m.get("conversation_id"),
+                        "created_at": m.get("created_at"),
+                        "role": m.get("role"),
+                        "content_head": (m.get("content") or "")[:240],
+                        "search_pattern": pattern,
+                    }
+                )
+        except Exception as exc:  # noqa: BLE001
+            user_hits.append({"search_error": str(exc)[:200], "pattern": pattern})
 
-    for i in range(0, len(conv_ids), 40):
-        chunk = conv_ids[i : i + 40]
+    # Enrich hits with org_id via conversations
+    conv_ids = list({str(h.get("conversation_id")) for h in user_hits + assistant_hits if h.get("conversation_id")})
+    conv_map: dict[str, dict] = {}
+    for i in range(0, len(conv_ids), 50):
+        chunk = conv_ids[i : i + 50]
         if not chunk:
-            break
-        msgs = (
-            client.table("conversation_messages")
-            .select("id,conversation_id,role,content,created_at,tool_calls,metadata")
-            .in_("conversation_id", chunk)
-            .gte("created_at", since_iso)
-            .order("created_at", desc=False)
+            continue
+        rows = (
+            client.table("conversations")
+            .select("id,org_id,user_id,title,updated_at,task_state")
+            .in_("id", chunk)
             .execute()
             .data
             or []
         )
-        for m in msgs:
-            content = str(m.get("content") or "")
-            cid = str(m.get("conversation_id") or "")
-            conv = conv_by_id.get(cid) or {}
-            base = {
-                "message_id": m.get("id"),
-                "conversation_id": cid,
-                "org_id": conv.get("org_id"),
-                "created_at": m.get("created_at"),
-                "role": m.get("role"),
-                "content_head": content[:240],
-                "conversation_title": conv.get("title"),
-            }
-            if m.get("role") == "user" and NO_USE_GMAIL_RE.search(content):
-                user_hits.append(base)
-            if m.get("role") == "assistant" and GMAIL_DISCONNECTED_RE.search(content):
-                assistant_hits.append({**base, "content_full": content[:1200]})
+        for c in rows:
+            conv_map[str(c["id"])] = c
+    for hit in user_hits + assistant_hits:
+        conv = conv_map.get(str(hit.get("conversation_id") or "")) or {}
+        hit["org_id"] = conv.get("org_id")
+        hit["conversation_title"] = conv.get("title")
+        if hit in assistant_hits:
+            hit["content_full"] = hit.get("content_head", "")
 
     return {
-        "conversation_window_count": len(conv_ids),
+        "direct_search_hit_count": len(user_hits) + len(assistant_hits),
         "user_no_use_gmail_hits": user_hits,
         "assistant_gmail_disconnected_hits": assistant_hits,
     }
@@ -222,7 +232,11 @@ def load_audits(client, org_id: str, conversation_id: str, since_iso: str) -> li
 
 def analyze_correction_thread(thread: list[dict[str, Any]], task_state: dict | None) -> dict[str, Any]:
     from app.services.gravitree_voice import detect_correction_phrase
-    from app.services.pending_reply_classifier import classify_pending_reply, has_pending_family
+    from app.services.pending_reply_classifier import (
+        build_pending_snapshot,
+        classify_pending_reply_fast,
+        has_pending_family,
+    )
 
     correction_idx = None
     correction_text = None
@@ -243,10 +257,14 @@ def analyze_correction_thread(thread: list[dict[str, Any]], task_state: dict | N
     classifier_after = None
     if correction_text and has_pending_family(task_state):
         try:
-            classifier_after = classify_pending_reply(
-                correction_text,
-                task_state=task_state or {},
-            )
+            snap = build_pending_snapshot(task_state or {})
+            intent = classify_pending_reply_fast(correction_text, snap)
+            classifier_after = {
+                "intent": intent,
+                "snapshot_integration": snap.integration,
+                "snapshot_status": snap.status,
+                "pending_missing": list(snap.pending_missing or []),
+            }
         except Exception as exc:  # noqa: BLE001
             classifier_after = {"error": str(exc)[:200]}
 
@@ -344,9 +362,11 @@ def main() -> int:
             print(f"Missing {req}", file=sys.stderr)
             return 2
 
+    from app.config import get_settings
     from app.workflows.repository import get_supabase_client
 
-    client = get_supabase_client()
+    settings = get_settings()
+    client = get_supabase_client(settings)
     since = (datetime.now(timezone.utc) - timedelta(hours=SINCE_HOURS)).isoformat()
 
     report: dict[str, Any] = {
