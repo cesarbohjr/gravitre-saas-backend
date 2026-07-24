@@ -65,8 +65,6 @@ class UnifiedTurnShadowResult:
     latency_breakdown: dict[str, Any] = field(default_factory=dict)
     # R1: why LIVE returned None (intentional tool defer vs error). Empty when served.
     fallthrough_reason: str | None = None
-    # Org connector inventory snapshot at turn time (audit/debug).
-    connected_integrations: list[str] = field(default_factory=list)
 
     def to_audit_payload(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -75,8 +73,6 @@ class UnifiedTurnShadowResult:
             payload["tool_arguments"] = {
                 k: str(v)[:200] for k, v in list(self.tool_arguments.items())[:20]
             }
-        if self.connected_integrations:
-            payload["connected_integrations"] = list(self.connected_integrations)
         live = bool(self.live_served)
         payload["shadow_user_visible"] = live
         payload["classical_path_active"] = not live
@@ -276,8 +272,6 @@ async def run_unified_turn_shadow(
     registry = get_tool_registry()
     permitted = ["*"]
     connected = [str(c).strip().lower() for c in (connected_integrations or []) if str(c).strip()]
-    if "platform" not in connected:
-        connected.append("platform")
     all_tools = registry.get_tools_for_agent(permitted, connected)
     t_after_registry = time.perf_counter()
 
@@ -329,13 +323,6 @@ async def run_unified_turn_shadow(
         task_state,
         last_assistant_message=_last_assistant_snippet(conversation_history),
     )
-    from app.services.conversational_reply_service import build_capability_snapshot
-
-    capability_block = build_capability_snapshot(
-        connected_integrations=connected,
-        client=client,
-        org_id=org_id,
-    )
     # Full Module D spec is the system instruction (not a post-hoc phrase bank).
     system = apply_voice(
         build_module_d_unified_system_prompt(
@@ -349,11 +336,6 @@ async def run_unified_turn_shadow(
         user_parts.append(
             "NO PENDING STATE this turn. Do not mention abandon/hold or a pending item."
         )
-    user_parts.append(
-        "CONNECTED INTEGRATIONS THIS ORG (authoritative for this turn — do not claim "
-        "a listed vendor is disconnected without calling assistant_connector_status):\n"
-        + capability_block
-    )
     # Explicit tool inventory note for knowledge-boundary honesty.
     if visible:
         names = sorted(
@@ -481,7 +463,6 @@ async def run_unified_turn_shadow(
         tool_stats=tool_stats,
         model=model,
         latency_breakdown=breakdown,
-        connected_integrations=list(connected),
     )
 
     if tool_calls:
@@ -786,29 +767,6 @@ async def apply_unified_turn_live(
             message=result.user_message, task_state=task_state
         ):
             _mark_live_fallthrough(result, "violates_no_pending_hold")
-            emit_unified_turn_shadow_audit(
-                client=client,
-                org_id=org_id,
-                actor_id=user_id,
-                conversation_id=conversation_id,
-                result=result,
-            )
-            return None
-        from app.services.unified_turn_connector_grounding import (
-            unified_live_message_claims_false_disconnect,
-        )
-
-        if not result.connected_integrations:
-            result.connected_integrations = [
-                str(c).strip().lower()
-                for c in (connected_integrations or [])
-                if str(c).strip()
-            ]
-        if unified_live_message_claims_false_disconnect(
-            result.user_message,
-            result.connected_integrations,
-        ):
-            _mark_live_fallthrough(result, "false_connector_disconnect_claim")
             emit_unified_turn_shadow_audit(
                 client=client,
                 org_id=org_id,

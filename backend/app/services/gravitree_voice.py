@@ -49,7 +49,6 @@ __all__ = (
     "chev_term",
     "coerce_outcome_digest_item",
     "confidence_register_hint",
-    "detect_channel_override_integration",
     "detect_correction_phrase",
     "domain_focus_section",
     "format_confidence_for_voice",
@@ -105,57 +104,15 @@ _CORRECTION_RE = re.compile(
     r"(?i)\b(?:actually|no[, ]+i\s+meant|i\s+meant|wrong[, ]+use|change\s+that\s+to|"
     r"use\s+.+?\s+instead|not\s+.+,?\s*(?:use|try))\b"
 )
-_CHANNEL_OVERRIDE_RE = re.compile(
-    r"(?i)(?:"
-    r"\bno[, ]+use\s+(?P<no_use>[a-z0-9_.-]+)|"
-    r"\buse\s+(?P<use_not>[a-z0-9_.-]+)\s+not\s+(?P<reject>[a-z0-9_.-]+)|"
-    r"\buse\s+(?P<use_instead>[a-z0-9_.-]+)\s+instead(?:\s+of\s+(?P<instead_of>[a-z0-9_.-]+))?"
-    r")"
-)
-
-
-def _resolve_integration_token(token: str) -> str | None:
-    from app.services.chat_connector_models import INTEGRATION_ALIASES
-
-    raw = re.sub(r"\s+", " ", (token or "").strip().lower())
-    if not raw:
-        return None
-    for slug, aliases in INTEGRATION_ALIASES.items():
-        if raw == slug or raw == slug.replace("_", " "):
-            return slug
-        for alias in aliases:
-            alias_norm = alias.strip().lower()
-            if raw == alias_norm or raw.startswith(alias_norm):
-                return slug
-    return None
-
-
-def detect_channel_override_integration(text: str) -> str | None:
-    """Return integration slug when user overrides channel (e.g. 'No use Gmail')."""
-    raw = (text or "").strip()
-    if not raw:
-        return None
-    match = _CHANNEL_OVERRIDE_RE.search(raw)
-    if not match:
-        return None
-    for group in ("no_use", "use_not", "use_instead"):
-        token = match.group(group)
-        if token:
-            slug = _resolve_integration_token(token)
-            if slug:
-                return slug
-    return None
 
 
 def detect_correction_phrase(text: str) -> str | None:
     """Return a short correction snippet if the user is correcting a prior turn."""
     raw = (text or "").strip()
-    if not raw:
+    if not raw or not _CORRECTION_RE.search(raw):
         return None
-    if _CORRECTION_RE.search(raw) or detect_channel_override_integration(raw):
-        cleaned = re.sub(r"\s+", " ", raw)
-        return cleaned[:160]
-    return None
+    cleaned = re.sub(r"\s+", " ", raw)
+    return cleaned[:160]
 
 
 def anti_repeat_prompt_section(recent_assistant: list[str] | None) -> str:

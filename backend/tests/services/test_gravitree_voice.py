@@ -11,7 +11,6 @@ from app.services.gravitree_voice import (
     anti_repeat_prompt_section,
     apply_voice,
     chev_term,
-    detect_channel_override_integration,
     detect_correction_phrase,
     domain_focus_section,
     format_operator_message,
@@ -29,17 +28,6 @@ def test_detect_correction_phrase_and_house_line():
     msg = format_operator_message("correction_ack", correction=snip)
     assert "Got it" in msg
     assert "HubSpot" in msg
-
-
-def test_detect_channel_override_no_use_gmail():
-    assert detect_channel_override_integration("No use Gmail.") == "gmail"
-    snip = detect_correction_phrase("No use Gmail.")
-    assert snip is not None
-    assert "Gmail" in snip
-
-
-def test_detect_channel_override_use_not_hubspot():
-    assert detect_channel_override_integration("use gmail not hubspot") == "gmail"
 
 
 def test_anti_repeat_prompt_section():

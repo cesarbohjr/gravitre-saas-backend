@@ -46,7 +46,7 @@ def test_standard_greeting_not_deferred_when_requires_action_flag_set():
 
 
 def test_defer_connector_tool_proposal_all_modes():
-    assert not should_defer_unified_turn_live_to_classical(
+    assert should_defer_unified_turn_live_to_classical(
         mode_key="fast",
         outcome_kind="connector_tool_proposal",
         message="create an apollo contact list",
