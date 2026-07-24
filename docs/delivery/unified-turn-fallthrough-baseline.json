@@ -1,0 +1,40 @@
+{
+  "feature": "unified_turn_live_fallthrough_baseline",
+  "window_hours": 168,
+  "since": "2026-07-17T06:09:48.319762+00:00",
+  "generated_at": "2026-07-24T06:09:53.438265+00:00",
+  "health": {
+    "git_sha": "9563ecb542e601522bb5f806e0e367646240487d",
+    "unified_turn_live_enabled": true,
+    "timestamp": "2026-07-24T06:09:50.424363+00:00"
+  },
+  "totals": {
+    "live_completed": 940,
+    "live_fallthrough": 32,
+    "live_turns_with_audit": 972,
+    "fallthrough_pct_of_audited_live_turns": 3.29
+  },
+  "fallthrough_by_raw_reason": {
+    "defer_classical_tool_sse": 16,
+    "defer_connector_tool_proposal": 16
+  },
+  "fallthrough_by_bucket": {
+    "classical_tool_sse_deferral": 16,
+    "connector_tool_proposal_deferral": 16
+  },
+  "fallthrough_outcome_kinds": {
+    "connector_tool_proposal": 16,
+    "conversational_reply": 13,
+    "clarifying_question": 2,
+    "confirmation_request": 1
+  },
+  "notes": {
+    "pending_family_silent_fallthrough": "apply_unified_turn_live returns None when has_pending_family(task_state) without writing unified_turn.live.fallthrough \u2014 not counted here.",
+    "bucket_mapping": {
+      "unified_outcome_skip": "outcome_skipped / outcome_error",
+      "connector_tool_proposal_deferral": "defer_connector_tool_proposal",
+      "classical_tool_sse_deferral": "defer_classical_tool_sse",
+      "guard_violation": "violates_no_pending_hold"
+    }
+  }
+}
