@@ -182,7 +182,7 @@ def hunt_messages(client, since_iso: str) -> dict[str, Any]:
 def load_thread(client, conversation_id: str) -> list[dict[str, Any]]:
     rows = (
         client.table("conversation_messages")
-        .select("id,role,content,created_at,tool_calls,metadata")
+        .select("id,role,content,created_at,tool_calls")
         .eq("conversation_id", conversation_id)
         .order("created_at", desc=False)
         .limit(80)
@@ -199,7 +199,6 @@ def load_thread(client, conversation_id: str) -> list[dict[str, Any]]:
                 "created_at": r.get("created_at"),
                 "content": (r.get("content") or "")[:2000],
                 "tool_calls": r.get("tool_calls"),
-                "metadata": r.get("metadata"),
             }
         )
     return out
@@ -394,66 +393,74 @@ def main() -> int:
 
     bug1_cases = []
     for hit in hunt.get("assistant_gmail_disconnected_hits") or []:
-        cid = str(hit.get("conversation_id") or "")
-        org_id = str(hit.get("org_id") or "")
-        if not cid or not org_id:
-            continue
-        conv = (
-            client.table("conversations")
-            .select("id,org_id,task_state,title,updated_at")
-            .eq("id", cid)
-            .limit(1)
-            .execute()
-            .data
-            or [{}]
-        )[0]
-        thread = load_thread(client, cid)
-        audits = load_audits(client, org_id, cid, since)
-        turn = analyze_gmail_disconnect_turn(thread, audits)
-        connector_state = {
-            "production": _connected_payload(client, org_id, "production"),
-            "staging": _connected_payload(client, org_id, "staging"),
-        }
-        bug1_cases.append(
-            {
-                "hit": hit,
-                "conversation": conv,
-                "thread_message_count": len(thread),
-                "turn_analysis": turn,
-                "connector_state_now": connector_state,
-                "audit_event_count": len(audits),
-                "audit_actions": sorted({a.get("action") for a in audits}),
+        try:
+            cid = str(hit.get("conversation_id") or "")
+            org_id = str(hit.get("org_id") or "")
+            if not cid or not org_id:
+                bug1_cases.append({"hit": hit, "error": "missing conversation_id or org_id"})
+                continue
+            conv = (
+                client.table("conversations")
+                .select("id,org_id,task_state,title,updated_at")
+                .eq("id", cid)
+                .limit(1)
+                .execute()
+                .data
+                or [{}]
+            )[0]
+            thread = load_thread(client, cid)
+            audits = load_audits(client, org_id, cid, since)
+            turn = analyze_gmail_disconnect_turn(thread, audits)
+            connector_state = {
+                "production": _connected_payload(client, org_id, "production"),
+                "staging": _connected_payload(client, org_id, "staging"),
             }
-        )
+            bug1_cases.append(
+                {
+                    "hit": hit,
+                    "conversation": conv,
+                    "thread_message_count": len(thread),
+                    "turn_analysis": turn,
+                    "connector_state_now": connector_state,
+                    "audit_event_count": len(audits),
+                    "audit_actions": sorted({a.get("action") for a in audits}),
+                }
+            )
+        except Exception as exc:  # noqa: BLE001
+            bug1_cases.append({"hit": hit, "error": str(exc)[:400]})
 
     bug2_cases = []
     for hit in hunt.get("user_no_use_gmail_hits") or []:
-        cid = str(hit.get("conversation_id") or "")
-        org_id = str(hit.get("org_id") or "")
-        if not cid or not org_id:
-            continue
-        conv = (
-            client.table("conversations")
-            .select("id,org_id,task_state,title,updated_at")
-            .eq("id", cid)
-            .limit(1)
-            .execute()
-            .data
-            or [{}]
-        )[0]
-        task_state = conv.get("task_state") if isinstance(conv.get("task_state"), dict) else {}
-        thread = load_thread(client, cid)
-        audits = load_audits(client, org_id, cid, since)
-        bug2_cases.append(
-            {
-                "hit": hit,
-                "conversation": conv,
-                "correction_analysis": analyze_correction_thread(thread, task_state),
-                "thread": thread,
-                "audit_event_count": len(audits),
-                "unified_turn_audits": [a for a in audits if "unified_turn" in str(a.get("action"))],
-            }
-        )
+        try:
+            cid = str(hit.get("conversation_id") or "")
+            org_id = str(hit.get("org_id") or "")
+            if not cid or not org_id:
+                bug2_cases.append({"hit": hit, "error": "missing conversation_id or org_id"})
+                continue
+            conv = (
+                client.table("conversations")
+                .select("id,org_id,task_state,title,updated_at")
+                .eq("id", cid)
+                .limit(1)
+                .execute()
+                .data
+                or [{}]
+            )[0]
+            task_state = conv.get("task_state") if isinstance(conv.get("task_state"), dict) else {}
+            thread = load_thread(client, cid)
+            audits = load_audits(client, org_id, cid, since)
+            bug2_cases.append(
+                {
+                    "hit": hit,
+                    "conversation": conv,
+                    "correction_analysis": analyze_correction_thread(thread, task_state),
+                    "thread": thread,
+                    "audit_event_count": len(audits),
+                    "unified_turn_audits": [a for a in audits if "unified_turn" in str(a.get("action"))],
+                }
+            )
+        except Exception as exc:  # noqa: BLE001
+            bug2_cases.append({"hit": hit, "error": str(exc)[:400]})
 
     report["bug1_gmail_disconnected_while_ui_green"] = bug1_cases
     report["bug2_no_use_gmail_correction"] = bug2_cases
