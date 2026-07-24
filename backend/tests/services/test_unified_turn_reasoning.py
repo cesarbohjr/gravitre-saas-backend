@@ -447,6 +447,38 @@ async def test_apply_unified_live_prepends_mixed_social_ack():
 
 
 @pytest.mark.asyncio
+async def test_apply_unified_live_clarifying_question_maps_dialogue_mode_clarify():
+    """Shared payload mapper — all connector clarifies, not Gmail-only."""
+    settings = MagicMock(unified_turn_live_enabled=True, openai_api_key="sk-test")
+    clarify = UnifiedTurnShadowResult(
+        outcome_kind="clarifying_question",
+        user_message="Which HubSpot list should I search — marketing or sales?",
+        connected_integrations=["hubspot"],
+    )
+
+    with patch(
+        "app.services.unified_turn_reasoning_service.run_unified_turn_shadow",
+        new=AsyncMock(return_value=clarify),
+    ), patch(
+        "app.services.unified_turn_reasoning_service.emit_unified_turn_shadow_audit",
+    ):
+        out = await apply_unified_turn_live(
+            org_id="org",
+            user_id="user",
+            conversation_id="conv",
+            message="search hubspot list",
+            task_state={},
+            conversation_history=[],
+            connected_integrations=["hubspot"],
+            settings=settings,
+        )
+
+    assert out is not None
+    assert out["dialogue_mode"] == "clarify"
+    assert out["unified_outcome_kind"] == "clarifying_question"
+
+
+@pytest.mark.asyncio
 async def test_apply_unified_live_rejects_phantom_hold_abandon():
     settings = MagicMock(unified_turn_live_enabled=True, openai_api_key="sk-test")
     bad = UnifiedTurnShadowResult(

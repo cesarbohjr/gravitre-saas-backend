@@ -72,8 +72,9 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
   )
 
   const actions = useMemo(() => (catalog ? tierActions(catalog) : []), [catalog])
-  const readyCount = actions.filter((a) => a.implemented).length
-  const plannedCount = actions.length - readyCount
+  const chatReadyCount = actions.filter((a) => a.chatExecutable).length
+  const workflowOnlyCount = actions.filter((a) => a.implemented && !a.chatExecutable).length
+  const plannedCount = actions.filter((a) => !a.implemented).length
 
   const isDisconnected = connectorStatus !== "connected"
   const referencedWhileDisconnected = isDisconnected && linkedWorkflows.length > 0
@@ -108,12 +109,14 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
               </CardTitle>
               {actions.length > 0 ? (
                 <span className="text-xs text-muted-foreground">
-                  {readyCount} ready{plannedCount > 0 ? ` · ${plannedCount} planned` : ""}
+                  {chatReadyCount} chat
+                  {workflowOnlyCount > 0 ? ` · ${workflowOnlyCount} workflow` : ""}
+                  {plannedCount > 0 ? ` · ${plannedCount} planned` : ""}
                 </span>
               ) : null}
             </div>
             <CardDescription className="text-xs">
-              Tools this connector can run as workflow steps
+              Chat-ready tools vs workflow-only catalog entries for this vendor
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -129,8 +132,10 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
                     className="flex items-center justify-between gap-2 rounded-md bg-secondary/30 px-2.5 py-2"
                   >
                     <div className="flex min-w-0 items-center gap-2">
-                      {action.implemented ? (
+                      {action.chatExecutable ? (
                         <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                      ) : action.implemented ? (
+                        <CircleDashed className="h-3.5 w-3.5 shrink-0 text-sky-500" />
                       ) : (
                         <CircleDashed className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                       )}
@@ -143,14 +148,18 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
                       <span
                         className={cn(
                           "rounded px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide",
-                          action.tier === "v1"
-                            ? "bg-sky-500/10 text-sky-500"
-                            : action.tier === "v2"
-                              ? "bg-violet-500/10 text-violet-400"
-                              : "bg-amber-500/10 text-amber-500",
+                          action.chatExecutable
+                            ? "bg-emerald-500/10 text-emerald-600"
+                            : action.implemented
+                              ? "bg-sky-500/10 text-sky-500"
+                              : "bg-muted text-muted-foreground",
                         )}
                       >
-                        {TIER_LABEL[action.tier] ?? action.tier}
+                        {action.chatExecutable
+                          ? "Chat"
+                          : action.implemented
+                            ? "Workflow"
+                            : "Planned"}
                       </span>
                       {action.implemented ? (
                         <Button
@@ -195,7 +204,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
             {linkedWorkflows.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-6 text-center">
                 <p className="text-xs text-muted-foreground">No workflows use this connector yet.</p>
-                {readyCount > 0 ? (
+                {chatReadyCount + workflowOnlyCount > 0 ? (
                   <Button asChild variant="outline" size="sm" className="gap-1.5">
                     <Link href={`/workflows/new/builder?vendor=${encodeURIComponent(vendor)}`}>
                       <Plus className="h-3.5 w-3.5" />

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.services.chat_connector_models import INTEGRATION_ALIASES, ConnectorActionPlan, LIST_CREATE_INTENT
+from app.services.chat_tool_visibility import chat_visible_connector_tool_names
 from app.services.connector_action_workflows import extract_asana_assignee_only
 from app.services.connector_execution_matrix import (
     ConnectorActionMatrixEntry,
@@ -13,7 +14,6 @@ from app.services.connector_execution_matrix import (
     get_matrix_entry,
     skip_reason_for_entry,
 )
-from app.services.chat_tool_bridge import build_dynamic_chat_tool_specs
 
 READ_VERBS = re.compile(r"\b(search|find|list|get|lookup|query|show|fetch|read|summarize|pull)\b", re.I)
 WRITE_VERBS = re.compile(
@@ -72,6 +72,9 @@ class ChatActionMapper:
         entries = chat_executable_entries(connected_integrations=connected_integrations)
         if not entries:
             return None
+        allowed_tools = chat_visible_connector_tool_names(
+            connected_integrations=connected_integrations,
+        )
         best: ActionMatch | None = None
         # STA-305 catalog-kind authority: clear write intent + write args fail must not
         # silently crown .list/.search or payload-fallthrough lookalikes (update/stories).
@@ -79,7 +82,7 @@ class ChatActionMapper:
         write_intent = bool(WRITE_VERBS.search(text))
         for entry in entries:
             tool_name = entry.tool_registry_key
-            if tool_name not in build_dynamic_chat_tool_specs():
+            if tool_name not in allowed_tools:
                 continue
             score = self._score(text, entry)
             if score <= 0:

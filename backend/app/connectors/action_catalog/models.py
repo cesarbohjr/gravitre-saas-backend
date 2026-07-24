@@ -86,6 +86,13 @@ class ActionSpec:
             "compensatingAction": self.compensating_action,
             "supportsDiff": self.supports_diff,
         }
+        chat_executable = False
+        if implemented:
+            from app.services.connector_execution_matrix import get_matrix_entry
+
+            entry = get_matrix_entry(vendor, tool_key)
+            chat_executable = bool(entry and entry.chat_executable)
+        payload["chatExecutable"] = chat_executable
         return payload
 
 

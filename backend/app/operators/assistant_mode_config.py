@@ -123,7 +123,11 @@ def normalize_assistant_tool_id(tool_id: str) -> str:
     return value
 
 
-def resolve_assistant_tool_names(mode: str | None, requested: list[str] | None) -> list[str]:
+def resolve_assistant_tool_names(
+    mode: str | None,
+    requested: list[str] | None,
+    connected_integrations: list[str] | None = None,
+) -> list[str]:
     """Resolve assistant tool ids for a chat request."""
     if requested is not None:
         normalized = [normalize_assistant_tool_id(str(t)) for t in requested]
@@ -136,8 +140,24 @@ def resolve_assistant_tool_names(mode: str | None, requested: list[str] | None) 
     config = MODE_CONFIG[normalized]
     tool_names = config.get("tool_names")
     if tool_names == "all":
-        return list(ALL_ASSISTANT_TOOL_NAMES)
-    return list(tool_names or MODE_CONFIG["standard"]["tool_names"])
+        resolved = list(ALL_ASSISTANT_TOOL_NAMES)
+    else:
+        resolved = list(tool_names or MODE_CONFIG["standard"]["tool_names"])
+
+    # Gap 3 — FAST stays lean without connectors; when connectors are live, add
+    # read-only ops tools so run-history and web lookup do not require escalation.
+    if normalized == "fast":
+        connected = [
+            str(c).strip().lower()
+            for c in (connected_integrations or [])
+            if str(c).strip()
+        ]
+        real_connectors = [c for c in connected if c not in {"platform", "webhook", "email", "mcp", "browser"}]
+        if real_connectors:
+            for extra in ("workflow_runs", "search_web"):
+                if extra not in resolved:
+                    resolved.append(extra)
+    return resolved
 
 
 def resolve_registry_permitted_tools(tool_names: list[str]) -> list[str]:

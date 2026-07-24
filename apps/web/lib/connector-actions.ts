@@ -19,6 +19,8 @@ export interface ConnectorActionDefinition {
   destructive?: boolean
   requiresApproval?: boolean
   implemented: boolean
+  /** True when invoke_tool + chat ToolRegistry expose this action to Gravitre chat. */
+  chatExecutable?: boolean
 }
 
 export interface ConnectorActionTier {

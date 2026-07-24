@@ -473,6 +473,30 @@ async def materialize_react_write_approval_turn(
         return None
 
     tool = str(pending.get("tool") or "").strip()
+    pending_args = dict(pending.get("args") or {})
+    pending_result = pending.get("result") if isinstance(pending.get("result"), dict) else {}
+    pending_invoke = str(pending_result.get("action") or "").strip() or None
+    from app.services.chat_write_intent import evaluate_connector_tool_proposal
+
+    review = evaluate_connector_tool_proposal(
+        message=message or "",
+        tool_name=tool,
+        invoke_action=pending_invoke,
+        args=pending_args,
+    )
+    if review.action == "clarify":
+        from app.services.conversation_state_service import get_conversation_state_service
+
+        state = get_conversation_state_service(settings)
+        refreshed = await state.get_task_state(conversation_id, org_id, client=client)
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "clarify",
+            "message": review.clarify_message,
+            "task_state": refreshed,
+            "pending_task": None,
+        }
+
     if tool in PLATFORM_WRITE_TOOLS:
         return await materialize_react_platform_write_approval_turn(
             settings=settings,

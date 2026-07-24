@@ -59,12 +59,22 @@ def _mentioned_connectors(
     classification: dict[str, Any] | None,
     connected: list[str],
 ) -> set[str]:
+    from app.services.chat_connector_models import INTEGRATION_ALIASES
+
     text = (query or "").lower()
     hits = {c.lower() for c in connected if c.lower() in text}
     for match in _CONNECTOR_HINT.finditer(text):
         hits.add(match.group(1).lower())
+    for slug, aliases in INTEGRATION_ALIASES.items():
+        if slug in hits:
+            continue
+        for alias in aliases:
+            alias_norm = alias.strip().lower()
+            if alias_norm and re.search(rf"\b{re.escape(alias_norm)}\b", text, re.I):
+                hits.add(slug)
+                break
     cls = classification or {}
-    for key in ("integration", "connector", "preferred_connector"):
+    for key in ("integration", "connector", "preferred_connector", "channel_override"):
         value = str(cls.get(key) or "").strip().lower()
         if value:
             hits.add(value)
@@ -74,7 +84,55 @@ def _mentioned_connectors(
     return hits
 
 
-def _score_tool(tool: dict[str, Any], tokens: set[str], focus: set[str]) -> float:
+def _ensure_connected_tool_coverage(
+    selected: list[dict[str, Any]],
+    connector_tools: list[dict[str, Any]],
+    connected: list[str],
+    *,
+    focus: set[str],
+    max_tools: int,
+    platform_count: int,
+    action_required: bool,
+) -> list[dict[str, Any]]:
+    """Keep at least one tool per connected vendor in the visible set (gap 1)."""
+    skip = {"platform", "mcp", "browser", "webhook", "email"}
+    selected_ids = {id(tool) for tool in selected}
+    budget = max(1, max_tools - platform_count)
+
+    for integration in connected:
+        key = str(integration or "").strip().lower()
+        if not key or key in skip:
+            continue
+        if any(_tool_integration(tool) == key for tool in selected):
+            continue
+        pool = [tool for tool in connector_tools if _tool_integration(tool) == key]
+        if not pool:
+            continue
+        if not action_required:
+            read_pool = [tool for tool in pool if not _is_write_tool(tool)]
+            pool = read_pool or pool
+        pool.sort(key=lambda tool: _score_tool(tool, set(), focus, query), reverse=True)
+        pick = pool[0]
+        if id(pick) in selected_ids:
+            continue
+        if len(selected) >= budget:
+            # Drop lowest-scored non-focus tool to make room for connected coverage.
+            droppable = [
+                (idx, tool)
+                for idx, tool in enumerate(selected)
+                if _tool_integration(tool) not in focus and _tool_integration(tool) not in connected
+            ]
+            if not droppable:
+                continue
+            drop_idx = min(droppable, key=lambda row: _score_tool(row[1], set(), focus, query))[0]
+            removed = selected.pop(drop_idx)
+            selected_ids.discard(id(removed))
+        selected.append(pick)
+        selected_ids.add(id(pick))
+    return selected
+
+
+def _score_tool(tool: dict[str, Any], tokens: set[str], focus: set[str], query: str = "") -> float:
     name = _tool_name(tool).lower()
     desc = str((tool.get("function") or {}).get("description") or tool.get("description") or "").lower()
     integration = _tool_integration(tool)
@@ -164,7 +222,7 @@ def narrow_tools_for_turn(
             continue
         if not action_required and _is_write_tool(tool):
             continue
-        scored.append((_score_tool(tool, tokens, focus), tool))
+        scored.append((_score_tool(tool, tokens, focus, query), tool))
 
     scored.sort(key=lambda row: row[0], reverse=True)
     selected_connector: list[dict[str, Any]] = []
@@ -191,11 +249,21 @@ def narrow_tools_for_turn(
 
     if len(selected_connector) < 3 and len(connector_tools) > max_tools:
         rescored = sorted(
-            ((_score_tool(t, tokens, focus), t) for t in connector_tools),
+            ((_score_tool(t, tokens, focus, query), t) for t in connector_tools),
             key=lambda row: row[0],
             reverse=True,
         )
         selected_connector = [t for _, t in rescored[: max_tools - len(platform_tools)]]
+
+    selected_connector = _ensure_connected_tool_coverage(
+        selected_connector,
+        connector_tools,
+        connected,
+        focus=focus,
+        max_tools=max_tools,
+        platform_count=len(platform_tools),
+        action_required=action_required,
+    )
 
     visible = platform_tools + selected_connector
     compressed = compress_tool_definitions(visible)

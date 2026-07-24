@@ -354,6 +354,11 @@ async def run_unified_turn_shadow(
         "a listed vendor is disconnected without calling assistant_connector_status):\n"
         + capability_block
     )
+    from app.services.chat_write_intent import build_gmail_write_intent_prompt_section
+
+    intent_hint = build_gmail_write_intent_prompt_section(message or "")
+    if intent_hint:
+        user_parts.append(intent_hint)
     # Explicit tool inventory note for knowledge-boundary honesty.
     if visible:
         names = sorted(
@@ -510,6 +515,24 @@ async def run_unified_turn_shadow(
             args = {}
         spec = registry._specs.get(tool_name)  # noqa: SLF001
         invoke = str(getattr(spec, "invoke_action", "") or "") if spec else ""
+        from app.services.chat_write_intent import evaluate_connector_tool_proposal
+
+        review = evaluate_connector_tool_proposal(
+            message=message or "",
+            tool_name=tool_name,
+            invoke_action=invoke or None,
+            args=args,
+        )
+        if review.action == "clarify":
+            result.outcome_kind = "clarifying_question"
+            result.user_message = review.clarify_message
+            if content:
+                result.user_message = f"{content.strip()}\n\n{review.clarify_message}"
+            return result
+        tool_name = review.tool_name or tool_name
+        invoke = review.invoke_action or invoke
+        args = review.tool_arguments or args
+        spec = registry._specs.get(tool_name)  # noqa: SLF001
         requires_write, *_ = tool_requires_user_write_approval(tool_name, registry)
         result.outcome_kind = "connector_tool_proposal"
         result.tool_name = tool_name
@@ -616,7 +639,13 @@ def _unified_live_turn_payload(
 ) -> dict[str, Any]:
     return {
         "stop_pipeline": True,
-        "dialogue_mode": "confirm" if result.outcome_kind == "confirmation_request" else "answer",
+        "dialogue_mode": (
+            "confirm"
+            if result.outcome_kind == "confirmation_request"
+            else "clarify"
+            if result.outcome_kind == "clarifying_question"
+            else "answer"
+        ),
         "message": result.user_message,
         "task_state": task_state,
         "answer_explanation": f"Unified turn live ({result.outcome_kind})",
@@ -879,9 +908,34 @@ async def apply_unified_turn_live(
         from app.services.tool_registry import get_tool_registry
 
         registry = get_tool_registry()
+        from app.services.chat_write_intent import evaluate_connector_tool_proposal
+
+        review = evaluate_connector_tool_proposal(
+            message=message or "",
+            tool_name=str(result.tool_name or ""),
+            invoke_action=result.tool_invoke_action,
+            args=dict(result.tool_arguments or {}),
+        )
+        if review.action == "clarify":
+            clarify = UnifiedTurnShadowResult(
+                outcome_kind="clarifying_question",
+                user_message=review.clarify_message,
+                live_served=True,
+                model=result.model or "connector_write_intent",
+                connected_integrations=list(result.connected_integrations or []),
+            )
+            emit_unified_turn_shadow_audit(
+                client=client,
+                org_id=org_id,
+                actor_id=user_id,
+                conversation_id=conversation_id,
+                result=clarify,
+            )
+            return _unified_live_turn_payload(clarify, task_state)
+
         plan = plan_from_react_tool_call(
-            result.tool_name,
-            result.tool_arguments,
+            review.tool_name or result.tool_name,
+            review.tool_arguments or result.tool_arguments,
             registry,
             requires_approval=bool(result.requires_write_approval),
         )

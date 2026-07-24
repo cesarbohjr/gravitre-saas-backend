@@ -1227,12 +1227,12 @@ class AgentIntelligence:
             connected_early,
             has_mcp_tools=bool(mcp_tools_early),
         )
-        tool_names = resolve_assistant_tool_names(mode_key, requested_tools)
+        tool_names = resolve_assistant_tool_names(mode_key, requested_tools, connected_early)
         # Routing/tool-availability gap: pinned FAST omits workflow_runs. For
         # run-history questions, escalate to standard toolset (not a FAST design flaw).
         if should_escalate_fast_for_run_history(mode_key, task_text, tool_names):
             mode_key = "standard"
-            tool_names = resolve_assistant_tool_names(mode_key, None)
+            tool_names = resolve_assistant_tool_names(mode_key, None, connected_early)
             # Prefer the tool that actually answers run-history over KB/org-context synthesis.
             if "workflow_runs" in tool_names:
                 tool_names = ["workflow_runs"] + [t for t in tool_names if t != "workflow_runs"]

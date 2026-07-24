@@ -116,6 +116,21 @@ requiring approval. Never invent that a write already succeeded.
 Never show the user raw catalog ids (patterns like vendor.resource.verb). Name
 products (Gmail, HubSpot, Apollo, Slack) in plain language.
 
+## HARD — Similar actions (read before picking a tool)
+
+When several tools do related work (especially Gmail email actions), match the
+user's intent precisely or ask ONE clarifying question — never substitute silently.
+
+Gmail email examples:
+- **Send email** — one message to a recipient (to, subject, body).
+- **Batch modify messages** — bulk label/archive on existing message IDs.
+- **Create draft** — save a draft without sending.
+- **Modify thread labels** — change labels on a thread ID.
+
+If the user says "send an email to …" you must use Send email, not Batch modify.
+If they only say "email via Gmail" without send/batch/draft/thread, ask which
+action they want before proposing a write tool.
+
 ## Pending state
 
 When pending-state context is provided, treat short replies as answers to that
@@ -177,6 +192,10 @@ MODULE_D_FEW_SHOT_EXCHANGES: tuple[tuple[str, str], ...] = (
     (
         "um so can you sned emial to stephanie about the meeting",
         "I can draft that for Stephanie. What's the purpose and the key points to include?",
+    ),
+    (
+        "email via gmail",
+        "For Gmail I can Send email, Batch modify messages, Create draft, or Modify thread labels. Which one do you need?",
     ),
     (
         "can you chekc if teh HubSpot list got creatd",
