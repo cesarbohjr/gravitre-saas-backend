@@ -1,0 +1,27 @@
+{
+  "feature": "marketing_ttfb",
+  "label": "home-before",
+  "measured_at": "2026-07-24T06:10:00.903921+00:00",
+  "url": "https://gravitre.app/",
+  "samples": 5,
+  "statuses": [
+    200,
+    200,
+    200,
+    200,
+    200
+  ],
+  "ttfb_ms": {
+    "min": 1091.0,
+    "p50": 1286.2,
+    "p90": 1321.0,
+    "max": 2004.3,
+    "all": [
+      1321.0,
+      1161.9,
+      1286.2,
+      1091.0,
+      2004.3
+    ]
+  }
+}

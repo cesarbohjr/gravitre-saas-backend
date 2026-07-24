@@ -1,0 +1,255 @@
+import {
+  Zap,
+  Play,
+  Mail,
+  FileText,
+  Send,
+  Users,
+  Crown,
+  Smartphone,
+  Monitor,
+  Building2,
+  Rocket,
+  Blocks,
+  Globe,
+} from "lucide-react"
+import { MARKETING_COPY } from "@/lib/marketing-copy"
+import { SHOW_RESEARCH_LOOKUPS_PRICING } from "@/lib/marketing-flags"
+import {
+  formatResearchLookupOveragePrice,
+} from "@/lib/internet-research-pricing"
+import { PLAN_CATALOG, type PlanCode } from "@/lib/plans"
+
+export type PlanComparisonCell = boolean | string
+
+export type PlanComparisonRow = {
+  feature: string
+  node: PlanComparisonCell
+  control: PlanComparisonCell
+  command: PlanComparisonCell
+}
+
+function planPrices(code: PlanCode) {
+  const plan = PLAN_CATALOG[code]
+  return { monthly: plan.price ?? 0, annual: plan.annualPrice ?? 0 }
+}
+
+export const roles = {
+  masterAdmin: {
+    name: "Master Admin",
+    description: "Full system control, billing, and organization management. Automatically included.",
+    icon: Crown,
+  },
+  coreUser: {
+    name: "Core User",
+    description: "Builds and configures agents. Full access to Gravitre Core for creating workflows and managing outputs.",
+    icon: Monitor,
+  },
+  liteUser: {
+    name: "Lite User",
+    description: "Assigns work and views outputs using Gravitre Lite. Mobile-first interface for team-wide adoption.",
+    icon: Smartphone,
+  },
+} as const
+
+export type RoleKey = keyof typeof roles
+
+export const tiers = [
+  {
+    name: "Node",
+    planCode: "node" as const,
+    tagline: "Focused execution for small teams",
+    price: planPrices("node"),
+    description: "Generate complete outputs like campaigns, reports, or workflows—without building everything from scratch.",
+    outputs: "Up to 10 complete outputs / month",
+    team: {
+      agents: "1 Agent",
+      coreUsers: "1 Core User",
+      liteUsers: "2 Lite Users",
+    },
+    meson: null,
+    features: [
+      "Email delivery",
+      "Basic campaign outputs",
+      "3 app integrations",
+      "Insights & connector health",
+      "Community support",
+    ],
+    cta: "Start 7-day free trial",
+    highlighted: false,
+    color: "emerald",
+    gradient: "from-emerald-500 to-emerald-600",
+    glow: "emerald-500/20",
+    icon: Zap,
+  },
+  {
+    name: "Control",
+    planCode: "control" as const,
+    tagline: "Coordinate work across your systems",
+    price: planPrices("control"),
+    description: "Plan and execute multi-step work across email, CRM, and data sources with full campaign capabilities.",
+    outputs: "Up to 40 complete outputs / month",
+    team: {
+      agents: "2-3 Agents",
+      coreUsers: "2 Core Users",
+      liteUsers: "5 Lite Users",
+    },
+    meson: { count: 10, label: "10 Mesons / month" },
+    features: [
+      "CRM + Outlook integrations",
+      "Multi-step execution",
+      "Learning admin (GIBE)",
+      "Failure predictions",
+      "Full campaign outputs",
+      "Slack delivery",
+      "Priority support",
+    ],
+    cta: "Start 7-day free trial",
+    highlighted: true,
+    badge: "Most Popular",
+    color: "amber",
+    gradient: "from-amber-500 to-orange-500",
+    glow: "amber-500/30",
+    icon: Building2,
+  },
+  {
+    name: "Command",
+    planCode: "command" as const,
+    tagline: "Run AI agents across your entire team",
+    price: planPrices("command"),
+    description: "Deploy multiple agents that collaborate, execute, and deliver work across your organization.",
+    outputs: "Up to 120 complete outputs / month",
+    team: {
+      agents: "5-8 Agents",
+      coreUsers: "5 Core Users",
+      liteUsers: "Unlimited Lite Users",
+    },
+    meson: { count: 40, label: "40 Mesons / month" },
+    features: [
+      "Approvals + workflows",
+      "Predictive ops packs",
+      "Advanced integrations",
+      "Team collaboration workspace",
+      "Cross-department agents",
+      "Model registry & training",
+      "Dedicated support",
+    ],
+    cta: "Start 7-day free trial",
+    highlighted: false,
+    color: "blue",
+    gradient: "from-blue-500 to-indigo-500",
+    glow: "blue-500/20",
+    icon: Rocket,
+  },
+] as const
+
+export type PricingTier = (typeof tiers)[number]
+
+export const addOns = [
+  {
+    name: "Additional Core Users",
+    price: "$29/month each",
+    description: "Add more builders and configurers to your team",
+    icon: Users,
+  },
+  {
+    name: "Additional Outputs",
+    price: "$2-$3 each",
+    description: "Pay-as-you-go for extra capacity when needed",
+    icon: Zap,
+  },
+  {
+    name: "Additional Mesons",
+    price: "$2-$4 each",
+    description: "Build more systems on demand (Control + Command only)",
+    icon: Blocks,
+  },
+  ...(SHOW_RESEARCH_LOOKUPS_PRICING
+    ? [
+        {
+          name: "Additional Research Lookups",
+          price: formatResearchLookupOveragePrice(),
+          description: "Live internet research lookups above your plan allotment",
+          icon: Globe,
+        },
+      ]
+    : []),
+]
+
+export const faqs = [
+  {
+    question: "What counts as an output?",
+    answer: "An output is a complete piece of work: a full email sequence, a campaign brief, a segment list, a report, or an automation workflow. Simple edits or previews don't count—only delivered or exported work.",
+  },
+  {
+    question: "What's the difference between Core and Lite users?",
+    answer: "Core Users build and configure agents using Gravitre Core—the full desktop experience. Lite Users assign work and view outputs through Gravitre Lite, a mobile-first interface designed for team-wide adoption without requiring everyone to learn the full system.",
+  },
+  {
+    question: "Can I edit before sending?",
+    answer: "Absolutely. Every output goes through a review step where you can edit, adjust, or approve before it's delivered. You have full control over what gets sent.",
+  },
+  {
+    question: "How does the free trial work?",
+    answer: "You get 7 days of full access to your chosen plan. If you don't subscribe, your workspace pauses—nothing gets deleted.",
+  },
+  {
+    question: "What happens after I hit my limit?",
+    answer: "We'll notify you as you approach your limit. You can purchase additional outputs at $2–$3 each, or upgrade your plan for more capacity.",
+  },
+  {
+    question: "Can I cancel anytime?",
+    answer: "Yes. Cancel anytime from your settings. Your access continues until the end of your billing period. No penalties, no hassle.",
+  },
+  {
+    question: "Do agents learn my business?",
+    answer: MARKETING_COPY.pricing.faqLearning,
+  },
+  {
+    question: "Can agents be shared across departments?",
+    answer: "Yes. Agents can be configured per department or shared across teams. Command plan includes cross-department agent capabilities for organization-wide workflows.",
+  },
+  {
+    question: "What is Meson?",
+    answer: MARKETING_COPY.pricing.faqMeson,
+  },
+  {
+    question: "How do Mesons work?",
+    answer: "A Meson is one system-building request. You describe what you want to create (an agent, workflow, or training setup), and Meson generates everything you need. Usage is only triggered when you click 'Run Meson'—not while typing or exploring.",
+  },
+]
+
+export const howItWorks = [
+  {
+    step: "01",
+    title: "Create or select your agent",
+    description: "Choose a pre-built agent or train one on your business context, brand voice, and tools.",
+    icon: Zap,
+  },
+  {
+    step: "02",
+    title: "Describe the work",
+    description: "Tell the agent what you need in plain language. Add context, files, or reference materials.",
+    icon: FileText,
+  },
+  {
+    step: "03",
+    title: "Agent plans and executes",
+    description: "The agent breaks down the work, gathers data, and builds complete outputs.",
+    icon: Play,
+  },
+  {
+    step: "04",
+    title: "Receive complete outputs",
+    description: "Review, edit, and deliver results to Outlook, Slack, CRM, or export directly.",
+    icon: Send,
+  },
+]
+
+export const aiCapabilityRows: PlanComparisonRow[] = [
+  { feature: "Meson (System Builder)", node: false, control: "10/mo", command: "40/mo" },
+  { feature: "Multi-step execution", node: false, control: true, command: true },
+  { feature: "Custom agent training", node: false, control: false, command: true },
+  { feature: "Cross-department agents", node: false, control: false, command: true },
+  ...MARKETING_COPY.pricing.intelligenceRows,
+]
