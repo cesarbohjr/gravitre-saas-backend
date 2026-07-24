@@ -69,9 +69,14 @@ Turn-1 already had high prefix cache (static system + warm fleet). Turn-2 still 
 
 > Embedding tool-retrieval measured WORSE than keyword at both 26 and 70 connected tools. No catalog size has yet shown a win. Threshold raised as a placeholder, not because a new crossover was found — revisit only if a future measurement shows real benefit.
 
-At prod catalog ~70 tools, unified task turns stay on **keyword** narrow until catalog ≥ 200. Standing cache baseline: `unified-turn-task-ttft-keyword-cache-standing-baseline.json`.
+At prod catalog ~70 tools, unified task turns stay on **keyword** narrow until catalog ≥ 200. Standing cache baseline: [`unified-turn-task-ttft-keyword-cache-standing-baseline.json`](unified-turn-task-ttft-keyword-cache-standing-baseline.json) (`ceb9081b…`, `embed_min=200`).
 
-**Prod restored:** ~~`UNIFIED_TURN_EMBED_MIN_CATALOG_TOOLS=40` after tests~~ superseded by ship above.
+| Probe | Turn 1 `model_ttft_ms` | Turn 2 | Δ | `retrieval_method` |
+|-------|------------------------|--------|---|-------------------|
+| email_intent | 1258 (0% cache) | 964 | **−294** | keyword |
+| deals_status | 721 (52% cache) | 761 | +40 | keyword |
+
+Prefix-cache win on email_intent turn-2 holds (−294ms); deals_status turn-2 flat (+40ms) at this sample.
 
 ## Scripts
 
