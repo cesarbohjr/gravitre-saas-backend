@@ -9,7 +9,8 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
-watchPatterns = ["**"]
+# Limit auto-deploy to backend service files (Root Directory = backend).
+watchPatterns = ["app/**", "requirements*.txt", "Dockerfile", "railway.toml", "pyproject.toml"]
 
 [deploy]
 healthcheckPath = "/health"

@@ -1,8 +1,7 @@
-# Reliable backend deploy when GitHub-connected Railway builds fail on monorepo path
-# (fsutil.NewFS .../backend: no such file or directory). Uses CLI upload with backend as root.
+# Backend production deploy gate — waits for Railway GitHub auto-deploy, then verifies /health.
 #
-# When GitHub auto-deploy is also enabled, `railway up --ci` may exit 1 while prod still
-# updates (duplicate deploy race). Pass/fail is /health git_sha — see docs/delivery/railway-github-actions-deploy-status.md
+# Do NOT run `railway up --ci` here: duplicate uploads race GitHub auto-deploy and create
+# spurious FAILED deployments on frontend-only pushes. See docs/delivery/railway-github-actions-deploy-status.md
 name: Railway backend production
 
 on:
@@ -16,13 +15,41 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: railway up backend (production)
+  detect-backend-changes:
+    name: Detect backend changes
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    outputs:
+      changed: ${{ steps.detect.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 2
+
+      - id: detect
+        run: |
+          set -euo pipefail
+          if ! git rev-parse HEAD~1 >/dev/null 2>&1; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Single-commit checkout — assume backend deploy required."
+            exit 0
+          fi
+          if python3 scripts/railway_commit_touches_backend.py --base HEAD~1 --head HEAD; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No backend/ changes in this push — skipping Railway deploy gate."
+          fi
+
+  deploy:
+    name: Verify Railway prod /health
+    needs: detect-backend-changes
+    if: needs.detect-backend-changes.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,52 +60,11 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli@4.65.0
-
-      - name: Deploy gravitre-saas-backend (optional CLI upload)
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      - name: Wait for GitHub auto-deploy health match
         run: |
           set -euo pipefail
           SHA="$(git rev-parse --short=8 HEAD)"
-          FULL="$(git rev-parse HEAD)"
-          SVC="gravitre-saas-backend"
-          ENV_NAME="production"
-          echo "ci_commit_sha=$SHA full=$FULL"
-
-          CURRENT="$(curl -fsS https://api.gravitre.app/health | python3 -c 'import sys,json; print(json.load(sys.stdin).get("git_sha",""))' || true)"
-          echo "health_before=$CURRENT"
-          SKIP_UP=0
-          if [[ "$CURRENT" == "$FULL"* ]] || [[ "$CURRENT" == "$SHA"* ]]; then
-            SKIP_UP=1
-            echo "Health already on this commit — skip railway up (GitHub auto-deploy likely won)."
-          elif [ -n "$CURRENT" ] && git merge-base --is-ancestor "$SHA" "$CURRENT" 2>/dev/null; then
-            SKIP_UP=1
-            echo "Health already past this commit — skip railway up."
-          fi
-
-          if [ "$SKIP_UP" = "0" ]; then
-            set +e
-            railway up ./backend --path-as-root --ci \
-              --service "$SVC" \
-              --environment "$ENV_NAME" \
-              --message "main $SHA"
-            UP_RC=$?
-            set -e
-            echo "railway_up_exit=$UP_RC"
-            if [ "$UP_RC" != "0" ]; then
-              echo "::warning::railway up --ci exited $UP_RC (often duplicate deploy with GitHub auto-deploy). Health gate decides job outcome."
-              railway deployment list --service "$SVC" --environment "$ENV_NAME" --json 2>/dev/null | head -c 4000 || true
-            fi
-          fi
-
-      - name: Verify production /health git_sha (authoritative)
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          set -euo pipefail
-          SHA="$(git rev-parse --short=8 HEAD)"
+          echo "Waiting for prod /health git_sha ~ $SHA (GitHub-connected Railway auto-deploy)"
           python3 scripts/railway_prod_deploy.py \
             --wait-health-only \
             --timeout-s 900 \
@@ -99,7 +85,6 @@ jobs:
         run: |
           set -euo pipefail
           pip install httpx PyJWT python-dotenv supabase
-          SHA="$(git rev-parse --short=8 HEAD)"
           python3 scripts/smoke-post-deploy-chat-live.py
 
       - name: Upload post-deploy chat smoke artifact

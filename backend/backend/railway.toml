@@ -5,7 +5,7 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
-watchPatterns = ["**"]
+watchPatterns = ["app/**", "requirements*.txt", "Dockerfile", "railway.toml", "pyproject.toml"]
 
 [deploy]
 healthcheckPath = "/health"

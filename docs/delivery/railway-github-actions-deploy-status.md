@@ -22,9 +22,13 @@ Example: CI run [29985678545](https://github.com/cesarbohjr/gravitre-saas-backen
 
 The CLI `--ci` waiter often exits **1** when the competing deployment wins, is superseded, or the watched build fails/cancels — even though the **other** deployment succeeds.
 
-## Fix
+## Fix (2026-07-25)
 
-Workflow treats **`/health` `git_sha` match** (via `scripts/railway_prod_deploy.py --wait-health-only`) as the **only** job failure gate. It **skips** `railway up` when health is already on/at/after the CI commit, and **does not fail** the job solely on `railway up` exit code when health later matches (warning annotation only).
+1. **Skip deploy gate on frontend-only pushes** — workflow job `detect-backend-changes` uses `scripts/railway_commit_touches_backend.py`; no Railway CLI upload or 15m health wait when `backend/` is untouched.
+2. **Remove `railway up --ci` from CI** — rely on GitHub-connected Railway auto-deploy + `/health` poll only (eliminates duplicate FAILED deployments on the service).
+3. **Tighten `watchPatterns`** in `backend/railway.toml` to backend app paths only (`app/**`, requirements, Dockerfile).
+
+## Fix (2026-07-23)
 
 ## Operational note
 
