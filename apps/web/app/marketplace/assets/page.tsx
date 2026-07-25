@@ -6,12 +6,20 @@ import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { motion, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { MarketplaceFacetSidebar } from "@/components/marketplace/marketplace-facet-sidebar"
 import { AssetTrustBadges } from "@/components/marketplace/asset-trust-badges"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { GridPattern } from "@/components/gravitre/premium-effects"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
@@ -424,6 +432,21 @@ function MarketplaceAssetsContent() {
 
   const departmentFacets = useMemo(() => dedupeFacets(categories?.departments ?? []), [categories?.departments])
 
+  /** Lookup of asset-type → count for badges on the type filter chips. */
+  const typeCounts = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const item of categories?.assetTypes ?? []) {
+      map.set(item.key.trim().toLowerCase(), item.count)
+    }
+    return map
+  }, [categories?.assetTypes])
+
+  const activeDepartmentLabel = useMemo(() => {
+    if (!departmentFilter) return null
+    const match = departmentFacets.find((facet) => facet.key === departmentFilter)
+    return (match?.key ?? departmentFilter).replace(/_/g, " ")
+  }, [departmentFacets, departmentFilter])
+
   const assets = useMemo(() => {
     const catalog = data?.assets ?? []
     if (!includeFederated || !federatedData?.assets?.length) return catalog
@@ -518,68 +541,58 @@ function MarketplaceAssetsContent() {
          which silently kills page scroll and cuts off cards. */}
       <div className="relative shrink-0 overflow-hidden rounded-2xl border bg-card/40 p-6 md:p-8">
         <GridPattern className="opacity-40" />
-        <div className="relative flex flex-col gap-6 lg:flex-row">
-          {categories ? (
-            <MarketplaceFacetSidebar
-              className="hidden lg:block"
-              totalAssets={categories.totalAssets}
-              departments={departmentFacets}
-              activeDepartment={departmentFilter}
-              onDepartmentChange={setDepartmentFilter}
+        <div className="relative space-y-6">
+          {/* Hero */}
+          <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-primary/10 via-card to-muted/30 p-5 md:p-6">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-primary/15 blur-3xl"
             />
-          ) : null}
-
-          <div className="min-w-0 flex-1 space-y-6">
-            <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-primary/10 via-card to-muted/30 p-5 md:p-6">
-              <div
-                aria-hidden
-                className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-primary/15 blur-3xl"
-              />
-              <div className="relative flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                <div className="max-w-xl space-y-2">
+            <div className="relative flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="max-w-2xl space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                     Gravitre Marketplace
                   </p>
-                  <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-                    Install packs into your workspace
-                  </h1>
-                  <p className="text-sm text-muted-foreground">
-                    One click provisions agents, workflows, and knowledge — then we notify you with deep links
-                    to open them.
-                  </p>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                    <Package className="h-3 w-3" aria-hidden />
+                    {categories?.totalAssets ?? 0} packs
+                  </span>
                 </div>
-                <Button asChild variant="outline" className="rounded-full">
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+                  Install packs into your workspace
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  One click provisions agents, workflows, and knowledge — then we notify you with deep links
+                  to open them.
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-col items-start gap-3 md:items-end">
+                <Button asChild className="rounded-full">
                   <Link href="/marketplace/installed">
                     View installed
                     <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
                   </Link>
                 </Button>
+                <nav className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground md:justify-end">
+                  <Link href="/marketplace/submit" className="transition-colors hover:text-foreground">
+                    Partner submissions
+                  </Link>
+                  <Link href="/marketplace/connectors" className="transition-colors hover:text-foreground">
+                    Partner connectors
+                  </Link>
+                  <Link href="/connectors" className="transition-colors hover:text-foreground">
+                    Connectors
+                  </Link>
+                </nav>
               </div>
             </div>
+          </div>
 
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Link href="/marketplace/assets" className="hover:text-foreground">
-                  Marketplace home
-                </Link>
-                <span aria-hidden>·</span>
-                <Link href="/marketplace/installed" className="hover:text-foreground">
-                  Installed
-                </Link>
-                <span aria-hidden>·</span>
-                <Link href="/marketplace/submit" className="hover:text-foreground">
-                  Partner submissions
-                </Link>
-                <span aria-hidden>·</span>
-                <Link href="/marketplace/connectors" className="hover:text-foreground">
-                  Partner connectors
-                </Link>
-                <span aria-hidden>·</span>
-                <Link href="/connectors" className="hover:text-foreground">
-                  Connectors
-                </Link>
-              </div>
-              <div className="relative w-full md:max-w-sm">
+          {/* Toolbar: search + department + price, then type chips */}
+          <div className="space-y-3 rounded-2xl border border-border/60 bg-card/60 p-3 md:p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="relative min-w-0 flex-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   value={search}
@@ -588,102 +601,146 @@ function MarketplaceAssetsContent() {
                   className="rounded-full pl-9"
                 />
               </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Select
+                  value={departmentFilter ?? "all"}
+                  onValueChange={(value) => setDepartmentFilter(value === "all" ? null : value)}
+                >
+                  <SelectTrigger className="w-full rounded-full sm:w-[200px]" aria-label="Filter by department">
+                    <SelectValue placeholder="All departments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectLabel>Departments</SelectLabel>
+                      <SelectItem value="all">All departments ({categories?.totalAssets ?? 0})</SelectItem>
+                      {departmentFacets.map((facet) => (
+                        <SelectItem key={facet.key} value={facet.key} className="capitalize">
+                          {facet.key.replace(/_/g, " ")} ({facet.count})
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <div
+                  role="group"
+                  aria-label="Filter by price"
+                  className="inline-flex items-center gap-0.5 rounded-full border p-0.5"
+                >
+                  {PRICE_FILTERS.map((filter) => (
+                    <button
+                      key={filter.id}
+                      type="button"
+                      aria-pressed={priceFilter === filter.id}
+                      onClick={() => setPriceFilter(filter.id)}
+                      className={cn(
+                        "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                        priceFilter === filter.id
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {TYPE_FILTERS.map((filter) => (
-                <Button
-                  key={filter.id}
-                  size="sm"
-                  variant={typeFilter === filter.id ? "default" : "outline"}
-                  onClick={() => setTypeFilter(filter.id)}
-                >
-                  {filter.label}
-                </Button>
-              ))}
-              <div
-                role="group"
-                aria-label="Filter by price"
-                className="ml-auto inline-flex items-center gap-0.5 rounded-lg border p-0.5"
-              >
-                {PRICE_FILTERS.map((filter) => (
+            <div className="flex flex-wrap items-center gap-2 border-t border-border/50 pt-3">
+              {TYPE_FILTERS.map((filter) => {
+                const isActive = typeFilter === filter.id
+                const count = filter.id === "all" ? categories?.totalAssets : typeCounts.get(filter.id)
+                const Icon = "icon" in filter ? filter.icon : null
+                return (
                   <button
                     key={filter.id}
                     type="button"
-                    aria-pressed={priceFilter === filter.id}
-                    onClick={() => setPriceFilter(filter.id)}
+                    aria-pressed={isActive}
+                    onClick={() => setTypeFilter(filter.id)}
                     className={cn(
-                      "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                      priceFilter === filter.id
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:text-foreground",
+                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+                      isActive
+                        ? "border-foreground bg-foreground text-background"
+                        : "border-border bg-background/60 text-muted-foreground hover:border-foreground/30 hover:text-foreground",
                     )}
                   >
+                    {Icon ? <Icon className="h-3.5 w-3.5" aria-hidden /> : null}
                     {filter.label}
+                    {typeof count === "number" ? (
+                      <span
+                        className={cn(
+                          "tabular-nums text-xs",
+                          isActive ? "text-background/70" : "text-muted-foreground/70",
+                        )}
+                      >
+                        {count}
+                      </span>
+                    ) : null}
                   </button>
-                ))}
-              </div>
-              {typeFilter !== "all" || departmentFilter || priceFilter !== "all" || debouncedSearch ? (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setTypeFilter("all")
-                    setDepartmentFilter(null)
-                    setPriceFilter("all")
-                    setSearch("")
-                  }}
-                >
-                  Clear filters
-                </Button>
-              ) : null}
+                )
+              })}
             </div>
-
-            {categories ? (
-              <MarketplaceFacetSidebar
-                className="lg:hidden"
-                totalAssets={categories.totalAssets}
-                departments={departmentFacets.slice(0, 6)}
-                activeDepartment={departmentFilter}
-                onDepartmentChange={setDepartmentFilter}
-              />
-            ) : null}
-
-            {isLoading ? (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <AssetCardSkeleton key={index} />
-                ))}
-              </div>
-            ) : error ? (
-              <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
-                <p className="font-medium">Failed to load marketplace catalog.</p>
-                <p className="mt-1 text-destructive/80">
-                  {error instanceof Error && error.message.trim()
-                    ? error.message
-                    : "Check that the FastAPI backend is running and FASTAPI_BASE_URL points at it (local default: http://localhost:8000)."}
-                </p>
-              </div>
-            ) : visibleAssets.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">{emptyMessage}</div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {visibleAssets.map((asset, index) => (
-                  <AssetCard
-                    key={asset.id}
-                    asset={asset}
-                    index={index}
-                    isAdmin={isAdmin}
-                    busy={busy}
-                    reduceMotion={reduceMotion}
-                    onOpenDetail={openDetail}
-                    onInstall={openInstall}
-                    onClone={handleClone}
-                  />
-                ))}
-              </div>
-            )}
           </div>
+
+          {/* Result meta + clear */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">
+              {isLoading
+                ? "Loading catalog…"
+                : `${visibleAssets.length} ${visibleAssets.length === 1 ? "pack" : "packs"}`}
+              {activeDepartmentLabel ? <span className="capitalize"> · {activeDepartmentLabel}</span> : null}
+            </p>
+            {typeFilter !== "all" || departmentFilter || priceFilter !== "all" || debouncedSearch ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="rounded-full"
+                onClick={() => {
+                  setTypeFilter("all")
+                  setDepartmentFilter(null)
+                  setPriceFilter("all")
+                  setSearch("")
+                }}
+              >
+                Clear filters
+              </Button>
+            ) : null}
+          </div>
+
+          {isLoading ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <AssetCardSkeleton key={index} />
+              ))}
+            </div>
+          ) : error ? (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+              <p className="font-medium">Failed to load marketplace catalog.</p>
+              <p className="mt-1 text-destructive/80">
+                {error instanceof Error && error.message.trim()
+                  ? error.message
+                  : "Check that the FastAPI backend is running and FASTAPI_BASE_URL points at it (local default: http://localhost:8000)."}
+              </p>
+            </div>
+          ) : visibleAssets.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">{emptyMessage}</div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+              {visibleAssets.map((asset, index) => (
+                <AssetCard
+                  key={asset.id}
+                  asset={asset}
+                  index={index}
+                  isAdmin={isAdmin}
+                  busy={busy}
+                  reduceMotion={reduceMotion}
+                  onOpenDetail={openDetail}
+                  onInstall={openInstall}
+                  onClone={handleClone}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
