@@ -46,11 +46,22 @@ Standing rules unchanged: no write path outside `catalog_write_authority`; no co
 | 5 | Undo/rollback from diff history | **Foundation shipped** — proposal history + workflow_versions activate already exist; full revert UI deferred to named follow-up once proposal persistence is durable (today in-process cache) |
 | 6 | Sub-workflow / modular canvas | **Scoped follow-up** — execution graph can reference another workflow id as a step conceptually, but nested run isolation / approval inheritance is a larger engine change — separate initiative |
 
+## Ship status (2026-07-25)
+
+| Layer | Status | Evidence |
+|-------|--------|----------|
+| Code on `main` | **merged** | Feature commit `80944377` (+ Module C / CI follow-ups through tip containing that ancestor) |
+| Local unit tests | **PASS** | `pytest` definition_diff + meson_canvas_edit + react_canvas_write_gate + canvas_write_gate — 15/15 then 8/8 on re-run |
+| Prod `/health` | **NOT YET** tip | Still `git_sha=2bf67f6bb6cdb4db2b6e5c46d25da709dce5f205` @ ~2026-07-25T09:02Z — Railway deploy gate skipped while CI queued/failed; `railway` CLI unauthorized in this environment |
+| Live canvas/chat verification | **NOT RUN** | Blocked on tip deploy |
+
 ## Live verification checklist (post-deploy)
 
-1. `/health` `git_sha` matches tip.
+1. `/health` `git_sha` matches tip containing `80944377` (or later).
 2. Canvas write node shows **needs approval**; unapproved run blocks with `canvas_write_blocked`.
 3. Meson: three sequential NL edits on a saved multi-step canvas, each with reviewable diff.
 4. Canvas run → separate chat ask about status; answer cites Module A outcome (not “check Runs”).
 5. AI decision node output shows estimated confidence + reasoning.
 6. Explain + reliability indicators render without regressions to write authority.
+
+Do **not** upgrade phases to live PASS until items 1–6 have fresh prod evidence.
