@@ -176,7 +176,7 @@ export function ChatTranscript({
 
       {showWaiting ? (
         <div className="flex gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#0d3b36] ring-2 ring-emerald-500/15 shadow-sm">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted shadow-sm">
             <GravitreThinkingLoader size={30} />
           </div>
           <div className="flex min-w-0 max-w-[min(760px,88%)] flex-col items-start">

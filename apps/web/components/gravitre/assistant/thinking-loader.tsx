@@ -34,7 +34,7 @@ export function GravitreThinkingLoader({
       role="status"
       aria-live="polite"
       aria-label={title}
-      className={cn("inline-flex items-center justify-center", className)}
+      className={cn("inline-flex items-center justify-center text-foreground", className)}
       style={{ width: size, height: size }}
     >
       <svg
@@ -45,8 +45,8 @@ export function GravitreThinkingLoader({
         aria-hidden="true"
         focusable="false"
         style={{
-          // Brand coral / terracotta (matches the ~#c8734f burst mark).
-          ["--ink" as string]: "oklch(0.66 0.12 47)",
+          // Follow theme foreground: near-black on light, near-white on dark.
+          ["--ink" as string]: "currentColor",
         }}
       >
         <defs>
