@@ -210,15 +210,25 @@ class TestGeminiAdapter:
 
 class TestEmbeddingFailover:
     def test_openai_primary(self, monkeypatch, mock_settings):
-        monkeypatch.setattr(OpenAIAdapter, "embed", lambda self, text, model="m": [0.5, 0.5])
+        from app.rag.embedding import reset_sync_openai_client_for_tests
+
+        reset_sync_openai_client_for_tests()
+        mock_client = MagicMock()
+        mock_client.embeddings.create.return_value = SimpleNamespace(
+            data=[SimpleNamespace(embedding=[0.5, 0.5])]
+        )
+        monkeypatch.setattr("app.rag.embedding._get_sync_openai_client", lambda _s: mock_client)
         vec, method = embed_with_failover("query", mock_settings)
         assert method == "openai"
         assert vec == [0.5, 0.5]
 
     def test_voyage_fallback(self, monkeypatch, mock_settings):
-        monkeypatch.setattr(
-            OpenAIAdapter, "embed", MagicMock(side_effect=ProviderUnavailableError("openai", "down"))
-        )
+        from app.rag.embedding import reset_sync_openai_client_for_tests
+
+        reset_sync_openai_client_for_tests()
+        mock_client = MagicMock()
+        mock_client.embeddings.create.side_effect = RuntimeError("openai down")
+        monkeypatch.setattr("app.rag.embedding._get_sync_openai_client", lambda _s: mock_client)
         monkeypatch.setattr(AnthropicAdapter, "embed", lambda self, text, model="voyage-3": [0.9])
         # Voyage is only used when the corpus is Voyage-dimensioned (1024).
         settings = mock_settings.model_copy(
@@ -229,11 +239,12 @@ class TestEmbeddingFailover:
         assert vec == [0.9]
 
     def test_voyage_skipped_on_dimension_mismatch(self, monkeypatch, mock_settings):
-        from app.rag.embedding import EmbeddingDimensionMismatchError
+        from app.rag.embedding import EmbeddingDimensionMismatchError, reset_sync_openai_client_for_tests
 
-        monkeypatch.setattr(
-            OpenAIAdapter, "embed", MagicMock(side_effect=ProviderUnavailableError("openai", "down"))
-        )
+        reset_sync_openai_client_for_tests()
+        mock_client = MagicMock()
+        mock_client.embeddings.create.side_effect = RuntimeError("openai down")
+        monkeypatch.setattr("app.rag.embedding._get_sync_openai_client", lambda _s: mock_client)
         monkeypatch.setattr(AnthropicAdapter, "embed", lambda self, text, model="voyage-3": [0.9])
         settings = mock_settings.model_copy(
             update={
@@ -246,9 +257,12 @@ class TestEmbeddingFailover:
             embed_with_failover("query", settings)
 
     def test_voyage_disabled_by_config_gate(self, monkeypatch, mock_settings):
-        monkeypatch.setattr(
-            OpenAIAdapter, "embed", MagicMock(side_effect=ProviderUnavailableError("openai", "down"))
-        )
+        from app.rag.embedding import reset_sync_openai_client_for_tests
+
+        reset_sync_openai_client_for_tests()
+        mock_client = MagicMock()
+        mock_client.embeddings.create.side_effect = RuntimeError("openai down")
+        monkeypatch.setattr("app.rag.embedding._get_sync_openai_client", lambda _s: mock_client)
         settings = mock_settings.model_copy(update={"voyage_api_key": "vk", "voyage_embedding_enabled": False})
         with pytest.raises(ValueError, match="voyage: disabled"):
             embed_with_failover("query", settings)

@@ -209,6 +209,8 @@ async def run_case(
         verdict = f"PASS — send path (no batch mismatch) @ {(live or {}).get('created_at')}"
     elif clarify_hit:
         verdict = f"PASS — clarify dialogue @ {(live or {}).get('created_at')}"
+    elif outcome in (case.get("pass_if") or {}).get("outcome_any", []):
+        verdict = f"PASS — outcome={outcome} @ {(live or {}).get('created_at')}"
     elif outcome:
         verdict = f"PARTIAL — outcome={outcome} tool={tool or 'none'}"
     else:
