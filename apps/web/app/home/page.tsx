@@ -3,6 +3,8 @@
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { HomeDashboard } from "@/components/home/home-dashboard"
+import { Skeleton } from "@/components/ui/skeleton"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { useAuth } from "@/lib/auth-context"
 import {
   architectureAdminApi,
@@ -19,7 +21,7 @@ import type { OnboardingProgress } from "@/types/api"
 
 export default function HomePage() {
   const { user } = useAuth()
-  const { data: onboarding } = useSWR<OnboardingProgress>(
+  const { data: onboarding, error: onboardingError, isLoading: onboardingLoading } = useSWR<OnboardingProgress>(
     user ? "/api/onboarding" : null,
     fetcher,
     { revalidateOnFocus: false },
@@ -100,6 +102,21 @@ export default function HomePage() {
 
   return (
     <AppShell title="Home">
+      {onboardingLoading && user ? (
+        <div className="space-y-4" aria-busy="true" aria-label="Loading home dashboard">
+          <Skeleton className="h-10 w-64" />
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <Skeleton className="h-36 rounded-xl" />
+            <Skeleton className="h-36 rounded-xl" />
+            <Skeleton className="h-36 rounded-xl" />
+          </div>
+        </div>
+      ) : onboardingError && user ? (
+        <WorkSectionErrorCard
+          title="Could not load home dashboard"
+          message="Refresh the page or try again in a moment."
+        />
+      ) : (
       <HomeDashboard
         roleId={roleId}
         roleLabel={roleMeta?.label ?? "there"}
@@ -135,6 +152,7 @@ export default function HomePage() {
         showGettingStarted={showGettingStarted}
         showRoleQuickActions={showRoleQuickActions}
       />
+      )}
     </AppShell>
   )
 }

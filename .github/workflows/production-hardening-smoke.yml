@@ -81,6 +81,12 @@ jobs:
           python scripts/smoke-research-cascade-prod.py \
             --json docs/delivery/smoke-research-cascade-prod-latest.json
 
+      - name: Check deployed marketing/app links (gravitre.app)
+        run: |
+          python scripts/check-deployed-links.py \
+            --base-url https://gravitre.app \
+            --json docs/delivery/link-check-production-latest.json
+
       - name: Upload smoke reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -90,6 +96,7 @@ jobs:
             docs/delivery/smoke-marketplace-production-latest.json
             docs/delivery/smoke-ai-production-latest.json
             docs/delivery/smoke-research-cascade-prod-latest.json
+            docs/delivery/link-check-production-latest.json
           if-no-files-found: ignore
 
       - name: Write hardening smoke platform signal

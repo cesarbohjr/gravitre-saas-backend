@@ -171,7 +171,6 @@ function ChatMessage({
   onRegenerate?: () => void
 }) {
   const { text, tools, sources } = normalizeMessage(message)
-  const [showActions, setShowActions] = useState(false)
   const displayText = isUser ? text : polishAssistantText(text)
 
   const handleCopyMessage = async () => {
@@ -188,8 +187,6 @@ function ChatMessage({
         "flex gap-3 group",
         isUser ? "justify-end" : "justify-start"
       )}
-      onMouseEnter={() => setShowActions(true)}
-      onMouseLeave={() => setShowActions(false)}
     >
       {!isUser && (
         <div className={cn(
@@ -293,9 +290,9 @@ function ChatMessage({
           </div>
         )}
 
-        {/* Message actions */}
-        {!isUser && showActions && (
-          <div className="flex items-center gap-1 mt-2 pt-2 border-t border-zinc-100">
+        {/* Message actions — always visible on touch; hover-reveal on sm+ */}
+        {!isUser && (
+          <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-zinc-100 pt-2 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
             <ReadAloudButton messageId={message.id} text={displayText} compact />
             <button
               onClick={handleCopyMessage}

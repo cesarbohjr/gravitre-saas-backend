@@ -70,7 +70,7 @@ type DemoStore = {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
+  // eslint-disable-next-line no-var -- required for Next.js dev HMR singleton
   var __gravitreDemoStore: DemoStore | undefined
 }
 

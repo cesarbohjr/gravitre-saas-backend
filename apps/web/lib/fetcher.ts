@@ -6,6 +6,9 @@ import { clearAuthTransition } from "@/lib/auth-transition"
 import { emitPlanRequired, type PlanRequiredDetail } from "@/lib/billing-plan-required"
 import { supabaseClient } from "@/lib/supabaseClient"
 
+/** Default ceiling for browser API calls — prevents infinite spinners on hung backends. */
+export const DEFAULT_API_TIMEOUT_MS = 60_000
+
 function withSelectedOrg(url: string): string {
   if (typeof window === "undefined" || !url.startsWith("/api/")) return url
   const selected = getSelectedOrgFromStorage()
@@ -33,7 +36,10 @@ async function hasLiveSupabaseSession(): Promise<boolean> {
   }
 }
 
-export async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
+export async function apiFetch(
+  url: string,
+  init?: RequestInit & { timeoutMs?: number },
+): Promise<Response> {
   const headers = new Headers(init?.headers)
   if (!headers.has("accept")) {
     headers.set("accept", "application/json")
@@ -58,11 +64,32 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
     }
   }
 
-  const response = await fetch(withSelectedOrg(url), {
-    ...init,
-    headers,
-    cache: init?.cache ?? "no-store",
-  })
+  const timeoutMs = init?.timeoutMs ?? DEFAULT_API_TIMEOUT_MS
+  const { timeoutMs: _timeoutMs, ...fetchInit } = init ?? {}
+  const timeoutController = new AbortController()
+  const timeoutId = setTimeout(() => {
+    timeoutController.abort(new DOMException("Request timed out", "TimeoutError"))
+  }, timeoutMs)
+
+  let response: Response
+  try {
+    response = await fetch(withSelectedOrg(url), {
+      ...fetchInit,
+      headers,
+      cache: fetchInit.cache ?? "no-store",
+      signal: fetchInit.signal ?? timeoutController.signal,
+    })
+  } catch (error) {
+    if (
+      error instanceof DOMException &&
+      (error.name === "TimeoutError" || error.name === "AbortError")
+    ) {
+      throw new RequestTimeoutError(timeoutMs)
+    }
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
+  }
 
   if (response.ok && typeof window !== "undefined") {
     window.sessionStorage.removeItem("gravitre_auth_login_redirect")
@@ -160,6 +187,20 @@ export class RateLimitError extends ApiError {
   }
 }
 
+export class RequestTimeoutError extends ApiError {
+  timeoutMs: number
+
+  constructor(timeoutMs: number) {
+    const seconds = Math.round(timeoutMs / 1000)
+    super(
+      `Request timed out after ${seconds} seconds. Check your connection and try again.`,
+      408,
+    )
+    this.name = "RequestTimeoutError"
+    this.timeoutMs = timeoutMs
+  }
+}
+
 export function formatUnknownError(error: unknown, fallback = "Something went wrong"): string {
   if (error instanceof Error && error.message.trim()) return error.message
   if (typeof error === "string" && error.trim()) return error
@@ -224,7 +265,7 @@ export async function fetcher<T>(url: string): Promise<T> {
       if (parseError instanceof PlanRequiredApiError) {
         throw parseError
       }
-      if (parseError instanceof RateLimitError) {
+      if (parseError instanceof RateLimitError || parseError instanceof RequestTimeoutError) {
         throw parseError
       }
       // Keep default detail when body is not JSON.

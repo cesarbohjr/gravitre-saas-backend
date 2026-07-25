@@ -1,7 +1,6 @@
 import {
   Zap,
   Play,
-  Mail,
   FileText,
   Send,
   Users,

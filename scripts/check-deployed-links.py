@@ -28,6 +28,8 @@ from typing import Any
 DEFAULT_BASE_URL = "https://gravitre.app"
 HOMEPAGE_TITLE = "Gravitre — AI operations with GIBE"
 USER_AGENT = "GravitreLinkChecker/1.0 (+https://gravitre.app)"
+# Next.js client-rendered shells: HTML is minimal but og:title proves the page is alive.
+SERVER_SHELL_PATHS: frozenset[str] = frozenset({"/"})
 
 # Known regressions from manual QA — checked before crawl begins.
 KNOWN_ASSERTIONS: list[dict[str, Any]] = [
@@ -316,7 +318,10 @@ def crawl(base_url: str, *, max_pages: int, timeout: float) -> CrawlReport:
         if result.status >= 400 or result.status == 0:
             report.broken.append(url)
         elif result.text_len < 40 and "text/html" in result.content_type:
-            report.empty.append(url)
+            if path in SERVER_SHELL_PATHS and (result.og_title or result.title):
+                pass  # client shell — links are hydrated client-side
+            else:
+                report.empty.append(url)
 
         if "text/html" not in result.content_type and result.content_type:
             continue

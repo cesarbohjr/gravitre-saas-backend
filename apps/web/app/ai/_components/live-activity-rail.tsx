@@ -86,7 +86,7 @@ export function LiveActivityRail({
     void ensureSelectedOrg(false).then((resolved) => setOrgId(resolved))
   }, [user])
 
-  const { data: runsData } = useSWR(
+  const { data: runsData, error: runsError } = useSWR(
     user && orgId ? ["ai-rail-runs", orgId] : null,
     () => runsApi.list({ limit: 8 }),
     { revalidateOnFocus: false, refreshInterval: 20_000 },
@@ -185,7 +185,11 @@ export function LiveActivityRail({
         {/* In progress */}
         <div>
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">In progress</p>
-          {inProgress.length > 0 ? (
+          {runsError ? (
+            <p className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive">
+              Run activity unavailable — refresh to retry.
+            </p>
+          ) : inProgress.length > 0 ? (
             <ul className="space-y-2">
               {inProgress.map((run) => (
                 <li key={run.id}>
