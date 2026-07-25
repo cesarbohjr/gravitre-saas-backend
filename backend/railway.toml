@@ -14,7 +14,8 @@ watchPatterns = ["app/**", "requirements*.txt", "Dockerfile", "railway.toml", "p
 
 [deploy]
 healthcheckPath = "/health"
-healthcheckTimeout = 30
+# Cold start loads SentenceTransformer + warms ~700 tool-doc embeddings (~3min at threshold 40).
+healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
 # Must run via shell so ${PORT} expands (literal $PORT breaks uvicorn).
