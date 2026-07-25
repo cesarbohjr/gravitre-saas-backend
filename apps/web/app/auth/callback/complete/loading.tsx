@@ -1,9 +1,9 @@
-import { Loader2 } from "lucide-react"
+import { GravitreThinkingLoader } from "@/components/gravitre/assistant/thinking-loader"
 
 export default function AuthCallbackCompleteLoading() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" aria-label="Completing sign in" />
+      <GravitreThinkingLoader size={72} title="Completing sign in" />
     </div>
   )
 }
