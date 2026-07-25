@@ -276,6 +276,7 @@ def promote_user_to_org_owner(client: Client, org_id: str, user_id: str) -> None
 
 
 # Master accounts that must always have org owner + platform_admins access.
+# Kept in sync with supabase/migrations/20260726120000_platform_admin_cesar_gravitre_app.sql
 FOUNDER_ADMIN_EMAILS = frozenset(
     {
         "cesar@gravitre.app",
