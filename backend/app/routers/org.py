@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from supabase import create_client
 
 from app.auth.dependencies import get_current_user, require_admin
+from app.auth.platform_admin import is_org_admin_role
 from app.auth.org_role_permissions import get_org_role_permissions_matrix
 from app.config import Settings, get_settings
 from app.workflows.audit import write_audit_event
@@ -94,7 +95,7 @@ def _is_admin(client, org_id: str, user_id: str) -> bool:
     )
     if not membership.data:
         return False
-    return (membership.data[0].get("role") or "").strip().lower() == "admin"
+    return is_org_admin_role((membership.data[0].get("role") or "").strip().lower())
 
 
 def _require_org_member(client, org_id: str, user_id: str) -> None:
@@ -352,7 +353,7 @@ async def create_organization(
     org_row = created.data[0]
     org_id = str(org_row["id"])
     client.table("organization_members").insert(
-        {"id": str(uuid4()), "org_id": org_id, "user_id": current_user["user_id"], "role": "admin"}
+        {"id": str(uuid4()), "org_id": org_id, "user_id": current_user["user_id"], "role": "owner"}
     ).execute()
     return _normalize_org_row(org_row)
 

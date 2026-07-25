@@ -179,6 +179,11 @@ def _process_stripe_event(
         subscription_id = data.get("subscription")
         customer_id = data.get("customer")
         if org_id and subscription_id:
+            from app.services.org_membership import promote_user_to_org_owner
+
+            payer_user_id = str(metadata.get("user_id") or "").strip()
+            if payer_user_id:
+                promote_user_to_org_owner(client, org_id, payer_user_id)
             client.table("subscriptions").upsert(
                 {
                     "org_id": org_id,

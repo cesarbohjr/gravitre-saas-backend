@@ -175,7 +175,7 @@ def ensure_user_workspace(
     org_id = str(org_resp.data[0]["id"])
     try:
         client.table("organization_members").insert(
-            {"id": str(uuid4()), "org_id": org_id, "user_id": user_id, "role": "admin"}
+            {"id": str(uuid4()), "org_id": org_id, "user_id": user_id, "role": "owner"}
         ).execute()
         client.table("users").upsert(
             {
@@ -202,3 +202,16 @@ def ensure_user_workspace(
 
     logger.info("ensure_user_workspace created org_id=%s user_id=%s", org_id, user_id)
     return org_id
+
+
+def promote_user_to_org_owner(client: Client, org_id: str, user_id: str) -> None:
+    """Grant full org admin to the billing contact / account creator."""
+    org = str(org_id or "").strip()
+    uid = str(user_id or "").strip()
+    if not org or not uid:
+        return
+    try:
+        client.table("organization_members").update({"role": "owner"}).eq("org_id", org).eq("user_id", uid).execute()
+        client.table("users").update({"role": "owner"}).eq("org_id", org).eq("auth_user_id", uid).execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("promote_user_to_org_owner failed org_id=%s user_id=%s error=%s", org, uid, exc)

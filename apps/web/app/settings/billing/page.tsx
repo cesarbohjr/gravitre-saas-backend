@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, Suspense } from "react"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { SettingsShell } from "@/components/settings/settings-shell"
 import {
   MorphingBackground,
   GlowOrb,
@@ -44,7 +45,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { 
-  ArrowLeft,
   CreditCard,
   Download,
   Check,
@@ -67,6 +67,7 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { billingApi, ApiRequestError } from "@/lib/api"
 import { ensureSelectedOrg } from "@/lib/org-context"
 import { SELECTABLE_PLANS, getPlan, formatPlanPrice, planDirection, type PlanCode } from "@/lib/plans"
@@ -141,10 +142,22 @@ const colorClasses = {
 }
 
 export default function BillingPage() {
+  const { isAdmin, loading: adminLoading } = useOrgAdmin()
+
   return (
-    <Suspense fallback={null}>
-      <BillingPageInner />
-    </Suspense>
+    <AppShell title="Settings">
+      <Suspense fallback={<div className="flex h-full items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}>
+        <SettingsShell activeSection="billing" isAdmin={isAdmin}>
+          {adminLoading ? (
+            <div className="flex h-64 items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <BillingPageInner />
+          )}
+        </SettingsShell>
+      </Suspense>
+    </AppShell>
   )
 }
 
@@ -227,10 +240,12 @@ function BillingPageInner() {
         {
           name: "Workflow Runs",
           used: usageFromApi.totals.workflow_runs ?? 0,
-          limit:
+          limit: Math.max(
             usageFromApi.workflow_runs_included ??
-            usageFromApi.included_outputs ??
-            WORKFLOW_LIMIT,
+              usageFromApi.included_outputs ??
+              WORKFLOW_LIMIT,
+            1,
+          ),
           icon: Zap,
           color: "blue" as const,
           trend: "",
@@ -240,7 +255,7 @@ function BillingPageInner() {
         {
           name: "AI Credits",
           used: usageFromApi.totals.ai_tokens ?? 0,
-          limit: usageFromApi.ai_credits_included ?? 2000,
+          limit: Math.max(usageFromApi.ai_credits_included ?? 2000, 1),
           icon: Sparkles,
           color: "purple" as const,
           trend: "",
@@ -453,8 +468,7 @@ function BillingPageInner() {
   }
 
   return (
-    <AppShell>
-      <div className="relative flex-1 overflow-auto">
+    <div className="relative flex-1 overflow-auto">
         {/* Premium ambient background */}
         <div className="fixed inset-0 pointer-events-none z-0">
           <MorphingBackground colors={["emerald", "blue", "violet"]} />
@@ -474,18 +488,6 @@ function BillingPageInner() {
           
           <div className="relative px-6 py-8 lg:px-8">
             <div className="max-w-5xl mx-auto">
-              {/* Back link */}
-              <Link 
-                href="/settings" 
-                className={cn(
-                  "inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-all duration-300 group",
-                  mounted ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4"
-                )}
-              >
-                <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-                Back to Settings
-              </Link>
-
               {/* Plan Overview - Premium */}
               <motion.div 
                 className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6"
@@ -576,7 +578,8 @@ function BillingPageInner() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {resolvedUsageMetrics.map((metric, i) => {
-                  const percentage = (metric.used / metric.limit) * 100
+                  const percentage =
+                    metric.limit > 0 ? Math.min(100, (metric.used / metric.limit) * 100) : 0
                   const colors = colorClasses[metric.color as keyof typeof colorClasses]
                   const displayValue = animatedValues[metric.name] ?? 0
                   
@@ -717,7 +720,10 @@ function BillingPageInner() {
                   <h3 className="text-xs font-medium text-muted-foreground mb-4">Closest to limit</h3>
                   <div className="space-y-4">
                     {[...resolvedUsageMetrics]
-                      .map((m) => ({ ...m, pct: Math.round((m.used / m.limit) * 100) }))
+                      .map((m) => ({
+                        ...m,
+                        pct: m.limit > 0 ? Math.round((m.used / m.limit) * 100) : 0,
+                      }))
                       .sort((a, b) => b.pct - a.pct)
                       .map((m, i) => {
                         const tone = m.pct >= 85 ? "destructive" : m.pct >= 60 ? "warning" : "success"
@@ -1171,7 +1177,7 @@ function BillingPageInner() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </AppShell>
+    </div>
   )
 }
 

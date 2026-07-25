@@ -6,6 +6,8 @@ import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { PageHeader } from "@/components/gravitre/page-header"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
+import { SettingsShell } from "@/components/settings/settings-shell"
 import { fetcher } from "@/lib/fetcher"
 import { cn } from "@/lib/utils"
 import { Globe, Palette, Users, DollarSign, ShieldAlert, Lock, HeartPulse, BookOpen } from "lucide-react"
@@ -57,8 +59,8 @@ function EnterprisePageContent() {
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
   }
 
-  const role = user?.role
-  const isAdmin = role === "admin" || role === "owner"
+  const { user, loading } = useAuth()
+  const { isAdmin } = useOrgAdmin()
   const canAccessEnterprise = isAdmin || isPlatformAdmin
 
   return (

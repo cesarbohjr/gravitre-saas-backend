@@ -568,7 +568,12 @@ async def create_checkout(
             price_id=price_id,
             success_url=success_url,
             cancel_url=cancel_url,
-            metadata={"org_id": org_id, "plan_code": plan_code, "billing_interval": billing_interval or "monthly"},
+            metadata={
+                "org_id": org_id,
+                "plan_code": plan_code,
+                "billing_interval": billing_interval or "monthly",
+                "user_id": current_user["user_id"],
+            },
         )
     except stripe.error.StripeError as exc:
         if customer_id and _stripe_customer_missing(exc):
@@ -586,6 +591,7 @@ async def create_checkout(
                         "org_id": org_id,
                         "plan_code": plan_code,
                         "billing_interval": billing_interval or "monthly",
+                        "user_id": current_user["user_id"],
                     },
                 )
             except stripe.error.StripeError as retry_exc:

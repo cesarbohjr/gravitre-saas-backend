@@ -42,9 +42,7 @@ import {
   Plus,
   Trash2,
   DollarSign,
-  FileText,
 } from "lucide-react"
-import Link from "next/link"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { settingsApi, ssoApi } from "@/lib/api"
@@ -53,26 +51,9 @@ import type { ApiKey, BillingUsageResponse, LiteSeatDepartment, MesonAddon, SSOC
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
-
-interface SettingSection {
-  id: string
-  title: string
-  description: string
-  icon: typeof Shield
-}
-
-const sections: SettingSection[] = [
-  { id: "organization", title: "Organization", description: "Manage organization details and branding", icon: Building2 },
-  { id: "ai-models", title: "AI Models", description: "Configure default models, AI behavior, and Memory entity matching", icon: Brain },
-  { id: "security", title: "Security", description: "Authentication, SSO, and access controls", icon: Shield },
-  { id: "api-keys", title: "API Keys", description: "Manage API keys for integrations", icon: Key },
-  { id: "notifications", title: "Notifications", description: "Configure alerts and notification channels", icon: Bell },
-  { id: "team", title: "Team Members", description: "Invite and manage team access", icon: Users },
-  { id: "lite-seats", title: "Lite Seats", description: "Allocate Gravitre Lite seats by department", icon: Users },
-  { id: "meson-addons", title: "Meson Addons", description: "Enable premium AI addon capabilities", icon: Sparkles },
-  { id: "billing-usage", title: "Billing Usage", description: "Review outputs and overage usage", icon: DollarSign },
-  { id: "webhooks", title: "Webhooks", description: "Configure outbound webhooks", icon: Webhook },
-]
+import { SettingsShell, canAccessSettingsSection } from "@/components/settings/settings-shell"
+import { type SettingsSectionId } from "@/lib/settings-sections"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 
 function OrganizationSettings({
   orgData,
@@ -1627,10 +1608,10 @@ function SettingsContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
-  const initialSection = searchParams.get("section") || "organization"
-  const [activeSection, setActiveSection] = useState(initialSection)
+  const { isAdmin, loading: adminLoading } = useOrgAdmin()
+  const initialSection = (searchParams.get("section") || "organization") as SettingsSectionId
+  const [activeSection, setActiveSection] = useState<SettingsSectionId>(initialSection)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const isAdmin = user?.role === "admin" || user?.role === "owner"
 
   useEffect(() => {
     if (searchParams.get("section") === "enterprise") {
@@ -1652,19 +1633,7 @@ function SettingsContent() {
 
   const organization = (orgData as { organization?: Record<string, unknown> } | undefined)?.organization
   const team = ((teamData as { team?: User[] } | undefined)?.team ?? []) as User[]
-  const adminOnlySections = new Set([
-    "organization",
-    "ai-models",
-    "security",
-    "api-keys",
-    "team",
-    "webhooks",
-    "lite-seats",
-    "meson-addons",
-    "billing-usage",
-  ])
-
-  if (authLoading) {
+  if (authLoading || adminLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -1673,7 +1642,7 @@ function SettingsContent() {
   }
 
   const renderContent = () => {
-    if (adminOnlySections.has(activeSection) && !isAdmin) {
+    if (!canAccessSettingsSection(activeSection, isAdmin)) {
       return (
         <div className="rounded-lg border border-border bg-secondary/30 p-4 text-sm text-muted-foreground">
           Admin or owner permission is required to manage this section.
@@ -1727,115 +1696,15 @@ function SettingsContent() {
   }
 
   return (
-    <div className="flex flex-col md:flex-row h-full">
-      {/* Mobile Header with section selector */}
-      <div className="md:hidden flex items-center justify-between border-b border-border p-4 bg-card/50 sticky top-0 z-10">
-        <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-semibold text-foreground truncate">
-            {sections.find((s) => s.id === activeSection)?.title}
-          </h1>
-          <p className="text-xs text-muted-foreground truncate">
-            {sections.find((s) => s.id === activeSection)?.description}
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="ml-3 gap-2 shrink-0"
-        >
-          {React.createElement(sections.find((s) => s.id === activeSection)?.icon || Building2, { className: "h-4 w-4" })}
-          <span className="sr-only md:not-sr-only">Menu</span>
-        </Button>
-      </div>
-
-      {/* Mobile Section Menu (Collapsible) */}
-      {mobileMenuOpen && (
-        <div className="md:hidden border-b border-border bg-card">
-          <div className="p-3 grid grid-cols-2 gap-2">
-            {sections.map((section) => (
-              <button
-                key={section.id}
-                onClick={() => {
-                  setActiveSection(section.id)
-                  setMobileMenuOpen(false)
-                }}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-lg px-3 py-3 text-left text-sm transition-colors",
-                  activeSection === section.id
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                )}
-              >
-                <section.icon className="h-4 w-4 shrink-0" />
-                <span className="truncate">{section.title}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Desktop Sidebar */}
-      <div className="hidden md:block w-64 border-r border-border p-4 shrink-0">
-        <nav className="space-y-1">
-          {sections.map((section) => (
-            <button
-              key={section.id}
-              onClick={() => setActiveSection(section.id)}
-              className={`w-full flex items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                activeSection === section.id
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              }`}
-            >
-              <section.icon className="h-4 w-4 shrink-0" />
-              <span>{section.title}</span>
-            </button>
-          ))}
-          <Link
-            href="/settings/team/permissions"
-            className="mt-4 flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
-            <Shield className="h-4 w-4 shrink-0" />
-            <span>Role permissions</span>
-          </Link>
-          {isAdmin ? (
-            <Link
-              href="/settings/approvals"
-              className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-            >
-              <Lock className="h-4 w-4 shrink-0" />
-              <span>Human-in-the-loop</span>
-            </Link>
-          ) : null}
-          {isAdmin ? (
-            <Link
-              href="/audit"
-              className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-            >
-              <FileText className="h-4 w-4 shrink-0" />
-              <span>Audit trail</span>
-            </Link>
-          ) : null}
-        </nav>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 p-4 md:p-6 overflow-auto">
-        <div className="max-w-2xl mx-auto md:mx-0">
-          {/* Desktop Header */}
-          <div className="hidden md:block mb-6">
-            <h1 className="text-xl font-semibold text-foreground mb-1">
-              {sections.find((s) => s.id === activeSection)?.title}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {sections.find((s) => s.id === activeSection)?.description}
-            </p>
-          </div>
-          {renderContent()}
-        </div>
-      </div>
-    </div>
+    <SettingsShell
+      activeSection={activeSection}
+      onSectionChange={setActiveSection}
+      isAdmin={isAdmin}
+      mobileMenuOpen={mobileMenuOpen}
+      onMobileMenuOpenChange={setMobileMenuOpen}
+    >
+      {renderContent()}
+    </SettingsShell>
   )
 }
 
