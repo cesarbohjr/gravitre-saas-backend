@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { formatPlanPrice, getPlan } from "@/lib/plans"
 
 interface UpgradePromptProps {
   open: boolean
@@ -81,20 +82,20 @@ const featureDetails = {
 
 const planUpgrades = {
   node: {
-    recommendedPlan: "Control",
-    price: "$129/month",
-    highlight: "Includes Meson access"
+    recommendedPlan: getPlan("control").name,
+    price: `${formatPlanPrice(getPlan("control"))}/month`,
+    highlight: "Includes Meson access",
   },
   control: {
-    recommendedPlan: "Command",
-    price: "$299/month",
-    highlight: "Unlimited team scale"
+    recommendedPlan: getPlan("command").name,
+    price: `${formatPlanPrice(getPlan("command"))}/month`,
+    highlight: "Unlimited team scale",
   },
   command: {
-    recommendedPlan: "Enterprise",
+    recommendedPlan: getPlan("enterprise").name,
     price: "Custom",
-    highlight: "Contact sales"
-  }
+    highlight: "Contact sales",
+  },
 }
 
 export function UpgradePrompt({ open, onClose, feature, currentPlan = "node" }: UpgradePromptProps) {

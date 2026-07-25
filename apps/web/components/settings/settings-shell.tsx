@@ -66,8 +66,9 @@ export function SettingsShell({
         </div>
       ) : null}
 
-      <div className="hidden w-64 shrink-0 border-r border-border p-4 md:block">
-        <nav className="space-y-1">
+      {/* Always show settings rail on tablet+ so /settings/billing matches /settings. */}
+      <div className="hidden w-64 shrink-0 border-r border-border bg-card/30 p-4 sm:block">
+        <nav className="space-y-1" aria-label="Settings sections">
           {SETTINGS_SECTIONS.map((section) => (
             <SettingsNavItem
               key={section.id}

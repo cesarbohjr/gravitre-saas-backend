@@ -34,6 +34,7 @@ import {
   type AgentIconId,
 } from "@/lib/agent-identity"
 import { GravitreeLoader } from "@/components/gravitre/gravitree-loader"
+import { formatPlanPrice, getPlan } from "@/lib/plans"
 
 interface MesonWizardProps {
   open: boolean
@@ -326,11 +327,13 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
           <div className="p-6 bg-secondary/30 border-t border-border">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-sm font-medium text-foreground">Control Plan</p>
+                <p className="text-sm font-medium text-foreground">{getPlan("control").name} Plan</p>
                 <p className="text-xs text-muted-foreground">Includes 10 Mesons / month</p>
               </div>
               <div className="text-right">
-                <p className="text-lg font-semibold text-foreground">$129/month</p>
+                <p className="text-lg font-semibold text-foreground">
+                  {formatPlanPrice(getPlan("control"))}/month
+                </p>
               </div>
             </div>
             <div className="flex gap-3">

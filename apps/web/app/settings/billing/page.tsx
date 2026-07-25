@@ -74,13 +74,6 @@ import { SELECTABLE_PLANS, getPlan, formatPlanPrice, planDirection, type PlanCod
 import { toast } from "sonner"
 import { buildUsageForecast } from "@/lib/billing-usage-forecast"
 
-const invoices = [
-  { id: "INV-2024-003", date: "Apr 1, 2024", amount: "$499.00", status: "Paid" },
-  { id: "INV-2024-002", date: "Mar 1, 2024", amount: "$499.00", status: "Paid" },
-  { id: "INV-2024-001", date: "Feb 1, 2024", amount: "$499.00", status: "Paid" },
-  { id: "INV-2023-012", date: "Jan 1, 2024", amount: "$499.00", status: "Paid" },
-]
-
 function formatInvoiceAmount(cents: number | undefined, currency = "usd") {
   if (cents == null) return "—"
   return new Intl.NumberFormat(undefined, {
@@ -143,11 +136,25 @@ const colorClasses = {
 
 export default function BillingPage() {
   const { isAdmin, loading: adminLoading } = useOrgAdmin()
+  const router = useRouter()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
     <AppShell title="Settings">
       <Suspense fallback={<div className="flex h-full items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}>
-        <SettingsShell activeSection="billing" isAdmin={isAdmin}>
+        <SettingsShell
+          activeSection="billing"
+          isAdmin={isAdmin}
+          mobileMenuOpen={mobileMenuOpen}
+          onMobileMenuOpenChange={setMobileMenuOpen}
+          onSectionChange={(section) => {
+            if (section === "billing") {
+              router.push("/settings/billing")
+              return
+            }
+            router.push(`/settings?section=${section}`)
+          }}
+        >
           {adminLoading ? (
             <div className="flex h-64 items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

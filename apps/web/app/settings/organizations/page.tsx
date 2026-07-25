@@ -327,9 +327,10 @@ export default function ManageOrganizationsPage() {
                       <Badge
                         variant="outline" 
                         className={`${
-                          org.plan === "Business" 
+                          String(org.plan ?? "").toLowerCase() === "command" ||
+                          String(org.plan ?? "").toLowerCase() === "enterprise"
                             ? "bg-primary/10 text-primary border-primary/20" 
-                            : org.plan === "Team"
+                            : String(org.plan ?? "").toLowerCase() === "control"
                             ? "bg-blue-500/10 text-blue-600 border-blue-500/20"
                             : "bg-secondary text-muted-foreground"
                         }`}

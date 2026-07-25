@@ -41,6 +41,7 @@ import {
   invalidateOrgCache,
   setSelectedOrgInStorage,
 } from "@/lib/org-context"
+import { formatPlanPrice, getPlan } from "@/lib/plans"
 
 interface TopBarProps {
   title?: string
@@ -66,6 +67,21 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
     apiFetcher,
     { revalidateOnFocus: false, refreshInterval: 60_000 },
   )
+  const { data: billingStatus } = useSWR<{
+    planCode?: string
+    billingStatus?: string
+  }>(user ? "/api/billing/status" : null, apiFetcher, {
+    revalidateOnFocus: false,
+    refreshInterval: 120_000,
+  })
+
+  const currentPlan = getPlan(billingStatus?.planCode)
+  const planPriceLabel =
+    currentPlan.price === null
+      ? "Custom"
+      : currentPlan.price === 0
+        ? "Free"
+        : `${formatPlanPrice(currentPlan)}/mo`
 
   const activeWorkflows =
     typeof overviewData?.activeWorkflows === "number" ? overviewData.activeWorkflows : null
@@ -373,9 +389,9 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium">Billing</p>
-                      <p className="text-[10px] text-muted-foreground">Business Plan</p>
+                      <p className="text-[10px] text-muted-foreground">{currentPlan.name} Plan</p>
                     </div>
-                    <span className="text-xs font-medium text-emerald-500">$499/mo</span>
+                    <span className="text-xs font-medium text-emerald-500">{planPriceLabel}</span>
                   </Link>
                 </DropdownMenuItem>
               </div>
