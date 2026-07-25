@@ -1,7 +1,8 @@
-# Backend production deploy gate — waits for Railway GitHub auto-deploy, then verifies /health.
+# Backend production deploy gate.
 #
-# Do NOT run `railway up --ci` here: duplicate uploads race GitHub auto-deploy and create
-# spurious FAILED deployments on frontend-only pushes. See docs/delivery/railway-github-actions-deploy-status.md
+# Prefer GitHub-connected Railway auto-deploy, but if /health stays on a stale
+# tip (auto-deploy stuck), fall back to `railway up` using RAILWAY_TOKEN.
+# See docs/delivery/railway-github-actions-deploy-status.md
 name: Railway backend production
 
 on:
@@ -9,6 +10,12 @@ on:
     workflows: ["CI"]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      force_railway_up:
+        description: Skip auto-deploy wait and force railway up
+        type: boolean
+        default: true
 
 concurrency:
   group: railway-backend-production
@@ -18,20 +25,29 @@ jobs:
   detect-backend-changes:
     name: Detect backend changes
     if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push'
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.detect.outputs.changed }}
+      ref: ${{ steps.detect.outputs.ref }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
           fetch-depth: 2
 
       - id: detect
         run: |
           set -euo pipefail
+          REF="$(git rev-parse HEAD)"
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "workflow_dispatch — force deploy path."
+            exit 0
+          fi
           if ! git rev-parse HEAD~1 >/dev/null 2>&1; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "Single-commit checkout — assume backend deploy required."
@@ -49,39 +65,73 @@ jobs:
     needs: detect-backend-changes
     if: needs.detect-backend-changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ needs.detect-backend-changes.outputs.ref }}
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Wait for GitHub auto-deploy health match
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli@4.65.0
+
+      - name: Wait for auto-deploy, else railway up
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           set -euo pipefail
           SHA="$(git rev-parse --short=8 HEAD)"
-          echo "Waiting for prod /health git_sha ~ $SHA (GitHub-connected Railway auto-deploy)"
-          python3 scripts/railway_prod_deploy.py \
-            --wait-health-only \
-            --timeout-s 900 \
-            --health-url https://gravitre-saas-backend-production.up.railway.app/health \
-            --commit-sha "$SHA"
-          python3 scripts/railway_prod_deploy.py \
-            --wait-health-only \
-            --timeout-s 120 \
-            --health-url https://api.gravitre.app/health \
-            --commit-sha "$SHA"
+          FULL="$(git rev-parse HEAD)"
+          SVC="gravitre-saas-backend"
+          ENV_NAME="production"
+          FORCE="${{ github.event_name == 'workflow_dispatch' && inputs.force_railway_up || 'false' }}"
+
+          match_health() {
+            local url="$1" timeout="$2"
+            python3 scripts/railway_prod_deploy.py \
+              --wait-health-only \
+              --timeout-s "$timeout" \
+              --health-url "$url" \
+              --commit-sha "$SHA"
+          }
+
+          CURRENT="$(curl -fsS https://api.gravitre.app/health | python3 -c 'import sys,json; print(json.load(sys.stdin).get("git_sha",""))' || true)"
+          echo "current_health_sha=$CURRENT expect=$FULL force=$FORCE"
+
+          if [[ "$CURRENT" == "$FULL"* ]] || [[ "$CURRENT" == "$SHA"* ]]; then
+            echo "Prod already on tip — nothing to deploy."
+            exit 0
+          fi
+
+          if [ "$FORCE" != "true" ]; then
+            echo "Waiting briefly for GitHub-connected Railway auto-deploy..."
+            if match_health "https://gravitre-saas-backend-production.up.railway.app/health" 240; then
+              match_health "https://api.gravitre.app/health" 120
+              exit 0
+            fi
+            echo "::warning::Auto-deploy did not advance tip — falling back to railway up"
+          fi
+
+          railway variables set "GIT_SHA=$FULL" --service "$SVC" --environment "$ENV_NAME"
+          echo "$FULL $(date -u +%Y-%m-%dT%H:%M:%SZ)" > backend/.railway-deploy-stamp
+          railway up ./backend --path-as-root --ci \
+            --service "$SVC" \
+            --environment "$ENV_NAME" \
+            --message "railway-backend-production $SHA"
+
+          match_health "https://gravitre-saas-backend-production.up.railway.app/health" 900
+          match_health "https://api.gravitre.app/health" 180
 
       - name: Post-deploy chat smoke (isolated org)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
-          EXPECT_SHA: ${{ github.event.workflow_run.head_sha }}
+          EXPECT_SHA: ${{ needs.detect-backend-changes.outputs.ref }}
         run: |
           set -euo pipefail
           pip install httpx PyJWT python-dotenv supabase
