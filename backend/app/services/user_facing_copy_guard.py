@@ -67,6 +67,31 @@ def scrub_raw_catalog_keys(text: str) -> str:
     return RAW_CATALOG_ACTION_KEY.sub(_repl, text or "")
 
 
+def dedupe_repeated_paragraphs(text: str) -> str:
+    """Collapse exact duplicate paragraphs (model/stream glitch — STA-335)."""
+    raw = (text or "").strip()
+    if not raw:
+        return raw
+    if len(raw) >= 20:
+        half = len(raw) // 2
+        left = raw[:half].strip()
+        right = raw[half:].strip()
+        if left and left == right:
+            return left
+    blocks = [b.strip() for b in re.split(r"\n\s*\n", raw) if b.strip()]
+    if len(blocks) <= 1:
+        lines = [ln.strip() for ln in raw.splitlines() if ln.strip()]
+        if len(lines) >= 2 and len(set(lines)) == 1:
+            return lines[0]
+        return raw
+    deduped: list[str] = []
+    for block in blocks:
+        if deduped and deduped[-1] == block:
+            continue
+        deduped.append(block)
+    return "\n\n".join(deduped)
+
+
 def assert_no_raw_catalog_action_keys(text: str, *, context: str = "") -> None:
     if contains_raw_catalog_action_key(text):
         prefix = f"{context}: " if context else ""
@@ -77,6 +102,6 @@ def assert_no_raw_catalog_action_keys(text: str, *, context: str = "") -> None:
 
 
 def finalize_user_facing_message(text: str, *, context: str = "") -> str:
-    cleaned = scrub_raw_catalog_keys((text or "").strip())
+    cleaned = dedupe_repeated_paragraphs(scrub_raw_catalog_keys((text or "").strip()))
     assert_no_raw_catalog_action_keys(cleaned, context=context or "user_facing_message")
     return cleaned

@@ -1020,7 +1020,14 @@ async def apply_unified_turn_live(
             refreshed = await state.get_task_state(conversation_id, org_id, client=client)
             confirm_message = format_write_approval_message(plan)
             if result.user_message:
-                confirm_message = f"{result.user_message.strip()}\n\n{confirm_message}"
+                from app.services.user_facing_copy_guard import dedupe_repeated_paragraphs
+
+                preamble = dedupe_repeated_paragraphs(result.user_message.strip())
+                approval = confirm_message.strip()
+                if approval and approval not in preamble:
+                    confirm_message = f"{preamble}\n\n{approval}"
+                elif preamble:
+                    confirm_message = preamble
             confirm_message = await _maybe_prepend_mixed_social_ack(
                 message=message,
                 body=confirm_message,

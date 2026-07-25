@@ -9,6 +9,7 @@ from app.services.user_facing_copy_guard import (
     RAW_CATALOG_ACTION_KEY,
     assert_no_raw_catalog_action_keys,
     contains_raw_catalog_action_key,
+    dedupe_repeated_paragraphs,
     finalize_user_facing_message,
     humanize_catalog_action_key,
 )
@@ -90,6 +91,17 @@ def test_assert_no_raw_catalog_action_keys_detects_leak():
 def test_finalize_user_facing_message_scrubs_catalog_keys():
     cleaned = finalize_user_facing_message("Try running gmail.messages.list next.")
     assert "gmail.messages.list" not in cleaned
+
+
+def test_dedupe_repeated_paragraphs_sta335():
+    dup = (
+        "Send email is ready, but it still needs your approval. "
+        "Reply **yes** to send, or **cancel** to stop.\n"
+        "Send email is ready, but it still needs your approval. "
+        "Reply **yes** to send, or **cancel** to stop."
+    )
+    assert dedupe_repeated_paragraphs(dup).count("Send email is ready") == 1
+    assert finalize_user_facing_message(dup).count("Send email is ready") == 1
 
 
 @pytest.mark.parametrize(

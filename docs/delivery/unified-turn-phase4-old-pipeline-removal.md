@@ -44,6 +44,17 @@ Rollback: `UNIFIED_TURN_LIVE_ENABLED=false`.
 
 ### R2 — Delete unused classical generators
 
+**Scheduled (2026-07-25):** open R2 delete PR when **all** soak gates hold for 7 consecutive days on prod tip:
+
+| Gate | Current (168h window) | R2 threshold |
+|------|------------------------|--------------|
+| `unified_turn.live.fallthrough` / audited LIVE turns | ~3.3% ([baseline](unified-turn-fallthrough-baseline.json)) | ≤ 1% and no unintentional conversational fallthrough spike |
+| Post-deploy chat smoke | PASS on every Railway deploy | 100% green |
+| Phase 2 combined + persona-drift batteries | Re-run on tip before R2 merge | PASS |
+| Pending-family silent fallthrough | Not instrumented | Instrument or accept zero prod reports |
+
+**Target:** R2 code delete PR **2026-08-01** if gates hold; else extend soak one week. Owner: next unified-turn maintenance pass.
+
 **Not in this ship.** Wait until prod fallthrough rates show unintentional conversational fallthrough ≈ 0.
 
 ### R3 — Cleanup
