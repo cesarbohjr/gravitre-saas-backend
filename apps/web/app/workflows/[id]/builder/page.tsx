@@ -34,6 +34,7 @@ import {
   type CouncilAgent,
   type DebateContribution,
 } from "@/lib/workflows/builder-persistence"
+import { classifyCanvasNodeWriteAuthority } from "@/lib/workflows/write-authority"
 import type { WorkflowDryRunResponse } from "@/types/api"
 import {
   agentsApi,
@@ -44,6 +45,7 @@ import {
   workflowsApi,
   type MesonAlert,
   type MesonInsight,
+  type MesonNodeReliabilityResponse,
   type MesonSuggestion,
 } from "@/lib/api"
 import {
@@ -500,6 +502,7 @@ function CanvasNode({
   onConnectionDrop,
   isDraggingConnection,
   isMobile,
+  reliabilityMessage,
   }: {
   node: WorkflowNode
   isSelected: boolean
@@ -512,6 +515,7 @@ function CanvasNode({
   onConnectionDrop?: (nodeId: string) => void
   isDraggingConnection?: boolean
   isMobile?: boolean
+  reliabilityMessage?: string | null
   }) {
   const config = getNodeTypeConfig(node.type)
   const Icon = config.icon
@@ -709,6 +713,27 @@ function CanvasNode({
                 </>
               )}
             </div>
+            {(() => {
+              const actionMeta = node.vendor
+                ? connectorActions[node.vendor]?.actions.find((a) => a.id === node.selectedAction)
+                : undefined
+              const writeKind = classifyCanvasNodeWriteAuthority({
+                type: node.type,
+                vendor: node.vendor,
+                selectedAction: node.selectedAction,
+                compiledActionKey: compiledActionKey(node.vendor, node.selectedAction),
+                httpMethod: actionMeta?.method,
+              })
+              if (writeKind !== "write") return null
+              return (
+                <span
+                  className="mt-1 inline-flex items-center rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-medium text-amber-700 dark:text-amber-400"
+                  title="Governed write — same catalog write authority as chat; requires Decision Queue approval"
+                >
+                  needs approval
+                </span>
+              )
+            })()}
           </div>
         </div>
 
@@ -716,6 +741,14 @@ function CanvasNode({
         {node.description && (
           <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{node.description}</p>
         )}
+        {reliabilityMessage ? (
+          <p
+            className="mb-2 line-clamp-2 rounded border border-red-500/25 bg-red-500/5 px-1.5 py-1 text-[9px] text-red-400"
+            title={reliabilityMessage}
+          >
+            {reliabilityMessage}
+          </p>
+        ) : null}
 
         {node.state === "error" && node.stepError ? (
           <p className="mb-2 line-clamp-2 text-[10px] text-red-400" title={node.stepError}>
@@ -2891,6 +2924,19 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     () => marketplaceApi.listInstalls({ status: "active", limit: 100 }),
     { revalidateOnFocus: false },
   )
+  const { data: nodeReliabilityData } = useSWR<MesonNodeReliabilityResponse>(
+    canPersist ? `meson-node-reliability-${id}` : null,
+    () => mesonApi.nodeReliability(id),
+    { revalidateOnFocus: false },
+  )
+  const reliabilityByLabel = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const row of nodeReliabilityData?.nodes ?? []) {
+      const label = (row.label || row.nodeKey || "").toLowerCase()
+      if (label && row.message) map.set(label, row.message)
+    }
+    return map
+  }, [nodeReliabilityData?.nodes])
   const orgAgents = useMemo(() => orgAgentsData?.agents ?? [], [orgAgentsData?.agents])
   const installedAgentIds = useMemo(
     () => collectInstalledAgentIds(orgInstallsData?.installs ?? []),
@@ -5173,6 +5219,11 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       onConnectionDrop={handleConnectionDrop}
       isDraggingConnection={isDraggingConnection}
       isMobile={isMobile}
+      reliabilityMessage={
+        reliabilityByLabel.get(node.name.toLowerCase())
+        || reliabilityByLabel.get((node.selectedAction || "").toLowerCase())
+        || null
+      }
     />
   )
   ))}
@@ -5457,11 +5508,42 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             }}
             workflowId={id}
             canPersist={canPersist}
-            nodes={nodes.map((n) => ({ type: n.type, name: n.name, vendor: n.vendor }))}
+            nodes={nodes.map((n) => ({
+              id: n.id,
+              type: n.type,
+              name: n.name,
+              vendor: n.vendor,
+              selectedAction: n.selectedAction,
+              description: n.description,
+              position: n.position,
+            }))}
+            edges={nodes.flatMap((n) =>
+              n.connections.map((to) => ({
+                id: `${n.id}-${to}`,
+                from: n.id,
+                to,
+              })),
+            )}
             onAcceptSuggestion={acceptSuggestion}
             onDismissSuggestion={dismissSuggestion}
             onApplyInsight={applyInsight}
             onFixAlert={fixAlert}
+            crossWorkflowSignals={(nodeReliabilityData?.crossWorkflow ?? []).map((row) => ({
+              message: row.message,
+              count: row.count,
+            }))}
+            onEditApplied={async () => {
+              if (!canPersist) return
+              try {
+                const result = await loadBuilderGraph(id)
+                if (result?.nodes?.length) {
+                  setNodes(result.nodes)
+                  setWorkflowMeta(result.meta)
+                }
+              } catch (err) {
+                console.error("[WorkflowBuilder] reload after Meson edit failed:", err)
+              }
+            }}
           />
 
           {/* Right config panel */}

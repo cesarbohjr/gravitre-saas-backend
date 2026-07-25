@@ -134,6 +134,92 @@ class ExecutionMemoryService:
             f"\"{best.get('goal')}\" used steps: {labels}."
         )
 
+    async def recall_recent_workflow_outcomes(
+        self,
+        org_id: str,
+        *,
+        limit: int = 8,
+        query: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Module A outcomes for canvas/chat unification (Phase 3).
+
+        Reads the same ``intelligence_outcome_events`` rows finalize_execution_outcome
+        writes — no canvas-specific parallel store.
+        """
+        try:
+            resp = (
+                self._client()
+                .table(self.TABLE)
+                .select(
+                    "outcome_event, workflow_id, workflow_run_id, metadata, created_at, entity_type"
+                )
+                .eq("org_id", org_id)
+                .order("created_at", desc=True)
+                .limit(40)
+                .execute()
+            )
+            rows = list(resp.data or [])
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("workflow_outcome_recall_skipped org_id=%s error=%s", org_id, exc)
+            return []
+
+        out: list[dict[str, Any]] = []
+        q_tokens = _tokenize(query or "")
+        for row in rows:
+            meta = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+            source = str(meta.get("source") or "")
+            # Prefer terminal workflow outcomes from any surface (canvas/worker/api/chat).
+            entity_type = str(row.get("entity_type") or "")
+            if entity_type == "execution_pattern":
+                continue
+            status = str(meta.get("terminal_status") or row.get("outcome_event") or "")
+            summary = str(meta.get("verified_summary") or meta.get("error") or status)
+            wf_id = str(row.get("workflow_id") or "")
+            run_id = str(row.get("workflow_run_id") or meta.get("run_id") or "")
+            blob = f"{summary} {wf_id} {source} {status}"
+            if q_tokens and _similarity(query or "", blob) < 0.08 and not any(
+                t in blob.lower() for t in ("workflow", "morning", "run", "canvas", "schedule")
+            ):
+                # Keep high-signal recent rows even without query overlap when asking
+                # about workflows generally — filter only when query has no workflow cues.
+                if not (q_tokens & {"workflow", "run", "morning", "canvas", "schedule", "failed", "complete", "completed"}):
+                    continue
+            out.append(
+                {
+                    "workflow_id": wf_id or None,
+                    "run_id": run_id or None,
+                    "status": status,
+                    "source": source or None,
+                    "summary": summary[:300],
+                    "created_at": row.get("created_at"),
+                    "outcome_event": row.get("outcome_event"),
+                }
+            )
+            if len(out) >= limit:
+                break
+        return out
+
+    def format_workflow_outcomes_for_prompt(self, outcomes: list[dict[str, Any]]) -> str:
+        if not outcomes:
+            return ""
+        lines = []
+        for row in outcomes[:6]:
+            src = row.get("source") or "unknown"
+            st = row.get("status") or row.get("outcome_event") or "?"
+            rid = (row.get("run_id") or "")[:8]
+            wfid = (row.get("workflow_id") or "")[:8]
+            summary = str(row.get("summary") or "")[:120]
+            lines.append(
+                f"- [{src}] workflow={wfid or 'n/a'} run={rid or 'n/a'} status={st}: {summary}"
+            )
+        return (
+            "<recent_workflow_outcomes>\n"
+            + "\n".join(lines)
+            + "\n</recent_workflow_outcomes>\n"
+            "These are real Module A outcomes (canvas and chat share this record). "
+            "Answer status questions from them; do not redirect to the Runs page unless asked."
+        )
+
 
 _service: ExecutionMemoryService | None = None
 

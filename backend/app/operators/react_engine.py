@@ -662,7 +662,42 @@ class ReActEngine:
                 "error": "Tool is not permitted or not connected for this agent",
                 "error_code": "tool_not_available",
             }
-        from app.services.react_write_gate import block_react_write_execution
+        from app.services.react_write_gate import (
+            block_react_write_execution,
+            tool_requires_user_write_approval,
+        )
+
+        requires_write, invoke_action, *_rest = tool_requires_user_write_approval(
+            tool_name, self.registry
+        )
+        # Canvas agent steps: when ToolContext.run_id is a workflow_runs row,
+        # honor run-level catalog write authority (same SoT) instead of the
+        # chat turn-level pending gate — closes the agent/council canvas gap.
+        if requires_write and ctx.run_id and ctx.client:
+            from app.services.canvas_write_gate import (
+                CANVAS_WRITE_AUTHORITY_BLOCKED,
+                load_run_for_write_gate,
+                run_allows_catalog_write_execution,
+            )
+            from app.services.gravitree_voice import format_operator_message
+
+            run_row = load_run_for_write_gate(ctx.client, ctx.org_id, ctx.run_id)
+            if run_row is not None:
+                if run_allows_catalog_write_execution(run_row):
+                    return await self.registry.execute_tool(
+                        ctx=ctx, tool_name=tool_name, args=args
+                    )
+                return {
+                    "success": False,
+                    "tool": tool_name,
+                    "action": invoke_action,
+                    "error_code": CANVAS_WRITE_AUTHORITY_BLOCKED,
+                    "error": format_operator_message(
+                        "canvas_write_blocked",
+                        confidence_register="blocked",
+                        allow_humor=False,
+                    ),
+                }
 
         blocked = block_react_write_execution(tool_name, args, self.registry)
         if blocked is not None:

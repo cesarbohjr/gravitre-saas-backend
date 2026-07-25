@@ -296,3 +296,127 @@ async def meson_feedback_route(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+
+class MesonEditRequest(BaseModel):
+    workflow_id: str = Field(..., alias="workflowId", min_length=1, max_length=64)
+    instruction: str = Field(..., min_length=3, max_length=4000)
+    workflow_state: dict[str, Any] | None = Field(default=None, alias="workflowState")
+
+    model_config = {"populate_by_name": True}
+
+
+class MesonEditApplyRequest(BaseModel):
+    workflow_id: str = Field(..., alias="workflowId", min_length=1, max_length=64)
+    proposal_id: str = Field(..., alias="proposalId", min_length=1, max_length=64)
+
+    model_config = {"populate_by_name": True}
+
+
+@router.post("/edit", dependencies=_CONTROL_TIER)
+async def meson_edit_propose_route(
+    body: MesonEditRequest,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Propose a natural-language edit against an existing saved canvas (reviewable diff)."""
+    from app.services.meson_canvas_edit import propose_workflow_edit
+
+    resolved_org = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        proposal = await propose_workflow_edit(
+            client=client,
+            settings=settings,
+            org_id=resolved_org,
+            workflow_id=body.workflow_id,
+            environment_name=environment_name,
+            instruction=body.instruction,
+            workflow_state=body.workflow_state,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return proposal.model_dump(by_alias=True)
+
+
+@router.post("/edit/apply", dependencies=_CONTROL_TIER)
+async def meson_edit_apply_route(
+    body: MesonEditApplyRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Apply a previously proposed canvas edit (creates a new workflow version)."""
+    from app.services.meson_canvas_edit import apply_workflow_edit
+
+    current_user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        result = apply_workflow_edit(
+            client=client,
+            org_id=org_id,
+            workflow_id=body.workflow_id,
+            environment_name=environment_name,
+            proposal_id=body.proposal_id,
+            created_by=str(current_user.get("user_id") or ""),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return result.model_dump(by_alias=True)
+
+
+@router.get("/edit/history/{workflow_id}", dependencies=_CONTROL_TIER)
+async def meson_edit_history_route(
+    workflow_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+) -> dict[str, Any]:
+    """List recent in-session conversational edit proposals (undo foundation)."""
+    from app.services.meson_canvas_edit import list_edit_proposals
+
+    resolved_org = _require_org(org_id)
+    return {"proposals": list_edit_proposals(resolved_org, workflow_id)}
+
+
+@router.post("/explain/{workflow_id}", dependencies=_CONTROL_TIER)
+async def meson_explain_workflow_route(
+    workflow_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Plain-language explanation of the real canvas graph (Phase 5.1)."""
+    from app.services.meson_canvas_edit import explain_workflow
+
+    resolved_org = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        result = await explain_workflow(
+            client=client,
+            org_id=resolved_org,
+            workflow_id=workflow_id,
+            environment_name=environment_name,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return result.model_dump(by_alias=True)
+
+
+@router.get("/node-reliability/{workflow_id}", dependencies=_CONTROL_TIER)
+async def meson_node_reliability_route(
+    workflow_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Per-node failure rates + cross-workflow failure patterns (Phase 5.2/5.3)."""
+    from app.services.canvas_node_reliability import node_reliability_for_workflow
+
+    resolved_org = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return node_reliability_for_workflow(client, org_id=resolved_org, workflow_id=workflow_id)

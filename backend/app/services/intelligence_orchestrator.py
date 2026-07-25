@@ -160,6 +160,22 @@ class IntelligenceOrchestrator:
             query=query,
             client=client,
         )
+        # Phase 3 — shared Module A outcomes across chat + canvas (no parallel store).
+        try:
+            from app.services.execution_memory_service import get_execution_memory_service
+
+            recent_outcomes = await get_execution_memory_service().recall_recent_workflow_outcomes(
+                org_id, query=query
+            )
+            outcomes_section = get_execution_memory_service().format_workflow_outcomes_for_prompt(
+                recent_outcomes
+            )
+            if outcomes_section:
+                existing = str(memory_ctx.get("prompt_section") or "")
+                memory_ctx["prompt_section"] = (existing + "\n" + outcomes_section).strip()
+                memory_ctx["recent_workflow_outcomes"] = recent_outcomes
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("orchestrator workflow outcome recall skipped error=%s", exc)
 
         if agent_id:
             agent = resolve_agent_record(client, org_id, agent_id, environment_name=environment_name)

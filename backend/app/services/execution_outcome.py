@@ -554,6 +554,50 @@ def finalize_execution_outcome(
             exc,
         )
 
+    # Module B — when a conversation_id is present, mirror into conversation memory
+    # so chat can recall the same outcome without a canvas-specific store.
+    try:
+        conversation_id = str((event.metadata or {}).get("conversation_id") or "").strip()
+        if conversation_id:
+            import asyncio
+
+            from app.services.conversation_memory_engine import ConversationMemoryEngine
+
+            action = (
+                f"workflow_run status={terminal} "
+                f"source={event.source} "
+                f"workflow={event.workflow_id or 'n/a'} "
+                f"run={event.run_id or 'n/a'}"
+            )
+            if event.error_summary:
+                action = f"{action} error={str(event.error_summary)[:120]}"
+            engine = ConversationMemoryEngine()
+            coro = engine.record_action_outcome(
+                conversation_id,
+                event.org_id,
+                action=action[:300],
+                success=terminal == "completed",
+                connector=str((event.metadata or {}).get("integration") or "") or None,
+                client=client,
+            )
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+            if loop and loop.is_running():
+                loop.create_task(coro)
+                fanout["conversation_memory_recorded"] = True
+            else:
+                asyncio.run(coro)
+                fanout["conversation_memory_recorded"] = True
+    except Exception as exc:  # noqa: BLE001
+        fanout["conversation_memory_recorded"] = False
+        logger.debug(
+            "execution_outcome_conversation_memory_skipped run_id=%s error=%s",
+            event.run_id,
+            exc,
+        )
+
     try:
         fanout["failure_alert_correlated"] = _enqueue_failure_alert_correlation(
             client, event, terminal

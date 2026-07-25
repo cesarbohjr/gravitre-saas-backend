@@ -626,6 +626,87 @@ export const mesonApi = {
     ),
   feedback: (data: MesonFeedbackRequest) =>
     postJson<{ ok?: boolean }>(apiUrl("/api/meson/feedback"), data),
+  edit: (data: {
+    workflowId: string
+    instruction: string
+    workflowState?: Record<string, unknown>
+  }) => postJson<MesonEditProposalResponse>(apiUrl("/api/meson/edit"), data),
+  applyEdit: (data: { workflowId: string; proposalId: string }) =>
+    postJson<MesonEditApplyResponse>(apiUrl("/api/meson/edit/apply"), data),
+  editHistory: (workflowId: string) =>
+    fetcher<{ proposals?: MesonEditHistoryItem[] }>(
+      apiUrl(`/api/meson/edit/history/${workflowId}`)
+    ),
+  explain: (workflowId: string) =>
+    postJson<MesonExplainResponse>(apiUrl(`/api/meson/explain/${workflowId}`), {}),
+  nodeReliability: (workflowId: string) =>
+    fetcher<MesonNodeReliabilityResponse>(
+      apiUrl(`/api/meson/node-reliability/${workflowId}`)
+    ),
+}
+
+export interface MesonEditProposalResponse {
+  proposalId: string
+  workflowId: string
+  instruction: string
+  summary: string
+  before?: Record<string, unknown>
+  after?: Record<string, unknown>
+  diff?: {
+    available?: boolean
+    note?: string | null
+    summary?: Record<string, number | boolean>
+    added_nodes?: Array<Record<string, unknown>>
+    removed_nodes?: Array<Record<string, unknown>>
+    changed_nodes?: Array<Record<string, unknown>>
+    prior?: Record<string, unknown> | null
+  }
+  confidence?: number | null
+  confidenceIsEstimate?: boolean
+  confidenceSource?: string
+}
+
+export interface MesonEditApplyResponse {
+  workflowId: string
+  proposalId: string
+  applied?: boolean
+  nodeCount?: number
+  edgeCount?: number
+  summary?: string
+}
+
+export interface MesonEditHistoryItem {
+  proposalId?: string
+  instruction?: string
+  summary?: string
+  applied?: boolean
+  diff?: Record<string, unknown>
+}
+
+export interface MesonExplainResponse {
+  workflowId: string
+  explanation: string
+  confidence?: number | null
+  confidenceIsEstimate?: boolean
+  confidenceSource?: string
+}
+
+export interface MesonNodeReliabilityResponse {
+  workflowId?: string
+  nodes?: Array<{
+    nodeKey: string
+    label?: string
+    failed: number
+    total: number
+    message: string
+  }>
+  crossWorkflow?: Array<{
+    reason: string
+    count: number
+    workflowCount: number
+    workflowIds?: string[]
+    message: string
+  }>
 }
 
 // ============ Workflows ============

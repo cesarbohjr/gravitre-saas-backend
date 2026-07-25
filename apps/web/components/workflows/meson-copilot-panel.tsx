@@ -23,6 +23,7 @@ import { useMotionPrefs } from "@/lib/animations"
 import {
   mesonApi,
   type MesonAlert,
+  type MesonEditProposalResponse,
   type MesonInsight,
   type MesonSuggestion,
 } from "@/lib/api"
@@ -68,20 +69,34 @@ export function MesonCopilotPanel({
   workflowId,
   canPersist,
   nodes,
+  edges,
   onAcceptSuggestion,
   onDismissSuggestion,
   onApplyInsight,
   onFixAlert,
+  onEditApplied,
+  crossWorkflowSignals,
 }: {
   open: boolean
   onClose: () => void
   workflowId?: string
   canPersist?: boolean
-  nodes: Array<{ type: string; name: string; vendor?: string }>
+  nodes: Array<{
+    id?: string
+    type: string
+    name: string
+    vendor?: string
+    selectedAction?: string
+    description?: string
+    position?: { x: number; y: number }
+  }>
+  edges?: Array<{ id?: string; from: string; to: string }>
   onAcceptSuggestion: (suggestion: MesonSuggestion) => void
   onDismissSuggestion: (suggestionId: string) => void
   onApplyInsight?: (insight: MesonInsight) => void
   onFixAlert?: (alert: MesonAlert) => void
+  onEditApplied?: () => void | Promise<void>
+  crossWorkflowSignals?: Array<{ message: string; count?: number }>
 }) {
   const { reduced, container, item } = useMotionPrefs()
   const [suggestions, setSuggestions] = useState<MesonSuggestion[]>([])
@@ -94,11 +109,21 @@ export function MesonCopilotPanel({
   const [fixedAlertId, setFixedAlertId] = useState<string | null>(null)
   const [appliedInsightId, setAppliedInsightId] = useState<string | null>(null)
   const [dismissed, setDismissed] = useState<string[]>(() => loadDismissed(workflowId))
+  const [editInstruction, setEditInstruction] = useState("")
+  const [editLoading, setEditLoading] = useState(false)
+  const [applyLoading, setApplyLoading] = useState(false)
+  const [editProposal, setEditProposal] = useState<MesonEditProposalResponse | null>(null)
+  const [editError, setEditError] = useState<string | null>(null)
+  const [explanation, setExplanation] = useState<string | null>(null)
+  const [explainLoading, setExplainLoading] = useState(false)
 
   useEffect(() => {
     // Sync dismissed list from localStorage when switching workflows.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDismissed(loadDismissed(workflowId))
+    setEditProposal(null)
+    setEditError(null)
+    setExplanation(null)
   }, [workflowId])
 
   const lastNode = nodes.length > 0 ? nodes[nodes.length - 1] : null
@@ -229,6 +254,72 @@ export function MesonCopilotPanel({
 
   const visibleAlerts = useMemo(() => alerts.slice(0, 5), [alerts])
 
+  const handleProposeEdit = useCallback(async () => {
+    if (!workflowId || !canPersist || !editInstruction.trim()) return
+    setEditLoading(true)
+    setEditError(null)
+    try {
+      const proposal = await mesonApi.edit({
+        workflowId,
+        instruction: editInstruction.trim(),
+        workflowState: {
+          nodes: nodes.map((n) => ({
+            id: n.id,
+            type: n.type,
+            name: n.name,
+            vendor: n.vendor,
+            selectedAction: n.selectedAction,
+            description: n.description,
+            position: n.position,
+          })),
+          edges: (edges ?? []).map((e) => ({
+            id: e.id,
+            from_node_id: e.from,
+            to_node_id: e.to,
+          })),
+        },
+      })
+      setEditProposal(proposal)
+    } catch (err) {
+      setEditProposal(null)
+      setEditError(err instanceof Error ? err.message : "Edit proposal failed")
+    } finally {
+      setEditLoading(false)
+    }
+  }, [workflowId, canPersist, editInstruction, nodes, edges])
+
+  const handleApplyEdit = useCallback(async () => {
+    if (!workflowId || !editProposal?.proposalId) return
+    setApplyLoading(true)
+    setEditError(null)
+    try {
+      await mesonApi.applyEdit({
+        workflowId,
+        proposalId: editProposal.proposalId,
+      })
+      setEditProposal(null)
+      setEditInstruction("")
+      await onEditApplied?.()
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Apply failed")
+    } finally {
+      setApplyLoading(false)
+    }
+  }, [workflowId, editProposal, onEditApplied])
+
+  const handleExplain = useCallback(async () => {
+    if (!workflowId || !canPersist) return
+    setExplainLoading(true)
+    try {
+      const res = await mesonApi.explain(workflowId)
+      setExplanation(res.explanation || null)
+    } catch {
+      setExplanation("Could not explain this workflow right now.")
+    } finally {
+      setExplainLoading(false)
+    }
+  }, [workflowId, canPersist])
+
   // Bounce the alert badge when the count increases.
   const [badgeBounce, setBadgeBounce] = useState(0)
   const prevAlertCount = useRef(0)
@@ -272,6 +363,122 @@ export function MesonCopilotPanel({
       </div>
 
       <div className="relative flex-1 overflow-y-auto">
+        {/* Conversational edit (Phase 2) */}
+        {canPersist && workflowId ? (
+          <section className="border-b border-border p-3">
+            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Edit with Meson
+            </h3>
+            <textarea
+              value={editInstruction}
+              onChange={(e) => setEditInstruction(e.target.value)}
+              placeholder='e.g. "add a HubSpot check before sending"'
+              className="mb-2 min-h-[64px] w-full resize-none rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              aria-label="Natural language canvas edit"
+            />
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                className="h-7 flex-1 gap-1 text-[10px]"
+                disabled={editLoading || !editInstruction.trim()}
+                onClick={() => void handleProposeEdit()}
+              >
+                {editLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                Propose diff
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1 px-2 text-[10px]"
+                disabled={explainLoading}
+                onClick={() => void handleExplain()}
+              >
+                {explainLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                Explain
+              </Button>
+            </div>
+            {editError ? (
+              <p className="mt-2 text-[10px] text-destructive">{editError}</p>
+            ) : null}
+            {explanation ? (
+              <p className="mt-2 rounded-md border border-border bg-secondary/30 p-2 text-[10px] text-muted-foreground">
+                {explanation}
+              </p>
+            ) : null}
+            {editProposal ? (
+              <div className="mt-2 space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5">
+                <p className="text-xs font-medium text-foreground">{editProposal.summary}</p>
+                {editProposal.diff?.available && editProposal.diff.prior ? (
+                  <pre className="max-h-32 overflow-auto rounded bg-muted/40 p-2 text-[9px] leading-snug">
+                    {JSON.stringify(
+                      {
+                        summary: editProposal.diff.summary,
+                        added: editProposal.diff.added_nodes,
+                        removed: editProposal.diff.removed_nodes,
+                        changed: editProposal.diff.changed_nodes,
+                      },
+                      null,
+                      2,
+                    )}
+                  </pre>
+                ) : (
+                  <p className="text-[10px] text-muted-foreground">
+                    {editProposal.diff?.note || "No structural changes proposed."}
+                  </p>
+                )}
+                {editProposal.confidence != null ? (
+                  <p className="text-[9px] text-muted-foreground">
+                    {editProposal.confidenceIsEstimate !== false
+                      ? "Estimated confidence"
+                      : "Confidence"}{" "}
+                    {Math.round(editProposal.confidence * 100)}%
+                    {editProposal.confidenceSource
+                      ? ` · ${editProposal.confidenceSource}`
+                      : ""}
+                  </p>
+                ) : null}
+                <div className="flex justify-end gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-[10px]"
+                    onClick={() => setEditProposal(null)}
+                  >
+                    Discard
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="h-6 gap-1 px-2 text-[10px]"
+                    disabled={applyLoading || !editProposal.diff?.available}
+                    onClick={() => void handleApplyEdit()}
+                  >
+                    {applyLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3" />}
+                    Apply edit
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+
+        {crossWorkflowSignals && crossWorkflowSignals.length > 0 ? (
+          <section className="border-b border-border p-3">
+            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Cross-workflow
+            </h3>
+            <div className="space-y-1.5">
+              {crossWorkflowSignals.slice(0, 3).map((signal, idx) => (
+                <p
+                  key={`${signal.message}-${idx}`}
+                  className="rounded border border-orange-500/25 bg-orange-500/5 px-2 py-1.5 text-[10px] text-orange-700 dark:text-orange-400"
+                >
+                  {signal.message}
+                </p>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         {/* Suggestions */}
         <section className="border-b border-border p-3">
           <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">

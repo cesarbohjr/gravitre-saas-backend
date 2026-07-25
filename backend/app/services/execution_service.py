@@ -344,7 +344,17 @@ class ExecutionService:
             decision_type=DecisionType.HYBRID,
             rules=node.config.get("rules") or [],
         )
-        return {"selected_path": result.selected_path.id, "confidence": result.confidence}
+        return {
+            "selected_path": result.selected_path.id,
+            "confidence": result.confidence,
+            "confidence_is_estimate": result.confidence_is_estimate,
+            "confidenceIsEstimate": result.confidence_is_estimate,
+            "confidence_source": result.confidence_source,
+            "confidenceSource": result.confidence_source,
+            "reasoning_summary": result.reasoning_summary,
+            "key_factors": result.key_factors,
+            "ai_reasoning": result.ai_reasoning,
+        }
 
     async def _execute_loop_node(self, node: WorkflowNode, context: ExecutionContext) -> dict[str, Any]:
         collection_key = str(node.config.get("collection_key") or "")

@@ -47,6 +47,9 @@ class DecisionResult(BaseModel):
     requires_human_approval: bool
     rule_matches: list[dict] | None
     ai_reasoning: dict | None
+    # Module C honesty fields (label_confidence) — required on AI-decided branches.
+    confidence_is_estimate: bool = True
+    confidence_source: str = "heuristic"
 
 
 class DecisionService:
@@ -84,6 +87,38 @@ class DecisionService:
         if decision_type == DecisionType.AUTONOMOUS and confidence < 0.85:
             requires_human = True
 
+        from app.services.confidence_honesty import (
+            CONFIDENCE_SOURCE_HEURISTIC,
+            CONFIDENCE_SOURCE_MODEL,
+            label_confidence,
+        )
+
+        # Module C — AI/hybrid self-reported scores are estimates; rule-only uses heuristic.
+        conf_source = (
+            CONFIDENCE_SOURCE_MODEL
+            if ai_result and decision_type in {
+                DecisionType.AI_ASSISTED,
+                DecisionType.HYBRID,
+                DecisionType.AUTONOMOUS,
+            }
+            else CONFIDENCE_SOURCE_HEURISTIC
+        )
+        conf_label = label_confidence(
+            round(confidence, 3),
+            source=conf_source,
+            is_estimate=True,
+        )
+        ai_payload = ai_result.model_dump() if ai_result else None
+        if ai_payload is not None:
+            ai_payload.update(
+                {
+                    "confidence_is_estimate": conf_label.get("confidence_is_estimate"),
+                    "confidenceIsEstimate": conf_label.get("confidenceIsEstimate"),
+                    "confidence_source": conf_label.get("confidence_source"),
+                    "confidenceSource": conf_label.get("confidenceSource"),
+                }
+            )
+
         result = DecisionResult(
             id=f"{run_id}:{node_id}",
             selected_path=selected,
@@ -96,7 +131,9 @@ class DecisionService:
             alternatives_rejected=ai_result.alternatives_rejected if ai_result else [],
             requires_human_approval=requires_human,
             rule_matches=rule_matches or None,
-            ai_reasoning=ai_result.model_dump() if ai_result else None,
+            ai_reasoning=ai_payload,
+            confidence_is_estimate=bool(conf_label.get("confidence_is_estimate")),
+            confidence_source=str(conf_label.get("confidence_source") or conf_source),
         )
         self._persist_decision(org_id, workflow_id, run_id, node_id, decision_type, result)
         return result

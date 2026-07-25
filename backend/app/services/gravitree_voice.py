@@ -95,6 +95,13 @@ HOUSE_PHRASING: dict[str, str] = {
         "Write blocked: this canvas step needs an approved run "
         "(required_approvals>=1). In-graph approval alone is not enough."
     ),
+    "workflow_explain_fallback": (
+        "{name} runs these steps in order: {chain}."
+    ),
+    "canvas_governed_write": (
+        "Governed write — runs only after Decision Queue approval "
+        "(same catalog write authority as chat)."
+    ),
     "correction_ack": EXPRESSION_BANKS["correction_ack"][0],
     "pending_plan_cancelled": EXPRESSION_BANKS["pending_plan_cancelled"][0],
     "missing_parameters_header": EXPRESSION_BANKS["missing_parameters_header"][0],
@@ -579,6 +586,16 @@ def format_operator_message(
     if key == "canvas_write_blocked":
         # Excluded from expression range — governance precision.
         return HOUSE_PHRASING["canvas_write_blocked"]
+
+    if key == "workflow_explain_fallback":
+        return house_phrase(
+            "workflow_explain_fallback",
+            name=str(ctx.get("name") or "This workflow"),
+            chain=str(ctx.get("chain") or "no steps"),
+        )
+
+    if key == "canvas_governed_write":
+        return HOUSE_PHRASING["canvas_governed_write"]
 
     if key == "correction_ack":
         correction = str(ctx.get("correction") or ctx.get("value") or "your correction").strip()

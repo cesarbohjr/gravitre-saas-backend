@@ -364,11 +364,24 @@ def execute_workflow_steps(
     )
 
     if is_terminal_run_status(final_status):
+        params = parameters if isinstance(parameters, dict) else {}
+        resolved_source = outcome_source
+        if resolved_source == "api" and str(params.get("source") or "").lower() == "canvas":
+            resolved_source = "canvas"
+        meta: dict[str, Any] = {
+            "path": "execute_workflow_steps",
+            "environment": environment_name,
+        }
+        conversation_id = str(params.get("conversation_id") or "").strip()
+        if conversation_id:
+            meta["conversation_id"] = conversation_id
+        if params.get("integration"):
+            meta["integration"] = params.get("integration")
         finalize_execution_outcome(
             client,
             org_id=org_id,
             status=final_status,
-            source=outcome_source if outcome_source in {
+            source=resolved_source if resolved_source in {
                 "chat_orch", "assistant_chat", "canvas", "api", "worker", "assignment"
             } else "api",
             actor_id=user_id,
@@ -383,7 +396,7 @@ def execute_workflow_steps(
                     :2000
                 ],
             ),
-            metadata={"path": "execute_workflow_steps", "environment": environment_name},
+            metadata=meta,
         )
         if run_failed:
             try:
