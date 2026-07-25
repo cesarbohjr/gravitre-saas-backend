@@ -18,6 +18,7 @@ from app.core.logging import get_logger
 from app.services.confidence_honesty import (
     CONFIDENCE_SOURCE_HEURISTIC,
     CONFIDENCE_SOURCE_MODEL,
+    estimated_confidence,
     label_confidence,
 )
 from app.services.model_router import ModelRouter, TaskType, get_model_router
@@ -307,9 +308,15 @@ async def _llm_edit(
     if "schedule" in payload:
         after["schedule"] = payload.get("schedule")
     try:
-        conf = float(payload.get("confidence") or 0.7)
+        raw_conf = payload.get("confidence")
+        conf = float(
+            estimated_confidence(
+                float(raw_conf) if raw_conf is not None else 0.7,
+                source=CONFIDENCE_SOURCE_HEURISTIC,
+            )["confidence"]
+        )
     except (TypeError, ValueError):
-        conf = 0.7
+        conf = float(estimated_confidence(0.7, source=CONFIDENCE_SOURCE_HEURISTIC)["confidence"])
     return after, max(0.0, min(1.0, conf))
 
 

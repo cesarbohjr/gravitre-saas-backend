@@ -468,6 +468,7 @@ function BillingPageInner() {
   }
 
   return (
+    <>
     <div className="relative flex-1 overflow-auto">
         {/* Premium ambient background */}
         <div className="fixed inset-0 pointer-events-none z-0">
@@ -1177,7 +1178,7 @@ function BillingPageInner() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   )
 }
 
