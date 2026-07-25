@@ -24,6 +24,9 @@ class EnvironmentUpdateRequest(BaseModel):
     is_active: bool | None = Field(default=None, alias="isActive")
 
 
+_ALLOWED_ENVIRONMENT_NAMES = frozenset({"production", "staging", "development"})
+
+
 @router.get("")
 async def list_environments(
     _user: Annotated[dict, Depends(get_current_user)],
@@ -33,6 +36,9 @@ async def list_environments(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    from app.services.org_membership import ensure_default_production_environment
+
+    ensure_default_production_environment(client, org_id)
     r = client.table("environments").select("id, name, is_active, created_at").eq("org_id", org_id).execute()
     return {"environments": list(r.data or [])}
 
@@ -45,14 +51,17 @@ async def create_environment(
 ) -> dict:
     _user, org_id = _admin
     name = body.name.strip().lower()
-    if name not in {"production", "staging"}:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid environment name")
+    if name not in _ALLOWED_ENVIRONMENT_NAMES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid environment name (use production, staging, or development)",
+        )
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     plan = get_plan_for_org(client, org_id)
     count = client.table("environments").select("id", count="exact").eq("org_id", org_id).execute()
     current = count.count or 0 if hasattr(count, "count") else len(count.data or [])
     require_limit(current, plan.get("environments_limit"), "environments")
-    r = client.table("environments").insert({"org_id": org_id, "name": name}).execute()
+    r = client.table("environments").insert({"org_id": org_id, "name": name, "is_active": True}).execute()
     if not r.data:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Environment create failed")
     env_id = str(r.data[0]["id"])

@@ -12,6 +12,7 @@ import { GridPattern } from "@/components/gravitre/premium-effects"
 import { marketplaceApi } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { ROI_PAGE_TITLE } from "@/lib/marketplace-outcome-labels"
 import {
   ArrowLeft,
@@ -255,8 +256,7 @@ function hasAnyRevenue(data: MarketplacePublisherRevenueAnalytics) {
 
 export default function MarketplacePublisherAnalyticsPage() {
   const { user } = useAuth()
-  const role = user?.role
-  const isAdmin = role === "admin" || role === "owner"
+  const { isAdmin } = useOrgAdmin()
 
   const { data: me } = useSWR(user ? "/api/auth/me" : null, fetcher)
   const isPlatformAdmin = Boolean((me as { platformAdmin?: boolean } | undefined)?.platformAdmin)

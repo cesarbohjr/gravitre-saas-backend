@@ -11,6 +11,7 @@ import { StatusBadge } from "@/components/gravitre/status-badge"
 import { marketplaceApi } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { ArrowLeft, Loader2, Lock, Play, Square } from "lucide-react"
 import { toast } from "sonner"
 import type { PrivateConnectorBundle } from "@/types/api"
@@ -48,7 +49,7 @@ const DEFAULT_HANDLERS = `def items_list(ctx, params):
 
 export default function MarketplacePrivatePage() {
   const { user } = useAuth()
-  const isAdmin = user?.role === "admin" || user?.role === "owner"
+  const { isAdmin } = useOrgAdmin()
   const [name, setName] = useState("Internal Connector")
   const [manifestText, setManifestText] = useState(DEFAULT_MANIFEST)
   const [handlersSource, setHandlersSource] = useState(DEFAULT_HANDLERS)

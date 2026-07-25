@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { GridPattern } from "@/components/gravitre/premium-effects"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { ArrowLeft, BarChart3, Clock, Copy, Download, Package, Star, TrendingUp } from "lucide-react"
 import {
   ADOPTED_ESTIMATE_HOURS_LABEL,
@@ -85,8 +86,7 @@ function FacetTable({ title, rows }: { title: string; rows: { key: string; count
 
 export default function MarketplaceAnalyticsPage() {
   const { user } = useAuth()
-  const role = user?.role
-  const isAdmin = role === "admin" || role === "owner"
+  const { isAdmin } = useOrgAdmin()
 
   const { data, error, isLoading } = useSWR(
     user && isAdmin ? "marketplace-analytics" : null,

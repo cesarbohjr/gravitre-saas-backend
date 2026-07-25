@@ -26,6 +26,7 @@ import { fetcher } from "@/lib/fetcher"
 import { approvalsApi, businessOutcomesApi, runsApi, workflowsApi } from "@/lib/api"
 import { interruptRequestedDescription, interruptRequestedMessage } from "@/lib/agent-interrupts"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { ExecutionTimeline, type ExecutionStepView } from "@/components/runs/execution-timeline"
 import { ApprovalBatchPanel } from "@/components/runs/approval-batch-panel"
 import {
@@ -187,7 +188,7 @@ const statusVariants: Record<string, "success" | "error" | "warning" | "info"> =
 export default function RunDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const { user, loading: authLoading } = useAuth()
-  const isAdmin = user?.role === "admin" || user?.role === "owner"
+  const { isAdmin } = useOrgAdmin()
 
   const [showRollbackConfirm, setShowRollbackConfirm] = useState(false)
   const [isRollingBack, setIsRollingBack] = useState(false)
@@ -644,7 +645,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
               </div>
               {run.conversationId ? (
                 <Button asChild size="sm" variant="outline" className="h-8">
-                  <Link href={`/ai?conversation=${encodeURIComponent(run.conversationId)}`}>
+                  <Link href={`/ai?c=${encodeURIComponent(run.conversationId)}`}>
                     Open conversation
                   </Link>
                 </Button>

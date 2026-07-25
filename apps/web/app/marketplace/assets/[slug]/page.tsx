@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { ESTIMATED_HOURS_SAVED_MONTHLY } from "@/lib/outcome-labels"
 import {
   AlertCircle,
@@ -68,8 +69,7 @@ function MarketplaceAssetDetailContent() {
   const searchParams = useSearchParams()
   const slug = decodeURIComponent(params.slug)
   const { user } = useAuth()
-  const role = user?.role
-  const isAdmin = role === "admin" || role === "owner"
+  const { isAdmin } = useOrgAdmin()
   const [installOpen, setInstallOpen] = useState(false)
   const [busy, setBusy] = useState(false)
 

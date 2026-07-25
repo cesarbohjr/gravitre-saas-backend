@@ -18,6 +18,7 @@ import { StatusBadge } from "@/components/gravitre/status-badge"
 import { marketplaceApi } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { CheckCircle2, Loader2, RefreshCw, Shield, ShieldCheck, XCircle, ArrowLeft } from "lucide-react"
 import { toast } from "sonner"
 import type { MarketplaceRegistryConnector, PartnerConnectorSubmission } from "@/types/api"
@@ -89,7 +90,7 @@ function CertificationSummary({ submission }: { submission: PartnerConnectorSubm
 
 export default function MarketplaceAdminPage() {
   const { user } = useAuth()
-  const isAdmin = user?.role === "admin" || user?.role === "owner"
+  const { isAdmin } = useOrgAdmin()
   const [reviewTarget, setReviewTarget] = useState<PartnerConnectorSubmission | null>(null)
   const [decision, setDecision] = useState<"approve" | "reject" | null>(null)
   const [notes, setNotes] = useState("")

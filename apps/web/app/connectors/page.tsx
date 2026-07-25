@@ -68,6 +68,7 @@ import { cn } from "@/lib/utils"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { fetcher as apiFetcher, formatUnknownError } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { ensureSelectedOrg, getQuickOrgId } from "@/lib/org-context"
 import {
   getSelectedEnvironmentFromStorage,
@@ -2202,6 +2203,7 @@ function GscSitePickerModal({
 
 function ConnectorsPageContent() {
   const { user } = useAuth()
+  const { isAdmin: orgIsAdmin } = useOrgAdmin()
   const searchParams = useSearchParams()
   const [gaPropertyPicker, setGaPropertyPicker] = useState<{ connectorId: string } | null>(null)
   const [gscSitePicker, setGscSitePicker] = useState<{ connectorId: string } | null>(null)
@@ -2262,7 +2264,7 @@ function ConnectorsPageContent() {
 
   const connectors = normalizeConnectorsResponse(data)
   const publishedConnectors = registryData?.connectors ?? []
-  const isAdmin = user?.role === "admin" || user?.role === "owner"
+  const isAdmin = orgIsAdmin
 
   useEffect(() => {
     const oauth = searchParams.get("oauth")

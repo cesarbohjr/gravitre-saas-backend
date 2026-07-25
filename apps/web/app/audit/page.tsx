@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { auditApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
 import type { AuditLog } from "@/types/api"
@@ -59,6 +60,7 @@ function formatTime(value: string): string {
 
 export default function AuditPage() {
   const { user } = useAuth()
+  const { isAdmin } = useOrgAdmin()
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedAction, setSelectedAction] = useState<string>("all")
   const [selectedEntityType, setSelectedEntityType] = useState<string>("all")
@@ -158,7 +160,7 @@ export default function AuditPage() {
             <div className="flex-1 min-w-0">
               <h1 className="text-lg md:text-xl font-semibold text-foreground">Audit Trail</h1>
               <p className="text-xs md:text-sm text-muted-foreground mt-0.5">Who did what, when, and the outcome</p>
-              {(user?.role === "admin" || user?.role === "owner") ? (
+              {isAdmin ? (
                 <p className="mt-2 max-w-2xl rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs text-muted-foreground">
                   <span className="font-medium text-foreground">For admins:</span> this is the org
                   compliance surface — export CSV/JSON for reviews, filter by actor and action, and

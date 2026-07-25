@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { ArrowLeft, Loader2, PlusCircle } from "lucide-react"
 import { toast } from "sonner"
 import { ESTIMATED_HOURS_SAVED_MONTHLY } from "@/lib/outcome-labels"
@@ -24,8 +25,7 @@ function slugify(value: string): string {
 export default function CreateOrgAssetPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const role = user?.role
-  const isAdmin = role === "admin" || role === "owner"
+  const { isAdmin } = useOrgAdmin()
   const [busy, setBusy] = useState(false)
   const [title, setTitle] = useState("")
   const [slug, setSlug] = useState("")

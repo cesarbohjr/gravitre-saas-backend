@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import {
   ArrowLeft,
   ArrowRight,
@@ -23,8 +24,7 @@ import { toast } from "sonner"
 
 export default function MarketplacePublisherPage() {
   const { user } = useAuth()
-  const role = (user as { role?: string } | null)?.role
-  const isAdmin = role === "admin" || role === "owner"
+  const { isAdmin } = useOrgAdmin()
   const [displayName, setDisplayName] = useState("")
   const [slug, setSlug] = useState("")
   const [description, setDescription] = useState("")

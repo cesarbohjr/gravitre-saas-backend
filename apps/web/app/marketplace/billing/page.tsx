@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress"
 import { marketplaceApi } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { cn } from "@/lib/utils"
 import {
   AlertCircle,
@@ -186,8 +187,7 @@ function PricingRow({
 
 export default function MarketplaceBillingPage() {
   const { user } = useAuth()
-  const role = user?.role
-  const isAdmin = role === "admin" || role === "owner"
+  const { isAdmin } = useOrgAdmin()
   const [isWorking, setIsWorking] = useState(false)
   const [lastSyncResult, setLastSyncResult] = useState<MarketplacePublisherPayoutSyncResult | null>(null)
 

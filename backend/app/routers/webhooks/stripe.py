@@ -179,9 +179,24 @@ def _process_stripe_event(
         subscription_id = data.get("subscription")
         customer_id = data.get("customer")
         if org_id and subscription_id:
-            from app.services.org_membership import promote_user_to_org_owner
+            from app.services.org_membership import (
+                promote_user_to_org_owner,
+                resolve_user_id_by_email,
+            )
 
-            payer_user_id = str(metadata.get("user_id") or "").strip()
+            payer_user_id = str(
+                metadata.get("user_id")
+                or data.get("client_reference_id")
+                or ""
+            ).strip()
+            if not payer_user_id:
+                details = data.get("customer_details") if isinstance(data.get("customer_details"), dict) else {}
+                checkout_email = (
+                    str(details.get("email") or "").strip()
+                    or str(data.get("customer_email") or "").strip()
+                    or str(metadata.get("checkout_email") or "").strip()
+                )
+                payer_user_id = resolve_user_id_by_email(client, checkout_email) or ""
             if payer_user_id:
                 promote_user_to_org_owner(client, org_id, payer_user_id)
             client.table("subscriptions").upsert(
@@ -207,6 +222,19 @@ def _process_stripe_event(
 
     if event_type in {"customer.subscription.created", "customer.subscription.updated"}:
         _upsert_subscription_from_event(client, settings, org_id, data)
+        if org_id and event_type == "customer.subscription.created":
+            from app.services.org_membership import (
+                promote_user_to_org_owner,
+                resolve_user_id_by_email,
+            )
+
+            payer_user_id = str(metadata.get("user_id") or "").strip()
+            if not payer_user_id:
+                payer_user_id = resolve_user_id_by_email(
+                    client, str(metadata.get("checkout_email") or "").strip()
+                ) or ""
+            if payer_user_id:
+                promote_user_to_org_owner(client, org_id, payer_user_id)
         if org_id:
             items = (data.get("items") or {}).get("data") or []
             primary_item = items[0] if items else {}

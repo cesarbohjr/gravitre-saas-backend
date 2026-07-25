@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Loader2, Plus, ShieldCheck, Trash2 } from "lucide-react"
 import { fetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { useViewModeSafe } from "@/lib/view-mode-context"
 import { settingsApi } from "@/lib/api"
 import type { User } from "@/types/api"
@@ -41,9 +42,9 @@ function toggleInList<T extends string>(list: T[], value: T): T[] {
 export default function HitlApprovalsPage() {
   const { user, loading: authLoading } = useAuth()
   const { isAdmin: viewAdmin, membershipLoading } = useViewModeSafe()
+  const { isAdmin: orgIsAdmin } = useOrgAdmin()
   // Org admin comes from lite-membership / organization_members — not Supabase user.role.
-  const isAdmin =
-    viewAdmin || user?.role === "admin" || user?.role === "owner"
+  const isAdmin = viewAdmin || orgIsAdmin
 
   const { data, error, isLoading, mutate } = useSWR<{ policies: HitlPolicy[] }>(
     isAdmin ? "/api/settings/hitl-policies" : null,

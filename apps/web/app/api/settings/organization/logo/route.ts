@@ -14,10 +14,8 @@ async function requireOrgAdmin(supabase: ReturnType<typeof createSupabaseRouteCl
   if (error) {
     throw new Error(error.message)
   }
-  if (!data || String(data.role).toLowerCase() !== "admin") {
-    return false
-  }
-  return true
+  const role = String(data?.role ?? "").toLowerCase()
+  return role === "admin" || role === "owner"
 }
 
 export async function POST(request: NextRequest) {

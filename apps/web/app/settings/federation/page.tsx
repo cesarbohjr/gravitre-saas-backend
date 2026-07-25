@@ -21,6 +21,7 @@ import { GridPattern, AnimatedCounter } from "@/components/gravitre/premium-effe
 import { federationApi } from "@/lib/api"
 import { formatUnknownError } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import type {
   FederationPartnership,
@@ -63,7 +64,7 @@ export default function FederationPage() {
 
 function FederationContent() {
   const { user, loading: authLoading } = useAuth()
-  const isAdmin = user?.role === "admin" || user?.role === "owner"
+  const { isAdmin, loading: adminLoading } = useOrgAdmin()
   const currentOrgId = getSelectedOrgFromStorage()?.id
   const [inviteOpen, setInviteOpen] = useState(false)
   const [handoffOpen, setHandoffOpen] = useState(false)

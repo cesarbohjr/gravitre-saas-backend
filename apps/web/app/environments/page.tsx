@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { environmentsApi } from "@/lib/api"
 import { toast } from "sonner"
 
@@ -69,11 +70,14 @@ function normalizeEnvironmentsResponse(payload: unknown): Environment[] {
     .map((item) => {
       const name = String(item.name ?? "Environment")
       const slug = name.trim().toLowerCase().replace(/\s+/g, "-")
-      const isDefault = Boolean(item.is_default ?? item.isDefault ?? false)
-      const status: Environment["status"] = "active"
+      const isDefault = Boolean(
+        item.is_default ?? item.isDefault ?? (slug === "production" || slug === "default"),
+      )
+      const status: Environment["status"] =
+        item.is_active === false || item.isActive === false ? "inactive" : "active"
       return {
         id: String(item.id ?? ""),
-        name,
+        name: name.charAt(0).toUpperCase() + name.slice(1),
         slug,
         status,
         isDefault,
@@ -337,6 +341,7 @@ function ConnectionLine({ from, to, label }: { from: string; to: string; label: 
 
 export default function EnvironmentsPage() {
   const { user } = useAuth()
+  const { isAdmin, loading: adminLoading } = useOrgAdmin()
   const [selectedEnv, setSelectedEnv] = useState<string | null>(null)
   const [mutatingEnvId, setMutatingEnvId] = useState<string | null>(null)
   const { data, error, isLoading, mutate } = useSWR(
@@ -351,13 +356,18 @@ export default function EnvironmentsPage() {
   const environments = normalizeEnvironmentsResponse(data)
 
   const handleCreate = async (name: string) => {
+    if (!isAdmin) {
+      toast.error("Admin role required to create environments")
+      return
+    }
     try {
       await environmentsApi.create({ name })
       toast.success("Environment created")
       await mutate()
     } catch (err) {
       console.error("[v0] Create failed:", err)
-      toast.error("Failed to create environment")
+      const message = err instanceof Error ? err.message : "Failed to create environment"
+      toast.error(message || "Failed to create environment")
     }
   }
 
@@ -404,11 +414,20 @@ export default function EnvironmentsPage() {
               size="sm"
               className="h-8 gap-2"
               onClick={() => {
-                const name = window.prompt("Environment name")
-                if (!name?.trim()) return
-                void handleCreate(name.trim())
+                if (!isAdmin) {
+                  toast.error("Admin role required to create environments")
+                  return
+                }
+                const existing = new Set(environments.map((env) => env.slug || env.name.toLowerCase()))
+                const next =
+                  ["production", "staging", "development"].find((name) => !existing.has(name)) ?? null
+                if (!next) {
+                  toast.error("All standard environments already exist")
+                  return
+                }
+                void handleCreate(next)
               }}
-              disabled={isLoading}
+              disabled={isLoading || adminLoading || !isAdmin}
             >
               <Plus className="h-3.5 w-3.5" />
               New Environment
@@ -438,21 +457,51 @@ export default function EnvironmentsPage() {
           </div>
         </div>
 
-        {/* Admin notice */}
-        <div className="mx-6 mt-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
-          <div className="flex items-center gap-3">
-            <Shield className="h-4 w-4 text-amber-400" />
-            <p className="text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">Admin Access Required.</span>
-              {" "}Changes here affect all users in the organization.
-            </p>
+        {!adminLoading && !isAdmin ? (
+          <div className="mx-6 mt-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+            <div className="flex items-center gap-3">
+              <Shield className="h-4 w-4 text-amber-400" />
+              <p className="text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">Admin access required.</span>
+                {" "}Ask an organization owner to grant you admin before changing environments.
+              </p>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="mx-6 mt-4 rounded-lg border border-border bg-secondary/40 p-3">
+            <div className="flex items-center gap-3">
+              <Shield className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">Organization-wide changes.</span>
+                {" "}Environment updates apply to every user in this workspace.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Topology View */}
         <div className="flex-1 overflow-auto p-6">
           <div className="max-w-5xl mx-auto">
-            {/* Pipeline visualization */}
+            {!isLoading && sortedEnvs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border px-6 py-16 text-center">
+                <Server className="h-8 w-8 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">No environments yet</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Create production to start your deployment pipeline.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  className="mt-2 gap-2"
+                  disabled={!isAdmin || adminLoading}
+                  onClick={() => void handleCreate("production")}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Create production
+                </Button>
+              </div>
+            ) : (
             <div className="flex flex-col items-center">
               {sortedEnvs.map((env, index) => (
                 <div key={env.id} className="w-full max-w-xl">
@@ -473,6 +522,7 @@ export default function EnvironmentsPage() {
                 </div>
               ))}
             </div>
+            )}
           </div>
         </div>
       </div>

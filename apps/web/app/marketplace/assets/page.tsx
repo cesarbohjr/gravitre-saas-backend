@@ -23,6 +23,7 @@ import {
 import { GridPattern } from "@/components/gravitre/premium-effects"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { cn } from "@/lib/utils"
 import {
   Bot,
@@ -364,8 +365,7 @@ function MarketplaceAssetsContent() {
   const initialDepartment = searchParams.get("department")
   const initialPrice = searchParams.get("price")
   const reduceMotion = useReducedMotion()
-  const role = user?.role
-  const isAdmin = role === "admin" || role === "owner"
+  const { isAdmin } = useOrgAdmin()
   const validTypes = useMemo(() => new Set(TYPE_FILTERS.map((filter) => filter.id)), [])
   const [typeFilter, setTypeFilter] = useState<string>(
     initialType && validTypes.has(initialType as (typeof TYPE_FILTERS)[number]["id"]) ? initialType : "all",

@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { GridPattern } from "@/components/gravitre/premium-effects"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { cn } from "@/lib/utils"
 import {
   ArrowLeft,
@@ -175,8 +176,7 @@ function RoiAssetTable({ rows }: { rows: MarketplaceRoiAssetRow[] }) {
 
 export default function MarketplaceRoiDashboardPage() {
   const { user } = useAuth()
-  const role = user?.role
-  const isAdmin = role === "admin" || role === "owner"
+  const { isAdmin } = useOrgAdmin()
 
   const { data: roi, error, isLoading } = useSWR(
     user && isAdmin ? "marketplace-analytics-roi-dashboard" : null,

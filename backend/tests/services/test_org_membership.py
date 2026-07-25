@@ -54,3 +54,32 @@ def test_ensure_user_workspace_returns_existing_without_insert():
     org_id = ensure_user_workspace(client, "user-1", email="u@example.com")
     assert org_id == "org-existing"
     client.table("organizations").insert.assert_not_called()
+
+
+def test_promote_user_to_org_owner_inserts_when_membership_missing():
+    from app.services.org_membership import promote_user_to_org_owner
+
+    client = MagicMock()
+    members = MagicMock()
+    members.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[]
+    )
+    envs = MagicMock()
+    envs.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[{"id": "env-1"}]
+    )
+    users = MagicMock()
+
+    def table(name: str):
+        if name == "organization_members":
+            return members
+        if name == "environments":
+            return envs
+        if name == "users":
+            return users
+        return MagicMock()
+
+    client.table.side_effect = table
+    promote_user_to_org_owner(client, "org-1", "user-1")
+    members.insert.assert_called_once()
+    users.update.assert_called_once()

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { ArrowLeft, CheckCircle2, Globe, Loader2, PlusCircle, Send, Shield, Trash2, XCircle } from "lucide-react"
 import { toast } from "sonner"
 import type { MarketplaceAssetSummary } from "@/types/api"
@@ -155,8 +156,7 @@ function OrgAssetRow({
 
 export default function MarketplaceOrgAdminPage() {
   const { user } = useAuth()
-  const role = user?.role
-  const isAdmin = role === "admin" || role === "owner"
+  const { isAdmin } = useOrgAdmin()
   const [busy, setBusy] = useState<string | null>(null)
   const [rejectTarget, setRejectTarget] = useState<MarketplaceAssetSummary | null>(null)
   const [rejectReason, setRejectReason] = useState("")

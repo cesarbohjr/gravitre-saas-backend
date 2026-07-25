@@ -197,6 +197,7 @@ def ensure_user_workspace(
             },
             on_conflict="org_id",
         ).execute()
+        ensure_default_production_environment(client, org_id)
     except Exception as exc:  # noqa: BLE001
         logger.error("ensure_user_workspace membership failed user_id=%s org_id=%s error=%s", user_id, org_id, exc)
 
@@ -204,14 +205,71 @@ def ensure_user_workspace(
     return org_id
 
 
+def ensure_default_production_environment(client: Client, org_id: str) -> None:
+    """Ensure every org has at least a production environment row."""
+    org = str(org_id or "").strip()
+    if not org:
+        return
+    try:
+        existing = (
+            client.table("environments")
+            .select("id")
+            .eq("org_id", org)
+            .limit(1)
+            .execute()
+        )
+        if existing.data:
+            return
+        client.table("environments").insert({"org_id": org, "name": "production", "is_active": True}).execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("ensure_default_production_environment failed org_id=%s error=%s", org, exc)
+
+
+def resolve_user_id_by_email(client: Client, email: str | None) -> str | None:
+    """Map checkout / Stripe email to auth user id when metadata.user_id is missing."""
+    safe = str(email or "").strip().lower()
+    if not safe:
+        return None
+    try:
+        users = (
+            client.table("users")
+            .select("auth_user_id")
+            .eq("email", safe)
+            .limit(1)
+            .execute()
+        )
+        if users.data and users.data[0].get("auth_user_id"):
+            return str(users.data[0]["auth_user_id"])
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("resolve_user_id_by_email failed email=%s error=%s", safe, exc)
+    return None
+
+
 def promote_user_to_org_owner(client: Client, org_id: str, user_id: str) -> None:
-    """Grant full org admin to the billing contact / account creator."""
+    """Grant full org admin to the billing contact / account creator (insert if missing)."""
     org = str(org_id or "").strip()
     uid = str(user_id or "").strip()
     if not org or not uid:
         return
     try:
-        client.table("organization_members").update({"role": "owner"}).eq("org_id", org).eq("user_id", uid).execute()
+        existing = (
+            client.table("organization_members")
+            .select("id, role")
+            .eq("org_id", org)
+            .eq("user_id", uid)
+            .limit(1)
+            .execute()
+        )
+        if existing.data:
+            if str(existing.data[0].get("role") or "").strip().lower() != "owner":
+                client.table("organization_members").update({"role": "owner"}).eq("org_id", org).eq(
+                    "user_id", uid
+                ).execute()
+        else:
+            client.table("organization_members").insert(
+                {"id": str(uuid4()), "org_id": org, "user_id": uid, "role": "owner"}
+            ).execute()
         client.table("users").update({"role": "owner"}).eq("org_id", org).eq("auth_user_id", uid).execute()
+        ensure_default_production_environment(client, org)
     except Exception as exc:  # noqa: BLE001
         logger.warning("promote_user_to_org_owner failed org_id=%s user_id=%s error=%s", org, uid, exc)
