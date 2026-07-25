@@ -170,16 +170,16 @@ async def _fetch_turn_audit(
 async def _fetch_assistant_from_messages(
     *,
     sb: Any,
-    org_id: str,
     cid: str,
     after: str,
 ) -> str:
+    """Load latest assistant message from DB when SSE did not yield text-delta."""
+    # conversation_messages has no org_id — scope via conversation_id (migration 20260604120000).
     for _ in range(10):
         rows = (
             sb.table("conversation_messages")
             .select("role,content,created_at")
             .eq("conversation_id", cid)
-            .eq("org_id", org_id)
             .eq("role", "assistant")
             .gte("created_at", after)
             .order("created_at", desc=True)
@@ -240,7 +240,7 @@ async def _send_chat_turn(
     audit = await _fetch_turn_audit(sb=sb, org_id=org_id, cid=cid, after=after)
     meta = _meta(audit)
     if not assistant.strip():
-        assistant = await _fetch_assistant_from_messages(sb=sb, org_id=org_id, cid=cid, after=after)
+        assistant = await _fetch_assistant_from_messages(sb=sb, cid=cid, after=after)
     bd = meta.get("latency_breakdown") or {}
     if not isinstance(bd, dict):
         bd = {}
