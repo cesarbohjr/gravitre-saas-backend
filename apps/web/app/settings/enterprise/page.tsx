@@ -7,7 +7,6 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { PageHeader } from "@/components/gravitre/page-header"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
-import { SettingsShell } from "@/components/settings/settings-shell"
 import { fetcher } from "@/lib/fetcher"
 import { cn } from "@/lib/utils"
 import { Globe, Palette, Users, DollarSign, ShieldAlert, Lock, HeartPulse, BookOpen } from "lucide-react"
@@ -52,16 +51,14 @@ function EnterprisePageContent() {
   const { user, loading } = useAuth()
   const { data: me } = useSWR(user ? "/api/auth/me" : null, fetcher)
   const isPlatformAdmin = Boolean((me as { platformAdmin?: boolean } | undefined)?.platformAdmin)
+  const { isAdmin } = useOrgAdmin()
+  const canAccessEnterprise = isAdmin || isPlatformAdmin
 
   const selectTab = (id: TabId) => {
     const params = new URLSearchParams(Array.from(searchParams.entries()))
     params.set("tab", id)
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
   }
-
-  const { user, loading } = useAuth()
-  const { isAdmin } = useOrgAdmin()
-  const canAccessEnterprise = isAdmin || isPlatformAdmin
 
   return (
     <AppShell>
