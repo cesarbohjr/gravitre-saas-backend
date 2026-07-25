@@ -173,7 +173,14 @@ async def train_v3_query_clusterer(
         if text:
             unique.setdefault(text, row)
     texts = list(unique.keys())
-    embeddings = [get_embedding(text, active, org_id=org_id) for text in texts]
+    if len(texts) > 1:
+        from app.rag.embedding import embed_texts_batch_openai
+
+        embeddings = embed_texts_batch_openai(texts, active, org_id=org_id)
+    elif texts:
+        embeddings = [get_embedding(texts[0], active, org_id=org_id)]
+    else:
+        embeddings = []
 
     clusterer = QueryClusterer(min_cluster_size=3, min_samples=2)
     metrics = await clusterer.train(embeddings=embeddings, normalized_queries=texts)

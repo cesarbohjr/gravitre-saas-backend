@@ -65,6 +65,14 @@ def _cache_key(model: str, name: str, doc: str) -> str:
     return f"{model}:{name}:{hash(doc)}"
 
 
+def _embed_model_name(settings: Settings) -> str:
+    from app.rag.tool_retrieval_embedding import _use_local_tool_embed, tool_retrieval_embed_model
+
+    if _use_local_tool_embed(settings):
+        return tool_retrieval_embed_model(settings)
+    return str(getattr(settings, "embedding_model", None) or "text-embedding-3-small")
+
+
 def _embed_tools(
     tools: list[dict[str, Any]],
     *,
@@ -72,9 +80,9 @@ def _embed_tools(
     org_id: str | None,
     stats_out: dict[str, Any] | None = None,
 ) -> list[tuple[dict[str, Any], list[float]]]:
-    from app.rag.embedding import embed_texts_batch_openai
+    from app.rag.tool_retrieval_embedding import embed_tool_retrieval_docs_timed
 
-    model = str(getattr(settings, "embedding_model", None) or "text-embedding-3-small")
+    model = _embed_model_name(settings)
     out: list[tuple[dict[str, Any], list[float]]] = []
     missing: list[tuple[dict[str, Any], str, str]] = []
     cache_hits = 0
@@ -97,14 +105,16 @@ def _embed_tools(
     if missing:
         t_batch = time.perf_counter()
         docs = [doc for _, _, doc in missing]
-        vectors = embed_texts_batch_openai(docs, settings, org_id=org_id)
+        vectors, batch_stats = embed_tool_retrieval_docs_timed(docs, settings)
         tool_docs_ms = int((time.perf_counter() - t_batch) * 1000)
-        batch_api_calls = 1
+        batch_api_calls = int(batch_stats.get("embed_tool_doc_batch_api_calls") or 0)
         with _CACHE_LOCK:
             for (tool, name, doc), vector in zip(missing, vectors, strict=True):
                 key = _cache_key(model, name, doc)
                 _TOOL_EMBED_CACHE[key] = vector
                 out.append((tool, vector))
+        if stats_out is not None:
+            stats_out["embed_tool_doc_provider"] = batch_stats.get("embed_tool_doc_provider")
 
     if stats_out is not None:
         stats_out.update(
@@ -142,7 +152,7 @@ def embed_narrow_tools_for_turn(
         }
 
     try:
-        from app.rag.embedding import get_embedding_timed
+        from app.rag.tool_retrieval_embedding import embed_tool_retrieval_query_timed
 
         narrow_start = time.perf_counter()
         connected = [str(c).strip().lower() for c in (connected_integrations or []) if str(c).strip()]
@@ -185,6 +195,11 @@ def embed_narrow_tools_for_turn(
         query_text = (query or "").strip() or "task"
         tool_partial: dict[str, Any] = {}
 
+        query_partial: dict[str, Any] = {}
+
+        def _load_query_vector() -> tuple[list[float], dict[str, Any]]:
+            return embed_tool_retrieval_query_timed(query_text, settings)
+
         def _load_tool_vectors() -> list[tuple[dict[str, Any], list[float]]]:
             return _embed_tools(
                 candidates,
@@ -194,9 +209,9 @@ def embed_narrow_tools_for_turn(
             )
 
         with ThreadPoolExecutor(max_workers=2) as pool:
-            query_future = pool.submit(get_embedding_timed, query_text, settings, org_id)
+            query_future = pool.submit(_load_query_vector)
             tools_future = pool.submit(_load_tool_vectors)
-            query_vec, query_ms = query_future.result()
+            query_vec, query_partial = query_future.result()
             scored = tools_future.result()
 
         t_rank = time.perf_counter()
@@ -242,7 +257,7 @@ def embed_narrow_tools_for_turn(
             "embeddingToolRetrieval": True,
             "embeddingCandidateCount": len(candidates),
             "topSimilarity": round(float(ranked[0][0]), 4) if ranked else None,
-            "embed_query_ms": query_ms,
+            **query_partial,
             "embed_similarity_rank_ms": similarity_ms,
             "embed_narrow_total_ms": narrow_total_ms,
             **tool_partial,
@@ -276,7 +291,9 @@ def warm_tool_document_embeddings(*, settings: Settings | None = None) -> int:
     active = settings or get_settings()
     if not bool(getattr(active, "unified_turn_embedding_tool_retrieval", True)):
         return 0
-    if not (active.openai_api_key or "").strip():
+    from app.rag.tool_retrieval_embedding import _use_local_tool_embed
+
+    if not _use_local_tool_embed(active) and not (active.openai_api_key or "").strip():
         return 0
     try:
         from app.services.tool_registry import get_tool_registry

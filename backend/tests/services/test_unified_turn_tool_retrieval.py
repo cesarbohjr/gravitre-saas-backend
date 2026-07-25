@@ -66,19 +66,28 @@ def test_embed_narrow_ranks_relevant_tools():
             return [0.0, 0.0, 1.0]
         return [0.05, 0.05, 0.05]
 
-    settings = MagicMock(embedding_model="text-embedding-3-small")
-
-    def fake_batch(texts, settings, org_id=None):
-        return [fake_embed(t, settings, org_id) for t in texts]
+    settings = MagicMock(
+        embedding_model="text-embedding-3-small",
+        unified_turn_tool_embed_local=True,
+        unified_turn_tool_embed_model="test-model",
+    )
 
     with patch.dict("app.services.unified_turn_tool_retrieval._TOOL_EMBED_CACHE", {}, clear=True), patch(
-        "app.rag.embedding.get_embedding_timed",
-        side_effect=lambda text, settings, org_id=None: (fake_embed(text, settings, org_id), 1),
+        "app.rag.tool_retrieval_embedding._use_local_tool_embed",
+        return_value=True,
     ), patch(
-        "app.rag.embedding.embed_texts_batch_openai",
-        side_effect=fake_batch,
+        "app.rag.tool_retrieval_embedding.embed_tool_retrieval_query_timed",
+        side_effect=lambda text, settings: (
+            fake_embed(text, settings, None),
+            {"embed_query_ms": 1, "embed_query_method": "local"},
+        ),
+    ), patch(
+        "app.rag.tool_retrieval_embedding.embed_tool_retrieval_docs_timed",
+        side_effect=lambda texts, settings: (
+            [fake_embed(t, settings, None) for t in texts],
+            {"embed_tool_docs_ms": 1, "embed_tool_doc_batch_api_calls": 0},
+        ),
     ):
-        # Clear module cache explicitly
         from app.services import unified_turn_tool_retrieval as mod
 
         mod._TOOL_EMBED_CACHE.clear()
@@ -95,7 +104,7 @@ def test_embed_narrow_ranks_relevant_tools():
     assert stats["embeddingToolRetrieval"] is True
     assert stats["retrievalMethod"] == "embedding_narrow_tools_for_turn"
     assert stats.get("embed_query_ms") == 1
-    assert stats.get("embed_tool_doc_batch_api_calls") == 1
+    assert stats.get("embed_tool_doc_batch_api_calls") == 0
     assert "apollo_lists_create" in names
     assert "slack_post_message" not in names
 
@@ -107,7 +116,7 @@ def test_embed_narrow_falls_back_to_keyword_on_error():
     ]
     settings = MagicMock(embedding_model="text-embedding-3-small")
     with patch(
-        "app.rag.embedding.get_embedding_timed",
+        "app.rag.tool_retrieval_embedding.embed_tool_retrieval_query_timed",
         side_effect=RuntimeError("no provider"),
     ):
         visible, stats = embed_narrow_tools_for_turn(

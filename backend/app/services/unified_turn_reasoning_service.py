@@ -453,7 +453,14 @@ async def run_unified_turn_shadow(
     }
     for _embed_key in (
         "embed_query_ms",
+        "embed_query_method",
+        "embed_query_provider",
+        "embed_query_cache_hit",
+        "embed_query_cache_lookup_ms",
+        "embed_query_encode_ms",
+        "embed_query_model",
         "embed_tool_docs_ms",
+        "embed_tool_doc_provider",
         "embed_tool_doc_cache_hits",
         "embed_tool_doc_cache_misses",
         "embed_tool_doc_batch_api_calls",

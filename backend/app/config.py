@@ -120,6 +120,27 @@ class Settings(BaseSettings):
         default=16,
         validation_alias=AliasChoices("UNIFIED_TURN_TASK_MAX_TOOLS", "unified_turn_task_max_tools"),
     )
+    unified_turn_tool_embed_local: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "UNIFIED_TURN_TOOL_EMBED_LOCAL",
+            "unified_turn_tool_embed_local",
+        ),
+    )
+    unified_turn_tool_embed_model: str = Field(
+        default="all-MiniLM-L6-v2",
+        validation_alias=AliasChoices(
+            "UNIFIED_TURN_TOOL_EMBED_MODEL",
+            "unified_turn_tool_embed_model",
+        ),
+    )
+    unified_turn_tool_query_cache_ttl_sec: int = Field(
+        default=300,
+        validation_alias=AliasChoices(
+            "UNIFIED_TURN_TOOL_QUERY_CACHE_TTL_SEC",
+            "unified_turn_tool_query_cache_ttl_sec",
+        ),
+    )
     # Skip query-embed RTT when connected catalog is below threshold (keyword narrow instead).
     # Post-fix embed latency (9496cedf, 70 tools, warm cache): narrow_tools_ms≈434 (embed_query_ms≈427;
     # tool-doc cache 49/49 hits). Keyword still wins end-to-end wall (840 vs 1269ms on email_intent)

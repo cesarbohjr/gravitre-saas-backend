@@ -142,20 +142,29 @@ async def resolve_query_cluster_for_bandit(
             }
 
     query_emb = np.array(get_embedding(normalized, settings, org_id=org_id), dtype=float)
-    best_id: str | None = None
-    best_label = ""
-    best_dist = float("inf")
+    rep_rows: list[tuple[str, str, str]] = []
     for row in rows:
         norm_reps = [normalize_query(text) for text in _representative_query_texts(row) if text]
         if not norm_reps:
             continue
-        sample = norm_reps[0]
-        rep_emb = np.array(get_embedding(sample, settings, org_id=org_id), dtype=float)
-        dist = float(np.linalg.norm(query_emb - rep_emb))
+        rep_rows.append((str(row["id"]), str(row.get("cluster_label") or ""), norm_reps[0]))
+
+    if not rep_rows:
+        return None
+
+    from app.rag.embedding import embed_texts_batch_openai
+
+    rep_texts = [sample for _, _, sample in rep_rows]
+    rep_embs = embed_texts_batch_openai(rep_texts, settings, org_id=org_id)
+    best_id: str | None = None
+    best_label = ""
+    best_dist = float("inf")
+    for (row_id, label, _), rep_emb in zip(rep_rows, rep_embs, strict=True):
+        dist = float(np.linalg.norm(query_emb - np.array(rep_emb, dtype=float)))
         if dist < best_dist:
             best_dist = dist
-            best_id = str(row["id"])
-            best_label = str(row.get("cluster_label") or "")
+            best_id = row_id
+            best_label = label
 
     if best_id is None or best_dist > MAX_CLUSTER_MATCH_DISTANCE:
         return None
@@ -185,7 +194,11 @@ async def enrich_classification_with_query_cluster(
 
 
 def _embed_queries(settings: Settings, org_id: str, texts: list[str]) -> list[list[float]]:
-    return [get_embedding(text, settings, org_id=org_id) for text in texts]
+    if not texts:
+        return []
+    from app.rag.embedding import embed_texts_batch_openai
+
+    return embed_texts_batch_openai(texts, settings, org_id=org_id)
 
 
 async def run_query_clustering(
