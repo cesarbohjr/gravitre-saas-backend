@@ -1,0 +1,795 @@
+{
+  "base_url": "https://gravitre.app",
+  "assertion_failures": [],
+  "metadata_failures": [],
+  "broken": [],
+  "empty": [],
+  "pages": {
+    "https://gravitre.app/support/getting-started": {
+      "status": 200,
+      "text_len": 6228,
+      "title": "Quickstart | Gravitre Docs",
+      "og_title": "Quickstart | Gravitre Docs"
+    },
+    "https://gravitre.app/guides/create-your-first-ai-agent": {
+      "status": 200,
+      "text_len": 2095,
+      "title": "Manage agents | Gravitre Docs",
+      "og_title": "Manage agents | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to-create-your-first-agent": {
+      "status": 200,
+      "text_len": 2095,
+      "title": "Manage agents | Gravitre Docs",
+      "og_title": "Manage agents | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/sdk/node": {
+      "status": 200,
+      "text_len": 4614,
+      "title": "API quickstart | Gravitre Docs",
+      "og_title": "API quickstart | Gravitre Docs"
+    },
+    "https://gravitre.app/api": {
+      "status": 200,
+      "text_len": 3497,
+      "title": "API \u00b7 Gravitre",
+      "og_title": "API \u00b7 Gravitre"
+    },
+    "https://gravitre.app/support": {
+      "status": 200,
+      "text_len": 2027,
+      "title": "Support \u00b7 Gravitre",
+      "og_title": "Support \u00b7 Gravitre"
+    },
+    "https://gravitre.app/changelog": {
+      "status": 200,
+      "text_len": 3946,
+      "title": "Changelog \u00b7 Gravitre",
+      "og_title": "Changelog \u00b7 Gravitre"
+    },
+    "https://gravitre.app/": {
+      "status": 200,
+      "text_len": 8556,
+      "title": "Gravitre \u2014 Your AI Team, Managed Simply",
+      "og_title": "Gravitre \u2014 Your AI Team, Managed Simply"
+    },
+    "https://gravitre.app/features": {
+      "status": 200,
+      "text_len": 6797,
+      "title": "Features \u00b7 Gravitre",
+      "og_title": "Features \u00b7 Gravitre"
+    },
+    "https://gravitre.app/features/technology": {
+      "status": 200,
+      "text_len": 3933,
+      "title": "Technology \u2014 GIBE &amp; Governance",
+      "og_title": "Technology \u2014 GIBE &amp; Governance \u00b7 Gravitre"
+    },
+    "https://gravitre.app/features/marketplace": {
+      "status": 200,
+      "text_len": 2313,
+      "title": "Marketplace",
+      "og_title": "Marketplace \u00b7 Gravitre"
+    },
+    "https://gravitre.app/pricing": {
+      "status": 200,
+      "text_len": 5917,
+      "title": "Pricing \u00b7 Gravitre",
+      "og_title": "Pricing \u00b7 Gravitre"
+    },
+    "https://gravitre.app/docs": {
+      "status": 200,
+      "text_len": 2291,
+      "title": "Documentation | Gravitre \u00b7 Gravitre",
+      "og_title": "Documentation | Gravitre"
+    },
+    "https://gravitre.app/login": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/get-started": {
+      "status": 200,
+      "text_len": 795,
+      "title": "Get Started Free \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Get Started Free \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/blog/measuring-what-ai-changes": {
+      "status": 200,
+      "text_len": 7472,
+      "title": "Measuring What AI Actually Changes | Gravitre Blog",
+      "og_title": "Measuring What AI Actually Changes"
+    },
+    "https://gravitre.app/marketplace": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/blog/workflow-templates-library": {
+      "status": 200,
+      "text_len": 11094,
+      "title": "Introducing 60+ Marketplace templates and department packs | Gravitre Blog",
+      "og_title": "Introducing 60+ Marketplace templates and department packs"
+    },
+    "https://gravitre.app/blog/ai-transparency-and-approval": {
+      "status": 200,
+      "text_len": 8349,
+      "title": "AI Transparency and the Approval Question | Gravitre Blog",
+      "og_title": "AI Transparency and the Approval Question"
+    },
+    "https://gravitre.app/security": {
+      "status": 200,
+      "text_len": 3103,
+      "title": "Security \u00b7 Gravitre",
+      "og_title": "Security \u00b7 Gravitre"
+    },
+    "https://gravitre.app/contact": {
+      "status": 200,
+      "text_len": 1068,
+      "title": "Contact \u00b7 Gravitre",
+      "og_title": "Contact \u00b7 Gravitre"
+    },
+    "https://gravitre.app/roadmap": {
+      "status": 200,
+      "text_len": 1922,
+      "title": "Gravitre \u2014 AI operations with GIBE \u00b7 Gravitre",
+      "og_title": "Gravitre \u2014 AI operations with GIBE"
+    },
+    "https://gravitre.app/about": {
+      "status": 200,
+      "text_len": 1572,
+      "title": "About \u00b7 Gravitre",
+      "og_title": "About \u00b7 Gravitre"
+    },
+    "https://gravitre.app/blog": {
+      "status": 200,
+      "text_len": 2536,
+      "title": "Blog \u00b7 Gravitre",
+      "og_title": "Blog \u00b7 Gravitre"
+    },
+    "https://gravitre.app/careers": {
+      "status": 200,
+      "text_len": 1968,
+      "title": "Gravitre \u2014 AI operations with GIBE \u00b7 Gravitre",
+      "og_title": "Gravitre \u2014 AI operations with GIBE"
+    },
+    "https://gravitre.app/guides": {
+      "status": 200,
+      "text_len": 3822,
+      "title": "Guides \u00b7 Gravitre",
+      "og_title": "Guides \u00b7 Gravitre"
+    },
+    "https://gravitre.app/privacy": {
+      "status": 200,
+      "text_len": 4583,
+      "title": "Gravitre \u2014 AI operations with GIBE \u00b7 Gravitre",
+      "og_title": "Gravitre \u2014 AI operations with GIBE"
+    },
+    "https://gravitre.app/terms": {
+      "status": 200,
+      "text_len": 6639,
+      "title": "Gravitre \u2014 AI operations with GIBE \u00b7 Gravitre",
+      "og_title": "Gravitre \u2014 AI operations with GIBE"
+    },
+    "https://gravitre.app/docs/getting-started/quickstart": {
+      "status": 200,
+      "text_len": 6228,
+      "title": "Quickstart | Gravitre Docs",
+      "og_title": "Quickstart | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/org-learning": {
+      "status": 200,
+      "text_len": 4697,
+      "title": "GIBE \u2014 Learning &amp; built-in ML | Gravitre Docs",
+      "og_title": "GIBE \u2014 Learning &amp; built-in ML | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/api/swagger": {
+      "status": 200,
+      "text_len": 694,
+      "title": "API reference \u00b7 Gravitre Docs",
+      "og_title": "Documentation \u00b7 Gravitre"
+    },
+    "https://gravitre.app/docs/guides/how-to/ai-operator": {
+      "status": 200,
+      "text_len": 6202,
+      "title": "Use Gravitre AI (Execute mode) | Gravitre Docs",
+      "og_title": "Use Gravitre AI (Execute mode) | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/connectors": {
+      "status": 200,
+      "text_len": 6247,
+      "title": "Connect integrations | Gravitre Docs",
+      "og_title": "Connect integrations | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/workflows": {
+      "status": 200,
+      "text_len": 7306,
+      "title": "Build and run workflows | Gravitre Docs",
+      "og_title": "Build and run workflows | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/failure-alerts": {
+      "status": 200,
+      "text_len": 2705,
+      "title": "Failure alerts | Gravitre Docs",
+      "og_title": "Failure alerts | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/metrics": {
+      "status": 200,
+      "text_len": 2698,
+      "title": "View metrics | Gravitre Docs",
+      "og_title": "View metrics | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/api/quickstart": {
+      "status": 200,
+      "text_len": 4614,
+      "title": "API quickstart | Gravitre Docs",
+      "og_title": "API quickstart | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/assistant": {
+      "status": 200,
+      "text_len": 5431,
+      "title": "Use Gravitre AI (Chat mode) | Gravitre Docs",
+      "og_title": "Use Gravitre AI (Chat mode) | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/runs": {
+      "status": 200,
+      "text_len": 5441,
+      "title": "Monitor Runs | Gravitre Docs",
+      "og_title": "Monitor Runs | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/training": {
+      "status": 200,
+      "text_len": 4112,
+      "title": "Use Training | Gravitre Docs",
+      "og_title": "Use Training | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/api": {
+      "status": 200,
+      "text_len": 1690,
+      "title": "API overview | Gravitre Docs",
+      "og_title": "API overview | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/billing/plans-and-checkout": {
+      "status": 200,
+      "text_len": 1905,
+      "title": "Plans and checkout | Gravitre Docs",
+      "og_title": "Plans and checkout | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/ai-models": {
+      "status": 200,
+      "text_len": 2923,
+      "title": "Models | Gravitre Docs",
+      "og_title": "Models | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/data-storage-and-llm": {
+      "status": 200,
+      "text_len": 5788,
+      "title": "Data storage and LLM transmission | Gravitre Docs",
+      "og_title": "Data storage and LLM transmission | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/faq": {
+      "status": 200,
+      "text_len": 2930,
+      "title": "FAQ | Gravitre Docs",
+      "og_title": "Documentation \u00b7 Gravitre"
+    },
+    "https://gravitre.app/docs/guides/how-to/agents": {
+      "status": 200,
+      "text_len": 2095,
+      "title": "Manage agents | Gravitre Docs",
+      "og_title": "Manage agents | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/integrations": {
+      "status": 200,
+      "text_len": 1493,
+      "title": "Integrations \u00b7 Gravitre Docs",
+      "og_title": "Documentation \u00b7 Gravitre"
+    },
+    "https://gravitre.app/forgot-password": {
+      "status": 200,
+      "text_len": 499,
+      "title": "Gravitre \u2014 AI operations with GIBE \u00b7 Gravitre",
+      "og_title": "Gravitre \u2014 AI operations with GIBE"
+    },
+    "https://gravitre.app/marketplace/assets": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/docs/guides/how-to/marketplace": {
+      "status": 200,
+      "text_len": 5117,
+      "title": "Install from the Marketplace | Gravitre Docs",
+      "og_title": "Install from the Marketplace | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/marketplace": {
+      "status": 200,
+      "text_len": 2822,
+      "title": "Marketplace | Gravitre Docs",
+      "og_title": "Marketplace | Gravitre Docs"
+    },
+    "https://gravitre.app/blog/security-first-approach": {
+      "status": 200,
+      "text_len": 8043,
+      "title": "Our Security-First Approach to AI Automation | Gravitre Blog",
+      "og_title": "Our Security-First Approach to AI Automation"
+    },
+    "https://gravitre.app/marketplace/assets/hubspot-lead-qualification": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/marketplace/assets/lead-routing-automation": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/marketplace/assets/salesforce-pipeline-review": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/marketplace/assets/deal-desk-approval-flow": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/marketplace/assets/executive-summary-generation": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/marketplace/assets/weekly-team-status-report": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/marketplace/assets/marketing-campaign-production": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/marketplace/assets/marketing-attribution-analysis": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/marketplace/assets/campaign-performance-digest": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/marketplace/assets/competitive-intelligence-monitoring": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/marketplace/assets/zendesk-ticket-triage": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/marketplace/assets/customer-health-monitoring": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/marketplace/assets/qbr-preparation-workflow": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/marketplace/assets/sla-breach-escalation": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/marketplace/assets/new-hire-onboarding-checklist": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/marketplace/assets/invoice-exception-review": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/marketplace/assets/monthly-executive-reporting": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/marketplace/assets/product-feedback-synthesis": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/marketplace/assets/security-access-review": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/docs/guides/how-to/marketplace-publish": {
+      "status": 200,
+      "text_len": 3658,
+      "title": "Publish Marketplace assets | Gravitre Docs",
+      "og_title": "Publish Marketplace assets | Gravitre Docs"
+    },
+    "https://gravitre.app/marketplace/installed": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/connectors": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/marketplace/saved": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/approvals": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/settings/approvals": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/intelligence": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/sources": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/audit": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    },
+    "https://gravitre.app/docs/security": {
+      "status": 200,
+      "text_len": 2065,
+      "title": "Security overview | Gravitre Docs",
+      "og_title": "Security overview | Gravitre Docs"
+    },
+    "https://gravitre.app/blog/ai-wont-take-your-job-your-resistance-might": {
+      "status": 200,
+      "text_len": 9692,
+      "title": "AI Won&#x27;t Take Your Job. Your Resistance to It Might. | Gravitre Blog",
+      "og_title": "AI Won&#x27;t Take Your Job. Your Resistance to It Might."
+    },
+    "https://gravitre.app/blog/enterprise-ai-governance": {
+      "status": 200,
+      "text_len": 12934,
+      "title": "The Complete Guide to Enterprise AI Governance | Gravitre Blog",
+      "og_title": "The Complete Guide to Enterprise AI Governance"
+    },
+    "https://gravitre.app/blog/ai-agent-best-practices": {
+      "status": 200,
+      "text_len": 4578,
+      "title": "10 Best Practices for Building Reliable AI Agents | Gravitre Blog",
+      "og_title": "10 Best Practices for Building Reliable AI Agents"
+    },
+    "https://gravitre.app/docs/api/reference": {
+      "status": 200,
+      "text_len": 694,
+      "title": "API reference \u00b7 Gravitre Docs",
+      "og_title": "Documentation \u00b7 Gravitre"
+    },
+    "https://gravitre.app/docs/api/webhooks": {
+      "status": 200,
+      "text_len": 1988,
+      "title": "Webhooks | Gravitre Docs",
+      "og_title": "Webhooks | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/api/authentication": {
+      "status": 200,
+      "text_len": 1854,
+      "title": "API authentication | Gravitre Docs",
+      "og_title": "API authentication | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/integrations/salesforce": {
+      "status": 200,
+      "text_len": 1394,
+      "title": "Salesforce integration | Gravitre Docs",
+      "og_title": "Salesforce integration | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/integrations/hubspot": {
+      "status": 200,
+      "text_len": 1812,
+      "title": "HubSpot integration | Gravitre Docs",
+      "og_title": "HubSpot integration | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/authentication": {
+      "status": 200,
+      "text_len": 2489,
+      "title": "Authentication | Gravitre Docs",
+      "og_title": "Authentication | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/settings": {
+      "status": 200,
+      "text_len": 11561,
+      "title": "Manage settings | Gravitre Docs",
+      "og_title": "Manage settings | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/security": {
+      "status": 200,
+      "text_len": 2065,
+      "title": "Security overview | Gravitre Docs",
+      "og_title": "Security overview | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/environments": {
+      "status": 200,
+      "text_len": 2067,
+      "title": "Environments | Gravitre Docs",
+      "og_title": "Environments | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/integrations/github": {
+      "status": 200,
+      "text_len": 1246,
+      "title": "GitHub integration | Gravitre Docs",
+      "og_title": "GitHub integration | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/introduction": {
+      "status": 200,
+      "text_len": 6062,
+      "title": "Introduction to Gravitre | Gravitre Docs",
+      "og_title": "Introduction to Gravitre | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/ai-models": {
+      "status": 200,
+      "text_len": 4833,
+      "title": "Manage Models | Gravitre Docs",
+      "og_title": "Manage Models | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/approvals": {
+      "status": 200,
+      "text_len": 4107,
+      "title": "Approvals | Gravitre Docs",
+      "og_title": "Approvals | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/assignments": {
+      "status": 200,
+      "text_len": 3222,
+      "title": "Manage assignments | Gravitre Docs",
+      "og_title": "Manage assignments | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/enterprise": {
+      "status": 200,
+      "text_len": 12766,
+      "title": "Configure Enterprise | Gravitre Docs",
+      "og_title": "Configure Enterprise | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/goals": {
+      "status": 200,
+      "text_len": 3686,
+      "title": "Define and track goals | Gravitre Docs",
+      "og_title": "Define and track goals | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/gravitre-lite": {
+      "status": 200,
+      "text_len": 2695,
+      "title": "Use Gravitre Lite | Gravitre Docs",
+      "og_title": "Use Gravitre Lite | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/history": {
+      "status": 200,
+      "text_len": 2862,
+      "title": "Review history and audit logs | Gravitre Docs",
+      "og_title": "Review history and audit logs | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/meson": {
+      "status": 200,
+      "text_len": 2298,
+      "title": "Build with Meson | Gravitre Docs",
+      "og_title": "Build with Meson | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/multi-agent-run": {
+      "status": 200,
+      "text_len": 2108,
+      "title": "Multi-Agent Run | Gravitre Docs",
+      "og_title": "Multi-Agent Run | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/partner-connections": {
+      "status": 200,
+      "text_len": 14869,
+      "title": "Partner Connections | Gravitre Docs",
+      "og_title": "Partner Connections | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/schedules": {
+      "status": 200,
+      "text_len": 4298,
+      "title": "Manage schedules | Gravitre Docs",
+      "og_title": "Manage schedules | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/search": {
+      "status": 200,
+      "text_len": 3506,
+      "title": "Universal Search | Gravitre Docs",
+      "og_title": "Universal Search | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/guides/how-to/sources": {
+      "status": 200,
+      "text_len": 3684,
+      "title": "Connect Sources | Gravitre Docs",
+      "og_title": "Connect Sources | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/integrations/email": {
+      "status": 200,
+      "text_len": 1479,
+      "title": "Email (SMTP) integration | Gravitre Docs",
+      "og_title": "Email (SMTP) integration | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/integrations/jira": {
+      "status": 200,
+      "text_len": 1223,
+      "title": "Jira integration | Gravitre Docs",
+      "og_title": "Jira integration | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/integrations/pagerduty": {
+      "status": 200,
+      "text_len": 1244,
+      "title": "PagerDuty integration | Gravitre Docs",
+      "og_title": "PagerDuty integration | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/integrations/google-workspace": {
+      "status": 200,
+      "text_len": 1743,
+      "title": "Google Workspace integrations | Gravitre Docs",
+      "og_title": "Google Workspace integrations | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/integrations/quickbooks": {
+      "status": 200,
+      "text_len": 1228,
+      "title": "QuickBooks integration | Gravitre Docs",
+      "og_title": "QuickBooks integration | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/integrations/odoo": {
+      "status": 200,
+      "text_len": 1196,
+      "title": "Odoo integration | Gravitre Docs",
+      "og_title": "Odoo integration | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/integrations/zendesk": {
+      "status": 200,
+      "text_len": 1219,
+      "title": "Zendesk integration | Gravitre Docs",
+      "og_title": "Zendesk integration | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/enterprise": {
+      "status": 200,
+      "text_len": 6195,
+      "title": "Enterprise | Gravitre Docs",
+      "og_title": "Enterprise | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/metrics": {
+      "status": 200,
+      "text_len": 2294,
+      "title": "Metrics | Gravitre Docs",
+      "og_title": "Metrics | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/assistant": {
+      "status": 200,
+      "text_len": 3323,
+      "title": "Gravitre AI (Chat mode) | Gravitre Docs",
+      "og_title": "Gravitre AI (Chat mode) | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/training": {
+      "status": 200,
+      "text_len": 2475,
+      "title": "Training | Gravitre Docs",
+      "og_title": "Training | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/assignments": {
+      "status": 200,
+      "text_len": 2158,
+      "title": "Assignments | Gravitre Docs",
+      "og_title": "Assignments | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/control": {
+      "status": 200,
+      "text_len": 2143,
+      "title": "How Gravitre keeps you in control | Gravitre Docs",
+      "og_title": "How Gravitre keeps you in control | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/goals": {
+      "status": 200,
+      "text_len": 2158,
+      "title": "Goals | Gravitre Docs",
+      "og_title": "Goals | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/gravitre-lite": {
+      "status": 200,
+      "text_len": 2097,
+      "title": "Gravitre Lite | Gravitre Docs",
+      "og_title": "Gravitre Lite | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/history": {
+      "status": 200,
+      "text_len": 2162,
+      "title": "History and audit | Gravitre Docs",
+      "og_title": "History and audit | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/partner-connections": {
+      "status": 200,
+      "text_len": 5430,
+      "title": "Partner Connections | Gravitre Docs",
+      "og_title": "Partner Connections | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/platform-overview": {
+      "status": 200,
+      "text_len": 5519,
+      "title": "Platform overview | Gravitre Docs",
+      "og_title": "Platform overview | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/schedules": {
+      "status": 200,
+      "text_len": 2272,
+      "title": "Schedules | Gravitre Docs",
+      "og_title": "Schedules | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/search": {
+      "status": 200,
+      "text_len": 2412,
+      "title": "Universal Search | Gravitre Docs",
+      "og_title": "Universal Search | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/settings": {
+      "status": 200,
+      "text_len": 5181,
+      "title": "Settings | Gravitre Docs",
+      "og_title": "Settings | Gravitre Docs"
+    },
+    "https://gravitre.app/docs/concepts/sources": {
+      "status": 200,
+      "text_len": 2256,
+      "title": "Sources | Gravitre Docs",
+      "og_title": "Sources | Gravitre Docs"
+    },
+    "https://gravitre.app/ai/help/control": {
+      "status": 200,
+      "text_len": 776,
+      "title": "Sign In \u2014 Gravitre AI Operations Platform \u00b7 Gravitre",
+      "og_title": "Sign In \u2014 Gravitre AI Operations Platform"
+    }
+  }
+}
