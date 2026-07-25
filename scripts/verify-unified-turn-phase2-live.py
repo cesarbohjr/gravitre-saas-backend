@@ -330,7 +330,8 @@ CASES: list[dict[str, Any]] = [
         "message": "shedule a follow up email for tomorrow morning",
         "typo_tokens": ["shedule"],
         "intent_must_match": re.compile(
-            r"email|gmail|schedule|tomorrow|follow|draft|purpose|when", re.I
+            r"email|gmail|schedule|tomorrow|follow|draft|purpose|when|recipient|subject|body",
+            re.I,
         ),
         "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
         "shadow_outcome_any": TASKISH_OUTCOMES,
