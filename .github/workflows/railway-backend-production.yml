@@ -118,10 +118,20 @@ jobs:
 
           railway variables set "GIT_SHA=$FULL" --service "$SVC" --environment "$ENV_NAME"
           echo "$FULL $(date -u +%Y-%m-%dT%H:%M:%SZ)" > backend/.railway-deploy-stamp
+          # railway up --ci often exits 1 with bare "Deploy failed" while the
+          # upload/build still proceeds (see railway-github-actions-deploy-status.md).
+          # Treat upload as best-effort; /health tip match is the real gate.
+          set +e
           railway up ./backend --path-as-root --ci \
             --service "$SVC" \
             --environment "$ENV_NAME" \
             --message "railway-backend-production $SHA"
+          UP_EXIT=$?
+          set -e
+          echo "railway_up_exit=$UP_EXIT"
+          if [ "$UP_EXIT" -ne 0 ]; then
+            echo "::warning::railway up exited $UP_EXIT — waiting on /health tip anyway"
+          fi
 
           match_health "https://gravitre-saas-backend-production.up.railway.app/health" 900
           match_health "https://api.gravitre.app/health" 180
