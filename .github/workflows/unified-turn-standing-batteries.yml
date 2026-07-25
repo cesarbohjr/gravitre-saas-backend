@@ -1,0 +1,67 @@
+name: Unified turn standing batteries
+
+# Persona-drift + core pass/fail batteries on cadence (Part F.4).
+on:
+  schedule:
+    - cron: "0 6 * * 0"  # Weekly Sunday 06:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: unified-turn-standing-batteries
+  cancel-in-progress: false
+
+jobs:
+  standing-batteries:
+    name: Weekly unified-turn batteries
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install httpx PyJWT python-dotenv supabase
+
+      - name: Pending-reply battery (24)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: python scripts/verify-pending-reply-classifier-live.py
+
+      - name: Conversational battery (20)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: python scripts/verify-conversational-path-live.py
+
+      - name: Knowledge-boundary (phase2 subset)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+          PHASE2_CASE_FILTER: imperfect
+        run: python scripts/verify-unified-turn-phase2-live.py
+
+      - name: Persona-drift (30-turn)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: python scripts/verify-unified-turn-persona-drift-live.py
+
+      - name: Upload battery artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unified-turn-standing-batteries
+          path: |
+            docs/delivery/pending-reply-classifier-battery-live.json
+            docs/delivery/conversational-path-battery-live.json
+            docs/delivery/unified-turn-phase2-battery-live.json
+            docs/delivery/unified-turn-persona-drift-live.json
+          if-no-files-found: ignore

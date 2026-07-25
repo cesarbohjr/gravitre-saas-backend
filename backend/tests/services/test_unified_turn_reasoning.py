@@ -435,8 +435,18 @@ async def test_apply_unified_live_pending_unrelated_uses_hold_prompt():
     assert "Send Gmail message" in out["message"]
 
 
+@pytest.mark.parametrize(
+    "message",
+    [
+        "what can you do?",
+        "are you an AI?",
+        "who are you?",
+        "what are you?",
+        "are you human or AI",
+    ],
+)
 @pytest.mark.asyncio
-async def test_apply_unified_live_meta_capability_uses_expression_path():
+async def test_apply_unified_live_meta_capability_uses_expression_path(message: str):
     settings = MagicMock(unified_turn_live_enabled=True, openai_api_key="sk-test")
     meta_text = (
         "I am Gravitree — a calm operator for your Connected tools. Connected for this org right now: Apollo."
@@ -453,7 +463,7 @@ async def test_apply_unified_live_meta_capability_uses_expression_path():
             org_id="org",
             user_id="user",
             conversation_id="conv",
-            message="what can you do?",
+            message=message,
             task_state={},
             conversation_history=[],
             connected_integrations=["apollo"],
@@ -463,6 +473,55 @@ async def test_apply_unified_live_meta_capability_uses_expression_path():
     mock_shadow.assert_not_called()
     assert out is not None
     assert "Connected tools" in out["message"]
+
+
+@pytest.mark.asyncio
+async def test_apply_unified_live_qa_force_knowledge_boundary():
+    settings = MagicMock(
+        unified_turn_live_enabled=True,
+        openai_api_key="sk-test",
+        unified_turn_qa_hooks_enabled=True,
+    )
+    out = await apply_unified_turn_live(
+        org_id="org",
+        user_id="user",
+        conversation_id="conv",
+        message="how many runs executed?",
+        task_state={},
+        conversation_history=[],
+        connected_integrations=["apollo"],
+        settings=settings,
+        qa_force_outcome="knowledge_boundary",
+    )
+    assert out is not None
+    assert out.get("unified_outcome_kind") == "knowledge_boundary"
+
+
+@pytest.mark.asyncio
+async def test_apply_unified_live_qa_force_phantom_pending_triggers_guard_fallthrough():
+    settings = MagicMock(
+        unified_turn_live_enabled=True,
+        openai_api_key="sk-test",
+        unified_turn_qa_hooks_enabled=True,
+    )
+    with patch(
+        "app.services.unified_turn_reasoning_service.emit_unified_turn_shadow_audit",
+    ) as mock_audit:
+        out = await apply_unified_turn_live(
+            org_id="org",
+            user_id="user",
+            conversation_id="conv",
+            message="hello",
+            task_state={},
+            conversation_history=[],
+            connected_integrations=["apollo"],
+            settings=settings,
+            qa_force_outcome="phantom_pending_hold",
+        )
+    assert out is None
+    mock_audit.assert_called_once()
+    audit_result = mock_audit.call_args.kwargs.get("result") or mock_audit.call_args[1].get("result")
+    assert audit_result.fallthrough_reason == "violates_no_pending_hold"
 
 
 @pytest.mark.asyncio

@@ -183,6 +183,24 @@ async def main() -> int:
     report["finished_at"] = utcnow()
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    try:
+        from qa_signal_audit import write_platform_signal
+
+        write_platform_signal(
+            sb,
+            action="platform.deploy_smoke.completed"
+            if str(report["verdict"]).startswith("PASS")
+            else "platform.deploy_smoke.failed",
+            verdict=str(report["verdict"]),
+            metadata={
+                "git_sha": report.get("health", {}).get("git_sha"),
+                "conversation_id": report.get("conversation_id"),
+                "probe": report.get("probe"),
+            },
+            resource_id=str(report.get("conversation_id") or "deploy-smoke"),
+        )
+    except Exception:
+        pass
     print(json.dumps({"verdict": report["verdict"], "conversation_id": report.get("conversation_id")}, indent=2))
     return 0 if str(report["verdict"]).startswith("PASS") else 1
 

@@ -172,7 +172,12 @@ async def generate_conversational_reply(
 def re_search_meta(message: str) -> bool:
     import re
 
-    return bool(re.search(r"(?i)what can you do|are you (an )?ai|who are you|what are you", message or ""))
+    return bool(
+        re.search(
+            r"(?i)what can you do|are you (an )?(human or )?ai|who are you|what are you|human or ai",
+            message or "",
+        )
+    )
 
 
 async def generate_social_ack(

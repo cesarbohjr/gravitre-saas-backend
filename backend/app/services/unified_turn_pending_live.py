@@ -120,8 +120,6 @@ async def resolve_unified_live_meta_capability_reply(
         return None
     if not re_search_meta(message):
         return None
-    if not re.search(r"(?i)what can you do", message or ""):
-        return None
 
     decision = ConversationalGateDecision(
         shape="conversational",

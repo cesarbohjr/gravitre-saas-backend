@@ -633,6 +633,7 @@ def _build_stream(
     research_scope: str | None = None,
     force_serial_tools: bool = False,
     qa_force_tool: str | None = None,
+    qa_force_outcome: str | None = None,
 ):
     """Yield AI SDK UI stream via AgentIntelligence + ReActEngine."""
 
@@ -676,6 +677,7 @@ def _build_stream(
                 environment_name=environment_name,
                 research_scope=research_scope,
                 qa_force_tool=qa_force_tool,
+                qa_force_outcome=qa_force_outcome,
             ):
                 if isinstance(event, AssistantStreamComplete):
                     complete = event
@@ -1076,9 +1078,10 @@ async def assistant_chat(
         "true",
         "yes",
     }
-    from app.services.unified_turn_qa_hooks import QA_FORCE_TOOL_HEADER
+    from app.services.unified_turn_qa_hooks import QA_FORCE_TOOL_HEADER, QA_FORCE_OUTCOME_HEADER
 
     qa_force_tool = (request.headers.get(QA_FORCE_TOOL_HEADER) or "").strip() or None
+    qa_force_outcome = (request.headers.get(QA_FORCE_OUTCOME_HEADER) or "").strip() or None
     return StreamingResponse(
         _build_stream(
             explicit_tools,
@@ -1097,6 +1100,7 @@ async def assistant_chat(
             research_scope=(body.research_scope or "").strip() or None,
             force_serial_tools=force_serial,
             qa_force_tool=qa_force_tool,
+            qa_force_outcome=qa_force_outcome,
         ),
         media_type="text/event-stream",
         headers=_STREAM_HEADERS,

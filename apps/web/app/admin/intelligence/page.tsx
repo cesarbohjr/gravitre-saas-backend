@@ -19,6 +19,7 @@ import { EvaluationTab } from "./_components/evaluation-tab"
 import { OutcomesTab } from "./_components/outcomes-tab"
 import { EngineTab } from "./_components/engine-tab"
 import { PerformanceTab } from "./_components/performance-tab"
+import { GoldenSignalsPanel } from "./_components/golden-signals-panel"
 import { LearningTrendsTab } from "./_components/learning-trends-tab"
 import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
 import { PageHeader } from "@/components/gravitre/page-header"
@@ -104,6 +105,7 @@ export default function AdminIntelligencePage() {
           </TabsList>
 
           <TabsContent value="overview" className="mt-0 space-y-6">
+            <GoldenSignalsPanel />
             <BusinessImpactCard />
             <ConnectorOpsCard />
             <OverviewTab data={data} isLoading={isLoading} />

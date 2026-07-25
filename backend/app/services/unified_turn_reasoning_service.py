@@ -69,6 +69,7 @@ class UnifiedTurnShadowResult:
     connected_integrations: list[str] = field(default_factory=list)
     qa_force_tool: str | None = None
     qa_overrode_model_tool: str | None = None
+    qa_force_outcome: str | None = None
 
     def to_audit_payload(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -264,6 +265,7 @@ async def run_unified_turn_shadow(
     client: Any = None,
     settings: Settings | None = None,
     qa_force_tool: str | None = None,
+    qa_force_outcome: str | None = None,
 ) -> UnifiedTurnShadowResult:
     """One model call; does not execute tools (Phase 4 may serve text to the user)."""
     active = settings or get_settings()
@@ -274,6 +276,21 @@ async def run_unified_turn_shadow(
 
     if not (active.openai_api_key or "").strip():
         return UnifiedTurnShadowResult(outcome_kind="error", error="openai_not_configured")
+
+    from app.services.unified_turn_qa_hooks import (
+        resolve_qa_force_outcome,
+        synthetic_qa_outcome,
+    )
+
+    forced_outcome = resolve_qa_force_outcome(active, header_value=qa_force_outcome)
+    if forced_outcome:
+        synth = synthetic_qa_outcome(forced_outcome, message=message or "")
+        return UnifiedTurnShadowResult(
+            outcome_kind=synth["outcome_kind"],  # type: ignore[arg-type]
+            user_message=synth["user_message"],
+            qa_force_outcome=forced_outcome,
+            connected_integrations=list(connected_integrations or []),
+        )
 
     wall_start = time.perf_counter()
     registry = get_tool_registry()
@@ -730,6 +747,7 @@ async def apply_unified_turn_live(
     mode_key: str | None = None,
     classification: dict[str, Any] | None = None,
     qa_force_tool: str | None = None,
+    qa_force_outcome: str | None = None,
 ) -> dict[str, Any] | None:
     """Phase 4: run unified turn and map to a stop_pipeline turn when safe.
 
@@ -803,6 +821,7 @@ async def apply_unified_turn_live(
         client=client,
         settings=active,
         qa_force_tool=qa_force_tool,
+        qa_force_outcome=qa_force_outcome,
     )
     if result.outcome_kind in {"skipped", "error"}:
         _mark_live_fallthrough(result, f"outcome_{result.outcome_kind}")

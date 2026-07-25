@@ -1,0 +1,19 @@
+{
+  "checked_at": "2026-07-25T04:33:14.001861+00:00",
+  "finding_count": 1,
+  "findings": [
+    {
+      "file": "backend/app/services/agent_platform_optimizer.py",
+      "line": 128,
+      "pattern": "min\\s*\\([^)]*key\\s*=\\s*lambda",
+      "snippet": "drop_idx = min(droppable, key=lambda row: _score_tool(row[1], set(), focus, query))[0]"
+    }
+  ],
+  "known_sites": [
+    "backend/app/services/agent_platform_optimizer.py",
+    "backend/app/services/b2b_handoff_service.py"
+  ],
+  "unexpected_count": 0,
+  "unexpected": [],
+  "verdict": "PASS \u2014 no new siblings"
+}

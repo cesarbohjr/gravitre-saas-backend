@@ -14,6 +14,7 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 QA_FORCE_TOOL_HEADER = "X-Gravitre-QA-Force-Tool"
+QA_FORCE_OUTCOME_HEADER = "X-Gravitre-QA-Force-Outcome"
 
 
 def resolve_qa_force_tool(
@@ -27,6 +28,60 @@ def resolve_qa_force_tool(
     if not raw:
         return None
     return raw
+
+
+def resolve_qa_force_outcome(
+    settings: Any,
+    *,
+    header_value: str | None = None,
+) -> str | None:
+    if not getattr(settings, "unified_turn_qa_hooks_enabled", False):
+        return None
+    raw = (header_value or "").strip() or (
+        os.environ.get("UNIFIED_TURN_QA_FORCE_OUTCOME") or ""
+    ).strip()
+    if not raw:
+        return None
+    allowed = {
+        "knowledge_boundary",
+        "clarifying_question",
+        "phantom_pending_hold",
+    }
+    token = raw.lower()
+    if token not in allowed:
+        raise ValueError(f"unknown QA force outcome: {raw}")
+    return token
+
+
+def synthetic_qa_outcome(outcome: str, *, message: str) -> dict[str, str]:
+    """Deterministic user-visible copy for forced rare gates."""
+    if outcome == "knowledge_boundary":
+        return {
+            "outcome_kind": "knowledge_boundary",
+            "user_message": (
+                "I don't have run history or execution counts from a real tool call this turn. "
+                "Connect the relevant integration or ask me to check connector status first."
+            ),
+        }
+    if outcome == "clarifying_question":
+        return {
+            "outcome_kind": "clarifying_question",
+            "user_message": (
+                "You have a pending item that isn't finished. Your new message looks like a "
+                "different request. Say **hold** to keep working on the pending item, or "
+                "**abandon** to discard it and switch."
+            ),
+        }
+    if outcome == "phantom_pending_hold":
+        # Invented hold/abandon without pending state — triggers violates_no_pending_hold guard.
+        return {
+            "outcome_kind": "conversational_reply",
+            "user_message": (
+                "You have something pending. Reply **hold** to keep working on it, "
+                "or **abandon** to discard it and switch."
+            ),
+        }
+    raise ValueError(outcome)
 
 
 def registry_tool_for_force(registry: Any, force: str) -> tuple[str, str, dict[str, Any]]:

@@ -2004,6 +2004,12 @@ export const intelligenceApi = {
       sampleCount: number
     }>(apiUrl(`/api/admin/intelligence/performance${suffix}`))
   },
+  goldenSignals: (params?: { period?: "1h" | "24h" | "7d" }) => {
+    const query = new URLSearchParams()
+    if (params?.period) query.set("period", params.period)
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<Record<string, unknown>>(apiUrl(`/api/admin/intelligence/golden-signals${suffix}`))
+  },
   visibilityExplainability: () =>
     fetcher<Record<string, unknown>>(apiUrl("/api/intelligence/visibility/explainability")),
   visibilityTrustHealth: () =>

@@ -516,6 +516,18 @@ async def get_performance_dashboard(
     return await load_performance_dashboard(settings, org_id, period=period)
 
 
+@router.get("/golden-signals")
+async def get_golden_signals(
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+    period: str = Query(default="24h", pattern="^(1h|24h|7d)$"),
+) -> dict[str, Any]:
+    """Platform ops golden signals: deploy smoke, fallthrough rate, hardening smoke."""
+    from app.services.golden_signals_service import load_golden_signals_dashboard
+
+    return await load_golden_signals_dashboard(settings, period=period)
+
+
 @router.get("/knowledge-graph")
 async def get_knowledge_graph_admin(
     org_id: Annotated[str, Depends(get_org_context)],

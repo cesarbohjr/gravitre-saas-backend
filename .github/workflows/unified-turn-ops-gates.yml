@@ -1,0 +1,53 @@
+name: Unified turn ops gates
+
+# Fallthrough alert + R2 removal gate tracker (Parts E/F).
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: unified-turn-ops-gates
+  cancel-in-progress: false
+
+jobs:
+  ops-gates:
+    name: Fallthrough alert and R2 gate tracker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install python-dotenv supabase
+
+      - name: Fallthrough threshold alert
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/check-unified-turn-fallthrough-alert.py
+
+      - name: R2 pipeline removal gate tracker
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/check-r2-pipeline-removal-gates.py
+
+      - name: Lambda-closure risk grep
+        run: python scripts/check-lambda-closure-risk.py
+
+      - name: Upload ops gate reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unified-turn-ops-gates
+          path: |
+            docs/delivery/unified-turn-fallthrough-alert-latest.json
+            docs/delivery/r2-pipeline-removal-gates-latest.json
+            docs/delivery/lambda-closure-risk-grep.json
+          if-no-files-found: ignore

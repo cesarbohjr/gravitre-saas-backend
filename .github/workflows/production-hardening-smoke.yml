@@ -91,3 +91,10 @@ jobs:
             docs/delivery/smoke-ai-production-latest.json
             docs/delivery/smoke-research-cascade-prod-latest.json
           if-no-files-found: ignore
+
+      - name: Write hardening smoke platform signal
+        if: always()
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/smoke-hardening-summary-live.py
