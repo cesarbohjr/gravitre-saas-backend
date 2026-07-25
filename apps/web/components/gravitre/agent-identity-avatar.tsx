@@ -11,13 +11,14 @@ import {
 
 export type AgentIdentityAvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "orb"
 
+/** Shared circular orb — same shape everywhere an agent appears. */
 const sizeClasses: Record<AgentIdentityAvatarSize, string> = {
-  xs: "h-6 w-6 rounded-lg",
-  sm: "h-8 w-8 rounded-xl",
-  md: "h-10 w-10 rounded-xl",
-  lg: "h-12 w-12 rounded-2xl",
-  xl: "h-20 w-20 sm:h-24 sm:w-24 rounded-2xl",
-  orb: "h-24 w-24 rounded-2xl",
+  xs: "h-6 w-6 rounded-full",
+  sm: "h-8 w-8 rounded-full",
+  md: "h-10 w-10 rounded-full",
+  lg: "h-12 w-12 rounded-full",
+  xl: "h-20 w-20 sm:h-24 sm:w-24 rounded-full",
+  orb: "h-24 w-24 rounded-full",
 }
 
 const iconSizeClasses: Record<AgentIdentityAvatarSize, string> = {
@@ -63,7 +64,7 @@ export function AgentIdentityAvatar({
   return (
     <div
       className={cn(
-        "relative flex shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br text-white shadow-md",
+        "relative flex shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br text-white shadow-lg",
         sizeClasses[size],
         !useImage && resolved.personality.gradient,
         !useImage && resolved.personality.glow,
@@ -82,7 +83,7 @@ export function AgentIdentityAvatar({
         />
       ) : (
         <>
-          <div className="pointer-events-none absolute inset-0 rounded-[inherit] bg-gradient-to-br from-white/20 to-transparent" />
+          <div className="pointer-events-none absolute inset-[10%] rounded-full bg-gradient-to-br from-white/25 to-transparent" />
           {useInitials ? (
             <span className={cn("relative z-10 font-bold", initialsSizeClasses[size])}>{resolved.initials}</span>
           ) : (

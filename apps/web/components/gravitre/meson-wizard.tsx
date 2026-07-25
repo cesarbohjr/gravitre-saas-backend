@@ -181,9 +181,14 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
         },
       }
 
-      const suggestedIcon = suggestAgentIcon(result.generatedConfig.agent, result.intent)
+      const suggestedIcon = suggestAgentIcon(
+        result.generatedConfig.agent,
+        result.intent,
+        null,
+        result.department,
+      )
       setSelectedIcon(suggestedIcon)
-      setSelectedColor(suggestAgentColor(suggestedIcon))
+      setSelectedColor(suggestAgentColor(suggestedIcon, result.generatedConfig.agent, result.department))
       setGeneratedResult(result)
       setGenerationStep(generationStates.length - 1)
       setCurrentStep(5)

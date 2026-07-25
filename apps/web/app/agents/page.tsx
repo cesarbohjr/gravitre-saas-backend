@@ -427,13 +427,13 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
           />
           {agent.status === "processing" && !reduced && (
             <motion.div
-              className="absolute inset-0 rounded-2xl border-[3px] border-white/20 border-t-white"
+              className="absolute inset-0 rounded-full border-[3px] border-white/20 border-t-white"
               animate={{ rotate: 360 }}
               transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
             />
           )}
           {agent.status === "error" && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-destructive/30">
+            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-destructive/30">
               <Shield className="h-5 w-5 text-white" />
             </div>
           )}

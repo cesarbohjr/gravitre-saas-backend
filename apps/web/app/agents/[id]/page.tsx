@@ -114,7 +114,7 @@ function AgentOrb({ agent, apiAgent, status }: { agent: Agent; apiAgent: ApiAgen
   return (
     <div className="relative">
       <motion.div
-        className="absolute inset-0 rounded-3xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20"
+        className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20"
         animate={{
           scale: [1, 1.1, 1],
           opacity: [0.5, 0.3, 0.5],
@@ -127,7 +127,7 @@ function AgentOrb({ agent, apiAgent, status }: { agent: Agent; apiAgent: ApiAgen
 
       {agent.status === "active" && (
         <motion.div
-          className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-xl border-2 border-emerald-500 bg-card"
+          className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-emerald-500 bg-card"
           animate={{ scale: [1, 1.1, 1] }}
           transition={{ duration: 1.5, repeat: Infinity }}
         >

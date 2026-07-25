@@ -368,11 +368,13 @@ export async function POST(request: NextRequest) {
       inferAgentDepartment(name, purpose, role)
 
     const rawIcon = String(snake.icon ?? body.icon ?? "")
-    const icon: AgentIconId = isAgentIconId(rawIcon) ? rawIcon : suggestAgentIcon(name, purpose)
+    const icon: AgentIconId = isAgentIconId(rawIcon)
+      ? rawIcon
+      : suggestAgentIcon(name, purpose, role, department)
     const rawColor = String(snake.avatar_color ?? snake.avatarColor ?? body.avatarColor ?? "")
     const avatarColor: AgentAvatarColorId = isAgentAvatarColorId(rawColor)
       ? rawColor
-      : suggestAgentColor(icon)
+      : suggestAgentColor(icon, name, department)
     const identityPersonality = personalityFromAvatarColor(avatarColor)
 
     const referenceFolders = Array.isArray(body.referenceFolders)

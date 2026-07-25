@@ -15,11 +15,10 @@ import {
 } from "lucide-react"
 import {
   inferAgentDepartment,
-  inferAgentPersonality,
   normalizeAgentDepartment,
   resolveAgentRoleIcon,
-  type AgentDepartment,
 } from "@/lib/agent-display"
+import { departmentGradient } from "@/lib/department-gradient"
 import type { AgentPersonality } from "@/types/api"
 
 /** Curated icon ids — must match backend VALID_AGENT_ICONS. */
@@ -176,37 +175,105 @@ export function resolveAgentIconComponent(
   return resolveAgentRoleIcon(role ?? "", name ?? "")
 }
 
-export function suggestAgentIcon(name: string, purpose?: string | null): AgentIconId {
-  const text = `${name} ${purpose ?? ""}`.toLowerCase()
-  if (text.includes("marketing") || text.includes("campaign")) return "megaphone"
-  if (text.includes("sales") || text.includes("pipeline")) return "trending-up"
-  if (text.includes("data") || text.includes("quality")) return "database"
-  if (text.includes("finance") || text.includes("report")) return "pie-chart"
-  if (text.includes("support") || text.includes("customer")) return "headphones"
-  if (text.includes("security") || text.includes("compliance")) return "shield"
-  if (text.includes("workflow") || text.includes("automation")) return "workflow"
-  if (text.includes("people") || text.includes("hr") || text.includes("talent")) return "users"
-  if (text.includes("analy") || text.includes("research")) return "brain"
-  if (text.includes("assistant") || text.includes("copilot")) return "sparkles"
+export function suggestAgentIcon(
+  name: string,
+  purpose?: string | null,
+  role?: string | null,
+  department?: string | null,
+): AgentIconId {
+  const text = `${name} ${purpose ?? ""} ${role ?? ""} ${department ?? ""}`.toLowerCase()
+  // Most-specific task words first.
+  if (text.includes("vulnerab") || text.includes("security") || text.includes("compliance") || text.includes("risk"))
+    return "shield"
+  if (text.includes("ticket") || text.includes("triage") || text.includes("support") || text.includes("customer"))
+    return "headphones"
+  if (text.includes("email") || text.includes("campaign") || text.includes("marketing") || text.includes("content"))
+    return "megaphone"
+  if (text.includes("sales") || text.includes("pipeline") || text.includes("revenue") || text.includes("deal"))
+    return "trending-up"
+  if (text.includes("people") || text.includes("hr") || text.includes("talent") || text.includes("engagement"))
+    return "users"
+  if (text.includes("invoice") || text.includes("billing") || text.includes("finance") || text.includes("accounting"))
+    return "pie-chart"
+  if (text.includes("macro") || text.includes("report") || text.includes("dashboard") || text.includes("insight"))
+    return "pie-chart"
+  if (text.includes("data") || text.includes("quality") || text.includes("database")) return "database"
+  if (text.includes("workflow") || text.includes("orchestrat") || text.includes("automation")) return "workflow"
+  if (text.includes("analy") || text.includes("research") || text.includes("executive")) return "brain"
+  if (text.includes("assistant") || text.includes("copilot") || text.includes("spark")) return "sparkles"
+  if (text.includes("ops") || text.includes("operations")) return "zap"
   return "bot"
 }
 
-export function suggestAgentColor(icon: AgentIconId): AgentAvatarColorId {
+function hashPickColor(seed: string): AgentAvatarColorId {
+  let hash = 0
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash + seed.charCodeAt(i) * (i + 1)) % AGENT_AVATAR_COLOR_IDS.length
+  }
+  return AGENT_AVATAR_COLOR_IDS[hash] ?? "bg-emerald-500"
+}
+
+/** Department → curated avatar color (aligned with marketplace orb palette). */
+export function suggestColorForDepartment(department?: string | null): AgentAvatarColorId | null {
+  const key = String(department ?? "").toLowerCase()
+  if (!key) return null
+  if (key.includes("market")) return "bg-purple-500"
+  if (key.includes("sales") || key.includes("revenue")) return "bg-blue-500"
+  if (key.includes("finance") || key.includes("account")) return "bg-emerald-500"
+  if (key.includes("support") || key.includes("success") || key.includes("customer")) return "bg-cyan-500"
+  if (key.includes("hr") || key.includes("people") || key.includes("talent")) return "bg-rose-500"
+  if (key.includes("ops") || key.includes("operation")) return "bg-amber-500"
+  return null
+}
+
+export function suggestAgentColor(
+  icon: AgentIconId,
+  name?: string | null,
+  department?: string | null,
+): AgentAvatarColorId {
+  const fromDepartment = suggestColorForDepartment(department)
+  if (fromDepartment) return fromDepartment
+
   const mapping: Partial<Record<AgentIconId, AgentAvatarColorId>> = {
-    megaphone: "bg-emerald-500",
+    megaphone: "bg-purple-500",
     "trending-up": "bg-blue-500",
     database: "bg-cyan-500",
-    "pie-chart": "bg-purple-500",
-    headphones: "bg-amber-500",
+    "pie-chart": "bg-emerald-500",
+    headphones: "bg-cyan-500",
     bot: "bg-blue-500",
     brain: "bg-purple-500",
     zap: "bg-amber-500",
     users: "bg-rose-500",
-    shield: "bg-emerald-500",
+    shield: "bg-amber-500",
     sparkles: "bg-emerald-500",
-    workflow: "bg-cyan-500",
+    workflow: "bg-blue-500",
   }
-  return mapping[icon] ?? "bg-emerald-500"
+  const fromIcon = mapping[icon]
+  if (icon === "bot" && name) return hashPickColor(name)
+  return fromIcon ?? (name ? hashPickColor(name) : "bg-emerald-500")
+}
+
+/** Vivid circular-orb personality: stored color token, else department gradient. */
+export function personalityForIdentity(
+  avatarColor: AgentAvatarColorId,
+  department?: string | null,
+  stored?: Partial<AgentPersonality> | null,
+  preferDepartmentGradient = false,
+): AgentPersonality {
+  const fromColor = personalityFromAvatarColor(avatarColor)
+  if (!preferDepartmentGradient) {
+    return {
+      color: String(stored?.color ?? fromColor.color),
+      gradient: String(stored?.gradient ?? fromColor.gradient),
+      glow: String(stored?.glow ?? fromColor.glow),
+    }
+  }
+  const dept = departmentGradient(department)
+  return {
+    color: String(stored?.color ?? fromColor.color),
+    gradient: dept.gradient,
+    glow: dept.glow,
+  }
 }
 
 export function defaultAvatarColorForRole(role?: string | null): AgentAvatarColorId {
@@ -222,19 +289,40 @@ export function defaultAvatarColorForRole(role?: string | null): AgentAvatarColo
 
 export function resolveAgentIdentity(input: AgentIdentityInput): AgentIdentity {
   const name = String(input.name ?? "Agent").trim() || "Agent"
-  const department = normalizeAgentDepartment(String(input.department ?? inferAgentDepartment(name, null, input.role)))
+  const role = input.role ?? null
+  const department = normalizeAgentDepartment(
+    String(input.department ?? inferAgentDepartment(name, null, role)),
+  )
+  const suggestedIcon = suggestAgentIcon(name, null, role, department)
   const storedIcon = isAgentIconId(input.icon) ? input.icon : null
-  const effectiveIcon = storedIcon ?? suggestAgentIcon(name, null)
-  const avatarColor =
-    (isAgentAvatarColorId(input.avatarColor) ? input.avatarColor : null) ??
-    suggestAgentColor(effectiveIcon)
+  // Treat generic stored "bot" as unset when name/role implies a specific icon.
+  const effectiveIcon =
+    storedIcon && !(storedIcon === "bot" && suggestedIcon !== "bot")
+      ? storedIcon
+      : suggestedIcon
 
-  const fromColor = personalityFromAvatarColor(avatarColor)
-  const fromDepartment = inferAgentPersonality(department as AgentDepartment)
-  const storedPersonality = input.personality ?? {}
+  const storedColor = isAgentAvatarColorId(input.avatarColor) ? input.avatarColor : null
+  const avatarColor = storedColor ?? suggestAgentColor(effectiveIcon, name, department)
+  const preferDepartmentGradient = !storedColor
+  const storedPersonality = input.personality ?? null
 
   const avatarUrlRaw = String(input.avatarUrl ?? "").trim()
   const avatarUrl = avatarUrlRaw.length > 0 ? avatarUrlRaw : null
+
+  // When color isn't explicitly stored, prefer the vivid department orb gradient
+  // (amber ops / rose HR / etc.) so the list matches the classic circular look.
+  const personality = personalityForIdentity(
+    avatarColor,
+    department,
+    storedPersonality,
+    preferDepartmentGradient,
+  )
+  // If stored personality already has a non-generic gradient and color was stored, keep it.
+  if (storedColor && storedPersonality?.gradient) {
+    personality.gradient = String(storedPersonality.gradient)
+    personality.glow = String(storedPersonality.glow ?? personality.glow)
+    personality.color = String(storedPersonality.color ?? personality.color)
+  }
 
   return {
     name,
@@ -242,11 +330,7 @@ export function resolveAgentIdentity(input: AgentIdentityInput): AgentIdentity {
     storedIcon,
     avatarColor,
     avatarUrl,
-    personality: {
-      color: String(storedPersonality.color ?? fromColor.color ?? fromDepartment.color),
-      gradient: String(storedPersonality.gradient ?? fromColor.gradient ?? fromDepartment.gradient),
-      glow: String(storedPersonality.glow ?? fromColor.glow ?? fromDepartment.glow),
-    },
+    personality,
     initials: agentInitials(name),
   }
 }

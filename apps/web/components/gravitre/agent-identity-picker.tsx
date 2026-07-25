@@ -111,8 +111,8 @@ export function AgentIdentityPicker({
   )
 }
 
-export function useSuggestedAgentIdentity(name: string, purpose?: string) {
-  const icon = suggestAgentIcon(name, purpose)
-  const avatarColor = suggestAgentColor(icon)
+export function useSuggestedAgentIdentity(name: string, purpose?: string, department?: string) {
+  const icon = suggestAgentIcon(name, purpose, null, department)
+  const avatarColor = suggestAgentColor(icon, name, department)
   return { icon, avatarColor }
 }
