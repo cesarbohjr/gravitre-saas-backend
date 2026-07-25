@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.services.decision_service import DecisionPath, DecisionResult
 from app.services.execution_service import ExecutionContext, ExecutionService, NodeType, WorkflowNode
 
 
@@ -156,7 +157,20 @@ async def test_execute_node_decision(service: ExecutionService):
         config={"objective": "Route", "paths": [{"id": "sales", "label": "Sales"}]},
     )
     context = ExecutionContext(state={"lead_score": 95})
-    mock_decision_result = SimpleNamespace(selected_path=SimpleNamespace(id="sales"), confidence=0.91)
+    mock_decision_result = DecisionResult(
+        id="decision_1",
+        selected_path=DecisionPath(id="sales", label="Sales"),
+        confidence=0.91,
+        reasoning_summary="Route to sales",
+        key_factors=["lead_score"],
+        risks_identified=[],
+        alternatives_rejected=[],
+        requires_human_approval=False,
+        rule_matches=None,
+        ai_reasoning=None,
+        confidence_is_estimate=True,
+        confidence_source="heuristic",
+    )
     with patch.object(service.decision_service, "evaluate", AsyncMock(return_value=mock_decision_result)):
         result = await service.execute_node(org_id="org-1", run_id="run-1", node=node, context=context)
     assert result.status == "completed"

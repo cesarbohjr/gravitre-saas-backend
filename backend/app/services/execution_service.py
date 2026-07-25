@@ -344,16 +344,19 @@ class ExecutionService:
             decision_type=DecisionType.HYBRID,
             rules=node.config.get("rules") or [],
         )
+        # Module C fields — getattr so test doubles / older DecisionResult shapes still run.
+        conf_estimate = bool(getattr(result, "confidence_is_estimate", True))
+        conf_source = str(getattr(result, "confidence_source", None) or "heuristic")
         return {
             "selected_path": result.selected_path.id,
             "confidence": result.confidence,
-            "confidence_is_estimate": result.confidence_is_estimate,
-            "confidenceIsEstimate": result.confidence_is_estimate,
-            "confidence_source": result.confidence_source,
-            "confidenceSource": result.confidence_source,
-            "reasoning_summary": result.reasoning_summary,
-            "key_factors": result.key_factors,
-            "ai_reasoning": result.ai_reasoning,
+            "confidence_is_estimate": conf_estimate,
+            "confidenceIsEstimate": conf_estimate,
+            "confidence_source": conf_source,
+            "confidenceSource": conf_source,
+            "reasoning_summary": getattr(result, "reasoning_summary", None),
+            "key_factors": getattr(result, "key_factors", None) or [],
+            "ai_reasoning": getattr(result, "ai_reasoning", None),
         }
 
     async def _execute_loop_node(self, node: WorkflowNode, context: ExecutionContext) -> dict[str, Any]:
