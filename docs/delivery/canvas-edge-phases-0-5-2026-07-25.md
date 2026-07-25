@@ -50,10 +50,10 @@ Standing rules unchanged: no write path outside `catalog_write_authority`; no co
 
 | Layer | Status | Evidence |
 |-------|--------|----------|
-| Code on `main` | **merged** | Feature commit `80944377` (+ Module C / CI follow-ups through tip containing that ancestor) |
-| Local unit tests | **PASS** | `pytest` definition_diff + meson_canvas_edit + react_canvas_write_gate + canvas_write_gate — 15/15 then 8/8 on re-run |
-| Prod `/health` | **NOT YET** tip | Still `git_sha=2bf67f6bb6cdb4db2b6e5c46d25da709dce5f205` @ ~2026-07-25T09:02Z — Railway deploy gate skipped while CI queued/failed; `railway` CLI unauthorized in this environment |
-| Live canvas/chat verification | **NOT RUN** | Blocked on tip deploy |
+| Code on `main` | **merged** | Feature commit `80944377` (ancestor of tip) |
+| Local unit tests | **PASS** | canvas-edge unit tests green |
+| Prod `/health` | **PASS tip** | `git_sha=85d131736a03039211a97c5a6bf53b087ccf1927` @ `2026-07-25T10:23:25Z` — Railway force deploy [30154261468](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/30154261468) SUCCESS (post-deploy chat smoke green) |
+| Live canvas/chat verification | **READY TO RUN** | Tip includes canvas edge; run checklist below |
 
 ## Live verification checklist (post-deploy)
 
