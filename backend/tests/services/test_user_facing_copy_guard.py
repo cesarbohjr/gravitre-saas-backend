@@ -93,6 +93,23 @@ def test_finalize_user_facing_message_scrubs_catalog_keys():
     assert "gmail.messages.list" not in cleaned
 
 
+def test_url_hostnames_are_not_catalog_key_leaks():
+    msg = (
+        "Company/contact discovery requires an Apollo plan with search API access — "
+        "see https://app.apollo.io/ to upgrade"
+    )
+    assert not contains_raw_catalog_action_key(msg)
+    assert_no_raw_catalog_action_keys(finalize_user_facing_message(msg))
+
+
+def test_real_catalog_key_still_detected_beside_url():
+    msg = "Run gmail.messages.list then visit https://app.apollo.io/"
+    assert contains_raw_catalog_action_key(msg)
+    cleaned = finalize_user_facing_message(msg)
+    assert "gmail.messages.list" not in cleaned
+    assert "https://app.apollo.io/" in cleaned
+
+
 def test_dedupe_repeated_paragraphs_sta335():
     dup = (
         "Send email is ready, but it still needs your approval. "

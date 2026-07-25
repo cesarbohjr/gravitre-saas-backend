@@ -36,6 +36,7 @@ from isolated_conversation_org import (  # noqa: E402
     resolve_isolated_conversation_actor,
     smoke_http_headers,
 )
+from app.services.user_facing_copy_guard import contains_raw_catalog_action_key  # noqa: E402
 
 BASE = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
 OUT = Path(
@@ -483,13 +484,20 @@ def _shadow_meta(shadow: dict | None) -> dict[str, Any]:
     return meta if isinstance(meta, dict) else {}
 
 
+def _assistant_has_catalog_key_leak(text: str) -> bool:
+    return contains_raw_catalog_action_key(text or "")
+
+
 def judge_case(case: dict[str, Any], turn: dict[str, Any], shadow: dict | None) -> dict[str, Any]:
     failures: list[str] = []
     assistant = turn.get("assistant") or ""
     if turn.get("http") != 200:
         failures.append(f"http:{turn.get('http')}")
     for pat in case.get("must_not_match") or []:
-        if pat.search(assistant):
+        if getattr(pat, "pattern", None) == RAW_CATALOG_KEY.pattern:
+            if _assistant_has_catalog_key_leak(assistant):
+                failures.append("forbidden_pattern:catalog_action_key")
+        elif pat.search(assistant):
             failures.append(f"forbidden_pattern:{pat.pattern[:40]}")
     for pat in case.get("classical_must_not") or []:
         if pat.search(assistant):
@@ -526,7 +534,7 @@ def judge_case(case: dict[str, Any], turn: dict[str, Any], shadow: dict | None) 
         allowed = case.get("shadow_outcome_any")
         if allowed and outcome not in allowed:
             failures.append(f"shadow_outcome:{outcome}")
-        if RAW_CATALOG_KEY.search(model_text):
+        if _assistant_has_catalog_key_leak(model_text):
             failures.append("shadow_message_catalog_leak")
         if case.get("shadow_knowledge_boundary"):
             # Must not invent a run count; knowledge_boundary or a real tool proposal only.
@@ -711,6 +719,23 @@ async def main() -> int:
         report["cases"] = results
         passed = sum(1 for r in results if r.get("ok"))
         report["summary"] = f"{passed}/{len(results)} targeted case-runs"
+        selected_ids = {str(c["id"]) for c in selected}
+        case_coverage: dict[str, Any] = {}
+        for case in CASES:
+            cid = str(case["id"])
+            if cid not in selected_ids:
+                case_coverage[cid] = {
+                    "status": "skipped",
+                    "reason": f"PHASE2_CASE_FILTER={PHASE2_CASE_FILTER}",
+                }
+                continue
+            runs = [r for r in results if str(r.get("case")) == cid]
+            case_coverage[cid] = {
+                "status": "run",
+                "ok": all(r.get("ok") for r in runs) if runs else False,
+                "rounds": len(runs),
+            }
+        report["case_coverage"] = case_coverage
         latencies = [
             int(r["shadow_latency_ms"])
             for r in results
@@ -828,12 +853,13 @@ async def main() -> int:
     ) if imperfect_by_id else False
     report["matrix"] = {
         "targeted_shadow_cases": report["summary"],
+        "case_coverage": report.get("case_coverage") or {},
         "pending_reply_24": classical.get("pending_reply", {}),
         "conversational_path_20": classical.get("conversational_path", {}),
-        "knowledge_boundary_run_history": next(
-            (r for r in results if r["case"] == "knowledge_boundary_run_history_fast"),
-            {},
-        ).get("ok"),
+        "knowledge_boundary_run_history": report.get("case_coverage", {}).get(
+            "knowledge_boundary_run_history_fast",
+            {"status": "skipped", "reason": "not_in_results"},
+        ),
         "imperfect_input_understanding": (
             f"{sum(1 for r in imperfect if r.get('ok'))}/{len(imperfect)}"
             if imperfect

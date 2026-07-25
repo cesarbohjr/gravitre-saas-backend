@@ -11,6 +11,19 @@ RAW_CATALOG_ACTION_KEY = re.compile(
 )
 
 
+def _catalog_key_match_inside_url(text: str, start: int) -> bool:
+    """True when a dotted-token match is part of an http(s) URL host (e.g. app.apollo.io)."""
+    window = (text or "")[max(0, start - 12) : start]
+    return "://" in window
+
+
+def _iter_catalog_action_key_matches(text: str):
+    for match in RAW_CATALOG_ACTION_KEY.finditer(text or ""):
+        if _catalog_key_match_inside_url(text, match.start()):
+            continue
+        yield match
+
+
 def humanize_catalog_action_key(action_key: str) -> str:
     """Turn a catalog action id into plain language (never echo the dotted key)."""
     key = (action_key or "").strip()
@@ -55,16 +68,19 @@ def user_facing_available_action_labels(available_actions: Iterable[str]) -> lis
 
 
 def contains_raw_catalog_action_key(text: str) -> bool:
-    return bool(RAW_CATALOG_ACTION_KEY.search(text or ""))
+    return any(True for _ in _iter_catalog_action_key_matches(text))
 
 
 def scrub_raw_catalog_keys(text: str) -> str:
     """Replace dotted catalog keys with human labels (last-mile safety net)."""
+    raw = text or ""
 
     def _repl(match: re.Match[str]) -> str:
+        if _catalog_key_match_inside_url(raw, match.start()):
+            return match.group(0)
         return humanize_catalog_action_key(match.group(0))
 
-    return RAW_CATALOG_ACTION_KEY.sub(_repl, text or "")
+    return RAW_CATALOG_ACTION_KEY.sub(_repl, raw)
 
 
 def dedupe_repeated_paragraphs(text: str) -> str:

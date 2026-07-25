@@ -997,6 +997,9 @@ class AgentIntelligence:
             query=query,
             react_result=react_result,
         )
+        from app.services.user_facing_copy_guard import finalize_user_facing_message
+
+        content = finalize_user_facing_message(content, context="assistant_finalize")
         return {
             "content": content,
             "validation": validation,
@@ -3069,6 +3072,10 @@ class AgentIntelligence:
                 full_content = f"{full_content}\n\n{claim_prefix}".strip()
             else:
                 full_content = f"{claim_prefix}\n\n{full_content}".strip()
+
+        from app.services.user_facing_copy_guard import finalize_user_facing_message
+
+        full_content = finalize_user_facing_message(full_content, context="assistant_pre_emit")
 
         # Some ReAct paths populate react_result.answer without emitting text_delta
         # events (e.g. empty delta chunks). The UI contract still requires text-start/
