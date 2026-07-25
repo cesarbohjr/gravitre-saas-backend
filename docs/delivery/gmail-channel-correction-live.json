@@ -1,0 +1,32 @@
+{
+  "started_at": "2026-07-25T05:11:52.214862+00:00",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "turns": [
+    {
+      "turn": 1,
+      "message": "Send email to demo@example.com with subject \"Hi\" and body \"Test\"",
+      "http": 200,
+      "assistant_head": "I can\u2019t send this yet because the recipient is redacted.\n\nGmail is Connected and executable based on the provided org context, but I need the actual recipient email address. Provide the email address and I\u2019ll send:\n\nSubject: Hi  \nBody: TestI'll run this in Gmail: **Send email**.\n\nReply **yes** to approve, or say what to change."
+    },
+    {
+      "turn": 2,
+      "message": "No use Gmail.",
+      "http": 200,
+      "assistant_head": "Got it \u2014 I'll use Gmail for this. What should I send?"
+    },
+    {
+      "turn": 3,
+      "message": "Send via Gmail to demo@example.com with subject \"Quarterly update\" and body \"Here is the proposal update.\"",
+      "http": 200,
+      "assistant_head": "I still have **Send email** waiting for approval. Say **yes** to run it, **cancel** to drop it, or describe a change."
+    }
+  ],
+  "git_sha": "81ff4a2636ed2f895bfb163d09f3438d3bd55edc",
+  "conversation_id": "f6d888af-9da8-49dd-bb1d-6009c3a340e9",
+  "task_state_after": {
+    "channel_override": "gmail",
+    "preferred_connector": null
+  },
+  "verdict": "PASS \u2014 Gmail channel committed after correction @ conv=f6d888af-9da8-49dd-bb1d-6009c3a340e9 git_sha=81ff4a26",
+  "finished_at": "2026-07-25T05:12:44.741694+00:00"
+}

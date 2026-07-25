@@ -1,6 +1,6 @@
 {
   "ticket": "STA-305",
-  "probed_at": "2026-07-23T08:59:02.691506+00:00",
+  "probed_at": "2026-07-25T05:02:27.106576+00:00",
   "local_mapper": {
     "segment": "draft a follow-up in Slack for approval",
     "matched_action": "slack.post_message",
@@ -14,25 +14,14 @@
     "pass": true
   },
   "live": {
-    "sha": "5b515b56b3e9f850ad7075a9e957dec5faecbe04",
+    "skipped": true,
+    "reason": "STA-305 live requires connected HubSpot + Slack in isolated test org; missing=['slack'] connected=['apollo', 'hubspot']",
     "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
     "connected_integrations": [
       "apollo",
-      "hubspot",
-      "slack"
+      "hubspot"
     ],
-    "conversation_id": "6b920797-f6ec-4dd2-ac0d-aaf2b963c69a",
-    "marker": "9e33c0d0",
-    "http": 200,
-    "elapsed_ms": 12695,
-    "labels": [
-      "Search contacts",
-      "Post message"
-    ],
-    "text_head": "I planned a **2-step orchestration**:\n\n1. **Search contacts** (read, approval required)\n2. **Post message** (write, approval required)\n\nRead steps run automatically. Write steps require approval one at a time.\n\nReply **yes** to approve the plan, or tell me what to change.",
-    "list_channels_seen": false,
-    "post_like_seen": true,
-    "pass": true
+    "pass": false
   },
-  "verdict": "PASS"
+  "verdict": "BLOCKED"
 }

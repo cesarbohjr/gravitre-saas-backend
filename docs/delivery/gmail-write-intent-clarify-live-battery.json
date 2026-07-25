@@ -1,0 +1,90 @@
+{
+  "started_at": "2026-07-25T05:16:23.123202+00:00",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "cases": [
+    {
+      "id": "qa_force_send_vs_batch_mismatch",
+      "conversation_id": "b1049fcc-f72b-41f8-9de7-8588bebb36cd",
+      "message": "Send email to demo@example.com with subject \"Hi\" and body \"Test\"",
+      "http_status": 200,
+      "assistant_head": "You asked to send email (Send email to demo@example.com with subject \"Hi\" and body \"Test\"), but I was about to run **Batch modify messages** instead. Should I proceed with **Send email**, or did you mean **Batch modify messages**? Reply with the action you want (e.g. **send email**, **batch**, **draft**, **thread labels**).",
+      "dialogue_modes": [
+        "clarify"
+      ],
+      "audit_events": [
+        {
+          "id": "831d0d65-5675-468f-ad02-3e8b57b83818",
+          "action": "unified_turn.live.completed",
+          "created_at": "2026-07-25T05:16:29.581155+00:00",
+          "outcome_kind": "clarifying_question",
+          "tool_name": null,
+          "tool_invoke_action": null,
+          "qa_force_tool": "gmail.messages.batch",
+          "qa_overrode_model_tool": "gmail_messages_send",
+          "user_message_snip": "You asked to send email (Send email to [REDACTED_EMAIL] with subject \"Hi\" and body \"Test\"), but I was about to run **Batch modify messages** instead. Should I proceed with **Send email**, or did you mean **Batch modify messages**? Reply with the action you want (e.g. **send email**, **batch**, **draft**, **thread label"
+        }
+      ],
+      "verdict": "PASS \u2014 clarifying_question @ 2026-07-25T05:16:29.581155+00:00 audit=831d0d65-5675-468f-ad02-3e8b57b83818",
+      "clarify_gate_exercised": true
+    },
+    {
+      "id": "send_vs_batch_mismatch",
+      "conversation_id": "2eaec4ab-b5c6-4e13-9b20-ee0ed4efece1",
+      "message": "Send email to demo@example.com with subject \"Hi\" and body \"Test\"",
+      "http_status": 200,
+      "assistant_head": "I'll run this in Gmail: **Send email**.\n\nReply **yes** to approve, or say what to change.",
+      "dialogue_modes": [
+        "confirm"
+      ],
+      "audit_events": [
+        {
+          "id": "4baa0f69-ea14-4176-a6f7-6042d0ea1ec9",
+          "action": "unified_turn.live.completed",
+          "created_at": "2026-07-25T05:16:37.725335+00:00",
+          "outcome_kind": "connector_tool_proposal",
+          "tool_name": "gmail_messages_send",
+          "tool_invoke_action": "gmail.messages.send",
+          "qa_force_tool": null,
+          "qa_overrode_model_tool": null,
+          "user_message_snip": ""
+        }
+      ],
+      "verdict": "PASS \u2014 send path (no batch mismatch) @ 2026-07-25T05:16:37.725335+00:00",
+      "clarify_gate_exercised": false
+    },
+    {
+      "id": "ambiguous_gmail_write",
+      "conversation_id": "a0960e51-89a6-4921-9345-87dbef448bd1",
+      "message": "Email via Gmail to demo@example.com about the quarterly update",
+      "http_status": 200,
+      "assistant_head": "I'll run this in Gmail: **Send email**.\n\nReply **yes** to approve, or say what to change.",
+      "dialogue_modes": [
+        "confirm"
+      ],
+      "audit_events": [
+        {
+          "id": "49e0aa46-8f7f-48d0-bb40-845b4fb753a4",
+          "action": "unified_turn.live.completed",
+          "created_at": "2026-07-25T05:16:44.002524+00:00",
+          "outcome_kind": "connector_tool_proposal",
+          "tool_name": "gmail_messages_send",
+          "tool_invoke_action": "gmail.messages.send",
+          "qa_force_tool": null,
+          "qa_overrode_model_tool": null,
+          "user_message_snip": ""
+        }
+      ],
+      "verdict": "PASS \u2014 outcome=connector_tool_proposal @ 2026-07-25T05:16:44.002524+00:00",
+      "clarify_gate_exercised": false
+    }
+  ],
+  "git_sha": "81ff4a2636ed2f895bfb163d09f3438d3bd55edc",
+  "unified_turn_qa_hooks_enabled": true,
+  "summary": {
+    "pass_count": 3,
+    "total": 3,
+    "clarify_gate_exercised_count": 1
+  },
+  "verdict": "PASS",
+  "finished_at": "2026-07-25T05:16:46.396308+00:00"
+}

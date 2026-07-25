@@ -1,0 +1,42 @@
+{
+  "started_at": "2026-07-25T05:15:17.124959+00:00",
+  "cases": [
+    {
+      "id": "qa_force_knowledge_boundary",
+      "conversation_id": "eb71fa27-97ec-4932-8cc6-92bc01f4e7be",
+      "http": 200,
+      "assistant_head": "I don't have run history or execution counts from a real tool call this turn. Connect the relevant integration or ask me to check connector status first.",
+      "audit": {
+        "id": "2a9501b2-f4d4-4b01-98d5-3b14ca9aa628",
+        "action": "unified_turn.live.completed",
+        "created_at": "2026-07-25T05:15:21.308726+00:00",
+        "outcome_kind": "knowledge_boundary",
+        "fallthrough_reason": null,
+        "qa_force_outcome": "knowledge_boundary"
+      },
+      "pass": true
+    },
+    {
+      "id": "qa_force_clarifying_question",
+      "conversation_id": "8e66dd98-2ca3-48fc-88b2-07c6f01fe7e8",
+      "http": 200,
+      "assistant_head": "I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue.\n\nThe input only gives a task label and org context; it does not include the actual request or what you want me to do. If you want, send one of these:\n\n- the ",
+      "audit": null,
+      "pass": false
+    },
+    {
+      "id": "qa_force_phantom_pending_guard",
+      "conversation_id": "d05c169e-a849-40cd-9f45-5361214ed166",
+      "http": 200,
+      "assistant_head": "I don\u2019t have enough information yet to execute \u201cqa-force phantom pending probe.\u201d The org context only shows connected HubSpot and Apollo, active agents, and failed recent runs; it does not define what action you want me to take.\n\nFrom the o",
+      "audit": null,
+      "pass": false
+    }
+  ],
+  "git_sha": "81ff4a2636ed2f895bfb163d09f3438d3bd55edc",
+  "qa_hooks_enabled": true,
+  "passed": 1,
+  "total": 3,
+  "verdict": "PARTIAL",
+  "finished_at": "2026-07-25T05:15:55.072650+00:00"
+}
