@@ -75,17 +75,37 @@ function extractToolInvocations(message: UIMessage): ToolInvocation[] {
   return invocations
 }
 
+/** Light circular shell — black mark on pale ground (high contrast in chat). */
+function GravitreAvatarShell({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <div
+      className={cn(
+        "flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-zinc-200/80 bg-zinc-100 text-zinc-950 shadow-none",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  )
+}
+
 function GravitreAvatar() {
   return (
-    <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-emerald-500/20 bg-[#0d3b36] shadow-none">
+    <GravitreAvatarShell>
       <Image
-        src="/images/gravitre-icon-white.png"
+        src="/images/gravitre-icon-black.png"
         alt="Gravitre"
         width={20}
         height={20}
         className="h-5 w-5 object-contain"
       />
-    </div>
+    </GravitreAvatarShell>
   )
 }
 
@@ -332,9 +352,13 @@ export function ChatTranscript({
 
         {showWaiting ? (
           <div className="flex gap-2.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-emerald-500/20 bg-[#0d3b36] shadow-none">
-              <GravitreThinkingLoader size={22} />
-            </div>
+            <GravitreAvatarShell>
+              <GravitreThinkingLoader
+                size={22}
+                className="text-zinc-950"
+                title="Gravitre is thinking"
+              />
+            </GravitreAvatarShell>
             <div className="flex min-w-0 max-w-[min(720px,90%)] flex-col items-start">
               <p className={CHAT_ROLE_LABEL_CLASS}>Gravitre</p>
               <div

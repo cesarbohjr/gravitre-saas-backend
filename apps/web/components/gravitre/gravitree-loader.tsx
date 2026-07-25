@@ -1,15 +1,16 @@
 "use client"
 
-import { useId } from "react"
+import { GravitreThinkingLoader } from "@/components/gravitre/assistant/thinking-loader"
 import { cn } from "@/lib/utils"
 
 export type GravitreeLoaderSize = "xs" | "sm" | "md" | "lg"
 
-const sizeMap: Record<GravitreeLoaderSize, { width: number; height: number }> = {
-  xs: { width: 28, height: 14 },
-  sm: { width: 36, height: 18 },
-  md: { width: 48, height: 24 },
-  lg: { width: 64, height: 32 },
+/** Pixel sizes for the shared 200×200 brand SVG (square, not the old wide bars). */
+const sizeMap: Record<GravitreeLoaderSize, number> = {
+  xs: 28,
+  sm: 36,
+  md: 48,
+  lg: 72,
 }
 
 export interface GravitreeLoaderProps {
@@ -18,47 +19,21 @@ export interface GravitreeLoaderProps {
   label?: string
 }
 
-/** Gooey morphing loader — shared across page loads, chat thinking, and async states. */
-export function GravitreeLoader({ size = "md", className, label = "Loading" }: GravitreeLoaderProps) {
-  const filterId = useId().replace(/:/g, "")
-  const { width, height } = sizeMap[size]
-
+/**
+ * Single Gravitre page/async loader — the gooey two-bar mark with the morphing
+ * ellipse (`ry`/`rx` SMIL animation). Same artwork as chat “thinking”.
+ */
+export function GravitreeLoader({
+  size = "md",
+  className,
+  label = "Loading",
+}: GravitreeLoaderProps) {
   return (
-    <svg
-      viewBox="0 0 80 40"
-      width={width}
-      height={height}
+    <GravitreThinkingLoader
+      size={sizeMap[size]}
       className={cn("text-foreground", className)}
-      role="status"
-      aria-label={label}
-    >
-      <defs>
-        <filter id={`goo-${filterId}`} x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
-          <feColorMatrix
-            in="blur"
-            mode="matrix"
-            values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7"
-            result="goo"
-          />
-          <feBlend in="SourceGraphic" in2="goo" />
-        </filter>
-      </defs>
-      <g filter={`url(#goo-${filterId})`} fill="var(--ink, var(--foreground))">
-        <rect x="8" y="12" width="14" height="16" rx="7">
-          <animate attributeName="y" values="12;8;12" dur="1.2s" repeatCount="indefinite" />
-          <animate attributeName="height" values="16;24;16" dur="1.2s" repeatCount="indefinite" />
-        </rect>
-        <ellipse cx="40" cy="20" rx="10" ry="10">
-          <animate attributeName="rx" values="10;14;10" dur="1.2s" repeatCount="indefinite" />
-          <animate attributeName="ry" values="10;6;10" dur="1.2s" repeatCount="indefinite" />
-        </ellipse>
-        <rect x="58" y="12" width="14" height="16" rx="7">
-          <animate attributeName="y" values="12;16;12" dur="1.2s" repeatCount="indefinite" />
-          <animate attributeName="height" values="16;24;16" dur="1.2s" repeatCount="indefinite" />
-        </rect>
-      </g>
-    </svg>
+      title={label}
+    />
   )
 }
 

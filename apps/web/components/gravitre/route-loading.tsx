@@ -1,10 +1,10 @@
 import { cn } from "@/lib/utils"
-import { GravitreThinkingLoader } from "@/components/gravitre/assistant/thinking-loader"
+import { GravitreeLoader } from "@/components/gravitre/gravitree-loader"
 
 /**
  * Layout hint kept for backwards compatibility: all `loading.tsx` files pass a
- * `variant`, but every route now shows the same branded gooey loader so page
- * transitions feel consistent across the app.
+ * `variant`, but every route shows the same branded gooey loader (one SVG —
+ * morphing bars + ellipse) so page transitions stay consistent.
  */
 export type RouteLoadingVariant = "dashboard" | "table" | "detail" | "chat"
 
@@ -25,7 +25,7 @@ export function RouteLoading({ className, label = "Loading…" }: RouteLoadingPr
         className,
       )}
     >
-      <GravitreThinkingLoader size={72} title={label} />
+      <GravitreeLoader size="lg" label={label} />
       {label ? (
         <p className="animate-pulse text-sm font-medium text-muted-foreground">{label}</p>
       ) : null}

@@ -7,14 +7,11 @@ import { cn } from "@/lib/utils"
 /**
  * GravitreThinkingLoader
  *
- * A Claude-style "thinking" avatar: a gooey/metaball SVG where two morphing
- * bars and a pulsing ellipse are fused by an SVG blur + color-matrix filter,
- * producing an organic coral burst that breathes while the assistant works.
+ * Animated Gravitre mark: a gooey/metaball SVG where two morphing bars and a
+ * pulsing ellipse are fused by an SVG blur + color-matrix filter. Fill follows
+ * `currentColor` so callers can set black-on-light (chat avatar) or theme ink.
  *
- * The artwork is the exact SVG provided by the brand; the only changes are:
- *  - a `useId`-scoped filter id so multiple instances never collide, and
- *  - `fill` mapped to the brand coral token (`--chart-5`) so it renders
- *    correctly in both light and dark themes (falls back to a coral literal).
+ * Filter ids are scoped with `useId` so multiple instances never collide.
  */
 export function GravitreThinkingLoader({
   className,

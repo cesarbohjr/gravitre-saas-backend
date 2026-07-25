@@ -1,9 +1,5 @@
-import { GravitreThinkingLoader } from "@/components/gravitre/assistant/thinking-loader"
+import { RouteLoading } from "@/components/gravitre/route-loading"
 
-export default function AuthCallbackCompleteLoading() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <GravitreThinkingLoader size={72} title="Completing sign in" />
-    </div>
-  )
+export default function Loading() {
+  return <RouteLoading label="Completing sign in…" />
 }
