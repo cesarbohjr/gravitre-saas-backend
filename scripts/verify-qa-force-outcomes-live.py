@@ -43,14 +43,14 @@ CASES = [
     },
     {
         "id": "qa_force_clarifying_question",
-        "message": "hello",
+        "message": "qa-force-clarify-probe-no-task-shape",
         "qa_force_outcome": "clarifying_question",
         "expect_audit": "unified_turn.live.completed",
         "expect_outcome": "clarifying_question",
     },
     {
         "id": "qa_force_phantom_pending_guard",
-        "message": "hello",
+        "message": "qa-force phantom pending probe",
         "qa_force_outcome": "phantom_pending_hold",
         "expect_audit": "unified_turn.live.fallthrough",
         "expect_fallthrough_reason": "violates_no_pending_hold",
@@ -169,7 +169,7 @@ async def main() -> int:
             body = {
                 "messages": [{"role": "user", "parts": [{"type": "text", "text": case["message"]}]}],
                 "org_id": org_id,
-                "mode": "fast",
+                "mode": "standard",
                 "conversation_id": conv_id,
             }
             chunks: list[bytes] = []
@@ -184,12 +184,13 @@ async def main() -> int:
                 async for part in r.aiter_bytes():
                     chunks.append(part)
             assistant = parse_sse(b"".join(chunks).decode("utf-8", errors="replace"))
-            await asyncio.sleep(2)
+            await asyncio.sleep(5)
             audits = (
                 sb.table("audit_events")
                 .select("id,action,created_at,metadata")
                 .eq("org_id", org_id)
                 .eq("resource_id", conv_id)
+                .in_("action", ["unified_turn.live.completed", "unified_turn.live.fallthrough"])
                 .gte("created_at", after)
                 .order("created_at")
                 .execute()
