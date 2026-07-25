@@ -141,13 +141,13 @@ class Settings(BaseSettings):
             "unified_turn_tool_query_cache_ttl_sec",
         ),
     )
-    # Skip query-embed RTT when connected catalog is below threshold (keyword narrow instead).
-    # Post-fix embed latency (9496cedf, 70 tools, warm cache): narrow_tools_ms≈434 (embed_query_ms≈427;
-    # tool-doc cache 49/49 hits). Keyword still wins end-to-end wall (840 vs 1269ms on email_intent)
-    # despite smaller embed payload. Threshold 200 keeps keyword path until catalog scale shifts crossover.
-    # Prior default 40 was an estimate at 26 tools, never empirically validated as a win.
+    # Enable semantic tool retrieval when connected catalog reaches this size.
+    # FINAL (2026-07-25, local query embed): at 70 tools, embedding wins end-to-end wall
+    # (487ms vs keyword 840ms on email_intent, prod 81ff4a26) with embed_query_ms≈19 in-process.
+    # Remote OpenAI query embed (~427ms) never beat keyword; local SentenceTransformer fixed that.
+    # Threshold 40 matches original architecture gate — validated at 70 tools post-fix.
     unified_turn_embed_min_catalog_tools: int = Field(
-        default=200,
+        default=40,
         validation_alias=AliasChoices(
             "UNIFIED_TURN_EMBED_MIN_CATALOG_TOOLS",
             "unified_turn_embed_min_catalog_tools",
