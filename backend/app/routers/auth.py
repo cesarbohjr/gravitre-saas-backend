@@ -142,6 +142,8 @@ async def me(
 ) -> dict:
     """GET /api/auth/me — returns backwards-compatible + structured user payload."""
     from app.auth.platform_admin import is_platform_admin
+    from app.services.org_membership import ensure_founder_admin_access
+
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     auth_user_id = current_user["user_id"]
     user_row = _resolve_user_row(client, auth_user_id)
@@ -150,6 +152,14 @@ async def me(
         [org["id"] for org in organizations],
         primary_org_id=str(user_row.get("org_id")) if user_row.get("org_id") else load_user_primary_org_id(client, auth_user_id),
     )
+    ensure_founder_admin_access(
+        client,
+        user_id=auth_user_id,
+        email=current_user.get("email") or user_row.get("email"),
+        org_id=resolved_org_id,
+    )
+    # Reload after possible founder promotion so role reflects owner.
+    organizations = load_user_organizations(client, auth_user_id)
     role = _resolve_role(client, resolved_org_id, auth_user_id)
 
     merged_user = {

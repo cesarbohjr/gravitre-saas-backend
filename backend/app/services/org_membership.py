@@ -273,3 +273,35 @@ def promote_user_to_org_owner(client: Client, org_id: str, user_id: str) -> None
         ensure_default_production_environment(client, org)
     except Exception as exc:  # noqa: BLE001
         logger.warning("promote_user_to_org_owner failed org_id=%s user_id=%s error=%s", org, uid, exc)
+
+
+# Master accounts that must always have org owner + platform_admins access.
+FOUNDER_ADMIN_EMAILS = frozenset(
+    {
+        "cesar@gravitre.app",
+        "cesar.bohorquez.jr@gmail.com",
+    }
+)
+
+
+def ensure_founder_admin_access(
+    client: Client,
+    *,
+    user_id: str,
+    email: str | None,
+    org_id: str | None,
+) -> None:
+    """Idempotent: promote known founder emails to owner + platform_admins on login."""
+    uid = str(user_id or "").strip()
+    safe_email = str(email or "").strip().lower()
+    if not uid or safe_email not in FOUNDER_ADMIN_EMAILS:
+        return
+    try:
+        client.table("platform_admins").upsert(
+            {"user_id": uid, "email": safe_email, "notes": "Gravitre master admin"},
+            on_conflict="user_id",
+        ).execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("ensure_founder_admin_access platform_admins failed user_id=%s error=%s", uid, exc)
+    if org_id:
+        promote_user_to_org_owner(client, org_id, uid)

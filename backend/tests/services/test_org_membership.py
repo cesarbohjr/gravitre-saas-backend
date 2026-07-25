@@ -83,3 +83,53 @@ def test_promote_user_to_org_owner_inserts_when_membership_missing():
     promote_user_to_org_owner(client, "org-1", "user-1")
     members.insert.assert_called_once()
     users.update.assert_called_once()
+
+
+def test_ensure_founder_admin_access_promotes_gravitre_email():
+    from app.services.org_membership import ensure_founder_admin_access
+
+    client = MagicMock()
+    platform = MagicMock()
+    members = MagicMock()
+    members.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[{"id": "m1", "role": "admin"}]
+    )
+    envs = MagicMock()
+    envs.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[{"id": "env-1"}]
+    )
+    users = MagicMock()
+
+    def table(name: str):
+        if name == "platform_admins":
+            return platform
+        if name == "organization_members":
+            return members
+        if name == "environments":
+            return envs
+        if name == "users":
+            return users
+        return MagicMock()
+
+    client.table.side_effect = table
+    ensure_founder_admin_access(
+        client,
+        user_id="user-1",
+        email="cesar@gravitre.app",
+        org_id="org-1",
+    )
+    platform.upsert.assert_called_once()
+    members.update.assert_called_once()
+
+
+def test_ensure_founder_admin_access_ignores_non_founder():
+    from app.services.org_membership import ensure_founder_admin_access
+
+    client = MagicMock()
+    ensure_founder_admin_access(
+        client,
+        user_id="user-1",
+        email="member@example.com",
+        org_id="org-1",
+    )
+    client.table.assert_not_called()
