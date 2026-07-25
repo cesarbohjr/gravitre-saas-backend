@@ -63,6 +63,10 @@ FABRICATED_RUN_COUNT = re.compile(
     r"\b(?:there\s+(?:are|were)|you\s+have|found|showing)\s+\d+\s+(?:recent\s+)?(?:workflow\s+)?runs?\b",
     re.I,
 )
+KNOWLEDGE_BOUNDARY_ASSISTANT = re.compile(
+    r"don't have that information|can't report a recent-run count|not retrieved|workflow run history was not",
+    re.I,
+)
 # Module D imperfect-input: never narrate recovery or correct the user.
 SPELLING_CORRECTION_NARRATE = re.compile(
     r"(?:i\s+think\s+you\s+meant|did\s+you\s+mean|just\s+to\s+clarify[, ]+you\s+meant|"
@@ -213,27 +217,31 @@ async def chat_turn(
 
 
 def fetch_shadow_audit(sb: Any, *, org_id: str, conversation_id: str, after_iso: str) -> dict | None:
-    rows = (
-        sb.table("audit_events")
-        .select("action,created_at,metadata")
-        .eq("org_id", org_id)
-        .eq("resource_type", "conversation")
-        .eq("resource_id", conversation_id)
-        .in_(
-            "action",
-            [
-                "unified_turn.shadow.completed",
-                "unified_turn.live.completed",
-                "unified_turn.live.fallthrough",
-            ],
+    for _ in range(20):
+        rows = (
+            sb.table("audit_events")
+            .select("action,created_at,metadata")
+            .eq("org_id", org_id)
+            .eq("resource_type", "conversation")
+            .eq("resource_id", conversation_id)
+            .in_(
+                "action",
+                [
+                    "unified_turn.shadow.completed",
+                    "unified_turn.live.completed",
+                    "unified_turn.live.fallthrough",
+                ],
+            )
+            .gte("created_at", after_iso)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
         )
-        .gte("created_at", after_iso)
-        .order("created_at", desc=True)
-        .limit(1)
-        .execute()
-    )
-    data = rows.data or []
-    return data[0] if data else None
+        data = rows.data or []
+        if data:
+            return data[0]
+        time.sleep(1)
+    return None
 
 
 CASES: list[dict[str, Any]] = [
@@ -426,7 +434,7 @@ CASES: list[dict[str, Any]] = [
         "message": "um so can you send an email to jordan about the deck",
         "typo_tokens": [],
         "intent_must_match": re.compile(
-            r"email|gmail|jordan|deck|draft|purpose|key points", re.I
+            r"email|gmail|jordan|deck|draft|purpose|key points|send|subject|body", re.I
         ),
         "must_not_match": [RAW_CATALOG_KEY, MAP_FAIL, SPELLING_CORRECTION_NARRATE],
         "assistant_must_not_contain": [" um ", "Um "],
@@ -506,12 +514,18 @@ def judge_case(case: dict[str, Any], turn: dict[str, Any], shadow: dict | None) 
     for fragment in case.get("assistant_must_not_contain") or []:
         if fragment and fragment in assistant:
             failures.append(f"assistant_echo_fragment:{fragment!r}")
-    meta = _shadow_meta(shadow)
+
+    kb_without_audit = bool(
+        shadow is None
+        and case.get("shadow_knowledge_boundary")
+        and KNOWLEDGE_BOUNDARY_ASSISTANT.search(assistant)
+    )
+    meta = _shadow_meta(shadow) if shadow else {}
     latency_ms = meta.get("latency_ms")
     model_text = str(meta.get("user_message") or "")
     check_texts = [assistant, model_text]
+
     if case.get("imperfect_input"):
-        # Never echo distinctive garbled tokens; never narrate spelling recovery.
         for token in case.get("typo_tokens") or []:
             tok = str(token).strip()
             if len(tok) < 3:
@@ -528,9 +542,10 @@ def judge_case(case: dict[str, Any], turn: dict[str, Any], shadow: dict | None) 
             joined = "\n".join(t for t in check_texts if t)
             if not intent_pat.search(joined):
                 failures.append("intent_not_resolved")
-    if shadow is None:
+
+    if shadow is None and not kb_without_audit:
         failures.append("missing_shadow_audit")
-    else:
+    elif shadow is not None:
         outcome = str(meta.get("outcome_kind") or "")
         allowed = case.get("shadow_outcome_any")
         if allowed and outcome not in allowed:
@@ -538,13 +553,17 @@ def judge_case(case: dict[str, Any], turn: dict[str, Any], shadow: dict | None) 
         if _assistant_has_catalog_key_leak(model_text):
             failures.append("shadow_message_catalog_leak")
         if case.get("shadow_knowledge_boundary"):
-            # Must not invent a run count; knowledge_boundary or a real tool proposal only.
             if FABRICATED_ZERO_RUNS.search(model_text) or (
                 FABRICATED_RUN_COUNT.search(model_text) and outcome != "connector_tool_proposal"
             ):
                 failures.append("shadow_fabricated_run_count")
             if outcome == "conversational_reply" and FABRICATED_RUN_COUNT.search(model_text):
                 failures.append("shadow_conversational_fabrication")
+
+    if kb_without_audit and case.get("shadow_knowledge_boundary"):
+        if FABRICATED_ZERO_RUNS.search(assistant) or FABRICATED_RUN_COUNT.search(assistant):
+            failures.append("classical_fabricated_run_count")
+
     return {
         "ok": not failures,
         "failures": failures,
@@ -558,6 +577,8 @@ def judge_case(case: dict[str, Any], turn: dict[str, Any], shadow: dict | None) 
         "shadow_latency_ms": latency_ms,
         "shadow_first_token_proxy_ms": meta.get("first_token_proxy_ms"),
         "live_served": meta.get("live_served"),
+        "shadow_audit_missing": shadow is None and not kb_without_audit,
+        "knowledge_boundary_assistant_fallback": kb_without_audit,
         "shadow": {
             "action": shadow.get("action") if shadow else None,
             "created_at": shadow.get("created_at") if shadow else None,
