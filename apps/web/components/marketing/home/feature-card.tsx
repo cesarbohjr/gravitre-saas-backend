@@ -1,20 +1,31 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { ChevronRight } from "lucide-react"
-import type { ElementType } from "react"
+import {
+  BarChart3,
+  Bot,
+  ChevronRight,
+  Shield,
+  Users,
+  Workflow,
+  Zap,
+  type LucideIcon,
+} from "lucide-react"
+
+const FEATURE_ICONS: LucideIcon[] = [Bot, Users, Workflow, Shield, Zap, BarChart3]
 
 export function FeatureCard({
-  icon: Icon,
+  iconIndex,
   title,
   description,
   index,
 }: {
-  icon: ElementType
+  iconIndex: number
   title: string
   description: string
   index: number
 }) {
+  const Icon = FEATURE_ICONS[iconIndex] ?? Bot
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}

@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowRight, Bot, Workflow, Shield, Zap, Users, BarChart3, Play } from "lucide-react"
+import { ArrowRight, Play } from "lucide-react"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
 import { ProductShowcase, HowItWorks, TestimonialsCarousel } from "@/components/marketing/product-showcase"
 import { IntelligenceEngineSection } from "@/components/marketing/intelligence-engine-section"
@@ -59,19 +59,15 @@ export default function HomePage() {
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {MARKETING_COPY.homeFeatures.map((feature, i) => {
-              const icons = [Bot, Users, Workflow, Shield, Zap, BarChart3]
-              const Icon = icons[i] ?? Bot
-              return (
-                <FeatureCard
-                  key={feature.title}
-                  icon={Icon}
-                  title={feature.title}
-                  description={feature.description}
-                  index={i}
-                />
-              )
-            })}
+            {MARKETING_COPY.homeFeatures.map((feature, i) => (
+              <FeatureCard
+                key={feature.title}
+                iconIndex={i}
+                title={feature.title}
+                description={feature.description}
+                index={i}
+              />
+            ))}
           </div>
         </div>
       </section>
