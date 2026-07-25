@@ -4,7 +4,6 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { motion } from "framer-motion"
 import Image from "next/image"
-import { Loader2 } from "lucide-react"
 import type { UIMessage } from "ai"
 import { cn } from "@/lib/utils"
 import { polishAssistantText } from "@/lib/plain-english"
@@ -25,6 +24,7 @@ import {
 } from "@/components/gravitre/assistant/chat-execution-panel"
 import { ToolChip, type ToolInvocation } from "@/components/gravitre/assistant/tool-chip"
 import { MessageActionRail } from "@/components/gravitre/assistant/message-action-rail"
+import { GravitreThinkingLoader } from "@/components/gravitre/assistant/thinking-loader"
 import { uiMessageText } from "@/lib/chat-messages"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 
@@ -176,11 +176,12 @@ export function ChatTranscript({
 
       {showWaiting ? (
         <div className="flex gap-3">
-          <GravitreAvatar />
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#0d3b36] ring-2 ring-emerald-500/15 shadow-sm">
+            <GravitreThinkingLoader size={30} />
+          </div>
           <div className="flex min-w-0 max-w-[min(760px,88%)] flex-col items-start">
             <p className={CHAT_ROLE_LABEL_CLASS}>Gravitre AI</p>
             <div className={cn(CHAT_BUBBLE_BASE_CLASS, CHAT_ASSISTANT_BUBBLE_CLASS, "flex items-center gap-2", CHAT_WAITING_CLASS)}>
-              <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
               Gravitre is thinking…
             </div>
           </div>

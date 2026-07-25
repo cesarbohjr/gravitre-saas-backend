@@ -41,6 +41,7 @@ import rehypeHighlight from "rehype-highlight"
 import type { Agent } from "@/types/api"
 import { agentsApi } from "@/lib/api"
 import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
+import { GravitreThinkingLoader } from "@/components/gravitre/assistant/thinking-loader"
 import { usePreferredPersona } from "@/hooks/use-preferred-persona"
 
 // localStorage key for agent chat persistence
@@ -677,7 +678,7 @@ export default function AgentChatPage({
                     </div>
                     <div className="bg-white border border-zinc-200 rounded-2xl px-4 py-3 shadow-sm">
                       <div className="flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 text-emerald-600 animate-spin" />
+                        <GravitreThinkingLoader size={20} title={`${agent.name} is thinking`} />
                         <span className="text-sm text-zinc-500">{agent.name} is thinking...</span>
                       </div>
                     </div>
