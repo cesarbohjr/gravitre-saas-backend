@@ -110,6 +110,8 @@ export interface CanvasWorkflowNode {
   decisionConfig?: DecisionConfig
   outputPaths?: DecisionPath[]
   councilConfig?: CouncilConfig
+  /** Populated during live run polling when a step fails. */
+  stepError?: string
 }
 
 export interface WorkflowMeta {
@@ -339,7 +341,7 @@ export async function executeWorkflow(
   }
   const response = await workflowsApi.execute({
     workflow_id: workflowId,
-    parameters: parameters ?? {},
+    parameters: { source: "canvas", ...(parameters ?? {}) },
   })
   const runId = response.run_id || response.id
   if (!runId) {

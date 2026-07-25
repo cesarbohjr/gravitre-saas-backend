@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { WorkflowIntelligenceDrawer } from "@/components/workflows/intelligence-drawer"
 import { IntegrationSuggestionEvidenceBanner } from "@/components/workflows/integration-suggestion-evidence-banner"
+import { NodeRunDebugPanel } from "@/components/workflows/node-run-debug-panel"
 import { MesonCopilotPanel } from "@/components/workflows/meson-copilot-panel"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
@@ -53,9 +54,11 @@ import { interruptRequestedDescription, interruptRequestedMessage } from "@/lib/
 import {
   applyRunStepsToNodes,
   countActiveRunSteps,
+  formatFailedStepMessage,
   isTerminalRunStatus,
   mapExecuteSteps,
   pollWorkflowRun,
+  resolveFailedStepNodeId,
   type RunMonitorSnapshot,
 } from "@/lib/workflows/run-monitor"
 import {
@@ -713,6 +716,12 @@ function CanvasNode({
         {node.description && (
           <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{node.description}</p>
         )}
+
+        {node.state === "error" && node.stepError ? (
+          <p className="mb-2 line-clamp-2 text-[10px] text-red-400" title={node.stepError}>
+            {node.stepError}
+          </p>
+        ) : null}
 
         {/* API Context - subtle metadata */}
         {node.vendor && node.selectedAction && (
@@ -1993,11 +2002,13 @@ function ConfigPanel({
   onClose,
   onUpdate,
   orgAgents = [],
+  lastRunId = null,
 }: {
   node: WorkflowNode | null
   onClose: () => void
   onUpdate: (updates: Partial<WorkflowNode>) => void
   orgAgents?: Array<{ id: string; name: string; role?: string }>
+  lastRunId?: string | null
 }) {
   const [formValues, setFormValues] = useState<Record<string, string>>({})
   
@@ -2055,6 +2066,10 @@ function ConfigPanel({
         </SheetHeader>
 
         <div className="space-y-6">
+          {lastRunId && node ? (
+            <NodeRunDebugPanel runId={lastRunId} nodeId={node.id} nodeName={node.name} />
+          ) : null}
+
           {/* Node Type Badge */}
           <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/50 border border-border">
             <div className={cn("h-2 w-2 rounded-full", 
@@ -3657,13 +3672,11 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         status === "failed" ||
         snapshot.steps.some((step) => step.status.toLowerCase() === "failed")
       if (failed) {
-        const stepErrors = snapshot.steps
-          .filter((step) => step.errorMessage)
-          .map((step) => step.errorMessage as string)
-        const message =
-          snapshot.errorMessage ??
-          stepErrors[0] ??
-          "Workflow run failed. Open the run report for step-level details."
+        const message = formatFailedStepMessage(snapshot, nodes)
+        const failedNodeId = resolveFailedStepNodeId(snapshot, nodes)
+        if (failedNodeId) {
+          setSelectedNodeId(failedNodeId)
+        }
         setExecutionStatus("error")
         setExecutionError(message)
         toast.error("Workflow run failed", {
@@ -5457,6 +5470,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             onClose={() => setSelectedNodeId(null)}
             onUpdate={handleUpdateNode}
             orgAgents={orgAgents}
+            lastRunId={lastRunId}
           />
 
           {/* Debate View Dialog */}

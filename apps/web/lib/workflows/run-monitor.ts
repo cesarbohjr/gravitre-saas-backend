@@ -61,10 +61,65 @@ export function applyRunStepsToNodes(
       byNodeId.get(node.id) ??
       steps.find((candidate) => candidate.name && candidate.name === node.name)
     if (!step) {
-      return { ...node, state: "idle" as NodeState }
+      return { ...node, state: "idle" as NodeState, stepError: undefined }
     }
-    return { ...node, state: mapStepStatusToNodeState(step.status) }
+    const state = mapStepStatusToNodeState(step.status)
+    const failed = state === "error"
+    return {
+      ...node,
+      state,
+      stepError: failed && step.errorMessage ? step.errorMessage : undefined,
+    }
   })
+}
+
+export function findFirstFailedStep(steps: RunMonitorStep[]): RunMonitorStep | null {
+  return (
+    steps.find((step) => {
+      const status = step.status.toLowerCase()
+      return status === "failed" || status === "error"
+    }) ?? null
+  )
+}
+
+export function formatFailedStepMessage(
+  snapshot: RunMonitorSnapshot,
+  nodes: CanvasWorkflowNode[],
+): string {
+  const failedStep = findFirstFailedStep(snapshot.steps)
+  if (!failedStep) {
+    return (
+      snapshot.errorMessage ??
+      "Workflow run failed. Open the run report for step-level details."
+    )
+  }
+  const nodeName =
+    nodes.find(
+      (node) =>
+        node.id === failedStep.nodeId ||
+        node.id === failedStep.stepId ||
+        (failedStep.name && node.name === failedStep.name),
+    )?.name ??
+    failedStep.name ??
+    failedStep.nodeId ??
+    "Unknown step"
+  const detail = failedStep.errorMessage ?? snapshot.errorMessage ?? "Step failed"
+  return `${nodeName}: ${detail}`
+}
+
+export function resolveFailedStepNodeId(
+  snapshot: RunMonitorSnapshot,
+  nodes: CanvasWorkflowNode[],
+): string | null {
+  const failedStep = findFirstFailedStep(snapshot.steps)
+  if (!failedStep) return null
+  const match = nodes.find(
+    (node) =>
+      node.id === failedStep.nodeId ||
+      node.id === failedStep.stepId ||
+      (failedStep.name && node.name === failedStep.name),
+  )
+  return match?.id ?? (failedStep.nodeId ? String(failedStep.nodeId) : null)
 }
 
 export function countActiveRunSteps(steps: RunMonitorStep[]): number {
