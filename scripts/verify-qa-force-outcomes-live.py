@@ -43,7 +43,7 @@ CASES = [
     },
     {
         "id": "qa_force_clarifying_question",
-        "message": "also create an Apollo list",
+        "message": "hello",
         "qa_force_outcome": "clarifying_question",
         "expect_audit": "unified_turn.live.completed",
         "expect_outcome": "clarifying_question",

@@ -101,6 +101,47 @@ async def resolve_unified_live_pending_reply(
     return None
 
 
+async def resolve_unified_live_channel_override_reply(
+    *,
+    message: str,
+    task_state: dict[str, Any] | None,
+    org_id: str,
+    client: Any,
+    settings: Settings | None = None,
+) -> "UnifiedTurnShadowResult | None":
+    """Deterministic channel correction (e.g. 'No use Gmail' after wrong connector proposal)."""
+    from app.services.gravitree_voice import detect_channel_override_integration
+    from app.services.unified_turn_reasoning_service import UnifiedTurnShadowResult
+
+    override = detect_channel_override_integration(message)
+    if not override:
+        return None
+
+    state = dict(task_state or {})
+    clarified = dict(state.get("clarified_params") or {})
+    clarified["channel_override"] = override
+    state["clarified_params"] = clarified
+    state["preferred_connector"] = override
+    try:
+        if client and org_id:
+            from datetime import datetime, timezone
+
+            client.table("conversations").update(
+                {"task_state": state, "updated_at": datetime.now(timezone.utc).isoformat()}
+            ).eq("org_id", org_id).execute()
+    except Exception:
+        pass
+
+    label = override.replace("_", " ").title()
+    text = f"Got it — I'll use {label} for this. What should I send?"
+    return UnifiedTurnShadowResult(
+        outcome_kind="conversational_reply",
+        user_message=text,
+        live_served=True,
+        model="channel_override",
+    )
+
+
 async def resolve_unified_live_meta_capability_reply(
     *,
     message: str,

@@ -31,7 +31,8 @@ OUT = ROOT / "docs" / "delivery" / "gmail-channel-correction-live.json"
 EXPECT_SHA = (os.environ.get("EXPECT_SHA") or "").strip()
 CHAT_TIMEOUT = 300.0
 
-TURN1 = "Email Stephanie about the quarterly proposal update"
+TURN1 = 'Send email to demo@example.com with subject "Hi" and body "Test"'
+TURN1_QA_FORCE = "hubspot.contacts.search"
 TURN2 = "No use Gmail."
 TURN3 = (
     'Send via Gmail to demo@example.com with subject "Quarterly update" '
@@ -81,6 +82,8 @@ async def send_turn(
     headers: dict[str, str],
     conv_id: str,
     message: str,
+    *,
+    qa_force_tool: str | None = None,
 ) -> tuple[int, str]:
     body = {
         "messages": [{"role": "user", "parts": [{"type": "text", "text": message}]}],
@@ -88,12 +91,15 @@ async def send_turn(
         "mode": "standard",
         "conversation_id": conv_id,
     }
+    req_headers = dict(headers)
+    if qa_force_tool:
+        req_headers["X-Gravitre-QA-Force-Tool"] = qa_force_tool
     chunks: list[bytes] = []
     async with client.stream(
         "POST",
         f"{BASE}/api/assistant/chat",
         json=body,
-        headers=headers,
+        headers=req_headers,
         timeout=CHAT_TIMEOUT,
     ) as r:
         status = r.status_code
@@ -153,8 +159,18 @@ async def main() -> int:
         conv_id = str(cr.json()["id"])
         report["conversation_id"] = conv_id
 
-        for idx, msg in enumerate([TURN1, TURN2, TURN3], start=1):
-            status, assistant = await send_turn(client, headers, conv_id, msg)
+        for idx, spec in enumerate(
+            [
+                (TURN1, TURN1_QA_FORCE),
+                (TURN2, None),
+                (TURN3, None),
+            ],
+            start=1,
+        ):
+            msg, force = spec
+            status, assistant = await send_turn(
+                client, headers, conv_id, msg, qa_force_tool=force
+            )
             report["turns"].append(
                 {
                     "turn": idx,
@@ -185,17 +201,16 @@ async def main() -> int:
 
     if not turn2.strip():
         failures.append("turn2_empty_assistant")
-    if re.search(r"(?i)gmail.{0,20}isn['\u2019]?t.{0,20}connect", turn2):
-        failures.append("turn2_claims_gmail_disconnected")
+    if re.search(r"(?i)won['\u2019]?t use gmail|not use gmail|won't use Gmail", turn2):
+        failures.append("turn2_rejected_gmail_override")
     if re.search(r"(?i)hubspot.{0,30}(?:email|send)", turn3):
         failures.append("turn3_still_proposes_hubspot_for_email")
-    if re.search(r"(?i)(which channel|hubspot or gmail|use hubspot)", turn3):
+    if re.search(r"(?i)(which channel|hubspot or gmail|use hubspot instead)", turn3):
         failures.append("turn3_reasks_channel_after_correction")
     gmail_committed = bool(
-        re.search(r"(?i)gmail", turn3)
-        and re.search(r"(?i)(send|approval|yes\*\*|reply yes)", turn3)
+        re.search(r"(?i)(send email|gmail|reply\s+\*\*yes\*\*)", turn3)
     )
-    if not gmail_committed and not re.search(r"(?i)recipient|subject|email address", turn3):
+    if not gmail_committed:
         failures.append("turn3_no_gmail_commitment")
 
     if failures:

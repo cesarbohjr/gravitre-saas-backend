@@ -766,10 +766,39 @@ async def apply_unified_turn_live(
         return None
 
     from app.services.unified_turn_pending_live import (
+        resolve_unified_live_channel_override_reply,
         resolve_unified_live_meta_capability_reply,
         resolve_unified_live_pending_reply,
         unified_live_message_violates_no_pending_hold,
     )
+
+    channel_result = await resolve_unified_live_channel_override_reply(
+        message=message,
+        task_state=task_state,
+        org_id=org_id,
+        client=client,
+        settings=active,
+    )
+    if channel_result and (channel_result.user_message or "").strip():
+        channel_result.live_served = True
+        emit_unified_turn_shadow_audit(
+            client=client,
+            org_id=org_id,
+            actor_id=user_id,
+            conversation_id=conversation_id,
+            result=channel_result,
+        )
+        updated_state = dict(task_state or {})
+        clarified = dict(updated_state.get("clarified_params") or {})
+        from app.services.gravitree_voice import detect_channel_override_integration
+
+        override = detect_channel_override_integration(message)
+        if override:
+            clarified["channel_override"] = override
+            updated_state["clarified_params"] = clarified
+            updated_state["preferred_connector"] = override
+        payload = _unified_live_turn_payload(channel_result, updated_state)
+        return payload
 
     meta_result = await resolve_unified_live_meta_capability_reply(
         message=message,

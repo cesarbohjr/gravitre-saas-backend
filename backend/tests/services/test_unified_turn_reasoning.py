@@ -435,6 +435,29 @@ async def test_apply_unified_live_pending_unrelated_uses_hold_prompt():
     assert "Send Gmail message" in out["message"]
 
 
+@pytest.mark.asyncio
+async def test_apply_unified_live_channel_override_no_use_gmail():
+    settings = MagicMock(unified_turn_live_enabled=True, openai_api_key="sk-test")
+    with patch(
+        "app.services.unified_turn_reasoning_service.run_unified_turn_shadow",
+        new=AsyncMock(),
+    ) as mock_shadow:
+        out = await apply_unified_turn_live(
+            org_id="org",
+            user_id="user",
+            conversation_id="conv",
+            message="No use Gmail.",
+            task_state={},
+            conversation_history=[],
+            connected_integrations=["gmail", "hubspot"],
+            settings=settings,
+        )
+    mock_shadow.assert_not_called()
+    assert out is not None
+    assert "Gmail" in out["message"]
+    assert out["task_state"].get("preferred_connector") == "gmail"
+
+
 @pytest.mark.parametrize(
     "message",
     [
