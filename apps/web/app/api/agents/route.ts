@@ -9,6 +9,16 @@ import {
   mapOperatorStatusToUi,
   normalizeAgentDepartment,
 } from "@/lib/agent-display"
+import {
+  isAgentAvatarColorId,
+  isAgentIconId,
+  personalityFromAvatarColor,
+  suggestAgentColor,
+  suggestAgentIcon,
+  type AgentAvatarColorId,
+  type AgentIconId,
+} from "@/lib/agent-identity"
+import { syncOperatorMirror } from "@/lib/agent-operator-mirror"
 import { readReferenceFoldersFromRecord } from "@/lib/agent-reference-folders"
 
 function mapAgentRow(
@@ -32,6 +42,10 @@ function mapAgentRow(
     description: String(model.description ?? model.purpose ?? "AI teammate"),
     status: mapOperatorStatusToUi(String(model.status ?? "idle")),
     model: String(model.model ?? "auto"),
+    icon: isAgentIconId(String(model.icon ?? "")) ? String(model.icon) : null,
+    avatarColor: isAgentAvatarColorId(String(model.avatarColor ?? model.avatar_color ?? ""))
+      ? String(model.avatarColor ?? model.avatar_color)
+      : null,
     knowledgeDocCount,
     personality: {
       color: String(personality.color ?? inferAgentPersonality(department).color),
@@ -66,6 +80,10 @@ function mapOperatorRow(
   const personality = inferAgentPersonality(department)
   const successRate = Number(input.success_rate ?? 100)
   const totalRuns = Number(input.total_runs ?? 0)
+  const icon = isAgentIconId(String(input.icon ?? "")) ? String(input.icon) : null
+  const avatarColor = isAgentAvatarColorId(String(input.avatar_color ?? input.avatarColor ?? ""))
+    ? String(input.avatar_color ?? input.avatarColor)
+    : null
 
   return {
     id: String(input.id),
@@ -75,6 +93,8 @@ function mapOperatorRow(
     description: String(input.description ?? "AI teammate"),
     status: mapOperatorStatusToUi(String(input.status ?? "draft")),
     model: "auto",
+    icon,
+    avatarColor,
     knowledgeDocCount,
     personality,
     stats: {
@@ -207,36 +227,6 @@ async function loadKnowledgeDocCounts(
   return counts
 }
 
-async function syncOperatorMirror(
-  supabase: ReturnType<typeof createSupabaseRouteClient>,
-  orgId: string,
-  agentRow: Record<string, unknown>,
-  userId: string | null,
-) {
-  const agentId = String(agentRow.id ?? "")
-  if (!agentId) return
-
-  const operatorPayload: Record<string, unknown> = {
-    id: agentId,
-    org_id: orgId,
-    name: String(agentRow.name ?? "Agent"),
-    description: (agentRow.description as string | null | undefined) ?? (agentRow.purpose as string | null | undefined) ?? null,
-    role: (agentRow.role as string | null | undefined) ?? String(agentRow.name ?? "Agent"),
-    status: mapAgentStatusToOperator(String(agentRow.status ?? "active")),
-    capabilities: Array.isArray(agentRow.capabilities) ? agentRow.capabilities : [],
-    config: agentRow.config && typeof agentRow.config === "object" ? agentRow.config : {},
-    updated_at: new Date().toISOString(),
-  }
-  if (userId) {
-    operatorPayload.created_by = userId
-  }
-
-  const { error } = await supabase.from("operators").upsert(operatorPayload, { onConflict: "id" })
-  if (error) {
-    console.warn("[agents] operator mirror upsert failed:", error.message)
-  }
-}
-
 export async function GET(request: NextRequest) {
   try {
     const debugEnabled = isDebugRequest(request.nextUrl.searchParams)
@@ -367,6 +357,15 @@ export async function POST(request: NextRequest) {
       (snake.department as string | undefined) ??
       inferAgentDepartment(name, purpose, role)
 
+    const icon: AgentIconId =
+      (isAgentIconId(String(snake.icon ?? body.icon ?? "")) ? String(snake.icon ?? body.icon) : null) ??
+      suggestAgentIcon(name, purpose)
+    const avatarColor: AgentAvatarColorId =
+      (isAgentAvatarColorId(String(snake.avatar_color ?? snake.avatarColor ?? body.avatarColor ?? ""))
+        ? String(snake.avatar_color ?? snake.avatarColor ?? body.avatarColor)
+        : null) ?? suggestAgentColor(icon)
+    const identityPersonality = personalityFromAvatarColor(avatarColor)
+
     const referenceFolders = Array.isArray(body.referenceFolders)
       ? body.referenceFolders
       : Array.isArray(snake.reference_folders)
@@ -385,10 +384,12 @@ export async function POST(request: NextRequest) {
       model: (snake.model as string | undefined) ?? "auto",
       department,
       description: (snake.description as string | undefined) ?? purpose ?? null,
+      icon,
+      avatar_color: avatarColor,
       personality:
         snake.personality && typeof snake.personality === "object"
           ? snake.personality
-          : inferAgentPersonality(normalizeAgentDepartment(department)),
+          : identityPersonality,
       stats:
         snake.stats && typeof snake.stats === "object"
           ? snake.stats

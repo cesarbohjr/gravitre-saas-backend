@@ -1,15 +1,15 @@
-import { Loader2Icon } from 'lucide-react'
+import { cn } from "@/lib/utils"
+import { GravitreeLoader, type GravitreeLoaderSize } from "@/components/gravitre/gravitree-loader"
 
-import { cn } from '@/lib/utils'
-
-function Spinner({ className, ...props }: React.ComponentProps<'svg'>) {
+function Spinner({
+  className,
+  size = "sm",
+  ...props
+}: React.ComponentProps<"div"> & { size?: GravitreeLoaderSize }) {
   return (
-    <Loader2Icon
-      role="status"
-      aria-label="Loading"
-      className={cn('size-4 animate-spin', className)}
-      {...props}
-    />
+    <div role="status" aria-label="Loading" className={cn("inline-flex", className)} {...props}>
+      <GravitreeLoader size={size} />
+    </div>
   )
 }
 

@@ -26,6 +26,7 @@ import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
+import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 import { inferAgentPersonality, resolveAgentRoleIcon } from "@/lib/agent-display"
 import type { Agent, AgentStatus } from "@/types/api"
 import { AgentSurfaceSwitch } from "@/components/agents/agent-surface-switch"
@@ -103,15 +104,7 @@ function AgentProfileCard({ agent, index }: { agent: Agent; index: number }) {
 
         <div className="relative flex items-start gap-3">
           <div className="relative shrink-0">
-            <div
-              className={cn(
-                "flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-sm font-semibold text-white shadow-md",
-                personality.gradient,
-                personality.glow,
-              )}
-            >
-              {agentInitials(agent.name)}
-            </div>
+            <AgentIdentityAvatar agent={agent} size="lg" className="shadow-md" />
             <div className="absolute -bottom-0.5 -right-0.5 rounded-full border border-background bg-background p-0.5">
               <StatusBeacon status={beaconStatus} size="sm" pulse={agent.status === "processing"} />
             </div>

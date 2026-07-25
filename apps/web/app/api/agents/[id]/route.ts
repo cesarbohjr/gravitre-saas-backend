@@ -7,6 +7,13 @@ import {
   mapOperatorStatusToUi,
   normalizeAgentDepartment,
 } from "@/lib/agent-display"
+import {
+  isAgentAvatarColorId,
+  isAgentIconId,
+  personalityFromAvatarColor,
+  type AgentAvatarColorId,
+} from "@/lib/agent-identity"
+import { syncOperatorMirror } from "@/lib/agent-operator-mirror"
 import { readReferenceFoldersFromRecord } from "@/lib/agent-reference-folders"
 import { snakeToCamel, camelToSnake } from "@/lib/supabase/transforms"
 
@@ -31,6 +38,10 @@ function mapAgentRow(input: Record<string, unknown>) {
     description: String(model.description ?? model.purpose ?? "AI teammate"),
     status: mapOperatorStatusToUi(String(model.status ?? "idle")),
     model: String(model.model ?? "auto"),
+    icon: isAgentIconId(String(model.icon ?? "")) ? String(model.icon) : null,
+    avatarColor: isAgentAvatarColorId(String(model.avatarColor ?? model.avatar_color ?? ""))
+      ? String(model.avatarColor ?? model.avatar_color)
+      : null,
     knowledgeDocCount: 0,
     personality: {
       color: String(personality.color ?? inferAgentPersonality(department).color),
@@ -61,6 +72,10 @@ function mapOperatorRow(input: Record<string, unknown>) {
   const personality = inferAgentPersonality(department)
   const successRate = Number(input.success_rate ?? 100)
   const totalRuns = Number(input.total_runs ?? 0)
+  const icon = isAgentIconId(String(input.icon ?? "")) ? String(input.icon) : null
+  const avatarColor = isAgentAvatarColorId(String(input.avatar_color ?? input.avatarColor ?? ""))
+    ? String(input.avatar_color ?? input.avatarColor)
+    : null
 
   return {
     id: String(input.id),
@@ -70,6 +85,8 @@ function mapOperatorRow(input: Record<string, unknown>) {
     description: String(input.description ?? "AI teammate"),
     status: mapOperatorStatusToUi(String(input.status ?? "draft")),
     model: "auto",
+    icon,
+    avatarColor,
     knowledgeDocCount: 0,
     personality,
     stats: {
@@ -238,6 +255,84 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
+
+    return NextResponse.json({ agent: mapAgentRow(data as Record<string, unknown>) })
+  }
+
+  const identityKeys = ["name", "icon", "avatarColor", "avatar_color", "personality", "description", "role", "department"]
+  const bodyRecord = body as Record<string, unknown>
+  const hasIdentityPatch = identityKeys.some((key) => key in bodyRecord)
+
+  if (hasIdentityPatch) {
+    const { data: existing, error: loadError } = await supabase
+      .from("agents")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("id", id)
+      .maybeSingle()
+
+    if (loadError) {
+      return NextResponse.json({ error: loadError.message }, { status: 500 })
+    }
+    if (!existing) {
+      return proxyToFastApi(request, `/api/agents/${id}`)
+    }
+
+    const snakeBody = camelToSnake(bodyRecord)
+    const updatePayload: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    }
+
+    if (typeof snakeBody.name === "string" && snakeBody.name.trim()) {
+      updatePayload.name = snakeBody.name.trim()
+    }
+    if (typeof snakeBody.description === "string") {
+      updatePayload.description = snakeBody.description
+    }
+    if (typeof snakeBody.role === "string") {
+      updatePayload.role = snakeBody.role
+    }
+    if (typeof snakeBody.department === "string") {
+      updatePayload.department = snakeBody.department
+    }
+    if (snakeBody.icon !== undefined) {
+      if (snakeBody.icon !== null && !isAgentIconId(String(snakeBody.icon))) {
+        return NextResponse.json({ error: "Invalid icon value" }, { status: 400 })
+      }
+      updatePayload.icon = snakeBody.icon
+    }
+    const incomingColor = snakeBody.avatar_color ?? snakeBody.avatarColor
+    if (incomingColor !== undefined) {
+      if (incomingColor !== null && !isAgentAvatarColorId(String(incomingColor))) {
+        return NextResponse.json({ error: "Invalid avatarColor value" }, { status: 400 })
+      }
+      updatePayload.avatar_color = incomingColor
+    }
+    if (snakeBody.personality && typeof snakeBody.personality === "object") {
+      updatePayload.personality = snakeBody.personality
+    } else if (isAgentAvatarColorId(String(updatePayload.avatar_color ?? ""))) {
+      updatePayload.personality = personalityFromAvatarColor(updatePayload.avatar_color as AgentAvatarColorId)
+    }
+
+    const { data, error } = await supabase
+      .from("agents")
+      .update(updatePayload)
+      .eq("org_id", orgId)
+      .eq("id", id)
+      .select("*")
+      .single()
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    const { data: userData } = await supabase.auth.getUser()
+    await syncOperatorMirror(
+      supabase,
+      orgId,
+      data as Record<string, unknown>,
+      userData.user?.id ?? null,
+    )
 
     return NextResponse.json({ agent: mapAgentRow(data as Record<string, unknown>) })
   }

@@ -73,6 +73,8 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { agentsApi } from "@/lib/api"
 import { inferAgentDepartment, resolveAgentRoleIcon } from "@/lib/agent-display"
+import { resolveAgentIdentity } from "@/lib/agent-identity"
+import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 import { departmentGradient } from "@/lib/department-gradient"
 import type { Agent as ApiAgent, AgentStatus } from "@/types/api"
 import { toast } from "sonner"
@@ -140,6 +142,13 @@ function normalizeAgent(input: Record<string, unknown>): Agent {
       status === "active" || status === "processing" || status === "error"
         ? status
         : "idle",
+    icon: typeof input.icon === "string" ? input.icon : null,
+    avatarColor:
+      typeof input.avatarColor === "string"
+        ? input.avatarColor
+        : typeof input.avatar_color === "string"
+          ? input.avatar_color
+          : null,
     personality: {
       color: String(personality.color ?? "blue"),
       gradient: String(personality.gradient ?? "from-blue-500 to-indigo-500"),
@@ -326,9 +335,9 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
   const { reduced } = useMotionPrefs()
   const status = statusConfig[agent.status]
 
-  // Vivid per-department gradient orb (shared with the Marketplace department
-  // packs so colors match across surfaces) + a meaningful, role-aware icon.
-  const { gradient, glow } = departmentGradient(agent.department)
+  // Shared identity gradient (stored icon/color when present, otherwise department fallback).
+  const identity = resolveAgentIdentity(agent)
+  const { gradient, glow } = identity.personality
   const isLive = agent.status === "active" || agent.status === "processing"
 
   return (
@@ -353,7 +362,7 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
       {/* Soft colored halo behind the orb */}
       <motion.div
         aria-hidden
-        className={cn("pointer-events-none absolute inset-x-4 top-6 h-24 rounded-full blur-2xl", `bg-gradient-to-br ${gradient}`)}
+        className={cn("pointer-events-none absolute inset-x-4 top-6 h-24 rounded-full blur-2xl bg-gradient-to-br", gradient)}
         animate={{ opacity: isSelected ? 0.35 : 0.18 }}
       />
 
@@ -401,31 +410,24 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
           </div>
         )}
 
-        <div
-          className={cn(
-            "relative flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br shadow-lg transition-all duration-300",
-            gradient,
-            glow,
-            isSelected ? "ring-2 ring-foreground/15" : "",
-            agent.status === "error" && "opacity-50 grayscale-[30%]",
-          )}
-          style={{ transform: "translateZ(20px)" }}
-        >
-          {/* Glossy top highlight for depth */}
-          <div className="absolute inset-2 rounded-full bg-gradient-to-br from-white/25 to-transparent" />
-          {createElement(getAgentIcon(agent), {
-            className: "relative z-10 h-10 w-10 text-white drop-shadow",
-            strokeWidth: 2,
-          })}
+        <div className="relative" style={{ transform: "translateZ(20px)" }}>
+          <AgentIdentityAvatar
+            agent={agent}
+            size="orb"
+            className={cn(
+              isSelected ? "ring-2 ring-foreground/15" : "",
+              agent.status === "error" && "opacity-50 grayscale-[30%]",
+            )}
+          />
           {agent.status === "processing" && !reduced && (
             <motion.div
-              className="absolute inset-0 rounded-full border-[3px] border-white/20 border-t-white"
+              className="absolute inset-0 rounded-2xl border-[3px] border-white/20 border-t-white"
               animate={{ rotate: 360 }}
               transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
             />
           )}
           {agent.status === "error" && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-destructive/30">
+            <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-destructive/30">
               <Shield className="h-5 w-5 text-white" />
             </div>
           )}
@@ -528,13 +530,7 @@ function AgentDetailPanel({
       <div className="p-6 border-b border-border">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
-            <div className={cn(
-              "h-14 w-14 rounded-xl flex items-center justify-center bg-gradient-to-br shadow-md",
-              departmentGradient(agent.department).gradient,
-              departmentGradient(agent.department).glow,
-            )}>
-              {createElement(getAgentIcon(agent), { className: "h-7 w-7 text-white", strokeWidth: 2 })}
-            </div>
+            <AgentIdentityAvatar agent={agent} size="lg" />
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-semibold text-foreground">{agent.name}</h2>
@@ -785,14 +781,7 @@ function AgentPreviewSheet({
       <SheetContent side="right" className="w-full gap-0 overflow-y-auto p-0 sm:max-w-sm">
         <SheetHeader className="space-y-3 border-b border-border px-5 py-5 text-left">
           <div className="flex items-start gap-3">
-            <div
-              className={cn(
-                "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br shadow-sm",
-                departmentGradient(agent.department).gradient,
-              )}
-            >
-              {createElement(getAgentIcon(agent), { className: "h-5 w-5 text-white", strokeWidth: 2 })}
-            </div>
+            <AgentIdentityAvatar agent={agent} size="md" />
             <div className="min-w-0 flex-1">
               <SheetTitle className="truncate text-base">{agent.name}</SheetTitle>
               <SheetDescription className="truncate">{agent.role}</SheetDescription>

@@ -12,7 +12,6 @@ import {
   Database,
   Shield,
   Check,
-  Loader2,
   MessageSquare,
   BarChart3,
   FileText,
@@ -33,6 +32,16 @@ import { formatReferenceFolderBreadcrumb } from "@/lib/agent-reference-folders"
 import type { AgentReferenceFolder } from "@/types/api"
 import { agentsApi } from "@/lib/api"
 import { inferAgentDepartment, type AgentDepartment } from "@/lib/agent-display"
+import {
+  AgentIdentityPicker,
+  useSuggestedAgentIdentity,
+} from "@/components/gravitre/agent-identity-picker"
+import {
+  personalityFromAvatarColor,
+  type AgentAvatarColorId,
+  type AgentIconId,
+} from "@/lib/agent-identity"
+import { LoadingIndicator } from "@/components/gravitre/gravitree-loader"
 import { mutate as globalMutate } from "swr"
 import { toast } from "sonner"
 
@@ -112,6 +121,9 @@ export default function NewAgentPage() {
   const [selectedSystems, setSelectedSystems] = useState<string[]>([])
   const [selectedGuardrails, setSelectedGuardrails] = useState<string[]>(["approval-changes", "admin-delete"])
   const [referenceFolders, setReferenceFolders] = useState<AgentReferenceFolder[]>([])
+  const suggestedIdentity = useSuggestedAgentIdentity(agentName, agentPurpose)
+  const [selectedIcon, setSelectedIcon] = useState<AgentIconId>(suggestedIdentity.icon)
+  const [selectedColor, setSelectedColor] = useState<AgentAvatarColorId>(suggestedIdentity.avatarColor)
 
   const toggleCapability = (id: string) => {
     setSelectedCapabilities(prev =>
@@ -167,6 +179,9 @@ export default function NewAgentPage() {
         role: trimmedName,
         department,
         model: agentModel,
+        icon: selectedIcon,
+        avatarColor: selectedColor,
+        personality: personalityFromAvatarColor(selectedColor),
         capabilities: selectedCapabilityNames,
         systems: selectedSystemNames,
         guardrails: selectedGuardrailNames,
@@ -294,6 +309,15 @@ export default function NewAgentPage() {
                       Be specific about what tasks this agent should handle
                     </p>
                   </div>
+
+                  <AgentIdentityPicker
+                    name={agentName.trim() || "New Agent"}
+                    icon={selectedIcon}
+                    avatarColor={selectedColor}
+                    onIconChange={setSelectedIcon}
+                    onColorChange={setSelectedColor}
+                    className="rounded-lg border border-border bg-card p-4"
+                  />
 
                   {/* Model Selection */}
                   <div>
@@ -625,7 +649,7 @@ export default function NewAgentPage() {
               >
                 {isCreating ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <LoadingIndicator size="xs" />
                     Creating...
                   </>
                 ) : (

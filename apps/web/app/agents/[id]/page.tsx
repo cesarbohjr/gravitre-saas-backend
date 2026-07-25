@@ -16,8 +16,10 @@ import { useAuth } from "@/lib/auth-context"
 import { agentsApi } from "@/lib/api"
 import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import { AgentIntelligenceVisibilitySection } from "@/components/intelligence/agent-intelligence-visibility-section"
+import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
+import { AgentIdentityEditor } from "@/components/gravitre/agent-identity-editor"
+import { GravitreeLoader } from "@/components/gravitre/gravitree-loader"
 import type { Agent as ApiAgent, AgentStatus } from "@/types/api"
-import { Loader2 } from "lucide-react"
 import { OPERATIONAL_METHODOLOGY_SHORT } from "@/lib/outcome-labels"
 
 // Types
@@ -107,11 +109,10 @@ const statusConfig = {
   error: { label: "Error", color: "text-red-400", bgColor: "bg-red-500/10", dotColor: "bg-red-500" },
 }
 
-// Animated Avatar Orb
-function AgentOrb({ agent, status }: { agent: Agent; status: typeof statusConfig.active }) {
+// Animated Avatar — shared identity treatment
+function AgentOrb({ agent, apiAgent, status }: { agent: Agent; apiAgent: ApiAgent; status: typeof statusConfig.active }) {
   return (
     <div className="relative">
-      {/* Outer glow rings */}
       <motion.div
         className="absolute inset-0 rounded-3xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20"
         animate={{
@@ -121,49 +122,21 @@ function AgentOrb({ agent, status }: { agent: Agent; status: typeof statusConfig
         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
         style={{ filter: "blur(20px)" }}
       />
-      
-      {/* Main orb */}
-      <motion.div
-        className={cn(
-          "relative h-20 w-20 sm:h-24 sm:w-24 rounded-3xl flex items-center justify-center bg-gradient-to-br",
-          agent.personality.gradient,
-          "shadow-2xl"
-        )}
-        animate={{ 
-          boxShadow: agent.status === "active" 
-            ? ["0 25px 50px -12px rgba(16, 185, 129, 0.25)", "0 25px 60px -12px rgba(16, 185, 129, 0.4)", "0 25px 50px -12px rgba(16, 185, 129, 0.25)"]
-            : "0 25px 50px -12px rgba(16, 185, 129, 0.25)"
-        }}
-        transition={{ duration: 2, repeat: Infinity }}
-      >
-        {/* Inner content */}
-        <div className="text-center">
-          <motion.span 
-            className="text-2xl sm:text-3xl font-bold text-white"
-            animate={{ opacity: [0.9, 1, 0.9] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            {agent.name.slice(0, 2).toUpperCase()}
-          </motion.span>
-        </div>
 
-        {/* Activity indicator */}
-        {agent.status === "active" && (
-          <motion.div
-            className="absolute -bottom-1 -right-1 h-8 w-8 rounded-xl bg-card border-2 border-emerald-500 flex items-center justify-center"
-            animate={{ scale: [1, 1.1, 1] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          >
-            <Icon name="activity" size="sm" className="text-emerald-400" />
-          </motion.div>
-        )}
-      </motion.div>
+      <AgentIdentityAvatar agent={apiAgent} size="xl" />
 
-      {/* Status badge */}
-      <div className={cn(
-        "absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border bg-card shadow-lg",
-      )}>
-        <motion.div 
+      {agent.status === "active" && (
+        <motion.div
+          className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-xl border-2 border-emerald-500 bg-card"
+          animate={{ scale: [1, 1.1, 1] }}
+          transition={{ duration: 1.5, repeat: Infinity }}
+        >
+          <Icon name="activity" size="sm" className="text-emerald-400" />
+        </motion.div>
+      )}
+
+      <div className="absolute -bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 shadow-lg">
+        <motion.div
           className={cn("h-2 w-2 rounded-full", status.dotColor)}
           animate={{ opacity: [1, 0.5, 1] }}
           transition={{ duration: 1.5, repeat: Infinity }}
@@ -301,7 +274,7 @@ export default function AgentProfilePage({
     return (
       <AppShell title="Agent">
         <div className="flex h-full items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+          <GravitreeLoader size="md" />
         </div>
       </AppShell>
     )
@@ -355,7 +328,7 @@ export default function AgentProfilePage({
               {/* Left: Agent Identity */}
               <div className="lg:col-span-4">
                 <div className="flex flex-col items-center text-center">
-                  <AgentOrb agent={agent} status={status} />
+                  <AgentOrb agent={agent} apiAgent={apiAgent} status={status} />
                   
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -366,6 +339,9 @@ export default function AgentProfilePage({
                     <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-1 break-words">{agent.name}</h1>
                     <p className="text-muted-foreground mb-2">{agent.role}</p>
                     <p className="text-sm text-emerald-400 font-medium">{agent.tagline}</p>
+                    <div className="mt-4 flex justify-center">
+                      <AgentIdentityEditor agent={apiAgent} />
+                    </div>
                   </motion.div>
 
                   {/* Action Buttons */}

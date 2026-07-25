@@ -14,7 +14,9 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useGlobalWorkShortcuts } from "@/hooks/use-global-work-shortcuts"
 import { onboardingApi } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
-import { Loader2, X } from "lucide-react"
+import { GravitreeLoader, LoadingIndicator } from "@/components/gravitre/gravitree-loader"
+import { X } from "lucide-react"
+import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { OnboardingProgress } from "@/types/api"
@@ -299,7 +301,7 @@ export function AppShell({ children, title }: AppShellProps) {
   if (loading || awaitingInitialBilling) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <GravitreeLoader size="lg" />
       </div>
     )
   }
@@ -307,7 +309,7 @@ export function AppShell({ children, title }: AppShellProps) {
   if (!user) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <GravitreeLoader size="lg" />
       </div>
     )
   }
@@ -315,7 +317,7 @@ export function AppShell({ children, title }: AppShellProps) {
   if (billingHardBlock && !billingError && !pathname.startsWith("/settings/billing") && !pathname.startsWith("/pricing")) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <GravitreeLoader size="lg" />
       </div>
     )
   }

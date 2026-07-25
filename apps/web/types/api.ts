@@ -142,6 +142,8 @@ export interface Agent {
   department: AgentDepartment
   description: string
   status: AgentStatus
+  icon?: string | null
+  avatarColor?: string | null
   personality: AgentPersonality
   stats: AgentStats
   capabilities: string[]
@@ -1096,6 +1098,9 @@ export interface CreateAgentRequest {
   purpose?: string
   description?: string
   model?: string
+  icon?: string
+  avatarColor?: string
+  personality?: AgentPersonality
   capabilities?: string[]
   permissions?: string[]
   systems?: string[]

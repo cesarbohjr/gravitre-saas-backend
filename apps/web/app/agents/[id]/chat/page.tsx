@@ -12,7 +12,6 @@ import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import {
   Send,
-  Loader2,
   Sparkles,
   Copy,
   MessageSquarePlus,
@@ -23,6 +22,8 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react"
+import { GravitreeLoader, LoadingIndicator } from "@/components/gravitre/gravitree-loader"
+import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 import { cn } from "@/lib/utils"
 import { polishAssistantText } from "@/lib/plain-english"
 import {
@@ -156,7 +157,7 @@ function CopyButton({ text }: { text: string }) {
 function ChatMessage({
   message,
   isUser,
-  agentName,
+  agent,
   agentColor,
   isLast,
   streaming,
@@ -164,7 +165,7 @@ function ChatMessage({
 }: {
   message: UIMessage
   isUser: boolean
-  agentName: string
+  agent?: Agent
   agentColor: { gradient: string; accent: string; glow: string }
   isLast?: boolean
   streaming?: boolean
@@ -188,15 +189,9 @@ function ChatMessage({
         isUser ? "justify-end" : "justify-start"
       )}
     >
-      {!isUser && (
-        <div className={cn(
-          "flex-shrink-0 h-8 w-8 rounded-lg bg-gradient-to-br flex items-center justify-center",
-          agentColor.gradient,
-          `shadow-lg shadow-${agentColor.glow}`
-        )}>
-          <span className="text-xs font-bold text-white">{agentName.slice(0, 2).toUpperCase()}</span>
-        </div>
-      )}
+      {!isUser && agent ? (
+        <AgentIdentityAvatar agent={agent} size="sm" className="shadow-lg" />
+      ) : null}
 
       <div
         className={cn(
@@ -480,7 +475,7 @@ export default function AgentChatPage({
     return (
       <AppShell title="Agent chat">
         <div className="flex h-full items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+          <GravitreeLoader size="md" />
         </div>
       </AppShell>
     )
@@ -551,15 +546,7 @@ export default function AgentChatPage({
 
             <div className="border-b border-zinc-200 bg-white/50 px-4 py-3 sm:px-6">
               <div className="mx-auto flex max-w-4xl items-center gap-3">
-                <div
-                  className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br text-sm font-bold text-white shadow-lg",
-                    agentColor.gradient,
-                    `shadow-${agentColor.glow}`,
-                  )}
-                >
-                  {agentInitials}
-                </div>
+                <AgentIdentityAvatar agent={agent} size="md" className="shadow-lg" />
                 <div className="min-w-0 flex-1">
                   <h1 className="text-base font-semibold text-zinc-900">{agent.name}</h1>
                   <p className="truncate text-xs text-zinc-500">
@@ -618,13 +605,7 @@ export default function AgentChatPage({
                 animate={{ opacity: 1, y: 0 }}
                 className="flex flex-col items-center justify-center h-[50vh] text-center"
               >
-                <div className={cn(
-                  "h-16 w-16 rounded-2xl bg-gradient-to-br flex items-center justify-center shadow-xl mb-6",
-                  agentColor.gradient,
-                  `shadow-${agentColor.glow}`
-                )}>
-                  <span className="text-xl font-bold text-white">{agent.name.slice(0, 2).toUpperCase()}</span>
-                </div>
+                <AgentIdentityAvatar agent={agent} size="lg" className="mb-6 shadow-xl" />
                 <h2 className="text-xl font-semibold text-zinc-900 mb-2">Chat with {agent.name}</h2>
                 <p className="text-sm text-zinc-500 max-w-md mb-8">
                   {agent.description || `Ask ${agent.name} anything about their capabilities and expertise.`}
@@ -654,7 +635,7 @@ export default function AgentChatPage({
                     key={message.id}
                     message={message}
                     isUser={message.role === "user"}
-                    agentName={agent.name}
+                    agent={agent}
                     agentColor={agentColor}
                     isLast={index === messages.length - 1 && message.role === "assistant"}
                     streaming={isStreaming && index === messages.length - 1 && message.role === "assistant"}
@@ -669,15 +650,10 @@ export default function AgentChatPage({
                     animate={{ opacity: 1 }}
                     className="flex gap-3"
                   >
-                    <div className={cn(
-                      "flex-shrink-0 h-8 w-8 rounded-lg bg-gradient-to-br flex items-center justify-center",
-                      agentColor.gradient
-                    )}>
-                      <span className="text-xs font-bold text-white">{agent.name.slice(0, 2).toUpperCase()}</span>
-                    </div>
+                    <AgentIdentityAvatar agent={agent} size="sm" />
                     <div className="bg-white border border-zinc-200 rounded-2xl px-4 py-3 shadow-sm">
                       <div className="flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 text-emerald-600 animate-spin" />
+                        <GravitreeLoader size="xs" />
                         <span className="text-sm text-zinc-500">{agent.name} is thinking...</span>
                       </div>
                     </div>
@@ -748,7 +724,7 @@ export default function AgentChatPage({
                   )}
                 >
                   {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <LoadingIndicator size="xs" />
                   ) : (
                     <Send className="h-4 w-4" />
                   )}

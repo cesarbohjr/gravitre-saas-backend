@@ -10,6 +10,7 @@
   /* Background: clean near-white with a subtle cool (green) tint */
   --background: oklch(0.99 0.004 160);
   --foreground: oklch(0.18 0.02 160);
+  --ink: var(--foreground);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.18 0.02 160);
   --popover: oklch(1 0 0);
@@ -74,6 +75,7 @@
   /* Gravitre Brand: Deep navy/black background (#0B0F14) */
   --background: oklch(0.08 0.01 250);
   --foreground: oklch(0.95 0 0);
+  --ink: var(--foreground);
   /* Surface: slightly lighter panels (#11161D) */
   --card: oklch(0.11 0.01 250);
   --card-foreground: oklch(0.95 0 0);
