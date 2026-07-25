@@ -46,6 +46,11 @@ function mapAgentRow(
     avatarColor: isAgentAvatarColorId(String(model.avatarColor ?? model.avatar_color ?? ""))
       ? String(model.avatarColor ?? model.avatar_color)
       : null,
+    avatarUrl: typeof model.avatarUrl === "string"
+      ? model.avatarUrl
+      : typeof model.avatar_url === "string"
+        ? model.avatar_url
+        : null,
     knowledgeDocCount,
     personality: {
       color: String(personality.color ?? inferAgentPersonality(department).color),
@@ -95,6 +100,11 @@ function mapOperatorRow(
     model: "auto",
     icon,
     avatarColor,
+    avatarUrl: typeof input.avatar_url === "string"
+      ? input.avatar_url
+      : typeof input.avatarUrl === "string"
+        ? input.avatarUrl
+        : null,
     knowledgeDocCount,
     personality,
     stats: {

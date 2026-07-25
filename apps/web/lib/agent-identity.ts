@@ -131,6 +131,7 @@ export interface AgentIdentity {
   /** Raw stored icon from the database, if any. */
   storedIcon: AgentIconId | null
   avatarColor: AgentAvatarColorId
+  avatarUrl: string | null
   personality: AgentPersonality
   initials: string
 }
@@ -141,6 +142,7 @@ export interface AgentIdentityInput {
   department?: string | null
   icon?: string | null
   avatarColor?: string | null
+  avatarUrl?: string | null
   personality?: Partial<AgentPersonality> | null
 }
 
@@ -231,11 +233,15 @@ export function resolveAgentIdentity(input: AgentIdentityInput): AgentIdentity {
   const fromDepartment = inferAgentPersonality(department as AgentDepartment)
   const storedPersonality = input.personality ?? {}
 
+  const avatarUrlRaw = String(input.avatarUrl ?? "").trim()
+  const avatarUrl = avatarUrlRaw.length > 0 ? avatarUrlRaw : null
+
   return {
     name,
     icon: effectiveIcon,
     storedIcon,
     avatarColor,
+    avatarUrl,
     personality: {
       color: String(storedPersonality.color ?? fromColor.color ?? fromDepartment.color),
       gradient: String(storedPersonality.gradient ?? fromColor.gradient ?? fromDepartment.gradient),
@@ -265,6 +271,7 @@ export function resolveAgentIdentityFromRecord(record: Record<string, unknown>):
     department: String(record.department ?? ""),
     icon: String(record.icon ?? record.icon_name ?? "") || null,
     avatarColor: String(record.avatarColor ?? record.avatar_color ?? "") || null,
+    avatarUrl: String(record.avatarUrl ?? record.avatar_url ?? "") || null,
     personality,
   })
 }

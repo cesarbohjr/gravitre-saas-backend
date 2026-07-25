@@ -149,6 +149,12 @@ function normalizeAgent(input: Record<string, unknown>): Agent {
         : typeof input.avatar_color === "string"
           ? input.avatar_color
           : null,
+    avatarUrl:
+      typeof input.avatarUrl === "string"
+        ? input.avatarUrl
+        : typeof input.avatar_url === "string"
+          ? input.avatar_url
+          : null,
     personality: {
       color: String(personality.color ?? "blue"),
       gradient: String(personality.gradient ?? "from-blue-500 to-indigo-500"),

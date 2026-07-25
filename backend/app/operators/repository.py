@@ -16,7 +16,7 @@ def list_operators(client: Client, org_id: str) -> list[dict]:
         .select(
             "id, org_id, name, description, status, system_prompt, allowed_environments, "
             "requires_admin, requires_approval, approval_roles, role, capabilities, config, "
-            "active_version_id, environment_id, total_runs, success_rate, avg_duration, icon, avatar_color, "
+            "active_version_id, environment_id, total_runs, success_rate, avg_duration, icon, avatar_color, avatar_url, "
             "created_at, updated_at"
         )
         .eq("org_id", org_id)
@@ -33,7 +33,7 @@ def get_operator(client: Client, org_id: str, operator_id: str) -> dict | None:
         .select(
             "id, org_id, name, description, status, system_prompt, allowed_environments, "
             "requires_admin, requires_approval, approval_roles, role, capabilities, config, "
-            "active_version_id, environment_id, total_runs, success_rate, avg_duration, icon, avatar_color, "
+            "active_version_id, environment_id, total_runs, success_rate, avg_duration, icon, avatar_color, avatar_url, "
             "created_at, updated_at"
         )
         .eq("org_id", org_id)
@@ -77,6 +77,8 @@ def create_operator(
         row["icon"] = payload.get("icon")
     if payload.get("avatar_color") is not None:
         row["avatar_color"] = payload.get("avatar_color")
+    if payload.get("avatar_url") is not None:
+        row["avatar_url"] = payload.get("avatar_url")
     if payload.get("id"):
         existing = (
             client.table("operators")
@@ -131,6 +133,15 @@ def mirror_operator_to_legacy_agents(client: Client, org_id: str, operator: dict
     department = config.get("department")
     if department:
         row["department"] = department
+    if operator.get("icon") is not None:
+        row["icon"] = operator.get("icon")
+    if operator.get("avatar_color") is not None:
+        row["avatar_color"] = operator.get("avatar_color")
+    if operator.get("avatar_url") is not None:
+        row["avatar_url"] = operator.get("avatar_url")
+    personality = config.get("personality")
+    if isinstance(personality, dict):
+        row["personality"] = personality
     try:
         client.table("agents").upsert(row, on_conflict="id").execute()
     except Exception:
@@ -144,7 +155,7 @@ def update_operator(
     payload: dict,
 ) -> dict | None:
     update: dict = {"updated_at": _now_iso()}
-    nullable_fields = {"icon", "avatar_color"}
+    nullable_fields = {"icon", "avatar_color", "avatar_url"}
     for key in (
         "name",
         "description",
@@ -160,6 +171,7 @@ def update_operator(
         "environment_id",
         "icon",
         "avatar_color",
+        "avatar_url",
         "execution_mode",
         "auto_execute_trusted_scopes",
         "auto_execute_enabled_at",
@@ -178,7 +190,9 @@ def update_operator(
     )
     if not r.data:
         return None
-    return dict(r.data[0])
+    operator = dict(r.data[0])
+    mirror_operator_to_legacy_agents(client, org_id, operator)
+    return operator
 
 
 def list_operator_bindings(

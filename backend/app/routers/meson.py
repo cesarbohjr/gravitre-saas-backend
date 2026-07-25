@@ -48,6 +48,8 @@ class MesonDeployRequest(BaseModel):
     output_types: list[str] = Field(default_factory=list, alias="outputTypes", max_length=20)
     generated_config: dict[str, Any] | None = Field(default=None, alias="generatedConfig")
     create_workflow: bool = Field(default=True, alias="createWorkflow")
+    icon: str | None = Field(default=None, max_length=50)
+    avatar_color: str | None = Field(default=None, alias="avatarColor", max_length=50)
 
     model_config = {"populate_by_name": True}
 
@@ -140,6 +142,8 @@ async def deploy_build_route(
         environment_name=environment_name,
         plan=plan,
         create_workflow=body.create_workflow,
+        icon=body.icon,
+        avatar_color=body.avatar_color,
     )
 
 

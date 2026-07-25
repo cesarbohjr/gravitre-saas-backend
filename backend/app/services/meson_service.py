@@ -349,6 +349,8 @@ class MesonService:
         environment_name: str,
         plan: MesonInterpretResult,
         create_workflow: bool = True,
+        icon: str | None = None,
+        avatar_color: str | None = None,
     ) -> MesonDeployResult:
         # Module 0 — same isolation guard as chat/ReAct/canvas write spine.
         from app.services.conversation_write_guard import assert_org_write_allowed
@@ -356,21 +358,80 @@ class MesonService:
         assert_org_write_allowed(org_id, actor_id=user_id, resource="meson deploy")
         cfg = plan.generated_config
         persona_role = DEPARTMENT_ROLE.get(plan.department, "default")
+        agent_name = cfg.agent.strip()
+        valid_icons = {
+            "megaphone",
+            "trending-up",
+            "database",
+            "pie-chart",
+            "headphones",
+            "bot",
+            "brain",
+            "zap",
+            "users",
+            "shield",
+            "sparkles",
+            "workflow",
+        }
+        valid_colors = {
+            "bg-emerald-500",
+            "bg-blue-500",
+            "bg-amber-500",
+            "bg-purple-500",
+            "bg-rose-500",
+            "bg-cyan-500",
+        }
+        text = f"{agent_name} {plan.intent}".lower()
+        if icon in valid_icons:
+            resolved_icon = icon
+        elif "marketing" in text:
+            resolved_icon = "megaphone"
+        elif "sales" in text:
+            resolved_icon = "trending-up"
+        elif "finance" in text or "report" in text:
+            resolved_icon = "pie-chart"
+        elif "support" in text or "customer" in text:
+            resolved_icon = "headphones"
+        elif "data" in text:
+            resolved_icon = "database"
+        else:
+            resolved_icon = "bot"
+        icon_color_map = {
+            "megaphone": "bg-emerald-500",
+            "trending-up": "bg-blue-500",
+            "database": "bg-cyan-500",
+            "pie-chart": "bg-purple-500",
+            "headphones": "bg-amber-500",
+            "bot": "bg-blue-500",
+        }
+        resolved_color = avatar_color if avatar_color in valid_colors else icon_color_map.get(resolved_icon, "bg-emerald-500")
+        color_to_personality = {
+            "bg-emerald-500": {"color": "emerald", "gradient": "from-emerald-500 to-teal-600", "glow": "shadow-emerald-500/30"},
+            "bg-blue-500": {"color": "blue", "gradient": "from-blue-500 to-indigo-600", "glow": "shadow-blue-500/30"},
+            "bg-amber-500": {"color": "amber", "gradient": "from-amber-500 to-orange-600", "glow": "shadow-amber-500/30"},
+            "bg-purple-500": {"color": "purple", "gradient": "from-purple-500 to-violet-600", "glow": "shadow-purple-500/30"},
+            "bg-rose-500": {"color": "rose", "gradient": "from-rose-500 to-pink-600", "glow": "shadow-rose-500/30"},
+            "bg-cyan-500": {"color": "cyan", "gradient": "from-cyan-500 to-blue-600", "glow": "shadow-cyan-500/30"},
+        }
+        personality = color_to_personality.get(resolved_color, color_to_personality["bg-emerald-500"])
         operator = create_operator(
             client,
             org_id,
             {
-                "name": cfg.agent.strip(),
+                "name": agent_name,
                 "description": cfg.agent_description or plan.intent,
                 "status": "active",
                 "role": cfg.agent_role or persona_role,
                 "capabilities": plan.output_types or ["tasks"],
+                "icon": resolved_icon,
+                "avatar_color": resolved_color,
                 "config": {
                     "meson": True,
                     "department": plan.department,
                     "systems": plan.systems,
                     "trainingPlan": cfg.training,
                     "personaRole": persona_role,
+                    "personality": personality,
                 },
                 "allowed_environments": [environment_name],
             },

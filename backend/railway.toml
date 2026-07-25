@@ -12,6 +12,7 @@ dockerfilePath = "Dockerfile"
 # Limit auto-deploy to backend service files (Root Directory = backend).
 watchPatterns = ["app/**", "requirements*.txt", "Dockerfile", "railway.toml", "pyproject.toml"]
 
+# Deploy gate: canvas Module C + meson edit path (2026-07-25).
 [deploy]
 healthcheckPath = "/health"
 # Cold start loads SentenceTransformer + warms ~700 tool-doc embeddings (~3min at threshold 40).

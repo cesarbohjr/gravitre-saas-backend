@@ -57,28 +57,41 @@ export function AgentIdentityAvatar({
 }: AgentIdentityAvatarProps) {
   const resolved = identity ?? resolveAgentIdentity(agent ?? {})
   const Icon = resolveAgentIconComponent(resolved.icon, agent?.role, resolved.name)
-  const useInitials = showInitials
+  const useImage = Boolean(resolved.avatarUrl) && !showInitials
+  const useInitials = showInitials && !useImage
 
   return (
     <div
       className={cn(
-        "relative flex shrink-0 items-center justify-center bg-gradient-to-br text-white shadow-md",
+        "relative flex shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br text-white shadow-md",
         sizeClasses[size],
-        resolved.personality.gradient,
-        resolved.personality.glow,
+        !useImage && resolved.personality.gradient,
+        !useImage && resolved.personality.glow,
+        useImage && "bg-muted",
         className,
       )}
       aria-hidden={!showInitials}
       title={resolved.name}
     >
-      <div className="pointer-events-none absolute inset-0 rounded-[inherit] bg-gradient-to-br from-white/20 to-transparent" />
-      {useInitials ? (
-        <span className={cn("relative z-10 font-bold", initialsSizeClasses[size])}>{resolved.initials}</span>
+      {useImage ? (
+        // eslint-disable-next-line @next/next/no-img-element -- agent avatars may be data URLs
+        <img
+          src={resolved.avatarUrl!}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+        />
       ) : (
-        createElement(Icon, {
-          className: cn("relative z-10 drop-shadow", iconSizeClasses[size], iconClassName),
-          strokeWidth: 2,
-        })
+        <>
+          <div className="pointer-events-none absolute inset-0 rounded-[inherit] bg-gradient-to-br from-white/20 to-transparent" />
+          {useInitials ? (
+            <span className={cn("relative z-10 font-bold", initialsSizeClasses[size])}>{resolved.initials}</span>
+          ) : (
+            createElement(Icon, {
+              className: cn("relative z-10 drop-shadow", iconSizeClasses[size], iconClassName),
+              strokeWidth: 2,
+            })
+          )}
+        </>
       )}
     </div>
   )

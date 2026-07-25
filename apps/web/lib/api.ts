@@ -403,6 +403,24 @@ export const agentsApi = {
   create: async (data: CreateAgentRequest) => unwrapAgent(await postJson<unknown>(apiUrl("/api/agents"), data)),
   update: async (id: string, data: Partial<Agent>) =>
     unwrapAgent(await patchJson<unknown>(apiUrl(`/api/agents/${id}`), data)),
+  uploadAvatar: async (id: string, file: File) => {
+    const formData = new FormData()
+    formData.append("avatar", file)
+    const response = await apiFetch(apiUrl(`/api/agents/${id}/avatar`), {
+      method: "POST",
+      body: formData,
+    })
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}))
+      throw new Error(
+        typeof (payload as { error?: unknown }).error === "string"
+          ? String((payload as { error: string }).error)
+          : "Upload failed",
+      )
+    }
+    return response.json() as Promise<{ avatarUrl: string | null; agent?: Agent }>
+  },
+  removeAvatar: (id: string) => deleteRequest(apiUrl(`/api/agents/${id}/avatar`)),
   delete: (id: string) => deleteRequest(apiUrl(`/api/agents/${id}`)),
   start: async (id: string) => unwrapAgent(await postJson<unknown>(apiUrl(`/api/agents/${id}/start`), {})),
   stop: async (id: string) => unwrapAgent(await postJson<unknown>(apiUrl(`/api/agents/${id}/stop`), {})),
@@ -601,6 +619,8 @@ export const mesonApi = {
     outputTypes: string[]
     generatedConfig?: MesonInterpretResponse["generatedConfig"]
     createWorkflow?: boolean
+    icon?: string
+    avatarColor?: string
   }) => postJson<MesonDeployResponse>(apiUrl("/api/meson/deploy"), data),
   suggestions: (data: {
     workflowState?: Record<string, unknown>

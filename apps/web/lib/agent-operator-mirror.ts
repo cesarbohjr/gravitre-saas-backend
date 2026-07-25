@@ -32,6 +32,7 @@ export async function syncOperatorMirror(
     config: agentRow.config && typeof agentRow.config === "object" ? agentRow.config : {},
     icon: agentRow.icon ?? null,
     avatar_color: agentRow.avatar_color ?? agentRow.avatarColor ?? null,
+    avatar_url: agentRow.avatar_url ?? agentRow.avatarUrl ?? null,
     updated_at: new Date().toISOString(),
   }
   if (userId) {

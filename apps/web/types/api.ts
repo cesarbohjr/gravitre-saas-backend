@@ -144,6 +144,7 @@ export interface Agent {
   status: AgentStatus
   icon?: string | null
   avatarColor?: string | null
+  avatarUrl?: string | null
   personality: AgentPersonality
   stats: AgentStats
   capabilities: string[]

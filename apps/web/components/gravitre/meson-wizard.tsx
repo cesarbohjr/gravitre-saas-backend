@@ -26,6 +26,14 @@ import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { mesonApi } from "@/lib/api"
 import { toast } from "sonner"
+import { AgentIdentityPicker } from "@/components/gravitre/agent-identity-picker"
+import {
+  suggestAgentColor,
+  suggestAgentIcon,
+  type AgentAvatarColorId,
+  type AgentIconId,
+} from "@/lib/agent-identity"
+import { GravitreeLoader } from "@/components/gravitre/gravitree-loader"
 
 interface MesonWizardProps {
   open: boolean
@@ -110,6 +118,8 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
   const [isDeploying, setIsDeploying] = useState(false)
   const [generationStep, setGenerationStep] = useState(0)
   const [generatedResult, setGeneratedResult] = useState<MesonResult | null>(null)
+  const [selectedIcon, setSelectedIcon] = useState<AgentIconId>("bot")
+  const [selectedColor, setSelectedColor] = useState<AgentAvatarColorId>("bg-emerald-500")
 
   const canProceed = () => {
     switch (currentStep) {
@@ -171,6 +181,9 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
         },
       }
 
+      const suggestedIcon = suggestAgentIcon(result.generatedConfig.agent, result.intent)
+      setSelectedIcon(suggestedIcon)
+      setSelectedColor(suggestAgentColor(suggestedIcon))
       setGeneratedResult(result)
       setGenerationStep(generationStates.length - 1)
       setCurrentStep(5)
@@ -201,6 +214,8 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
           sample_outputs: generatedResult.generatedConfig.sampleOutputs,
         },
         createWorkflow: generatedResult.outputTypes.includes("workflows"),
+        icon: selectedIcon,
+        avatarColor: selectedColor,
       })
 
       const completed: MesonResult = {
@@ -235,6 +250,8 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
     setIsDeploying(false)
     setGenerationStep(0)
     setGeneratedResult(null)
+    setSelectedIcon("bot")
+    setSelectedColor("bg-emerald-500")
     onClose()
   }
 
@@ -640,8 +657,8 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                 exit={{ opacity: 0 }}
                 className="py-12 text-center"
               >
-                <div className="h-16 w-16 mx-auto rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-6">
-                  <Loader2 className="h-8 w-8 text-violet-400 animate-spin" />
+                <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-violet-500/20 bg-violet-500/10">
+                  <GravitreeLoader size="md" />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground mb-2">
                   Meson is building your system...
@@ -714,6 +731,14 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                         <p className="text-xs text-muted-foreground">{generatedResult.generatedConfig.agent}</p>
                       </div>
                     </div>
+                    <AgentIdentityPicker
+                      name={generatedResult.generatedConfig.agent}
+                      icon={selectedIcon}
+                      avatarColor={selectedColor}
+                      onIconChange={setSelectedIcon}
+                      onColorChange={setSelectedColor}
+                      className="mt-3 border-t border-border/60 pt-4"
+                    />
                   </div>
 
                   {/* Training */}

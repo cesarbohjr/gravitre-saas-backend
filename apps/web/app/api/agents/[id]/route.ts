@@ -42,6 +42,11 @@ function mapAgentRow(input: Record<string, unknown>) {
     avatarColor: isAgentAvatarColorId(String(model.avatarColor ?? model.avatar_color ?? ""))
       ? String(model.avatarColor ?? model.avatar_color)
       : null,
+    avatarUrl: typeof model.avatarUrl === "string"
+      ? model.avatarUrl
+      : typeof model.avatar_url === "string"
+        ? model.avatar_url
+        : null,
     knowledgeDocCount: 0,
     personality: {
       color: String(personality.color ?? inferAgentPersonality(department).color),
@@ -87,6 +92,11 @@ function mapOperatorRow(input: Record<string, unknown>) {
     model: "auto",
     icon,
     avatarColor,
+    avatarUrl: typeof input.avatar_url === "string"
+      ? input.avatar_url
+      : typeof input.avatarUrl === "string"
+        ? input.avatarUrl
+        : null,
     knowledgeDocCount: 0,
     personality,
     stats: {
@@ -259,7 +269,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ agent: mapAgentRow(data as Record<string, unknown>) })
   }
 
-  const identityKeys = ["name", "icon", "avatarColor", "avatar_color", "personality", "description", "role", "department"]
+  const identityKeys = ["name", "icon", "avatarColor", "avatar_color", "avatarUrl", "avatar_url", "personality", "description", "role", "department"]
   const bodyRecord = body as Record<string, unknown>
   const hasIdentityPatch = identityKeys.some((key) => key in bodyRecord)
 
@@ -307,6 +317,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: "Invalid avatarColor value" }, { status: 400 })
       }
       updatePayload.avatar_color = incomingColor
+    }
+    if (snakeBody.avatar_url !== undefined || snakeBody.avatarUrl !== undefined) {
+      const incomingUrl = snakeBody.avatar_url ?? snakeBody.avatarUrl
+      updatePayload.avatar_url = incomingUrl === null || incomingUrl === "" ? null : String(incomingUrl)
     }
     if (snakeBody.personality && typeof snakeBody.personality === "object") {
       updatePayload.personality = snakeBody.personality

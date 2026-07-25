@@ -344,6 +344,7 @@ def _operator_summary(operator: dict) -> dict:
         "avgDuration": operator.get("avg_duration"),
         "icon": icon_value,
         "avatarColor": avatar_color,
+        "avatarUrl": operator.get("avatar_url"),
         "allowed_environments": list(operator.get("allowed_environments") or []),
         "requires_admin": bool(operator.get("requires_admin")),
         "requires_approval": bool(operator.get("requires_approval")),
