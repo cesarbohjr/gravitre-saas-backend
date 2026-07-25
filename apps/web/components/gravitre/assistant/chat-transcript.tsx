@@ -24,6 +24,7 @@ import {
   type ChatPendingTask,
 } from "@/components/gravitre/assistant/chat-execution-panel"
 import { ToolChip, type ToolInvocation } from "@/components/gravitre/assistant/tool-chip"
+import { MessageActionRail } from "@/components/gravitre/assistant/message-action-rail"
 import { uiMessageText } from "@/lib/chat-messages"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 
@@ -116,7 +117,7 @@ export function ChatTranscript({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.22 }}
-            className={cn("flex gap-3", isUser ? "flex-row-reverse" : "flex-row")}
+            className={cn("group flex gap-3", isUser ? "flex-row-reverse" : "flex-row")}
           >
             {isUser ? <UserAccountAvatar useCurrentUser size="lg" /> : <GravitreAvatar />}
 
@@ -165,6 +166,9 @@ export function ChatTranscript({
                   </div>
                 )}
               </div>
+              {!isUser && displayText.trim() ? (
+                <MessageActionRail text={displayText} className="w-full max-w-full" />
+              ) : null}
             </div>
           </motion.div>
         )

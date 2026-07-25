@@ -69,6 +69,8 @@ import { ResearchCascadePanel } from "@/components/gravitre/assistant/research-c
 import { ResearchPlanPanel } from "@/components/gravitre/assistant/research-plan-panel"
 import { ConversationSidebar } from "@/components/gravitre/assistant/conversation-sidebar"
 import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
+import { ChatThemePicker } from "@/components/gravitre/assistant/chat-theme-picker"
+import { useChatBackground } from "@/hooks/use-chat-background"
 import { Button } from "@/components/ui/button"
 import {
   Select,
@@ -202,6 +204,7 @@ export function AiWorkspace({
   })
   const [conversationTitle, setConversationTitle] = useState("Chat")
   const [chatMode, setChatMode] = useState<"fast" | "deep">("fast")
+  const { background: chatBackground, setBackground: setChatBackground } = useChatBackground()
   const [selectedDepartment, setSelectedDepartment] = useState(() =>
     typeof window === "undefined" ? "all" : getQuickDepartment(),
   )
@@ -1500,6 +1503,7 @@ export function AiWorkspace({
             </div>
 
             <div className="ml-auto flex shrink-0 items-center gap-1">
+              <ChatThemePicker value={chatBackground} onChange={setChatBackground} />
               <a
                 href="/ai/help/control"
                 className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -1581,7 +1585,7 @@ export function AiWorkspace({
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col">
-        <div className="ai-chat-canvas min-h-0 flex-1 overflow-y-auto px-3 py-3 md:px-5 md:py-4">
+        <div className="ai-chat-canvas min-h-0 flex-1 overflow-y-auto px-3 py-3 md:px-5 md:py-4" data-chat-bg={chatBackground}>
           <div className="mx-auto w-full">
             {showLanding ? (
               <AiLanding
@@ -1659,7 +1663,7 @@ export function AiWorkspace({
               ? inlineTurns.map((turn) => (
               <div key={turn.id} className="space-y-4">
                 <div className="flex justify-end">
-                  <div className={cn("max-w-[min(720px,92%)] rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-500 px-4 py-3.5 text-primary-foreground shadow-sm dark:from-emerald-500 dark:to-emerald-400", CHAT_BUBBLE_BASE_CLASS, CHAT_USER_BUBBLE_CLASS)}>
+                  <div className={cn("max-w-[min(720px,92%)]", CHAT_BUBBLE_BASE_CLASS, CHAT_USER_BUBBLE_CLASS)}>
                     <p className="whitespace-pre-wrap">{turn.prompt}</p>
                     <p className="mt-1 text-[10px] uppercase tracking-wide opacity-70">
                       {getModeMeta(turn.engine).badge}
@@ -1750,8 +1754,8 @@ export function AiWorkspace({
             >
               <div
                 className={cn(
-                  "flex min-h-[72px] flex-col justify-center gap-1.5 rounded-[1.25rem] border border-emerald-500/15 bg-background/90 p-2.5 shadow-sm backdrop-blur-sm focus-within:ring-2 dark:bg-card/90",
-                  "focus-within:border-emerald-500/35 focus-within:ring-emerald-500/20",
+                  "flex min-h-[76px] flex-col gap-1.5 rounded-[1.25rem] border border-emerald-500/20 bg-background/95 p-2.5 shadow-sm backdrop-blur-sm transition-colors focus-within:ring-2 dark:bg-card/95",
+                  "focus-within:border-emerald-500/40 focus-within:ring-emerald-500/20",
                 )}
               >
                 <textarea
@@ -1762,28 +1766,37 @@ export function AiWorkspace({
                   rows={1}
                   disabled={routing}
                   placeholder="Ask, delegate, or search…"
-                  className={cn("max-h-[160px] min-h-[44px] flex-1 resize-none bg-transparent px-2 outline-none placeholder:text-muted-foreground/70", CHAT_COMPOSER_CLASS)}
+                  className={cn("max-h-[160px] min-h-[40px] flex-1 resize-none bg-transparent px-2 pt-1 outline-none placeholder:text-muted-foreground/70", CHAT_COMPOSER_CLASS)}
                   onInput={(event) => {
                     const target = event.target as HTMLTextAreaElement
-                    target.style.height = "44px"
-                    target.style.height = `${Math.min(Math.max(target.scrollHeight, 44), 160)}px`
+                    target.style.height = "40px"
+                    target.style.height = `${Math.min(Math.max(target.scrollHeight, 40), 160)}px`
                   }}
                 />
-                <div className="flex shrink-0 items-center justify-end gap-2 px-1">
-                  {isChatBusy ? (
-                    <Button variant="outline" size="sm" className="h-8" onClick={() => stop()}>
-                      <Square className="mr-1 h-3 w-3" />
-                      Stop
-                    </Button>
-                  ) : null}
-                  <button
-                    type="submit"
-                    disabled={!input.trim() || routing || isChatBusy}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-500 text-primary-foreground shadow-sm transition-all hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-40 dark:from-emerald-500 dark:to-emerald-400"
-                    aria-label="Send"
-                  >
-                    <ArrowUp className="h-4 w-4" />
-                  </button>
+                <div className="flex shrink-0 items-center justify-between gap-2 px-1">
+                  <p className="hidden text-[11px] text-muted-foreground sm:block">
+                    <kbd className="rounded border border-border bg-muted px-1 py-px font-sans text-[10px] font-medium text-muted-foreground">Enter</kbd>
+                    <span className="ml-1">to send</span>
+                    <span className="mx-1.5 text-border">·</span>
+                    <kbd className="rounded border border-border bg-muted px-1 py-px font-sans text-[10px] font-medium text-muted-foreground">Shift + Enter</kbd>
+                    <span className="ml-1">for new line</span>
+                  </p>
+                  <div className="ml-auto flex items-center gap-2">
+                    {isChatBusy ? (
+                      <Button variant="outline" size="sm" className="h-8" onClick={() => stop()}>
+                        <Square className="mr-1 h-3 w-3" />
+                        Stop
+                      </Button>
+                    ) : null}
+                    <button
+                      type="submit"
+                      disabled={!input.trim() || routing || isChatBusy}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm transition-all hover:bg-emerald-500 disabled:opacity-40 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+                      aria-label="Send message"
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </form>
