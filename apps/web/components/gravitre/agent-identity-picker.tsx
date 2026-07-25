@@ -43,7 +43,6 @@ export function AgentIdentityPicker({
             name,
             icon,
             storedIcon: icon,
-            storedIcon: icon,
             avatarColor,
             personality,
             initials: name.slice(0, 2).toUpperCase(),
