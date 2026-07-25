@@ -6,13 +6,17 @@ export const CHAT_ROLE_LABEL_CLASS =
   "mb-1 px-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground"
 
 export const CHAT_BUBBLE_BASE_CLASS =
-  "w-full rounded-lg px-3.5 py-3 text-[14px] leading-relaxed"
+  "w-full rounded-[1.15rem] px-4 py-3 text-[15px] leading-relaxed"
 
+// Solid emerald so the user's own words read as the brand voice; a hairline
+// inner ring keeps the edge crisp over any background theme.
 export const CHAT_USER_BUBBLE_CLASS =
-  "rounded-br-sm border border-emerald-700/25 bg-emerald-700/[0.12] text-foreground dark:border-emerald-400/20 dark:bg-emerald-500/[0.12]"
+  "rounded-tr-sm bg-emerald-600 text-white shadow-sm ring-1 ring-inset ring-emerald-400/20 dark:bg-emerald-600"
 
+// Opaque card fill + defined border/shadow so assistant text stays legible
+// even over the textured background themes at every breakpoint.
 export const CHAT_ASSISTANT_BUBBLE_CLASS =
-  "rounded-bl-sm border border-border/70 bg-card/90 text-foreground shadow-none backdrop-blur-[2px]"
+  "rounded-tl-sm border border-border/70 bg-card text-foreground shadow-sm ring-1 ring-black/[0.02] dark:ring-white/[0.04]"
 
 export const CHAT_BODY_TEXT_CLASS = "text-[14px] leading-relaxed"
 

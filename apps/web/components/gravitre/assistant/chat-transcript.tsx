@@ -9,7 +9,6 @@ import {
   BookmarkPlus,
   Copy,
   Link2,
-  Loader2,
   Pencil,
   RefreshCw,
 } from "lucide-react"
@@ -49,6 +48,7 @@ import {
 } from "@/lib/chat-message-time"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 import { ReadAloudButton } from "@/components/gravitre/assistant/read-aloud-button"
+import { GravitreThinkingLoader } from "@/components/gravitre/assistant/thinking-loader"
 
 function extractToolInvocations(message: UIMessage): ToolInvocation[] {
   const invocations: ToolInvocation[] = []
@@ -332,7 +332,9 @@ export function ChatTranscript({
 
         {showWaiting ? (
           <div className="flex gap-2.5">
-            <GravitreAvatar />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-emerald-500/20 bg-[#0d3b36] shadow-none">
+              <GravitreThinkingLoader size={22} />
+            </div>
             <div className="flex min-w-0 max-w-[min(720px,90%)] flex-col items-start">
               <p className={CHAT_ROLE_LABEL_CLASS}>Gravitre</p>
               <div
@@ -343,8 +345,7 @@ export function ChatTranscript({
                   CHAT_WAITING_CLASS,
                 )}
               >
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600 dark:text-emerald-400" />
-                Working…
+                Gravitre is thinking…
               </div>
             </div>
           </div>

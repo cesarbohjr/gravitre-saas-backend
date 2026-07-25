@@ -492,11 +492,15 @@ export function ConversationSidebar({
           ) : (
             <div className="flex flex-col gap-3 py-3">
               {grouped.map((group) => (
-                <div key={group.label} className="flex flex-col gap-1">
-                  <div className="px-4 pb-0.5 pt-1">
-                    <span className="text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground/90">
+                <div key={group.label} className="mb-2">
+                  <div className="flex items-center gap-2 px-4 pb-1 pt-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       {group.label}
                     </span>
+                    <span className="rounded-full bg-muted px-1.5 py-px text-[10px] font-medium tabular-nums leading-none text-muted-foreground">
+                      {group.conversations.length}
+                    </span>
+                    <span className="h-px flex-1 bg-border/60" aria-hidden />
                   </div>
                   <div className="flex flex-col gap-0.5 px-2">
                     <AnimatePresence initial={false}>

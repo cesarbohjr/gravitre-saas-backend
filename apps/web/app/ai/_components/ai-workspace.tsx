@@ -18,7 +18,6 @@ import {
   PanelLeft,
   PanelLeftClose,
   PanelRight,
-  Palette,
   Square,
   FolderOpen,
 } from "lucide-react"
@@ -67,14 +66,6 @@ import type { AiEngine } from "@/lib/ai-surface-handoff"
 import type { SearchResult } from "@/types/api"
 import { ChatTranscript } from "@/components/gravitre/assistant/chat-transcript"
 import {
-  CHAT_CANVAS_THEME_IDS,
-  CHAT_CANVAS_THEME_META,
-  DEFAULT_CHAT_CANVAS_THEME,
-  readChatCanvasTheme,
-  writeChatCanvasTheme,
-  type ChatCanvasThemeId,
-} from "@/lib/chat-canvas-themes"
-import {
   ResearchScopePrompt,
   type ResearchCascadePayload,
 } from "@/components/gravitre/assistant/research-scope-prompt"
@@ -82,6 +73,8 @@ import { ResearchCascadePanel } from "@/components/gravitre/assistant/research-c
 import { ResearchPlanPanel } from "@/components/gravitre/assistant/research-plan-panel"
 import { ConversationSidebar } from "@/components/gravitre/assistant/conversation-sidebar"
 import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
+import { ChatThemePicker } from "@/components/gravitre/assistant/chat-theme-picker"
+import { useChatBackground } from "@/hooks/use-chat-background"
 import { Button } from "@/components/ui/button"
 import {
   Select,
@@ -90,15 +83,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { usePreferredPersona } from "@/hooks/use-preferred-persona"
 import { useAsyncJob, type AgentJob } from "@/hooks/use-async-job"
 import {
@@ -229,14 +213,11 @@ export function AiWorkspace({
   })
   const [conversationTitle, setConversationTitle] = useState("Chat")
   const [chatMode, setChatMode] = useState<"fast" | "deep">("fast")
-  const [chatCanvasTheme, setChatCanvasTheme] = useState<ChatCanvasThemeId>(DEFAULT_CHAT_CANVAS_THEME)
+  const { background: chatBackground, setBackground: setChatBackground } = useChatBackground()
   const [selectedDepartment, setSelectedDepartment] = useState(() =>
     typeof window === "undefined" ? "all" : getQuickDepartment(),
   )
 
-  useEffect(() => {
-    setChatCanvasTheme(readChatCanvasTheme())
-  }, [])
   const operatorContextRef = useRef<string | null>(null)
   const [dialogueMode, setDialogueMode] = useState<string | null>(null)
   const [pendingTask, setPendingTask] = useState<ChatPendingTask | null>(null)
@@ -1034,11 +1015,6 @@ export function AiWorkspace({
     [messages, runChat, setMessages],
   )
 
-  const handleChatCanvasThemeChange = useCallback((theme: ChatCanvasThemeId) => {
-    setChatCanvasTheme(theme)
-    writeChatCanvasTheme(theme)
-  }, [])
-
   const handleCopyMessageText = useCallback(async (text: string) => {
     try {
       await navigator.clipboard.writeText(text)
@@ -1695,39 +1671,7 @@ export function AiWorkspace({
             </div>
 
             <div className="ml-auto flex shrink-0 items-center gap-1">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 shrink-0 text-muted-foreground"
-                    aria-label="Chat background theme"
-                    title="Background theme"
-                  >
-                    <Palette className="h-3.5 w-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="z-[60] w-48">
-                  <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Background
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuRadioGroup
-                    value={chatCanvasTheme}
-                    onValueChange={(value) => {
-                      if ((CHAT_CANVAS_THEME_IDS as readonly string[]).includes(value)) {
-                        handleChatCanvasThemeChange(value as ChatCanvasThemeId)
-                      }
-                    }}
-                  >
-                    {CHAT_CANVAS_THEME_IDS.map((themeId) => (
-                      <DropdownMenuRadioItem key={themeId} value={themeId} className="text-xs">
-                        {CHAT_CANVAS_THEME_META[themeId].label}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <ChatThemePicker value={chatBackground} onChange={setChatBackground} />
               <a
                 href="/ai/help/control"
                 className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -1811,7 +1755,7 @@ export function AiWorkspace({
         <div className="flex min-h-0 flex-1 flex-col">
         <div
           className="ai-chat-canvas min-h-0 flex-1 overflow-y-auto px-3 py-3 md:px-5 md:py-4"
-          data-chat-theme={chatCanvasTheme}
+          data-chat-bg={chatBackground}
         >
           <div className="mx-auto w-full">
             {showLanding ? (

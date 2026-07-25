@@ -10,7 +10,6 @@
   /* Background: clean near-white with a subtle cool (green) tint */
   --background: oklch(0.99 0.004 160);
   --foreground: oklch(0.18 0.02 160);
-  --ink: var(--foreground);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.18 0.02 160);
   --popover: oklch(1 0 0);
@@ -75,7 +74,6 @@
   /* Gravitre Brand: Deep navy/black background (#0B0F14) */
   --background: oklch(0.08 0.01 250);
   --foreground: oklch(0.95 0 0);
-  --ink: var(--foreground);
   /* Surface: slightly lighter panels (#11161D) */
   --card: oklch(0.11 0.01 250);
   --card-foreground: oklch(0.95 0 0);
@@ -370,84 +368,96 @@
     .status-live { animation: none; }
   }
 
-  /* Direction A — Operator Console: calm navy/slate field; themes tint canvas wash only.
-     Dot-grid stays subtle. `local` attachment for iOS Safari scroll paint. */
+  /* ============================================================
+     Chat canvas background themes (8 selectable, behind /ai).
+     Every pattern is keyed to theme tokens so it adapts to
+     light/dark automatically and stays low-contrast enough to
+     keep message bubbles + text legible at all breakpoints.
+     `background-attachment: local` (never `fixed`) so textures
+     scroll with the canvas and paint correctly on iOS Safari.
+     Selected via `data-chat-bg="<id>"`; "signal" is the default.
+     ============================================================ */
   .ai-chat-canvas {
-    --ai-wash-a: color-mix(in oklch, var(--primary) 10%, transparent);
-    --ai-wash-b: color-mix(in oklch, var(--muted-foreground) 6%, transparent);
-    --ai-wash-c: color-mix(in oklch, var(--info) 5%, transparent);
-    --ai-grid: color-mix(in oklch, var(--foreground) 4%, transparent);
     background-color: var(--background);
+  }
+
+  /* 1 — Signal (default): emerald + blue + violet tints over a soft dot-grid */
+  .ai-chat-canvas,
+  .ai-chat-canvas[data-chat-bg="signal"] {
     background-image:
-      radial-gradient(circle at 10% -6%, var(--ai-wash-a), transparent 46%),
-      radial-gradient(circle at 92% 110%, var(--ai-wash-b), transparent 52%),
-      radial-gradient(circle at 48% 42%, var(--ai-wash-c), transparent 58%),
-      radial-gradient(var(--ai-grid) 1px, transparent 1px);
-    background-size: 100% 100%, 100% 100%, 100% 100%, 22px 22px;
+      radial-gradient(circle at 12% -8%, color-mix(in oklch, var(--primary) 14%, transparent), transparent 48%),
+      radial-gradient(circle at 88% 108%, color-mix(in oklch, var(--info) 10%, transparent), transparent 50%),
+      radial-gradient(circle at 50% 40%, color-mix(in oklch, var(--chart-4) 5%, transparent), transparent 55%),
+      radial-gradient(color-mix(in oklch, var(--primary) 7%, transparent) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 100% 100%, 24px 24px;
     background-attachment: local, local, local, local;
   }
 
-  .ai-chat-canvas[data-chat-theme="slate"] {
-    --ai-wash-a: color-mix(in oklch, var(--primary) 10%, transparent);
-    --ai-wash-b: color-mix(in oklch, var(--muted-foreground) 7%, transparent);
-    --ai-wash-c: color-mix(in oklch, var(--info) 4%, transparent);
+  /* 2 — Plain: clean, distraction-free */
+  .ai-chat-canvas[data-chat-bg="plain"] {
+    background-image: none;
   }
-  .ai-chat-canvas[data-chat-theme="mist"] {
-    --ai-wash-a: color-mix(in oklch, var(--info) 12%, transparent);
-    --ai-wash-b: color-mix(in oklch, var(--primary) 5%, transparent);
-    --ai-wash-c: color-mix(in oklch, var(--muted-foreground) 5%, transparent);
+
+  /* 3 — Dot grid: evenly spaced technical dots */
+  .ai-chat-canvas[data-chat-bg="dotgrid"] {
+    background-image:
+      radial-gradient(color-mix(in oklch, var(--foreground) 7%, transparent) 1px, transparent 1px);
+    background-size: 22px 22px;
+    background-attachment: local;
   }
-  .ai-chat-canvas[data-chat-theme="pine"] {
-    --ai-wash-a: color-mix(in oklch, var(--primary) 16%, transparent);
-    --ai-wash-b: color-mix(in oklch, var(--primary) 6%, transparent);
-    --ai-wash-c: color-mix(in oklch, var(--muted-foreground) 4%, transparent);
+
+  /* 4 — Blueprint: fine engineering line grid */
+  .ai-chat-canvas[data-chat-bg="grid"] {
+    background-image:
+      linear-gradient(color-mix(in oklch, var(--border) 60%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in oklch, var(--border) 60%, transparent) 1px, transparent 1px);
+    background-size: 30px 30px, 30px 30px;
+    background-attachment: local, local;
   }
-  .ai-chat-canvas[data-chat-theme="graphite"] {
-    --ai-wash-a: color-mix(in oklch, var(--foreground) 7%, transparent);
-    --ai-wash-b: color-mix(in oklch, var(--muted-foreground) 8%, transparent);
-    --ai-wash-c: color-mix(in oklch, var(--primary) 3%, transparent);
-    --ai-grid: color-mix(in oklch, var(--foreground) 6%, transparent);
+
+  /* 5 — Contour: abstract topographic waves */
+  .ai-chat-canvas[data-chat-bg="topo"] {
+    background-image:
+      repeating-radial-gradient(circle at 25% 110%, transparent 0 34px, color-mix(in oklch, var(--info) 6%, transparent) 34px 36px),
+      repeating-radial-gradient(circle at 85% -10%, transparent 0 30px, color-mix(in oklch, var(--primary) 5%, transparent) 30px 32px);
+    background-size: 100% 100%, 100% 100%;
+    background-attachment: local, local;
   }
-  .ai-chat-canvas[data-chat-theme="sand"] {
-    --ai-wash-a: color-mix(in oklch, oklch(0.78 0.04 75) 14%, transparent);
-    --ai-wash-b: color-mix(in oklch, var(--primary) 5%, transparent);
-    --ai-wash-c: color-mix(in oklch, oklch(0.82 0.03 90) 8%, transparent);
+
+  /* 6 — Mesh: soft multi-point gradient wash */
+  .ai-chat-canvas[data-chat-bg="mesh"] {
+    background-image:
+      radial-gradient(circle at 18% 12%, color-mix(in oklch, var(--primary) 12%, transparent), transparent 45%),
+      radial-gradient(circle at 82% 88%, color-mix(in oklch, var(--info) 11%, transparent), transparent 48%),
+      radial-gradient(circle at 60% 30%, color-mix(in oklch, var(--chart-4) 6%, transparent), transparent 50%);
+    background-size: 100% 100%, 100% 100%, 100% 100%;
+    background-attachment: local, local, local;
   }
-  .ai-chat-canvas[data-chat-theme="ink"] {
-    --ai-wash-a: color-mix(in oklch, var(--foreground) 5%, transparent);
-    --ai-wash-b: color-mix(in oklch, var(--info) 6%, transparent);
-    --ai-wash-c: color-mix(in oklch, var(--primary) 4%, transparent);
+
+  /* 7 — Hatch: subtle diagonal precision lines */
+  .ai-chat-canvas[data-chat-bg="diagonal"] {
+    background-image:
+      repeating-linear-gradient(45deg, color-mix(in oklch, var(--foreground) 5%, transparent) 0 1px, transparent 1px 14px);
+    background-attachment: local;
   }
-  .ai-chat-canvas[data-chat-theme="glacier"] {
-    --ai-wash-a: color-mix(in oklch, var(--info) 14%, transparent);
-    --ai-wash-b: color-mix(in oklch, oklch(0.72 0.05 230) 10%, transparent);
-    --ai-wash-c: color-mix(in oklch, var(--muted-foreground) 5%, transparent);
-  }
-  .ai-chat-canvas[data-chat-theme="midnight"] {
-    --ai-wash-a: color-mix(in oklch, var(--foreground) 4%, transparent);
-    --ai-wash-b: color-mix(in oklch, var(--primary) 8%, transparent);
-    --ai-wash-c: color-mix(in oklch, var(--info) 3%, transparent);
-    --ai-grid: color-mix(in oklch, var(--foreground) 3%, transparent);
+
+  /* 8 — Network: sparse connected nodes (knowledge-graph motif) */
+  .ai-chat-canvas[data-chat-bg="constellation"] {
+    background-image:
+      radial-gradient(color-mix(in oklch, var(--primary) 12%, transparent) 1.5px, transparent 2px),
+      radial-gradient(color-mix(in oklch, var(--info) 10%, transparent) 1.5px, transparent 2px);
+    background-size: 64px 64px, 64px 64px;
+    background-position: 0 0, 32px 32px;
+    background-attachment: local, local;
   }
 
   .ai-surface-shell {
     background: linear-gradient(
       180deg,
-      color-mix(in oklch, var(--primary) 3%, var(--background)) 0%,
-      var(--background) 42%,
-      color-mix(in oklch, var(--muted-foreground) 2%, var(--background)) 100%
+      color-mix(in oklch, var(--primary) 4%, var(--background)) 0%,
+      var(--background) 40%,
+      color-mix(in oklch, var(--info) 3%, var(--background)) 100%
     );
-  }
-
-  /* Deep-link scroll target for /ai?c=&m= */
-  [data-message-id] {
-    scroll-margin-block: 6rem;
-  }
-  [data-message-id].ai-message-deep-link-target {
-    outline: 1px solid color-mix(in oklch, var(--primary) 35%, transparent);
-    outline-offset: 3px;
-    border-radius: 0.5rem;
-    transition: outline-color 0.6s ease;
   }
 }
 

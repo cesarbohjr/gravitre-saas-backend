@@ -23,6 +23,7 @@ import {
   ChevronUp,
 } from "lucide-react"
 import { GravitreeLoader, LoadingIndicator } from "@/components/gravitre/gravitree-loader"
+import { GravitreThinkingLoader } from "@/components/gravitre/assistant/thinking-loader"
 import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 import { cn } from "@/lib/utils"
 import { polishAssistantText } from "@/lib/plain-english"
@@ -653,7 +654,7 @@ export default function AgentChatPage({
                     <AgentIdentityAvatar agent={agent} size="sm" />
                     <div className="bg-white border border-zinc-200 rounded-2xl px-4 py-3 shadow-sm">
                       <div className="flex items-center gap-2">
-                        <GravitreeLoader size="xs" />
+                        <GravitreThinkingLoader size={20} title={`${agent.name} is thinking`} />
                         <span className="text-sm text-zinc-500">{agent.name} is thinking...</span>
                       </div>
                     </div>
