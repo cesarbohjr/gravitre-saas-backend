@@ -2,15 +2,7 @@ import Link from "next/link"
 import { ArrowRight, Play } from "lucide-react"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
 import { ProductShowcase, HowItWorks, TestimonialsCarousel } from "@/components/marketing/product-showcase"
-import { IntelligenceEngineSection } from "@/components/marketing/intelligence-engine-section"
 import { IntegrationStrip } from "@/components/marketing/integration-strip"
-import {
-  GibeDataFlowSection,
-  TransparencyMetricsSection,
-  MarketplaceHighlightsSection,
-  UseCasesSection,
-  GovernanceAiStackSection,
-} from "@/components/marketing/platform-sections"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
 import { SHOW_MARKETING_TESTIMONIALS } from "@/lib/marketing-flags"
 import { AnimatedStat } from "@/components/marketing/home/animated-stat"
@@ -23,6 +15,11 @@ import {
   GibeHonestyStepVisual,
 } from "@/components/marketing/home/how-it-works-step-visuals"
 
+/**
+ * Home stays a short pitch + proof + CTA.
+ * Deep Features / Technology / Marketplace content lives only on those nav pages
+ * (see FeaturesLegacyContent exclude on /features) — do not re-embed it here.
+ */
 export default function HomePage() {
   return (
     <div className="relative overflow-hidden bg-white">
@@ -69,20 +66,32 @@ export default function HomePage() {
               />
             ))}
           </div>
+
+          <div className="mt-12 flex flex-wrap items-center justify-center gap-3 text-sm">
+            <Link
+              href="/features"
+              className="inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-white px-4 py-2 font-medium text-zinc-800 transition-colors hover:bg-zinc-50"
+            >
+              Platform features
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+            <Link
+              href="/features/technology"
+              className="inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-white px-4 py-2 font-medium text-zinc-800 transition-colors hover:bg-zinc-50"
+            >
+              Technology
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+            <Link
+              href="/features/marketplace"
+              className="inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-white px-4 py-2 font-medium text-zinc-800 transition-colors hover:bg-zinc-50"
+            >
+              Marketplace
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
         </div>
       </section>
-
-      <IntelligenceEngineSection />
-
-      <GibeDataFlowSection compact />
-
-      <TransparencyMetricsSection />
-
-      <MarketplaceHighlightsSection />
-
-      <UseCasesSection />
-
-      <GovernanceAiStackSection />
 
       <section className="relative py-32 border-t border-zinc-200 bg-white">
         <div className="mx-auto max-w-7xl px-6">
