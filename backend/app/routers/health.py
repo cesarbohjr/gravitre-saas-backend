@@ -74,6 +74,7 @@ def health(request: Request) -> dict:
         unified_embed_tools = bool(getattr(s, "unified_turn_embedding_tool_retrieval", False))
         unified_task_tier = str(getattr(s, "unified_turn_task_model_tier", "") or "")
         unified_embed_min_catalog = int(getattr(s, "unified_turn_embed_min_catalog_tools", 200) or 200)
+        unified_qa_hooks = bool(getattr(s, "unified_turn_qa_hooks_enabled", False))
         internet_research_enabled = bool(getattr(s, "internet_research_enabled", False))
         from app.services.web_research import is_web_research_provider_configured
 
@@ -119,6 +120,7 @@ def health(request: Request) -> dict:
         "unified_turn_embedding_tool_retrieval": unified_embed_tools,
         "unified_turn_embed_min_catalog_tools": unified_embed_min_catalog,
         "unified_turn_task_model_tier": unified_task_tier or None,
+        "unified_turn_qa_hooks_enabled": unified_qa_hooks,
         "internet_research_enabled": internet_research_enabled,
         "web_research_provider_configured": web_research_provider_configured,
         "checks": checks,

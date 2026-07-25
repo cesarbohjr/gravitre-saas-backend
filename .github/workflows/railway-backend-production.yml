@@ -89,3 +89,23 @@ jobs:
             --timeout-s 120 \
             --health-url https://api.gravitre.app/health \
             --commit-sha "$SHA"
+
+      - name: Post-deploy chat smoke (isolated org)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+          EXPECT_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          pip install httpx PyJWT python-dotenv supabase
+          SHA="$(git rev-parse --short=8 HEAD)"
+          python3 scripts/smoke-post-deploy-chat-live.py
+
+      - name: Upload post-deploy chat smoke artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-post-deploy-chat-live
+          path: docs/delivery/smoke-post-deploy-chat-live.json
+          if-no-files-found: ignore

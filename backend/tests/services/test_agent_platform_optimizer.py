@@ -34,6 +34,26 @@ def _tool(name: str, integration: str = "", write: bool = False) -> dict:
     }
 
 
+def test_narrow_tools_connected_coverage_does_not_crash_on_hello():
+    """Regression: _ensure_connected_tool_coverage must receive query (ec47ff03 NameError)."""
+    tools = [
+        _tool("assistant_connector_status"),
+        _tool("hubspot_search_contacts"),
+        _tool("gmail_messages_send", write=True),
+        _tool("gmail_messages_batch", write=True),
+        _tool("apollo_search_people"),
+    ]
+    visible, stats = narrow_tools_for_turn(
+        tools,
+        query="hello",
+        connected_integrations=["gmail", "hubspot", "apollo"],
+        requires_action=False,
+    )
+    names = {row["function"]["name"] for row in visible}
+    assert stats["visibleTools"] >= 2
+    assert "hubspot_search_contacts" in names or "apollo_search_people" in names
+
+
 def test_narrow_tools_focuses_on_mentioned_connector():
     tools = [
         _tool("assistant_connector_status"),

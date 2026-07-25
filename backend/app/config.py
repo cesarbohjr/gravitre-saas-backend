@@ -140,6 +140,14 @@ class Settings(BaseSettings):
             "unified_turn_task_model_tier",
         ),
     )
+    # QA-only: allow X-Gravitre-QA-Force-Tool / UNIFIED_TURN_QA_FORCE_TOOL when set per request.
+    unified_turn_qa_hooks_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "UNIFIED_TURN_QA_HOOKS_ENABLED",
+            "unified_turn_qa_hooks_enabled",
+        ),
+    )
     rag_uploads_bucket: str = "rag-uploads"
     rag_store_raw_files: bool = True
     blob_read_write_token: str = ""

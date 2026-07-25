@@ -67,6 +67,8 @@ class UnifiedTurnShadowResult:
     fallthrough_reason: str | None = None
     # Org connector inventory snapshot at turn time (audit/debug).
     connected_integrations: list[str] = field(default_factory=list)
+    qa_force_tool: str | None = None
+    qa_overrode_model_tool: str | None = None
 
     def to_audit_payload(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -261,6 +263,7 @@ async def run_unified_turn_shadow(
     connected_integrations: list[str] | None,
     client: Any = None,
     settings: Settings | None = None,
+    qa_force_tool: str | None = None,
 ) -> UnifiedTurnShadowResult:
     """One model call; does not execute tools (Phase 4 may serve text to the user)."""
     active = settings or get_settings()
@@ -503,18 +506,35 @@ async def run_unified_turn_shadow(
         connected_integrations=list(connected),
     )
 
-    if tool_calls:
-        tc = tool_calls[0]
-        tool_name = str(tc.function.name or "")
-        args = {}
-        try:
-            parsed = json.loads(tc.function.arguments or "{}")
-            if isinstance(parsed, dict):
-                args = parsed
-        except json.JSONDecodeError:
+    from app.services.unified_turn_qa_hooks import (
+        registry_tool_for_force,
+        resolve_qa_force_tool,
+    )
+
+    forced = resolve_qa_force_tool(active, header_value=qa_force_tool)
+    if tool_calls or forced:
+        if forced:
+            try:
+                tool_name, invoke, args = registry_tool_for_force(registry, forced)
+            except ValueError as exc:
+                result.outcome_kind = "error"
+                result.error = str(exc)[:500]
+                return result
+            result.qa_force_tool = forced
+            if tool_calls:
+                result.qa_overrode_model_tool = str(tool_calls[0].function.name or "")
+        else:
+            tc = tool_calls[0]
+            tool_name = str(tc.function.name or "")
             args = {}
-        spec = registry._specs.get(tool_name)  # noqa: SLF001
-        invoke = str(getattr(spec, "invoke_action", "") or "") if spec else ""
+            try:
+                parsed = json.loads(tc.function.arguments or "{}")
+                if isinstance(parsed, dict):
+                    args = parsed
+            except json.JSONDecodeError:
+                args = {}
+            spec = registry._specs.get(tool_name)  # noqa: SLF001
+            invoke = str(getattr(spec, "invoke_action", "") or "") if spec else ""
         from app.services.chat_write_intent import evaluate_connector_tool_proposal
 
         review = evaluate_connector_tool_proposal(
@@ -526,7 +546,7 @@ async def run_unified_turn_shadow(
         if review.action == "clarify":
             result.outcome_kind = "clarifying_question"
             result.user_message = review.clarify_message
-            if content:
+            if content and not forced:
                 result.user_message = f"{content.strip()}\n\n{review.clarify_message}"
             return result
         tool_name = review.tool_name or tool_name
@@ -539,7 +559,7 @@ async def run_unified_turn_shadow(
         result.tool_invoke_action = invoke or None
         result.tool_arguments = args
         result.requires_write_approval = bool(requires_write)
-        if content:
+        if content and not forced:
             result.user_message = finalize_user_facing_message(
                 content, context="unified_turn_shadow_tool_preamble"
             )
@@ -709,6 +729,7 @@ async def apply_unified_turn_live(
     environment_name: str = "production",
     mode_key: str | None = None,
     classification: dict[str, Any] | None = None,
+    qa_force_tool: str | None = None,
 ) -> dict[str, Any] | None:
     """Phase 4: run unified turn and map to a stop_pipeline turn when safe.
 
@@ -781,6 +802,7 @@ async def apply_unified_turn_live(
         connected_integrations=connected_integrations,
         client=client,
         settings=active,
+        qa_force_tool=qa_force_tool,
     )
     if result.outcome_kind in {"skipped", "error"}:
         _mark_live_fallthrough(result, f"outcome_{result.outcome_kind}")

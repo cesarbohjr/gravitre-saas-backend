@@ -333,6 +333,69 @@ async def test_run_unified_turn_shadow_tool_proposal():
 
 
 @pytest.mark.asyncio
+async def test_run_unified_turn_shadow_qa_force_clarifies_send_vs_batch():
+    mock_tc = SimpleNamespace(
+        function=SimpleNamespace(
+            name="gmail_messages_send",
+            arguments='{"to":"demo@example.com","subject":"Hi","body":"Test"}',
+        )
+    )
+    mock_client = _mock_stream_client(tool_calls=[mock_tc])
+    mock_router = MagicMock()
+    mock_router._openai = mock_client
+
+    batch_spec = MagicMock(invoke_action="gmail.messages.batch")
+    send_spec = MagicMock(invoke_action="gmail.messages.send")
+    mock_registry = MagicMock()
+    mock_registry.get_tools_for_agent.return_value = []
+    mock_registry._specs = {
+        "gmail_messages_batch": batch_spec,
+        "gmail_messages_send": send_spec,
+    }
+
+    settings = MagicMock(
+        unified_turn_shadow_enabled=True,
+        unified_turn_shadow_max_tools=24,
+        unified_turn_embedding_tool_retrieval=False,
+        unified_turn_task_max_tools=16,
+        unified_turn_task_model_tier="",
+        unified_turn_qa_hooks_enabled=True,
+        openai_api_key="sk-test",
+    )
+
+    with patch(
+        "app.services.unified_turn_reasoning_service.get_tool_registry",
+        return_value=mock_registry,
+    ), patch(
+        "app.services.unified_turn_reasoning_service.get_model_router",
+        return_value=mock_router,
+    ), patch(
+        "app.services.unified_turn_reasoning_service.narrow_tools_for_turn",
+        return_value=([{"type": "function"}], {"visibleTools": 1}),
+    ), patch(
+        "app.services.unified_turn_reasoning_service.tool_requires_user_write_approval",
+        return_value=(True, "write", "gmail"),
+    ):
+        result = await run_unified_turn_shadow(
+            org_id="org",
+            user_id="user",
+            conversation_id="conv",
+            message='Send email to demo@example.com with subject "Hi" and body "Test"',
+            task_state={},
+            conversation_history=[],
+            connected_integrations=["gmail"],
+            settings=settings,
+            qa_force_tool="gmail.messages.batch",
+        )
+
+    assert result.outcome_kind == "clarifying_question"
+    assert result.qa_force_tool == "gmail.messages.batch"
+    assert result.qa_overrode_model_tool == "gmail_messages_send"
+    assert "Send email" in result.user_message
+    assert "Batch modify" in result.user_message
+
+
+@pytest.mark.asyncio
 async def test_apply_unified_live_pending_unrelated_uses_hold_prompt():
     state = {
         "pending_task": {
