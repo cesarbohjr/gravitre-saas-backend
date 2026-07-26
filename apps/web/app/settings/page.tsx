@@ -1522,6 +1522,59 @@ function MesonAddonsSettings({ isAdmin }: { isAdmin: boolean }) {
   )
 }
 
+function SoftUsageMeter({
+  label,
+  used,
+  included,
+  unit,
+  hint,
+  note,
+}: {
+  label: string
+  used: number
+  included?: number | null
+  unit?: string
+  hint?: string
+  note?: string
+}) {
+  const hasLimit = typeof included === "number" && included > 0
+  const pct = hasLimit ? Math.min(100, (used / included) * 100) : 0
+
+  return (
+    <div className="flex flex-col rounded-2xl border border-border/70 bg-card/80 p-4">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        {hasLimit ? (
+          <span className="text-xs tabular-nums text-muted-foreground">{Math.round(pct)}%</span>
+        ) : null}
+      </div>
+      <div className="mb-3 flex items-baseline gap-1.5">
+        <p className="text-2xl font-semibold tracking-tight tabular-nums text-foreground">
+          {used.toLocaleString()}
+        </p>
+        {hasLimit ? (
+          <p className="text-sm tabular-nums text-muted-foreground">
+            / {included.toLocaleString()}
+            {unit ? ` ${unit}` : ""}
+          </p>
+        ) : unit ? (
+          <p className="text-sm text-muted-foreground">{unit}</p>
+        ) : null}
+      </div>
+      {hasLimit ? (
+        <div className="h-1.5 overflow-hidden rounded-full bg-muted/80">
+          <div
+            className={cn("h-full rounded-full", pct >= 90 ? "bg-amber-500" : "bg-primary/70")}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      ) : null}
+      {note ? <p className="mt-2 text-[11px] font-medium text-amber-700 dark:text-amber-400">{note}</p> : null}
+      {hint ? <p className="mt-2 text-[11px] leading-snug text-muted-foreground">{hint}</p> : null}
+    </div>
+  )
+}
+
 function BillingUsageSettings() {
   const { data, isLoading, mutate } = useSWR("/api/settings/billing-usage", apiFetcher, {
     revalidateOnFocus: false,
@@ -1532,8 +1585,6 @@ function BillingUsageSettings() {
   const showResearch = Boolean(usage.research_lookups_billing_visible)
   const researchUsed = totals.research_lookups ?? 0
   const researchIncluded = usage.included_research_lookups ?? 0
-  const researchRemaining =
-    usage.remaining_research_lookups ?? Math.max(researchIncluded - researchUsed, 0)
   const researchOverage = usage.overage_research_lookups ?? 0
   const outputOverageUsd = Number(usage.overage_cost_usd ?? 0)
   const researchOverageUsd = Number(usage.overage_research_cost_usd ?? 0)
@@ -1541,64 +1592,61 @@ function BillingUsageSettings() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 p-4">
+      <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-foreground">Outputs this cycle</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Included: {usage.included_outputs ?? "Unlimited"} | Overage: {usage.overage_outputs ?? 0}
-          </p>
+          <p className="text-sm text-muted-foreground">Usage for the current billing cycle</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => mutate()}>
           Refresh
         </Button>
       </div>
-      {showResearch ? (
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-sm font-medium text-foreground">Research Lookups this cycle</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Used {researchUsed} · Included {researchIncluded} · Remaining {researchRemaining} ·
-            Overage {researchOverage} @ ${(usage.research_lookup_overage_rate_usd ?? 0.35).toFixed(2)}
-            /lookup
-          </p>
-          <p className="text-xs text-muted-foreground mt-2">
-            Separate from AI Credits (LLM token usage). Research Lookups bill live internet grounding only.
-          </p>
-        </div>
-      ) : null}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground uppercase">Outputs</p>
-          <p className="text-xl font-semibold mt-1">{totals.outputs.toLocaleString()}</p>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground uppercase">Workflow Runs</p>
-          <p className="text-xl font-semibold mt-1">{totals.workflow_runs.toLocaleString()}</p>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground uppercase">API Calls</p>
-          <p className="text-xl font-semibold mt-1">{totals.api_calls.toLocaleString()}</p>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground uppercase">AI Tokens</p>
-          <p className="text-xl font-semibold mt-1">{totals.ai_tokens.toLocaleString()}</p>
-          <p className="text-xs text-muted-foreground mt-1">LLM usage — not Research Lookups</p>
-        </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <SoftUsageMeter
+          label="Outputs"
+          used={totals.outputs}
+          included={usage.included_outputs}
+          unit="outputs"
+          note={
+            usage.overage_outputs
+              ? `${usage.overage_outputs} overage`
+              : undefined
+          }
+        />
+        <SoftUsageMeter label="Workflow Runs" used={totals.workflow_runs} unit="runs" />
+        <SoftUsageMeter label="API Calls" used={totals.api_calls} unit="calls" />
+        <SoftUsageMeter
+          label="AI Credits"
+          used={totals.ai_tokens}
+          included={usage.ai_credits_included}
+          unit="credits"
+          hint="LLM tokens only — separate from Research Lookups"
+        />
         {showResearch ? (
-          <div className="rounded-lg border border-border bg-card p-4 md:col-span-2">
-            <p className="text-xs text-muted-foreground uppercase">Research Lookups</p>
-            <p className="text-xl font-semibold mt-1">{researchUsed.toLocaleString()}</p>
-          </div>
+          <SoftUsageMeter
+            label="Research Lookups"
+            used={researchUsed}
+            included={researchIncluded}
+            unit="lookups"
+            hint="Live internet research — billed separately from AI credits"
+            note={
+              researchOverage
+                ? `${researchOverage} overage @ $${(usage.research_lookup_overage_rate_usd ?? 0.35).toFixed(2)}/lookup`
+                : undefined
+            }
+          />
         ) : null}
       </div>
-      <div className="rounded-lg border border-border bg-card p-4">
-        <p className="text-xs text-muted-foreground uppercase">Estimated overage charge</p>
-        <p className="text-2xl font-semibold mt-1">${totalEstimatedOverage.toFixed(2)}</p>
+
+      <div className="rounded-2xl border border-border/70 bg-card/80 p-4">
+        <p className="text-sm font-medium text-foreground">Estimated overage</p>
+        <p className="mt-1 text-2xl font-semibold tabular-nums">${totalEstimatedOverage.toFixed(2)}</p>
         {showResearch && researchOverageUsd > 0 ? (
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="mt-1 text-[11px] text-muted-foreground">
             Includes ${researchOverageUsd.toFixed(2)} research lookup overage
           </p>
         ) : null}
-        {isLoading && <p className="text-xs text-muted-foreground mt-2">Loading usage...</p>}
+        {isLoading ? <p className="mt-2 text-xs text-muted-foreground">Loading usage…</p> : null}
       </div>
     </div>
   )

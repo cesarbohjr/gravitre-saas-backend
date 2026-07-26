@@ -54,7 +54,6 @@ import {
   Clock,
   ExternalLink,
   Sparkles,
-  ArrowUpRight,
   Crown,
   TrendingUp,
   Shield,
@@ -84,7 +83,23 @@ function formatInvoiceAmount(cents: number | undefined, currency = "usd") {
   }).format(cents / 100)
 }
 
-function emptyUsageMetrics(planCode: string) {
+type UsageMetricColor = "blue" | "emerald" | "purple" | "amber"
+
+type UsageMetric = {
+  name: string
+  used: number
+  limit: number
+  icon: typeof Zap
+  color: UsageMetricColor
+  /** Short unit for the “of X …” line, e.g. “credits”. */
+  unit?: string
+  /** Quiet clarification under the meter — never part of the big number. */
+  hint?: string
+  /** Optional overage / status chip. */
+  note?: string
+}
+
+function emptyUsageMetrics(planCode: string): UsageMetric[] {
   const limits = planLimitsFor(planCode)
   return [
     {
@@ -92,20 +107,17 @@ function emptyUsageMetrics(planCode: string) {
       used: 0,
       limit: Math.max(limits.workflowRuns || 1, 1),
       icon: Zap,
-      color: "blue" as const,
-      trend: "",
-      trendUp: true,
-      unit: undefined as string | undefined,
+      color: "blue",
+      unit: "runs",
     },
     {
       name: "AI Credits",
       used: 0,
       limit: Math.max(limits.aiCredits || 1, 1),
       icon: Sparkles,
-      color: "purple" as const,
-      trend: "",
-      trendUp: true,
-      unit: "LLM tokens — not Research Lookups",
+      color: "purple",
+      unit: "credits",
+      hint: "LLM tokens only — separate from Research Lookups",
     },
   ]
 }
@@ -252,39 +264,36 @@ function BillingPageInner() {
   const safeBurnAt = (elapsedWeeks: number) =>
     Math.round(WORKFLOW_LIMIT * (Math.min(elapsedWeeks, WEEKS_IN_PERIOD) / WEEKS_IN_PERIOD))
 
-  const resolvedUsageMetrics = usageFromApi
+  const resolvedUsageMetrics: UsageMetric[] = usageFromApi
     ? [
         {
           name: "Workflow Runs",
           used: usageFromApi.totals.workflow_runs ?? 0,
           limit: coalesceLimit(usageFromApi.workflow_runs_included, planLimits.workflowRuns),
           icon: Zap,
-          color: "blue" as const,
-          trend: "",
-          trendUp: true,
-          unit: undefined as string | undefined,
+          color: "blue",
+          unit: "runs",
         },
         {
           name: "AI Credits",
           used: usageFromApi.totals.ai_tokens ?? 0,
           limit: coalesceLimit(usageFromApi.ai_credits_included, planLimits.aiCredits),
           icon: Sparkles,
-          color: "purple" as const,
-          trend: "",
-          trendUp: true,
-          unit: "LLM tokens — not Research Lookups",
+          color: "purple",
+          unit: "credits",
+          hint: "LLM tokens only — separate from Research Lookups",
         },
         {
           name: "Outputs",
           used: usageFromApi.totals.outputs ?? 0,
           limit: coalesceLimit(usageFromApi.included_outputs, planLimits.outputs),
           icon: HardDrive,
-          color: "amber" as const,
-          trend: usageFromApi.overage_outputs
+          color: "amber",
+          unit: "outputs",
+          hint: "Delivered work units included in your plan",
+          note: usageFromApi.overage_outputs
             ? `${usageFromApi.overage_outputs} overage @ $${(usageFromApi.output_overage_rate_usd ?? planLimits.outputOverageUsd ?? 0).toFixed(2)}`
-            : "",
-          trendUp: false,
-          unit: "delivered work units",
+            : undefined,
         },
         ...(showResearchBilling
           ? [
@@ -297,11 +306,11 @@ function BillingPageInner() {
                 ),
                 icon: Globe,
                 color: "emerald" as const,
-                trend: usageFromApi.overage_research_lookups
+                unit: "lookups",
+                hint: "Live internet research calls",
+                note: usageFromApi.overage_research_lookups
                   ? `${usageFromApi.overage_research_lookups} overage`
-                  : "",
-                trendUp: false,
-                unit: "live internet research",
+                  : undefined,
               },
             ]
           : []),
@@ -606,65 +615,66 @@ function BillingPageInner() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {resolvedUsageMetrics.map((metric, i) => {
                   const percentage =
                     metric.limit > 0 ? Math.min(100, (metric.used / metric.limit) * 100) : 0
-                  const colors = colorClasses[metric.color as keyof typeof colorClasses]
+                  const colors = colorClasses[metric.color]
                   const displayValue = animatedValues[metric.name] ?? 0
-                  
+                  const pctLabel = metric.limit > 0 ? `${Math.round(percentage)}%` : "—"
+
                   return (
-                    <div 
+                    <div
                       key={metric.name}
                       className={cn(
-                        "group relative overflow-hidden rounded-2xl border border-border bg-card p-5 transition-all duration-500 hover:shadow-xl hover:shadow-black/5 hover:-translate-y-1",
-                        mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                        "relative flex flex-col rounded-2xl border border-border/70 bg-card/80 p-4 transition-opacity duration-500",
+                        mounted ? "opacity-100" : "opacity-0",
                       )}
-                      style={{ transitionDelay: `${300 + i * 100}ms` }}
+                      style={{ transitionDelay: `${200 + i * 60}ms` }}
                     >
-                      {/* Gradient overlay */}
-                      <div className={cn("absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-500", colors.gradient)} />
-                      
-                      <div className="relative">
-                        {/* Header */}
-                        <div className="flex items-center justify-between mb-4">
-                          <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110", colors.bg)}>
-                            <metric.icon className={cn("h-5 w-5", colors.text)} />
-                          </div>
-                          <div className={cn(
-                            "flex items-center gap-1 text-xs font-medium",
-                            metric.trendUp ? "text-emerald-500" : "text-muted-foreground"
-                          )}>
-                            {metric.trendUp && <ArrowUpRight className="h-3 w-3" />}
-                            {metric.trend}
+                      <div className="mb-3 flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", colors.bg)}>
+                              <metric.icon className={cn("h-4 w-4", colors.text)} />
+                            </div>
+                            <p className="truncate text-sm font-medium text-foreground">{metric.name}</p>
                           </div>
                         </div>
-
-                        {/* Value */}
-                        <div className="mb-4">
-                          <p className="text-3xl font-bold text-foreground tracking-tight tabular-nums">
-                            {displayValue.toLocaleString()}{"unit" in metric && metric.unit ? ` ${metric.unit}` : ""}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            of {metric.limit.toLocaleString()}{"unit" in metric && metric.unit ? ` ${metric.unit}` : ""} {metric.name.toLowerCase()}
-                          </p>
-                        </div>
-
-                        {/* Progress bar */}
-                        <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                          <div 
-                            className={cn(
-                              "h-full rounded-full transition-all duration-1000 ease-out",
-                              colors.bar,
-                              percentage > 80 ? "animate-pulse" : ""
-                            )}
-                            style={{ 
-                              width: mounted ? `${Math.min(percentage, 100)}%` : '0%',
-                              transitionDelay: `${500 + i * 100}ms`
-                            }}
-                          />
-                        </div>
+                        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{pctLabel}</span>
                       </div>
+
+                      <div className="mb-3 flex items-baseline gap-1.5">
+                        <p className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+                          {displayValue.toLocaleString()}
+                        </p>
+                        <p className="text-sm text-muted-foreground tabular-nums">
+                          / {metric.limit.toLocaleString()}
+                          {metric.unit ? ` ${metric.unit}` : ""}
+                        </p>
+                      </div>
+
+                      <div className="mt-auto h-1.5 overflow-hidden rounded-full bg-muted/80">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all duration-700 ease-out",
+                            percentage >= 90 ? "bg-amber-500" : colors.bar,
+                          )}
+                          style={{
+                            width: mounted ? `${Math.min(percentage, 100)}%` : "0%",
+                            transitionDelay: `${350 + i * 60}ms`,
+                          }}
+                        />
+                      </div>
+
+                      {metric.note ? (
+                        <p className="mt-2 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                          {metric.note}
+                        </p>
+                      ) : null}
+                      {metric.hint ? (
+                        <p className="mt-2 text-[11px] leading-snug text-muted-foreground">{metric.hint}</p>
+                      ) : null}
                     </div>
                   )
                 })}
