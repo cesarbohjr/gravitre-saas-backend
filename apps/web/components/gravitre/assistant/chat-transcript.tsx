@@ -283,7 +283,7 @@ export function ChatTranscript({
                               const raw = (href || "").trim()
                               // Legacy CTAs used ?conversation=; AI page hydrates via ?c=.
                               const normalized = raw.startsWith("/ai?conversation=")
-                                ? raw.replace("/ai?conversation=", "/ai?c=", 1)
+                                ? raw.replace("/ai?conversation=", "/ai?c=")
                                 : raw
                               if (normalized.startsWith("/")) {
                                 return (
