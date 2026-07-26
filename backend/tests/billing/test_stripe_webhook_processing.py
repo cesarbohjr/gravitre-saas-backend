@@ -122,6 +122,64 @@ def test_normalize_billing_plan_code_rejects_free():
     assert stripe_webhook_router._normalize_billing_plan_code("control") == "control"
 
 
+def test_plan_from_subscription_items_skips_metered_and_reads_command():
+    settings = _settings()
+    settings.stripe_metered_price_id_command = "price_command_metered"
+    data = {
+        "items": {
+            "data": [
+                {
+                    "price": {
+                        "id": "price_command_metered",
+                        "recurring": {"usage_type": "metered"},
+                    },
+                    "quantity": 1,
+                },
+                {
+                    "price": {
+                        "id": "price_command_m",
+                        "recurring": {"usage_type": "licensed"},
+                    },
+                    "quantity": 1,
+                },
+            ]
+        }
+    }
+    assert stripe_webhook_router._plan_from_subscription_items(settings, data) == "command"
+
+
+def test_checkout_completed_writes_plan_code_from_metadata(monkeypatch):
+    import sys
+    import types
+
+    client = _FakeClient()
+    settings = _settings()
+    org_id = "22222222-2222-2222-2222-222222222222"
+    metadata = {"org_id": org_id, "plan_code": "command", "user_id": ""}
+    data = {
+        "id": "cs_test",
+        "customer": "cus_cmd",
+        "subscription": "sub_cmd",
+        "metadata": metadata,
+    }
+    fake_entitlements = types.ModuleType("app.marketplace.entitlements")
+    fake_entitlements.fulfill_entitlement_from_checkout = lambda *_a, **_k: None
+    monkeypatch.setitem(sys.modules, "app.marketplace.entitlements", fake_entitlements)
+
+    stripe_webhook_router._process_stripe_event(
+        client,
+        settings,
+        "checkout.session.completed",
+        data,
+        metadata,
+        org_id,
+        {"id": "evt_checkout_cmd", "type": "checkout.session.completed"},
+    )
+
+    assert client._store["subscriptions"][0]["tier"] == "command"
+    assert client._store["org_billing"][0]["plan_code"] == "command"
+
+
 def test_process_subscription_updated_with_incomplete_status():
     client = _FakeClient()
     settings = _settings()

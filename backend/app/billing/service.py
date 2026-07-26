@@ -377,7 +377,8 @@ def get_base_plan_for_org(client: Client, org_id: str) -> dict[str, Any]:
     resolved = _resolve_plan(plans, plan_code)
     if resolved:
         return _normalize_plan_row(resolved)
-    fallback = _resolve_plan(DEFAULT_PLANS, DEFAULT_PLAN_CODE)
+    # Prefer the org's plan code from in-code defaults when billing_plans is incomplete.
+    fallback = _resolve_plan(DEFAULT_PLANS, plan_code) or _resolve_plan(DEFAULT_PLANS, DEFAULT_PLAN_CODE)
     return _normalize_plan_row(fallback or next(iter(DEFAULT_PLANS.values())))
 
 

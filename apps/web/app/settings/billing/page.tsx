@@ -215,7 +215,12 @@ function BillingPageInner() {
     { revalidateOnFocus: false },
   )
   const subscription = overview?.subscription
-  const currentTier = (subscription?.tier ?? "node") as PlanCode
+  // Prefer usage.tier (org_billing-backed) over subscriptions.tier, which can lag after upgrades.
+  const currentTier = (
+    overview?.usage?.tier ||
+    subscription?.tier ||
+    "node"
+  ).toLowerCase() as PlanCode
   const currentPlan = getPlan(currentTier)
   const subStatus = subscription?.status ?? "active"
   const liveInvoices =

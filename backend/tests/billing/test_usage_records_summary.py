@@ -52,3 +52,21 @@ def test_command_output_overage_rate(mock_get_plan):
     assert summary["overage_outputs"] == 10
     assert summary["overage_cost_usd"] == 15.00
     assert summary["output_overage_rate_usd"] == 1.50
+
+
+@patch("app.billing.usage_records_summary.get_plan_for_org")
+def test_stale_subscription_tier_does_not_override_org_plan(mock_get_plan):
+    mock_get_plan.return_value = {
+        "code": "command",
+        "features": {"outputs_per_month": 120},
+        "overage_rates": {"output": 1.50},
+        "workflow_runs_included": 10000,
+        "ai_credits_included": 15000,
+    }
+    client = _usage_rows(("outputs", 1))
+
+    summary = summarize_usage_records_billing(client, "org-1", tier="node")
+
+    assert summary["tier"] == "command"
+    assert summary["workflow_runs_included"] == 10000
+    assert summary["ai_credits_included"] == 15000
