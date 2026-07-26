@@ -8,9 +8,10 @@ Resolve order for sensitive WorkflowFieldSpec mentions:
 Naming note: STA-316 “Option B” meant opaque-token embeddings. STA-320 “Option B”
 means the non-PII role/title heuristic. They are unrelated product choices.
 
-Capability caveat (do not misread as fuzzy person-name disambiguation):
-opaque-alias vectors match previously indexed *normalized* mentions via exact
-HMAC tokens (e.g. "sarah"↔"sarah"). They do NOT fuzzy-resolve "Sarah"↔"Sarah Smith".
+Capability note: opaque-alias vectors still match via exact HMAC tokens. Person-name
+fuzzy disambiguation (e.g. ``Sarah`` → ``Sarah Smith``) uses rule-based
+``org_entity_resolution_records`` lookup — including first-name aliases promoted
+from confirmed tool output — before optional Memory embeddings.
 """
 from __future__ import annotations
 
@@ -20,7 +21,11 @@ from typing import Any
 from app.config import Settings
 from app.connectors.action_catalog.models import WorkflowFieldSpec
 from app.core.logging import get_logger
-from app.services.entity_resolution_store import lookup_resolutions, normalize_alias
+from app.services.entity_resolution_store import (
+    lookup_fuzzy_resolutions,
+    lookup_resolutions,
+    normalize_alias,
+)
 from app.services.memory_entity_embeddings_service import search_memory_by_mention
 from app.services.memory_entity_embeddings_settings import (
     load_memory_entity_embeddings_settings,
@@ -84,6 +89,29 @@ async def resolve_sensitive_field_mention(
             status="ambiguous",
             candidates=tuple((h.entity_id, h.alias_normalized) for h in exact[:5]),
             reason="entity_resolution_ambiguous",
+        )
+
+    # 1b) Rule-based fuzzy alias (first-name token, prefix) — no Memory opt-in.
+    fuzzy = lookup_fuzzy_resolutions(
+        client,
+        org_id,
+        hint,
+        integration=integration,
+        entity_type=entity_type if entity_type != "entity" else None,
+        limit=10,
+    )
+    fuzzy = [h for h in fuzzy if h.entity_type == entity_type or entity_type == "entity"]
+    if len(fuzzy) == 1:
+        return MemoryResolveResult(
+            status="bound",
+            entity_id=fuzzy[0].entity_id,
+            reason="entity_resolution_fuzzy",
+        )
+    if len(fuzzy) > 1:
+        return MemoryResolveResult(
+            status="ambiguous",
+            candidates=tuple((h.entity_id, h.alias_normalized) for h in fuzzy[:5]),
+            reason="entity_resolution_fuzzy_ambiguous",
         )
 
     # 2) STA-320 Option B — role/title cues (no embedding, no Memory opt-in).

@@ -81,7 +81,7 @@ def test_dry_run_no_stripe_calls(monkeypatch):
         },
     )
     result = billing_sync._attach_plan_for_org(_settings(), "org-1", dry_run=True)
-    assert result["action"] == "would_attach"
+    assert result["ai_credits"]["action"] == "would_attach"
     assert called["retrieve"] is False
 
 
@@ -89,7 +89,11 @@ def test_bulk_counts(monkeypatch):
     monkeypatch.setattr(
         billing_sync,
         "_attach_plan_for_org",
-        lambda settings, org_id, dry_run=True: {"org_id": org_id, "action": "would_attach"},
+        lambda settings, org_id, dry_run=True: {
+            "org_id": org_id,
+            "ai_credits": {"action": "would_attach"},
+            "research_lookups": {"action": "would_attach"},
+        },
     )
     monkeypatch.setattr(
         billing_sync,
@@ -118,5 +122,5 @@ def test_bulk_counts(monkeypatch):
 
     summary = asyncio.run(_run())
     assert summary["total"] == 2
-    assert summary["attached"] == 2
+    assert summary["attached"] == 4
     assert summary["failed"] == 0

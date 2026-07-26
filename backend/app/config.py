@@ -400,7 +400,7 @@ class Settings(BaseSettings):
     # Optional Tavily API key for assistant search_web tool (STA-148).
     tavily_api_key: str = ""
     internet_research_enabled: bool = Field(
-        default=False,
+        default=True,
         validation_alias=AliasChoices("INTERNET_RESEARCH_ENABLED", "internet_research_enabled"),
     )
     # Internet research provider: google (Grounded Generation) | tavily
@@ -455,8 +455,9 @@ class Settings(BaseSettings):
     browser_agent_enabled: bool = True
     browser_agent_interact_enabled: bool = False
     # Module B phase 2 — cross-conversation ledger recall via entity_resolution_store.
-    # OFF by default until phase-1 live 4/4 + confidence-propose fix are confirmed.
-    cross_conversation_ledger_memory_enabled: bool = False
+    cross_conversation_ledger_memory_enabled: bool = True
+    # Heuristic prompt-injection detection on assistant/agent user turns (audit + hardening).
+    prompt_injection_detection_enabled: bool = True
     # Assistant context window + summarization (STA-146).
     assistant_context_window_tokens: int = 128_000
     assistant_context_summarize_threshold: float = 0.8

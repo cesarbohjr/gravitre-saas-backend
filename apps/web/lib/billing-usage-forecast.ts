@@ -1,4 +1,5 @@
 import type { BillingOverview } from "@/types/api"
+import { planLimitsFor } from "@/lib/plan-limits"
 
 export type UsageMetricRow = {
   name: string
@@ -14,23 +15,21 @@ export type ForecastPoint = {
   safe: number
 }
 
-export function buildUsageMetricsFromOverview(
-  overview: BillingOverview | undefined,
-  planWorkflowLimit = 50000,
-  planAiLimit = 2000,
-): UsageMetricRow[] {
+export function buildUsageMetricsFromOverview(overview: BillingOverview | undefined): UsageMetricRow[] {
   const usage = overview?.usage
   if (!usage) return []
+  const tier = usage.tier ?? overview?.subscription?.tier ?? "node"
+  const fallback = planLimitsFor(tier)
   return [
     {
       name: "Workflow Runs",
       used: usage.totals.workflow_runs ?? 0,
-      limit: usage.included_outputs ?? planWorkflowLimit,
+      limit: usage.workflow_runs_included ?? fallback.workflowRuns,
     },
     {
       name: "AI Credits",
       used: usage.totals.ai_tokens ?? 0,
-      limit: planAiLimit,
+      limit: usage.ai_credits_included ?? fallback.aiCredits,
     },
     {
       name: "API Calls",
@@ -71,7 +70,13 @@ export function buildUsageForecast(params: {
   researchOverageUsd: number
   totalEstimatedOverageUsd: number
 } {
-  const workflowLimit = params.workflowLimit ?? params.overview?.usage?.included_outputs ?? 50000
+  const usage = params.overview?.usage
+  const tier = usage?.tier ?? params.overview?.subscription?.tier ?? "node"
+  const fallback = planLimitsFor(tier)
+  const workflowLimit =
+    params.workflowLimit ??
+    usage?.workflow_runs_included ??
+    fallback.workflowRuns
   const weeksInPeriod = 4.345
   const periodEndLabel =
     params.periodEndLabel ??
@@ -94,7 +99,7 @@ export function buildUsageForecast(params: {
     return acc
   })
   const workflowUsed =
-    params.overview?.usage?.totals.workflow_runs ??
+    usage?.totals.workflow_runs ??
     workflowCumulative[workflowCumulative.length - 1] ??
     0
   const weeksElapsed = Math.max(1, weeklyData.length)
@@ -128,7 +133,6 @@ export function buildUsageForecast(params: {
       ? { label: "Approaching limit", accent: "text-warning", soft: "bg-warning/10", dot: "bg-warning" }
       : { label: "On track", accent: "text-success", soft: "bg-success/10", dot: "bg-success" }
 
-  const usage = params.overview?.usage
   const showResearch = Boolean(usage?.research_lookups_billing_visible)
   const researchOverageUsd = showResearch ? Number(usage?.overage_research_cost_usd ?? 0) : 0
   const outputOverageUsd = Number(usage?.overage_cost_usd ?? 0)

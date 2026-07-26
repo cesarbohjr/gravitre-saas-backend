@@ -113,6 +113,109 @@ def upsert_resolution(
         return False
 
 
+def _mention_tokens(mention: str) -> list[str]:
+    return [t for t in normalize_alias(mention).split() if t]
+
+
+def _fuzzy_alias_matches(mention_tokens: list[str], alias_normalized: str) -> bool:
+    """Rule-based fuzzy match: first-name token, prefix, or leading token subset."""
+    if not mention_tokens or not alias_normalized:
+        return False
+    alias_tokens = alias_normalized.split()
+    if not alias_tokens:
+        return False
+    mention_norm = " ".join(mention_tokens)
+    if alias_normalized == mention_norm:
+        return False  # exact path handles equality
+    if alias_normalized.startswith(mention_norm + " "):
+        return True
+    if len(mention_tokens) == 1 and len(alias_tokens) >= 2 and alias_tokens[0] == mention_tokens[0]:
+        return True
+    if len(mention_tokens) <= len(alias_tokens) and alias_tokens[: len(mention_tokens)] == mention_tokens:
+        return True
+    return False
+
+
+def lookup_fuzzy_resolutions(
+    client: Any,
+    org_id: str,
+    mention: str,
+    *,
+    integration: str | None = None,
+    entity_type: str | None = None,
+    limit: int = 20,
+) -> list[ResolutionHit]:
+    """Lookup durable resolutions via rule-based fuzzy alias matching.
+
+    Matches first-name tokens to full names (``sarah`` → ``sarah smith``), prefix
+    aliases, and leading token subsets. Does not use embeddings.
+    """
+    mention_tokens = _mention_tokens(mention)
+    if not org_id or not mention_tokens:
+        return []
+    mention_norm = " ".join(mention_tokens)
+    try:
+        or_parts: list[str] = []
+        if len(mention_tokens) == 1:
+            token = mention_tokens[0]
+            or_parts.append(f"alias_normalized.eq.{token}")
+            or_parts.append(f"alias_normalized.ilike.{token} %")
+        else:
+            or_parts.append(f"alias_normalized.ilike.{mention_norm}%")
+            or_parts.append(f"alias_normalized.ilike.{mention_tokens[0]} %")
+        query = (
+            client.table(TABLE)
+            .select("alias_normalized, entity_type, entity_id, integration, source, confidence")
+            .eq("org_id", org_id)
+            .or_(",".join(or_parts))
+            .order("confidence", desc=True)
+            .limit(max(limit * 3, 30))
+        )
+        if integration:
+            query = query.eq("integration", str(integration).strip().lower())
+        if entity_type and entity_type != "entity":
+            query = query.eq("entity_type", entity_type)
+        resp = query.execute()
+        hits: list[ResolutionHit] = []
+        for row in resp.data or []:
+            alias = str(row.get("alias_normalized") or "")
+            if not _fuzzy_alias_matches(mention_tokens, alias):
+                continue
+            raw_conf = row.get("confidence")
+            hits.append(
+                ResolutionHit(
+                    alias_normalized=alias,
+                    entity_type=str(row.get("entity_type") or ""),
+                    entity_id=str(row.get("entity_id") or ""),
+                    integration=str(row.get("integration") or ""),
+                    source=str(row.get("source") or "org entity cache"),
+                    confidence=float(raw_conf) if raw_conf is not None else 0.0,
+                )
+            )
+        # Dedupe by entity_id keeping highest confidence.
+        best: dict[str, ResolutionHit] = {}
+        for hit in hits:
+            prev = best.get(hit.entity_id)
+            if prev is None or hit.confidence > prev.confidence:
+                best[hit.entity_id] = hit
+        ranked = sorted(best.values(), key=lambda h: h.confidence, reverse=True)
+        return ranked[:limit]
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("entity_resolution_fuzzy_lookup_skipped org_id=%s error=%s", org_id, exc)
+        return []
+
+
+def first_name_aliases(full_name: str) -> list[str]:
+    """Return normalized first-token aliases for multi-word person names."""
+    tokens = _mention_tokens(full_name)
+    if len(tokens) < 2:
+        return []
+    first = tokens[0]
+    if len(first) < 2:
+        return []
+    return [first]
+
+
 def lookup_resolutions(
     client: Any,
     org_id: str,
@@ -191,10 +294,11 @@ def promote_from_session(
 
     # name / email aliases → entity_id when known
     if eid and attrs.get("name"):
+        name_s = str(attrs["name"])
         if upsert_resolution(
             client,
             org_id=org_id,
-            alias=str(attrs["name"]),
+            alias=name_s,
             entity_type="named_entity",
             entity_id=eid,
             integration=integration,
@@ -203,6 +307,19 @@ def promote_from_session(
             conversation_id=conversation_id,
         ):
             written += 1
+        for first_alias in first_name_aliases(name_s):
+            if upsert_resolution(
+                client,
+                org_id=org_id,
+                alias=first_alias,
+                entity_type="named_entity",
+                entity_id=eid,
+                integration=integration,
+                source=f"{source}_first_name",
+                confidence=min(confidence, 0.78),
+                conversation_id=conversation_id,
+            ):
+                written += 1
     if eid and attrs.get("email"):
         if upsert_resolution(
             client,

@@ -102,16 +102,6 @@ def _current_month_start_iso() -> str:
     return month_start.isoformat()
 
 
-def _included_outputs_for_tier(tier: str) -> int | None:
-    mapping: dict[str, int | None] = {
-        "free": 200,
-        "node": 1000,
-        "control": 10000,
-        "command": None,
-    }
-    return mapping.get((tier or "free").strip().lower(), 200)
-
-
 @router.get("")
 async def get_settings_route(
     _user: Annotated[dict, Depends(get_current_user)],
@@ -702,7 +692,7 @@ async def get_billing_usage_route(
                 "overage_outputs": 0,
                 "overage_cost_usd": 0,
                 "internet_research_enabled": bool(settings.internet_research_enabled),
-                "research_lookups_billing_visible": False,
+                "research_lookups_billing_visible": bool(settings.internet_research_enabled),
             }
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 

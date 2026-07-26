@@ -4,8 +4,8 @@ Uses existing ``entity_resolution_store`` / ``org_entity_resolution_records`` so
 Slack channel or email recipient confirmed in conversation A can be recalled in
 conversation B. Does **not** invent a parallel memory system.
 
-Gated by ``Settings.cross_conversation_ledger_memory_enabled`` (default False).
-Do not enable in production until Module B phase-1 live 4/4 is green.
+Gated by ``Settings.cross_conversation_ledger_memory_enabled`` (default True).
+Uses durable ``org_entity_resolution_records`` — no parallel memory store.
 """
 from __future__ import annotations
 
@@ -14,7 +14,11 @@ from typing import Any
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.confidence_honesty import CONFIDENCE_SOURCE_HEURISTIC, estimated_confidence
-from app.services.entity_resolution_store import lookup_resolutions, upsert_resolution
+from app.services.entity_resolution_store import (
+    lookup_fuzzy_resolutions,
+    lookup_resolutions,
+    upsert_resolution,
+)
 from app.services.parameter_ledger import ParameterLedger, get_ledger
 
 logger = get_logger(__name__)
@@ -106,6 +110,17 @@ def recall_slots_into_ledger(
     if not client or not org_id or not aliases:
         return ledger
     hits = lookup_resolutions(client, org_id, aliases, limit=20)
+    seen_aliases = {h.alias_normalized for h in hits}
+    for alias in aliases:
+        for hit in lookup_fuzzy_resolutions(
+            client,
+            org_id,
+            alias,
+            limit=10,
+        ):
+            if hit.alias_normalized not in seen_aliases:
+                hits.append(hit)
+                seen_aliases.add(hit.alias_normalized)
     for hit in hits:
         if hit.confidence < 0.7:
             continue

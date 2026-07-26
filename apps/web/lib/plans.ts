@@ -1,9 +1,8 @@
 import { Zap, Sliders, Crown, Rocket, Sparkles, type LucideIcon } from "lucide-react"
 
-// Single source of truth for subscription plans, keyed by the tier code the
-// backend uses (see backend/app/billing/service.py DEFAULT_PLANS and the
-// SubscriptionTier type). Both the billing page and the trial UpgradeModal read
-// from here so plan names, prices, and feature bullets never drift apart.
+import { researchLookupsIncludedLabel } from "@/lib/internet-research-pricing"
+
+// Single source of truth for subscription plans
 
 export type PlanCode = "free" | "node" | "control" | "command" | "enterprise"
 
@@ -44,7 +43,9 @@ export const PLAN_CATALOG: Record<PlanCode, Plan> = {
     price: 49,
     annualPrice: 41,
     tagline: "For individual operators",
-    features: ["1 core user", "10 workflows", "Essential connectors"],
+    features: ["1 core user", "10 workflows", "Essential connectors", researchLookupsIncludedLabel("node")].filter(
+      Boolean
+    ),
     icon: Zap,
     selectable: true,
   },
@@ -54,7 +55,9 @@ export const PLAN_CATALOG: Record<PlanCode, Plan> = {
     price: 129,
     annualPrice: 107,
     tagline: "For growing teams",
-    features: ["5 lite seats", "Meson builder", "Advanced connectors"],
+    features: ["5 lite seats", "Meson builder", "Advanced connectors", researchLookupsIncludedLabel("control")].filter(
+      Boolean
+    ),
     icon: Sliders,
     selectable: true,
     popular: true,
@@ -65,7 +68,9 @@ export const PLAN_CATALOG: Record<PlanCode, Plan> = {
     price: 299,
     annualPrice: 249,
     tagline: "For scaling organizations",
-    features: ["25 lite seats", "SSO & API access", "Unlimited workflows"],
+    features: ["Unlimited lite seats", "SSO & API access", "120 workflows", researchLookupsIncludedLabel("command")].filter(
+      Boolean
+    ),
     icon: Crown,
     selectable: true,
   },
@@ -75,7 +80,7 @@ export const PLAN_CATALOG: Record<PlanCode, Plan> = {
     price: null,
     annualPrice: null,
     tagline: "For large deployments",
-    features: ["Custom seats", "Dedicated support", "Custom security review"],
+    features: ["Custom seats", "Dedicated support", "Custom security review", "200 research lookups included / month"],
     icon: Rocket,
     selectable: false,
   },

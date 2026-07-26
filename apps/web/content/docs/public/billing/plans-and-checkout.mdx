@@ -27,6 +27,19 @@ next:
 
 Pricing shown in-app at **Settings → Billing** and on the [pricing page](/pricing).
 
+## Internet research lookups
+
+When internet research is enabled for your workspace, each plan includes a monthly allotment of **live web research lookups** (assistant `search_web` / adaptive research cascade). Overage is metered separately from AI credits.
+
+| Plan | Included lookups / month | Overage |
+|------|--------------------------|---------|
+| **Node** | 10 | $0.35 / lookup |
+| **Control** | 60 | $0.35 / lookup |
+| **Command** | 200 | $0.35 / lookup |
+| **Enterprise** | 200 (default) | $0.35 / lookup |
+
+Included allotments and overage rates are stored on `billing_plans` and surfaced in **Settings → Billing → Usage**. New subscriptions include the research-lookup metered price at checkout when configured.
+
 ## Trial and access
 
 New orgs start trialing. When the trial ends, the app prompts for upgrade and restricts access until billing is active.

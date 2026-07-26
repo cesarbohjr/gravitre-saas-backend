@@ -247,11 +247,20 @@ def _map_usage_for_billing_status(usage_payload: dict, *, weekly_totals: list[in
             "research_lookups": int(totals.get("research_lookups") or 0),
         },
         "included_outputs": usage_payload.get("included_outputs"),
-        "workflow_runs_included": int(plan.get("workflow_runs_included") or usage_payload.get("included_outputs") or 0),
-        "ai_credits_included": int(plan.get("ai_credits_included") or 0),
+        "workflow_runs_included": int(
+            usage_payload.get("workflow_runs_included")
+            or plan.get("workflow_runs_included")
+            or 0
+        ),
+        "ai_credits_included": int(
+            usage_payload.get("ai_credits_included")
+            or plan.get("ai_credits_included")
+            or 0
+        ),
         "weekly_totals": weekly_totals or [],
         "overage_outputs": int(usage_payload.get("overage_outputs") or 0),
         "overage_cost_usd": float(usage_payload.get("overage_cost_usd") or 0),
+        "output_overage_rate_usd": float(usage_payload.get("output_overage_rate_usd") or 0),
         "included_research_lookups": int(usage_payload.get("included_research_lookups") or 0),
         "remaining_research_lookups": int(usage_payload.get("remaining_research_lookups") or 0),
         "overage_research_lookups": int(usage_payload.get("overage_research_lookups") or 0),
@@ -307,6 +316,12 @@ def _resolve_org_id_from_checkout_metadata(client, metadata: dict) -> str | None
 
 
 def _usage_from_records(client, org_id: str, tier: str | None, *, settings: Settings | None = None) -> dict:
+    from app.billing.plan_rates import (
+        included_ai_credits_for_plan,
+        included_outputs_for_plan,
+        included_workflow_runs_for_plan,
+        overage_usd_per_output,
+    )
     from app.billing.usage_records_summary import summarize_usage_records_billing
 
     try:
@@ -314,13 +329,17 @@ def _usage_from_records(client, org_id: str, tier: str | None, *, settings: Sett
     except RuntimeError:
         now = datetime.now(timezone.utc)
         period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        resolved_tier = str(tier or "free").strip().lower()
         return {
             "period_start": period_start.isoformat(),
-            "tier": tier,
+            "tier": resolved_tier,
             "totals": {"outputs": 0, "workflow_runs": 0, "api_calls": 0, "ai_tokens": 0, "research_lookups": 0},
-            "included_outputs": 1000,
+            "included_outputs": included_outputs_for_plan(None, plan_code=resolved_tier),
+            "workflow_runs_included": included_workflow_runs_for_plan(None, plan_code=resolved_tier),
+            "ai_credits_included": included_ai_credits_for_plan(None, plan_code=resolved_tier),
             "overage_outputs": 0,
             "overage_cost_usd": 0.0,
+            "output_overage_rate_usd": overage_usd_per_output(None),
             "included_research_lookups": 0,
             "remaining_research_lookups": 0,
             "overage_research_lookups": 0,

@@ -54,6 +54,13 @@ jobs:
           SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
         run: python scripts/verify-unified-turn-persona-drift-live.py
 
+      - name: Prompt-injection resistance
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: python scripts/verify-unified-turn-prompt-injection-live.py
+
       - name: Upload battery artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -64,4 +71,5 @@ jobs:
             docs/delivery/conversational-path-battery-live.json
             docs/delivery/unified-turn-phase2-battery-live.json
             docs/delivery/unified-turn-persona-drift-live.json
+            docs/delivery/unified-turn-prompt-injection-live.json
           if-no-files-found: ignore

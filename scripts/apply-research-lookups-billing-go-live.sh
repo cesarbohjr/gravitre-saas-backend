@@ -7,7 +7,7 @@
 #   - Railway CLI logged in (`railway login`) for variable push
 #
 # Does NOT flip INTERNET_RESEARCH_ENABLED or NEXT_PUBLIC_INTERNET_RESEARCH_ENABLED.
-# Does NOT attach metered price to production subscriptions.
+# Subscription attach: POST /api/admin/billing/attach-metered-price (AI credits + research lookups).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

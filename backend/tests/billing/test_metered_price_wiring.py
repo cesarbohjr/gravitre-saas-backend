@@ -14,7 +14,7 @@ from app.config import Settings
 from app.services.stripe_service import create_subscription
 
 
-def _settings(metered: bool, **overrides) -> Settings:
+def _settings(metered: bool, research: bool = False, **overrides) -> Settings:
     base = dict(
         app_env="dev",
         supabase_url="https://test.supabase.co",
@@ -27,6 +27,8 @@ def _settings(metered: bool, **overrides) -> Settings:
     )
     if metered:
         base["stripe_metered_price_id_node"] = "price_node_metered"
+    if research:
+        base["stripe_research_lookup_metered_price_id"] = "price_research_metered"
     base.update(overrides)
     return Settings(**base)
 
@@ -52,6 +54,23 @@ def test_checkout_includes_metered_item_when_configured(monkeypatch):
     # metered item carries no quantity
     metered_item = next(li for li in captured["line_items"] if li["price"] == "price_node_metered")
     assert "quantity" not in metered_item
+
+
+def test_checkout_includes_research_meter_when_configured(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(
+        stripe.checkout.Session, "create", lambda **kw: captured.update(kw) or MagicMock()
+    )
+    create_checkout_session(
+        _settings(metered=True, research=True),
+        "cus_1",
+        "price_node_flat",
+        "http://ok",
+        "http://cancel",
+        {"org_id": "o1"},
+    )
+    prices = [li.get("price") for li in captured["line_items"]]
+    assert prices == ["price_node_flat", "price_node_metered", "price_research_metered"]
 
 
 def test_checkout_flat_only_when_not_configured(monkeypatch):

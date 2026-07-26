@@ -6,6 +6,12 @@ from typing import Any
 
 from supabase import Client
 
+from app.billing.plan_rates import (
+    included_ai_credits_for_plan,
+    included_outputs_for_plan,
+    included_workflow_runs_for_plan,
+    overage_usd_per_output,
+)
 from app.billing.research_lookup_plan_rates import (
     included_research_lookups_for_plan,
     overage_usd_per_research_lookup,
@@ -17,11 +23,6 @@ from app.config import Settings
 def current_month_start_iso() -> str:
     now = datetime.now(timezone.utc)
     return datetime(now.year, now.month, 1, tzinfo=timezone.utc).isoformat()
-
-
-def _included_outputs_for_tier(tier: str | None) -> int | None:
-    mapping = {"free": 1000, "node": 10, "control": 40, "command": 120}
-    return mapping.get(str(tier or "free").lower())
 
 
 def summarize_usage_records_billing(
@@ -59,10 +60,17 @@ def summarize_usage_records_billing(
         if metric in totals:
             totals[metric] += quantity
 
-    included_outputs = _included_outputs_for_tier(resolved_tier)
+    included_outputs = included_outputs_for_plan(plan, plan_code=resolved_tier)
+    output_rate = overage_usd_per_output(plan)
     output_total = totals["outputs"]
-    overage_outputs = max(output_total - included_outputs, 0) if included_outputs is not None else 0
-    overage_cost_usd = round(overage_outputs * 0.01, 2)
+    if included_outputs is None:
+        overage_outputs = 0
+    else:
+        overage_outputs = max(output_total - included_outputs, 0)
+    overage_cost_usd = round(overage_outputs * output_rate, 2)
+
+    workflow_runs_included = included_workflow_runs_for_plan(plan, plan_code=resolved_tier)
+    ai_credits_included = included_ai_credits_for_plan(plan, plan_code=resolved_tier)
 
     included_research = included_research_lookups_for_plan(plan, plan_code=resolved_tier)
     research_rate = overage_usd_per_research_lookup(plan)
@@ -72,7 +80,7 @@ def summarize_usage_records_billing(
     remaining_research = max(included_research - research_total, 0)
 
     internet_research_enabled = bool(
-        settings and getattr(settings, "internet_research_enabled", False)
+        settings and getattr(settings, "internet_research_enabled", True)
     )
 
     return {
@@ -81,8 +89,11 @@ def summarize_usage_records_billing(
         "plan": plan,
         "totals": totals,
         "included_outputs": included_outputs,
+        "workflow_runs_included": workflow_runs_included,
+        "ai_credits_included": ai_credits_included,
         "overage_outputs": overage_outputs,
         "overage_cost_usd": overage_cost_usd,
+        "output_overage_rate_usd": output_rate,
         "included_research_lookups": included_research,
         "remaining_research_lookups": remaining_research,
         "overage_research_lookups": overage_research,

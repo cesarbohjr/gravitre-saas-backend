@@ -935,6 +935,7 @@ export interface BillingUsageResponse {
   weekly_totals?: number[]
   overage_outputs: number
   overage_cost_usd: number
+  output_overage_rate_usd?: number
   included_research_lookups?: number
   remaining_research_lookups?: number
   overage_research_lookups?: number

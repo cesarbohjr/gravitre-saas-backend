@@ -36,7 +36,9 @@ from app.services.ai_guardrails import (
     AIContentFlaggedError,
     AIRateLimitError,
     AIServiceDisabledError,
+    detect_prompt_injection,
     fence_untrusted,
+    injection_hardening_note,
 )
 from app.services.chat_performance import ChatPerfTimer
 from app.services.conversation_context_service import (
@@ -990,7 +992,7 @@ async def assistant_chat(
                             turn_index=len(list((prior or {}).get("recent_user_messages") or [])) + 1,
                         )
                         ledger = get_ledger(merged_state)
-                # Phase 2 (flagged OFF): recall confirmed slots from prior conversations.
+                # Phase 2: recall confirmed slots from prior conversations (when enabled).
                 try:
                     from app.services.cross_conversation_ledger_memory import (
                         feature_enabled as _xconv_enabled,
@@ -1045,6 +1047,20 @@ async def assistant_chat(
             user_id=user_id,
         )
         preferred_persona = (prefs.get("preferred_persona") or "").strip() or None
+
+    if getattr(settings, "prompt_injection_detection_enabled", True):
+        detected, injection_reason = detect_prompt_injection(last_user)
+        if detected:
+            system_prompt = f"{system_prompt}\n\n{injection_hardening_note(injection_reason)}"
+            await _log_assistant_guardrail_event(
+                settings,
+                org_id,
+                "prompt_injection.detected",
+                {
+                    "reason": injection_reason,
+                    "conversation_id": conversation_id,
+                },
+            )
 
     router_ = get_model_router()
     try:

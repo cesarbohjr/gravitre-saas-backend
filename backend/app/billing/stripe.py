@@ -105,15 +105,27 @@ def metered_price_id_for_plan(settings: Settings, plan_code: str | None) -> str 
     return (mapping.get(code or "") or "").strip() or None
 
 
+def research_lookup_metered_price_for_subscription(settings: Settings) -> str | None:
+    """Global metered price for research lookup overage (same price all tiers)."""
+    from app.billing.stripe_research_lookup_metering import research_lookup_metered_price_id
+
+    return research_lookup_metered_price_id(settings) or None
+
+
 def _subscription_line_items(
     settings: Settings,
     price_id: str,
     quantity: int = 1,
 ) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = [{"price": price_id, "quantity": max(quantity, 1)}]
+    attached_prices = {price_id}
     metered = metered_price_id_for_plan(settings, plan_code_for_price(settings, price_id))
-    if metered and metered != price_id:
+    if metered and metered not in attached_prices:
         items.append({"price": metered})
+        attached_prices.add(metered)
+    research_metered = research_lookup_metered_price_for_subscription(settings)
+    if research_metered and research_metered not in attached_prices:
+        items.append({"price": research_metered})
     return items
 
 

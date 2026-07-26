@@ -253,8 +253,8 @@ def structural_checks() -> dict[str, Any]:
         "cross_conversation_memory_module_present": (
             BACKEND / "app/services/cross_conversation_ledger_memory.py"
         ).is_file(),
-        "cross_conversation_memory_flag_default_off": (
-            "cross_conversation_ledger_memory_enabled: bool = False"
+        "cross_conversation_memory_flag_default_on": (
+            "cross_conversation_ledger_memory_enabled: bool = True"
             in (BACKEND / "app/config.py").read_text(encoding="utf-8")
         ),
         "extract_complete_emails_guard": "extract_complete_emails" in clar
@@ -797,7 +797,7 @@ async def main() -> int:
                         "schema_called_before_vendor_extract",
                         "extract_complete_emails_guard",
                         "advisory_plan_first_present",
-                        "cross_conversation_memory_flag_default_off",
+                        "cross_conversation_memory_flag_default_on",
                         "architecture_reference_present",
                     )
                 },
