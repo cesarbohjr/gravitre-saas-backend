@@ -2,10 +2,7 @@ import { Zap, Sliders, Crown, Rocket, Sparkles, type LucideIcon } from "lucide-r
 
 import { researchLookupsIncludedLabel } from "@/lib/internet-research-pricing"
 
-// Single source of truth for subscription plans, keyed by the tier code the
-// backend uses (see backend/app/billing/service.py DEFAULT_PLANS and the
-// SubscriptionTier type). Both the billing page and the trial UpgradeModal read
-// from here so plan names, prices, and feature bullets never drift apart.
+// Single source of truth for subscription plans
 
 export type PlanCode = "free" | "node" | "control" | "command" | "enterprise"
 
@@ -71,7 +68,7 @@ export const PLAN_CATALOG: Record<PlanCode, Plan> = {
     price: 299,
     annualPrice: 249,
     tagline: "For scaling organizations",
-    features: ["25 lite seats", "SSO & API access", "Unlimited workflows", researchLookupsIncludedLabel("command")].filter(
+    features: ["Unlimited lite seats", "SSO & API access", "120 workflows", researchLookupsIncludedLabel("command")].filter(
       Boolean
     ),
     icon: Crown,

@@ -163,14 +163,14 @@ export const addOns = [
   },
   {
     name: "Additional Outputs",
-    price: "$2-$3 each",
-    description: "Pay-as-you-go for extra capacity when needed",
+    price: "$1.50–$2.50 each",
+    description: "Node $2.50 · Control $2.00 · Command $1.50 per output above plan allotment",
     icon: Zap,
   },
   {
     name: "Additional Mesons",
-    price: "$2-$4 each",
-    description: "Build more systems on demand (Control + Command only)",
+    price: "$2.00–$3.00 each",
+    description: "Control $3.00 · Command $2.00 per Meson above plan allotment",
     icon: Blocks,
   },
   ...(SHOW_RESEARCH_LOOKUPS_PRICING
@@ -216,8 +216,8 @@ export const faqs = [
   {
     question: "What happens after I hit my limit?",
     answer: SHOW_RESEARCH_LOOKUPS_PRICING
-      ? `We notify you as you approach your limits. Additional outputs are $2–$3 each. Internet research lookups above your plan allotment are billed at ${formatResearchLookupOveragePrice()}. Upgrade anytime for more included capacity.`
-      : "We'll notify you as you approach your limit. You can purchase additional outputs at $2–$3 each, or upgrade your plan for more capacity.",
+      ? `We notify you as you approach your limits. Additional outputs are $2.50 (Node), $2.00 (Control), or $1.50 (Command) each. Internet research lookups above your plan allotment are billed at ${formatResearchLookupOveragePrice()}. Upgrade anytime for more included capacity.`
+      : "We'll notify you as you approach your limit. Additional outputs are $2.50 (Node), $2.00 (Control), or $1.50 (Command) each, or upgrade your plan for more capacity.",
   },
   {
     question: "Can I cancel anytime?",

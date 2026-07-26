@@ -73,6 +73,7 @@ import { ensureSelectedOrg } from "@/lib/org-context"
 import { SELECTABLE_PLANS, getPlan, formatPlanPrice, planDirection, type PlanCode } from "@/lib/plans"
 import { toast } from "sonner"
 import { buildUsageForecast } from "@/lib/billing-usage-forecast"
+import { planLimitsFor } from "@/lib/plan-limits"
 
 function formatInvoiceAmount(cents: number | undefined, currency = "usd") {
   if (cents == null) return "—"
@@ -209,15 +210,13 @@ function BillingPageInner() {
     })) ?? []
   const invoiceRows = liveInvoices.length > 0 ? liveInvoices : []
   const usageFromApi = overview?.usage
+  const planLimits = planLimitsFor(usageFromApi?.tier ?? currentTier)
   const showResearchBilling = Boolean(usageFromApi?.research_lookups_billing_visible)
   const usageForecast = useMemo(
     () =>
       buildUsageForecast({
         overview,
-        workflowLimit:
-          usageFromApi?.workflow_runs_included ??
-          usageFromApi?.included_outputs ??
-          undefined,
+        workflowLimit: usageFromApi?.workflow_runs_included ?? planLimits.workflowRuns,
         periodEndLabel: subscription?.current_period_end
           ? new Date(subscription.current_period_end).toLocaleDateString(undefined, {
               month: "short",
@@ -225,7 +224,7 @@ function BillingPageInner() {
             })
           : undefined,
       }),
-    [overview, subscription?.current_period_end, usageFromApi?.workflow_runs_included, usageFromApi?.included_outputs],
+    [overview, subscription?.current_period_end, usageFromApi?.workflow_runs_included, currentTier, planLimits.workflowRuns],
   )
   const {
     workflowUsed,
@@ -247,12 +246,7 @@ function BillingPageInner() {
         {
           name: "Workflow Runs",
           used: usageFromApi.totals.workflow_runs ?? 0,
-          limit: Math.max(
-            usageFromApi.workflow_runs_included ??
-              usageFromApi.included_outputs ??
-              WORKFLOW_LIMIT,
-            1,
-          ),
+          limit: Math.max(usageFromApi.workflow_runs_included ?? planLimits.workflowRuns, 1),
           icon: Zap,
           color: "blue" as const,
           trend: "",
@@ -262,19 +256,31 @@ function BillingPageInner() {
         {
           name: "AI Credits",
           used: usageFromApi.totals.ai_tokens ?? 0,
-          limit: Math.max(usageFromApi.ai_credits_included ?? 2000, 1),
+          limit: Math.max(usageFromApi.ai_credits_included ?? planLimits.aiCredits, 1),
           icon: Sparkles,
           color: "purple" as const,
           trend: "",
           trendUp: true,
           unit: "LLM tokens — not Research Lookups",
         },
+        {
+          name: "Outputs",
+          used: usageFromApi.totals.outputs ?? 0,
+          limit: Math.max(usageFromApi.included_outputs ?? planLimits.outputs ?? 0, 1),
+          icon: HardDrive,
+          color: "amber" as const,
+          trend: usageFromApi.overage_outputs
+            ? `${usageFromApi.overage_outputs} overage @ $${(usageFromApi.output_overage_rate_usd ?? planLimits.outputOverageUsd ?? 0).toFixed(2)}`
+            : "",
+          trendUp: false,
+          unit: "delivered work units",
+        },
         ...(showResearchBilling
           ? [
               {
                 name: "Research Lookups",
                 used: usageFromApi.totals.research_lookups ?? 0,
-                limit: usageFromApi.included_research_lookups ?? 0,
+                limit: usageFromApi.included_research_lookups ?? planLimits.researchLookups,
                 icon: Globe,
                 color: "emerald" as const,
                 trend: usageFromApi.overage_research_lookups
