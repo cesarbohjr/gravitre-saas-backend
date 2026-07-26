@@ -1,9 +1,9 @@
 {
   "record": "research_lookups_go_live_status",
-  "updated_at": "2026-07-19T04:14:00Z",
-  "sequencing": "flag_gated — flip INTERNET_RESEARCH_ENABLED + NEXT_PUBLIC_INTERNET_RESEARCH_ENABLED only after live verification PASS",
+  "updated_at": "2026-07-26T04:56:00Z",
+  "sequencing": "Checkout + admin attach now wire STRIPE_RESEARCH_LOOKUP_METERED_PRICE_ID; bulk attach via POST /api/admin/billing/attach-all-metered-prices",
   "do_not_before_live_pass": [
-    "attach STRIPE_RESEARCH_LOOKUP_METERED_PRICE_ID to production subscriptions"
+    "Run attach-all-metered-prices (dry_run=false) on prod after deploy — attaches research lookup meter to existing subscriptions"
   ],
   "go_live_together": [
     "INTERNET_RESEARCH_ENABLED=true (Railway)",
@@ -53,6 +53,15 @@
       "railway_redeploy": "65db4596-ec3b-4808-9c70-8dbe7b8c1c61 SUCCESS (tip); health git_sha 71511c19…",
       "vercel_prod_url": "https://web-a390gmxjv-gravitre-ai.vercel.app",
       "flipped_at": "2026-07-19T04:20:00Z"
+    },
+    "6_subscription_attach_wiring": {
+      "status": "SHIPPED_CODE",
+      "detail": "2026-07-26 — checkout/Payment Element subscriptions include STRIPE_RESEARCH_LOOKUP_METERED_PRICE_ID; attach-metered-price + attach-all attach AI credits + research lookups; admin sync-usage reports both metrics. Ops: POST /api/admin/billing/attach-all-metered-prices {\"dry_run\":false} after deploy.",
+      "files": [
+        "backend/app/billing/stripe.py",
+        "backend/app/billing/stripe_research_lookup_metering.py",
+        "backend/app/routers/billing_sync.py"
+      ]
     }
   },
   "migration_files": [
