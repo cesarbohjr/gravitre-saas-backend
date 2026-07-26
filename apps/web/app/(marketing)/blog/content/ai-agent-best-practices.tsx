@@ -21,9 +21,9 @@ export const aiAgentBestPracticesPost: BlogPost = {
   displayDate: "February 20, 2026",
   readTime: "11 min read",
   heroImage: "/images/blog/ai-agent-best-practices-hero.png",
-  heroGradient: "from-emerald-50 via-teal-50/40 to-zinc-100",
+  heroGradient: "from-stone-100 via-zinc-50 to-emerald-50/30",
   heroAlt:
-    "Reliability flow diagram showing scoped agent, connector check, and dry run converging on a human approval gate, then execute with verified, failed, observed, and learned outcomes into audit.",
+    "Editorial poster with a large numeral 10 and the practices Scope, Connect, Approve, and Prove.",
   keywords: [
     "AI agents best practices",
     "reliable AI agents",
