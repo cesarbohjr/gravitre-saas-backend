@@ -4,7 +4,9 @@ import {
   Building2,
   CreditCard,
   DollarSign,
+  FileText,
   Key,
+  Lock,
   Shield,
   Sparkles,
   Users,
@@ -24,14 +26,20 @@ export type SettingsSectionId =
   | "billing-usage"
   | "billing"
   | "webhooks"
+  | "permissions"
+  | "approvals"
+  | "audit"
 
 export interface SettingsSection {
   id: SettingsSectionId
   title: string
   description: string
   icon: LucideIcon
-  /** Prefer href so standalone routes (e.g. /settings/billing) keep a working left nav. */
+  /** Prefer href so standalone routes keep a working left nav. */
   href?: string
+  /** Hide from the primary list; still valid as activeSection. */
+  footer?: boolean
+  adminOnly?: boolean
 }
 
 export const SETTINGS_SECTIONS: SettingsSection[] = [
@@ -112,17 +120,64 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     icon: Webhook,
     href: "/settings?section=webhooks",
   },
+  {
+    id: "permissions",
+    title: "Role permissions",
+    description: "What each workspace role can access",
+    icon: Shield,
+    href: "/settings/team/permissions",
+    footer: true,
+  },
+  {
+    id: "approvals",
+    title: "Human-in-the-loop",
+    description: "Require approval before high-impact actions run",
+    icon: Lock,
+    href: "/settings/approvals",
+    footer: true,
+    adminOnly: true,
+  },
+  {
+    id: "audit",
+    title: "Audit trail",
+    description: "Review security and compliance events",
+    icon: FileText,
+    href: "/audit",
+    footer: true,
+    adminOnly: true,
+  },
 ]
 
-export const ADMIN_ONLY_SETTINGS_SECTIONS = new Set<SettingsSectionId>([
-  "organization",
-  "ai-models",
-  "security",
-  "api-keys",
-  "team",
-  "webhooks",
-  "lite-seats",
-  "meson-addons",
-  "billing-usage",
+export const PRIMARY_SETTINGS_SECTIONS = SETTINGS_SECTIONS.filter((section) => !section.footer)
+export const FOOTER_SETTINGS_SECTIONS = SETTINGS_SECTIONS.filter((section) => section.footer)
+
+export const ADMIN_ONLY_SETTINGS_SECTIONS = new Set<SettingsSectionId>(
+  SETTINGS_SECTIONS.filter((section) => section.adminOnly !== false && (
+    section.adminOnly ||
+    [
+      "organization",
+      "ai-models",
+      "security",
+      "api-keys",
+      "team",
+      "webhooks",
+      "lite-seats",
+      "meson-addons",
+      "billing-usage",
+      "billing",
+      "approvals",
+      "audit",
+    ].includes(section.id)
+  )).map((section) => section.id),
+)
+
+export const WIDE_SETTINGS_SECTIONS = new Set<SettingsSectionId>([
   "billing",
+  "approvals",
+  "permissions",
+  "audit",
 ])
+
+export function settingsHrefForSection(section: SettingsSectionId): string {
+  return SETTINGS_SECTIONS.find((row) => row.id === section)?.href || `/settings?section=${section}`
+}
