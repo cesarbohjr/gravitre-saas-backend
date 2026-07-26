@@ -306,3 +306,5 @@ def ensure_founder_admin_access(
         logger.warning("ensure_founder_admin_access platform_admins failed user_id=%s error=%s", uid, exc)
     if org_id:
         promote_user_to_org_owner(client, org_id, uid)
+
+# deploy trigger 20260726T054923Z
