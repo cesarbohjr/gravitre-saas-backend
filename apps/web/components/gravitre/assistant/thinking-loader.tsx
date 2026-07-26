@@ -31,8 +31,11 @@ export function GravitreThinkingLoader({
       role="status"
       aria-live="polite"
       aria-label={title}
-      className={cn("inline-flex items-center justify-center text-foreground", className)}
-      style={{ width: size, height: size }}
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center text-foreground",
+        className,
+      )}
+      style={{ width: size, height: size, minWidth: size, minHeight: size }}
     >
       <svg
         viewBox="0 0 200 200"

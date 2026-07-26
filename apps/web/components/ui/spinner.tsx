@@ -7,7 +7,7 @@ function Spinner({
   ...props
 }: React.ComponentProps<"div"> & { size?: GravitreeLoaderSize }) {
   return (
-    <div role="status" aria-label="Loading" className={cn("inline-flex", className)} {...props}>
+    <div role="status" aria-label="Loading" className={cn("inline-flex shrink-0 items-center justify-center", className)} {...props}>
       <GravitreeLoader size={size} />
     </div>
   )

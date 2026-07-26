@@ -22,7 +22,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react"
-import { GravitreeLoader, LoadingIndicator } from "@/components/gravitre/gravitree-loader"
+import { CenteredLoader, LoadingIndicator } from "@/components/gravitre/gravitree-loader"
 import { GravitreThinkingLoader } from "@/components/gravitre/assistant/thinking-loader"
 import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 import { cn } from "@/lib/utils"
@@ -475,9 +475,7 @@ export default function AgentChatPage({
   if (agentLoading && !agent) {
     return (
       <AppShell title="Agent chat">
-        <div className="flex h-full items-center justify-center">
-          <GravitreeLoader size="md" />
-        </div>
+        <CenteredLoader size="md" label="Loading agent chat" fill="parent" />
       </AppShell>
     )
   }

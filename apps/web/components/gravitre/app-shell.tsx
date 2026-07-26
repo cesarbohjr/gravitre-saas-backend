@@ -14,7 +14,7 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useGlobalWorkShortcuts } from "@/hooks/use-global-work-shortcuts"
 import { onboardingApi } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
-import { GravitreeLoader, LoadingIndicator } from "@/components/gravitre/gravitree-loader"
+import { CenteredLoader, LoadingIndicator } from "@/components/gravitre/gravitree-loader"
 import { X } from "lucide-react"
 import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 import { Button } from "@/components/ui/button"
@@ -299,27 +299,15 @@ export function AppShell({ children, title }: AppShellProps) {
   // Show loading only on the first auth/billing bootstrap — not on background revalidation.
   const awaitingInitialBilling = Boolean(user) && billingLoading && billingStatusData === undefined
   if (loading || awaitingInitialBilling) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <GravitreeLoader size="lg" />
-      </div>
-    )
+    return <CenteredLoader size="lg" label="Loading workspace" fill="viewport" />
   }
 
   if (!user) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <GravitreeLoader size="lg" />
-      </div>
-    )
+    return <CenteredLoader size="lg" label="Loading workspace" fill="viewport" />
   }
 
   if (billingHardBlock && !billingError && !pathname.startsWith("/settings/billing") && !pathname.startsWith("/pricing")) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <GravitreeLoader size="lg" />
-      </div>
-    )
+    return <CenteredLoader size="lg" label="Loading workspace" fill="viewport" />
   }
 
   // If billing API errored, log warning but allow through (fail open)
