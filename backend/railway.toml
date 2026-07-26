@@ -10,7 +10,7 @@
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 # Limit auto-deploy to backend service files (Root Directory = backend).
-watchPatterns = ["app/**", "requirements*.txt", "Dockerfile", "railway.toml", "pyproject.toml"]
+watchPatterns = ["app/**", "requirements*.txt", "Dockerfile", "railway.toml", "pyproject.toml", ".railway-deploy-stamp"]
 
 # Deploy gate: canvas Module C + meson edit path (2026-07-25).
 [deploy]

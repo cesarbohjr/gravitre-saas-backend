@@ -1,4 +1,7 @@
-"""Plan allotments and overage rates — read from billing_plans (DB source of truth)."""
+"""Plan allotments and overage rates — read from billing_plans (DB source of truth).
+
+Canonical values: supabase/migrations/20260729120000_seed_all_billing_plans.sql
+"""
 from __future__ import annotations
 
 from typing import Any
