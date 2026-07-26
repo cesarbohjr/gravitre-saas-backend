@@ -57,15 +57,16 @@ Examples:
 
 ---
 
-## Related capability caveat (Memory Phase 1)
+## Related capability note (Memory Phase 1)
 
-Option B Memory embeddings match **previously indexed normalized mentions via
+Option B Memory embeddings still match **previously indexed normalized mentions via
 exact HMAC opaque tokens** — e.g. indexed `"sarah"` matches query `"sarah"`.
 
-They do **not** fuzzy-resolve `"Sarah"` ↔ `"Sarah Smith"`. Fuzzy / alias
-expansion remains local rule-based resolution and `org_entity_resolution_records`.
+Person-name fuzzy disambiguation (e.g. `"Sarah"` → `"Sarah Smith"`) uses
+rule-based `org_entity_resolution_records` lookup — including first-name aliases
+promoted from confirmed tool output — before optional Memory embeddings.
 
-Do not document or demo Memory Phase 1 as fuzzy person disambiguation.
+Do not document opaque-token Memory alone as fuzzy person disambiguation.
 
 ---
 
@@ -84,7 +85,11 @@ Do not document or demo Memory Phase 1 as fuzzy person disambiguation.
 
 Maintain the batteries listed in `docs/delivery/llm-quality-test-suite.md`. Re-run the **full combined battery** after any change to Module D voice spec, unified-turn prompt assembly, or task model tier — not ad hoc spot checks only.
 
-**Gap:** prompt-injection resistance battery is **not yet implemented** — track before claiming LLM QA complete.
+**Prompt injection resistance:** live battery at
+`scripts/verify-unified-turn-prompt-injection-live.py` (wired in
+`unified-turn-standing-batteries.yml`). Heuristic detection logs
+`prompt_injection.detected` guardrail events and hardens the system prompt on
+assistant turns when enabled.
 
 ## 9. Dependency audit in CI
 

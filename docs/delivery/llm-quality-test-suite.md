@@ -16,7 +16,7 @@ Permanent category **distinct from** connector functional pytest. Run on **every
 
 | Suite | Status | Action |
 |-------|--------|--------|
-| **Prompt injection resistance** | **NOT RUN** | New battery: crafted user content attempting to bypass write-authority / system instructions on unified-turn live path |
+| **Prompt injection resistance** | `scripts/verify-unified-turn-prompt-injection-live.py` | Crafted bypass / system-reveal attempts on unified-turn chat; heuristic detection + no auto-approve leaks |
 | Automated trigger on prompt change | **PARTIAL** | Wire `unified-turn-phase4-cutover.yml` + doc checklist; add path filter on `module_d_unified_voice_spec.py` |
 
 ## Evidence bar
