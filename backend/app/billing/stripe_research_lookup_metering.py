@@ -193,6 +193,56 @@ def report_research_lookup_overage_to_stripe(
     return result
 
 
+def attach_research_lookup_metered_price_to_subscription(
+    org_id: str,
+    subscription_id: str,
+    settings: Settings,
+) -> dict[str, Any]:
+    """Attach the research-lookup overage metered price to a subscription.
+
+    Idempotent: returns already_attached when the price item exists.
+    """
+    from app.billing.stripe_metering import StripeAttachmentError
+
+    _ = org_id
+    metered_price_id = research_lookup_metered_price_id(settings)
+    if not metered_price_id:
+        raise StripeAttachmentError(
+            "STRIPE_RESEARCH_LOOKUP_METERED_PRICE_ID is not configured."
+        )
+    if not (settings.stripe_secret_key or "").strip():
+        raise StripeAttachmentError("STRIPE_SECRET_KEY is not configured")
+
+    stripe.api_key = settings.stripe_secret_key
+    try:
+        subscription = stripe.Subscription.retrieve(subscription_id)
+    except stripe.error.InvalidRequestError as exc:
+        raise StripeAttachmentError(f"subscription_id not found: {subscription_id}") from exc
+    except Exception as exc:  # noqa: BLE001
+        raise StripeAttachmentError(f"Stripe subscription retrieve failed: {exc}") from exc
+
+    items = getattr(getattr(subscription, "items", None), "data", None) or []
+    for item in items:
+        price = getattr(item, "price", None)
+        if price and getattr(price, "id", None) == metered_price_id:
+            return {"status": "already_attached", "item_id": item.id, "metered_price_id": metered_price_id}
+
+    try:
+        new_item = stripe.SubscriptionItem.create(
+            subscription=subscription_id,
+            price=metered_price_id,
+            payment_behavior="default_incomplete",
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise StripeAttachmentError(f"Stripe SubscriptionItem.create failed: {exc}") from exc
+
+    return {
+        "status": "attached",
+        "item_id": new_item.id,
+        "metered_price_id": metered_price_id,
+    }
+
+
 def report_research_lookup_overage_for_active_orgs(
     period_start: date,
     period_end: date,

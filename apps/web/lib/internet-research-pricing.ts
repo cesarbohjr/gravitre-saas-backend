@@ -9,6 +9,7 @@ export const RESEARCH_LOOKUPS_INCLUDED_BY_PLAN = {
   node: 10,
   control: 60,
   command: 200,
+  enterprise: 200,
 } as const
 
 export type ResearchLookupPlanCode = keyof typeof RESEARCH_LOOKUPS_INCLUDED_BY_PLAN

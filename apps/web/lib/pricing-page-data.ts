@@ -16,6 +16,7 @@ import { MARKETING_COPY } from "@/lib/marketing-copy"
 import { SHOW_RESEARCH_LOOKUPS_PRICING } from "@/lib/marketing-flags"
 import {
   formatResearchLookupOveragePrice,
+  researchLookupsIncludedLabel,
 } from "@/lib/internet-research-pricing"
 import { PLAN_CATALOG, type PlanCode } from "@/lib/plans"
 
@@ -73,6 +74,9 @@ export const tiers = [
       "3 app integrations",
       "Insights & connector health",
       "Community support",
+      ...(SHOW_RESEARCH_LOOKUPS_PRICING
+        ? [researchLookupsIncludedLabel("node") || "10 research lookups / month"]
+        : []),
     ],
     cta: "Start 7-day free trial",
     highlighted: false,
@@ -102,6 +106,9 @@ export const tiers = [
       "Full campaign outputs",
       "Slack delivery",
       "Priority support",
+      ...(SHOW_RESEARCH_LOOKUPS_PRICING
+        ? [researchLookupsIncludedLabel("control") || "60 research lookups / month"]
+        : []),
     ],
     cta: "Start 7-day free trial",
     highlighted: true,
@@ -132,6 +139,9 @@ export const tiers = [
       "Cross-department agents",
       "Model registry & training",
       "Dedicated support",
+      ...(SHOW_RESEARCH_LOOKUPS_PRICING
+        ? [researchLookupsIncludedLabel("command") || "200 research lookups / month"]
+        : []),
     ],
     cta: "Start 7-day free trial",
     highlighted: false,
@@ -176,6 +186,17 @@ export const addOns = [
 ]
 
 export const faqs = [
+  ...(SHOW_RESEARCH_LOOKUPS_PRICING
+    ? [
+        {
+          question: "What is an internet research lookup?",
+          answer:
+            "A research lookup is one live web search Gravitre runs when you ask for current external information — for example via assistant web search or the adaptive research cascade. Each plan includes a monthly allotment; lookups above that are billed at " +
+            formatResearchLookupOveragePrice() +
+            ".",
+        },
+      ]
+    : []),
   {
     question: "What counts as an output?",
     answer: "An output is a complete piece of work: a full email sequence, a campaign brief, a segment list, a report, or an automation workflow. Simple edits or previews don't count—only delivered or exported work.",
@@ -194,7 +215,9 @@ export const faqs = [
   },
   {
     question: "What happens after I hit my limit?",
-    answer: "We'll notify you as you approach your limit. You can purchase additional outputs at $2–$3 each, or upgrade your plan for more capacity.",
+    answer: SHOW_RESEARCH_LOOKUPS_PRICING
+      ? `We notify you as you approach your limits. Additional outputs are $2–$3 each. Internet research lookups above your plan allotment are billed at ${formatResearchLookupOveragePrice()}. Upgrade anytime for more included capacity.`
+      : "We'll notify you as you approach your limit. You can purchase additional outputs at $2–$3 each, or upgrade your plan for more capacity.",
   },
   {
     question: "Can I cancel anytime?",
@@ -250,5 +273,21 @@ export const aiCapabilityRows: PlanComparisonRow[] = [
   { feature: "Multi-step execution", node: false, control: true, command: true },
   { feature: "Custom agent training", node: false, control: false, command: true },
   { feature: "Cross-department agents", node: false, control: false, command: true },
+  ...(SHOW_RESEARCH_LOOKUPS_PRICING
+    ? [
+        {
+          feature: "Internet research lookups / month",
+          node: "10 included",
+          control: "60 included",
+          command: "200 included",
+        },
+        {
+          feature: "Research lookup overage",
+          node: formatResearchLookupOveragePrice(),
+          control: formatResearchLookupOveragePrice(),
+          command: formatResearchLookupOveragePrice(),
+        },
+      ]
+    : []),
   ...MARKETING_COPY.pricing.intelligenceRows,
 ]

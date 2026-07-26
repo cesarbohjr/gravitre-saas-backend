@@ -702,7 +702,7 @@ async def get_billing_usage_route(
                 "overage_outputs": 0,
                 "overage_cost_usd": 0,
                 "internet_research_enabled": bool(settings.internet_research_enabled),
-                "research_lookups_billing_visible": False,
+                "research_lookups_billing_visible": bool(settings.internet_research_enabled),
             }
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 

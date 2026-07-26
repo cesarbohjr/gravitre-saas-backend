@@ -19,8 +19,10 @@ from pydantic import BaseModel
 from app.auth.dependencies import require_admin
 from app.billing.service import get_current_period, get_supabase_client
 from app.billing.stripe_research_lookup_metering import (
+    attach_research_lookup_metered_price_to_subscription,
     report_research_lookup_overage_for_active_orgs,
     report_research_lookup_overage_to_stripe,
+    research_lookup_metered_price_id,
 )
 from app.billing.stripe_metering import (
     StripeAttachmentError,
@@ -99,33 +101,98 @@ def _lookup_org_subscription(client: Any, org_id: str) -> dict[str, Any] | None:
     return None
 
 
+def _attach_research_lookup_for_org(
+    settings: Settings,
+    org_id: str,
+    subscription_id: str,
+    *,
+    dry_run: bool,
+) -> dict[str, Any]:
+    price_id = research_lookup_metered_price_id(settings)
+    base = {
+        "org_id": org_id,
+        "subscription_id": subscription_id,
+        "metered_price_id": price_id or None,
+        "metric": "research_lookups",
+        "dry_run": dry_run,
+    }
+    if not price_id:
+        return {**base, "error": "research_lookup_metered_price_not_configured"}
+    if dry_run:
+        return {**base, "action": "would_attach"}
+    try:
+        result = attach_research_lookup_metered_price_to_subscription(
+            org_id, subscription_id, settings
+        )
+        return {**base, **result, "dry_run": False}
+    except StripeAttachmentError as exc:
+        logger.warning(
+            "attach research lookup meter failed org_id=%s error=%s", org_id, str(exc)
+        )
+        return {**base, "error": str(exc), "dry_run": False}
+
+
 def _attach_plan_for_org(settings: Settings, org_id: str, *, dry_run: bool) -> dict[str, Any]:
-    """Dry-run or live metered-price attachment for one org."""
+    """Dry-run or live metered-price attachment for one org (AI credits + research lookups)."""
     client = get_supabase_client(settings)
     billing = _lookup_org_subscription(client, org_id)
     if not billing:
         return {"org_id": org_id, "error": "no_subscription", "dry_run": dry_run}
     subscription_id = str(billing["stripe_subscription_id"])
     plan_code = str(billing.get("plan_code") or "node")
+    ai_result: dict[str, Any]
     try:
         metered_price_id = metered_price_id_for_plan_code(settings, plan_code)
     except StripeAttachmentError as exc:
-        return {
+        ai_result = {
             "org_id": org_id,
             "subscription_id": subscription_id,
             "plan_code": plan_code,
+            "metric": "ai_credits",
             "error": str(exc),
             "dry_run": dry_run,
         }
-    already = {"org_id": org_id, "subscription_id": subscription_id, "plan_code": plan_code, "metered_price_id": metered_price_id, "dry_run": dry_run}
-    if dry_run:
-        return {**already, "action": "would_attach"}
-    try:
-        result = attach_metered_price_to_subscription(org_id, subscription_id, plan_code, settings)
-        return {**already, **result, "dry_run": False}
-    except StripeAttachmentError as exc:
-        logger.warning("attach metered price failed org_id=%s error=%s", org_id, str(exc))
-        return {**already, "error": str(exc), "dry_run": False}
+    else:
+        ai_result = {
+            "org_id": org_id,
+            "subscription_id": subscription_id,
+            "plan_code": plan_code,
+            "metered_price_id": metered_price_id,
+            "metric": "ai_credits",
+            "dry_run": dry_run,
+        }
+        if dry_run:
+            ai_result["action"] = "would_attach"
+        else:
+            try:
+                attach_result = attach_metered_price_to_subscription(
+                    org_id, subscription_id, plan_code, settings
+                )
+                ai_result = {**ai_result, **attach_result, "dry_run": False}
+            except StripeAttachmentError as exc:
+                logger.warning("attach metered price failed org_id=%s error=%s", org_id, str(exc))
+                ai_result = {**ai_result, "error": str(exc), "dry_run": False}
+
+    research_result = _attach_research_lookup_for_org(
+        settings, org_id, subscription_id, dry_run=dry_run
+    )
+    combined_error = None
+    if ai_result.get("error") and research_result.get("error"):
+        combined_error = "ai_credits_and_research_attach_failed"
+    elif ai_result.get("error"):
+        combined_error = ai_result["error"]
+    elif research_result.get("error"):
+        combined_error = research_result["error"]
+
+    return {
+        "org_id": org_id,
+        "subscription_id": subscription_id,
+        "plan_code": plan_code,
+        "dry_run": dry_run,
+        "ai_credits": ai_result,
+        "research_lookups": research_result,
+        **({"error": combined_error} if combined_error else {}),
+    }
 
 
 def _set_hard_budget_override(settings: Settings, org_id: str, enabled: bool | None) -> dict[str, Any]:
@@ -182,9 +249,13 @@ async def sync_usage_admin(
             detail="You can only sync usage for your own organization",
         )
     period_start, period_end = get_current_period()
-    return report_usage_to_stripe(
+    ai_result = report_usage_to_stripe(
         org_id, period_start, period_end, settings, dry_run=body.dry_run
     )
+    research_result = report_research_lookup_overage_to_stripe(
+        org_id, period_start, period_end, settings, dry_run=body.dry_run
+    )
+    return {"ai_credits": ai_result, "research_lookups": research_result}
 
 
 @admin_router.post("/budget-enforcement")
@@ -264,13 +335,17 @@ async def attach_all_metered_prices_admin(
         details.append(res)
         if res.get("error"):
             failed += 1
-        elif res.get("status") == "already_attached" or res.get("action") == "would_attach":
-            if res.get("status") == "already_attached":
+            continue
+        for metric in ("ai_credits", "research_lookups"):
+            part = res.get(metric) if isinstance(res.get(metric), dict) else {}
+            if part.get("error"):
+                continue
+            if part.get("status") == "already_attached":
                 already_attached += 1
-            elif body.dry_run:
+            elif part.get("status") == "attached" or (
+                body.dry_run and part.get("action") == "would_attach"
+            ):
                 attached += 1
-        elif res.get("status") == "attached":
-            attached += 1
         await asyncio.sleep(1)
 
     return {
