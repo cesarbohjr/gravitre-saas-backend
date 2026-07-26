@@ -82,9 +82,10 @@ def _normalize_tier(raw_tier: str | None) -> str:
     return "free"
 
 
-def _plan_from_price(settings: Settings, price_id: str | None) -> str:
+def _plan_from_price(settings: Settings, price_id: str | None) -> str | None:
+    """Map a Stripe price id to a plan code. None when unknown (do not invent free/node)."""
     if not price_id:
-        return "free"
+        return None
     price_to_plan = {
         settings.stripe_price_id_node_monthly: "node",
         settings.stripe_price_id_node_annual: "node",
@@ -96,8 +97,43 @@ def _plan_from_price(settings: Settings, price_id: str | None) -> str:
         settings.stripe_price_id_growth: "control",
         settings.stripe_price_id_scale: "command",
     }
-    plan = price_to_plan.get(price_id)
+    # Ignore blank env mappings so "" keys cannot collide and swallow real price ids.
+    cleaned = {str(k): v for k, v in price_to_plan.items() if str(k or "").strip()}
+    plan = cleaned.get(price_id)
+    if not plan:
+        return None
     return _normalize_tier(plan)
+
+
+def _plan_from_subscription_items(settings: Settings, data: dict[str, Any]) -> str | None:
+    """Pick the first known *base* plan price from subscription items (skip metered)."""
+    items = (data.get("items") or {}).get("data") or []
+    for item in items:
+        price = item.get("price") if isinstance(item, dict) else None
+        price_id = (price or {}).get("id") if isinstance(price, dict) else None
+        if isinstance(price, dict):
+            recurring = price.get("recurring") if isinstance(price.get("recurring"), dict) else {}
+            if str(recurring.get("usage_type") or "").lower() == "metered":
+                continue
+        mapped = _plan_from_price(settings, price_id)
+        if mapped and mapped != "free":
+            return mapped
+    return None
+
+
+def _resolve_plan_code(
+    settings: Settings,
+    data: dict[str, Any],
+    metadata: dict[str, Any] | None = None,
+) -> str | None:
+    meta = metadata if isinstance(metadata, dict) else {}
+    from_meta = _normalize_billing_plan_code(meta.get("plan_code") if meta else None)
+    if from_meta:
+        return from_meta
+    from_items = _plan_from_subscription_items(settings, data)
+    if from_items:
+        return _normalize_billing_plan_code(from_items)
+    return None
 
 
 def _stripe_event_dict(event: Any) -> dict[str, Any]:
@@ -132,14 +168,20 @@ def _write_event(client, org_id: str | None, event_type: str, payload: Any, stat
     ).execute()
 
 
-def _upsert_subscription_from_event(client, settings: Settings, org_id: str | None, data: dict[str, Any]) -> None:
+def _upsert_subscription_from_event(
+    client,
+    settings: Settings,
+    org_id: str | None,
+    data: dict[str, Any],
+    metadata: dict[str, Any] | None = None,
+) -> None:
     if not org_id:
         return
     items = (data.get("items") or {}).get("data") or []
     primary_item = items[0] if items else {}
-    price_id = (primary_item.get("price") or {}).get("id")
     quantity = int(primary_item.get("quantity") or data.get("quantity") or 1)
-    plan_tier = _plan_from_price(settings, price_id)
+    meta = metadata if isinstance(metadata, dict) else (data.get("metadata") if isinstance(data.get("metadata"), dict) else {})
+    plan_tier = _resolve_plan_code(settings, data, meta) or "free"
     payload = {
         "org_id": org_id,
         "stripe_customer_id": data.get("customer"),
@@ -199,29 +241,31 @@ def _process_stripe_event(
                 payer_user_id = resolve_user_id_by_email(client, checkout_email) or ""
             if payer_user_id:
                 promote_user_to_org_owner(client, org_id, payer_user_id)
-            client.table("subscriptions").upsert(
-                {
-                    "org_id": org_id,
-                    "stripe_customer_id": customer_id,
-                    "stripe_subscription_id": subscription_id,
-                    "status": "active",
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                },
-                on_conflict="org_id",
-            ).execute()
-            client.table("org_billing").upsert(
-                {
-                    "org_id": org_id,
-                    "stripe_customer_id": customer_id,
-                    "stripe_subscription_id": subscription_id,
-                    "billing_status": "active",
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                },
-                on_conflict="org_id",
-            ).execute()
+            plan_code = _normalize_billing_plan_code(
+                (metadata.get("plan_code") if isinstance(metadata, dict) else None)
+            )
+            subscription_row: dict[str, Any] = {
+                "org_id": org_id,
+                "stripe_customer_id": customer_id,
+                "stripe_subscription_id": subscription_id,
+                "status": "active",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+            org_billing_row: dict[str, Any] = {
+                "org_id": org_id,
+                "stripe_customer_id": customer_id,
+                "stripe_subscription_id": subscription_id,
+                "billing_status": "active",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+            if plan_code:
+                subscription_row["tier"] = plan_code
+                org_billing_row["plan_code"] = plan_code
+            client.table("subscriptions").upsert(subscription_row, on_conflict="org_id").execute()
+            client.table("org_billing").upsert(org_billing_row, on_conflict="org_id").execute()
 
     if event_type in {"customer.subscription.created", "customer.subscription.updated"}:
-        _upsert_subscription_from_event(client, settings, org_id, data)
+        _upsert_subscription_from_event(client, settings, org_id, data, metadata)
         if org_id and event_type == "customer.subscription.created":
             from app.services.org_membership import (
                 promote_user_to_org_owner,
@@ -236,13 +280,7 @@ def _process_stripe_event(
             if payer_user_id:
                 promote_user_to_org_owner(client, org_id, payer_user_id)
         if org_id:
-            items = (data.get("items") or {}).get("data") or []
-            primary_item = items[0] if items else {}
-            price_id = (primary_item.get("price") or {}).get("id")
-            plan_code = _normalize_billing_plan_code(
-                (metadata.get("plan_code") if isinstance(metadata, dict) else None)
-                or _plan_from_price(settings, price_id)
-            )
+            plan_code = _resolve_plan_code(settings, data, metadata if isinstance(metadata, dict) else {})
             billing_status = data.get("status") or "active"
             if billing_status == "incomplete":
                 billing_status = "pending"

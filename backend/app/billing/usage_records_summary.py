@@ -35,7 +35,8 @@ def summarize_usage_records_billing(
     """Aggregate usage_records for billing-usage / billing overview APIs."""
     month_start = current_month_start_iso()
     plan = get_plan_for_org(client, org_id)
-    resolved_tier = str(tier or plan.get("code") or "free").strip().lower()
+    # org_billing-backed plan.code is canonical; a stale subscriptions.tier must not win.
+    resolved_tier = str(plan.get("code") or tier or "free").strip().lower()
 
     usage_resp = (
         client.table("usage_records")

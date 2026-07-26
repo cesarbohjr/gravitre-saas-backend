@@ -188,16 +188,20 @@ def _default_subscription(org_id: str) -> dict:
     }
 
 
-def _normalize_subscription(row: dict | None, org_id: str) -> dict:
+def _normalize_subscription(row: dict | None, org_id: str, *, tier: str | None = None) -> dict:
     if not row:
-        return _default_subscription(org_id)
+        base = _default_subscription(org_id)
+        if tier:
+            base["tier"] = tier
+        return base
     meson_addons = row.get("meson_addons") or []
     if not isinstance(meson_addons, list):
         meson_addons = []
+    resolved_tier = str(tier or row.get("tier") or "free").strip().lower()
     return {
         "id": str(row.get("id") or org_id),
         "stripe_subscription_id": row.get("stripe_subscription_id"),
-        "tier": str(row.get("tier") or "free"),
+        "tier": resolved_tier,
         "status": str(row.get("status") or "trialing"),
         "seat_count": int(row.get("seat_count") or 1),
         "lite_seats": int(row.get("lite_seats") or 0),
@@ -206,6 +210,91 @@ def _normalize_subscription(row: dict | None, org_id: str) -> dict:
         "cancel_at_period_end": bool(row.get("cancel_at_period_end") or False),
         "meson_addons": meson_addons,
     }
+
+
+def _canonical_plan_code(client, org_id: str, subscription_row: dict | None) -> str:
+    """Prefer org_billing.plan_code (entitlements source of truth) over subscriptions.tier."""
+    from app.billing.service import normalize_plan_code
+
+    billing = get_org_billing(client, org_id) or {}
+    billing_code = normalize_plan_code(billing.get("plan_code"))
+    sub_tier = normalize_plan_code((subscription_row or {}).get("tier"))
+    # Paid org_billing always wins when present and not the bootstrap default mismatch case
+    # handled by Stripe reconcile below.
+    if billing.get("plan_code"):
+        return billing_code
+    return sub_tier or DEFAULT_PLAN_CODE
+
+
+def _reconcile_plan_from_stripe(
+    client,
+    settings: Settings,
+    org_id: str,
+    subscription_row: dict | None,
+) -> str | None:
+    """When Stripe is available, repair stale node/free tier from the live subscription."""
+    sub_id = str((subscription_row or {}).get("stripe_subscription_id") or "").strip()
+    if not sub_id or not settings.stripe_secret_key:
+        return None
+    try:
+        init_stripe(settings)
+        stripe_sub = stripe.Subscription.retrieve(sub_id)
+    except Exception:
+        return None
+
+    if hasattr(stripe_sub, "to_dict"):
+        try:
+            data = stripe_sub.to_dict()
+        except Exception:
+            data = dict(stripe_sub)
+    elif isinstance(stripe_sub, dict):
+        data = stripe_sub
+    else:
+        try:
+            data = dict(stripe_sub)
+        except Exception:
+            return None
+
+    metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
+    from app.routers.webhooks.stripe import _resolve_plan_code
+
+    plan_code = _resolve_plan_code(settings, data, metadata)
+    if not plan_code:
+        return None
+
+    now = datetime.now(timezone.utc).isoformat()
+    try:
+        client.table("subscriptions").update(
+            {
+                "tier": plan_code,
+                "status": str(data.get("status") or (subscription_row or {}).get("status") or "active"),
+                "current_period_end": (
+                    datetime.fromtimestamp(int(data["current_period_end"]), tz=timezone.utc).isoformat()
+                    if data.get("current_period_end")
+                    else (subscription_row or {}).get("current_period_end")
+                ),
+                "updated_at": now,
+            }
+        ).eq("org_id", org_id).execute()
+        client.table("org_billing").upsert(
+            {
+                "org_id": org_id,
+                "plan_code": plan_code,
+                "stripe_subscription_id": sub_id,
+                "stripe_customer_id": data.get("customer") or (subscription_row or {}).get("stripe_customer_id"),
+                "billing_status": "active" if data.get("status") in {None, "active", "trialing"} else data.get("status"),
+                "current_period_end": (
+                    datetime.fromtimestamp(int(data["current_period_end"]), tz=timezone.utc).isoformat()
+                    if data.get("current_period_end")
+                    else None
+                ),
+                "updated_at": now,
+            },
+            on_conflict="org_id",
+        ).execute()
+    except Exception:
+        return plan_code
+    return plan_code
 
 
 def _weekly_workflow_totals(client, org_id: str, period_start_iso: str) -> list[int]:
@@ -425,10 +514,37 @@ async def billing_overview(
             .execute()
         )
         subscription_row = (insert_resp.data or [None])[0]
-    subscription = _normalize_subscription(subscription_row, org_id)
-    usage = _usage_from_records(client, org_id, subscription.get("tier"), settings=settings)
+
+    canonical_tier = _canonical_plan_code(client, org_id, subscription_row)
+    billing_row = get_org_billing(client, org_id) or {}
+    sub_tier = str((subscription_row or {}).get("tier") or "").strip().lower()
+    billing_tier = str(billing_row.get("plan_code") or "").strip().lower()
+    # Repair stale Node/Free when Stripe still has the paid Command/Control price.
+    if (subscription_row or {}).get("stripe_subscription_id") and (
+        canonical_tier in {"node", "free"} or sub_tier != billing_tier or not billing_tier
+    ):
+        repaired = _reconcile_plan_from_stripe(client, settings, org_id, subscription_row)
+        if repaired:
+            canonical_tier = repaired
+            # Refresh local rows after repair so period dates stay aligned.
+            refreshed = client.table("subscriptions").select("*").eq("org_id", org_id).limit(1).execute()
+            subscription_row = (refreshed.data or [subscription_row])[0]
+
+    # Keep subscriptions.tier aligned with org_billing so UI + usage share one plan.
+    if subscription_row and str(subscription_row.get("tier") or "").strip().lower() != canonical_tier:
+        try:
+            client.table("subscriptions").update(
+                {"tier": canonical_tier, "updated_at": datetime.now(timezone.utc).isoformat()}
+            ).eq("org_id", org_id).execute()
+            subscription_row = {**(subscription_row or {}), "tier": canonical_tier}
+        except Exception:
+            subscription_row = {**(subscription_row or {}), "tier": canonical_tier}
+
+    subscription = _normalize_subscription(subscription_row, org_id, tier=canonical_tier)
+    usage = _usage_from_records(client, org_id, canonical_tier, settings=settings)
     plan = get_plan_for_org(client, org_id)
     usage["plan"] = plan
+    usage["tier"] = str(plan.get("code") or canonical_tier)
     period_start = str(usage.get("period_start") or datetime.now(timezone.utc).isoformat())
     weekly_totals = _weekly_workflow_totals(client, org_id, period_start)
     invoices, payment_methods = _fetch_invoices_and_payment_methods(
