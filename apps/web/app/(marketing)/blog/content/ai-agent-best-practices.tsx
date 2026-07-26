@@ -20,9 +20,10 @@ export const aiAgentBestPracticesPost: BlogPost = {
   dateModified: "2026-07-25",
   displayDate: "February 20, 2026",
   readTime: "11 min read",
-  heroImage: "",
+  heroImage: "/images/blog/ai-agent-best-practices-hero.png",
   heroGradient: "from-emerald-50 via-teal-50/40 to-zinc-100",
-  heroAlt: "Agent orchestration diagram with monitoring and approval paths.",
+  heroAlt:
+    "Reliability flow diagram showing scoped agent, connector check, and dry run converging on a human approval gate, then execute with verified, failed, observed, and learned outcomes into audit.",
   keywords: [
     "AI agents best practices",
     "reliable AI agents",
