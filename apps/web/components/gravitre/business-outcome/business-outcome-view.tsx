@@ -144,6 +144,27 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
             </Section>
           ) : null}
 
+          {(() => {
+            const args = sections.metadata?.actionArgs
+            if (!args || typeof args !== "object" || Array.isArray(args)) return null
+            const entries = Object.entries(args as Record<string, unknown>).filter(
+              ([, value]) => value != null && String(value).trim() !== "",
+            )
+            if (!entries.length) return null
+            return (
+              <Section title="Execution proof">
+                <dl className="space-y-1">
+                  {entries.map(([key, value]) => (
+                    <div key={key} className="flex gap-2">
+                      <dt className="shrink-0 font-medium text-foreground/80">{key}</dt>
+                      <dd className="min-w-0 break-words text-muted-foreground">{String(value)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </Section>
+            )
+          })()}
+
           {sections.evidence?.links?.length ? (
             <Section title="Evidence">
               <div className="flex flex-wrap gap-2">

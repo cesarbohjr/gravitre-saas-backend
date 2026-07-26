@@ -34,6 +34,30 @@ def validate_connector_plan(plan: ConnectorActionPlan, message: str) -> Workflow
     return validate_plan_against_schema(plan, schema)
 
 
+def missing_params_stage_patch(
+    plan: ConnectorActionPlan,
+    message: str,
+    *,
+    task_state: dict[str, Any] | None = None,
+) -> tuple[WorkflowCheck, dict[str, Any]] | None:
+    """Shared write gate: incomplete plans stage awaiting_params — never awaiting_confirm.
+
+    Classical chat, unified-turn live, and ReAct write staging must all use this so
+    dual paths cannot ask for a blind **yes** on missing subject/body/recipient.
+    """
+    clarification = validate_connector_plan(plan, message or "")
+    if not clarification:
+        return None
+    from app.services.parameter_ledger import get_ledger, stage_awaiting_params
+
+    patch = stage_awaiting_params(
+        plan,
+        clarification.missing,
+        ledger=get_ledger(task_state),
+    )
+    return clarification, patch
+
+
 def format_write_approval_message(plan: ConnectorActionPlan) -> str:
     """Chat-native approval prompt — copy owned by Module D gravitree_voice."""
     from app.services.gravitree_voice import format_operator_message
@@ -89,6 +113,17 @@ def _approval_details(plan: ConnectorActionPlan) -> dict[str, str]:
         due_on = str(args.get("due_on") or "").strip()
         if due_on:
             details["Due"] = due_on
+    elif plan.invoke_action == "gmail.messages.send":
+        # Always surface recipient/subject/body so "yes" is not a blind approve.
+        to = str(args.get("to") or args.get("email") or "").strip()
+        subject = str(args.get("subject") or "").strip()
+        body = str(args.get("body") or args.get("text") or "").strip()
+        if to:
+            _display("to" if _arg_present(args, "to") else "email", "To", to)
+        if subject:
+            _display("subject", "Subject", subject)
+        if body:
+            details["Body"] = body[:200] + ("…" if len(body) > 200 else "")
     elif args.get("properties") and isinstance(args["properties"], dict):
         for key, value in args["properties"].items():
             if value:

@@ -647,7 +647,7 @@ async def test_execute_plan_apollo_list_create_sets_apollo_result_url(connector_
         )
 
     assert result.success is True
-    assert result.result_url == "/ai?conversation=conv-1"
+    assert result.result_url == "/ai?c=conv-1"
     assert result.external_url == "https://app.apollo.io/#/lists/list-123"
     assert result.connector_management_url == "/connectors/conn-apollo"
     assert result.integration == "apollo"

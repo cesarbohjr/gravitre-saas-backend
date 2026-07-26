@@ -370,11 +370,18 @@ export function ChatExecutionPanel({
       executionResult.failure_bridge ||
       executionResult.structured?.failureBridge ||
       null
+    // Missing params are a clarify problem, not a connectors outage — never default
+    // to "Open connectors" for validation_error (Claude/Manus-honest recovery).
+    const validationError = code === "validation_error"
     const ctaHref =
       bridge?.ctaHref ||
+      (validationError ? "/ai" : null) ||
       executionResult.connector_management_url ||
       "/connectors"
-    const ctaLabel = bridge?.ctaLabel || "Open connectors"
+    const ctaLabel =
+      bridge?.ctaLabel ||
+      (validationError ? "Adjust parameters" : null) ||
+      "Open connectors"
     return (
       <div
         className={cn(

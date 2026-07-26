@@ -328,7 +328,15 @@ def resolve_orchestration_result_url(
             continue
         if url.startswith("/"):
             return url
-    return f"/ai?conversation={conversation_id}"
+    return ai_conversation_url(conversation_id)
+
+
+def ai_conversation_url(conversation_id: str | None) -> str:
+    """Canonical chat deep-link. Frontend hydrates via ``/ai?c=`` (not ``?conversation=``)."""
+    cid = str(conversation_id or "").strip()
+    if not cid:
+        return "/ai"
+    return f"/ai?c={cid}"
 
 
 def first_external_step_url(step_results: list[dict[str, Any]] | None) -> str | None:

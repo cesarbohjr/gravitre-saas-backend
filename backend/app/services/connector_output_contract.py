@@ -211,7 +211,11 @@ def collect_pending_output_schemas() -> frozenset[str]:
 
 def _is_gravitre_conversation_only_url(url: str | None) -> bool:
     text = str(url or "").strip()
-    return text == "/ai" or text.startswith("/ai?conversation=")
+    return (
+        text == "/ai"
+        or text.startswith("/ai?c=")
+        or text.startswith("/ai?conversation=")  # legacy CTA form
+    )
 
 
 def assert_execution_result_verifiable(result: ExecutionResult) -> None:

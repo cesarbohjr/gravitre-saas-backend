@@ -33,7 +33,7 @@ def test_conversation_fallback_without_run():
         step_results=[],
         conversation_id="conv-9",
     )
-    assert url == "/ai?conversation=conv-9"
+    assert url == "/ai?c=conv-9"
 
 
 def test_orchestration_run_fully_completed_rejects_partial_failure():

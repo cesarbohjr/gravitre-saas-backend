@@ -107,6 +107,7 @@ async def resolve_unified_live_channel_override_reply(
     task_state: dict[str, Any] | None,
     org_id: str,
     client: Any,
+    conversation_id: str | None = None,
     settings: Settings | None = None,
 ) -> "UnifiedTurnShadowResult | None":
     """Deterministic channel correction (e.g. 'No use Gmail' after wrong connector proposal)."""
@@ -122,13 +123,17 @@ async def resolve_unified_live_channel_override_reply(
     clarified["channel_override"] = override
     state["clarified_params"] = clarified
     state["preferred_connector"] = override
+    # Persist only to this conversation. Filtering by org_id alone previously
+    # overwrote every org conversation's task_state (451 rows @ 2026-07-25T05:12:32Z),
+    # including live-battery fixture args (demo@example.com).
+    conv_id = str(conversation_id or "").strip()
     try:
-        if client and org_id:
+        if client and org_id and conv_id:
             from datetime import datetime, timezone
 
             client.table("conversations").update(
                 {"task_state": state, "updated_at": datetime.now(timezone.utc).isoformat()}
-            ).eq("org_id", org_id).execute()
+            ).eq("id", conv_id).eq("org_id", org_id).execute()
     except Exception:
         pass
 

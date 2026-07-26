@@ -1,6 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
+import Link from "next/link"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { motion } from "framer-motion"
@@ -275,7 +276,41 @@ export function ChatTranscript({
                         </div>
                       ) : null}
                       {displayText.trim() ? (
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText}</ReactMarkdown>
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            a: ({ href, children, ...props }) => {
+                              const raw = (href || "").trim()
+                              // Legacy CTAs used ?conversation=; AI page hydrates via ?c=.
+                              const normalized = raw.startsWith("/ai?conversation=")
+                                ? raw.replace("/ai?conversation=", "/ai?c=", 1)
+                                : raw
+                              if (normalized.startsWith("/")) {
+                                return (
+                                  <Link href={normalized} className="underline underline-offset-2">
+                                    {children}
+                                  </Link>
+                                )
+                              }
+                              if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
+                                return (
+                                  <a
+                                    href={normalized}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="underline underline-offset-2"
+                                    {...props}
+                                  >
+                                    {children}
+                                  </a>
+                                )
+                              }
+                              return <span>{children}</span>
+                            },
+                          }}
+                        >
+                          {displayText}
+                        </ReactMarkdown>
                       ) : null}
                       <AssistantSourceLinks invocations={toolInvocations} />
                       {isLastAssistant ? (

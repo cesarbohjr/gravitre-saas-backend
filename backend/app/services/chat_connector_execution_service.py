@@ -125,6 +125,35 @@ def enrich_plan_inference_metadata(
     return plan
 
 
+def _proof_args_for_run(plan: ConnectorActionPlan) -> dict[str, Any]:
+    """Subset of invoke args safe/useful as durable execution proof on the run."""
+    args = dict(plan.args or {})
+    keys = (
+        "to",
+        "email",
+        "subject",
+        "body",
+        "text",
+        "channel",
+        "name",
+        "title",
+        "message_id",
+        "thread_id",
+        "threadId",
+    )
+    proof: dict[str, Any] = {}
+    for key in keys:
+        value = args.get(key)
+        if value is None:
+            continue
+        text = str(value)
+        # Cap body/text so run parameters stay inspectable without huge blobs.
+        if key in {"body", "text"} and len(text) > 500:
+            text = text[:500] + "…"
+        proof[key] = text
+    return proof
+
+
 def _result_link_label(integration: str | None, *, result_url: str | None = None) -> str:
     url = str(result_url or "").strip()
     if url.startswith("/runs/"):
@@ -854,7 +883,6 @@ class ChatConnectorExecutionService:
             ingest_message_slots,
             is_awaiting_params,
             ledger_patch,
-            stage_awaiting_params,
         )
         from app.services.pending_reply_classifier import (
             build_pending_snapshot,
@@ -1180,7 +1208,7 @@ class ChatConnectorExecutionService:
                 entity_type="connector",
                 entity_id="",
                 connector_management_url="/connectors",
-                result_url=f"/ai?conversation={conversation_id}" if conversation_id else "/ai",
+                result_url=(f"/ai?c={conversation_id}" if conversation_id else "/ai"),
                 title=plan.label,
                 body=message,
                 integration=plan.integration,
@@ -1199,8 +1227,8 @@ class ChatConnectorExecutionService:
 
         from app.services.connector_action_workflows import (
             format_write_approval_message,
+            missing_params_stage_patch,
             resolve_assignee_disambiguation,
-            validate_connector_plan,
         )
         from app.services.connector_parameter_inference import (
             ParameterInferenceContext,
@@ -1223,15 +1251,14 @@ class ChatConnectorExecutionService:
         # for "list name" and never stages awaiting_confirm.
         plan = enrich_plan_inference_metadata(plan, message=message or "")
 
-        clarification = validate_connector_plan(plan, message)
-        if clarification:
+        staged_missing = missing_params_stage_patch(
+            plan, message, task_state=task_state
+        )
+        if staged_missing:
             # Module B — stage awaiting_params on the shared ledger so the next
-            # turn resumes for any connector (not Slack-only).
-            stage_patch = stage_awaiting_params(
-                plan,
-                clarification.missing,
-                ledger=get_ledger(task_state),
-            )
+            # turn resumes for any connector (not Slack-only). Shared with
+            # unified-turn live + ReAct write staging (dual-path SoT).
+            clarification, stage_patch = staged_missing
             try:
                 await self._state.update_task_state(
                     conversation_id,
@@ -1505,7 +1532,9 @@ class ChatConnectorExecutionService:
                 entity_type="connector",
                 entity_id="",
                 connector_management_url="/connectors",
-                result_url=f"/ai?conversation={conversation_id}" if conversation_id else "/ai",
+                result_url=(
+                    f"/ai?c={conversation_id}" if conversation_id else "/ai"
+                ),
                 title=plan.label,
                 body=str(exc),
                 integration=plan.integration,
@@ -1532,10 +1561,14 @@ class ChatConnectorExecutionService:
                 external_url = None
         connector_management_url = build_connector_management_url(connector_id)
         # Primary CTA stays in Gravitre; vendor links are secondary only.
-        primary_url = f"/ai?conversation={conversation_id}" if conversation_id else "/ai"
+        primary_url = f"/ai?c={conversation_id}" if conversation_id else "/ai"
         structured_payload = dict(result_data or {})
         if external_url:
             structured_payload["external_url"] = external_url
+        # Preserve send/read proof fields for chat + BusinessOutcome surfaces.
+        for proof_key in ("to", "subject", "body", "email", "message_id", "threadId", "id"):
+            if proof_key in (plan.args or {}) and proof_key not in structured_payload:
+                structured_payload[proof_key] = plan.args[proof_key]
 
         if not success:
             from app.services.tool_error_messages import format_tool_error_for_user
@@ -1736,6 +1769,9 @@ class ChatConnectorExecutionService:
                     "invoke_action": plan.invoke_action,
                     "integration": plan.integration,
                     "tool_name": plan.tool_name,
+                    "label": plan.label,
+                    # Durable execution proof (recipient/subject/etc.) for Runs UI.
+                    "action_args": _proof_args_for_run(plan),
                 },
                 run_hash=f"chat-connector-{uuid4().hex[:16]}",
                 workflow_id=None,
@@ -1752,6 +1788,12 @@ class ChatConnectorExecutionService:
                 plan.invoke_action,
                 exc,
             )
+        # Prefer durable run detail as the primary Gravitre CTA once the run exists.
+        primary_result_url = (
+            f"/runs/{run_id}"
+            if run_id and result.success
+            else (result.result_url or (f"/runs/{run_id}" if run_id else None))
+        )
         try:
             finalize_execution_outcome(
                 client,
@@ -1764,7 +1806,7 @@ class ChatConnectorExecutionService:
                 error_summary=None if result.success else (result.body or "Connector action failed"),
                 verified_output=VerifiedOutputRef(
                     summary=(result.body or "")[:2000] or None,
-                    result_url=result.result_url,
+                    result_url=primary_result_url,
                     external_url=result.external_url,
                     entity_type=result.entity_type or "connector",
                     entity_id=result.entity_id or run_id or None,
@@ -1775,8 +1817,10 @@ class ChatConnectorExecutionService:
                     "conversation_id": conversation_id,
                     "invoke_action": plan.invoke_action,
                     "tool_name": plan.tool_name,
+                    "integration": plan.integration,
                     "path": "chat_connector_execute_plan",
                     "error_code": getattr(result, "error_code", None),
+                    "action_args": _proof_args_for_run(plan),
                 },
             )
         except Exception as exc:  # noqa: BLE001
@@ -2403,6 +2447,15 @@ class ChatConnectorExecutionService:
             # Also check nested observation.result when already_existed payloads differ.
             nested = observation.get("result") if isinstance(observation.get("result"), dict) else None
             return resolve_list_result_url(nested)
+        if integration == "gmail" and invoke_action == "gmail.messages.send":
+            thread_id = str(
+                result_data.get("threadId")
+                or result_data.get("thread_id")
+                or result_data.get("id")
+                or ""
+            ).strip()
+            if thread_id:
+                return f"https://mail.google.com/mail/u/0/#all/{thread_id}"
         from app.services.connector_output_mappers.generic import resolve_generic_result_url
 
         return resolve_generic_result_url(result_data)
@@ -2614,7 +2667,26 @@ class ChatConnectorExecutionService:
                 if key:
                     return f"Created Jira issue {key}."
         if plan.invoke_action == "gmail.messages.send":
-            return "Gmail message sent."
+            to = str(plan.args.get("to") or plan.args.get("email") or "").strip()
+            subject = str(plan.args.get("subject") or "").strip()
+            nested_message = (
+                result_data.get("message") if isinstance(result_data.get("message"), dict) else {}
+            )
+            message_id = str(
+                result_data.get("id")
+                or result_data.get("message_id")
+                or nested_message.get("id")
+                or ""
+            ).strip()
+            parts = ["Gmail message sent"]
+            if to:
+                parts.append(f"to {to}")
+            if subject:
+                parts.append(f'subject "{subject}"')
+            line = " ".join(parts) + "."
+            if message_id:
+                line = f"{line} Message id: {message_id}."
+            return line
         if plan.integration == "apollo" and plan.invoke_action == "apollo.lists.create":
             label_data = result_data.get("label")
             already = bool(result_data.get("already_existed"))

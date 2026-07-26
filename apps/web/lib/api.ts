@@ -890,8 +890,9 @@ export const businessOutcomesApi = {
     )
   },
   exportMarkdown: async (id: string) => {
-    const res = await fetch(apiUrl(`/api/business-outcomes/${id}/export?format=markdown`), {
-      credentials: "include",
+    // Use apiFetch so Bearer + org/environment headers are attached (raw fetch → 401).
+    const res = await apiFetch(apiUrl(`/api/business-outcomes/${id}/export?format=markdown`), {
+      headers: { accept: "text/markdown, text/plain, */*" },
     })
     if (!res.ok) throw new Error(`Export failed (${res.status})`)
     return res.text()
@@ -1740,6 +1741,17 @@ export const billingApi = {
       trialEndsAt?: string | null
       currentPeriodEnd?: string | null
       cancelAtPeriodEnd?: boolean
+      plan?: {
+        code?: string
+        workflow_runs_included?: number
+        ai_credits_included?: number
+        [key: string]: unknown
+      }
+      usage?: {
+        aiCredits?: { used?: number; included?: number; remaining?: number }
+        workflowRuns?: { used?: number; included?: number; remaining?: number }
+      }
+      period?: { start?: string; end?: string }
     }>(apiUrl("/api/billing/status")),
   createCheckoutSession: (priceId: string, quantity?: number) =>
     postJson<{ checkout_url: string }>(apiUrl("/api/billing/checkout"), {

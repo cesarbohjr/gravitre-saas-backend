@@ -29,6 +29,31 @@ COMMON_BIND_KEYS: tuple[tuple[str, tuple[str, ...]], ...] = (
 )
 
 
+def _schema_allowed_bind_keys(invoke_action: str) -> frozenset[str] | None:
+    """When a workflow schema exists, only bind args that belong to that action.
+
+    Prevents class-level pollution such as prior Gmail message ``id`` binding into
+    ``contact_id`` on ``gmail.messages.send`` (which has no contact_id field).
+    """
+    action = (invoke_action or "").strip()
+    if not action:
+        return None
+    try:
+        from app.connectors.action_catalog.action_workflow_schema import get_workflow_schema
+
+        schema = get_workflow_schema(action)
+    except Exception:  # noqa: BLE001
+        return None
+    if not schema:
+        return None
+    keys: set[str] = set()
+    for field in (*(schema.required_fields or ()), *(schema.optional_fields or ())):
+        for key in field.arg_keys or ():
+            if key:
+                keys.add(str(key))
+    return frozenset(keys) if keys else None
+
+
 @dataclass
 class ConnectorSessionState:
     """Working memory passed into planner/inference alongside raw messages."""
@@ -239,8 +264,11 @@ def bind_plan_from_session(
     args = dict(plan.args or {})
     inferred = list(plan.inferred_fields)
     sources = dict(plan.inference_sources)
+    allowed = _schema_allowed_bind_keys(plan.invoke_action)
 
     for arg_key, candidates in COMMON_BIND_KEYS:
+        if allowed is not None and arg_key not in allowed:
+            continue
         if _arg_present(args, arg_key):
             continue
         value, source = _lookup_binding(session, candidates, org_bindings=org_bindings, arg_key=arg_key)
@@ -249,6 +277,15 @@ def bind_plan_from_session(
         args[arg_key] = value
         inferred.append(arg_key)
         sources[arg_key] = source
+
+    # Drop cross-action entity ids already present (e.g. prior Gmail message id as contact_id).
+    pollution_keys = ("contact_id", "list_id", "company_id")
+    if allowed is not None:
+        for key in pollution_keys:
+            if key in args and key not in allowed:
+                args.pop(key, None)
+                inferred = [item for item in inferred if item != key]
+                sources.pop(key, None)
 
     args = _interpolate_template_args(args, session)
     if not inferred and args == dict(plan.args or {}):

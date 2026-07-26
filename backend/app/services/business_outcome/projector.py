@@ -103,6 +103,11 @@ def project_business_outcome(
             "integration": er.get("integration") or params.get("integration"),
             "invokeAction": action or None,
             "errorCode": er.get("error_code"),
+            "actionArgs": (
+                params.get("action_args")
+                if isinstance(params.get("action_args"), dict)
+                else (er.get("structured") or {}).get("action_args")
+            ),
         },
     )
 
@@ -155,6 +160,8 @@ def _evidence(er: dict[str, Any], *, run_id: str | None) -> EvidenceSection | No
     if not external:
         external = str(structured.get("external_url") or "").strip()
     if result_url:
+        if result_url.startswith("/ai?conversation="):
+            result_url = result_url.replace("/ai?conversation=", "/ai?c=", 1)
         links.append(OutcomeLink(label="View in Gravitre", href=result_url, kind="gravitre"))
     if external.startswith("http"):
         vendor = str(er.get("integration") or "vendor").title()

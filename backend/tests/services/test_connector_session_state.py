@@ -148,3 +148,28 @@ def test_bind_plan_from_org_entity_cache():
     assert bound.args["list_id"] == "list-xyz"
     assert bound.inference_sources["list_id"] == "org entity cache"
     assert "list_id" in bound.inferred_fields
+
+
+def test_bind_gmail_send_does_not_take_prior_message_id_as_contact_id():
+    session = record_step_output(
+        ConnectorSessionState(),
+        step_id="1",
+        invoke_action="gmail.messages.send",
+        label="Send email",
+        success=True,
+        structured={"id": "19f9adfb88016f36", "to": "demo@example.com"},
+    )
+    plan = ConnectorActionPlan(
+        tool_name="gmail_messages_send",
+        invoke_action="gmail.messages.send",
+        integration="gmail",
+        kind="write",
+        label="Send email",
+        args={
+            "to": "stephaniekhan2002@gmail.com",
+            "contact_id": "19f9adfb88016f36",
+        },
+    )
+    bound = bind_plan_from_session(plan, session)
+    assert "contact_id" not in bound.args
+    assert bound.args.get("to") == "stephaniekhan2002@gmail.com"

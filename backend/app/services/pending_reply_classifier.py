@@ -77,6 +77,7 @@ class PendingSnapshot:
     plan_goal: str = ""
     has_current_plan: bool = False
     hold_prompt_active: bool = False
+    action_args: dict[str, str] = field(default_factory=dict)
 
     def summary_for_model(self) -> str:
         bits = [
@@ -91,7 +92,39 @@ class PendingSnapshot:
             bits.append(f"plan_goal={self.plan_goal[:200]}")
         if self.hold_prompt_active:
             bits.append("hold_prompt_active=true")
+        if self.action_args.get("to") or self.action_args.get("email"):
+            bits.append(f"to={self.action_args.get('to') or self.action_args.get('email')}")
+        if self.action_args.get("subject"):
+            bits.append(f"subject={self.action_args['subject'][:80]}")
         return "; ".join(bits)
+
+
+def _pending_action_args(state: dict[str, Any], params: dict[str, Any]) -> dict[str, str]:
+    """Best-effort to/subject/body for confirmation reminders (never invent)."""
+    args = params.get("args") if isinstance(params.get("args"), dict) else {}
+    clarified = state.get("clarified_params") if isinstance(state.get("clarified_params"), dict) else {}
+    clarified_args = clarified.get("args") if isinstance(clarified.get("args"), dict) else {}
+    ledger = get_ledger(state)
+    out: dict[str, str] = {}
+    for key in ("to", "email", "subject", "body", "text"):
+        value = args.get(key) or clarified_args.get(key) or ledger.get(key)
+        if value is not None and str(value).strip():
+            out[key] = str(value).strip()
+    return out
+
+
+def _pending_action_proof_line(snap: PendingSnapshot) -> str:
+    args = snap.action_args or {}
+    to = str(args.get("to") or args.get("email") or "").strip()
+    subject = str(args.get("subject") or "").strip()
+    if not to and not subject:
+        return ""
+    bits: list[str] = []
+    if to:
+        bits.append(f"**To:** {to}")
+    if subject:
+        bits.append(f"**Subject:** {subject}")
+    return "- " + " · ".join(bits)
 
 
 def build_pending_snapshot(task_state: dict[str, Any] | None) -> PendingSnapshot:
@@ -121,6 +154,7 @@ def build_pending_snapshot(task_state: dict[str, Any] | None) -> PendingSnapshot
         plan_goal=str((current_plan or {}).get("goal") or (current_plan or {}).get("summary") or ""),
         has_current_plan=bool(current_plan),
         hold_prompt_active=bool(state.get("pending_hold_prompt")),
+        action_args=_pending_action_args(state, params),
     )
 
 
@@ -394,10 +428,13 @@ def format_pending_meta_answer(snap: PendingSnapshot) -> str:
         )
     if snap.status in {"awaiting_confirm", "awaiting_admin_approval"}:
         label = snap.action_label or "the pending write"
-        return (
-            f"I'm waiting for your approval to run **{label}**. "
-            "Reply **yes** to proceed, **cancel** to abort, or tell me what to change."
+        proof = _pending_action_proof_line(snap)
+        base = (
+            f"I'm waiting for your approval to run **{label}**."
+            + (f"\n{proof}" if proof else "")
+            + "\nReply **yes** to proceed, **cancel** to abort, or tell me what to change."
         )
+        return base
     if snap.status in {"awaiting_plan_confirm", "awaiting_step_confirm"} or snap.has_current_plan:
         goal = snap.plan_goal or "the pending plan"
         return (
@@ -441,9 +478,11 @@ def format_ambiguous_clarify(snap: PendingSnapshot) -> str:
         )
     if snap.status in {"awaiting_confirm", "awaiting_admin_approval"}:
         label = snap.action_label or "the pending write"
+        proof = _pending_action_proof_line(snap)
         return (
-            f"I still have **{label}** waiting for approval. "
-            "Say **yes** to run it, **cancel** to drop it, or describe a change."
+            f"I still have **{label}** waiting for approval."
+            + (f"\n{proof}" if proof else "")
+            + "\nSay **yes** to run it, **cancel** to drop it, or describe a change."
         )
     if snap.plan_goal or snap.status in {"awaiting_plan_confirm", "awaiting_step_confirm"}:
         goal = snap.plan_goal or "the pending plan"

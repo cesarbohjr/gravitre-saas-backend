@@ -223,7 +223,7 @@ def _audit_summary(event: ExecutionOutcomeEvent, status: TerminalStatus) -> str 
 def _persist_run(client: Any, event: ExecutionOutcomeEvent, status: TerminalStatus, ts: str) -> None:
     if not event.persist_run or not event.run_id:
         return
-    from app.workflows.repository import update_run
+    from app.workflows.repository import merge_run_parameters, update_run
 
     auditish = _audit_summary(event, status) if status == "failed" else event.error_summary
     update_run(
@@ -234,6 +234,34 @@ def _persist_run(client: Any, event: ExecutionOutcomeEvent, status: TerminalStat
         error_message=auditish if status == "failed" else event.error_summary,
         approval_status=event.approval_status,
     )
+    # Persist Module A verified output + proof fields onto the run so Runs /
+    # BusinessOutcome can show recipient/subject/message id — not only chat state.
+    vo = event.verified_output
+    if vo is not None:
+        patch: dict[str, Any] = {
+            "verified_output": {
+                "summary": vo.summary,
+                "result_url": vo.result_url or f"/runs/{event.run_id}",
+                "external_url": vo.external_url,
+                "entity_type": vo.entity_type,
+                "entity_id": vo.entity_id,
+                "integration": vo.integration,
+            },
+            "summary": vo.summary,
+            "notification_emitted": True,
+        }
+        meta = dict(event.metadata or {})
+        for key in ("action_args", "invoke_action", "integration", "tool_name", "conversation_id"):
+            if key in meta and meta[key] is not None:
+                patch[key] = meta[key]
+        try:
+            merge_run_parameters(client, event.run_id, patch)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "execution_outcome_verified_output_persist_failed run_id=%s error=%s",
+                event.run_id,
+                exc,
+            )
 
 
 def _write_audit(client: Any, event: ExecutionOutcomeEvent, status: TerminalStatus) -> str | None:

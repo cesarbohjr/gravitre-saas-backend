@@ -637,7 +637,7 @@ class ChatOrchestrationService:
                 success=False,
                 entity_type="conversation",
                 entity_id=conversation_id,
-                result_url=f"/ai?conversation={conversation_id}",
+                result_url=f"/ai?c={conversation_id}",
                 title="No orchestration",
                 body="No pending multi-step orchestration to execute.",
             )
@@ -667,7 +667,7 @@ class ChatOrchestrationService:
                 success=False,
                 entity_type="conversation",
                 entity_id=conversation_id,
-                result_url=f"/ai?conversation={conversation_id}",
+                result_url=f"/ai?c={conversation_id}",
                 title="Orchestration idle",
                 body="Nothing is waiting for approval right now.",
             )
@@ -1527,7 +1527,7 @@ class ChatOrchestrationService:
                 error_summary=None if run_ok else summary_body,
                 verified_output=VerifiedOutputRef(
                     summary=summary_body[:2000] or None,
-                    result_url=f"/ai?conversation={conversation_id}",
+                    result_url=f"/ai?c={conversation_id}",
                     entity_type="conversation",
                     entity_id=conversation_id,
                 ),

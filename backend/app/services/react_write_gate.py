@@ -518,6 +518,7 @@ async def materialize_react_write_approval_turn(
         ChatConnectorExecutionService,
         enrich_plan_inference_metadata,
     )
+    from app.services.connector_action_workflows import missing_params_stage_patch
     from app.services.connector_parameter_inference import (
         ParameterInferenceContext,
         infer_missing_parameters,
@@ -539,12 +540,34 @@ async def materialize_react_write_approval_turn(
     )
     plan = infer_missing_parameters(plan, inference_context)
 
+    state = get_conversation_state_service(settings)
+    # Dual-path SoT with classical chat / unified-turn: clarify before confirm.
+    staged_missing = missing_params_stage_patch(
+        plan, message or "", task_state=task_state or {}
+    )
+    if staged_missing:
+        clarification, stage_patch = staged_missing
+        await state.update_task_state(
+            conversation_id,
+            org_id,
+            {**stage_patch, "recent_user_messages": [message or ""]},
+            client=client,
+        )
+        refreshed = await state.get_task_state(conversation_id, org_id, client=client)
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": clarification.dialogue_mode or "clarify",
+            "message": clarification.message,
+            "task_state": refreshed,
+            "pending_task": refreshed.get("pending_task"),
+            "workflow_status": clarification.status,
+        }
+
     pending_params = {
         **ChatConnectorExecutionService.plan_to_dict(plan),
         "status": "awaiting_confirm",
         "source": "react_write_gate",
     }
-    state = get_conversation_state_service(settings)
     await state.update_task_state(
         conversation_id,
         org_id,

@@ -79,15 +79,36 @@ def _project_from_run(
     invoke_action = str(params.get("invoke_action") or params.get("invokeAction") or "") or None
     # Prefer Module A verified fields from parameters / snapshot when present.
     verified = params.get("verified_output") if isinstance(params.get("verified_output"), dict) else {}
+    action_args = params.get("action_args") if isinstance(params.get("action_args"), dict) else {}
+    summary = (
+        verified.get("summary")
+        or params.get("summary")
+        or run_payload.get("error_message")
+        or ""
+    )
+    # When Module A summary is generic, surface durable proof from action_args.
+    if action_args and (
+        not str(summary).strip()
+        or str(summary).strip() in {"Gmail message sent.", "Completed work"}
+    ):
+        to = str(action_args.get("to") or action_args.get("email") or "").strip()
+        subject = str(action_args.get("subject") or "").strip()
+        bits = [str(summary).strip().rstrip(".") or "Action completed"]
+        if to:
+            bits.append(f"to {to}")
+        if subject:
+            bits.append(f'subject "{subject}"')
+        summary = " ".join(bits) + "."
+    result_url = str(verified.get("result_url") or f"/runs/{run_id}").strip()
+    # Rewrite legacy chat CTAs so Evidence buttons open the correct thread.
+    if result_url.startswith("/ai?conversation="):
+        result_url = result_url.replace("/ai?conversation=", "/ai?c=", 1)
     execution_result = {
         "success": str(run_payload.get("status") or "").lower()
         in {"completed", "success", "succeeded"},
         "title": params.get("label") or run_payload.get("error_message") or "Completed work",
-        "body": verified.get("summary")
-        or params.get("summary")
-        or run_payload.get("error_message")
-        or "",
-        "result_url": verified.get("result_url") or f"/runs/{run_id}",
+        "body": summary,
+        "result_url": result_url,
         "external_url": verified.get("external_url"),
         "integration": verified.get("integration") or params.get("integration"),
         "entity_type": verified.get("entity_type") or "workflow_run",
@@ -99,6 +120,7 @@ def _project_from_run(
             "conversationId": params.get("conversation_id") or params.get("conversationId"),
             "step_results": params.get("step_results") or [],
             "external_url": verified.get("external_url"),
+            "action_args": action_args or None,
         },
     }
     notification_emitted = bool(params.get("notification_emitted") or params.get("notified"))

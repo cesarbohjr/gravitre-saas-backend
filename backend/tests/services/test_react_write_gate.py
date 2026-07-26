@@ -235,6 +235,59 @@ async def test_materialize_react_write_approval_persists_awaiting_confirm():
 
 
 @pytest.mark.asyncio
+async def test_materialize_react_incomplete_gmail_send_awaits_params():
+    react = SimpleNamespace(
+        tool_calls=[
+            {
+                "tool": "gmail_messages_send",
+                "args": {"to": "stephaniekhan2002@gmail.com"},
+                "result": {
+                    "success": False,
+                    "pending_approval": True,
+                    "error_code": WRITE_APPROVAL_REQUIRED,
+                    "action": "gmail.messages.send",
+                    "integration": "gmail",
+                    "label": "Send email",
+                    "args": {"to": "stephaniekhan2002@gmail.com"},
+                },
+            }
+        ]
+    )
+    state = MagicMock()
+    state.update_task_state = AsyncMock()
+    state.get_task_state = AsyncMock(
+        return_value={
+            "pending_task": {
+                "type": "connector_action",
+                "status": "awaiting_params",
+                "params": {"invoke_action": "gmail.messages.send"},
+            }
+        }
+    )
+    with patch(
+        "app.services.conversation_state_service.get_conversation_state_service",
+        return_value=state,
+    ), patch(
+        "app.services.connector_parameter_inference.infer_missing_parameters",
+        side_effect=lambda plan, _ctx: plan,
+    ):
+        turn = await materialize_react_write_approval_turn(
+            settings=SimpleNamespace(),
+            org_id="org-1",
+            conversation_id="conv-1",
+            client=MagicMock(),
+            react_result=react,
+            message="send an email to stephanie",
+        )
+
+    assert turn is not None
+    assert turn["dialogue_mode"] == "clarify"
+    assert "reply yes" not in (turn["message"] or "").lower()
+    saved = state.update_task_state.await_args.args[2]
+    assert saved["pending_task"]["status"] == "awaiting_params"
+
+
+@pytest.mark.asyncio
 async def test_materialize_platform_create_workflow_pending_type():
     from app.services.react_write_gate import materialize_react_write_approval_turn
 

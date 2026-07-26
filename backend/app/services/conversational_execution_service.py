@@ -51,7 +51,7 @@ class ExecutionResult:
     title: str
     body: str
     connector_management_url: str | None = None
-    # Primary CTA — prefer Gravitre (/runs/{id} or /ai?conversation=…).
+    # Primary CTA — prefer Gravitre (/runs/{id} or /ai?c=…).
     result_url: str | None = None
     # Optional vendor deep link (secondary CTA only when portal-valid).
     external_url: str | None = None

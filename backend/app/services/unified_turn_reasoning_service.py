@@ -777,6 +777,7 @@ async def apply_unified_turn_live(
         task_state=task_state,
         org_id=org_id,
         client=client,
+        conversation_id=conversation_id,
         settings=active,
     )
     if channel_result and (channel_result.user_message or "").strip():
@@ -1032,7 +1033,10 @@ async def apply_unified_turn_live(
                 ChatConnectorExecutionService,
                 enrich_plan_inference_metadata,
             )
-            from app.services.connector_action_workflows import format_write_approval_message
+            from app.services.connector_action_workflows import (
+                format_write_approval_message,
+                missing_params_stage_patch,
+            )
             from app.services.connector_parameter_inference import (
                 ParameterInferenceContext,
                 infer_missing_parameters,
@@ -1054,12 +1058,67 @@ async def apply_unified_turn_live(
                     environment_name=environment_name,
                 ),
             )
+            state = get_conversation_state_service(active)
+            # Dual-path SoT with classical chat: never ask for yes until required args exist.
+            staged_missing = missing_params_stage_patch(
+                plan, message or "", task_state=task_state or {}
+            )
+            if staged_missing:
+                clarification, stage_patch = staged_missing
+                await state.update_task_state(
+                    conversation_id,
+                    org_id,
+                    {**stage_patch, "recent_user_messages": [message or ""]},
+                    client=client,
+                )
+                refreshed = await state.get_task_state(
+                    conversation_id, org_id, client=client
+                )
+                clarify_message = clarification.message
+                if result.user_message:
+                    from app.services.user_facing_copy_guard import dedupe_repeated_paragraphs
+
+                    preamble = dedupe_repeated_paragraphs(result.user_message.strip())
+                    body = (clarify_message or "").strip()
+                    if body and body not in preamble:
+                        clarify_message = f"{preamble}\n\n{body}"
+                    elif preamble:
+                        clarify_message = preamble
+                clarify_message = await _maybe_prepend_mixed_social_ack(
+                    message=message,
+                    body=clarify_message,
+                    task_state=task_state,
+                    org_id=org_id,
+                    settings=active,
+                )
+                result.live_served = True
+                result.outcome_kind = "clarifying_question"
+                emit_unified_turn_shadow_audit(
+                    client=client,
+                    org_id=org_id,
+                    actor_id=user_id,
+                    conversation_id=conversation_id,
+                    result=result,
+                )
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": clarification.dialogue_mode or "clarify",
+                    "message": finalize_user_facing_message(
+                        clarify_message, context="unified_turn_live_awaiting_params"
+                    ),
+                    "task_state": refreshed,
+                    "pending_task": (refreshed or {}).get("pending_task"),
+                    "workflow_status": clarification.status,
+                    "answer_explanation": "Unified turn live (awaiting params)",
+                    "model": result.model or "unified_turn_live",
+                    "unified_outcome_kind": "clarifying_question",
+                }
+
             pending_params = {
                 **ChatConnectorExecutionService.plan_to_dict(plan),
                 "status": "awaiting_confirm",
                 "source": "unified_turn_live",
             }
-            state = get_conversation_state_service(active)
             await state.update_task_state(
                 conversation_id,
                 org_id,

@@ -18,7 +18,9 @@ function AiPageContent() {
   const searchParams = useSearchParams()
   const initialMode = parseInitialMode(searchParams.get("mode"))
   const initialPrompt = searchParams.get("prompt")?.trim() ?? ""
-  const initialConversationId = searchParams.get("c")?.trim() || null
+  // Prefer ?c= (canonical). Accept legacy ?conversation= so older CTAs still open the thread.
+  const initialConversationId =
+    searchParams.get("c")?.trim() || searchParams.get("conversation")?.trim() || null
   const initialMessageId = searchParams.get("m")?.trim() || null
 
   return (
