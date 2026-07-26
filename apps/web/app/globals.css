@@ -370,129 +370,93 @@
 
   /* ============================================================
      Chat canvas background themes (selectable, behind /ai).
-     Geometric extras (plus / hex / lattice) follow Hero Patterns
-     motifs, recolored onto Gravitre tokens. Every pattern adapts
-     to light/dark and stays low-contrast for bubble legibility.
-     `background-attachment: local` (never `fixed`) so textures
-     scroll with the canvas and paint correctly on iOS Safari.
-     Selected via `data-chat-bg="<id>"`; "signal" is the default.
+     Soft multi-point mesh washes only — brand token colors, no
+     grids / dots / hatch / lattice. `background-attachment: local`
+     (never `fixed`) so washes scroll with the canvas on iOS Safari.
+     Selected via `data-chat-bg="<id>"`; "mesh" is the default.
      ============================================================ */
   .ai-chat-canvas {
     background-color: var(--background);
   }
 
-  /* 1 — Signal (default): emerald + blue + violet tints over a soft dot-grid */
+  /* Mesh (default): emerald + blue + violet multi-point wash */
   .ai-chat-canvas,
-  .ai-chat-canvas[data-chat-bg="signal"] {
-    background-image:
-      radial-gradient(circle at 12% -8%, color-mix(in oklch, var(--primary) 14%, transparent), transparent 48%),
-      radial-gradient(circle at 88% 108%, color-mix(in oklch, var(--info) 10%, transparent), transparent 50%),
-      radial-gradient(circle at 50% 40%, color-mix(in oklch, var(--chart-4) 5%, transparent), transparent 55%),
-      radial-gradient(color-mix(in oklch, var(--primary) 7%, transparent) 1px, transparent 1px);
-    background-size: 100% 100%, 100% 100%, 100% 100%, 24px 24px;
-    background-attachment: local, local, local, local;
-  }
-
-  /* 2 — Plain: clean, distraction-free */
-  .ai-chat-canvas[data-chat-bg="plain"] {
-    background-image: none;
-  }
-
-  /* 3 — Dot grid: evenly spaced technical dots */
-  .ai-chat-canvas[data-chat-bg="dotgrid"] {
-    background-image:
-      radial-gradient(color-mix(in oklch, var(--foreground) 7%, transparent) 1px, transparent 1px);
-    background-size: 22px 22px;
-    background-attachment: local;
-  }
-
-  /* 4 — Blueprint: fine engineering line grid */
-  .ai-chat-canvas[data-chat-bg="grid"] {
-    background-image:
-      linear-gradient(color-mix(in oklch, var(--border) 60%, transparent) 1px, transparent 1px),
-      linear-gradient(90deg, color-mix(in oklch, var(--border) 60%, transparent) 1px, transparent 1px);
-    background-size: 30px 30px, 30px 30px;
-    background-attachment: local, local;
-  }
-
-  /* 5 — Contour: abstract topographic waves */
-  .ai-chat-canvas[data-chat-bg="topo"] {
-    background-image:
-      repeating-radial-gradient(circle at 25% 110%, transparent 0 34px, color-mix(in oklch, var(--info) 6%, transparent) 34px 36px),
-      repeating-radial-gradient(circle at 85% -10%, transparent 0 30px, color-mix(in oklch, var(--primary) 5%, transparent) 30px 32px);
-    background-size: 100% 100%, 100% 100%;
-    background-attachment: local, local;
-  }
-
-  /* 6 — Mesh: soft multi-point gradient wash */
   .ai-chat-canvas[data-chat-bg="mesh"] {
     background-image:
-      radial-gradient(circle at 18% 12%, color-mix(in oklch, var(--primary) 12%, transparent), transparent 45%),
-      radial-gradient(circle at 82% 88%, color-mix(in oklch, var(--info) 11%, transparent), transparent 48%),
-      radial-gradient(circle at 60% 30%, color-mix(in oklch, var(--chart-4) 6%, transparent), transparent 50%);
+      radial-gradient(ellipse 80% 70% at 16% 10%, color-mix(in oklch, var(--primary) 18%, transparent), transparent 58%),
+      radial-gradient(ellipse 75% 65% at 84% 88%, color-mix(in oklch, var(--info) 16%, transparent), transparent 55%),
+      radial-gradient(ellipse 60% 55% at 55% 35%, color-mix(in oklch, var(--chart-4) 12%, transparent), transparent 52%);
     background-size: 100% 100%, 100% 100%, 100% 100%;
     background-attachment: local, local, local;
   }
 
-  /* 7 — Hatch: subtle diagonal precision lines */
-  .ai-chat-canvas[data-chat-bg="diagonal"] {
+  /* Signal: cooler primary + info wash, no pattern overlay */
+  .ai-chat-canvas[data-chat-bg="signal"] {
     background-image:
-      repeating-linear-gradient(45deg, color-mix(in oklch, var(--foreground) 5%, transparent) 0 1px, transparent 1px 14px);
-    background-attachment: local;
-  }
-
-  /* 8 — Network: sparse connected nodes (knowledge-graph motif) */
-  .ai-chat-canvas[data-chat-bg="constellation"] {
-    background-image:
-      radial-gradient(color-mix(in oklch, var(--primary) 12%, transparent) 1.5px, transparent 2px),
-      radial-gradient(color-mix(in oklch, var(--info) 10%, transparent) 1.5px, transparent 2px);
-    background-size: 64px 64px, 64px 64px;
-    background-position: 0 0, 32px 32px;
-    background-attachment: local, local;
-  }
-
-  /* 9 — Plus: Hero Patterns–style sparse + marks */
-  .ai-chat-canvas[data-chat-bg="plus"] {
-    background-image:
-      linear-gradient(
-        to right,
-        transparent 0,
-        transparent calc(50% - 0.5px),
-        color-mix(in oklch, var(--foreground) 7%, transparent) calc(50% - 0.5px),
-        color-mix(in oklch, var(--foreground) 7%, transparent) calc(50% + 0.5px),
-        transparent calc(50% + 0.5px)
-      ),
-      linear-gradient(
-        to bottom,
-        transparent 0,
-        transparent calc(50% - 0.5px),
-        color-mix(in oklch, var(--foreground) 7%, transparent) calc(50% - 0.5px),
-        color-mix(in oklch, var(--foreground) 7%, transparent) calc(50% + 0.5px),
-        transparent calc(50% + 0.5px)
-      );
-    background-size: 28px 10px, 10px 28px;
-    background-position: center center, center center;
-    background-attachment: local, local;
-  }
-
-  /* 10 — Hex: honeycomb lattice (geometric / structural) */
-  .ai-chat-canvas[data-chat-bg="hex"] {
-    background-image:
-      linear-gradient(30deg, color-mix(in oklch, var(--border) 65%, transparent) 1px, transparent 1px),
-      linear-gradient(90deg, color-mix(in oklch, var(--border) 65%, transparent) 1px, transparent 1px),
-      linear-gradient(150deg, color-mix(in oklch, var(--border) 65%, transparent) 1px, transparent 1px);
-    background-size: 28px 48px, 28px 48px, 28px 48px;
+      radial-gradient(ellipse 85% 70% at 14% -5%, color-mix(in oklch, var(--primary) 16%, transparent), transparent 55%),
+      radial-gradient(ellipse 80% 70% at 92% 105%, color-mix(in oklch, var(--info) 14%, transparent), transparent 52%),
+      radial-gradient(ellipse 50% 45% at 48% 42%, color-mix(in oklch, var(--accent) 10%, transparent), transparent 50%);
+    background-size: 100% 100%, 100% 100%, 100% 100%;
     background-attachment: local, local, local;
   }
 
-  /* 11 — Lattice: open square cells (schematic frame) */
-  .ai-chat-canvas[data-chat-bg="lattice"] {
+  /* Plain: clean, distraction-free */
+  .ai-chat-canvas[data-chat-bg="plain"] {
+    background-image: none;
+  }
+
+  /* Aurora: icy blue → lavender → deep cool bloom */
+  .ai-chat-canvas[data-chat-bg="aurora"] {
     background-image:
-      linear-gradient(color-mix(in oklch, var(--foreground) 6%, transparent) 1px, transparent 1px),
-      linear-gradient(90deg, color-mix(in oklch, var(--foreground) 6%, transparent) 1px, transparent 1px);
-    background-size: 36px 36px, 36px 36px;
-    background-position: -1px -1px, -1px -1px;
-    background-attachment: local, local;
+      radial-gradient(ellipse 90% 75% at 6% 4%, color-mix(in oklch, var(--accent) 22%, transparent), transparent 50%),
+      radial-gradient(ellipse 70% 60% at 68% 18%, color-mix(in oklch, var(--info) 18%, transparent), transparent 52%),
+      radial-gradient(ellipse 85% 80% at 96% 96%, color-mix(in oklch, var(--chart-4) 20%, transparent), transparent 55%),
+      linear-gradient(145deg, transparent 35%, color-mix(in oklch, var(--info) 6%, transparent) 100%);
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+    background-attachment: local, local, local, local;
+  }
+
+  /* Bloom: mint → sky → mauve → peach */
+  .ai-chat-canvas[data-chat-bg="bloom"] {
+    background-image:
+      radial-gradient(ellipse 70% 60% at 8% 10%, color-mix(in oklch, var(--primary) 16%, transparent), transparent 50%),
+      radial-gradient(ellipse 65% 55% at 38% 18%, color-mix(in oklch, var(--info) 15%, transparent), transparent 52%),
+      radial-gradient(ellipse 60% 55% at 48% 58%, color-mix(in oklch, var(--chart-4) 16%, transparent), transparent 50%),
+      radial-gradient(ellipse 75% 70% at 94% 52%, color-mix(in oklch, var(--chart-5) 15%, transparent), transparent 55%),
+      radial-gradient(ellipse 55% 50% at 78% 88%, color-mix(in oklch, var(--chart-3) 10%, transparent), transparent 48%);
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+    background-attachment: local, local, local, local, local;
+  }
+
+  /* Dusk: cream → soft periwinkle */
+  .ai-chat-canvas[data-chat-bg="dusk"] {
+    background-image:
+      radial-gradient(ellipse 80% 65% at 12% 8%, color-mix(in oklch, var(--chart-3) 14%, transparent), transparent 50%),
+      radial-gradient(ellipse 70% 60% at 52% 38%, color-mix(in oklch, var(--accent) 14%, transparent), transparent 52%),
+      radial-gradient(ellipse 85% 75% at 90% 90%, color-mix(in oklch, var(--info) 18%, transparent), transparent 55%),
+      radial-gradient(ellipse 50% 45% at 70% 55%, color-mix(in oklch, var(--chart-4) 10%, transparent), transparent 48%);
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+    background-attachment: local, local, local, local;
+  }
+
+  /* Tide: soft emerald sea wash */
+  .ai-chat-canvas[data-chat-bg="tide"] {
+    background-image:
+      radial-gradient(ellipse 90% 70% at 22% 85%, color-mix(in oklch, var(--primary) 18%, transparent), transparent 55%),
+      radial-gradient(ellipse 70% 60% at 82% 12%, color-mix(in oklch, var(--info) 12%, transparent), transparent 50%),
+      radial-gradient(ellipse 60% 55% at 48% 42%, color-mix(in oklch, var(--chart-1) 12%, transparent), transparent 52%);
+    background-size: 100% 100%, 100% 100%, 100% 100%;
+    background-attachment: local, local, local;
+  }
+
+  /* Ember: warm amber + coral haze */
+  .ai-chat-canvas[data-chat-bg="ember"] {
+    background-image:
+      radial-gradient(ellipse 75% 65% at 18% 22%, color-mix(in oklch, var(--chart-3) 16%, transparent), transparent 52%),
+      radial-gradient(ellipse 80% 70% at 88% 72%, color-mix(in oklch, var(--chart-5) 15%, transparent), transparent 55%),
+      radial-gradient(ellipse 55% 50% at 42% 88%, color-mix(in oklch, var(--primary) 10%, transparent), transparent 48%);
+    background-size: 100% 100%, 100% 100%, 100% 100%;
+    background-attachment: local, local, local;
   }
 
   .ai-surface-shell {

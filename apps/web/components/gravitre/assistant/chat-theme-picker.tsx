@@ -16,7 +16,7 @@ import {
  * Compact swatch picker for the chat canvas background. Lives in the /ai
  * toolbar. Purely presentational preference — selection is persisted by the
  * parent via useChatBackground(). Each swatch mirrors the real token-driven
- * pattern so the preview reads true in both light and dark.
+ * mesh wash so the preview reads true in both light and dark.
  */
 export function ChatThemePicker({
   value,

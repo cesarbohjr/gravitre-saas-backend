@@ -1,27 +1,21 @@
 /**
  * Gravitre chat canvas background themes.
  *
- * Subtle, business/operator-appropriate textures that sit BEHIND the chat
- * transcript. Geometric options (Blueprint, Dot grid, Plus, Hex, Lattice)
- * follow the Hero Patterns tradition — small, restrained, MIT-licensed motifs
- * recolored onto Gravitre ink/background tokens. Organic options (Contour,
- * Mesh) stay soft and data-adjacent. CSS lives in globals.css keyed on
- * `.ai-chat-canvas[data-chat-bg="<id>"]` so every pattern adapts to light/dark
- * and keeps message bubbles/text legible.
+ * Soft multi-point mesh washes only — no grids, dots, hatch, or lattice.
+ * Colors come from brand tokens (primary emerald, info blue, chart violet /
+ * amber / coral) so light and dark stay coherent. CSS lives in globals.css
+ * keyed on `.ai-chat-canvas[data-chat-bg="<id>"]`.
  */
 
 export type ChatBackgroundId =
+  | "mesh"
   | "signal"
   | "plain"
-  | "dotgrid"
-  | "grid"
-  | "topo"
-  | "mesh"
-  | "diagonal"
-  | "constellation"
-  | "plus"
-  | "hex"
-  | "lattice"
+  | "aurora"
+  | "bloom"
+  | "dusk"
+  | "tide"
+  | "ember"
 
 export type ChatBackgroundTheme = {
   id: ChatBackgroundId
@@ -31,88 +25,85 @@ export type ChatBackgroundTheme = {
   swatch: string
 }
 
+/** Older pattern IDs → nearest mesh wash (localStorage / prefs migration). */
+const LEGACY_CHAT_BACKGROUND_IDS: Record<string, ChatBackgroundId> = {
+  dotgrid: "mesh",
+  grid: "aurora",
+  topo: "tide",
+  diagonal: "aurora",
+  constellation: "dusk",
+  plus: "bloom",
+  hex: "dusk",
+  lattice: "bloom",
+}
+
 export const CHAT_BACKGROUND_THEMES: ChatBackgroundTheme[] = [
+  {
+    id: "mesh",
+    label: "Mesh",
+    description: "Soft multi-point gradient wash — emerald, blue, and violet.",
+    swatch:
+      "radial-gradient(circle at 18% 15%, color-mix(in oklch, var(--primary) 42%, transparent), transparent 52%), radial-gradient(circle at 78% 82%, color-mix(in oklch, var(--info) 38%, transparent), transparent 55%), radial-gradient(circle at 55% 35%, color-mix(in oklch, var(--chart-4) 28%, transparent), transparent 50%), var(--card)",
+  },
   {
     id: "signal",
     label: "Signal",
-    description: "Emerald + blue tints over a soft dot-grid — the Gravitre default.",
+    description: "Cool brand wash — primary and info, no lines or dots.",
     swatch:
-      "radial-gradient(circle at 25% 20%, color-mix(in oklch, var(--primary) 30%, transparent), transparent 60%), radial-gradient(color-mix(in oklch, var(--primary) 22%, transparent) 1px, transparent 1px) 0 0 / 8px 8px, var(--card)",
+      "radial-gradient(circle at 20% 10%, color-mix(in oklch, var(--primary) 40%, transparent), transparent 55%), radial-gradient(circle at 90% 90%, color-mix(in oklch, var(--info) 36%, transparent), transparent 50%), var(--card)",
   },
   {
     id: "plain",
     label: "Plain",
-    description: "Clean, distraction-free surface with no pattern.",
+    description: "Clean, distraction-free surface with no wash.",
     swatch: "var(--card)",
   },
   {
-    id: "dotgrid",
-    label: "Dot grid",
-    description: "Evenly spaced dots — calm, technical, low contrast.",
+    id: "aurora",
+    label: "Aurora",
+    description: "Icy blue into lavender and deep navy — cool diagonal bloom.",
     swatch:
-      "radial-gradient(color-mix(in oklch, var(--foreground) 28%, transparent) 1px, transparent 1px) 0 0 / 7px 7px, var(--card)",
+      "radial-gradient(circle at 8% 8%, color-mix(in oklch, var(--accent) 55%, transparent), transparent 45%), radial-gradient(circle at 70% 20%, color-mix(in oklch, var(--info) 45%, transparent), transparent 50%), radial-gradient(circle at 92% 92%, color-mix(in oklch, var(--chart-4) 50%, transparent), transparent 48%), var(--card)",
   },
   {
-    id: "grid",
-    label: "Blueprint",
-    description: "Fine line grid, like engineering graph paper.",
+    id: "bloom",
+    label: "Bloom",
+    description: "Mint to sky to mauve to peach — warm multi-hue mesh.",
     swatch:
-      "linear-gradient(var(--border) 1px, transparent 1px) 0 0 / 8px 8px, linear-gradient(90deg, var(--border) 1px, transparent 1px) 0 0 / 8px 8px, var(--card)",
+      "radial-gradient(circle at 10% 12%, color-mix(in oklch, var(--primary) 38%, transparent), transparent 48%), radial-gradient(circle at 40% 20%, color-mix(in oklch, var(--info) 36%, transparent), transparent 50%), radial-gradient(circle at 48% 55%, color-mix(in oklch, var(--chart-4) 40%, transparent), transparent 48%), radial-gradient(circle at 92% 55%, color-mix(in oklch, var(--chart-5) 42%, transparent), transparent 50%), var(--card)",
   },
   {
-    id: "topo",
-    label: "Contour",
-    description: "Abstract topographic waves — data-adjacent and quiet.",
+    id: "dusk",
+    label: "Dusk",
+    description: "Cream into soft periwinkle — quiet evening wash.",
     swatch:
-      "repeating-radial-gradient(circle at 30% 120%, transparent 0 5px, color-mix(in oklch, var(--info) 24%, transparent) 5px 6px), var(--card)",
+      "radial-gradient(circle at 15% 10%, color-mix(in oklch, var(--chart-3) 35%, transparent), transparent 48%), radial-gradient(circle at 55% 40%, color-mix(in oklch, var(--accent) 40%, transparent), transparent 52%), radial-gradient(circle at 88% 88%, color-mix(in oklch, var(--info) 48%, transparent), transparent 50%), var(--card)",
   },
   {
-    id: "mesh",
-    label: "Mesh",
-    description: "Soft multi-point gradient wash, no lines or dots.",
+    id: "tide",
+    label: "Tide",
+    description: "Soft emerald sea wash — primary with a cool info undertone.",
     swatch:
-      "radial-gradient(circle at 20% 20%, color-mix(in oklch, var(--primary) 34%, transparent), transparent 55%), radial-gradient(circle at 80% 80%, color-mix(in oklch, var(--info) 30%, transparent), transparent 55%), var(--card)",
+      "radial-gradient(circle at 25% 80%, color-mix(in oklch, var(--primary) 44%, transparent), transparent 55%), radial-gradient(circle at 80% 15%, color-mix(in oklch, var(--info) 32%, transparent), transparent 50%), radial-gradient(circle at 50% 40%, color-mix(in oklch, var(--chart-1) 28%, transparent), transparent 55%), var(--card)",
   },
   {
-    id: "diagonal",
-    label: "Hatch",
-    description: "Subtle diagonal hatch lines for a printed, precise feel.",
+    id: "ember",
+    label: "Ember",
+    description: "Warm amber and coral haze with a touch of emerald.",
     swatch:
-      "repeating-linear-gradient(45deg, color-mix(in oklch, var(--foreground) 16%, transparent) 0 1px, transparent 1px 6px), var(--card)",
-  },
-  {
-    id: "constellation",
-    label: "Network",
-    description: "Sparse connected nodes — a nod to knowledge graphs.",
-    swatch:
-      "radial-gradient(circle at 30% 35%, color-mix(in oklch, var(--primary) 40%, transparent) 1.5px, transparent 2px), radial-gradient(circle at 70% 65%, color-mix(in oklch, var(--info) 40%, transparent) 1.5px, transparent 2px), var(--card)",
-  },
-  {
-    id: "plus",
-    label: "Plus",
-    description: "Sparse plus marks — Hero Patterns technical, low contrast.",
-    swatch:
-      "linear-gradient(to right, transparent calc(50% - 0.5px), color-mix(in oklch, var(--foreground) 22%, transparent) calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px)) 0 0 / 14px 5px, linear-gradient(to bottom, transparent calc(50% - 0.5px), color-mix(in oklch, var(--foreground) 22%, transparent) calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px)) 0 0 / 5px 14px, var(--card)",
-  },
-  {
-    id: "hex",
-    label: "Hex",
-    description: "Honeycomb lattice — geometric and quietly structural.",
-    swatch:
-      "linear-gradient(30deg, color-mix(in oklch, var(--border) 80%, transparent) 1px, transparent 1px) 0 0 / 12px 20px, linear-gradient(90deg, color-mix(in oklch, var(--border) 80%, transparent) 1px, transparent 1px) 0 0 / 12px 20px, linear-gradient(150deg, color-mix(in oklch, var(--border) 80%, transparent) 1px, transparent 1px) 0 0 / 12px 20px, var(--card)",
-  },
-  {
-    id: "lattice",
-    label: "Lattice",
-    description: "Open square cells — like a light schematic frame.",
-    swatch:
-      "linear-gradient(color-mix(in oklch, var(--foreground) 20%, transparent) 1px, transparent 1px) 0 0 / 16px 16px, linear-gradient(90deg, color-mix(in oklch, var(--foreground) 20%, transparent) 1px, transparent 1px) 0 0 / 16px 16px, var(--card)",
+      "radial-gradient(circle at 20% 25%, color-mix(in oklch, var(--chart-3) 40%, transparent), transparent 50%), radial-gradient(circle at 85% 70%, color-mix(in oklch, var(--chart-5) 38%, transparent), transparent 52%), radial-gradient(circle at 45% 85%, color-mix(in oklch, var(--primary) 22%, transparent), transparent 48%), var(--card)",
   },
 ]
 
-export const DEFAULT_CHAT_BACKGROUND: ChatBackgroundId = "signal"
+export const DEFAULT_CHAT_BACKGROUND: ChatBackgroundId = "mesh"
 
 const VALID_IDS = new Set<string>(CHAT_BACKGROUND_THEMES.map((t) => t.id))
+
+export function resolveChatBackgroundId(value: unknown): ChatBackgroundId | null {
+  if (typeof value !== "string") return null
+  if (VALID_IDS.has(value)) return value as ChatBackgroundId
+  return LEGACY_CHAT_BACKGROUND_IDS[value] ?? null
+}
 
 export function isChatBackgroundId(value: unknown): value is ChatBackgroundId {
   return typeof value === "string" && VALID_IDS.has(value)
