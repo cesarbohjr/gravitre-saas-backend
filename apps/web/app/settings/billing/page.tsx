@@ -68,6 +68,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
+import { useSettingsSectionNav } from "@/lib/settings-nav"
 import { billingApi, ApiRequestError } from "@/lib/api"
 import { ensureSelectedOrg } from "@/lib/org-context"
 import { SELECTABLE_PLANS, getPlan, formatPlanPrice, planDirection, type PlanCode } from "@/lib/plans"
@@ -83,26 +84,41 @@ function formatInvoiceAmount(cents: number | undefined, currency = "usd") {
   }).format(cents / 100)
 }
 
-const emptyUsageMetrics = [
-  {
-    name: "Workflow Runs",
-    used: 0,
-    limit: 0,
-    icon: Zap,
-    color: "blue",
-    trend: "",
-    trendUp: true,
-  },
-  {
-    name: "AI Credits",
-    used: 0,
-    limit: 0,
-    icon: Sparkles,
-    color: "purple",
-    trend: "",
-    trendUp: true,
-  },
-] as const
+function emptyUsageMetrics(planCode: string) {
+  const limits = planLimitsFor(planCode)
+  return [
+    {
+      name: "Workflow Runs",
+      used: 0,
+      limit: Math.max(limits.workflowRuns || 1, 1),
+      icon: Zap,
+      color: "blue" as const,
+      trend: "",
+      trendUp: true,
+      unit: undefined as string | undefined,
+    },
+    {
+      name: "AI Credits",
+      used: 0,
+      limit: Math.max(limits.aiCredits || 1, 1),
+      icon: Sparkles,
+      color: "purple" as const,
+      trend: "",
+      trendUp: true,
+      unit: "LLM tokens — not Research Lookups",
+    },
+  ]
+}
+
+/** Treat 0 from the API as missing so plan catalog limits still show. */
+function coalesceLimit(...candidates: Array<number | null | undefined>): number {
+  for (const value of candidates) {
+    if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+      return value
+    }
+  }
+  return 1
+}
 
 const colorClasses = {
   blue: {
@@ -137,7 +153,7 @@ const colorClasses = {
 
 export default function BillingPage() {
   const { isAdmin, loading: adminLoading } = useOrgAdmin()
-  const router = useRouter()
+  const onSectionChange = useSettingsSectionNav("billing")
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
@@ -148,13 +164,8 @@ export default function BillingPage() {
           isAdmin={isAdmin}
           mobileMenuOpen={mobileMenuOpen}
           onMobileMenuOpenChange={setMobileMenuOpen}
-          onSectionChange={(section) => {
-            if (section === "billing") {
-              router.push("/settings/billing")
-              return
-            }
-            router.push(`/settings?section=${section}`)
-          }}
+          onSectionChange={onSectionChange}
+          hideHeader
         >
           {adminLoading ? (
             <div className="flex h-64 items-center justify-center">
@@ -246,7 +257,7 @@ function BillingPageInner() {
         {
           name: "Workflow Runs",
           used: usageFromApi.totals.workflow_runs ?? 0,
-          limit: Math.max(usageFromApi.workflow_runs_included ?? planLimits.workflowRuns, 1),
+          limit: coalesceLimit(usageFromApi.workflow_runs_included, planLimits.workflowRuns),
           icon: Zap,
           color: "blue" as const,
           trend: "",
@@ -256,7 +267,7 @@ function BillingPageInner() {
         {
           name: "AI Credits",
           used: usageFromApi.totals.ai_tokens ?? 0,
-          limit: Math.max(usageFromApi.ai_credits_included ?? planLimits.aiCredits, 1),
+          limit: coalesceLimit(usageFromApi.ai_credits_included, planLimits.aiCredits),
           icon: Sparkles,
           color: "purple" as const,
           trend: "",
@@ -266,7 +277,7 @@ function BillingPageInner() {
         {
           name: "Outputs",
           used: usageFromApi.totals.outputs ?? 0,
-          limit: Math.max(usageFromApi.included_outputs ?? planLimits.outputs ?? 0, 1),
+          limit: coalesceLimit(usageFromApi.included_outputs, planLimits.outputs),
           icon: HardDrive,
           color: "amber" as const,
           trend: usageFromApi.overage_outputs
@@ -280,7 +291,10 @@ function BillingPageInner() {
               {
                 name: "Research Lookups",
                 used: usageFromApi.totals.research_lookups ?? 0,
-                limit: usageFromApi.included_research_lookups ?? planLimits.researchLookups,
+                limit: coalesceLimit(
+                  usageFromApi.included_research_lookups,
+                  planLimits.researchLookups,
+                ),
                 icon: Globe,
                 color: "emerald" as const,
                 trend: usageFromApi.overage_research_lookups
@@ -292,7 +306,7 @@ function BillingPageInner() {
             ]
           : []),
       ]
-    : [...emptyUsageMetrics]
+    : emptyUsageMetrics(currentTier)
 
   const statusDisplay: Record<string, { label: string; classes: string; beacon: "active" | "warning" | "error" | "idle" }> = {
     active: { label: "Active", classes: "bg-success/10 text-success border-success/20", beacon: "active" },
@@ -482,26 +496,26 @@ function BillingPageInner() {
 
   return (
     <>
-    <div className="relative flex-1 overflow-auto">
-        {/* Premium ambient background */}
-        <div className="fixed inset-0 pointer-events-none z-0">
-          <MorphingBackground colors={["emerald", "blue", "violet"]} />
-          <div className="absolute inset-0 bg-background/95 backdrop-blur-3xl" />
+    <div className="relative overflow-hidden">
+        {/* Ambient background scoped to billing content — never covers the settings rail */}
+        <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+          <div className="absolute inset-0 opacity-40">
+            <MorphingBackground colors={["emerald", "blue", "violet"]} />
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/92 to-background" />
         </div>
         
         {/* Hero Header */}
         <div className="relative z-10 overflow-hidden border-b border-border/50">
-          {/* Premium background effects */}
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-violet-500/10" />
           <div className="absolute top-0 right-0 pointer-events-none">
-            <GlowOrb size={400} color="emerald" intensity={0.3} />
+            <GlowOrb size={280} color="emerald" intensity={0.22} />
           </div>
           <div className="absolute bottom-0 left-0 pointer-events-none">
-            <GlowOrb size={300} color="violet" intensity={0.2} />
+            <GlowOrb size={220} color="violet" intensity={0.16} />
           </div>
           
-          <div className="relative px-6 py-8 lg:px-8">
-            <div className="max-w-5xl mx-auto">
+          <div className="relative px-4 py-6 md:px-6 md:py-8">
               {/* Plan Overview - Premium */}
               <motion.div 
                 className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6"
@@ -570,13 +584,11 @@ function BillingPageInner() {
                   </div>
                 </div>
               </motion.div>
-            </div>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="px-6 py-8 lg:px-8">
-          <div className="max-w-5xl mx-auto space-y-10">
+        <div className="relative z-10 space-y-10 px-4 py-6 md:px-6 md:py-8">
             {/* Usage Metrics */}
             <section className={cn(
               "transition-all duration-500 delay-200",
@@ -587,7 +599,11 @@ function BillingPageInner() {
                   <Sparkles className="h-4 w-4 text-muted-foreground" />
                   <h2 className="text-sm font-semibold text-foreground">Current Usage</h2>
                 </div>
-                <span className="text-xs text-muted-foreground">Billing period: Apr 1 - Apr 30</span>
+                <span className="text-xs text-muted-foreground">
+                  {subscription?.current_period_end
+                    ? `Period ends ${new Date(subscription.current_period_end).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+                    : "Current billing period"}
+                </span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -932,7 +948,6 @@ function BillingPageInner() {
             </div>
           </div>
         </div>
-      </div>
 
       {/* Upgrade Plan Modal */}
       <Dialog open={upgradeModalOpen} onOpenChange={setUpgradeModalOpen}>

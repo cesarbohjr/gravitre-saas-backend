@@ -52,7 +52,7 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 import { SettingsShell, canAccessSettingsSection } from "@/components/settings/settings-shell"
-import { type SettingsSectionId } from "@/lib/settings-sections"
+import { settingsHrefForSection, type SettingsSectionId } from "@/lib/settings-sections"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 
 function OrganizationSettings({
@@ -1609,13 +1609,34 @@ function SettingsContent() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   const { isAdmin, loading: adminLoading } = useOrgAdmin()
-  const initialSection = (searchParams.get("section") || "organization") as SettingsSectionId
-  const [activeSection, setActiveSection] = useState<SettingsSectionId>(initialSection)
+  const sectionParam = (searchParams.get("section") || "organization") as SettingsSectionId
+  const [activeSection, setActiveSection] = useState<SettingsSectionId>(sectionParam)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
-    if (searchParams.get("section") === "enterprise") {
+    const section = searchParams.get("section")
+    if (section === "enterprise") {
       router.replace("/settings/enterprise")
+      return
+    }
+    if (section === "billing") {
+      router.replace("/settings/billing")
+      return
+    }
+    if (section === "approvals") {
+      router.replace("/settings/approvals")
+      return
+    }
+    if (section === "permissions") {
+      router.replace("/settings/team/permissions")
+      return
+    }
+    if (section === "audit") {
+      router.replace("/audit")
+      return
+    }
+    if (section) {
+      setActiveSection(section as SettingsSectionId)
     }
   }, [searchParams, router])
 
@@ -1682,6 +1703,16 @@ function SettingsContent() {
       case "billing-usage":
         return <BillingUsageSettings />
       case "webhooks": return <WebhooksSettings isAdmin={isAdmin} />
+      case "billing":
+      case "approvals":
+      case "permissions":
+      case "audit":
+        return (
+          <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Opening…
+          </div>
+        )
       default:
         return (
           <OrganizationSettings
@@ -1695,10 +1726,20 @@ function SettingsContent() {
     }
   }
 
+  const handleSectionChange = (section: SettingsSectionId) => {
+    const href = settingsHrefForSection(section)
+    if (href.startsWith("/settings?") || href === "/settings") {
+      setActiveSection(section)
+      router.push(href)
+      return
+    }
+    router.push(href)
+  }
+
   return (
     <SettingsShell
       activeSection={activeSection}
-      onSectionChange={setActiveSection}
+      onSectionChange={handleSectionChange}
       isAdmin={isAdmin}
       mobileMenuOpen={mobileMenuOpen}
       onMobileMenuOpenChange={setMobileMenuOpen}

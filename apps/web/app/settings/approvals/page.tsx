@@ -3,14 +3,26 @@
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
+import { motion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { SettingsShell } from "@/components/settings/settings-shell"
+import { GlowOrb } from "@/components/gravitre/premium-effects"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2, Plus, ShieldCheck, Trash2 } from "lucide-react"
+import {
+  ArrowRight,
+  CheckCircle2,
+  Inbox,
+  Loader2,
+  Plus,
+  ShieldCheck,
+  Trash2,
+} from "lucide-react"
 import { fetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { useViewModeSafe } from "@/lib/view-mode-context"
+import { useSettingsSectionNav } from "@/lib/settings-nav"
 import { settingsApi } from "@/lib/api"
 import type { User } from "@/types/api"
 import { toast } from "sonner"
@@ -40,24 +52,77 @@ function toggleInList<T extends string>(list: T[], value: T): T[] {
 }
 
 export default function HitlApprovalsPage() {
-  const { user, loading: authLoading } = useAuth()
+  const { loading: authLoading } = useAuth()
   const { isAdmin: viewAdmin, membershipLoading } = useViewModeSafe()
-  const { isAdmin: orgIsAdmin } = useOrgAdmin()
-  // Org admin comes from lite-membership / organization_members — not Supabase user.role.
+  const { isAdmin: orgIsAdmin, loading: orgAdminLoading } = useOrgAdmin()
   const isAdmin = viewAdmin || orgIsAdmin
+  const onSectionChange = useSettingsSectionNav("approvals")
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
+  if (authLoading || membershipLoading || orgAdminLoading) {
+    return (
+      <AppShell title="Settings">
+        <SettingsShell
+          activeSection="approvals"
+          isAdmin={isAdmin}
+          onSectionChange={onSectionChange}
+          hideHeader
+        >
+          <div className="flex h-64 items-center justify-center p-4 text-muted-foreground md:p-6">
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            Loading…
+          </div>
+        </SettingsShell>
+      </AppShell>
+    )
+  }
+
+  return (
+    <AppShell title="Settings">
+      <SettingsShell
+        activeSection="approvals"
+        isAdmin={isAdmin}
+        mobileMenuOpen={mobileMenuOpen}
+        onMobileMenuOpenChange={setMobileMenuOpen}
+        onSectionChange={onSectionChange}
+        hideHeader
+      >
+        {isAdmin ? <ApprovalsContent /> : <ApprovalsDenied />}
+      </SettingsShell>
+    </AppShell>
+  )
+}
+
+function ApprovalsDenied() {
+  return (
+    <div className="m-4 rounded-2xl border border-border bg-card/60 p-8 text-center md:m-6">
+      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-muted">
+        <ShieldCheck className="h-6 w-6 text-muted-foreground" />
+      </div>
+      <h2 className="text-lg font-semibold text-foreground">Admin access required</h2>
+      <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+        Human-in-the-loop policies can only be managed by workspace owners and admins.
+      </p>
+      <Button variant="outline" className="mt-6" asChild>
+        <Link href="/settings">Back to settings</Link>
+      </Button>
+    </div>
+  )
+}
+
+function ApprovalsContent() {
   const { data, error, isLoading, mutate } = useSWR<{ policies: HitlPolicy[] }>(
-    isAdmin ? "/api/settings/hitl-policies" : null,
+    "/api/settings/hitl-policies",
     fetcher,
     { revalidateOnFocus: false },
   )
   const { data: liteData } = useSWR<{ departments?: Array<{ id: string; name: string }> }>(
-    isAdmin ? "/api/settings/lite-seats" : null,
+    "/api/settings/lite-seats",
     fetcher,
     { revalidateOnFocus: false },
   )
   const { data: teamData } = useSWR<{ team?: User[] }>(
-    isAdmin ? "/api/settings/team" : null,
+    "/api/settings/team",
     fetcher,
     { revalidateOnFocus: false },
   )
@@ -65,6 +130,7 @@ export default function HitlApprovalsPage() {
   const departments = liteData?.departments ?? []
   const team = teamData?.team ?? []
   const policies = data?.policies ?? []
+  const enabledCount = policies.filter((policy) => policy.enabled).length
 
   const [name, setName] = useState("Write & delete approval")
   const [scopeType, setScopeType] = useState<ScopeType>("org")
@@ -154,261 +220,324 @@ export default function HitlApprovalsPage() {
     }
   }
 
-  if (authLoading || membershipLoading) {
-    return (
-      <AppShell title="Human-in-the-loop">
-        <div className="flex h-64 items-center justify-center text-muted-foreground">
-          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-          Loading…
-        </div>
-      </AppShell>
-    )
-  }
-
-  if (!isAdmin) {
-    return (
-      <AppShell title="Human-in-the-loop">
-        <div className="mx-auto max-w-3xl px-4 py-8">
-          <p className="text-sm text-muted-foreground">
-            Admin or owner permission is required to manage human-in-the-loop policies.
-          </p>
-          <Button variant="ghost" className="mt-4" asChild>
-            <Link href="/settings">Back to settings</Link>
-          </Button>
-        </div>
-      </AppShell>
-    )
-  }
-
   return (
-    <AppShell title="Human-in-the-loop">
-      <div className="mx-auto max-w-3xl px-4 py-8 md:px-6">
-        <div className="mb-8">
-          <div className="mb-2 flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-primary" />
-            <h1 className="text-2xl font-semibold text-foreground">Human-in-the-loop</h1>
-          </div>
-          <p className="text-sm text-muted-foreground text-pretty">
-            Require approval for read, write, or delete actions by organization, department, or
-            specific user. More specific rules (user → department → org) win when several match.
-          </p>
+    <div className="relative space-y-8 p-4 md:p-6">
+      <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-sky-500/10 via-card to-violet-500/10 p-6 md:p-8">
+        <div className="pointer-events-none absolute -right-10 -top-10 opacity-70">
+          <GlowOrb size={220} color="blue" intensity={0.25} />
         </div>
-
-        <section className="mb-8 space-y-4 rounded-xl border border-border bg-card/40 p-4">
-          <h2 className="text-sm font-medium text-foreground">Add policy</h2>
-          <div>
-            <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Name
-            </label>
-            <Input
-              className="mt-1.5"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Sales write approval"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Applies to
-            </label>
-            <div className="mt-1.5 flex flex-wrap gap-2">
-              {(["org", "department", "user"] as ScopeType[]).map((scope) => (
-                <button
-                  key={scope}
-                  type="button"
-                  onClick={() => setScopeType(scope)}
-                  className={cn(
-                    "rounded-md border px-3 py-1.5 text-sm capitalize transition-colors",
-                    scopeType === scope
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-secondary/40 text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {scope === "org" ? "Entire org" : scope}
-                </button>
-              ))}
+        <div className="pointer-events-none absolute -bottom-16 left-8 opacity-50">
+          <GlowOrb size={180} color="violet" intensity={0.2} />
+        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between"
+        >
+          <div className="max-w-xl">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
+              <ShieldCheck className="h-3.5 w-3.5 text-sky-600" />
+              Governance
             </div>
-          </div>
-
-          {scopeType === "department" ? (
-            <div>
-              <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Department
-              </label>
-              <select
-                className="mt-1.5 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm"
-                value={departmentId}
-                onChange={(e) => setDepartmentId(e.target.value)}
-              >
-                <option value="">Select department…</option>
-                {departments.map((dept) => (
-                  <option key={dept.id} value={dept.id}>
-                    {dept.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : null}
-
-          {scopeType === "user" ? (
-            <div>
-              <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                User
-              </label>
-              <select
-                className="mt-1.5 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm"
-                value={subjectUserId}
-                onChange={(e) => setSubjectUserId(e.target.value)}
-              >
-                <option value="">Select user…</option>
-                {team.map((member) => {
-                  const id = String(member.id || "")
-                  return (
-                    <option key={id} value={id}>
-                      {member.email || member.full_name || id}
-                    </option>
-                  )
-                })}
-              </select>
-            </div>
-          ) : null}
-
-          <div>
-            <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Actions that need approval
-            </label>
-            <div className="mt-1.5 flex flex-wrap gap-2">
-              {ACTION_OPTIONS.map((kind) => (
-                <button
-                  key={kind}
-                  type="button"
-                  onClick={() => setActionKinds((prev) => toggleInList(prev, kind))}
-                  className={cn(
-                    "rounded-md border px-3 py-1.5 text-sm capitalize transition-colors",
-                    actionKinds.includes(kind)
-                      ? "border-primary bg-primary/15 text-foreground"
-                      : "border-border bg-secondary/40 text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {kind}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Approver roles
-            </label>
-            <div className="mt-1.5 flex flex-wrap gap-2">
-              {ROLE_OPTIONS.map((role) => (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => setApproverRoles((prev) => toggleInList(prev, role))}
-                  className={cn(
-                    "rounded-md border px-3 py-1.5 text-sm capitalize transition-colors",
-                    approverRoles.includes(role)
-                      ? "border-primary bg-primary/15 text-foreground"
-                      : "border-border bg-secondary/40 text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {role}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <Button size="sm" className="gap-2" onClick={handleCreate} disabled={saving}>
-            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-            Add policy
-          </Button>
-        </section>
-
-        <section>
-          <h2 className="mb-3 text-sm font-medium text-foreground">Active policies</h2>
-          {isLoading && !data ? (
-            <div className="flex items-center py-8 text-muted-foreground">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Loading policies…
-            </div>
-          ) : error ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-              Could not load HITL policies. If this is a new environment, apply the{" "}
-              <code className="text-xs">hitl_policies</code> migration first.
-            </div>
-          ) : policies.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No custom policies yet. Write and delete actions still require admin/owner approval by
-              default.
+            <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+              Human-in-the-loop
+            </h1>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Require approval before high-impact actions run. Scope by organization, department, or
+              person — more specific rules win when several match.
             </p>
-          ) : (
-            <ul className="space-y-3">
-              {policies.map((policy) => (
-                <li
-                  key={policy.id}
-                  className="flex flex-col gap-3 rounded-xl border border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-foreground">{policy.name}</p>
-                      {!policy.enabled ? (
-                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
-                          Disabled
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Scope:{" "}
-                      {policy.scope_type === "org"
-                        ? "Entire org"
-                        : policy.scope_type === "department"
-                          ? `Department · ${departmentNameById.get(policy.department_id || "") || policy.department_id}`
-                          : `User · ${userLabelById.get(policy.subject_user_id || "") || policy.subject_user_id}`}
-                      {" · "}
-                      Actions: {(policy.action_kinds || []).join(", ") || "—"}
-                      {" · "}
-                      Approvers: {(policy.approver_roles || []).join(", ") || "—"}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleEnabled(policy)}
-                    >
-                      {policy.enabled ? "Disable" : "Enable"}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      disabled={deletingId === policy.id}
-                      onClick={() => handleDelete(policy.id)}
-                    >
-                      {deletingId === policy.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Button variant="outline" asChild>
-            <Link href="/approvals">Open Decision Queue</Link>
-          </Button>
-          <Button variant="ghost" asChild>
-            <Link href="/settings">Back to settings</Link>
-          </Button>
-        </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:min-w-[240px]">
+            <div className="rounded-2xl border border-border/70 bg-background/75 px-4 py-3 backdrop-blur">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Policies</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{policies.length}</p>
+            </div>
+            <div className="rounded-2xl border border-border/70 bg-background/75 px-4 py-3 backdrop-blur">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Active</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{enabledCount}</p>
+            </div>
+          </div>
+        </motion.div>
       </div>
-    </AppShell>
+
+      <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+        <motion.section
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="rounded-3xl border border-border bg-card/70 p-5 shadow-sm md:p-6"
+        >
+          <div className="mb-5 flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Create policy</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Define who needs approval and who can grant it.
+              </p>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600">
+              <Plus className="h-5 w-5" />
+            </div>
+          </div>
+
+          <div className="space-y-5">
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Name
+              </label>
+              <Input
+                className="mt-1.5 h-11 rounded-xl"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Sales write approval"
+              />
+            </div>
+
+            <ChipGroup
+              label="Applies to"
+              options={[
+                { value: "org", label: "Entire org" },
+                { value: "department", label: "Department" },
+                { value: "user", label: "User" },
+              ]}
+              value={scopeType}
+              onChange={(value) => setScopeType(value as ScopeType)}
+              exclusive
+            />
+
+            {scopeType === "department" ? (
+              <div>
+                <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Department
+                </label>
+                <select
+                  className="mt-1.5 h-11 w-full rounded-xl border border-border bg-secondary/60 px-3 text-sm"
+                  value={departmentId}
+                  onChange={(e) => setDepartmentId(e.target.value)}
+                >
+                  <option value="">Select department…</option>
+                  {departments.map((dept) => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
+
+            {scopeType === "user" ? (
+              <div>
+                <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  User
+                </label>
+                <select
+                  className="mt-1.5 h-11 w-full rounded-xl border border-border bg-secondary/60 px-3 text-sm"
+                  value={subjectUserId}
+                  onChange={(e) => setSubjectUserId(e.target.value)}
+                >
+                  <option value="">Select user…</option>
+                  {team.map((member) => {
+                    const id = String(member.id || "")
+                    return (
+                      <option key={id} value={id}>
+                        {member.email || member.full_name || id}
+                      </option>
+                    )
+                  })}
+                </select>
+              </div>
+            ) : null}
+
+            <ChipGroup
+              label="Actions that need approval"
+              options={ACTION_OPTIONS.map((kind) => ({ value: kind, label: kind }))}
+              values={actionKinds}
+              onToggle={(value) => setActionKinds((prev) => toggleInList(prev, value as ActionKind))}
+            />
+
+            <ChipGroup
+              label="Approver roles"
+              options={ROLE_OPTIONS.map((role) => ({ value: role, label: role }))}
+              values={approverRoles}
+              onToggle={(value) => setApproverRoles((prev) => toggleInList(prev, value))}
+            />
+
+            <Button size="lg" className="w-full gap-2 rounded-xl sm:w-auto" onClick={handleCreate} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              Add policy
+            </Button>
+          </div>
+        </motion.section>
+
+        <motion.aside
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="space-y-4"
+        >
+          <div className="rounded-3xl border border-border bg-card/70 p-5 shadow-sm">
+            <div className="mb-3 flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              <h3 className="text-sm font-semibold text-foreground">Default protection</h3>
+            </div>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Write and delete actions already require admin or owner approval. Custom policies let
+              you tighten or broaden that for specific teams.
+            </p>
+          </div>
+          <div className="rounded-3xl border border-border bg-gradient-to-br from-slate-900 to-slate-800 p-5 text-white shadow-sm">
+            <div className="mb-3 flex items-center gap-2">
+              <Inbox className="h-4 w-4 text-sky-300" />
+              <h3 className="text-sm font-semibold">Decision Queue</h3>
+            </div>
+            <p className="text-sm leading-relaxed text-white/70">
+              Review pending approvals from operators and agents in one place.
+            </p>
+            <Button
+              asChild
+              variant="secondary"
+              className="mt-4 w-full justify-between rounded-xl bg-white text-slate-900 hover:bg-white/90"
+            >
+              <Link href="/approvals">
+                Open Decision Queue
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        </motion.aside>
+      </div>
+
+      <section className="rounded-3xl border border-border bg-card/70 p-5 shadow-sm md:p-6">
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">Active policies</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Enable, pause, or remove rules without leaving Settings.
+            </p>
+          </div>
+        </div>
+
+        {isLoading && !data ? (
+          <div className="flex items-center py-10 text-muted-foreground">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Loading policies…
+          </div>
+        ) : error ? (
+          <div className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            Could not load HITL policies. If this is a new environment, apply the{" "}
+            <code className="text-xs">hitl_policies</code> migration first.
+          </div>
+        ) : policies.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-secondary/20 px-6 py-10 text-center">
+            <p className="text-sm font-medium text-foreground">No custom policies yet</p>
+            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+              Write and delete actions still require admin/owner approval by default.
+            </p>
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {policies.map((policy) => (
+              <li
+                key={policy.id}
+                className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-background/60 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium text-foreground">{policy.name}</p>
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                        policy.enabled
+                          ? "bg-emerald-500/10 text-emerald-700"
+                          : "bg-muted text-muted-foreground",
+                      )}
+                    >
+                      {policy.enabled ? "Enabled" : "Disabled"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    Scope:{" "}
+                    {policy.scope_type === "org"
+                      ? "Entire org"
+                      : policy.scope_type === "department"
+                        ? `Department · ${departmentNameById.get(policy.department_id || "") || policy.department_id}`
+                        : `User · ${userLabelById.get(policy.subject_user_id || "") || policy.subject_user_id}`}
+                    {" · "}
+                    Actions: {(policy.action_kinds || []).join(", ") || "—"}
+                    {" · "}
+                    Approvers: {(policy.approver_roles || []).join(", ") || "—"}
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <Button variant="outline" size="sm" className="rounded-xl" onClick={() => handleToggleEnabled(policy)}>
+                    {policy.enabled ? "Disable" : "Enable"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="rounded-xl text-destructive hover:text-destructive"
+                    disabled={deletingId === policy.id}
+                    onClick={() => handleDelete(policy.id)}
+                  >
+                    {deletingId === policy.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  )
+}
+
+function ChipGroup({
+  label,
+  options,
+  value,
+  values,
+  onChange,
+  onToggle,
+  exclusive,
+}: {
+  label: string
+  options: Array<{ value: string; label: string }>
+  value?: string
+  values?: string[]
+  onChange?: (value: string) => void
+  onToggle?: (value: string) => void
+  exclusive?: boolean
+}) {
+  return (
+    <div>
+      <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </label>
+      <div className="mt-1.5 flex flex-wrap gap-2">
+        {options.map((option) => {
+          const selected = exclusive ? value === option.value : Boolean(values?.includes(option.value))
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => (exclusive ? onChange?.(option.value) : onToggle?.(option.value))}
+              className={cn(
+                "rounded-full border px-3.5 py-1.5 text-sm capitalize transition-colors",
+                selected
+                  ? exclusive
+                    ? "border-slate-900 bg-slate-900 text-white"
+                    : "border-sky-600/40 bg-sky-500/10 text-foreground"
+                  : "border-border bg-secondary/40 text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {option.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
   )
 }
