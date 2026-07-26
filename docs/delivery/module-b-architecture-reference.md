@@ -90,5 +90,4 @@ Reuse `entity_resolution_store` / `org_entity_resolution_records`
 (`cross_conversation_ledger_memory.py`).
 
 **Feature flag:** `Settings.cross_conversation_ledger_memory_enabled`
-(**default False**). Do not enable in production until Module B phase-1 live
-4/4 + confidence-propose fix are confirmed on a deployed tip.
+(**default True**). Set `CROSS_CONVERSATION_LEDGER_MEMORY_ENABLED=false` to disable.
