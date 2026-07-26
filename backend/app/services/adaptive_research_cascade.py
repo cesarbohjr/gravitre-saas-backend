@@ -37,8 +37,8 @@ ADAPTIVE_RESEARCH_LEAD = (
 
 
 def _internet_research_allowed(settings: Settings) -> bool:
-    """Governance gate: internet research stays off until explicitly enabled."""
-    if not bool(getattr(settings, "internet_research_enabled", False)):
+    """Governance gate: internet research when flag on and a provider is configured."""
+    if not bool(getattr(settings, "internet_research_enabled", True)):
         return False
     from app.services.web_research import is_web_research_provider_configured
 

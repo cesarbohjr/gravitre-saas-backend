@@ -72,7 +72,7 @@ def summarize_usage_records_billing(
     remaining_research = max(included_research - research_total, 0)
 
     internet_research_enabled = bool(
-        settings and getattr(settings, "internet_research_enabled", False)
+        settings and getattr(settings, "internet_research_enabled", True)
     )
 
     return {

@@ -44,14 +44,14 @@ def test_assess_not_thin_with_strong_scores():
     )
 
 
-def test_internet_option_disabled_by_default():
-    options = build_research_scope_options(_settings())
+def test_internet_option_disabled_when_flag_off():
+    options = build_research_scope_options(_settings(internet_enabled=False))
     internet = next(row for row in options if row["scope"] == ResearchScope.INTERNET_RESEARCH.value)
     assert internet["enabled"] is False
     assert internet["disabled_reason"]
 
 
-def test_internet_option_enabled_when_governance_allows():
+def test_internet_option_enabled_by_default_when_provider_configured():
     options = build_research_scope_options(_settings(internet_enabled=True, tavily="tvly-test"))
     internet = next(row for row in options if row["scope"] == ResearchScope.INTERNET_RESEARCH.value)
     assert internet["enabled"] is True

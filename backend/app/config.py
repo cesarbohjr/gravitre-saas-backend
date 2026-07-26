@@ -400,7 +400,7 @@ class Settings(BaseSettings):
     # Optional Tavily API key for assistant search_web tool (STA-148).
     tavily_api_key: str = ""
     internet_research_enabled: bool = Field(
-        default=False,
+        default=True,
         validation_alias=AliasChoices("INTERNET_RESEARCH_ENABLED", "internet_research_enabled"),
     )
     # Internet research provider: google (Grounded Generation) | tavily
