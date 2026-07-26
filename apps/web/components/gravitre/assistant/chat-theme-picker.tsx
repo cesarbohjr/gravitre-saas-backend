@@ -41,7 +41,7 @@ export function ChatThemePicker({
       >
         <Palette className="h-3.5 w-3.5" />
       </PopoverTrigger>
-      <PopoverContent align="end" className="z-[70] w-64 p-3">
+      <PopoverContent align="end" className="z-[70] w-72 p-3">
         <div className="mb-2 flex items-center justify-between">
           <p className="text-[13px] font-semibold text-foreground">Chat background</p>
           <span className="text-[11px] text-muted-foreground">{active?.label}</span>

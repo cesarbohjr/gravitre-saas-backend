@@ -369,10 +369,10 @@
   }
 
   /* ============================================================
-     Chat canvas background themes (8 selectable, behind /ai).
-     Every pattern is keyed to theme tokens so it adapts to
-     light/dark automatically and stays low-contrast enough to
-     keep message bubbles + text legible at all breakpoints.
+     Chat canvas background themes (selectable, behind /ai).
+     Geometric extras (plus / hex / lattice) follow Hero Patterns
+     motifs, recolored onto Gravitre tokens. Every pattern adapts
+     to light/dark and stays low-contrast for bubble legibility.
      `background-attachment: local` (never `fixed`) so textures
      scroll with the canvas and paint correctly on iOS Safari.
      Selected via `data-chat-bg="<id>"`; "signal" is the default.
@@ -448,6 +448,50 @@
       radial-gradient(color-mix(in oklch, var(--info) 10%, transparent) 1.5px, transparent 2px);
     background-size: 64px 64px, 64px 64px;
     background-position: 0 0, 32px 32px;
+    background-attachment: local, local;
+  }
+
+  /* 9 — Plus: Hero Patterns–style sparse + marks */
+  .ai-chat-canvas[data-chat-bg="plus"] {
+    background-image:
+      linear-gradient(
+        to right,
+        transparent 0,
+        transparent calc(50% - 0.5px),
+        color-mix(in oklch, var(--foreground) 7%, transparent) calc(50% - 0.5px),
+        color-mix(in oklch, var(--foreground) 7%, transparent) calc(50% + 0.5px),
+        transparent calc(50% + 0.5px)
+      ),
+      linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent calc(50% - 0.5px),
+        color-mix(in oklch, var(--foreground) 7%, transparent) calc(50% - 0.5px),
+        color-mix(in oklch, var(--foreground) 7%, transparent) calc(50% + 0.5px),
+        transparent calc(50% + 0.5px)
+      );
+    background-size: 28px 10px, 10px 28px;
+    background-position: center center, center center;
+    background-attachment: local, local;
+  }
+
+  /* 10 — Hex: honeycomb lattice (geometric / structural) */
+  .ai-chat-canvas[data-chat-bg="hex"] {
+    background-image:
+      linear-gradient(30deg, color-mix(in oklch, var(--border) 65%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in oklch, var(--border) 65%, transparent) 1px, transparent 1px),
+      linear-gradient(150deg, color-mix(in oklch, var(--border) 65%, transparent) 1px, transparent 1px);
+    background-size: 28px 48px, 28px 48px, 28px 48px;
+    background-attachment: local, local, local;
+  }
+
+  /* 11 — Lattice: open square cells (schematic frame) */
+  .ai-chat-canvas[data-chat-bg="lattice"] {
+    background-image:
+      linear-gradient(color-mix(in oklch, var(--foreground) 6%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in oklch, var(--foreground) 6%, transparent) 1px, transparent 1px);
+    background-size: 36px 36px, 36px 36px;
+    background-position: -1px -1px, -1px -1px;
     background-attachment: local, local;
   }
 
