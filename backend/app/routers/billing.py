@@ -1058,3 +1058,5 @@ async def handle_webhook(
     from app.routers.webhooks.stripe import stripe_webhook
 
     return await stripe_webhook(request, settings)
+
+# Deploy gate touch for Command plan billing fix (9b1d748c)
