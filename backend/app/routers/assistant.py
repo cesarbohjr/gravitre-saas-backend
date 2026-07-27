@@ -442,48 +442,17 @@ def _persist_conversation_turn(
             conv_id = str(insert.data[0]["id"])
             current_count = 0
 
-        assistant_id = (assistant_message_id or "").strip() or str(uuid.uuid4())
-        tool_calls = (
-            [
-                {
-                    "name": tool.get("name"),
-                    "displayName": tool.get("displayName"),
-                    "input": tool.get("input"),
-                    "output": tool.get("output"),
-                    **(
-                        {"error": tool.get("error")}
-                        if tool.get("error") is not None
-                        else {}
-                    ),
-                    **(
-                        {"errorCode": tool.get("errorCode") or tool.get("error_code")}
-                        if tool.get("errorCode") is not None or tool.get("error_code") is not None
-                        else {}
-                    ),
-                }
-                for tool in tool_results
-            ]
-            if tool_results
-            else None
+        from app.services.conversation_message_rows import build_conversation_turn_message_rows
+
+        rows, assistant_id = build_conversation_turn_message_rows(
+            conversation_id=conv_id,
+            user_text=user_text,
+            assistant_text=assistant_text,
+            tool_results=tool_results,
+            created_at=now,
+            assistant_message_id=assistant_message_id,
         )
-        client.table("conversation_messages").insert(
-            [
-                {
-                    "conversation_id": conv_id,
-                    "role": "user",
-                    "content": user_text,
-                    "created_at": now,
-                },
-                {
-                    "conversation_id": conv_id,
-                    "role": "assistant",
-                    "id": assistant_id,
-                    "content": assistant_text,
-                    "tool_calls": tool_calls,
-                    "created_at": now,
-                },
-            ]
-        ).execute()
+        client.table("conversation_messages").insert(rows).execute()
 
         client.table("conversations").update(
             {

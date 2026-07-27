@@ -1,18 +1,18 @@
 {
   "feature": "unified_turn_live_fallthrough_baseline",
   "window_hours": 168,
-  "since": "2026-07-20T07:26:54.726941+00:00",
-  "generated_at": "2026-07-27T07:26:57.818790+00:00",
+  "since": "2026-07-20T08:29:11.338237+00:00",
+  "generated_at": "2026-07-27T08:29:15.680173+00:00",
   "health": {
-    "git_sha": "3f170461dc5e3de892a53114e1d4bcd6d2dece96",
+    "git_sha": "3f00efc6a6c892d5b31d526d4093c5a4d33675b5",
     "unified_turn_live_enabled": true,
-    "timestamp": "2026-07-27T07:26:56.502710+00:00"
+    "timestamp": "2026-07-27T08:29:13.329240+00:00"
   },
   "totals": {
-    "live_completed": 1254,
+    "live_completed": 1257,
     "live_fallthrough": 143,
-    "live_turns_with_audit": 1397,
-    "fallthrough_pct_of_audited_live_turns": 10.24
+    "live_turns_with_audit": 1400,
+    "fallthrough_pct_of_audited_live_turns": 10.21
   },
   "fallthrough_by_raw_reason": {
     "defer_classical_tool_sse": 64,
@@ -34,12 +34,15 @@
   },
   "notes": {
     "pending_family_silent_fallthrough": "Instrumented: has_pending_family now emits unified_turn.live.fallthrough with fallthrough_reason=pending_family_classical_resume.",
+    "live_disabled_silent_fallthrough": "Instrumented: flag-off early return emits fallthrough_reason=live_disabled when a client is present.",
+    "r2_gate_baseline_note": "R2 (\u22641% fallthrough for 7 days) must use this complete reason set including pending_family_classical_resume; rate may rise when newly instrumented paths appear.",
     "bucket_mapping": {
       "unified_outcome_skip": "outcome_skipped / outcome_error",
       "connector_tool_proposal_deferral": "defer_connector_tool_proposal",
       "classical_tool_sse_deferral": "defer_classical_tool_sse",
       "guard_violation": "violates_no_pending_hold",
-      "pending_family_classical_resume": "pending_family_classical_resume"
+      "pending_family_classical_resume": "pending_family_classical_resume",
+      "live_disabled": "live_disabled"
     }
   }
 }

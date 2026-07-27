@@ -1,0 +1,137 @@
+{
+  "feature": "unified_turn_capstone_incident_live",
+  "started_at": "2026-07-27T08:29:14.365240+00:00",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "expect_sha": "3f00efc6",
+  "steps": [
+    {
+      "id": "scrub_gate_literals",
+      "ok": true,
+      "cleaned_args": {
+        "to": "stephaniekhan2002@gmail.com",
+        "subject": "hello",
+        "body": "I'm just testing this"
+      },
+      "evidence": "email_slot_looks_corrupted + scrub_gmail_write_plan on tip-matched code"
+    },
+    {
+      "id": "turn1_compound_send",
+      "http": 200,
+      "assistant": "Hey \u2014 on it.\n\nI can help with **Send Gmail message** once I have a few more details.\n\nStill needed:\n- recipient\n- subject\n- body\n\nReply with the missing details for this action.",
+      "pending_tasks_sse": [
+        {
+          "type": "connector_action",
+          "params": {
+            "to": "stephaniekhan2002@gmail.com",
+            "args": {
+              "to": "stephaniekhan2002@gmail.com",
+              "body": "I'm just testing this",
+              "subject": "hello"
+            },
+            "body": "I'm just testing this",
+            "kind": "write",
+            "label": "Send email",
+            "subject": "hello",
+            "tool_name": "gmail_messages_send",
+            "destructive": false,
+            "integration": "gmail",
+            "invoke_action": "gmail.messages.send",
+            "inferred_fields": [],
+            "inference_sources": {}
+          },
+          "status": "awaiting_params"
+        }
+      ]
+    },
+    {
+      "id": "post_turn1_args",
+      "args": {
+        "to": "stephaniekhan2002@gmail.com",
+        "subject": "hello",
+        "body": "I'm just testing this"
+      },
+      "slot_values": {
+        "to": "stephaniekhan2002@gmail.com",
+        "subject": "hello",
+        "body": "I'm just testing this"
+      },
+      "ledger_sources": {
+        "to": "unified_turn_live",
+        "body": "unified_turn_live",
+        "email": "user_message",
+        "subject": "unified_turn_live"
+      },
+      "pending_status": "awaiting_params",
+      "corrupt": [],
+      "ok": true
+    },
+    {
+      "id": "turn2_confirm_resume",
+      "http": 200,
+      "assistant": "**Done \u2014 Send email**\n\nGmail message sent to stephaniekhan2002@gmail.com subject \"hello\". Message id: 19fa2b18a4861b39.\n\n_What this means:_ Verified in Gmail \u2014 open the record to confirm, or tell me the next step.\n\n[View in Gravitre](/ai?c=0c0a451c-8f99-4a15-9c63-621757266ff6)\n\n[View in Gmail](https://mail.google.com/mail/u/0/#all/19fa2b18a4861b39)\n\n**What I'd look at next:** Decide the next gmail step \u2014 Send email completed Verifiedly. I'd look at related records or a follow-up write next \u2014 say what you want.\n_Suggest only \u2014 reply_ **What should I do next with this?** _to proceed (nothing runs until you approve)._",
+      "pending_tasks_sse": []
+    },
+    {
+      "id": "post_resume_args",
+      "args": {
+        "to": null,
+        "subject": null,
+        "body": null
+      },
+      "slot_values": {
+        "to": "stephaniekhan2002@gmail.com",
+        "subject": "hello",
+        "body": "I'm just testing this"
+      },
+      "ledger_sources": {
+        "to": "unified_turn_live",
+        "body": "unified_turn_live",
+        "email": "user_message",
+        "subject": "unified_turn_live"
+      },
+      "pending_status": "executed",
+      "pending_type": "connector_action",
+      "corrupt": [],
+      "ok": true
+    },
+    {
+      "id": "approve_execute",
+      "http": 200,
+      "success": false,
+      "history_persisted": false,
+      "message_head": "Missing connector action details.",
+      "persisted_user_text": "Approved"
+    }
+  ],
+  "git_sha": "3f00efc6a6c892d5b31d526d4093c5a4d33675b5",
+  "unified_turn_live_enabled": true,
+  "conversation_id": "0c0a451c-8f99-4a15-9c63-621757266ff6",
+  "audit": {
+    "live_completed": [
+      {
+        "id": "107c7916-0294-4306-8577-d7f56b3f697a",
+        "created_at": "2026-07-27T08:29:23.543465+00:00",
+        "outcome_kind": "clarifying_question"
+      }
+    ],
+    "fallthrough": [
+      {
+        "id": "d0d094fb-1673-490d-bd96-a7bada239fe0",
+        "created_at": "2026-07-27T08:29:29.271217+00:00",
+        "reason": "pending_family_classical_resume"
+      }
+    ]
+  },
+  "conversation_messages": [],
+  "history_check": {
+    "user_approved_row": false,
+    "assistant_row": false,
+    "history_persisted_flag": false,
+    "ok": false
+  },
+  "failures": [
+    "history_persisted"
+  ],
+  "verdict": "FAIL \u2014 history_persisted",
+  "finished_at": "2026-07-27T08:30:02.179169+00:00"
+}

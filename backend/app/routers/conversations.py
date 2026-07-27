@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import time
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
@@ -981,6 +982,7 @@ async def append_conversation_messages(
         created_at = (base_time + timedelta(milliseconds=index)).isoformat()
         rows.append(
             {
+                "id": str(uuid.uuid4()),
                 "conversation_id": conversation_id,
                 "role": role,
                 "content": content,

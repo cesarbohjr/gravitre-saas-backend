@@ -18,7 +18,7 @@ Defines the engineering standard: one continuous reasoning process per turn; pen
 | 2 | Grep all silent `return None` in `apply_unified_turn_live` | Remaining silent path was flag-off; now emits `live_disabled` when client present |
 | 3 | Stop ledger overwrite of LIVE-confirmed values | LIVE lock on upsert + `seal_source="unified_turn_live"` through `missing_params_stage_patch` (closes demotion `unified_turn_live`→`staged_plan`) |
 | 4 | Confirm scrub gate blocks corrupted subject/body | Unit: `email_slot_looks_corrupted("line, hello and")`; live replay after deploy |
-| 5 | Persist Approve/execute conversation messages | `_persist_conversation_turn` + `history_persisted`; UI toast when false |
+| 5 | Persist Approve/execute conversation messages | Root cause: PostgREST batch insert nulled user `id` when only assistant had `id` → silent NOT NULL fail. Fix: explicit UUID on both rows; UI toast when `history_persisted === false` |
 
 ## Part 4 — re-baseline
 
