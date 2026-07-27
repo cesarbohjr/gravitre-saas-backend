@@ -68,12 +68,15 @@ def missing_params_stage_patch(
     message: str,
     *,
     task_state: dict[str, Any] | None = None,
+    seal_source: str = "staged_plan",
 ) -> tuple[WorkflowCheck, dict[str, Any]] | None:
     """Shared write gate: incomplete plans stage awaiting_params — never awaiting_confirm.
 
     Classical chat, unified-turn live, and ReAct write staging must all use this so
     dual paths cannot ask for a blind **yes** on missing subject/body/recipient.
     Callers must apply ``scrub_gmail_write_plan`` to the live plan before approval.
+    Pass ``seal_source="unified_turn_live"`` from LIVE so staging cannot demote
+    already-confirmed proposal args back to ``staged_plan``.
     """
     plan = scrub_gmail_write_plan(plan)
     clarification = validate_connector_plan(plan, message or "")
@@ -85,6 +88,7 @@ def missing_params_stage_patch(
         plan,
         clarification.missing,
         ledger=get_ledger(task_state),
+        seal_source=seal_source,
     )
     return clarification, patch
 

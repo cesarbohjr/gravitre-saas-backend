@@ -48,12 +48,14 @@ Rollback: `UNIFIED_TURN_LIVE_ENABLED=false`.
 
 | Gate | Current (168h window) | R2 threshold |
 |------|------------------------|--------------|
-| `unified_turn.live.fallthrough` / audited LIVE turns | ~3.3% ([baseline](unified-turn-fallthrough-baseline.json)) | ≤ 1% and no unintentional conversational fallthrough spike |
+| `unified_turn.live.fallthrough` / audited LIVE turns | Re-baseline after capstone tip (was ~10.24% incomplete; expect rise when `pending_family_classical_resume` counts) — see [baseline](unified-turn-fallthrough-baseline.json) | ≤ 1% on the **complete** reason set for 7 consecutive days |
 | Post-deploy chat smoke | PASS on every Railway deploy | 100% green |
 | Phase 2 combined + persona-drift batteries | Re-run on tip before R2 merge | PASS |
-| Pending-family silent fallthrough | Not instrumented | Instrument or accept zero prod reports |
+| Pending-family / flag-off fallthrough | Instrumented (`pending_family_classical_resume`, `live_disabled`) | Included in R2 fallthrough % going forward |
 
-**Target:** R2 code delete PR **2026-08-01** if gates hold; else extend soak one week. Owner: next unified-turn maintenance pass.
+**Capstone (2026-07-27):** R2 soak resets against the new honest baseline after deploy of LIVE-lock + full fallthrough instrumentation. A higher % that finally measures silent handoffs is preferred over an artificially low incomplete number.
+
+**Target:** R2 code delete PR when gates hold for 7 consecutive days on the complete metric; else extend soak. Owner: next unified-turn maintenance pass.
 
 **Not in this ship.** Wait until prod fallthrough rates show unintentional conversational fallthrough ≈ 0.
 

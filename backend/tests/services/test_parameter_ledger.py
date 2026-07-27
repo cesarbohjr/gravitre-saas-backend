@@ -11,6 +11,7 @@ from app.services.parameter_ledger import (
     get_ledger,
     ingest_message_slots,
     is_awaiting_params,
+    ledger_patch,
     resume_awaiting_params,
     seal_unified_turn_plan_args,
     stage_awaiting_params,
@@ -210,6 +211,55 @@ def test_unified_turn_sealed_args_survive_corrupt_ledger_rebind():
     assert args.get("subject") == "hello"
     assert args.get("body") == "I'm just testing this"
     assert args.get("to") == "stephaniekhan2002@gmail.com"
+
+
+def test_stage_awaiting_params_cannot_demote_unified_turn_live_seal():
+    """Production bug: staging same values as staged_plan demoted LIVE seal → regex overwrite."""
+    from app.services.connector_action_workflows import missing_params_stage_patch
+
+    plan = ConnectorActionPlan(
+        tool_name="gmail_messages_send",
+        invoke_action="gmail.messages.send",
+        integration="gmail",
+        kind="write",
+        label="Send email",
+        args={
+            "to": "",
+            "subject": "hello",
+            "body": "I'm just testing this",
+        },
+    )
+    sealed = seal_unified_turn_plan_args(plan)
+    assert sealed.slots["subject"].source == "unified_turn_live"
+
+    # Default seal_source (classical) must not demote LIVE-locked slots.
+    patch = stage_awaiting_params(plan, ("recipient",), ledger=sealed)
+    ledger_after = get_ledger(patch)
+    assert ledger_after.slots["subject"].source == "unified_turn_live"
+    assert ledger_after.get("subject") == "hello"
+
+    # LIVE path passes seal_source through missing_params_stage_patch.
+    staged = missing_params_stage_patch(
+        plan,
+        "Send it with the subject line, hello and body of the email say: I'm just testing this",
+        task_state={**ledger_patch(sealed)},
+        seal_source="unified_turn_live",
+    )
+    assert staged is not None
+    _, stage_patch = staged
+    live_ledger = get_ledger(stage_patch)
+    assert live_ledger.slots["subject"].source == "unified_turn_live"
+    assert live_ledger.get("body") == "I'm just testing this"
+
+    # Later compound-sentence re-ingest must not overwrite sealed values.
+    rebound = ingest_message_slots(
+        "Send it to Stephanie, with the subject line, corrupted and "
+        "body of the email say: polluted body",
+        ledger=live_ledger,
+    )
+    assert rebound.get("subject") == "hello"
+    assert rebound.get("body") == "I'm just testing this"
+    assert rebound.slots["subject"].source == "unified_turn_live"
 
 
 def test_filler_turn_does_not_pollute_subject():

@@ -236,30 +236,38 @@ class ParameterLedger:
         if not cleaned or not key:
             return
         existing = self.slots.get(key)
-        if (
-            not force
-            and existing
-            and existing.value
-            and existing.value != cleaned
-            and key in FREE_TEXT_ARG_KEYS
-        ):
-            # Write-protect: refuse lower-trust overwrite of free-text slots.
-            # Typed slots (to/email/channel) stay cue-gated by extractors.
-            if _source_rank(source) < _source_rank(existing.source):
+        if not force and existing and existing.value:
+            # LIVE-sealed slots are locked inputs — never demote source on equal
+            # value, and never silently re-derive from a lower-trust extract.
+            if existing.source == "unified_turn_live" and source != "unified_turn_live":
                 logger.debug(
-                    "parameter_ledger_write_protect key=%s refused source=%s kept=%s",
+                    "parameter_ledger_live_lock key=%s refused source=%s kept=unified_turn_live",
                     key,
                     source,
-                    existing.source,
                 )
                 return
-            if source == "awaiting_params_resume" and existing.source != "awaiting_params_resume":
-                logger.debug(
-                    "parameter_ledger_write_protect key=%s refused resume over %s",
-                    key,
-                    existing.source,
-                )
+            if existing.value == cleaned and _source_rank(source) <= _source_rank(existing.source):
+                # Same value at equal/lower trust must not rewrite source downward
+                # (stage_awaiting_params used to demote unified_turn_live → staged_plan).
                 return
+            if existing.value != cleaned and key in FREE_TEXT_ARG_KEYS:
+                # Write-protect: refuse lower-trust overwrite of free-text slots.
+                # Typed slots (to/email/channel) stay cue-gated unless LIVE-locked above.
+                if _source_rank(source) < _source_rank(existing.source):
+                    logger.debug(
+                        "parameter_ledger_write_protect key=%s refused source=%s kept=%s",
+                        key,
+                        source,
+                        existing.source,
+                    )
+                    return
+                if source == "awaiting_params_resume" and existing.source != "awaiting_params_resume":
+                    logger.debug(
+                        "parameter_ledger_write_protect key=%s refused resume over %s",
+                        key,
+                        existing.source,
+                    )
+                    return
         self.slots[key] = SlotValue(
             value=cleaned,
             source=source,

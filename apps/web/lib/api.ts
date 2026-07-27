@@ -1548,6 +1548,7 @@ export const assistantApi = {
       message: string
       persisted_user_text?: string
       persisted_assistant_text?: string
+      history_persisted?: boolean
       execution_result?: {
         success?: boolean
         entity_type?: string

@@ -763,6 +763,21 @@ async def apply_unified_turn_live(
     """
     active = settings or get_settings()
     if not getattr(active, "unified_turn_live_enabled", False):
+        # Capstone: no silent handoff — emit when caller reached LIVE with a client.
+        if client is not None and org_id:
+            silent = UnifiedTurnShadowResult(
+                outcome_kind="skipped",
+                error="unified_turn_live_enabled=false",
+                live_served=False,
+            )
+            _mark_live_fallthrough(silent, "live_disabled")
+            emit_unified_turn_shadow_audit(
+                client=client,
+                org_id=org_id,
+                actor_id=user_id,
+                conversation_id=conversation_id,
+                result=silent,
+            )
         return None
 
     from app.services.unified_turn_pending_live import (
@@ -1096,7 +1111,10 @@ async def apply_unified_turn_live(
             task_state = {**(task_state or {}), **ledger_patch(sealed_ledger)}
             # Dual-path SoT with classical chat: never ask for yes until required args exist.
             staged_missing = missing_params_stage_patch(
-                plan, message or "", task_state=task_state or {}
+                plan,
+                message or "",
+                task_state=task_state or {},
+                seal_source="unified_turn_live",
             )
             if staged_missing:
                 clarification, stage_patch = staged_missing

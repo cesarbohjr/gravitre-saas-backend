@@ -480,6 +480,9 @@ export function AiWorkspace({
           } as (typeof prev)[number],
         ])
         void mutateConversations()
+        if (result.history_persisted === false) {
+          toast.error("Action ran, but chat history failed to save. Refresh and verify the outcome card.")
+        }
         if (result.execution_result.success && notifications) {
           const resultUrl = result.execution_result.result_url ?? undefined
           notifications.addNotification({

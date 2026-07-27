@@ -4,8 +4,9 @@
 Counts unified_turn.live.completed vs unified_turn.live.fallthrough and
 breaks fallthrough down by metadata.fallthrough_reason (existing audit payload).
 
-Pending-family silent fallthrough (apply_unified_turn_live returns None without
-audit) is not visible in audit_events — reported separately as not_instrumented.
+Capstone instrumentation: pending_family_classical_resume and live_disabled are
+named fallthrough reasons. R2 (≤1% for 7 days) must use this complete set —
+expect the rate to rise when previously silent paths become counted.
 """
 from __future__ import annotations
 
@@ -66,6 +67,8 @@ def _bucket_reason(raw: str | None) -> str:
         return "guard_violation"
     if reason == "pending_family_classical_resume":
         return "pending_family_classical_resume"
+    if reason == "live_disabled":
+        return "live_disabled"
     if reason in {"write_plan_unavailable", "read_tool_classical"}:
         return reason
     if reason.startswith("unhandled_kind_"):
@@ -158,12 +161,22 @@ def main() -> int:
                 "unified_turn.live.fallthrough with "
                 "fallthrough_reason=pending_family_classical_resume."
             ),
+            "live_disabled_silent_fallthrough": (
+                "Instrumented: flag-off early return emits "
+                "fallthrough_reason=live_disabled when a client is present."
+            ),
+            "r2_gate_baseline_note": (
+                "R2 (≤1% fallthrough for 7 days) must use this complete "
+                "reason set including pending_family_classical_resume; "
+                "rate may rise when newly instrumented paths appear."
+            ),
             "bucket_mapping": {
                 "unified_outcome_skip": "outcome_skipped / outcome_error",
                 "connector_tool_proposal_deferral": "defer_connector_tool_proposal",
                 "classical_tool_sse_deferral": "defer_classical_tool_sse",
                 "guard_violation": "violates_no_pending_hold",
                 "pending_family_classical_resume": "pending_family_classical_resume",
+                "live_disabled": "live_disabled",
             },
         },
     }
