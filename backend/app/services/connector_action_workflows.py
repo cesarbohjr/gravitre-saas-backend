@@ -23,11 +23,40 @@ from app.services.connector_session_state import inference_confidence_for_source
 analyze_list_capability_gaps = analyze_capability_gaps
 
 
+def scrub_gmail_write_plan(plan: ConnectorActionPlan) -> ConnectorActionPlan:
+    """Sanitize Gmail subject/body and drop instruction-framing residue before gates."""
+    if plan.invoke_action != "gmail.messages.send":
+        return plan
+    from app.services.parameter_ledger import (
+        email_slot_looks_corrupted,
+        sanitize_email_slot_value,
+    )
+
+    args = dict(plan.args or {})
+    changed = False
+    for key in ("subject", "body", "text", "message", "html_body"):
+        if key not in args:
+            continue
+        raw = str(args.get(key) or "")
+        kind = "subject" if key == "subject" else "body"
+        cleaned = sanitize_email_slot_value(kind, raw)
+        if not cleaned or email_slot_looks_corrupted(kind, cleaned):
+            args.pop(key, None)
+            changed = True
+        elif cleaned != raw:
+            args[key] = cleaned
+            changed = True
+    if not changed:
+        return plan
+    return replace(plan, args=args)
+
+
 def validate_connector_plan(plan: ConnectorActionPlan, message: str) -> WorkflowCheck | None:
     """Return clarification when required parameters are missing — never invent values."""
     from app.connectors.action_catalog.action_workflow_schema import get_workflow_schema
     from app.services.action_workflow_validation import validate_plan_against_schema
 
+    plan = scrub_gmail_write_plan(plan)
     schema = get_workflow_schema(plan.invoke_action)
     if not schema:
         return None
@@ -44,7 +73,9 @@ def missing_params_stage_patch(
 
     Classical chat, unified-turn live, and ReAct write staging must all use this so
     dual paths cannot ask for a blind **yes** on missing subject/body/recipient.
+    Callers must apply ``scrub_gmail_write_plan`` to the live plan before approval.
     """
+    plan = scrub_gmail_write_plan(plan)
     clarification = validate_connector_plan(plan, message or "")
     if not clarification:
         return None
@@ -62,6 +93,7 @@ def format_write_approval_message(plan: ConnectorActionPlan) -> str:
     """Chat-native approval prompt — copy owned by Module D gravitree_voice."""
     from app.services.gravitree_voice import format_operator_message
 
+    plan = scrub_gmail_write_plan(plan)
     vendor = (plan.integration or "").replace("_", " ").title() or "the connected app"
     label = (plan.label or plan.invoke_action or "this action").strip()
     details = _approval_details(plan)

@@ -518,7 +518,10 @@ async def materialize_react_write_approval_turn(
         ChatConnectorExecutionService,
         enrich_plan_inference_metadata,
     )
-    from app.services.connector_action_workflows import missing_params_stage_patch
+    from app.services.connector_action_workflows import (
+        missing_params_stage_patch,
+        scrub_gmail_write_plan,
+    )
     from app.services.connector_parameter_inference import (
         ParameterInferenceContext,
         infer_missing_parameters,
@@ -539,6 +542,7 @@ async def materialize_react_write_approval_turn(
         environment_name=environment_name,
     )
     plan = infer_missing_parameters(plan, inference_context)
+    plan = scrub_gmail_write_plan(plan)
 
     state = get_conversation_state_service(settings)
     # Dual-path SoT with classical chat / unified-turn: clarify before confirm.

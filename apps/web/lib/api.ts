@@ -1546,6 +1546,8 @@ export const assistantApi = {
     postJson<{
       success: boolean
       message: string
+      persisted_user_text?: string
+      persisted_assistant_text?: string
       execution_result?: {
         success?: boolean
         entity_type?: string

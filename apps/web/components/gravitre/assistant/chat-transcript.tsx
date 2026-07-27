@@ -134,6 +134,10 @@ type ChatTranscriptProps = {
   onCopyLink?: (messageId: string) => void
   /** Honest no-op reporter when Save Question has no backend — parent shows toast. */
   onSaveQuestion?: (userMessageId: string, text: string) => void
+  /** Override assistant identity (department / specialized agents). */
+  assistantLabel?: string
+  assistantAvatar?: ReactNode
+  waitingLabel?: string
 }
 
 function ActionIconButton({
@@ -181,7 +185,12 @@ export function ChatTranscript({
   onCopyText,
   onCopyLink,
   onSaveQuestion,
+  assistantLabel = "Gravitre",
+  assistantAvatar,
+  waitingLabel,
 }: ChatTranscriptProps) {
+  const resolvedAvatar = assistantAvatar ?? <GravitreAvatar />
+  const resolvedWaiting = waitingLabel ?? `${assistantLabel} is thinking…`
   const lastAssistantId = [...messages].reverse().find((row) => row.role === "assistant")?.id
   const visible = messages
     .map((message, index) => ({ message, index }))
@@ -222,7 +231,7 @@ export function ChatTranscript({
                 isUser ? "flex-row-reverse" : "flex-row",
               )}
             >
-              {isUser ? <UserAccountAvatar useCurrentUser size="md" /> : <GravitreAvatar />}
+              {isUser ? <UserAccountAvatar useCurrentUser size="md" /> : resolvedAvatar}
 
               <div
                 className={cn(
@@ -236,7 +245,7 @@ export function ChatTranscript({
                     isUser ? "flex-row-reverse" : "flex-row",
                   )}
                 >
-                  <p className={CHAT_ROLE_LABEL_CLASS}>{isUser ? "You" : "Gravitre"}</p>
+                  <p className={CHAT_ROLE_LABEL_CLASS}>{isUser ? "You" : assistantLabel}</p>
                   {createdAt ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -387,15 +396,19 @@ export function ChatTranscript({
 
         {showWaiting ? (
           <div className="flex gap-2.5">
-            <GravitreAvatarShell>
-              <GravitreThinkingLoader
-                size={22}
-                className="text-zinc-950"
-                title="Gravitre is thinking"
-              />
-            </GravitreAvatarShell>
+            {assistantAvatar ? (
+              resolvedAvatar
+            ) : (
+              <GravitreAvatarShell>
+                <GravitreThinkingLoader
+                  size={22}
+                  className="text-zinc-950"
+                  title={resolvedWaiting}
+                />
+              </GravitreAvatarShell>
+            )}
             <div className="flex min-w-0 max-w-[min(720px,90%)] flex-col items-start">
-              <p className={CHAT_ROLE_LABEL_CLASS}>Gravitre</p>
+              <p className={CHAT_ROLE_LABEL_CLASS}>{assistantLabel}</p>
               <div
                 className={cn(
                   CHAT_BUBBLE_BASE_CLASS,
@@ -404,7 +417,7 @@ export function ChatTranscript({
                   CHAT_WAITING_CLASS,
                 )}
               >
-                Gravitre is thinking…
+                {resolvedWaiting}
               </div>
             </div>
           </div>

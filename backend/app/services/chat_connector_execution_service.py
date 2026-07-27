@@ -1229,6 +1229,7 @@ class ChatConnectorExecutionService:
             format_write_approval_message,
             missing_params_stage_patch,
             resolve_assignee_disambiguation,
+            scrub_gmail_write_plan,
         )
         from app.services.connector_parameter_inference import (
             ParameterInferenceContext,
@@ -1250,6 +1251,7 @@ class ChatConnectorExecutionService:
         # message name) before schema validation, or validate_connector_plan asks
         # for "list name" and never stages awaiting_confirm.
         plan = enrich_plan_inference_metadata(plan, message=message or "")
+        plan = scrub_gmail_write_plan(plan)
 
         staged_missing = missing_params_stage_patch(
             plan, message, task_state=task_state

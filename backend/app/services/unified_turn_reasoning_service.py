@@ -1036,6 +1036,7 @@ async def apply_unified_turn_live(
             from app.services.connector_action_workflows import (
                 format_write_approval_message,
                 missing_params_stage_patch,
+                scrub_gmail_write_plan,
             )
             from app.services.connector_parameter_inference import (
                 ParameterInferenceContext,
@@ -1058,6 +1059,7 @@ async def apply_unified_turn_live(
                     environment_name=environment_name,
                 ),
             )
+            plan = scrub_gmail_write_plan(plan)
             state = get_conversation_state_service(active)
             # Dual-path SoT with classical chat: never ask for yes until required args exist.
             staged_missing = missing_params_stage_patch(

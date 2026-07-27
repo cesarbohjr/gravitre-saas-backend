@@ -1486,12 +1486,32 @@ async def execute_conversation_task(
             client=client,
         )
     task_state = await state_service.get_task_state(conversation_id, org_id, client=client)
+    if execution.success:
+        assistant_text = (
+            (execution.body or "").strip()
+            or (
+                f"Created {execution.title}."
+                + (f" Open {execution.result_url} to review." if execution.result_url else "")
+            )
+        )
+    else:
+        assistant_text = (execution.body or "").strip() or "That didn't go through."
+    # Approve-button path used to execute without appending chat turns — persist
+    # the approval + confirmation so history matches BusinessOutcome reality.
+    _persist_conversation_turn(
+        settings,
+        org_id=org_id,
+        user_id=user_id,
+        conversation_id=conversation_id,
+        user_text="Approved",
+        assistant_text=assistant_text,
+        tool_results=[],
+    )
     return {
         "success": execution.success,
         "execution_result": execution.__dict__,
         "task_state": task_state,
-        "message": execution.body if not execution.success else (
-            f"Created {execution.title}."
-            + (f" Open {execution.result_url} to review." if execution.result_url else "")
-        ),
+        "message": assistant_text,
+        "persisted_user_text": "Approved",
+        "persisted_assistant_text": assistant_text,
     }

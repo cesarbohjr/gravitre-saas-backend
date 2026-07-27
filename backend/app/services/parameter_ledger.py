@@ -31,6 +31,65 @@ SLACK_CHANNEL_RE = re.compile(
 )
 QUOTED_RE = re.compile(r"[\"']([^\"']{1,500})[\"']")
 PROJECT_KEY_RE = re.compile(r"\bproject\s+([A-Z][A-Z0-9_-]{1,15})\b", re.I)
+# Instruction-framing leftovers from naive "subject … body …" splits.
+_EMAIL_SUBJECT_CUE_RESIDUE = re.compile(
+    r"^(?:line|the\s+subject(?:\s+line)?)\s*[,:]?\s*",
+    re.I,
+)
+_EMAIL_BODY_CUE_RESIDUE = re.compile(
+    r"^(?:of\s+the\s+email\s+)?(?:say|says)\s*[:.]?\s*"
+    r"|^of\s+the\s+email\s*[:.]?\s*",
+    re.I,
+)
+# "subject line, hello and body of the email say: …"
+_SUBJECT_BODY_PAIR_RE = re.compile(
+    r"\bsubject(?:\s+line)?\s*[,:]?\s*(.+?)\s*"
+    r"(?:,\s*|\s+and\s+)\s*"
+    r"body(?:\s+of\s+(?:the\s+)?email)?\s*"
+    r"(?:say|says|is|=|:)?\s*[:.]?\s*(.+)$",
+    re.I,
+)
+_SUBJECT_ONLY_RE = re.compile(
+    r"\bsubject(?:\s+line)?\s*(?:is|=|:|,)\s*(.+?)(?:\s+(?:and\s+)?body\b|$)",
+    re.I,
+)
+
+
+def sanitize_email_slot_value(key: str, value: str) -> str:
+    """Strip instruction-framing words that leaked into subject/body slots."""
+    v = (value or "").strip(" .\"'")
+    if not v:
+        return ""
+    kind = "subject" if key == "subject" else "body" if key in {
+        "body",
+        "message",
+        "text",
+        "html_body",
+        "content",
+    } else ""
+    if kind == "subject":
+        v = _EMAIL_SUBJECT_CUE_RESIDUE.sub("", v).strip(" .\"'")
+    elif kind == "body":
+        v = _EMAIL_BODY_CUE_RESIDUE.sub("", v).strip(" .\"'")
+    return v
+
+
+def email_slot_looks_corrupted(key: str, value: str) -> bool:
+    """True when a subject/body still looks like NL scaffolding, not real content."""
+    v = (value or "").strip()
+    if not v:
+        return False
+    if key == "subject":
+        return bool(
+            re.match(r"^(?:line|of\s+the)\b", v, re.I)
+            or re.match(r"^subject\b", v, re.I)
+        )
+    if key in {"body", "message", "text", "html_body", "content"}:
+        return bool(
+            re.match(r"^(?:of\s+the\s+email|say|says)\b", v, re.I)
+            or re.search(r"\bof\s+the\s+email\s+say\b", v, re.I)
+        )
+    return False
 # Free-text schema keys filled from a follow-up turn when still missing.
 FREE_TEXT_ARG_KEYS = frozenset(
     {
@@ -337,36 +396,38 @@ def ingest_message_slots(
                     turn_index=turn_index,
                 )
 
-    # "subject X, body Y" / "subject is X body is Y" unquoted forms.
-    # Require a word-boundary subject cue that is not an email local-part
-    # (emails already masked above). Prefer explicit is/=/: when present.
-    subj_body = re.search(
-        r"\bsubject\s*(?:is|=|:)?\s*(.+?)\s*[,—-]?\s*body\s*(?:is|=|:)?\s*(.+)$",
-        text_for_freeform,
-        re.I,
-    )
+    # "subject line, hello and body of the email say: …" / "subject is X, body is Y".
+    # Require subject/body cues that absorb filler ("line", "of the email say")
+    # so values are the real content — emails already masked above.
+    subj_body = _SUBJECT_BODY_PAIR_RE.search(text_for_freeform)
     if subj_body:
-        result.upsert(
-            "subject",
-            subj_body.group(1).strip(" .\"'"),
-            source="user_message",
-            turn_index=turn_index,
-        )
-        result.upsert(
-            "body",
-            subj_body.group(2).strip(" .\"'"),
-            source="user_message",
-            turn_index=turn_index,
-        )
-    else:
-        subj_only = re.search(r"\bsubject\s*(?:is|=|:)\s*(.+)$", text_for_freeform, re.I)
-        if subj_only and not result.get("subject"):
+        subject = sanitize_email_slot_value("subject", subj_body.group(1))
+        body = sanitize_email_slot_value("body", subj_body.group(2))
+        if subject and not email_slot_looks_corrupted("subject", subject):
             result.upsert(
                 "subject",
-                subj_only.group(1).strip(" .\"'")[:300],
+                subject[:300],
                 source="user_message",
                 turn_index=turn_index,
             )
+        if body and not email_slot_looks_corrupted("body", body):
+            result.upsert(
+                "body",
+                body,
+                source="user_message",
+                turn_index=turn_index,
+            )
+    else:
+        subj_only = _SUBJECT_ONLY_RE.search(text_for_freeform)
+        if subj_only and not result.get("subject"):
+            subject = sanitize_email_slot_value("subject", subj_only.group(1)[:300])
+            if subject and not email_slot_looks_corrupted("subject", subject):
+                result.upsert(
+                    "subject",
+                    subject,
+                    source="user_message",
+                    turn_index=turn_index,
+                )
 
     # "title is X" / "name is X" unquoted forms (Pipedrive/ClickUp/Notion/GitHub).
     title_only = re.search(

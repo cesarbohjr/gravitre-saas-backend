@@ -138,6 +138,19 @@ def test_email_local_part_subject_does_not_steal_subject_slot():
     assert "hello" in (ledger.get("body") or "").lower()
 
 
+def test_subject_line_body_say_does_not_leak_instruction_framing():
+    """Natural compound phrasing must not slice 'line,' / 'of the email say' into slots."""
+    ledger = ingest_message_slots(
+        "Send it to Stephanie, with the subject line, hello and "
+        "body of the email say: I'm just testing this"
+    )
+    assert ledger.get("subject") == "hello"
+    assert ledger.get("body") == "I'm just testing this"
+    assert "line" not in (ledger.get("subject") or "").lower()
+    assert "of the email" not in (ledger.get("body") or "").lower()
+    assert "say:" not in (ledger.get("body") or "").lower()
+
+
 def test_filler_turn_does_not_pollute_subject():
     """Phase 0.1 — side questions must not fill free-text subject via resume."""
     plan = ConnectorActionPlan(

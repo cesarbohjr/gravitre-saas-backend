@@ -457,6 +457,29 @@ export function AiWorkspace({
         setExecutionResult(result.execution_result)
         setDialogueMode("answer")
         setPendingTask(null)
+        const userText = result.persisted_user_text || "Approved"
+        const assistantText =
+          result.persisted_assistant_text ||
+          result.execution_result.body ||
+          result.message ||
+          "Done."
+        const stamp = Date.now()
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `approve-user-${stamp}`,
+            role: "user",
+            parts: [{ type: "text", text: userText }],
+            createdAt: new Date(stamp),
+          } as (typeof prev)[number],
+          {
+            id: `approve-assistant-${stamp + 1}`,
+            role: "assistant",
+            parts: [{ type: "text", text: polishAssistantText(assistantText) || assistantText }],
+            createdAt: new Date(stamp + 1),
+          } as (typeof prev)[number],
+        ])
+        void mutateConversations()
         if (result.execution_result.success && notifications) {
           const resultUrl = result.execution_result.result_url ?? undefined
           notifications.addNotification({
@@ -477,7 +500,7 @@ export function AiWorkspace({
     } finally {
       setConfirmExecuting(false)
     }
-  }, [confirmExecuting, notifications])
+  }, [confirmExecuting, mutateConversations, notifications, setMessages])
 
   const notifyInlineTaskComplete = useCallback(
     (title: string, message: string) => {
