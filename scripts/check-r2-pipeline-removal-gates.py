@@ -33,8 +33,14 @@ FALLTHROUGH_TARGET = float(os.environ.get("R2_REMOVAL_FALLTHROUGH_PCT", "1.0"))
 def load_env() -> dict[str, str]:
     merged: dict[str, str] = {}
     for p in (BACKEND / ".env", ROOT / ".env", BACKEND / ".env.operator.local"):
-        if p.is_file():
-            merged.update({k: v for k, v in dotenv_values(p).items() if v})
+        if not p.is_file():
+            continue
+        for enc in ("utf-8", "utf-8-sig", "cp1252", "latin-1"):
+            try:
+                merged.update({k: v for k, v in dotenv_values(p, encoding=enc).items() if v})
+                break
+            except UnicodeDecodeError:
+                continue
     merged.update({k: v for k, v in os.environ.items() if v})
     return merged
 

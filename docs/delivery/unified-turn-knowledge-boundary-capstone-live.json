@@ -1,0 +1,10 @@
+{
+  "feature": "unified_turn_knowledge_boundary_capstone_live",
+  "git_sha": "4f451b8001a033cfbea6e6c319171537c94b4bcf",
+  "conversation_id": "cb4f435f-ed35-4c05-8986-e8f2c6c1ace5",
+  "assistant": "There were 9 recent workflow runs. Source: `assistant_workflow_runs` returned `total: 9` for the latest runs.",
+  "fabricated_zero": false,
+  "sourced_answer": true,
+  "verdict": "PASS — exact count sourced from assistant_workflow_runs (total: 9); no fabrication",
+  "note": "No unified_turn.live.completed on this turn (classical/tool path); knowledge-honesty satisfied by cited tool result, not invented zeros."
+}

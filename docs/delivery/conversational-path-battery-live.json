@@ -1,8 +1,8 @@
 {
-  "checkedAt": "2026-07-25T05:01:35.199328+00:00",
+  "checkedAt": "2026-07-27T09:02:02.549541+00:00",
   "apiBase": "https://api.gravitre.app",
-  "git_sha": "90ba2ad34ef931ad40563d026dac51a494e87910",
-  "expectSha": "90ba2ad3",
+  "git_sha": "4f451b8001a033cfbea6e6c319171537c94b4bcf",
+  "expectSha": "4f451b80",
   "tip_ok": true,
   "passed": 20,
   "total": 20,
@@ -15,7 +15,7 @@
       "id": "social_greeting_1",
       "bucket": "social",
       "user": "hey, how's it going",
-      "conversationId": "e985259a-75be-45b9-a266-edc8eefc4d56",
+      "conversationId": "749138a1-06f3-473a-85fe-e7bbe7374386",
       "http": 200,
       "assistant": "Good, thanks. What's on your mind?",
       "pass": true
@@ -24,7 +24,7 @@
       "id": "social_greeting_2",
       "bucket": "social",
       "user": "good morning",
-      "conversationId": "c6812ad8-7a3a-41f3-a06c-a25297b5409d",
+      "conversationId": "5f54ff39-c27d-4a90-8f49-569a29b0bc5f",
       "http": 200,
       "assistant": "Good morning! What\u2019s on your mind today?",
       "pass": true
@@ -33,16 +33,16 @@
       "id": "social_thanks",
       "bucket": "social",
       "user": "thanks!",
-      "conversationId": "0f6d2da9-b5d8-4f4d-b48f-2e7c2c5d6c48",
+      "conversationId": "c7abfe2d-08a6-47fe-ab88-4e838b138453",
       "http": 200,
-      "assistant": "Anytime. What's on your mind?",
+      "assistant": "Anytime. What\u2019s on your mind?",
       "pass": true
     },
     {
       "id": "social_banter",
       "bucket": "social",
       "user": "haha nice one",
-      "conversationId": "dd55abe3-e682-449f-9135-e5171da50639",
+      "conversationId": "026eb472-f326-456a-a10d-a737a8a516f4",
       "http": 200,
       "assistant": "Glad you liked it! What\u2019s on your mind today?",
       "pass": true
@@ -51,7 +51,7 @@
       "id": "social_smalltalk",
       "bucket": "social",
       "user": "how's your day going",
-      "conversationId": "377b7b23-7b6e-485e-a34b-f3e6f0c3c30c",
+      "conversationId": "45c3943a-bfdb-4986-8c96-2d0e70469726",
       "http": 200,
       "assistant": "Good, thanks. What's on your mind?",
       "pass": true
@@ -60,16 +60,16 @@
       "id": "mixed_hubspot_list",
       "bucket": "mixed",
       "user": "haha nice, also can you check on that HubSpot list",
-      "conversationId": "ec44ba81-9fac-48a6-993d-bc7ec6e98a26",
+      "conversationId": "705defe0-4fcd-414d-b08b-99861fd34d27",
       "http": 200,
-      "assistant": "Ha \u2014 noted.\n\nHubSpot is Connected and Healthy, with read/write execution available.\n\nSource: connector status check shows `hubspot-isolated-smoke` is Configured, Authenticated, token valid, scopes valid, and Healthy.\n\nI don\u2019t have enough information yet to identify \u201cthat HubSpot list.\u201d Send the list name, list ID, or the contacts/deals criteria you mean, and I\u2019ll check it.I'll run this in Hubspot: **Search contacts**.\n\nReply **yes** to approve, or say what to change.",
+      "assistant": "Ha \u2014 noted.\n\nI can check HubSpot, but I don\u2019t have a list lookup tool here.\n\nIf you want, I can search related HubSpot records instead \u2014 companies, deals, or tickets.",
       "pass": true
     },
     {
       "id": "mixed_slack",
       "bucket": "mixed",
       "user": "lol cool \u2014 also post a Slack message to #general saying hi",
-      "conversationId": "dd31345e-1ab1-4785-a58e-44a438a31134",
+      "conversationId": "4501f3d8-8fdb-4b26-af4b-efc6d2a85adb",
       "http": 200,
       "assistant": "Ha \u2014 noted.\n\nSlack authentication expired. Reconnect it at /connectors, then try again.",
       "pass": true
@@ -78,25 +78,25 @@
       "id": "mixed_thanks_search",
       "bucket": "mixed",
       "user": "thanks, also search HubSpot for Acme contacts",
-      "conversationId": "76b79f00-16f5-4646-9d91-8b9fddb239eb",
+      "conversationId": "e7d03ece-888a-4318-8f30-f8722a93759c",
       "http": 200,
-      "assistant": "You're welcome.\n\nInvalid parameters for this Hubspot action (Search contacts via hubspot API). Check required fields and try again.I'll run this in Hubspot: **Search contacts**.\n\nReply **yes** to approve, or say what to change.",
+      "assistant": "You're welcome.\n\nNo Acme contacts were found in HubSpot.\n\nVerified from HubSpot contact search for `Acme`; the connector returned 0 contacts.\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document?",
       "pass": true
     },
     {
       "id": "mixed_banter_gmail",
       "bucket": "mixed",
       "user": "you're funny \u2014 also draft a Gmail to demo@example.com",
-      "conversationId": "f6a319ca-65e9-4f43-8d39-5bffda09ffde",
+      "conversationId": "cf2a89b3-362a-4763-a060-14f21fd35571",
       "http": 200,
-      "assistant": "Ha \u2014 noted.\n\nGood. I can draft it, but I need the subject and the body.",
+      "assistant": "Ha \u2014 noted.\n\nSure. I still need the subject and body for the draft.",
       "pass": true
     },
     {
       "id": "mixed_hey_apollo",
       "bucket": "mixed",
       "user": "hey \u2014 also create an Apollo contact list named ConvPath Battery",
-      "conversationId": "dcc32456-b3b7-4bc5-a0d1-8fd53e38a203",
+      "conversationId": "7711138f-1682-4aaa-953f-e93f4953d5e9",
       "http": 200,
       "assistant": "Hey \u2014 on it.\n\nI can create a contact list named **ConvPath Battery** in Apollo.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
       "pass": true
@@ -105,7 +105,7 @@
       "id": "meta_what_can_you_do",
       "bucket": "meta",
       "user": "what can you do?",
-      "conversationId": "cc736964-8924-427f-bac4-b634a823e72a",
+      "conversationId": "0a687ca3-493e-427e-823d-da94715781dd",
       "http": 200,
       "assistant": "I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo, Hubspot. Writes go through catalog write-authority with explicit approval when required (Decision Queue / reply **yes**). I can also help with multi-step plans, run history, and marketplace intelligence packs once connectors are Connected.",
       "pass": true
@@ -114,7 +114,7 @@
       "id": "meta_are_you_ai",
       "bucket": "meta",
       "user": "are you an AI?",
-      "conversationId": "74c91c6b-f72d-42d7-a909-0b6af2de5c2f",
+      "conversationId": "3ad736af-e6a1-4d4c-b219-e9af0d08f2e8",
       "http": 200,
       "assistant": "I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo, Hubspot. Writes go through catalog write-authority with explicit approval when required (Decision Queue / reply **yes**). I can also help with multi-step plans, run history, and marketplace intelligence packs once connectors are Connected.",
       "pass": true
@@ -123,7 +123,7 @@
       "id": "meta_who_are_you",
       "bucket": "meta",
       "user": "who are you?",
-      "conversationId": "4af3f771-f707-4e53-abd1-c00f81fa8636",
+      "conversationId": "0f92c38a-2331-4d36-828f-959442126e91",
       "http": 200,
       "assistant": "I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo, Hubspot. Writes go through catalog write-authority with explicit approval when required (Decision Queue / reply **yes**). I can also help with multi-step plans, run history, and marketplace intelligence packs once connectors are Connected.",
       "pass": true
@@ -132,25 +132,25 @@
       "id": "vent_hubspot",
       "bucket": "venting",
       "user": "ugh this HubSpot connector is being annoying",
-      "conversationId": "e3f51e5c-eb06-46a9-8914-85114fb873c6",
+      "conversationId": "32ac5d2c-12ad-4110-9405-38e614377f81",
       "http": 200,
-      "assistant": "That sounds frustrating. If you want, we can check the HubSpot connector's status or look into any specific issues you're facing. What do you need help with?",
+      "assistant": "That sounds frustrating. If you want, we can check the HubSpot connector's status or see if there's a specific issue to address. Let me know how you'd like to proceed.",
       "pass": true
     },
     {
       "id": "vent_generic",
       "bucket": "venting",
       "user": "ugh this is so frustrating today",
-      "conversationId": "18f87db4-524e-448e-90e4-2478d0a5e250",
+      "conversationId": "56b58123-cbcf-48a5-9bae-b5b00672e80d",
       "http": 200,
-      "assistant": "That sounds tough. If you want to share what's frustrating you, I'm here to help.",
+      "assistant": "I hear you. Frustrations can really pile up. If there's something specific you want to tackle or check on, just let me know.",
       "pass": true
     },
     {
       "id": "vent_slack",
       "bucket": "venting",
       "user": "this Slack setup is annoying",
-      "conversationId": "0470d1d5-c6de-46d3-9af8-5c324cb71a4e",
+      "conversationId": "be1604eb-74a7-4af0-900c-df7682dc2a6b",
       "http": 200,
       "assistant": "Slack authentication expired. Reconnect it at /connectors, then try again.",
       "pass": true
@@ -159,16 +159,16 @@
       "id": "data_deals",
       "bucket": "data_guard",
       "user": "how are the deals looking",
-      "conversationId": "e05a4ef0-9afd-4244-aaaa-eafe533c773c",
+      "conversationId": "b54b3a99-9ab2-475f-997d-299fc129ac93",
       "http": 200,
-      "assistant": "Invalid parameters for this Hubspot action (Search deals via hubspot API). Check required fields and try again.\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document?",
+      "assistant": "The deals are mixed, but the pipeline is active and not empty.\n\nFrom HubSpot, I can verify:\n- 3 closed won\n- 2 closed lost\n- 5 in appointment scheduled\n- 0 alerts in the org context\n- 2 connected integrations, including HubSpot\n\nWhat this means:\n- The pipeline has recent activity, with new deals still moving.\n- Win/loss is balanced in the small sample I pulled.\n- Amounts are not populated on these deals, so I can\u2019t estimate revenue yet.\n\nSource: HubSpot deal list for your org\u2019s connected HubSpot connector.\n\nIf you want, I can pull a fuller deal snapshot next:\n- all open deals\n- deals by stage\n- recent won/lost trend\n- deal amounts and expected revenue\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document?",
       "pass": true
     },
     {
       "id": "data_pipeline",
       "bucket": "data_guard",
       "user": "how's our pipeline looking this week",
-      "conversationId": "2d1f175a-fefb-4fb7-94de-77218906d436",
+      "conversationId": "493a90e7-a759-45bb-969c-9c1679c8f6a4",
       "http": 200,
       "assistant": "Which item did you mean \u2014 the specific workflow, agent, or connector you mean?",
       "pass": true
@@ -177,7 +177,7 @@
       "id": "pending_playful_1",
       "bucket": "pending_playful",
       "user": "haha you're funny",
-      "conversationId": "d2655913-274e-48f7-a405-0b3368189c7f",
+      "conversationId": "8dc12ef1-d398-433f-8f36-dbb5764f0c10",
       "http": 200,
       "assistant": "Ha \u2014 noted. What should we tackle next?\n\nSend Gmail message is waiting in the Decision Queue. Reply **yes** to approve, or **cancel** to drop it.",
       "pass": true
@@ -186,7 +186,7 @@
       "id": "pending_playful_2",
       "bucket": "pending_playful",
       "user": "lol cool thanks",
-      "conversationId": "e7864183-9aa1-45d8-a754-c22aac676bb4",
+      "conversationId": "a9d7eb94-e8df-4805-813c-f1806901d913",
       "http": 200,
       "assistant": "Ha \u2014 noted. What should we tackle next?\n\nSend Gmail message is waiting in the Decision Queue. Reply **yes** to approve, or **cancel** to drop it.",
       "pass": true

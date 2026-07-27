@@ -34,7 +34,7 @@ sys.path.insert(0, str(BACKEND))
 ORG = "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
 BASE = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
 OUT = ROOT / "docs" / "delivery" / "unified-turn-capstone-incident-live.json"
-EXPECT_SHA = (os.environ.get("EXPECT_SHA") or "3f00efc6").strip()
+EXPECT_SHA = (os.environ.get("EXPECT_SHA") or "4f451b80").strip()
 CHAT_TIMEOUT = 300.0
 
 INCIDENT_MSG = (

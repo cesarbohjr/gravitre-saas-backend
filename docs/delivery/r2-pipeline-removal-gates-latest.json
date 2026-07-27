@@ -1,0 +1,28 @@
+{
+  "checked_at": "2026-07-27T09:10:25.652353+00:00",
+  "soak_days": 7,
+  "fallthrough_pct_7d": 11.65,
+  "fallthrough_target_pct": 1.0,
+  "live_sample_n": 1579,
+  "batteries": [
+    {
+      "path": "pending-reply-classifier-battery-live.json",
+      "ok": true,
+      "verdict": "PASS"
+    },
+    {
+      "path": "conversational-path-battery-live.json",
+      "ok": true,
+      "verdict": "PASS"
+    },
+    {
+      "path": "unified-turn-phase2-battery-live.json",
+      "ok": true,
+      "verdict": "PASS"
+    }
+  ],
+  "batteries_green": true,
+  "deploy_smoke_green_7d": false,
+  "ready_for_r2_removal": false,
+  "verdict": "NOT_READY"
+}

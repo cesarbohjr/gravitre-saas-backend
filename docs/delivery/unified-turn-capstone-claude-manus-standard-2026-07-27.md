@@ -20,19 +20,28 @@ Defines the engineering standard: one continuous reasoning process per turn; pen
 | 4 | Confirm scrub gate blocks corrupted subject/body | Unit: `email_slot_looks_corrupted("line, hello and")`; live replay after deploy |
 | 5 | Persist Approve/execute conversation messages | Root cause: PostgREST batch insert nulled user `id` when only assistant had `id` → silent NOT NULL fail. Fix: explicit UUID on both rows; UI toast when `history_persisted === false` |
 
-## Part 4 — re-baseline
+## Part 4 — re-baseline (tip `4f451b80`)
 
-After deploy:
+| Metric | Value | Evidence |
+|--------|-------|----------|
+| Honest fallthrough (168h) | **10.32%** (1405 audited; `pending_family_classical_resume`=2) | [baseline](unified-turn-fallthrough-baseline.json) |
+| R2 gate | **NOT_READY** (target ≤1%; batteries green; soak incomplete) | `check-r2-pipeline-removal-gates.py` @ 2026-07-27T09:10:25Z |
 
-```bash
-python scripts/report-unified-turn-fallthrough-baseline.py
-python scripts/check-r2-pipeline-removal-gates.py
-```
+Standing batteries on tip `4f451b80`:
 
-Expect fallthrough % may **rise** when `pending_family_classical_resume` appears — honesty, not regression. R2 (≤1% for 7 days) uses the new complete reason set; see [old-pipeline-removal](unified-turn-phase4-old-pipeline-removal.md).
+| Battery | Result |
+|---------|--------|
+| pending-reply 24 | PASS 24/24 |
+| conversational 20 | PASS 20/20 |
+| imperfect-input 16 | PASS 16/16 |
+| persona-drift 30 | PASS 30/30 |
+| knowledge-boundary | PASS — sourced `assistant_workflow_runs total: 9` (conv `cb4f435f-…`) |
 
-Standing batteries on tip: pending-reply 24, conversational 20, imperfect-input 16, persona-drift 30, knowledge-boundary.
+## Part 3 live incident replay
+
+PASS — [unified-turn-capstone-incident-live.json](unified-turn-capstone-incident-live.json)  
+`conv=9088a8b1-…` · LIVE-sealed subject/body · `pending_family_classical_resume` audit `c4578e4d-…` @ 2026-07-27T08:46:21Z · 4 `conversation_messages` including user `yes` + Done confirmation.
 
 ## Part 5 — non-negotiables
 
-Do not weaken `catalog_write_authority`, Module A outcome records, or knowledge-boundary coverage for conversational fluency.
+Do not weaken `catalog_write_authority`, Module A outcome records, or knowledge-boundary coverage for conversational fluency. No weakening in this tip.

@@ -1,216 +1,46 @@
 {
   "feature": "unified_turn_phase2_batteries",
-  "started_at": "2026-07-25T07:31:59.422470+00:00",
-  "expect_sha": "2bf67f6bb6cdb4db2b6e5c46d25da709dce5f205",
+  "started_at": "2026-07-27T08:50:23.417878+00:00",
+  "expect_sha": "4f451b80",
   "api_base": "https://api.gravitre.app",
-  "case_filter": "all",
+  "case_filter": "imperfect",
   "imperfect_rounds": 1,
-  "skip_classical": true,
+  "skip_classical": false,
   "cases": [
-    {
-      "case": "greeting_no_catalog_leak",
-      "round": 1,
-      "ok": true,
-      "failures": [],
-      "user_message": "Hey",
-      "assistant_full": "Good, thanks. What's on your mind?",
-      "assistant_snippet": "Good, thanks. What's on your mind?",
-      "model_text_full": "Good, thanks. What's on your mind?",
-      "imperfect_input": false,
-      "typo_tokens": [],
-      "shadow_outcome": "conversational_reply",
-      "shadow_latency_ms": 1098,
-      "shadow_first_token_proxy_ms": 897,
-      "live_served": true,
-      "shadow_audit_missing": false,
-      "knowledge_boundary_assistant_fallback": false,
-      "shadow": {
-        "action": "unified_turn.live.completed",
-        "created_at": "2026-07-25T07:32:06.475719+00:00",
-        "outcome_kind": "conversational_reply",
-        "latency_ms": 1098,
-        "user_message_preview": "Good, thanks. What's on your mind?",
-        "tool_name": null,
-        "live_served": true
-      },
-      "conversation_id": "4e979f51-09a6-4de6-848e-bc66551984f3",
-      "turn": {
-        "http": 200,
-        "assistant": "Good, thanks. What's on your mind?",
-        "at": "2026-07-25T07:32:08.694800+00:00",
-        "error": null
-      }
-    },
-    {
-      "case": "thanks_plain",
-      "round": 1,
-      "ok": true,
-      "failures": [],
-      "user_message": "Thank you",
-      "assistant_full": "Anytime. What\u2019s on your mind?",
-      "assistant_snippet": "Anytime. What\u2019s on your mind?",
-      "model_text_full": "Anytime. What\u2019s on your mind?",
-      "imperfect_input": false,
-      "typo_tokens": [],
-      "shadow_outcome": "conversational_reply",
-      "shadow_latency_ms": 1409,
-      "shadow_first_token_proxy_ms": 1302,
-      "live_served": true,
-      "shadow_audit_missing": false,
-      "knowledge_boundary_assistant_fallback": false,
-      "shadow": {
-        "action": "unified_turn.live.completed",
-        "created_at": "2026-07-25T07:32:20.991408+00:00",
-        "outcome_kind": "conversational_reply",
-        "latency_ms": 1409,
-        "user_message_preview": "Anytime. What\u2019s on your mind?",
-        "tool_name": null,
-        "live_served": true
-      },
-      "conversation_id": "890b529c-c19b-44e1-8d5c-4be14308eb67",
-      "turn": {
-        "http": 200,
-        "assistant": "Anytime. What\u2019s on your mind?",
-        "at": "2026-07-25T07:32:23.895809+00:00",
-        "error": null
-      }
-    },
-    {
-      "case": "email_intent_no_catalog_dump",
-      "round": 1,
-      "ok": true,
-      "failures": [],
-      "user_message": "Send an email to Stephanie about the proposal",
-      "assistant_full": "I can do that, but I need the email body first.\n\nSend me:\n- the subject\n- what Stephanie should know about the proposal\n- any deadline or next step\n\nThen I\u2019ll prepare the send.",
-      "assistant_snippet": "I can do that, but I need the email body first.\n\nSend me:\n- the subject\n- what Stephanie should know about the proposal\n- any deadline or next step\n\nThen I\u2019ll prepare the send.",
-      "model_text_full": "I can do that, but I need the email body first.\n\nSend me:\n- the subject\n- what Stephanie should know about the proposal\n- any deadline or next step\n\nThen I\u2019ll prepare the send.",
-      "imperfect_input": false,
-      "typo_tokens": [],
-      "shadow_outcome": "conversational_reply",
-      "shadow_latency_ms": 994,
-      "shadow_first_token_proxy_ms": 708,
-      "live_served": true,
-      "shadow_audit_missing": false,
-      "knowledge_boundary_assistant_fallback": false,
-      "shadow": {
-        "action": "unified_turn.live.completed",
-        "created_at": "2026-07-25T07:32:36.074929+00:00",
-        "outcome_kind": "conversational_reply",
-        "latency_ms": 994,
-        "user_message_preview": "I can do that, but I need the email body first.\n\nSend me:\n- the subject\n- what Stephanie should know about the proposal\n- any deadline or next step\n\nThen I\u2019ll prepare the send.",
-        "tool_name": null,
-        "live_served": true
-      },
-      "conversation_id": "85f8e6b7-2a55-481a-b830-58b31b767ac3",
-      "turn": {
-        "http": 200,
-        "assistant": "I can do that, but I need the email body first.\n\nSend me:\n- the subject\n- what Stephanie should know about the proposal\n- any deadline or next step\n\nThen I\u2019ll prepare the send.",
-        "at": "2026-07-25T07:32:38.169040+00:00",
-        "error": null
-      }
-    },
-    {
-      "case": "status_check_pending",
-      "round": 1,
-      "ok": true,
-      "failures": [],
-      "user_message": "Did you send it yet?",
-      "assistant_full": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cDid you send it yet?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`.",
-      "assistant_snippet": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cDid you send it yet?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`.",
-      "model_text_full": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cDid you send it yet?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`.",
-      "imperfect_input": false,
-      "typo_tokens": [],
-      "shadow_outcome": "clarifying_question",
-      "shadow_latency_ms": 0,
-      "shadow_first_token_proxy_ms": null,
-      "live_served": true,
-      "shadow_audit_missing": false,
-      "knowledge_boundary_assistant_fallback": false,
-      "shadow": {
-        "action": "unified_turn.live.completed",
-        "created_at": "2026-07-25T07:32:49.127174+00:00",
-        "outcome_kind": "clarifying_question",
-        "latency_ms": 0,
-        "user_message_preview": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cDid you send it yet?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request?",
-        "tool_name": null,
-        "live_served": true
-      },
-      "conversation_id": "90543185-0d1f-4823-a819-a1a057835f69",
-      "turn": {
-        "http": 200,
-        "assistant": "You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a different request (\u201cDid you send it yet?\u201d).\n\nShould I **abandon** the pending item and handle this new request, or **hold** the pending item aside and proceed with the new request? Reply `abandon` or `hold`.",
-        "at": "2026-07-25T07:32:51.555849+00:00",
-        "error": null
-      }
-    },
-    {
-      "case": "knowledge_boundary_run_history_fast",
-      "round": 1,
-      "ok": true,
-      "failures": [],
-      "user_message": "How many workflow runs did we have recently? Give me the exact count of recent runs.",
-      "assistant_full": "I don't have that information \u2014 workflow run history was not retrieved for this answer. I can't report a recent-run count without the workflow runs tool. Ask again and I'll fetch run history directly (or switch out of Fast mode if needed).",
-      "assistant_snippet": "I don't have that information \u2014 workflow run history was not retrieved for this answer. I can't report a recent-run count without the workflow runs tool. Ask again and I'll fetch run history directly (or switch out of Fast mode if needed).",
-      "model_text_full": "",
-      "imperfect_input": false,
-      "typo_tokens": [],
-      "shadow_outcome": "connector_tool_proposal",
-      "shadow_latency_ms": 547,
-      "shadow_first_token_proxy_ms": 480,
-      "live_served": false,
-      "shadow_audit_missing": false,
-      "knowledge_boundary_assistant_fallback": false,
-      "shadow": {
-        "action": "unified_turn.live.fallthrough",
-        "created_at": "2026-07-25T07:33:03.655321+00:00",
-        "outcome_kind": "connector_tool_proposal",
-        "latency_ms": 547,
-        "user_message_preview": "",
-        "tool_name": "assistant_workflow_runs",
-        "live_served": false
-      },
-      "conversation_id": "161b84e4-b20f-494d-b62c-aa4e4c98764a",
-      "turn": {
-        "http": 200,
-        "assistant": "I don't have that information \u2014 workflow run history was not retrieved for this answer. I can't report a recent-run count without the workflow runs tool. Ask again and I'll fetch run history directly (or switch out of Fast mode if needed).",
-        "at": "2026-07-25T07:33:45.916708+00:00",
-        "error": null
-      }
-    },
     {
       "case": "imperfect_sned_emial",
       "round": 1,
       "ok": true,
       "failures": [],
       "user_message": "sned emial to stephanie about the meeting",
-      "assistant_full": "I can draft that email. What\u2019s the purpose and the key points to include?",
-      "assistant_snippet": "I can draft that email. What\u2019s the purpose and the key points to include?",
-      "model_text_full": "I can draft that email. What\u2019s the purpose and the key points to include?",
+      "assistant_full": "I can draft it, but I need the purpose and the key points.",
+      "assistant_snippet": "I can draft it, but I need the purpose and the key points.",
+      "model_text_full": "I can draft it, but I need the purpose and the key points.",
       "imperfect_input": true,
       "typo_tokens": [
         "sned",
         "emial"
       ],
       "shadow_outcome": "conversational_reply",
-      "shadow_latency_ms": 725,
-      "shadow_first_token_proxy_ms": 602,
+      "shadow_latency_ms": 748,
+      "shadow_first_token_proxy_ms": 470,
       "live_served": true,
       "shadow_audit_missing": false,
       "knowledge_boundary_assistant_fallback": false,
       "shadow": {
         "action": "unified_turn.live.completed",
-        "created_at": "2026-07-25T07:33:57.652977+00:00",
+        "created_at": "2026-07-27T08:50:32.837169+00:00",
         "outcome_kind": "conversational_reply",
-        "latency_ms": 725,
-        "user_message_preview": "I can draft that email. What\u2019s the purpose and the key points to include?",
+        "latency_ms": 748,
+        "user_message_preview": "I can draft it, but I need the purpose and the key points.",
         "tool_name": null,
         "live_served": true
       },
-      "conversation_id": "958f9963-c322-4aaa-9574-077aa340604d",
+      "conversation_id": "69a78a91-fc9a-44a0-82db-9b0fa7c83ed8",
       "turn": {
         "http": 200,
-        "assistant": "I can draft that email. What\u2019s the purpose and the key points to include?",
-        "at": "2026-07-25T07:33:59.837675+00:00",
+        "assistant": "I can draft it, but I need the purpose and the key points.",
+        "at": "2026-07-27T08:50:34.547145+00:00",
         "error": null
       }
     },
@@ -220,34 +50,34 @@
       "ok": true,
       "failures": [],
       "user_message": "creat a contct named Jordan Lee in HubSpot",
-      "assistant_full": "HubSpot is Connected, but creating a contact is a write. I need explicit approval.\n\nReply **yes** to create Jordan Lee in HubSpot, or **cancel** to stop.",
-      "assistant_snippet": "HubSpot is Connected, but creating a contact is a write. I need explicit approval.\n\nReply **yes** to create Jordan Lee in HubSpot, or **cancel** to stop.",
-      "model_text_full": "HubSpot is Connected, but creating a contact is a write. I need explicit approval.\n\nReply **yes** to create Jordan Lee in HubSpot, or **cancel** to stop.",
+      "assistant_full": "HubSpot contact creation is blocked here.\n\nI can search for Jordan Lee in HubSpot, or if you want me to create the contact, I need the approved create flow through the connector first.",
+      "assistant_snippet": "HubSpot contact creation is blocked here.\n\nI can search for Jordan Lee in HubSpot, or if you want me to create the contact, I need the approved create flow through the connector first.",
+      "model_text_full": "HubSpot contact creation is blocked here.\n\nI can search for Jordan Lee in HubSpot, or if you want me to create the contact, I need the approved create flow through the connector first.",
       "imperfect_input": true,
       "typo_tokens": [
         "creat",
         "contct"
       ],
-      "shadow_outcome": "conversational_reply",
-      "shadow_latency_ms": 648,
-      "shadow_first_token_proxy_ms": 426,
+      "shadow_outcome": "confirmation_request",
+      "shadow_latency_ms": 846,
+      "shadow_first_token_proxy_ms": 634,
       "live_served": true,
       "shadow_audit_missing": false,
       "knowledge_boundary_assistant_fallback": false,
       "shadow": {
         "action": "unified_turn.live.completed",
-        "created_at": "2026-07-25T07:34:12.278876+00:00",
-        "outcome_kind": "conversational_reply",
-        "latency_ms": 648,
-        "user_message_preview": "HubSpot is Connected, but creating a contact is a write. I need explicit approval.\n\nReply **yes** to create Jordan Lee in HubSpot, or **cancel** to stop.",
+        "created_at": "2026-07-27T08:50:48.767453+00:00",
+        "outcome_kind": "confirmation_request",
+        "latency_ms": 846,
+        "user_message_preview": "HubSpot contact creation is blocked here.\n\nI can search for Jordan Lee in HubSpot, or if you want me to create the contact, I need the approved create flow through the connector first.",
         "tool_name": null,
         "live_served": true
       },
-      "conversation_id": "a08ca160-0974-4e26-8ba3-1366b4426a1d",
+      "conversation_id": "0d998138-6ce2-409e-85ee-7d43d3a8f0f7",
       "turn": {
         "http": 200,
-        "assistant": "HubSpot is Connected, but creating a contact is a write. I need explicit approval.\n\nReply **yes** to create Jordan Lee in HubSpot, or **cancel** to stop.",
-        "at": "2026-07-25T07:34:14.634087+00:00",
+        "assistant": "HubSpot contact creation is blocked here.\n\nI can search for Jordan Lee in HubSpot, or if you want me to create the contact, I need the approved create flow through the connector first.",
+        "at": "2026-07-27T08:50:50.197483+00:00",
         "error": null
       }
     },
@@ -257,9 +87,9 @@
       "ok": true,
       "failures": [],
       "user_message": "aprove",
-      "assistant_full": "I still have **Send Gmail message** waiting for approval. Say **yes** to run it, **cancel** to drop it, or describe a change.",
-      "assistant_snippet": "I still have **Send Gmail message** waiting for approval. Say **yes** to run it, **cancel** to drop it, or describe a change.",
-      "model_text_full": "I still have **Send Gmail message** waiting for approval. Say **yes** to run it, **cancel** to drop it, or describe a change.",
+      "assistant_full": "I still have **Send Gmail message** waiting for approval.\nSay **yes** to run it, **cancel** to drop it, or describe a change.",
+      "assistant_snippet": "I still have **Send Gmail message** waiting for approval.\nSay **yes** to run it, **cancel** to drop it, or describe a change.",
+      "model_text_full": "I still have **Send Gmail message** waiting for approval.\nSay **yes** to run it, **cancel** to drop it, or describe a change.",
       "imperfect_input": true,
       "typo_tokens": [
         "aprove"
@@ -272,18 +102,18 @@
       "knowledge_boundary_assistant_fallback": false,
       "shadow": {
         "action": "unified_turn.live.completed",
-        "created_at": "2026-07-25T07:34:26.405104+00:00",
+        "created_at": "2026-07-27T08:51:02.114586+00:00",
         "outcome_kind": "clarifying_question",
         "latency_ms": 0,
-        "user_message_preview": "I still have **Send Gmail message** waiting for approval. Say **yes** to run it, **cancel** to drop it, or describe a change.",
+        "user_message_preview": "I still have **Send Gmail message** waiting for approval.\nSay **yes** to run it, **cancel** to drop it, or describe a change.",
         "tool_name": null,
         "live_served": true
       },
-      "conversation_id": "da9caec7-3f2e-40b9-9738-314d54250a3b",
+      "conversation_id": "542f56c7-481e-4ebc-a263-1278f6c70458",
       "turn": {
         "http": 200,
-        "assistant": "I still have **Send Gmail message** waiting for approval. Say **yes** to run it, **cancel** to drop it, or describe a change.",
-        "at": "2026-07-25T07:34:28.550563+00:00",
+        "assistant": "I still have **Send Gmail message** waiting for approval.\nSay **yes** to run it, **cancel** to drop it, or describe a change.",
+        "at": "2026-07-27T08:51:03.907229+00:00",
         "error": null
       }
     },
@@ -293,33 +123,33 @@
       "ok": true,
       "failures": [],
       "user_message": "shedule a follow up email for tomorrow morning",
-      "assistant_full": "I can do that, but I need the recipient and the email content.\n\nSend me:\n- who it\u2019s for\n- the subject\n- the body\n- what \u201ctomorrow morning\u201d should mean for you, if timing matters\n\nThen I\u2019ll set up the Gmail draft or send flow.",
-      "assistant_snippet": "I can do that, but I need the recipient and the email content.\n\nSend me:\n- who it\u2019s for\n- the subject\n- the body\n- what \u201ctomorrow morning\u201d should mean for you, if timing matters\n\nThen I\u2019ll set up the Gmail draft or send flow.",
-      "model_text_full": "I can do that, but I need the recipient and the email content.\n\nSend me:\n- who it\u2019s for\n- the subject\n- the body\n- what \u201ctomorrow morning\u201d should mean for you, if timing matters\n\nThen I\u2019ll set up the Gmail draft or send flow.",
+      "assistant_full": "I can do that, but I need the recipient and a draft subject/body.\n\nIf you want it sent tomorrow morning, tell me:\n- who it\u2019s going to\n- the subject\n- the message\n- what time tomorrow morning, and your time zone",
+      "assistant_snippet": "I can do that, but I need the recipient and a draft subject/body.\n\nIf you want it sent tomorrow morning, tell me:\n- who it\u2019s going to\n- the subject\n- the message\n- what time tomorrow morning, and your time zone",
+      "model_text_full": "I can do that, but I need the recipient and a draft subject/body.\n\nIf you want it sent tomorrow morning, tell me:\n- who it\u2019s going to\n- the subject\n- the message\n- what time tomorrow morning, and your time zone",
       "imperfect_input": true,
       "typo_tokens": [
         "shedule"
       ],
       "shadow_outcome": "conversational_reply",
-      "shadow_latency_ms": 794,
-      "shadow_first_token_proxy_ms": 407,
+      "shadow_latency_ms": 4052,
+      "shadow_first_token_proxy_ms": 4042,
       "live_served": true,
       "shadow_audit_missing": false,
       "knowledge_boundary_assistant_fallback": false,
       "shadow": {
         "action": "unified_turn.live.completed",
-        "created_at": "2026-07-25T07:34:40.143773+00:00",
+        "created_at": "2026-07-27T08:51:24.17671+00:00",
         "outcome_kind": "conversational_reply",
-        "latency_ms": 794,
-        "user_message_preview": "I can do that, but I need the recipient and the email content.\n\nSend me:\n- who it\u2019s for\n- the subject\n- the body\n- what \u201ctomorrow morning\u201d should mean for you, if timing matters\n\nThen I\u2019ll set up the Gmail draft or send flow.",
+        "latency_ms": 4052,
+        "user_message_preview": "I can do that, but I need the recipient and a draft subject/body.\n\nIf you want it sent tomorrow morning, tell me:\n- who it\u2019s going to\n- the subject\n- the message\n- what time tomorrow morning, and your time zone",
         "tool_name": null,
         "live_served": true
       },
-      "conversation_id": "f99ea2f4-6de2-45a3-b6ea-cea20e8896eb",
+      "conversation_id": "920a9e8d-8bdb-4a59-a0ef-90abbbce3ad0",
       "turn": {
         "http": 200,
-        "assistant": "I can do that, but I need the recipient and the email content.\n\nSend me:\n- who it\u2019s for\n- the subject\n- the body\n- what \u201ctomorrow morning\u201d should mean for you, if timing matters\n\nThen I\u2019ll set up the Gmail draft or send flow.",
-        "at": "2026-07-25T07:34:42.271279+00:00",
+        "assistant": "I can do that, but I need the recipient and a draft subject/body.\n\nIf you want it sent tomorrow morning, tell me:\n- who it\u2019s going to\n- the subject\n- the message\n- what time tomorrow morning, and your time zone",
+        "at": "2026-07-27T08:51:26.848416+00:00",
         "error": null
       }
     },
@@ -329,33 +159,33 @@
       "ok": true,
       "failures": [],
       "user_message": "creaet an Apollo list called Q3 outbound",
-      "assistant_full": "I can\u2019t create the Apollo list from here because the available Apollo connector actions do not include \u201ccreate list,\u201d and browser automation is disabled.\n\nWhat I verified:\n- Apollo is Connected in the provided org context.\n- I checked Apollo lists through the connector; no visible existing list named \u201cQ3 outbound\u201d appeared in the returned results.\n- I attempted UI automation, but it is not available in this environment.\n\nBest next move: create the list manually in Apollo under Lists, or enable an Apollo \u201ccreate list\u201d connector action / approved browser automation so I can complete it.\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document?",
-      "assistant_snippet": "I can\u2019t create the Apollo list from here because the available Apollo connector actions do not include \u201ccreate list,\u201d and browser automation is disabled.\n\nWhat I verified:\n- Apollo is Connected in the provided org context.\n- I checked Apollo lists through the connector; no visible existing list named \u201cQ3 outbound\u201d appe",
-      "model_text_full": "I can do that, but list creation isn\u2019t in the tools I have here.  \nApollo is Connected, so I can look up existing lists or help you prepare the exact name and target criteria, but I can\u2019t create the list directly from this turn.\nI can\u2019t create the Apollo list from the tools available here.\n\nApollo is Connected, so I can list existing Apollo lists or help you set up the exact criteria for **Q3 outbound**.",
+      "assistant_full": "I'll run **Phase1 Sales Swarm Agent** on this task:\n\n> Create an Apollo contact list named exactly \"Q3 outbound\". Use the connected Apollo connector for this organization. Do not add contacts to the list.\n\nThe agent may use its permitted tools and connected integrations (including writes).\n\nReply **yes** to start, or **no** to cancel.",
+      "assistant_snippet": "I'll run **Phase1 Sales Swarm Agent** on this task:\n\n> Create an Apollo contact list named exactly \"Q3 outbound\". Use the connected Apollo connector for this organization. Do not add contacts to the list.\n\nThe agent may use its permitted tools and connected integrations (including writes).\n\nReply **yes** to start, or *",
+      "model_text_full": "I can do that. I need one more thing: which contacts should go into the Apollo list?",
       "imperfect_input": true,
       "typo_tokens": [
         "creaet"
       ],
-      "shadow_outcome": "conversational_reply",
-      "shadow_latency_ms": 1095,
-      "shadow_first_token_proxy_ms": 479,
+      "shadow_outcome": "clarifying_question",
+      "shadow_latency_ms": 2361,
+      "shadow_first_token_proxy_ms": 2356,
       "live_served": false,
       "shadow_audit_missing": false,
       "knowledge_boundary_assistant_fallback": false,
       "shadow": {
         "action": "unified_turn.live.fallthrough",
-        "created_at": "2026-07-25T07:34:54.349367+00:00",
-        "outcome_kind": "conversational_reply",
-        "latency_ms": 1095,
-        "user_message_preview": "I can do that, but list creation isn\u2019t in the tools I have here.  \nApollo is Connected, so I can look up existing lists or help you prepare the exact name and target criteria, but I can\u2019t create the list directly from this turn.\nI can\u2019t create the Apollo list from the tools avail",
+        "created_at": "2026-07-27T08:51:42.072295+00:00",
+        "outcome_kind": "clarifying_question",
+        "latency_ms": 2361,
+        "user_message_preview": "I can do that. I need one more thing: which contacts should go into the Apollo list?",
         "tool_name": null,
         "live_served": false
       },
-      "conversation_id": "9eec54b7-cc5f-4cc9-85ef-9c1c0e518a68",
+      "conversation_id": "074280a7-3941-4dac-9bb9-62c2062f0814",
       "turn": {
         "http": 200,
-        "assistant": "I can\u2019t create the Apollo list from here because the available Apollo connector actions do not include \u201ccreate list,\u201d and browser automation is disabled.\n\nWhat I verified:\n- Apollo is Connected in the provided org context.\n- I checked Apollo lists through the connector; no visible existing list named \u201cQ3 outbound\u201d appeared in the returned results.\n- I attempted UI automation, but it is not available in this environment.\n\nBest next move: create the list manually in Apollo under Lists, or enable an Apollo \u201ccreate list\u201d connector action / approved browser automation so I can complete it.\n\nI may be missing context \u2014 could you clarify or point me to a specific record or document?",
-        "at": "2026-07-25T07:35:18.346481+00:00",
+        "assistant": "I'll run **Phase1 Sales Swarm Agent** on this task:\n\n> Create an Apollo contact list named exactly \"Q3 outbound\". Use the connected Apollo connector for this organization. Do not add contacts to the list.\n\nThe agent may use its permitted tools and connected integrations (including writes).\n\nReply **yes** to start, or **no** to cancel.",
+        "at": "2026-07-27T08:51:59.196250+00:00",
         "error": null
       }
     },
@@ -373,25 +203,25 @@
         "connectr"
       ],
       "shadow_outcome": "connector_tool_proposal",
-      "shadow_latency_ms": 544,
-      "shadow_first_token_proxy_ms": 477,
+      "shadow_latency_ms": 1937,
+      "shadow_first_token_proxy_ms": 1936,
       "live_served": false,
       "shadow_audit_missing": false,
       "knowledge_boundary_assistant_fallback": false,
       "shadow": {
         "action": "unified_turn.live.fallthrough",
-        "created_at": "2026-07-25T07:35:30.406017+00:00",
+        "created_at": "2026-07-27T08:52:14.101439+00:00",
         "outcome_kind": "connector_tool_proposal",
-        "latency_ms": 544,
+        "latency_ms": 1937,
         "user_message_preview": "",
         "tool_name": "assistant_connector_status",
         "live_served": false
       },
-      "conversation_id": "da9a107c-7814-414b-bd69-1a1329dbd0d4",
+      "conversation_id": "9c45594b-b8da-4497-9eda-45a6d1f42fa9",
       "turn": {
         "http": 200,
         "assistant": "Slack authentication expired. Reconnect it at /connectors, then try again.",
-        "at": "2026-07-25T07:35:37.200187+00:00",
+        "at": "2026-07-27T08:52:21.363568+00:00",
         "error": null
       }
     },
@@ -401,9 +231,9 @@
       "ok": true,
       "failures": [],
       "user_message": "can you chekc if teh HubSpot list got creatd",
-      "assistant_full": "I don\u2019t have list status yet. HubSpot list lookup isn\u2019t available with the tools I have here. If you want, I can check related HubSpot activity or search the latest workflow/run records instead.",
-      "assistant_snippet": "I don\u2019t have list status yet. HubSpot list lookup isn\u2019t available with the tools I have here. If you want, I can check related HubSpot activity or search the latest workflow/run records instead.",
-      "model_text_full": "I don\u2019t have list status yet. HubSpot list lookup isn\u2019t available with the tools I have here. If you want, I can check related HubSpot activity or search the latest workflow/run records instead.",
+      "assistant_full": "I don\u2019t have list lookup in the tools here.\n\nIf you want, I can check HubSpot indirectly by looking for the list\u2019s name through a supported HubSpot action, but I need the exact list name first.",
+      "assistant_snippet": "I don\u2019t have list lookup in the tools here.\n\nIf you want, I can check HubSpot indirectly by looking for the list\u2019s name through a supported HubSpot action, but I need the exact list name first.",
+      "model_text_full": "I don\u2019t have list lookup in the tools here.\n\nIf you want, I can check HubSpot indirectly by looking for the list\u2019s name through a supported HubSpot action, but I need the exact list name first.",
       "imperfect_input": true,
       "typo_tokens": [
         "chekc",
@@ -411,25 +241,25 @@
         "creatd"
       ],
       "shadow_outcome": "conversational_reply",
-      "shadow_latency_ms": 772,
-      "shadow_first_token_proxy_ms": 459,
+      "shadow_latency_ms": 1771,
+      "shadow_first_token_proxy_ms": 1525,
       "live_served": true,
       "shadow_audit_missing": false,
       "knowledge_boundary_assistant_fallback": false,
       "shadow": {
         "action": "unified_turn.live.completed",
-        "created_at": "2026-07-25T07:35:48.61286+00:00",
+        "created_at": "2026-07-27T08:52:37.836347+00:00",
         "outcome_kind": "conversational_reply",
-        "latency_ms": 772,
-        "user_message_preview": "I don\u2019t have list status yet. HubSpot list lookup isn\u2019t available with the tools I have here. If you want, I can check related HubSpot activity or search the latest workflow/run records instead.",
+        "latency_ms": 1771,
+        "user_message_preview": "I don\u2019t have list lookup in the tools here.\n\nIf you want, I can check HubSpot indirectly by looking for the list\u2019s name through a supported HubSpot action, but I need the exact list name first.",
         "tool_name": null,
         "live_served": true
       },
-      "conversation_id": "e6c269bc-7106-4510-9c9b-da75b585438a",
+      "conversation_id": "0617c414-6bd1-4122-a5c4-5a6aa6ce0b79",
       "turn": {
         "http": 200,
-        "assistant": "I don\u2019t have list status yet. HubSpot list lookup isn\u2019t available with the tools I have here. If you want, I can check related HubSpot activity or search the latest workflow/run records instead.",
-        "at": "2026-07-25T07:35:50.728131+00:00",
+        "assistant": "I don\u2019t have list lookup in the tools here.\n\nIf you want, I can check HubSpot indirectly by looking for the list\u2019s name through a supported HubSpot action, but I need the exact list name first.",
+        "at": "2026-07-27T08:52:40.484623+00:00",
         "error": null
       }
     },
@@ -439,31 +269,31 @@
       "ok": true,
       "failures": [],
       "user_message": "send email stephanie about meeting",
-      "assistant_full": "I need the recipient email address, the subject, and the message body.",
-      "assistant_snippet": "I need the recipient email address, the subject, and the message body.",
-      "model_text_full": "I need the recipient email address, the subject, and the message body.",
+      "assistant_full": "I can send it, but I need the recipient email address and the message details.\n\nSend me:\n- Stephanie\u2019s email\n- Subject\n- The main points to include",
+      "assistant_snippet": "I can send it, but I need the recipient email address and the message details.\n\nSend me:\n- Stephanie\u2019s email\n- Subject\n- The main points to include",
+      "model_text_full": "I can send it, but I need the recipient email address and the message details.\n\nSend me:\n- Stephanie\u2019s email\n- Subject\n- The main points to include",
       "imperfect_input": true,
       "typo_tokens": [],
       "shadow_outcome": "conversational_reply",
-      "shadow_latency_ms": 821,
-      "shadow_first_token_proxy_ms": 688,
+      "shadow_latency_ms": 797,
+      "shadow_first_token_proxy_ms": 794,
       "live_served": true,
       "shadow_audit_missing": false,
       "knowledge_boundary_assistant_fallback": false,
       "shadow": {
         "action": "unified_turn.live.completed",
-        "created_at": "2026-07-25T07:36:03.845969+00:00",
+        "created_at": "2026-07-27T08:52:55.331355+00:00",
         "outcome_kind": "conversational_reply",
-        "latency_ms": 821,
-        "user_message_preview": "I need the recipient email address, the subject, and the message body.",
+        "latency_ms": 797,
+        "user_message_preview": "I can send it, but I need the recipient email address and the message details.\n\nSend me:\n- Stephanie\u2019s email\n- Subject\n- The main points to include",
         "tool_name": null,
         "live_served": true
       },
-      "conversation_id": "386b5f48-f9d3-499d-8c4e-0aa15ee8612a",
+      "conversation_id": "958eacc4-f328-4231-bbba-099e176c1068",
       "turn": {
         "http": 200,
-        "assistant": "I need the recipient email address, the subject, and the message body.",
-        "at": "2026-07-25T07:36:06.432874+00:00",
+        "assistant": "I can send it, but I need the recipient email address and the message details.\n\nSend me:\n- Stephanie\u2019s email\n- Subject\n- The main points to include",
+        "at": "2026-07-27T08:52:57.372007+00:00",
         "error": null
       }
     },
@@ -473,31 +303,31 @@
       "ok": true,
       "failures": [],
       "user_message": "hubspot contact create for alex@example.com please",
-      "assistant_full": "HubSpot contact creation is blocked on approval. Reply **yes** to create it for alex@example.com, or **cancel**.",
-      "assistant_snippet": "HubSpot contact creation is blocked on approval. Reply **yes** to create it for alex@example.com, or **cancel**.",
-      "model_text_full": "HubSpot contact creation is blocked on approval. Reply **yes** to create it for [REDACTED_EMAIL], or **cancel**.",
+      "assistant_full": "Need one detail: Alex\u2019s first and last name.\nI need Alex\u2019s first and last name to create the contact.",
+      "assistant_snippet": "Need one detail: Alex\u2019s first and last name.\nI need Alex\u2019s first and last name to create the contact.",
+      "model_text_full": "Need one detail: Alex\u2019s first and last name.\nI need Alex\u2019s first and last name to create the contact.",
       "imperfect_input": true,
       "typo_tokens": [],
       "shadow_outcome": "conversational_reply",
-      "shadow_latency_ms": 833,
-      "shadow_first_token_proxy_ms": 607,
+      "shadow_latency_ms": 2166,
+      "shadow_first_token_proxy_ms": 2164,
       "live_served": true,
       "shadow_audit_missing": false,
       "knowledge_boundary_assistant_fallback": false,
       "shadow": {
         "action": "unified_turn.live.completed",
-        "created_at": "2026-07-25T07:36:18.24512+00:00",
+        "created_at": "2026-07-27T08:53:13.608349+00:00",
         "outcome_kind": "conversational_reply",
-        "latency_ms": 833,
-        "user_message_preview": "HubSpot contact creation is blocked on approval. Reply **yes** to create it for [REDACTED_EMAIL], or **cancel**.",
+        "latency_ms": 2166,
+        "user_message_preview": "Need one detail: Alex\u2019s first and last name.\nI need Alex\u2019s first and last name to create the contact.",
         "tool_name": null,
         "live_served": true
       },
-      "conversation_id": "fc836485-f5ff-4a68-97b8-9c0106715f7a",
+      "conversation_id": "715c0d31-3d9d-47a9-bd51-5b88b6d29e7e",
       "turn": {
         "http": 200,
-        "assistant": "HubSpot contact creation is blocked on approval. Reply **yes** to create it for alex@example.com, or **cancel**.",
-        "at": "2026-07-25T07:36:20.628200+00:00",
+        "assistant": "Need one detail: Alex\u2019s first and last name.\nI need Alex\u2019s first and last name to create the contact.",
+        "at": "2026-07-27T08:53:17.036904+00:00",
         "error": null
       }
     },
@@ -507,34 +337,34 @@
       "ok": true,
       "failures": [],
       "user_message": "pleasse drafte a gmail to demo@example.com about pricing",
-      "assistant_full": "I can draft the email, but Gmail isn\u2019t Connected in this org.\n\nConnect Gmail at `/connectors`, then I can draft it.",
-      "assistant_snippet": "I can draft the email, but Gmail isn\u2019t Connected in this org.\n\nConnect Gmail at `/connectors`, then I can draft it.",
-      "model_text_full": "I can draft the email, but Gmail isn\u2019t Connected in this org.\n\nConnect Gmail at `/connectors`, then I can draft it.",
+      "assistant_full": "I can draft it, but I need the key points first.\n\nSend me:\n- the purpose\n- the pricing details to include\n- any tone you want, if specific\n\nThen I\u2019ll draft the Gmail.",
+      "assistant_snippet": "I can draft it, but I need the key points first.\n\nSend me:\n- the purpose\n- the pricing details to include\n- any tone you want, if specific\n\nThen I\u2019ll draft the Gmail.",
+      "model_text_full": "I can draft it, but I need the key points first.\n\nSend me:\n- the purpose\n- the pricing details to include\n- any tone you want, if specific\n\nThen I\u2019ll draft the Gmail.",
       "imperfect_input": true,
       "typo_tokens": [
         "pleasse",
         "drafte"
       ],
       "shadow_outcome": "conversational_reply",
-      "shadow_latency_ms": 747,
-      "shadow_first_token_proxy_ms": 573,
+      "shadow_latency_ms": 867,
+      "shadow_first_token_proxy_ms": 565,
       "live_served": true,
       "shadow_audit_missing": false,
       "knowledge_boundary_assistant_fallback": false,
       "shadow": {
         "action": "unified_turn.live.completed",
-        "created_at": "2026-07-25T07:36:33.44726+00:00",
+        "created_at": "2026-07-27T08:53:31.050446+00:00",
         "outcome_kind": "conversational_reply",
-        "latency_ms": 747,
-        "user_message_preview": "I can draft the email, but Gmail isn\u2019t Connected in this org.\n\nConnect Gmail at `/connectors`, then I can draft it.",
+        "latency_ms": 867,
+        "user_message_preview": "I can draft it, but I need the key points first.\n\nSend me:\n- the purpose\n- the pricing details to include\n- any tone you want, if specific\n\nThen I\u2019ll draft the Gmail.",
         "tool_name": null,
         "live_served": true
       },
-      "conversation_id": "30c91ba7-099c-45c1-aa7f-df37a118f609",
+      "conversation_id": "12439ab4-9fd9-4a63-a9cf-fdbbe4915aff",
       "turn": {
         "http": 200,
-        "assistant": "I can draft the email, but Gmail isn\u2019t Connected in this org.\n\nConnect Gmail at `/connectors`, then I can draft it.",
-        "at": "2026-07-25T07:36:35.651640+00:00",
+        "assistant": "I can draft it, but I need the key points first.\n\nSend me:\n- the purpose\n- the pricing details to include\n- any tone you want, if specific\n\nThen I\u2019ll draft the Gmail.",
+        "at": "2026-07-27T08:53:32.667738+00:00",
         "error": null
       }
     },
@@ -546,32 +376,32 @@
       "user_message": "senf a slack mesage to #general saying kickoff is at 3",
       "assistant_full": "Slack authentication expired. Reconnect it at /connectors, then try again.",
       "assistant_snippet": "Slack authentication expired. Reconnect it at /connectors, then try again.",
-      "model_text_full": "Slack isn\u2019t Connected here. I can\u2019t send that message from this org.",
+      "model_text_full": "Slack isn\u2019t Connected here. Connect it at /connectors, then I can send the message.",
       "imperfect_input": true,
       "typo_tokens": [
         "senf",
         "mesage"
       ],
       "shadow_outcome": "conversational_reply",
-      "shadow_latency_ms": 586,
-      "shadow_first_token_proxy_ms": 440,
+      "shadow_latency_ms": 929,
+      "shadow_first_token_proxy_ms": 724,
       "live_served": false,
       "shadow_audit_missing": false,
       "knowledge_boundary_assistant_fallback": false,
       "shadow": {
         "action": "unified_turn.live.fallthrough",
-        "created_at": "2026-07-25T07:36:46.979936+00:00",
+        "created_at": "2026-07-27T08:53:46.899427+00:00",
         "outcome_kind": "conversational_reply",
-        "latency_ms": 586,
-        "user_message_preview": "Slack isn\u2019t Connected here. I can\u2019t send that message from this org.",
+        "latency_ms": 929,
+        "user_message_preview": "Slack isn\u2019t Connected here. Connect it at /connectors, then I can send the message.",
         "tool_name": null,
         "live_served": false
       },
-      "conversation_id": "486d442f-3c8f-4033-91ec-03f1eebc7877",
+      "conversation_id": "06ee9223-f866-45a3-b960-7164d7786804",
       "turn": {
         "http": 200,
         "assistant": "Slack authentication expired. Reconnect it at /connectors, then try again.",
-        "at": "2026-07-25T07:36:53.822357+00:00",
+        "at": "2026-07-27T08:53:54.509859+00:00",
         "error": null
       }
     },
@@ -581,34 +411,34 @@
       "ok": true,
       "failures": [],
       "user_message": "thansk \u2014 also sned that hubspot note to maria",
-      "assistant_full": "I can log that note in HubSpot. I need the note text first.",
-      "assistant_snippet": "I can log that note in HubSpot. I need the note text first.",
-      "model_text_full": "I can log that note in HubSpot. I need the note text first.",
+      "assistant_full": "I can log a HubSpot note to Maria. I need the note text first.",
+      "assistant_snippet": "I can log a HubSpot note to Maria. I need the note text first.",
+      "model_text_full": "I can log a HubSpot note to Maria. I need the note text first.",
       "imperfect_input": true,
       "typo_tokens": [
         "thansk",
         "sned"
       ],
       "shadow_outcome": "conversational_reply",
-      "shadow_latency_ms": 690,
-      "shadow_first_token_proxy_ms": 571,
+      "shadow_latency_ms": 911,
+      "shadow_first_token_proxy_ms": 860,
       "live_served": true,
       "shadow_audit_missing": false,
       "knowledge_boundary_assistant_fallback": false,
       "shadow": {
         "action": "unified_turn.live.completed",
-        "created_at": "2026-07-25T07:37:05.311065+00:00",
+        "created_at": "2026-07-27T08:54:07.429316+00:00",
         "outcome_kind": "conversational_reply",
-        "latency_ms": 690,
-        "user_message_preview": "I can log that note in HubSpot. I need the note text first.",
+        "latency_ms": 911,
+        "user_message_preview": "I can log a HubSpot note to Maria. I need the note text first.",
         "tool_name": null,
         "live_served": true
       },
-      "conversation_id": "8cee38f2-930d-46f2-a001-dd7ef2c20598",
+      "conversation_id": "334bef3d-3efd-4a63-a329-46dbbd95ff74",
       "turn": {
         "http": 200,
-        "assistant": "I can log that note in HubSpot. I need the note text first.",
-        "at": "2026-07-25T07:37:07.525172+00:00",
+        "assistant": "I can log a HubSpot note to Maria. I need the note text first.",
+        "at": "2026-07-27T08:54:11.126579+00:00",
         "error": null
       }
     },
@@ -618,31 +448,31 @@
       "ok": true,
       "failures": [],
       "user_message": "um so can you send an email to jordan about the deck",
-      "assistant_full": "I can draft the email, but I need the key points for Jordan and the subject.",
-      "assistant_snippet": "I can draft the email, but I need the key points for Jordan and the subject.",
-      "model_text_full": "I can draft the email, but I need the key points for Jordan and the subject.",
+      "assistant_full": "I can send it, but I need the subject and the body first.",
+      "assistant_snippet": "I can send it, but I need the subject and the body first.",
+      "model_text_full": "I can send it, but I need the subject and the body first.",
       "imperfect_input": true,
       "typo_tokens": [],
       "shadow_outcome": "conversational_reply",
-      "shadow_latency_ms": 692,
-      "shadow_first_token_proxy_ms": 551,
+      "shadow_latency_ms": 655,
+      "shadow_first_token_proxy_ms": 531,
       "live_served": true,
       "shadow_audit_missing": false,
       "knowledge_boundary_assistant_fallback": false,
       "shadow": {
         "action": "unified_turn.live.completed",
-        "created_at": "2026-07-25T07:37:19.04171+00:00",
+        "created_at": "2026-07-27T08:54:23.419972+00:00",
         "outcome_kind": "conversational_reply",
-        "latency_ms": 692,
-        "user_message_preview": "I can draft the email, but I need the key points for Jordan and the subject.",
+        "latency_ms": 655,
+        "user_message_preview": "I can send it, but I need the subject and the body first.",
         "tool_name": null,
         "live_served": true
       },
-      "conversation_id": "4da80d50-0f24-41d4-b815-0520fc0442a7",
+      "conversation_id": "94873608-1d0e-4d0a-8c23-2e9ceb2a2bb9",
       "turn": {
         "http": 200,
-        "assistant": "I can draft the email, but I need the key points for Jordan and the subject.",
-        "at": "2026-07-25T07:37:21.154043+00:00",
+        "assistant": "I can send it, but I need the subject and the body first.",
+        "at": "2026-07-27T08:54:24.998260+00:00",
         "error": null
       }
     },
@@ -654,29 +484,29 @@
       "user_message": "yeah so create a hubspot contact list named summer leads when you get a chance",
       "assistant_full": "I can create a contact list named **summer leads** in Hubspot.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
       "assistant_snippet": "I can create a contact list named **summer leads** in Hubspot.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
-      "model_text_full": "HubSpot doesn\u2019t have a contact list create tool here.\n\nIf you want, I can help set up the list criteria for **Summer Leads** so you can create it in HubSpot directly.",
+      "model_text_full": "HubSpot doesn\u2019t have a contact-list creation tool available here. I can\u2019t create that list from this surface.\n\nIf you want, I can still help you build the exact list criteria so it\u2019s ready to paste into HubSpot.",
       "imperfect_input": true,
       "typo_tokens": [],
       "shadow_outcome": "conversational_reply",
-      "shadow_latency_ms": 852,
-      "shadow_first_token_proxy_ms": 531,
+      "shadow_latency_ms": 1834,
+      "shadow_first_token_proxy_ms": 1245,
       "live_served": false,
       "shadow_audit_missing": false,
       "knowledge_boundary_assistant_fallback": false,
       "shadow": {
         "action": "unified_turn.live.fallthrough",
-        "created_at": "2026-07-25T07:37:33.53544+00:00",
+        "created_at": "2026-07-27T08:54:38.734486+00:00",
         "outcome_kind": "conversational_reply",
-        "latency_ms": 852,
-        "user_message_preview": "HubSpot doesn\u2019t have a contact list create tool here.\n\nIf you want, I can help set up the list criteria for **Summer Leads** so you can create it in HubSpot directly.",
+        "latency_ms": 1834,
+        "user_message_preview": "HubSpot doesn\u2019t have a contact-list creation tool available here. I can\u2019t create that list from this surface.\n\nIf you want, I can still help you build the exact list criteria so it\u2019s ready to paste into HubSpot.",
         "tool_name": null,
         "live_served": false
       },
-      "conversation_id": "6ff045e1-2933-4a2b-90b4-ce1ffe261846",
+      "conversation_id": "b96574cc-f054-49f9-8b78-3345d7a6a820",
       "turn": {
         "http": 200,
         "assistant": "I can create a contact list named **summer leads** in Hubspot.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
-        "at": "2026-07-25T07:37:52.367649+00:00",
+        "at": "2026-07-27T08:54:58.845854+00:00",
         "error": null
       }
     },
@@ -686,9 +516,9 @@
       "ok": true,
       "failures": [],
       "user_message": "um yeah go ahead and aprove it",
-      "assistant_full": "I still have **Send Gmail message** waiting for approval. Say **yes** to run it, **cancel** to drop it, or describe a change.",
-      "assistant_snippet": "I still have **Send Gmail message** waiting for approval. Say **yes** to run it, **cancel** to drop it, or describe a change.",
-      "model_text_full": "I still have **Send Gmail message** waiting for approval. Say **yes** to run it, **cancel** to drop it, or describe a change.",
+      "assistant_full": "I still have **Send Gmail message** waiting for approval.\nSay **yes** to run it, **cancel** to drop it, or describe a change.",
+      "assistant_snippet": "I still have **Send Gmail message** waiting for approval.\nSay **yes** to run it, **cancel** to drop it, or describe a change.",
+      "model_text_full": "I still have **Send Gmail message** waiting for approval.\nSay **yes** to run it, **cancel** to drop it, or describe a change.",
       "imperfect_input": true,
       "typo_tokens": [
         "aprove"
@@ -701,18 +531,18 @@
       "knowledge_boundary_assistant_fallback": false,
       "shadow": {
         "action": "unified_turn.live.completed",
-        "created_at": "2026-07-25T07:38:03.695903+00:00",
+        "created_at": "2026-07-27T08:55:12.616622+00:00",
         "outcome_kind": "clarifying_question",
         "latency_ms": 0,
-        "user_message_preview": "I still have **Send Gmail message** waiting for approval. Say **yes** to run it, **cancel** to drop it, or describe a change.",
+        "user_message_preview": "I still have **Send Gmail message** waiting for approval.\nSay **yes** to run it, **cancel** to drop it, or describe a change.",
         "tool_name": null,
         "live_served": true
       },
-      "conversation_id": "5a6a6919-8537-4e93-b17d-0668bdb40ade",
+      "conversation_id": "f6cd98a1-755e-4cfb-88bf-ee5a912641b8",
       "turn": {
         "http": 200,
-        "assistant": "I still have **Send Gmail message** waiting for approval. Say **yes** to run it, **cancel** to drop it, or describe a change.",
-        "at": "2026-07-25T07:38:05.990526+00:00",
+        "assistant": "I still have **Send Gmail message** waiting for approval.\nSay **yes** to run it, **cancel** to drop it, or describe a change.",
+        "at": "2026-07-27T08:55:14.540648+00:00",
         "error": null
       }
     },
@@ -722,9 +552,9 @@
       "ok": true,
       "failures": [],
       "user_message": "whats teh stauts of that gmail",
-      "assistant_full": "I still have **Send Gmail message** waiting for approval. Say **yes** to run it, **cancel** to drop it, or describe a change.",
-      "assistant_snippet": "I still have **Send Gmail message** waiting for approval. Say **yes** to run it, **cancel** to drop it, or describe a change.",
-      "model_text_full": "I still have **Send Gmail message** waiting for approval. Say **yes** to run it, **cancel** to drop it, or describe a change.",
+      "assistant_full": "I still have **Send Gmail message** waiting for approval.\nSay **yes** to run it, **cancel** to drop it, or describe a change.",
+      "assistant_snippet": "I still have **Send Gmail message** waiting for approval.\nSay **yes** to run it, **cancel** to drop it, or describe a change.",
+      "model_text_full": "I still have **Send Gmail message** waiting for approval.\nSay **yes** to run it, **cancel** to drop it, or describe a change.",
       "imperfect_input": true,
       "typo_tokens": [
         "teh",
@@ -738,54 +568,77 @@
       "knowledge_boundary_assistant_fallback": false,
       "shadow": {
         "action": "unified_turn.live.completed",
-        "created_at": "2026-07-25T07:38:16.791345+00:00",
+        "created_at": "2026-07-27T08:55:26.871924+00:00",
         "outcome_kind": "clarifying_question",
         "latency_ms": 0,
-        "user_message_preview": "I still have **Send Gmail message** waiting for approval. Say **yes** to run it, **cancel** to drop it, or describe a change.",
+        "user_message_preview": "I still have **Send Gmail message** waiting for approval.\nSay **yes** to run it, **cancel** to drop it, or describe a change.",
         "tool_name": null,
         "live_served": true
       },
-      "conversation_id": "14033e66-0b77-40f7-892d-558d1a164516",
+      "conversation_id": "f6122623-5020-42fe-b68a-c5abf48651ca",
       "turn": {
         "http": 200,
-        "assistant": "I still have **Send Gmail message** waiting for approval. Say **yes** to run it, **cancel** to drop it, or describe a change.",
-        "at": "2026-07-25T07:38:19.100098+00:00",
+        "assistant": "I still have **Send Gmail message** waiting for approval.\nSay **yes** to run it, **cancel** to drop it, or describe a change.",
+        "at": "2026-07-27T08:55:28.456432+00:00",
         "error": null
       }
     }
   ],
   "classical_batteries": {
-    "skipped": true,
-    "reason": "PHASE2_SKIP_CLASSICAL"
+    "pending_reply": {
+      "exit_code": 0,
+      "stdout_tail": "ich then deal**) that isn't finished. Your new message looks l\"\nPASS unrelated_how_many_runs http=200 :: \"You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks l\"\nPASS unrelated_search_hubspot http=200 :: \"You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a \"\nPASS modify_subject_q3 http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS modify_skip_step http=200 :: 'I can\u2019t create the deal yet. The request does not include enough deal details.\\n\\nHubSpot is listed as'\nPASS modify_change_channel http=200 :: \"I couldn't complete that: Blocked. Slack is configured, but authentication has expired. Reconnect Sl\"\nPASS modify_rather_cancel_body http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS modify_dont_include_cc http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS ambiguous_hmm http=200 :: 'I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue.\\n\\nI may be missing'\nPASS ambiguous_maybe http=200 :: 'I still have a plan open (**Search HubSpot then create a deal**). Say **yes** to continue, **cancel*'\nPASS ambiguous_ok_then http=200 :: \"I couldn't complete that: Blocked. Slack is configured, but authentication has expired. Reconnect Sl\"\nPASS slot_email http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS reject_cancel http=200 :: 'Cancelled the pending plan. What should we do instead?'\nPASS confirm_orch_yes http=200 :: 'The orchestration plan is empty.'\n{\n  \"verdict\": \"PASS\",\n  \"passed\": 24,\n  \"total\": 24,\n  \"failed\": [],\n  \"tip_ok\": true,\n  \"broad_pass\": true,\n  \"out\": \"C:\\\\Users\\\\Cesar\\\\Downloads\\\\Gravitre Operator AI\\\\docs\\\\delivery\\\\pending-reply-classifier-battery-live.json\"\n}\n",
+      "stderr_tail": ""
+    },
+    "conversational_path": {
+      "exit_code": 0,
+      "stdout_tail": "st :: 'Ha \u2014 noted.\\n\\nI can check HubSpot, but I don\u2019t have a list lookup tool here.\\n\\nIf you want, I can sear'\nPASS mixed_slack :: 'Ha \u2014 noted.\\n\\nSlack authentication expired. Reconnect it at /connectors, then try again.'\nPASS mixed_thanks_search :: \"You're welcome.\\n\\nNo Acme contacts were found in HubSpot.\\n\\nVerified from HubSpot contact search for `\"\nPASS mixed_banter_gmail :: 'Ha \u2014 noted.\\n\\nSure. I still need the subject and body for the draft.'\nPASS mixed_hey_apollo :: 'Hey \u2014 on it.\\n\\nI can create a contact list named **ConvPath Battery** in Apollo.\\n\\nReply **yes** to ap'\nPASS meta_what_can_you_do :: 'I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo,'\nPASS meta_are_you_ai :: 'I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo,'\nPASS meta_who_are_you :: 'I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo,'\nPASS vent_hubspot :: \"That sounds frustrating. If you want, we can check the HubSpot connector's status or see if there's \"\nPASS vent_generic :: \"I hear you. Frustrations can really pile up. If there's something specific you want to tackle or che\"\nPASS vent_slack :: 'Slack authentication expired. Reconnect it at /connectors, then try again.'\nPASS data_deals :: 'The deals are mixed, but the pipeline is active and not empty.\\n\\nFrom HubSpot, I can verify:\\n- 3 clos'\nPASS data_pipeline :: 'Which item did you mean \u2014 the specific workflow, agent, or connector you mean?'\nPASS pending_playful_1 :: 'Ha \u2014 noted. What should we tackle next?\\n\\nSend Gmail message is waiting in the Decision Queue. Reply '\nPASS pending_playful_2 :: 'Ha \u2014 noted. What should we tackle next?\\n\\nSend Gmail message is waiting in the Decision Queue. Reply '\n{\n  \"verdict\": \"PASS\",\n  \"passed\": 20,\n  \"total\": 20,\n  \"failed\": [],\n  \"out\": \"C:\\\\Users\\\\Cesar\\\\Downloads\\\\Gravitre Operator AI\\\\docs\\\\delivery\\\\conversational-path-battery-live.json\"\n}\n",
+      "stderr_tail": ""
+    },
+    "run_history_stale_plan": {
+      "exit_code": 0,
+      "stdout_tail": "health tip=4f451b8001a033cfbea6e6c319171537c94b4bcf\n{\n  \"fastRunHistory\": \"PASS\",\n  \"stalePlanSequence\": \"PASS\"\n}\nwrote C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\docs\\delivery\\run-history-stale-plan-live.json\ntip=4f451b8001a033cfbea6e6c319171537c94b4bcf conv1=9b2f6347-6a80-4341-97af-dc78463d79d7 conv2=201ec103-691f-4fb9-961b-fe17160a6ebd\n",
+      "stderr_tail": ""
+    },
+    "sta305_slack_omit_detail": {
+      "exit_code": 2,
+      "stdout_tail": "{\n  \"ticket\": \"STA-305\",\n  \"probed_at\": \"2026-07-27T09:02:46.281968+00:00\",\n  \"local_mapper\": {\n    \"segment\": \"draft a follow-up in Slack for approval\",\n    \"matched_action\": \"slack.post_message\",\n    \"kind\": \"write\",\n    \"score\": 48.0,\n    \"args\": {\n      \"channel\": \"general\",\n      \"message\": \"follow-up\",\n      \"text\": \"follow-up\"\n    },\n    \"pass\": true\n  },\n  \"live\": {\n    \"skipped\": true,\n    \"reason\": \"STA-305 live requires connected HubSpot + Slack in isolated test org; missing=['slack'] connected=['apollo', 'hubspot']\",\n    \"org_id\": \"f07e57c0-1501-4000-8000-c04e57a00001\",\n    \"connected_integrations\": [\n      \"apollo\",\n      \"hubspot\"\n    ],\n    \"pass\": false\n  },\n  \"verdict\": \"BLOCKED\"\n}\n",
+      "stderr_tail": "STA-305 live BLOCKED: connect HubSpot + Slack in isolated conversation org, then re-run.\n"
+    },
+    "persona_drift_30": {
+      "exit_code": 0,
+      "stdout_tail": "{\n  \"verdict\": \"PASS\",\n  \"passed\": 30,\n  \"turns\": 30,\n  \"hard_failures\": [],\n  \"missing_unified_turn_audit\": 0,\n  \"missing_shadow\": 0,\n  \"out\": \"C:\\\\Users\\\\Cesar\\\\Downloads\\\\Gravitre Operator AI\\\\docs\\\\delivery\\\\unified-turn-persona-drift-live.json\"\n}\n",
+      "stderr_tail": ""
+    },
+    "send_email_self_contradiction": {
+      "exit_code": 0,
+      "stdout_tail": "{\n  \"message\": \"send an email\",\n  \"conversation_id\": \"13073655-3a1b-4cd1-b64c-8d76998da380\",\n  \"http\": 200,\n  \"assistant\": \"I need the recipient, subject, and body.\",\n  \"unified_turn_live_sse\": true,\n  \"audit_action\": \"unified_turn.live.completed\",\n  \"audit_created_at\": \"2026-07-27T09:07:30.179965+00:00\",\n  \"outcome_kind\": \"conversational_reply\",\n  \"live_served\": true,\n  \"contradiction_map_fail_plus_send_listed\": false,\n  \"ok\": true\n}\n{\n  \"message\": \"Send an email\",\n  \"conversation_id\": \"6fb2ddb3-b0c1-4fea-9b88-40388be998c0\",\n  \"http\": 200,\n  \"assistant\": \"I need the recipient, subject, and body.\",\n  \"unified_turn_live_sse\": true,\n  \"audit_action\": \"unified_turn.live.completed\",\n  \"audit_created_at\": \"2026-07-27T09:07:39.634657+00:00\",\n  \"outcome_kind\": \"conversational_reply\",\n  \"live_served\": true,\n  \"contradiction_map_fail_plus_send_listed\": false,\n  \"ok\": true\n}\n{\n  \"message\": \"Send an email to Stephanie about the proposal\",\n  \"conversation_id\": \"d3986f32-b25b-47db-9a8e-4a6078e573af\",\n  \"http\": 200,\n  \"assistant\": \"I can draft the email, but I need the purpose and key points to include.\",\n  \"unified_turn_live_sse\": true,\n  \"audit_action\": \"unified_turn.live.completed\",\n  \"audit_created_at\": \"2026-07-27T09:07:48.9444+00:00\",\n  \"outcome_kind\": \"conversational_reply\",\n  \"live_served\": true,\n  \"contradiction_map_fail_plus_send_listed\": false,\n  \"ok\": true\n}\n",
+      "stderr_tail": ""
+    }
   },
   "ttft": {
     "note": "Shadow path is non-streaming today; latency_ms / first_token_proxy_ms are full-completion proxies. Phase 3 requires true streamed TTFT < 200ms.",
     "target_ms": 200,
     "samples_ms": [
-      1098,
-      1409,
-      994,
+      748,
+      846,
       0,
-      547,
-      725,
-      648,
-      0,
-      794,
-      1095,
-      544,
-      772,
-      821,
-      833,
-      747,
-      586,
-      690,
-      692,
-      852,
+      4052,
+      2361,
+      1937,
+      1771,
+      797,
+      2166,
+      867,
+      929,
+      911,
+      655,
+      1834,
       0,
       0
     ],
-    "p50_ms": 725,
-    "max_ms": 1409,
+    "p50_ms": 911,
+    "max_ms": 4052,
     "phase3_streaming_gate": "NOT RUN \u2014 shadow not yet token-streaming",
     "proxy_under_target": false
   },
@@ -798,32 +651,27 @@
     "write_authority_unchanged": true
   },
   "matrix": {
-    "targeted_shadow_cases": "21/21 targeted case-runs",
+    "targeted_shadow_cases": "16/16 targeted case-runs",
     "case_coverage": {
       "greeting_no_catalog_leak": {
-        "status": "run",
-        "ok": true,
-        "rounds": 1
+        "status": "skipped",
+        "reason": "PHASE2_CASE_FILTER=imperfect"
       },
       "thanks_plain": {
-        "status": "run",
-        "ok": true,
-        "rounds": 1
+        "status": "skipped",
+        "reason": "PHASE2_CASE_FILTER=imperfect"
       },
       "email_intent_no_catalog_dump": {
-        "status": "run",
-        "ok": true,
-        "rounds": 1
+        "status": "skipped",
+        "reason": "PHASE2_CASE_FILTER=imperfect"
       },
       "status_check_pending": {
-        "status": "run",
-        "ok": true,
-        "rounds": 1
+        "status": "skipped",
+        "reason": "PHASE2_CASE_FILTER=imperfect"
       },
       "knowledge_boundary_run_history_fast": {
-        "status": "run",
-        "ok": true,
-        "rounds": 1
+        "status": "skipped",
+        "reason": "PHASE2_CASE_FILTER=imperfect"
       },
       "imperfect_sned_emial": {
         "status": "run",
@@ -906,30 +754,37 @@
         "rounds": 1
       }
     },
-    "pending_reply_24": {},
-    "conversational_path_20": {},
+    "pending_reply_24": {
+      "exit_code": 0,
+      "stdout_tail": "ich then deal**) that isn't finished. Your new message looks l\"\nPASS unrelated_how_many_runs http=200 :: \"You have a pending item (**HubSpot enrich then deal**) that isn't finished. Your new message looks l\"\nPASS unrelated_search_hubspot http=200 :: \"You have a pending item (**Send Gmail message**) that isn't finished. Your new message looks like a \"\nPASS modify_subject_q3 http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS modify_skip_step http=200 :: 'I can\u2019t create the deal yet. The request does not include enough deal details.\\n\\nHubSpot is listed as'\nPASS modify_change_channel http=200 :: \"I couldn't complete that: Blocked. Slack is configured, but authentication has expired. Reconnect Sl\"\nPASS modify_rather_cancel_body http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS modify_dont_include_cc http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS ambiguous_hmm http=200 :: 'I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue.\\n\\nI may be missing'\nPASS ambiguous_maybe http=200 :: 'I still have a plan open (**Search HubSpot then create a deal**). Say **yes** to continue, **cancel*'\nPASS ambiguous_ok_then http=200 :: \"I couldn't complete that: Blocked. Slack is configured, but authentication has expired. Reconnect Sl\"\nPASS slot_email http=200 :: \"I couldn't complete that: Connect Gmail at /connectors to run this action.\\n\\nGmail isn't ready. Conne\"\nPASS reject_cancel http=200 :: 'Cancelled the pending plan. What should we do instead?'\nPASS confirm_orch_yes http=200 :: 'The orchestration plan is empty.'\n{\n  \"verdict\": \"PASS\",\n  \"passed\": 24,\n  \"total\": 24,\n  \"failed\": [],\n  \"tip_ok\": true,\n  \"broad_pass\": true,\n  \"out\": \"C:\\\\Users\\\\Cesar\\\\Downloads\\\\Gravitre Operator AI\\\\docs\\\\delivery\\\\pending-reply-classifier-battery-live.json\"\n}\n",
+      "stderr_tail": ""
+    },
+    "conversational_path_20": {
+      "exit_code": 0,
+      "stdout_tail": "st :: 'Ha \u2014 noted.\\n\\nI can check HubSpot, but I don\u2019t have a list lookup tool here.\\n\\nIf you want, I can sear'\nPASS mixed_slack :: 'Ha \u2014 noted.\\n\\nSlack authentication expired. Reconnect it at /connectors, then try again.'\nPASS mixed_thanks_search :: \"You're welcome.\\n\\nNo Acme contacts were found in HubSpot.\\n\\nVerified from HubSpot contact search for `\"\nPASS mixed_banter_gmail :: 'Ha \u2014 noted.\\n\\nSure. I still need the subject and body for the draft.'\nPASS mixed_hey_apollo :: 'Hey \u2014 on it.\\n\\nI can create a contact list named **ConvPath Battery** in Apollo.\\n\\nReply **yes** to ap'\nPASS meta_what_can_you_do :: 'I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo,'\nPASS meta_are_you_ai :: 'I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo,'\nPASS meta_who_are_you :: 'I am Gravitree \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo,'\nPASS vent_hubspot :: \"That sounds frustrating. If you want, we can check the HubSpot connector's status or see if there's \"\nPASS vent_generic :: \"I hear you. Frustrations can really pile up. If there's something specific you want to tackle or che\"\nPASS vent_slack :: 'Slack authentication expired. Reconnect it at /connectors, then try again.'\nPASS data_deals :: 'The deals are mixed, but the pipeline is active and not empty.\\n\\nFrom HubSpot, I can verify:\\n- 3 clos'\nPASS data_pipeline :: 'Which item did you mean \u2014 the specific workflow, agent, or connector you mean?'\nPASS pending_playful_1 :: 'Ha \u2014 noted. What should we tackle next?\\n\\nSend Gmail message is waiting in the Decision Queue. Reply '\nPASS pending_playful_2 :: 'Ha \u2014 noted. What should we tackle next?\\n\\nSend Gmail message is waiting in the Decision Queue. Reply '\n{\n  \"verdict\": \"PASS\",\n  \"passed\": 20,\n  \"total\": 20,\n  \"failed\": [],\n  \"out\": \"C:\\\\Users\\\\Cesar\\\\Downloads\\\\Gravitre Operator AI\\\\docs\\\\delivery\\\\conversational-path-battery-live.json\"\n}\n",
+      "stderr_tail": ""
+    },
     "knowledge_boundary_run_history": {
-      "status": "run",
-      "ok": true,
-      "rounds": 1
+      "status": "skipped",
+      "reason": "PHASE2_CASE_FILTER=imperfect"
     },
     "imperfect_input_understanding": "16/16",
     "imperfect_input_all_ok": true,
     "imperfect_input_stable_across_rounds": true,
     "imperfect_unique_cases": 16,
-    "sta305_omit_detail": "NOT RUN",
-    "run_history_stale_plan": null,
-    "persona_drift_30_turn": null,
-    "send_email_self_contradiction": null,
+    "sta305_omit_detail": "BLOCKED \u2014 OPEN (HubSpot+Slack not connected in isolated org; local mapper-only; NOT a live PASS)",
+    "run_history_stale_plan": 0,
+    "persona_drift_30_turn": 0,
+    "send_email_self_contradiction": 0,
     "full_email_flow_multi_step": "PARTIAL \u2014 single-turn email intent only",
     "ttft_streaming_lt_200ms": "NOT RUN \u2014 shadow not yet token-streaming"
   },
   "health": {
     "status": "ok",
-    "timestamp": "2026-07-25T07:31:59.773495+00:00",
+    "timestamp": "2026-07-27T08:50:24.950552+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "2bf67f6bb6cdb4db2b6e5c46d25da709dce5f205",
+    "git_sha": "4f451b8001a033cfbea6e6c319171537c94b4bcf",
     "ai_disabled": false,
     "unified_turn_shadow_enabled": true,
     "unified_turn_live_enabled": true,
@@ -946,33 +801,28 @@
       "clickhouse": "configured"
     }
   },
-  "git_sha": "2bf67f6bb6cdb4db2b6e5c46d25da709dce5f205",
-  "summary": "21/21 targeted case-runs",
+  "git_sha": "4f451b8001a033cfbea6e6c319171537c94b4bcf",
+  "summary": "16/16 targeted case-runs",
   "case_coverage": {
     "greeting_no_catalog_leak": {
-      "status": "run",
-      "ok": true,
-      "rounds": 1
+      "status": "skipped",
+      "reason": "PHASE2_CASE_FILTER=imperfect"
     },
     "thanks_plain": {
-      "status": "run",
-      "ok": true,
-      "rounds": 1
+      "status": "skipped",
+      "reason": "PHASE2_CASE_FILTER=imperfect"
     },
     "email_intent_no_catalog_dump": {
-      "status": "run",
-      "ok": true,
-      "rounds": 1
+      "status": "skipped",
+      "reason": "PHASE2_CASE_FILTER=imperfect"
     },
     "status_check_pending": {
-      "status": "run",
-      "ok": true,
-      "rounds": 1
+      "status": "skipped",
+      "reason": "PHASE2_CASE_FILTER=imperfect"
     },
     "knowledge_boundary_run_history_fast": {
-      "status": "run",
-      "ok": true,
-      "rounds": 1
+      "status": "skipped",
+      "reason": "PHASE2_CASE_FILTER=imperfect"
     },
     "imperfect_sned_emial": {
       "status": "run",
@@ -1055,8 +905,9 @@
       "rounds": 1
     }
   },
-  "finished_at": "2026-07-25T07:38:27.291530+00:00",
+  "sta305_live_open": true,
+  "finished_at": "2026-07-27T09:07:53.485435+00:00",
   "ok": true,
   "verdict": "PASS",
-  "classical_all_ok": null
+  "classical_all_ok": true
 }
