@@ -179,8 +179,9 @@ let syncInFlight: Promise<string | null> | null = null
  */
 export async function ensureSelectedOrg(force = false): Promise<string | null> {
   if (typeof window === "undefined") return null
+  // Always coalesce concurrent callers — force must not spawn parallel list() storms.
+  if (syncInFlight) return syncInFlight
   if (!force && cachedOrgId !== undefined) return cachedOrgId
-  if (!force && syncInFlight) return syncInFlight
 
   syncInFlight = (async () => {
     try {

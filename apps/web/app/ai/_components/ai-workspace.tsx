@@ -24,7 +24,12 @@ import {
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { useAuth, getAccessToken } from "@/lib/auth-context"
-import { ensureSelectedOrg, buildChatOrgPayload, getSelectedOrgFromStorage } from "@/lib/org-context"
+import {
+  ensureSelectedOrg,
+  buildChatOrgPayload,
+  getSelectedOrgFromStorage,
+  getQuickOrgId,
+} from "@/lib/org-context"
 import { getEnvironmentHeader } from "@/lib/environment-context"
 import {
   DEPARTMENT_OPTIONS,
@@ -204,13 +209,16 @@ export function AiWorkspace({
   const [layoutBlockColumns, setLayoutBlockColumns] = useState<Partial<Record<ResultBlockId, LayoutColumn>>>({})
   const [conversationLoading, setConversationLoading] = useState(false)
   const [sessionBusy, setSessionBusy] = useState(false)
-  const [orgReady, setOrgReady] = useState(false)
+  // Seed from localStorage so conversation list/messages can start without waiting on orgs list().
+  const [orgReady, setOrgReady] = useState(() => Boolean(typeof window !== "undefined" && getQuickOrgId()))
   const [threadRestoreStale, setThreadRestoreStale] = useState(false)
   const [messagesHydrated, setMessagesHydrated] = useState(false)
   const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null
     return initialConversationId || readStoredConversationId()
   })
+  const cachePaintedForRef = useRef<string | null>(null)
+  const apiRefreshNeededRef = useRef(false)
   const [conversationTitle, setConversationTitle] = useState("Chat")
   const [chatMode, setChatMode] = useState<"fast" | "deep">("fast")
   const { background: chatBackground, setBackground: setChatBackground } = useChatBackground()
@@ -585,7 +593,9 @@ export function AiWorkspace({
       setOrgReady(false)
       return
     }
-    void ensureSelectedOrg(true).then((orgId) => setOrgReady(Boolean(orgId)))
+    // Paint path: use stored org immediately; validate membership in background.
+    if (getQuickOrgId()) setOrgReady(true)
+    void ensureSelectedOrg(false).then((orgId) => setOrgReady(Boolean(orgId)))
   }, [user])
 
   useEffect(() => {
@@ -777,6 +787,32 @@ export function AiWorkspace({
     [setMessages],
   )
 
+  // Paint bubbles from sessionStorage before org/API — cold tabs still wait on network.
+  useEffect(() => {
+    if (!activeConversationId) {
+      cachePaintedForRef.current = null
+      return
+    }
+    if (cachePaintedForRef.current === activeConversationId) return
+    if (sessionBusyRef.current) return
+    if (chatStatusRef.current === "submitted" || chatStatusRef.current === "streaming") return
+
+    const cached = readCachedConversationMessages(activeConversationId)
+    const cachedTurns = readCachedInlineTurns<InlineTurn>(activeConversationId)
+    if (!cached?.length && !cachedTurns?.length) return
+
+    cachePaintedForRef.current = activeConversationId
+    apiRefreshNeededRef.current = true
+    messagesLoadGenerationRef.current += 1
+    const generation = messagesLoadGenerationRef.current
+    if (cached?.length) {
+      applyConversationMessages(activeConversationId, generation, cached, { replace: true })
+    }
+    if (cachedTurns?.length) setInlineTurns(cachedTurns)
+    setMessagesHydrated(true)
+    setConversationLoading(false)
+  }, [activeConversationId, applyConversationMessages])
+
   const persistInlineTurn = useCallback(
     async (turn: InlineTurn) => {
       if (turn.status !== "completed" && turn.status !== "failed") return
@@ -833,7 +869,7 @@ export function AiWorkspace({
       if (!userText || !assistantText) return
 
       try {
-        const { messages: stored } = await conversationsApi.getMessages(conversationId)
+        const { messages: stored } = await conversationsApi.getMessages(conversationId, { limit: 80 })
         const trailingAssistant = stored.length > 0 && stored[stored.length - 1]?.role === "assistant"
         const trailingUser = stored.length > 1 && stored[stored.length - 2]?.role === "user"
         if (
@@ -862,7 +898,7 @@ export function AiWorkspace({
     async (id: string, options?: { preferApi?: boolean; silent?: boolean; force?: boolean }) => {
       if (loadingMessagesForRef.current === id && !options?.force) return
 
-      const orgId = await ensureSelectedOrg(true)
+      const orgId = await ensureSelectedOrg(false)
       if (!orgId) {
         if (!options?.silent) {
           toast.error("Organization context required", {
@@ -875,14 +911,19 @@ export function AiWorkspace({
       const generation = messagesLoadGenerationRef.current + 1
       messagesLoadGenerationRef.current = generation
 
-      if (!options?.silent) {
+      const cached = readCachedConversationMessages(id)
+      const cachedTurns = readCachedInlineTurns<InlineTurn>(id)
+      const hasCache = Boolean(cached?.length || cachedTurns?.length)
+      // Silent/background refresh when cache already painted — never blank the thread.
+      const silentRefresh = Boolean(options?.silent || hasCache)
+      if (!silentRefresh) {
         setMessagesHydrated(false)
+        startChatPerf("conversation_load", id)
+      } else {
         startChatPerf("conversation_load", id)
       }
 
-      const cached = readCachedConversationMessages(id)
-      const cachedTurns = readCachedInlineTurns<InlineTurn>(id)
-      const showBlockingLoader = !options?.silent && !cached?.length && !cachedTurns?.length
+      const showBlockingLoader = !silentRefresh
       let fetchedCount = cached?.length ?? 0
       let conversationMeta = conversations.find((conversation) => conversation.id === id) ?? null
 
@@ -891,19 +932,20 @@ export function AiWorkspace({
         setConversationLoading(true)
         setThreadRestoreStale(false)
       }
-      if (!options?.silent && !cached?.length && !cachedTurns?.length) {
+      if (!silentRefresh) {
         setInlineTurns([])
       }
-      if ((cached?.length || cachedTurns?.length) && !options?.silent) {
+      if (hasCache && !options?.silent) {
         if (cached?.length && activeConversationIdRef.current === id) {
           applyConversationMessages(id, generation, cached, { replace: true })
         }
         if (cachedTurns?.length && activeConversationIdRef.current === id) setInlineTurns(cachedTurns)
+        setMessagesHydrated(true)
       }
 
       try {
         const [messagesResponse, fetchedConversation] = await Promise.all([
-          conversationsApi.getMessages(id),
+          conversationsApi.getMessages(id, { limit: 80 }),
           conversationMeta ? Promise.resolve(conversationMeta) : conversationsApi.get(id).catch(() => null),
         ])
         if (activeConversationIdRef.current !== id) return
@@ -990,11 +1032,13 @@ export function AiWorkspace({
         if (showBlockingLoader) {
           setConversationLoading(false)
         }
-        if (!options?.silent) {
-          endChatPerf("conversation_load", id)
-          if (activeConversationIdRef.current === id) {
-            setMessagesHydrated(true)
-          }
+        endChatPerf("conversation_load", id)
+        if (activeConversationIdRef.current === id) {
+          setMessagesHydrated(true)
+        }
+        if (activeConversationIdRef.current === id) {
+          apiRefreshNeededRef.current = false
+          cachePaintedForRef.current = id
         }
         if (
           activeConversationIdRef.current === id &&
@@ -1299,7 +1343,7 @@ export function AiWorkspace({
         return
       }
 
-      const orgId = await ensureSelectedOrg(true)
+      const orgId = getQuickOrgId() || (await ensureSelectedOrg(false))
       if (!orgId) {
         toast.error("Organization context required", {
           description: "Select a workspace before opening conversations.",
@@ -1316,7 +1360,6 @@ export function AiWorkspace({
       setSidebarOpen(false)
       stop()
       setThreadRestoreStale(false)
-      setMessagesHydrated(false)
       setDialogueMode(null)
       setPendingTask(null)
       setExecutionResult(null)
@@ -1334,15 +1377,16 @@ export function AiWorkspace({
       operatorSessionRef.current = null
       resetExecuteJob()
 
-      // Drop previous thread immediately so the UI cannot keep showing it.
-      setMessages([])
-      setInlineTurns([])
-
       const cached = readCachedConversationMessages(id)
       const cachedTurns = readCachedInlineTurns<InlineTurn>(id)
+      cachePaintedForRef.current = id
+      // Drop previous thread, then paint cache in the same tick when available.
       if (cached?.length) {
         applyConversationMessages(id, generation, cached, { replace: true })
+        setMessagesHydrated(true)
+        apiRefreshNeededRef.current = true
       } else {
+        setMessagesHydrated(false)
         applyConversationMessages(id, generation, [], { allowEmpty: true, replace: true })
       }
       setInlineTurns(cachedTurns ?? [])
@@ -1350,7 +1394,7 @@ export function AiWorkspace({
       const selected = conversations.find((conversation) => conversation.id === id)
       if (selected?.title) setConversationTitle(selected.title)
 
-      await loadConversationMessages(id, { force: true })
+      await loadConversationMessages(id, { force: true, silent: Boolean(cached?.length) })
     },
     [applyConversationMessages, conversations, inlineTurns.length, loadConversationMessages, messages.length, messagesHydrated, resetExecuteJob, stop],
   )
@@ -1367,6 +1411,8 @@ export function AiWorkspace({
     operatorSessionRef.current = null
     messagesLoadResolvedRef.current = null
     loadingMessagesForRef.current = null
+    cachePaintedForRef.current = null
+    apiRefreshNeededRef.current = false
     persistedTurnIdsRef.current = new Set()
     persistedChatPairIdsRef.current = new Set()
     writeStoredConversationId(null)
@@ -1501,14 +1547,21 @@ export function AiWorkspace({
     if (!orgReady || !user || !activeConversationId || sessionBusy || isChatBusy || conversationLoading) {
       return
     }
-    if (messages.length > 0 || inlineTurns.length > 0) return
-    if (
+    const alreadyResolved =
       messagesLoadResolvedRef.current?.conversationId === activeConversationId &&
       messagesLoadResolvedRef.current.resolved
+    // Still refresh when cache painted early — otherwise stale sessionStorage sticks.
+    if (alreadyResolved && !apiRefreshNeededRef.current) return
+    if (
+      !apiRefreshNeededRef.current &&
+      (messages.length > 0 || inlineTurns.length > 0) &&
+      alreadyResolved
     ) {
       return
     }
-    void loadConversationMessages(activeConversationId)
+    void loadConversationMessages(activeConversationId, {
+      silent: apiRefreshNeededRef.current || messages.length > 0 || inlineTurns.length > 0,
+    })
   }, [
     orgReady,
     user,

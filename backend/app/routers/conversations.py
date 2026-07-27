@@ -916,9 +916,17 @@ async def list_conversation_messages(
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
+    limit: Annotated[int | None, Query(ge=1, le=500)] = None,
 ) -> dict:
+    """Return conversation messages newest-first capped, then chronological.
+
+    ``limit`` defaults to 80 (matches client session cache). Pass a higher
+    limit or omit paging clients that still expect the full thread via
+    ``limit=500``. ``has_more`` is true when older rows exist beyond the page.
+    """
     org_id = _require_org(org_id)
     load_started = time.monotonic()
+    page_limit = 80 if limit is None else int(limit)
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     _get_owned_conversation(
         client,
@@ -926,30 +934,39 @@ async def list_conversation_messages(
         org_id=org_id,
         user_id=user["user_id"],
     )
+    # Newest-first + limit+1 detects older history without a separate count query.
     response = (
         client.table("conversation_messages")
         .select("id, conversation_id, role, content, tool_calls, created_at")
         .eq("conversation_id", conversation_id)
-        .order("created_at", desc=False)
+        .order("created_at", desc=True)
+        .limit(page_limit + 1)
         .execute()
     )
     if _is_missing_table_error(response_error(response)):
         logger.info(
-            "chat_perf stage=conversation_load conversation_id=%s ms=%s messages=0",
+            "chat_perf stage=conversation_load conversation_id=%s ms=%s messages=0 limit=%s",
             conversation_id,
             int((time.monotonic() - load_started) * 1000),
+            page_limit,
         )
-        return {"messages": []}
+        return {"messages": [], "has_more": False, "limit": page_limit}
     if response_error(response):
         raise HTTPException(status_code=500, detail=str(response_error(response)))
-    rows = [_normalize_message(row) for row in (response.data or [])]
+    newest_first = list(response.data or [])
+    has_more = len(newest_first) > page_limit
+    if has_more:
+        newest_first = newest_first[:page_limit]
+    rows = [_normalize_message(row) for row in reversed(newest_first)]
     logger.info(
-        "chat_perf stage=conversation_load conversation_id=%s ms=%s messages=%s",
+        "chat_perf stage=conversation_load conversation_id=%s ms=%s messages=%s limit=%s has_more=%s",
         conversation_id,
         int((time.monotonic() - load_started) * 1000),
         len(rows),
+        page_limit,
+        has_more,
     )
-    return {"messages": rows}
+    return {"messages": rows, "has_more": has_more, "limit": page_limit}
 
 
 @router.post("/{conversation_id}/messages", status_code=status.HTTP_201_CREATED)

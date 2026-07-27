@@ -1507,7 +1507,14 @@ export const conversationsApi = {
   unpin: (id: string) => postJson<Conversation>(apiUrl(`/api/conversations/${id}/unpin`), {}),
   delete: (id: string) => deleteRequest(apiUrl(`/api/conversations/${id}`)),
   bulkDelete: (ids: string[]) => postNoContent(apiUrl("/api/conversations/bulk-delete"), { ids }),
-  getMessages: (id: string) => fetcher<{ messages: ConversationMessage[] }>(apiUrl(`/api/conversations/${id}/messages`)),
+  getMessages: (id: string, params?: { limit?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.limit != null) query.set("limit", String(params.limit))
+    const qs = query.toString()
+    return fetcher<{ messages: ConversationMessage[]; has_more?: boolean; limit?: number }>(
+      apiUrl(`/api/conversations/${id}/messages${qs ? `?${qs}` : ""}`),
+    )
+  },
   appendMessages: (id: string, messages: Array<{ role: "user" | "assistant"; content: string; tool_calls?: unknown[] }>) =>
     postJson<{ messages: ConversationMessage[] }>(apiUrl(`/api/conversations/${id}/messages`), { messages }),
   listSavedQuestions: (limit = 50) =>

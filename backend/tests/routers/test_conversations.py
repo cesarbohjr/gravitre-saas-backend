@@ -174,7 +174,74 @@ def test_list_messages_empty(monkeypatch):
     )
     response = client.get("/api/conversations/conv-1/messages")
     assert response.status_code == 200
-    assert response.json() == {"messages": []}
+    assert response.json() == {"messages": [], "has_more": False, "limit": 80}
+
+
+def test_list_messages_returns_newest_page(monkeypatch):
+    _authenticate()
+    conversations = _table_chain(
+        [
+            {
+                "id": "conv-1",
+                "org_id": "org-1",
+                "user_id": "user-1",
+                "title": "Thread",
+                "preview": None,
+                "message_count": 3,
+                "created_at": "2026-06-04T12:00:00+00:00",
+                "updated_at": "2026-06-04T12:00:00+00:00",
+            }
+        ]
+    )
+    # Newest-first from DB (limit+1), route reverses to chronological.
+    messages = _table_chain(
+        [
+            {
+                "id": "m3",
+                "conversation_id": "conv-1",
+                "role": "assistant",
+                "content": "third",
+                "tool_calls": None,
+                "created_at": "2026-06-04T12:03:00+00:00",
+            },
+            {
+                "id": "m2",
+                "conversation_id": "conv-1",
+                "role": "user",
+                "content": "second",
+                "tool_calls": None,
+                "created_at": "2026-06-04T12:02:00+00:00",
+            },
+            {
+                "id": "m1",
+                "conversation_id": "conv-1",
+                "role": "assistant",
+                "content": "first",
+                "tool_calls": None,
+                "created_at": "2026-06-04T12:01:00+00:00",
+            },
+        ]
+    )
+    supabase = MagicMock()
+
+    def _table(name: str):
+        if name == "conversations":
+            return conversations
+        return messages
+
+    supabase.table.side_effect = _table
+    monkeypatch.setattr(
+        "app.routers.conversations.create_client",
+        lambda *_args, **_kwargs: supabase,
+    )
+    response = client.get("/api/conversations/conv-1/messages?limit=2")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["has_more"] is True
+    assert body["limit"] == 2
+    assert [row["id"] for row in body["messages"]] == ["m2", "m3"]
+    messages.order.assert_called()
+    messages.limit.assert_called_with(3)
 
 
 def test_append_conversation_messages(monkeypatch):
