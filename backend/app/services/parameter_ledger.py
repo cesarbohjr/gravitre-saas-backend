@@ -69,6 +69,8 @@ def sanitize_email_slot_value(key: str, value: str) -> str:
     } else ""
     if kind == "subject":
         v = _EMAIL_SUBJECT_CUE_RESIDUE.sub("", v).strip(" .\"'")
+        # "hello and" leftover from "subject line, hello and body …"
+        v = re.sub(r"\s+and\s*$", "", v, flags=re.I).strip(" .\"'")
     elif kind == "body":
         v = _EMAIL_BODY_CUE_RESIDUE.sub("", v).strip(" .\"'")
     return v
@@ -83,6 +85,7 @@ def email_slot_looks_corrupted(key: str, value: str) -> bool:
         return bool(
             re.match(r"^(?:line|of\s+the)\b", v, re.I)
             or re.match(r"^subject\b", v, re.I)
+            or re.search(r"\band\s*$", v, re.I)
         )
     if key in {"body", "message", "text", "html_body", "content"}:
         return bool(
@@ -111,13 +114,16 @@ FREE_TEXT_ARG_KEYS = frozenset(
 # Source trust for free-text write-protection. Higher wins on conflict.
 # awaiting_params_resume is lowest — a whole-turn dump must never clobber an
 # explicit user/schema extract, and side questions must not invent subjects.
+# unified_turn_live outranks user_message so a correct LIVE connector_tool_proposal
+# cannot be overwritten by a later crude regex re-parse of the same compound sentence.
 _SLOT_SOURCE_RANK: dict[str, int] = {
     "awaiting_params_resume": 1,
     "staged_plan": 2,
     "legacy_clarified_params": 2,
     "schema_param_extractor": 3,
-    "user_message": 4,
     "confidence_propose": 3,
+    "user_message": 4,
+    "unified_turn_live": 5,
 }
 
 
@@ -510,17 +516,35 @@ def bind_args_from_ledger(
             current = str(filled.get(primary) or "").strip()
             # Prefer higher-trust ledger free-text over stale pending_task.args
             # (subject pollution class: resume dump stuck in args while ledger repaired).
+            # Never let framing-residue regex extracts clobber clean unified-turn args.
             if present and is_free and current and current != value:
                 slot = None
                 for k in field_spec.arg_keys:
                     slot = ledger.slots.get(k)
                     if slot and slot.value:
                         break
-                # Explicit user/schema extracts repair resume pollution stuck in args.
                 if slot and slot.source in {"user_message", "schema_param_extractor"}:
-                    filled[primary] = value
+                    if email_slot_looks_corrupted(primary, value):
+                        continue
+                    sealed_protects = any(
+                        (cand := ledger.slots.get(k))
+                        and cand.source == "unified_turn_live"
+                        and cand.value == current
+                        for k in field_spec.arg_keys
+                    )
+                    if sealed_protects:
+                        continue
+                    current_is_pollution = email_slot_looks_corrupted(
+                        primary, current
+                    ) or _is_side_question_not_slot_answer(current)
+                    if current_is_pollution:
+                        filled[primary] = value
+                    # else: keep clean present args (LIVE / staged authority)
                 continue
             if present:
+                continue
+            # Do not fill empty args from a corrupted ledger extract either.
+            if is_free and email_slot_looks_corrupted(primary, value):
                 continue
             filled[primary] = value
             # Slack dual keys
@@ -601,11 +625,43 @@ def slot_confidence(ledger: ParameterLedger, key: str) -> str:
     return "high"
 
 
+def seal_unified_turn_plan_args(
+    plan: ConnectorActionPlan,
+    *,
+    ledger: ParameterLedger | None = None,
+) -> ParameterLedger:
+    """Mark LIVE connector_tool_proposal args as authoritative in the ledger.
+
+    Pending/retry cycles must carry these forward — not re-derive them from a
+    cruder regex pass over the original compound user sentence.
+    """
+    active = ledger or ParameterLedger()
+    for key, value in dict(plan.args or {}).items():
+        if isinstance(value, str) and value.strip():
+            if key in FREE_TEXT_ARG_KEYS or key in {
+                "to",
+                "email",
+                "channel",
+                "subject",
+                "body",
+                "message",
+                "text",
+            }:
+                if key in {"subject", "body", "message", "text", "html_body", "content"}:
+                    cleaned = sanitize_email_slot_value(key, value)
+                    if not cleaned or email_slot_looks_corrupted(key, cleaned):
+                        continue
+                    value = cleaned
+                active.upsert(str(key), str(value), source="unified_turn_live", force=True)
+    return active
+
+
 def stage_awaiting_params(
     plan: ConnectorActionPlan,
     missing_fields: tuple[str, ...] | list[str] | None = None,
     *,
     ledger: ParameterLedger | None = None,
+    seal_source: str = "staged_plan",
 ) -> dict[str, Any]:
     """Build task_state patch: pending_task awaiting_params + ledger pending_missing.
 
@@ -615,9 +671,10 @@ def stage_awaiting_params(
     active = ledger or ParameterLedger()
     args = bind_args_from_ledger(plan.invoke_action, dict(plan.args or {}), active)
     # Persist known args into ledger slots for resume.
+    source = seal_source if seal_source in _SLOT_SOURCE_RANK else "staged_plan"
     for key, value in args.items():
         if isinstance(value, str) and value.strip():
-            active.upsert(key, value, source="staged_plan")
+            active.upsert(key, value, source=source)
     # Recompute missing from live ledger+args — never trust a stale caller list alone.
     live_missing = missing_required_fields(plan.invoke_action, args, active)
     if missing_fields is not None and not live_missing:

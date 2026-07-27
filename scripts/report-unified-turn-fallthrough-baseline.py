@@ -64,6 +64,8 @@ def _bucket_reason(raw: str | None) -> str:
         return "classical_tool_sse_deferral"
     if reason == "violates_no_pending_hold":
         return "guard_violation"
+    if reason == "pending_family_classical_resume":
+        return "pending_family_classical_resume"
     if reason in {"write_plan_unavailable", "read_tool_classical"}:
         return reason
     if reason.startswith("unhandled_kind_"):
@@ -152,14 +154,16 @@ def main() -> int:
         "fallthrough_outcome_kinds": dict(outcome_kinds.most_common()),
         "notes": {
             "pending_family_silent_fallthrough": (
-                "apply_unified_turn_live returns None when has_pending_family(task_state) "
-                "without writing unified_turn.live.fallthrough — not counted here."
+                "Instrumented: has_pending_family now emits "
+                "unified_turn.live.fallthrough with "
+                "fallthrough_reason=pending_family_classical_resume."
             ),
             "bucket_mapping": {
                 "unified_outcome_skip": "outcome_skipped / outcome_error",
                 "connector_tool_proposal_deferral": "defer_connector_tool_proposal",
                 "classical_tool_sse_deferral": "defer_classical_tool_sse",
                 "guard_violation": "violates_no_pending_hold",
+                "pending_family_classical_resume": "pending_family_classical_resume",
             },
         },
     }

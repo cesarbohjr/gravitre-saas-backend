@@ -502,7 +502,8 @@ def _persist_conversation_turn(
             user_id,
             str(exc),
         )
-        return conversation_id, assistant_message_id
+        # Callers must not treat this as a successful history write.
+        return None, None
 
 
 def _resolve_base_system_prompt(
@@ -1496,9 +1497,9 @@ async def execute_conversation_task(
         )
     else:
         assistant_text = (execution.body or "").strip() or "That didn't go through."
-    # Approve-button path used to execute without appending chat turns — persist
-    # the approval + confirmation so history matches BusinessOutcome reality.
-    _persist_conversation_turn(
+    # Approve-button path must always append chat turns — history must show the
+    # human approval and the post-send confirmation (data integrity, not UI-only).
+    persisted_conv, persisted_assistant_id = _persist_conversation_turn(
         settings,
         org_id=org_id,
         user_id=user_id,
@@ -1507,6 +1508,14 @@ async def execute_conversation_task(
         assistant_text=assistant_text,
         tool_results=[],
     )
+    history_persisted = bool(persisted_conv and persisted_assistant_id)
+    if not history_persisted:
+        logger.error(
+            "approve/execute history persist failed conversation_id=%s org_id=%s success=%s",
+            conversation_id,
+            org_id,
+            execution.success,
+        )
     return {
         "success": execution.success,
         "execution_result": execution.__dict__,
@@ -1514,4 +1523,5 @@ async def execute_conversation_task(
         "message": assistant_text,
         "persisted_user_text": "Approved",
         "persisted_assistant_text": assistant_text,
+        "history_persisted": history_persisted,
     }

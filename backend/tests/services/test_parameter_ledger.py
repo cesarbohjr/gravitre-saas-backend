@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from app.services.chat_connector_models import ConnectorActionPlan
 from app.services.parameter_ledger import (
+    ParameterLedger,
     apply_ledger_to_plan,
     bind_args_from_ledger,
     classify_awaiting_params_intent,
@@ -11,6 +12,7 @@ from app.services.parameter_ledger import (
     ingest_message_slots,
     is_awaiting_params,
     resume_awaiting_params,
+    seal_unified_turn_plan_args,
     stage_awaiting_params,
 )
 
@@ -149,6 +151,65 @@ def test_subject_line_body_say_does_not_leak_instruction_framing():
     assert "line" not in (ledger.get("subject") or "").lower()
     assert "of the email" not in (ledger.get("body") or "").lower()
     assert "say:" not in (ledger.get("body") or "").lower()
+
+
+def test_unified_turn_sealed_args_survive_corrupt_ledger_rebind():
+    """LIVE proposal args must win over polluted user_message ledger slots on resume."""
+    polluted = ParameterLedger()
+    polluted.upsert("subject", "line, hello and", source="user_message")
+    polluted.upsert("body", "of the email say: I'm just testing this", source="user_message")
+    plan = ConnectorActionPlan(
+        tool_name="gmail_messages_send",
+        invoke_action="gmail.messages.send",
+        integration="gmail",
+        kind="write",
+        label="Send email",
+        args={
+            "to": "stephaniekhan2002@gmail.com",
+            "subject": "hello",
+            "body": "I'm just testing this",
+        },
+    )
+    sealed = seal_unified_turn_plan_args(plan, ledger=polluted)
+    assert sealed.slots["subject"].source == "unified_turn_live"
+    assert sealed.get("subject") == "hello"
+    assert sealed.get("body") == "I'm just testing this"
+
+    rebound = bind_args_from_ledger(
+        "gmail.messages.send",
+        {
+            "to": "stephaniekhan2002@gmail.com",
+            "subject": "hello",
+            "body": "I'm just testing this",
+        },
+        sealed,
+    )
+    assert rebound.get("subject") == "hello"
+    assert rebound.get("body") == "I'm just testing this"
+
+    # Resume with only an email must not reintroduce framing residue.
+    patch = stage_awaiting_params(
+        ConnectorActionPlan(
+            tool_name="gmail_messages_send",
+            invoke_action="gmail.messages.send",
+            integration="gmail",
+            kind="write",
+            label="Send email",
+            args={"subject": "hello", "body": "I'm just testing this"},
+        ),
+        ("recipient",),
+        ledger=sealed,
+        seal_source="unified_turn_live",
+    )
+    resumed, _, resume_patch = resume_awaiting_params(
+        "her email address is: stephaniekhan2002@gmail.com",
+        {**patch},
+    )
+    assert resumed is not None
+    args = (resume_patch.get("pending_task") or {}).get("params", {}).get("args") or {}
+    assert args.get("subject") == "hello"
+    assert args.get("body") == "I'm just testing this"
+    assert args.get("to") == "stephaniekhan2002@gmail.com"
 
 
 def test_filler_turn_does_not_pollute_subject():

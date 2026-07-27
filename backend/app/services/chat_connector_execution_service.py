@@ -1355,6 +1355,27 @@ class ChatConnectorExecutionService:
                     "task_state": task_state,
                     "pending_task": (task_state or {}).get("pending_task"),
                 }
+            plan = scrub_gmail_write_plan(plan)
+            blocked = missing_params_stage_patch(plan, message, task_state=task_state)
+            if blocked:
+                clarification, stage_patch = blocked
+                await self._state.update_task_state(
+                    conversation_id,
+                    org_id,
+                    {**stage_patch, "recent_user_messages": [message]},
+                    client=client,
+                )
+                refreshed = await self._state.get_task_state(
+                    conversation_id, org_id, client=client
+                )
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": clarification.dialogue_mode or "clarify",
+                    "message": clarification.message,
+                    "task_state": refreshed,
+                    "pending_task": (refreshed or {}).get("pending_task"),
+                    "workflow_status": clarification.status,
+                }
             execution = await self.execute_plan(
                 org_id=org_id,
                 user_id=user_id,
@@ -1487,6 +1508,31 @@ class ChatConnectorExecutionService:
                 connector_management_url="/connectors",
                 title="Task not ready",
                 body="Missing connector action details.",
+            )
+        from app.services.connector_action_workflows import (
+            missing_params_stage_patch,
+            scrub_gmail_write_plan,
+        )
+
+        # Final safety net: never execute a Gmail write with framing-residue subject/body.
+        plan = scrub_gmail_write_plan(plan)
+        blocked = missing_params_stage_patch(plan, "", task_state=task_state)
+        if blocked:
+            clarification, stage_patch = blocked
+            await self._state.update_task_state(
+                conversation_id,
+                org_id,
+                stage_patch,
+                client=client,
+            )
+            return ExecutionResult(
+                success=False,
+                entity_type="connector",
+                entity_id=str(plan.integration or ""),
+                connector_management_url="/connectors",
+                title="Need a few details",
+                body=(clarification.message or "").strip()
+                or "I still need valid subject/body before I can send that email.",
             )
         return await self.execute_plan(
             org_id=org_id,

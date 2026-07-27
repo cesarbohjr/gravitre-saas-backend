@@ -1,42 +1,45 @@
 {
   "feature": "unified_turn_live_fallthrough_baseline",
   "window_hours": 168,
-  "since": "2026-07-18T04:02:21.853142+00:00",
-  "generated_at": "2026-07-25T04:02:26.065454+00:00",
+  "since": "2026-07-20T07:26:54.726941+00:00",
+  "generated_at": "2026-07-27T07:26:57.818790+00:00",
   "health": {
-    "git_sha": "97e104936a170adcd5def80c70d2f998a2b9ec82",
+    "git_sha": "3f170461dc5e3de892a53114e1d4bcd6d2dece96",
     "unified_turn_live_enabled": true,
-    "timestamp": "2026-07-25T04:02:23.359791+00:00"
+    "timestamp": "2026-07-27T07:26:56.502710+00:00"
   },
   "totals": {
-    "live_completed": 971,
-    "live_fallthrough": 67,
-    "live_turns_with_audit": 1038,
-    "fallthrough_pct_of_audited_live_turns": 6.45
+    "live_completed": 1254,
+    "live_fallthrough": 143,
+    "live_turns_with_audit": 1397,
+    "fallthrough_pct_of_audited_live_turns": 10.24
   },
   "fallthrough_by_raw_reason": {
-    "defer_classical_tool_sse": 30,
+    "defer_classical_tool_sse": 64,
+    "read_tool_classical": 57,
     "defer_connector_tool_proposal": 19,
-    "read_tool_classical": 18
+    "violates_no_pending_hold": 3
   },
   "fallthrough_by_bucket": {
-    "classical_tool_sse_deferral": 30,
+    "classical_tool_sse_deferral": 64,
+    "read_tool_classical": 57,
     "connector_tool_proposal_deferral": 19,
-    "read_tool_classical": 18
+    "guard_violation": 3
   },
   "fallthrough_outcome_kinds": {
-    "connector_tool_proposal": 37,
-    "conversational_reply": 21,
-    "confirmation_request": 7,
-    "clarifying_question": 2
+    "connector_tool_proposal": 76,
+    "conversational_reply": 48,
+    "confirmation_request": 12,
+    "clarifying_question": 7
   },
   "notes": {
-    "pending_family_silent_fallthrough": "apply_unified_turn_live returns None when has_pending_family(task_state) without writing unified_turn.live.fallthrough \u2014 not counted here.",
+    "pending_family_silent_fallthrough": "Instrumented: has_pending_family now emits unified_turn.live.fallthrough with fallthrough_reason=pending_family_classical_resume.",
     "bucket_mapping": {
       "unified_outcome_skip": "outcome_skipped / outcome_error",
       "connector_tool_proposal_deferral": "defer_connector_tool_proposal",
       "classical_tool_sse_deferral": "defer_classical_tool_sse",
-      "guard_violation": "violates_no_pending_hold"
+      "guard_violation": "violates_no_pending_hold",
+      "pending_family_classical_resume": "pending_family_classical_resume"
     }
   }
 }

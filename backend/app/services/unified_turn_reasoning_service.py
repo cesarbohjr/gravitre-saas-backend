@@ -842,9 +842,31 @@ async def apply_unified_turn_live(
 
     # confirm/reject/modify/slot_answer return None from the pending resolver so
     # classical Module B can execute them. Do not let shadow invent a yes/hold.
+    # Previously this return was silent — fallthrough dashboards were blind to the
+    # exact path that re-parsed compound subject/body and corrupted a live Gmail send.
     from app.services.pending_reply_classifier import has_pending_family
 
     if has_pending_family(task_state):
+        pending = task_state.get("pending_task") if isinstance(task_state, dict) else None
+        pending = pending if isinstance(pending, dict) else {}
+        params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
+        silent = UnifiedTurnShadowResult(
+            outcome_kind="skipped",
+            user_message="",
+            tool_invoke_action=str(params.get("invoke_action") or "").strip() or None,
+            tool_stats={
+                "pending_type": str(pending.get("type") or ""),
+                "pending_status": str(pending.get("status") or ""),
+            },
+        )
+        _mark_live_fallthrough(silent, "pending_family_classical_resume")
+        emit_unified_turn_shadow_audit(
+            client=client,
+            org_id=org_id,
+            actor_id=user_id,
+            conversation_id=conversation_id,
+            result=silent,
+        )
         return None
 
     result = await run_unified_turn_shadow(
@@ -1061,6 +1083,17 @@ async def apply_unified_turn_live(
             )
             plan = scrub_gmail_write_plan(plan)
             state = get_conversation_state_service(active)
+            from app.services.parameter_ledger import (
+                get_ledger,
+                ledger_patch,
+                seal_unified_turn_plan_args,
+            )
+
+            # Seal LIVE-extracted args so pending/retry cannot re-regex-overwrite them.
+            sealed_ledger = seal_unified_turn_plan_args(
+                plan, ledger=get_ledger(task_state or {})
+            )
+            task_state = {**(task_state or {}), **ledger_patch(sealed_ledger)}
             # Dual-path SoT with classical chat: never ask for yes until required args exist.
             staged_missing = missing_params_stage_patch(
                 plan, message or "", task_state=task_state or {}
@@ -1070,7 +1103,11 @@ async def apply_unified_turn_live(
                 await state.update_task_state(
                     conversation_id,
                     org_id,
-                    {**stage_patch, "recent_user_messages": [message or ""]},
+                    {
+                        **ledger_patch(sealed_ledger),
+                        **stage_patch,
+                        "recent_user_messages": [message or ""],
+                    },
                     client=client,
                 )
                 refreshed = await state.get_task_state(
@@ -1125,11 +1162,13 @@ async def apply_unified_turn_live(
                 conversation_id,
                 org_id,
                 {
+                    **ledger_patch(sealed_ledger),
                     "pending_task": {
                         "type": "connector_action",
                         "status": "awaiting_confirm",
                         "params": pending_params,
-                    }
+                    },
+                    "recent_user_messages": [message or ""],
                 },
                 client=client,
             )

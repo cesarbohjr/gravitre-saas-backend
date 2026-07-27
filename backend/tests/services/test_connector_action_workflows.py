@@ -14,8 +14,11 @@ from app.services.connector_action_workflows import (
     analyze_list_capability_gaps,
     format_capability_fallback_message,
     format_write_approval_message,
+    missing_params_stage_patch,
+    scrub_gmail_write_plan,
     validate_connector_plan,
 )
+from app.services.parameter_ledger import email_slot_looks_corrupted
 from app.services.connector_chat_routing import should_run_connector_preflight
 
 
@@ -80,6 +83,63 @@ def test_write_action_approval_message_format():
     assert "yes" in message.lower()
     assert "Sarah" in message
     assert "Website" in message
+
+
+def test_scrub_gmail_repairs_incident_subject_line_hello_and():
+    """Replay of 2026-07-27 corrupted send — scrub must neutralize framing residue."""
+    assert email_slot_looks_corrupted("subject", "line, hello and")
+    assert email_slot_looks_corrupted("body", "of the email say: I'm just testing this")
+
+    dirty = ConnectorActionPlan(
+        tool_name="gmail_messages_send",
+        invoke_action="gmail.messages.send",
+        integration="gmail",
+        kind="write",
+        label="Send email",
+        args={
+            "to": "stephaniekhan2002@gmail.com",
+            "subject": "line, hello and",
+            "body": "of the email say: I'm just testing this",
+        },
+    )
+    cleaned = scrub_gmail_write_plan(dirty)
+    assert (cleaned.args or {}).get("to") == "stephaniekhan2002@gmail.com"
+    assert (cleaned.args or {}).get("subject") == "hello"
+    assert (cleaned.args or {}).get("body") == "I'm just testing this"
+    assert not email_slot_looks_corrupted("subject", cleaned.args["subject"])
+    assert not email_slot_looks_corrupted("body", cleaned.args["body"])
+    # After repair, required fields are present — execute gate must not re-ask.
+    assert missing_params_stage_patch(cleaned, "") is None
+
+    # Approval copy must not re-surface the corrupt fragments.
+    approval = format_write_approval_message(dirty)
+    assert "line, hello and" not in approval
+    assert "of the email say" not in approval
+    assert "hello" in approval
+    assert "just testing this" in approval.lower()
+
+    # Unrepairable residue still blocks (forces awaiting_params, not send).
+    unrepairable = ConnectorActionPlan(
+        tool_name="gmail_messages_send",
+        invoke_action="gmail.messages.send",
+        integration="gmail",
+        kind="write",
+        label="Send email",
+        args={
+            "to": "stephaniekhan2002@gmail.com",
+            "subject": "line",
+            "body": "of the email say",
+        },
+    )
+    stripped = scrub_gmail_write_plan(unrepairable)
+    assert "subject" not in (stripped.args or {}) or not str(
+        (stripped.args or {}).get("subject") or ""
+    ).strip()
+    assert "body" not in (stripped.args or {}) or not str(
+        (stripped.args or {}).get("body") or ""
+    ).strip()
+    blocked = missing_params_stage_patch(stripped, "")
+    assert blocked is not None
 
 
 def test_apollo_list_approval_message_is_conversational():

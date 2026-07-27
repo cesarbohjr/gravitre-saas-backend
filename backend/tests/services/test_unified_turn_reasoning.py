@@ -548,6 +548,48 @@ async def test_apply_unified_live_qa_force_phantom_pending_triggers_guard_fallth
 
 
 @pytest.mark.asyncio
+async def test_pending_family_silent_path_emits_fallthrough_audit():
+    """has_pending_family classical resume must not be dashboard-blind."""
+    settings = MagicMock(unified_turn_live_enabled=True, openai_api_key="sk-test")
+    state = {
+        "pending_task": {
+            "type": "connector_action",
+            "status": "awaiting_params",
+            "params": {"invoke_action": "gmail.messages.send", "label": "Send email"},
+        }
+    }
+    with patch(
+        "app.services.unified_turn_pending_live.classify_pending_reply",
+        new=AsyncMock(return_value="slot_answer"),
+    ), patch(
+        "app.services.unified_turn_reasoning_service.run_unified_turn_shadow",
+        new=AsyncMock(),
+    ) as mock_shadow, patch(
+        "app.services.unified_turn_reasoning_service.emit_unified_turn_shadow_audit",
+    ) as mock_audit:
+        out = await apply_unified_turn_live(
+            org_id="org",
+            user_id="user",
+            conversation_id="conv",
+            message="her email address is: stephaniekhan2002@gmail.com",
+            task_state=state,
+            conversation_history=[],
+            connected_integrations=["gmail"],
+            settings=settings,
+        )
+    assert out is None
+    mock_shadow.assert_not_called()
+    mock_audit.assert_called()
+    audit_result = mock_audit.call_args.kwargs.get("result") or mock_audit.call_args[1].get("result")
+    assert audit_result.fallthrough_reason == "pending_family_classical_resume"
+    assert audit_result.live_served is False
+    assert audit_result.tool_invoke_action == "gmail.messages.send"
+    payload = audit_result.to_audit_payload()
+    assert payload["classical_path_active"] is True
+    assert payload["fallthrough_reason"] == "pending_family_classical_resume"
+
+
+@pytest.mark.asyncio
 async def test_apply_unified_live_prepends_mixed_social_ack():
     settings = MagicMock(unified_turn_live_enabled=True, openai_api_key="sk-test")
     body = UnifiedTurnShadowResult(
