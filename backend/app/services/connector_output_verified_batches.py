@@ -228,6 +228,14 @@ VERIFIED_OUTPUT_BATCH_08: frozenset[str] = frozenset(
     }
 )
 
+VERIFIED_OUTPUT_BATCH_09: frozenset[str] = frozenset(
+    {
+        "google_ads.campaigns.update_budget",
+        "google_ads.campaigns.pause",
+        "google_ads.campaigns.resume",
+    }
+)
+
 VERIFIED_ADVANCED_OUTPUT_BATCH_14: frozenset[str] = frozenset(
     {
         "ahrefs.brand_radar.exports.run",
@@ -245,6 +253,7 @@ VERIFIED_OUTPUT_BATCHES: tuple[frozenset[str], ...] = (
     VERIFIED_OUTPUT_BATCH_06,
     VERIFIED_OUTPUT_BATCH_07,
     VERIFIED_OUTPUT_BATCH_08,
+    VERIFIED_OUTPUT_BATCH_09,
 )
 
 CLEARED_OUTPUT_SCHEMA_ACTIONS: frozenset[str] = frozenset().union(*VERIFIED_OUTPUT_BATCHES)

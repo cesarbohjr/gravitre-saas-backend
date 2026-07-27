@@ -80,12 +80,23 @@ def _blocking_details(
 ) -> tuple[str | None, str | None]:
     if not configured:
         return "misconfigured", f"Configure {vendor} OAuth in server settings or complete connector setup."
+    if auth_status == "misconfigured":
+        if _normalize_vendor(vendor) in {"googleads", "google_ads"}:
+            return "misconfigured", (
+                "Google Ads needs a developer token on the API "
+                "(GOOGLE_ADS_DEVELOPER_TOKEN from Ads Manager → Tools → API Center), "
+                "plus Google OAuth with the Ads API scope. This is not the same as "
+                "connecting Gmail or Analytics alone."
+            )
+        return "misconfigured", f"Configure {vendor} OAuth in server settings or complete connector setup."
     if auth_status == "pending_auth":
         return "pending_auth", f"Complete OAuth for {vendor} on the Connectors page."
     if auth_status == "pending_property":
         return "pending_auth", "Link a GA4 property for this Google Analytics connector."
     if auth_status == "pending_site":
         return "pending_auth", "Link a Search Console site for this Google Search Console connector."
+    if auth_status == "pending_customer":
+        return "pending_auth", "Link a Google Ads customer account for this connector."
     if auth_status == "auth_expired" or not token_valid:
         return "token_expired", f"{vendor.title()} is configured, but authentication has expired. Reconnect {vendor.title()}."
     if not authenticated:

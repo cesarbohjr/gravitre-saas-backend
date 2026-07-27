@@ -2812,6 +2812,282 @@ def _gsc_site_url(conn: dict[str, Any], params: dict[str, Any]) -> str:
     return linked
 
 
+def _ads_developer_token(ctx: ToolContext) -> str:
+    token = (getattr(ctx.settings, "google_ads_developer_token", None) or "").strip()
+    if not token:
+        raise ToolValidationError(
+            "Google Ads developer token is not configured. "
+            "Set GOOGLE_ADS_DEVELOPER_TOKEN (Google Ads Manager → Tools → API Center)."
+        )
+    return token
+
+
+def _ads_customer_id(conn: dict[str, Any], params: dict[str, Any]) -> str:
+    cid = params.get("customer_id") or params.get("customerId")
+    if cid:
+        return str(cid).strip().replace("-", "")
+    cfg = conn.get("config") or {}
+    linked = str(cfg.get("customer_id") or cfg.get("customerId") or "").strip().replace("-", "")
+    if not linked:
+        raise ToolValidationError(
+            "google_ads actions require customer_id or a linked Google Ads customer"
+        )
+    return linked
+
+
+def _ads_login_customer_id(conn: dict[str, Any], params: dict[str, Any]) -> str | None:
+    login = params.get("login_customer_id") or params.get("loginCustomerId")
+    if login:
+        return str(login).strip().replace("-", "")
+    cfg = conn.get("config") or {}
+    linked = str(cfg.get("login_customer_id") or cfg.get("loginCustomerId") or "").strip().replace(
+        "-", ""
+    )
+    return linked or None
+
+
+def _exec_googleads_campaigns_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_ads import GoogleAdsAPIError, list_campaigns
+
+    conn = _connector_by_type(ctx, "google_ads", params)
+    cid, token = _google_vendor_token(ctx, "google_ads", params)
+    try:
+        campaigns = list_campaigns(
+            token,
+            _ads_customer_id(conn, params),
+            developer_token=_ads_developer_token(ctx),
+            login_customer_id=_ads_login_customer_id(conn, params),
+            limit=int(params.get("limit") or 50),
+        )
+    except GoogleAdsAPIError as exc:
+        raise _vendor_api_error(exc, "google_ads") from exc
+    return NormalizedResult(
+        success=True,
+        action="googleads.campaigns.list",
+        connector_id=cid,
+        data={
+            "campaigns": campaigns,
+            "result_url": f"https://ads.google.com/aw/campaigns?ocid={_ads_customer_id(conn, params)}",
+        },
+    )
+
+
+def _exec_googleads_campaigns_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_ads import GoogleAdsAPIError, get_campaign
+
+    conn = _connector_by_type(ctx, "google_ads", params)
+    cid, token = _google_vendor_token(ctx, "google_ads", params)
+    campaign_id = str(params.get("campaign_id") or params.get("campaignId") or "").strip()
+    if not campaign_id:
+        raise ToolValidationError("campaign_id is required")
+    try:
+        campaign = get_campaign(
+            token,
+            _ads_customer_id(conn, params),
+            campaign_id,
+            developer_token=_ads_developer_token(ctx),
+            login_customer_id=_ads_login_customer_id(conn, params),
+        )
+    except GoogleAdsAPIError as exc:
+        raise _vendor_api_error(exc, "google_ads") from exc
+    return NormalizedResult(
+        success=True,
+        action="googleads.campaigns.get",
+        connector_id=cid,
+        data=campaign,
+    )
+
+
+def _exec_googleads_ad_groups_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_ads import GoogleAdsAPIError, list_ad_groups
+
+    conn = _connector_by_type(ctx, "google_ads", params)
+    cid, token = _google_vendor_token(ctx, "google_ads", params)
+    try:
+        groups = list_ad_groups(
+            token,
+            _ads_customer_id(conn, params),
+            developer_token=_ads_developer_token(ctx),
+            campaign_id=str(params.get("campaign_id") or params.get("campaignId") or "").strip()
+            or None,
+            login_customer_id=_ads_login_customer_id(conn, params),
+            limit=int(params.get("limit") or 50),
+        )
+    except GoogleAdsAPIError as exc:
+        raise _vendor_api_error(exc, "google_ads") from exc
+    return NormalizedResult(
+        success=True,
+        action="googleads.ad_groups.list",
+        connector_id=cid,
+        data={"ad_groups": groups},
+    )
+
+
+def _exec_googleads_reports_performance(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_ads import GoogleAdsAPIError, performance_report
+
+    conn = _connector_by_type(ctx, "google_ads", params)
+    cid, token = _google_vendor_token(ctx, "google_ads", params)
+    try:
+        report = performance_report(
+            token,
+            _ads_customer_id(conn, params),
+            developer_token=_ads_developer_token(ctx),
+            start_date=str(params.get("start_date") or params.get("startDate") or "7daysAgo"),
+            end_date=str(params.get("end_date") or params.get("endDate") or "yesterday"),
+            campaign_id=str(params.get("campaign_id") or params.get("campaignId") or "").strip()
+            or None,
+            login_customer_id=_ads_login_customer_id(conn, params),
+            limit=int(params.get("limit") or 50),
+        )
+    except GoogleAdsAPIError as exc:
+        raise _vendor_api_error(exc, "google_ads") from exc
+    return NormalizedResult(
+        success=True,
+        action="googleads.reports.performance",
+        connector_id=cid,
+        data=report,
+    )
+
+
+def _exec_googleads_keywords_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_ads import GoogleAdsAPIError, list_keywords
+
+    conn = _connector_by_type(ctx, "google_ads", params)
+    cid, token = _google_vendor_token(ctx, "google_ads", params)
+    try:
+        keywords = list_keywords(
+            token,
+            _ads_customer_id(conn, params),
+            developer_token=_ads_developer_token(ctx),
+            campaign_id=str(params.get("campaign_id") or params.get("campaignId") or "").strip()
+            or None,
+            ad_group_id=str(params.get("ad_group_id") or params.get("adGroupId") or "").strip()
+            or None,
+            login_customer_id=_ads_login_customer_id(conn, params),
+            limit=int(params.get("limit") or 50),
+        )
+    except GoogleAdsAPIError as exc:
+        raise _vendor_api_error(exc, "google_ads") from exc
+    return NormalizedResult(
+        success=True,
+        action="googleads.keywords.list",
+        connector_id=cid,
+        data={"keywords": keywords},
+    )
+
+
+def _exec_googleads_campaigns_update_budget(
+    ctx: ToolContext, params: dict[str, Any]
+) -> NormalizedResult:
+    from app.connectors.google_ads import GoogleAdsAPIError, update_campaign_budget
+
+    conn = _connector_by_type(ctx, "google_ads", params)
+    cid, token = _google_vendor_token(ctx, "google_ads", params)
+    campaign_id = str(params.get("campaign_id") or params.get("campaignId") or "").strip()
+    if not campaign_id:
+        raise ToolValidationError("campaign_id is required")
+    amount = params.get("amount_micros") or params.get("amountMicros")
+    if amount is None and params.get("daily_budget"):
+        # Convenience: daily_budget in account currency units → micros
+        amount = int(float(params["daily_budget"]) * 1_000_000)
+    if amount is None:
+        raise ToolValidationError("amount_micros or daily_budget is required")
+    try:
+        result = update_campaign_budget(
+            token,
+            _ads_customer_id(conn, params),
+            developer_token=_ads_developer_token(ctx),
+            campaign_id=campaign_id,
+            amount_micros=int(amount),
+            login_customer_id=_ads_login_customer_id(conn, params),
+        )
+    except GoogleAdsAPIError as exc:
+        raise _vendor_api_error(exc, "google_ads") from exc
+    return NormalizedResult(
+        success=True,
+        action="googleads.campaigns.update_budget",
+        connector_id=cid,
+        data=result,
+    )
+
+
+def _exec_googleads_campaigns_pause(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_ads import GoogleAdsAPIError, set_campaign_status
+
+    conn = _connector_by_type(ctx, "google_ads", params)
+    cid, token = _google_vendor_token(ctx, "google_ads", params)
+    campaign_id = str(params.get("campaign_id") or params.get("campaignId") or "").strip()
+    if not campaign_id:
+        raise ToolValidationError("campaign_id is required")
+    try:
+        result = set_campaign_status(
+            token,
+            _ads_customer_id(conn, params),
+            developer_token=_ads_developer_token(ctx),
+            campaign_id=campaign_id,
+            status="PAUSED",
+            login_customer_id=_ads_login_customer_id(conn, params),
+        )
+    except GoogleAdsAPIError as exc:
+        raise _vendor_api_error(exc, "google_ads") from exc
+    return NormalizedResult(
+        success=True,
+        action="googleads.campaigns.pause",
+        connector_id=cid,
+        data=result,
+    )
+
+
+def _exec_googleads_campaigns_resume(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_ads import GoogleAdsAPIError, set_campaign_status
+
+    conn = _connector_by_type(ctx, "google_ads", params)
+    cid, token = _google_vendor_token(ctx, "google_ads", params)
+    campaign_id = str(params.get("campaign_id") or params.get("campaignId") or "").strip()
+    if not campaign_id:
+        raise ToolValidationError("campaign_id is required")
+    try:
+        result = set_campaign_status(
+            token,
+            _ads_customer_id(conn, params),
+            developer_token=_ads_developer_token(ctx),
+            campaign_id=campaign_id,
+            status="ENABLED",
+            login_customer_id=_ads_login_customer_id(conn, params),
+        )
+    except GoogleAdsAPIError as exc:
+        raise _vendor_api_error(exc, "google_ads") from exc
+    return NormalizedResult(
+        success=True,
+        action="googleads.campaigns.resume",
+        connector_id=cid,
+        data=result,
+    )
+
+
+def _exec_googleads_accounts_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_ads import GoogleAdsAPIError, list_accessible_customers
+
+    cid, token = _google_vendor_token(ctx, "google_ads", params)
+    try:
+        customers = list_accessible_customers(
+            token,
+            developer_token=_ads_developer_token(ctx),
+        )
+    except GoogleAdsAPIError as exc:
+        raise _vendor_api_error(exc, "google_ads") from exc
+    return NormalizedResult(
+        success=True,
+        action="googleads.accounts.list",
+        connector_id=cid,
+        data={
+            "customers": customers,
+            "result_url": "https://ads.google.com/",
+        },
+    )
+
+
 def _exec_searchconsole_sites_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     from app.connectors.google_search_console import GoogleSearchConsoleAPIError, list_gsc_sites
 
@@ -3852,6 +4128,15 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "analytics.metadata.list": _exec_analytics_metadata_list,
     "searchconsole.sites.list": _exec_searchconsole_sites_list,
     "searchconsole.searchAnalytics.query": _exec_searchconsole_search_analytics_query,
+    "googleads.campaigns.list": _exec_googleads_campaigns_list,
+    "googleads.campaigns.get": _exec_googleads_campaigns_get,
+    "googleads.ad_groups.list": _exec_googleads_ad_groups_list,
+    "googleads.reports.performance": _exec_googleads_reports_performance,
+    "googleads.keywords.list": _exec_googleads_keywords_list,
+    "googleads.campaigns.update_budget": _exec_googleads_campaigns_update_budget,
+    "googleads.campaigns.pause": _exec_googleads_campaigns_pause,
+    "googleads.campaigns.resume": _exec_googleads_campaigns_resume,
+    "googleads.accounts.list": _exec_googleads_accounts_list,
     "gmail.messages.list": _exec_gmail_messages_list,
     "gmail.messages.get": _exec_gmail_messages_get,
     "gmail.messages.send": _exec_gmail_messages_send,

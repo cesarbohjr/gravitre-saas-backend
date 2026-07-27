@@ -15,12 +15,15 @@ def test_normalize_all_google_vendors():
     assert normalize_google_vendor("Google Sheets") == "google_sheets"
     assert normalize_google_vendor("Google Search Console") == "google_search_console"
     assert normalize_google_vendor("gsc") == "google_search_console"
+    assert normalize_google_vendor("Google Ads") == "google_ads"
+    assert normalize_google_vendor("adwords") == "google_ads"
 
 
 def test_google_oauth_vendors_set():
     assert "gmail" in GOOGLE_OAUTH_VENDORS
     assert "google_search_console" in GOOGLE_OAUTH_VENDORS
-    assert len(GOOGLE_OAUTH_VENDORS) == 7
+    assert "google_ads" in GOOGLE_OAUTH_VENDORS
+    assert len(GOOGLE_OAUTH_VENDORS) == 8
 
 
 def test_google_oauth_uses_shared_callback_uri():
@@ -32,4 +35,5 @@ def test_google_oauth_uses_shared_callback_uri():
     shared = "https://gravitre.app/api/connectors/oauth/google/callback"
     assert google_oauth_redirect_uri(settings, "google_analytics") == shared
     assert google_oauth_redirect_uri(settings, "google_search_console") == shared
+    assert google_oauth_redirect_uri(settings, "google_ads") == shared
     assert google_oauth_redirect_uri(settings, "gmail") == shared

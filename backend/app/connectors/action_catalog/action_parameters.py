@@ -414,6 +414,98 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
         },
         "required": ["to", "subject", "body"],
     },
+    "google_ads.campaigns.list": {
+        "type": "object",
+        "properties": {
+            "customer_id": {"type": "string", "description": "Google Ads customer id (digits)."},
+            "limit": {"type": "integer", "default": 50},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
+    "google_ads.campaigns.get": {
+        "type": "object",
+        "properties": {
+            "campaign_id": {"type": "string", "description": "Numeric Google Ads campaign id."},
+            "customer_id": {"type": "string"},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": ["campaign_id"],
+    },
+    "google_ads.ad_groups.list": {
+        "type": "object",
+        "properties": {
+            "campaign_id": {"type": "string"},
+            "customer_id": {"type": "string"},
+            "limit": {"type": "integer", "default": 50},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
+    "google_ads.reports.performance": {
+        "type": "object",
+        "properties": {
+            "start_date": {
+                "type": "string",
+                "description": "YYYY-MM-DD, yesterday, today, or NdaysAgo (e.g. 7daysAgo).",
+            },
+            "end_date": {
+                "type": "string",
+                "description": "YYYY-MM-DD, yesterday, today, or NdaysAgo.",
+            },
+            "campaign_id": {"type": "string"},
+            "customer_id": {"type": "string"},
+            "limit": {"type": "integer", "default": 50},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
+    "google_ads.keywords.list": {
+        "type": "object",
+        "properties": {
+            "campaign_id": {"type": "string"},
+            "ad_group_id": {"type": "string"},
+            "customer_id": {"type": "string"},
+            "limit": {"type": "integer", "default": 50},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
+    "google_ads.campaigns.update_budget": {
+        "type": "object",
+        "properties": {
+            "campaign_id": {"type": "string"},
+            "daily_budget": {
+                "type": "number",
+                "description": "Daily budget in account currency units (converted to micros).",
+            },
+            "amount_micros": {
+                "type": "integer",
+                "description": "Daily budget in micros (1 unit = 1_000_000 micros).",
+            },
+            "customer_id": {"type": "string"},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": ["campaign_id"],
+    },
+    "google_ads.campaigns.pause": {
+        "type": "object",
+        "properties": {
+            "campaign_id": {"type": "string"},
+            "customer_id": {"type": "string"},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": ["campaign_id"],
+    },
+    "google_ads.campaigns.resume": {
+        "type": "object",
+        "properties": {
+            "campaign_id": {"type": "string"},
+            "customer_id": {"type": "string"},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": ["campaign_id"],
+    },
     "apollo.people.search": {
         "type": "object",
         "properties": {

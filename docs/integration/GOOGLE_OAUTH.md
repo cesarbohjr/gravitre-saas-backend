@@ -13,6 +13,7 @@ One Google Cloud OAuth client (**“Gravitre OAuth”**) powers login (Supabase)
 | **Google Docs** | Yes | `docs.documents.get` |
 | **Google Sheets** | Yes | `sheets.spreadsheets.get`, `sheets.values.get` |
 | **Google Search Console** | Yes + site linking | `searchconsole.sites.list`, `searchconsole.searchAnalytics.query` |
+| **Google Ads** | Yes + customer linking + **developer token** | `googleads.campaigns.*`, `googleads.ad_groups.list`, `googleads.reports.performance`, `googleads.keywords.list` |
 | **User login** | Supabase Auth | (not Railway) |
 
 ## Environment variables (Railway)
@@ -23,6 +24,7 @@ One Google Cloud OAuth client (**“Gravitre OAuth”**) powers login (Supabase)
 | `GOOGLE_OAUTH_CLIENT_SECRET` | Preferred |
 | `GOOGLE_ANALYTICS_CLIENT_ID` | Alias if `GOOGLE_OAUTH_*` unset |
 | `GOOGLE_ANALYTICS_CLIENT_SECRET` | Alias |
+| `GOOGLE_ADS_DEVELOPER_TOKEN` | **Required for Google Ads** — from Ads Manager → Tools → API Center (not the OAuth client secret) |
 | `CONNECTOR_SECRETS_ENCRYPTION_KEY` | Required |
 | `API_PUBLIC_URL` | OAuth callbacks |
 
@@ -50,6 +52,29 @@ Optional legacy Railway host (only if still used elsewhere): not required for co
 - Google Docs API
 - Google Sheets API
 - **Search Console API** — required for Marketing pack GSC connector (human GCP step; see below)
+- **Google Ads API** — required for the Google Ads connector (human GCP + Ads Manager steps; see below)
+
+## Google Ads — human checklist (developer token is the slow path)
+
+**Cursor/agents cannot self-serve this.** Cesar (or an Ads admin) must complete these in Google Cloud + Google Ads Manager.
+
+Google renamed AdWords → Google Ads in 2018; we integrate the **current Google Ads API** only (catalog key `google_ads`, UI label **Google Ads** — never “AdWords”).
+
+1. In Google Cloud Console for the Gravitre OAuth project:
+   - Enable **Google Ads API**
+   - OAuth consent screen → add scope `https://www.googleapis.com/auth/adwords`
+   - Keep the shared redirect URI only:
+     ```
+     https://gravitre.app/api/connectors/oauth/google/callback
+     ```
+2. In a Google Ads **Manager (MCC)** account → **Tools & settings → API Center**:
+   - Apply for / copy the **Developer token**
+   - Basic access may be test-only; production access often requires Google business verification (days/weeks)
+3. Set Railway env: `GOOGLE_ADS_DEVELOPER_TOKEN=<token>`
+4. Connect **Google Ads** on the Connectors page (OAuth), then link a customer account if prompted
+5. Confirm chat when the token is live — then retry Connect Google Ads
+
+Without the developer token, OAuth can succeed but the connector stays **Setup required** / not executable.
 
 ## Google Search Console (Marketing #6) — human GCP checklist
 
@@ -101,3 +126,5 @@ Deploy the backend after merging Google OAuth code so production `/api/connector
 | `google_drive.py` | Drive API |
 | `google_docs.py` | Docs API |
 | `google_sheets.py` | Sheets API |
+| `google_ads.py` | Google Ads API (GAQL wrappers; no raw query injection) |
+| `google_ads_oauth.py` | Ads customer linking |

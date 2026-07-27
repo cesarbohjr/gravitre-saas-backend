@@ -718,6 +718,7 @@ const IMAGE_LOGOS: Record<string, string> = {
   ahrefs: "/connector-logos/ahrefs.svg",
   apollo: "/connector-logos/apollo.svg",
   google_analytics: "/connector-logos/google_analytics.svg",
+  google_ads: "/connector-logos/google_ads.svg",
   google_calendar: "/connector-logos/google_calendar.svg",
   google_drive: "/connector-logos/google_drive.svg",
   google_docs: "/connector-logos/google_docs.svg",

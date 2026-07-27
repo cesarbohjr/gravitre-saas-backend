@@ -50,6 +50,7 @@ PRIORITY_CONNECTORS: frozenset[str] = frozenset(
         "constant_contact",
         "pipedrive",
         "google_analytics",
+        "google_ads",
         "linkedin",
         "asana",
         "notion",

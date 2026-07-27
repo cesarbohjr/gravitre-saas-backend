@@ -37,6 +37,7 @@ GOOGLE_OAUTH_VENDORS = frozenset(
         "google_docs",
         "google_sheets",
         "google_search_console",
+        "google_ads",
     }
 )
 
@@ -63,6 +64,10 @@ _VENDOR_ALIASES: dict[str, str] = {
     "searchconsole": "google_search_console",
     "gsc": "google_search_console",
     "webmasters": "google_search_console",
+    "googleads": "google_ads",
+    "google_ads": "google_ads",
+    "adwords": "google_ads",
+    "ads": "google_ads",
 }
 
 _VENDOR_SCOPES: dict[str, str] = {
@@ -73,6 +78,8 @@ _VENDOR_SCOPES: dict[str, str] = {
     "google_docs": "https://www.googleapis.com/auth/documents",
     "google_sheets": "https://www.googleapis.com/auth/spreadsheets",
     "google_search_console": "https://www.googleapis.com/auth/webmasters.readonly",
+    # Modern Google Ads API scope (legacy AdWords API is sunset).
+    "google_ads": "https://www.googleapis.com/auth/adwords",
 }
 
 VENDOR_DOCS: dict[str, str] = {
@@ -83,6 +90,7 @@ VENDOR_DOCS: dict[str, str] = {
     "google_docs": "https://developers.google.com/docs/api",
     "google_sheets": "https://developers.google.com/sheets/api",
     "google_search_console": "https://developers.google.com/webmaster-tools/v1/api_reference_index",
+    "google_ads": "https://developers.google.com/google-ads/api/docs/start",
 }
 
 
@@ -247,7 +255,7 @@ def complete_google_vendor_oauth_connection(
 
     access = str(tokens.get("access_token") or "")
     if not access:
-        return vendor not in {"google_analytics", "google_search_console"}
+        return vendor not in {"google_analytics", "google_search_console", "google_ads"}
 
     if vendor == "google_analytics":
         from app.connectors.google_analytics import list_ga4_properties
@@ -290,6 +298,28 @@ def complete_google_vendor_oauth_connection(
             return True
         return False
 
+    if vendor == "google_ads":
+        from app.connectors.google_ads import list_accessible_customers
+        from app.connectors.google_ads_oauth import link_google_ads_customer
+
+        developer_token = (getattr(settings, "google_ads_developer_token", None) or "").strip()
+        if not developer_token:
+            # OAuth succeeded; customer link waits until developer token is configured.
+            return False
+        try:
+            customers = list_accessible_customers(access, developer_token=developer_token)
+        except Exception:  # noqa: BLE001
+            return False
+        if len(customers) == 1:
+            link_google_ads_customer(
+                client,
+                org_id,
+                connector_id,
+                customer_id=str(customers[0]["customer_id"]),
+            )
+            return True
+        return False
+
     return True
 
 
@@ -319,4 +349,23 @@ def google_vendor_connection_auth_status(
         return "pending_property"
     if vendor == "google_search_console" and not _connector_site_url(client, org_id, connector_id):
         return "pending_site"
+    if vendor == "google_ads":
+        if not (getattr(settings, "google_ads_developer_token", None) or "").strip():
+            return "misconfigured"
+        if not _connector_ads_customer_id(client, org_id, connector_id):
+            return "pending_customer"
     return "connected"
+
+
+def _connector_ads_customer_id(client: Any, org_id: str, connector_id: str) -> str | None:
+    row = (
+        client.table("connectors")
+        .select("config")
+        .eq("id", connector_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+    )
+    config = dict((row.data or [{}])[0].get("config") or {})
+    cid = str(config.get("customer_id") or config.get("customerId") or "").strip().replace("-", "")
+    return cid or None

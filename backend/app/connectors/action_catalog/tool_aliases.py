@@ -9,6 +9,7 @@ REGISTRY_VENDOR_PREFIX_ALIASES: dict[str, str] = {
     "google_drive": "drive",
     "google_docs": "docs",
     "google_sheets": "sheets",
+    "google_ads": "googleads",
 }
 
 

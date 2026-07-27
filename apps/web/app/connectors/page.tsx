@@ -2201,12 +2201,114 @@ function GscSitePickerModal({
   )
 }
 
+function GoogleAdsCustomerPickerModal({
+  connectorId,
+  open,
+  onClose,
+  onLinked,
+}: {
+  connectorId: string
+  open: boolean
+  onClose: () => void
+  onLinked: () => void
+}) {
+  const [customers, setCustomers] = useState<Array<{ customer_id: string; resource_name?: string }>>([])
+  const [selectedId, setSelectedId] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!open || !connectorId) return
+    startTransition(() => setLoading(true))
+    connectorsApi
+      .listGoogleAdsCustomers(connectorId)
+      .then((res) => {
+        setCustomers(res.customers || [])
+        const linked = res.linkedCustomerId
+        if (linked) setSelectedId(String(linked))
+        else if (res.customers?.length === 1) setSelectedId(res.customers[0].customer_id)
+      })
+      .catch((err) => {
+        console.error("[connectors] Google Ads customers:", err)
+        toast.error("Could not load Google Ads customers", {
+          description:
+            "Confirm GOOGLE_ADS_DEVELOPER_TOKEN is set on the API and your Google account can access Ads.",
+        })
+      })
+      .finally(() => setLoading(false))
+  }, [open, connectorId])
+
+  const handleLink = async () => {
+    if (!selectedId) return
+    setSaving(true)
+    try {
+      await connectorsApi.linkGoogleAdsCustomer(connectorId, { customerId: selectedId })
+      toast.success("Google Ads customer linked")
+      onLinked()
+      onClose()
+    } catch (err) {
+      console.error("[connectors] Google Ads customer link:", err)
+      toast.error("Failed to link Google Ads customer")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Link Google Ads customer</DialogTitle>
+          <DialogDescription>
+            Choose which Google Ads account this connector should use. Google Ads also requires a
+            developer token on the API (Manager account → Tools → API Center → Developer token).
+            That is separate from Google OAuth and is usually the slowest setup step.
+          </DialogDescription>
+        </DialogHeader>
+        {loading ? (
+          <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading customers…
+          </div>
+        ) : customers.length === 0 ? (
+          <p className="py-4 text-sm text-muted-foreground">
+            No Google Ads customers found for this Google account. Confirm the account has Ads access
+            and that the API developer token is approved.
+          </p>
+        ) : (
+          <select
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+            value={selectedId}
+            onChange={(e) => setSelectedId(e.target.value)}
+          >
+            <option value="">Select a customer…</option>
+            {customers.map((c) => (
+              <option key={c.customer_id} value={c.customer_id}>
+                {c.customer_id}
+              </option>
+            ))}
+          </select>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={handleLink} disabled={!selectedId || saving || loading}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Link customer"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function ConnectorsPageContent() {
   const { user } = useAuth()
   const { isAdmin: orgIsAdmin } = useOrgAdmin()
   const searchParams = useSearchParams()
   const [gaPropertyPicker, setGaPropertyPicker] = useState<{ connectorId: string } | null>(null)
   const [gscSitePicker, setGscSitePicker] = useState<{ connectorId: string } | null>(null)
+  const [adsCustomerPicker, setAdsCustomerPicker] = useState<{ connectorId: string } | null>(null)
   const [orgId, setOrgId] = useState<string | null>(() => getQuickOrgId())
 
   useEffect(() => {
@@ -2272,6 +2374,7 @@ function ConnectorsPageContent() {
     const connectorId = searchParams.get("connectorId")
     const selectProperty = searchParams.get("selectProperty")
     const selectSite = searchParams.get("selectSite")
+    const selectCustomer = searchParams.get("selectCustomer")
     if (!oauth) return
     if (oauth === "success") {
       void mutate()
@@ -2284,6 +2387,12 @@ function ConnectorsPageContent() {
         startTransition(() => setGscSitePicker({ connectorId }))
         toast.info("Select a Search Console site", {
           description: "Your Google account has multiple Search Console properties.",
+        })
+      } else if (provider === "google_ads" && selectCustomer === "1" && connectorId) {
+        startTransition(() => setAdsCustomerPicker({ connectorId }))
+        toast.info("Select a Google Ads customer", {
+          description:
+            "Your Google account can access multiple Ads accounts, or a developer token is still required.",
         })
       } else {
         toast.success("Connection successful", {
@@ -2304,6 +2413,7 @@ function ConnectorsPageContent() {
       url.searchParams.delete("message")
       url.searchParams.delete("selectProperty")
       url.searchParams.delete("selectSite")
+      url.searchParams.delete("selectCustomer")
       window.history.replaceState({}, "", url.pathname + url.search)
     }
   }, [searchParams, mutate])
@@ -2954,6 +3064,14 @@ function ConnectorsPageContent() {
             connectorId={gscSitePicker.connectorId}
             open
             onClose={() => setGscSitePicker(null)}
+            onLinked={() => void mutate()}
+          />
+        )}
+        {adsCustomerPicker && (
+          <GoogleAdsCustomerPickerModal
+            connectorId={adsCustomerPicker.connectorId}
+            open
+            onClose={() => setAdsCustomerPicker(null)}
             onLinked={() => void mutate()}
           />
         )}

@@ -325,6 +325,11 @@ class Settings(BaseSettings):
     # Google Analytics OAuth (STA-40); falls back from GOOGLE_OAUTH_* when unset
     google_analytics_client_id: str = ""
     google_analytics_client_secret: str = ""
+    # Google Ads API developer token (required in addition to OAuth; MCC API Center).
+    google_ads_developer_token: str = Field(
+        default="",
+        validation_alias=AliasChoices("GOOGLE_ADS_DEVELOPER_TOKEN", "google_ads_developer_token"),
+    )
     # Stripe usage-based (metered) billing: meter event name configured on the
     # Stripe Billing Meter that the metered price is attached to.
     stripe_meter_event_name: str = "ai_credits_used"

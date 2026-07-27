@@ -1432,6 +1432,24 @@ export const connectorsApi = {
       apiUrl(`/api/connectors/${connectorId}/google-search-console/site`),
       data
     ),
+  listGoogleAdsCustomers: (connectorId: string) =>
+    fetcher<{
+      connectorId: string
+      customers: Array<{ customer_id: string; resource_name?: string }>
+      linkedCustomerId?: string
+      loginCustomerId?: string
+      developerTokenConfigured?: boolean
+    }>(apiUrl(`/api/connectors/${connectorId}/google-ads/customers`)),
+  linkGoogleAdsCustomer: (
+    connectorId: string,
+    data: { customerId: string; loginCustomerId?: string; descriptiveName?: string }
+  ) =>
+    putJson<{
+      connectorId: string
+      customerId: string
+      loginCustomerId?: string | null
+      status: string
+    }>(apiUrl(`/api/connectors/${connectorId}/google-ads/customer`), data),
 }
 
 // ============ Sources ============

@@ -92,6 +92,43 @@ SLACK_CONVERSATIONS_JOIN_SCHEMA = ActionWorkflowSchema(
     ),
 )
 
+GOOGLE_ADS_CAMPAIGNS_UPDATE_BUDGET_SCHEMA = ActionWorkflowSchema(
+    intent_label="Update Google Ads campaign budget",
+    required_fields=(
+        WorkflowFieldSpec(
+            "campaign",
+            ("campaign_id", "campaignId", "campaign_name", "name"),
+            sensitive=True,
+        ),
+        WorkflowFieldSpec(
+            "daily budget",
+            ("daily_budget", "amount_micros", "amountMicros"),
+        ),
+    ),
+)
+
+GOOGLE_ADS_CAMPAIGNS_PAUSE_SCHEMA = ActionWorkflowSchema(
+    intent_label="Pause Google Ads campaign",
+    required_fields=(
+        WorkflowFieldSpec(
+            "campaign",
+            ("campaign_id", "campaignId", "campaign_name", "name"),
+            sensitive=True,
+        ),
+    ),
+)
+
+GOOGLE_ADS_CAMPAIGNS_RESUME_SCHEMA = ActionWorkflowSchema(
+    intent_label="Resume Google Ads campaign",
+    required_fields=(
+        WorkflowFieldSpec(
+            "campaign",
+            ("campaign_id", "campaignId", "campaign_name", "name"),
+            sensitive=True,
+        ),
+    ),
+)
+
 _TEST_SCHEMA_REGISTRY: dict[str, ActionWorkflowSchema] = {}
 
 

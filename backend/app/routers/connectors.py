@@ -96,6 +96,7 @@ ALLOWED_CONNECTOR_VENDORS = frozenset(
         "notion",
         "google_analytics",
         "google_search_console",
+        "google_ads",
         "gmail",
         "google_drive",
         "google_docs",
@@ -219,6 +220,7 @@ def _docs_url(vendor: str) -> str | None:
         "notion": "https://developers.notion.com/docs",
         "google_analytics": "https://developers.google.com/analytics/devguides/config/admin/v1",
         "google_search_console": "https://developers.google.com/webmaster-tools/v1/api_reference_index",
+        "google_ads": "https://developers.google.com/google-ads/api/docs/start",
         "google_calendar": "https://developers.google.com/calendar/api/guides/overview",
         "gmail": "https://developers.google.com/gmail/api",
         "google_drive": "https://developers.google.com/drive/api",
@@ -694,6 +696,7 @@ async def test_connector_route(
             "google_sheets",
             "google_analytics",
             "google_search_console",
+            "google_ads",
         }:
             from app.connectors.google_vendor_oauth import ensure_google_vendor_session
 
@@ -701,6 +704,16 @@ async def test_connector_route(
                 client, org_id, str(connector_id), settings, environment_name=environment_name
             )
             if token:
+                if vendor == "google_ads" and not (
+                    getattr(settings, "google_ads_developer_token", None) or ""
+                ).strip():
+                    return {
+                        "success": False,
+                        "message": (
+                            "Google Ads OAuth is connected, but GOOGLE_ADS_DEVELOPER_TOKEN "
+                            "is not configured on the API (Manager account → Tools → API Center)."
+                        ),
+                    }
                 return {"success": True, "message": f"{vendor} connection is valid"}
             if vendor == "google_calendar":
                 legacy = get_decrypted_secret(client, str(connector_id), "access_token", settings)
