@@ -46,7 +46,18 @@ OBJECT_ALIASES: dict[str, tuple[str, ...]] = {
     "files": ("file", "files", "folder", "folders", "document", "documents"),
     "events": ("event", "events", "meeting", "meetings", "appointment"),
     "boards": ("board", "boards"),
+    "campaigns": ("campaign", "campaigns", "adwords", "search campaign"),
+    "ad_groups": ("ad group", "ad groups", "adgroup", "adgroups"),
+    "keywords": ("keyword", "keywords", "negative keyword", "negative keywords"),
+    "structure": ("campaign structure", "ad group structure", "funnel", "search campaign structure"),
 }
+
+GOOGLE_ADS_STRUCTURE_INTENT = re.compile(
+    r"\b(?:google\s*ads|adwords|ads)\b[\s\S]{0,200}\b(?:campaign|ad\s*groups?|keywords?)\b"
+    r"|\b(?:set\s*up|create|build)\b[\s\S]{0,80}\b(?:google\s*ads|adwords)\b"
+    r"|\b(?:campaign\s+structure|ad\s+groups?\s+organized|negative\s+keywords?)\b",
+    re.I,
+)
 
 
 @dataclass(frozen=True)
@@ -306,6 +317,16 @@ class ChatActionMapper:
                 score += 20.0
             if re.search(r"\bcreate\s+(?:follow[- ]?up\s+)?tasks?\b", text, re.I):
                 score += 14.0
+        if entry.connector_id == "google_ads" and GOOGLE_ADS_STRUCTURE_INTENT.search(text):
+            # Prefer structure.create for multi-campaign / funnel builds; demote list-only.
+            if "structure.create" in entry.action_key:
+                score += 48.0
+            elif "accounts.list" in entry.action_key:
+                score -= 30.0
+            elif entry.kind == "read":
+                score -= 20.0
+            elif "pause" in entry.action_key or "resume" in entry.action_key:
+                score -= 24.0
         if entry.connector_id == "apollo" and LIST_CREATE_INTENT.search(text):
             # Prefer lists.create; demote list/search/contact creates that steal the match.
             if "lists.create" in entry.action_key:

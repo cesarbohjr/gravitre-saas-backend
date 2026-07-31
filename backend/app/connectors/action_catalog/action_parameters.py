@@ -506,6 +506,45 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
         },
         "required": ["campaign_id"],
     },
+    "google_ads.accounts.list": {
+        "type": "object",
+        "properties": {
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
+    "google_ads.structure.create": {
+        "type": "object",
+        "properties": {
+            "daily_budget_total": {
+                "type": "number",
+                "description": "Total daily budget across all campaigns (account currency).",
+            },
+            "campaigns": {
+                "type": "array",
+                "description": (
+                    "Campaign objects: name, budget_weight, bidding_strategy, "
+                    "ad_groups[{name, keywords[{text, match_type}]}]."
+                ),
+            },
+            "negative_keywords": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Account-wide negatives applied to each campaign.",
+            },
+            "conversion_actions": {
+                "type": "array",
+                "description": "Optional conversion actions: name, category, default_value.",
+            },
+            "status": {
+                "type": "string",
+                "description": "PAUSED (default) or ENABLED.",
+            },
+            "customer_id": {"type": "string"},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": ["daily_budget_total", "campaigns"],
+    },
     "apollo.people.search": {
         "type": "object",
         "properties": {

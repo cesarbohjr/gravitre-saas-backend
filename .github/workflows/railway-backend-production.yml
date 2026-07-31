@@ -13,9 +13,9 @@ on:
   workflow_dispatch:
     inputs:
       force_railway_up:
-        description: Skip auto-deploy wait and force railway up
+        description: Force CLI railway up (avoid — races GitHub auto-deploy and creates FAILED builds)
         type: boolean
-        default: true
+        default: false
 
 concurrency:
   group: railway-backend-production
@@ -79,7 +79,7 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli@4.65.0
 
-      - name: Wait for auto-deploy, else railway up
+      - name: Wait for GitHub-connected Railway auto-deploy
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
@@ -107,20 +107,20 @@ jobs:
             exit 0
           fi
 
+          # Default path: GitHub auto-deploy only. CLI `railway up` races the
+          # connected deploy and often fails at Dockerfile COPY with
+          # "failed to calculate checksum" while the GitHub deploy succeeds
+          # (see docs/delivery/railway-github-actions-deploy-status.md).
           if [ "$FORCE" != "true" ]; then
-            echo "Waiting briefly for GitHub-connected Railway auto-deploy..."
-            if match_health "https://gravitre-saas-backend-production.up.railway.app/health" 240; then
-              match_health "https://api.gravitre.app/health" 120
-              exit 0
-            fi
-            echo "::warning::Auto-deploy did not advance tip — falling back to railway up"
+            echo "Waiting for GitHub-connected Railway auto-deploy..."
+            match_health "https://gravitre-saas-backend-production.up.railway.app/health" 900
+            match_health "https://api.gravitre.app/health" 180
+            exit 0
           fi
 
+          echo "::warning::force_railway_up=true — CLI upload (may still race GitHub auto-deploy)"
           railway variables set "GIT_SHA=$FULL" --service "$SVC" --environment "$ENV_NAME"
           echo "$FULL $(date -u +%Y-%m-%dT%H:%M:%SZ)" > backend/.railway-deploy-stamp
-          # railway up --ci often exits 1 with bare "Deploy failed" while the
-          # upload/build still proceeds (see railway-github-actions-deploy-status.md).
-          # Treat upload as best-effort; /health tip match is the real gate.
           set +e
           railway up ./backend --path-as-root --ci \
             --service "$SVC" \

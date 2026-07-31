@@ -129,6 +129,25 @@ GOOGLE_ADS_CAMPAIGNS_RESUME_SCHEMA = ActionWorkflowSchema(
     ),
 )
 
+GOOGLE_ADS_STRUCTURE_CREATE_SCHEMA = ActionWorkflowSchema(
+    intent_label="Create Google Ads Search campaign structure",
+    required_fields=(
+        WorkflowFieldSpec(
+            "total daily budget",
+            ("daily_budget_total", "dailyBudgetTotal", "total_daily_budget"),
+        ),
+        WorkflowFieldSpec(
+            "campaigns",
+            ("campaigns",),
+            validator="list_or_object_payload",
+        ),
+    ),
+    optional_fields=(
+        WorkflowFieldSpec("negative keywords", ("negative_keywords", "negativeKeywords")),
+        WorkflowFieldSpec("conversion actions", ("conversion_actions", "conversionActions")),
+    ),
+)
+
 _TEST_SCHEMA_REGISTRY: dict[str, ActionWorkflowSchema] = {}
 
 

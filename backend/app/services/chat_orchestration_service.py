@@ -701,6 +701,26 @@ class ChatOrchestrationService:
         user_id: str,
         classification: dict[str, Any],
     ) -> list[OrchestrationStep]:
+        # Google Ads multi-campaign structure must stay one executable action
+        # (structure.create). Fragmenting into "set up campaigns / keywords / …"
+        # steps yields no_executable_action skips + a misleading plan confirm.
+        from app.services.chat_action_mapper import GOOGLE_ADS_STRUCTURE_INTENT
+
+        connected_set = {c.lower() for c in connected_integrations}
+        if GOOGLE_ADS_STRUCTURE_INTENT.search(message or "") and self._integration_is_connected(
+            "google_ads", connected_set
+        ):
+            step = await self._plan_segment(
+                step_id="1",
+                segment=message,
+                connected_integrations=connected_integrations,
+                org_id=org_id,
+                user_id=user_id,
+                classification=classification,
+                goal=message,
+            )
+            return [step]
+
         segments = self._split_segments(message)
         if len(segments) < 2:
             segments = self._expand_single_segment(message, connected_integrations)

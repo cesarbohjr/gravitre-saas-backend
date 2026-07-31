@@ -23,7 +23,9 @@ def build_catalog_http_executors(*, skip: set[str] | None = None) -> dict[str, o
     skip = skip or set()
     executors: dict[str, object] = {}
     for tool in sorted(_catalog_tool_keys()):
-        if tool in skip:
+        # Skip when this catalog key *or any registry alias* already has a
+        # dedicated executor (e.g. googleads.* implements google_ads.*).
+        if registry_keys_for_catalog_tool(tool) & skip:
             continue
         vendor = tool.split(".", 1)[0]
         if vendor in {"email", "webhook"}:

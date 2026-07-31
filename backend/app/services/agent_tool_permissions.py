@@ -136,6 +136,7 @@ _BUILTIN_ACTION_SCOPES: dict[str, list[str]] = {
     "googleads.campaigns.pause": ["googleads:write", "google_ads:*", "googleads:*"],
     "googleads.campaigns.resume": ["googleads:write", "google_ads:*", "googleads:*"],
     "googleads.accounts.list": ["googleads:read", "google_ads:*", "googleads:*"],
+    "googleads.structure.create": ["googleads:write", "google_ads:*", "googleads:*"],
     "gmail.messages.list": ["gmail:read", "gmail:*"],
     "gmail.messages.get": ["gmail:read", "gmail:*"],
     "gmail.messages.send": ["gmail:send", "gmail:write", "gmail:*"],

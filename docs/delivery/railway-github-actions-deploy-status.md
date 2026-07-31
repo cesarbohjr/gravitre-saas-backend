@@ -1,10 +1,14 @@
 # Railway GitHub Actions vs prod deploy status
 
-Updated: 2026-07-23
+Updated: 2026-07-31
 
 ## Symptom
 
-Workflow **Railway backend production** fails on `railway up … --ci` with exit **1** and only `Deploy failed` in logs, while **`/health` `git_sha`** on `api.gravitre.app` still advances to the CI commit shortly after.
+Workflow **Railway backend production** fails on `railway up … --ci` with exit **1** / build `COPY requirements*.txt` **failed to calculate checksum**, while a parallel **via GitHub** deploy succeeds and **`/health` `git_sha`** advances.
+
+## Fix (2026-07-31)
+
+Default deploy gate **waits for GitHub-connected auto-deploy only**. CLI `railway up` runs only on `workflow_dispatch` with `force_railway_up=true` (default **false**).
 
 Example: CI run [29985678545](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/29985678545) failed at `railway up` (~12s after upload); prod **`/health`** showed `19bdf7d2…` matching the same push.
 

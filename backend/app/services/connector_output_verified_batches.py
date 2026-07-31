@@ -233,6 +233,7 @@ VERIFIED_OUTPUT_BATCH_09: frozenset[str] = frozenset(
         "google_ads.campaigns.update_budget",
         "google_ads.campaigns.pause",
         "google_ads.campaigns.resume",
+        "google_ads.structure.create",
     }
 )
 

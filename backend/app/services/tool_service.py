@@ -3088,6 +3088,49 @@ def _exec_googleads_accounts_list(ctx: ToolContext, params: dict[str, Any]) -> N
     )
 
 
+def _exec_googleads_structure_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_ads import GoogleAdsAPIError, create_search_campaign_structure
+
+    conn = _connector_by_type(ctx, "google_ads", params)
+    cid, token = _google_vendor_token(ctx, "google_ads", params)
+    campaigns = params.get("campaigns")
+    if not isinstance(campaigns, list) or not campaigns:
+        raise ToolValidationError("campaigns array is required")
+    budget = params.get("daily_budget_total")
+    if budget is None:
+        budget = params.get("dailyBudgetTotal") or params.get("total_daily_budget")
+    if budget is None:
+        raise ToolValidationError(
+            "daily_budget_total is required (total daily budget across all campaigns)"
+        )
+    negatives = params.get("negative_keywords") or params.get("negativeKeywords") or []
+    if isinstance(negatives, str):
+        negatives = [part.strip() for part in negatives.split(",") if part.strip()]
+    conversions = params.get("conversion_actions") or params.get("conversionActions") or []
+    if not isinstance(conversions, list):
+        conversions = []
+    try:
+        data = create_search_campaign_structure(
+            token,
+            _ads_customer_id(conn, params),
+            developer_token=_ads_developer_token(ctx),
+            daily_budget_total=float(budget),
+            campaigns=campaigns,
+            negative_keywords=[str(x) for x in negatives],
+            conversion_actions=conversions,
+            status=str(params.get("status") or "PAUSED"),
+            login_customer_id=_ads_login_customer_id(conn, params),
+        )
+    except GoogleAdsAPIError as exc:
+        raise _vendor_api_error(exc, "google_ads") from exc
+    return NormalizedResult(
+        success=True,
+        action="googleads.structure.create",
+        connector_id=cid,
+        data=data,
+    )
+
+
 def _exec_searchconsole_sites_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     from app.connectors.google_search_console import GoogleSearchConsoleAPIError, list_gsc_sites
 
@@ -4137,6 +4180,7 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "googleads.campaigns.pause": _exec_googleads_campaigns_pause,
     "googleads.campaigns.resume": _exec_googleads_campaigns_resume,
     "googleads.accounts.list": _exec_googleads_accounts_list,
+    "googleads.structure.create": _exec_googleads_structure_create,
     "gmail.messages.list": _exec_gmail_messages_list,
     "gmail.messages.get": _exec_gmail_messages_get,
     "gmail.messages.send": _exec_gmail_messages_send,

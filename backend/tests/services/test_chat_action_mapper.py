@@ -193,6 +193,16 @@ def test_sta305_slack_draft_not_list_channels():
     assert "list" not in match.entry.action_key
 
 
+def test_google_ads_structure_create_preferred_over_accounts_list():
+    match = get_chat_action_mapper().match_segment(
+        "Create a Google Ads Search campaign structure with 4 campaigns and ad groups.",
+        connected_integrations=["google_ads"],
+    )
+    assert match is not None
+    assert "structure.create" in match.entry.action_key
+    assert "accounts.list" not in match.entry.action_key
+
+
 def test_sta305_asana_omit_title_prefers_tasks_create():
     match = get_chat_action_mapper().match_segment(
         "Create an Asana task.",

@@ -43,6 +43,7 @@ INTEGRATION_ALIASES: dict[str, tuple[str, ...]] = {
     "workday": ("workday",),
     "constant_contact": ("constant contact",),
     "google_analytics": ("google analytics", "ga4", "analytics"),
+    "google_ads": ("google ads", "googleads", "adwords", "ad words", "ads campaign"),
     # Cold connectors exercised in Phase 1 breadth — first-use must equal thousandth-use.
     "twilio": ("twilio", "sms", "text message"),
     "sendgrid": ("sendgrid", "send grid"),

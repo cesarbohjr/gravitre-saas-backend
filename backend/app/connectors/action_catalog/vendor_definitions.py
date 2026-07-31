@@ -8,6 +8,7 @@ from app.connectors.action_catalog.action_workflow_schema import (
     GOOGLE_ADS_CAMPAIGNS_PAUSE_SCHEMA,
     GOOGLE_ADS_CAMPAIGNS_RESUME_SCHEMA,
     GOOGLE_ADS_CAMPAIGNS_UPDATE_BUDGET_SCHEMA,
+    GOOGLE_ADS_STRUCTURE_CREATE_SCHEMA,
     HUBSPOT_ASSOCIATIONS_CREATE_SCHEMA,
     HUBSPOT_COMPANIES_CREATE_SCHEMA,
     HUBSPOT_CONTACTS_CREATE_SCHEMA,
@@ -272,7 +273,6 @@ VENDOR_DEFINITIONS: tuple = (
                 workflow_schema=GOOGLE_ADS_CAMPAIGNS_RESUME_SCHEMA,
             ),
         ),
-        # campaigns.create deferred: many required fields + higher error risk; read+budget/pause cover initial ops.
         v3=(
             action(
                 "google_ads",
@@ -282,6 +282,17 @@ VENDOR_DEFINITIONS: tuple = (
                 kind="advanced",
                 scope_suffix="read",
                 idempotent=True,
+            ),
+            action(
+                "google_ads",
+                "structure.create",
+                "Create Google Ads Search campaign structure",
+                tier="v3",
+                kind="advanced",
+                scope_suffix="write",
+                destructive=True,
+                requires_approval=True,
+                workflow_schema=GOOGLE_ADS_STRUCTURE_CREATE_SCHEMA,
             ),
         ),
     ),
