@@ -28,7 +28,7 @@ def test_classify_action_kind_destructive_flag():
     assert classify_action_kind(kind="write", destructive=True) == "delete"
 
 
-def test_resolve_defaults_write_when_no_policies():
+def test_resolve_defaults_auto_run_when_no_policies():
     client = MagicMock()
     table = MagicMock()
     table.select.return_value = table
@@ -39,8 +39,7 @@ def test_resolve_defaults_write_when_no_policies():
     decision = HitlPolicyService().resolve(
         client, org_id="org-1", user_id="user-1", action_kind="write"
     )
-    assert decision.requires_approval is True
-    assert "admin" in decision.approver_roles
+    assert decision.requires_approval is False
 
 
 def test_resolve_user_policy_beats_org():

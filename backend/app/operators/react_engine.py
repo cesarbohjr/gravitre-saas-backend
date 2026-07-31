@@ -699,7 +699,15 @@ class ReActEngine:
                     ),
                 }
 
-        blocked = block_react_write_execution(tool_name, args, self.registry)
+        blocked = block_react_write_execution(
+            tool_name,
+            args,
+            self.registry,
+            client=ctx.client,
+            org_id=ctx.org_id,
+            user_id=ctx.actor_id,
+            settings=self.settings,
+        )
         if blocked is not None:
             return blocked
         return await self.registry.execute_tool(ctx=ctx, tool_name=tool_name, args=args)

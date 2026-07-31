@@ -328,7 +328,7 @@ async def test_run_unified_turn_shadow_tool_proposal():
 
     assert result.outcome_kind == "connector_tool_proposal"
     assert result.tool_name == "gmail_messages_send"
-    assert result.requires_write_approval is True
+    assert result.requires_write_approval is False
     assert result.tool_arguments.get("to") == "a@b.com"
 
 
