@@ -1,4 +1,4 @@
-"""ReAct write actions must not execute without format_write_approval_message gate."""
+"""ReAct write actions respect HITL user permission settings before blocking."""
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -14,6 +14,7 @@ from app.services.react_write_gate import (
     materialize_react_write_approval_turn,
     pending_write_from_react,
     plan_from_react_write,
+    resolve_user_write_approval_required,
     tool_requires_user_write_approval,
 )
 from app.services.tool_types import ToolContext
@@ -29,7 +30,37 @@ def tool_ctx() -> ToolContext:
     )
 
 
-def test_apollo_lists_create_requires_write_approval():
+def _hitl_client_with_write_policy() -> MagicMock:
+    client = MagicMock()
+
+    def table(name: str):
+        mock = MagicMock()
+        mock.select.return_value = mock
+        mock.eq.return_value = mock
+        mock.execute.return_value = MagicMock(data=[])
+        if name == "hitl_policies":
+            mock.execute.return_value = MagicMock(
+                data=[
+                    {
+                        "id": "p-user",
+                        "name": "User write",
+                        "enabled": True,
+                        "scope_type": "user",
+                        "subject_user_id": "user-1",
+                        "action_kinds": ["write"],
+                        "approver_roles": ["admin"],
+                        "approver_user_ids": [],
+                        "required_approvals": 1,
+                    }
+                ]
+            )
+        return mock
+
+    client.table.side_effect = table
+    return client
+
+
+def test_apollo_lists_create_is_write_action():
     from app.services.tool_registry import get_tool_registry
 
     registry = get_tool_registry()
@@ -51,7 +82,7 @@ def test_apollo_lists_list_is_read_not_gated():
     assert action == "apollo.lists.list"
 
 
-def test_platform_write_tools_require_approval():
+def test_platform_write_tools_are_write_actions():
     from app.services.react_write_gate import PLATFORM_WRITE_TOOLS
     from app.services.tool_registry import get_tool_registry
 
@@ -68,8 +99,25 @@ def test_platform_write_tools_require_approval():
         assert invoke == action
         assert integration == "platform"
         assert label
-        blocked = block_react_write_execution(tool, {"goal": "x", "query": "x", "task": "x"}, registry)
-        assert blocked is not None
+        assert block_react_write_execution(tool, {"goal": "x", "query": "x", "task": "x"}, registry) is None
+
+
+def test_platform_write_tools_block_when_hitl_requires_approval():
+    from app.services.react_write_gate import PLATFORM_WRITE_TOOLS
+    from app.services.tool_registry import get_tool_registry
+
+    registry = get_tool_registry()
+    client = _hitl_client_with_write_policy()
+    for tool in PLATFORM_WRITE_TOOLS:
+        blocked = block_react_write_execution(
+            tool,
+            {"goal": "x", "query": "x", "task": "x"},
+            registry,
+            client=client,
+            org_id="org-1",
+            user_id="user-1",
+        )
+        assert blocked is not None, tool
         assert blocked["pending_approval"] is True
         assert blocked["error_code"] == WRITE_APPROVAL_REQUIRED
 
@@ -89,7 +137,7 @@ def test_assistant_read_tools_remain_ungated():
         assert block_react_write_execution(tool, {}, registry) is None
 
 
-def test_block_react_write_does_not_call_through():
+def test_block_react_write_auto_passes_without_hitl_policy():
     from app.services.tool_registry import get_tool_registry
 
     registry = get_tool_registry()
@@ -97,6 +145,21 @@ def test_block_react_write_does_not_call_through():
         "apollo_lists_create",
         {"name": "MSP Prospects", "modality": "contacts"},
         registry,
+    )
+    assert blocked is None
+
+
+def test_block_react_write_blocks_when_hitl_requires_approval():
+    from app.services.tool_registry import get_tool_registry
+
+    registry = get_tool_registry()
+    blocked = block_react_write_execution(
+        "apollo_lists_create",
+        {"name": "MSP Prospects", "modality": "contacts"},
+        registry,
+        client=_hitl_client_with_write_policy(),
+        org_id="org-1",
+        user_id="user-1",
     )
     assert blocked is not None
     assert blocked["pending_approval"] is True
@@ -107,9 +170,34 @@ def test_block_react_write_does_not_call_through():
 
 
 @pytest.mark.asyncio
-async def test_react_engine_blocks_write_before_registry(tool_ctx: ToolContext):
+async def test_react_engine_auto_runs_write_without_hitl_policy(tool_ctx: ToolContext):
     from app.services.tool_registry import get_tool_registry
 
+    registry = get_tool_registry()
+    registry.execute_tool = AsyncMock(return_value={"success": True, "result": {"id": "list-1"}})  # type: ignore[method-assign]
+    engine = ReActEngine(settings=SimpleNamespace(disable_ai=False), registry=registry)
+
+    result = await engine._execute_tool_call(
+        tool_ctx,
+        "apollo_lists_create",
+        {"name": "MSP Prospects"},
+        allowed_tool_names={"apollo_lists_create"},
+    )
+
+    assert result["success"] is True
+    registry.execute_tool.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_react_engine_blocks_write_when_hitl_requires_approval(tool_ctx: ToolContext):
+    from app.services.tool_registry import get_tool_registry
+
+    tool_ctx = ToolContext(
+        settings=SimpleNamespace(disable_connectors=False),
+        client=_hitl_client_with_write_policy(),
+        org_id="org-1",
+        actor_id="user-1",
+    )
     registry = get_tool_registry()
     registry.execute_tool = AsyncMock()  # type: ignore[method-assign]
     engine = ReActEngine(settings=SimpleNamespace(disable_ai=False), registry=registry)
@@ -407,7 +495,7 @@ async def test_materialize_platform_execute_workflow_uses_distinct_pending_type(
 
 @pytest.mark.asyncio
 async def test_react_write_chain_gate_then_execute_plan_with_synthetic_agent():
-    """Contract: ReAct blocks write under synthetic agent; approved plan executes via execute_plan.
+    """Contract: ReAct blocks write when HITL requires approval; approved plan executes via execute_plan.
 
     Live twin: scripts/smoke-react-write-live.py (daily in connector-verified-writes-live.yml).
     """
@@ -415,7 +503,7 @@ async def test_react_write_chain_gate_then_execute_plan_with_synthetic_agent():
 
     tool_ctx = ToolContext(
         settings=SimpleNamespace(disable_connectors=False),
-        client=MagicMock(),
+        client=_hitl_client_with_write_policy(),
         org_id="org-1",
         actor_id="user-1",
         agent_id="synthetic-default",

@@ -142,18 +142,7 @@ class HitlPolicyService:
 
         policies = self._load_enabled(client, org_id)
         if not policies:
-            # No HITL rules → keep legacy write/delete approval defaults for safety.
-            if kind in {"write", "delete"}:
-                return HitlDecision(
-                    requires_approval=True,
-                    matched_policy_id=None,
-                    matched_policy_name=None,
-                    action_kind=kind,
-                    required_approvals=1,
-                    approver_roles=list(SAFE_DEFAULT_APPROVER_ROLES),
-                    approver_user_ids=[],
-                    reason="Default write/delete approval (no HITL policies configured)",
-                )
+            # No HITL rules → auto-run writes/deletes unless a policy is configured.
             return HitlDecision(
                 requires_approval=False,
                 matched_policy_id=None,
@@ -162,7 +151,7 @@ class HitlPolicyService:
                 required_approvals=0,
                 approver_roles=[],
                 approver_user_ids=[],
-                reason="No HITL policy matches read action",
+                reason="No HITL policies configured (auto-run)",
             )
 
         dept_ids = {str(d) for d in (department_ids or []) if d}
@@ -184,18 +173,6 @@ class HitlPolicyService:
                 candidates.append((2, policy))
 
         if not candidates:
-            # Unmatched subjects keep the legacy write/delete safety net.
-            if kind in {"write", "delete"}:
-                return HitlDecision(
-                    requires_approval=True,
-                    matched_policy_id=None,
-                    matched_policy_name=None,
-                    action_kind=kind,
-                    required_approvals=1,
-                    approver_roles=list(SAFE_DEFAULT_APPROVER_ROLES),
-                    approver_user_ids=[],
-                    reason=f"Default {kind} approval (no matching HITL policy)",
-                )
             return HitlDecision(
                 requires_approval=False,
                 matched_policy_id=None,
@@ -204,7 +181,7 @@ class HitlPolicyService:
                 required_approvals=0,
                 approver_roles=[],
                 approver_user_ids=[],
-                reason=f"No HITL policy covers {kind} for this subject",
+                reason=f"No HITL policy covers {kind} for this subject (auto-run)",
             )
 
         candidates.sort(key=lambda item: item[0])

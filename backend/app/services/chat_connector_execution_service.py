@@ -1312,7 +1312,6 @@ class ChatConnectorExecutionService:
             requires_approval=bool(
                 risk.get("requires_approval")
                 or hitl.requires_approval
-                or plan.kind == "write"
                 or plan.destructive
             ),
             approval_reason=approval_reason,
@@ -2014,12 +2013,13 @@ class ChatConnectorExecutionService:
             "type": plan.invoke_action,
             "estimated_impact": "medium" if plan.kind == "write" else "low",
             "is_destructive": plan.destructive,
-            "is_customer_facing": plan.integration in {"slack", "zendesk", "salesforce", "hubspot"},
+            # Write approval is governed by HITL user permission settings, not integration heuristics.
+            "is_customer_facing": False,
         }
         merged_classification = {
             **classification,
             "risk_level": "high" if plan.destructive else classification.get("risk_level", "low"),
-            "requires_approval": plan.kind == "write" or plan.destructive,
+            "requires_approval": bool(plan.destructive),
         }
         return await evaluator.evaluate(
             org_id,
@@ -2213,14 +2213,14 @@ class ChatConnectorExecutionService:
         except Exception as exc:  # noqa: BLE001
             logger.warning("HITL resolve failed org=%s error=%s", org_id, exc)
             return HitlDecision(
-                requires_approval=kind in {"write", "delete"},
+                requires_approval=False,
                 matched_policy_id=None,
                 matched_policy_name=None,
                 action_kind=kind,
-                required_approvals=1,
-                approver_roles=["admin", "owner"],
+                required_approvals=0,
+                approver_roles=[],
                 approver_user_ids=[],
-                reason="HITL resolve failed; defaulting to write/delete approval",
+                reason="HITL resolve failed; defaulting to auto-run",
             )
 
     def _user_can_approve_writes(

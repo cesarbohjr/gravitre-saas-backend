@@ -789,7 +789,7 @@ class ChatOrchestrationService:
             label=plan.label,
             args=dict(plan.args),
             destructive=plan.destructive,
-            requires_approval=bool(risk.get("requires_approval") or plan.kind == "write"),
+            requires_approval=bool(risk.get("requires_approval") or plan.destructive),
             approval_reason=risk.get("approval_reason"),
             inferred_fields=tuple(plan.inferred_fields or ()),
             inference_sources=dict(plan.inference_sources or {}),
@@ -963,7 +963,7 @@ class ChatOrchestrationService:
             "message": (
                 f"I planned a **{len(steps)}-step orchestration**:\n\n"
                 + "\n".join(lines)
-                + "\n\nRead steps run automatically. Write steps require approval one at a time.\n\n"
+                + "\n\nRead steps run automatically. Write steps run automatically unless your approval settings require confirmation.\n\n"
                 "Reply **yes** to approve the plan, or tell me what to change."
                 + hint_block
             ),

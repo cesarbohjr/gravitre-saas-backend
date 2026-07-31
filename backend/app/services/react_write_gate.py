@@ -60,6 +60,7 @@ __all__ = (
     "pending_write_from_react",
     "plan_from_react_tool_call",
     "plan_from_react_write",
+    "resolve_user_write_approval_required",
     "tool_requires_user_write_approval",
 )
 
@@ -70,7 +71,11 @@ def invoke_action_is_write(invoke_action: str) -> bool:
 
 
 def tool_requires_user_write_approval(tool_name: str, registry: Any) -> tuple[bool, str, str, str]:
-    """Return (requires_approval, invoke_action, integration, label)."""
+    """Return (is_write_action, invoke_action, integration, label).
+
+    Catalog classification only — use ``resolve_user_write_approval_required`` when
+    deciding whether to block execution for a specific user/org.
+    """
     name = str(tool_name or "").strip()
     if not name or name.startswith("mcp_"):
         return False, "", "", ""
@@ -119,15 +124,65 @@ def tool_requires_user_write_approval(tool_name: str, registry: Any) -> tuple[bo
     return False, invoke_action, integration, label
 
 
+def resolve_user_write_approval_required(
+    client: Any,
+    org_id: str,
+    user_id: str,
+    tool_name: str,
+    registry: Any,
+    *,
+    settings: Any | None = None,
+) -> tuple[bool, str, str, str]:
+    """Return (requires_user_approval, invoke_action, integration, label)."""
+    is_write, invoke_action, integration, label = tool_requires_user_write_approval(
+        tool_name, registry
+    )
+    if not is_write:
+        return False, invoke_action, integration, label
+    if client is None or not str(org_id or "").strip() or not str(user_id or "").strip():
+        return False, invoke_action, integration, label
+
+    from app.services.hitl_policy_service import classify_action_kind, get_hitl_policy_service
+
+    action_kind = classify_action_kind(
+        invoke_action=invoke_action,
+        tool_name=tool_name,
+        label=label,
+    )
+    decision = get_hitl_policy_service(settings).resolve(
+        client,
+        org_id=str(org_id),
+        user_id=str(user_id),
+        action_kind=action_kind,
+    )
+    return bool(decision.requires_approval), invoke_action, integration, label
+
+
 def block_react_write_execution(
     tool_name: str,
     args: dict[str, Any] | None,
     registry: Any,
+    *,
+    client: Any = None,
+    org_id: str | None = None,
+    user_id: str | None = None,
+    settings: Any | None = None,
 ) -> dict[str, Any] | None:
-    """If this ReAct tool call is a write, refuse execution and request approval."""
-    requires, invoke_action, integration, label = tool_requires_user_write_approval(
-        tool_name, registry
-    )
+    """If this ReAct tool call needs user approval per HITL policy, block execution."""
+    if client is not None and org_id and user_id:
+        requires, invoke_action, integration, label = resolve_user_write_approval_required(
+            client,
+            org_id,
+            user_id,
+            tool_name,
+            registry,
+            settings=settings,
+        )
+    else:
+        requires, invoke_action, integration, label = tool_requires_user_write_approval(
+            tool_name, registry
+        )
+        requires = False
     if not requires:
         return None
     raw_args = dict(args or {})
@@ -192,7 +247,7 @@ def plan_from_react_tool_call(
     if not integration and "." in invoke_action:
         integration = invoke_action.split(".", 1)[0]
     kind = "write" if (requires or invoke_action_is_write(invoke_action)) else "read"
-    approval = requires if requires_approval is None else bool(requires_approval)
+    approval = bool(requires_approval) if requires_approval is not None else False
     return ConnectorActionPlan(
         tool_name=name,
         invoke_action=invoke_action,

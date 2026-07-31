@@ -20,7 +20,10 @@ from app.services.gravitree_voice import apply_voice, voice_system_prompt_sectio
 from app.services.model_router import get_model_router
 from app.services.module_d_unified_voice_spec import build_module_d_unified_system_prompt
 from app.services.providers.openai_adapter import _supports_custom_temperature
-from app.services.react_write_gate import tool_requires_user_write_approval
+from app.services.react_write_gate import (
+    resolve_user_write_approval_required,
+    tool_requires_user_write_approval,
+)
 from app.services.tool_registry import get_tool_registry
 from app.services.unified_turn_pending_context import build_unified_turn_pending_context
 from app.services.unified_turn_tool_retrieval import (
@@ -578,11 +581,21 @@ async def run_unified_turn_shadow(
         args = review.tool_arguments or args
         spec = registry._specs.get(tool_name)  # noqa: SLF001
         requires_write, *_ = tool_requires_user_write_approval(tool_name, registry)
+        requires_user_approval = False
+        if requires_write and client is not None:
+            requires_user_approval, *_ = resolve_user_write_approval_required(
+                client,
+                org_id,
+                user_id,
+                tool_name,
+                registry,
+                settings=active,
+            )
         result.outcome_kind = "connector_tool_proposal"
         result.tool_name = tool_name
         result.tool_invoke_action = invoke or None
         result.tool_arguments = args
-        result.requires_write_approval = bool(requires_write)
+        result.requires_write_approval = bool(requires_user_approval)
         if content and not forced:
             result.user_message = finalize_user_facing_message(
                 content, context="unified_turn_shadow_tool_preamble"
