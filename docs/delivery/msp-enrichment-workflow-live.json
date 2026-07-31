@@ -1,0 +1,74 @@
+{
+  "pass": false,
+  "partial": true,
+  "ran_at": "2026-07-31T10:08:49.352021+00:00",
+  "prod_git_sha": "98db2abf245cad848641e946306a729dd6a89046",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "pack_slug": "prospecting-intelligence-pack",
+  "workflow_slug": "msp-prospects-clay-hubspot-enrichment",
+  "workflow_name": "MSP Prospects Clay Enrichment \u2192 HubSpot Sync",
+  "catalog_asset_present": true,
+  "actions_registered": {
+    "apollo.lists.list": true,
+    "clay.leads.push": true,
+    "clay.workflows.output.get": true,
+    "clay.crm.sync": true,
+    "hubspot.lists.add_contact": true
+  },
+  "bundle": {
+    "agentId": "cec00b75-3b0b-5880-93ee-ce532ae25ed1",
+    "workflowId": "4c218adc-9ae7-5acf-b7a8-8b2a3bfac686",
+    "enrichmentWorkflowId": "e88619c4-b42e-58cc-884b-2e14a398e953",
+    "assignmentCount": 6,
+    "apolloConnectorId": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+    "hubspotConnectorId": "547cdda5-2637-4a2b-b087-d5ea89486575",
+    "clayConnectorId": null,
+    "stopLinesHonored": [
+      "no_crunchbase_pdl_kg_memory",
+      "no_opencorporates_enable",
+      "no_byo_shared_keys",
+      "no_linkedin_scrape",
+      "reuse_existing_connectors",
+      "sales_vs_prospecting_boundary"
+    ]
+  },
+  "workflow_def": {
+    "id": "e88619c4-b42e-58cc-884b-2e14a398e953",
+    "name": "MSP Prospects Clay Enrichment \u2192 HubSpot Sync",
+    "status": "active",
+    "step_count": 6,
+    "step_ids": [
+      "apollo_lists",
+      "prepare_clay_batch",
+      "clay_push",
+      "clay_outputs",
+      "hubspot_crm_sync",
+      "hubspot_list_membership"
+    ]
+  },
+  "invokes": {
+    "apollo.lists.list": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "data_keys": []
+    },
+    "clay.tables.list": {
+      "success": false,
+      "error_code": "connector_missing",
+      "error_message": "No active Clay connector on smoke org",
+      "data_keys": []
+    },
+    "hubspot.contacts.search": {
+      "success": false,
+      "error_code": "auth_expired",
+      "error_message": "HubSpot OAuth is not configured on the server",
+      "data_keys": []
+    }
+  },
+  "msp_list_found": false,
+  "blockers": [
+    "clay_connector_missing"
+  ],
+  "note": "FULL PASS requires Apollo + Clay + HubSpot connected and apollo.lists.list + clay.tables.list success. Bulk HubSpot list membership (hubspot.lists.add_contact) remains agent-step / NOT RUN here to avoid writing without an explicit HUBSPOT_LIST_ID."
+}

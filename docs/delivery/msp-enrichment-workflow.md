@@ -67,13 +67,28 @@ Optional runtime parameters for tool steps:
 | Schema / catalog validation | PASS | `pytest tests/marketplace/test_msp_enrichment_workflow.py` |
 | Prospecting pack install (unit) | PASS | `pytest tests/marketplace/test_prospecting_pack.py` |
 | Merged + deployed | PASS | PR #177 merge `33f34dbd`; prod `/health` tip includes tip after #179 (`98db2abf`+) |
-| Prod live smoke | **PENDING / CI** | `scripts/smoke-msp-enrichment-workflow-live.py` via Actions workflow `MSP Enrichment Workflow Live` → artifact `docs/delivery/msp-enrichment-workflow-live.json` |
-| Full Clay→HubSpot write chain | **NOT RUN** | Needs Clay connector + `HUBSPOT_LIST_ID` + explicit list membership writes |
+| Prod live smoke | **PARTIAL** | Actions run [30622364374](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/30622364374) @ `2026-07-31T10:08:49Z` — see below |
+| Full Clay→HubSpot write chain | **NOT RUN** | Needs Clay connector on smoke org + `HUBSPOT_LIST_ID` + list membership writes |
+
+### Live smoke evidence (PARTIAL — 2026-07-31)
+
+Artifact: `docs/delivery/msp-enrichment-workflow-live.json`
+
+| Check | Result |
+|-------|--------|
+| Catalog workflow present | PASS |
+| All tool actions registered | PASS (`apollo.lists.list`, `clay.leads.push`, `clay.workflows.output.get`, `clay.crm.sync`, `hubspot.lists.add_contact`) |
+| Prospecting pack install | PASS — `enrichmentWorkflowId=e88619c4-b42e-58cc-884b-2e14a398e953`, 6 steps active |
+| `apollo.lists.list` | PASS — `success=true` @ 2026-07-31T10:08:49Z (connector `30f734a2…`) |
+| Clay connector | **BLOCKED** — `clay_connector_missing` on smoke org |
+| HubSpot contacts search | INCONCLUSIVE — `auth_expired` / OAuth not configured in Actions runner (connector row exists `547cdda5…`) |
 
 ### How to re-run live smoke
 
 Actions → **MSP Enrichment Workflow Live** → Run workflow  
 (or push changes under `scripts/smoke-msp-enrichment-workflow-live.py`)
+
+To reach FULL PASS: connect Clay on org `cbbf993b-b22f-41ce-964b-1fc25e0dd9ea`, then re-run.
 
 ## Known limits
 
