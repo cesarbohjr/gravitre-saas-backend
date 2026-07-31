@@ -1,6 +1,10 @@
 -- Additive: allow google_ads connector type (current Google Ads API, not legacy AdWords).
 -- Does NOT drop any prior CHECK values (pipedrive-drop lesson).
 --
+-- History: originally stamped 20260727120000, which collided in prod with
+-- approvals_numeric_value — so google_ads never landed until this renumbered
+-- migration (applied to prod 2026-07-30 as add_google_ads_connector_type).
+--
 -- Three-part confirmation (allowlist + registration + executors), 2026-07-27:
 --   google_ads — ALLOWED_CONNECTOR_VENDORS + google_vendor_oauth + googleads.* TOOL_REGISTRY
 --                + Connectors UI shipped:true (apps/web/lib/connectors.ts).
