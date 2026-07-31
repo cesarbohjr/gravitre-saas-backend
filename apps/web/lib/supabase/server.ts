@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 import type { NextRequest } from "next/server"
 
-import { getSupabasePublicUrl, getSupabaseServiceUrl } from "@/lib/supabase/url"
+import { getSupabaseDataUrl, getSupabaseServiceUrl } from "@/lib/supabase/url"
 
 function getSupabaseAnonKey() {
   const value = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -33,7 +33,10 @@ export function createSupabaseRouteClient(request: NextRequest): SupabaseClient 
   const authHeader = request.headers.get("authorization")
   const serviceRoleKey = getSupabaseServiceRoleKey()
   const accessKey = authHeader ? getSupabaseAnonKey() : (serviceRoleKey ?? getSupabaseAnonKey())
-  return createClient(getSupabasePublicUrl(), accessKey, {
+  // Data plane must hit the project host. Branded getSupabasePublicUrl() only
+  // proxies /auth/v1 on gravitre.app — /rest/v1 is not rewritten, so using it
+  // here breaks org resolution + table queries (e.g. /api/workflows → 403).
+  return createClient(getSupabaseDataUrl(), accessKey, {
     global: {
       headers: authHeader ? { Authorization: authHeader } : {},
     },

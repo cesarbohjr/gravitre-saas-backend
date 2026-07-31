@@ -62,6 +62,15 @@ export function getSupabaseServiceUrl(): string {
   throw new Error("Supabase project URL is not configured")
 }
 
+/**
+ * Server-side data-plane URL for PostgREST / Auth API calls from route handlers.
+ * Must be the project host (*.supabase.co), not the branded public auth origin —
+ * gravitre.app only proxies /auth/v1, not /rest/v1.
+ */
+export function getSupabaseDataUrl(): string {
+  return getSupabaseServiceUrl()
+}
+
 /** Strip internal Supabase hosts from user-visible error text. */
 export function sanitizeAuthErrorMessage(message: string | undefined | null): string {
   const text = (message ?? "").trim()

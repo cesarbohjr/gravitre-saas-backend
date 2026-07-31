@@ -35,4 +35,13 @@ describe("getSupabasePublicUrl", () => {
       "redirect to gravitre.app failed",
     )
   })
+
+  it("keeps server data-plane URL on the project host (not branded public origin)", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    process.env.NEXT_PUBLIC_APP_URL = "https://gravitre.app"
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://abc.supabase.co"
+    const { getSupabasePublicUrl, getSupabaseDataUrl } = await import("@/lib/supabase/url")
+    expect(getSupabasePublicUrl()).toBe("https://gravitre.app")
+    expect(getSupabaseDataUrl()).toBe("https://abc.supabase.co")
+  })
 })

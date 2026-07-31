@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -39,6 +39,7 @@ import { Target } from "lucide-react"
 import { apiFetch, fetcher as apiFetcher } from "@/lib/fetcher"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
+import { ensureSelectedOrg, getQuickOrgId } from "@/lib/org-context"
 import { workflowsApi } from "@/lib/api"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import type { Workflow as ApiWorkflow, WorkflowStatus } from "@/types/api"
@@ -194,16 +195,21 @@ type WorkflowStatsPayload = {
 export default function WorkflowsPage() {
   const router = useRouter()
   const { user } = useAuth()
+  const [orgId, setOrgId] = useState<string | null>(() => getQuickOrgId())
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [mesonWizardOpen, setMesonWizardOpen] = useState(false)
   const [goalWizardOpen, setGoalWizardOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [envFilter, setEnvFilter] = useState<string[]>([])
+
+  useEffect(() => {
+    if (user) void ensureSelectedOrg(true).then(setOrgId)
+  }, [user])
   
-  // Fetch workflows - only when user is authenticated
+  // Wait for org context so /api/workflows receives x-org-id / org_id (matches Connectors).
   const { data, error, isLoading, isValidating, mutate } = useSWR(
-    user ? "/api/workflows" : null,
+    user && orgId ? `/api/workflows?org_id=${orgId}` : null,
     apiFetcher,
     {
       revalidateOnFocus: false,
@@ -214,7 +220,7 @@ export default function WorkflowsPage() {
     }
   )
   const { data: statsData } = useSWR<WorkflowStatsPayload>(
-    user ? "/api/workflows/stats" : null,
+    user && orgId ? `/api/workflows/stats?org_id=${orgId}` : null,
     apiFetcher,
     {
       revalidateOnFocus: false,
