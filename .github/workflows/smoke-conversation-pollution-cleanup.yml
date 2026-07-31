@@ -1,0 +1,52 @@
+name: Smoke conversation pollution cleanup
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Apply soft-deletes (unchecked = dry run only)
+        type: boolean
+        default: true
+
+concurrency:
+  group: smoke-conversation-pollution-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Soft-delete probe/smoke conversation rows
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install script dependencies
+        run: pip install python-dotenv supabase
+
+      - name: Run cleanup
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in repo Actions secrets." >&2
+            exit 1
+          fi
+          if [ "${{ inputs.apply }}" = "true" ]; then
+            python3 scripts/cleanup-smoke-conversation-pollution.py --apply
+          else
+            python3 scripts/cleanup-smoke-conversation-pollution.py
+          fi
+
+      - name: Upload cleanup report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-conversation-pollution-cleanup
+          path: docs/delivery/smoke-conversation-pollution-cleanup.json
+          if-no-files-found: ignore
