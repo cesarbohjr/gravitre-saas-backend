@@ -117,6 +117,9 @@ def main() -> int:
     registered = set(list_registered_actions())
     required_actions = [
         "apollo.lists.list",
+        "apollo.contacts.search",
+        "apollo.lists.add",
+        "apollo.people.search",
         "clay.leads.push",
         "clay.workflows.output.get",
         "clay.crm.sync",

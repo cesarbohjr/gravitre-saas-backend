@@ -36,6 +36,15 @@ APOLLO_LISTS_CREATE_SCHEMA = ActionWorkflowSchema(
     optional_fields=(WorkflowFieldSpec("Modality", ("modality",)),),
 )
 
+APOLLO_LISTS_ADD_SCHEMA = ActionWorkflowSchema(
+    intent_label="Add contacts to Apollo list",
+    required_fields=(
+        WorkflowFieldSpec("contact ids", ("entity_ids", "contact_ids", "ids")),
+        WorkflowFieldSpec("list name", ("label_names", "list_names", "list_name", "name")),
+    ),
+    optional_fields=(WorkflowFieldSpec("Modality", ("modality",)),),
+)
+
 HUBSPOT_CONTACTS_CREATE_SCHEMA = ActionWorkflowSchema(
     intent_label="Create HubSpot contact",
     required_fields=(

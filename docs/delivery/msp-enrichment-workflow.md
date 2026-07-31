@@ -6,6 +6,8 @@ Delivery note for marketplace workflow `msp-prospects-clay-hubspot-enrichment` a
 
 Enrich an **existing** Apollo contact list (`MSP Prospects`) via Clay, sync enriched contacts to HubSpot CRM, and add them to an **existing** HubSpot **static list** (`MSPs`).
 
+When the Apollo list is empty, the coordinator agent prospects via `apollo.people.search` and populates membership with `apollo.lists.add` before Clay enrichment.
+
 ## Chat prompt (orchestration-friendly)
 
 ```
@@ -25,11 +27,12 @@ Key wording:
 | # | Step ID | Type | Action / Agent |
 |---|---------|------|----------------|
 | 1 | `apollo_lists` | `invoke_tool` | `apollo.lists.list` |
-| 2 | `prepare_clay_batch` | `agent` | Lead Enrichment Coordinator |
-| 3 | `clay_push` | `invoke_tool` | `clay.leads.push` |
-| 4 | `clay_outputs` | `invoke_tool` | `clay.workflows.output.get` |
-| 5 | `hubspot_crm_sync` | `invoke_tool` | `clay.crm.sync` |
-| 6 | `hubspot_list_membership` | `agent` | Lead Enrichment Coordinator |
+| 2 | `apollo_contacts_search` | `invoke_tool` | `apollo.contacts.search` (list_name=`MSP Prospects`) |
+| 3 | `ensure_apollo_list_and_prepare_clay` | `agent` | Populate via `apollo.people.search` + `apollo.lists.add` if empty; else prepare Clay batch |
+| 4 | `clay_push` | `invoke_tool` | `clay.leads.push` |
+| 5 | `clay_outputs` | `invoke_tool` | `clay.workflows.output.get` |
+| 6 | `hubspot_crm_sync` | `invoke_tool` | `clay.crm.sync` |
+| 7 | `hubspot_list_membership` | `agent` | Lead Enrichment Coordinator (`hubspot.lists.add_contact`) |
 
 Definition source: `backend/app/marketplace/workflows/msp_enrichment_workflow.py`
 
@@ -43,7 +46,7 @@ Definition source: `backend/app/marketplace/workflows/msp_enrichment_workflow.py
 
 ## Required connectors
 
-- **Apollo** — list discovery (`apollo.lists.list`)
+- **Apollo** — list discovery + membership (`apollo.lists.list`, `apollo.contacts.search`, `apollo.lists.add`, `apollo.people.search`)
 - **Clay** — BYO API key or webhook (`clay.leads.push`, `clay.workflows.output.get`, `clay.crm.sync`)
 - **HubSpot** — CRM sync target + `hubspot.lists.add_contact` (agent step)
 
@@ -66,7 +69,8 @@ Optional runtime parameters for tool steps:
 |-------|--------|----------|
 | Schema / catalog validation | PASS | `pytest tests/marketplace/test_msp_enrichment_workflow.py` |
 | Prospecting pack install (unit) | PASS | `pytest tests/marketplace/test_prospecting_pack.py` |
-| Merged + deployed | PASS | PR #177 merge `33f34dbd`; prod `/health` tip includes tip after #179 (`98db2abf`+) |
+| Apollo membership tools | PASS (unit) | `apollo.lists.add` → POST `/labels/add_entity_ids_to_label_names`; `apollo.contacts.search` → POST `/contacts/search` |
+| Merged + deployed | prior | PR #177 merge `33f34dbd`; prod tip after #179 (`98db2abf`+) |
 | Prod live smoke | **PARTIAL** | Actions run [30622364374](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/30622364374) @ `2026-07-31T10:08:49Z` — see below |
 | Full Clay→HubSpot write chain | **NOT RUN** | Needs Clay connector on smoke org + `HUBSPOT_LIST_ID` + list membership writes |
 
@@ -88,10 +92,10 @@ Artifact: `docs/delivery/msp-enrichment-workflow-live.json`
 Actions → **MSP Enrichment Workflow Live** → Run workflow  
 (or push changes under `scripts/smoke-msp-enrichment-workflow-live.py`)
 
-To reach FULL PASS: connect Clay on org `cbbf993b-b22f-41ce-964b-1fc25e0dd9ea`, then re-run.
+To reach FULL PASS: connect Clay on org `cbbf993b-b22f-41ce-964b-1fc25e0dd9ea`, redeploy with `apollo.contacts.search` / `apollo.lists.add`, then re-run.
 
 ## Known limits
 
 - No `hubspot.lists.list` action — list membership requires `HUBSPOT_LIST_ID` at install
-- `apollo.lists.list` lists labels only; agent step prepares contact export from list context
+- Empty Apollo lists are no longer a silent noop: agent step must call `apollo.lists.add` after prospecting
 - Bulk `hubspot.lists.add_contact` runs inside agent step (one invoke_tool step = one contact)

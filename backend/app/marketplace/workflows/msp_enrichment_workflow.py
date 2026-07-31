@@ -46,7 +46,7 @@ INSTALL_VARIABLES: list[dict[str, Any]] = [
 AGENT_SLUG = "lead-enrichment-coordinator"
 AGENT_NAME = "Lead Enrichment Coordinator"
 AGENT_PURPOSE = (
-    "Orchestrates Apollo list export, Clay enrichment, and HubSpot static list membership."
+    "Orchestrates Apollo list population/export, Clay enrichment, and HubSpot static list membership."
 )
 AGENT_ROLE = "Sales Development"
 AGENT_DEPARTMENT = "Sales"
@@ -100,12 +100,16 @@ def _agent_step(
 
 
 def build_msp_enrichment_workflow_steps() -> list[dict[str, Any]]:
-    """Ordered steps: Apollo list → Clay enrich → HubSpot CRM + list membership."""
-    apollo_list_task = (
-        f'From the Apollo lists output, locate the existing contact list named '
-        f'"{DEFAULT_APOLLO_LIST_NAME}" (or the install variable APOLLO_LIST_NAME). '
-        "Extract contact records with email, name, company, title, and LinkedIn URL. "
-        "Prepare a Clay-ready records batch for enrichment."
+    """Ordered steps: Apollo list membership → Clay enrich → HubSpot CRM + list membership."""
+    apollo_populate_task = (
+        f'Using apollo.lists.list and apollo.contacts.search results for list '
+        f'"{DEFAULT_APOLLO_LIST_NAME}" (or install variable APOLLO_LIST_NAME): '
+        "If contact_count is 0 / contacts empty, prospect with apollo.people.search, "
+        "create Apollo contacts when needed (apollo.contacts.create), then add them via "
+        f'apollo.lists.add (entity_ids + label_names=["{DEFAULT_APOLLO_LIST_NAME}"], '
+        "modality=contacts). If the list is already populated, extract contact records "
+        "(email, name, company, title, LinkedIn URL) and prepare a Clay-ready records batch "
+        "for enrichment. Set $clay_records for the next step."
     )
     hubspot_list_task = (
         f'Using the HubSpot contacts created by clay.crm.sync, add each contact to the '
@@ -120,10 +124,17 @@ def build_msp_enrichment_workflow_steps() -> list[dict[str, Any]]:
             "apollo.lists.list",
             connector="apollo",
         ),
+        _invoke(
+            "apollo_contacts_search",
+            "Search Apollo contacts in MSP Prospects",
+            "apollo.contacts.search",
+            connector="apollo",
+            param_sources={"list_name": DEFAULT_APOLLO_LIST_NAME},
+        ),
         _agent_step(
-            "prepare_clay_batch",
-            "Prepare Clay enrichment batch",
-            apollo_list_task,
+            "ensure_apollo_list_and_prepare_clay",
+            "Populate Apollo list if empty / prepare Clay batch",
+            apollo_populate_task,
             briefing_from_steps=True,
         ),
         _invoke(

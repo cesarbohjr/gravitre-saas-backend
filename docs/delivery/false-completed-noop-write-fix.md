@@ -29,6 +29,18 @@
 - Unit: `pytest tests/services/test_connector_outcome_effects.py tests/services/test_chat_connector_execution.py -q`
 - Live: re-run MSP enrich prompt after Clay connected; expect orchestration plan (not lone `apollo.lists.create`) and **no** COMPLETED for empty shell find
 
+## Apollo membership gap (class-level follow-up)
+
+`apollo.lists.create` / `apollo.lists.list` alone never moved contacts into MSP Prospects. Closed in code by:
+
+| Tool | Vendor route | Role |
+|------|--------------|------|
+| `apollo.contacts.search` | POST `/api/v1/contacts/search` (+ optional `contact_label_ids`) | Read list membership / emptiness |
+| `apollo.lists.add` | POST `/api/v1/labels/add_entity_ids_to_label_names` | Write contacts onto list names |
+
+MSP enrichment workflow steps now: `lists.list` → `contacts.search` → agent (prospect + `lists.add` if empty, else Clay batch) → Clay → HubSpot list membership.
+
 ## Status
 
-Code fix shipped in branch; prod re-verify **NOT RUN** until deploy + Clay connector + fresh chat/workflow trace.
+- Outcome / routing / steps persistence: shipped earlier; prod re-verify **NOT RUN** until deploy + Clay connector + fresh chat/workflow trace.
+- Apollo membership tools + workflow rewrite: unit-covered; live membership write **NOT RUN** pending Railway redeploy + Clay on smoke org.

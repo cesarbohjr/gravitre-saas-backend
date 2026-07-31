@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from app.connectors.action_catalog.builder import action, build_vendor
 from app.connectors.action_catalog.action_workflow_schema import (
+    APOLLO_LISTS_ADD_SCHEMA,
     APOLLO_LISTS_CREATE_SCHEMA,
     ASANA_TASKS_CREATE_SCHEMA,
     GOOGLE_ADS_CAMPAIGNS_PAUSE_SCHEMA,
@@ -552,6 +553,7 @@ VENDOR_DEFINITIONS: tuple = (
             action("apollo", "people.search", "Search people", tier="v1", kind="read", scope_suffix="people:read", idempotent=True),
             action("apollo", "organizations.search", "Search companies", tier="v1", kind="read", scope_suffix="organizations:read", idempotent=True),
             action("apollo", "contacts.get", "Get contact", tier="v1", kind="read", scope_suffix="contacts:read", idempotent=True),
+            action("apollo", "contacts.search", "Search contacts", tier="v1", kind="read", scope_suffix="contacts:read", idempotent=True),
             action("apollo", "lists.list", "List contact lists", tier="v1", kind="read", scope_suffix="labels:read", idempotent=True),
             action("apollo", "people.match", "Enrich one person", tier="v1", kind="read", scope_suffix="enrichment:read", idempotent=True),
             action("apollo", "organizations.enrich", "Enrich one organization", tier="v1", kind="read", scope_suffix="enrichment:read", idempotent=True),
@@ -567,6 +569,16 @@ VENDOR_DEFINITIONS: tuple = (
                 scope_suffix="labels:write",
                 destructive=True,
                 workflow_schema=APOLLO_LISTS_CREATE_SCHEMA,
+            ),
+            action(
+                "apollo",
+                "lists.add",
+                "Add contacts to list",
+                tier="v2",
+                kind="write",
+                scope_suffix="labels:write",
+                destructive=True,
+                workflow_schema=APOLLO_LISTS_ADD_SCHEMA,
             ),
             action("apollo", "sequences.add", "Add to sequence", tier="v2", kind="write", scope_suffix="sequences:write", destructive=True),
         ),

@@ -14,9 +14,9 @@ from app.workflows.schema import validate_definition
 def test_msp_enrichment_workflow_steps_validate():
     steps = build_msp_enrichment_workflow_steps()
     definition = validate_definition({"schema_version": SCHEMA_VERSION, "steps": steps})
-    assert len(definition["steps"]) == 6
+    assert len(definition["steps"]) == 7
     step_types = [step["type"] for step in steps]
-    assert step_types.count("invoke_tool") == 4
+    assert step_types.count("invoke_tool") == 5
     assert step_types.count("agent") == 2
 
 
@@ -29,6 +29,7 @@ def test_msp_enrichment_workflow_tool_actions_registered():
     ]
     assert actions == [
         "apollo.lists.list",
+        "apollo.contacts.search",
         "clay.leads.push",
         "clay.workflows.output.get",
         "clay.crm.sync",
@@ -40,6 +41,8 @@ def test_msp_enrichment_workflow_agent_seed():
     agent_steps = [step for step in steps if step.get("type") == "agent"]
     assert all(step["metadata"]["agent_seed"] == f"agent:{AGENT_SLUG}" for step in agent_steps)
     assert agent_steps[0]["metadata"].get("briefing_from_steps") is True
+    assert "apollo.lists.add" in agent_steps[0]["metadata"]["task"]
+    assert "apollo.people.search" in agent_steps[0]["metadata"]["task"]
 
 
 def test_msp_enrichment_workflow_catalog_asset_parses():
@@ -49,7 +52,7 @@ def test_msp_enrichment_workflow_catalog_asset_parses():
     assert asset.asset_type == "workflow"
     assert {c["connectorType"] for c in asset.required_connectors} == {"apollo", "clay", "hubspot"}
     parsed = parse_asset_config("workflow", asset.config)
-    assert len(parsed.steps) == 6
+    assert len(parsed.steps) == 7
     validated = validate_asset_payload(
         asset_type="workflow",
         config=asset.config,
