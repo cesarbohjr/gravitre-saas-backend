@@ -174,6 +174,7 @@ const stepStatusColors: Record<StepStatus, string> = {
 
 const statusVariants: Record<string, "success" | "error" | "warning" | "info"> = {
   completed: "success",
+  partial_success: "warning",
   failed: "error",
   running: "info",
   pending: "warning",
