@@ -1,16 +1,17 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest"
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest"
 
 describe("getSupabasePublicUrl", () => {
   const env = process.env
 
   beforeEach(() => {
+    vi.unstubAllEnvs()
     process.env = { ...env }
     delete process.env.NEXT_PUBLIC_SUPABASE_AUTH_URL
     delete process.env.NEXT_PUBLIC_SUPABASE_URL
-    delete process.env.NODE_ENV
   })
 
   afterEach(() => {
+    vi.unstubAllEnvs()
     process.env = env
   })
 
@@ -22,7 +23,7 @@ describe("getSupabasePublicUrl", () => {
   })
 
   it("uses gravitre.app in production when no branded env is set", async () => {
-    process.env.NODE_ENV = "production"
+    vi.stubEnv("NODE_ENV", "production")
     process.env.NEXT_PUBLIC_APP_URL = "https://gravitre.app"
     const { getSupabasePublicUrl } = await import("@/lib/supabase/url")
     expect(getSupabasePublicUrl()).toBe("https://gravitre.app")

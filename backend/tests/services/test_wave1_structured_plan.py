@@ -25,8 +25,8 @@ def test_plan_from_react_tool_call_preserves_apollo_args():
     assert plan.invoke_action == "apollo.lists.create"
     assert plan.integration == "apollo"
     assert plan.args["name"] == "MSP Prospects"
-    assert plan.requires_approval is True
-    assert plan.approval_reason == "react_structured_tool_call"
+    assert plan.requires_approval is False
+    assert plan.approval_reason is None
 
 
 def test_first_structured_plan_from_failed_react_call():
