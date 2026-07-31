@@ -1,0 +1,53 @@
+name: Chat history hygiene live
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/verify-chat-history-hygiene-live.py"
+      - ".github/workflows/chat-history-hygiene-live.yml"
+      - "backend/app/routers/conversations.py"
+      - "apps/web/app/ai/_components/ai-workspace.tsx"
+
+concurrency:
+  group: chat-history-hygiene-live
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Live history hygiene + list latency
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install httpx PyJWT python-dotenv supabase
+
+      - name: Run live hygiene probe
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+          LIVE_API_BASE: https://api.gravitre.app
+          HISTORY_LIST_BUDGET_MS: "2000"
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ] || [ -z "${SUPABASE_JWT_SECRET:-}" ]; then
+            echo "Missing Supabase secrets" >&2
+            exit 1
+          fi
+          python3 scripts/verify-chat-history-hygiene-live.py
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chat-history-hygiene-live
+          path: docs/delivery/chat-history-hygiene-live.json
+          if-no-files-found: ignore
