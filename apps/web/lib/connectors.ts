@@ -448,6 +448,52 @@ export function lookupCatalogEntry(typeOrVendorKey: string): CatalogConnectorEnt
   )
 }
 
+/** True when the connector type maps to a catalog vendor (HubSpot, Marketo, etc.). */
+export function isConnectorsHubCatalogVendor(typeOrVendorKey: string): boolean {
+  const key = connectorVendorKey(typeOrVendorKey)
+  if (!key) return false
+  return lookupCatalogEntry(key) !== undefined
+}
+
+function isStagedConnectorStub(
+  config?: Record<string, unknown> | null,
+  rawStatus?: string,
+): boolean {
+  const status = String(rawStatus ?? "")
+    .trim()
+    .toLowerCase()
+  if (status === "needs_connection") return true
+  if (!config || typeof config !== "object") return false
+  return config.staged === true || config.needs_connection === true
+}
+
+/**
+ * Connected-instance rows on /connectors must resolve to a catalog or marketplace vendor.
+ * Hides orphan rows (missing vendor/type slug) and marketplace template stubs.
+ */
+export function shouldShowConnectedConnectorOnHub(
+  typeOrVendorKey: string,
+  config?: Record<string, unknown> | null,
+  partnerVendorKeys?: ReadonlySet<string>,
+  rawStatus?: string,
+): boolean {
+  const vendorKey = connectorVendorKey(typeOrVendorKey)
+  if (!vendorKey) return false
+  if (isStagedConnectorStub(config, rawStatus)) return false
+  if (isConnectorsHubHidden(vendorKey, config)) return false
+  if (isConnectorsHubCatalogVendor(vendorKey)) return true
+  return partnerVendorKeys?.has(vendorKey) ?? false
+}
+
+/** Resolve vendor slug from API list rows (`vendor` and/or legacy `type`). */
+export function resolveConnectorVendorSlug(
+  vendor?: unknown,
+  type?: unknown,
+): string {
+  const raw = String(vendor ?? type ?? "").trim()
+  return raw ? connectorVendorKey(raw) : ""
+}
+
 /** Gravitree-managed / platform-only sources stay off the Connectors hub (Marketplace instead). */
 export function isConnectorsHubHidden(
   typeOrVendorKey: string,

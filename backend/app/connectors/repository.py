@@ -145,6 +145,7 @@ def create_connector(
     row = {
         "org_id": org_id,
         "type": connector_type,
+        "vendor": connector_type,
         "status": status or "active",
         "config": config or {},
         "created_by": created_by,

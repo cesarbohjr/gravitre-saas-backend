@@ -85,6 +85,7 @@ import {
   connectorVendorKey,
   formatVendorLabel,
   isPartnerGatedConnector,
+  shouldShowConnectedConnectorOnHub,
   isPlaidLinkConnector,
   isShippedConnector,
   listAvailableConnectors,
@@ -115,6 +116,8 @@ interface Connector {
   id: string
   name: string
   type: string
+  vendorKey: string
+  rawStatus?: string
   status: "connected" | "disconnected" | "error" | "syncing"
   displayStatus?: string
   environment: "production" | "staging"
@@ -140,6 +143,8 @@ interface Connector {
     instance_url?: string
     owner?: string
     repo?: string
+    staged?: boolean
+    needs_connection?: boolean
   }
 }
 
@@ -248,11 +253,13 @@ function normalizeConnector(input: Record<string, unknown> | ApiConnector): Conn
     model.config && typeof model.config === "object"
       ? (model.config as Record<string, unknown>)
       : {}
-  const vendorKey = String(model.vendor ?? model.type ?? "").toLowerCase().replace(/\s+/g, "_")
-  const normalizedVendorKey = vendorKey.replace(/-/g, "_")
+  const rawVendor = String(model.vendor ?? model.type ?? "").trim()
+  const normalizedVendorKey = rawVendor
+    ? connectorVendorKey(rawVendor)
+    : ""
   const inferredOAuth =
     OAUTH_VENDOR_KEYS.has(normalizedVendorKey) ||
-    OAUTH_VENDOR_KEYS.has(connectorVendorKey(normalizedVendorKey))
+    (rawVendor ? OAUTH_VENDOR_KEYS.has(connectorVendorKey(rawVendor)) : false)
   const authTypeRaw = String(cfg.authType ?? model.authType ?? model.auth_type ?? "")
   const authType =
     authTypeRaw === "oauth" || authTypeRaw === "webhook"
@@ -263,12 +270,14 @@ function normalizeConnector(input: Record<string, unknown> | ApiConnector): Conn
   const authStatus = String(model.authStatus ?? model.auth_status ?? "")
   const displayStatus = String(model.displayStatus ?? model.display_status ?? "")
   const availability = parseConnectorAvailability(model)
-  const vendor = String(model.type ?? model.vendor ?? "unknown")
+  const vendor = rawVendor || "unknown"
   const normalizedStatus = resolveConnectorDisplayStatus(rawStatus, authStatus, displayStatus)
   return {
     id: String(model.id ?? ""),
     name: String(model.name ?? "connector"),
     type: formatVendorLabel(vendor),
+    vendorKey: normalizedVendorKey,
+    rawStatus,
     status: normalizedStatus,
     displayStatus: displayStatus || undefined,
     environment: environment === "production" ? "production" : "staging",
@@ -2364,8 +2373,23 @@ function ConnectorsPageContent() {
     { revalidateOnFocus: false },
   )
 
-  const connectors = normalizeConnectorsResponse(data)
   const publishedConnectors = registryData?.connectors ?? []
+  const partnerVendorKeys = useMemo(
+    () => new Set(publishedConnectors.map((entry) => connectorVendorKey(entry.vendor))),
+    [publishedConnectors],
+  )
+  const connectors = useMemo(
+    () =>
+      normalizeConnectorsResponse(data).filter((connector) =>
+        shouldShowConnectedConnectorOnHub(
+          connector.vendorKey,
+          connector.config,
+          partnerVendorKeys,
+          connector.rawStatus,
+        ),
+      ),
+    [data, partnerVendorKeys],
+  )
   const isAdmin = orgIsAdmin
 
   useEffect(() => {

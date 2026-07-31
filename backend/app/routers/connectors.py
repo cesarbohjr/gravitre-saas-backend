@@ -244,7 +244,7 @@ def _connector_response_item(
     from app.connectors.connector_availability_service import evaluate_connector_availability
 
     connector_id = str(row["id"])
-    vendor = row.get("vendor") or row.get("type") or ""
+    vendor = str(row.get("vendor") or row.get("type") or "").strip()
     availability = evaluate_connector_availability(
         client,
         org_id,
@@ -258,6 +258,7 @@ def _connector_response_item(
         "id": connector_id,
         "name": row.get("name") or "",
         "vendor": vendor,
+        "type": vendor,
         "description": row.get("description"),
         "status": availability.get("health_status") or row.get("status") or "healthy",
         "authStatus": availability.get("auth_status"),
@@ -286,6 +287,20 @@ def _connector_response_item(
         "docsUrl": row.get("docs_url"),
         "phiCapable": bool(row.get("phi_capable")),
     }
+
+
+def _visible_on_connectors_hub(row: dict) -> bool:
+    """Drop vendor-less template stubs from the Connectors hub list."""
+    vendor = str(row.get("vendor") or row.get("type") or "").strip()
+    if not vendor:
+        return False
+    status = str(row.get("status") or "").strip().lower()
+    if status == "needs_connection":
+        return False
+    config = row.get("config") if isinstance(row.get("config"), dict) else {}
+    if config.get("staged") or config.get("needs_connection"):
+        return False
+    return True
 
 
 def _validate_webhook(url: str | None) -> None:
@@ -490,7 +505,7 @@ async def list_connectors_route_alias(
     q = (
         client.table("connectors")
         .select(
-            "id, name, vendor, description, status, environment, config, sync_frequency, "
+            "id, name, vendor, type, description, status, environment, config, sync_frequency, "
             "last_sync_at, records_synced, docs_url, api_key_encrypted, webhook_url"
         )
         .eq("org_id", org_id)
@@ -509,6 +524,7 @@ async def list_connectors_route_alias(
             force_live=live,
         )
         for row in list(q.data or [])
+        if _visible_on_connectors_hub(row)
     ]
     return {"connectors": items}
 
@@ -579,7 +595,7 @@ async def get_connector_route_alias(
     row = (
         client.table("connectors")
         .select(
-            "id, name, vendor, description, status, environment, config, sync_frequency, "
+            "id, name, vendor, type, description, status, environment, config, sync_frequency, "
             "last_sync_at, records_synced, docs_url, api_key_encrypted, webhook_url"
         )
         .eq("org_id", org_id)
