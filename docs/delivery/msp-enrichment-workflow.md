@@ -66,7 +66,14 @@ Optional runtime parameters for tool steps:
 |-------|--------|----------|
 | Schema / catalog validation | PASS | `pytest tests/marketplace/test_msp_enrichment_workflow.py` |
 | Prospecting pack install (unit) | PASS | `pytest tests/marketplace/test_prospecting_pack.py` |
-| Prod workflow execute | **NOT RUN** | Requires merge → deploy → run with Apollo + Clay + HubSpot connected |
+| Merged + deployed | PASS | PR #177 merge `33f34dbd`; prod `/health` tip includes tip after #179 (`98db2abf`+) |
+| Prod live smoke | **PENDING / CI** | `scripts/smoke-msp-enrichment-workflow-live.py` via Actions workflow `MSP Enrichment Workflow Live` → artifact `docs/delivery/msp-enrichment-workflow-live.json` |
+| Full Clay→HubSpot write chain | **NOT RUN** | Needs Clay connector + `HUBSPOT_LIST_ID` + explicit list membership writes |
+
+### How to re-run live smoke
+
+Actions → **MSP Enrichment Workflow Live** → Run workflow  
+(or push changes under `scripts/smoke-msp-enrichment-workflow-live.py`)
 
 ## Known limits
 

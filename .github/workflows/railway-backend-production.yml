@@ -154,3 +154,29 @@ jobs:
           name: smoke-post-deploy-chat-live
           path: docs/delivery/smoke-post-deploy-chat-live.json
           if-no-files-found: ignore
+
+      - name: MSP enrichment workflow live smoke
+        if: always()
+        env:
+          BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: |
+          set +e
+          python3 scripts/smoke-msp-enrichment-workflow-live.py
+          CODE=$?
+          set -e
+          echo "msp_enrichment_smoke_exit=$CODE"
+          # 0 PASS / 2 PARTIAL are acceptable; 1 FAIL soft-fails deploy gate
+          if [ "$CODE" -eq 1 ]; then
+            echo "::warning::MSP enrichment live smoke FAIL — see artifact"
+          fi
+
+      - name: Upload MSP enrichment smoke artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: msp-enrichment-workflow-live
+          path: docs/delivery/msp-enrichment-workflow-live.json
+          if-no-files-found: ignore

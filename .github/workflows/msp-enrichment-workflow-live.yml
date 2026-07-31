@@ -8,6 +8,13 @@ on:
         description: "Reason for manual trigger"
         required: false
         default: "post-merge verification"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/smoke-msp-enrichment-workflow-live.py"
+      - ".github/workflows/msp-enrichment-workflow-live.yml"
+      - "backend/app/marketplace/workflows/msp_enrichment_workflow.py"
+      - "backend/app/marketplace/intelligence_packs/prospecting_install.py"
 
 concurrency:
   group: msp-enrichment-workflow-live
