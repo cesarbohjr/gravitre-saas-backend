@@ -42,6 +42,7 @@ def _table_chain(data: list[dict] | None = None, *, error: Exception | None = No
     chain.is_.return_value = chain
     chain.ilike.return_value = chain
     chain.gte.return_value = chain
+    chain.gt.return_value = chain
     chain.order.return_value = chain
     chain.limit.return_value = chain
     chain.range.return_value = chain
@@ -124,6 +125,7 @@ def test_create_conversation_supabase_v2_response_without_error_attr(monkeypatch
     dedup_chain.is_.return_value = dedup_chain
     dedup_chain.ilike.return_value = dedup_chain
     dedup_chain.gte.return_value = dedup_chain
+    dedup_chain.gt.return_value = dedup_chain
     dedup_chain.order.return_value = dedup_chain
     dedup_chain.limit.return_value = dedup_chain
     dedup_chain.execute.return_value = V2Response([])
@@ -397,6 +399,35 @@ def test_pin_conversation(monkeypatch):
     response = client.post("/api/conversations/conv-1/pin")
     assert response.status_code == 200
     assert response.json()["pinned_at"] == "2026-07-20T12:00:00+00:00"
+
+
+def test_list_conversations_excludes_empty_threads(monkeypatch):
+    """History list must not surface message_count=0 shells (probe/pre-create pollution)."""
+    _authenticate()
+    list_chain = _table_chain(
+        [
+            {
+                "id": "conv-real",
+                "title": "Real thread",
+                "preview": "hello",
+                "message_count": 2,
+                "created_at": "2026-07-20T10:00:00+00:00",
+                "updated_at": "2026-07-20T11:00:00+00:00",
+                "archived_at": None,
+                "pinned_at": None,
+            }
+        ]
+    )
+    supabase = MagicMock()
+    supabase.table.return_value = list_chain
+    monkeypatch.setattr(
+        "app.routers.conversations.create_client",
+        lambda *_args, **_kwargs: supabase,
+    )
+    response = client.get("/api/conversations")
+    assert response.status_code == 200
+    assert [row["id"] for row in response.json()["conversations"]] == ["conv-real"]
+    list_chain.gt.assert_called_once_with("message_count", 0)
 
 
 def test_list_conversations_search_includes_message_content(monkeypatch):

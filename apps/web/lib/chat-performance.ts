@@ -2,6 +2,7 @@
 
 export type ChatPerfStage =
   | "page_load"
+  | "conversation_list"
   | "conversation_load"
   | "first_token"
   | "total_response"

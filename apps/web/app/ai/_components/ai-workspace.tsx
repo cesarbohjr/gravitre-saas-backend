@@ -62,10 +62,6 @@ import {
   deriveConversationTitle,
   shouldRefreshConversationTitle,
 } from "@/lib/conversation-title"
-import {
-  assertConversationCreateOrgAllowed,
-  isConversationSmokeGuardError,
-} from "@/lib/conversation-smoke-guard"
 import { ApiError } from "@/lib/fetcher"
 import type { AiEngine } from "@/lib/ai-surface-handoff"
 import type { SearchResult } from "@/types/api"
@@ -297,12 +293,18 @@ export function AiWorkspace({
     mutate: mutateConversations,
   } = useSWR(
     user && orgReady ? ["ai-conversations", deferredHistorySearch] : null,
-    () =>
-      conversationsApi.list({
-        limit: 100,
-        includeArchived: true,
-        search: deferredHistorySearch || undefined,
-      }),
+    async () => {
+      startChatPerf("conversation_list")
+      try {
+        return await conversationsApi.list({
+          limit: 100,
+          includeArchived: true,
+          search: deferredHistorySearch || undefined,
+        })
+      } finally {
+        endChatPerf("conversation_list")
+      }
+    },
     { revalidateOnFocus: false },
   )
   const conversations = conversationsData?.conversations ?? []
@@ -707,54 +709,24 @@ export function AiWorkspace({
         refreshConversationTitleIfNeeded(existingId, title)
         return existingId
       }
-      // Default-deny: test/service credentials cannot create threads outside isolated org.
-      assertConversationCreateOrgAllowed(
-        getSelectedOrgFromStorage()?.id ?? null,
-        user?.id ?? null,
-        user?.email ?? null,
-      )
       if (!pendingConversationRef.current) {
         const createTitle = deriveConversationTitle(title)
-        pendingConversationRef.current = conversationsApi
-          .create({ title: createTitle })
-          .then((created) => {
-            activeConversationIdRef.current = created.id
-            pendingConversationIdsRef.current.add(created.id)
-            setActiveConversationId(created.id)
-            setConversationTitle(created.title || createTitle)
-            conversationTitleRef.current = created.title || createTitle
-            writeStoredConversationId(created.id)
-            void mutateConversations(
-              (current) => {
-                if (!current) return current
-                if (current.conversations.some((conversation) => conversation.id === created.id)) {
-                  return current
-                }
-                return {
-                  ...current,
-                  conversations: [created, ...current.conversations],
-                }
-              },
-              { revalidate: false },
-            )
-            void mutateConversations()
-            return created.id
-          })
-          .catch((error) => {
-            // Fail loudly for smoke/CI misconfig — never silent-null pollution paths.
-            if (isConversationSmokeGuardError(error)) throw error
-            if (error instanceof ApiError && isConversationSmokeGuardError(error.message)) {
-              throw error
-            }
-            return null
-          })
-          .finally(() => {
-            pendingConversationRef.current = null
-          })
+        const newId = crypto.randomUUID()
+        pendingConversationRef.current = Promise.resolve(newId).finally(() => {
+          pendingConversationRef.current = null
+        })
+        activeConversationIdRef.current = newId
+        pendingConversationIdsRef.current.add(newId)
+        setActiveConversationId(newId)
+        setConversationTitle(createTitle)
+        conversationTitleRef.current = createTitle
+        writeStoredConversationId(newId)
+        // Row is created on the backend when the first message persists — not here.
+        return newId
       }
       return pendingConversationRef.current
     },
-    [mutateConversations, refreshConversationTitleIfNeeded, user?.id, user?.email],
+    [refreshConversationTitleIfNeeded],
   )
 
   const applyConversationMessages = useCallback(
