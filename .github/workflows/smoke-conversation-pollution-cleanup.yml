@@ -7,6 +7,11 @@ on:
         description: Apply soft-deletes (unchecked = dry run only)
         type: boolean
         default: true
+  push:
+    branches: [main]
+    paths:
+      - "scripts/cleanup-smoke-conversation-pollution.py"
+      - ".github/workflows/smoke-conversation-pollution-cleanup.yml"
 
 concurrency:
   group: smoke-conversation-pollution-cleanup
@@ -37,7 +42,8 @@ jobs:
             echo "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in repo Actions secrets." >&2
             exit 1
           fi
-          if [ "${{ inputs.apply }}" = "true" ]; then
+          APPLY="${{ github.event_name == 'workflow_dispatch' && inputs.apply || 'true' }}"
+          if [ "$APPLY" = "true" ]; then
             python3 scripts/cleanup-smoke-conversation-pollution.py --apply
           else
             python3 scripts/cleanup-smoke-conversation-pollution.py
