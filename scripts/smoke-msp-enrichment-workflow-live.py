@@ -311,4 +311,20 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except Exception as exc:  # noqa: BLE001
+        fail = {
+            "pass": False,
+            "partial": False,
+            "ran_at": utcnow(),
+            "error": f"{exc.__class__.__name__}: {exc}",
+            "note": "Smoke crashed before writing full artifact",
+        }
+        try:
+            OUT.parent.mkdir(parents=True, exist_ok=True)
+            OUT.write_text(json.dumps(fail, indent=2) + "\n", encoding="utf-8")
+        except Exception:  # noqa: BLE001
+            pass
+        print(json.dumps(fail, indent=2), file=sys.stderr)
+        raise SystemExit(1)
