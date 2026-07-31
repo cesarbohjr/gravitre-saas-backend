@@ -108,6 +108,16 @@ APOLLO = {
         "Build ICP and Create list work with any connected Apollo account."
     ),
 }
+CLAY = {
+    "connectorType": "clay",
+    "label": "Clay",
+    "required": False,
+    "connectPath": "/connectors?type=clay",
+    "requirementNote": (
+        "Clay requires your own Clay workspace API key or webhook URL (BYO). "
+        "Used for lead enrichment before CRM sync."
+    ),
+}
 NOTION = {
     "connectorType": "notion",
     "label": "Notion",
@@ -282,6 +292,14 @@ def _ai_agents() -> list[CatalogAsset]:
         ("ticket-triage", "Ticket Triage Agent", "Support", "SUPPORT", ["zendesk"], ["ticket-triage", "macro-suggestion"]),
         ("cfo-agent", "CFO Agent", "Finance", "FINANCE", ["quickbooks"], ["variance-analysis", "board-reporting"]),
         ("sdr-coach", "SDR Coach", "Sales", "SALES", ["hubspot"], ["call-coaching", "sequence-optimization"]),
+        (
+            "lead-enrichment-coordinator",
+            "Lead Enrichment Coordinator",
+            "Sales",
+            "SALES",
+            ["apollo", "clay", "hubspot"],
+            ["enrichment", "list_sync", "apollo_lists", "hubspot_lists"],
+        ),
     ]
     assets: list[CatalogAsset] = []
     for slug, name, department, persona, systems, capabilities in specs:
@@ -317,6 +335,12 @@ def _ai_agents() -> list[CatalogAsset]:
 
 
 def _workflows() -> list[CatalogAsset]:
+    from app.marketplace.workflows.msp_enrichment_workflow import (
+        INSTALL_VARIABLES as MSP_ENRICHMENT_INSTALL_VARS,
+        WORKFLOW_DESCRIPTION as MSP_ENRICHMENT_DESCRIPTION,
+        build_msp_enrichment_workflow_steps,
+    )
+
     definitions: list[tuple[str, str, str, list[dict], list[dict]]] = [
         (
             "hubspot-lead-qualification",
@@ -448,20 +472,29 @@ def _workflows() -> list[CatalogAsset]:
                 ),
             ],
         ),
+        (
+            "msp-prospects-clay-hubspot-enrichment",
+            "MSP Prospects Clay Enrichment → HubSpot Sync",
+            "Sales",
+            [APOLLO, CLAY, HUBSPOT],
+            build_msp_enrichment_workflow_steps(),
+        ),
     ]
     assets: list[CatalogAsset] = []
     for slug, title, department, connectors, steps in definitions:
+        is_msp_enrichment = slug == "msp-prospects-clay-hubspot-enrichment"
         assets.append(
             CatalogAsset(
                 slug=slug,
                 title=title,
-                description=f"{title} — starter workflow template.",
+                description=MSP_ENRICHMENT_DESCRIPTION if is_msp_enrichment else f"{title} — starter workflow template.",
                 asset_type="workflow",
                 category="workflow",
                 department=department,
                 tags=["workflow", "starter", department.lower().replace(" ", "-")],
-                config=_workflow(title, f"Automated {title.lower()} playbook.", steps),
+                config=_workflow(title, MSP_ENRICHMENT_DESCRIPTION if is_msp_enrichment else f"Automated {title.lower()} playbook.", steps),
                 required_connectors=connectors,
+                install_variables=MSP_ENRICHMENT_INSTALL_VARS if is_msp_enrichment else [],
             )
         )
     return assets
@@ -837,6 +870,7 @@ def _intelligence_packs() -> list[CatalogAsset]:
                     "label": "Apollo.io (discovery = BYO search plan)",
                 },
                 {**PDL, "required": False},
+                *([{**CLAY, "required": False}] if spec.pack_id == "prospecting-intelligence-pack" else []),
             ]
         elif spec.pack_id == "marketing-intelligence-pack":
             required = [

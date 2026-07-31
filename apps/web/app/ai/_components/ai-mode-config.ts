@@ -27,6 +27,10 @@ export const AI_MODES: ModeMeta[] = [
 
 export const AI_EXAMPLE_PROMPTS: Array<{ text: string; hint: AiEngine }> = [
   {
+    text: 'Use Clay to enrich the existing Apollo contact list "MSP Prospects", then add those enriched contacts to the existing HubSpot static list "MSPs".',
+    hint: "chat",
+  },
+  {
     text: "Search Google Drive for the quarterly report and summarize the first page",
     hint: "chat",
   },

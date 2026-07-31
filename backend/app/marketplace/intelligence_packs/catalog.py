@@ -509,9 +509,20 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
                     ),
                     external_url="https://dashboard.peopledatalabs.com/",
                 ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "clay-list-enrichment",
+                    "Clay List Enrichment",
+                    "sales",
+                    "outbound_prospecting",
+                    reference_summary=(
+                        "Enrich existing Apollo contact lists via Clay (clay.leads.push → clay.workflows.output.get), "
+                        "then sync to HubSpot static lists. Requires BYO Clay workspace API key or webhook."
+                    ),
+                ),
             ],
             demo_agent_name="Lead Scouting Analyst",
-            demo_systems=["apollo", "hubspot"],
+            demo_systems=["apollo", "hubspot", "clay"],
             connector_template_id="prospecting-intelligence-sources",
             workflow_name="Prospecting Apollo Lead Scout",
             workflow_description=(
