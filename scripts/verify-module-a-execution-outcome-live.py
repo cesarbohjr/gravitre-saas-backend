@@ -81,6 +81,22 @@ def main() -> int:
         success=False,
         summary=summary,
         user_id=user_id,
+        conversation_id=conversation_id,
+        metadata={
+            "integration": "slack",
+            "invoke_action": "slack.post_message",
+            "path": "module_a_live_acceptance",
+        },
+    )
+    # Idempotency: second finalize must not create a second notification.
+    finalize_orchestration_run(
+        client,
+        org_id=org_id,
+        run_id=run_id,
+        success=False,
+        summary=summary,
+        user_id=user_id,
+        conversation_id=conversation_id,
     )
 
     legacy_run = (
@@ -155,6 +171,7 @@ def main() -> int:
         .execute()
     )
 
+    note_count = len(notes.data or [])
     checks = {
         "runs_legacy_failed": bool(run and run.get("status") == "failed"),
         "runs_contract_failed": bool(contract and str(contract.get("status") or "") in {
@@ -162,7 +179,8 @@ def main() -> int:
         }) or bool(contract),  # status enum may differ; presence after mirror is required
         "audit_events": bool(audit_events.data),
         "audit_logs": bool(audit_logs_matching),
-        "notifications_run_failed": bool(notes.data),
+        "notifications_run_failed": note_count >= 1,
+        "notifications_exactly_one": note_count == 1,
         "learning_workflow_failed": bool(learning.data),
     }
     # Tighten contract status if present

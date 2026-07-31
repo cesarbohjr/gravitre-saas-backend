@@ -249,6 +249,7 @@ def _persist_run(client: Any, event: ExecutionOutcomeEvent, status: TerminalStat
             },
             "summary": vo.summary,
             "notification_emitted": True,
+            "outcome_finalized": True,
         }
         meta = dict(event.metadata or {})
         for key in ("action_args", "invoke_action", "integration", "tool_name", "conversation_id"):
@@ -477,6 +478,34 @@ def _coerce_verified_output(
     return None
 
 
+def _run_already_finalized(client: Any, event: ExecutionOutcomeEvent) -> bool:
+    """Skip duplicate fanout when this run already reached a terminal outcome."""
+    if not event.persist_run or not event.run_id:
+        return False
+    try:
+        row = (
+            client.table("workflow_runs")
+            .select("status, parameters")
+            .eq("id", event.run_id)
+            .eq("org_id", event.org_id)
+            .limit(1)
+            .execute()
+        )
+        data = (row.data or [{}])[0]
+        status = str(data.get("status") or "")
+        params = data.get("parameters") if isinstance(data.get("parameters"), dict) else {}
+        if not is_terminal_run_status(status):
+            return False
+        return bool(params.get("notification_emitted") or params.get("outcome_finalized"))
+    except Exception as exc:  # noqa: BLE001
+        logger.debug(
+            "execution_outcome_idempotency_check_skipped run_id=%s error=%s",
+            event.run_id,
+            exc,
+        )
+        return False
+
+
 def finalize_execution_outcome(
     client: Any,
     event: ExecutionOutcomeEvent | None = None,
@@ -531,6 +560,32 @@ def finalize_execution_outcome(
     ts = event.timestamp or _now_iso()
     if not event.workflow_id:
         event.workflow_id = _resolve_workflow_id(client, event)
+
+    if _run_already_finalized(client, event):
+        logger.info(
+            "execution_outcome_idempotent_skip org_id=%s run_id=%s status=%s source=%s",
+            event.org_id,
+            event.run_id,
+            terminal,
+            event.source,
+        )
+        return FinalizeExecutionOutcomeResult(
+            status=terminal,
+            run_id=event.run_id,
+            audit_action=_audit_action_for(terminal),
+            notification_event=_notification_event_for(terminal),
+            learning_event=_learning_event_for(terminal),
+            timestamp=ts,
+            fanout={
+                "run_persisted": True,
+                "audit_written": True,
+                "notification_emitted": True,
+                "learning_recorded": True,
+                "failure_alert_correlated": terminal == "failed",
+                "idempotent_skip": True,
+            },
+        )
+
     fanout = {
         "run_persisted": False,
         "audit_written": False,

@@ -24,6 +24,7 @@ from app.services.conversational_execution_service import (
     ExecutionResult,
 )
 from app.services.chat_orchestration_runs import (
+    finalize_orchestration_failure,
     finalize_orchestration_run,
     first_external_step_url,
     orchestration_run_fully_completed,
@@ -1082,6 +1083,8 @@ class ChatOrchestrationService:
             client=client,
             classification=classification,
             environment_name=environment_name,
+            # Orchestration owns the single Module A terminal for the whole run.
+            own_terminal_outcome=False,
         )
         step_results = list(params.get("step_results") or [])
         step_results.append(_step_result_row(step, result))
@@ -1134,15 +1137,18 @@ class ChatOrchestrationService:
         )
         refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
         if not result.success:
-            if run_id:
-                finalize_orchestration_run(
-                    client,
-                    org_id=org_id,
-                    run_id=run_id,
-                    success=False,
-                    summary=result.body,
-                    user_id=user_id,
-                )
+            plan = step.plan
+            finalize_orchestration_failure(
+                client,
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                summary=result.body,
+                run_id=run_id,
+                step_label=step.label,
+                integration=plan.integration if plan else result.integration,
+                invoke_action=plan.invoke_action if plan else None,
+            )
             return {
                 "stop_pipeline": True,
                 "dialogue_mode": "answer",
@@ -1210,6 +1216,7 @@ class ChatOrchestrationService:
                 client=client,
                 classification=classification,
                 environment_name=environment_name,
+                own_terminal_outcome=False,
             )
 
         # Phase 2 A/B — honor X-Gravitree-React-Serial / GRAVITREE_REACT_SERIAL_TOOLS
@@ -1248,15 +1255,18 @@ class ChatOrchestrationService:
                     result_url=_vendor_url_from_execution(result),
                 )
             if not result.success:
-                if run_id:
-                    finalize_orchestration_run(
-                        client,
-                        org_id=org_id,
-                        run_id=run_id,
-                        success=False,
-                        summary=result.body,
-                        user_id=user_id,
-                    )
+                plan = step.plan
+                finalize_orchestration_failure(
+                    client,
+                    org_id=org_id,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    summary=result.body,
+                    run_id=run_id,
+                    step_label=step.label,
+                    integration=plan.integration if plan else result.integration,
+                    invoke_action=plan.invoke_action if plan else None,
+                )
                 params["step_results"] = step_results
                 params["current_step_index"] = step_idx + 1
                 return {
@@ -1420,6 +1430,7 @@ class ChatOrchestrationService:
                 client=client,
                 classification=classification,
                 environment_name=environment_name,
+                own_terminal_outcome=False,
             )
             if not result.success:
                 if run_id:
@@ -1432,14 +1443,17 @@ class ChatOrchestrationService:
                         summary=result.body,
                         result_url=_vendor_url_from_execution(result),
                     )
-                    finalize_orchestration_run(
-                        client,
-                        org_id=org_id,
-                        run_id=run_id,
-                        success=False,
-                        summary=result.body,
-                        user_id=user_id,
-                    )
+                finalize_orchestration_failure(
+                    client,
+                    org_id=org_id,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    summary=result.body,
+                    run_id=run_id,
+                    step_label=step.label,
+                    integration=plan.integration if plan else result.integration,
+                    invoke_action=plan.invoke_action if plan else None,
+                )
                 return {
                     "stop_pipeline": True,
                     "dialogue_mode": "answer",
@@ -1512,6 +1526,7 @@ class ChatOrchestrationService:
                 success=run_ok,
                 summary=summary_body,
                 user_id=user_id,
+                conversation_id=conversation_id,
             )
         else:
             # Orphan path: no run_id and no steps to create one — still fan out.

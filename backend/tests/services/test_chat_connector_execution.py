@@ -697,3 +697,46 @@ async def test_execute_plan_write_without_body_or_url_fails_verifiability_gate(c
     assert result.success is False
     assert result.error_code == "unverifiable_output"
     assert "verified output" in str(result.body or "").lower()
+
+
+@pytest.mark.asyncio
+async def test_execute_plan_orch_step_skips_module_a_fanout(connector_service):
+    """Orchestration owns the terminal — per-step execute must not double-notify."""
+    plan = ConnectorActionPlan(
+        tool_name="slack_post_message",
+        invoke_action="slack.post_message",
+        integration="slack",
+        kind="write",
+        label="Post to Slack",
+        args={"channel": "C1", "text": "hi"},
+        requires_approval=False,
+    )
+    with patch.object(
+        connector_service,
+        "_registry",
+        MagicMock(
+            execute_tool=AsyncMock(
+                return_value={
+                    "success": False,
+                    "connector_id": "conn-slack",
+                    "error": "channel_not_found",
+                    "error_code": "channel_not_found",
+                }
+            )
+        ),
+    ), patch.object(
+        connector_service,
+        "_finalize_connector_outcome",
+    ) as finalize:
+        result = await connector_service.execute_plan(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            plan=plan,
+            client=MagicMock(),
+            classification={},
+            own_terminal_outcome=False,
+        )
+
+    assert result.success is False
+    finalize.assert_not_called()

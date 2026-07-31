@@ -60,6 +60,51 @@ def test_orchestration_run_fully_completed_rejects_all_skipped():
     )
 
 
+def test_finalize_orchestration_failure_orphan_emits_without_run():
+    client = MagicMock()
+    with (
+        patch("app.services.chat_orchestration_runs.finalize_execution_outcome") as finalize,
+        patch("app.services.chat_orchestration_runs.finalize_orchestration_run") as finalize_run,
+    ):
+        from app.services.chat_orchestration_runs import finalize_orchestration_failure
+
+        finalize_orchestration_failure(
+            client,
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            summary="Step failed",
+            run_id=None,
+            step_label="Post to Slack",
+            integration="slack",
+            invoke_action="slack.post_message",
+        )
+    finalize_run.assert_not_called()
+    finalize.assert_called_once()
+    assert finalize.call_args.kwargs["status"] == "failed"
+    assert finalize.call_args.kwargs["persist_run"] is False
+    assert finalize.call_args.kwargs["metadata"]["conversation_id"] == "conv-1"
+    assert finalize.call_args.kwargs["metadata"]["invoke_action"] == "slack.post_message"
+
+
+def test_finalize_orchestration_failure_with_run_delegates_to_run_finalize():
+    client = MagicMock()
+    with patch("app.services.chat_orchestration_runs.finalize_orchestration_run") as finalize_run:
+        from app.services.chat_orchestration_runs import finalize_orchestration_failure
+
+        finalize_orchestration_failure(
+            client,
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            summary="Step failed",
+            run_id="run-9",
+        )
+    finalize_run.assert_called_once()
+    assert finalize_run.call_args.kwargs["run_id"] == "run-9"
+    assert finalize_run.call_args.kwargs["success"] is False
+
+
 def test_finalize_orchestration_run_failure_emits_audit_and_notification():
     client = MagicMock()
     with (

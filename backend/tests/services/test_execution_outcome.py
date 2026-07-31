@@ -68,6 +68,33 @@ def test_is_terminal_run_status() -> None:
     assert not is_terminal_run_status("paused")
 
 
+def test_finalize_skips_duplicate_terminal_fanout() -> None:
+    client = MagicMock()
+    client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
+        {
+            "status": "failed",
+            "parameters": {"notification_emitted": True, "outcome_finalized": True},
+        }
+    ]
+    with (
+        patch("app.workflows.repository.update_run") as update_run,
+        patch("app.services.notification_emitter.emit_notification") as emit_notification,
+    ):
+        result = finalize_execution_outcome(
+            client,
+            org_id="org-1",
+            status="failed",
+            source="chat_orch",
+            actor_id="11111111-1111-1111-1111-111111111111",
+            run_id="22222222-2222-2222-2222-222222222222",
+            error_summary="duplicate",
+        )
+
+    update_run.assert_not_called()
+    emit_notification.assert_not_called()
+    assert result.fanout.get("idempotent_skip") is True
+
+
 def test_finalize_failure_fanout() -> None:
     client = _Client()
     with (
