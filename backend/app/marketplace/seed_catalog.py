@@ -870,6 +870,7 @@ def _intelligence_packs() -> list[CatalogAsset]:
                     "label": "Apollo.io (discovery = BYO search plan)",
                 },
                 {**PDL, "required": False},
+                *([{**CLAY, "required": False}] if spec.pack_id == "prospecting-intelligence-pack" else []),
             ]
         elif spec.pack_id == "marketing-intelligence-pack":
             required = [

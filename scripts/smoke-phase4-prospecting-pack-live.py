@@ -341,6 +341,18 @@ def main() -> int:
             "live_in_smoke": apollo_list_ok and hubspot_list_ok,
             "status": "real",
         },
+        "clay-list-enrichment": {
+            "depends_on_connector": ["apollo", "clay", "hubspot"],
+            "workflow_id": bundle.get("enrichmentWorkflowId"),
+            "actions": [
+                "apollo.lists.list",
+                "clay.leads.push",
+                "clay.workflows.output.get",
+                "clay.crm.sync",
+            ],
+            "status": "real_catalog" if bundle.get("enrichmentWorkflowId") else "missing",
+            "note": "Enrichment workflow seeded on Prospecting pack install; live Clay execute NOT RUN in this smoke",
+        },
         "account-enrichment-gated": {
             "depends_on_connector": ["crunchbase", "pdl"],
             "status": "governance_stub",
@@ -353,6 +365,7 @@ def main() -> int:
     passed = (
         bool(bundle.get("agentId"))
         and bool(bundle.get("workflowId"))
+        and bool(bundle.get("enrichmentWorkflowId"))
         and int(bundle.get("assignmentCount") or 0) >= 1
         and bool(apollo_id)
         and bool(hubspot_id)
