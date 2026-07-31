@@ -88,6 +88,7 @@ def _conversation_ids_matching_message_content(
         .eq("org_id", org_id)
         .eq("user_id", user_id)
         .is_("deleted_at", "null")
+        .gt("message_count", 0)
         .limit(500)
         .execute()
     )
@@ -293,6 +294,7 @@ def _find_duplicate_conversation(
         .eq("org_id", org_id)
         .eq("user_id", user_id)
         .is_("deleted_at", "null")
+        .gt("message_count", 0)
         .ilike("title", title.strip())
         .gte("created_at", since)
         .order("updated_at", desc=True)
@@ -313,12 +315,14 @@ def _list_conversations_query(
     include_archived: bool,
     select_cols: str,
 ):
+    """Sidebar/history list — only threads with at least one persisted message."""
     query = (
         client.table("conversations")
         .select(select_cols)
         .eq("org_id", org_id)
         .eq("user_id", user_id)
         .is_("deleted_at", "null")
+        .gt("message_count", 0)
     )
     if not include_archived:
         query = query.is_("archived_at", "null")
@@ -336,6 +340,7 @@ async def list_conversations(
     offset: int = Query(default=0, ge=0),
 ) -> dict:
     org_id = _require_org(org_id)
+    load_started = time.monotonic()
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     select_cols = "id, title, preview, message_count, created_at, updated_at, archived_at, pinned_at"
     select_fallback = "id, title, preview, message_count, created_at, updated_at, archived_at"
@@ -408,7 +413,16 @@ async def list_conversations(
 
         merged = _merge_conversation_rows(title_response.data or [], content_rows)
         page = merged[offset : offset + limit]
-        return {"conversations": [_normalize_conversation(row) for row in page]}
+        rows = [_normalize_conversation(row) for row in page]
+        logger.info(
+            "chat_perf stage=conversation_list org_id=%s user_id=%s ms=%s rows=%s search=%s",
+            org_id,
+            user["user_id"],
+            int((time.monotonic() - load_started) * 1000),
+            len(rows),
+            bool(term),
+        )
+        return {"conversations": rows}
 
     query = _list_conversations_query(
         client,
@@ -432,12 +446,37 @@ async def list_conversations(
         ).execute()
         if response_error(response):
             raise HTTPException(status_code=500, detail=str(response_error(response)))
-        return {"conversations": [_normalize_conversation(row) for row in (response.data or [])]}
+        rows = [_normalize_conversation(row) for row in (response.data or [])]
+        logger.info(
+            "chat_perf stage=conversation_list org_id=%s user_id=%s ms=%s rows=%s search=%s",
+            org_id,
+            user["user_id"],
+            int((time.monotonic() - load_started) * 1000),
+            len(rows),
+            bool(term),
+        )
+        return {"conversations": rows}
     if _is_missing_table_error(response_error(response)):
+        logger.info(
+            "chat_perf stage=conversation_list org_id=%s user_id=%s ms=%s rows=0 search=%s",
+            org_id,
+            user["user_id"],
+            int((time.monotonic() - load_started) * 1000),
+            bool(term),
+        )
         return {"conversations": []}
     if response_error(response):
         raise HTTPException(status_code=500, detail=str(response_error(response)))
-    return {"conversations": [_normalize_conversation(row) for row in (response.data or [])]}
+    rows = [_normalize_conversation(row) for row in (response.data or [])]
+    logger.info(
+        "chat_perf stage=conversation_list org_id=%s user_id=%s ms=%s rows=%s search=%s",
+        org_id,
+        user["user_id"],
+        int((time.monotonic() - load_started) * 1000),
+        len(rows),
+        bool(term),
+    )
+    return {"conversations": rows}
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
