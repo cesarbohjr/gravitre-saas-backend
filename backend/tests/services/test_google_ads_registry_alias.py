@@ -17,12 +17,24 @@ def test_resolve_registry_action_prefers_googleads_dedicated_executor():
     )
 
 
+def test_resolve_registry_action_keeps_google_drive_long_form():
+    registered = {
+        "google_drive.search_files",
+        "drive.search_files",  # orphan stub must not win
+    }
+    assert (
+        resolve_registry_action("google_drive.search_files", registered)
+        == "google_drive.search_files"
+    )
+
+
 def test_catalog_http_skips_google_ads_when_googleads_implemented():
     skip = {k for k in _TOOL_REGISTRY if k.startswith("googleads.")}
     built = build_catalog_http_executors(skip=skip)
     assert "google_ads.accounts.list" not in built
     assert "google_ads.structure.create" not in built
     assert "googleads.accounts.list" not in built
+    assert "drive.search_files" not in built
 
 
 def test_resolve_tool_executor_uses_dedicated_googleads_accounts_list():
