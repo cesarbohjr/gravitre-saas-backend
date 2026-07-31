@@ -1663,6 +1663,12 @@ class ChatConnectorExecutionService:
             return failed
 
         summary = self._summarize_result(plan, result_data, observation)
+        from app.services.connector_outcome_effects import is_already_existed_effect
+
+        already_existed = is_already_existed_effect(result_data)
+        if already_existed:
+            structured_payload["already_existed"] = True
+            structured_payload["outcome_effect"] = "already_existed"
         result = ExecutionResult(
             success=True,
             entity_type="connector",
@@ -1811,10 +1817,21 @@ class ChatConnectorExecutionService:
         """
         from uuid import uuid4
 
-        from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
-        from app.workflows.repository import create_run
+        from datetime import datetime, timezone
 
-        status = "completed" if result.success else "failed"
+        from app.services.connector_outcome_effects import is_already_existed_effect
+        from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
+        from app.workflows.repository import create_run, create_step, update_step
+
+        structured = result.structured if isinstance(result.structured, dict) else {}
+        already_existed = is_already_existed_effect(structured)
+        if result.success and already_existed:
+            # Idempotent find ≠ successful populate/write — never sell as COMPLETED.
+            status = "partial_success"
+        elif result.success:
+            status = "completed"
+        else:
+            status = "failed"
         run_id: str | None = None
         try:
             created = create_run(
@@ -1841,6 +1858,8 @@ class ChatConnectorExecutionService:
                     "label": plan.label,
                     # Durable execution proof (recipient/subject/etc.) for Runs UI.
                     "action_args": _proof_args_for_run(plan),
+                    "already_existed": already_existed,
+                    "outcome_effect": "already_existed" if already_existed else "write",
                 },
                 run_hash=f"chat-connector-{uuid4().hex[:16]}",
                 workflow_id=None,
@@ -1857,7 +1876,48 @@ class ChatConnectorExecutionService:
                 plan.invoke_action,
                 exc,
             )
+        # Persist a real workflow_steps row so Runs UI is not 0/0 with COMPLETED.
+        if run_id:
+            try:
+                step_row = create_step(
+                    client,
+                    run_id,
+                    org_id,
+                    step_id="connector",
+                    step_index=0,
+                    step_name=plan.label or plan.invoke_action,
+                    step_type="invoke_tool",
+                )
+                step_uuid = str(step_row.get("id") or "")
+                now = datetime.now(timezone.utc).isoformat()
+                # Keep step completed for partial_success finds so timeline shows the probe;
+                # run-level status carries the honesty signal.
+                if step_uuid:
+                    update_step(
+                        client,
+                        step_uuid,
+                        status="completed" if result.success else "failed",
+                        output_snapshot={
+                            "summary": (result.body or "")[:2000],
+                            "already_existed": already_existed,
+                            "outcome_effect": "already_existed" if already_existed else "write",
+                            "invoke_action": plan.invoke_action,
+                            "success": bool(result.success),
+                        },
+                        started_at=now,
+                        completed_at=now,
+                        error_message=None if result.success else (result.body or "Connector action failed"),
+                    )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "chat connector step persist skipped org_id=%s run_id=%s action=%s error=%s",
+                    org_id,
+                    run_id,
+                    plan.invoke_action,
+                    exc,
+                )
         # Prefer durable run detail as the primary Gravitre CTA once the run exists.
+        # partial_success (idempotent find) still links to the run for transparency.
         primary_result_url = (
             f"/runs/{run_id}"
             if run_id and result.success
@@ -1890,6 +1950,8 @@ class ChatConnectorExecutionService:
                     "path": "chat_connector_execute_plan",
                     "error_code": getattr(result, "error_code", None),
                     "action_args": _proof_args_for_run(plan),
+                    "already_existed": already_existed,
+                    "outcome_effect": "already_existed" if already_existed else "write",
                 },
             )
         except Exception as exc:  # noqa: BLE001
@@ -2758,9 +2820,26 @@ class ChatConnectorExecutionService:
                 line = f"{line} Message id: {message_id}."
             return line
         if plan.integration == "apollo" and plan.invoke_action == "apollo.lists.create":
+            from app.services.connector_outcome_effects import (
+                already_existed_list_summary,
+                is_already_existed_effect,
+            )
+
             label_data = result_data.get("label")
-            already = bool(result_data.get("already_existed"))
-            verb = "Found existing" if already else "Created"
+            already = is_already_existed_effect(result_data)
+            if already:
+                name = None
+                list_id = None
+                if isinstance(label_data, dict):
+                    name = label_data.get("name") or plan.args.get("name")
+                    list_id = label_data.get("id") or label_data.get("_id")
+                else:
+                    name = plan.args.get("name")
+                return already_existed_list_summary(
+                    name=str(name) if name else None,
+                    list_id=str(list_id) if list_id else None,
+                )
+            verb = "Created"
             if isinstance(label_data, dict):
                 name = label_data.get("name") or plan.args.get("name")
                 list_id = label_data.get("id") or label_data.get("_id")

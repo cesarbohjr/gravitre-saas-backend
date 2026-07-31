@@ -252,7 +252,15 @@ def _persist_run(client: Any, event: ExecutionOutcomeEvent, status: TerminalStat
             "outcome_finalized": True,
         }
         meta = dict(event.metadata or {})
-        for key in ("action_args", "invoke_action", "integration", "tool_name", "conversation_id"):
+        for key in (
+            "action_args",
+            "invoke_action",
+            "integration",
+            "tool_name",
+            "conversation_id",
+            "already_existed",
+            "outcome_effect",
+        ):
             if key in meta and meta[key] is not None:
                 patch[key] = meta[key]
         try:

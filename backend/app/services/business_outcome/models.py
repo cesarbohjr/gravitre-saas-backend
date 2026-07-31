@@ -13,6 +13,7 @@ from typing import Any, Literal
 
 BusinessOutcomeKind = Literal[
     "created_record",
+    "found_existing_record",
     "updated_record",
     "failed_action",
     "completed_workflow",

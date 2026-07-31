@@ -187,6 +187,7 @@ export type RunStatus =
   | "running"
   | "paused"
   | "completed"
+  | "partial_success"
   | "failed"
   | "cancelled"
   | "rejected"

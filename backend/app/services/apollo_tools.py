@@ -237,13 +237,23 @@ def _exec_lists_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedRe
         label = payload.get("label") if isinstance(payload.get("label"), dict) else payload
         if isinstance(label, dict) and (label.get("id") or label.get("_id")):
             payload["list_id"] = str(label.get("id") or label.get("_id"))
-    _emit_apollo_pack_notification(
-        ctx,
-        title=f"Apollo list created: {name}",
-        body=f"Created {modality} list",
-        result_url=result_url,
-        action="apollo.lists.create",
-    )
+    already = bool(isinstance(payload, dict) and payload.get("already_existed"))
+    if already:
+        _emit_apollo_pack_notification(
+            ctx,
+            title=f"Apollo list already exists: {name}",
+            body=f"Found existing {modality} list — no new list created; contacts not added",
+            result_url=result_url,
+            action="apollo.lists.create",
+        )
+    else:
+        _emit_apollo_pack_notification(
+            ctx,
+            title=f"Apollo list created: {name}",
+            body=f"Created {modality} list",
+            result_url=result_url,
+            action="apollo.lists.create",
+        )
     return NormalizedResult(success=True, action="apollo.lists.create", connector_id=cid, data=payload)
 
 

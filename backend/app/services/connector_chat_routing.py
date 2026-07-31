@@ -87,16 +87,17 @@ def should_run_connector_preflight(
         return True
     if not (message or "").strip():
         return False
-    from app.services.chat_connector_models import LIST_CREATE_INTENT
     from app.services.chat_orchestration_service import ChatOrchestrationService
+    from app.services.connector_outcome_effects import prefers_single_list_create
     from app.services.conversational_planning_engine import is_advisory_plan_first
 
     # Plan-first advisory asks must reach strategic planning, not connector short-circuit.
     if is_advisory_plan_first(message or ""):
         return False
 
-    # Prefer governed single-connector auto-plan over multi-step orchestration.
-    if LIST_CREATE_INTENT.search(message or ""):
+    # Prefer governed single-connector auto-plan over multi-step orchestration —
+    # unless the ask spans enrich/sync across Apollo/Clay/HubSpot (class false-COMPLETE).
+    if prefers_single_list_create(message or ""):
         return False
 
     return ChatOrchestrationService.is_orchestration_intent(
@@ -134,11 +135,12 @@ async def run_connector_fallback_turn(
     from app.services.tool_registry import get_tool_registry
 
     orchestration = get_chat_orchestration_service(settings)
-    from app.services.chat_connector_models import LIST_CREATE_INTENT
+    from app.services.connector_outcome_effects import prefers_single_list_create
 
     # STA-305 — omit-name list create must reach connector auto-plan, not multi-step
     # orchestration (comma after "Apollo," falsely trips is_orchestration_intent).
-    prefer_connector = bool(LIST_CREATE_INTENT.search(message or ""))
+    # Multi-system enrich/sync (Clay→HubSpot) must NOT collapse to apollo.lists.create.
+    prefer_connector = prefers_single_list_create(message or "")
     if (
         not prefer_connector
         and ChatOrchestrationService.is_orchestration_intent(

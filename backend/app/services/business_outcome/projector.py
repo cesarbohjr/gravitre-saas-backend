@@ -140,7 +140,18 @@ def _infer_kind(
         return "failed_action"
     if str(params.get("source") or "").startswith("swarm") or er.get("entity_type") == "swarm_run":
         return "completed_swarm"
+    structured = er.get("structured") if isinstance(er.get("structured"), dict) else {}
+    already = (
+        params.get("already_existed") is True
+        or params.get("outcome_effect") == "already_existed"
+        or structured.get("already_existed") is True
+        or structured.get("outcome_effect") == "already_existed"
+        or str(status).lower() == "partial_success"
+        or str(er.get("body") or "").lower().startswith("found existing")
+    )
     action = str(invoke_action or "").lower()
+    if already and (".create" in action or "lists.create" in action or not action):
+        return "found_existing_record"
     if ".create" in action or "lists.create" in action:
         return "created_record"
     if ".update" in action:
@@ -190,6 +201,22 @@ def _verification(er: dict[str, Any], *, status: str) -> VerificationSection | N
     body = str(er.get("body") or "").strip()
     external = str(er.get("external_url") or "").strip()
     result_url = str(er.get("result_url") or "").strip()
+    structured = er.get("structured") if isinstance(er.get("structured"), dict) else {}
+    already = (
+        structured.get("already_existed") is True
+        or structured.get("outcome_effect") == "already_existed"
+        or str(status).lower() == "partial_success"
+        or body.lower().startswith("found existing")
+    )
+    if already and (body or external or result_url):
+        return VerificationSection(
+            verified=True,
+            method="module_a_idempotent_find",
+            detail=(
+                "Verified as an idempotent find (existing vendor record). "
+                "No net-new create and no membership/enrichment side effect was proven."
+            ),
+        )
     if body or external or result_url:
         return VerificationSection(
             verified=True,

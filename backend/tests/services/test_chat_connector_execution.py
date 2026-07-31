@@ -608,6 +608,30 @@ def test_summarize_apollo_list_create_includes_name_and_id(connector_service):
     assert "list-123" in summary
 
 
+def test_summarize_apollo_list_create_already_existed_is_honest(connector_service):
+    plan = ConnectorActionPlan(
+        tool_name="apollo_lists_create",
+        invoke_action="apollo.lists.create",
+        integration="apollo",
+        kind="write",
+        label="Create contact list",
+        args={"name": "MSP Prospects", "modality": "contacts"},
+        requires_approval=True,
+    )
+    summary = connector_service._summarize_result(
+        plan,
+        {
+            "already_existed": True,
+            "label": {"id": "6a4d6a98461b000010c5ae7b", "name": "MSP Prospects"},
+        },
+        {"success": True},
+    )
+    assert "Found existing" in summary
+    assert "MSP Prospects" in summary
+    assert "No contacts were added" in summary
+    assert "no HubSpot sync" in summary
+
+
 @pytest.mark.asyncio
 async def test_execute_plan_apollo_list_create_sets_apollo_result_url(connector_service):
     plan = ConnectorActionPlan(
