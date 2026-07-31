@@ -97,6 +97,52 @@ def test_apollo_lists_create(mock_create_label, mock_session, _rate):
 
 @patch("app.services.apollo_tools.enforce_rate_limit")
 @patch("app.services.apollo_tools.resolve_apollo_connector")
+@patch("app.services.apollo_tools.add_entity_ids_to_label_names")
+def test_apollo_lists_add(mock_add, mock_session, _rate):
+    mock_session.return_value = ("conn-apollo", {"Authorization": "Bearer token"})
+    mock_add.return_value = {"ok": True}
+    result = APOLLO_TOOL_EXECUTORS["apollo.lists.add"](
+        _ctx(),
+        {
+            "entity_ids": ["c1", "c2"],
+            "label_names": ["MSP Prospects"],
+            "modality": "contacts",
+        },
+    )
+    assert result.success
+    assert result.action == "apollo.lists.add"
+    mock_add.assert_called_once_with(
+        {"Authorization": "Bearer token"},
+        entity_ids=["c1", "c2"],
+        label_names=["MSP Prospects"],
+        modality="contacts",
+    )
+
+
+@patch("app.services.apollo_tools.enforce_rate_limit")
+@patch("app.services.apollo_tools.resolve_apollo_connector")
+@patch("app.services.apollo_tools.list_labels")
+@patch("app.services.apollo_tools.search_contacts")
+def test_apollo_contacts_search_resolves_list_name(mock_search, mock_labels, mock_session, _rate):
+    mock_session.return_value = ("conn-apollo", {"Authorization": "Bearer token"})
+    mock_labels.return_value = {
+        "labels": [{"id": "lab-msp", "name": "MSP Prospects", "modality": "contacts"}]
+    }
+    mock_search.return_value = {"contacts": [{"id": "c1"}], "pagination": {"page": 1}}
+    result = APOLLO_TOOL_EXECUTORS["apollo.contacts.search"](
+        _ctx(), {"list_name": "MSP Prospects", "per_page": 10}
+    )
+    assert result.success
+    assert result.action == "apollo.contacts.search"
+    assert result.data["contact_count"] == 1
+    mock_search.assert_called_once_with(
+        {"Authorization": "Bearer token"},
+        payload={"contact_label_ids": ["lab-msp"], "per_page": 10},
+    )
+
+
+@patch("app.services.apollo_tools.enforce_rate_limit")
+@patch("app.services.apollo_tools.resolve_apollo_connector")
 @patch("app.services.apollo_tools.match_person")
 def test_apollo_people_match(mock_match, mock_session, _rate):
     mock_session.return_value = ("conn-apollo", {"Authorization": "Bearer token"})

@@ -177,6 +177,66 @@ def test_list_labels_gets_labels():
     assert client_cls.return_value.__enter__.return_value.request.call_args[0][0] == "GET"
 
 
+def test_add_entity_ids_to_label_names_posts_body():
+    from app.connectors.apollo_api import add_entity_ids_to_label_names
+
+    with patch("app.connectors.apollo_api.httpx.Client") as client_cls:
+        response = MagicMock(status_code=200, text='{"ok":true}')
+        response.json.return_value = {"ok": True}
+        client_cls.return_value.__enter__.return_value.request.return_value = response
+        out = add_entity_ids_to_label_names(
+            {"X-Api-Key": "k"},
+            entity_ids=["c1", "c2"],
+            label_names=["MSP Prospects"],
+            modality="contacts",
+        )
+    assert out == {"ok": True}
+    call = client_cls.return_value.__enter__.return_value.request.call_args
+    assert call[0][0] == "POST"
+    assert call[0][1].endswith("/labels/add_entity_ids_to_label_names")
+    assert call[1]["json"] == {
+        "entity_ids": ["c1", "c2"],
+        "label_names": ["MSP Prospects"],
+        "modality": "contacts",
+    }
+
+
+def test_add_entity_ids_to_label_names_requires_ids():
+    from app.connectors.apollo_api import add_entity_ids_to_label_names
+
+    try:
+        add_entity_ids_to_label_names(
+            {"X-Api-Key": "k"},
+            entity_ids=[],
+            label_names=["MSP Prospects"],
+        )
+        assert False, "expected ApolloAPIError"
+    except ApolloAPIError as exc:
+        assert "entity_ids" in str(exc)
+
+
+def test_search_contacts_posts_payload():
+    from app.connectors.apollo_api import search_contacts
+
+    with patch("app.connectors.apollo_api.httpx.Client") as client_cls:
+        response = MagicMock(status_code=200, text='{"contacts":[]}')
+        response.json.return_value = {"contacts": []}
+        client_cls.return_value.__enter__.return_value.request.return_value = response
+        out = search_contacts(
+            {"Authorization": "Bearer token"},
+            payload={"contact_label_ids": ["lab1"], "page": 1, "per_page": 25},
+        )
+    assert out == {"contacts": []}
+    call = client_cls.return_value.__enter__.return_value.request.call_args
+    assert call[0][0] == "POST"
+    assert call[0][1].endswith("/contacts/search")
+    assert call[1]["json"] == {
+        "contact_label_ids": ["lab1"],
+        "page": 1,
+        "per_page": 25,
+    }
+
+
 def test_match_person_posts_payload():
     from app.connectors.apollo_api import match_person
 

@@ -325,6 +325,48 @@ def create_label(
         return {"label": existing, "already_existed": True}
 
 
+def add_entity_ids_to_label_names(
+    auth_headers: dict[str, str],
+    *,
+    entity_ids: list[str],
+    label_names: list[str],
+    modality: str = "contacts",
+) -> dict[str, Any]:
+    """Add contacts/accounts to Apollo lists by name.
+
+    POST /labels/add_entity_ids_to_label_names — missing label names are created.
+    """
+    ids = [str(x).strip() for x in (entity_ids or []) if str(x).strip()]
+    names = [str(x).strip() for x in (label_names or []) if str(x).strip()]
+    if not ids:
+        raise ApolloAPIError("entity_ids is required")
+    if not names:
+        raise ApolloAPIError("label_names is required")
+    normalized_modality = str(modality or "contacts").strip().lower()
+    if normalized_modality not in {"contacts", "accounts"}:
+        raise ApolloAPIError("modality must be contacts or accounts")
+    return _request(
+        auth_headers,
+        "POST",
+        "/labels/add_entity_ids_to_label_names",
+        json_body={
+            "entity_ids": ids,
+            "label_names": names,
+            "modality": normalized_modality,
+        },
+    )
+
+
+def search_contacts(
+    auth_headers: dict[str, str],
+    *,
+    payload: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Search team contacts — POST /contacts/search (optional contact_label_ids)."""
+    body = dict(payload or {})
+    return _request(auth_headers, "POST", "/contacts/search", json_body=body)
+
+
 def _is_duplicate_label_error(exc: ApolloAPIError) -> bool:
     """True when Apollo 422 means the list/label name is already taken."""
     haystacks: list[str] = [str(exc).casefold()]

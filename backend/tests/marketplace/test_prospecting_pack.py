@@ -36,8 +36,9 @@ def test_prospecting_enrichment_workflow_definition():
     )
 
     steps = build_msp_enrichment_workflow_steps()
-    assert len(steps) == 6
+    assert len(steps) == 7
     assert steps[0]["config"]["action"] == "apollo.lists.list"
+    assert steps[1]["config"]["action"] == "apollo.contacts.search"
     assert steps[-1]["type"] == "agent"
     assert "MSP Prospects" in WORKFLOW_NAME or "Clay" in WORKFLOW_NAME
 
@@ -109,6 +110,8 @@ def test_prospecting_demo_actions_registered():
     assert "apollo.organizations.search" in registered
     assert "apollo.lists.create" in registered
     assert "apollo.lists.list" in registered
+    assert "apollo.lists.add" in registered
+    assert "apollo.contacts.search" in registered
     assert "hubspot.lists.create" in registered
     assert "clay.leads.push" in registered
     assert "clay.crm.sync" in registered

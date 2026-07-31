@@ -6,6 +6,7 @@ from typing import Any
 from app.connectors.apollo_api import (
     ApolloAPIError,
     add_contacts_to_sequence,
+    add_entity_ids_to_label_names,
     apollo_connection_auth_status,
     bulk_enrich_people,
     create_contact,
@@ -19,6 +20,7 @@ from app.connectors.apollo_api import (
     match_person,
     remove_contacts_from_sequence,
     resolve_apollo_connector,
+    search_contacts,
     search_organizations,
     search_people,
     subscribe_intent_signals,
@@ -67,6 +69,23 @@ _RESERVED = frozenset(
         "mode",
         "name",
         "modality",
+        "entity_ids",
+        "entityIds",
+        "label_names",
+        "labelNames",
+        "list_name",
+        "listName",
+        "list_names",
+        "listNames",
+        "contact_label_ids",
+        "contactLabelIds",
+        "page",
+        "per_page",
+        "page_size",
+        "limit",
+        "q_keywords",
+        "q",
+        "query",
     }
 )
 
@@ -215,6 +234,162 @@ def _exec_lists_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResu
     except ApolloAPIError as exc:
         raise _handle_error(exc) from exc
     return NormalizedResult(success=True, action="apollo.lists.list", connector_id=cid, data=data)
+
+
+def _label_rows(payload: Any) -> list[dict[str, Any]]:
+    if isinstance(payload, list):
+        return [row for row in payload if isinstance(row, dict)]
+    if not isinstance(payload, dict):
+        return []
+    for key in ("labels", "label", "data", "results"):
+        value = payload.get(key)
+        if isinstance(value, list):
+            return [row for row in value if isinstance(row, dict)]
+        if isinstance(value, dict) and key == "label":
+            return [value]
+    return []
+
+
+def _resolve_contact_label_ids(headers: dict[str, str], params: dict[str, Any]) -> list[str]:
+    """Resolve contact_label_ids from explicit ids and/or list/label names."""
+    ids: list[str] = []
+    raw_ids = params.get("contact_label_ids") or params.get("contactLabelIds")
+    if isinstance(raw_ids, str) and raw_ids.strip():
+        ids.append(raw_ids.strip())
+    elif isinstance(raw_ids, list):
+        ids.extend(str(x).strip() for x in raw_ids if str(x).strip())
+
+    names: list[str] = []
+    for key in ("label_names", "labelNames", "list_names", "listNames"):
+        raw = params.get(key)
+        if isinstance(raw, str) and raw.strip():
+            names.append(raw.strip())
+        elif isinstance(raw, list):
+            names.extend(str(x).strip() for x in raw if str(x).strip())
+    single = params.get("list_name") or params.get("listName") or params.get("name")
+    if isinstance(single, str) and single.strip():
+        names.append(single.strip())
+
+    if not names:
+        return ids
+
+    try:
+        labels_payload = list_labels(headers)
+    except ApolloAPIError:
+        return ids
+    labels = _label_rows(labels_payload)
+    wanted = {n.casefold() for n in names}
+    for row in labels:
+        row_name = str(row.get("name") or "").strip()
+        if row_name.casefold() not in wanted:
+            continue
+        label_id = row.get("id") or row.get("_id")
+        if label_id:
+            ids.append(str(label_id))
+    # de-dupe preserving order
+    seen: set[str] = set()
+    out: list[str] = []
+    for item in ids:
+        if item in seen:
+            continue
+        seen.add(item)
+        out.append(item)
+    return out
+
+
+def _exec_contacts_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, headers = _session(ctx, params)
+    body: dict[str, Any] = {}
+    payload = params.get("payload")
+    if isinstance(payload, dict):
+        body.update(payload)
+
+    label_ids = _resolve_contact_label_ids(headers, params)
+    if label_ids:
+        body["contact_label_ids"] = label_ids
+
+    for key in ("page", "per_page", "q_keywords", "sort_by_field", "sort_ascending"):
+        if params.get(key) is not None and key not in body:
+            body[key] = params[key]
+    if params.get("page_size") is not None and "per_page" not in body:
+        body["per_page"] = params["page_size"]
+    if params.get("limit") is not None and "per_page" not in body:
+        body["per_page"] = params["limit"]
+    q = params.get("q") or params.get("query")
+    if q is not None and "q_keywords" not in body:
+        body["q_keywords"] = q
+
+    try:
+        data = search_contacts(headers, payload=body)
+    except ApolloAPIError as exc:
+        raise _handle_error(exc) from exc
+    contacts = data.get("contacts") if isinstance(data, dict) else None
+    count = len(contacts) if isinstance(contacts, list) else 0
+    result_url = "https://app.apollo.io/#/contacts"
+    payload_out = _with_result_url(data, result_url)
+    if isinstance(payload_out, dict):
+        payload_out["contact_count"] = count
+        if label_ids:
+            payload_out["contact_label_ids"] = label_ids
+    _emit_apollo_pack_notification(
+        ctx,
+        title="Apollo contacts search",
+        body=f"Found {count} contact(s)",
+        result_url=result_url,
+        action="apollo.contacts.search",
+    )
+    return NormalizedResult(
+        success=True,
+        action="apollo.contacts.search",
+        connector_id=cid,
+        data=payload_out,
+    )
+
+
+def _exec_lists_add(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, headers = _session(ctx, params)
+    entity_ids = params.get("entity_ids") or params.get("contact_ids") or params.get("ids")
+    if isinstance(entity_ids, str) and entity_ids.strip():
+        entity_ids = [entity_ids.strip()]
+    if not isinstance(entity_ids, list) or not entity_ids:
+        raise ToolValidationError("apollo.lists.add requires entity_ids[] (or contact_ids[])")
+
+    label_names = params.get("label_names") or params.get("list_names")
+    if not label_names:
+        single = params.get("list_name") or params.get("name") or params.get("label_name")
+        if single:
+            label_names = [single]
+    if isinstance(label_names, str) and label_names.strip():
+        label_names = [label_names.strip()]
+    if not isinstance(label_names, list) or not label_names:
+        raise ToolValidationError("apollo.lists.add requires label_names[] (or list_name)")
+
+    modality = str(params.get("modality") or "contacts")
+    try:
+        data = add_entity_ids_to_label_names(
+            headers,
+            entity_ids=[str(x) for x in entity_ids],
+            label_names=[str(x) for x in label_names],
+            modality=modality,
+        )
+    except ApolloAPIError as exc:
+        raise _handle_error(exc) from exc
+
+    from app.services.connector_output_mappers.apollo import resolve_list_result_url
+
+    result_url = resolve_list_result_url(data if isinstance(data, dict) else {})
+    if not result_url:
+        result_url = "https://app.apollo.io/#/contacts"
+    payload = _with_result_url(data, result_url)
+    names_joined = ", ".join(str(n) for n in label_names[:3])
+    _emit_apollo_pack_notification(
+        ctx,
+        title=f"Apollo list membership: {names_joined}",
+        body=f"Added {len(entity_ids)} contact(s) to {len(label_names)} list(s)",
+        result_url=result_url,
+        action="apollo.lists.add",
+    )
+    return NormalizedResult(success=True, action="apollo.lists.add", connector_id=cid, data=payload)
 
 
 def _exec_lists_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
@@ -557,11 +732,13 @@ APOLLO_TOOL_EXECUTORS: dict[str, Any] = {
     "apollo.people.search": _exec_people_search,
     "apollo.organizations.search": _exec_organizations_search,
     "apollo.contacts.get": _exec_contacts_get,
+    "apollo.contacts.search": _exec_contacts_search,
     "apollo.lists.list": _exec_lists_list,
     "apollo.people.match": _exec_people_match,
     "apollo.organizations.enrich": _exec_organizations_enrich,
     "apollo.contacts.create": _exec_contacts_create,
     "apollo.lists.create": _exec_lists_create,
+    "apollo.lists.add": _exec_lists_add,
     "apollo.sequences.add": _exec_sequences_add,
     "apollo.enrichment.bulk": _exec_enrichment_bulk,
     "apollo.tasks.create": _exec_tasks_create,

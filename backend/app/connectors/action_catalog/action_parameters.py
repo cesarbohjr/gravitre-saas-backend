@@ -589,6 +589,33 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
         "properties": {"connector_id": _CONNECTOR_ID},
         "required": [],
     },
+    "apollo.contacts.search": {
+        "type": "object",
+        "properties": {
+            "contact_label_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Apollo label/list IDs to filter contacts.",
+            },
+            "list_name": {
+                "type": "string",
+                "description": "Resolve label id from list name (via apollo.lists.list).",
+            },
+            "label_names": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Resolve label ids from list names.",
+            },
+            "q_keywords": {"type": "string", "description": "Keyword search across team contacts."},
+            "q": {"type": "string", "description": "Alias for q_keywords."},
+            "page": {"type": "integer", "default": 1},
+            "per_page": {"type": "integer", "default": 25},
+            "page_size": {"type": "integer", "description": "Alias for per_page."},
+            "payload": {"type": "object", "additionalProperties": True},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
     "apollo.lists.create": {
         "type": "object",
         "properties": {
@@ -602,6 +629,35 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
             "connector_id": _CONNECTOR_ID,
         },
         "required": ["name"],
+    },
+    "apollo.lists.add": {
+        "type": "object",
+        "properties": {
+            "entity_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Apollo contact (or account) IDs to add to the list(s).",
+            },
+            "contact_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Alias for entity_ids when modality=contacts.",
+            },
+            "label_names": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Apollo list names (created if missing).",
+            },
+            "list_name": {"type": "string", "description": "Single list name alias."},
+            "name": {"type": "string", "description": "Single list name alias."},
+            "modality": {
+                "type": "string",
+                "enum": ["contacts", "accounts"],
+                "default": "contacts",
+            },
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
     },
     "engagebay.contacts.search": {
         "type": "object",
