@@ -212,6 +212,87 @@ def orchestration_run_fully_completed(step_results: list[dict[str, Any]] | None)
     return any(bool(row.get("success")) for row in rows)
 
 
+def _orchestration_outcome_metadata(
+    *,
+    conversation_id: str | None = None,
+    step_label: str | None = None,
+    integration: str | None = None,
+    invoke_action: str | None = None,
+    path: str = "chat_orchestration",
+) -> dict[str, Any]:
+    meta: dict[str, Any] = {"path": path}
+    if conversation_id:
+        meta["conversation_id"] = conversation_id
+    if step_label:
+        meta["step_label"] = step_label
+    if integration:
+        meta["integration"] = integration
+    if invoke_action:
+        meta["invoke_action"] = invoke_action
+        meta["action_type"] = invoke_action
+    return meta
+
+
+def finalize_orchestration_failure(
+    client: Any,
+    *,
+    org_id: str,
+    user_id: str,
+    conversation_id: str,
+    summary: str,
+    run_id: str | None = None,
+    step_label: str | None = None,
+    integration: str | None = None,
+    invoke_action: str | None = None,
+) -> None:
+    """Terminal fanout for a failed orchestration step (with or without a Runs row)."""
+    meta = _orchestration_outcome_metadata(
+        conversation_id=conversation_id,
+        step_label=step_label,
+        integration=integration,
+        invoke_action=invoke_action,
+        path="chat_orchestration_step_failure",
+    )
+    body = (summary or "Orchestration step failed")[:2000]
+    if run_id:
+        finalize_orchestration_run(
+            client,
+            org_id=org_id,
+            run_id=run_id,
+            success=False,
+            summary=body,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            metadata=meta,
+        )
+        return
+    try:
+        finalize_execution_outcome(
+            client,
+            org_id=org_id,
+            status="failed",
+            source="chat_orch",
+            actor_id=user_id,
+            persist_run=False,
+            error_summary=body,
+            verified_output=VerifiedOutputRef(
+                summary=body,
+                result_url=ai_conversation_url(conversation_id),
+                entity_type="conversation",
+                entity_id=conversation_id,
+                integration=integration,
+            ),
+            notification_body=body,
+            metadata=meta,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "chat orchestration orphan failure finalize skipped conv=%s error=%s",
+            conversation_id,
+            exc,
+        )
+
+
 def finalize_orchestration_run(
     client: Any,
     *,
@@ -220,12 +301,20 @@ def finalize_orchestration_run(
     success: bool,
     summary: str | None = None,
     user_id: str | None = None,
+    conversation_id: str | None = None,
+    metadata: dict[str, Any] | None = None,
 ) -> None:
     """Mark a chat orchestration run completed or failed via finalize_execution_outcome()."""
     if not run_id:
         return
     status = "completed" if success else "failed"
     error_summary = None if success else (summary or "Orchestration failed")
+    outcome_meta = _orchestration_outcome_metadata(
+        conversation_id=conversation_id,
+        path="chat_orchestration",
+    )
+    if metadata:
+        outcome_meta.update(metadata)
     try:
         finalize_execution_outcome(
             client,
@@ -241,12 +330,13 @@ def finalize_orchestration_run(
                 result_url=f"/runs/{run_id}",
                 entity_type="workflow_run",
                 entity_id=run_id,
+                integration=(metadata or {}).get("integration"),
             ),
             notification_title=(
                 "Orchestration run completed" if success else "Orchestration run failed"
             ),
             notification_body=(summary or error_summary or "")[:2000] or None,
-            metadata={"path": "chat_orchestration"},
+            metadata=outcome_meta,
         )
     except Exception as exc:  # noqa: BLE001
         logger.error(
