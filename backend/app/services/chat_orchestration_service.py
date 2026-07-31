@@ -1083,6 +1083,8 @@ class ChatOrchestrationService:
             client=client,
             classification=classification,
             environment_name=environment_name,
+            # Orchestration owns the single Module A terminal for the whole run.
+            own_terminal_outcome=False,
         )
         step_results = list(params.get("step_results") or [])
         step_results.append(_step_result_row(step, result))
@@ -1214,6 +1216,7 @@ class ChatOrchestrationService:
                 client=client,
                 classification=classification,
                 environment_name=environment_name,
+                own_terminal_outcome=False,
             )
 
         # Phase 2 A/B — honor X-Gravitree-React-Serial / GRAVITREE_REACT_SERIAL_TOOLS
@@ -1427,6 +1430,7 @@ class ChatOrchestrationService:
                 client=client,
                 classification=classification,
                 environment_name=environment_name,
+                own_terminal_outcome=False,
             )
             if not result.success:
                 if run_id:

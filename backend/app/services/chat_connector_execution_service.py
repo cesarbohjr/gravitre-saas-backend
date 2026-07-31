@@ -1553,7 +1553,14 @@ class ChatConnectorExecutionService:
         client: Any,
         classification: dict[str, Any],
         environment_name: str = "production",
+        own_terminal_outcome: bool = True,
     ) -> ExecutionResult:
+        """Execute a connector plan.
+
+        When ``own_terminal_outcome`` is False (chat orchestration steps), skip
+        Module A fanout here — the orchestration run owns the single terminal
+        outcome so Runs/Notifications/Audit do not double-write.
+        """
         ctx = ToolContext(
             settings=self.settings,
             client=client,
@@ -1587,14 +1594,15 @@ class ChatConnectorExecutionService:
                 integration=plan.integration,
                 task_label=plan.label,
             )
-            self._finalize_connector_outcome(
-                client,
-                org_id=org_id,
-                user_id=user_id,
-                conversation_id=conversation_id,
-                plan=plan,
-                result=failed,
-            )
+            if own_terminal_outcome:
+                self._finalize_connector_outcome(
+                    client,
+                    org_id=org_id,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    plan=plan,
+                    result=failed,
+                )
             return failed
 
         success = bool(observation.get("success"))
@@ -1643,14 +1651,15 @@ class ChatConnectorExecutionService:
                 error_code=error_code,
                 structured=structured_payload or None,
             )
-            self._finalize_connector_outcome(
-                client,
-                org_id=org_id,
-                user_id=user_id,
-                conversation_id=conversation_id,
-                plan=plan,
-                result=failed,
-            )
+            if own_terminal_outcome:
+                self._finalize_connector_outcome(
+                    client,
+                    org_id=org_id,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    plan=plan,
+                    result=failed,
+                )
             return failed
 
         summary = self._summarize_result(plan, result_data, observation)
@@ -1702,24 +1711,26 @@ class ChatConnectorExecutionService:
                     structured=structured_payload or None,
                     error_code="unverifiable_output",
                 )
-                self._finalize_connector_outcome(
-                    client,
-                    org_id=org_id,
-                    user_id=user_id,
-                    conversation_id=conversation_id,
-                    plan=plan,
-                    result=failed,
-                )
+                if own_terminal_outcome:
+                    self._finalize_connector_outcome(
+                        client,
+                        org_id=org_id,
+                        user_id=user_id,
+                        conversation_id=conversation_id,
+                        plan=plan,
+                        result=failed,
+                    )
                 return failed
 
-        self._finalize_connector_outcome(
-            client,
-            org_id=org_id,
-            user_id=user_id,
-            conversation_id=conversation_id,
-            plan=plan,
-            result=result,
-        )
+        if own_terminal_outcome:
+            self._finalize_connector_outcome(
+                client,
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                plan=plan,
+                result=result,
+            )
 
         prior_state = await self._state.get_task_state(conversation_id, org_id, client=client)
         file_ledger_patch: dict[str, Any] = {}
@@ -1729,47 +1740,58 @@ class ChatConnectorExecutionService:
             merged = ingest_connected_file_hits(prior_state, result_data["files"])
             if isinstance(merged.get("parameter_ledger"), dict):
                 file_ledger_patch["parameter_ledger"] = merged["parameter_ledger"]
-        await self._state.update_task_state(
-            conversation_id,
-            org_id,
-            {
-                "pending_task": {
-                    "type": "connector_action",
-                    "status": "executed",
-                    "result": result.__dict__,
-                },
-                "completed_steps": [
-                    {
-                        "step_id": f"connector_{plan.invoke_action}",
-                        "label": plan.label,
-                        "url": result.result_url,
-                        "external_url": result.external_url,
-                        "entity_type": "connector",
-                        "entity_id": connector_id,
-                    }
-                ],
-                "approved_actions": [
-                    {
-                        "type": plan.invoke_action,
-                        "tool_name": plan.tool_name,
-                        "entity_id": connector_id,
-                        "url": result.result_url,
-                        "external_url": result.external_url,
-                    }
-                ],
-                **file_ledger_patch,
-                **self._session_updates_after_execution(
-                    prior_state,
-                    plan,
-                    result,
-                    result_data,
-                    client=client,
-                    org_id=org_id,
-                    conversation_id=conversation_id,
-                ),
-            },
+        session_updates = self._session_updates_after_execution(
+            prior_state,
+            plan,
+            result,
+            result_data,
+            client=client,
+            org_id=org_id,
+            conversation_id=conversation_id,
         )
-        await self._record_outcomes(org_id, user_id, plan, result, observation, classification)
+        if own_terminal_outcome:
+            await self._state.update_task_state(
+                conversation_id,
+                org_id,
+                {
+                    "pending_task": {
+                        "type": "connector_action",
+                        "status": "executed",
+                        "result": result.__dict__,
+                    },
+                    "completed_steps": [
+                        {
+                            "step_id": f"connector_{plan.invoke_action}",
+                            "label": plan.label,
+                            "url": result.result_url,
+                            "external_url": result.external_url,
+                            "entity_type": "connector",
+                            "entity_id": connector_id,
+                        }
+                    ],
+                    "approved_actions": [
+                        {
+                            "type": plan.invoke_action,
+                            "tool_name": plan.tool_name,
+                            "entity_id": connector_id,
+                            "url": result.result_url,
+                            "external_url": result.external_url,
+                        }
+                    ],
+                    **file_ledger_patch,
+                    **session_updates,
+                },
+            )
+            await self._record_outcomes(
+                org_id, user_id, plan, result, observation, classification
+            )
+        elif file_ledger_patch or session_updates:
+            # Orchestration owns pending_task / Module A; keep session ledger only.
+            await self._state.update_task_state(
+                conversation_id,
+                org_id,
+                {**file_ledger_patch, **session_updates},
+            )
         return result
 
     def _finalize_connector_outcome(
