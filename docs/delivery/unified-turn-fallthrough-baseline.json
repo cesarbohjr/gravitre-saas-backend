@@ -1,36 +1,39 @@
 {
   "feature": "unified_turn_live_fallthrough_baseline",
   "window_hours": 168,
-  "since": "2026-07-20T08:29:11.338237+00:00",
-  "generated_at": "2026-07-27T08:29:15.680173+00:00",
+  "since": "2026-07-20T09:29:55.541730+00:00",
+  "generated_at": "2026-07-27T09:29:59.462528+00:00",
   "health": {
-    "git_sha": "3f00efc6a6c892d5b31d526d4093c5a4d33675b5",
+    "git_sha": "4f451b8001a033cfbea6e6c319171537c94b4bcf",
     "unified_turn_live_enabled": true,
-    "timestamp": "2026-07-27T08:29:13.329240+00:00"
+    "timestamp": "2026-07-27T09:29:57.106662+00:00"
   },
   "totals": {
-    "live_completed": 1257,
-    "live_fallthrough": 143,
-    "live_turns_with_audit": 1400,
-    "fallthrough_pct_of_audited_live_turns": 10.21
+    "live_completed": 1395,
+    "live_fallthrough": 185,
+    "live_turns_with_audit": 1580,
+    "fallthrough_pct_of_audited_live_turns": 11.71
   },
   "fallthrough_by_raw_reason": {
-    "defer_classical_tool_sse": 64,
-    "read_tool_classical": 57,
+    "defer_classical_tool_sse": 73,
+    "read_tool_classical": 66,
+    "pending_family_classical_resume": 24,
     "defer_connector_tool_proposal": 19,
     "violates_no_pending_hold": 3
   },
   "fallthrough_by_bucket": {
-    "classical_tool_sse_deferral": 64,
-    "read_tool_classical": 57,
+    "classical_tool_sse_deferral": 73,
+    "read_tool_classical": 66,
+    "pending_family_classical_resume": 24,
     "connector_tool_proposal_deferral": 19,
     "guard_violation": 3
   },
   "fallthrough_outcome_kinds": {
-    "connector_tool_proposal": 76,
-    "conversational_reply": 48,
-    "confirmation_request": 12,
-    "clarifying_question": 7
+    "connector_tool_proposal": 85,
+    "conversational_reply": 53,
+    "skipped": 24,
+    "confirmation_request": 15,
+    "clarifying_question": 8
   },
   "notes": {
     "pending_family_silent_fallthrough": "Instrumented: has_pending_family now emits unified_turn.live.fallthrough with fallthrough_reason=pending_family_classical_resume.",

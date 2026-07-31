@@ -1,13 +1,13 @@
 {
-  "checkedAt": "2026-07-25T05:01:38.839849+00:00",
+  "checkedAt": "2026-07-27T09:02:06.093254+00:00",
   "apiBase": "https://api.gravitre.app",
   "orgId": "f07e57c0-1501-4000-8000-c04e57a00001",
   "actor": "conversation-smoke-sa@gravitre.app",
-  "expectSha": "90ba2ad3",
+  "expectSha": "4f451b80",
   "fixCommit": "481f9862",
   "repros": {
     "fastRunHistory": {
-      "conversationId": "821f5a1a-a83f-48e7-af6a-7c2b2ca68473",
+      "conversationId": "9b2f6347-6a80-4341-97af-dc78463d79d7",
       "turn": {
         "http": 200,
         "assistant": "",
@@ -15,7 +15,7 @@
           {
             "type": "tool-input-available",
             "toolName": "searchKnowledgeBase",
-            "toolCallId": "call-f6ebb4741249",
+            "toolCallId": "call-ab78b92df8fc",
             "input": {
               "query": "What workflows have been ran?",
               "limit": 5
@@ -23,7 +23,7 @@
           },
           {
             "type": "tool-output-available",
-            "toolCallId": "call-f6ebb4741249",
+            "toolCallId": "call-ab78b92df8fc",
             "output": {
               "results": [],
               "sources": [],
@@ -35,118 +35,68 @@
           {
             "type": "tool-input-available",
             "toolName": "getWorkflowRuns",
-            "toolCallId": "call-ff488b631883",
+            "toolCallId": "call-e31ad33f274d",
             "input": {
-              "limit": 10
+              "limit": 5
             }
           },
           {
             "type": "tool-output-available",
-            "toolCallId": "call-ff488b631883",
+            "toolCallId": "call-e31ad33f274d",
             "output": {
               "runs": [
                 {
-                  "id": "3a799698-451b-4377-b2f7-c637bcd9a0c5",
+                  "id": "32d0c171-1be4-4abc-9afa-62cd60002b03",
                   "workflowId": null,
                   "workflowName": null,
                   "status": "failed",
                   "runType": "execute",
-                  "createdAt": "2026-07-25T04:56:54.292412+00:00",
-                  "completedAt": "2026-07-25T04:56:54.422475+00:00",
+                  "createdAt": "2026-07-27T08:58:20.691562+00:00",
+                  "completedAt": "2026-07-27T08:58:20.757638+00:00",
                   "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
                 },
                 {
-                  "id": "4d2d25e9-9db6-4db0-a255-60d05993d671",
+                  "id": "9118fd54-0cdf-4525-aeb5-267341a236b3",
                   "workflowId": null,
                   "workflowName": null,
                   "status": "failed",
                   "runType": "execute",
-                  "createdAt": "2026-07-25T04:56:28.512583+00:00",
-                  "completedAt": "2026-07-25T04:56:28.571377+00:00",
-                  "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
-                },
-                {
-                  "id": "5a54b104-c6fc-4acc-bf55-46d9fcb3ecdf",
-                  "workflowId": null,
-                  "workflowName": null,
-                  "status": "failed",
-                  "runType": "execute",
-                  "createdAt": "2026-07-25T04:56:20.613045+00:00",
-                  "completedAt": "2026-07-25T04:56:20.672746+00:00",
-                  "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
-                },
-                {
-                  "id": "a079dbaa-3b94-4183-8567-440f3c06d4c3",
-                  "workflowId": null,
-                  "workflowName": null,
-                  "status": "failed",
-                  "runType": "execute",
-                  "createdAt": "2026-07-25T04:56:12.646415+00:00",
-                  "completedAt": "2026-07-25T04:56:12.722962+00:00",
-                  "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
-                },
-                {
-                  "id": "5867a307-ebd5-4b8c-be8e-7c7cd83cffe2",
-                  "workflowId": null,
-                  "workflowName": null,
-                  "status": "failed",
-                  "runType": "execute",
-                  "createdAt": "2026-07-25T04:56:04.466408+00:00",
-                  "completedAt": "2026-07-25T04:56:04.598189+00:00",
+                  "createdAt": "2026-07-27T08:58:12.556471+00:00",
+                  "completedAt": "2026-07-27T08:58:12.654024+00:00",
                   "errorMessage": "Blocked. Slack is configured, but authentication has expired. Reconnect Slack. Next: Connect slack at /connectors, then retry."
                 },
                 {
-                  "id": "8bc77b10-eed1-404e-820b-6fc5b02f0a4d",
+                  "id": "dcaf63b2-ba68-4ed0-b5aa-7467ac02e6e4",
                   "workflowId": null,
                   "workflowName": null,
                   "status": "failed",
                   "runType": "execute",
-                  "createdAt": "2026-07-25T04:55:25.986117+00:00",
-                  "completedAt": "2026-07-25T04:55:26.149341+00:00",
+                  "createdAt": "2026-07-27T08:57:50.432976+00:00",
+                  "completedAt": "2026-07-27T08:57:50.527228+00:00",
                   "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
                 },
                 {
-                  "id": "aa4027f6-604c-4665-a017-9be689f64fef",
+                  "id": "e2a8daa8-dd39-45e6-8e6b-7e06c11d8827",
                   "workflowId": null,
                   "workflowName": null,
                   "status": "failed",
                   "runType": "execute",
-                  "createdAt": "2026-07-25T04:49:37.866391+00:00",
-                  "completedAt": "2026-07-25T04:49:38.004753+00:00",
-                  "errorMessage": "Failed \u2014 Company/contact discovery requires an Apollo plan with search API access \u2014 see https://app.apollo.io/ to upgrade"
-                },
-                {
-                  "id": "f0f82330-9310-4af9-87a7-1ac2a096d04c",
-                  "workflowId": null,
-                  "workflowName": null,
-                  "status": "failed",
-                  "runType": "execute",
-                  "createdAt": "2026-07-25T04:42:28.652523+00:00",
-                  "completedAt": "2026-07-25T04:42:28.750599+00:00",
+                  "createdAt": "2026-07-27T08:57:43.550036+00:00",
+                  "completedAt": "2026-07-27T08:57:43.600801+00:00",
                   "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
                 },
                 {
-                  "id": "074a510b-1ea4-4323-a275-c0ea4ef30714",
+                  "id": "db70b343-2f4a-444c-8c8a-502e4174b15f",
                   "workflowId": null,
                   "workflowName": null,
                   "status": "failed",
                   "runType": "execute",
-                  "createdAt": "2026-07-25T04:42:12.638982+00:00",
-                  "completedAt": "2026-07-25T04:42:12.776636+00:00",
+                  "createdAt": "2026-07-27T08:57:36.421331+00:00",
+                  "completedAt": "2026-07-27T08:57:36.537855+00:00",
                   "errorMessage": "Blocked. Slack is configured, but authentication has expired. Reconnect Slack. Next: Connect slack at /connectors, then retry."
-                },
-                {
-                  "id": "f3f887a4-7339-4d2b-9242-2e3c1127d05f",
-                  "workflowId": null,
-                  "workflowName": null,
-                  "status": "failed",
-                  "runType": "execute",
-                  "createdAt": "2026-07-25T04:41:46.064727+00:00",
-                  "completedAt": "2026-07-25T04:41:46.174163+00:00",
-                  "errorMessage": "Failed \u2014 Connect Gmail at /connectors to run this action."
                 }
               ],
-              "total": 10,
+              "total": 5,
               "success": true
             }
           }
@@ -207,7 +157,7 @@
             }
           }
         ],
-        "at": "2026-07-25T05:02:04.935981+00:00",
+        "at": "2026-07-27T09:02:27.648797+00:00",
         "error": null
       },
       "judgment": {
@@ -225,27 +175,27 @@
       }
     },
     "stalePlanSequence": {
-      "conversationId": "a60260e3-07ce-4eb6-b6e2-060957d5f9d3",
+      "conversationId": "201ec103-691f-4fb9-961b-fe17160a6ebd",
       "bootstrapHttp": 200,
       "seededStickyCompletedPlan": true,
       "turns": [
         {
           "user": "What workflows have been ran?",
           "http": 200,
-          "assistant": "I don\u2019t have run history yet. I can fetch recent workflow runs if you want.",
+          "assistant": "I don\u2019t have run history yet. I can fetch recent workflow runs now if you want.",
           "pending": null,
           "current_plan": null,
           "tools": [],
-          "at": "2026-07-25T05:02:18.001912+00:00"
+          "at": "2026-07-27T09:02:39.387956+00:00"
         },
         {
           "user": "yes",
           "http": 200,
-          "assistant": "What\u2019s the action you want me to take?",
+          "assistant": "What are we sending yes to?",
           "pending": null,
           "current_plan": null,
           "tools": [],
-          "at": "2026-07-25T05:02:26.050924+00:00"
+          "at": "2026-07-27T09:02:45.176264+00:00"
         }
       ],
       "judgment": {
@@ -255,12 +205,12 @@
         "pendingStatusAfterYes": null,
         "oldHubspotPlanAlive": false,
         "currentPlanGoalAfterYes": null,
-        "unrelatedAssistantSnippet": "I don\u2019t have run history yet. I can fetch recent workflow runs if you want.",
-        "yesAssistantSnippet": "What\u2019s the action you want me to take?"
+        "unrelatedAssistantSnippet": "I don\u2019t have run history yet. I can fetch recent workflow runs now if you want.",
+        "yesAssistantSnippet": "What are we sending yes to?"
       }
     }
   },
-  "tipShaObserved": "90ba2ad34ef931ad40563d026dac51a494e87910",
+  "tipShaObserved": "4f451b8001a033cfbea6e6c319171537c94b4bcf",
   "auditSample": [],
   "overall": {
     "fastRunHistory": "PASS",

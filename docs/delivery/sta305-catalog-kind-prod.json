@@ -1,6 +1,6 @@
 {
   "ticket": "STA-305",
-  "probed_at": "2026-07-25T05:02:27.106576+00:00",
+  "probed_at": "2026-07-27T09:02:46.281968+00:00",
   "local_mapper": {
     "segment": "draft a follow-up in Slack for approval",
     "matched_action": "slack.post_message",

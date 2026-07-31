@@ -1,14 +1,14 @@
 {
-  "started_at": "2026-07-25T05:02:42.070955+00:00",
+  "started_at": "2026-07-27T09:07:24.373026+00:00",
   "probes": [
     {
       "message": "send an email",
-      "conversation_id": "0b34d165-85ac-4a66-9121-f65238ad8975",
+      "conversation_id": "13073655-3a1b-4cd1-b64c-8d76998da380",
       "http": 200,
-      "assistant": "I need the recipient, subject, and body before I can send it.",
+      "assistant": "I need the recipient, subject, and body.",
       "unified_turn_live_sse": true,
       "audit_action": "unified_turn.live.completed",
-      "audit_created_at": "2026-07-25T05:02:49.251075+00:00",
+      "audit_created_at": "2026-07-27T09:07:30.179965+00:00",
       "outcome_kind": "conversational_reply",
       "live_served": true,
       "contradiction_map_fail_plus_send_listed": false,
@@ -16,12 +16,12 @@
     },
     {
       "message": "Send an email",
-      "conversation_id": "765192e1-0267-4ee3-868a-ffa6ba738923",
+      "conversation_id": "6fb2ddb3-b0c1-4fea-9b88-40388be998c0",
       "http": 200,
       "assistant": "I need the recipient, subject, and body.",
       "unified_turn_live_sse": true,
       "audit_action": "unified_turn.live.completed",
-      "audit_created_at": "2026-07-25T05:02:56.933492+00:00",
+      "audit_created_at": "2026-07-27T09:07:39.634657+00:00",
       "outcome_kind": "conversational_reply",
       "live_served": true,
       "contradiction_map_fail_plus_send_listed": false,
@@ -29,12 +29,12 @@
     },
     {
       "message": "Send an email to Stephanie about the proposal",
-      "conversation_id": "1e3f1fa9-730c-48c8-ad0a-9a91a8b1f41f",
+      "conversation_id": "d3986f32-b25b-47db-9a8e-4a6078e573af",
       "http": 200,
-      "assistant": "I need the email body before I can send it.",
+      "assistant": "I can draft the email, but I need the purpose and key points to include.",
       "unified_turn_live_sse": true,
       "audit_action": "unified_turn.live.completed",
-      "audit_created_at": "2026-07-25T05:03:05.119271+00:00",
+      "audit_created_at": "2026-07-27T09:07:48.9444+00:00",
       "outcome_kind": "conversational_reply",
       "live_served": true,
       "contradiction_map_fail_plus_send_listed": false,
@@ -42,9 +42,9 @@
     }
   ],
   "health": {
-    "git_sha": "7afecfb9ccf35199f6eba715cd5c36cb6f7530ee",
+    "git_sha": "4f451b8001a033cfbea6e6c319171537c94b4bcf",
     "live": true,
     "shadow": true
   },
-  "finished_at": "2026-07-25T05:03:08.528035+00:00"
+  "finished_at": "2026-07-27T09:07:53.325904+00:00"
 }
