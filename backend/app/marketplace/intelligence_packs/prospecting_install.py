@@ -47,6 +47,141 @@ def _active_connector_id(client: Any, org_id: str, connector_type: str) -> str |
     return fallback
 
 
+def _install_msp_enrichment_workflow_bundle(
+    client: Any,
+    org_id: str,
+    *,
+    asset_id: str,
+    spec: IntelligencePackSpec,
+    actor_id: str,
+    environment_name: str,
+) -> str | None:
+    """Install Lead Enrichment Coordinator agent + MSP Clay→HubSpot workflow."""
+    from app.marketplace.workflows.msp_enrichment_workflow import (
+        AGENT_CAPABILITIES,
+        AGENT_DEPARTMENT,
+        AGENT_NAME,
+        AGENT_PURPOSE,
+        AGENT_ROLE,
+        AGENT_SLUG,
+        AGENT_SYSTEMS,
+        WORKFLOW_DESCRIPTION,
+        WORKFLOW_NAME,
+        build_msp_enrichment_workflow_steps,
+    )
+    from app.operators.repository import create_operator
+
+    enrichment_agent_id = _marketplace_entity_id(org_id, asset_id, AGENT_SLUG)
+    create_operator(
+        client,
+        org_id,
+        {
+            "id": enrichment_agent_id,
+            "name": AGENT_NAME,
+            "description": AGENT_PURPOSE,
+            "role": "analyst",
+            "capabilities": AGENT_CAPABILITIES,
+            "config": {
+                "marketplaceAssetId": asset_id,
+                "permitted_tools": list(AGENT_SYSTEMS),
+                "pack_id": spec.pack_id,
+                "department": AGENT_DEPARTMENT.lower(),
+            },
+            "allowed_environments": [environment_name],
+            "status": "active",
+        },
+        created_by=actor_id,
+    )
+    client.table("agents").upsert(
+        {
+            "id": enrichment_agent_id,
+            "org_id": org_id,
+            "name": AGENT_NAME,
+            "purpose": AGENT_PURPOSE,
+            "role": AGENT_ROLE,
+            "department": AGENT_DEPARTMENT.lower(),
+            "model": "default",
+            "capabilities": AGENT_CAPABILITIES,
+            "systems": list(AGENT_SYSTEMS),
+            "guardrails": ["no_crunchbase_pdl_memory", "no_byo_shared_keys"],
+            "config": {
+                "marketplaceAssetId": asset_id,
+                "permitted_tools": list(AGENT_SYSTEMS),
+                "pack_id": spec.pack_id,
+            },
+            "status": "active",
+        },
+        on_conflict="id",
+    ).execute()
+
+    for system in AGENT_SYSTEMS:
+        upsert_agent_tool_permission(
+            client,
+            org_id,
+            enrichment_agent_id,
+            connector_id=None,
+            connector_type=str(system),
+            scopes=default_demo_scopes_for_system(str(system)),
+            granted_by=actor_id,
+        )
+
+    workflow_id = _marketplace_entity_id(org_id, asset_id, "msp-enrichment-workflow")
+    steps = build_msp_enrichment_workflow_steps()
+    definition = {"schema_version": SCHEMA_VERSION, "steps": steps}
+    workflow_config = {
+        "marketplaceAssetId": asset_id,
+        "pack_id": spec.pack_id,
+        "workflow_slug": "msp-prospects-clay-hubspot-enrichment",
+    }
+    client.table("workflow_defs").upsert(
+        {
+            "id": workflow_id,
+            "org_id": org_id,
+            "name": WORKFLOW_NAME,
+            "description": WORKFLOW_DESCRIPTION,
+            "status": "active",
+            "schema_version": SCHEMA_VERSION,
+            "definition": definition,
+            "config": workflow_config,
+        },
+        on_conflict="id",
+    ).execute()
+    client.table("workflows").upsert(
+        {
+            "id": workflow_id,
+            "org_id": org_id,
+            "name": WORKFLOW_NAME,
+            "description": WORKFLOW_DESCRIPTION,
+            "status": "active",
+            "environment": environment_name,
+            "nodes": [
+                {"id": step.get("id"), "type": step.get("type"), "name": step.get("name")}
+                for step in steps
+            ],
+            "edges": [
+                {"from": steps[i].get("id"), "to": steps[i + 1].get("id")}
+                for i in range(len(steps) - 1)
+            ],
+            "config": workflow_config,
+        },
+        on_conflict="id",
+    ).execute()
+    try:
+        from app.services.vertical_workflow_helper import ensure_active_workflow_version
+
+        ensure_active_workflow_version(
+            client,
+            org_id,
+            workflow_id,
+            definition,
+            environment_name=environment_name,
+            actor_id=actor_id,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("prospecting_enrichment_workflow_version_skipped err=%s", exc)
+    return workflow_id
+
+
 def install_prospecting_pack_demo_bundle(
     client: Any,
     org_id: str,
@@ -80,7 +215,7 @@ def install_prospecting_pack_demo_bundle(
             "capabilities": ["lead_scouting", "icp", "apollo_read", "apollo_lists"],
             "config": {
                 "marketplaceAssetId": asset_id,
-                "permitted_tools": ["apollo", "hubspot"],
+                "permitted_tools": ["apollo", "hubspot", "clay"],
                 "pack_id": spec.pack_id,
                 "department": "sales",
             },
@@ -99,7 +234,7 @@ def install_prospecting_pack_demo_bundle(
             "department": "sales",
             "model": "default",
             "capabilities": ["lead_scouting", "icp", "apollo_read", "apollo_lists"],
-            "systems": list(spec.demo_systems) or ["apollo", "hubspot"],
+            "systems": list(spec.demo_systems) or ["apollo", "hubspot", "clay"],
             "guardrails": [
                 "no_crunchbase_pdl_memory",
                 "no_byo_shared_keys",
@@ -107,7 +242,7 @@ def install_prospecting_pack_demo_bundle(
             ],
             "config": {
                 "marketplaceAssetId": asset_id,
-                "permitted_tools": ["apollo", "hubspot"],
+                "permitted_tools": ["apollo", "hubspot", "clay"],
                 "pack_id": spec.pack_id,
             },
             "status": "active",
@@ -115,7 +250,7 @@ def install_prospecting_pack_demo_bundle(
         on_conflict="id",
     ).execute()
 
-    for system in spec.demo_systems or ["apollo", "hubspot"]:
+    for system in spec.demo_systems or ["apollo", "hubspot", "clay"]:
         upsert_agent_tool_permission(
             client,
             org_id,
@@ -163,6 +298,7 @@ def install_prospecting_pack_demo_bundle(
 
     apollo_connector_id = _active_connector_id(client, org_id, "apollo")
     hubspot_connector_id = _active_connector_id(client, org_id, "hubspot")
+    clay_connector_id = _active_connector_id(client, org_id, "clay")
 
     workflow_id = None
     if spec.workflow_name and spec.workflow_steps:
@@ -217,16 +353,27 @@ def install_prospecting_pack_demo_bundle(
         except Exception as exc:  # noqa: BLE001
             logger.debug("prospecting_pack_workflow_version_skipped err=%s", exc)
 
+    enrichment_workflow_id = _install_msp_enrichment_workflow_bundle(
+        client,
+        org_id,
+        asset_id=asset_id,
+        spec=spec,
+        actor_id=actor_id,
+        environment_name=environment_name,
+    )
+
     return {
         "pack_id": spec.pack_id,
         "agentId": agent_id,
         "workflowId": workflow_id,
+        "enrichmentWorkflowId": enrichment_workflow_id,
         "assignmentCount": assignments.get("count") or 0,
         "assignmentIds": [row.get("id") for row in assignments.get("assignments") or [] if row.get("id")],
         "connectorStubs": staged,
         "byoStubs": byo_staged,
         "apolloConnectorId": apollo_connector_id,
         "hubspotConnectorId": hubspot_connector_id,
+        "clayConnectorId": clay_connector_id,
         "stopLinesHonored": [
             "no_crunchbase_pdl_kg_memory",
             "no_opencorporates_enable",
