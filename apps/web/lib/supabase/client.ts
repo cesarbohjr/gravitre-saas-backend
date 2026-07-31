@@ -1,10 +1,10 @@
 import { createBrowserClient } from "@supabase/ssr"
 
-const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://placeholder.supabase.co"
+import { getSupabasePublicUrl } from "@/lib/supabase/url"
+
 const supabaseAnonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "placeholder-anon-key"
 
 export function createClient() {
-  return createBrowserClient(supabaseUrl, supabaseAnonKey)
+  return createBrowserClient(getSupabasePublicUrl(), supabaseAnonKey)
 }

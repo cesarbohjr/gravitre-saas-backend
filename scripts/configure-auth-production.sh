@@ -90,10 +90,12 @@ PY
 
   echo "    Supabase redirect URLs updated."
 
-  local google_callback="https://${project_ref}.supabase.co/auth/v1/callback"
+  local   google_callback="https://${project_ref}.supabase.co/auth/v1/callback"
+  auth_callback="https://auth.gravitre.app/auth/v1/callback"
   echo ""
-  echo "Google OAuth authorized redirect URI (verify in Google Cloud Console):"
-  echo "  ${google_callback}"
+  echo "Google OAuth authorized redirect URIs (verify in Google Cloud Console):"
+  echo "  ${auth_callback}   (branded — required for Gravitre consent screen)"
+  echo "  ${google_callback} (legacy — keep until custom domain is verified)"
 }
 
 discover_vercel_project() {
@@ -149,9 +151,18 @@ configure_vercel_env() {
   if [[ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" || -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ]]; then
     echo "WARNING: NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY not set; skipping Supabase public env upsert." >&2
   else
-    upsert_vercel_env "NEXT_PUBLIC_SUPABASE_URL" "$NEXT_PUBLIC_SUPABASE_URL" "$project_id" "$team_id"
     upsert_vercel_env "NEXT_PUBLIC_SUPABASE_ANON_KEY" "$NEXT_PUBLIC_SUPABASE_ANON_KEY" "$project_id" "$team_id"
-    echo "    Updated NEXT_PUBLIC_SUPABASE_* on Vercel project ${project_id}"
+    echo "    Updated NEXT_PUBLIC_SUPABASE_ANON_KEY on Vercel project ${project_id}"
+  fi
+
+  auth_host="${NEXT_PUBLIC_SUPABASE_AUTH_URL:-https://auth.gravitre.app}"
+  upsert_vercel_env "NEXT_PUBLIC_SUPABASE_AUTH_URL" "$auth_host" "$project_id" "$team_id"
+  echo "    Updated NEXT_PUBLIC_SUPABASE_AUTH_URL=${auth_host}"
+
+  project_url="${SUPABASE_PROJECT_URL:-${NEXT_PUBLIC_SUPABASE_URL:-}}"
+  if [[ -n "$project_url" ]]; then
+    upsert_vercel_env "SUPABASE_PROJECT_URL" "$project_url" "$project_id" "$team_id"
+    echo "    Updated SUPABASE_PROJECT_URL (server-only auth proxy target)"
   fi
 
   upsert_vercel_env "NEXT_PUBLIC_APP_URL" "$APP_URL" "$project_id" "$team_id"

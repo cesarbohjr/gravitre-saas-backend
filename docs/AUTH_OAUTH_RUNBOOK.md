@@ -1,5 +1,23 @@
 # Auth / OAuth runbook (gravitre.app)
 
+## Hide `*.supabase.co` on Google / Microsoft OAuth screens
+
+Users must never see `smyeexlrqdpymwjmgzqu.supabase.co` on login. Fix:
+
+1. **Supabase custom domain** `auth.gravitre.app` (Dashboard → Settings → Custom Domains, or `bash scripts/apply-supabase-auth-custom-domain.sh`)
+2. **DNS** CNAME `auth.gravitre.app` → `smyeexlrqdpymwjmgzqu.supabase.co` + TXT verification records
+3. **Activate** domain: `supabase domains activate --project-ref smyeexlrqdpymwjmgzqu`
+4. **Vercel env** (production):
+   - `NEXT_PUBLIC_SUPABASE_AUTH_URL=https://auth.gravitre.app`
+   - `SUPABASE_PROJECT_URL=https://smyeexlrqdpymwjmgzqu.supabase.co` (server-only; powers `/auth/v1` proxy fallback)
+   - Do **not** expose `*.supabase.co` via `NEXT_PUBLIC_SUPABASE_URL` in production
+5. **Google Cloud Console** → OAuth client → Authorized redirect URIs:
+   - `https://auth.gravitre.app/auth/v1/callback`
+   - Keep legacy `https://smyeexlrqdpymwjmgzqu.supabase.co/auth/v1/callback` until cutover verified
+6. **Redeploy** Vercel production after env change
+
+Code reads branded URL from `apps/web/lib/supabase/url.ts` (`getSupabasePublicUrl()`). Same-origin fallback proxies `/auth/v1/*` on `gravitre.app` when `SUPABASE_PROJECT_URL` is set (`next.config.mjs`).
+
 ## Architecture
 
 | Layer | Role |
@@ -28,7 +46,8 @@ Usually **stale `sb-*` cookies** (session invalid but cookies remain). Fixed by:
 ### Vercel (`gravitre-saas-backend` project)
 
 - `NEXT_PUBLIC_APP_URL=https://gravitre.app`
-- `NEXT_PUBLIC_SUPABASE_URL=https://smyeexlrqdpymwjmgzqu.supabase.co`
+- `NEXT_PUBLIC_SUPABASE_AUTH_URL=https://auth.gravitre.app` (browser — never `*.supabase.co` in prod)
+- `SUPABASE_PROJECT_URL=https://smyeexlrqdpymwjmgzqu.supabase.co` (server-only)
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — anon key for that project
 - `FASTAPI_BASE_URL=https://gravitre-saas-backend-production.up.railway.app`
 

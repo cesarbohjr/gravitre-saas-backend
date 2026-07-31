@@ -57,7 +57,24 @@ const nextConfig = {
         ? raw
         : "https://gravitre-saas-backend-production.up.railway.app"
     const resolvedBackendUrl = backendUrl || "http://localhost:8000"
+
+    const supabaseProject =
+      (process.env.SUPABASE_PROJECT_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "")
+        .trim()
+        .replace(/[\r\n]+/g, "")
+        .replace(/\/+$/, "")
+
+    const beforeFiles = []
+    if (supabaseProject.includes(".supabase.co")) {
+      // Same-origin auth proxy: browser uses gravitre.app/auth/v1/* instead of *.supabase.co
+      beforeFiles.push({
+        source: "/auth/v1/:path*",
+        destination: `${supabaseProject}/auth/v1/:path*`,
+      })
+    }
+
     return {
+      beforeFiles,
       fallback: [
         {
           source: "/api/:path*",

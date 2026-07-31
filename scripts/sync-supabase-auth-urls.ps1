@@ -51,5 +51,6 @@ Invoke-RestMethod `
     -ContentType "application/json" `
     -Body $body | Out-Null
 
-Write-Host "Done. Google OAuth redirect URI (verify in Google Cloud Console):" -ForegroundColor Green
-Write-Host "  https://${ProjectRef}.supabase.co/auth/v1/callback"
+Write-Host "Done. Google OAuth redirect URIs (verify in Google Cloud Console):" -ForegroundColor Green
+Write-Host "  https://auth.gravitre.app/auth/v1/callback   (branded)"
+Write-Host "  https://${ProjectRef}.supabase.co/auth/v1/callback   (legacy until cutover)"

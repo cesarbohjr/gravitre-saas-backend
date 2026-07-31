@@ -3,6 +3,7 @@ import type { Provider } from "@supabase/supabase-js"
 import { getAuthRedirectUrl } from "@/lib/auth-redirect"
 import { markAuthTransition } from "@/lib/auth-transition"
 import { createClient } from "@/lib/supabase/client"
+import { sanitizeAuthErrorMessage } from "@/lib/supabase/url"
 
 type OAuthResult =
   | { ok: true }
@@ -44,7 +45,7 @@ export async function beginOAuthSignIn(
   })
 
   if (error) {
-    return { ok: false, error: error.message }
+    return { ok: false, error: sanitizeAuthErrorMessage(error.message) }
   }
 
   if (!data?.url) {

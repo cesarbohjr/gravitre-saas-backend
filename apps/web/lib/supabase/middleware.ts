@@ -2,11 +2,12 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
 import { getAppOrigin, isSupabaseAuthCookie } from "@/lib/auth-session"
+import { getSupabasePublicUrl } from "@/lib/supabase/url"
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseUrl = getSupabasePublicUrl()
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!supabaseUrl || !supabaseAnonKey) {
     return { response: supabaseResponse, user: null }

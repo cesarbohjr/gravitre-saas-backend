@@ -7,6 +7,7 @@ import {
   clearSupabaseAuthCookiesFromRequest,
   getAppOrigin,
 } from "@/lib/auth-session"
+import { getSupabasePublicUrl } from "@/lib/supabase/url"
 
 function buildRedirectUrl(request: NextRequest, next: string): URL {
   const origin = getAppOrigin(request) || new URL(request.url).origin
@@ -36,7 +37,7 @@ function createSupabaseWithResponse(
   response: NextResponse
 ) {
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    getSupabasePublicUrl(),
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {

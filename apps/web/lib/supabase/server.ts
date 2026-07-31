@@ -1,13 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 import type { NextRequest } from "next/server"
 
-function getSupabaseUrl() {
-  const value = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL
-  if (!value) {
-    throw new Error("Supabase URL is not configured")
-  }
-  return value
-}
+import { getSupabasePublicUrl, getSupabaseServiceUrl } from "@/lib/supabase/url"
 
 function getSupabaseAnonKey() {
   const value = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -39,7 +33,7 @@ export function createSupabaseRouteClient(request: NextRequest): SupabaseClient 
   const authHeader = request.headers.get("authorization")
   const serviceRoleKey = getSupabaseServiceRoleKey()
   const accessKey = authHeader ? getSupabaseAnonKey() : (serviceRoleKey ?? getSupabaseAnonKey())
-  return createClient(getSupabaseUrl(), accessKey, {
+  return createClient(getSupabasePublicUrl(), accessKey, {
     global: {
       headers: authHeader ? { Authorization: authHeader } : {},
     },
@@ -53,7 +47,7 @@ export function createSupabaseRouteClient(request: NextRequest): SupabaseClient 
 export function createSupabaseServiceRoleClient(): SupabaseClient | null {
   const serviceRoleKey = getSupabaseServiceRoleKey()
   if (!serviceRoleKey) return null
-  return createClient(getSupabaseUrl(), serviceRoleKey, {
+  return createClient(getSupabaseServiceUrl(), serviceRoleKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,

@@ -6,22 +6,16 @@ export interface ResolvedOrgMembership {
   current_org: { id: string; name: string | null } | null
 }
 
+import { getSupabaseServiceUrl } from "@/lib/supabase/url"
+
 function getServiceRoleKey(): string | null {
   return process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || null
-}
-
-function getSupabaseUrl(): string {
-  const value = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL
-  if (!value) {
-    throw new Error("Supabase URL is not configured")
-  }
-  return value
 }
 
 function createServiceRoleClient(): SupabaseClient | null {
   const serviceKey = getServiceRoleKey()
   if (!serviceKey) return null
-  return createClient(getSupabaseUrl(), serviceKey, {
+  return createClient(getSupabaseServiceUrl(), serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
 }
