@@ -39,7 +39,8 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT: gravitre-saas-backend
           NEXT_PUBLIC_APP_URL: https://gravitre.app
-          NEXT_PUBLIC_SUPABASE_AUTH_URL: https://auth.gravitre.app
+          # Same-origin auth proxy until auth.gravitre.app Supabase custom domain is activated
+          NEXT_PUBLIC_SUPABASE_AUTH_URL: https://gravitre.app
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_PROJECT_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}

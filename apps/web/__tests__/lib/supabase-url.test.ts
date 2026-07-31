@@ -25,7 +25,7 @@ describe("getSupabasePublicUrl", () => {
     process.env.NODE_ENV = "production"
     process.env.NEXT_PUBLIC_APP_URL = "https://gravitre.app"
     const { getSupabasePublicUrl } = await import("@/lib/supabase/url")
-    expect(getSupabasePublicUrl()).toBe("https://auth.gravitre.app")
+    expect(getSupabasePublicUrl()).toBe("https://gravitre.app")
   })
 
   it("sanitizes supabase.co from error messages", async () => {

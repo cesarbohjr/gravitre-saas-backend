@@ -1,7 +1,7 @@
 /** Canonical production URLs (custom domains on Vercel / Railway). */
 export const PRODUCTION_APP_URL = "https://gravitre.app"
 export const PRODUCTION_API_URL = "https://api.gravitre.app"
-/** Supabase Auth custom domain — OAuth consent shows this host, not *.supabase.co. */
+/** Optional Supabase Auth custom domain — only use after DNS + Supabase activate (see AUTH_OAUTH_RUNBOOK). */
 export const PRODUCTION_SUPABASE_AUTH_URL = "https://auth.gravitre.app"
 /** Server-side proxy target until api.gravitre.app DNS points at Railway. */
 export const PRODUCTION_BACKEND_URL =

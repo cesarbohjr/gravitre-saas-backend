@@ -1,4 +1,4 @@
-import { PRODUCTION_SUPABASE_AUTH_URL, publicAppUrl } from "@/lib/public-urls"
+import { publicAppUrl } from "@/lib/public-urls"
 
 const SUPABASE_HOST_SUFFIX = ".supabase.co"
 
@@ -12,8 +12,8 @@ function isInternalSupabaseHost(url: string): boolean {
 
 /**
  * Public Supabase Auth/API base URL exposed to browsers.
- * Never returns the raw *.supabase.co project URL in production when a branded
- * URL is configured (custom domain or same-origin /auth/v1 proxy on gravitre.app).
+ * Production default is same-origin gravitre.app (/auth/v1 proxy) — never an
+ * unprovisioned host like auth.gravitre.app unless explicitly configured.
  */
 export function getSupabasePublicUrl(): string {
   const authUrl = trimUrl(process.env.NEXT_PUBLIC_SUPABASE_AUTH_URL)
@@ -27,10 +27,6 @@ export function getSupabasePublicUrl(): string {
   }
 
   if (process.env.NODE_ENV === "production") {
-    const branded = trimUrl(PRODUCTION_SUPABASE_AUTH_URL)
-    if (branded && !isInternalSupabaseHost(branded)) {
-      return branded
-    }
     return publicAppUrl()
   }
 

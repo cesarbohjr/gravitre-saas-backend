@@ -4,17 +4,9 @@
 
 Users must never see `smyeexlrqdpymwjmgzqu.supabase.co` on login. Fix:
 
-1. **Supabase custom domain** `auth.gravitre.app` (Dashboard → Settings → Custom Domains, or `bash scripts/apply-supabase-auth-custom-domain.sh`)
-2. **DNS** CNAME `auth.gravitre.app` → `smyeexlrqdpymwjmgzqu.supabase.co` + TXT verification records
-3. **Activate** domain: `supabase domains activate --project-ref smyeexlrqdpymwjmgzqu`
-4. **Vercel env** (production):
-   - `NEXT_PUBLIC_SUPABASE_AUTH_URL=https://auth.gravitre.app`
-   - `SUPABASE_PROJECT_URL=https://smyeexlrqdpymwjmgzqu.supabase.co` (server-only; powers `/auth/v1` proxy fallback)
-   - Do **not** expose `*.supabase.co` via `NEXT_PUBLIC_SUPABASE_URL` in production
-5. **Google Cloud Console** → OAuth client → Authorized redirect URIs:
-   - `https://auth.gravitre.app/auth/v1/callback`
-   - Keep legacy `https://smyeexlrqdpymwjmgzqu.supabase.co/auth/v1/callback` until cutover verified
-6. **Redeploy** Vercel production after env change
+1. **Supabase custom domain** `auth.gravitre.app` (optional; only after DNS + activate — see below)
+2. **Until then:** production uses **`https://gravitre.app/auth/v1/*`** proxy (set `NEXT_PUBLIC_SUPABASE_AUTH_URL=https://gravitre.app` and `SUPABASE_PROJECT_URL=https://<ref>.supabase.co` on Vercel)
+3. **Do not** point `NEXT_PUBLIC_SUPABASE_AUTH_URL` at `auth.gravitre.app` until Supabase custom domain is **activated** — otherwise login 404s (`DEPLOYMENT_NOT_FOUND`)
 
 Code reads branded URL from `apps/web/lib/supabase/url.ts` (`getSupabasePublicUrl()`). Same-origin fallback proxies `/auth/v1/*` on `gravitre.app` when `SUPABASE_PROJECT_URL` is set (`next.config.mjs`).
 

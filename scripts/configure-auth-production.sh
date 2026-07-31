@@ -92,10 +92,12 @@ PY
 
   local   google_callback="https://${project_ref}.supabase.co/auth/v1/callback"
   auth_callback="https://auth.gravitre.app/auth/v1/callback"
+  app_callback="${APP_URL}/auth/v1/callback"
   echo ""
   echo "Google OAuth authorized redirect URIs (verify in Google Cloud Console):"
-  echo "  ${auth_callback}   (branded — required for Gravitre consent screen)"
-  echo "  ${google_callback} (legacy — keep until custom domain is verified)"
+  echo "  ${app_callback}   (production — gravitre.app same-origin proxy)"
+  echo "  ${auth_callback}   (optional — after Supabase custom domain activate)"
+  echo "  ${google_callback} (legacy — keep until cutover verified)"
 }
 
 discover_vercel_project() {
@@ -155,9 +157,9 @@ configure_vercel_env() {
     echo "    Updated NEXT_PUBLIC_SUPABASE_ANON_KEY on Vercel project ${project_id}"
   fi
 
-  auth_host="${NEXT_PUBLIC_SUPABASE_AUTH_URL:-https://auth.gravitre.app}"
+  auth_host="${NEXT_PUBLIC_SUPABASE_AUTH_URL:-${APP_URL}}"
   upsert_vercel_env "NEXT_PUBLIC_SUPABASE_AUTH_URL" "$auth_host" "$project_id" "$team_id"
-  echo "    Updated NEXT_PUBLIC_SUPABASE_AUTH_URL=${auth_host}"
+  echo "    Updated NEXT_PUBLIC_SUPABASE_AUTH_URL=${auth_host} (use auth.gravitre.app only after Supabase custom domain activate)"
 
   project_url="${SUPABASE_PROJECT_URL:-${NEXT_PUBLIC_SUPABASE_URL:-}}"
   if [[ -n "$project_url" ]]; then
