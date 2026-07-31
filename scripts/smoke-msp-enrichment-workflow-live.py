@@ -218,21 +218,7 @@ def main() -> int:
         hs_search = _safe_invoke(
             ctx,
             "hubspot.contacts.search",
-            {
-                **hs_params,
-                "filter_groups": [
-                    {
-                        "filters": [
-                            {
-                                "propertyName": "email",
-                                "operator": "CONTAINS_TOKEN",
-                                "value": "msp",
-                            }
-                        ]
-                    }
-                ],
-                "limit": 1,
-            },
+            {**hs_params, "list_all": True, "limit": 1},
         )
         invokes["hubspot.contacts.search"] = _invoke_record(hs_search)
     else:
