@@ -121,6 +121,7 @@ MUTATING_ADVANCED_VERB_TOKENS: frozenset[str] = frozenset(
 _SEED_VERIFIED_OUTPUT_ACTIONS: frozenset[str] = frozenset(
     {
         "apollo.lists.create",
+        "apollo.lists.add",
         "slack.post_message",
         "hubspot.deals.create",
         "hubspot.contacts.create",

@@ -7,6 +7,12 @@ from app.connectors.catalog_http.executor import make_catalog_http_executor
 
 
 def _catalog_tool_keys() -> set[str]:
+    """Canonical catalog action ids only (no short-prefix aliases).
+
+    Aliases like ``drive.search_files`` for ``google_drive.search_files`` must
+    not become standalone catalog-HTTP stubs — that shadows dedicated executors
+    and breaks resolve/tool sequencing.
+    """
     keys: set[str] = set()
     for vendor_spec in get_vendor_catalog().values():
         for action in vendor_spec.all_actions():
@@ -14,7 +20,6 @@ def _catalog_tool_keys() -> set[str]:
             if "." not in tool_key or tool_key.split(".", 1)[0] != vendor_spec.vendor:
                 tool_key = f"{vendor_spec.vendor}.{action.id}"
             keys.add(tool_key)
-            keys.update(registry_keys_for_catalog_tool(tool_key))
     _ = all_catalog_action_specs  # keep import stable for tooling
     return keys
 
