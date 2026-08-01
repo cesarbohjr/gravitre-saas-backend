@@ -1,7 +1,7 @@
 # Backend production deploy gate.
 #
-# Prefer GitHub-connected Railway auto-deploy, but if /health stays on a stale
-# tip (auto-deploy stuck), fall back to `railway up` using RAILWAY_TOKEN.
+# Prefer GitHub-connected Railway auto-deploy. If /health stays stale, force
+# path uses GraphQL redeploy (never CLI `railway up` — COPY checksum races).
 # See docs/delivery/railway-github-actions-deploy-status.md
 name: Railway backend production
 
@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       force_railway_up:
-        description: Force CLI railway up (avoid — races GitHub auto-deploy and creates FAILED builds)
+        description: If GitHub auto-deploy is stuck, GraphQL-redeploy tip (never CLI railway up)
         type: boolean
         default: false
 
@@ -133,19 +133,23 @@ jobs:
             exit 1
           fi
 
-          echo "::warning::force_railway_up=true and tip still stale ($CURRENT) — CLI railway up as last resort"
-          railway variables set "GIT_SHA=$FULL" --service "$SVC" --environment "$ENV_NAME"
-          echo "$FULL $(date -u +%Y-%m-%dT%H:%M:%SZ)" > backend/.railway-deploy-stamp
+          # Never use `railway up` here — it races GitHub-connected builds and fails at
+          # Dockerfile COPY with "failed to calculate checksum" while the other deploy
+          # often succeeds (see docs/delivery/railway-github-actions-deploy-status.md).
+          # Force path: GraphQL / CLI redeploy of the GitHub commit, then wait on /health.
+          echo "::warning::force_railway_up=true and tip still stale ($CURRENT) — GraphQL redeploy (no CLI upload)"
           set +e
-          railway up ./backend --path-as-root --ci \
-            --service "$SVC" \
-            --environment "$ENV_NAME" \
-            --message "railway-backend-production $SHA"
-          UP_EXIT=$?
+          railway variables set "GIT_SHA=$FULL" --service "$SVC" --environment "$ENV_NAME"
+          python3 scripts/railway_prod_deploy.py \
+            --commit-sha "$FULL" \
+            --wait-health \
+            --timeout-s 900 \
+            --health-url "https://gravitre-saas-backend-production.up.railway.app/health"
+          DEPLOY_EXIT=$?
           set -e
-          echo "railway_up_exit=$UP_EXIT railway_wait_exit=$RAIL_WAIT"
-          if [ "$UP_EXIT" -ne 0 ]; then
-            echo "::warning::railway up exited $UP_EXIT — waiting on /health tip anyway"
+          echo "railway_graphql_deploy_exit=$DEPLOY_EXIT railway_wait_exit=$RAIL_WAIT"
+          if [ "$DEPLOY_EXIT" -ne 0 ]; then
+            echo "::warning::GraphQL deploy helper exited $DEPLOY_EXIT — waiting on /health tip anyway"
           fi
 
           match_health "https://gravitre-saas-backend-production.up.railway.app/health" 900

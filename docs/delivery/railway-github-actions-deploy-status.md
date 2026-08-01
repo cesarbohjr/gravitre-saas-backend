@@ -6,9 +6,13 @@ Updated: 2026-08-01
 
 Workflow **Railway backend production** / CLI deploy shows **FAILED** at Build image step `[3/5] COPY requirements.txt …` with **failed to calculate checksum**, while a parallel **via GitHub** deploy succeeds and **`/health` `git_sha`** advances. Requirements files are present — this is a race, not a missing file.
 
+## Fix (2026-08-01b)
+
+`force_railway_up=true` **never** runs `railway up` (CLI image upload). After waiting for GitHub auto-deploy, a stuck tip uses `scripts/railway_prod_deploy.py --commit-sha …` (GraphQL / CLI redeploy of the GitHub commit). That avoids FAILED builds at `COPY requirements*.txt` / `failed to calculate checksum` when two Metal builders race.
+
 ## Fix (2026-08-01)
 
-Even `force_railway_up=true` **waits for GitHub auto-deploy first**. CLI `railway up` runs only when `/health` is still stale after that wait (true stuck tip). This stops FAILED CLI builds from racing a healthy GitHub deploy (e.g. `da229da5` tip live while CLI upload failed at COPY checksum).
+Even `force_railway_up=true` **waits for GitHub auto-deploy first**. CLI `railway up` was previously a last resort when `/health` stayed stale; that path raced healthy GitHub deploys (e.g. tip live while CLI upload failed at COPY checksum) and is removed.
 
 ## Fix (2026-07-31)
 
