@@ -628,15 +628,29 @@ export const mesonApi = {
     workflowId?: string
   }) =>
     postJson<MesonSuggestionsResponse>(apiUrl("/api/meson/suggestions"), data),
-  alerts: () => fetcher<MesonAlertsResponse>(apiUrl("/api/meson/alerts")),
+  alerts: (params?: { workflowId?: string; vendors?: string[] }) => {
+    const search = new URLSearchParams()
+    if (params?.workflowId) search.set("workflowId", params.workflowId)
+    if (params?.vendors?.length) search.set("vendors", params.vendors.join(","))
+    const suffix = search.toString() ? `?${search}` : ""
+    return fetcher<MesonAlertsResponse>(apiUrl(`/api/meson/alerts${suffix}`))
+  },
   insights: () => fetcher<MesonInsightsResponse>(apiUrl("/api/meson/insights")),
   pageContext: (params: { page: string; entityId?: string }) => {
     const search = new URLSearchParams({ page: params.page })
     if (params.entityId) search.set("entity_id", params.entityId)
     return fetcher<MesonPageContextResponse>(apiUrl(`/api/meson/page-context?${search}`))
   },
-  optimizations: (workflowId: string) =>
-    fetcher<MesonInsightsResponse>(apiUrl(`/api/meson/optimizations/${workflowId}`)),
+  optimizations: (
+    workflowId: string,
+    workflowState?: Record<string, unknown>,
+  ) =>
+    workflowState
+      ? postJson<MesonInsightsResponse>(
+          apiUrl(`/api/meson/optimizations/${workflowId}`),
+          { workflowState },
+        )
+      : fetcher<MesonInsightsResponse>(apiUrl(`/api/meson/optimizations/${workflowId}`)),
   preferences: () => fetcher<MesonPreferencesResponse>(apiUrl("/api/meson/preferences")),
   feedbackMetrics: (workflowId?: string) =>
     fetcher<MesonFeedbackMetricsResponse>(

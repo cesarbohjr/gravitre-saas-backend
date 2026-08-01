@@ -173,6 +173,9 @@ const LEGACY_NODE_TYPE_MAP: Record<string, CanvasNodeType> = {
   human_approval: "approval",
   parallel: "task",
   delay: "task",
+  // Marketplace / pack steps compile as invoke_tool — surface as connector nodes.
+  invoke_tool: "connector",
+  tool_invoke: "connector",
 }
 
 const CANVAS_NODE_TYPES = new Set<CanvasNodeType>([
@@ -258,21 +261,38 @@ export function apiGraphToCanvasNodes(
     }
     const position = resolveNodePosition(node)
     const nodeType = normalizeCanvasNodeType(node.node_type ?? node.type)
+    // Pack installs store requires_connector + config.action on invoke_tool steps.
+    const requiresConnector =
+      (node.requires_connector as string | undefined) ||
+      (metadata.requires_connector as string | undefined) ||
+      (config.requires_connector as string | undefined) ||
+      (config.connector as string | undefined)
     const bind =
-      nodeType === "connector"
+      nodeType === "connector" || Boolean(requiresConnector) || Boolean(config.action)
         ? resolveConnectorBind({
-            vendor: (config.vendor as string) || (node.systemName as string),
+            vendor:
+              (config.vendor as string) ||
+              requiresConnector ||
+              (node.systemName as string),
             selectedAction:
               (config.selected_action as string) || (config.selectedAction as string),
             config,
           })
         : null
+    const resolvedType: CanvasNodeType =
+      nodeType === "task" && bind?.vendor ? "connector" : nodeType
     const mergedConfig = bind ? connectorConfigWithBind(config, bind) : config
+    const description =
+      (node.description as string) ||
+      (node.instruction as string) ||
+      (metadata.task as string) ||
+      (mergedConfig.task as string) ||
+      (mergedConfig.instruction as string)
     return {
       id,
-      type: nodeType,
+      type: resolvedType,
       name: String(node.name ?? node.title ?? "Node"),
-      description: (node.description as string) || (node.instruction as string),
+      description,
       config: mergedConfig,
       position,
       connections: edgeTargets(apiEdges, id),

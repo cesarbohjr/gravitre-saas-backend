@@ -27,6 +27,13 @@ import {
   type MesonInsight,
   type MesonSuggestion,
 } from "@/lib/api"
+import {
+  buildCanvasMesonAlerts,
+  filterApiAlertsForWorkflow,
+  rotateTipsAndInsights,
+  type OrgConnectorRef,
+} from "@/lib/workflows/meson-canvas-alerts"
+import type { CanvasWorkflowNode } from "@/lib/workflows/builder-persistence"
 
 const DISMISSED_KEY_PREFIX = "gravitre:meson-dismissed:"
 
@@ -70,6 +77,7 @@ export function MesonCopilotPanel({
   canPersist,
   nodes,
   edges,
+  orgConnectors,
   onAcceptSuggestion,
   onDismissSuggestion,
   onApplyInsight,
@@ -89,8 +97,10 @@ export function MesonCopilotPanel({
     selectedAction?: string
     description?: string
     position?: { x: number; y: number }
+    config?: Record<string, unknown>
   }>
   edges?: Array<{ id?: string; from: string; to: string }>
+  orgConnectors?: OrgConnectorRef[]
   onAcceptSuggestion: (suggestion: MesonSuggestion) => void
   onDismissSuggestion: (suggestionId: string) => void
   onApplyInsight?: (insight: MesonInsight) => void
@@ -101,6 +111,7 @@ export function MesonCopilotPanel({
   const { reduced, container, item } = useMotionPrefs()
   const [suggestions, setSuggestions] = useState<MesonSuggestion[]>([])
   const [alerts, setAlerts] = useState<MesonAlert[]>([])
+  const [tips, setTips] = useState<MesonInsight[]>([])
   const [insights, setInsights] = useState<MesonInsight[]>([])
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
   const [loadingAlerts, setLoadingAlerts] = useState(false)
@@ -127,6 +138,40 @@ export function MesonCopilotPanel({
   }, [workflowId])
 
   const lastNode = nodes.length > 0 ? nodes[nodes.length - 1] : null
+  const canvasNodes = useMemo(
+    () =>
+      nodes.map(
+        (n) =>
+          ({
+            id: n.id || `tmp-${n.name}`,
+            type: n.type as CanvasWorkflowNode["type"],
+            name: n.name,
+            description: n.description,
+            vendor: n.vendor,
+            selectedAction: n.selectedAction,
+            config: n.config || {},
+            position: n.position || { x: 0, y: 0 },
+            connections: [],
+          }) satisfies CanvasWorkflowNode,
+      ),
+    [nodes],
+  )
+  const canvasVendors = useMemo(() => {
+    const set = new Set<string>()
+    for (const n of canvasNodes) {
+      if (n.vendor) set.add(String(n.vendor).toLowerCase())
+      const name = (n.name || "").toLowerCase()
+      if (name.includes("apollo")) set.add("apollo")
+      if (name.includes("clay")) set.add("clay")
+      if (name.includes("hubspot") || name.includes("hubs")) set.add("hubspot")
+    }
+    return [...set]
+  }, [canvasNodes])
+
+  const canvasAlerts = useMemo(
+    () => buildCanvasMesonAlerts(canvasNodes, orgConnectors || [], workflowId),
+    [canvasNodes, orgConnectors, workflowId],
+  )
 
   useEffect(() => {
     if (!open) return
@@ -135,37 +180,69 @@ export function MesonCopilotPanel({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingAlerts(true)
     setLoadingInsights(true)
+    const dismissedIds = new Set(loadDismissed(workflowId))
     void mesonApi
-      .alerts()
+      .alerts(
+        canPersist && workflowId
+          ? { workflowId, vendors: canvasVendors }
+          : canvasVendors.length
+            ? { vendors: canvasVendors }
+            : undefined,
+      )
       .then((res) => {
-        if (!cancelled) {
-          const dismissedIds = new Set(loadDismissed(workflowId))
-          setAlerts((res.alerts ?? []).filter((alert) => !dismissedIds.has(alert.id)))
-        }
+        if (cancelled) return
+        const apiScoped = filterApiAlertsForWorkflow(res.alerts ?? [], workflowId, canvasNodes)
+        const merged = [...canvasAlerts, ...apiScoped].filter((a) => !dismissedIds.has(a.id))
+        // Dedupe by id
+        const seen = new Set<string>()
+        setAlerts(
+          merged.filter((a) => {
+            if (seen.has(a.id)) return false
+            seen.add(a.id)
+            return true
+          }),
+        )
       })
       .catch(() => {
-        if (!cancelled) setAlerts([])
+        if (!cancelled) {
+          setAlerts(canvasAlerts.filter((a) => !dismissedIds.has(a.id)))
+        }
       })
       .finally(() => {
         if (!cancelled) setLoadingAlerts(false)
       })
+
+    const workflowState = {
+      nodes: canvasNodes.map((n) => ({
+        type: n.type,
+        name: n.name,
+        vendor: n.vendor,
+        description: n.description,
+        config: n.config,
+        selectedAction: n.selectedAction,
+      })),
+    }
     const insightsRequest =
       canPersist && workflowId
-        ? mesonApi.optimizations(workflowId)
+        ? mesonApi.optimizations(workflowId, workflowState)
         : mesonApi.insights()
     void insightsRequest
       .then((res) => {
-        if (!cancelled) {
-          const dismissedIds = new Set(loadDismissed(workflowId))
-          setInsights(
-            (res.insights ?? [])
-              .filter((insight) => !dismissedIds.has(insight.id))
-              .slice(0, 2),
-          )
-        }
+        if (cancelled) return
+        const dismissedSet = new Set(loadDismissed(workflowId))
+        const all = (res.insights ?? []).filter((insight) => !dismissedSet.has(insight.id))
+        const rotated = rotateTipsAndInsights(all, workflowId, {
+          tipCount: 2,
+          insightCount: 2,
+        })
+        setTips(rotated.tips)
+        setInsights(rotated.insights)
       })
       .catch(() => {
-        if (!cancelled) setInsights([])
+        if (!cancelled) {
+          setTips([])
+          setInsights([])
+        }
       })
       .finally(() => {
         if (!cancelled) setLoadingInsights(false)
@@ -173,7 +250,7 @@ export function MesonCopilotPanel({
     return () => {
       cancelled = true
     }
-  }, [open, workflowId, canPersist])
+  }, [open, workflowId, canPersist, canvasAlerts, canvasNodes, canvasVendors])
 
   useEffect(() => {
     if (!open || nodes.length === 0) {
@@ -187,17 +264,29 @@ export function MesonCopilotPanel({
       void mesonApi
         .suggestions({
           workflowState: {
-            nodes: nodes.map((n) => ({ type: n.type, name: n.name, vendor: n.vendor })),
+            nodes: canvasNodes.map((n) => ({
+              type: n.type,
+              name: n.name,
+              vendor: n.vendor,
+              description: n.description,
+              config: n.config,
+              selectedAction: n.selectedAction,
+            })),
           },
           lastAddedNode: lastNode
-            ? { type: lastNode.type, name: lastNode.name, vendor: lastNode.vendor }
+            ? {
+                type: lastNode.type,
+                name: lastNode.name,
+                vendor: lastNode.vendor,
+                config: lastNode.config,
+              }
             : undefined,
           workflowId: canPersist ? workflowId : undefined,
         })
         .then((res) => {
           if (cancelled) return
           setSuggestions(
-            (res.suggestions ?? []).filter((s) => !dismissed.includes(s.id)).slice(0, 3),
+            (res.suggestions ?? []).filter((s) => !dismissed.includes(s.id)).slice(0, 4),
           )
         })
         .catch(() => {
@@ -211,7 +300,7 @@ export function MesonCopilotPanel({
       cancelled = true
       clearTimeout(timer)
     }
-  }, [open, nodes, dismissed, canPersist, workflowId, lastNode])
+  }, [open, nodes, dismissed, canPersist, workflowId, lastNode, canvasNodes])
 
   const handleDismiss = useCallback(
     (suggestionId: string) => {
@@ -264,6 +353,7 @@ export function MesonCopilotPanel({
       setDismissed(next)
       saveDismissed(workflowId, next)
       window.setTimeout(() => {
+        setTips((prev) => prev.filter((item) => item.id !== insight.id))
         setInsights((prev) => prev.filter((item) => item.id !== insight.id))
         setAppliedInsightId(null)
       }, 600)
@@ -686,51 +776,107 @@ export function MesonCopilotPanel({
           )}
         </section>
 
-        {/* Optimizations */}
-        <section className="p-3">
-          <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Optimize</h3>
-          {loadingInsights ? (
-            <Skeleton className="h-14 w-full" />
-          ) : insights.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No optimization tips yet.</p>
-          ) : (
-            <motion.div className="space-y-2" variants={container} initial="initial" animate="animate">
-              {insights.map((insight) => {
-                const applied = appliedInsightId === insight.id
-                return (
-                  <motion.div
-                    key={insight.id}
-                    variants={item}
-                    className="rounded-lg border border-border bg-secondary/20 p-2.5"
-                  >
-                    <div className="flex items-start gap-2">
-                      <TrendingUp className="mt-0.5 h-3.5 w-3.5 shrink-0 text-info" />
-                      <div className="min-w-0 flex-1">
-                        {applied && !reduced ? (
-                          <ShimmerText className="text-xs font-medium text-foreground">
-                            {insight.title}
-                          </ShimmerText>
-                        ) : (
-                          <p className="text-xs font-medium text-foreground">{insight.title}</p>
-                        )}
-                        <p className="mt-0.5 line-clamp-2 text-[10px] text-muted-foreground">{insight.summary}</p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-2 h-6 gap-1 px-2 text-[10px]"
-                      onClick={() => handleApplyInsight(insight)}
-                      disabled={!onApplyInsight}
+        {/* Tips + Insights (rotated per workflow / hour) */}
+        <section className="p-3 space-y-4">
+          <div>
+            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Tips
+            </h3>
+            {loadingInsights ? (
+              <Skeleton className="h-14 w-full" />
+            ) : tips.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No tips for this canvas yet.</p>
+            ) : (
+              <motion.div className="space-y-2" variants={container} initial="initial" animate="animate">
+                {tips.map((tip) => {
+                  const applied = appliedInsightId === tip.id
+                  return (
+                    <motion.div
+                      key={tip.id}
+                      variants={item}
+                      className="rounded-lg border border-border bg-secondary/20 p-2.5"
                     >
-                      Apply
-                      <ChevronRight className="h-3 w-3" />
-                    </Button>
-                  </motion.div>
-                )
-              })}
-            </motion.div>
-          )}
+                      <div className="flex items-start gap-2">
+                        <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+                        <div className="min-w-0 flex-1">
+                          {applied && !reduced ? (
+                            <ShimmerText className="text-xs font-medium text-foreground">
+                              {tip.title}
+                            </ShimmerText>
+                          ) : (
+                            <p className="text-xs font-medium text-foreground">{tip.title}</p>
+                          )}
+                          <p className="mt-0.5 line-clamp-3 text-[10px] text-muted-foreground">
+                            {tip.summary}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 h-6 gap-1 px-2 text-[10px]"
+                        onClick={() => handleApplyInsight(tip)}
+                        disabled={!onApplyInsight}
+                      >
+                        Apply
+                        <ChevronRight className="h-3 w-3" />
+                      </Button>
+                    </motion.div>
+                  )
+                })}
+              </motion.div>
+            )}
+          </div>
+
+          <div>
+            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Insights
+            </h3>
+            {loadingInsights ? (
+              <Skeleton className="h-14 w-full" />
+            ) : insights.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No insights for this workflow yet.</p>
+            ) : (
+              <motion.div className="space-y-2" variants={container} initial="initial" animate="animate">
+                {insights.map((insight) => {
+                  const applied = appliedInsightId === insight.id
+                  return (
+                    <motion.div
+                      key={insight.id}
+                      variants={item}
+                      className="rounded-lg border border-border bg-secondary/20 p-2.5"
+                    >
+                      <div className="flex items-start gap-2">
+                        <TrendingUp className="mt-0.5 h-3.5 w-3.5 shrink-0 text-info" />
+                        <div className="min-w-0 flex-1">
+                          {applied && !reduced ? (
+                            <ShimmerText className="text-xs font-medium text-foreground">
+                              {insight.title}
+                            </ShimmerText>
+                          ) : (
+                            <p className="text-xs font-medium text-foreground">{insight.title}</p>
+                          )}
+                          <p className="mt-0.5 line-clamp-3 text-[10px] text-muted-foreground">
+                            {insight.summary}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 h-6 gap-1 px-2 text-[10px]"
+                        onClick={() => handleApplyInsight(insight)}
+                        disabled={!onApplyInsight}
+                      >
+                        Apply
+                        <ChevronRight className="h-3 w-3" />
+                      </Button>
+                    </motion.div>
+                  )
+                })}
+              </motion.div>
+            )}
+          </div>
         </section>
       </div>
     </motion.aside>

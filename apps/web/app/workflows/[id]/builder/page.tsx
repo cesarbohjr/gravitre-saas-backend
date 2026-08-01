@@ -44,6 +44,7 @@ import {
   type CouncilAgent,
   type DebateContribution,
 } from "@/lib/workflows/builder-persistence"
+import { applyEnrichmentWorkflowSetup } from "@/lib/workflows/enrichment-workflow-setup"
 import { classifyCanvasNodeWriteAuthority } from "@/lib/workflows/write-authority"
 import type { WorkflowDryRunResponse } from "@/types/api"
 import {
@@ -3465,6 +3466,27 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     
     loadGraph()
   }, [id, canPersist])
+
+  // Auto-bind Lead Enrichment Coordinator + fill Apollo/Clay/HubSpot instructions once agents load.
+  const enrichmentSetupAppliedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (enrichmentSetupAppliedRef.current === id) return
+    if (isLoadingGraph || orgAgents.length === 0 || nodes.length === 0) return
+    const result = applyEnrichmentWorkflowSetup(nodes, orgAgents)
+    enrichmentSetupAppliedRef.current = id
+    if (!result.changed) return
+    setNodes(result.nodes)
+    toast.success("Enrichment workflow configured", {
+      description: [
+        result.agentName ? `Agent: ${result.agentName}` : null,
+        result.boundAgents ? `${result.boundAgents} agent step(s) bound` : null,
+        result.filledInstructions ? `${result.filledInstructions} instruction(s) filled` : null,
+        result.convertedTasks ? `${result.convertedTasks} connector step(s) restored` : null,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+    })
+  }, [id, isLoadingGraph, orgAgents, nodes])
   
   // G4: deep-link seeding. When the builder is opened from a connector page with
   // ?vendor=&action=, drop a pre-configured connector node onto a fresh canvas so
@@ -3846,6 +3868,31 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     (suggestion: MesonSuggestion) => {
       const maxX = nodes.length ? Math.max(...nodes.map((n) => n.position.x)) : 200
       switch (suggestion.id) {
+        case "setup-enrichment-workflow": {
+          const result = applyEnrichmentWorkflowSetup(nodes, orgAgents)
+          if (result.changed) {
+            setNodes(result.nodes)
+            toast.success("Enrichment setup applied", {
+              description: result.agentName
+                ? `Bound ${result.agentName} and filled missing instructions.`
+                : "Filled missing Apollo/Clay/HubSpot instructions.",
+            })
+          } else {
+            toast.info("Enrichment already configured", {
+              description: "Agents and instructions look complete on this canvas.",
+            })
+          }
+          break
+        }
+        case "tip-enrichment-apollo-list":
+        case "tip-enrichment-hubspot-list":
+        case "tip-enrichment-preview":
+        case "tip-human-checkpoint":
+        case "tip-channel-routing":
+        case "tip-name-data-labels":
+        case "tip-hubspot-idempotency":
+          toast.info(suggestion.label, { description: suggestion.reason })
+          break
         case "add-slack":
           setNodes((prev) => [
             ...prev,
@@ -3924,10 +3971,14 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
           ])
           break
         default:
+          if (suggestion.id.startsWith("tip-")) {
+            toast.info(suggestion.label, { description: suggestion.reason })
+            break
+          }
           addNode(suggestion.nodeType as NodeType, suggestion.label, suggestion.reason)
       }
     },
-    [addNode, nodes]
+    [addNode, nodes, orgAgents]
   )
 
   const dismissSuggestion = useCallback(
@@ -3953,7 +4004,12 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
           workflowId: canPersist ? id : undefined,
         })
         .catch(() => {})
-      toast.success("Step added to workflow")
+      if (
+        !suggestion.id.startsWith("tip-") &&
+        suggestion.id !== "setup-enrichment-workflow"
+      ) {
+        toast.success("Step added to workflow")
+      }
     },
     [applyMesonSuggestion, canPersist, id]
   )
@@ -4011,19 +4067,34 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
   const fixAlert = useCallback(
     (alert: MesonAlert) => {
-      const target =
-        alert.actionTarget ??
-        (alert.id.startsWith("connector-auth-")
-          ? `/connectors/${alert.id.replace("connector-auth-", "")}`
-          : alert.id.startsWith("run-failed-")
-            ? `/runs/${alert.id.replace("run-failed-", "")}`
-            : null)
-      if (target) {
-        router.push(target)
-        toast.info(alert.fixLabel ?? "Opening fix flow", { description: alert.title })
+      if (alert.actionType === "setup-enrichment") {
+        const result = applyEnrichmentWorkflowSetup(nodes, orgAgents)
+        if (result.changed) {
+          setNodes(result.nodes)
+          toast.success("Enrichment setup applied", {
+            description: alert.message,
+          })
+        } else {
+          toast.info("Already configured", { description: alert.message })
+        }
+      } else if (alert.actionType === "select-node" && alert.actionTarget) {
+        setSelectedNodeId(alert.actionTarget)
+        toast.info("Open the incomplete step", { description: alert.title })
       } else {
-        router.push("/metrics")
-        toast.info("Review workflow health", { description: alert.message })
+        const target =
+          alert.actionTarget ??
+          (alert.id.startsWith("connector-auth-")
+            ? `/connectors/${alert.id.replace("connector-auth-", "")}`
+            : alert.id.startsWith("run-failed-")
+              ? `/runs/${alert.id.replace("run-failed-", "")}`
+              : null)
+        if (target && target.startsWith("/")) {
+          router.push(target)
+          toast.info(alert.fixLabel ?? "Opening fix flow", { description: alert.title })
+        } else {
+          router.push("/metrics")
+          toast.info("Review workflow health", { description: alert.message })
+        }
       }
       // Persist dismissal so Review/Apply does not reappear after refetch.
       const looksLikeFailureAlertId =
@@ -4039,7 +4110,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         })
         .catch(() => {})
     },
-    [canPersist, id, router],
+    [canPersist, id, nodes, orgAgents, router],
   )
 
   // Handle save workflow
@@ -6095,6 +6166,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               selectedAction: n.selectedAction,
               description: n.description,
               position: n.position,
+              config: n.config,
             }))}
             edges={nodes.flatMap((n) =>
               n.connections.map((to) => ({
@@ -6103,6 +6175,12 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 to,
               })),
             )}
+            orgConnectors={orgConnectors.map((c) => ({
+              id: c.id,
+              vendor: c.vendor,
+              type: (c as { type?: string }).type,
+              status: c.status,
+            }))}
             onAcceptSuggestion={acceptSuggestion}
             onDismissSuggestion={dismissSuggestion}
             onApplyInsight={applyInsight}

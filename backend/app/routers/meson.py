@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
 
@@ -174,17 +174,28 @@ async def meson_alerts_route(
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
     meson: Annotated[MesonService, Depends(get_meson_service)],
+    workflow_id: Annotated[str | None, Query(alias="workflowId")] = None,
+    vendors: Annotated[str | None, Query(description="Comma-separated canvas vendors")] = None,
 ) -> MesonAlertsResponse:
-    """Return proactive workflow and connector alerts."""
+    """Return proactive workflow and connector alerts (optionally scoped to a workflow)."""
     resolved_org = _require_org(org_id)
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    feedback_summary = meson.load_feedback_summary(client, resolved_org)
+    feedback_summary = meson.load_feedback_summary(
+        client, resolved_org, workflow_id=workflow_id
+    )
+    canvas_vendors = {
+        part.strip().lower()
+        for part in (vendors or "").split(",")
+        if part.strip()
+    }
     return meson.detect_anomalies(
         client,
         resolved_org,
         environment_name=environment_name,
         settings=settings,
         feedback_summary=feedback_summary,
+        workflow_id=workflow_id,
+        canvas_vendors=canvas_vendors or None,
     )
 
 
@@ -232,6 +243,12 @@ async def meson_page_context_route(
     )
 
 
+class MesonOptimizationsRequest(BaseModel):
+    workflow_state: dict[str, Any] | None = Field(default=None, alias="workflowState")
+
+    model_config = {"populate_by_name": True}
+
+
 @router.get("/optimizations/{workflow_id}", response_model=MesonInsightsResponse, response_model_by_alias=True)
 async def meson_workflow_optimizations_route(
     workflow_id: str,
@@ -251,6 +268,30 @@ async def meson_workflow_optimizations_route(
         workflow_id,
         environment_name=environment_name,
         feedback_summary=feedback_summary,
+    )
+
+
+@router.post("/optimizations/{workflow_id}", response_model=MesonInsightsResponse, response_model_by_alias=True)
+async def meson_workflow_optimizations_with_canvas_route(
+    workflow_id: str,
+    body: MesonOptimizationsRequest,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    meson: Annotated[MesonService, Depends(get_meson_service)],
+) -> MesonInsightsResponse:
+    """Canvas-aware optimizations (tips + insights) for the open workflow."""
+    resolved_org = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    feedback_summary = meson.load_feedback_summary(client, resolved_org, workflow_id=workflow_id)
+    return meson.get_workflow_optimizations(
+        client,
+        resolved_org,
+        workflow_id,
+        environment_name=environment_name,
+        feedback_summary=feedback_summary,
+        workflow_state=body.workflow_state,
     )
 
 

@@ -543,6 +543,103 @@ class MesonService:
             dismissed.update(feedback_summary.get("dismissed_ids") or set())
         suggestions: list[MesonSuggestion] = []
 
+        blob = " ".join(
+            f"{n.get('type') or ''} {n.get('name') or ''} {n.get('vendor') or ''}".lower()
+            for n in nodes
+        )
+        is_enrichment = (
+            "apollo" in blob and "clay" in blob and ("hubspot" in blob or "hubs" in blob)
+        )
+
+        # Enrichment canvases need setup / connector guidance — not generic Slack gates.
+        if is_enrichment:
+            agent_nodes = [n for n in nodes if str(n.get("type") or "") == "agent"]
+            unbound = [
+                n
+                for n in agent_nodes
+                if not str(
+                    (n.get("config") or {}).get("agent_id")
+                    or (n.get("config") or {}).get("agentId")
+                    or n.get("agent_id")
+                    or ""
+                ).strip()
+            ]
+            thin = [
+                n
+                for n in nodes
+                if len(
+                    str(
+                        (n.get("config") or {}).get("task")
+                        or (n.get("config") or {}).get("instruction")
+                        or n.get("description")
+                        or ""
+                    ).strip()
+                )
+                < 40
+            ]
+            if unbound or thin:
+                suggestions.append(
+                    MesonSuggestion(
+                        id="setup-enrichment-workflow",
+                        nodeType="agent",
+                        label="Set up enrichment agents & instructions",
+                        reason=(
+                            "Bind Lead Enrichment Coordinator and fill Apollo → Clay → HubSpot "
+                            "task instructions so this workflow can run end-to-end."
+                        ),
+                        confidence=0.94,
+                        confidenceIsEstimate=True,
+                        confidenceSource="canvas-enrichment",
+                    )
+                )
+            if "apollo" in blob:
+                suggestions.append(
+                    MesonSuggestion(
+                        id="tip-enrichment-apollo-list",
+                        nodeType="connector",
+                        label="Confirm Apollo list name",
+                        reason=(
+                            'Use list "MSP Prospects" (or APOLLO_LIST_NAME) before Clay push — '
+                            "empty lists should be populated by the agent step."
+                        ),
+                        confidence=0.86,
+                        confidenceIsEstimate=True,
+                        confidenceSource="canvas-enrichment",
+                    )
+                )
+            if "hubspot" in blob or "hubs" in blob:
+                suggestions.append(
+                    MesonSuggestion(
+                        id="tip-enrichment-hubspot-list",
+                        nodeType="agent",
+                        label="Set HubSpot list ID",
+                        reason=(
+                            "Install variable HUBSPOT_LIST_ID must point at the existing "
+                            '"MSPs" static list before list-membership runs.'
+                        ),
+                        confidence=0.84,
+                        confidenceIsEstimate=True,
+                        confidenceSource="canvas-enrichment",
+                    )
+                )
+            suggestions.append(
+                MesonSuggestion(
+                    id="tip-enrichment-preview",
+                    nodeType="task",
+                    label="Dry-run before production",
+                    reason=(
+                        "Preview this enrichment path once connectors are connected — "
+                        "verify Clay outputs map into HubSpot contacts."
+                    ),
+                    confidence=0.8,
+                    confidenceIsEstimate=True,
+                    confidenceSource="canvas-enrichment",
+                )
+            )
+            filtered = [s for s in suggestions if s.id not in dismissed]
+            ranked = _rank_suggestions_by_feedback(filtered, feedback_summary)
+            return MesonSuggestionsResponse(suggestions=_rotate_suggestions(ranked, org_id)[:5])
+
         has_approval = any(str(n.get("type") or "") == "approval" for n in nodes)
         has_slack = any(str(n.get("vendor") or "").lower() == "slack" for n in nodes)
         has_validation = any(
@@ -625,9 +722,13 @@ class MesonService:
                 )
             )
 
+        # Canvas-aware tips that rotate so Meson does not feel static.
+        tip_pool = _canvas_tip_suggestions(nodes, last_added_node)
+        suggestions.extend(tip_pool)
+
         filtered = [s for s in suggestions if s.id not in dismissed]
         ranked = _rank_suggestions_by_feedback(filtered, feedback_summary)
-        return MesonSuggestionsResponse(suggestions=ranked[:5])
+        return MesonSuggestionsResponse(suggestions=_rotate_suggestions(ranked, org_id)[:5])
 
     def get_feedback_metrics(
         self,
@@ -708,14 +809,22 @@ class MesonService:
         environment_name: str,
         settings: Settings,
         feedback_summary: dict[str, Any] | None = None,
+        workflow_id: str | None = None,
+        canvas_vendors: set[str] | None = None,
     ) -> MesonAlertsResponse:
         alerts: list[MesonAlert] = []
         acknowledged = _acknowledged_ids(feedback_summary)
+        scoped_workflow_id = (workflow_id or "").strip() or None
+        vendors = {v.lower() for v in (canvas_vendors or set()) if v}
 
         from app.intelligence_packs.shared.auth_mode import is_knowledge_base_source
         from app.services.workflow_failure_prediction_service import dismiss_failure_alert
 
-        for row in list_failure_alerts(client, org_id, status="open", limit=20):
+        failure_kwargs: dict[str, Any] = {"status": "open", "limit": 20}
+        if scoped_workflow_id:
+            failure_kwargs["workflow_id"] = scoped_workflow_id
+
+        for row in list_failure_alerts(client, org_id, **failure_kwargs):
             evidence = row.get("evidence") if isinstance(row.get("evidence"), dict) else {}
             connector_type = str(
                 evidence.get("connectorType") or evidence.get("connector_type") or ""
@@ -733,14 +842,20 @@ class MesonService:
                         logger.debug("meson dismiss stale kb alert skipped: %s", exc)
                 continue
 
-            workflow_id = str(row.get("workflowId") or row.get("workflow_id") or "")
+            row_workflow_id = str(row.get("workflowId") or row.get("workflow_id") or "")
+            if scoped_workflow_id and row_workflow_id and row_workflow_id != scoped_workflow_id:
+                continue
             connector_id = str(row.get("connectorId") or row.get("connector_id") or "").strip()
-            action_target = f"/workflows/{workflow_id}/builder" if workflow_id else "/metrics"
+            action_target = (
+                f"/workflows/{row_workflow_id}/builder" if row_workflow_id else "/metrics"
+            )
             fix_label = "Review"
             if alert_type == "connector_missing" and connector_type:
                 from app.intelligence_packs.shared.auth_mode import canonical_connector_vendor
 
                 canon = canonical_connector_vendor(connector_type) or connector_type
+                if vendors and canon.lower() not in vendors and connector_type.lower() not in vendors:
+                    continue
                 action_target = f"/connectors?type={canon}"
                 fix_label = "Connect"
             elif alert_type in {"auth_disconnected", "auth_expiry"} and connector_id:
@@ -761,7 +876,7 @@ class MesonService:
 
         cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
         try:
-            failed_runs = (
+            failed_q = (
                 client.table("workflow_runs")
                 .select("id, workflow_id, error_message, created_at")
                 .eq("org_id", org_id)
@@ -770,8 +885,10 @@ class MesonService:
                 .gte("created_at", cutoff)
                 .order("created_at", desc=True)
                 .limit(10)
-                .execute()
             )
+            if scoped_workflow_id:
+                failed_q = failed_q.eq("workflow_id", scoped_workflow_id)
+            failed_runs = failed_q.execute()
             from app.services.gravitree_voice import format_operator_message
 
             for run in failed_runs.data or []:
@@ -814,6 +931,8 @@ class MesonService:
                 vendor = str(connector.get("vendor") or connector.get("type") or "")
                 connector_id = str(connector.get("id") or "")
                 if not connector_id:
+                    continue
+                if vendors and vendor.lower() not in vendors:
                     continue
                 auth_status = resolve_connector_auth_status(
                     client,
@@ -2349,11 +2468,16 @@ class MesonService:
         *,
         environment_name: str,
         feedback_summary: dict[str, Any] | None = None,
+        workflow_state: dict[str, Any] | None = None,
     ) -> MesonInsightsResponse:
-        """Return workflow-scoped optimization tips for the Meson copilot panel (F1)."""
+        """Return workflow-scoped optimization tips for the Meson copilot panel (F1).
+
+        Returns both Tips (category=tip) and Insights so the UI can rotate each pool.
+        """
         insights: list[MesonInsight] = []
         acknowledged = _acknowledged_ids(feedback_summary)
         workflow_name = "This workflow"
+        nodes = _parse_workflow_nodes(workflow_state)
 
         try:
             workflow_resp = (
@@ -2491,13 +2615,21 @@ class MesonService:
         except Exception as exc:  # noqa: BLE001
             logger.debug("meson optimizations failed run lookup: %s", exc)
 
+        # Tip + insight pools (rotated) so Optimize is not the same two cards forever.
+        tip_pool, insight_pool = _workflow_tip_and_insight_pools(
+            workflow_id=workflow_id,
+            workflow_name=workflow_name,
+            nodes=nodes,
+            base_insights=insights,
+        )
         if acknowledged:
-            insights = [i for i in insights if i.id not in acknowledged]
+            tip_pool = [i for i in tip_pool if i.id not in acknowledged]
+            insight_pool = [i for i in insight_pool if i.id not in acknowledged]
 
-        if not insights and "meson-workflow-ready" not in acknowledged:
+        if not tip_pool and not insight_pool and "meson-workflow-ready" not in acknowledged:
             from app.services.gravitree_voice import format_operator_message
 
-            insights.append(
+            insight_pool.append(
                 MesonInsight(
                     id="meson-workflow-ready",
                     title="Meson is watching this workflow",
@@ -2507,11 +2639,15 @@ class MesonService:
                         confidence_register="certain",
                     )
                     + " No urgent optimizations — keep building; Meson will suggest next steps as you add nodes.",
-                    category="general",
+                    category="insight",
                 )
             )
 
-        return MesonInsightsResponse(insights=insights[:10])
+        seed = _rotation_seed(f"{org_id}:{workflow_id}")
+        rotated_tips = _rotate_list(tip_pool, seed, take=2)
+        rotated_insights = _rotate_list(insight_pool, seed + 41, take=2)
+        # Tips first, then insights — UI splits by category.
+        return MesonInsightsResponse(insights=[*rotated_tips, *rotated_insights][:6])
 
     def record_feedback(
         self,
@@ -2838,6 +2974,215 @@ def _parse_workflow_nodes(workflow_state: dict[str, Any] | None) -> list[dict[st
     if isinstance(nodes, list):
         return [node for node in nodes if isinstance(node, dict)]
     return []
+
+
+def _rotation_seed(key: str) -> int:
+    """Hourly-stable seed so tips/insights rotate without flickering every render."""
+    hour = datetime.now(timezone.utc).strftime("%Y%m%d%H")
+    raw = f"{key}:{hour}"
+    h = 0
+    for ch in raw:
+        h = (h * 31 + ord(ch)) & 0xFFFFFFFF
+    return h
+
+
+def _rotate_list(items: list[Any], seed: int, *, take: int) -> list[Any]:
+    if not items or take <= 0:
+        return []
+    start = seed % len(items)
+    out: list[Any] = []
+    for i in range(min(take, len(items))):
+        out.append(items[(start + i) % len(items)])
+    return out
+
+
+def _rotate_suggestions(suggestions: list[MesonSuggestion], org_id: str) -> list[MesonSuggestion]:
+    """Keep high-priority setup suggestions first; rotate the rest hourly."""
+    if len(suggestions) <= 2:
+        return suggestions
+    priority = [s for s in suggestions if s.id.startswith("setup-")]
+    rest = [s for s in suggestions if not s.id.startswith("setup-")]
+    return [*priority, *_rotate_list(rest, _rotation_seed(org_id), take=len(rest))]
+
+
+def _canvas_tip_suggestions(
+    nodes: list[dict[str, Any]],
+    last_added_node: dict[str, Any] | None,
+) -> list[MesonSuggestion]:
+    """Dynamic tip-style suggestions that vary with canvas shape."""
+    tips: list[MesonSuggestion] = []
+    types = {str(n.get("type") or "").lower() for n in nodes}
+    vendors = {str(n.get("vendor") or "").lower() for n in nodes if n.get("vendor")}
+    names = " ".join(str(n.get("name") or "").lower() for n in nodes)
+    last_name = str((last_added_node or {}).get("name") or "").strip()
+
+    if "agent" in types and "approval" not in types and len(nodes) >= 3:
+        tips.append(
+            MesonSuggestion(
+                id="tip-human-checkpoint",
+                nodeType="approval",
+                label="Add a human checkpoint",
+                reason="Agent steps can drift — a Quality Gate before writes reduces bad CRM updates.",
+                confidence=0.72,
+                confidenceIsEstimate=True,
+                confidenceSource="canvas-tip",
+            )
+        )
+    if vendors & {"gmail", "outlook", "slack"} and "decision" not in types:
+        tips.append(
+            MesonSuggestion(
+                id="tip-channel-routing",
+                nodeType="decision",
+                label="Route by channel outcome",
+                reason="Branch on delivered / needs-reply / failed so follow-ups stay intentional.",
+                confidence=0.73,
+                confidenceIsEstimate=True,
+                confidenceSource="canvas-tip",
+            )
+        )
+    if "connector" in types and len(nodes) >= 2:
+        tips.append(
+            MesonSuggestion(
+                id="tip-name-data-labels",
+                nodeType="task",
+                label="Label step outputs",
+                reason="Name connector outputs (e.g. $contacts) so agents can reference them reliably.",
+                confidence=0.7,
+                confidenceIsEstimate=True,
+                confidenceSource="canvas-tip",
+            )
+        )
+    if last_name:
+        tips.append(
+            MesonSuggestion(
+                id=f"tip-after-{last_name[:32].lower().replace(' ', '-')}",
+                nodeType="task",
+                label=f"Document “{last_name[:40]}”",
+                reason=f"Add a short instruction on {last_name} so the next run knows the expected inputs/outputs.",
+                confidence=0.68,
+                confidenceIsEstimate=True,
+                confidenceSource="canvas-tip",
+            )
+        )
+    if "hubspot" in names or "hubspot" in vendors:
+        tips.append(
+            MesonSuggestion(
+                id="tip-hubspot-idempotency",
+                nodeType="task",
+                label="Guard HubSpot duplicates",
+                reason="Prefer upsert / email match before create so CRM sync stays idempotent.",
+                confidence=0.71,
+                confidenceIsEstimate=True,
+                confidenceSource="canvas-tip",
+            )
+        )
+    return tips
+
+
+def _workflow_tip_and_insight_pools(
+    *,
+    workflow_id: str,
+    workflow_name: str,
+    nodes: list[dict[str, Any]],
+    base_insights: list[MesonInsight],
+) -> tuple[list[MesonInsight], list[MesonInsight]]:
+    blob = " ".join(
+        f"{n.get('type') or ''} {n.get('name') or ''} {n.get('vendor') or ''}".lower()
+        for n in nodes
+    )
+    tips: list[MesonInsight] = [
+        MesonInsight(
+            id="tip-preview-before-publish",
+            title="Preview before publish",
+            summary=f"Run a dry-run of {workflow_name} to catch missing actions or unbound agents early.",
+            category="tip",
+        ),
+        MesonInsight(
+            id="tip-name-edges",
+            title="Keep edges intentional",
+            summary="Every step should have a clear next hop — orphan nodes never execute.",
+            category="tip",
+        ),
+        MesonInsight(
+            id="tip-connector-health",
+            title="Check connector health first",
+            summary="Auth expiry is the #1 cause of “sudden” workflow failures — reconnect before re-running.",
+            category="tip",
+        ),
+    ]
+    insights: list[MesonInsight] = []
+    for item in base_insights:
+        cat = (item.category or "").lower()
+        if cat == "tip":
+            tips.append(item)
+            continue
+        insights.append(
+            item.model_copy(
+                update={"category": item.category or "insight"},
+            )
+        )
+
+    if "apollo" in blob and "clay" in blob:
+        tips.extend(
+            [
+                MesonInsight(
+                    id="tip-enrichment-batch-size",
+                    title="Start with a small Clay batch",
+                    summary="Push a handful of Apollo contacts first — confirm enrichment fields before full list sync.",
+                    category="tip",
+                ),
+                MesonInsight(
+                    id="tip-enrichment-list-vars",
+                    title="Lock list install variables",
+                    summary='Set APOLLO_LIST_NAME and HUBSPOT_LIST_ID so agent steps do not guess list membership.',
+                    category="tip",
+                ),
+            ]
+        )
+        insights.append(
+            MesonInsight(
+                id="insight-enrichment-path",
+                title="Enrichment path readiness",
+                summary=(
+                    f"{workflow_name}: Apollo list → Clay enrich → HubSpot CRM → static list. "
+                    "Bind Lead Enrichment Coordinator on both agent steps."
+                ),
+                category="insight",
+            )
+        )
+    if "agent" in blob:
+        tips.append(
+            MesonInsight(
+                id="tip-agent-task-specificity",
+                title="Make agent tasks concrete",
+                summary="Name tools, list ids, and output variables in the task — vague prompts cause tool thrash.",
+                category="tip",
+            )
+        )
+    if len(nodes) >= 5:
+        insights.append(
+            MesonInsight(
+                id="insight-multi-step-observability",
+                title="Watch mid-path failures",
+                summary=(
+                    f"{workflow_name} has {len(nodes)} steps — inspect the first failed node_id in run history "
+                    "before rewiring the whole graph."
+                ),
+                category="insight",
+            )
+        )
+    # Deduplicate by id while preserving order.
+    def _dedupe(items: list[MesonInsight]) -> list[MesonInsight]:
+        seen: set[str] = set()
+        out: list[MesonInsight] = []
+        for item in items:
+            if item.id in seen:
+                continue
+            seen.add(item.id)
+            out.append(item)
+        return out
+
+    return _dedupe(tips), _dedupe(insights)
 
 
 _meson_service: MesonService | None = None

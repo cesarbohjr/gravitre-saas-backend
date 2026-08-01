@@ -142,6 +142,25 @@ def test_workflow_suggestions_heuristics():
     assert "add-approval" in ids
 
 
+def test_workflow_suggestions_enrichment_canvas():
+    service = MesonService(model_router=object())  # type: ignore[arg-type]
+    result = service.get_workflow_suggestions(
+        workflow_state={
+            "nodes": [
+                {"type": "connector", "name": "List Apollo contact lists", "vendor": "apollo"},
+                {"type": "connector", "name": "Push leads to Clay", "vendor": "clay"},
+                {"type": "agent", "name": "Add contacts to HubSpot", "config": {}},
+            ]
+        },
+        last_added_node={"type": "agent"},
+        org_id="org-1",
+    )
+    ids = {s.id for s in result.suggestions}
+    assert "setup-enrichment-workflow" in ids
+    assert "add-slack" not in ids
+    assert "add-approval" not in ids
+
+
 def test_workflow_suggestions_respects_dismissed():
     service = MesonService(model_router=object())  # type: ignore[arg-type]
     result = service.get_workflow_suggestions(
