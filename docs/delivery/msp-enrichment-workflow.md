@@ -69,10 +69,11 @@ Optional runtime parameters for tool steps:
 |-------|--------|----------|
 | Schema / catalog validation | PASS | `pytest tests/marketplace/test_msp_enrichment_workflow.py` |
 | Prospecting pack install (unit) | PASS | `pytest tests/marketplace/test_prospecting_pack.py` |
-| Apollo membership tools | PASS (unit) | `apollo.lists.add` → POST `/labels/add_entity_ids_to_label_names`; `apollo.contacts.search` → POST `/contacts/search` |
-| Merged + deployed | prior | PR #177 merge `33f34dbd`; prod tip after #179 (`98db2abf`+) |
-| Prod live smoke | **PARTIAL** | Actions run [30622364374](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/30622364374) @ `2026-07-31T10:08:49Z` — see below |
-| Full Clay→HubSpot write chain | **NOT RUN** | Needs Clay connector on smoke org + `HUBSPOT_LIST_ID` + list membership writes |
+| Apollo membership tools | PASS (unit) + shipped | `apollo.lists.add` + `apollo.contacts.search` shipped (PR #182 merge `46b1cec3`) — vendor: POST `/labels/add_entity_ids_to_label_names`, POST `/contacts/search` |
+| Workflow step count | 7 steps | `lists.list` → `contacts.search` → agent populate/`lists.add` → Clay push → Clay outputs → CRM sync → HubSpot list membership |
+| Merged + deployed | prod tip `559427e1` | PR #182 `46b1cec3` on tip `559427e1`; `/health` ok |
+| Prod live smoke | **PARTIAL** | Actions run [30622364374](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/30622364374) @ `2026-07-31T10:08:49Z` — see below (pre-populate deploy) |
+| Full Clay→HubSpot write chain | **NOT RUN** | Clay still missing on smoke org — required for FULL PASS; also needs `HUBSPOT_LIST_ID` + list membership writes |
 
 ### Live smoke evidence (PARTIAL — 2026-07-31)
 

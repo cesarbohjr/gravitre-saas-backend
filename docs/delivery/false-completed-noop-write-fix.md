@@ -42,5 +42,7 @@ MSP enrichment workflow steps now: `lists.list` → `contacts.search` → agent 
 
 ## Status
 
-- Outcome / routing / steps persistence: shipped earlier; prod re-verify **NOT RUN** until deploy + Clay connector + fresh chat/workflow trace.
-- Apollo membership tools + workflow rewrite: unit-covered; live membership write **NOT RUN** pending Railway redeploy + Clay on smoke org.
+- Outcome / routing / steps persistence: shipped earlier (honesty fix `7b56a80b`).
+- Apollo membership tools + workflow rewrite: merged as `46b1cec3` (PR #182).
+- **Prod tip:** `559427e1` (includes honesty fix `7b56a80b` + Apollo populate `46b1cec3`).
+- Live full populate (contacts onto MSP Prospects + Clay enrich + HubSpot): **NOT RUN** — still needs Clay connector on smoke org + fresh chat/workflow run.
