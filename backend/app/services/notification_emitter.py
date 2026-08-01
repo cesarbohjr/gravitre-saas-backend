@@ -43,7 +43,15 @@ CANONICAL_EVENT_TYPES: frozenset[str] = frozenset(
 
 _EVENT_TYPE_ALIASES: dict[str, str] = {
     "assignment_created": "assignment_changed",
+    # Agent lifecycle aliases → canonical Module A / bell types
+    "agent_started": "run_started",
+    "agent_discovery": "task_completed",
+    "agent_task_completed": "task_completed",
 }
+
+_AGENT_ACTIVITY_ENTITY_TYPES = frozenset(
+    {"agent", "agent_job", "workflow_run", "operator"}
+)
 
 
 def normalize_event_type(event_type: str) -> str:
@@ -109,11 +117,20 @@ def _record_connector_activity(
     notification_id: str | None,
 ) -> None:
     entity_type = str(entity_ref.get("entity_type") or "").strip().lower()
-    if entity_type != "connector":
+    if entity_type == "connector":
+        source = "connector_write"
+    elif entity_type in _AGENT_ACTIVITY_ENTITY_TYPES:
+        source = "agent"
+    else:
         return
     from app.services.activity_feed_service import record_activity_event
 
-    status = "failed" if event_type == "run_failed" else "completed"
+    if event_type in {"run_failed", "scheduled_run_failed"}:
+        status = "failed"
+    elif event_type in {"run_started", "approval_needed"}:
+        status = "running" if event_type == "run_started" else "pending"
+    else:
+        status = "completed"
     metadata = dict(entity_ref.get("activity_metadata") or {})
     if notification_id:
         metadata["notification_id"] = notification_id
@@ -121,7 +138,7 @@ def _record_connector_activity(
         client,
         org_id=org_id,
         user_id=user_id,
-        source="connector_write",
+        source=source,
         event_type=event_type,
         title=title,
         body=body,

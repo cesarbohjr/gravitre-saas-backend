@@ -569,6 +569,69 @@ def finalize_execution_outcome(
     if not event.workflow_id:
         event.workflow_id = _resolve_workflow_id(client, event)
 
+    # Vendor-wide OutcomeEffect gate — coerce false COMPLETED before fanout.
+    from app.services.connector_outcome_effects import (
+        classify_write_effect,
+        coerce_terminal_status_for_effect,
+    )
+
+    meta = dict(event.metadata or {})
+    invoke_action = (
+        str(meta.get("invoke_action") or meta.get("action_type") or meta.get("tool_name") or "")
+        or None
+    )
+    result_bag: dict[str, Any] = {}
+    for key in ("result_data", "structured", "data"):
+        nested = meta.get(key)
+        if isinstance(nested, dict):
+            result_bag.update(nested)
+    if event.verified_output is not None:
+        vo = event.verified_output
+        # Do not treat connector/run entity_id as vendor create proof.
+        if vo.entity_type and str(vo.entity_type).lower() not in {
+            "connector",
+            "workflow_run",
+            "execution",
+        }:
+            result_bag.setdefault("entity_id", vo.entity_id)
+            result_bag.setdefault("entity_type", vo.entity_type)
+        result_bag.setdefault("external_url", vo.external_url)
+        if vo.result_url and str(vo.result_url).lower().startswith("http"):
+            result_bag.setdefault("result_url", vo.result_url)
+        meta["verified_output"] = {
+            "entity_id": vo.entity_id,
+            "entity_type": vo.entity_type,
+            "external_url": vo.external_url,
+            "result_url": vo.result_url,
+        }
+    # Prefer explicit outcome_effect already on metadata.
+    effect = classify_write_effect(
+        invoke_action=invoke_action,
+        result_data=result_bag or None,
+        success=terminal in {"completed", "partial_success"},
+        metadata=meta,
+    )
+    coerced = coerce_terminal_status_for_effect(
+        status=terminal,
+        effect=effect,
+        invoke_action=invoke_action,
+    )
+    if coerced != terminal:
+        logger.info(
+            "execution_outcome_effect_gate_coerced run_id=%s status=%s→%s effect=%s action=%s",
+            event.run_id,
+            terminal,
+            coerced,
+            effect,
+            invoke_action,
+        )
+        terminal = _normalize_status(coerced)
+        event.status = terminal
+    meta["outcome_effect"] = effect
+    if effect == "already_existed":
+        meta["already_existed"] = True
+    event.metadata = meta
+
     if _run_already_finalized(client, event):
         logger.info(
             "execution_outcome_idempotent_skip org_id=%s run_id=%s status=%s source=%s",

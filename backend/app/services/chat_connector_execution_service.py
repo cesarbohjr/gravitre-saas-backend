@@ -1663,12 +1663,23 @@ class ChatConnectorExecutionService:
             return failed
 
         summary = self._summarize_result(plan, result_data, observation)
-        from app.services.connector_outcome_effects import is_already_existed_effect
+        from app.services.connector_outcome_effects import (
+            classify_write_effect,
+            is_already_existed_effect,
+        )
 
         already_existed = is_already_existed_effect(result_data)
+        write_effect = classify_write_effect(
+            invoke_action=plan.invoke_action,
+            result_data=result_data if isinstance(result_data, dict) else None,
+            success=True,
+            metadata={"already_existed": True} if already_existed else None,
+        )
         if already_existed:
             structured_payload["already_existed"] = True
             structured_payload["outcome_effect"] = "already_existed"
+        else:
+            structured_payload["outcome_effect"] = write_effect
         result = ExecutionResult(
             success=True,
             entity_type="connector",
@@ -1819,12 +1830,22 @@ class ChatConnectorExecutionService:
 
         from datetime import datetime, timezone
 
-        from app.services.connector_outcome_effects import is_already_existed_effect
+        from app.services.connector_outcome_effects import (
+            classify_write_effect,
+            coerce_terminal_status_for_effect,
+            is_already_existed_effect,
+        )
         from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
         from app.workflows.repository import create_run, create_step, update_step
 
         structured = result.structured if isinstance(result.structured, dict) else {}
         already_existed = is_already_existed_effect(structured)
+        outcome_effect = classify_write_effect(
+            invoke_action=plan.invoke_action,
+            result_data=structured,
+            success=bool(result.success),
+            metadata={"already_existed": already_existed} if already_existed else None,
+        )
         if result.success and already_existed:
             # Idempotent find ≠ successful populate/write — never sell as COMPLETED.
             status = "partial_success"
@@ -1832,6 +1853,11 @@ class ChatConnectorExecutionService:
             status = "completed"
         else:
             status = "failed"
+        status = coerce_terminal_status_for_effect(
+            status=status,
+            effect=outcome_effect,
+            invoke_action=plan.invoke_action,
+        )
         run_id: str | None = None
         try:
             created = create_run(
@@ -1859,7 +1885,7 @@ class ChatConnectorExecutionService:
                     # Durable execution proof (recipient/subject/etc.) for Runs UI.
                     "action_args": _proof_args_for_run(plan),
                     "already_existed": already_existed,
-                    "outcome_effect": "already_existed" if already_existed else "write",
+                    "outcome_effect": outcome_effect,
                 },
                 run_hash=f"chat-connector-{uuid4().hex[:16]}",
                 workflow_id=None,
@@ -1900,7 +1926,7 @@ class ChatConnectorExecutionService:
                         output_snapshot={
                             "summary": (result.body or "")[:2000],
                             "already_existed": already_existed,
-                            "outcome_effect": "already_existed" if already_existed else "write",
+                            "outcome_effect": outcome_effect,
                             "invoke_action": plan.invoke_action,
                             "success": bool(result.success),
                         },
@@ -1951,7 +1977,8 @@ class ChatConnectorExecutionService:
                     "error_code": getattr(result, "error_code", None),
                     "action_args": _proof_args_for_run(plan),
                     "already_existed": already_existed,
-                    "outcome_effect": "already_existed" if already_existed else "write",
+                    "outcome_effect": outcome_effect,
+                    "structured": structured,
                 },
             )
         except Exception as exc:  # noqa: BLE001

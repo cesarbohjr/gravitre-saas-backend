@@ -69,7 +69,32 @@ def create_job(
         "retry_count": 0,
     }
     resp = client.table("agent_jobs").insert(row).execute()
-    return resp.data[0] if resp.data else row
+    job = resp.data[0] if resp.data else row
+    # Lifecycle notify on queue (claim path skipped to avoid double spam).
+    if created_by:
+        try:
+            from app.services.agent_activity_notifications import notify_agent_started
+
+            payload_data = payload if isinstance(payload, dict) else {}
+            agent_id = (
+                str(payload_data.get("agent_id") or payload_data.get("agentId") or "").strip()
+                or None
+            )
+            task = str(payload_data.get("task") or payload_data.get("title") or kind).strip()
+            result_url = f"/agents/{agent_id}" if agent_id else "/assignments"
+            notify_agent_started(
+                client,
+                org_id=org_id,
+                user_id=str(created_by),
+                agent_id=agent_id,
+                job_id=str(job.get("id") or "") or None,
+                title="Agent task queued",
+                body=f"Queued: {task}"[:2000],
+                result_url=result_url,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("agent_job_queued_notify_skipped error=%s", exc)
+    return job
 
 
 def get_job(client: Any, org_id: str, job_id: str) -> dict[str, Any] | None:
