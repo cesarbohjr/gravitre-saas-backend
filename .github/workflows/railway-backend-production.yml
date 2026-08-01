@@ -124,12 +124,12 @@ jobs:
           CURRENT="$(curl -fsS https://api.gravitre.app/health | python3 -c 'import sys,json; print(json.load(sys.stdin).get("git_sha",""))' || true)"
           if tip_matches "$CURRENT"; then
             match_health "https://api.gravitre.app/health" 180
-            echo "GitHub auto-deploy reached tip — skipping CLI railway up."
+            echo "GitHub auto-deploy reached tip — no GraphQL force deploy needed."
             exit 0
           fi
 
           if [ "$FORCE" != "true" ]; then
-            echo "::error::Prod still on $CURRENT after GitHub auto-deploy wait (expect $SHA). Re-run with force_railway_up=true only if auto-deploy is stuck."
+            echo "::error::Prod still on $CURRENT after GitHub auto-deploy wait (expect $SHA). Re-run with force_railway_up=true (GraphQL redeploy, not CLI upload)."
             exit 1
           fi
 
