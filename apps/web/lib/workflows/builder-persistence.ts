@@ -242,9 +242,15 @@ export function apiGraphToCanvasNodes(
     const metadata = (node.metadata as Record<string, unknown>) || {}
     const rawConfig = (node.config as Record<string, unknown>) || {}
     const sourceId = node.source_id as string | undefined
+    const metaAgentId =
+      (metadata.agent_id as string | undefined) || (metadata.agentId as string | undefined)
     const config: Record<string, unknown> = {
       ...rawConfig,
       ...(sourceId && !rawConfig.source_id ? { source_id: sourceId } : {}),
+      ...(metaAgentId && !rawConfig.agent_id && !rawConfig.agentId
+        ? { agent_id: metaAgentId, agentId: metaAgentId }
+        : {}),
+      ...(metadata.task && !rawConfig.task ? { task: metadata.task } : {}),
     }
     const position = resolveNodePosition(node)
     return {

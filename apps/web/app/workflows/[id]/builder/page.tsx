@@ -52,6 +52,15 @@ import {
   collectInstalledAgentIds,
   resolveCouncilAgentDefaults,
 } from "@/lib/resolve-default-agent"
+import {
+  BUILDER_TOOL_PRESETS,
+  agentLibrarySubtitle,
+  agentNodeConfig,
+  filterBuilderAgents,
+  listAgentDepartments,
+  listAgentRoles,
+  type BuilderOrgAgent,
+} from "@/lib/workflows/builder-agent-library"
 import { interruptRequestedDescription, interruptRequestedMessage } from "@/lib/agent-interrupts"
 import {
   applyRunStepsToNodes,
@@ -256,14 +265,6 @@ const initialNodes: WorkflowNode[] = [
   },
 ]
 
-// Library items
-const agentLibrary = [
-  { id: "agent-1", name: "Data Validator", description: "Validates and cleans data" },
-  { id: "agent-2", name: "Content Writer", description: "Generates content" },
-  { id: "agent-3", name: "Research Analyst", description: "Analyzes and summarizes" },
-  { id: "agent-4", name: "Code Reviewer", description: "Reviews code quality" },
-]
-
 // Connector actions with dynamic form fields
 const connectorActions: Record<string, { actions: Array<{ id: string; name: string; method: string; type: string; fields: Array<{ name: string; type: string; required: boolean; placeholder?: string; options?: string[] }> }> }> = {
   salesforce: {
@@ -449,12 +450,6 @@ function getConnectorValidationIssues(nodes: WorkflowNode[]): ConnectorValidatio
   }
   return issues
 }
-
-const toolLibrary = [
-  { id: "tool-1", name: "SQL Query", description: "Execute SQL" },
-  { id: "tool-2", name: "Webhook", description: "HTTP calls" },
-  { id: "tool-3", name: "Excel Export", description: "Spreadsheet" },
-]
 
 // Node type configs
 const nodeTypeConfig: Record<NodeType, { icon: typeof Bot; color: string; label: string }> = {
@@ -1166,6 +1161,7 @@ function LibraryItem({
   icon: Icon,
   vendor,
   nodeType,
+  dragPayload,
   onAdd,
 }: {
   name: string
@@ -1173,6 +1169,7 @@ function LibraryItem({
   icon?: typeof Bot
   vendor?: string
   nodeType: NodeType
+  dragPayload?: Record<string, unknown>
   onAdd: () => void
 }) {
   return (
@@ -1181,7 +1178,13 @@ function LibraryItem({
       onDragStart={(e) => {
         e.dataTransfer.setData(
           "application/gravitre-node",
-          JSON.stringify({ type: nodeType, name, description }),
+          JSON.stringify({
+            type: nodeType,
+            name,
+            description,
+            vendor,
+            ...(dragPayload || {}),
+          }),
         )
         e.dataTransfer.effectAllowed = "copy"
       }}
@@ -2040,7 +2043,7 @@ function ConfigPanel({
   node: WorkflowNode | null
   onClose: () => void
   onUpdate: (updates: Partial<WorkflowNode>) => void
-  orgAgents?: Array<{ id: string; name: string; role?: string }>
+  orgAgents?: BuilderOrgAgent[]
   lastRunId?: string | null
 }) {
   const [formValues, setFormValues] = useState<Record<string, string>>({})
@@ -2311,6 +2314,80 @@ node.type === "approval" && "bg-red-500",
           {node.type === "agent" && (
             <div className="space-y-4 pt-4 border-t border-border">
               <h4 className="text-sm font-medium text-foreground">Agent Settings</h4>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
+                  Existing agent
+                </label>
+                {orgAgents.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No org agents loaded.{" "}
+                    <Link href="/agents" className="text-info underline-offset-2 hover:underline">
+                      Open AI Team
+                    </Link>{" "}
+                    to create or train agents, then return here.
+                  </p>
+                ) : (
+                  <select
+                    value={String(node.config.agent_id || node.config.agentId || "")}
+                    onChange={(e) => {
+                      const selected = orgAgents.find((a) => a.id === e.target.value)
+                      if (!selected) {
+                        onUpdate({
+                          config: {
+                            ...node.config,
+                            agent_id: undefined,
+                            agentId: undefined,
+                          },
+                        })
+                        return
+                      }
+                      onUpdate({
+                        name: selected.name,
+                        description:
+                          selected.description ||
+                          [selected.role, selected.department].filter(Boolean).join(" · "),
+                        config: {
+                          ...node.config,
+                          ...agentNodeConfig(selected),
+                          task:
+                            String(node.config.task || "").trim() ||
+                            selected.description ||
+                            `Run as ${selected.name}`,
+                        },
+                      })
+                    }}
+                    className="w-full h-9 rounded-md border border-border bg-secondary px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  >
+                    <option value="">Select a trained org agent…</option>
+                    {orgAgents.map((agent) => (
+                      <option key={agent.id} value={agent.id}>
+                        {agent.name}
+                        {agent.role ? ` · ${agent.role}` : ""}
+                        {agent.department ? ` · ${agent.department}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Bind this step to an agent from AI Team (department, role, capabilities, training).
+                </p>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
+                  Task / assignment
+                </label>
+                <textarea
+                  value={String(node.config.task || node.description || "")}
+                  onChange={(e) =>
+                    onUpdate({
+                      description: e.target.value,
+                      config: { ...node.config, task: e.target.value },
+                    })
+                  }
+                  className="w-full h-24 rounded-md border border-border bg-secondary px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                  placeholder="What should this agent do in this step?"
+                />
+              </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
                   Model
@@ -2937,7 +3014,23 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     }
     return map
   }, [nodeReliabilityData?.nodes])
-  const orgAgents = useMemo(() => orgAgentsData?.agents ?? [], [orgAgentsData?.agents])
+  const orgAgents = useMemo((): BuilderOrgAgent[] => {
+    return (orgAgentsData?.agents ?? []).map((agent) => ({
+      id: agent.id,
+      name: agent.name,
+      role: agent.role || undefined,
+      department: agent.department || undefined,
+      description: agent.description || undefined,
+      status: agent.status || undefined,
+      capabilities: agent.capabilities,
+      lastAction: agent.lastAction || undefined,
+      config: (agent as { config?: Record<string, unknown> | null }).config ?? null,
+    }))
+  }, [orgAgentsData?.agents])
+  const [agentDepartmentFilter, setAgentDepartmentFilter] = useState<string>("all")
+  const [agentRoleFilter, setAgentRoleFilter] = useState<string>("all")
+  const agentDepartments = useMemo(() => listAgentDepartments(orgAgents), [orgAgents])
+  const agentRoles = useMemo(() => listAgentRoles(orgAgents), [orgAgents])
   const installedAgentIds = useMemo(
     () => collectInstalledAgentIds(orgInstallsData?.installs ?? []),
     [orgInstallsData?.installs],
@@ -2968,6 +3061,15 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [activeLibrary, setActiveLibrary] = useState<"agents" | "connectors" | "sources" | "tools" | "decisions">("agents")
   const [searchQuery, setSearchQuery] = useState("")
+  const filteredOrgAgents = useMemo(
+    () =>
+      filterBuilderAgents(orgAgents, {
+        query: searchQuery,
+        department: agentDepartmentFilter === "all" ? "" : agentDepartmentFilter,
+        role: agentRoleFilter === "all" ? "" : agentRoleFilter,
+      }),
+    [orgAgents, searchQuery, agentDepartmentFilter, agentRoleFilter],
+  )
   const { data: registeredSourcesData } = useSWR("/api/sources", () => sourcesApi.list())
   const registeredSources = registeredSourcesData?.sources ?? []
   const [libraryPanelOpen, setLibraryPanelOpen] = useState(false)
@@ -3336,19 +3438,38 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     )
   }, [])
 
-  const addNode = useCallback((type: NodeType, name: string, description?: string) => {
-    const newNode: WorkflowNode = {
-      id: `node-${Date.now()}`,
-      type,
-      name,
-      description,
-      config: {},
-      position: { x: 200 + Math.random() * 200, y: 100 + Math.random() * 200 },
-      connections: [],
-    }
-    setNodes((prev) => [...prev, newNode])
-    setSelectedNodeId(newNode.id)
-  }, [])
+  const addNode = useCallback(
+    (
+      type: NodeType,
+      name: string,
+      description?: string,
+      extras?: { config?: Record<string, unknown>; vendor?: string; selectedAction?: string },
+    ) => {
+      const newNode: WorkflowNode = {
+        id: `node-${Date.now()}`,
+        type,
+        name,
+        description,
+        config: extras?.config || {},
+        position: { x: 200 + Math.random() * 200, y: 100 + Math.random() * 200 },
+        connections: [],
+        ...(extras?.vendor ? { vendor: extras.vendor } : {}),
+        ...(extras?.selectedAction ? { selectedAction: extras.selectedAction } : {}),
+      }
+      setNodes((prev) => [...prev, newNode])
+      setSelectedNodeId(newNode.id)
+    },
+    [],
+  )
+
+  const addExistingAgentNode = useCallback(
+    (agent: BuilderOrgAgent) => {
+      addNode("agent", agent.name, agentLibrarySubtitle(agent), {
+        config: agentNodeConfig(agent),
+      })
+    },
+    [addNode],
+  )
 
   const addSourceNode = useCallback((source: { id: string; name: string; type?: string }) => {
     const newNode: WorkflowNode = {
@@ -3373,7 +3494,14 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     const raw = e.dataTransfer.getData("application/gravitre-node")
     if (!raw) return
     try {
-      const payload = JSON.parse(raw) as { type: NodeType; name: string; description?: string }
+      const payload = JSON.parse(raw) as {
+        type: NodeType
+        name: string
+        description?: string
+        vendor?: string
+        selectedAction?: string
+        config?: Record<string, unknown>
+      }
       const rect = canvasRef.current?.getBoundingClientRect()
       if (!rect) return
       const newNode: WorkflowNode = {
@@ -3381,12 +3509,14 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         type: payload.type,
         name: payload.name,
         description: payload.description,
-        config: {},
+        config: payload.config || {},
         position: {
           x: Math.max(40, e.clientX - rect.left - 80),
           y: Math.max(40, e.clientY - rect.top - 40),
         },
         connections: [],
+        ...(payload.vendor ? { vendor: payload.vendor } : {}),
+        ...(payload.selectedAction ? { selectedAction: payload.selectedAction } : {}),
       }
       setNodes((prev) => [...prev, newNode])
       setSelectedNodeId(newNode.id)
@@ -4336,24 +4466,106 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             {/* Library items */}
             <div className="flex-1 overflow-y-auto p-2">
               {activeLibrary === "agents" && (
-                <div className="space-y-0.5">
-                  {agentLibrary.map((agent) => (
-                    <LibraryItem
-                      key={agent.id}
-                      name={agent.name}
-                      description={agent.description}
-                      icon={Bot}
-                      nodeType="agent"
-                      onAdd={() => addNode("agent", agent.name, agent.description)}
-                    />
-                  ))}
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-1.5 px-0.5">
+                    <select
+                      value={agentDepartmentFilter}
+                      onChange={(e) => setAgentDepartmentFilter(e.target.value)}
+                      className="h-7 rounded-md border border-border bg-secondary px-1.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-ring"
+                      aria-label="Filter agents by department"
+                    >
+                      <option value="all">All departments</option>
+                      {agentDepartments.map((dept) => (
+                        <option key={dept} value={dept}>
+                          {dept}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={agentRoleFilter}
+                      onChange={(e) => setAgentRoleFilter(e.target.value)}
+                      className="h-7 rounded-md border border-border bg-secondary px-1.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-ring"
+                      aria-label="Filter agents by role"
+                    >
+                      <option value="all">All roles</option>
+                      {agentRoles.map((role) => (
+                        <option key={role} value={role}>
+                          {role}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {orgAgents.length === 0 ? (
+                    <p className="px-2 py-3 text-xs text-muted-foreground">
+                      No org agents yet. Create or install agents on{" "}
+                      <Link href="/agents" className="text-info underline-offset-2 hover:underline">
+                        AI Team
+                      </Link>
+                      , then add them here.
+                    </p>
+                  ) : filteredOrgAgents.length === 0 ? (
+                    <p className="px-2 py-3 text-xs text-muted-foreground">
+                      No agents match this search/filter.
+                    </p>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {filteredOrgAgents.map((agent) => (
+                        <LibraryItem
+                          key={agent.id}
+                          name={agent.name}
+                          description={agentLibrarySubtitle(agent)}
+                          icon={Bot}
+                          nodeType="agent"
+                          dragPayload={{ config: agentNodeConfig(agent) }}
+                          onAdd={() => addExistingAgentNode(agent)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  <LibraryItem
+                    name="Agent Council"
+                    description="Multi-agent debate / consensus"
+                    icon={Users}
+                    nodeType="council"
+                    onAdd={() => {
+                      const defaultAgents = resolveCouncilAgentDefaults(orgAgents, installedAgentIds, 3)
+                      const agentIds = defaultAgents.map((a) => a.id)
+                      const newNode: WorkflowNode = {
+                        id: `node-${Date.now()}`,
+                        type: "council",
+                        name: "Agent Council",
+                        description: "Multi-agent decision making",
+                        config: agentIds.length > 0 ? { agentIds, agent_ids: agentIds } : {},
+                        position: { x: 300 + Math.random() * 100, y: 150 + Math.random() * 100 },
+                        connections: [],
+                        councilConfig: {
+                          participatingAgents: defaultAgents,
+                          debateMode: "consensus",
+                          outputOptions: [
+                            { id: "approve", label: "Approve" },
+                            { id: "reject", label: "Reject" },
+                            { id: "escalate", label: "Escalate to Human" },
+                          ],
+                        },
+                      }
+                      setNodes((prev) => [...prev, newNode])
+                      setSelectedNodeId(newNode.id)
+                    }}
+                  />
                   <button
-                    className="w-full flex items-center gap-2 p-2 mt-2 rounded-md border border-dashed border-border hover:border-muted-foreground transition-colors"
-                    onClick={() => addNode("agent", "New Agent", "Custom agent")}
+                    className="w-full flex items-center gap-2 p-2 rounded-md border border-dashed border-border hover:border-muted-foreground transition-colors"
+                    onClick={() => addNode("agent", "New Agent", "Bind an org agent in the panel")}
                   >
                     <Plus className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Create custom agent</span>
+                    <span className="text-xs text-muted-foreground">Blank agent node</span>
                   </button>
+                  <Link
+                    href="/agents/new"
+                    className="w-full flex items-center gap-2 p-2 rounded-md border border-dashed border-border hover:border-muted-foreground transition-colors text-xs text-muted-foreground"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Create agent on AI Team
+                  </Link>
                 </div>
               )}
 
@@ -4365,7 +4577,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                       name={conn.name}
                       vendor={conn.vendor}
                       nodeType="connector"
-                      onAdd={() => addNode("connector", conn.name)}
+                      dragPayload={{ vendor: conn.vendor }}
+                      onAdd={() =>
+                        addNode("connector", conn.name, undefined, { vendor: conn.vendor })
+                      }
                     />
                   ))}
                 </div>
@@ -4400,23 +4615,21 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
               {activeLibrary === "tools" && (
                 <div className="space-y-0.5">
-                  {toolLibrary.map((tool) => (
+                  {BUILDER_TOOL_PRESETS.map((tool) => (
                     <LibraryItem
                       key={tool.id}
                       name={tool.name}
                       description={tool.description}
-                      icon={Zap}
-                      nodeType="tool"
-                      onAdd={() => addNode("tool", tool.name, tool.description)}
+                      icon={tool.nodeType === "approval" ? Shield : tool.nodeType === "task" ? FileText : Zap}
+                      nodeType={tool.nodeType}
+                      dragPayload={tool.config ? { config: tool.config } : undefined}
+                      onAdd={() =>
+                        addNode(tool.nodeType, tool.name, tool.description, {
+                          config: tool.config,
+                        })
+                      }
                     />
                   ))}
-                  <button
-                    className="w-full flex items-center gap-2 p-2 mt-2 rounded-md border border-dashed border-border hover:border-muted-foreground transition-colors"
-                    onClick={() => addNode("approval", "Approval Gate", "Require approval")}
-                  >
-                    <Shield className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Add approval gate</span>
-                  </button>
                 </div>
               )}
 
