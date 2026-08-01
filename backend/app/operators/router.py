@@ -1680,6 +1680,31 @@ async def delete_agent_route(
     operator = get_operator(client, org_id, str(agent_id))
     if not operator:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+
+    from app.services.agent_workflow_refs import find_workflows_referencing_agent
+
+    refs = find_workflows_referencing_agent(client, org_id, str(agent_id))
+    if refs:
+        names = ", ".join(r["workflowName"] for r in refs[:5] if r.get("workflowName"))
+        scheduled = sum(1 for r in refs if r.get("hasEnabledSchedule"))
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "AGENT_IN_WORKFLOW_SEQUENCE",
+                "message": (
+                    f"Cannot delete agent while it is used in {len(refs)} workflow(s)"
+                    + (f" ({names})" if names else "")
+                    + (
+                        f"; {scheduled} of those have enabled schedules."
+                        if scheduled
+                        else "."
+                    )
+                    + " Remove the agent from those workflows first."
+                ),
+                "workflows": refs,
+            },
+        )
+
     client.table("operators").update({"deleted_at": datetime.now(timezone.utc).isoformat(), "status": "inactive"}).eq(
         "id", str(agent_id)
     ).eq("org_id", org_id).execute()

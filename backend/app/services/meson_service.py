@@ -1693,11 +1693,35 @@ class MesonService:
                     )
                 )
             elif schedules:
+                from app.services.schedules_aggregation_service import (
+                    default_projection_window,
+                    list_scheduled_items,
+                )
+
+                window_start, window_end = default_projection_window()
+                projected = list_scheduled_items(
+                    client,
+                    org_id,
+                    environment_name,
+                    workflow_id=entity_id,
+                    window_start=window_start,
+                    window_end=window_end,
+                    kinds=frozenset({"workflow"}),
+                )
+                upcoming_bits: list[str] = []
+                for item in projected[:5]:
+                    occs = list(item.get("occurrences") or [])
+                    next_at = occs[0] if occs else item.get("nextRunAt")
+                    if next_at:
+                        upcoming_bits.append(f"{item.get('title') or 'Workflow'} @ {next_at}")
+                summary = "Drag items on the calendar or use the popup to reschedule, edit, or delete."
+                if upcoming_bits:
+                    summary = "Upcoming: " + "; ".join(upcoming_bits[:3]) + ". " + summary
                 insights.append(
                     MesonInsight(
                         id="schedules-active",
                         title=f"{len(schedules)} workflow schedule(s) active",
-                        summary="Drag items on the calendar or use the popup to reschedule, edit, or delete.",
+                        summary=summary[:500],
                         category="operations",
                     )
                 )

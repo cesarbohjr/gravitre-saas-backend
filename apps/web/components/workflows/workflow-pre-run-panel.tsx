@@ -21,7 +21,7 @@ import { workflowsApi } from "@/lib/api"
 import type { WorkflowDigitalTwinResponse, WorkflowFailureAlert } from "@/types/api"
 import type { IntelligenceDrawerNode } from "@/components/workflows/intelligence-drawer"
 
-type PanelTab = "simulate" | "risk"
+type PanelTab = "timing" | "risk"
 
 const SEVERITY_STYLES: Record<string, { badge: string; label: string }> = {
   critical: { badge: "border-destructive/40 text-destructive bg-destructive/10", label: "Critical" },
@@ -89,7 +89,7 @@ export function WorkflowPreRunPanel({
   nodes: IntelligenceDrawerNode[]
   className?: string
 }) {
-  const [tab, setTab] = useState<PanelTab>("simulate")
+  const [tab, setTab] = useState<PanelTab>("timing")
   const [simSteps, setSimSteps] = useState<ReturnType<typeof mapDigitalTwinSteps> | null>(null)
   const [simRunning, setSimRunning] = useState(false)
   const [simError, setSimError] = useState<string | null>(null)
@@ -100,7 +100,7 @@ export function WorkflowPreRunPanel({
   const [riskLoading, setRiskLoading] = useState(false)
   const [riskError, setRiskError] = useState<string | null>(null)
 
-  const runSimulation = useCallback(async () => {
+  const runTimingEstimate = useCallback(async () => {
     setSimRunning(true)
     setSimSteps(null)
     setSimError(null)
@@ -114,7 +114,7 @@ export function WorkflowPreRunPanel({
         ragReads: res.ragReads ?? 0,
       })
     } catch (err) {
-      setSimError(err instanceof Error ? err.message : "Digital twin simulation failed")
+      setSimError(err instanceof Error ? err.message : "Timing estimate failed")
     } finally {
       setSimRunning(false)
     }
@@ -124,42 +124,42 @@ export function WorkflowPreRunPanel({
     setRiskLoading(true)
     setRiskError(null)
     try {
-      const scanned = await workflowsApi.scanFailurePredictions(workflowId)
-      setAlerts(scanned.alerts)
+      const res = await workflowsApi.scanFailurePredictions(workflowId)
+      setAlerts(res.alerts ?? [])
     } catch (err) {
-      setRiskError(err instanceof Error ? err.message : "Failure prediction scan failed")
-      setAlerts([])
+      setRiskError(err instanceof Error ? err.message : "Failure scan failed")
     } finally {
       setRiskLoading(false)
     }
   }, [workflowId])
 
-  const totalPredictedMs = simSteps?.reduce((sum, s) => sum + s.predictedMs, 0) ?? 0
+  const totalPredictedMs = (simSteps ?? []).reduce((sum, step) => sum + step.predictedMs, 0)
 
   return (
-    <Card className={cn("border-primary/20", className)}>
+    <Card className={cn("border-border/80", className)}>
       <CardHeader className="pb-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <CardTitle className="text-base flex items-center gap-2">
-              <Beaker className="h-4 w-4 text-primary" />
-              Pre-run intelligence
+              <Beaker className="h-4 w-4 text-muted-foreground" />
+              Before you run
             </CardTitle>
             <CardDescription>
-              Digital-twin simulate and failure prediction scan before you execute in production.
+              Safe checks only — nothing executes against production connectors. Use Run in production
+              below when you are ready to go live.
             </CardDescription>
           </div>
           <div className="flex gap-1 rounded-lg border border-border p-0.5">
             {(
               [
-                { id: "simulate" as const, label: "Simulate", icon: Beaker },
-                { id: "risk" as const, label: "Failure scan", icon: ShieldAlert },
+                { id: "timing" as const, label: "Timing estimate", icon: Clock },
+                { id: "risk" as const, label: "Risk scan", icon: ShieldAlert },
               ] as const
             ).map((item) => (
               <Button
                 key={item.id}
                 size="sm"
-                variant={tab === item.id ? "default" : "ghost"}
+                variant={tab === item.id ? "secondary" : "ghost"}
                 className="h-8 gap-1.5"
                 onClick={() => setTab(item.id)}
               >
@@ -171,20 +171,29 @@ export function WorkflowPreRunPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {tab === "simulate" ? (
+        {tab === "timing" ? (
           <>
             <div className="flex flex-wrap items-center gap-2">
-              <Button size="sm" disabled={simRunning || nodes.length === 0} onClick={() => void runSimulation()}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={simRunning || nodes.length === 0}
+                onClick={() => void runTimingEstimate()}
+              >
                 {simRunning ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
-                  <Beaker className="h-4 w-4 mr-2" />
+                  <Clock className="h-4 w-4 mr-2" />
                 )}
-                Simulate run
+                Estimate step timing
               </Button>
               {nodes.length === 0 ? (
                 <span className="text-xs text-muted-foreground">Add steps in the builder first.</span>
-              ) : null}
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  Uses fixtures / latency models — not a live run.
+                </span>
+              )}
             </div>
             {simError ? (
               <p className="text-sm text-destructive flex items-center gap-2">
@@ -240,14 +249,15 @@ export function WorkflowPreRunPanel({
         ) : (
           <>
             <div className="flex flex-wrap items-center gap-2">
-              <Button size="sm" disabled={riskLoading} onClick={() => void runRiskScan()}>
+              <Button size="sm" variant="outline" disabled={riskLoading} onClick={() => void runRiskScan()}>
                 {riskLoading ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
                   <RefreshCw className="h-4 w-4 mr-2" />
                 )}
-                Scan for failures
+                Scan for failure risks
               </Button>
+              <span className="text-xs text-muted-foreground">Prediction only — does not execute steps.</span>
             </div>
             {riskError ? (
               <p className="text-sm text-destructive flex items-center gap-2">

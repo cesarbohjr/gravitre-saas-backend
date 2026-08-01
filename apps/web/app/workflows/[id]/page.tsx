@@ -1,18 +1,20 @@
 "use client"
 
-import { use } from "react"
+import { use, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { AutoStatusBadge } from "@/components/gravitre/status-badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { WorkflowPreRunPanel } from "@/components/workflows/workflow-pre-run-panel"
 import type { IntelligenceDrawerNode } from "@/components/workflows/intelligence-drawer"
 import { workflowsApi, runsApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
+import { toast } from "sonner"
 import {
   ArrowLeft,
   Calendar,
@@ -20,6 +22,7 @@ import {
   ExternalLink,
   Loader2,
   Play,
+  Rocket,
   Sparkles,
   Workflow,
 } from "lucide-react"
@@ -27,16 +30,19 @@ import {
 export default function WorkflowDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const { user } = useAuth()
+  const router = useRouter()
+  const [isRunning, setIsRunning] = useState(false)
 
-  const { data: workflow, error, isLoading } = useSWR(
+  const { data: workflow, error, isLoading, mutate: mutateWorkflow } = useSWR(
     user ? ["workflow-detail", id] : null,
     () => workflowsApi.get(id),
   )
 
   const { data: builder } = useSWR(user ? ["workflow-builder", id] : null, () => workflowsApi.getBuilder(id))
 
-  const { data: latestRuns } = useSWR(user ? ["workflow-latest-run", id] : null, () =>
-    runsApi.list({ workflow_id: id, limit: 1 }),
+  const { data: latestRuns, mutate: mutateLatestRuns } = useSWR(
+    user ? ["workflow-latest-run", id] : null,
+    () => runsApi.list({ workflow_id: id, limit: 1 }),
   )
   const latestRun = latestRuns?.runs?.[0]
 
@@ -45,6 +51,31 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
     name: String(node.name ?? node.title ?? "Step"),
     type: String(node.node_type ?? "task"),
   }))
+
+  const isActive = String(workflow?.status ?? "").toLowerCase() === "active"
+  const canRunLive = intelligenceNodes.length > 0
+
+  const handleRunNow = async () => {
+    if (!canRunLive || isRunning) return
+    setIsRunning(true)
+    try {
+      if (!isActive) {
+        await workflowsApi.update(id, { status: "active" })
+        await mutateWorkflow()
+      }
+      const result = await workflowsApi.execute({ workflow_id: id })
+      const runId = result.run_id
+      toast.success("Production run started")
+      await mutateLatestRuns()
+      if (runId) {
+        router.push(`/runs/${runId}`)
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to start production run")
+    } finally {
+      setIsRunning(false)
+    }
+  }
 
   return (
     <AppShell title={workflow?.name ?? "Workflow"}>
@@ -81,22 +112,28 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" asChild>
-              <Link href={`/workflows/${id}/schedules`}>
-                <Calendar className="h-4 w-4 mr-1" />
-                Schedules
+              <Link href={`/runs?workflow_id=${encodeURIComponent(id)}`}>
+                <Play className="h-4 w-4 mr-1" />
+                Run history
               </Link>
             </Button>
             <Button variant="outline" size="sm" asChild>
-              <Link href={`/runs?workflow_id=${encodeURIComponent(id)}`}>
-                <Play className="h-4 w-4 mr-1" />
-                Runs
-              </Link>
-            </Button>
-            <Button size="sm" asChild>
               <Link href={`/workflows/${id}/builder`}>
                 <Sparkles className="h-4 w-4 mr-1" />
                 Open builder
               </Link>
+            </Button>
+            <Button
+              size="sm"
+              disabled={!canRunLive || isRunning || isLoading || Boolean(error)}
+              onClick={() => void handleRunNow()}
+            >
+              {isRunning ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Rocket className="h-4 w-4 mr-1" />
+              )}
+              Run now
             </Button>
           </div>
         </div>
@@ -116,13 +153,57 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
           <>
             <WorkflowPreRunPanel workflowId={id} nodes={intelligenceNodes} />
 
+            <Card className="border-primary/25 bg-primary/[0.03]">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Rocket className="h-4 w-4 text-primary" />
+                  Run in production
+                </CardTitle>
+                <CardDescription>
+                  This is the live path. Run now starts a real execution against your connected tools.
+                  Schedule runs sets one-time or recurring production runs.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-muted-foreground max-w-xl">
+                  {isActive
+                    ? "Workflow is active. Production runs use the current builder graph and linked connectors."
+                    : "Workflow is not active yet. Activate & run will turn it on, then start a production execution."}
+                  {!canRunLive ? " Add at least one step in the builder first." : null}
+                </p>
+                <div className="flex flex-wrap gap-2 shrink-0">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/workflows/${id}/schedules`}>
+                      <Calendar className="h-4 w-4 mr-1" />
+                      Schedule runs
+                    </Link>
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={!canRunLive || isRunning}
+                    onClick={() => void handleRunNow()}
+                  >
+                    {isRunning ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <Rocket className="h-4 w-4 mr-1" />
+                    )}
+                    {isActive ? "Run now" : "Activate & run"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">Latest run</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {!latestRun ? (
-                  <p className="text-sm text-muted-foreground">No runs yet. Execute this workflow from the builder or schedules.</p>
+                  <p className="text-sm text-muted-foreground">
+                    No runs yet. Use <span className="font-medium text-foreground">Run now</span> or{" "}
+                    <span className="font-medium text-foreground">Schedule runs</span> above.
+                  </p>
                 ) : (
                   <>
                     <div className="flex flex-wrap items-center gap-2">
@@ -134,8 +215,8 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
                       ) : null}
                     </div>
                     {latestRun.status === "failed" ? (
-                      <Button size="sm" variant="outline" asChild>
-                        <Link href={`/runs/${latestRun.id}`}>Run again</Link>
+                      <Button size="sm" variant="outline" disabled={isRunning} onClick={() => void handleRunNow()}>
+                        Run again
                       </Button>
                     ) : null}
                   </>
@@ -184,14 +265,14 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
             <Card className="border-dashed">
               <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-6">
                 <div>
-                  <p className="text-sm font-medium">Full intelligence drawer</p>
+                  <p className="text-sm font-medium">Builder intelligence</p>
                   <p className="text-xs text-muted-foreground">
-                    Dry run, risk scan, and simulate are also available in the builder intelligence panel.
+                    Timing estimates, risk scan, and dry run are also available while editing the canvas.
                   </p>
                 </div>
                 <Button variant="outline" size="sm" asChild>
                   <Link href={`/workflows/${id}/builder`}>
-                    Builder
+                    Open builder
                     <ExternalLink className="h-3.5 w-3.5 ml-1" />
                   </Link>
                 </Button>

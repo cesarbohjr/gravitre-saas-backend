@@ -866,6 +866,12 @@ def create_workflow_schedule(
     enabled: bool,
     next_run_at: str | None,
     created_by: str | None,
+    *,
+    timezone_name: str = "UTC",
+    schedule_type: str = "recurring",
+    run_at: str | None = None,
+    name: str | None = None,
+    ends_at: str | None = None,
 ) -> dict:
     row: dict[str, Any] = {
         "org_id": org_id,
@@ -876,6 +882,11 @@ def create_workflow_schedule(
         "is_enabled": enabled,
         "next_run_at": next_run_at,
         "created_by": created_by,
+        "timezone": timezone_name or "UTC",
+        "schedule_type": schedule_type or "recurring",
+        "run_at": run_at,
+        "name": name,
+        "ends_at": ends_at,
     }
     r = client.table("workflow_schedules").insert(row).execute()
     if not r.data or len(r.data) == 0:
@@ -892,6 +903,15 @@ def update_workflow_schedule(
     enabled: bool | None,
     next_run_at: str | None,
     updated_by: str | None,
+    *,
+    timezone_name: str | None = None,
+    schedule_type: str | None = None,
+    run_at: str | None = None,
+    name: str | None = None,
+    ends_at: str | None = None,
+    clear_run_at: bool = False,
+    clear_ends_at: bool = False,
+    clear_next_run_at: bool = False,
 ) -> dict | None:
     payload: dict[str, Any] = {"updated_at": datetime.now(timezone.utc).isoformat()}
     if cron_expression is not None:
@@ -899,8 +919,24 @@ def update_workflow_schedule(
     if enabled is not None:
         payload["enabled"] = enabled
         payload["is_enabled"] = enabled
-    if next_run_at is not None:
+    if clear_next_run_at:
+        payload["next_run_at"] = None
+    elif next_run_at is not None:
         payload["next_run_at"] = next_run_at
+    if timezone_name is not None:
+        payload["timezone"] = timezone_name or "UTC"
+    if schedule_type is not None:
+        payload["schedule_type"] = schedule_type
+    if clear_run_at:
+        payload["run_at"] = None
+    elif run_at is not None:
+        payload["run_at"] = run_at
+    if name is not None:
+        payload["name"] = name
+    if clear_ends_at:
+        payload["ends_at"] = None
+    elif ends_at is not None:
+        payload["ends_at"] = ends_at
     if updated_by:
         payload["updated_by"] = updated_by
     r = (

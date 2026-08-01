@@ -81,7 +81,7 @@ export function SchedulesView({
   loading = false,
   onRangeChange,
   onActiveKindsChange,
-  workflowOptions,
+  workflowOptions = [],
   workflowId,
   onWorkflowChange,
   onRefresh,
@@ -350,6 +350,7 @@ export function SchedulesView({
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onUpdated={onRefresh}
+        workflowOptions={workflowOptions}
       />
 
       <AlertDialog open={Boolean(pendingMove)} onOpenChange={(open) => !open && setPendingMove(null)}>

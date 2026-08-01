@@ -775,9 +775,18 @@ export const workflowsApi = {
   // Schedules
   listSchedules: (workflowId: string) =>
     fetcher<{ schedules: WorkflowSchedule[] }>(apiUrl(`/api/workflows/${workflowId}/schedules`)),
-  createSchedule: (workflowId: string, data: { cron_expression: string; enabled?: boolean }) =>
-    postJson<WorkflowSchedule>(apiUrl(`/api/workflows/${workflowId}/schedules`), data),
-  updateSchedule: (workflowId: string, scheduleId: string, data: Partial<WorkflowSchedule>) =>
+  createSchedule: (
+    workflowId: string,
+    data: import("@/types/api").WorkflowScheduleWrite & {
+      cron_expression?: string
+      enabled?: boolean
+    },
+  ) => postJson<WorkflowSchedule>(apiUrl(`/api/workflows/${workflowId}/schedules`), data),
+  updateSchedule: (
+    workflowId: string,
+    scheduleId: string,
+    data: import("@/types/api").WorkflowScheduleWrite & Partial<WorkflowSchedule>,
+  ) =>
     patchJson<WorkflowSchedule>(apiUrl(`/api/workflows/${workflowId}/schedules/${scheduleId}`), data),
   deleteSchedule: (workflowId: string, scheduleId: string) =>
     deleteRequest(apiUrl(`/api/workflows/${workflowId}/schedules/${scheduleId}`)),

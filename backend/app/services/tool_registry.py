@@ -676,6 +676,24 @@ def _build_agent_tool_specs() -> dict[str, AgentToolSpec]:
             always_available=False,
         ),
         AgentToolSpec(
+            name="assistant_schedules_list",
+            description=(
+                "List workflow schedules and projected calendar occurrences for a time window "
+                "(default: this month). Use for 'what is scheduled this month/week' questions. "
+                "Do not invent schedule entries."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string"},
+                    "workflowId": {"type": "string"},
+                },
+            },
+            invoke_action="assistant.schedules_list",
+            integration="platform",
+            always_available=False,
+        ),
+        AgentToolSpec(
             name="assistant_analytics",
             description="Load organization analytics snapshot and recent workflow throughput.",
             parameters={"type": "object", "properties": {}},
@@ -1282,6 +1300,15 @@ class ToolRegistry:
                     settings,
                     limit=int(args.get("limit") or 10),
                     status_filter=str(args.get("status")).strip() if args.get("status") else None,
+                )
+            elif tool_name == "assistant_schedules_list":
+                payload = assistant_tools_module.tool_schedules_list(
+                    org_id,
+                    settings,
+                    environment_name=ctx.environment_name,
+                    query=str(args.get("query") or args.get("goal") or "").strip(),
+                    workflow_id=str(args.get("workflowId") or args.get("workflow_id") or "").strip()
+                    or None,
                 )
             elif tool_name == "assistant_analytics":
                 payload = assistant_tools_module.tool_analytics(

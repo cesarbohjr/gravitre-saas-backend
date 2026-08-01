@@ -59,7 +59,10 @@ export function scheduleMoveDescription(item: ScheduledItem, targetDate: Date): 
     minute: "2-digit",
   })
   if (item.kind === "workflow") {
-    return `Move "${item.title}" to ${when}? This updates the recurring schedule time.`
+    if (item.scheduleType === "once") {
+      return `Move "${item.title}" to ${when}? This updates the one-time run.`
+    }
+    return `Move "${item.title}" to ${when}? This converts the schedule to a one-time run at that time (edit the schedule to keep a recurrence).`
   }
   if (item.kind === "task") {
     return `Move "${item.title}" to ${when}? Only pending or queued tasks can be rescheduled.`
@@ -131,9 +134,13 @@ export async function moveScheduledItem(
     throw new Error("Sample schedules cannot be moved")
   }
   if (item.kind === "workflow" && item.workflowId && ids.scheduleId) {
+    // Calendar drag/reschedule always sets an absolute one-time fire — avoids yearly cron traps.
     await workflowsApi.updateSchedule(item.workflowId, ids.scheduleId, {
-      cron_expression: cronForDateTime(targetDate),
+      scheduleType: "once",
+      runAt: targetDate.toISOString(),
+      timezone: item.timezone || "UTC",
       enabled: item.status !== "disabled",
+      name: item.name,
     })
     return
   }

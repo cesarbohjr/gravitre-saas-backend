@@ -2,7 +2,16 @@
 
 // Workflow Builder - Main canvas for creating and editing workflows
 // Includes: Agent, Task, Connector, Tool, Source, Approval, Decision, and Council node types
-import { useState, useCallback, useEffect, useRef, useMemo, use, startTransition } from "react"
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  useMemo,
+  use,
+  startTransition,
+  type ReactNode,
+} from "react"
 import useSWR from "swr"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -11,6 +20,7 @@ import { WorkflowIntelligenceDrawer } from "@/components/workflows/intelligence-
 import { IntegrationSuggestionEvidenceBanner } from "@/components/workflows/integration-suggestion-evidence-banner"
 import { NodeRunDebugPanel } from "@/components/workflows/node-run-debug-panel"
 import { MesonCopilotPanel } from "@/components/workflows/meson-copilot-panel"
+import { ScheduleEditorDialog } from "@/components/schedules/schedule-editor-dialog"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { ModelSelector, ModelInheritanceChain } from "@/components/gravitre/model-selector"
@@ -61,6 +71,10 @@ import {
   listAgentRoles,
   type BuilderOrgAgent,
 } from "@/lib/workflows/builder-agent-library"
+import {
+  evaluateNodeReadiness,
+  showPathConditions,
+} from "@/lib/workflows/builder-node-readiness"
 import { interruptRequestedDescription, interruptRequestedMessage } from "@/lib/agent-interrupts"
 import {
   applyRunStepsToNodes,
@@ -1389,16 +1403,14 @@ function DynamicFormField({
   value: string
   onChange: (value: string) => void
 }) {
-  const labelClass = "text-xs font-medium text-muted-foreground mb-1.5 block"
   const inputClass = "w-full h-9 rounded-md border border-border bg-secondary px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
   
   return (
     <div>
-      <label className={labelClass}>
+      <FieldLabel required={field.required}>
         {field.name.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())}
-        {field.required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      
+      </FieldLabel>
+
       {field.type === "select" && field.options && (
         <select
           value={value}
@@ -2033,6 +2045,35 @@ const FALLBACK_COUNCIL_PERSONAS = [
   { id: "legal", name: "Legal/Risk Reviewer", role: "Compliance & risk", style: "cautious" },
 ] as const
 
+function FieldLabel({
+  children,
+  required,
+  htmlFor,
+}: {
+  children: ReactNode
+  required?: boolean
+  htmlFor?: string
+}) {
+  return (
+    <label
+      htmlFor={htmlFor}
+      className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 flex items-center gap-2"
+    >
+      <span>{children}</span>
+      <span
+        className={cn(
+          "normal-case tracking-normal font-medium text-[10px] px-1.5 py-0.5 rounded",
+          required
+            ? "bg-violet-500/15 text-violet-400"
+            : "bg-muted text-muted-foreground",
+        )}
+      >
+        {required ? "Required" : "Optional"}
+      </span>
+    </label>
+  )
+}
+
 function ConfigPanel({
   node,
   onClose,
@@ -2047,10 +2088,16 @@ function ConfigPanel({
   lastRunId?: string | null
 }) {
   const [formValues, setFormValues] = useState<Record<string, string>>({})
+  const [showDecisionHelp, setShowDecisionHelp] = useState(true)
   
   useEffect(() => {
     // Reset form values when node changes
     const timer = setTimeout(() => setFormValues({}), 0)
+    return () => clearTimeout(timer)
+  }, [node?.id])
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowDecisionHelp(true), 0)
     return () => clearTimeout(timer)
   }, [node?.id])
   
@@ -2069,6 +2116,9 @@ function ConfigPanel({
 
   const config = getNodeTypeConfig(node.type)
   const Icon = config.icon
+  const readiness = evaluateNodeReadiness(node)
+  const decisionStrategy = node.decisionConfig?.strategy || "ai-assisted"
+  const pathConditionsVisible = showPathConditions(decisionStrategy)
   
   // Get available actions for this node's vendor
   const availableActions = node.vendor ? connectorActions[node.vendor]?.actions || [] : []
@@ -2105,6 +2155,29 @@ function ConfigPanel({
           {lastRunId && node ? (
             <NodeRunDebugPanel runId={lastRunId} nodeId={node.id} nodeName={node.name} />
           ) : null}
+
+          {/* Setup status — what is still required for this node to work */}
+          <div
+            className={cn(
+              "flex items-start gap-2 p-3 rounded-lg border text-sm",
+              readiness.ready
+                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                : "bg-amber-500/10 border-amber-500/20 text-amber-500",
+            )}
+            role="status"
+          >
+            {readiness.ready ? (
+              <CheckCircle className="h-4 w-4 shrink-0 mt-0.5" />
+            ) : (
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            )}
+            <div className="min-w-0">
+              <p className="font-medium text-xs uppercase tracking-wide mb-0.5">
+                {readiness.ready ? "Setup complete" : "Setup incomplete"}
+              </p>
+              <p className="text-[12px] leading-snug opacity-95">{readiness.summary}</p>
+            </div>
+          </div>
 
           {/* Node Type Badge */}
           <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/50 border border-border">
@@ -2194,9 +2267,7 @@ node.type === "approval" && "bg-red-500",
           {/* Basic Info */}
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
-                Name
-              </label>
+              <FieldLabel required>Name</FieldLabel>
               <Input
                 value={node.name}
                 onChange={(e) => onUpdate({ name: e.target.value })}
@@ -2205,9 +2276,7 @@ node.type === "approval" && "bg-red-500",
             </div>
 
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
-                Description
-              </label>
+              <FieldLabel>Description</FieldLabel>
               <textarea
                 value={node.description || ""}
                 onChange={(e) => onUpdate({ description: e.target.value })}
@@ -2217,9 +2286,7 @@ node.type === "approval" && "bg-red-500",
             </div>
 
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
-                Data Label
-              </label>
+              <FieldLabel>Connection label</FieldLabel>
               <Input
                 value={node.dataLabel || ""}
                 onChange={(e) => onUpdate({ dataLabel: e.target.value })}
@@ -2227,7 +2294,7 @@ node.type === "approval" && "bg-red-500",
                 placeholder="e.g., customer_data, validated_records"
               />
               <p className="text-[10px] text-muted-foreground mt-1">
-                Label shown on the connection line for this output
+                Optional. Appears on the arrow leaving this node. Does not control routing.
               </p>
             </div>
           </div>
@@ -2253,9 +2320,7 @@ node.type === "approval" && "bg-red-500",
               </div>
 
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
-                  Select Action
-                </label>
+                <FieldLabel required>Select Action</FieldLabel>
                 <select
                   value={node.selectedAction || ""}
                   onChange={(e) => onUpdate({ selectedAction: e.target.value })}
@@ -2315,9 +2380,7 @@ node.type === "approval" && "bg-red-500",
             <div className="space-y-4 pt-4 border-t border-border">
               <h4 className="text-sm font-medium text-foreground">Agent Settings</h4>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
-                  Existing agent
-                </label>
+                <FieldLabel required>Existing agent</FieldLabel>
                 {orgAgents.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
                     No org agents loaded.{" "}
@@ -2373,9 +2436,7 @@ node.type === "approval" && "bg-red-500",
                 </p>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
-                  Task / assignment
-                </label>
+                <FieldLabel required>Task / assignment</FieldLabel>
                 <textarea
                   value={String(node.config.task || node.description || "")}
                   onChange={(e) =>
@@ -2389,9 +2450,7 @@ node.type === "approval" && "bg-red-500",
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
-                  Model
-                </label>
+                <FieldLabel>Model</FieldLabel>
                 <ModelSelector
                   value={String(node.config.model || "auto")}
                   onChange={(model) => onUpdate({ config: { ...node.config, model } })}
@@ -2415,19 +2474,27 @@ node.type === "approval" && "bg-red-500",
             <div className="space-y-4 pt-4 border-t border-border">
               <h4 className="text-sm font-medium text-foreground">Task Settings</h4>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
-                  Instructions
-                </label>
+                <FieldLabel required>Instructions</FieldLabel>
                 <textarea
                   className="w-full h-32 rounded-md border border-border bg-secondary px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring font-mono"
                   placeholder="Enter task instructions for the agent..."
-                  defaultValue={String(node.config.instruction || "")}
+                  value={String(node.config.instruction || node.config.instructions || "")}
+                  onChange={(e) =>
+                    onUpdate({
+                      config: {
+                        ...node.config,
+                        instruction: e.target.value,
+                        instructions: e.target.value,
+                      },
+                    })
+                  }
                 />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  What this step should do. Saved with the workflow — required for the task to run usefully.
+                </p>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
-                  Model Override
-                </label>
+                <FieldLabel>Model Override</FieldLabel>
                 <p className="text-[10px] text-muted-foreground mb-1.5">
                   Optionally override the agent&apos;s default model for this step
                 </p>
@@ -2475,40 +2542,67 @@ node.type === "approval" && "bg-red-500",
       </div>
       <div>
         <h4 className="text-sm font-medium text-foreground">Decision Configuration</h4>
-        <p className="text-[10px] text-muted-foreground">Configure AI-powered branching logic</p>
+        <p className="text-[10px] text-muted-foreground">Configure branching to the next steps</p>
       </div>
+    </div>
+
+    <div className="rounded-lg border border-border bg-secondary/30">
+      <button
+        type="button"
+        onClick={() => setShowDecisionHelp((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left"
+      >
+        <span className="text-xs font-medium text-foreground flex items-center gap-1.5">
+          <Lightbulb className="h-3.5 w-3.5 text-amber-400" />
+          How to set this up
+        </span>
+        {showDecisionHelp ? (
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+        )}
+      </button>
+      {showDecisionHelp && (
+        <ol className="px-3 pb-3 space-y-1.5 text-[11px] text-muted-foreground list-decimal list-inside">
+          <li>Pick a strategy: rules (if/else), AI (LLM picks a branch), or both.</li>
+          <li>Name each branch after a real outcome (e.g. High risk / Low risk).</li>
+          <li>
+            Draw an arrow from each branch chip on the canvas to the next node.
+            {pathConditionsVisible
+              ? " Fill “When to take this branch” for rules."
+              : " Leave path conditions empty — the model chooses by branch name."}
+          </li>
+        </ol>
+      )}
     </div>
 
     {/* Decision Objective */}
     <div>
-      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
-        Decision Objective
-      </label>
+      <FieldLabel required={decisionStrategy !== "rule-based"}>Decision Objective</FieldLabel>
       <Textarea
         value={node.decisionConfig?.objective || ""}
         onChange={(e) => onUpdate({ 
           decisionConfig: { ...node.decisionConfig, objective: e.target.value } 
         })}
-        placeholder="What should the AI decide? e.g., 'Determine if lead is high value'"
+        placeholder="What should be decided? e.g., 'Determine if lead is high value'"
         className="h-20 text-sm bg-secondary border-border resize-none"
       />
     </div>
 
     {/* Decision Strategy */}
     <div>
-      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
-        Decision Strategy
-      </label>
+      <FieldLabel required>Decision Strategy</FieldLabel>
       <div className="grid grid-cols-3 gap-2">
         {(["rule-based", "ai-assisted", "hybrid"] as const).map((strategy) => (
           <button
             key={strategy}
+            type="button"
             onClick={() => onUpdate({ 
               decisionConfig: { ...node.decisionConfig, strategy } 
             })}
             className={cn(
               "p-2.5 rounded-lg border text-center transition-all",
-              node.decisionConfig?.strategy === strategy
+              decisionStrategy === strategy
                 ? "border-violet-500 bg-violet-500/10 text-violet-400"
                 : "border-border bg-secondary/50 text-muted-foreground hover:border-muted-foreground"
             )}
@@ -2526,9 +2620,10 @@ node.type === "approval" && "bg-red-500",
 
     {/* Input Data Sources */}
     <div>
-      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
-        Input Data Sources
-      </label>
+      <FieldLabel>Input Data Sources</FieldLabel>
+      <p className="text-[10px] text-muted-foreground mb-1.5">
+        Optional notes for the operator — not connected to live CRM yet. Prefer “Previous node outputs”.
+      </p>
       <div className="space-y-1.5">
         {["Previous node outputs", "CRM data", "Engagement metrics", "Enriched data"].map((source) => (
           <label key={source} className="flex items-center gap-2 p-2 rounded-md bg-secondary/30 hover:bg-secondary/50 cursor-pointer">
@@ -2551,11 +2646,9 @@ node.type === "approval" && "bg-red-500",
     </div>
 
     {/* Conditions (for rule-based) */}
-    {node.decisionConfig?.strategy === "rule-based" && (
+    {decisionStrategy === "rule-based" && (
       <div>
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
-          Conditions
-        </label>
+        <FieldLabel required>Conditions</FieldLabel>
         <Textarea
           value={node.decisionConfig?.conditions || ""}
           onChange={(e) => onUpdate({ 
@@ -2564,15 +2657,16 @@ node.type === "approval" && "bg-red-500",
           placeholder="If score > 80 → High Value&#10;If score 40-80 → Medium Value&#10;Else → Low Value"
           className="h-24 text-sm bg-secondary border-border resize-none font-mono"
         />
+        <p className="text-[10px] text-muted-foreground mt-1">
+          Example: If score &gt; 80 → High Value. Mirror each rule in “When to take this branch” below.
+        </p>
       </div>
     )}
 
     {/* AI Instructions (for ai-assisted/hybrid) */}
-    {(node.decisionConfig?.strategy === "ai-assisted" || node.decisionConfig?.strategy === "hybrid") && (
+    {(decisionStrategy === "ai-assisted" || decisionStrategy === "hybrid") && (
       <div>
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
-          AI Instructions
-        </label>
+        <FieldLabel required>AI Instructions</FieldLabel>
         <Textarea
           value={node.decisionConfig?.conditions || ""}
           onChange={(e) => onUpdate({ 
@@ -2581,16 +2675,18 @@ node.type === "approval" && "bg-red-500",
           placeholder="Choose the best next action based on customer intent, engagement history, and available data signals..."
           className="h-24 text-sm bg-secondary border-border resize-none"
         />
+        <p className="text-[10px] text-muted-foreground mt-1">
+          Tell the model how to pick among the branch names you define below.
+        </p>
       </div>
     )}
 
     {/* Output Paths */}
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Output Paths
-        </label>
+        <FieldLabel required>Output branches</FieldLabel>
         <button
+          type="button"
           onClick={() => {
             const paths = node.outputPaths || []
             const newPath: DecisionPath = {
@@ -2605,11 +2701,23 @@ node.type === "approval" && "bg-red-500",
           Add path
         </button>
       </div>
+      <p className="text-[10px] text-muted-foreground mb-2">
+        Connect each branch to a different next node on the canvas.
+        {!pathConditionsVisible &&
+          " The model chooses a branch by name using your AI Instructions."}
+      </p>
+      {pathConditionsVisible && (
+        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 px-2 mb-1">
+          <span className="text-[9px] uppercase tracking-wide text-muted-foreground">Branch name</span>
+          <span className="text-[9px] uppercase tracking-wide text-muted-foreground">When to take this branch</span>
+          <span />
+        </div>
+      )}
       <div className="space-y-2">
         {(node.outputPaths || []).map((path, idx) => (
           <div key={path.id} className="flex items-center gap-2 p-2 rounded-lg bg-secondary/30 border border-border">
             <div className={cn(
-              "h-2 w-2 rounded-full",
+              "h-2 w-2 rounded-full shrink-0",
               idx === 0 && "bg-emerald-500",
               idx === 1 && "bg-blue-500",
               idx === 2 && "bg-amber-500",
@@ -2623,22 +2731,27 @@ node.type === "approval" && "bg-red-500",
                 onUpdate({ outputPaths: updated })
               }}
               className="h-7 text-xs bg-secondary border-border flex-1"
-              placeholder="Path label"
+              placeholder="Branch name (e.g. High risk)"
+              aria-label="Branch name"
             />
-            <Input
-              value={path.condition || ""}
-              onChange={(e) => {
-                const updated = [...(node.outputPaths || [])]
-                updated[idx] = { ...path, condition: e.target.value }
-                onUpdate({ outputPaths: updated })
-              }}
-              className="h-7 text-xs bg-secondary border-border flex-1 font-mono"
-              placeholder="Condition"
-            />
+            {pathConditionsVisible && (
+              <Input
+                value={path.condition || ""}
+                onChange={(e) => {
+                  const updated = [...(node.outputPaths || [])]
+                  updated[idx] = { ...path, condition: e.target.value }
+                  onUpdate({ outputPaths: updated })
+                }}
+                className="h-7 text-xs bg-secondary border-border flex-1 font-mono"
+                placeholder={path.isDefault ? "Default fallback" : "e.g. score > 80"}
+                aria-label="When to take this branch"
+              />
+            )}
             {path.isDefault && (
-              <span className="text-[9px] text-muted-foreground px-1.5 py-0.5 bg-muted rounded">Default</span>
+              <span className="text-[9px] text-muted-foreground px-1.5 py-0.5 bg-muted rounded shrink-0">Default</span>
             )}
             <button
+              type="button"
               onClick={() => {
                 const updated = (node.outputPaths || []).filter(p => p.id !== path.id)
                 onUpdate({ outputPaths: updated })
@@ -3088,6 +3201,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   
   // Settings dialog state
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [scheduleEditorOpen, setScheduleEditorOpen] = useState(false)
   const [settingsName, setSettingsName] = useState("")
   const [settingsDescription, setSettingsDescription] = useState("")
   
@@ -5870,14 +5984,28 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               />
             </div>
 
-            {/* Schedule */}
-            <div className="space-y-2">
-              <Label htmlFor="workflow-schedule">Schedule</Label>
-              <Input 
-                id="workflow-schedule" 
-                defaultValue="Every 15 minutes"
-                placeholder="e.g., Every hour, Daily at 9am"
-              />
+            {/* Schedule — wired to real workflow_schedules API */}
+            <div className="space-y-2 rounded-lg border border-border p-3">
+              <Label>Schedule</Label>
+              <p className="text-xs text-muted-foreground">
+                Create one-time or recurring runs for this workflow. Manage all occurrences on the Schedules page.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="gap-2"
+                  disabled={!canPersist}
+                  onClick={() => setScheduleEditorOpen(true)}
+                >
+                  Schedule this workflow
+                </Button>
+                {canPersist ? (
+                  <Button asChild type="button" size="sm" variant="outline" className="gap-2">
+                    <Link href={`/workflows/${id}/schedules`}>Open schedules</Link>
+                  </Button>
+                ) : null}
+              </div>
             </div>
 
             {/* Toggles */}
@@ -5941,6 +6069,24 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
           </div>
         </DialogContent>
       </Dialog>
+
+      <ScheduleEditorDialog
+        open={scheduleEditorOpen}
+        onOpenChange={setScheduleEditorOpen}
+        workflows={[{ id, name: workflowMeta.name || "This workflow" }]}
+        lockedWorkflowId={canPersist ? id : undefined}
+        onSaved={() => {
+          toast.success("Schedule created", {
+            description: "Open Schedules to review upcoming runs.",
+            action: canPersist
+              ? {
+                  label: "View",
+                  onClick: () => router.push(`/workflows/${id}/schedules`),
+                }
+              : undefined,
+          })
+        }}
+      />
 
       {/* Mobile Node List Sheet */}
       <Sheet open={showMobileNodeList} onOpenChange={setShowMobileNodeList}>

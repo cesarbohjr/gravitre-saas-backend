@@ -115,7 +115,7 @@ from app.workflows.schema_sync import (
     mirror_legacy_workflow_row_to_contract,
     sync_contract_workflow_to_legacy,
 )
-from app.workflows.cron import compute_next_run_at
+from app.workflows.cron import ONCE_SENTINEL, compute_next_run_at, parse_iso_datetime
 from app.services.workflow_schedule_service import dispatch_org_workflow_schedules
 from app.workflows.schema import (
     WorkflowValidationError,
@@ -166,17 +166,31 @@ class ApprovalBatchDecideRequest(BaseModel):
 
 
 class ScheduleCreateRequest(BaseModel):
+    model_config = {"populate_by_name": True}
+
     cron_expression: str | None = Field(default=None, min_length=1)
     cronExpression: str | None = Field(default=None, alias="cronExpression")
     enabled: bool | None = None
     is_enabled: bool | None = None
+    timezone: str | None = Field(default="UTC")
+    schedule_type: str | None = Field(default=None, alias="scheduleType")
+    run_at: str | None = Field(default=None, alias="runAt")
+    name: str | None = None
+    ends_at: str | None = Field(default=None, alias="endsAt")
 
 
 class ScheduleUpdateRequest(BaseModel):
+    model_config = {"populate_by_name": True}
+
     cron_expression: str | None = Field(default=None, min_length=1)
     cronExpression: str | None = Field(default=None, alias="cronExpression")
     enabled: bool | None = None
     is_enabled: bool | None = None
+    timezone: str | None = None
+    schedule_type: str | None = Field(default=None, alias="scheduleType")
+    run_at: str | None = Field(default=None, alias="runAt")
+    name: str | None = None
+    ends_at: str | None = Field(default=None, alias="endsAt")
 
 
 class WorkflowVersionItem(BaseModel):
@@ -2222,6 +2236,78 @@ def _execute_workflow_with_context(
         }
 
 
+def _serialize_workflow_schedule(row: dict) -> dict:
+    enabled = bool(row.get("is_enabled", row.get("enabled", True)))
+    return {
+        "id": str(row["id"]),
+        "workflow_id": str(row["workflow_id"]),
+        "workflowId": str(row["workflow_id"]),
+        "cron_expression": row.get("cron_expression") or "",
+        "cronExpression": row.get("cron_expression") or "",
+        "enabled": enabled,
+        "isEnabled": enabled,
+        "next_run_at": row.get("next_run_at"),
+        "nextRunAt": row.get("next_run_at"),
+        "last_run_at": row.get("last_run_at"),
+        "lastRunAt": row.get("last_run_at"),
+        "timezone": row.get("timezone") or "UTC",
+        "schedule_type": row.get("schedule_type") or "recurring",
+        "scheduleType": row.get("schedule_type") or "recurring",
+        "run_at": row.get("run_at"),
+        "runAt": row.get("run_at"),
+        "name": row.get("name"),
+        "ends_at": row.get("ends_at"),
+        "endsAt": row.get("ends_at"),
+        "created_at": row.get("created_at"),
+        "createdAt": row.get("created_at"),
+        "updated_at": row.get("updated_at"),
+        "updatedAt": row.get("updated_at"),
+    }
+
+
+def _resolve_schedule_timing(
+    *,
+    schedule_type: str,
+    cron_expression: str | None,
+    run_at: str | None,
+    timezone_name: str,
+    ends_at: str | None,
+    enabled: bool,
+) -> tuple[str, str | None, str | None]:
+    """Return (cron_expression, next_run_at, normalized_run_at)."""
+    if schedule_type == "once":
+        fire = parse_iso_datetime(run_at)
+        if fire is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="runAt is required for one-time schedules",
+            )
+        run_at_iso = fire.isoformat()
+        next_run = run_at_iso if enabled and fire > datetime.now(timezone.utc) else (
+            run_at_iso if enabled else None
+        )
+        # Allow scheduling slightly in the past for immediate dispatch windows.
+        if enabled and next_run is None:
+            next_run = run_at_iso
+        return ONCE_SENTINEL, next_run if enabled else None, run_at_iso
+
+    cron_value = (cron_expression or "").strip()
+    if not cron_value:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="cron_expression required")
+    next_run = compute_next_run_at(
+        cron_value,
+        tz_name=timezone_name,
+        ends_at=ends_at,
+        schedule_type="recurring",
+    )
+    if next_run is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unsupported cron expression or schedule already ended",
+        )
+    return cron_value, (next_run if enabled else None), None
+
+
 @router.get("/{workflow_id}/schedules")
 async def list_workflow_schedules_route(
     workflow_id: UUID,
@@ -2234,21 +2320,7 @@ async def list_workflow_schedules_route(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = get_supabase_client(settings)
     items = list_workflow_schedules(client, org_id, str(workflow_id), environment_name)
-    return {
-        "schedules": [
-            {
-                "id": str(s["id"]),
-                "workflow_id": str(s["workflow_id"]),
-                "cronExpression": s.get("cron_expression") or "",
-                "isEnabled": bool(s.get("is_enabled", s.get("enabled", True))),
-                "nextRunAt": s.get("next_run_at"),
-                "lastRunAt": s.get("last_run_at"),
-                "createdAt": s.get("created_at"),
-                "updatedAt": s.get("updated_at"),
-            }
-            for s in items
-        ]
-    }
+    return {"schedules": [_serialize_workflow_schedule(s) for s in items]}
 
 
 @router.post("/{workflow_id}/schedules", status_code=status.HTTP_201_CREATED)
@@ -2264,15 +2336,22 @@ async def create_workflow_schedule_route(
     wf = get_workflow_def(client, org_id, str(workflow_id))
     if not wf:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found")
-    cron_value = body.cron_expression or body.cronExpression
-    if not cron_value:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="cron_expression required")
+    schedule_type = str(body.schedule_type or "recurring").strip().lower()
+    if schedule_type not in {"recurring", "once"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="scheduleType must be recurring or once")
     enabled_value = body.is_enabled if body.is_enabled is not None else body.enabled
     if enabled_value is None:
         enabled_value = True
-    next_run_at = compute_next_run_at(cron_value)
-    if next_run_at is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported cron expression")
+    timezone_name = (body.timezone or "UTC").strip() or "UTC"
+    cron_raw = body.cron_expression or body.cronExpression
+    cron_value, next_run_at, run_at_iso = _resolve_schedule_timing(
+        schedule_type=schedule_type,
+        cron_expression=cron_raw,
+        run_at=body.run_at,
+        timezone_name=timezone_name,
+        ends_at=body.ends_at,
+        enabled=enabled_value,
+    )
     created = create_workflow_schedule(
         client,
         org_id=org_id,
@@ -2280,19 +2359,15 @@ async def create_workflow_schedule_route(
         cron_expression=cron_value,
         environment_name=environment_name,
         enabled=enabled_value,
-        next_run_at=next_run_at if enabled_value else None,
+        next_run_at=next_run_at,
         created_by=_user["user_id"],
+        timezone_name=timezone_name,
+        schedule_type=schedule_type,
+        run_at=run_at_iso,
+        name=(body.name or None),
+        ends_at=body.ends_at,
     )
-    return {
-        "id": str(created["id"]),
-        "workflow_id": str(created["workflow_id"]),
-        "cronExpression": created.get("cron_expression") or "",
-        "isEnabled": bool(created.get("is_enabled", created.get("enabled", True))),
-        "nextRunAt": created.get("next_run_at"),
-        "lastRunAt": created.get("last_run_at"),
-        "createdAt": created.get("created_at"),
-        "updatedAt": created.get("updated_at"),
-    }
+    return _serialize_workflow_schedule(created)
 
 
 @router.patch("/schedules/{schedule_id}")
@@ -2308,39 +2383,69 @@ async def update_workflow_schedule_route(
     schedule = get_workflow_schedule(client, org_id, str(schedule_id), environment_name)
     if not schedule:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Schedule not found")
+    schedule_type = str(
+        body.schedule_type or schedule.get("schedule_type") or "recurring"
+    ).strip().lower()
+    if schedule_type not in {"recurring", "once"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="scheduleType must be recurring or once")
+    timezone_name = (
+        body.timezone
+        if body.timezone is not None
+        else str(schedule.get("timezone") or "UTC")
+    ).strip() or "UTC"
     cron_expression = body.cron_expression or body.cronExpression or schedule.get("cron_expression")
-    next_run_at = schedule.get("next_run_at")
-    if body.cron_expression is not None:
-        next_run_at = compute_next_run_at(body.cron_expression)
-        if next_run_at is None:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported cron expression")
+    run_at = body.run_at if body.run_at is not None else schedule.get("run_at")
+    ends_at = body.ends_at if body.ends_at is not None else schedule.get("ends_at")
     enabled_value = body.is_enabled if body.is_enabled is not None else body.enabled
-    if enabled_value is False:
-        next_run_at = None
-    elif enabled_value is True and next_run_at is None and cron_expression:
-        next_run_at = compute_next_run_at(cron_expression)
+    if enabled_value is None:
+        enabled_value = bool(schedule.get("is_enabled", schedule.get("enabled", True)))
+
+    timing_touched = any(
+        [
+            body.cron_expression is not None,
+            body.cronExpression is not None,
+            body.schedule_type is not None,
+            body.run_at is not None,
+            body.timezone is not None,
+            body.ends_at is not None,
+            body.enabled is not None,
+            body.is_enabled is not None,
+        ]
+    )
+    clear_next = False
+    next_run_at = schedule.get("next_run_at")
+    run_at_iso = schedule.get("run_at")
+    if timing_touched:
+        cron_expression, next_run_at, run_at_iso = _resolve_schedule_timing(
+            schedule_type=schedule_type,
+            cron_expression=cron_expression,
+            run_at=run_at,
+            timezone_name=timezone_name,
+            ends_at=ends_at,
+            enabled=enabled_value,
+        )
+        clear_next = next_run_at is None
+
     updated = update_workflow_schedule(
         client,
         org_id=org_id,
         schedule_id=str(schedule_id),
         environment_name=environment_name,
-        cron_expression=cron_expression,
-        enabled=enabled_value,
+        cron_expression=cron_expression if timing_touched else None,
+        enabled=enabled_value if (body.enabled is not None or body.is_enabled is not None) else None,
         next_run_at=next_run_at,
         updated_by=_user["user_id"],
+        timezone_name=timezone_name if body.timezone is not None or timing_touched else None,
+        schedule_type=schedule_type if body.schedule_type is not None or timing_touched else None,
+        run_at=run_at_iso if timing_touched else None,
+        name=body.name,
+        ends_at=body.ends_at if body.ends_at is not None else None,
+        clear_next_run_at=clear_next,
+        clear_run_at=timing_touched and schedule_type != "once",
     )
     if not updated:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Schedule not found")
-    return {
-        "id": str(updated["id"]),
-        "workflow_id": str(updated["workflow_id"]),
-        "cronExpression": updated.get("cron_expression") or "",
-        "isEnabled": bool(updated.get("is_enabled", updated.get("enabled", True))),
-        "nextRunAt": updated.get("next_run_at"),
-        "lastRunAt": updated.get("last_run_at"),
-        "createdAt": updated.get("created_at"),
-        "updatedAt": updated.get("updated_at"),
-    }
+    return _serialize_workflow_schedule(updated)
 
 
 @router.patch("/{workflow_id}/schedules/{schedule_id}")

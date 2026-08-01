@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import HTTPException
 
 from app.config import Settings
-from app.workflows.cron import compute_next_run_at
+from app.workflows.cron import compute_next_run_at, is_once_schedule
 
 logger = logging.getLogger(__name__)
 
@@ -95,12 +95,31 @@ def _advance_schedule(
     schedule_id = str(schedule["id"])
     environment = str(schedule.get("environment") or "production")
     cron_expression = str(schedule.get("cron_expression") or "")
-    next_run_at = compute_next_run_at(cron_expression, now)
+    schedule_type = str(schedule.get("schedule_type") or "recurring")
+    tz_name = str(schedule.get("timezone") or "UTC")
+    ends_at = schedule.get("ends_at")
+    run_at = schedule.get("run_at")
+
+    # One-shot: disable after fire (or after idempotent skip of the same window).
+    if is_once_schedule(schedule_type=schedule_type, cron_expression=cron_expression):
+        next_run_at = None
+        enabled = False
+    else:
+        next_run_at = compute_next_run_at(
+            cron_expression,
+            now,
+            tz_name=tz_name,
+            ends_at=ends_at,
+            schedule_type=schedule_type,
+            run_at=run_at,
+        )
+        enabled = bool(next_run_at)
+
     payload: dict[str, Any] = {
         "updated_at": now.isoformat(),
         "next_run_at": next_run_at,
-        "enabled": bool(next_run_at),
-        "is_enabled": bool(next_run_at),
+        "enabled": enabled,
+        "is_enabled": enabled,
     }
     if last_run_at is not None:
         payload["last_run_at"] = last_run_at

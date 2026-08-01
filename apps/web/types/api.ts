@@ -252,14 +252,47 @@ export interface WorkflowEdge {
   created_at?: string
 }
 
+export type WorkflowScheduleType = "recurring" | "once"
+
 export interface WorkflowSchedule {
   id: string
   workflow_id: string
+  workflowId?: string
   cron_expression: string
+  cronExpression?: string
   enabled: boolean
+  isEnabled?: boolean
   next_run_at?: string
+  nextRunAt?: string
   last_run_at?: string
+  lastRunAt?: string
+  timezone?: string
+  schedule_type?: WorkflowScheduleType
+  scheduleType?: WorkflowScheduleType
+  run_at?: string
+  runAt?: string
+  name?: string
+  ends_at?: string
+  endsAt?: string
   created_at?: string
+  createdAt?: string
+  updated_at?: string
+  updatedAt?: string
+}
+
+export interface WorkflowScheduleWrite {
+  cron_expression?: string
+  cronExpression?: string
+  enabled?: boolean
+  isEnabled?: boolean
+  timezone?: string
+  scheduleType?: WorkflowScheduleType
+  schedule_type?: WorkflowScheduleType
+  runAt?: string
+  run_at?: string
+  name?: string
+  endsAt?: string
+  ends_at?: string
 }
 
 export type ScheduledItemKind = "workflow" | "task" | "job"
@@ -287,6 +320,11 @@ export interface ScheduledItem {
   workflowId?: string
   progress?: number
   occurrences?: string[]
+  scheduleType?: WorkflowScheduleType
+  timezone?: string
+  runAt?: string
+  endsAt?: string
+  name?: string
 }
 
 export interface SchedulesListResponse {

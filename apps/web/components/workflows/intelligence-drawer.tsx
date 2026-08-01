@@ -62,7 +62,7 @@ interface DryRunStep {
 }
 
 const TABS: { id: DrawerTab; label: string; icon: typeof Beaker }[] = [
-  { id: "simulate", label: "Simulate", icon: Beaker },
+  { id: "simulate", label: "Timing estimate", icon: Clock },
   { id: "risk", label: "Risk scan", icon: ShieldAlert },
   { id: "dryrun", label: "Dry run", icon: Play },
 ]
@@ -413,7 +413,7 @@ export function WorkflowIntelligenceDrawer({
                       icon={Beaker}
                       title="Predict the run timeline"
                       body="Run a digital-twin simulation to estimate per-step duration using connector fixtures and LLM latency estimates."
-                      actionLabel={isPersisted && nodes.length ? "Simulate run" : undefined}
+                      actionLabel={isPersisted && nodes.length ? "Estimate step timing" : undefined}
                       onAction={isPersisted && nodes.length ? runSimulation : undefined}
                       disabledHint={
                         !isPersisted

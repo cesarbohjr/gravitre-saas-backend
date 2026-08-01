@@ -43,6 +43,7 @@ TOOL_DISPLAY_NAMES: dict[str, str] = {
     "agent_status": "getAgentStatus",
     "connector_status": "getConnectorStatus",
     "workflow_runs": "getWorkflowRuns",
+    "schedules_list": "listSchedules",
     "analytics": "getAnalytics",
     "search_web": "searchWeb",
     "generate_document": "generateDocument",
@@ -283,6 +284,116 @@ def _infer_run_status_filter(query: str) -> str | None:
         if status in lowered:
             return status
     return None
+
+
+def tool_schedules_list(
+    org_id: str,
+    settings: Settings,
+    *,
+    environment_name: str = "production",
+    query: str = "",
+    workflow_id: str | None = None,
+) -> dict[str, Any]:
+    """List projected schedule occurrences for the calendar window (default: this month).
+
+    Use for questions like "what's scheduled this month" — do not invent occurrences.
+    """
+    from calendar import monthrange
+    from datetime import datetime, timedelta, timezone
+
+    from app.billing.service import get_supabase_client
+    from app.services.schedules_aggregation_service import (
+        default_projection_window,
+        list_scheduled_items,
+        parse_iso_datetime,
+    )
+
+    try:
+        client = get_supabase_client(settings)
+        now = datetime.now(timezone.utc)
+        lowered = (query or "").lower()
+        if "next week" in lowered:
+            start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            end = start + timedelta(days=8)
+        elif "today" in lowered:
+            start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            end = start + timedelta(days=1)
+        else:
+            # Default: current calendar month (± padding from aggregator helper).
+            start, end = default_projection_window(now)
+            if "this month" in lowered or "scheduled" in lowered:
+                month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                last_day = monthrange(now.year, now.month)[1]
+                start = month_start
+                end = month_start.replace(day=last_day) + timedelta(days=1)
+
+        items = list_scheduled_items(
+            client,
+            org_id,
+            environment_name,
+            workflow_id=workflow_id,
+            window_start=start,
+            window_end=end,
+        )
+        upcoming: list[dict[str, Any]] = []
+        for item in items:
+            title = str(item.get("title") or "Schedule")
+            kind = str(item.get("kind") or "workflow")
+            status = str(item.get("status") or "")
+            occurrences = list(item.get("occurrences") or [])
+            if occurrences:
+                for occ in occurrences[:40]:
+                    upcoming.append(
+                        {
+                            "at": occ,
+                            "title": title,
+                            "kind": kind,
+                            "status": status,
+                            "workflowId": item.get("workflowId"),
+                            "scheduleType": item.get("scheduleType"),
+                            "timezone": item.get("timezone"),
+                        }
+                    )
+            elif item.get("nextRunAt"):
+                upcoming.append(
+                    {
+                        "at": item.get("nextRunAt"),
+                        "title": title,
+                        "kind": kind,
+                        "status": status,
+                        "workflowId": item.get("workflowId"),
+                        "scheduleType": item.get("scheduleType"),
+                        "timezone": item.get("timezone"),
+                    }
+                )
+            elif item.get("startedAt"):
+                started = parse_iso_datetime(str(item.get("startedAt")))
+                if started and start <= started < end:
+                    upcoming.append(
+                        {
+                            "at": item.get("startedAt"),
+                            "title": title,
+                            "kind": kind,
+                            "status": status,
+                            "workflowId": item.get("workflowId"),
+                        }
+                    )
+
+        upcoming.sort(key=lambda row: str(row.get("at") or ""))
+        return {
+            "windowStart": start.isoformat(),
+            "windowEnd": end.isoformat(),
+            "itemCount": len(items),
+            "occurrenceCount": len(upcoming),
+            "occurrences": upcoming[:80],
+            "guidance": (
+                "Answer from these occurrences only. If empty, say nothing is scheduled "
+                "in the window — do not invent calendar entries."
+            ),
+        }
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("assistant schedules_list tool failed org_id=%s error=%s", org_id, str(exc))
+        return {"occurrences": [], "occurrenceCount": 0, "error": "schedules unavailable"}
 
 
 def tool_analytics(
@@ -789,6 +900,14 @@ async def run_assistant_tools(
             tool_input = {"limit": 10}
             if status_filter:
                 tool_input["status"] = status_filter
+        elif name == "schedules_list":
+            output = tool_schedules_list(
+                org_id,
+                settings,
+                environment_name=environment_name,
+                query=query,
+            )
+            tool_input = {"query": query[:200]}
         elif name == "analytics":
             output = tool_analytics(org_id, settings, user_id=user_id)
             tool_input = {"windowDays": 7}

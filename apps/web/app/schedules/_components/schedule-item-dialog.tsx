@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
-import { ArrowUpRight, CalendarClock, Trash2 } from "lucide-react"
+import { ArrowUpRight, CalendarClock, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -26,6 +26,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { StatusBadge } from "@/components/gravitre/status-badge"
+import {
+  ScheduleEditorDialog,
+  type ScheduleEditorInitial,
+} from "@/components/schedules/schedule-editor-dialog"
 import type { ScheduleOccurrence } from "@/lib/schedules"
 import { describeCron } from "@/lib/schedules"
 import {
@@ -49,20 +53,25 @@ export function ScheduleItemDialog({
   open,
   onOpenChange,
   onUpdated,
+  workflowOptions = [],
 }: {
   occurrence: ScheduleOccurrence | null
   open: boolean
   onOpenChange: (open: boolean) => void
   onUpdated?: () => void
+  workflowOptions?: Array<{ id: string; name: string }>
 }) {
   const item = occurrence?.item ?? null
   const ids = useMemo(() => (item ? parseScheduledItemIds(item) : {}), [item])
   const editHref = item ? scheduleEditHref(item, ids) : null
   const canMove = item ? canMoveScheduleItem(item) : false
   const canDelete = item ? canDeleteScheduleItem(item) : false
+  const canEditWorkflowSchedule =
+    item?.kind === "workflow" && Boolean(item.workflowId && ids.scheduleId) && !item.isSample
 
   const [dateTimeValue, setDateTimeValue] = useState("")
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [editorOpen, setEditorOpen] = useState(false)
   const [isMoving, setIsMoving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -72,6 +81,20 @@ export function ScheduleItemDialog({
   }, [occurrence])
 
   const targetDate = parseDateTimeLocalValue(dateTimeValue)
+
+  const editorInitial: ScheduleEditorInitial | null = canEditWorkflowSchedule
+    ? {
+        scheduleId: ids.scheduleId,
+        workflowId: item?.workflowId,
+        name: item?.name,
+        scheduleType: item?.scheduleType || (item?.cron === "@once" ? "once" : "recurring"),
+        cron: item?.cron,
+        timezone: item?.timezone || "UTC",
+        runAt: item?.runAt || item?.nextRunAt,
+        endsAt: item?.endsAt,
+        enabled: item?.status !== "disabled",
+      }
+    : null
 
   const handleMove = async () => {
     if (!item || !targetDate) {
@@ -125,6 +148,9 @@ export function ScheduleItemDialog({
                   <StatusBadge variant={statusVariant(item.status)} dot>
                     {statusLabel(item.status)}
                   </StatusBadge>
+                  {item.scheduleType === "once" ? (
+                    <StatusBadge variant="muted">One-time</StatusBadge>
+                  ) : null}
                   {item.isSample ? <StatusBadge variant="muted">Sample</StatusBadge> : null}
                 </div>
                 <DialogTitle className="text-balance text-lg">{item.title}</DialogTitle>
@@ -134,13 +160,28 @@ export function ScheduleItemDialog({
               </DialogHeader>
 
               <div className="space-y-5 px-6 py-5">
-                {item.cron ? (
+                {item.scheduleType === "once" || item.cron === "@once" ? (
+                  <div className="rounded-lg border border-border bg-muted/40 p-3">
+                    <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      One-time run
+                    </p>
+                    <p className="text-sm text-foreground">
+                      {formatDateTime(item.runAt || item.nextRunAt || occurrence.date.toISOString())}
+                    </p>
+                    {item.timezone ? (
+                      <p className="mt-1 text-xs text-muted-foreground">{item.timezone}</p>
+                    ) : null}
+                  </div>
+                ) : item.cron ? (
                   <div className="rounded-lg border border-border bg-muted/40 p-3">
                     <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       Recurrence
                     </p>
                     <p className="font-mono text-sm text-foreground">{item.cron}</p>
                     <p className="mt-1 text-sm text-muted-foreground">{describeCron(item.cron)}</p>
+                    {item.timezone ? (
+                      <p className="mt-1 text-xs text-muted-foreground">Timezone: {item.timezone}</p>
+                    ) : null}
                   </div>
                 ) : null}
 
@@ -155,6 +196,17 @@ export function ScheduleItemDialog({
                     <div className="flex items-center justify-between gap-4">
                       <span className="text-muted-foreground">Next run</span>
                       <span className="font-medium text-foreground">{formatDateTime(item.nextRunAt)}</span>
+                    </div>
+                  ) : null}
+                  {item.workflowId ? (
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-muted-foreground">Workflow</span>
+                      <Link
+                        href={`/workflows/${item.workflowId}`}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        Open
+                      </Link>
                     </div>
                   ) : null}
                 </div>
@@ -191,7 +243,16 @@ export function ScheduleItemDialog({
                 )}
 
                 <div className="flex flex-col gap-2">
-                  {editHref ? (
+                  {canEditWorkflowSchedule ? (
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2"
+                      onClick={() => setEditorOpen(true)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                      Edit schedule
+                    </Button>
+                  ) : editHref ? (
                     <Button asChild variant="outline" className="w-full gap-2">
                       <Link href={editHref}>
                         {scheduleEditLabel(item)}
@@ -245,6 +306,18 @@ export function ScheduleItemDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ScheduleEditorDialog
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        workflows={workflowOptions}
+        lockedWorkflowId={item?.workflowId}
+        initial={editorInitial}
+        onSaved={() => {
+          onOpenChange(false)
+          onUpdated?.()
+        }}
+      />
     </>
   )
 }

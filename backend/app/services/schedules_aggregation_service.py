@@ -89,14 +89,20 @@ def _workflow_schedule_items(
         wf_id = str(row.get("workflow_id") or "")
         cron_expr = str(row.get("cron_expression") or "").strip()
         enabled = bool(row.get("is_enabled", row.get("enabled", True)))
-        title = workflow_names.get(wf_id) or "Workflow schedule"
+        schedule_type = str(row.get("schedule_type") or "recurring")
+        tz_name = str(row.get("timezone") or "UTC")
+        display_name = str(row.get("name") or "").strip()
+        title = display_name or workflow_names.get(wf_id) or "Workflow schedule"
+        subtitle = "One-time" if schedule_type == "once" else (cron_expr or None)
         item: dict[str, Any] = {
             "kind": "workflow",
             "id": schedule_id,
             "title": title,
-            "subtitle": cron_expr or None,
+            "subtitle": subtitle,
             "status": "enabled" if enabled else "disabled",
             "workflowId": wf_id or None,
+            "scheduleType": schedule_type,
+            "timezone": tz_name,
         }
         if cron_expr:
             item["cron"] = cron_expr
@@ -104,8 +110,22 @@ def _workflow_schedule_items(
             item["nextRunAt"] = row.get("next_run_at")
         if row.get("last_run_at"):
             item["lastRunAt"] = row.get("last_run_at")
-        if enabled and cron_expr:
-            item["occurrences"] = expand_cron_occurrences(cron_expr, window_start, window_end)
+        if row.get("run_at"):
+            item["runAt"] = row.get("run_at")
+        if row.get("ends_at"):
+            item["endsAt"] = row.get("ends_at")
+        if row.get("name"):
+            item["name"] = row.get("name")
+        if enabled:
+            item["occurrences"] = expand_cron_occurrences(
+                cron_expr,
+                window_start,
+                window_end,
+                tz_name=tz_name,
+                ends_at=row.get("ends_at"),
+                schedule_type=schedule_type,
+                run_at=row.get("run_at") or row.get("next_run_at"),
+            )
         else:
             item["occurrences"] = []
         items.append(item)

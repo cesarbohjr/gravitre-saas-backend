@@ -188,6 +188,26 @@ def explanation_for_missing_run_history(
     return RUN_HISTORY_EXPLANATION_GAP
 
 
+def should_escalate_fast_for_schedules(mode_key: str, query: str, tool_names: list[str]) -> bool:
+    """FAST omits schedules_list — escalate when the user asks about the calendar."""
+    if mode_key != "fast":
+        return False
+    if "schedules_list" in (tool_names or []):
+        return False
+    lowered = (query or "").lower()
+    tokens = (
+        "scheduled",
+        "schedule",
+        "schedules",
+        "calendar",
+        "this month",
+        "next week",
+        "cron",
+        "recurring",
+    )
+    return any(token in lowered for token in tokens)
+
+
 def should_escalate_fast_for_run_history(mode_key: str, query: str, tool_names: list[str]) -> bool:
     """Routing/tool-availability gap: FAST omits workflow_runs but run-history needs it."""
     if (mode_key or "").strip().lower() != "fast":

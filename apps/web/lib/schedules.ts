@@ -52,6 +52,11 @@ export interface ScheduledItem {
   progress?: number
   /** Server-projected cron fire timestamps (ISO) within the requested window. */
   occurrences?: string[]
+  scheduleType?: "recurring" | "once"
+  timezone?: string
+  runAt?: string
+  endsAt?: string
+  name?: string
   /** Free-form details surfaced in the detail panel. */
   meta?: Record<string, string | number | undefined>
   /** Indicates the item came from sample fallback data, not the live backend. */
@@ -176,19 +181,32 @@ export function fromWorkflowSchedule(
   schedule: WorkflowSchedule,
   workflowName?: string,
 ): ScheduledItem {
+  const cron = schedule.cron_expression || schedule.cronExpression || ""
+  const enabled = schedule.isEnabled ?? schedule.enabled
+  const scheduleType = schedule.scheduleType || schedule.schedule_type || "recurring"
+  const workflowId = schedule.workflowId || schedule.workflow_id
+  const name = schedule.name
+  const title = name || workflowName || "Workflow schedule"
   return {
     id: `wf-${schedule.id}`,
     kind: "workflow",
-    title: workflowName || "Workflow schedule",
-    subtitle: describeCron(schedule.cron_expression),
-    status: schedule.enabled ? "enabled" : "disabled",
-    cron: schedule.cron_expression,
-    nextRunAt: schedule.next_run_at,
-    lastRunAt: schedule.last_run_at,
-    workflowId: schedule.workflow_id,
+    title,
+    subtitle: scheduleType === "once" ? "One-time" : describeCron(cron),
+    status: enabled ? "enabled" : "disabled",
+    cron: cron || undefined,
+    nextRunAt: schedule.nextRunAt || schedule.next_run_at,
+    lastRunAt: schedule.lastRunAt || schedule.last_run_at,
+    workflowId,
+    scheduleType,
+    timezone: schedule.timezone || "UTC",
+    runAt: schedule.runAt || schedule.run_at,
+    endsAt: schedule.endsAt || schedule.ends_at,
+    name,
     meta: {
-      Cron: schedule.cron_expression,
-      Created: schedule.created_at,
+      Cron: cron || undefined,
+      Type: scheduleType,
+      Timezone: schedule.timezone || "UTC",
+      Created: schedule.createdAt || schedule.created_at,
     },
   }
 }

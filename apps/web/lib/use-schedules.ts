@@ -39,6 +39,11 @@ function mapApiItem(item: ApiScheduledItem): ScheduledItem {
     workflowId: item.workflowId,
     progress: item.progress,
     occurrences: item.occurrences,
+    scheduleType: item.scheduleType,
+    timezone: item.timezone,
+    runAt: item.runAt,
+    endsAt: item.endsAt,
+    name: item.name,
   }
 }
 

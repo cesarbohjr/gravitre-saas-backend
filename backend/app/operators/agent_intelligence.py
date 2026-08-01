@@ -31,6 +31,7 @@ from app.services.factual_claim_honesty import (
     explanation_for_missing_run_history,
     is_run_history_question,
     should_escalate_fast_for_run_history,
+    should_escalate_fast_for_schedules,
 )
 from app.services.connector_chat_routing import (
     run_connector_fallback_turn,
@@ -1243,6 +1244,16 @@ class AgentIntelligence:
                 tool_names = ["workflow_runs"] + [t for t in tool_names if t != "workflow_runs"]
             logger.info(
                 "fast_run_history_tool_escalate org_id=%s from=fast to=standard tools=%s",
+                org_id,
+                tool_names,
+            )
+        if should_escalate_fast_for_schedules(mode_key, task_text, tool_names):
+            mode_key = "standard"
+            tool_names = resolve_assistant_tool_names(mode_key, None, connected_early)
+            if "schedules_list" in tool_names:
+                tool_names = ["schedules_list"] + [t for t in tool_names if t != "schedules_list"]
+            logger.info(
+                "fast_schedules_tool_escalate org_id=%s from=fast to=standard tools=%s",
                 org_id,
                 tool_names,
             )

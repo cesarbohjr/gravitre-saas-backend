@@ -6,10 +6,11 @@ import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
-import { RefreshCw, CalendarClock } from "lucide-react"
+import { RefreshCw, CalendarClock, Plus } from "lucide-react"
 import { useSchedules } from "@/lib/use-schedules"
 import { workflowsApi } from "@/lib/api"
 import type { ScheduleKind } from "@/lib/schedules"
+import { ScheduleEditorDialog } from "@/components/schedules/schedule-editor-dialog"
 import { SchedulesView } from "./_components/schedules-view"
 import { monthWindow } from "./_components/shared"
 
@@ -19,6 +20,7 @@ export default function SchedulesPage() {
   const [range, setRange] = useState(() => monthWindow(new Date()))
   const [kinds, setKinds] = useState<ScheduleKind[] | undefined>(undefined)
   const [workflowId, setWorkflowId] = useState<string | undefined>(undefined)
+  const [createOpen, setCreateOpen] = useState(false)
 
   const { items, isLoading, error, refresh } = useSchedules({
     from: range.from,
@@ -61,16 +63,22 @@ export default function SchedulesPage() {
               </p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 gap-2"
-            onClick={refresh}
-            disabled={isLoading}
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" className="h-8 gap-2" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-3.5 w-3.5" />
+              New schedule
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-2"
+              onClick={refresh}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {error && items.length === 0 ? (
@@ -91,6 +99,14 @@ export default function SchedulesPage() {
             onRefresh={refresh}
           />
         )}
+
+        <ScheduleEditorDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          workflows={workflowOptions}
+          lockedWorkflowId={workflowId}
+          onSaved={() => refresh()}
+        />
       </div>
     </AppShell>
   )
