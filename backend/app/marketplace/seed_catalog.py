@@ -872,6 +872,20 @@ def _intelligence_packs() -> list[CatalogAsset]:
                 {**PDL, "required": False},
                 *([{**CLAY, "required": False}] if spec.pack_id == "prospecting-intelligence-pack" else []),
             ]
+        elif spec.pack_id == "msp-intelligence-pack":
+            required = [
+                {
+                    **APOLLO,
+                    "required": True,
+                    "label": "Apollo.io (MSP company/contact discovery + lists)",
+                },
+                {
+                    **HUBSPOT,
+                    "required": True,
+                    "label": "HubSpot CRM (MSP list sync)",
+                },
+                {**CLAY, "required": False},
+            ]
         elif spec.pack_id == "marketing-intelligence-pack":
             required = [
                 {**GOOGLE_SEARCH_CONSOLE, "required": False},

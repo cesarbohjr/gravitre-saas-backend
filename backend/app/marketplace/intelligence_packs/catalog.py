@@ -4,6 +4,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.marketplace.workflows.msp_prospecting_list_workflow import (
+    build_msp_prospecting_list_workflow_steps,
+)
+
 
 @dataclass(frozen=True)
 class IntelligencePackAssignment:
@@ -659,13 +663,30 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             pack_id="msp-intelligence-pack",
             name="MSP Intelligence Pack",
             department="msp",
-            default_subdomain="vulnerability_intelligence",
+            default_subdomain="outbound_prospecting",
             description=(
-                "Gravitree-managed vulnerability intelligence: NVD CVE lookup, CISA KEV staging, "
-                "MSP analyst agent, and a read-only NVD CVE workflow. CIS Controls deferred."
+                "MSP company prospecting + list building (Apollo/HubSpot agents & tasks), plus "
+                "Gravitree-managed vulnerability knowledge assignments (NVD / CISA KEV) for the "
+                "MSP Vulnerability Analyst. CIS Controls deferred."
             ),
-            marketplace_tags=["msp", "starter", "intelligence-pack", "gravitree"],
+            marketplace_tags=["msp", "starter", "intelligence-pack", "gravitree", "prospecting"],
             assignments=[
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "msp-icp-criteria",
+                    "MSP ICP Criteria",
+                    "msp",
+                    "outbound_prospecting",
+                    reference_summary="Ideal MSP customer profile for outbound scouting and list building.",
+                ),
+                IntelligencePackAssignment(
+                    "knowledge_pack",
+                    "list-building",
+                    "List Building",
+                    "msp",
+                    "outbound_prospecting",
+                    reference_summary="Apollo/HubSpot list create + membership for MSP Prospects / MSPs.",
+                ),
                 IntelligencePackAssignment(
                     "knowledge_pack",
                     "nvd-cve-feed",
@@ -699,25 +720,16 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
                     reference_summary="Vendor advisory references for patch prioritization (CIS deferred).",
                 ),
             ],
-            demo_agent_name="MSP Vulnerability Analyst",
-            demo_systems=["nvd", "cisa_kev"],
+            demo_agent_name="MSP Prospecting Coordinator",
+            demo_systems=["apollo", "hubspot", "nvd", "cisa_kev"],
             connector_template_id="msp-intelligence-sources",
-            workflow_name="MSP NVD CVE Lookup",
-            workflow_description="Read-only: fetch a CVE via invoke_tool (Gravitree-managed NVD).",
-            workflow_steps=[
-                {
-                    "id": "nvd-cve",
-                    "name": "Fetch NVD CVE",
-                    "type": "invoke_tool",
-                    "config": {"action": "nvd.cve.get", "params": {"cve_id": "CVE-2024-3094"}},
-                },
-                {
-                    "id": "cisa-kev",
-                    "name": "Fetch CISA KEV sample",
-                    "type": "invoke_tool",
-                    "config": {"action": "cisa_kev.feed.get", "params": {}},
-                },
-            ],
+            workflow_name="MSP Prospecting & List Builder",
+            workflow_description=(
+                "Prospect MSPs with agents + Apollo/HubSpot tools: ICP brief → company/contact "
+                "discovery → qualify → create lists → membership → notify. "
+                "NVD/CISA remain available as knowledge assignments."
+            ),
+            workflow_steps=build_msp_prospecting_list_workflow_steps(),
         ),
         IntelligencePackSpec(
             pack_id="executive-intelligence-pack",

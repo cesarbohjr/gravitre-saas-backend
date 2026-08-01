@@ -155,8 +155,11 @@ CONNECTOR_CATEGORY_TEMPLATES: dict[str, dict[str, Any]] = {
     },
     "msp-intelligence-sources": {
         "name": "MSP Intelligence Sources",
-        "description": "Vulnerability and KEV feeds (Gravitree-managed).",
-        "connectors": ["nvd", "cisa_kev"],
+        "description": (
+            "MSP prospecting stubs (Apollo + HubSpot) plus Gravitree-managed "
+            "vulnerability feeds (NVD, CISA KEV)."
+        ),
+        "connectors": ["apollo", "hubspot", "nvd", "cisa_kev"],
     },
     "sales-intelligence-sources": {
         "name": "Sales Intelligence Sources",
