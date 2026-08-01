@@ -25,11 +25,13 @@ import {
   readNumber,
   readString,
 } from "@/lib/intelligence/helpers"
+import { getBuiltInModelGuide, statusLabel } from "@/lib/built-in-model-catalog"
 
 export default function ModelProfilePage() {
   const { user } = useAuth()
   const params = useParams<{ name: string }>()
   const modelName = decodeURIComponent(params.name)
+  const guide = getBuiltInModelGuide(modelName)
   const [training, setTraining] = useState(false)
 
   const { data: catalogData, error } = useSWR(user ? "intelligence/models/catalog" : null, () =>
@@ -93,7 +95,7 @@ export default function ModelProfilePage() {
     setTraining(true)
     try {
       const result = await mlAdminApi.trainModel(modelName)
-      if (result.trained) toast.success(`Training queued for ${modelName}`)
+      if (result.trained) toast.success(`Training queued for ${guide.label}`)
       else toast.message(result.message || result.reason || "Training not started")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Training request failed")
@@ -108,7 +110,7 @@ export default function ModelProfilePage() {
   )
 
   return (
-    <AppShell title={modelName}>
+    <AppShell title={guide.label}>
       <div className="space-y-6 p-4 md:p-6">
         <div className="flex flex-wrap items-center gap-3">
           <Button variant="ghost" size="sm" asChild>
@@ -118,7 +120,7 @@ export default function ModelProfilePage() {
             </Link>
           </Button>
           <Badge variant="outline" className={modelStatusChipClass(status)}>
-            {status}
+            {statusLabel(status)}
           </Badge>
           {!isPlanned && readinessStatus === "ready" ? (
             <Button size="sm" onClick={handleTrain} disabled={training}>
@@ -128,6 +130,12 @@ export default function ModelProfilePage() {
           ) : null}
         </div>
 
+        <div className="space-y-2">
+          <h1 className="text-xl font-semibold text-foreground">{guide.label}</h1>
+          <p className="font-mono text-xs text-muted-foreground">{modelName}</p>
+          <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{guide.summary}</p>
+        </div>
+
         {isPlanned ? (
           <EmptyState
             iconSlot={
@@ -135,8 +143,8 @@ export default function ModelProfilePage() {
                 <ChartLineUp className="h-8 w-8 text-amber-600 dark:text-amber-300" weight="duotone" aria-hidden />
               </span>
             }
-            title={`${modelName} — not yet active`}
-            description={plainDecisionReasoning(activationRequirement)}
+            title={`${guide.label} — not yet active`}
+            description={plainDecisionReasoning(guide.dataExplainer || activationRequirement)}
           />
         ) : null}
 
@@ -149,20 +157,57 @@ export default function ModelProfilePage() {
           </TabsList>
 
           <TabsContent value="overview" className="mt-6 space-y-4">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-xl border border-border/70 bg-secondary/20 p-4 text-sm">
+                <p className="font-medium text-foreground">Why this matters</p>
+                <p className="mt-2 leading-relaxed text-muted-foreground">{guide.whyItMatters}</p>
+              </div>
+              <div className="rounded-xl border border-border/70 bg-secondary/20 p-4 text-sm">
+                <p className="font-medium text-foreground">About the data gate</p>
+                <p className="mt-2 leading-relaxed text-muted-foreground">{guide.dataExplainer}</p>
+                {guide.howToFeed ? (
+                  <p className="mt-2 leading-relaxed text-muted-foreground">
+                    <span className="font-medium text-foreground">How to feed it: </span>
+                    {guide.howToFeed}
+                  </p>
+                ) : null}
+                <p className="mt-2 text-xs text-muted-foreground">
+                  The number is a minimum quality gate, not a max. You can’t raise or lower it here — keep
+                  connecting sources and using the product so signals grow past the gate.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" asChild>
+                    <Link href={APP_ROUTES.models}>Add custom models</Link>
+                  </Button>
+                  <Button size="sm" variant="ghost" asChild>
+                    <Link href={APP_ROUTES.training}>Training</Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
             <StatsGrid columns={3}>
               <StatCard label="Model type" value={readString(catalogEntry.model_type, "—").replace(/_/g, " ")} />
-              <StatCard label="Advisory only" value={statusEntry?.advisory_only ? "Yes" : "No"} variant="info" />
               <StatCard
-                label="Fallback"
-                value={readString(statusEntry?.fallback, readString(catalogEntry.fallback, "—"))}
+                label="Advisory only"
+                value={statusEntry?.advisory_only ? "Yes — recommends, doesn’t auto-act" : "No"}
+                variant="info"
+              />
+              <StatCard
+                label="Fallback when untrained"
+                value={readString(statusEntry?.fallback, readString(catalogEntry.fallback, "—")).replace(
+                  /_/g,
+                  " ",
+                )}
               />
             </StatsGrid>
             {!isPlanned ? (
               <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-4 text-sm text-muted-foreground">
                 <p className="font-medium text-foreground">Activation checklist</p>
                 <ul className="mt-2 list-disc space-y-1 pl-5">
-                  <li>{readString(catalogEntry.min_data, "Minimum training data threshold")}</li>
-                  <li>Signals available: {signalsAvailable} / {minRequired}</li>
+                  <li>{readString(catalogEntry.min_data, guide.dataExplainer)}</li>
+                  <li>
+                    Examples collected: {signalsAvailable} / {minRequired} (gate, not ceiling)
+                  </li>
                   <li>Status: {readinessStatus.replace(/_/g, " ")}</li>
                 </ul>
               </div>
@@ -189,13 +234,17 @@ export default function ModelProfilePage() {
 
           <TabsContent value="readiness" className="mt-6 space-y-4">
             {progress == null ? (
-              <p className="text-sm text-muted-foreground">Progress bar unavailable while model is PLANNED or DISABLED.</p>
+              <p className="text-sm text-muted-foreground">
+                This model isn’t trainable for your org yet — it’s on the platform roadmap or disabled.
+              </p>
             ) : (
               <>
                 <Progress value={progress} className="h-2" />
                 <p className="text-sm text-muted-foreground tabular-nums">
-                  {signalsAvailable} / {minRequired} signals · {readinessStatus.replace(/_/g, " ")}
+                  {signalsAvailable} / {minRequired} examples toward the training gate ·{" "}
+                  {readinessStatus.replace(/_/g, " ")}
                 </p>
+                <p className="text-xs text-muted-foreground">{guide.dataExplainer}</p>
               </>
             )}
           </TabsContent>

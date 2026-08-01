@@ -54,9 +54,9 @@ export const SURFACE_COPY = {
     title: "Built-in models",
     shortTitle: "Built-in",
     description:
-      "Gravitre's ML catalog — trained, planned, or disabled — with readiness and outcome scores for your org.",
+      "Gravitre's org ML brain — plain-language models that learn from your workflows, CRM, support, and chat signals.",
     intro:
-      "System models shipped with Gravitre. Status reflects your org's data and training readiness — not guesswork.",
+      "These are Gravitre’s built-in learners for your organization. Each card explains what the model does, why training matters, and how close you are to its data quality gate.",
     emptyTitle: "No catalog models yet",
     emptyDescription: "Built-in models appear here once ML catalog is enabled for your org.",
     route: APP_ROUTES.builtInModels,
@@ -74,7 +74,7 @@ export const SURFACE_COPY = {
     },
     builtIn: {
       title: "Built-in models",
-      summary: "Catalog status, training readiness, and outcome scores.",
+      summary: "Org ML brain — what each model does, why train it, and data readiness.",
       route: APP_ROUTES.builtInModels,
     },
     predictive: {
