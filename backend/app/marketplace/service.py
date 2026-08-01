@@ -726,6 +726,7 @@ def _install_intelligence_pack_asset(
     from app.marketplace.intelligence_packs.prospecting_install import install_prospecting_pack_demo_bundle
     from app.marketplace.intelligence_packs.revops_install import install_revops_pack_demo_bundle
     from app.marketplace.intelligence_packs.sales_install import install_sales_pack_demo_bundle
+    from app.marketplace.intelligence_packs.support_install import install_support_pack_demo_bundle
 
     pack_id = str(asset.get("slug") or asset.get("id") or "").strip()
     spec = get_intelligence_pack_spec(pack_id)
@@ -981,6 +982,30 @@ def _install_intelligence_pack_asset(
                 "bamboohrConnectorId": bundle.get("bamboohrConnectorId"),
                 "greenhouseConnectorId": bundle.get("greenhouseConnectorId"),
                 "gustoConnectorId": bundle.get("gustoConnectorId"),
+                "stopLinesHonored": bundle.get("stopLinesHonored"),
+                "demoBundle": True,
+            }
+
+        if pack_id == "support-intelligence-pack":
+            bundle = install_support_pack_demo_bundle(
+                client,
+                org_id,
+                asset,
+                spec,
+                actor_id=actor_id,
+                environment_name=environment_name,
+                settings=settings,
+            )
+            return {
+                "entityType": "intelligence_pack",
+                "entityId": str(asset["id"]),
+                "agentId": bundle.get("agentId"),
+                "workflowId": bundle.get("workflowId"),
+                "packId": pack_id,
+                "assignmentIds": bundle.get("assignmentIds") or [],
+                "assignmentCount": bundle.get("assignmentCount") or 0,
+                "connectorStubs": bundle.get("connectorStubs"),
+                "zendeskConnectorId": bundle.get("zendeskConnectorId"),
                 "stopLinesHonored": bundle.get("stopLinesHonored"),
                 "demoBundle": True,
             }

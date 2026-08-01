@@ -105,7 +105,11 @@ def list_pack_specs() -> list[DepartmentPackSpec]:
                     "type": "agent",
                     "metadata": {
                         "agent_seed": "agent:lead-qualifier",
-                        "task": "Score this lead and summarize fit against the sales playbook.",
+                        "task": (
+                            "Assignment: score this lead and summarize fit against the sales "
+                            "playbook. Cite HubSpot lookup signals; do not invent firmographics. "
+                            "Notify with score and recommended next step."
+                        ),
                     },
                 },
                 {
@@ -114,7 +118,10 @@ def list_pack_specs() -> list[DepartmentPackSpec]:
                     "type": "agent",
                     "metadata": {
                         "agent_seed": "agent:deal-desk",
-                        "task": "Review qualification output and recommend next sales action.",
+                        "task": (
+                            "Assignment: review qualification output and recommend the next sales "
+                            "action (demo, nurture, or disqualify). Notify deal-desk decision."
+                        ),
                     },
                 },
             ],
@@ -182,7 +189,10 @@ def list_pack_specs() -> list[DepartmentPackSpec]:
                     "type": "agent",
                     "metadata": {
                         "agent_seed": "agent:campaign-coordinator",
-                        "task": "Summarize enrollment and suggest follow-up campaign actions.",
+                        "task": (
+                            "Assignment: summarize sequence enrollment outcome and suggest follow-up "
+                            "campaign actions. Flag Slack/HubSpot gaps. Notify marketing ops."
+                        ),
                     },
                 },
             ],
@@ -239,7 +249,11 @@ def list_pack_specs() -> list[DepartmentPackSpec]:
                     "type": "agent",
                     "metadata": {
                         "agent_seed": "agent:ticket-triage",
-                        "task": "Classify urgency, suggest response macro, and flag escalation if needed.",
+                        "task": (
+                            "Assignment: classify urgency from Zendesk ticket context, suggest a "
+                            "response macro from help-center knowledge, and flag escalation if "
+                            "SLA risk is present. Notify with triage outcome."
+                        ),
                     },
                 },
             ],
@@ -296,7 +310,10 @@ def list_pack_specs() -> list[DepartmentPackSpec]:
                     "type": "agent",
                     "metadata": {
                         "agent_seed": "agent:ar-analyst",
-                        "task": "Summarize invoice status and recommend collections next step.",
+                        "task": (
+                            "Assignment: summarize QuickBooks invoice status against AR policy and "
+                            "recommend the collections next step. Notify finance with overdue risk."
+                        ),
                     },
                 },
             ],

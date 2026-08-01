@@ -46,18 +46,16 @@ def _invoke(
     params: dict[str, Any] | None = None,
     param_sources: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    config: dict[str, Any] = {"action": action}
-    if params:
-        config["params"] = params
-    if param_sources:
-        config["param_sources"] = param_sources
-    return {
-        "id": step_id,
-        "name": name,
-        "type": "invoke_tool",
-        "config": config,
-        "requires_connector": connector,
-    }
+    from app.marketplace.workflows.step_builders import invoke_step
+
+    return invoke_step(
+        step_id,
+        name,
+        action,
+        connector=connector,
+        params=params,
+        param_sources=param_sources,
+    )
 
 
 def _agent_step(

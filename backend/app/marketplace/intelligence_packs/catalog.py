@@ -4,8 +4,19 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.marketplace.workflows.msp_prospecting_list_workflow import (
-    build_msp_prospecting_list_workflow_steps,
+from app.marketplace.workflows.pack_workflows import (
+    build_ai_search_workflow_steps,
+    build_cs_workflow_steps,
+    build_executive_workflow_steps,
+    build_finance_workflow_steps,
+    build_hr_workflow_steps,
+    build_marketing_workflow_steps,
+    build_msp_workflow_steps,
+    build_platform_health_workflow_steps,
+    build_prospecting_workflow_steps,
+    build_revops_workflow_steps,
+    build_sales_workflow_steps,
+    build_support_workflow_steps,
 )
 
 
@@ -111,17 +122,10 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             connector_template_id="marketing-intelligence-sources",
             workflow_name="Marketing GSC Site Snapshot",
             workflow_description=(
-                "Read-only: list Google Search Console sites via invoke_tool. "
+                "Agent brief → list Google Search Console sites → agent summary. "
                 "Page aggregates may feed PackSignal; raw query strings stay Memory/KG gated."
             ),
-            workflow_steps=[
-                {
-                    "id": "gsc-sites",
-                    "name": "List GSC Sites",
-                    "type": "invoke_tool",
-                    "config": {"action": "searchconsole.sites.list", "params": {}},
-                },
-            ],
+            workflow_steps=build_marketing_workflow_steps(),
         ),
         IntelligencePackSpec(
             pack_id="revops-intelligence-pack",
@@ -165,15 +169,8 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             demo_systems=["hubspot"],
             connector_template_id="revops-intelligence-sources",
             workflow_name="RevOps HubSpot Pipeline Snapshot",
-            workflow_description="Read-only: list HubSpot deal pipelines for RevOps rollup.",
-            workflow_steps=[
-                {
-                    "id": "hubspot-pipelines",
-                    "name": "List HubSpot Pipelines",
-                    "type": "invoke_tool",
-                    "config": {"action": "hubspot.pipelines.list", "params": {}},
-                },
-            ],
+            workflow_description="Agent brief → HubSpot pipelines.list → agent RevOps summary.",
+            workflow_steps=build_revops_workflow_steps(),
         ),
         IntelligencePackSpec(
             pack_id="ai-search-intelligence-pack",
@@ -228,20 +225,10 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             connector_template_id="ai-search-intelligence-sources",
             workflow_name="AI Search Brand Radar Overview",
             workflow_description=(
-                "Read-only: Ahrefs Brand Radar overview via invoke_tool. "
+                "Agent brief → Ahrefs Brand Radar overview → agent summary. "
                 "Finseo / UI scrape available when those connectors are connected."
             ),
-            workflow_steps=[
-                {
-                    "id": "brand-radar-overview",
-                    "name": "Brand Radar Overview",
-                    "type": "invoke_tool",
-                    "config": {
-                        "action": "ahrefs.brand_radar.overview",
-                        "params": {"brand": "Gravitree", "country": "us"},
-                    },
-                },
-            ],
+            workflow_steps=build_ai_search_workflow_steps(),
         ),
         IntelligencePackSpec(
             pack_id="finance-intelligence-pack",
@@ -296,17 +283,9 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             connector_template_id="finance-intelligence-sources",
             workflow_name="Finance QuickBooks Company Snapshot",
             workflow_description=(
-                "Read-only: QuickBooks company info via invoke_tool "
-                "(falls back to invoices.list when companyinfo unavailable)."
+                "Agent brief → QuickBooks company info → agent cash-flow summary."
             ),
-            workflow_steps=[
-                {
-                    "id": "qb-company",
-                    "name": "QuickBooks Company Info",
-                    "type": "invoke_tool",
-                    "config": {"action": "quickbooks.companyinfo.get", "params": {}},
-                },
-            ],
+            workflow_steps=build_finance_workflow_steps(),
         ),
         IntelligencePackSpec(
             pack_id="hr-talent-intelligence-pack",
@@ -361,15 +340,8 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             demo_systems=["workday", "bamboohr", "greenhouse", "gusto"],
             connector_template_id="hr-talent-intelligence-sources",
             workflow_name="HR Greenhouse Jobs Snapshot",
-            workflow_description="Read-only: list Greenhouse open jobs via invoke_tool.",
-            workflow_steps=[
-                {
-                    "id": "greenhouse-jobs",
-                    "name": "List Greenhouse Jobs",
-                    "type": "invoke_tool",
-                    "config": {"action": "greenhouse.jobs.list", "params": {}},
-                },
-            ],
+            workflow_description="Agent brief → Greenhouse jobs.list → agent recruiting summary.",
+            workflow_steps=build_hr_workflow_steps(),
         ),
         IntelligencePackSpec(
             pack_id="sales-intelligence-pack",
@@ -430,15 +402,8 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             demo_systems=["hubspot"],
             connector_template_id="sales-intelligence-sources",
             workflow_name="Sales HubSpot Pipeline Snapshot",
-            workflow_description="Read-only: list HubSpot deal pipelines via invoke_tool (customer-owned CRM).",
-            workflow_steps=[
-                {
-                    "id": "hubspot-pipelines",
-                    "name": "List HubSpot Pipelines",
-                    "type": "invoke_tool",
-                    "config": {"action": "hubspot.pipelines.list", "params": {}},
-                },
-            ],
+            workflow_description="Agent brief → HubSpot pipelines.list → agent pipeline summary.",
+            workflow_steps=build_sales_workflow_steps(),
         ),
         IntelligencePackSpec(
             pack_id="prospecting-intelligence-pack",
@@ -530,47 +495,10 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             connector_template_id="prospecting-intelligence-sources",
             workflow_name="Prospecting Apollo Lead Scout",
             workflow_description=(
-                "Outbound: Apollo org search → people search → Apollo list create → HubSpot list create. "
-                "PDL BYO enrich available via Connectors; no Memory/KG contact writes."
+                "Agent ICP brief → Apollo org/people search → Apollo + HubSpot list create → "
+                "agent summary. PDL BYO enrich via Connectors; no Memory/KG contact writes."
             ),
-            workflow_steps=[
-                {
-                    "id": "apollo-orgs",
-                    "name": "Find Companies",
-                    "type": "invoke_tool",
-                    "config": {
-                        "action": "apollo.organizations.search",
-                        "params": {"q_organization_name": "Microsoft", "per_page": 5},
-                    },
-                },
-                {
-                    "id": "apollo-people",
-                    "name": "Find Contacts",
-                    "type": "invoke_tool",
-                    "config": {
-                        "action": "apollo.people.search",
-                        "params": {"q_keywords": "VP Sales", "per_page": 5},
-                    },
-                },
-                {
-                    "id": "apollo-list",
-                    "name": "Create Apollo List",
-                    "type": "invoke_tool",
-                    "config": {
-                        "action": "apollo.lists.create",
-                        "params": {"name": "Prospecting Pack Scout List", "modality": "contacts"},
-                    },
-                },
-                {
-                    "id": "hubspot-list",
-                    "name": "Create HubSpot List",
-                    "type": "invoke_tool",
-                    "config": {
-                        "action": "hubspot.lists.create",
-                        "params": {"name": "Prospecting Pack Sync List"},
-                    },
-                },
-            ],
+            workflow_steps=build_prospecting_workflow_steps(),
         ),
         IntelligencePackSpec(
             pack_id="support-intelligence-pack",
@@ -585,6 +513,12 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
                 IntelligencePackAssignment("confluence_space", "product-docs", "Product Docs", "support", "customer_success"),
                 IntelligencePackAssignment("google_drive_folder", "escalation-playbooks", "Escalation Playbooks", "support", "escalations"),
             ],
+            demo_agent_name="Support Queue Analyst",
+            demo_systems=["zendesk"],
+            connector_template_id=None,
+            workflow_name="Support Zendesk Queue Snapshot",
+            workflow_description="Agent brief → Zendesk tickets.list → agent queue summary.",
+            workflow_steps=build_support_workflow_steps(),
         ),
         IntelligencePackSpec(
             pack_id="customer-success-intelligence-pack",
@@ -636,28 +570,9 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             connector_template_id="customer-success-intelligence-sources",
             workflow_name="CS Account Health Snapshot",
             workflow_description=(
-                "Read-only: HubSpot pipelines + Zendesk ticket list for retention health briefings."
+                "Agent brief → HubSpot pipelines/deals + Zendesk tickets → agent health briefing."
             ),
-            workflow_steps=[
-                {
-                    "id": "hubspot-pipelines",
-                    "name": "List HubSpot Pipelines",
-                    "type": "invoke_tool",
-                    "config": {"action": "hubspot.pipelines.list", "params": {}},
-                },
-                {
-                    "id": "hubspot-deals",
-                    "name": "List HubSpot Deals",
-                    "type": "invoke_tool",
-                    "config": {"action": "hubspot.deals.list", "params": {"limit": 10}},
-                },
-                {
-                    "id": "zendesk-tickets",
-                    "name": "List Zendesk Tickets",
-                    "type": "invoke_tool",
-                    "config": {"action": "zendesk.tickets.list", "params": {"limit": 10}},
-                },
-            ],
+            workflow_steps=build_cs_workflow_steps(),
         ),
         IntelligencePackSpec(
             pack_id="msp-intelligence-pack",
@@ -729,7 +644,7 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
                 "discovery → qualify → create lists → membership → notify. "
                 "NVD/CISA remain available as knowledge assignments."
             ),
-            workflow_steps=build_msp_prospecting_list_workflow_steps(),
+            workflow_steps=build_msp_workflow_steps(),
         ),
         IntelligencePackSpec(
             pack_id="executive-intelligence-pack",
@@ -779,21 +694,8 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             demo_systems=["fred", "sec_edgar"],
             connector_template_id="executive-intelligence-sources",
             workflow_name="Executive FRED Macro Signal",
-            workflow_description="Read-only: fetch latest FRED GDP series via invoke_tool (Gravitree-managed).",
-            workflow_steps=[
-                {
-                    "id": "fred-gdp",
-                    "name": "Fetch FRED GDP",
-                    "type": "invoke_tool",
-                    "config": {"action": "fred.series.get", "params": {"series_id": "GDP"}},
-                },
-                {
-                    "id": "sec-filings",
-                    "name": "Search SEC EDGAR filings",
-                    "type": "invoke_tool",
-                    "config": {"action": "sec_edgar.filings.search", "params": {"query": "Microsoft"}},
-                },
-            ],
+            workflow_description="Agent brief → FRED GDP + SEC EDGAR search → agent macro summary.",
+            workflow_steps=build_executive_workflow_steps(),
         ),
         IntelligencePackSpec(
             pack_id="platform-health-intelligence-pack",
@@ -852,16 +754,9 @@ def list_intelligence_pack_specs() -> list[IntelligencePackSpec]:
             connector_template_id=None,
             workflow_name="Platform Health Snapshot",
             workflow_description=(
-                "Read-only: compute org platform health KPIs + recommendations via platform.health.snapshot."
+                "Agent brief → platform.health.snapshot → agent reliability recommendations."
             ),
-            workflow_steps=[
-                {
-                    "id": "platform-health-snapshot",
-                    "name": "Platform Health Snapshot",
-                    "type": "invoke_tool",
-                    "config": {"action": "platform.health.snapshot", "params": {}},
-                },
-            ],
+            workflow_steps=build_platform_health_workflow_steps(),
         ),
     ]
 

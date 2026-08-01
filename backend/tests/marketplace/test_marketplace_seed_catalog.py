@@ -86,6 +86,10 @@ def test_support_operations_pack_tier1_zendesk_triage():
     ]
     assert len(pack.config["agents"]) == 1
     assert pack.config["agents"][0]["config"]["marketplaceSlug"] == "ticket-triage"
-    lookup = pack.config["workflow_steps"][0]
-    assert lookup["config"]["action"] == "zendesk.tickets.get"
+    lookup = next(
+        step
+        for step in pack.config["workflow_steps"]
+        if (step.get("config") or {}).get("action") == "zendesk.tickets.get"
+    )
+    assert lookup["requires_connector"] == "zendesk"
     assert LEGACY_PACK_SLUG_MAP["support-ops"] == pack.slug

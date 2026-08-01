@@ -4,21 +4,21 @@ from __future__ import annotations
 from typing import Any
 
 from app.core.logging import get_logger
+from app.marketplace.connector_category_templates import install_connector_category_template
 from app.marketplace.intelligence_packs.catalog import IntelligencePackSpec, get_intelligence_pack_spec
 from app.marketplace.intelligence_packs.install import install_intelligence_pack
-from app.marketplace.connector_category_templates import install_connector_category_template
+from app.marketplace.intelligence_packs.pack_install_helpers import (
+    upsert_preconfigured_workflow,
+)
 from app.services.agent_tool_permissions import default_demo_scopes_for_system, upsert_agent_tool_permission
 from app.services.gravitree_connector_activation import activate_gravitree_connector
-from app.workflows.constants import SCHEMA_VERSION
 
 logger = get_logger(__name__)
-
 
 def _marketplace_entity_id(org_id: str, asset_id: str, seed: str) -> str:
     from app.marketplace.service import marketplace_entity_id
 
     return marketplace_entity_id(org_id, asset_id, seed)
-
 
 def install_executive_pack_demo_bundle(
     client: Any,
@@ -51,6 +51,7 @@ def install_executive_pack_demo_bundle(
                 "marketplaceAssetId": asset_id,
                 "permitted_tools": ["fred_get_series", "sec_edgar_search_filings", "fred", "sec_edgar"],
                 "pack_id": spec.pack_id,
+                "marketplaceSlug": "executive-analyst",
                 "department": "executive",
             },
             "allowed_environments": [environment_name],
@@ -75,6 +76,7 @@ def install_executive_pack_demo_bundle(
                 "marketplaceAssetId": asset_id,
                 "permitted_tools": ["fred_get_series", "sec_edgar_search_filings", "fred", "sec_edgar"],
                 "pack_id": spec.pack_id,
+                "marketplaceSlug": "executive-analyst",
             },
             "status": "active",
         },
@@ -177,51 +179,21 @@ def install_executive_pack_demo_bundle(
     workflow_id = None
     if spec.workflow_name and spec.workflow_steps:
         workflow_id = _marketplace_entity_id(org_id, asset_id, "executive-fred-workflow")
-        steps = list(spec.workflow_steps)
-        definition = {"schema_version": SCHEMA_VERSION, "steps": steps}
-        workflow_config = {"marketplaceAssetId": asset_id, "pack_id": spec.pack_id}
-        from app.marketplace.workflow_contract import steps_to_rich_contract
-        contract_nodes, contract_edges = steps_to_rich_contract(steps)
-        client.table("workflow_defs").upsert(
-            {
-                "id": workflow_id,
-                "org_id": org_id,
-                "name": spec.workflow_name,
-                "description": spec.workflow_description or "",
-                "status": "active",
-                "schema_version": SCHEMA_VERSION,
-                "definition": definition,
-                "config": workflow_config,
-            },
-            on_conflict="id",
-        ).execute()
-        client.table("workflows").upsert(
-            {
-                "id": workflow_id,
-                "org_id": org_id,
-                "name": spec.workflow_name,
-                "description": spec.workflow_description or "",
-                "status": "active",
-                "environment": environment_name,
-                "nodes": contract_nodes,
-                "edges": contract_edges,
-                "config": workflow_config,
-            },
-            on_conflict="id",
-        ).execute()
-        try:
-            from app.services.vertical_workflow_helper import ensure_active_workflow_version
-
-            ensure_active_workflow_version(
-                client,
-                org_id,
-                workflow_id,
-                definition,
-                environment_name=environment_name,
-                actor_id=actor_id,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("executive_pack_workflow_version_skipped err=%s", exc)
+        upsert_preconfigured_workflow(
+            client,
+            org_id=org_id,
+            workflow_id=workflow_id,
+            workflow_name=spec.workflow_name,
+            workflow_description=spec.workflow_description or "",
+            steps=list(spec.workflow_steps),
+            agent_id=agent_id,
+            agent_slug="executive-analyst",
+            asset_id=asset_id,
+            pack_id=spec.pack_id,
+            actor_id=actor_id,
+            environment_name=environment_name,
+            log_prefix="executive",
+        )
 
     return {
         "pack_id": spec.pack_id,

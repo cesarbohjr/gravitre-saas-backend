@@ -455,14 +455,28 @@ def bind_agent_seeds_on_builder_nodes(
         if name:
             by_seed[f"agent:{name.replace(' ', '-')}"] = agent_id
             by_seed[name] = agent_id
-        # Prospecting enrichment agent is installed with seed key = AGENT_SLUG only
-        # via marketplace_entity_id(..., AGENT_SLUG) — also match common display names.
-        if "lead enrichment" in name:
-            by_seed["agent:lead-enrichment-coordinator"] = agent_id
-            by_seed["lead-enrichment-coordinator"] = agent_id
-        if "msp prospecting" in name or "prospecting coordinator" in name:
-            by_seed["agent:msp-prospecting-coordinator"] = agent_id
-            by_seed["msp-prospecting-coordinator"] = agent_id
+        # Marketplace demo agents: match common display names when slug config is missing.
+        _name_seed_aliases: list[tuple[str, str]] = [
+            ("lead enrichment", "lead-enrichment-coordinator"),
+            ("msp prospecting", "msp-prospecting-coordinator"),
+            ("prospecting coordinator", "msp-prospecting-coordinator"),
+            ("seo marketing", "seo-marketing-analyst"),
+            ("revenue ops", "revenue-ops-analyst"),
+            ("ai visibility", "ai-visibility-analyst"),
+            ("cash flow", "cash-flow-analyst"),
+            ("recruiting talent", "recruiting-talent-analyst"),
+            ("sales pipeline", "sales-pipeline-analyst"),
+            ("lead scouting", "lead-scouting-analyst"),
+            ("cs health", "cs-health-analyst"),
+            ("customer success health", "cs-health-analyst"),
+            ("executive analyst", "executive-analyst"),
+            ("platform reliability", "platform-reliability-analyst"),
+            ("support queue", "support-queue-analyst"),
+        ]
+        for needle, seed_slug in _name_seed_aliases:
+            if needle in name:
+                by_seed[f"agent:{seed_slug}"] = agent_id
+                by_seed[seed_slug] = agent_id
 
     if not by_seed:
         return nodes

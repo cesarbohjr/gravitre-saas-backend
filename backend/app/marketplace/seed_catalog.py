@@ -217,11 +217,19 @@ def _workflow(
 
 
 def _invoke(step_id: str, name: str, action: str, *, connector: str | None = None) -> dict[str, Any]:
+    config: dict[str, Any] = {"action": action, "tool_action": action}
+    if connector:
+        config["vendor"] = connector
+        config["connector"] = connector
+        if "." in action:
+            _vendor, selected = action.split(".", 1)
+            config["selectedAction"] = selected
+            config["selected_action"] = selected
     step: dict[str, Any] = {
         "id": step_id,
         "name": name,
         "type": "invoke_tool",
-        "config": {"action": action},
+        "config": config,
     }
     if connector:
         step["requires_connector"] = connector
@@ -637,18 +645,27 @@ def _department_packs() -> list[CatalogAsset]:
                     "icp_content",
                     "ICP strategy and content draft",
                     "product-icp-strategist",
-                    "Define ICP focus and campaign thesis for this run.",
+                    "Assignment: define ICP focus and campaign thesis for this run. Confirm GA4 "
+                    "snapshot inputs, cite brand voice RAG, and hand off a clear brief to content. "
+                    "Notify the operator that campaign production has started.",
                     next_agent_slug="content-writer",
-                    receiver_task="Draft campaign copy using the ICP briefing and brand voice guide.",
+                    receiver_task=(
+                        "Assignment: draft campaign copy using the ICP briefing and brand voice "
+                        "guide. Keep claims factual; flag missing product facts. Notify when draft ready."
+                    ),
                 ),
                 _agent_step(
                     "design_ops",
                     "Design brief and ops handoff",
                     "marketing-designer",
-                    "Produce a creative brief from prior campaign context.",
+                    "Assignment: produce a creative brief from prior campaign context and copy. "
+                    "List asset formats needed and brand constraints. Notify design handoff complete.",
                     next_agent_slug="marketing-ops-coordinator",
                     briefing_from_steps=True,
-                    receiver_task="Build publish checklist and coordinate next marketing actions.",
+                    receiver_task=(
+                        "Assignment: build publish checklist, schedule next marketing actions, and "
+                        "notify the operator that the campaign chain is ready for review."
+                    ),
                 ),
             ],
         ),
@@ -688,8 +705,23 @@ def _department_packs() -> list[CatalogAsset]:
             ],
             rag_sources=[_rag_doc("rag:runbooks", "Service Runbooks", pack="msp-operations-pack")],
             workflow_steps=[
-                _agent_step("status", "Weekly status draft", "msp-coordinator", "Summarize operational health."),
+                _agent_step(
+                    "status",
+                    "Weekly status draft",
+                    "msp-coordinator",
+                    "Assignment: open a weekly MSP service-status brief. Summarize ticket trends, "
+                    "SLA posture, and top risks using assigned runbooks. Notify the operator that "
+                    "status drafting has started.",
+                ),
                 _invoke("notify", "Notify channel", "slack.post_message", connector="slack"),
+                _agent_step(
+                    "status_close",
+                    "Confirm status posted",
+                    "msp-coordinator",
+                    "Assignment: confirm the Slack status notification was posted (or report the "
+                    "connector gap). List follow-ups for the ops team. Notify completion.",
+                    briefing_from_steps=True,
+                ),
             ],
         ),
         required_connectors=[SLACK],
@@ -713,9 +745,23 @@ def _department_packs() -> list[CatalogAsset]:
             ],
             rag_sources=[_rag_doc("rag:pipeline-definitions", "Pipeline Stage Definitions", pack="revenue-operations-pack")],
             workflow_steps=[
-                _invoke("pipeline", "CRM pipeline snapshot", "hubspot.search_contacts", connector="hubspot"),
-                _agent_step("revops", "RevOps review", "revenue-operations-agent", "Summarize pipeline health."),
-                _agent_step("exec", "Executive narrative", "cfo-agent", "Draft leadership summary."),
+                _invoke("pipeline", "CRM pipeline snapshot", "hubspot.pipelines.list", connector="hubspot"),
+                _agent_step(
+                    "revops",
+                    "RevOps review",
+                    "revenue-operations-agent",
+                    "Assignment: summarize HubSpot pipeline inventory for RevOps hygiene — stage "
+                    "coverage, forecast heuristic risks, and data gaps. Notify with a short rollup.",
+                    briefing_from_steps=True,
+                ),
+                _agent_step(
+                    "exec",
+                    "Executive narrative",
+                    "cfo-agent",
+                    "Assignment: draft a leadership-ready narrative from the RevOps review. Keep "
+                    "numbers tied to prior CRM snapshot; flag missing CRM connection clearly. Notify.",
+                    briefing_from_steps=True,
+                ),
             ],
         ),
         required_connectors=[HUBSPOT, SALESFORCE],
@@ -744,8 +790,16 @@ def _department_packs() -> list[CatalogAsset]:
             ],
             rag_sources=[_rag_doc("rag:health-rubric", "Customer Health Rubric", pack="customer-success-pack")],
             workflow_steps=[
-                _invoke("accounts", "Account signals", "hubspot.search_contacts", connector="hubspot"),
-                _agent_step("health", "Health review", "customer-success-agent", "Identify at-risk accounts."),
+                _invoke("accounts", "Account signals", "hubspot.deals.list", connector="hubspot"),
+                _agent_step(
+                    "health",
+                    "Health review",
+                    "customer-success-agent",
+                    "Assignment: using prior HubSpot deal signals and the customer health rubric, "
+                    "identify at-risk accounts and renewal watch items. Do not invent usage data. "
+                    "Notify the operator with a short risk list.",
+                    briefing_from_steps=True,
+                ),
             ],
         ),
         required_connectors=[HUBSPOT],
@@ -781,7 +835,22 @@ def _department_packs() -> list[CatalogAsset]:
             ],
             rag_sources=[_rag_doc("rag:policy-handbook", "Policy Handbook", pack="hr-operations-pack")],
             workflow_steps=[
-                _agent_step("onboard", "Onboarding guidance", "hr-coordinator", "Summarize onboarding steps for a new hire."),
+                _agent_step(
+                    "onboard",
+                    "Onboarding guidance",
+                    "hr-coordinator",
+                    "Assignment: open an HR onboarding brief for a new hire. Use the policy handbook "
+                    "RAG to list day-1 through week-1 checklist items. Notify that guidance is ready.",
+                ),
+                _invoke("notify", "Notify HR channel", "slack.post_message", connector="slack"),
+                _agent_step(
+                    "onboard_close",
+                    "Confirm onboarding notify",
+                    "hr-coordinator",
+                    "Assignment: confirm Slack notify for onboarding checklist (or report connector "
+                    "gap). Summarize remaining owner actions. Notify completion.",
+                    briefing_from_steps=True,
+                ),
             ],
         ),
         required_connectors=[SLACK],
@@ -820,12 +889,24 @@ def _department_packs() -> list[CatalogAsset]:
                 _rag_doc("rag:macros", "Support Macros", pack="support-operations-pack"),
             ],
             workflow_steps=[
+                _agent_step(
+                    "triage_open",
+                    "Open triage assignment",
+                    "ticket-triage",
+                    "Assignment: open a Zendesk ticket triage brief. Confirm ticket_id input and "
+                    "which macros/escalation matrix apply. Notify that ticket lookup is starting.",
+                ),
                 {
                     "id": "ticket_lookup",
                     "name": "Fetch ticket context",
                     "type": "invoke_tool",
                     "config": {
                         "action": "zendesk.tickets.get",
+                        "tool_action": "zendesk.tickets.get",
+                        "vendor": "zendesk",
+                        "connector": "zendesk",
+                        "selectedAction": "tickets.get",
+                        "selected_action": "tickets.get",
                         "param_sources": {"ticket_id": "$ticket_id"},
                     },
                     "requires_connector": "zendesk",
@@ -834,7 +915,10 @@ def _department_packs() -> list[CatalogAsset]:
                     "triage",
                     "AI ticket triage",
                     "ticket-triage",
-                    "Classify urgency, suggest response macro, and flag escalation if needed.",
+                    "Assignment: using prior Zendesk ticket context, classify urgency, suggest a "
+                    "response macro from assigned knowledge, and flag escalation if SLA risk is "
+                    "present. Notify the operator with the triage outcome.",
+                    briefing_from_steps=True,
                 ),
             ],
         ),

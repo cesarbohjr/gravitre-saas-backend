@@ -11,6 +11,9 @@ from typing import Any
 from app.core.logging import get_logger
 from app.marketplace.connector_category_templates import install_connector_category_template
 from app.marketplace.intelligence_packs.catalog import IntelligencePackSpec
+from app.marketplace.intelligence_packs.pack_install_helpers import (
+    upsert_preconfigured_workflow,
+)
 from app.marketplace.intelligence_packs.install import install_intelligence_pack
 from app.services.agent_tool_permissions import default_demo_scopes_for_system, upsert_agent_tool_permission
 from app.workflows.constants import SCHEMA_VERSION
@@ -87,6 +90,7 @@ def _install_msp_enrichment_workflow_bundle(
                 "slug": AGENT_SLUG,
                 "permitted_tools": list(AGENT_SYSTEMS),
                 "pack_id": spec.pack_id,
+                "marketplaceSlug": "lead-scouting-analyst",
                 "department": AGENT_DEPARTMENT.lower(),
             },
             "allowed_environments": [environment_name],
@@ -224,6 +228,7 @@ def install_prospecting_pack_demo_bundle(
                 "marketplaceAssetId": asset_id,
                 "permitted_tools": ["apollo", "hubspot", "clay"],
                 "pack_id": spec.pack_id,
+                "marketplaceSlug": "lead-scouting-analyst",
                 "department": "sales",
             },
             "allowed_environments": [environment_name],
@@ -251,6 +256,7 @@ def install_prospecting_pack_demo_bundle(
                 "marketplaceAssetId": asset_id,
                 "permitted_tools": ["apollo", "hubspot", "clay"],
                 "pack_id": spec.pack_id,
+                "marketplaceSlug": "lead-scouting-analyst",
             },
             "status": "active",
         },
@@ -309,53 +315,22 @@ def install_prospecting_pack_demo_bundle(
 
     workflow_id = None
     if spec.workflow_name and spec.workflow_steps:
-        from app.marketplace.workflow_contract import steps_to_rich_contract
-
         workflow_id = _marketplace_entity_id(org_id, asset_id, "prospecting-apollo-workflow")
-        steps = list(spec.workflow_steps)
-        definition = {"schema_version": SCHEMA_VERSION, "steps": steps}
-        workflow_config = {"marketplaceAssetId": asset_id, "pack_id": spec.pack_id}
-        contract_nodes, contract_edges = steps_to_rich_contract(steps)
-        client.table("workflow_defs").upsert(
-            {
-                "id": workflow_id,
-                "org_id": org_id,
-                "name": spec.workflow_name,
-                "description": spec.workflow_description or "",
-                "status": "active",
-                "schema_version": SCHEMA_VERSION,
-                "definition": definition,
-                "config": workflow_config,
-            },
-            on_conflict="id",
-        ).execute()
-        client.table("workflows").upsert(
-            {
-                "id": workflow_id,
-                "org_id": org_id,
-                "name": spec.workflow_name,
-                "description": spec.workflow_description or "",
-                "status": "active",
-                "environment": environment_name,
-                "nodes": contract_nodes,
-                "edges": contract_edges,
-                "config": workflow_config,
-            },
-            on_conflict="id",
-        ).execute()
-        try:
-            from app.services.vertical_workflow_helper import ensure_active_workflow_version
-
-            ensure_active_workflow_version(
-                client,
-                org_id,
-                workflow_id,
-                definition,
-                environment_name=environment_name,
-                actor_id=actor_id,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("prospecting_pack_workflow_version_skipped err=%s", exc)
+        upsert_preconfigured_workflow(
+            client,
+            org_id=org_id,
+            workflow_id=workflow_id,
+            workflow_name=spec.workflow_name,
+            workflow_description=spec.workflow_description or "",
+            steps=list(spec.workflow_steps),
+            agent_id=agent_id,
+            agent_slug="lead-scouting-analyst",
+            asset_id=asset_id,
+            pack_id=spec.pack_id,
+            actor_id=actor_id,
+            environment_name=environment_name,
+            log_prefix="prospecting",
+        )
 
     enrichment_workflow_id = _install_msp_enrichment_workflow_bundle(
         client,
