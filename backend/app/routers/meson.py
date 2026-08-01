@@ -178,11 +178,13 @@ async def meson_alerts_route(
     """Return proactive workflow and connector alerts."""
     resolved_org = _require_org(org_id)
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    feedback_summary = meson.load_feedback_summary(client, resolved_org)
     return meson.detect_anomalies(
         client,
         resolved_org,
         environment_name=environment_name,
         settings=settings,
+        feedback_summary=feedback_summary,
     )
 
 
@@ -197,10 +199,12 @@ async def meson_insights_route(
     """Return org-wide Meson insights for the copilot panel."""
     resolved_org = _require_org(org_id)
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    feedback_summary = meson.load_feedback_summary(client, resolved_org)
     return meson.get_proactive_insights(
         client,
         resolved_org,
         environment_name=environment_name,
+        feedback_summary=feedback_summary,
     )
 
 
@@ -217,12 +221,14 @@ async def meson_page_context_route(
     """Return page-scoped Meson insights and suggestions (AI chat, model registry, agents)."""
     resolved_org = _require_org(org_id)
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    feedback_summary = meson.load_feedback_summary(client, resolved_org)
     return meson.get_page_context(
         client,
         resolved_org,
         page=page,
         entity_id=entity_id,
         environment_name=environment_name,
+        feedback_summary=feedback_summary,
     )
 
 
@@ -238,11 +244,13 @@ async def meson_workflow_optimizations_route(
     """Return workflow-scoped Meson optimization tips for the builder copilot panel."""
     resolved_org = _require_org(org_id)
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    feedback_summary = meson.load_feedback_summary(client, resolved_org, workflow_id=workflow_id)
     return meson.get_workflow_optimizations(
         client,
         resolved_org,
         workflow_id,
         environment_name=environment_name,
+        feedback_summary=feedback_summary,
     )
 
 

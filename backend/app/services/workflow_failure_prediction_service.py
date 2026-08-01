@@ -13,6 +13,12 @@ from app.connectors.connection_health import resolve_connector_auth_status
 from app.connectors.constants import ACTIVE_CONNECTOR_STATUSES, connector_environment_candidates
 from app.connectors.hubspot_oauth import OAUTH_TOKEN_KEY, load_oauth_tokens, token_needs_refresh
 from app.connectors.repository import get_decrypted_secret
+from app.intelligence_packs.shared.auth_mode import (
+    AuthMode,
+    get_auth_mode,
+    is_knowledge_base_source,
+    requires_tenant_connector,
+)
 from app.services.agent_tool_permissions import (
     list_agent_tool_permissions,
     required_scopes_for_action,
@@ -410,23 +416,43 @@ def _build_predictive_alerts(
     for req in requirements:
         connector_id = req.get("connectorId")
         connector_type = req.get("connectorType")
+        # FRED / NVD / CISA KEV / … are Marketplace knowledge-base packs (platform keys),
+        # not tenant Connectors-hub products — never emit connector_missing for them.
+        if connector_type and is_knowledge_base_source(str(connector_type)):
+            continue
         if connector_type and not connector_id:
             connector_id = _find_active_connector_id(
                 client, org_id, connector_type, environment_name=environment_name
             )
             if not connector_id:
+                if not requires_tenant_connector(str(connector_type)):
+                    continue
+                mode = get_auth_mode(str(connector_type))
+                if mode == AuthMode.BYO_REQUIRED:
+                    title = f"Missing {connector_type} credential"
+                    message = (
+                        f"Step '{req['stepName']}' requires your {connector_type} API key "
+                        f"(bring-your-own) but none is connected."
+                    )
+                else:
+                    title = f"Missing {connector_type} connector"
+                    message = (
+                        f"Step '{req['stepName']}' requires an active {connector_type} connector "
+                        f"but none is connected."
+                    )
                 alerts.append(
                     _alert_row(
                         org_id=org_id,
                         workflow_id=workflow_id,
                         alert_type="connector_missing",
                         severity="critical",
-                        title=f"Missing {connector_type} connector",
-                        message=(
-                            f"Step '{req['stepName']}' requires an active {connector_type} connector "
-                            f"but none is connected."
-                        ),
-                        evidence={"connectorType": connector_type, "stepName": req["stepName"]},
+                        title=title,
+                        message=message,
+                        evidence={
+                            "connectorType": connector_type,
+                            "stepName": req["stepName"],
+                            "authMode": mode.value,
+                        },
                         step_id=req["stepId"],
                     )
                 )

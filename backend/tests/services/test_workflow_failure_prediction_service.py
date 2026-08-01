@@ -189,6 +189,58 @@ def test_scan_workflow_failure_predictions_persists_alerts(mock_build, mock_vers
     mock_audit.assert_called_once()
 
 
+@patch("app.services.workflow_failure_prediction_service._find_active_connector_id", return_value=None)
+def test_build_predictive_alerts_skips_knowledge_base_sources(_mock_find):
+    """FRED/NVD/CISA KEV are Marketplace knowledge-base packs — not Connectors hub."""
+    from app.services.workflow_failure_prediction_service import _build_predictive_alerts
+
+    definition = {
+        "steps": [
+            {
+                "id": "fred-1",
+                "name": "Fetch FRED GDP",
+                "type": "invoke_tool",
+                "config": {"action": "fred.series.get"},
+            },
+            {
+                "id": "nvd-1",
+                "name": "Fetch NVD CVE",
+                "type": "invoke_tool",
+                "config": {"action": "nvd.cves.search"},
+            },
+            {
+                "id": "kev-1",
+                "name": "Fetch CISA KEV sample",
+                "type": "invoke_tool",
+                "config": {"action": "cisa_kev.catalog.list"},
+            },
+            {
+                "id": "zd-1",
+                "name": "List Zendesk Tickets",
+                "type": "invoke_tool",
+                "config": {"action": "zendesk.tickets.list"},
+            },
+        ]
+    }
+    client = MagicMock()
+    client.table.side_effect = lambda _name: _table([])
+    settings = Settings()
+
+    alerts = _build_predictive_alerts(
+        client,
+        settings,
+        "org-1",
+        "wf-1",
+        definition,
+        environment_name="production",
+    )
+    titles = {alert["title"] for alert in alerts}
+    assert "Missing fred connector" not in titles
+    assert "Missing nvd connector" not in titles
+    assert "Missing cisa_kev connector" not in titles
+    assert "Missing zendesk connector" in titles
+
+
 @patch("app.services.workflow_failure_prediction_service.load_oauth_tokens")
 @patch("app.services.workflow_failure_prediction_service.resolve_connector_auth_status")
 def test_build_predictive_alerts_auth_expiry(mock_auth_status, mock_tokens):

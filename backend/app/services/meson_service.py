@@ -686,8 +686,15 @@ class MesonService:
                 stats["accepted"] += 1
                 accepted_total += 1
 
+        # Apply/Review must hide the card platform-wide (Optimize + Alerts + page context).
+        acknowledged_ids = set(dismissed_ids)
+        for suggestion_id, counts in by_suggestion.items():
+            if int(counts.get("accepted") or 0) > 0:
+                acknowledged_ids.add(str(suggestion_id))
+
         return {
             "dismissed_ids": dismissed_ids,
+            "acknowledged_ids": acknowledged_ids,
             "by_suggestion": by_suggestion,
             "accepted_count": accepted_total,
             "dismissed_count": dismissed_total,
@@ -700,10 +707,32 @@ class MesonService:
         *,
         environment_name: str,
         settings: Settings,
+        feedback_summary: dict[str, Any] | None = None,
     ) -> MesonAlertsResponse:
         alerts: list[MesonAlert] = []
+        acknowledged = _acknowledged_ids(feedback_summary)
+
+        from app.intelligence_packs.shared.auth_mode import is_knowledge_base_source
+        from app.services.workflow_failure_prediction_service import dismiss_failure_alert
 
         for row in list_failure_alerts(client, org_id, status="open", limit=20):
+            evidence = row.get("evidence") if isinstance(row.get("evidence"), dict) else {}
+            connector_type = str(
+                evidence.get("connectorType") or evidence.get("connector_type") or ""
+            ).strip()
+            alert_type = str(row.get("alertType") or row.get("alert_type") or "")
+            # Stale rows from before knowledge-base packs were excluded from connector_missing.
+            if alert_type == "connector_missing" and connector_type and is_knowledge_base_source(
+                connector_type
+            ):
+                alert_id = str(row.get("id") or "")
+                if alert_id:
+                    try:
+                        dismiss_failure_alert(client, org_id, alert_id)
+                    except Exception as exc:  # noqa: BLE001
+                        logger.debug("meson dismiss stale kb alert skipped: %s", exc)
+                continue
+
             workflow_id = str(row.get("workflowId") or row.get("workflow_id") or "")
             action_target = f"/workflows/{workflow_id}/builder" if workflow_id else "/metrics"
             alerts.append(
@@ -799,6 +828,8 @@ class MesonService:
         except Exception as exc:  # noqa: BLE001
             logger.debug("meson alerts connector lookup: %s", exc)
 
+        if acknowledged:
+            alerts = [a for a in alerts if a.id not in acknowledged]
         return MesonAlertsResponse(alerts=alerts[:20])
 
     def get_proactive_insights(
@@ -807,8 +838,10 @@ class MesonService:
         org_id: str,
         *,
         environment_name: str,
+        feedback_summary: dict[str, Any] | None = None,
     ) -> MesonInsightsResponse:
         insights: list[MesonInsight] = []
+        acknowledged = _acknowledged_ids(feedback_summary)
 
         try:
             workflows = (
@@ -909,7 +942,10 @@ class MesonService:
         except Exception as exc:  # noqa: BLE001
             logger.debug("meson insights business signals lookup: %s", exc)
 
-        if not insights:
+        if acknowledged:
+            insights = [i for i in insights if i.id not in acknowledged]
+
+        if not insights and "meson-ready" not in acknowledged:
             insights.append(
                 MesonInsight(
                     id="meson-ready",
@@ -929,51 +965,67 @@ class MesonService:
         page: str,
         entity_id: str | None = None,
         environment_name: str,
+        feedback_summary: dict[str, Any] | None = None,
     ) -> MesonPageContextResponse:
         """Return Meson insights and suggestions scoped to a product surface."""
+        acknowledged = _acknowledged_ids(feedback_summary)
         normalized = (page or "").strip().lower().replace("_", "-")
         if normalized == "ai-chat":
-            return self._page_context_ai_chat(client, org_id, environment_name=environment_name)
-        if normalized == "model-registry":
-            return self._page_context_model_registry(client, org_id, entity_id=entity_id)
-        if normalized in {"model-detail", "model-detail-page"}:
-            return self._page_context_model_detail(client, org_id, entity_id=entity_id)
-        if normalized in {"agent-detail", "agent-detail-page"}:
-            return self._page_context_agent_detail(client, org_id, entity_id=entity_id)
-        if normalized == "connectors":
-            return self._page_context_connectors(client, org_id, environment_name=environment_name)
-        if normalized in {"workflows", "workflow-detail", "workflow-detail-page"}:
-            return self._page_context_workflows(
+            result = self._page_context_ai_chat(client, org_id, environment_name=environment_name)
+        elif normalized == "model-registry":
+            result = self._page_context_model_registry(client, org_id, entity_id=entity_id)
+        elif normalized in {"model-detail", "model-detail-page"}:
+            result = self._page_context_model_detail(client, org_id, entity_id=entity_id)
+        elif normalized in {"agent-detail", "agent-detail-page"}:
+            result = self._page_context_agent_detail(client, org_id, entity_id=entity_id)
+        elif normalized == "connectors":
+            result = self._page_context_connectors(client, org_id, environment_name=environment_name)
+        elif normalized in {"workflows", "workflow-detail", "workflow-detail-page"}:
+            result = self._page_context_workflows(
                 client, org_id, entity_id=entity_id, environment_name=environment_name
             )
-        if normalized == "agents":
-            return self._page_context_agents_list(client, org_id, environment_name=environment_name)
-        if normalized == "training":
-            return self._page_context_training(client, org_id)
-        if normalized == "intelligence":
-            return self._page_context_intelligence(client, org_id, environment_name=environment_name)
-        if normalized in {"multi-agent-run", "multi-agent", "swarm"}:
-            return self._page_context_multi_agent(client, org_id, environment_name=environment_name)
-        if normalized == "marketplace":
-            return self._page_context_marketplace(client, org_id)
-        if normalized == "runs":
-            return self._page_context_runs(client, org_id, environment_name=environment_name)
-        if normalized in {"failure-alerts", "failure-predictions"}:
-            return self._page_context_failure_alerts(client, org_id)
-        if normalized == "home":
-            return self._page_context_home(client, org_id, environment_name=environment_name)
-        if normalized == "metrics":
-            return self._page_context_metrics(client, org_id, environment_name=environment_name)
-        if normalized in {"schedules", "schedule", "calendar"}:
-            return self._page_context_schedules(
+        elif normalized == "agents":
+            result = self._page_context_agents_list(client, org_id, environment_name=environment_name)
+        elif normalized == "training":
+            result = self._page_context_training(client, org_id)
+        elif normalized == "intelligence":
+            result = self._page_context_intelligence(client, org_id, environment_name=environment_name)
+        elif normalized in {"multi-agent-run", "multi-agent", "swarm"}:
+            result = self._page_context_multi_agent(client, org_id, environment_name=environment_name)
+        elif normalized == "marketplace":
+            result = self._page_context_marketplace(client, org_id)
+        elif normalized == "runs":
+            result = self._page_context_runs(client, org_id, environment_name=environment_name)
+        elif normalized in {"failure-alerts", "failure-predictions"}:
+            result = self._page_context_failure_alerts(client, org_id)
+        elif normalized == "home":
+            result = self._page_context_home(client, org_id, environment_name=environment_name)
+        elif normalized == "metrics":
+            result = self._page_context_metrics(client, org_id, environment_name=environment_name)
+        elif normalized in {"schedules", "schedule", "calendar"}:
+            result = self._page_context_schedules(
                 client, org_id, entity_id=entity_id, environment_name=environment_name
             )
-        base = self.get_proactive_insights(client, org_id, environment_name=environment_name)
-        return MesonPageContextResponse(
-            insights=base.insights[:5],
-            suggestions=[],
-            source="general",
-        )
+        else:
+            base = self.get_proactive_insights(
+                client,
+                org_id,
+                environment_name=environment_name,
+                feedback_summary=feedback_summary,
+            )
+            result = MesonPageContextResponse(
+                insights=base.insights[:5],
+                suggestions=[],
+                source="general",
+            )
+
+        if acknowledged:
+            result = MesonPageContextResponse(
+                insights=[i for i in result.insights if i.id not in acknowledged],
+                suggestions=[s for s in result.suggestions if s.id not in acknowledged],
+                source=result.source,
+            )
+        return result
 
     def _page_context_ai_chat(
         self,
@@ -2261,9 +2313,11 @@ class MesonService:
         workflow_id: str,
         *,
         environment_name: str,
+        feedback_summary: dict[str, Any] | None = None,
     ) -> MesonInsightsResponse:
         """Return workflow-scoped optimization tips for the Meson copilot panel (F1)."""
         insights: list[MesonInsight] = []
+        acknowledged = _acknowledged_ids(feedback_summary)
         workflow_name = "This workflow"
 
         try:
@@ -2402,7 +2456,10 @@ class MesonService:
         except Exception as exc:  # noqa: BLE001
             logger.debug("meson optimizations failed run lookup: %s", exc)
 
-        if not insights:
+        if acknowledged:
+            insights = [i for i in insights if i.id not in acknowledged]
+
+        if not insights and "meson-workflow-ready" not in acknowledged:
             from app.services.gravitree_voice import format_operator_message
 
             insights.append(
@@ -2556,10 +2613,21 @@ class MesonService:
 def _empty_feedback_summary() -> dict[str, Any]:
     return {
         "dismissed_ids": set(),
+        "acknowledged_ids": set(),
         "by_suggestion": {},
         "accepted_count": 0,
         "dismissed_count": 0,
     }
+
+
+def _acknowledged_ids(feedback_summary: dict[str, Any] | None) -> set[str]:
+    if not feedback_summary:
+        return set()
+    acknowledged = set(feedback_summary.get("acknowledged_ids") or set())
+    if not acknowledged:
+        # Backward-compatible: older callers may only pass dismissed_ids.
+        acknowledged.update(feedback_summary.get("dismissed_ids") or set())
+    return {str(x) for x in acknowledged if x}
 
 
 def _feedback_summary_to_metrics(summary: dict[str, Any]) -> MesonFeedbackMetricsResponse:

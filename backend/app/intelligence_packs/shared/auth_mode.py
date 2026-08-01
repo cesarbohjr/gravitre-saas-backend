@@ -99,6 +99,20 @@ def get_auth_mode(vendor: str) -> AuthMode:
     return CONNECTOR_AUTH_MODES.get(key, AuthMode.CUSTOMER_OWNED)
 
 
+def is_knowledge_base_source(vendor: str) -> bool:
+    """Gravitree-managed packs (FRED, NVD, …) — Marketplace knowledge base, not Connectors hub."""
+    return get_auth_mode(vendor) == AuthMode.GRAVITREE_MANAGED
+
+
+def requires_tenant_connector(vendor: str) -> bool:
+    """True when a tenant must connect credentials in Connectors (OAuth / BYO API key).
+
+    Knowledge-base / gravitree_managed sources use platform env keys and must never
+    raise 'Missing {vendor} connector' alerts or link to the Connectors hub.
+    """
+    return get_auth_mode(vendor) != AuthMode.GRAVITREE_MANAGED
+
+
 def get_activation_gate(vendor: str) -> ActivationGate:
     key = str(vendor or "").strip().lower()
     return ACTIVATION_GATES.get(key, ActivationGate.NONE)

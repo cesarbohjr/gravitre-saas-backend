@@ -138,7 +138,10 @@ export function MesonCopilotPanel({
     void mesonApi
       .alerts()
       .then((res) => {
-        if (!cancelled) setAlerts(res.alerts ?? [])
+        if (!cancelled) {
+          const dismissedIds = new Set(loadDismissed(workflowId))
+          setAlerts((res.alerts ?? []).filter((alert) => !dismissedIds.has(alert.id)))
+        }
       })
       .catch(() => {
         if (!cancelled) setAlerts([])
@@ -152,7 +155,14 @@ export function MesonCopilotPanel({
         : mesonApi.insights()
     void insightsRequest
       .then((res) => {
-        if (!cancelled) setInsights((res.insights ?? []).slice(0, 2))
+        if (!cancelled) {
+          const dismissedIds = new Set(loadDismissed(workflowId))
+          setInsights(
+            (res.insights ?? [])
+              .filter((insight) => !dismissedIds.has(insight.id))
+              .slice(0, 2),
+          )
+        }
       })
       .catch(() => {
         if (!cancelled) setInsights([])
@@ -229,6 +239,9 @@ export function MesonCopilotPanel({
       setFixingAlertId(alert.id)
       try {
         onFixAlert(alert)
+        const next = [...dismissed, alert.id]
+        setDismissed(next)
+        saveDismissed(workflowId, next)
         // brief success checkmark before the row clears
         setFixedAlertId(alert.id)
         window.setTimeout(() => {
@@ -239,7 +252,7 @@ export function MesonCopilotPanel({
         setFixingAlertId(null)
       }
     },
-    [onFixAlert],
+    [dismissed, onFixAlert, workflowId],
   )
 
   const handleApplyInsight = useCallback(
@@ -247,9 +260,15 @@ export function MesonCopilotPanel({
       if (!onApplyInsight) return
       setAppliedInsightId(insight.id)
       onApplyInsight(insight)
-      window.setTimeout(() => setAppliedInsightId(null), 900)
+      const next = [...dismissed, insight.id]
+      setDismissed(next)
+      saveDismissed(workflowId, next)
+      window.setTimeout(() => {
+        setInsights((prev) => prev.filter((item) => item.id !== insight.id))
+        setAppliedInsightId(null)
+      }, 600)
     },
-    [onApplyInsight],
+    [dismissed, onApplyInsight, workflowId],
   )
 
   const visibleAlerts = useMemo(() => alerts.slice(0, 5), [alerts])

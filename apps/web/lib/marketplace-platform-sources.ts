@@ -1,6 +1,7 @@
 /**
- * Platform intelligence sources (FRED, NVD, CISA, …) for Marketplace pack UX.
- * These stay off the Connectors hub; Marketplace is where tenants see them.
+ * Knowledge-base platform sources (FRED, NVD, CISA, …) for Marketplace pack UX.
+ * These stay off the Connectors hub; Marketplace is where tenants see them
+ * under category "Knowledge Base".
  */
 
 import {

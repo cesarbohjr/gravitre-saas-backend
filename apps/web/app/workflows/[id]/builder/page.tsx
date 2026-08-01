@@ -3578,6 +3578,12 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         router.push("/metrics")
         toast.info("Review workflow health", { description: alert.message })
       }
+      // Persist dismissal so Review/Apply does not reappear after refetch.
+      const looksLikeFailureAlertId =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(alert.id)
+      if (looksLikeFailureAlertId) {
+        void workflowsApi.dismissFailurePrediction(alert.id).catch(() => {})
+      }
       void mesonApi
         .feedback({
           suggestionId: alert.id,

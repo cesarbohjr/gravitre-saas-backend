@@ -31,6 +31,20 @@ def test_fred_is_gravitree_managed():
     assert get_auth_mode("fred") == AuthMode.GRAVITREE_MANAGED
 
 
+def test_knowledge_base_sources_skip_tenant_connector_requirement():
+    from app.intelligence_packs.shared.auth_mode import (
+        is_knowledge_base_source,
+        requires_tenant_connector,
+    )
+
+    for vendor in ("fred", "nvd", "cisa_kev", "sec_edgar", "world_bank", "oecd"):
+        assert is_knowledge_base_source(vendor) is True
+        assert requires_tenant_connector(vendor) is False
+    assert requires_tenant_connector("hubspot") is True
+    assert requires_tenant_connector("zendesk") is True
+    assert is_knowledge_base_source("zendesk") is False
+
+
 @pytest.mark.parametrize(
     "vendor",
     ["zoominfo", "linkedin_sales_navigator", "pdl", "semrush", "ahrefs", "finseo", "ai_visibility_ui"],
