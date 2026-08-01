@@ -99,26 +99,41 @@ jobs:
               --commit-sha "$SHA"
           }
 
+          tip_matches() {
+            local current="$1"
+            [[ "$current" == "$FULL"* ]] || [[ "$current" == "$SHA"* ]]
+          }
+
           CURRENT="$(curl -fsS https://api.gravitre.app/health | python3 -c 'import sys,json; print(json.load(sys.stdin).get("git_sha",""))' || true)"
           echo "current_health_sha=$CURRENT expect=$FULL force=$FORCE"
 
-          if [[ "$CURRENT" == "$FULL"* ]] || [[ "$CURRENT" == "$SHA"* ]]; then
+          if tip_matches "$CURRENT"; then
             echo "Prod already on tip — nothing to deploy."
             exit 0
           fi
 
-          # Default path: GitHub auto-deploy only. CLI `railway up` races the
-          # connected deploy and often fails at Dockerfile COPY with
-          # "failed to calculate checksum" while the GitHub deploy succeeds
+          # Always prefer GitHub-connected auto-deploy first. CLI `railway up`
+          # racing that path fails at Dockerfile COPY with
+          # "failed to calculate checksum" while the GitHub deploy often succeeds
           # (see docs/delivery/railway-github-actions-deploy-status.md).
-          if [ "$FORCE" != "true" ]; then
-            echo "Waiting for GitHub-connected Railway auto-deploy..."
-            match_health "https://gravitre-saas-backend-production.up.railway.app/health" 900
+          echo "Waiting for GitHub-connected Railway auto-deploy..."
+          set +e
+          match_health "https://gravitre-saas-backend-production.up.railway.app/health" 900
+          RAIL_WAIT=$?
+          set -e
+          CURRENT="$(curl -fsS https://api.gravitre.app/health | python3 -c 'import sys,json; print(json.load(sys.stdin).get("git_sha",""))' || true)"
+          if tip_matches "$CURRENT"; then
             match_health "https://api.gravitre.app/health" 180
+            echo "GitHub auto-deploy reached tip — skipping CLI railway up."
             exit 0
           fi
 
-          echo "::warning::force_railway_up=true — CLI upload (may still race GitHub auto-deploy)"
+          if [ "$FORCE" != "true" ]; then
+            echo "::error::Prod still on $CURRENT after GitHub auto-deploy wait (expect $SHA). Re-run with force_railway_up=true only if auto-deploy is stuck."
+            exit 1
+          fi
+
+          echo "::warning::force_railway_up=true and tip still stale ($CURRENT) — CLI railway up as last resort"
           railway variables set "GIT_SHA=$FULL" --service "$SVC" --environment "$ENV_NAME"
           echo "$FULL $(date -u +%Y-%m-%dT%H:%M:%SZ)" > backend/.railway-deploy-stamp
           set +e
@@ -128,7 +143,7 @@ jobs:
             --message "railway-backend-production $SHA"
           UP_EXIT=$?
           set -e
-          echo "railway_up_exit=$UP_EXIT"
+          echo "railway_up_exit=$UP_EXIT railway_wait_exit=$RAIL_WAIT"
           if [ "$UP_EXIT" -ne 0 ]; then
             echo "::warning::railway up exited $UP_EXIT — waiting on /health tip anyway"
           fi

@@ -1,10 +1,14 @@
 # Railway GitHub Actions vs prod deploy status
 
-Updated: 2026-07-31
+Updated: 2026-08-01
 
 ## Symptom
 
-Workflow **Railway backend production** fails on `railway up … --ci` with exit **1** / build `COPY requirements*.txt` **failed to calculate checksum**, while a parallel **via GitHub** deploy succeeds and **`/health` `git_sha`** advances.
+Workflow **Railway backend production** / CLI deploy shows **FAILED** at Build image step `[3/5] COPY requirements.txt …` with **failed to calculate checksum**, while a parallel **via GitHub** deploy succeeds and **`/health` `git_sha`** advances. Requirements files are present — this is a race, not a missing file.
+
+## Fix (2026-08-01)
+
+Even `force_railway_up=true` **waits for GitHub auto-deploy first**. CLI `railway up` runs only when `/health` is still stale after that wait (true stuck tip). This stops FAILED CLI builds from racing a healthy GitHub deploy (e.g. `da229da5` tip live while CLI upload failed at COPY checksum).
 
 ## Fix (2026-07-31)
 
