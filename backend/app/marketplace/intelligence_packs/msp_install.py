@@ -106,6 +106,10 @@ def _upsert_agent(
             "capabilities": capabilities,
             "config": {
                 "marketplaceAssetId": asset_id,
+                "marketplaceSlug": (
+                    SCOUT_AGENT_SLUG if "prospecting" in capabilities else "msp-vuln-analyst"
+                ),
+                "slug": SCOUT_AGENT_SLUG if "prospecting" in capabilities else "msp-vuln-analyst",
                 "permitted_tools": list(systems),
                 "pack_id": pack_id,
                 "department": department,
@@ -129,6 +133,10 @@ def _upsert_agent(
             "guardrails": guardrails or [],
             "config": {
                 "marketplaceAssetId": asset_id,
+                "marketplaceSlug": (
+                    SCOUT_AGENT_SLUG if "prospecting" in capabilities else "msp-vuln-analyst"
+                ),
+                "slug": SCOUT_AGENT_SLUG if "prospecting" in capabilities else "msp-vuln-analyst",
                 "permitted_tools": list(systems),
                 "pack_id": pack_id,
                 "agent_slug": SCOUT_AGENT_SLUG if "prospecting" in capabilities else "msp-vuln-analyst",
@@ -154,17 +162,9 @@ def _resolve_agent_seeds(
     *,
     agent_ids_by_seed: dict[str, str],
 ) -> list[dict[str, Any]]:
-    resolved: list[dict[str, Any]] = []
-    for step in steps:
-        row = dict(step)
-        metadata = dict(row.get("metadata") or {})
-        seed = metadata.pop("agent_seed", None)
-        if seed and agent_ids_by_seed.get(str(seed)):
-            metadata["agent_id"] = agent_ids_by_seed[str(seed)]
-        if metadata:
-            row["metadata"] = metadata
-        resolved.append(row)
-    return resolved
+    from app.marketplace.workflow_contract import resolve_step_agent_seeds
+
+    return resolve_step_agent_seeds(steps, agent_ids_by_seed=agent_ids_by_seed)
 
 
 def _upsert_workflow(
@@ -181,6 +181,8 @@ def _upsert_workflow(
     actor_id: str,
     agent_ids_by_seed: dict[str, str] | None = None,
 ) -> None:
+    from app.marketplace.workflow_contract import steps_to_rich_contract
+
     steps = _resolve_agent_seeds(steps, agent_ids_by_seed=agent_ids_by_seed or {})
     definition = {"schema_version": SCHEMA_VERSION, "steps": steps}
     workflow_config = {
@@ -189,6 +191,7 @@ def _upsert_workflow(
         "workflow_slug": WORKFLOW_SLUG,
         "replaces": "MSP NVD CVE Lookup",
     }
+    contract_nodes, contract_edges = steps_to_rich_contract(steps)
     client.table("workflow_defs").upsert(
         {
             "id": workflow_id,
@@ -210,14 +213,8 @@ def _upsert_workflow(
             "description": description,
             "status": "active",
             "environment": environment_name,
-            "nodes": [
-                {"id": step.get("id"), "type": step.get("type"), "name": step.get("name")}
-                for step in steps
-            ],
-            "edges": [
-                {"from": steps[i].get("id"), "to": steps[i + 1].get("id")}
-                for i in range(len(steps) - 1)
-            ],
+            "nodes": contract_nodes,
+            "edges": contract_edges,
             "config": workflow_config,
         },
         on_conflict="id",

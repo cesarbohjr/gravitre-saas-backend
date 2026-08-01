@@ -48,7 +48,97 @@ def test_definition_to_builder_nodes_from_steps():
     )
     assert len(nodes) == 1
     assert nodes[0]["node_type"] == "agent"
+    assert nodes[0]["description"] == "Qualify"
+    assert nodes[0]["config"]["agent_id"] == "a"
+    assert nodes[0]["config"]["task"] == "Qualify"
     assert edges == []
+
+
+def test_resolve_builder_graph_prefers_rich_definition_over_thin_contract():
+    from app.workflows.builder_sync import resolve_builder_graph
+
+    class _FakeQuery:
+        def __init__(self, data):
+            self._data = data
+
+        def select(self, *_a, **_k):
+            return self
+
+        def eq(self, *_a, **_k):
+            return self
+
+        def limit(self, *_a, **_k):
+            return self
+
+        def order(self, *_a, **_k):
+            return self
+
+        def execute(self):
+            return type("R", (), {"data": self._data})()
+
+    class _FakeClient:
+        def table(self, name: str):
+            if name == "workflows":
+                return _FakeQuery(
+                    [
+                        {
+                            "nodes": [
+                                {"id": "apollo_lists", "type": "invoke_tool", "name": "List Apollo"},
+                                {"id": "agent", "type": "agent", "name": "Populate"},
+                            ],
+                            "edges": [{"from": "apollo_lists", "to": "agent"}],
+                        }
+                    ]
+                )
+            if name == "agents":
+                return _FakeQuery(
+                    [
+                        {
+                            "id": "agent-uuid",
+                            "name": "Lead Enrichment Coordinator",
+                            "config": {"marketplaceSlug": "lead-enrichment-coordinator"},
+                        }
+                    ]
+                )
+            return _FakeQuery([])
+
+    wf = {
+        "definition": {
+            "schema_version": "2025.1",
+            "steps": [
+                {
+                    "id": "apollo_lists",
+                    "name": "List Apollo contact lists",
+                    "type": "invoke_tool",
+                    "config": {"action": "apollo.lists.list"},
+                    "requires_connector": "apollo",
+                },
+                {
+                    "id": "agent",
+                    "name": "Populate Apollo list if empty",
+                    "type": "agent",
+                    "metadata": {
+                        "agent_seed": "agent:lead-enrichment-coordinator",
+                        "task": "Prospect and prepare Clay batch",
+                    },
+                },
+            ],
+        }
+    }
+
+    nodes, edges = resolve_builder_graph(
+        _FakeClient(),
+        org_id="org-1",
+        workflow_id="wf-1",
+        environment_name="production",
+        wf=wf,
+    )
+    assert len(nodes) == 2
+    assert nodes[0]["node_type"] == "connector"
+    assert nodes[0]["config"]["action"] == "apollo.lists.list"
+    assert nodes[1]["description"] == "Prospect and prepare Clay batch"
+    assert nodes[1]["config"]["agent_id"] == "agent-uuid"
+    assert len(edges) == 1
 
 
 def test_graph_skips_source_nodes():

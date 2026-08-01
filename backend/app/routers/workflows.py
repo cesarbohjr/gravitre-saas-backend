@@ -386,8 +386,15 @@ def _node_out(node: dict) -> dict:
         "type": restored_type,
         "title": node.get("title") or "",
         "name": node.get("name") or node.get("title") or "",
-        "description": node.get("description") or node.get("instruction"),
-        "instruction": node.get("instruction"),
+        "description": (
+            node.get("description")
+            or node.get("instruction")
+            or ((node.get("metadata") or {}).get("task") if isinstance(node.get("metadata"), dict) else None)
+            or ((node.get("config") or {}).get("task") if isinstance(node.get("config"), dict) else None)
+            or ((node.get("config") or {}).get("instruction") if isinstance(node.get("config"), dict) else None)
+        ),
+        "instruction": node.get("instruction")
+        or ((node.get("metadata") or {}).get("task") if isinstance(node.get("metadata"), dict) else None),
         "config": node.get("config") or {},
         "systemIcon": node.get("system_icon"),
         "systemName": node.get("system_name"),

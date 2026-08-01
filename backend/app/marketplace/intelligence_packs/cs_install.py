@@ -146,6 +146,8 @@ def install_cs_pack_demo_bundle(
         steps = list(spec.workflow_steps)
         definition = {"schema_version": SCHEMA_VERSION, "steps": steps}
         workflow_config = {"marketplaceAssetId": asset_id, "pack_id": spec.pack_id}
+        from app.marketplace.workflow_contract import steps_to_rich_contract
+        contract_nodes, contract_edges = steps_to_rich_contract(steps)
         client.table("workflow_defs").upsert(
             {
                 "id": workflow_id,
@@ -167,14 +169,8 @@ def install_cs_pack_demo_bundle(
                 "description": spec.workflow_description or "",
                 "status": "active",
                 "environment": environment_name,
-                "nodes": [
-                    {"id": step.get("id"), "type": step.get("type"), "name": step.get("name")}
-                    for step in steps
-                ],
-                "edges": [
-                    {"from": steps[i].get("id"), "to": steps[i + 1].get("id")}
-                    for i in range(len(steps) - 1)
-                ],
+                "nodes": contract_nodes,
+                "edges": contract_edges,
                 "config": workflow_config,
             },
             on_conflict="id",

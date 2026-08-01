@@ -370,6 +370,133 @@ def _contract_builder_graph(client: Any, org_id: str, workflow_id: str) -> tuple
     return _builder_nodes_from_contract(contract_nodes, contract_edges)
 
 
+def _builder_nodes_are_thin(nodes: list[dict[str, Any]]) -> bool:
+    """True when canvas stubs lack config/metadata/instructions (marketplace thin contract)."""
+    if not nodes:
+        return True
+    for node in nodes:
+        config = node.get("config") if isinstance(node.get("config"), dict) else {}
+        metadata = node.get("metadata") if isinstance(node.get("metadata"), dict) else {}
+        description = str(node.get("description") or node.get("instruction") or "").strip()
+        task = str(
+            metadata.get("task")
+            or config.get("task")
+            or config.get("instruction")
+            or config.get("instructions")
+            or ""
+        ).strip()
+        action = str(
+            config.get("action")
+            or config.get("tool_action")
+            or config.get("selectedAction")
+            or config.get("selected_action")
+            or ""
+        ).strip()
+        agent_id = str(
+            metadata.get("agent_id")
+            or metadata.get("agentId")
+            or config.get("agent_id")
+            or config.get("agentId")
+            or ""
+        ).strip()
+        if description or task or action or agent_id or len(config) > 0 or len(metadata) > 0:
+            return False
+    return True
+
+
+def bind_agent_seeds_on_builder_nodes(
+    client: Any,
+    org_id: str,
+    nodes: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Resolve lingering ``agent_seed`` values against org agents (install / re-open)."""
+    seeds: set[str] = set()
+    for node in nodes:
+        metadata = node.get("metadata") if isinstance(node.get("metadata"), dict) else {}
+        config = node.get("config") if isinstance(node.get("config"), dict) else {}
+        agent_id = metadata.get("agent_id") or metadata.get("agentId") or config.get("agent_id")
+        seed = metadata.get("agent_seed") or config.get("agent_seed")
+        if seed and not agent_id:
+            seeds.add(str(seed))
+        next_seed = metadata.get("next_agent_seed")
+        if next_seed and not (metadata.get("next_agent_id") or config.get("next_agent_id")):
+            seeds.add(str(next_seed))
+    if not seeds:
+        return nodes
+
+    by_seed: dict[str, str] = {}
+    try:
+        rows = (
+            client.table("agents")
+            .select("id, name, config")
+            .eq("org_id", org_id)
+            .limit(200)
+            .execute()
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("builder agent seed lookup skipped: %s", exc)
+        return nodes
+
+    for row in rows.data or []:
+        agent_id = str(row.get("id") or "")
+        if not agent_id:
+            continue
+        config = row.get("config") if isinstance(row.get("config"), dict) else {}
+        slug = str(
+            config.get("marketplaceSlug")
+            or config.get("slug")
+            or config.get("marketplace_slug")
+            or ""
+        ).strip()
+        name = str(row.get("name") or "").strip().lower()
+        if slug:
+            by_seed[f"agent:{slug}"] = agent_id
+            by_seed[slug] = agent_id
+        if name:
+            by_seed[f"agent:{name.replace(' ', '-')}"] = agent_id
+            by_seed[name] = agent_id
+        # Prospecting enrichment agent is installed with seed key = AGENT_SLUG only
+        # via marketplace_entity_id(..., AGENT_SLUG) — also match common display names.
+        if "lead enrichment" in name:
+            by_seed["agent:lead-enrichment-coordinator"] = agent_id
+            by_seed["lead-enrichment-coordinator"] = agent_id
+        if "msp prospecting" in name or "prospecting coordinator" in name:
+            by_seed["agent:msp-prospecting-coordinator"] = agent_id
+            by_seed["msp-prospecting-coordinator"] = agent_id
+
+    if not by_seed:
+        return nodes
+
+    hydrated: list[dict[str, Any]] = []
+    for node in nodes:
+        row = dict(node)
+        metadata = dict(row.get("metadata") or {})
+        config = dict(row.get("config") or {})
+        seed = metadata.get("agent_seed") or config.get("agent_seed")
+        if seed and not (metadata.get("agent_id") or config.get("agent_id")):
+            seed_key = str(seed)
+            slug = seed_key[6:] if seed_key.startswith("agent:") else seed_key
+            resolved = by_seed.get(seed_key) or by_seed.get(slug)
+            if resolved:
+                metadata["agent_id"] = resolved
+                config["agent_id"] = resolved
+                config["agentId"] = resolved
+                metadata.pop("agent_seed", None)
+                config.pop("agent_seed", None)
+        next_seed = metadata.get("next_agent_seed")
+        if next_seed and not metadata.get("next_agent_id"):
+            next_key = str(next_seed)
+            next_slug = next_key[6:] if next_key.startswith("agent:") else next_key
+            resolved_next = by_seed.get(next_key) or by_seed.get(next_slug)
+            if resolved_next:
+                metadata["next_agent_id"] = resolved_next
+                metadata.pop("next_agent_seed", None)
+        row["metadata"] = metadata
+        row["config"] = config
+        hydrated.append(row)
+    return hydrated
+
+
 def resolve_builder_graph(
     client: Any,
     *,
@@ -378,7 +505,11 @@ def resolve_builder_graph(
     environment_name: str,
     wf: dict[str, Any],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Load builder canvas from graph tables, falling back to contract JSON."""
+    """Load builder canvas from graph tables, falling back to contract JSON.
+
+    Marketplace installs often leave thin ``workflows.nodes`` stubs. When those
+    stubs lack config/metadata, prefer the rich ``workflow_defs.definition``.
+    """
     from app.workflows.repository import list_workflow_edges, list_workflow_nodes
 
     nodes: list[dict[str, Any]] = []
@@ -391,18 +522,26 @@ def resolve_builder_graph(
         nodes = []
         edges = []
 
+    definition = wf.get("definition") if isinstance(wf.get("definition"), dict) else {}
+    definition_steps = definition.get("steps") if isinstance(definition.get("steps"), list) else []
+
     if not nodes:
         contract_nodes, contract_edges = _contract_builder_graph(client, org_id, workflow_id)
-        if contract_nodes:
+        if contract_nodes and not _builder_nodes_are_thin(contract_nodes):
             nodes, edges = contract_nodes, contract_edges
-        else:
-            definition = wf.get("definition") if isinstance(wf.get("definition"), dict) else {}
-            if definition.get("steps"):
-                nodes, edges = definition_to_builder_nodes(definition)
+        elif definition_steps:
+            nodes, edges = definition_to_builder_nodes(definition)
+        elif contract_nodes:
+            nodes, edges = contract_nodes, contract_edges
+    elif _builder_nodes_are_thin(nodes) and definition_steps:
+        # Persisted graph rows can also be thin stubs — recover from definition.
+        nodes, edges = definition_to_builder_nodes(definition)
     elif not edges:
         _, contract_edges = _contract_builder_graph(client, org_id, workflow_id)
         if contract_edges:
             edges = contract_edges
+
+    nodes = bind_agent_seeds_on_builder_nodes(client, org_id, nodes)
 
     for node in nodes:
         node["workflow_id"] = str(workflow_id)
@@ -422,7 +561,7 @@ def resolve_builder_graph(
 
 
 def definition_to_builder_nodes(definition: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Hydrate a minimal canvas from stored step definitions when graph rows are absent."""
+    """Hydrate a canvas from stored step definitions (marketplace / pack installs)."""
     steps = definition.get("steps") if isinstance(definition.get("steps"), list) else []
     nodes: list[dict[str, Any]] = []
     edges: list[dict[str, Any]] = []
@@ -439,11 +578,22 @@ def definition_to_builder_nodes(definition: dict[str, Any]) -> tuple[list[dict[s
 
         mapped_type = normalize_legacy_node_type(step_type)
         node_metadata = dict(metadata)
+        requires_connector = step.get("requires_connector")
         if mapped_type == "invoke_tool" or step_type == "invoke_tool":
             node_type = "connector"
             tool_config = dict(config)
             if tool_config.get("action") and not tool_config.get("tool_action"):
                 tool_config["tool_action"] = tool_config["action"]
+            if requires_connector:
+                tool_config.setdefault("vendor", str(requires_connector))
+                tool_config.setdefault("connector", str(requires_connector))
+                tool_config.setdefault("requires_connector", str(requires_connector))
+            action = str(tool_config.get("action") or tool_config.get("tool_action") or "")
+            if action and "." in action and not tool_config.get("selectedAction"):
+                vendor, selected = action.split(".", 1)
+                tool_config.setdefault("vendor", vendor)
+                tool_config.setdefault("selectedAction", selected)
+                tool_config.setdefault("selected_action", selected)
         elif step_type in {"slack_post_message", "email_send", "webhook_post", "rag_retrieve"}:
             node_type = "tool"
             tool_config = dict(config)
@@ -455,17 +605,44 @@ def definition_to_builder_nodes(definition: dict[str, Any]) -> tuple[list[dict[s
         else:
             node_type = "agent" if step_type == "agent" else "task"
             tool_config = dict(config)
+
+        task = str(node_metadata.get("task") or tool_config.get("task") or "").strip()
+        instruction = str(
+            tool_config.get("instruction")
+            or tool_config.get("instructions")
+            or step.get("instruction")
+            or step.get("description")
+            or ""
+        ).strip()
+        description = task or instruction
+        if task:
+            tool_config.setdefault("task", task)
+            if node_type == "task":
+                tool_config.setdefault("instruction", task)
+                tool_config.setdefault("instructions", task)
+        elif instruction and node_type in {"task", "connector", "tool"}:
+            tool_config.setdefault("instruction", instruction)
+            tool_config.setdefault("instructions", instruction)
+        agent_id = node_metadata.get("agent_id") or node_metadata.get("agentId")
+        if agent_id:
+            tool_config.setdefault("agent_id", agent_id)
+            tool_config.setdefault("agentId", agent_id)
+        if node_metadata.get("agent_seed") and not agent_id:
+            tool_config.setdefault("agent_seed", node_metadata.get("agent_seed"))
+
         nodes.append(
             {
                 "id": step_id,
                 "node_type": node_type,
                 "title": str(step.get("name") or step_id),
                 "name": str(step.get("name") or step_id),
+                "description": description or None,
+                "instruction": description or None,
                 "config": tool_config,
                 "metadata": node_metadata,
-                "position": {"x": x, "y": 160},
+                "position": {"x": x, "y": 160 + (idx % 3) * 40},
                 "position_x": x,
-                "position_y": 160,
+                "position_y": 160 + (idx % 3) * 40,
             }
         )
         if prev_id:

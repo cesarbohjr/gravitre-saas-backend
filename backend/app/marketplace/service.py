@@ -411,13 +411,22 @@ def _resolve_workflow_steps(
             metadata = dict(step["metadata"])
             agent_seed = metadata.pop("agent_seed", None)
             if agent_seed:
-                metadata["agent_id"] = agent_ids.get(str(agent_seed))
+                agent_id = agent_ids.get(str(agent_seed))
+                if agent_id:
+                    metadata["agent_id"] = agent_id
+                else:
+                    # Keep seed for builder hydrate when companion agents install later.
+                    metadata["agent_seed"] = agent_seed
             next_agent_seed = metadata.pop("next_agent_seed", None)
             if next_agent_seed:
                 next_agent_id = agent_ids.get(str(next_agent_seed))
                 if next_agent_id:
                     metadata["next_agent_id"] = next_agent_id
+                else:
+                    metadata["next_agent_seed"] = next_agent_seed
             row["metadata"] = metadata
+        if step.get("requires_connector"):
+            row["requires_connector"] = step["requires_connector"]
         resolved.append(row)
     if not resolved:
         resolved.append({"id": "overview", "name": "Overview", "type": "noop"})
@@ -516,6 +525,9 @@ def _install_workflow_entity(
     )
     definition = {"schema_version": config.schema_version or SCHEMA_VERSION, "steps": steps}
     workflow_config = {"marketplaceAssetId": asset["id"]}
+    from app.marketplace.workflow_contract import steps_to_rich_contract
+
+    contract_nodes, contract_edges = steps_to_rich_contract(steps)
 
     client.table("workflow_defs").upsert(
         {
@@ -539,8 +551,8 @@ def _install_workflow_entity(
             "description": config.description,
             "status": "active",
             "environment": environment_name,
-            "nodes": [{"id": step["id"], "type": step["type"], "name": step["name"]} for step in steps],
-            "edges": [{"from": steps[i]["id"], "to": steps[i + 1]["id"]} for i in range(len(steps) - 1)],
+            "nodes": contract_nodes,
+            "edges": contract_edges,
             "config": workflow_config,
         },
         on_conflict="id",

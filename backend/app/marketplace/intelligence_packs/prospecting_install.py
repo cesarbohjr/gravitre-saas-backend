@@ -83,6 +83,8 @@ def _install_msp_enrichment_workflow_bundle(
             "capabilities": AGENT_CAPABILITIES,
             "config": {
                 "marketplaceAssetId": asset_id,
+                "marketplaceSlug": AGENT_SLUG,
+                "slug": AGENT_SLUG,
                 "permitted_tools": list(AGENT_SYSTEMS),
                 "pack_id": spec.pack_id,
                 "department": AGENT_DEPARTMENT.lower(),
@@ -106,6 +108,8 @@ def _install_msp_enrichment_workflow_bundle(
             "guardrails": ["no_crunchbase_pdl_memory", "no_byo_shared_keys"],
             "config": {
                 "marketplaceAssetId": asset_id,
+                "marketplaceSlug": AGENT_SLUG,
+                "slug": AGENT_SLUG,
                 "permitted_tools": list(AGENT_SYSTEMS),
                 "pack_id": spec.pack_id,
             },
@@ -125,14 +129,23 @@ def _install_msp_enrichment_workflow_bundle(
             granted_by=actor_id,
         )
 
+    from app.marketplace.workflow_contract import resolve_step_agent_seeds, steps_to_rich_contract
+
     workflow_id = _marketplace_entity_id(org_id, asset_id, "msp-enrichment-workflow")
-    steps = build_msp_enrichment_workflow_steps()
+    steps = resolve_step_agent_seeds(
+        build_msp_enrichment_workflow_steps(),
+        agent_ids_by_seed={
+            f"agent:{AGENT_SLUG}": enrichment_agent_id,
+            AGENT_SLUG: enrichment_agent_id,
+        },
+    )
     definition = {"schema_version": SCHEMA_VERSION, "steps": steps}
     workflow_config = {
         "marketplaceAssetId": asset_id,
         "pack_id": spec.pack_id,
         "workflow_slug": "msp-prospects-clay-hubspot-enrichment",
     }
+    contract_nodes, contract_edges = steps_to_rich_contract(steps)
     client.table("workflow_defs").upsert(
         {
             "id": workflow_id,
@@ -154,14 +167,8 @@ def _install_msp_enrichment_workflow_bundle(
             "description": WORKFLOW_DESCRIPTION,
             "status": "active",
             "environment": environment_name,
-            "nodes": [
-                {"id": step.get("id"), "type": step.get("type"), "name": step.get("name")}
-                for step in steps
-            ],
-            "edges": [
-                {"from": steps[i].get("id"), "to": steps[i + 1].get("id")}
-                for i in range(len(steps) - 1)
-            ],
+            "nodes": contract_nodes,
+            "edges": contract_edges,
             "config": workflow_config,
         },
         on_conflict="id",
@@ -302,10 +309,13 @@ def install_prospecting_pack_demo_bundle(
 
     workflow_id = None
     if spec.workflow_name and spec.workflow_steps:
+        from app.marketplace.workflow_contract import steps_to_rich_contract
+
         workflow_id = _marketplace_entity_id(org_id, asset_id, "prospecting-apollo-workflow")
         steps = list(spec.workflow_steps)
         definition = {"schema_version": SCHEMA_VERSION, "steps": steps}
         workflow_config = {"marketplaceAssetId": asset_id, "pack_id": spec.pack_id}
+        contract_nodes, contract_edges = steps_to_rich_contract(steps)
         client.table("workflow_defs").upsert(
             {
                 "id": workflow_id,
@@ -327,14 +337,8 @@ def install_prospecting_pack_demo_bundle(
                 "description": spec.workflow_description or "",
                 "status": "active",
                 "environment": environment_name,
-                "nodes": [
-                    {"id": step.get("id"), "type": step.get("type"), "name": step.get("name")}
-                    for step in steps
-                ],
-                "edges": [
-                    {"from": steps[i].get("id"), "to": steps[i + 1].get("id")}
-                    for i in range(len(steps) - 1)
-                ],
+                "nodes": contract_nodes,
+                "edges": contract_edges,
                 "config": workflow_config,
             },
             on_conflict="id",
