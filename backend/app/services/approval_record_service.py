@@ -208,16 +208,38 @@ def maybe_create_agent_job_approval(
     if not org_id or not job_id:
         return
     payload = job.get("payload") if isinstance(job.get("payload"), dict) else {}
+    requested_by = str(payload.get("actor_id") or payload.get("user_id") or job.get("created_by") or "") or None
+    title = str(result.get("action_title") or payload.get("task") or "Agent task approval")
+    description = (
+        str(result.get("action_description") or result.get("analysis_summary") or "")[:2000] or None
+    )
     create_contract_approval(
         client,
         org_id=org_id,
-        title=str(result.get("action_title") or payload.get("task") or "Agent task approval"),
-        description=str(result.get("action_description") or result.get("analysis_summary") or "")[:2000] or None,
+        title=title,
+        description=description,
         approval_type="agent_task",
         priority="medium",
         status="pending",
-        requested_by=str(payload.get("actor_id") or payload.get("user_id") or "") or None,
+        requested_by=requested_by,
         context={"agent_job_id": job_id, "kind": job.get("kind")},
         parameters=payload if isinstance(payload, dict) else None,
         payload=result,
     )
+    if requested_by:
+        try:
+            from app.services.agent_activity_notifications import notify_agent_needs_approval
+
+            agent_id = str(payload.get("agent_id") or payload.get("agentId") or "").strip() or None
+            notify_agent_needs_approval(
+                client,
+                org_id=org_id,
+                user_id=requested_by,
+                agent_id=agent_id,
+                job_id=job_id,
+                title=f"Approval needed: {title}"[:200],
+                body=(description or "An agent task is waiting for your approval.")[:2000],
+                result_url="/approvals",
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("agent_job_approval_notify_skipped job=%s error=%s", job_id, exc)

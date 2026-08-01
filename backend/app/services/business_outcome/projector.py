@@ -66,7 +66,9 @@ def project_business_outcome(
 
     kind = _infer_kind(status=status, invoke_action=invoke_action, params=params, er=er)
     evidence = _evidence(er, run_id=run_id)
-    verification = _verification(er, status=status)
+    verification = _verification(
+        er, status=status, invoke_action=invoke_action, params=params
+    )
     explanation = _explanation(er, run)
     timeline = _timeline(steps or params.get("step_results") or [])
     approval = _approval(run)
@@ -141,21 +143,37 @@ def _infer_kind(
     if str(params.get("source") or "").startswith("swarm") or er.get("entity_type") == "swarm_run":
         return "completed_swarm"
     structured = er.get("structured") if isinstance(er.get("structured"), dict) else {}
-    already = (
-        params.get("already_existed") is True
-        or params.get("outcome_effect") == "already_existed"
+    from app.services.connector_outcome_effects import classify_write_effect
+
+    action = str(invoke_action or params.get("invoke_action") or params.get("invokeAction") or "")
+    effect = str(
+        params.get("outcome_effect")
+        or structured.get("outcome_effect")
+        or classify_write_effect(
+            invoke_action=action or None,
+            result_data=structured or None,
+            success=str(status).lower() in {"completed", "partial_success"},
+            metadata=params,
+        )
+        or ""
+    ).strip().lower()
+    body_lower = str(er.get("body") or "").lower()
+    if (
+        effect in {"already_existed", "noop"}
+        or params.get("already_existed") is True
         or structured.get("already_existed") is True
-        or structured.get("outcome_effect") == "already_existed"
-        or str(status).lower() == "partial_success"
-        or str(er.get("body") or "").lower().startswith("found existing")
-    )
-    action = str(invoke_action or "").lower()
-    if already and (".create" in action or "lists.create" in action or not action):
+        or body_lower.startswith("found existing")
+    ):
         return "found_existing_record"
-    if ".create" in action or "lists.create" in action:
-        return "created_record"
-    if ".update" in action:
+    if effect == "accepted_async":
+        return "other"
+    if effect == "unknown":
+        # Mutating + unproven must never surface as created_record.
+        return "other"
+    if effect == "updated" or ".update" in action.lower():
         return "updated_record"
+    if effect == "created" or ".create" in action.lower() or "lists.create" in action.lower():
+        return "created_record"
     if params.get("step_results") or params.get("orchestration_run_id"):
         return "completed_workflow"
     if er.get("recommendation") or params.get("kind") == "recommendation":
@@ -191,7 +209,13 @@ def _evidence(er: dict[str, Any], *, run_id: str | None) -> EvidenceSection | No
     )
 
 
-def _verification(er: dict[str, Any], *, status: str) -> VerificationSection | None:
+def _verification(
+    er: dict[str, Any],
+    *,
+    status: str,
+    invoke_action: str | None = None,
+    params: dict[str, Any] | None = None,
+) -> VerificationSection | None:
     if str(status).lower() in {"failed", "error", "cancelled"}:
         return VerificationSection(
             verified=False,
@@ -202,19 +226,67 @@ def _verification(er: dict[str, Any], *, status: str) -> VerificationSection | N
     external = str(er.get("external_url") or "").strip()
     result_url = str(er.get("result_url") or "").strip()
     structured = er.get("structured") if isinstance(er.get("structured"), dict) else {}
+    params = params if isinstance(params, dict) else {}
+    from app.services.connector_outcome_effects import (
+        classify_write_effect,
+        has_effect_proof,
+        is_mutating_action,
+    )
+
+    action = str(
+        invoke_action or params.get("invoke_action") or params.get("invokeAction") or ""
+    )
+    effect = str(
+        params.get("outcome_effect")
+        or structured.get("outcome_effect")
+        or classify_write_effect(
+            invoke_action=action or None,
+            result_data=structured or None,
+            success=str(status).lower() in {"completed", "partial_success"},
+            metadata=params,
+        )
+        or ""
+    ).strip().lower()
     already = (
         structured.get("already_existed") is True
-        or structured.get("outcome_effect") == "already_existed"
-        or str(status).lower() == "partial_success"
+        or effect == "already_existed"
         or body.lower().startswith("found existing")
     )
-    if already and (body or external or result_url):
+    if already and (body or external or result_url or str(status).lower() == "partial_success"):
         return VerificationSection(
             verified=True,
             method="module_a_idempotent_find",
             detail=(
                 "Verified as an idempotent find (existing vendor record). "
                 "No net-new create and no membership/enrichment side effect was proven."
+            ),
+        )
+    if effect == "accepted_async" or (
+        str(status).lower() == "partial_success" and effect == "accepted_async"
+    ):
+        return VerificationSection(
+            verified=True,
+            method="module_a_async_accepted",
+            detail="Vendor accepted the write asynchronously; completion is not yet proven.",
+        )
+    if effect == "noop" or (
+        str(status).lower() == "partial_success" and effect == "noop"
+    ):
+        return VerificationSection(
+            verified=True,
+            method="module_a_idempotent_find",
+            detail="Verified as a no-op — vendor reported no net change.",
+        )
+    proven = has_effect_proof(structured, er)
+    mutating = is_mutating_action(action)
+    if mutating and (effect == "unknown" or not proven):
+        # Do not claim module_a_verified_output for unproven creates.
+        return VerificationSection(
+            verified=True,
+            method="module_a_effect_unproven",
+            detail=(
+                "Mutating action completed without durable entity proof "
+                "(id / list_id / contact_id / vendor URL). Treated as unproven effect."
             ),
         )
     if body or external or result_url:

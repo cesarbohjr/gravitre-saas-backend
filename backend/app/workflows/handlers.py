@@ -364,12 +364,34 @@ class AgentStepHandler(StepHandler):
             raise ValueError("agent step requires database client")
         actor_id = context.user_id or context.org_id
         step_def = _step_def_from_config(context.config or {})
+        from app.services.agent_activity_notifications import (
+            notify_agent_completed,
+            notify_agent_started,
+        )
+        from app.services.handoff_service import resolve_step_agent_metadata
+
+        agent_id, _next_agent_id, task = resolve_step_agent_metadata(step_def)
+        run_id = str(context.run_id or context.org_id)
+        user_id = str(actor_id)
+        try:
+            notify_agent_started(
+                context.client,
+                org_id=context.org_id,
+                user_id=user_id,
+                agent_id=agent_id,
+                run_id=run_id,
+                title=f"Agent started: {task or 'step'}"[:200],
+                body=f"Agent step {context.step_id} is running."[:2000],
+                result_url=f"/runs/{run_id}",
+            )
+        except Exception:  # noqa: BLE001
+            pass
         output = asyncio.run(
             execute_agent_step_with_handoff(
                 context.settings,
                 org_id=context.org_id,
-                user_id=str(actor_id),
-                run_id=str(context.run_id or context.org_id),
+                user_id=user_id,
+                run_id=run_id,
                 step_id=context.step_id,
                 step_def=step_def,
                 parameters=context.parameters,
@@ -377,6 +399,27 @@ class AgentStepHandler(StepHandler):
                 client=context.client,
             )
         )
+        summary = ""
+        if isinstance(output, dict):
+            summary = str(
+                output.get("summary")
+                or output.get("message")
+                or output.get("result")
+                or "Agent step completed."
+            )[:2000]
+        try:
+            notify_agent_completed(
+                context.client,
+                org_id=context.org_id,
+                user_id=user_id,
+                agent_id=agent_id,
+                run_id=run_id,
+                title=f"Agent task completed: {task or context.step_id}"[:200],
+                body=summary or "Agent step completed.",
+                result_url=f"/runs/{run_id}",
+            )
+        except Exception:  # noqa: BLE001
+            pass
         return _truncate_output_snapshot(output)
 
 

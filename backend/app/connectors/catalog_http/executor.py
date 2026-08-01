@@ -216,6 +216,16 @@ def make_catalog_http_executor(action: str) -> Any:
                 data = response.json()
             except Exception:
                 data = {"raw": response.text[:2000]}
-        return NormalizedResult(success=True, action=action, connector_id=cid, data=data if isinstance(data, dict) else {"result": data})
+        payload = data if isinstance(data, dict) else {"result": data}
+        # Soft OutcomeEffect tag for mutating catalog HTTP writes.
+        if method in {"POST", "PUT", "PATCH", "DELETE"}:
+            from app.services.connector_outcome_effects import has_effect_proof, is_mutating_action
+
+            if is_mutating_action(action) and "outcome_effect" not in payload:
+                payload = dict(payload)
+                payload["outcome_effect"] = (
+                    "created" if has_effect_proof(payload) else "unknown"
+                )
+        return NormalizedResult(success=True, action=action, connector_id=cid, data=payload)
 
     return _exec
