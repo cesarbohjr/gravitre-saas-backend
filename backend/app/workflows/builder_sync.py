@@ -204,6 +204,26 @@ def _node_to_step(node: dict[str, Any], nodes_by_id: dict[str, dict], edges: lis
         return {"id": step_id, "name": name, "type": "agent", "metadata": step_metadata, "config": {}}
     if node_type == "connector":
         tool_action = config.get("tool_action") or config.get("action")
+        if not tool_action:
+            vendor = (
+                config.get("vendor")
+                or config.get("connector")
+                or metadata.get("vendor")
+            )
+            selected = (
+                config.get("selected_action")
+                or config.get("selectedAction")
+                or metadata.get("selectedAction")
+            )
+            if vendor and selected:
+                selected_text = str(selected).strip()
+                vendor_text = str(vendor).strip()
+                tool_action = (
+                    selected_text
+                    if selected_text.startswith(f"{vendor_text}.")
+                    else f"{vendor_text}.{selected_text}"
+                )
+                config = {**config, "action": tool_action, "tool_action": tool_action}
         if tool_action in {"slack.post_message", "slack_post_message"}:
             return {
                 "id": step_id,

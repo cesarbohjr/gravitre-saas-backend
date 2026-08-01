@@ -77,6 +77,16 @@ export function readActions(catalog: VendorActionCatalog): ConnectorActionDefini
   return catalog.tiers.v1.actions
 }
 
+/** All actions across v1–v4 for a vendor catalog entry. */
+export function allActions(catalog: VendorActionCatalog): ConnectorActionDefinition[] {
+  return [
+    ...catalog.tiers.v1.actions,
+    ...catalog.tiers.v2.actions,
+    ...catalog.tiers.v3.actions,
+    ...(catalog.tiers.v4?.actions ?? []),
+  ]
+}
+
 /** All tool keys across v1–v4. */
 export function allToolKeys(catalog: VendorActionCatalog): string[] {
   const tiers = [

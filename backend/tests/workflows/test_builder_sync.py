@@ -83,6 +83,28 @@ def test_graph_connector_node_compiles_to_invoke_tool():
     assert step["config"]["connector_id"] == "hs-1"
 
 
+def test_graph_connector_compiles_from_vendor_and_selected_action():
+    """Builder UI may store vendor + selectedAction without tool_action yet."""
+    nodes = [
+        {
+            "id": "apollo_list_create",
+            "node_type": "connector",
+            "title": "Apollo create list (write)",
+            "config": {
+                "vendor": "apollo",
+                "connector": "apollo",
+                "selectedAction": "lists.create",
+                "params": {"name": "MSP Prospects"},
+            },
+        }
+    ]
+    definition = graph_to_definition(nodes, [])
+    assert len(definition["steps"]) == 1
+    step = definition["steps"][0]
+    assert step["type"] == "invoke_tool"
+    assert step["config"]["action"] == "apollo.lists.create"
+
+
 def test_definition_round_trips_invoke_tool_connector_node():
     nodes, edges = definition_to_builder_nodes(
         {

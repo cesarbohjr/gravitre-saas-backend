@@ -2,6 +2,7 @@
  * Setup readiness for workflow builder ConfigPanel (required vs optional guidance).
  */
 import type { CanvasWorkflowNode, DecisionPath } from "@/lib/workflows/builder-persistence"
+import { resolveConnectorBind } from "@/lib/workflows/builder-connector-bind"
 
 export type NodeReadiness = {
   ready: boolean
@@ -85,8 +86,15 @@ export function evaluateNodeReadiness(node: CanvasWorkflowNode): NodeReadiness {
     case "connector": {
       const missing: string[] = []
       if (nameMissing) missing.push("set a name")
-      if (!nonEmpty(node.vendor)) missing.push("choose a connector vendor")
-      if (!nonEmpty(node.selectedAction)) missing.push("select an action")
+      const bind = resolveConnectorBind({
+        vendor: node.vendor,
+        selectedAction: node.selectedAction,
+        config: node.config,
+      })
+      if (!nonEmpty(bind.vendor)) missing.push("choose a connector vendor")
+      if (!nonEmpty(bind.selectedAction) && !nonEmpty(bind.action)) {
+        missing.push("select an action")
+      }
       return finalize(missing, "Connector ready — connect to the next step")
     }
     case "decision":

@@ -48,6 +48,7 @@ import { classifyCanvasNodeWriteAuthority } from "@/lib/workflows/write-authorit
 import type { WorkflowDryRunResponse } from "@/types/api"
 import {
   agentsApi,
+  connectorsApi,
   marketplaceApi,
   mesonApi,
   runsApi,
@@ -58,6 +59,17 @@ import {
   type MesonNodeReliabilityResponse,
   type MesonSuggestion,
 } from "@/lib/api"
+import type { Connector } from "@/types/api"
+import {
+  allActions,
+  type ConnectorActionCatalogResponse,
+  type ConnectorActionDefinition,
+} from "@/lib/connector-actions"
+import {
+  compiledConnectorAction,
+  connectorConfigWithBind,
+  resolveConnectorBind,
+} from "@/lib/workflows/builder-connector-bind"
 import {
   collectInstalledAgentIds,
   resolveCouncilAgentDefaults,
@@ -2079,12 +2091,16 @@ function ConfigPanel({
   onClose,
   onUpdate,
   orgAgents = [],
+  orgConnectors = [],
+  actionCatalog = null,
   lastRunId = null,
 }: {
   node: WorkflowNode | null
   onClose: () => void
   onUpdate: (updates: Partial<WorkflowNode>) => void
   orgAgents?: BuilderOrgAgent[]
+  orgConnectors?: Connector[]
+  actionCatalog?: ConnectorActionCatalogResponse | null
   lastRunId?: string | null
 }) {
   const [formValues, setFormValues] = useState<Record<string, string>>({})
@@ -2100,6 +2116,31 @@ function ConfigPanel({
     const timer = setTimeout(() => setShowDecisionHelp(true), 0)
     return () => clearTimeout(timer)
   }, [node?.id])
+
+  // Heal connector nodes that have action/connector in config but missing top-level vendor.
+  useEffect(() => {
+    if (!node || node.type !== "connector") return
+    const bind = resolveConnectorBind({
+      vendor: node.vendor,
+      selectedAction: node.selectedAction,
+      config: node.config,
+    })
+    if (!bind.vendor || !bind.action) return
+    const needsHeal =
+      node.vendor !== bind.vendor ||
+      node.selectedAction !== bind.selectedAction ||
+      node.config?.action !== bind.action ||
+      node.config?.tool_action !== bind.action
+    if (!needsHeal) return
+    const timer = setTimeout(() => {
+      onUpdate({
+        vendor: bind.vendor,
+        selectedAction: bind.selectedAction,
+        config: connectorConfigWithBind(node.config, bind),
+      })
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [node, onUpdate])
   
   // Escape key handler
   useEffect(() => {
@@ -2119,13 +2160,71 @@ function ConfigPanel({
   const readiness = evaluateNodeReadiness(node)
   const decisionStrategy = node.decisionConfig?.strategy || "ai-assisted"
   const pathConditionsVisible = showPathConditions(decisionStrategy)
-  
-  // Get available actions for this node's vendor
-  const availableActions = node.vendor ? connectorActions[node.vendor]?.actions || [] : []
-  const selectedAction = availableActions.find(a => a.id === node.selectedAction)
-  
-  // Get connector status
-  const connectorStatus = connectorLibrary.find(c => c.vendor === node.vendor)?.status || "disconnected"
+
+  const connectorBind = resolveConnectorBind({
+    vendor: node.vendor,
+    selectedAction: node.selectedAction,
+    config: node.config,
+  })
+  const boundVendor = connectorBind.vendor
+  const boundActionId = connectorBind.selectedAction
+
+  const catalogVendor = actionCatalog?.vendors.find((v) => v.vendor === boundVendor)
+  const catalogActions: ConnectorActionDefinition[] = catalogVendor ? allActions(catalogVendor) : []
+  const legacyActions = boundVendor ? connectorActions[boundVendor]?.actions || [] : []
+  const availableCatalogActions = catalogActions.length
+    ? catalogActions
+    : legacyActions.map((a) => ({
+        id: a.id,
+        tool: compiledConnectorAction(boundVendor, a.id) || a.id,
+        name: a.name,
+        description: a.name,
+        tier: "v2" as const,
+        kind: (a.type === "Read" ? "read" : "write") as "read" | "write",
+        scopes: [],
+        implemented: true,
+      }))
+  const selectedCatalogAction = availableCatalogActions.find(
+    (a) => a.id === boundActionId || a.tool === connectorBind.action || a.tool.endsWith(`.${boundActionId}`),
+  )
+  const availableActions = legacyActions
+  const selectedAction = availableActions.find((a) => a.id === boundActionId)
+
+  const liveConnector =
+    orgConnectors.find((c) => c.vendor === boundVendor && c.status === "active") ||
+    orgConnectors.find((c) => c.vendor === boundVendor)
+  const connectorStatus: "connected" | "disconnected" | "error" = liveConnector
+    ? liveConnector.status === "active"
+      ? "connected"
+      : liveConnector.status === "error"
+        ? "error"
+        : "disconnected"
+    : connectorLibrary.find((c) => c.vendor === boundVendor)?.status === "connected"
+      ? "connected"
+      : "disconnected"
+
+  const vendorOptions = (() => {
+    const fromLive = orgConnectors.map((c) => ({
+      vendor: c.vendor,
+      name: c.name,
+      status: c.status,
+    }))
+    const fromCatalog = (actionCatalog?.vendors ?? []).map((v) => ({
+      vendor: v.vendor,
+      name: v.displayName || v.vendor,
+      status: "catalog" as const,
+    }))
+    const fromMock = connectorLibrary.map((c) => ({
+      vendor: c.vendor,
+      name: c.name,
+      status: c.status,
+    }))
+    const map = new Map<string, { vendor: string; name: string; status: string }>()
+    for (const row of [...fromLive, ...fromCatalog, ...fromMock]) {
+      if (!map.has(row.vendor)) map.set(row.vendor, row)
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
+  })()
 
   return (
     <Sheet open={!!node} onOpenChange={() => onClose()}>
@@ -2136,8 +2235,8 @@ function ConfigPanel({
               "flex h-10 w-10 items-center justify-center rounded-lg border",
               config.color
             )}>
-{node.vendor ? (
-  <ConnectorIcon vendor={node.vendor} size="sm" showStatusIndicator={false} />
+{boundVendor || node.vendor ? (
+  <ConnectorIcon vendor={boundVendor || node.vendor} size="sm" showStatusIndicator={false} />
   ) : (
   <Icon className="h-5 w-5" />
   )}
@@ -2191,10 +2290,10 @@ node.type === "approval" && "bg-red-500",
   node.type === "decision" && "bg-violet-500"
             )} />
             <span className="text-sm font-medium">{config.label}</span>
-            {node.vendor && (
+            {boundVendor && (
               <>
                 <span className="text-muted-foreground/50">|</span>
-                <span className="text-sm text-muted-foreground capitalize">{node.vendor}</span>
+                <span className="text-sm text-muted-foreground capitalize">{boundVendor}</span>
                 <div className={cn(
                   "ml-auto flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full",
                   connectorStatus === "connected" 
@@ -2214,7 +2313,7 @@ node.type === "approval" && "bg-red-500",
           {/* G1: Compiled step preview — show that a connector node runs as an
               executable invoke_tool step (never a silent noop) and surface the
               canonical action key + readiness. */}
-          {node.type === "connector" && node.vendor && (
+          {node.type === "connector" && (
             <div className="space-y-2 p-3 rounded-lg border border-border bg-secondary/40">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
@@ -2224,40 +2323,36 @@ node.type === "approval" && "bg-red-500",
                     invoke_tool
                   </span>
                 </div>
-                {node.selectedAction && (
-                  isActionImplemented(node.vendor, node.selectedAction) ? (
+                {connectorBind.action && (
+                  selectedCatalogAction?.implemented || isActionImplemented(boundVendor, boundActionId) ? (
                     <span className="flex items-center gap-1 text-[10px] text-emerald-500">
                       <CheckCircle className="h-3 w-3" /> Ready
                     </span>
                   ) : (
                     <span className="flex items-center gap-1 text-[10px] text-amber-500">
-                      <AlertTriangle className="h-3 w-3" /> Action not available
+                      <AlertTriangle className="h-3 w-3" /> Check action
                     </span>
                   )
                 )}
               </div>
-              {compiledActionKey(node.vendor, node.selectedAction) ? (
+              {connectorBind.action ? (
                 <code className="block text-xs font-mono text-muted-foreground break-all">
-                  {compiledActionKey(node.vendor, node.selectedAction)}
+                  {connectorBind.action}
                 </code>
               ) : (
                 <p className="text-[11px] text-muted-foreground">
-                  Select an action below to compile this step.
+                  Select a connected vendor and action below. This step calls that API when the workflow runs.
                 </p>
               )}
-              {node.selectedAction && !isActionImplemented(node.vendor, node.selectedAction) && (
+              {boundVendor && connectorStatus !== "connected" && (
                 <div className="flex items-start gap-1.5 mt-1 p-2 rounded bg-amber-500/10 border border-amber-500/20">
                   <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
                   <p className="text-[11px] text-amber-500">
-                    This action is not in the connector catalog and will not run in production. Pick a supported action.
-                  </p>
-                </div>
-              )}
-              {connectorStatus !== "connected" && (
-                <div className="flex items-start gap-1.5 mt-1 p-2 rounded bg-amber-500/10 border border-amber-500/20">
-                  <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-amber-500">
-                    {node.vendor} is {connectorStatus}. Reconnect it so this step can run.
+                    {boundVendor} is not active in this org.{" "}
+                    <Link href={`/connectors?type=${encodeURIComponent(boundVendor)}`} className="underline underline-offset-2">
+                      Connect it
+                    </Link>{" "}
+                    so this write can run.
                   </p>
                 </div>
               )}
@@ -2299,43 +2394,128 @@ node.type === "approval" && "bg-red-500",
             </div>
           </div>
 
-          {/* Action Selector for Connectors/Sources */}
-          {node.vendor && availableActions.length > 0 && (
+          {/* Connector bind: vendor + action (always visible for connector nodes) */}
+          {node.type === "connector" && (
             <div className="space-y-4 pt-4 border-t border-border">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium text-foreground">Action Configuration</h4>
-                {selectedAction && (
-                  <div className="flex items-center gap-2">
-                    <span className={cn(
-                      "px-2 py-0.5 rounded text-xs font-mono",
-                      selectedAction.method === "GET" && "bg-emerald-500/10 text-emerald-400",
-                      selectedAction.method === "POST" && "bg-blue-500/10 text-blue-400",
-                      selectedAction.method === "PATCH" && "bg-amber-500/10 text-amber-400"
-                    )}>
-                      {selectedAction.method}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{selectedAction.type}</span>
-                  </div>
+              <div>
+                <h4 className="text-sm font-medium text-foreground">Connector &amp; action</h4>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Uses your org&apos;s connected accounts. Active connectors are preferred; others still appear so you can see what is missing.
+                </p>
+              </div>
+
+              <div>
+                <FieldLabel required>Connected system</FieldLabel>
+                <select
+                  value={boundVendor || ""}
+                  onChange={(e) => {
+                    const vendor = e.target.value
+                    const cleared = { ...node.config }
+                    delete cleared.action
+                    delete cleared.tool_action
+                    delete cleared.selectedAction
+                    delete cleared.selected_action
+                    onUpdate({
+                      vendor: vendor || undefined,
+                      selectedAction: undefined,
+                      config: connectorConfigWithBind(cleared, {
+                        vendor: vendor || undefined,
+                        selectedAction: undefined,
+                        action: undefined,
+                      }),
+                      name: vendor
+                        ? `${vendor.charAt(0).toUpperCase()}${vendor.slice(1)} connector`
+                        : node.name,
+                    })
+                  }}
+                  className="w-full h-9 rounded-md border border-border bg-secondary px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  <option value="">Select connector…</option>
+                  {vendorOptions.map((opt) => {
+                    const live = orgConnectors.find((c) => c.vendor === opt.vendor)
+                    const statusLabel = live
+                      ? live.status === "active"
+                        ? "active"
+                        : live.status
+                      : opt.status === "connected"
+                        ? "active"
+                        : opt.status === "catalog"
+                          ? "not connected"
+                          : opt.status
+                    return (
+                      <option key={opt.vendor} value={opt.vendor}>
+                        {opt.name} ({statusLabel})
+                      </option>
+                    )
+                  })}
+                </select>
+                {orgConnectors.length === 0 && (
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    No connectors loaded yet.{" "}
+                    <Link href="/connectors" className="text-info underline-offset-2 hover:underline">
+                      Open Connectors
+                    </Link>{" "}
+                    to connect Apollo, HubSpot, etc.
+                  </p>
                 )}
               </div>
 
               <div>
-                <FieldLabel required>Select Action</FieldLabel>
+                <FieldLabel required>Action</FieldLabel>
                 <select
-                  value={node.selectedAction || ""}
-                  onChange={(e) => onUpdate({ selectedAction: e.target.value })}
-                  className="w-full h-9 rounded-md border border-border bg-secondary px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  value={boundActionId || ""}
+                  disabled={!boundVendor}
+                  onChange={(e) => {
+                    const selectedAction = e.target.value
+                    const action = compiledConnectorAction(boundVendor, selectedAction)
+                    const catalogHit = availableCatalogActions.find(
+                      (a) => a.id === selectedAction || a.tool === action,
+                    )
+                    onUpdate({
+                      vendor: boundVendor,
+                      selectedAction,
+                      name: catalogHit?.name
+                        ? `${boundVendor}: ${catalogHit.name}`
+                        : node.name,
+                      config: connectorConfigWithBind(node.config, {
+                        vendor: boundVendor,
+                        selectedAction,
+                        action,
+                      }),
+                    })
+                  }}
+                  className="w-full h-9 rounded-md border border-border bg-secondary px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
                 >
-                  <option value="">Select an action...</option>
-                  {availableActions.map((action) => (
-                    <option key={action.id} value={action.id}>
-                      {action.name} ({action.method})
-                    </option>
-                  ))}
+                  <option value="">{boundVendor ? "Select an action…" : "Pick a connector first"}</option>
+                  {availableCatalogActions.map((action) => {
+                    const value = action.tool.startsWith(`${boundVendor}.`)
+                      ? action.tool.slice(boundVendor!.length + 1)
+                      : action.id
+                    return (
+                      <option key={action.tool || action.id} value={value}>
+                        {action.name}
+                        {action.kind ? ` · ${action.kind}` : ""}
+                        {action.implemented === false ? " (not implemented)" : ""}
+                      </option>
+                    )
+                  })}
                 </select>
+                {selectedCatalogAction?.description && (
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {selectedCatalogAction.description}
+                  </p>
+                )}
+                {connectorBind.action === "apollo.lists.create" && (
+                  <p className="text-[11px] text-foreground mt-2 p-2 rounded-md bg-secondary/50 border border-border">
+                    Creates a new contact/account list in Apollo (write). Typical params: list{" "}
+                    <span className="font-mono">name</span>, optional{" "}
+                    <span className="font-mono">modality</span> (contacts). Does not add people by itself —
+                    a later step or agent usually calls <span className="font-mono">apollo.lists.add</span>.
+                  </p>
+                )}
               </div>
 
-              {/* Dynamic Form Fields */}
+              {/* Dynamic Form Fields (legacy mock vendors) */}
               {selectedAction && (
                 <div className="space-y-4 p-4 rounded-lg bg-muted/30 border border-border">
                   <div className="flex items-center gap-2 mb-2">
@@ -2353,21 +2533,20 @@ node.type === "approval" && "bg-red-500",
                 </div>
               )}
 
-              {/* API Context Display */}
-              {selectedAction && (
+              {selectedCatalogAction && !selectedAction && (
                 <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/20 border border-border text-xs text-muted-foreground">
                   <div className="flex items-center gap-1.5">
                     <Activity className="h-3.5 w-3.5" />
-                    <span>Method: {selectedAction.method}</span>
+                    <span className="capitalize">{selectedCatalogAction.kind}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Link2 className="h-3.5 w-3.5" />
-                    <span>Type: {selectedAction.type}</span>
+                    <span className="font-mono">{selectedCatalogAction.tool}</span>
                   </div>
                   {connectorStatus === "connected" && (
                     <div className="flex items-center gap-1.5 text-emerald-400">
                       <CircleDot className="h-3.5 w-3.5" />
-                      <span>Ready</span>
+                      <span>Connected</span>
                     </div>
                   )}
                 </div>
@@ -3109,6 +3288,16 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     () => agentsApi.list(),
     { revalidateOnFocus: false },
   )
+  const { data: orgConnectorsData } = useSWR(
+    "workflow-builder-org-connectors",
+    () => connectorsApi.list(),
+    { revalidateOnFocus: false },
+  )
+  const { data: actionCatalogData } = useSWR(
+    "workflow-builder-action-catalog",
+    () => connectorsApi.actionCatalog(),
+    { revalidateOnFocus: false },
+  )
   const { data: orgInstallsData } = useSWR(
     "workflow-builder-org-installs",
     () => marketplaceApi.listInstalls({ status: "active", limit: 100 }),
@@ -3140,6 +3329,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       config: (agent as { config?: Record<string, unknown> | null }).config ?? null,
     }))
   }, [orgAgentsData?.agents])
+  const orgConnectors = useMemo(
+    () => orgConnectorsData?.connectors ?? [],
+    [orgConnectorsData?.connectors],
+  )
   const [agentDepartmentFilter, setAgentDepartmentFilter] = useState<string>("all")
   const [agentRoleFilter, setAgentRoleFilter] = useState<string>("all")
   const agentDepartments = useMemo(() => listAgentDepartments(orgAgents), [orgAgents])
@@ -3559,16 +3752,26 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       description?: string,
       extras?: { config?: Record<string, unknown>; vendor?: string; selectedAction?: string },
     ) => {
+      const bind =
+        type === "connector"
+          ? resolveConnectorBind({
+              vendor: extras?.vendor,
+              selectedAction: extras?.selectedAction,
+              config: extras?.config,
+            })
+          : null
       const newNode: WorkflowNode = {
         id: `node-${Date.now()}`,
         type,
         name,
         description,
-        config: extras?.config || {},
+        config: bind ? connectorConfigWithBind(extras?.config, bind) : extras?.config || {},
         position: { x: 200 + Math.random() * 200, y: 100 + Math.random() * 200 },
         connections: [],
-        ...(extras?.vendor ? { vendor: extras.vendor } : {}),
-        ...(extras?.selectedAction ? { selectedAction: extras.selectedAction } : {}),
+        ...(bind?.vendor || extras?.vendor ? { vendor: bind?.vendor || extras?.vendor } : {}),
+        ...(bind?.selectedAction || extras?.selectedAction
+          ? { selectedAction: bind?.selectedAction || extras?.selectedAction }
+          : {}),
       }
       setNodes((prev) => [...prev, newNode])
       setSelectedNodeId(newNode.id)
@@ -4685,18 +4888,61 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
               {activeLibrary === "connectors" && (
                 <div className="space-y-0.5">
-                  {connectorLibrary.map((conn) => (
+                  {orgConnectors.length === 0 &&
+                    connectorLibrary.map((conn) => (
+                      <LibraryItem
+                        key={conn.id}
+                        name={conn.name}
+                        vendor={conn.vendor}
+                        nodeType="connector"
+                        dragPayload={{ vendor: conn.vendor }}
+                        onAdd={() =>
+                          addNode("connector", conn.name, undefined, {
+                            vendor: conn.vendor,
+                            config: connectorConfigWithBind({}, { vendor: conn.vendor }),
+                          })
+                        }
+                      />
+                    ))}
+                  {orgConnectors.map((conn) => (
                     <LibraryItem
                       key={conn.id}
-                      name={conn.name}
+                      name={`${conn.name}${conn.status === "active" ? "" : ` (${conn.status})`}`}
                       vendor={conn.vendor}
                       nodeType="connector"
-                      dragPayload={{ vendor: conn.vendor }}
+                      dragPayload={{
+                        vendor: conn.vendor,
+                        config: connectorConfigWithBind({}, { vendor: conn.vendor }),
+                      }}
                       onAdd={() =>
-                        addNode("connector", conn.name, undefined, { vendor: conn.vendor })
+                        addNode("connector", conn.name, undefined, {
+                          vendor: conn.vendor,
+                          config: connectorConfigWithBind({}, { vendor: conn.vendor }),
+                        })
                       }
                     />
                   ))}
+                  {(actionCatalogData?.vendors ?? [])
+                    .filter((v) => !orgConnectors.some((c) => c.vendor === v.vendor))
+                    .slice(0, 12)
+                    .map((v) => (
+                      <LibraryItem
+                        key={`catalog-${v.vendor}`}
+                        name={`${v.displayName || v.vendor} (not connected)`}
+                        vendor={v.vendor}
+                        nodeType="connector"
+                        dragPayload={{
+                          vendor: v.vendor,
+                          config: connectorConfigWithBind({}, { vendor: v.vendor }),
+                        }}
+                        onAdd={() =>
+                          addNode("connector", v.displayName || v.vendor, "Connect this vendor to run writes", {
+                            vendor: v.vendor,
+                            config: connectorConfigWithBind({}, { vendor: v.vendor }),
+                          })
+                        }
+                      />
+                    ))}
                 </div>
               )}
 
@@ -5885,6 +6131,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             onClose={() => setSelectedNodeId(null)}
             onUpdate={handleUpdateNode}
             orgAgents={orgAgents}
+            orgConnectors={orgConnectors}
+            actionCatalog={actionCatalogData ?? null}
             lastRunId={lastRunId}
           />
 

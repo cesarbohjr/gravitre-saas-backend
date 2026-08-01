@@ -3,6 +3,10 @@
  */
 import { workflowsApi } from "@/lib/api"
 import type { WorkflowDryRunResponse } from "@/types/api"
+import {
+  connectorConfigWithBind,
+  resolveConnectorBind,
+} from "@/lib/workflows/builder-connector-bind"
 
 export type CanvasNodeType =
   | "agent"
@@ -253,21 +257,35 @@ export function apiGraphToCanvasNodes(
       ...(metadata.task && !rawConfig.task ? { task: metadata.task } : {}),
     }
     const position = resolveNodePosition(node)
+    const nodeType = normalizeCanvasNodeType(node.node_type ?? node.type)
+    const bind =
+      nodeType === "connector"
+        ? resolveConnectorBind({
+            vendor: (config.vendor as string) || (node.systemName as string),
+            selectedAction:
+              (config.selected_action as string) || (config.selectedAction as string),
+            config,
+          })
+        : null
+    const mergedConfig = bind ? connectorConfigWithBind(config, bind) : config
     return {
       id,
-      type: normalizeCanvasNodeType(node.node_type ?? node.type),
+      type: nodeType,
       name: String(node.name ?? node.title ?? "Node"),
       description: (node.description as string) || (node.instruction as string),
-      config,
+      config: mergedConfig,
       position,
       connections: edgeTargets(apiEdges, id),
       state: "idle" as const,
-      vendor: (config.vendor as string) || (node.systemName as string),
-      selectedAction: (config.selected_action as string) || (config.selectedAction as string),
-      dataLabel: (config.data_label as string) || (config.dataLabel as string),
-      decisionConfig: (metadata.decisionConfig ?? config.decisionConfig) as DecisionConfig | undefined,
-      outputPaths: (metadata.outputPaths ?? config.outputPaths) as DecisionPath[] | undefined,
-      councilConfig: (metadata.councilConfig ?? config.councilConfig) as CouncilConfig | undefined,
+      vendor: bind?.vendor || (mergedConfig.vendor as string) || (node.systemName as string),
+      selectedAction:
+        bind?.selectedAction ||
+        (mergedConfig.selected_action as string) ||
+        (mergedConfig.selectedAction as string),
+      dataLabel: (mergedConfig.data_label as string) || (mergedConfig.dataLabel as string),
+      decisionConfig: (metadata.decisionConfig ?? mergedConfig.decisionConfig) as DecisionConfig | undefined,
+      outputPaths: (metadata.outputPaths ?? mergedConfig.outputPaths) as DecisionPath[] | undefined,
+      councilConfig: (metadata.councilConfig ?? mergedConfig.councilConfig) as CouncilConfig | undefined,
     }
   })
   return autoLayoutCanvasNodes(nodes)
@@ -281,25 +299,39 @@ export function canvasToSavePayload(nodes: CanvasWorkflowNode[]) {
     }
   }
   return {
-    nodes: nodes.map((node) => ({
-      id: node.id,
-      type: node.type,
-      name: node.name,
-      description: node.description,
-      config: node.config,
-      position: node.position,
-      ...(node.type === "source" && node.config?.source_id
-        ? { source_id: String(node.config.source_id) }
-        : {}),
-      metadata: {
-        ...(node.decisionConfig ? { decisionConfig: node.decisionConfig } : {}),
-        ...(node.outputPaths ? { outputPaths: node.outputPaths } : {}),
-        ...(node.councilConfig ? { councilConfig: node.councilConfig } : {}),
-        ...(node.config?.agent_id ? { agent_id: node.config.agent_id } : {}),
-        ...(node.config?.next_agent_id ? { next_agent_id: node.config.next_agent_id } : {}),
-        ...(node.config?.task ? { task: node.config.task } : {}),
-      },
-    })),
+    nodes: nodes.map((node) => {
+      const bind =
+        node.type === "connector"
+          ? resolveConnectorBind({
+              vendor: node.vendor,
+              selectedAction: node.selectedAction,
+              config: node.config,
+            })
+          : null
+      const config = bind ? connectorConfigWithBind(node.config, bind) : node.config
+      return {
+        id: node.id,
+        type: node.type,
+        name: node.name,
+        description: node.description,
+        config,
+        position: node.position,
+        ...(node.type === "source" && config?.source_id
+          ? { source_id: String(config.source_id) }
+          : {}),
+        metadata: {
+          ...(node.decisionConfig ? { decisionConfig: node.decisionConfig } : {}),
+          ...(node.outputPaths ? { outputPaths: node.outputPaths } : {}),
+          ...(node.councilConfig ? { councilConfig: node.councilConfig } : {}),
+          ...(config?.agent_id ? { agent_id: config.agent_id } : {}),
+          ...(config?.next_agent_id ? { next_agent_id: config.next_agent_id } : {}),
+          ...(config?.task ? { task: config.task } : {}),
+          ...(bind?.vendor ? { vendor: bind.vendor } : {}),
+          ...(bind?.selectedAction ? { selectedAction: bind.selectedAction } : {}),
+          ...(bind?.action ? { action: bind.action } : {}),
+        },
+      }
+    }),
     edges,
   }
 }
