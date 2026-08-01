@@ -181,10 +181,10 @@ export function filterApiAlertsForWorkflow(
 export function rotateTipsAndInsights(
   items: Array<{ id: string; title: string; summary: string; category?: string }>,
   workflowId: string | undefined,
-  *,
-  tipCount = 1,
-  insightCount = 1,
+  options?: { tipCount?: number; insightCount?: number },
 ): { tips: typeof items; insights: typeof items } {
+  const tipCount = options?.tipCount ?? 1
+  const insightCount = options?.insightCount ?? 1
   const tips = items.filter((i) => (i.category || "").toLowerCase() === "tip")
   const insights = items.filter((i) => (i.category || "").toLowerCase() !== "tip")
   const seed = hashSeed(`${workflowId || "local"}-${hourBucket()}`)

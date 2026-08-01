@@ -14,8 +14,13 @@ def test_platform_health_pack_in_catalog():
     assert spec.demo_agent_name == "Platform Reliability Analyst"
     assert spec.connector_template_id is None
     assert spec.demo_systems == ["platform"]
-    actions = {s.get("config", {}).get("action") for s in spec.workflow_steps}
+    actions = {
+        s.get("config", {}).get("action")
+        for s in spec.workflow_steps
+        if s.get("type") == "invoke_tool"
+    }
     assert actions == {"platform.health.snapshot"}
+    assert any(s.get("type") == "agent" for s in spec.workflow_steps)
     assert "platform-health-intelligence-pack" in {s.pack_id for s in list_intelligence_pack_specs()}
 
 
