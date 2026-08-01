@@ -25,6 +25,27 @@ class ActivationGate(StrEnum):
     GOVERNANCE_STOP_LINE = "governance_stop_line"
 
 
+# Tool/registry short prefixes → Connectors hub vendor key (DB `connectors.type`).
+CONNECTOR_VENDOR_ALIASES: dict[str, str] = {
+    "searchconsole": "google_search_console",
+    "gsc": "google_search_console",
+    "googlesearchconsole": "google_search_console",
+    "webmasters": "google_search_console",
+    "analytics": "google_analytics",
+    "googleanalytics": "google_analytics",
+    "googleads": "google_ads",
+    "adwords": "google_ads",
+    "ads": "google_ads",
+    "calendar": "google_calendar",
+    "googlecalendar": "google_calendar",
+    "drive": "google_drive",
+    "googledrive": "google_drive",
+    "docs": "google_docs",
+    "googledocs": "google_docs",
+    "sheets": "google_sheets",
+    "googlesheets": "google_sheets",
+}
+
 # Vendor key → auth_mode. Apollo confirmed customer_owned (existing OAuth).
 CONNECTOR_AUTH_MODES: dict[str, AuthMode] = {
     # Customer-owned (existing + defaults)
@@ -36,6 +57,11 @@ CONNECTOR_AUTH_MODES: dict[str, AuthMode] = {
     "linkedin": AuthMode.CUSTOMER_OWNED,  # distinct from Sales Navigator BYO
     "google_search_console": AuthMode.CUSTOMER_OWNED,
     "google_analytics": AuthMode.CUSTOMER_OWNED,
+    "google_ads": AuthMode.CUSTOMER_OWNED,
+    "google_calendar": AuthMode.CUSTOMER_OWNED,
+    "google_drive": AuthMode.CUSTOMER_OWNED,
+    "google_docs": AuthMode.CUSTOMER_OWNED,
+    "google_sheets": AuthMode.CUSTOMER_OWNED,
     # Finance F3 — customer-owned accounting / banking
     "quickbooks": AuthMode.CUSTOMER_OWNED,
     "xero": AuthMode.CUSTOMER_OWNED,
@@ -94,8 +120,32 @@ class AuthModeError(RuntimeError):
         self.code = code
 
 
+def canonical_connector_vendor(vendor: str) -> str:
+    """Normalize tool prefixes / aliases to the Connectors hub vendor key."""
+    key = str(vendor or "").strip().lower().replace("-", "_").replace(" ", "_")
+    if not key:
+        return ""
+    if key in CONNECTOR_VENDOR_ALIASES:
+        return CONNECTOR_VENDOR_ALIASES[key]
+    compact = key.replace("_", "")
+    if compact in CONNECTOR_VENDOR_ALIASES:
+        return CONNECTOR_VENDOR_ALIASES[compact]
+    return key
+
+
+def connector_type_lookup_keys(vendor: str) -> tuple[str, ...]:
+    """Ordered unique type keys to try when matching a connectors row."""
+    raw = str(vendor or "").strip().lower()
+    canon = canonical_connector_vendor(vendor)
+    keys: list[str] = []
+    for candidate in (canon, raw, raw.replace("_", ""), canon.replace("_", "")):
+        if candidate and candidate not in keys:
+            keys.append(candidate)
+    return tuple(keys)
+
+
 def get_auth_mode(vendor: str) -> AuthMode:
-    key = str(vendor or "").strip().lower()
+    key = canonical_connector_vendor(vendor)
     return CONNECTOR_AUTH_MODES.get(key, AuthMode.CUSTOMER_OWNED)
 
 
@@ -114,7 +164,7 @@ def requires_tenant_connector(vendor: str) -> bool:
 
 
 def get_activation_gate(vendor: str) -> ActivationGate:
-    key = str(vendor or "").strip().lower()
+    key = canonical_connector_vendor(vendor)
     return ACTIVATION_GATES.get(key, ActivationGate.NONE)
 
 

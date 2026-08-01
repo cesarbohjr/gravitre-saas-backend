@@ -34,7 +34,15 @@ describe("isConnectorsHubHidden", () => {
 describe("connected connector hub visibility", () => {
   it("keeps catalog vendors in the available strip", () => {
     const availableKeys = new Set(listAvailableConnectors().map((entry) => entry.vendorKey))
-    for (const vendor of ["marketo", "segment", "google_analytics", "constant_contact", "semrush"]) {
+    for (const vendor of [
+      "marketo",
+      "segment",
+      "google_analytics",
+      "google_search_console",
+      "constant_contact",
+      "semrush",
+      "ahrefs",
+    ]) {
       expect(availableKeys.has(vendor)).toBe(true)
     }
   })

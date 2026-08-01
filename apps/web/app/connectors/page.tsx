@@ -1,8 +1,8 @@
 "use client"
 
 // Connectors Page - Integration Hub with Network Topology View
-import { Suspense, startTransition, useEffect, useMemo, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { Suspense, startTransition, useEffect, useMemo, useRef, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
@@ -2314,7 +2314,9 @@ function GoogleAdsCustomerPickerModal({
 function ConnectorsPageContent() {
   const { user } = useAuth()
   const { isAdmin: orgIsAdmin } = useOrgAdmin()
+  const router = useRouter()
   const searchParams = useSearchParams()
+  const consumedConnectPreset = useRef<string | null>(null)
   const [gaPropertyPicker, setGaPropertyPicker] = useState<{ connectorId: string } | null>(null)
   const [gscSitePicker, setGscSitePicker] = useState<{ connectorId: string } | null>(null)
   const [adsCustomerPicker, setAdsCustomerPicker] = useState<{ connectorId: string } | null>(null)
@@ -2391,6 +2393,21 @@ function ConnectorsPageContent() {
     [data, partnerVendorKeys],
   )
   const isAdmin = orgIsAdmin
+
+  useEffect(() => {
+    const connectPreset =
+      searchParams.get("type") || searchParams.get("connect") || searchParams.get("vendor")
+    if (!connectPreset || consumedConnectPreset.current === connectPreset) return
+    consumedConnectPreset.current = connectPreset
+    setAddModalPreset(connectPreset)
+    setAddModal(true)
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("type")
+    params.delete("connect")
+    params.delete("vendor")
+    const qs = params.toString()
+    router.replace(qs ? `/connectors?${qs}` : "/connectors", { scroll: false })
+  }, [searchParams, router])
 
   useEffect(() => {
     const oauth = searchParams.get("oauth")

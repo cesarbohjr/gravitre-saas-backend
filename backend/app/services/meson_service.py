@@ -734,7 +734,18 @@ class MesonService:
                 continue
 
             workflow_id = str(row.get("workflowId") or row.get("workflow_id") or "")
+            connector_id = str(row.get("connectorId") or row.get("connector_id") or "").strip()
             action_target = f"/workflows/{workflow_id}/builder" if workflow_id else "/metrics"
+            fix_label = "Review"
+            if alert_type == "connector_missing" and connector_type:
+                from app.intelligence_packs.shared.auth_mode import canonical_connector_vendor
+
+                canon = canonical_connector_vendor(connector_type) or connector_type
+                action_target = f"/connectors?type={canon}"
+                fix_label = "Connect"
+            elif alert_type in {"auth_disconnected", "auth_expiry"} and connector_id:
+                action_target = f"/connectors/{connector_id}"
+                fix_label = "Reconnect"
             alerts.append(
                 MesonAlert(
                     id=str(row.get("id") or f"failure-{len(alerts)}"),
@@ -744,7 +755,7 @@ class MesonService:
                     autoFixable=True,
                     actionType="navigate",
                     actionTarget=action_target,
-                    fixLabel="Review",
+                    fixLabel=fix_label,
                 )
             )
 

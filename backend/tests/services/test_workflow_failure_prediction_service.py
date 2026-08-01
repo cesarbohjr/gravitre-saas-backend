@@ -22,6 +22,7 @@ def _table(select_data: list | None = None) -> MagicMock:
     mock.select.return_value = mock
     mock.eq.return_value = mock
     mock.in_.return_value = mock
+    mock.is_.return_value = mock
     mock.order.return_value = mock
     mock.limit.return_value = mock
     mock.execute.return_value = MagicMock(data=select_data or [])
@@ -187,6 +188,66 @@ def test_scan_workflow_failure_predictions_persists_alerts(mock_build, mock_vers
     assert summary["riskScore"] > 0
     assert summary["alerts"][0]["alertType"] == "connector_missing"
     mock_audit.assert_called_once()
+
+
+def test_find_active_connector_id_resolves_searchconsole_alias():
+    """Tool prefix searchconsole must match Connectors hub type google_search_console."""
+    from app.services.workflow_failure_prediction_service import _find_active_connector_id
+
+    table = _table([{"id": "gsc-1"}])
+    client = MagicMock()
+    client.table.return_value = table
+
+    found = _find_active_connector_id(
+        client, "org-1", "searchconsole", environment_name="production"
+    )
+    assert found == "gsc-1"
+    assert any(
+        call.args and call.args[0] == "type" and call.args[1] == "google_search_console"
+        for call in table.eq.call_args_list
+    )
+
+
+def test_build_predictive_alerts_searchconsole_uses_hub_label():
+    from app.services.workflow_failure_prediction_service import _build_predictive_alerts
+
+    definition = {
+        "steps": [
+            {
+                "id": "gsc-1",
+                "name": "List GSC Sites",
+                "type": "invoke_tool",
+                "config": {"action": "searchconsole.sites.list"},
+            },
+            {
+                "id": "ah-1",
+                "name": "Brand Radar Overview",
+                "type": "invoke_tool",
+                "config": {"action": "ahrefs.brand_radar.overview"},
+            },
+        ]
+    }
+    client = MagicMock()
+    client.table.side_effect = lambda _name: _table([])
+    settings = Settings()
+
+    with patch(
+        "app.services.workflow_failure_prediction_service._find_active_connector_id",
+        return_value=None,
+    ):
+        alerts = _build_predictive_alerts(
+            client,
+            settings,
+            "org-1",
+            "wf-1",
+            definition,
+            environment_name="production",
+        )
+    titles = {alert["title"] for alert in alerts}
+    assert "Missing google search console connector" in titles
+    assert "Missing ahrefs credential" in titles
+    gsc = next(a for a in alerts if "google search console" in a["title"])
+    assert gsc["evidence"]["connectorType"] == "google_search_console"
 
 
 @patch("app.services.workflow_failure_prediction_service._find_active_connector_id", return_value=None)

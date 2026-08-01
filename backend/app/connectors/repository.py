@@ -86,22 +86,25 @@ def get_connector_by_type(
     environment_name: str = "production",
 ) -> dict | None:
     """Get first usable connector of type for org (active, healthy, connected, syncing)."""
+    from app.intelligence_packs.shared.auth_mode import connector_type_lookup_keys
+
     usable = sorted(ACTIVE_CONNECTOR_STATUSES)
-    for env in connector_environment_candidates(environment_name):
-        r = (
-            client.table("connectors")
-            .select("id, org_id, type, status, config, environment, created_at, updated_at")
-            .eq("org_id", org_id)
-            .eq("environment", env)
-            .eq("type", connector_type)
-            .in_("status", usable)
-            .is_("deleted_at", "null")
-            .order("updated_at", desc=True)
-            .limit(1)
-            .execute()
-        )
-        if r.data:
-            return dict(r.data[0])
+    for type_key in connector_type_lookup_keys(connector_type):
+        for env in connector_environment_candidates(environment_name):
+            r = (
+                client.table("connectors")
+                .select("id, org_id, type, status, config, environment, created_at, updated_at")
+                .eq("org_id", org_id)
+                .eq("environment", env)
+                .eq("type", type_key)
+                .in_("status", usable)
+                .is_("deleted_at", "null")
+                .order("updated_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if r.data:
+                return dict(r.data[0])
     return None
 
 

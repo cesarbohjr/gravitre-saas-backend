@@ -178,34 +178,38 @@ def _find_active_connector_id(
     *,
     environment_name: str,
 ) -> str | None:
+    from app.intelligence_packs.shared.auth_mode import connector_type_lookup_keys
+
     statuses = list(ACTIVE_CONNECTOR_STATUSES)
-    for env in connector_environment_candidates(environment_name):
+    type_keys = connector_type_lookup_keys(connector_type)
+    for type_key in type_keys:
+        for env in connector_environment_candidates(environment_name):
+            result = (
+                client.table("connectors")
+                .select("id")
+                .eq("org_id", org_id)
+                .eq("type", type_key)
+                .in_("status", statuses)
+                .eq("environment", env)
+                .is_("deleted_at", "null")
+                .limit(1)
+                .execute()
+            )
+            if result.data:
+                return str(result.data[0]["id"])
         result = (
             client.table("connectors")
             .select("id")
             .eq("org_id", org_id)
-            .eq("type", connector_type)
+            .eq("type", type_key)
             .in_("status", statuses)
-            .eq("environment", env)
             .is_("deleted_at", "null")
             .limit(1)
             .execute()
         )
         if result.data:
             return str(result.data[0]["id"])
-    result = (
-        client.table("connectors")
-        .select("id")
-        .eq("org_id", org_id)
-        .eq("type", connector_type)
-        .in_("status", statuses)
-        .is_("deleted_at", "null")
-        .limit(1)
-        .execute()
-    )
-    if not result.data:
-        return None
-    return str(result.data[0]["id"])
+    return None
 
 
 def _get_connector(client: Any, org_id: str, connector_id: str) -> dict[str, Any] | None:
@@ -427,18 +431,22 @@ def _build_predictive_alerts(
             if not connector_id:
                 if not requires_tenant_connector(str(connector_type)):
                     continue
-                mode = get_auth_mode(str(connector_type))
+                from app.intelligence_packs.shared.auth_mode import canonical_connector_vendor
+
+                canon_type = canonical_connector_vendor(str(connector_type)) or str(connector_type)
+                mode = get_auth_mode(canon_type)
+                display = canon_type.replace("_", " ")
                 if mode == AuthMode.BYO_REQUIRED:
-                    title = f"Missing {connector_type} credential"
+                    title = f"Missing {display} credential"
                     message = (
-                        f"Step '{req['stepName']}' requires your {connector_type} API key "
-                        f"(bring-your-own) but none is connected."
+                        f"Step '{req['stepName']}' requires your {display} API key "
+                        f"(bring-your-own) but none is connected. Add it from Connectors."
                     )
                 else:
-                    title = f"Missing {connector_type} connector"
+                    title = f"Missing {display} connector"
                     message = (
-                        f"Step '{req['stepName']}' requires an active {connector_type} connector "
-                        f"but none is connected."
+                        f"Step '{req['stepName']}' requires an active {display} connector "
+                        f"but none is connected. Add it from Connectors."
                     )
                 alerts.append(
                     _alert_row(
@@ -449,7 +457,8 @@ def _build_predictive_alerts(
                         title=title,
                         message=message,
                         evidence={
-                            "connectorType": connector_type,
+                            "connectorType": canon_type,
+                            "connectorTypeRaw": connector_type,
                             "stepName": req["stepName"],
                             "authMode": mode.value,
                         },
