@@ -89,7 +89,7 @@ export default function RootLayout({
                 </UserProfileProvider>
               </EntitlementsProvider>
             </EnterpriseBrandingProvider>
-            <Toaster position="bottom-right" richColors closeButton />
+            <Toaster position="bottom-right" />
           </AuthProvider>
           </MotionProvider>
         </ThemeProvider>

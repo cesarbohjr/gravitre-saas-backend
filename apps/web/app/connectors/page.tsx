@@ -332,12 +332,35 @@ function apiDetailMessage(err: unknown): string | null {
   return null
 }
 
+/** Soften long infra/SQL detail for toast copy (full detail stays in console). */
+function toastFriendlyDetail(raw: string | null, fallback: string): string {
+  if (!raw?.trim()) return fallback
+  const text = raw.replace(/\s+/g, " ").trim()
+  const lower = text.toLowerCase()
+  if (
+    lower.includes("supabase/migrations") ||
+    lower.includes("relation") && lower.includes("does not exist") ||
+    lower.includes("undefinedcolumn") ||
+    lower.includes("pgrst")
+  ) {
+    return "A backend data schema issue blocked this connection. Try again or contact support if it persists."
+  }
+  if (text.length > 160) return `${text.slice(0, 157)}…`
+  return text
+}
+
 function oauthErrorMessage(err: unknown, providerLabel: string): string {
-  return apiDetailMessage(err) ?? `${providerLabel} OAuth is not configured on the API host`
+  return toastFriendlyDetail(
+    apiDetailMessage(err),
+    `${providerLabel} OAuth is not configured on the API host`,
+  )
 }
 
 function connectorErrorMessage(err: unknown): string {
-  return apiDetailMessage(err) ?? "Something went wrong while saving the connector."
+  return toastFriendlyDetail(
+    apiDetailMessage(err),
+    "Something went wrong while saving the connector.",
+  )
 }
 
 const statusConfig = {
@@ -1499,48 +1522,56 @@ function AddConnectorModal({
                   </div>
                 )}
                 {oauthStatus === "redirecting" && (
-                  <div className="space-y-4">
-                    <div className="mx-auto h-16 w-16 rounded-full bg-blue-500/10 flex items-center justify-center">
-                      <Loader2 className="h-8 w-8 text-blue-400 animate-spin" />
+                  <div className="flex flex-col items-center gap-4 rounded-2xl border border-border/70 bg-secondary/20 px-6 py-8 text-center shadow-[var(--elevation-1)]">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[color-mix(in_oklch,var(--info)_12%,transparent)] text-[var(--info)] ring-1 ring-[color-mix(in_oklch,var(--info)_28%,transparent)]">
+                      <Loader2 className="h-5 w-5 animate-spin" />
                     </div>
-                    <div>
-                      <h3 className="text-sm font-semibold text-foreground">Connecting to {selectedType}...</h3>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Waiting for authorization
-                      </p>
+                    <div className="space-y-1">
+                      <h3 className="text-base font-semibold tracking-tight text-foreground">
+                        Connecting to {selectedType}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">Waiting for authorization…</p>
                     </div>
                   </div>
                 )}
                 {oauthStatus === "success" && (
-                  <div className="space-y-4">
-                    <motion.div 
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="mx-auto h-16 w-16 rounded-full bg-emerald-500/10 flex items-center justify-center"
+                  <div className="flex flex-col items-center gap-4 rounded-2xl border border-primary/20 bg-primary/5 px-6 py-8 text-center shadow-[var(--elevation-1)]">
+                    <motion.div
+                      initial={{ scale: 0.85, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/25"
                     >
-                      <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+                      <CheckCircle2 className="h-5 w-5" />
                     </motion.div>
-                    <div>
-                      <h3 className="text-sm font-semibold text-foreground">Connected Successfully</h3>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {selectedType} has been authorized
+                    <div className="space-y-1">
+                      <h3 className="text-base font-semibold tracking-tight text-foreground">
+                        Connected successfully
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedType} has been authorized for this organization.
                       </p>
                     </div>
                   </div>
                 )}
                 {oauthStatus === "error" && (
-                  <div className="space-y-4">
-                    <div className="mx-auto h-16 w-16 rounded-full bg-red-500/10 flex items-center justify-center">
-                      <XCircle className="h-8 w-8 text-red-400" />
+                  <div className="flex flex-col items-center gap-4 rounded-2xl border border-destructive/20 bg-card px-6 py-8 text-center shadow-[var(--elevation-2)]">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive ring-1 ring-destructive/20">
+                      <XCircle className="h-5 w-5" />
                     </div>
-                    <div>
-                      <h3 className="text-sm font-semibold text-foreground">Connection Failed</h3>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Unable to connect to {selectedType}. Please try again.
+                    <div className="space-y-1">
+                      <h3 className="text-base font-semibold tracking-tight text-foreground">
+                        Connection failed
+                      </h3>
+                      <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
+                        Unable to connect to {selectedType}. Check credentials or try again.
                       </p>
                     </div>
-                    <Button variant="outline" onClick={() => setOauthStatus("idle")}>
-                      Try Again
+                    <Button
+                      variant="outline"
+                      className="min-w-[8.5rem] rounded-xl"
+                      onClick={() => setOauthStatus("idle")}
+                    >
+                      Try again
                     </Button>
                   </div>
                 )}

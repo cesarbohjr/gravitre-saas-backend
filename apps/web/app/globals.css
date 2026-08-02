@@ -368,6 +368,27 @@
     .status-live { animation: none; }
   }
 
+  /* Sonner — keep brand unstyled toasts above dialogs; neutralize library defaults */
+  [data-sonner-toaster] {
+    --width: min(100vw - 2rem, 22.5rem);
+  }
+  [data-sonner-toaster][data-x-position="right"] {
+    right: 1rem;
+  }
+  [data-sonner-toast][data-styled="false"] {
+    font-family: inherit;
+  }
+  [data-sonner-toast][data-styled="false"] [data-icon] {
+    margin: 0;
+  }
+  [data-sonner-toast][data-styled="false"] [data-content] {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+  }
+
   /* ============================================================
      Chat canvas background themes (selectable, behind /ai).
      Soft multi-point mesh washes only — brand token colors, no
