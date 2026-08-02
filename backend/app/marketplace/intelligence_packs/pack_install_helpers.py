@@ -40,6 +40,16 @@ def upsert_preconfigured_workflow(
         agent_ids_by_seed={f"agent:{agent_slug}": agent_id},
     )
     definition = {"schema_version": SCHEMA_VERSION, "steps": bound}
+    from app.workflows.binding_validation import assert_bindings_valid
+
+    # Pack-embedded MSP enrichment declares these install vars; allow at write time.
+    declared = {
+        "HUBSPOT_LIST_ID",
+        "HUBSPOT_LIST_NAME",
+        "APOLLO_LIST_NAME",
+        "hubspot_connector_id",
+    }
+    assert_bindings_valid(definition, declared_parameters=declared)
     workflow_config = {"marketplaceAssetId": asset_id, "pack_id": pack_id}
     contract_nodes, contract_edges = steps_to_rich_contract(bound)
     client.table("workflow_defs").upsert(

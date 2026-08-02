@@ -664,6 +664,15 @@ def _install_workflow_entity(
         connector_ids=connector_ids or {},
     )
     definition = {"schema_version": config.schema_version or SCHEMA_VERSION, "steps": steps}
+    from app.workflows.binding_validation import assert_bindings_valid
+
+    install_vars = asset.get("install_variables") if isinstance(asset.get("install_variables"), list) else []
+    declared = {
+        str(row.get("key") or "")
+        for row in install_vars
+        if isinstance(row, dict) and row.get("key")
+    }
+    assert_bindings_valid(definition, declared_parameters=declared)
     workflow_config = {"marketplaceAssetId": asset["id"]}
     from app.marketplace.workflow_contract import steps_to_rich_contract
 

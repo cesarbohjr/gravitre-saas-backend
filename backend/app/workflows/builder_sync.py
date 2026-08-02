@@ -15,6 +15,7 @@ from app.workflows.repository import (
     get_next_workflow_version_number,
     set_active_workflow_version,
 )
+from app.workflows.binding_validation import assert_bindings_valid
 from app.workflows.schema import validate_definition
 from app.workflows.schema_sync import (
     _builder_nodes_from_contract,
@@ -789,6 +790,7 @@ def sync_builder_graph(
             for edge in stored_edges
         ],
     }
+    assert_bindings_valid(definition)
     client.table("workflow_defs").update(
         {
             "definition": definition,

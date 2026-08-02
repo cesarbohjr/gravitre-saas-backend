@@ -671,7 +671,13 @@ async def save_workflow_builder(
             created_by=user.get("user_id"),
         )
     except WorkflowValidationError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "message": exc.message,
+                "errors": list(exc.errors or []),
+            },
+        ) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except RuntimeError as exc:

@@ -329,13 +329,38 @@ def validate_asset_payload(
     publish: bool = False,
 ) -> dict[str, Any]:
     """Validate config plus top-level marketplace asset metadata fields."""
+    from app.workflows.binding_validation import assert_bindings_valid
+    from app.workflows.constants import SCHEMA_VERSION as WF_SCHEMA_VERSION
+
     assert_no_forbidden_secrets(install_variables, field_label="install_variables")
     assert_no_forbidden_secrets(required_connectors, field_label="required_connectors")
     parsed_config = parse_asset_config(asset_type, config, publish=publish)
     parsed_variables = validate_install_variables(install_variables)
     parsed_connectors = validate_required_connectors(required_connectors)
+
+    declared = {str(item.key) for item in parsed_variables if getattr(item, "key", None)}
+    steps: list[dict[str, Any]] | None = None
+    schema_version = WF_SCHEMA_VERSION
+    dumped = parsed_config.model_dump(mode="json")
+    if asset_type == "workflow" and isinstance(dumped.get("steps"), list):
+        steps = dumped["steps"]
+        schema_version = str(dumped.get("schema_version") or WF_SCHEMA_VERSION)
+    elif asset_type == "department_pack" and isinstance(dumped.get("workflow_steps"), list):
+        steps = dumped["workflow_steps"]
+    if steps:
+        try:
+            assert_bindings_valid(
+                {"schema_version": schema_version, "steps": steps},
+                declared_parameters=declared,
+            )
+        except WorkflowValidationError as exc:
+            raise MarketplaceValidationError(
+                exc.message,
+                errors=list(exc.errors or []),
+            ) from exc
+
     return {
-        "config": parsed_config.model_dump(mode="json"),
+        "config": dumped,
         "install_variables": [item.model_dump(mode="json") for item in parsed_variables],
         "required_connectors": [item.model_dump(mode="json", by_alias=True) for item in parsed_connectors],
     }

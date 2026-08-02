@@ -144,6 +144,17 @@ def _install_msp_enrichment_workflow_bundle(
         },
     )
     definition = {"schema_version": SCHEMA_VERSION, "steps": steps}
+    from app.workflows.binding_validation import assert_bindings_valid
+
+    assert_bindings_valid(
+        definition,
+        declared_parameters={
+            "HUBSPOT_LIST_ID",
+            "HUBSPOT_LIST_NAME",
+            "APOLLO_LIST_NAME",
+            "hubspot_connector_id",
+        },
+    )
     workflow_config = {
         "marketplaceAssetId": asset_id,
         "pack_id": spec.pack_id,
