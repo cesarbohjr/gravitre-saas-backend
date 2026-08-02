@@ -1,0 +1,24 @@
+{
+  "generated_at": "2026-08-02T22:43:16Z",
+  "note": "Browser HubSpot session expired (login wall). CRM existence proven via hubspot.contacts.get.",
+  "contacts": [
+    {
+      "id": "270491538362",
+      "success": true,
+      "email": "part0.clayhs.6e74c7dc.0@example.com",
+      "firstname": "Mike",
+      "lastname": "ClayHS6e74",
+      "company": "Intempo Health",
+      "createdAt": "2026-08-02T22:41:08.927Z",
+      "url": "https://app-na3.hubspot.com/contacts/343328749/record/0-1/270491538362"
+    },
+    {
+      "id": "270384141296",
+      "success": true
+    },
+    {
+      "id": "270466044858",
+      "success": true
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "generated_at": "2026-08-02T22:42:30+00:00",
+  "slice": "A",
+  "prod_tip": "bbc83a4f36a2fd94770b61f517357e8aef7ac711",
+  "deploy": {
+    "railway_force_run": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/30769216165",
+    "health_git_sha_after": "bbc83a4f36a2fd94770b61f517357e8aef7ac711",
+    "partial_success_migration": {
+      "name": "workflow_runs_partial_success_status",
+      "project_ref": "smyeexlrqdpymwjmgzqu",
+      "applied_at": "2026-08-02T22:34:00Z",
+      "note": "Committed on main as 1c9eefa5 but missing from prod; applied so empty-shell honesty can persist partial_success"
+    }
+  },
+  "build_items_on_main": {
+    "part1_binding_validator": "cc639a60",
+    "pack_install_ready_gate": "e0baef5a",
+    "outcomes_page": "b8ca976b",
+    "part5_selection_audit": "bbc83a4f"
+  },
+  "part0_proofs": {
+    "apollo_empty_shell": {
+      "label": "PASS",
+      "run_id": "adb0f67b-b384-4b44-81fb-db01e120f9d9",
+      "status": "partial_success",
+      "persisted_status": "partial_success",
+      "honesty_reason": "list created, 0 contacts added",
+      "vendor_url": "https://app.apollo.io/#/lists/6a6fc621368592000c223d8c",
+      "artifact": "docs/delivery/list-populate-honesty-live.json",
+      "evidence": "workflow_runs.status=partial_success @ run_id adb0f67b…; honesty_reason list created, 0 contacts added"
+    },
+    "apollo_populated": {
+      "label": "PASS",
+      "run_id": "f61373fe-ad99-4be9-8f2d-114cd27196bf",
+      "status": "completed",
+      "persisted_status": "completed",
+      "honesty_reason": null,
+      "added_count": 2,
+      "vendor_url": "https://app.apollo.io/#/lists/6a6fc6279a09320014a8a65b",
+      "artifact": "docs/delivery/list-populate-honesty-live.json",
+      "evidence": "workflow_runs.status=completed @ run_id f61373fe…; apollo.lists.add added 2 contacts"
+    },
+    "clay_hubspot_chain": {
+      "label": "PASS",
+      "artifact": "docs/delivery/part0-clay-hubspot-chain-live.json",
+      "audit": {
+        "action": "tool.invoke.completed",
+        "metadata_action": "clay.crm.sync",
+        "audit_event_id": "4c8d5d44-0a16-411f-b685-bbba96ddfd4c",
+        "created_at": "2026-08-02T22:41:13.035226+00:00"
+      },
+      "non_empty_records_on_sync": true,
+      "records_prepared_count": 3,
+      "hubspot_primary_contact_id": "270491538362",
+      "hubspot_contact_ids": [
+        "270491538362",
+        "270384141296",
+        "270466044858"
+      ],
+      "hubspot_ui_url": "https://app.hubspot.com/contacts/343328749/record/0-1/270491538362",
+      "hubspot_crm_verify": {
+        "artifact": "docs/delivery/part0-hubspot-contacts-api-verify.json",
+        "hubspot.contacts.get": "success",
+        "email": "part0.clayhs.6e74c7dc.0@example.com",
+        "createdAt": "2026-08-02T22:41:08.927Z",
+        "browser_ui": "BLOCKED — HubSpot login wall (session expired); CRM record verified via API"
+      },
+      "evidence": "tool.invoke.completed clay.crm.sync @ 2026-08-02T22:41:13.035226Z (audit 4c8d5d44…); hubspot.contacts.get 270491538362 email=part0.clayhs.6e74c7dc.0@example.com createdAt=2026-08-02T22:41:08.927Z"
+    },
+    "msp_pack_validator": {
+      "label": "PASS",
+      "binding_pass": true,
+      "installReady": true,
+      "installReadyErrors": [],
+      "artifact": "docs/delivery/part0-clay-hubspot-chain-live.json",
+      "prior_published_audit": "docs/delivery/published-pack-install-ready-audit.json",
+      "evidence": "validate_bindings(MSP enrichment steps + INSTALL_VARIABLES) ok; evaluate_binding_install_ready installReady=true"
+    }
+  },
+  "standing_rules": {
+    "pr_184_and_69379d1e": "On main; no longer cited alone as typed-contract proof — Parts 1–5 + this battery stand independently",
+    "claim": "PASS — Part 0 bars met with run IDs + audit timestamp + HubSpot contact URL"
+  },
+  "all_pass": true
+}

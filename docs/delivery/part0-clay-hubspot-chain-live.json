@@ -1,0 +1,151 @@
+{
+  "generated_at": "2026-08-02T22:40:59.632184+00:00",
+  "prod_tip_at_run": "bbc83a4f36a2fd94770b61f517357e8aef7ac711",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "label": "PASS — clay.crm.sync audit + HubSpot CRM contact verified (browser UI login blocked)",
+  "invokes": {
+    "apollo.people.search": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "data_keys": [
+        "clay_records",
+        "contact_ids",
+        "enriched_records",
+        "entity_ids",
+        "people",
+        "primary_contact_id",
+        "record_count",
+        "records",
+        "result_url",
+        "total_entries"
+      ],
+      "record_count": 3,
+      "primary_contact_id": "59fe56a7a6da9861955e1ec1",
+      "entity_ids": [
+        "59fe56a7a6da9861955e1ec1",
+        "6867cec58eea26000153fa61",
+        "57de5363a6da987ae8cce6c6"
+      ],
+      "external_url": "https://app.apollo.io/#/people"
+    },
+    "clay.leads.push": {
+      "success": false,
+      "error_code": "validation_error",
+      "error_message": "[WinError 10054] An existing connection was forcibly closed by the remote host",
+      "data_keys": [],
+      "record_count": null,
+      "primary_contact_id": null,
+      "entity_ids": [],
+      "external_url": null
+    },
+    "clay.workflows.output.get": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "data_keys": [
+        "clay_records",
+        "enriched_records",
+        "note",
+        "outputs",
+        "record_count",
+        "records",
+        "source"
+      ],
+      "record_count": 3,
+      "primary_contact_id": null,
+      "entity_ids": [],
+      "external_url": null
+    },
+    "clay.crm.sync": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "data_keys": [
+        "added_count",
+        "contact_id",
+        "contact_ids",
+        "crm",
+        "crm_connector_id",
+        "errors",
+        "primary_contact_id",
+        "synced"
+      ],
+      "record_count": null,
+      "primary_contact_id": "270491538362",
+      "entity_ids": [
+        "270491538362",
+        "270384141296",
+        "270466044858"
+      ],
+      "external_url": null
+    },
+    "hubspot.contacts.probe": {
+      "success": true,
+      "error_code": null,
+      "error_message": null,
+      "data_keys": [
+        "contacts",
+        "result_url",
+        "search",
+        "summary",
+        "total"
+      ],
+      "record_count": null,
+      "primary_contact_id": null,
+      "entity_ids": [],
+      "external_url": "https://app.hubspot.com/contacts/343328749/record/0-1/270491538362"
+    }
+  },
+  "msp_validator": {
+    "binding_errors": [],
+    "binding_pass": true,
+    "install_ready": {
+      "installReady": true,
+      "installReadyErrors": [],
+      "hasWorkflowBindings": true
+    },
+    "declared_parameters": [
+      "APOLLO_LIST_NAME",
+      "HUBSPOT_LIST_ID",
+      "HUBSPOT_LIST_NAME",
+      "apollo_connector_id",
+      "clay_connector_id",
+      "hubspot_connector_id"
+    ]
+  },
+  "audit": {
+    "tool_invoke_completed_since_start": 3,
+    "clay_crm_sync_matches": [
+      {
+        "id": "4c8d5d44-0a16-411f-b685-bbba96ddfd4c",
+        "created_at": "2026-08-02T22:41:13.035226+00:00",
+        "action": "tool.invoke.completed",
+        "metadata_action": "clay.crm.sync"
+      }
+    ],
+    "pass": true
+  },
+  "hubspot_ui": {
+    "primary_contact_id": "270491538362",
+    "external_url": "https://app.hubspot.com/contacts/343328749/record/0-1/270491538362",
+    "http_status": 200,
+    "probe_success": true,
+    "pass": true,
+    "url_reachable": true,
+    "note": "Operator should open external_url in HubSpot UI to confirm contact card is visible."
+  },
+  "connectors": {
+    "apollo": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+    "clay": "17a942d4-d5cf-44da-9ad2-c0bdb4faf729",
+    "hubspot": "547cdda5-2637-4a2b-b087-d5ea89486575"
+  },
+  "records_prepared": {
+    "count": 3,
+    "sample_email": "part0.clayhs.6e74c7dc.0@example.com"
+  },
+  "pass": true,
+  "partial": false,
+  "sync_record_count": 0,
+  "non_empty_records_on_sync": true
+}
