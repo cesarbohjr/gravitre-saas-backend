@@ -1,0 +1,81 @@
+{
+  "audit": "action-selection-confirmation",
+  "slice": "A-part5",
+  "date": "2026-08-02",
+  "git_sha_at_audit": "b8ca976b",
+  "thoroughness": "medium",
+  "verdict": "FRAGMENTED",
+  "verdict_evidence": "Selection uses three different choosers (LLM tool schemas + classical ChatActionMapper + predeclared workflow config.action). Shared: catalog_write_authority for write classification; invoke_tool for connector execution. Not shared: one call-time catalog selector or one pre-invoke input-schema validator across all paths.",
+  "fix_in_this_slice": false,
+  "shared_modules": [
+    "backend/app/connectors/action_catalog/",
+    "backend/app/services/connector_execution_matrix.py",
+    "backend/app/services/chat_tool_bridge.py",
+    "backend/app/services/tool_registry.py",
+    "backend/app/services/catalog_write_authority.py",
+    "backend/app/services/tool_service.py"
+  ],
+  "paths": [
+    {
+      "id": "governed_chat_unified_turn",
+      "entry_files": [
+        "backend/app/services/unified_turn_reasoning_service.py",
+        "backend/app/services/chat_connector_execution_service.py",
+        "backend/app/services/chat_action_mapper.py",
+        "backend/app/services/conversation_turn_controller.py"
+      ],
+      "selection_constrained_to_catalog_at_call_time": "PARTIAL",
+      "input_schemas_validated_before_invoke": "YES for staged writes via ActionWorkflowSchema; not generic jsonschema on every invoke",
+      "allowlist": "connector_execution_matrix + ToolRegistry; classical ChatActionMapper is a second selector",
+      "drift_risks": [
+        "LLM tool_choice vs ChatActionMapper can disagree",
+        "Tool narrowing can omit the correct catalog action",
+        "WorkflowFieldSpec validation ≠ OpenAI parameters_for_action schemas"
+      ]
+    },
+    {
+      "id": "react_agent_tool_loop",
+      "entry_files": [
+        "backend/app/operators/react_engine.py",
+        "backend/app/services/tool_registry.py",
+        "backend/app/services/react_write_gate.py"
+      ],
+      "selection_constrained_to_catalog_at_call_time": "YES for connected+permitted+narrowed ToolRegistry tools; MCP is an extra non-catalog set",
+      "input_schemas_validated_before_invoke": "NO central schema validate — executor-level ToolValidationError; writes redirected to chat approval staging",
+      "allowlist": "ToolRegistry + agent permitted_tools + MCP org tools",
+      "drift_risks": [
+        "Reads bypass chat schema staging",
+        "assistant_*/mcp_* exemptions outside catalog write authority"
+      ]
+    },
+    {
+      "id": "workflow_invoke_tool",
+      "entry_files": [
+        "backend/app/workflows/handlers.py",
+        "backend/app/workflows/binding_validation.py",
+        "backend/app/services/canvas_write_gate.py",
+        "backend/app/services/tool_service.py"
+      ],
+      "selection_constrained_to_catalog_at_call_time": "NO LLM selection — author-time config.action; membership via list_registered_actions() (executor registry), not chat matrix",
+      "input_schemas_validated_before_invoke": "NO validate_connector_plan in handlers; binding validator + executor checks only",
+      "allowlist": "list_registered_actions + partner executors",
+      "drift_risks": [
+        "Executor keys can diverge from chat-exposed matrix rows",
+        "Legacy STEP_TYPE_TO_ACTION bypasses invoke_tool naming",
+        "Canvas write gate shares catalog_write_authority but not chat param schema staging"
+      ]
+    }
+  ],
+  "drift_risks_global": [
+    "Three choosers: LLM tool schemas, ChatActionMapper scores, workflow config.action",
+    "Two schema layers: parameters_for_action (OpenAI) vs ActionWorkflowSchema (chat write staging)",
+    "Two membership sets: list_registered_actions vs connector_execution_matrix chat-executable",
+    "Write authority is shared; action selection is not"
+  ],
+  "related_tickets": ["STA-39", "STA-305", "STA-334"],
+  "related_docs": [
+    "docs/delivery/part-d-internal-external-routing-audit.json",
+    "docs/delivery/unified-turn-reasoning-phase0.md"
+  ],
+  "recommendation": "Defer unification to a later slice; do not claim ONE_MECHANISM until classical mapper and workflow bind share one call-time selector + schema gate."
+}
