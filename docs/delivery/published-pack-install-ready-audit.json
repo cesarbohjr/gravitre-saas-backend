@@ -1,0 +1,1110 @@
+{
+  "generatedAt": "2026-08-02T21:28:11.100115+00:00",
+  "source": "seed_catalog.list_catalog_assets",
+  "total": 72,
+  "installReadyPass": 66,
+  "installReadyFail": 6,
+  "topErrorCodes": [
+    [
+      "binding.action_unknown",
+      4
+    ],
+    [
+      "binding.dollar_unresolved",
+      2
+    ]
+  ],
+  "failedSlugs": [
+    "hubspot-lead-qualification",
+    "customer-health-monitoring",
+    "zendesk-ticket-triage",
+    "lead-routing-automation",
+    "qbr-preparation-workflow",
+    "support-operations-pack"
+  ],
+  "mspEnrichment": {
+    "slug": "msp-prospects-clay-hubspot-enrichment",
+    "assetType": "workflow",
+    "installReady": true,
+    "hasWorkflowBindings": true,
+    "installReadyErrors": [],
+    "manualSetupRequired": [],
+    "requiredConnectors": [
+      {
+        "connectorType": "apollo",
+        "required": true
+      },
+      {
+        "connectorType": "clay",
+        "required": true
+      },
+      {
+        "connectorType": "hubspot",
+        "required": true
+      }
+    ]
+  },
+  "deferredRemediation": {
+    "note": "Slice A labels failures; full pack remediation deferred",
+    "failCount": 6
+  },
+  "assets": [
+    {
+      "slug": "marketing-analyst",
+      "assetType": "ai_agent",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "product-icp-strategist",
+      "assetType": "ai_agent",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "content-writer",
+      "assetType": "ai_agent",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "marketing-designer",
+      "assetType": "ai_agent",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "marketing-ops-coordinator",
+      "assetType": "ai_agent",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "seo-analyst",
+      "assetType": "ai_agent",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "competitor-research-agent",
+      "assetType": "ai_agent",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "revenue-operations-agent",
+      "assetType": "ai_agent",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "sales-pipeline-agent",
+      "assetType": "ai_agent",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "customer-success-agent",
+      "assetType": "ai_agent",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "ticket-triage",
+      "assetType": "ai_agent",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "zendesk",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "cfo-agent",
+      "assetType": "ai_agent",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "sdr-coach",
+      "assetType": "ai_agent",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "lead-enrichment-coordinator",
+      "assetType": "ai_agent",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "hubspot-lead-qualification",
+      "assetType": "workflow",
+      "installReady": false,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [
+        {
+          "code": "binding.action_unknown",
+          "message": "step 'lookup' action 'hubspot.search_contacts' is not in the tool catalog",
+          "stepId": "lookup"
+        }
+      ],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "monthly-executive-reporting",
+      "assetType": "workflow",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "customer-health-monitoring",
+      "assetType": "workflow",
+      "installReady": false,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [
+        {
+          "code": "binding.action_unknown",
+          "message": "step 'accounts' action 'hubspot.search_contacts' is not in the tool catalog",
+          "stepId": "accounts"
+        }
+      ],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "marketing-campaign-production",
+      "assetType": "workflow",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        },
+        {
+          "connectorType": "google_analytics",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "marketing-attribution-analysis",
+      "assetType": "workflow",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        },
+        {
+          "connectorType": "google_analytics",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "competitive-intelligence-monitoring",
+      "assetType": "workflow",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "salesforce-pipeline-review",
+      "assetType": "workflow",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "salesforce",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "executive-summary-generation",
+      "assetType": "workflow",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "weekly-team-status-report",
+      "assetType": "workflow",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "slack",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "zendesk-ticket-triage",
+      "assetType": "workflow",
+      "installReady": false,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [
+        {
+          "code": "binding.dollar_unresolved",
+          "message": "step 'ticket_lookup' param 'ticket_id' references unresolved run/install parameter $ticket_id",
+          "stepId": "ticket_lookup",
+          "param": "ticket_id"
+        }
+      ],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "zendesk",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "msp-prospects-clay-hubspot-enrichment",
+      "assetType": "workflow",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "apollo",
+          "required": true
+        },
+        {
+          "connectorType": "clay",
+          "required": true
+        },
+        {
+          "connectorType": "hubspot",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "marketing-operations-knowledge",
+      "assetType": "knowledge_pack",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "saas-sales-knowledge",
+      "assetType": "knowledge_pack",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "customer-success-knowledge",
+      "assetType": "knowledge_pack",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "msp-operations-knowledge",
+      "assetType": "knowledge_pack",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "hr-operations-knowledge",
+      "assetType": "knowledge_pack",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "revenue-operations-knowledge",
+      "assetType": "knowledge_pack",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "marketing-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "google_search_console",
+          "required": false
+        },
+        {
+          "connectorType": "google_analytics",
+          "required": false
+        },
+        {
+          "connectorType": "hubspot",
+          "required": false
+        },
+        {
+          "connectorType": "semrush",
+          "required": false
+        },
+        {
+          "connectorType": "ahrefs",
+          "required": false
+        },
+        {
+          "connectorType": "pdl",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "revops-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": false
+        },
+        {
+          "connectorType": "salesforce",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "ai-search-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "ahrefs",
+          "required": false
+        },
+        {
+          "connectorType": "finseo",
+          "required": false
+        },
+        {
+          "connectorType": "ai_visibility_ui",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "finance-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "quickbooks",
+          "required": false
+        },
+        {
+          "connectorType": "xero",
+          "required": false
+        },
+        {
+          "connectorType": "netsuite",
+          "required": false
+        },
+        {
+          "connectorType": "plaid",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "hr-talent-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "workday",
+          "required": false
+        },
+        {
+          "connectorType": "bamboohr",
+          "required": false
+        },
+        {
+          "connectorType": "greenhouse",
+          "required": false
+        },
+        {
+          "connectorType": "gusto",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "sales-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        },
+        {
+          "connectorType": "apollo",
+          "required": false
+        },
+        {
+          "connectorType": "pdl",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "prospecting-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        },
+        {
+          "connectorType": "apollo",
+          "required": true
+        },
+        {
+          "connectorType": "pdl",
+          "required": false
+        },
+        {
+          "connectorType": "clay",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "support-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "zendesk",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "customer-success-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": false
+        },
+        {
+          "connectorType": "zendesk",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "msp-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "apollo",
+          "required": true
+        },
+        {
+          "connectorType": "hubspot",
+          "required": true
+        },
+        {
+          "connectorType": "clay",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "executive-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "fred",
+          "required": false
+        },
+        {
+          "connectorType": "sec_edgar",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "platform-health-intelligence-pack",
+      "assetType": "intelligence_pack",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "platform",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "content-strategist-agent",
+      "assetType": "ai_agent",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "pipeline-forecast-agent",
+      "assetType": "ai_agent",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "salesforce",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "renewal-risk-agent",
+      "assetType": "ai_agent",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "finance-variance-agent",
+      "assetType": "ai_agent",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "it-incident-triage-agent",
+      "assetType": "ai_agent",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "slack",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "talent-pipeline-agent",
+      "assetType": "ai_agent",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "lead-routing-automation",
+      "assetType": "workflow",
+      "installReady": false,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [
+        {
+          "code": "binding.action_unknown",
+          "message": "step 'lookup' action 'hubspot.search_contacts' is not in the tool catalog",
+          "stepId": "lookup"
+        }
+      ],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        },
+        {
+          "connectorType": "slack",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "campaign-performance-digest",
+      "assetType": "workflow",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "slack",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "qbr-preparation-workflow",
+      "assetType": "workflow",
+      "installReady": false,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [
+        {
+          "code": "binding.action_unknown",
+          "message": "step 'accounts' action 'hubspot.search_contacts' is not in the tool catalog",
+          "stepId": "accounts"
+        }
+      ],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "invoice-exception-review",
+      "assetType": "workflow",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "slack",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "sla-breach-escalation",
+      "assetType": "workflow",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "slack",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "new-hire-onboarding-checklist",
+      "assetType": "workflow",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "deal-desk-approval-flow",
+      "assetType": "workflow",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "salesforce",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "product-feedback-synthesis",
+      "assetType": "workflow",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "security-access-review",
+      "assetType": "workflow",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "product-marketing-knowledge",
+      "assetType": "knowledge_pack",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "enterprise-sales-knowledge",
+      "assetType": "knowledge_pack",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "support-operations-knowledge",
+      "assetType": "knowledge_pack",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "finance-close-knowledge",
+      "assetType": "knowledge_pack",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "compliance-operations-knowledge",
+      "assetType": "knowledge_pack",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "people-ops-knowledge",
+      "assetType": "knowledge_pack",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "revops-analytics-knowledge",
+      "assetType": "knowledge_pack",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "product-ops-knowledge",
+      "assetType": "knowledge_pack",
+      "installReady": true,
+      "hasWorkflowBindings": false,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": []
+    },
+    {
+      "slug": "marketing-operations-pack",
+      "assetType": "department_pack",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        },
+        {
+          "connectorType": "google_analytics",
+          "required": false
+        },
+        {
+          "connectorType": "apollo",
+          "required": false
+        },
+        {
+          "connectorType": "notion",
+          "required": false
+        },
+        {
+          "connectorType": "google_drive",
+          "required": false
+        },
+        {
+          "connectorType": "canva",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "msp-operations-pack",
+      "assetType": "department_pack",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "slack",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "revenue-operations-pack",
+      "assetType": "department_pack",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        },
+        {
+          "connectorType": "salesforce",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "customer-success-pack",
+      "assetType": "department_pack",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "hubspot",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "hr-operations-pack",
+      "assetType": "department_pack",
+      "installReady": true,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "slack",
+          "required": false
+        }
+      ]
+    },
+    {
+      "slug": "support-operations-pack",
+      "assetType": "department_pack",
+      "installReady": false,
+      "hasWorkflowBindings": true,
+      "installReadyErrors": [
+        {
+          "code": "binding.dollar_unresolved",
+          "message": "step 'ticket_lookup' param 'ticket_id' references unresolved run/install parameter $ticket_id",
+          "stepId": "ticket_lookup",
+          "param": "ticket_id"
+        }
+      ],
+      "manualSetupRequired": [],
+      "requiredConnectors": [
+        {
+          "connectorType": "zendesk",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

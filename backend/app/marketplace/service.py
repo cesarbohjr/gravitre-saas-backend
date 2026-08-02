@@ -1418,12 +1418,29 @@ def install_asset(
         settings=None,
         probe_apollo_discovery=False,
     )
+    from app.marketplace.install_ready import merge_install_ready
+
+    ready = merge_install_ready(
+        connector_can_install=bool(connector_validation["can_install"]),
+        asset=asset,
+    )
     if not connector_validation["can_install"] and not force:
         raise MarketplaceError(
             "Connect required apps before installing this asset",
             code="CONNECTORS_NOT_READY",
             blockers=connector_validation["blockers"],
             details={"checklist": connector_validation["checklist"]},
+        )
+    if not ready["installReady"] and ready["installReadyErrors"] and not force:
+        raise MarketplaceError(
+            "This asset has broken or ambiguous workflow bindings and is not install-ready",
+            code="BINDINGS_NOT_READY",
+            blockers=ready["bindingBlockers"],
+            details={
+                "installReady": False,
+                "installReadyErrors": ready["installReadyErrors"],
+                "manualSetupRequired": ready["manualSetupRequired"],
+            },
         )
 
     _check_plan_limits(client, org_id, str(asset["asset_type"]))
@@ -1590,12 +1607,17 @@ def preview_install(
         probe_apollo_discovery=True,
     )
     from app.marketplace.entitlements import get_entitlement_status
+    from app.marketplace.install_ready import merge_install_ready
 
     entitlement = get_entitlement_status(client, org_id, asset)
     payment_blockers: list[dict[str, Any]] = []
-    can_install = validation["can_install"] and (
-        not entitlement["requiresPayment"] or entitlement["hasEntitlement"]
+    entitlement_ok = not entitlement["requiresPayment"] or entitlement["hasEntitlement"]
+    ready = merge_install_ready(
+        connector_can_install=bool(validation["can_install"]),
+        asset=asset,
+        entitlement_blocks=not entitlement_ok,
     )
+    can_install = bool(ready["installReady"])
     if entitlement["requiresPayment"] and not entitlement["hasEntitlement"]:
         payment_blockers.append(
             {
@@ -1609,7 +1631,10 @@ def preview_install(
         "slug": asset.get("slug"),
         "assetType": asset.get("asset_type"),
         "canInstall": can_install,
-        "blockers": validation["blockers"] + payment_blockers,
+        "installReady": ready["installReady"],
+        "installReadyErrors": ready["installReadyErrors"],
+        "manualSetupRequired": ready["manualSetupRequired"],
+        "blockers": validation["blockers"] + payment_blockers + ready["bindingBlockers"],
         "connectorChecklist": validation["checklist"],
         **entitlement,
     }

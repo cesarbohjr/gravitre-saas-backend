@@ -484,7 +484,12 @@ def _workflows() -> list[CatalogAsset]:
             "msp-prospects-clay-hubspot-enrichment",
             "MSP Prospects Clay Enrichment → HubSpot Sync",
             "Sales",
-            [APOLLO, CLAY, HUBSPOT],
+            # Asset-local required flags — do not mutate shared APOLLO/CLAY constants.
+            [
+                {**APOLLO, "required": True, "label": "Apollo.io (MSP Prospects list + search)"},
+                {**CLAY, "required": True, "label": "Clay (enrichment push / CRM sync)"},
+                HUBSPOT,
+            ],
             build_msp_enrichment_workflow_steps(),
         ),
     ]
@@ -954,7 +959,8 @@ def _intelligence_packs() -> list[CatalogAsset]:
                     "label": "Apollo.io (discovery = BYO search plan)",
                 },
                 {**PDL, "required": False},
-                *([{**CLAY, "required": False}] if spec.pack_id == "prospecting-intelligence-pack" else []),
+                # Clay required: pack installs MSP enrichment (clay.leads.push → clay.crm.sync).
+                *([{**CLAY, "required": True, "label": "Clay (list enrichment)"}] if spec.pack_id == "prospecting-intelligence-pack" else []),
             ]
         elif spec.pack_id == "msp-intelligence-pack":
             required = [

@@ -58,15 +58,29 @@ def _sanitize_search(value: str) -> str:
     return cleaned[:120]
 
 
-def _checklist_summary(required_connectors: list[Any] | None, validation: dict[str, Any]) -> dict[str, Any]:
+def _checklist_summary(
+    required_connectors: list[Any] | None,
+    validation: dict[str, Any],
+    *,
+    asset: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    from app.marketplace.install_ready import merge_install_ready
+
     checklist = validation.get("checklist") or []
     required_total = sum(1 for item in checklist if item.get("required"))
     required_connected = sum(1 for item in checklist if item.get("required") and item.get("connected"))
+    ready = merge_install_ready(
+        connector_can_install=bool(validation.get("can_install", True)),
+        asset=asset or {"required_connectors": required_connectors or [], "config": {}},
+    )
     return {
         "requiredConnectorsTotal": required_total,
         "requiredConnectorsConnected": required_connected,
         "connectorsReady": required_connected >= required_total if required_total else True,
-        "canInstall": validation.get("can_install", True),
+        "canInstall": ready["installReady"],
+        "installReady": ready["installReady"],
+        "installReadyErrors": ready["installReadyErrors"],
+        "manualSetupRequired": ready["manualSetupRequired"],
         "connectorChecklist": checklist,
         "requiredConnectors": required_connectors or [],
     }
@@ -331,7 +345,7 @@ def list_marketplace_assets(
             row.get("required_connectors") or [],
             environment_name=environment_name,
         )
-        connector_summary = _checklist_summary(row.get("required_connectors"), validation)
+        connector_summary = _checklist_summary(row.get("required_connectors"), validation, asset=row)
         asset_id = str(row["id"])
         summary = _serialize_asset_summary(
             row,
@@ -407,7 +421,7 @@ def get_marketplace_asset(
         row.get("required_connectors") or [],
         environment_name=environment_name,
     )
-    connector_summary = _checklist_summary(row.get("required_connectors"), validation)
+    connector_summary = _checklist_summary(row.get("required_connectors"), validation, asset=row)
     installs = _active_installs_by_asset(client, org_id, [str(row["id"])])
     pack_items: list[dict[str, Any]] | None = None
     if row.get("asset_type") == "department_pack":
