@@ -3,6 +3,7 @@
  * All methods include auth headers automatically via fetcher
  */
 
+import { extractApiErrorMessage } from "@/lib/api-error-message"
 import { apiFetch, fetcher } from "@/lib/fetcher"
 import { requestAgentInterrupt } from "@/lib/agent-interrupts"
 import type {
@@ -201,57 +202,10 @@ function apiUrl(path: string): string {
 }
 
 function extractErrorMessage(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") return null
-  const data = payload as Record<string, unknown>
-
-  const detail = data.detail
-  if (typeof detail === "string" && detail.trim()) {
-    const nestedMatch = detail.match(/['"](?:detail|message)['"]\s*:\s*['"]([^'"]+)['"]/)
-    if (nestedMatch?.[1]) return nestedMatch[1]
-    const activeMatch = detail.match(/['"]active_run_id['"]\s*:\s*['"]([0-9a-f-]{8,})['"]/i)
-    if (activeMatch?.[1] && /active run/i.test(detail)) {
-      return `This workflow already has a run in progress (${activeMatch[1].slice(0, 8)}…). Open that run to cancel it, then try again.`
-    }
-    return detail
-  }
-  if (detail && typeof detail === "object") {
-    const detailObj = detail as Record<string, unknown>
-    const detailMessage = detailObj.message
-    if (typeof detailMessage === "string" && detailMessage.trim()) return detailMessage
-    const nestedDetail = detailObj.detail
-    if (typeof nestedDetail === "string" && nestedDetail.trim()) return nestedDetail
-    const activeRunId = detailObj.active_run_id
-    if (typeof activeRunId === "string" && activeRunId.trim()) {
-      return `This workflow already has a run in progress (${activeRunId.slice(0, 8)}…). Open that run to cancel it, then try again.`
-    }
-  }
-  if (Array.isArray(detail)) {
-    const first = detail[0]
-    if (first && typeof first === "object") {
-      const msg = (first as Record<string, unknown>).msg
-      if (typeof msg === "string" && msg.trim()) return msg
-    }
-  }
-
-  const details = data.details
-  if (details && typeof details === "object") {
-    const detailsObj = details as Record<string, unknown>
-    const detailsMessage = detailsObj.message ?? detailsObj.reason
-    if (typeof detailsMessage === "string" && detailsMessage.trim()) return detailsMessage
-  }
-
-  const error = data.error
-  if (typeof error === "string" && error.trim()) return error
-  if (error && typeof error === "object") {
-    const errorObj = error as Record<string, unknown>
-    const nested = errorObj.message ?? errorObj.detail
-    if (typeof nested === "string" && nested.trim()) return nested
-  }
-
-  const message = data.message
-  if (typeof message === "string" && message.trim()) return message
-  return null
+  return extractApiErrorMessage(payload)
 }
+
+export { extractApiErrorMessage }
 
 export class ApiRequestError extends Error {
   status: number

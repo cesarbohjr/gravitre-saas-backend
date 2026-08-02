@@ -49,6 +49,7 @@ import { classifyCanvasNodeWriteAuthority } from "@/lib/workflows/write-authorit
 import type { WorkflowDryRunResponse } from "@/types/api"
 import {
   agentsApi,
+  ApiRequestError,
   connectorsApi,
   marketplaceApi,
   mesonApi,
@@ -4352,8 +4353,25 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       setExecutionStatus("error")
       const message = err instanceof Error ? err.message : "Execution failed"
       setExecutionError(message)
+      const payload =
+        err instanceof ApiRequestError && err.payload && typeof err.payload === "object"
+          ? (err.payload as {
+              detail?: { active_run_id?: string }
+              details?: { active_run_id?: string }
+            })
+          : undefined
+      const blockedId =
+        (typeof payload?.detail?.active_run_id === "string" && payload.detail.active_run_id) ||
+        (typeof payload?.details?.active_run_id === "string" && payload.details.active_run_id) ||
+        null
       toast.error(saved ? "Execution failed" : "Save failed", {
         description: message,
+        action: blockedId
+          ? {
+              label: "Open run",
+              onClick: () => router.push(`/runs/${blockedId}`),
+            }
+          : undefined,
       })
     }
     return

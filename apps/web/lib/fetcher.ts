@@ -1,3 +1,4 @@
+import { extractApiErrorMessage } from "@/lib/api-error-message"
 import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import { getEnvironmentHeader } from "@/lib/environment-context"
 import { getDepartmentHeader } from "@/lib/department-context"
@@ -214,49 +215,7 @@ export function formatUnknownError(error: unknown, fallback = "Something went wr
 }
 
 function formatErrorPayload(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") return null
-  const data = payload as Record<string, unknown>
-
-  const detail = data.detail
-  if (typeof detail === "string" && detail.trim()) {
-    // Backend sometimes stringifies a nested dict (Python repr with single quotes).
-    const nestedMatch = detail.match(/['"]detail['"]\s*:\s*['"]([^'"]+)['"]/)
-    if (nestedMatch?.[1]) return nestedMatch[1]
-    const activeMatch = detail.match(/['"]active_run_id['"]\s*:\s*['"]([0-9a-f-]{8,})['"]/i)
-    if (activeMatch?.[1] && /active run/i.test(detail)) {
-      return `This workflow already has a run in progress (${activeMatch[1].slice(0, 8)}…). Open that run to cancel it, then try again.`
-    }
-    return detail
-  }
-  if (detail && typeof detail === "object") {
-    const detailObj = detail as Record<string, unknown>
-    if (typeof detailObj.message === "string" && detailObj.message.trim()) {
-      return detailObj.message
-    }
-    if (typeof detailObj.detail === "string" && detailObj.detail.trim()) {
-      return detailObj.detail
-    }
-    const activeRunId = detailObj.active_run_id
-    if (typeof activeRunId === "string" && activeRunId.trim()) {
-      return `This workflow already has a run in progress (${activeRunId.slice(0, 8)}…). Open that run to cancel it, then try again.`
-    }
-  }
-  if (Array.isArray(detail)) {
-    const first = detail[0]
-    if (first && typeof first === "object") {
-      const msg = (first as Record<string, unknown>).msg
-      if (typeof msg === "string" && msg.trim()) return msg
-    }
-  }
-
-  const error = data.error
-  if (typeof error === "string" && error.trim()) return error
-  if (error && typeof error === "object") {
-    const errorObj = error as Record<string, unknown>
-    if (typeof errorObj.message === "string" && errorObj.message.trim()) return errorObj.message
-    if (typeof errorObj.code === "string" && errorObj.code.trim()) return errorObj.code
-  }
-  return null
+  return extractApiErrorMessage(payload)
 }
 
 export async function fetcher<T>(url: string): Promise<T> {

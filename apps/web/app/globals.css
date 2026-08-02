@@ -377,14 +377,24 @@
   }
   [data-sonner-toast][data-styled="false"] {
     font-family: inherit;
+    align-items: center;
+    gap: 0.75rem;
   }
+  /* Sonner defaults [data-icon] to 16×16; our brand icons are 32px circles. */
   [data-sonner-toast][data-styled="false"] [data-icon] {
+    display: flex;
+    width: 2rem;
+    height: 2rem;
     margin: 0;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
   }
   [data-sonner-toast][data-styled="false"] [data-content] {
     display: flex;
     flex: 1;
     flex-direction: column;
+    justify-content: center;
     gap: 0.125rem;
     min-width: 0;
   }
