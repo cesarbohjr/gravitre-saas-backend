@@ -238,9 +238,19 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
 
   const runErrorSummary = useMemo(() => summarizeStepError(run.errorMessage), [run.errorMessage])
 
-  const canInterrupt = run.status === "running" || run.status === "paused"
+  const canInterrupt =
+    run.status === "running" ||
+    run.status === "paused" ||
+    run.status === "pending" ||
+    run.status === "pending_approval" ||
+    run.status === "approved"
   const canPause = run.status === "running"
-  const canCancel = run.status === "running" || run.status === "paused"
+  const canCancel =
+    run.status === "running" ||
+    run.status === "paused" ||
+    run.status === "pending" ||
+    run.status === "pending_approval" ||
+    run.status === "approved"
   const canResumePaused = run.status === "paused"
   const canCompensate = run.status === "failed" && isAdmin
   const canResolveGraphApproval = run.status === "awaiting_approval" && isAdmin
@@ -267,8 +277,10 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
     }
     setIsPausing(true)
     try {
-      await runsApi.pause(id)
-      toast.success(interruptRequestedMessage("pause"), { description: interruptRequestedDescription() })
+      const result = await runsApi.pause(id)
+      toast.success(interruptRequestedMessage("pause", { appliedEagerly: result.appliedEagerly }), {
+        description: interruptRequestedDescription({ appliedEagerly: result.appliedEagerly }),
+      })
       await mutate()
     } catch (err) {
       toast.error("Pause failed", {
@@ -286,8 +298,10 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
     }
     setIsCancelling(true)
     try {
-      await runsApi.cancel(id)
-      toast.success(interruptRequestedMessage("cancel"), { description: interruptRequestedDescription() })
+      const result = await runsApi.cancel(id)
+      toast.success(interruptRequestedMessage("cancel", { appliedEagerly: result.appliedEagerly }), {
+        description: interruptRequestedDescription({ appliedEagerly: result.appliedEagerly }),
+      })
       await mutate()
     } catch (err) {
       toast.error("Cancel failed", {
@@ -301,8 +315,15 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
   const handleRetry = async () => {
     setIsRetryingStep(true)
     try {
-      await runsApi.retry(id)
-      toast.success("Retry started")
+      const result = await runsApi.retry(id)
+      const newRunId = typeof result?.run_id === "string" ? result.run_id : null
+      toast.success("New run started", {
+        description: newRunId ? `Opened run ${newRunId.slice(0, 8)}…` : "A fresh execution was created.",
+      })
+      if (newRunId && newRunId !== id) {
+        window.location.assign(`/runs/${newRunId}`)
+        return
+      }
       await mutate()
     } catch (err) {
       toast.error("Retry failed", {
@@ -572,14 +593,14 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
                 size="sm"
                 className="h-8 gap-2"
                 onClick={handleRetry}
-                disabled={isRetryingStep || run.status === "running"}
+                disabled={isRetryingStep}
               >
                 {isRetryingStep ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <RefreshCw className="h-3.5 w-3.5" />
                 )}
-                Retry
+                {run.status === "running" || run.status === "paused" ? "Cancel & retry" : "Retry"}
               </Button>
             </div>
           </div>
@@ -601,6 +622,52 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
             Pause and cancel require admin access.
           </div>
         )}
+
+        {run.stepsTotal > 0 ? (
+          <div className="mb-6 rounded-lg border border-border bg-card p-4">
+            <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+              <span>
+                {run.status === "running"
+                  ? "Progress"
+                  : run.status === "completed"
+                    ? "Finished"
+                    : run.status === "failed"
+                      ? "Stopped after failure"
+                      : run.status === "cancelled"
+                        ? "Cancelled"
+                        : "Progress"}
+              </span>
+              <span className="font-mono text-foreground">
+                {run.stepsCompleted}/{run.stepsTotal} steps
+              </span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-secondary">
+              <div
+                className={
+                  run.status === "failed"
+                    ? "h-full rounded-full bg-destructive transition-all"
+                    : run.status === "cancelled"
+                      ? "h-full rounded-full bg-zinc-400 transition-all"
+                      : run.status === "running"
+                        ? "h-full rounded-full bg-blue-500 transition-all"
+                        : "h-full rounded-full bg-emerald-500 transition-all"
+                }
+                style={{
+                  width: `${Math.min(
+                    100,
+                    Math.round((run.stepsCompleted / Math.max(run.stepsTotal, 1)) * 100),
+                  )}%`,
+                }}
+              />
+            </div>
+            {run.status === "running" && run.stepsCompleted === 0 ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Waiting for the first step to finish. If this stays stuck, use Cancel — status updates
+                immediately so you can start a new run.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
           <div className="rounded-lg border border-border bg-card p-4">

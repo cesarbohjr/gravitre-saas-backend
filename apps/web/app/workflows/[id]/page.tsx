@@ -43,8 +43,17 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
   const { data: latestRuns, mutate: mutateLatestRuns } = useSWR(
     user ? ["workflow-latest-run", id] : null,
     () => runsApi.list({ workflow_id: id, limit: 1 }),
+    { refreshInterval: 5000 },
   )
   const latestRun = latestRuns?.runs?.[0]
+
+  const { data: activeRuns, mutate: mutateActiveRuns } = useSWR(
+    user ? ["workflow-active-run", id] : null,
+    () => runsApi.list({ workflow_id: id, status: "running", limit: 1 }),
+    { refreshInterval: 4000 },
+  )
+  const activeRun = activeRuns?.runs?.[0]
+  const activeRunId = activeRun?.id ? String(activeRun.id) : null
 
   const intelligenceNodes: IntelligenceDrawerNode[] = (builder?.nodes ?? []).map((node) => ({
     id: String(node.id),
@@ -54,6 +63,7 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
 
   const isActive = String(workflow?.status ?? "").toLowerCase() === "active"
   const canRunLive = intelligenceNodes.length > 0
+  const hasActiveRun = Boolean(activeRunId)
 
   const handleRunNow = async () => {
     if (!canRunLive || isRunning) return
@@ -66,12 +76,48 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
       const result = await workflowsApi.execute({ workflow_id: id })
       const runId = result.run_id
       toast.success("Production run started")
-      await mutateLatestRuns()
+      await Promise.all([mutateLatestRuns(), mutateActiveRuns()])
       if (runId) {
         router.push(`/runs/${runId}`)
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to start production run")
+      const message = err instanceof Error ? err.message : "Failed to start production run"
+      const payload =
+        err && typeof err === "object" && "payload" in err
+          ? (err as { payload?: { detail?: { active_run_id?: string } } }).payload
+          : undefined
+      const blockedId =
+        typeof payload?.detail?.active_run_id === "string" ? payload.detail.active_run_id : activeRunId
+      toast.error(message, {
+        action: blockedId
+          ? {
+              label: "Open run",
+              onClick: () => router.push(`/runs/${blockedId}`),
+            }
+          : undefined,
+      })
+      await mutateActiveRuns()
+    } finally {
+      setIsRunning(false)
+    }
+  }
+
+  const handleCancelActiveRun = async () => {
+    if (!activeRunId) return
+    setIsRunning(true)
+    try {
+      const result = await runsApi.cancel(activeRunId)
+      toast.success(
+        result.appliedEagerly ? "Active run cancelled." : "Cancel requested.",
+        {
+          description: result.appliedEagerly
+            ? "You can start a new run now."
+            : "Execution stops before the next step.",
+        },
+      )
+      await Promise.all([mutateLatestRuns(), mutateActiveRuns()])
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to cancel active run")
     } finally {
       setIsRunning(false)
     }
@@ -125,7 +171,7 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
             </Button>
             <Button
               size="sm"
-              disabled={!canRunLive || isRunning || isLoading || Boolean(error)}
+              disabled={!canRunLive || isRunning || isLoading || Boolean(error) || hasActiveRun}
               onClick={() => void handleRunNow()}
             >
               {isRunning ? (
@@ -153,6 +199,45 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
           <>
             <WorkflowPreRunPanel workflowId={id} nodes={intelligenceNodes} />
 
+            {hasActiveRun ? (
+              <Card className="border-blue-500/40 bg-blue-500/[0.06]">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                    Run in progress
+                  </CardTitle>
+                  <CardDescription>
+                    A one-time production run is active. Finished runs leave this state; only schedules
+                    create later reruns.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Run{" "}
+                    <Link
+                      href={`/runs/${activeRunId}`}
+                      className="font-mono text-foreground underline-offset-4 hover:underline"
+                    >
+                      {activeRunId?.slice(0, 8)}…
+                    </Link>
+                  </p>
+                  <div className="flex flex-wrap gap-2 shrink-0">
+                    <Button size="sm" variant="outline" asChild>
+                      <Link href={`/runs/${activeRunId}`}>View progress</Link>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={isRunning}
+                      onClick={() => void handleCancelActiveRun()}
+                    >
+                      Cancel run
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null}
+
             <Card className="border-primary/25 bg-primary/[0.03]">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -160,15 +245,17 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
                   Run in production
                 </CardTitle>
                 <CardDescription>
-                  This is the live path. Run now starts a real execution against your connected tools.
-                  Schedule runs sets one-time or recurring production runs.
+                  Run now starts one execution. Use Schedule runs for daily, weekly, or monthly repeats.
+                  “Workflow is active” means the workflow is enabled — not that a run is in progress.
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-muted-foreground max-w-xl">
-                  {isActive
-                    ? "Workflow is active. Production runs use the current builder graph and linked connectors."
-                    : "Workflow is not active yet. Activate & run will turn it on, then start a production execution."}
+                  {hasActiveRun
+                    ? "A run is already in progress. Cancel it above, or wait for it to finish, before starting another."
+                    : isActive
+                      ? "Ready for a one-time production run using the current builder graph and linked connectors."
+                      : "Workflow is not enabled yet. Activate & run turns it on, then starts a production execution."}
                   {!canRunLive ? " Add at least one step in the builder first." : null}
                 </p>
                 <div className="flex flex-wrap gap-2 shrink-0">
@@ -180,7 +267,7 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
                   </Button>
                   <Button
                     size="sm"
-                    disabled={!canRunLive || isRunning}
+                    disabled={!canRunLive || isRunning || hasActiveRun}
                     onClick={() => void handleRunNow()}
                   >
                     {isRunning ? (
@@ -197,6 +284,10 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">Latest run</CardTitle>
+                <CardDescription>
+                  Most recent run for this workflow only. Completed one-time runs show as completed — not
+                  running.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 {!latestRun ? (
@@ -214,8 +305,8 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
                         </Button>
                       ) : null}
                     </div>
-                    {latestRun.status === "failed" ? (
-                      <Button size="sm" variant="outline" disabled={isRunning} onClick={() => void handleRunNow()}>
+                    {latestRun.status === "failed" || latestRun.status === "cancelled" ? (
+                      <Button size="sm" variant="outline" disabled={isRunning || hasActiveRun} onClick={() => void handleRunNow()}>
                         Run again
                       </Button>
                     ) : null}

@@ -31,6 +31,7 @@ def _public(row: dict[str, Any]) -> dict[str, Any]:
         "status": row.get("status"),
         "source": row.get("source"),
         "createdAt": row.get("created_at"),
+        "appliedEagerly": bool(row.get("applied_eagerly")),
     }
 
 

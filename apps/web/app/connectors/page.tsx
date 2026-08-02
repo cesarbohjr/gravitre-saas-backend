@@ -1218,8 +1218,8 @@ function AddConnectorModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-2xl bg-card border-border max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-2xl bg-card border-border max-h-[min(85vh,900px)] min-h-0 overflow-hidden flex flex-col gap-0 p-0">
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-violet-500/20 ring-1 ring-blue-500/20">
               <Plus className="h-5 w-5 text-blue-400" />
@@ -1238,6 +1238,7 @@ function AddConnectorModal({
           </div>
         </DialogHeader>
 
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6">
         <AnimatePresence mode="wait">
           {step === "select" ? (
             <motion.div
@@ -1245,7 +1246,7 @@ function AddConnectorModal({
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="flex-1 overflow-hidden flex flex-col"
+              className="flex flex-col pb-2"
             >
               {/* Search */}
               <div className="relative mb-3">
@@ -1301,7 +1302,7 @@ function AddConnectorModal({
               </div>
 
               {/* Connector Grid */}
-              <div className="flex-1 overflow-y-auto pr-2 -mr-2 space-y-4">
+              <div className="space-y-4">
                 {Object.keys(groupedConnectors).length === 0 && (
                   <div className="text-center py-8">
                     <p className="text-sm text-muted-foreground">No connectors found</p>
@@ -1987,8 +1988,9 @@ function AddConnectorModal({
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
 
-        <DialogFooter className="mt-4 pt-4 border-t border-border">
+        <DialogFooter className="shrink-0 mt-0 px-6 py-4 border-t border-border bg-card">
           <Button variant="outline" onClick={handleClose}>Cancel</Button>
           {step === "configure" && (
             <Button 

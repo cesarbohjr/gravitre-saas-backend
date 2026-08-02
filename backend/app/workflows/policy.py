@@ -114,6 +114,22 @@ def check_concurrency(
     return None
 
 
+def active_run_conflict_detail(active_run_id: str) -> dict[str, str]:
+    """Plain-language 409 payload for execute concurrency conflicts."""
+    short = active_run_id[:8] if active_run_id else ""
+    return {
+        "message": (
+            f"This workflow already has a run in progress ({short}…). "
+            "Open that run to monitor or cancel it, then try again."
+        ),
+        "detail": (
+            f"This workflow already has a run in progress ({short}…). "
+            "Open that run to monitor or cancel it, then try again."
+        ),
+        "active_run_id": active_run_id,
+    }
+
+
 def validate_execute_steps(definition: dict) -> None:
     """Validate all steps are in EXECUTE_ALLOWED_STEP_TYPES; email_send requires connector_id. Raises ValueError."""
     steps = definition.get("steps") or []

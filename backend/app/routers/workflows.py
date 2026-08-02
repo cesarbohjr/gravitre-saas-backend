@@ -54,6 +54,7 @@ from app.policy.engine import (
 )
 from app.workflows.policy import (
     PolicyResolutionError,
+    active_run_conflict_detail,
     check_concurrency,
     get_user_role,
     resolve_policy,
@@ -1750,7 +1751,7 @@ async def execute_workflow(
     if active_run_id:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={"detail": "Workflow already has an active run", "active_run_id": active_run_id},
+            detail=active_run_conflict_detail(active_run_id),
         )
 
     allowed_envs = [e.strip() for e in (settings.policy_allowed_envs or "").split(",") if e.strip()]
@@ -1803,7 +1804,7 @@ async def execute_workflow(
             if active_run_id:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail={"detail": "Workflow already has an active run", "active_run_id": active_run_id},
+                    detail=active_run_conflict_detail(active_run_id),
                 )
             raise
         run_id = str(run["id"])
@@ -1908,7 +1909,7 @@ async def execute_workflow(
             if active_run_id:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail={"detail": "Workflow already has an active run", "active_run_id": active_run_id},
+                    detail=active_run_conflict_detail(active_run_id),
                 )
             raise
         run_id = str(run["id"])
@@ -2046,7 +2047,7 @@ def _execute_workflow_with_context(
     if active_run_id:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={"detail": "Workflow already has an active run", "active_run_id": active_run_id},
+            detail=active_run_conflict_detail(active_run_id),
         )
 
     allowed_envs = [e.strip() for e in (settings.policy_allowed_envs or "").split(",") if e.strip()]
@@ -2102,7 +2103,7 @@ def _execute_workflow_with_context(
             if active_run_id:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail={"detail": "Workflow already has an active run", "active_run_id": active_run_id},
+                    detail=active_run_conflict_detail(active_run_id),
                 )
             raise
         run_id = str(run["id"])
@@ -2181,7 +2182,7 @@ def _execute_workflow_with_context(
             if active_run_id:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail={"detail": "Workflow already has an active run", "active_run_id": active_run_id},
+                    detail=active_run_conflict_detail(active_run_id),
                 )
             raise
         run_id = str(run["id"])
@@ -3757,7 +3758,12 @@ async def list_runs_alias(
     settings: Annotated[Settings, Depends(get_settings)],
     status: str | None = Query(default=None),
     approval_status: str | None = Query(default=None, alias="approvalStatus"),
-    workflow_id: UUID | None = Query(default=None, alias="workflowId"),
+    workflow_id: UUID | None = Query(
+        default=None,
+        alias="workflowId",
+        description="Filter by workflow (accepts workflowId or workflow_id)",
+    ),
+    workflow_id_snake: UUID | None = Query(default=None, alias="workflow_id", include_in_schema=False),
     run_type: str | None = Query(default=None),
     start_at: str | None = Query(default=None),
     end_at: str | None = Query(default=None),
@@ -3789,8 +3795,9 @@ async def list_runs_alias(
         q = q.eq("status", status)
     if approval_status:
         q = q.eq("approval_status", approval_status)
-    if workflow_id:
-        q = q.eq("workflow_id", str(workflow_id))
+    resolved_workflow_id = workflow_id or workflow_id_snake
+    if resolved_workflow_id:
+        q = q.eq("workflow_id", str(resolved_workflow_id))
     if run_type:
         q = q.eq("run_type", run_type)
     if start_at or date_from:
@@ -3849,11 +3856,14 @@ async def retry_run_alias(
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    _user, org_id = _admin
+    """Cancel a stuck/active run if needed, then start a fresh execute of the same workflow."""
+    user, org_id = _admin
+    if settings.disable_execute:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Execute is disabled")
     client = get_supabase_client(settings)
-    run = (
+    run_rows = (
         client.table("workflow_runs")
-        .select("id, status")
+        .select("id, status, workflow_id, parameters")
         .eq("org_id", org_id)
         .eq("environment", environment_name)
         .eq("id", str(run_id))
@@ -3861,10 +3871,38 @@ async def retry_run_alias(
         .execute()
         .data
     )
-    if not run:
+    if not run_rows:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
-    patch_workflow_run(client, str(run_id), {"status": "running", "error_message": None})
-    return {"success": True}
+    run = run_rows[0]
+    workflow_id = run.get("workflow_id")
+    if not workflow_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Run missing workflow reference")
+    run_status = str(run.get("status") or "")
+    if run_status in {"running", "paused", "pending", "pending_approval", "approved"}:
+        from app.services.agent_interrupt_service import request_interrupt
+
+        request_interrupt(
+            client,
+            org_id=org_id,
+            target_type="workflow_run",
+            target_id=str(run_id),
+            signal="cancel",
+            actor_id=user["user_id"],
+            source="ui",
+            metadata={"reason": "retry_replaced_active_run"},
+        )
+    parameters = run.get("parameters") if isinstance(run.get("parameters"), dict) else {}
+    retry_params = {k: v for k, v in parameters.items() if k not in {"rollback_of"}}
+    return _execute_workflow_with_context(
+        client=client,
+        settings=settings,
+        org_id=org_id,
+        environment_name=environment_name,
+        workflow_id=str(workflow_id),
+        parameters=retry_params,
+        actor_id=user["user_id"],
+        trigger_type="retry",
+    )
 
 
 @runs_router.post("/{run_id}/resume-paused")

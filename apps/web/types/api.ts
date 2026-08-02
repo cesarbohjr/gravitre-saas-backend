@@ -2312,6 +2312,8 @@ export interface AgentInterrupt {
   status: string
   source?: string | null
   createdAt?: string | null
+  /** True when cancel/pause settled the run immediately (clears concurrency lock). */
+  appliedEagerly?: boolean
 }
 
 // ML model registry (/api/ml)

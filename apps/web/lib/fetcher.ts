@@ -218,11 +218,27 @@ function formatErrorPayload(payload: unknown): string | null {
   const data = payload as Record<string, unknown>
 
   const detail = data.detail
-  if (typeof detail === "string" && detail.trim()) return detail
+  if (typeof detail === "string" && detail.trim()) {
+    // Backend sometimes stringifies a nested dict (Python repr with single quotes).
+    const nestedMatch = detail.match(/['"]detail['"]\s*:\s*['"]([^'"]+)['"]/)
+    if (nestedMatch?.[1]) return nestedMatch[1]
+    const activeMatch = detail.match(/['"]active_run_id['"]\s*:\s*['"]([0-9a-f-]{8,})['"]/i)
+    if (activeMatch?.[1] && /active run/i.test(detail)) {
+      return `This workflow already has a run in progress (${activeMatch[1].slice(0, 8)}…). Open that run to cancel it, then try again.`
+    }
+    return detail
+  }
   if (detail && typeof detail === "object") {
     const detailObj = detail as Record<string, unknown>
     if (typeof detailObj.message === "string" && detailObj.message.trim()) {
       return detailObj.message
+    }
+    if (typeof detailObj.detail === "string" && detailObj.detail.trim()) {
+      return detailObj.detail
+    }
+    const activeRunId = detailObj.active_run_id
+    if (typeof activeRunId === "string" && activeRunId.trim()) {
+      return `This workflow already has a run in progress (${activeRunId.slice(0, 8)}…). Open that run to cancel it, then try again.`
     }
   }
   if (Array.isArray(detail)) {

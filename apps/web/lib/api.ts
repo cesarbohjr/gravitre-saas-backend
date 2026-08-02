@@ -205,16 +205,24 @@ function extractErrorMessage(payload: unknown): string | null {
   const data = payload as Record<string, unknown>
 
   const detail = data.detail
-  if (typeof detail === "string" && detail.trim()) return detail
+  if (typeof detail === "string" && detail.trim()) {
+    const nestedMatch = detail.match(/['"](?:detail|message)['"]\s*:\s*['"]([^'"]+)['"]/)
+    if (nestedMatch?.[1]) return nestedMatch[1]
+    const activeMatch = detail.match(/['"]active_run_id['"]\s*:\s*['"]([0-9a-f-]{8,})['"]/i)
+    if (activeMatch?.[1] && /active run/i.test(detail)) {
+      return `This workflow already has a run in progress (${activeMatch[1].slice(0, 8)}…). Open that run to cancel it, then try again.`
+    }
+    return detail
+  }
   if (detail && typeof detail === "object") {
     const detailObj = detail as Record<string, unknown>
-    const nestedDetail = detailObj.detail
-    if (typeof nestedDetail === "string" && nestedDetail.trim()) return nestedDetail
     const detailMessage = detailObj.message
     if (typeof detailMessage === "string" && detailMessage.trim()) return detailMessage
+    const nestedDetail = detailObj.detail
+    if (typeof nestedDetail === "string" && nestedDetail.trim()) return nestedDetail
     const activeRunId = detailObj.active_run_id
     if (typeof activeRunId === "string" && activeRunId.trim()) {
-      return `Workflow already has an active run (${activeRunId.slice(0, 8)}…). Open Runs to monitor it.`
+      return `This workflow already has a run in progress (${activeRunId.slice(0, 8)}…). Open that run to cancel it, then try again.`
     }
   }
   if (Array.isArray(detail)) {
@@ -926,7 +934,8 @@ export const runsApi = {
   list: (filters?: { status?: string; workflow_id?: string; limit?: number; offset?: number }) => {
     const params = new URLSearchParams()
     if (filters?.status) params.set("status", filters.status)
-    if (filters?.workflow_id) params.set("workflow_id", filters.workflow_id)
+    // Backend Query alias is workflowId (snake_case also accepted).
+    if (filters?.workflow_id) params.set("workflowId", filters.workflow_id)
     if (filters?.limit) params.set("limit", String(filters.limit))
     if (filters?.offset) params.set("offset", String(filters.offset))
     const query = params.toString()
@@ -935,14 +944,23 @@ export const runsApi = {
   get: (id: string) => fetcher<Run>(apiUrl(`/api/runs/${id}`)),
   getWithSteps: (id: string) => fetcher<RunDetailResponse>(apiUrl(`/api/runs/${id}`)),
   cancel: async (id: string) => {
-    await requestAgentInterrupt("workflow_run", id, "cancel")
-    return { success: true, interrupt: "cancel" as const }
+    const interrupt = await requestAgentInterrupt("workflow_run", id, "cancel")
+    return {
+      success: true,
+      interrupt: "cancel" as const,
+      appliedEagerly: Boolean(interrupt.appliedEagerly),
+    }
   },
   pause: async (id: string) => {
-    await requestAgentInterrupt("workflow_run", id, "pause")
-    return { success: true, interrupt: "pause" as const }
+    const interrupt = await requestAgentInterrupt("workflow_run", id, "pause")
+    return {
+      success: true,
+      interrupt: "pause" as const,
+      appliedEagerly: Boolean(interrupt.appliedEagerly),
+    }
   },
-  retry: (id: string) => postJson<Run>(apiUrl(`/api/runs/${id}/retry`), {}),
+  retry: (id: string) =>
+    postJson<{ run_id?: string; status?: string; success?: boolean }>(apiUrl(`/api/runs/${id}/retry`), {}),
   retryStep: (runId: string, stepId: string) =>
     postJson<{ success?: boolean; status?: string }>(apiUrl(`/api/runs/${runId}/steps/${stepId}/retry`), {}),
   resumePaused: (id: string) =>

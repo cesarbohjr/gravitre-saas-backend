@@ -112,16 +112,47 @@ def request_interrupt(
     }
     inserted = client.table("agent_execution_interrupts").insert(row).execute()
     interrupt = dict(inserted.data[0]) if inserted.data else row
+    applied_eagerly = False
 
     if target_type == "agent_job":
         if signal == "cancel":
             client.table("agent_jobs").update({"status": "cancelled", "finished_at": _now(), "updated_at": _now()}).eq(
                 "id", target_id
             ).eq("org_id", org_id).in_("status", ["queued", "running"]).execute()
+            applied_eagerly = True
         elif signal == "pause":
             client.table("agent_jobs").update({"status": "paused", "updated_at": _now()}).eq("id", target_id).eq(
                 "org_id", org_id
             ).in_("status", ["queued", "running"]).execute()
+            applied_eagerly = True
+    elif target_type == "workflow_run":
+        # Eager settle: dead/hung workers never call enforce_interrupt, which left
+        # runs stuck in RUNNING and blocked concurrency ("already has an active run").
+        if signal == "cancel":
+            from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
+
+            finalize_execution_outcome(
+                client,
+                org_id=org_id,
+                status="cancelled",
+                source="api",
+                actor_id=actor_id,
+                run_id=target_id,
+                error_summary="Cancelled by operator",
+                verified_output=VerifiedOutputRef(
+                    summary="Cancelled by operator",
+                    result_url=f"/runs/{target_id}",
+                    entity_type="workflow_run",
+                    entity_id=target_id,
+                ),
+                metadata={"path": "agent_interrupt", "signal": signal, "eager": True},
+            )
+            applied_eagerly = True
+        elif signal == "pause":
+            from app.workflows.repository import update_run
+
+            update_run(client, target_id, status=RUN_STATUS_PAUSED)
+            applied_eagerly = True
 
     write_audit_event(
         client,
@@ -130,8 +161,14 @@ def request_interrupt(
         action=AUDIT_INTERRUPT_REQUESTED,
         resource_type=target_type,
         resource_id=target_id,
-        metadata={"signal": signal, "source": source, "interruptId": str(interrupt.get("id"))},
+        metadata={
+            "signal": signal,
+            "source": source,
+            "interruptId": str(interrupt.get("id")),
+            "appliedEagerly": applied_eagerly,
+        },
     )
+    interrupt["applied_eagerly"] = applied_eagerly
     return interrupt
 
 

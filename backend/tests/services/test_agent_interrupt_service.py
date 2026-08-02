@@ -42,6 +42,39 @@ def test_request_interrupt_inserts_pending_row():
             actor_id="user-1",
         )
     assert row["signal"] == "cancel"
+    assert row.get("applied_eagerly") is True
+
+
+def test_request_interrupt_eagerly_cancels_workflow_run():
+    client = MagicMock()
+    client.table.return_value = _chainable([])
+    client.table.return_value.insert.return_value.execute.return_value = MagicMock(
+        data=[
+            {
+                "id": "int-2",
+                "target_type": "workflow_run",
+                "target_id": "run-1",
+                "signal": "cancel",
+            }
+        ]
+    )
+
+    with (
+        patch("app.services.agent_interrupt_service.write_audit_event"),
+        patch("app.services.execution_outcome.finalize_execution_outcome") as finalize,
+    ):
+        row = request_interrupt(
+            client,
+            org_id="org-1",
+            target_type="workflow_run",
+            target_id="run-1",
+            signal="cancel",
+            actor_id="user-1",
+        )
+    assert row.get("applied_eagerly") is True
+    finalize.assert_called_once()
+    assert finalize.call_args.kwargs["status"] == "cancelled"
+    assert finalize.call_args.kwargs["run_id"] == "run-1"
 
 
 def test_enforce_interrupt_raises_for_pending_cancel():

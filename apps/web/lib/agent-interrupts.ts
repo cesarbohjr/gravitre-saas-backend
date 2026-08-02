@@ -35,13 +35,22 @@ export async function requestAgentInterrupt(
   return payload.interrupt
 }
 
-export function interruptRequestedMessage(signal: AgentInterruptSignal): string {
+export function interruptRequestedMessage(
+  signal: AgentInterruptSignal,
+  opts?: { appliedEagerly?: boolean },
+): string {
   if (signal === "pause") {
-    return "Pause interrupt queued — execution stops before the next step."
+    return opts?.appliedEagerly
+      ? "Run paused."
+      : "Pause requested — execution stops before the next step."
   }
-  return "Cancel interrupt queued — execution stops before the next step."
+  return opts?.appliedEagerly
+    ? "Run cancelled."
+    : "Cancel requested — execution stops before the next step."
 }
 
-export function interruptRequestedDescription(): string {
-  return "Sent via the agent interrupt channel (UI, Slack, or API)."
+export function interruptRequestedDescription(opts?: { appliedEagerly?: boolean }): string {
+  return opts?.appliedEagerly
+    ? "Status updated immediately so you can start a new run."
+    : "Sent via the agent interrupt channel (UI, Slack, or API)."
 }

@@ -378,12 +378,19 @@ export default function RunsPage() {
   const handleRetryRun = async (runId: string) => {
     setIsMutatingRun(true)
     try {
-      await runsApi.retry(runId)
-      toast.success("Run retry initiated")
+      const result = await runsApi.retry(runId)
+      const newRunId = typeof result?.run_id === "string" ? result.run_id : null
+      toast.success("New run started", {
+        description: newRunId ? `Run ${newRunId.slice(0, 8)}…` : undefined,
+      })
+      if (newRunId) {
+        window.location.assign(`/runs/${newRunId}`)
+        return
+      }
       await mutate()
     } catch (err) {
       console.error("[v0] Failed to retry run:", err)
-      toast.error("Failed to retry run")
+      toast.error(err instanceof Error ? err.message : "Failed to retry run")
     } finally {
       setIsMutatingRun(false)
     }
@@ -392,12 +399,14 @@ export default function RunsPage() {
   const handleCancelRun = async (runId: string) => {
     setIsMutatingRun(true)
     try {
-      await runsApi.cancel(runId)
-      toast.success(interruptRequestedMessage("cancel"), { description: interruptRequestedDescription() })
+      const result = await runsApi.cancel(runId)
+      toast.success(interruptRequestedMessage("cancel", { appliedEagerly: result.appliedEagerly }), {
+        description: interruptRequestedDescription({ appliedEagerly: result.appliedEagerly }),
+      })
       await mutate()
     } catch (err) {
       console.error("[v0] Failed to cancel run:", err)
-      toast.error("Failed to cancel run")
+      toast.error(err instanceof Error ? err.message : "Failed to cancel run")
     } finally {
       setIsMutatingRun(false)
     }
