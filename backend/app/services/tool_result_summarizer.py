@@ -17,12 +17,34 @@ _LIST_KEYS = (
     "issues",
     "items",
     "results",
+    "result",
     "rows",
     "owners",
     "users",
     "messages",
     "events",
+    "lists",
+    "labels",
+    "organizations",
+    "people",
 )
+
+
+def _unwrap_tool_envelope(payload: dict[str, Any]) -> tuple[dict[str, Any] | list[Any] | Any, str | None]:
+    """Peel ``{success, tool, action, result|data}`` wrappers used by connector invokes."""
+    action = payload.get("action") or payload.get("tool")
+    action_s = str(action).strip() if action else None
+    if "result" in payload or "data" in payload:
+        inner = payload.get("result") if "result" in payload else payload.get("data")
+        return inner, action_s
+    return payload, action_s
+
+
+def _humanize_action_label(action: str | None) -> str:
+    if not action:
+        return "Tool"
+    token = str(action).replace("_", " ").replace(".", " ").strip()
+    return token[:1].upper() + token[1:] if token else "Tool"
 
 
 def _list_payload(data: dict[str, Any]) -> tuple[str | None, list[Any]]:
@@ -86,8 +108,43 @@ def summarize_tool_payload(
             "record_count": 0,
         }
 
-    if not isinstance(payload, dict):
-        text = str(payload)
+    resolved_action = action
+    working: Any = payload
+    if isinstance(payload, dict) and (
+        payload.get("tool") is not None
+        or payload.get("action") is not None
+        or "result" in payload
+        or "data" in payload
+    ):
+        working, envelope_action = _unwrap_tool_envelope(payload)
+        resolved_action = resolved_action or envelope_action
+        if payload.get("success") is False or payload.get("error"):
+            err = payload.get("error") or payload.get("message") or "tool failed"
+            return {
+                "summary": f"Tool error: {err}",
+                "insights": [f"error: {err}"],
+                "truncated": False,
+                "record_count": 0,
+                "error": True,
+            }
+
+    if isinstance(working, list):
+        labels = _sample_labels(working, limit=min(5, max_insights))
+        count = len(working)
+        label = _humanize_action_label(resolved_action)
+        summary = f"{label} returned {count} record(s)."
+        if labels:
+            summary = f"{summary} Including: {'; '.join(labels)}."
+        return {
+            "summary": summary[:max_chars],
+            "insights": [f"sample: {x}" for x in labels][:max_insights],
+            "truncated": count > 12,
+            "record_count": count,
+            "list_key": "result",
+        }
+
+    if not isinstance(working, dict):
+        text = str(working)
         truncated = len(text) > max_chars
         return {
             "summary": text[:max_chars] + ("…" if truncated else ""),
@@ -96,8 +153,8 @@ def summarize_tool_payload(
             "record_count": 0,
         }
 
-    if payload.get("success") is False or payload.get("error"):
-        err = payload.get("error") or payload.get("message") or "tool failed"
+    if working.get("success") is False or working.get("error"):
+        err = working.get("error") or working.get("message") or "tool failed"
         return {
             "summary": f"Tool error: {err}",
             "insights": [f"error: {err}"],
@@ -106,15 +163,15 @@ def summarize_tool_payload(
             "error": True,
         }
 
-    key, rows = _list_payload(payload)
+    key, rows = _list_payload(working)
     insights: list[str] = []
-    if action:
-        insights.append(f"action: {action}")
+    action_label = _humanize_action_label(resolved_action)
 
     if key is not None:
         count = len(rows)
         insights.append(f"{key}: {count} record(s)")
-        for label in _sample_labels(rows, limit=min(5, max_insights)):
+        samples = _sample_labels(rows, limit=min(5, max_insights))
+        for label in samples:
             insights.append(f"sample: {label}")
         # Lightweight aggregates for common CRM fields.
         statuses: dict[str, int] = {}
@@ -129,18 +186,18 @@ def summarize_tool_payload(
                 statuses[str(st)] = statuses.get(str(st), 0) + 1
         for st, n in sorted(statuses.items(), key=lambda kv: kv[1], reverse=True)[:4]:
             insights.append(f"status {st}: {n}")
-        summary = f"{action or 'Tool'} returned {count} {key}."
-        if count and insights:
-            summary = f"{summary} Top samples: " + "; ".join(_sample_labels(rows, limit=3))
+        summary = f"{action_label} returned {count} {key}."
+        if samples:
+            summary = f"{summary} Including: {'; '.join(samples[:3])}."
         return {
             "summary": summary[:max_chars],
             "insights": insights[:max_insights],
-            "truncated": count > 12 or len(str(payload)) > max_chars,
+            "truncated": count > 12 or len(str(working)) > max_chars,
             "record_count": count,
             "list_key": key,
         }
 
-    # Scalar / nested object — keep small JSON slice.
+    # Scalar / nested object — prefer human labels over raw dict dumps.
     keep_keys = (
         "id",
         "status",
@@ -157,15 +214,21 @@ def summarize_tool_payload(
         "issue",
         "channel",
     )
-    compact = {k: payload[k] for k in keep_keys if k in payload}
+    compact = {k: working[k] for k in keep_keys if k in working}
     if not compact:
-        compact = {k: payload[k] for k in list(payload.keys())[:8]}
-    text = str(compact)
-    truncated = len(str(payload)) > max_chars
-    insights.append(f"fields: {', '.join(compact.keys())}" if compact else "empty object")
+        compact = {k: working[k] for k in list(working.keys())[:8]}
+    label_bits: list[str] = []
+    for key in ("name", "title", "subject", "message", "status", "count", "total"):
+        if key in compact and compact[key] not in (None, ""):
+            label_bits.append(f"{key}={compact[key]}")
+    if label_bits:
+        summary = f"{action_label}: " + ", ".join(label_bits) + "."
+    else:
+        summary = f"{action_label} completed successfully."
+    truncated = len(str(working)) > max_chars
     return {
-        "summary": text[:max_chars] + ("…" if truncated else ""),
-        "insights": insights[:max_insights],
+        "summary": summary[:max_chars],
+        "insights": [f"fields: {', '.join(compact.keys())}" if compact else "empty object"][:max_insights],
         "truncated": truncated,
         "record_count": 0,
         "compact": compact,

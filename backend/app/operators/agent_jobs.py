@@ -310,6 +310,10 @@ def approve_job(
         result["approved_by"] = approver_id
     if notes:
         result["approval_notes"] = notes.strip()
+    # Backfill push fields for jobs completed before destination/content stamping existed.
+    payload = job.get("payload") if isinstance(job.get("payload"), dict) else {}
+    context = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+    result = _attach_delivery_fields(result, context=context)
     upd = (
         client.table("agent_jobs")
         .update({"result": result, "updated_at": _now()})
@@ -379,6 +383,80 @@ def reject_job(
     return upd.data[0] if upd.data else None
 
 
+def _attach_delivery_fields(
+    result: dict[str, Any],
+    *,
+    context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Ensure handoff results carry pushable content + destination for the UI."""
+    from app.services.plain_english_formatter import format_plain_english
+
+    ctx = context if isinstance(context, dict) else {}
+    destination = _resolve_push_destination({"result": result, "payload": {"context": ctx}}, result)
+    if destination and not result.get("destination"):
+        result["destination"] = destination
+        result["push_destination"] = destination
+
+    content = _resolve_deliverable_content(result)
+    if content:
+        result["report_content"] = content
+        result["reportContent"] = content
+        # Keep primary answer human-readable for assignment preview.
+        if result.get("answer"):
+            result["answer"] = format_plain_english(result.get("answer"), fallback=content)
+        if result.get("summary"):
+            result["summary"] = format_plain_english(result.get("summary"), fallback=str(result.get("summary")))
+        if result.get("finding_description"):
+            result["finding_description"] = format_plain_english(
+                result.get("finding_description"),
+                fallback=str(result.get("finding_description")),
+            )[:2000]
+    return result
+
+
+def _resolve_deliverable_content(result: dict[str, Any]) -> str:
+    from app.services.plain_english_formatter import format_plain_english
+
+    for key in (
+        "report_content",
+        "reportContent",
+        "final_recommendation",
+        "answer",
+        "summary",
+        "analysis_summary",
+        "finding_description",
+        "action_description",
+    ):
+        raw = result.get(key)
+        if raw is None or raw == "":
+            continue
+        text = format_plain_english(raw, fallback=str(raw)).strip()
+        if text:
+            return text[:8000]
+    return ""
+
+
+def _resolve_push_destination(job: dict[str, Any], result: dict[str, Any]) -> str:
+    for key in ("destination", "push_destination"):
+        val = result.get(key)
+        if isinstance(val, str) and val.strip():
+            return val.strip().lower()
+        if isinstance(val, list) and val:
+            return str(val[0]).strip().lower()
+
+    payload = job.get("payload") if isinstance(job.get("payload"), dict) else {}
+    context = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+    dests = context.get("destinations") or context.get("destination")
+    if isinstance(dests, list):
+        for item in dests:
+            if item and str(item).strip():
+                return str(item).strip().lower()
+    if isinstance(dests, str) and dests.strip():
+        return dests.strip().lower()
+    # Wizard may omit destination — Export is a safe default so Push is never a dead end.
+    return "export"
+
+
 def update_job_deliverable(
     client: Any,
     org_id: str,
@@ -395,6 +473,7 @@ def update_job_deliverable(
     result = _job_result(job)
     result["report_content"] = trimmed
     result["reportContent"] = trimmed
+    result["answer"] = trimmed
     handoff = result.get("handoff")
     if isinstance(handoff, dict):
         handoff["report"] = trimmed
@@ -421,45 +500,82 @@ def push_job_deliverable(
     if not job:
         raise ValueError("Job not found")
     result = _job_result(job)
-    content = str(
-        result.get("report_content")
-        or result.get("reportContent")
-        or result.get("final_recommendation")
-        or ""
-    ).strip()
+    content = _resolve_deliverable_content(result)
     if not content:
         raise ValueError("No deliverable content to push")
-    destination = str(result.get("destination") or result.get("push_destination") or "").strip().lower()
-    if not destination:
-        raise ValueError("No push destination configured on this assignment")
+    destination = _resolve_push_destination(job, result)
+    result["destination"] = destination
+    result["push_destination"] = destination
+    result["report_content"] = content
+    result["reportContent"] = content
 
-    from app.services.tool_service import invoke_tool
-    from app.services.tool_types import ToolContext
-
-    ctx = ToolContext(
-        org_id=org_id,
-        actor_id=user_id or "system",
-        settings=settings,
-        environment_name=environment_name,
-    )
-    if "slack" in destination:
-        channel = str(result.get("slack_channel") or result.get("channel") or "general").lstrip("#")
-        invoke_tool(
-            ctx,
-            "slack.post_message",
-            {"channel": channel, "message": content[:3000]},
-        )
-    elif "hubspot" in destination or "crm" in destination:
-        invoke_tool(
-            ctx,
-            "hubspot.notes.create",
-            {"body": content[:2000], "contact_id": result.get("contact_id")},
-        )
+    if "export" in destination or "download" in destination or destination in {"review", ""}:
+        # Mark delivered for in-app export/download — no external connector required.
+        result["push_status"] = "exported"
     else:
-        raise ValueError(f"Destination '{destination}' is not supported for push yet")
+        from app.services.tool_service import invoke_tool
+        from app.services.tool_types import ToolContext
+
+        ctx = ToolContext(
+            client=client,
+            org_id=org_id,
+            actor_id=user_id or "system",
+            settings=settings,
+            environment_name=environment_name,
+        )
+        if "slack" in destination:
+            channel = str(result.get("slack_channel") or result.get("channel") or "general").lstrip("#")
+            invoke_tool(
+                ctx,
+                "slack.post_message",
+                {"channel": channel, "message": content[:3000]},
+            )
+        elif "hubspot" in destination or destination in {"crm", "salesforce"} or "salesforce" in destination:
+            # Salesforce share path uses HubSpot notes when SF write isn't wired for assignments.
+            action = "hubspot.notes.create"
+            if "salesforce" in destination:
+                try:
+                    from app.services.tool_service import list_registered_actions
+
+                    registered = set(list_registered_actions())
+                    if "salesforce.notes.create" in registered:
+                        action = "salesforce.notes.create"
+                    elif "salesforce.tasks.create" in registered:
+                        action = "salesforce.tasks.create"
+                except Exception:  # noqa: BLE001
+                    action = "hubspot.notes.create"
+            params: dict[str, Any] = {"body": content[:2000]}
+            if result.get("contact_id"):
+                params["contact_id"] = result.get("contact_id")
+            if action.startswith("salesforce"):
+                params = {"description": content[:2000], "subject": "Gravitre assignment deliverable"}
+            invoke_tool(ctx, action, params)
+        elif "outlook" in destination or "email" in destination or "gmail" in destination:
+            to_addr = str(
+                result.get("email_to")
+                or result.get("to")
+                or result.get("recipient")
+                or ""
+            ).strip()
+            if not to_addr:
+                raise ValueError(
+                    "Outlook/email push needs a recipient. Edit the deliverable destination details "
+                    "or choose Slack, HubSpot, or Export."
+                )
+            subject = str(result.get("email_subject") or "Gravitre assignment deliverable").strip()
+            invoke_tool(
+                ctx,
+                "email.send",
+                {"to": to_addr, "subject": subject, "body": content[:8000]},
+            )
+        else:
+            raise ValueError(
+                f"Destination '{destination}' is not supported for push yet. "
+                "Choose Slack, HubSpot, Salesforce, Outlook (with recipient), or Export."
+            )
 
     result["pushed_at"] = _now()
-    result["push_status"] = "sent"
+    result.setdefault("push_status", "sent")
     client.table("agent_jobs").update({"result": result, "updated_at": _now()}).eq("id", job_id).eq("org_id", org_id).execute()
     return {"ok": True, "destination": destination, "pushed_at": result["pushed_at"]}
 
@@ -601,6 +717,8 @@ async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str,
     if ai_degraded_reason and ai_degraded:
         result["aiDegradedReason"] = ai_degraded_reason
 
+    result = _attach_delivery_fields(result, context=context if isinstance(context, dict) else {})
+
     # Record AI-credit + operator usage (best-effort; never fails the job).
     try:
         client = get_supabase_client(settings)
@@ -626,18 +744,21 @@ async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str,
 
 
 def _trace_finding_description(react_trace: list[dict[str, Any]]) -> str:
+    from app.services.plain_english_formatter import format_plain_english
+
     for step in react_trace:
         observation = step.get("observation")
         if observation:
-            return str(observation)[:500]
+            return format_plain_english(observation, fallback=str(observation))[:500]
         thought = step.get("thought")
         if thought:
-            return str(thought)[:500]
+            return format_plain_english(thought, fallback=str(thought))[:500]
         tool_name = step.get("toolName") or step.get("action")
         if tool_name:
+            label = str(tool_name).replace("_", " ").replace(".", " ")
             if step.get("toolSuccess"):
-                return f"Executed {tool_name} successfully."
-            return f"Attempted {tool_name}."
+                return f"Executed {label} successfully."
+            return f"Attempted {label}."
     return ""
 
 
@@ -692,7 +813,10 @@ async def run_agent_task_job(settings: Settings, job: dict[str, Any]) -> dict[st
     output = result.to_handoff_dict()
     output["aiStatus"] = "ok" if not result.error else "error"
     output["task"] = {"description": task, "status": result.status}
-    return output
+    return _attach_delivery_fields(
+        output,
+        context=context if isinstance(context, dict) else {},
+    )
 
 
 async def _notify_swarm_job_finished(settings: Settings, client: Any, job: dict[str, Any]) -> None:

@@ -357,3 +357,57 @@ async def test_run_operator_job_includes_react_trace(monkeypatch):
     assert result["persona"] == "REVENUE_OPS"
     assert len(result["react_trace"]) == 1
     assert result["react_trace"][0]["thought"]
+    assert result.get("report_content")
+    assert result.get("destination") == "export"
+
+
+def test_resolve_deliverable_content_uses_answer():
+    content = jobs._resolve_deliverable_content(
+        {
+            "answer": "Found 2 Apollo lists ready for membership.",
+            "summary": "ignored when answer present",
+        }
+    )
+    assert "Apollo lists" in content
+
+
+def test_resolve_push_destination_from_wizard_context():
+    destination = jobs._resolve_push_destination(
+        {"payload": {"context": {"destinations": ["HubSpot", "Slack"]}}, "result": {}},
+        {},
+    )
+    assert destination == "hubspot"
+
+
+def test_push_job_deliverable_export_without_connector(monkeypatch):
+    store = {
+        "agent_jobs": [
+            {
+                "id": "job-push-1",
+                "org_id": "org-1",
+                "status": "completed",
+                "payload": {"context": {"destinations": ["Export"]}},
+                "result": {
+                    "answer": "Membership plan ready for MSP Prospects.",
+                    "approval_status": "approved",
+                },
+            }
+        ]
+    }
+
+    class _Client:
+        def table(self, name):
+            return _Query(store, name)
+
+    client = _Client()
+    monkeypatch.setattr(jobs, "get_job", lambda c, org, jid: store["agent_jobs"][0])
+    out = jobs.push_job_deliverable(
+        client,
+        "org-1",
+        "job-push-1",
+        user_id="user-1",
+        settings=get_settings(),
+    )
+    assert out["ok"] is True
+    assert out["destination"] == "export"
+    assert store["agent_jobs"][0]["result"]["push_status"] == "exported"

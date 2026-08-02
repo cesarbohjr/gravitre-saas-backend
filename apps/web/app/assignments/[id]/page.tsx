@@ -301,13 +301,14 @@ function DeliverableCard({
 }
 
 // Preview Panel
-function PreviewPanel({ deliverable, isApproved, onApprove, onPush, onEdit, jobError }: { 
+function PreviewPanel({ deliverable, isApproved, onApprove, onPush, onEdit, jobError, isPushing = false }: { 
   deliverable: Deliverable | null; 
   isApproved: boolean;
   onApprove: () => void;
   onPush: () => void;
   onEdit: () => void;
   jobError?: string | null;
+  isPushing?: boolean;
 }) {
   if (jobError) {
     return (
@@ -417,11 +418,25 @@ function PreviewPanel({ deliverable, isApproved, onApprove, onPush, onEdit, jobE
               <Button 
                 className="flex-1 gap-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white border-0"
                 onClick={onPush}
+                disabled={isPushing}
               >
                 <Icon name="upload" size="sm" />
-                Push to destination
+                {isPushing ? "Pushing…" : "Push to destination"}
               </Button>
-              <Button variant="outline" className="gap-2">
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => {
+                  const text = deliverable.preview || ""
+                  const blob = new Blob([text], { type: "text/plain;charset=utf-8" })
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement("a")
+                  a.href = url
+                  a.download = `${deliverable.title.replace(/[^\w\-]+/g, "_").slice(0, 48) || "assignment"}.txt`
+                  a.click()
+                  URL.revokeObjectURL(url)
+                }}
+              >
                 <Icon name="download" size="sm" />
                 Export
               </Button>
@@ -986,6 +1001,7 @@ export default function AssignmentDetailPage({
             onPush={handlePushDeliverable}
             onEdit={handleEditDeliverable}
             jobError={jobError}
+            isPushing={isPushing}
           />
         </div>
       </div>

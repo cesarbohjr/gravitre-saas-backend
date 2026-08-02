@@ -32,3 +32,29 @@ def test_format_plain_english_extracts_truncated_json_summary():
     text = format_plain_english(truncated)
     assert "2 active agents" in text
     assert "{" not in text
+
+
+def test_format_plain_english_tool_envelope_lists():
+    payload = {
+        "success": True,
+        "tool": "apollo_lists_list",
+        "action": "apollo.lists.list",
+        "result": [
+            {"_id": "1", "name": "MSP Prospects"},
+            {"_id": "2", "name": "Gravitre Smoke List"},
+        ],
+    }
+    text = format_plain_english(payload)
+    assert "MSP Prospects" in text
+    assert "Gravitre Smoke List" in text
+    assert "{" not in text
+
+
+def test_format_plain_english_truncated_tool_json_uses_names():
+    truncated = (
+        '{"success": true, "tool": "apollo_lists_list", "action": "apollo.lists.list", '
+        '"result": [{"_id": "abc", "name": "Gravitre Smoke MSP e020afe818e34c", "modality": "contacts"'
+    )
+    text = format_plain_english(truncated)
+    assert "Gravitre Smoke MSP" in text
+    assert "{" not in text
