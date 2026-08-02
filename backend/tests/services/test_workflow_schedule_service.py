@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 from app.services.workflow_schedule_service import (
+    _advance_schedule,
     dispatch_single_schedule,
     list_due_workflow_schedules,
     schedule_run_exists_for_window,
@@ -37,6 +38,36 @@ def test_schedule_run_exists_for_window_checks_parameters():
         data=[{"id": "run-1"}]
     )
     assert schedule_run_exists_for_window(client, "org-1", "sched-1", "sched-1:2026-05-29T08:00:00Z") is True
+
+
+def test_advance_schedule_writes_enabled_only():
+    """Prod workflow_schedules has `enabled`, not `is_enabled` (PGRST204)."""
+    client = MagicMock()
+    chain = client.table.return_value.update.return_value.eq.return_value.eq.return_value.eq.return_value
+    chain.execute.return_value = MagicMock(data=[{}])
+    schedule = {
+        "id": "sched-1",
+        "org_id": "org-1",
+        "environment": "production",
+        "cron_expression": "@once",
+        "schedule_type": "once",
+        "timezone": "UTC",
+        "run_at": "2026-05-29T08:00:00+00:00",
+    }
+    with patch(
+        "app.services.workflow_schedule_service.compute_next_run_at",
+        return_value=None,
+    ):
+        _advance_schedule(
+            client,
+            schedule,
+            now=datetime(2026, 5, 29, 8, 5, tzinfo=timezone.utc),
+            last_run_at="2026-05-29T08:00:00+00:00",
+            updated_by="system",
+        )
+    payload = client.table.return_value.update.call_args[0][0]
+    assert "enabled" in payload
+    assert "is_enabled" not in payload
 
 
 def test_dispatch_single_schedule_skips_idempotent_window():

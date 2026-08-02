@@ -115,11 +115,11 @@ def _advance_schedule(
         )
         enabled = bool(next_run_at)
 
+    # Schema column is `enabled` only — do not write `is_enabled` (PGRST204).
     payload: dict[str, Any] = {
         "updated_at": now.isoformat(),
         "next_run_at": next_run_at,
         "enabled": enabled,
-        "is_enabled": enabled,
     }
     if last_run_at is not None:
         payload["last_run_at"] = last_run_at

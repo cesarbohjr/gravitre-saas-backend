@@ -45,9 +45,7 @@ def test_find_workflows_referencing_agent_skips_archived():
                 ]
             )
         else:
-            mock.execute.return_value = MagicMock(
-                data=[{"id": "s1", "enabled": True, "is_enabled": True}]
-            )
+            mock.execute.return_value = MagicMock(data=[{"id": "s1", "enabled": True}])
         return mock
 
     client.table.side_effect = table

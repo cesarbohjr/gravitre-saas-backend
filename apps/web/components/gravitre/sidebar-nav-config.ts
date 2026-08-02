@@ -147,6 +147,7 @@ export const LITE_SIDEBAR_NAV: SidebarNavGroup[] = [
     group: "ACTIVITY",
     items: [
       { name: "Deliverables", href: "/lite/deliverables", icon: "fileText" },
+      { name: "Schedules", href: "/schedules", icon: "calendar" },
       { name: "Approvals", href: "/approvals", icon: "clipboardCheck" },
     ],
   },

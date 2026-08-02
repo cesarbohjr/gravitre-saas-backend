@@ -91,7 +91,7 @@ def find_workflows_referencing_agent(
         try:
             schedules = (
                 client.table("workflow_schedules")
-                .select("id, enabled, is_enabled")
+                .select("id, enabled")
                 .eq("org_id", org_id)
                 .eq("workflow_id", wid)
                 .limit(20)
@@ -99,9 +99,7 @@ def find_workflows_referencing_agent(
             )
             enabled = False
             for s in schedules.data or []:
-                if s.get("enabled") is False or s.get("is_enabled") is False:
-                    continue
-                if s.get("enabled", s.get("is_enabled", True)):
+                if s.get("enabled", True):
                     enabled = True
                     break
             ref["hasEnabledSchedule"] = enabled

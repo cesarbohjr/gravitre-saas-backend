@@ -873,13 +873,14 @@ def create_workflow_schedule(
     name: str | None = None,
     ends_at: str | None = None,
 ) -> dict:
+    # Prod schema has `enabled` only (no `is_enabled`). Writing the alias
+    # column makes PostgREST reject the insert (PGRST204) — empty calendar.
     row: dict[str, Any] = {
         "org_id": org_id,
         "workflow_id": workflow_id,
         "cron_expression": cron_expression,
         "environment": environment_name,
         "enabled": enabled,
-        "is_enabled": enabled,
         "next_run_at": next_run_at,
         "created_by": created_by,
         "timezone": timezone_name or "UTC",
@@ -918,7 +919,6 @@ def update_workflow_schedule(
         payload["cron_expression"] = cron_expression
     if enabled is not None:
         payload["enabled"] = enabled
-        payload["is_enabled"] = enabled
     if clear_next_run_at:
         payload["next_run_at"] = None
     elif next_run_at is not None:
