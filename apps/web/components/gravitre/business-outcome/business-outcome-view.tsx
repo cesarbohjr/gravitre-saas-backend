@@ -189,7 +189,7 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
 
           {sections.timeline?.length ? (
             <Section title="Timeline">
-              <ol className="space-y-1.5">
+              <ol className="space-y-2">
                 {sections.timeline.map((step) => (
                   <li key={step.index ?? step.label} className="flex gap-2">
                     <span className="font-medium text-foreground/80">{step.index}.</span>
@@ -200,6 +200,29 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
                         {step.status ? ` (${step.status})` : ""}
                       </span>
                       {step.summary ? <p className="mt-0.5 text-muted-foreground">{step.summary}</p> : null}
+                      {step.evidenceUrl ? (
+                        <p className="mt-1">
+                          {isExternal(step.evidenceUrl) ? (
+                            <a
+                              href={step.evidenceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground underline-offset-2 hover:underline"
+                            >
+                              Open completed work
+                              <ArrowRight className="h-3 w-3" />
+                            </a>
+                          ) : (
+                            <Link
+                              href={step.evidenceUrl}
+                              className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground underline-offset-2 hover:underline"
+                            >
+                              Open completed work
+                              <ArrowRight className="h-3 w-3" />
+                            </Link>
+                          )}
+                        </p>
+                      ) : null}
                     </span>
                   </li>
                 ))}

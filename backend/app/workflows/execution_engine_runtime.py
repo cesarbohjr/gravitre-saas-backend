@@ -183,10 +183,51 @@ def _finalize_run(
             }
 
         outcome_source = "canvas" if (ctx.parameters or {}).get("source") == "canvas" else "api"
+        from app.services.connector_output_refs import (
+            collect_connector_output_refs,
+            primary_vendor_url,
+        )
+        from app.services.list_populate_honesty import apply_connector_run_honesty
+
+        output_refs = collect_connector_output_refs(step_rows)
+        vendor_url = primary_vendor_url(output_refs)
+        # Unproven mutating writes + intent-scoped list populate honesty (create ≠ membership).
+        params = ctx.parameters if isinstance(ctx.parameters, dict) else {}
+        coerced_status, honesty_reason = apply_connector_run_honesty(
+            status=final_status,
+            step_rows=step_rows,
+            output_refs=output_refs,
+            parameters=params,
+            workflow_name=str(params.get("workflow_name") or wf_name or "") or None,
+            workflow_slug=str(params.get("workflow_slug") or "") or None,
+        )
+
+        finalize_summary = (
+            run_error_message
+            if coerced_status == RUN_STATUS_FAILED
+            else (
+                honesty_reason
+                or "; ".join(
+                    str(ref.get("summary"))
+                    for ref in output_refs
+                    if ref.get("summary")
+                )[:2000]
+                or f"Run finished with status {coerced_status}."
+            )
+        )
+        finalize_meta: dict[str, Any] = {
+            "path": "execution_engine_runtime",
+            "environment": ctx.environment_name,
+            "step_results": output_refs,
+            "connector_output_refs": output_refs,
+        }
+        if honesty_reason:
+            finalize_meta["list_populate_honesty_reason"] = honesty_reason
+            finalize_meta["outcome_honesty_reason"] = honesty_reason
         finalize_execution_outcome(
             ctx.client,
             org_id=ctx.org_id,
-            status=final_status,
+            status=coerced_status,
             source=outcome_source,
             actor_id=ctx.user_id,
             run_id=ctx.run_id,
@@ -194,18 +235,20 @@ def _finalize_run(
             error_summary=run_error_message,
             verified_output=VerifiedOutputRef(
                 result_url=f"/runs/{ctx.run_id}",
+                external_url=vendor_url,
                 entity_type="workflow_run",
                 entity_id=ctx.run_id,
-                summary=(
-                    run_error_message
-                    if final_status == RUN_STATUS_FAILED
-                    else f"Run finished with status {final_status}."
+                integration=next(
+                    (str(ref.get("integration")) for ref in output_refs if ref.get("integration")),
+                    None,
                 ),
+                summary=finalize_summary,
             ),
             channel_hints=channel_hints,
             email_context=email_context,
-            metadata={"path": "execution_engine_runtime", "environment": ctx.environment_name},
+            metadata=finalize_meta,
         )
+        final_status = coerced_status
         if final_status == RUN_STATUS_COMPLETED:
             try:
                 from app.marketplace.adoption import maybe_record_workflow_adoption

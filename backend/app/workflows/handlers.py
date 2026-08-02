@@ -191,7 +191,15 @@ class InvokeToolHandler(StepHandler):
                 step_outputs=context.step_outputs,
             ),
         )
-        return _truncate_output_snapshot(result.to_step_output())
+        from app.services.connector_output_refs import enrich_invoke_tool_snapshot
+
+        return _truncate_output_snapshot(
+            enrich_invoke_tool_snapshot(
+                action=str(action),
+                data=result.to_step_output(),
+                success=bool(result.success),
+            )
+        )
 
 
 class SlackPostMessageHandler(StepHandler):

@@ -11,7 +11,7 @@ def invoke_step(
     *,
     connector: str | None = None,
     params: dict[str, Any] | None = None,
-    param_sources: dict[str, str] | None = None,
+    param_sources: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build an ``invoke_tool`` step with optional connector binding."""
     config: dict[str, Any] = {"action": action, "tool_action": action}

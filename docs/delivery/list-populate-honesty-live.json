@@ -1,0 +1,101 @@
+{
+  "generated_at": "2026-08-02T07:45:30.242614+00:00",
+  "prod_tip_at_run": "8a09ea5fa1d49e78d72e4e952ec09b7e06a103a2",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "note": "Local code honesty gate + live Apollo/HubSpot invokes; merge only if both directions pass.",
+  "cases": {
+    "empty_shell": {
+      "invoke_success": true,
+      "list_name": "Honesty-Empty-3cc24b81",
+      "list_id": "6a6ef59fd1442700203eb784",
+      "apollo_url": "https://app.apollo.io/#/lists/6a6ef59fd1442700203eb784",
+      "error": null,
+      "run_id": "359bed35-e9b6-4a1f-871d-33ec64b6bcb8",
+      "status": "running",
+      "honesty_reason": "list created, 0 contacts added",
+      "vendor_url": "https://app.apollo.io/#/lists/6a6ef59fd1442700203eb784",
+      "connector_output_refs": [
+        {
+          "label": "Create Apollo list",
+          "status": "completed",
+          "summary": "Created list Honesty-Empty-3cc24b81",
+          "invoke_action": "apollo.lists.create",
+          "integration": "apollo",
+          "external_url": "https://app.apollo.io/#/lists/6a6ef59fd1442700203eb784",
+          "result_url": null,
+          "entity_id": "6a6ef59fd1442700203eb784",
+          "outcome_effect": "created",
+          "already_existed": false,
+          "success": true
+        },
+        {
+          "label": "Populate Apollo list",
+          "status": "completed",
+          "summary": "Agent skipped membership add",
+          "invoke_action": null,
+          "integration": null,
+          "external_url": null,
+          "result_url": null,
+          "entity_id": null,
+          "outcome_effect": null,
+          "already_existed": false,
+          "success": true
+        }
+      ],
+      "summary": "list created, 0 contacts added",
+      "pass": false
+    },
+    "populated": {
+      "invoke_create_success": true,
+      "list_name": "Honesty-Populated-3cc24b81",
+      "entity_ids": [],
+      "add_success": false,
+      "add_error": "no_entity_ids",
+      "added_count": null,
+      "run_id": "d26bf86c-8216-44d5-865e-cbb8de2af6d7",
+      "status": "running",
+      "honesty_reason": "list created, 0 contacts added",
+      "vendor_url": "https://app.apollo.io/#/lists/6a6ef5a4cedb8700206074ff",
+      "connector_output_refs": [
+        {
+          "label": "Create Apollo list",
+          "status": "completed",
+          "summary": "Created list Honesty-Populated-3cc24b81",
+          "invoke_action": "apollo.lists.create",
+          "integration": "apollo",
+          "external_url": "https://app.apollo.io/#/lists/6a6ef5a4cedb8700206074ff",
+          "result_url": null,
+          "entity_id": "6a6ef5a4cedb8700206074ff",
+          "outcome_effect": "created",
+          "already_existed": false,
+          "success": true
+        },
+        {
+          "label": "Populate Apollo list",
+          "status": "failed",
+          "summary": "No contact ids from search \u2014 cannot prove populate",
+          "invoke_action": null,
+          "integration": null,
+          "external_url": null,
+          "result_url": null,
+          "entity_id": null,
+          "outcome_effect": null,
+          "already_existed": false,
+          "success": false
+        }
+      ],
+      "summary": "list created, 0 contacts added",
+      "pass": false
+    },
+    "hubspot_link": {
+      "invoke_success": true,
+      "list_name": "Honesty-HS-3cc24b81",
+      "list_id": "15",
+      "external_url": "https://app.hubspot.com/contacts/343328749/lists/15",
+      "http_status": 200,
+      "error": null,
+      "pass": true
+    }
+  },
+  "all_pass": false
+}

@@ -235,11 +235,28 @@ def _exec_crm_sync(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult
         except Exception as exc:  # noqa: BLE001
             errors.append({"record": record, "error": str(exc)})
 
+    contact_ids: list[str] = []
+    for row in synced:
+        if not isinstance(row, dict):
+            continue
+        result = row.get("result") if isinstance(row.get("result"), dict) else {}
+        hid = str(result.get("id") or result.get("contactId") or "").strip()
+        if hid and hid not in contact_ids:
+            contact_ids.append(hid)
     return NormalizedResult(
         success=bool(synced) and not errors,
         action="clay.crm.sync",
         connector_id=cid,
-        data={"synced": synced, "errors": errors, "crm": crm, "crm_connector_id": crm_connector_id},
+        data={
+            "synced": synced,
+            "errors": errors,
+            "crm": crm,
+            "crm_connector_id": crm_connector_id,
+            "contact_ids": contact_ids,
+            "primary_contact_id": contact_ids[0] if contact_ids else None,
+            "contact_id": contact_ids[0] if contact_ids else None,
+            "added_count": len(contact_ids),
+        },
     )
 
 

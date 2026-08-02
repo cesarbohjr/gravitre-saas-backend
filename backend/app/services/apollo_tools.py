@@ -175,6 +175,42 @@ def _with_result_url(data: Any, result_url: str | None) -> dict[str, Any]:
     return {"data": data, "result_url": result_url}
 
 
+def _stamp_membership_ids(payload: dict[str, Any], rows: list[Any] | None) -> dict[str, Any]:
+    """Stamp entity_ids / primary_contact_id for workflow from_step → lists.add wiring."""
+    ids: list[str] = []
+    primary_email: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        cid = str(row.get("id") or row.get("contact_id") or row.get("person_id") or "").strip()
+        if cid and cid not in ids:
+            ids.append(cid)
+        if not primary_email:
+            email = row.get("email")
+            if not email and isinstance(row.get("contact_emails"), list) and row["contact_emails"]:
+                first = row["contact_emails"][0]
+                email = first.get("email") if isinstance(first, dict) else first
+            if email and str(email).strip():
+                primary_email = str(email).strip()
+                first_name = str(row.get("first_name") or row.get("firstname") or "").strip() or None
+                last_name = str(row.get("last_name") or row.get("lastname") or "").strip() or None
+    if ids:
+        payload["entity_ids"] = ids
+        payload["contact_ids"] = ids
+        payload["primary_contact_id"] = ids[0]
+    if primary_email:
+        payload["primary_email"] = primary_email
+        props: dict[str, Any] = {"email": primary_email}
+        if first_name:
+            props["firstname"] = first_name
+        if last_name:
+            props["lastname"] = last_name
+        payload["hubspot_contact_properties"] = props
+    return payload
+
+
 def _exec_people_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, headers = _session(ctx, params)
     try:
@@ -184,7 +220,10 @@ def _exec_people_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedR
     result_url = "https://app.apollo.io/#/people"
     payload = _with_result_url(data, result_url)
     people = payload.get("people") or payload.get("contacts") or []
-    count = len(people) if isinstance(people, list) else 0
+    if not isinstance(people, list):
+        people = []
+    count = len(people)
+    payload = _stamp_membership_ids(payload, people)
     _emit_apollo_pack_notification(
         ctx,
         title="Apollo people search",
@@ -324,13 +363,16 @@ def _exec_contacts_search(ctx: ToolContext, params: dict[str, Any]) -> Normalize
     except ApolloAPIError as exc:
         raise _handle_error(exc) from exc
     contacts = data.get("contacts") if isinstance(data, dict) else None
-    count = len(contacts) if isinstance(contacts, list) else 0
+    if not isinstance(contacts, list):
+        contacts = []
+    count = len(contacts)
     result_url = "https://app.apollo.io/#/contacts"
     payload_out = _with_result_url(data, result_url)
     if isinstance(payload_out, dict):
         payload_out["contact_count"] = count
         if label_ids:
             payload_out["contact_label_ids"] = label_ids
+        payload_out = _stamp_membership_ids(payload_out, contacts)
     _emit_apollo_pack_notification(
         ctx,
         title="Apollo contacts search",
@@ -381,11 +423,16 @@ def _exec_lists_add(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResul
     if not result_url:
         result_url = "https://app.apollo.io/#/contacts"
     payload = _with_result_url(data, result_url)
+    added = [str(x).strip() for x in entity_ids if str(x).strip()]
+    # Membership proof for list-populate honesty (count > 0, not create-step alone).
+    payload["entity_ids"] = added
+    payload["added_count"] = len(added)
+    payload["contact_count"] = len(added)
     names_joined = ", ".join(str(n) for n in label_names[:3])
     _emit_apollo_pack_notification(
         ctx,
         title=f"Apollo list membership: {names_joined}",
-        body=f"Added {len(entity_ids)} contact(s) to {len(label_names)} list(s)",
+        body=f"Added {len(added)} contact(s) to {len(label_names)} list(s)",
         result_url=result_url,
         action="apollo.lists.add",
     )

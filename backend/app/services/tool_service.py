@@ -435,11 +435,12 @@ def _exec_hubspot_contacts_create(ctx: ToolContext, params: dict[str, Any]) -> N
         data = create_contact(token, properties)
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
+    contact_id = str((data or {}).get("id") or (data or {}).get("contactId") or "").strip() or None
     return NormalizedResult(
         success=True,
         action="hubspot.contacts.create",
         connector_id=cid,
-        data={"contact": data},
+        data={"contact": data, "contact_id": contact_id, "id": contact_id},
     )
 
 
@@ -687,7 +688,14 @@ def _exec_hubspot_lists_add_contact(ctx: ToolContext, params: dict[str, Any]) ->
         success=True,
         action="hubspot.lists.add_contact",
         connector_id=cid,
-        data={"membership": data},
+        data={
+            "membership": data,
+            "list_id": str(list_id),
+            "contact_id": str(contact_id),
+            # Membership proof for list-populate honesty (count > 0).
+            "added_count": 1,
+            "contact_count": 1,
+        },
     )
 
 
@@ -4646,12 +4654,19 @@ def params_for_step(
     if cfg.get("connector_id"):
         params["connector_id"] = cfg["connector_id"]
     if step_type == "invoke_tool":
-        sources = cfg.get("param_sources") or cfg.get("params") or {}
-        if isinstance(sources, dict):
-            for key, spec in sources.items():
-                resolved = _resolve_param_source(spec, parameters, step_outputs)
-                if resolved is not None and resolved != "":
-                    params[key] = resolved
+        # Merge static params + param_sources (sources win). Previously
+        # param_sources OR params dropped literals when both were set.
+        sources: dict[str, Any] = {}
+        static = cfg.get("params")
+        if isinstance(static, dict):
+            sources.update(static)
+        dynamic = cfg.get("param_sources")
+        if isinstance(dynamic, dict):
+            sources.update(dynamic)
+        for key, spec in sources.items():
+            resolved = _resolve_param_source(spec, parameters, step_outputs)
+            if resolved is not None and resolved != "":
+                params[key] = resolved
     if step_type == "slack_post_message":
         msg_key = cfg.get("message_input_key", "message")
         message = parameters.get(msg_key, parameters.get("message", ""))

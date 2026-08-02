@@ -377,10 +377,40 @@ def execute_workflow_steps(
             meta["conversation_id"] = conversation_id
         if params.get("integration"):
             meta["integration"] = params.get("integration")
+        from app.services.connector_output_refs import (
+            collect_connector_output_refs,
+            primary_vendor_url,
+        )
+        from app.services.list_populate_honesty import apply_connector_run_honesty
+
+        output_refs = collect_connector_output_refs(step_rows)
+        vendor_url = primary_vendor_url(output_refs)
+        meta["step_results"] = output_refs
+        meta["connector_output_refs"] = output_refs
+        coerced_status, honesty_reason = apply_connector_run_honesty(
+            status=final_status,
+            step_rows=step_rows,
+            output_refs=output_refs,
+            parameters=params,
+            workflow_name=str(params.get("workflow_name") or "") or None,
+            workflow_slug=str(params.get("workflow_slug") or "") or None,
+        )
+        if honesty_reason:
+            meta["list_populate_honesty_reason"] = honesty_reason
+            meta["outcome_honesty_reason"] = honesty_reason
+        finalize_summary = (
+            run_error_message
+            if run_failed
+            else (
+                honesty_reason
+                or "; ".join(str(ref.get("summary")) for ref in output_refs if ref.get("summary"))[:2000]
+                or f"Run finished with status {coerced_status}."
+            )
+        )
         finalize_execution_outcome(
             client,
             org_id=org_id,
-            status=final_status,
+            status=coerced_status,
             source=resolved_source if resolved_source in {
                 "chat_orch", "assistant_chat", "canvas", "api", "worker", "assignment"
             } else "api",
@@ -390,14 +420,18 @@ def execute_workflow_steps(
             error_summary=run_error_message,
             verified_output=VerifiedOutputRef(
                 result_url=f"/runs/{run_id}",
+                external_url=vendor_url,
                 entity_type="workflow_run",
                 entity_id=run_id,
-                summary=(run_error_message if run_failed else f"Run finished with status {final_status}.")[
-                    :2000
-                ],
+                integration=next(
+                    (str(ref.get("integration")) for ref in output_refs if ref.get("integration")),
+                    params.get("integration"),
+                ),
+                summary=finalize_summary[:2000] if finalize_summary else None,
             ),
             metadata=meta,
         )
+        final_status = coerced_status
         if run_failed:
             try:
                 from app.services.compensation_service import compensate_failed_autonomous_run

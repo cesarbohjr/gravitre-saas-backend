@@ -635,47 +635,75 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
           </div>
         </div>
 
-        {run.isChatOrchestration ? (
-          <div className="mb-6 rounded-lg border border-border bg-card p-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h2 className="text-sm font-semibold text-foreground">Execution overview</h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Durable record of what Gravitre chat executed — available even if the toast or chat
-                  thread is gone.
-                </p>
-              </div>
-              {run.conversationId ? (
-                <Button asChild size="sm" variant="outline" className="h-8">
-                  <Link href={`/ai?c=${encodeURIComponent(run.conversationId)}`}>
-                    Open conversation
-                  </Link>
-                </Button>
-              ) : null}
-            </div>
-            {run.goal ? (
-              <p className="mb-3 text-sm text-foreground">
-                <span className="text-muted-foreground">Goal: </span>
-                {run.goal}
+        <div className="mb-6 rounded-lg border border-border bg-card p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Completed work</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                What landed in connected tools (Apollo, HubSpot, Outlook, Ads, Analytics, etc.) —
+                not just whether the run finished. Open each item in the source system when a link
+                is available.
               </p>
+            </div>
+            {run.conversationId ? (
+              <Button asChild size="sm" variant="outline" className="h-8">
+                <Link href={`/ai?c=${encodeURIComponent(run.conversationId)}`}>
+                  Open conversation
+                </Link>
+              </Button>
             ) : null}
+          </div>
+          {run.isChatOrchestration && run.goal ? (
+            <p className="mb-3 text-sm text-foreground">
+              <span className="text-muted-foreground">Goal: </span>
+              {run.goal}
+            </p>
+          ) : null}
+          {steps.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No step outputs recorded yet. If this run shows completed with empty work, the tools
+              may not have written durable records — check connector connection and approval queue.
+            </p>
+          ) : (
             <ol className="space-y-2">
               {steps.map((step, index) => {
+                const snap = step.outputSnapshot || {}
                 const summary =
-                  typeof step.outputSnapshot?.summary === "string"
-                    ? step.outputSnapshot.summary
-                    : step.errorMessage || null
+                  typeof snap.summary === "string"
+                    ? snap.summary
+                    : typeof snap.message === "string"
+                      ? snap.message
+                      : step.errorMessage || null
                 const external =
-                  typeof step.outputSnapshot?.external_url === "string"
-                    ? step.outputSnapshot.external_url
-                    : typeof step.outputSnapshot?.result_url === "string" &&
-                        String(step.outputSnapshot.result_url).startsWith("http")
-                      ? String(step.outputSnapshot.result_url)
+                  typeof snap.external_url === "string"
+                    ? snap.external_url
+                    : typeof snap.result_url === "string" &&
+                        String(snap.result_url).startsWith("http")
+                      ? String(snap.result_url)
+                      : null
+                const effect =
+                  typeof snap.outcome_effect === "string" ? snap.outcome_effect : null
+                const alreadyExisted = snap.already_existed === true
+                const action =
+                  typeof snap.invoke_action === "string"
+                    ? snap.invoke_action
+                    : typeof snap.action === "string"
+                      ? snap.action
                       : null
                 const portalOk =
                   !external ||
                   !external.includes("app.hubspot.com") ||
                   /^https:\/\/app\.hubspot\.com\/contacts\/\d+\//.test(external)
+                const honesty =
+                  alreadyExisted || effect === "already_existed"
+                    ? "Existing record — no new create proven"
+                    : effect === "unknown"
+                      ? "Write returned without durable proof"
+                      : effect === "noop"
+                        ? "No-op — vendor reported no change"
+                        : effect === "accepted_async"
+                          ? "Accepted asynchronously — completion not proven"
+                          : null
                 return (
                   <li
                     key={step.id}
@@ -688,14 +716,22 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
                           {step.status.replace(/_/g, " ")}
                         </span>
                       </p>
+                      {action ? (
+                        <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{action}</p>
+                      ) : null}
                       {summary ? (
                         <p className="mt-0.5 whitespace-pre-wrap text-xs text-muted-foreground">
                           {summary}
                         </p>
                       ) : null}
+                      {honesty ? (
+                        <p className="mt-1 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                          {honesty}
+                        </p>
+                      ) : null}
                     </div>
                     {external && portalOk ? (
-                      <Button asChild size="sm" variant="ghost" className="h-7 shrink-0 text-xs">
+                      <Button asChild size="sm" variant="outline" className="h-7 shrink-0 text-xs">
                         <a href={external} target="_blank" rel="noopener noreferrer">
                           Open in source
                         </a>
@@ -705,8 +741,8 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
                 )
               })}
             </ol>
-          </div>
-        ) : null}
+          )}
+        </div>
 
         {runErrorSummary ? (
           <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
