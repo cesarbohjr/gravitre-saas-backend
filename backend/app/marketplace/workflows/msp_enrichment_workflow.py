@@ -1,6 +1,9 @@
 """MSP Prospects → Clay enrichment → HubSpot list sync workflow definition.
 
 Reusable by marketplace seed catalog and Prospecting intelligence pack install.
+
+Apollo list membership and HubSpot list membership use deterministic invoke_tool
+steps. Agents prepare Clay batches and summarize — they do not own membership writes.
 """
 from __future__ import annotations
 
@@ -16,6 +19,7 @@ WORKFLOW_SLUG = "msp-prospects-clay-hubspot-enrichment"
 
 DEFAULT_APOLLO_LIST_NAME = "MSP Prospects"
 DEFAULT_HUBSPOT_LIST_NAME = "MSPs"
+DEFAULT_PEOPLE_QUERY = "MSP owner OR managing partner OR VP operations"
 
 INSTALL_VARIABLES: list[dict[str, Any]] = [
     {
@@ -61,7 +65,8 @@ def _invoke(
     action: str,
     *,
     connector: str,
-    param_sources: dict[str, str] | None = None,
+    params: dict[str, Any] | None = None,
+    param_sources: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     step: dict[str, Any] = {
         "id": step_id,
@@ -70,6 +75,8 @@ def _invoke(
         "config": {"action": action},
         "requires_connector": connector,
     }
+    if params:
+        step["config"]["params"] = params
     if param_sources:
         step["config"]["param_sources"] = param_sources
     return step
@@ -100,22 +107,20 @@ def _agent_step(
 
 
 def build_msp_enrichment_workflow_steps() -> list[dict[str, Any]]:
-    """Ordered steps: Apollo list membership → Clay enrich → HubSpot CRM + list membership."""
-    apollo_populate_task = (
-        f'Using apollo.lists.list and apollo.contacts.search results for list '
+    """Ordered steps: Apollo membership → Clay enrich → HubSpot CRM + list membership."""
+    clay_prep_task = (
+        f'Using apollo.lists.list / contacts.search / people.search / lists.add results for '
         f'"{DEFAULT_APOLLO_LIST_NAME}" (or install variable APOLLO_LIST_NAME): '
-        "If contact_count is 0 / contacts empty, prospect with apollo.people.search, "
-        "create Apollo contacts when needed (apollo.contacts.create), then add them via "
-        f'apollo.lists.add (entity_ids + label_names=["{DEFAULT_APOLLO_LIST_NAME}"], '
-        "modality=contacts). If the list is already populated, extract contact records "
-        "(email, name, company, title, LinkedIn URL) and prepare a Clay-ready records batch "
-        "for enrichment. Set $clay_records for the next step."
+        "Extract contact records (email, name, company, title, LinkedIn URL) and prepare a "
+        "Clay-ready records batch for enrichment. Set $clay_records for the next step. "
+        "Do not call apollo.lists.add or hubspot.lists.add_contact — membership is handled "
+        "by dedicated tool steps."
     )
-    hubspot_list_task = (
-        f'Using the HubSpot contacts created by clay.crm.sync, add each contact to the '
-        f'existing HubSpot static list "{DEFAULT_HUBSPOT_LIST_NAME}" via hubspot.lists.add_contact '
-        "(list_id from install variable HUBSPOT_LIST_ID). Skip records missing contact_id. "
-        "Summarize added and skipped counts."
+    summarize_task = (
+        f'Using clay.crm.sync and hubspot.lists.add_contact results for list '
+        f'"{DEFAULT_HUBSPOT_LIST_NAME}" (list_id from HUBSPOT_LIST_ID): '
+        "Summarize synced CRM contacts, list membership adds, and any skipped/errors. "
+        "Notify the operator that enrichment → HubSpot membership finished."
     )
     return [
         _invoke(
@@ -131,10 +136,37 @@ def build_msp_enrichment_workflow_steps() -> list[dict[str, Any]]:
             connector="apollo",
             param_sources={"list_name": DEFAULT_APOLLO_LIST_NAME},
         ),
+        # Always prospect + add so empty shells get real membership (not agent hope).
+        _invoke(
+            "apollo_people_search",
+            "Prospect MSP contacts (Apollo people search)",
+            "apollo.people.search",
+            connector="apollo",
+            params={
+                "q_keywords": DEFAULT_PEOPLE_QUERY,
+                "per_page": 10,
+            },
+        ),
+        _invoke(
+            "apollo_list_add",
+            "Add prospects to Apollo list",
+            "apollo.lists.add",
+            connector="apollo",
+            params={
+                "label_names": [DEFAULT_APOLLO_LIST_NAME],
+                "modality": "contacts",
+            },
+            param_sources={
+                "entity_ids": {
+                    "from_step": "apollo_people_search",
+                    "path": ["entity_ids"],
+                },
+            },
+        ),
         _agent_step(
-            "ensure_apollo_list_and_prepare_clay",
-            "Populate Apollo list if empty / prepare Clay batch",
-            apollo_populate_task,
+            "prepare_clay_batch",
+            "Prepare Clay enrichment batch",
+            clay_prep_task,
             briefing_from_steps=True,
         ),
         _invoke(
@@ -161,10 +193,23 @@ def build_msp_enrichment_workflow_steps() -> list[dict[str, Any]]:
                 "crm": "hubspot",
             },
         ),
+        _invoke(
+            "hubspot_list_add",
+            "Add synced contact to HubSpot static list",
+            "hubspot.lists.add_contact",
+            connector="hubspot",
+            param_sources={
+                "list_id": "$HUBSPOT_LIST_ID",
+                "contact_id": {
+                    "from_step": "hubspot_crm_sync",
+                    "path": ["primary_contact_id"],
+                },
+            },
+        ),
         _agent_step(
-            "hubspot_list_membership",
-            "Add contacts to HubSpot static list",
-            hubspot_list_task,
+            "summarize_enrichment",
+            "Summarize enrichment + HubSpot membership",
+            summarize_task,
             briefing_from_steps=True,
         ),
     ]

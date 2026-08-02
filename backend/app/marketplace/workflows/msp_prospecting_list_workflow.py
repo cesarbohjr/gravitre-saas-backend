@@ -2,6 +2,9 @@
 
 Replaces the legacy read-only NVD CVE demo workflow as the MSP pack's runnable
 canvas workflow. Vulnerability knowledge packs remain as agent assignments.
+
+Membership is deterministic invoke_tool (apollo.lists.add / hubspot.lists.add_contact),
+not agent-only instructions — empty list shells must not "complete" via hope.
 """
 from __future__ import annotations
 
@@ -44,7 +47,7 @@ def _invoke(
     *,
     connector: str,
     params: dict[str, Any] | None = None,
-    param_sources: dict[str, str] | None = None,
+    param_sources: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     from app.marketplace.workflows.step_builders import invoke_step
 
@@ -94,26 +97,18 @@ def build_msp_prospecting_list_workflow_steps() -> list[dict[str, Any]]:
     )
     qualify_task = (
         "Assignment: using prior Apollo organization + people search results, qualify the best "
-        "MSP accounts and contacts (title fit, company relevance). Produce a short membership plan: "
-        "entity_ids / emails to add to the Apollo list, and notes for HubSpot. "
+        "MSP accounts and contacts (title fit, company relevance). Produce a short membership plan "
+        "for the operator (who will be added by the next deterministic tool steps). "
         f'Set context for list create name="{DEFAULT_APOLLO_LIST_NAME}". '
-        "Notify with discovery counts (companies found, contacts selected)."
+        "Notify with discovery counts (companies found, contacts selected). "
+        "Do not call apollo.lists.add or hubspot.lists.add_contact — those run as tool steps next."
     )
-    populate_task = (
-        "Assignment: ensure Apollo list membership for qualified contacts. "
-        f'Use apollo.lists.list / apollo.contacts.search for "{DEFAULT_APOLLO_LIST_NAME}". '
-        "If the list is empty or missing selected contacts, call apollo.lists.add with "
-        f'entity_ids + label_names=["{DEFAULT_APOLLO_LIST_NAME}"] (modality=contacts). '
-        "Create contacts via apollo.contacts.create when search returns people without ids. "
-        "Summarize added vs already-members. Notify when Apollo list build completes."
-    )
-    hubspot_task = (
-        "Assignment: sync list to HubSpot. Locate or use the HubSpot static list "
-        f'"{DEFAULT_HUBSPOT_LIST_NAME}" (list_id from install variable HUBSPOT_LIST_ID when set). '
-        "Add enriched/known contacts via hubspot.lists.add_contact when contact_ids exist. "
-        "If Clay is connected and $clay_records is available, prefer clay.leads.push → "
-        "clay.workflows.output.get → clay.crm.sync before list membership. "
-        "Notify with HubSpot added/skipped counts and mark the list-build assignment complete."
+    notify_task = (
+        "Assignment: using prior create + membership tool results, summarize Apollo list "
+        f'"{DEFAULT_APOLLO_LIST_NAME}" and HubSpot list "{DEFAULT_HUBSPOT_LIST_NAME}" status '
+        "(created vs already existed, contacts added counts). "
+        "If Clay is connected and enrichment is needed, note it as a follow-on. "
+        "Notify the operator that list-build membership steps finished and mark the assignment complete."
     )
     return [
         _agent_step(
@@ -155,11 +150,22 @@ def build_msp_prospecting_list_workflow_steps() -> list[dict[str, Any]]:
             connector="apollo",
             params={"name": DEFAULT_APOLLO_LIST_NAME, "modality": "contacts"},
         ),
-        _agent_step(
-            "populate_apollo_list",
-            "Agent: Populate Apollo list membership",
-            populate_task,
-            briefing_from_steps=True,
+        # Deterministic membership — not agent-only instructions.
+        _invoke(
+            "apollo_list_add",
+            "Task: Add contacts to Apollo list",
+            "apollo.lists.add",
+            connector="apollo",
+            params={
+                "label_names": [DEFAULT_APOLLO_LIST_NAME],
+                "modality": "contacts",
+            },
+            param_sources={
+                "entity_ids": {
+                    "from_step": "apollo_people_search",
+                    "path": ["entity_ids"],
+                },
+            },
         ),
         _invoke(
             "hubspot_list_create",
@@ -168,10 +174,38 @@ def build_msp_prospecting_list_workflow_steps() -> list[dict[str, Any]]:
             connector="hubspot",
             params={"name": DEFAULT_HUBSPOT_LIST_NAME},
         ),
+        _invoke(
+            "hubspot_contact_create",
+            "Task: Create HubSpot contact from Apollo lead",
+            "hubspot.contacts.create",
+            connector="hubspot",
+            param_sources={
+                "properties": {
+                    "from_step": "apollo_people_search",
+                    "path": ["hubspot_contact_properties"],
+                },
+            },
+        ),
+        _invoke(
+            "hubspot_list_add",
+            "Task: Add contact to HubSpot list",
+            "hubspot.lists.add_contact",
+            connector="hubspot",
+            param_sources={
+                "list_id": {
+                    "from_step": "hubspot_list_create",
+                    "path": ["list_id"],
+                },
+                "contact_id": {
+                    "from_step": "hubspot_contact_create",
+                    "path": ["contact_id"],
+                },
+            },
+        ),
         _agent_step(
             "hubspot_sync_and_notify",
-            "Agent: HubSpot sync + complete assignment",
-            hubspot_task,
+            "Agent: Summarize list build + complete assignment",
+            notify_task,
             briefing_from_steps=True,
         ),
     ]
