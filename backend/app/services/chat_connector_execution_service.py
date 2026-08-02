@@ -1928,7 +1928,16 @@ class ChatConnectorExecutionService:
                             "already_existed": already_existed,
                             "outcome_effect": outcome_effect,
                             "invoke_action": plan.invoke_action,
+                            "integration": plan.integration,
+                            "tool_name": plan.tool_name,
                             "success": bool(result.success),
+                            # Deep links so Runs timeline can "Open in source" without
+                            # digging through Module A metadata only.
+                            "result_url": result.result_url,
+                            "external_url": result.external_url,
+                            "entity_type": result.entity_type,
+                            "entity_id": result.entity_id,
+                            "structured": structured,
                         },
                         started_at=now,
                         completed_at=now,

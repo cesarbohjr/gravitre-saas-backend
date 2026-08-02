@@ -183,10 +183,67 @@ def _finalize_run(
             }
 
         outcome_source = "canvas" if (ctx.parameters or {}).get("source") == "canvas" else "api"
+        from app.services.connector_output_refs import (
+            collect_connector_output_refs,
+            primary_vendor_url,
+        )
+        from app.services.connector_outcome_effects import (
+            coerce_terminal_status_for_effect,
+            is_mutating_action,
+        )
+
+        output_refs = collect_connector_output_refs(step_rows)
+        vendor_url = primary_vendor_url(output_refs)
+        # Downgrade empty-shell / unproven mutating writes at run level (same honesty
+        # gate chat connector uses) so COMPLETED is not sold for Apollo/HubSpot list shells.
+        coerced_status = final_status
+        if final_status == RUN_STATUS_COMPLETED and output_refs:
+            mutating_effects = [
+                str(ref.get("outcome_effect") or "")
+                for ref in output_refs
+                if is_mutating_action(str(ref.get("invoke_action") or ""))
+            ]
+            if mutating_effects and all(
+                effect in {"already_existed", "noop", "accepted_async", "unknown"}
+                for effect in mutating_effects
+            ):
+                worst = next(
+                    (
+                        effect
+                        for effect in mutating_effects
+                        if effect in {"already_existed", "noop", "accepted_async", "unknown"}
+                    ),
+                    "unknown",
+                )
+                coerced_status = coerce_terminal_status_for_effect(
+                    status=final_status,
+                    effect=worst or "unknown",
+                    invoke_action=next(
+                        (
+                            str(ref.get("invoke_action"))
+                            for ref in output_refs
+                            if is_mutating_action(str(ref.get("invoke_action") or ""))
+                        ),
+                        None,
+                    ),
+                )
+
+        finalize_summary = (
+            run_error_message
+            if coerced_status == RUN_STATUS_FAILED
+            else (
+                "; ".join(
+                    str(ref.get("summary"))
+                    for ref in output_refs
+                    if ref.get("summary")
+                )[:2000]
+                or f"Run finished with status {coerced_status}."
+            )
+        )
         finalize_execution_outcome(
             ctx.client,
             org_id=ctx.org_id,
-            status=final_status,
+            status=coerced_status,
             source=outcome_source,
             actor_id=ctx.user_id,
             run_id=ctx.run_id,
@@ -194,18 +251,25 @@ def _finalize_run(
             error_summary=run_error_message,
             verified_output=VerifiedOutputRef(
                 result_url=f"/runs/{ctx.run_id}",
+                external_url=vendor_url,
                 entity_type="workflow_run",
                 entity_id=ctx.run_id,
-                summary=(
-                    run_error_message
-                    if final_status == RUN_STATUS_FAILED
-                    else f"Run finished with status {final_status}."
+                integration=next(
+                    (str(ref.get("integration")) for ref in output_refs if ref.get("integration")),
+                    None,
                 ),
+                summary=finalize_summary,
             ),
             channel_hints=channel_hints,
             email_context=email_context,
-            metadata={"path": "execution_engine_runtime", "environment": ctx.environment_name},
+            metadata={
+                "path": "execution_engine_runtime",
+                "environment": ctx.environment_name,
+                "step_results": output_refs,
+                "connector_output_refs": output_refs,
+            },
         )
+        final_status = coerced_status
         if final_status == RUN_STATUS_COMPLETED:
             try:
                 from app.marketplace.adoption import maybe_record_workflow_adoption

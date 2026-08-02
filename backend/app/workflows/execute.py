@@ -377,10 +377,62 @@ def execute_workflow_steps(
             meta["conversation_id"] = conversation_id
         if params.get("integration"):
             meta["integration"] = params.get("integration")
+        from app.services.connector_output_refs import (
+            collect_connector_output_refs,
+            primary_vendor_url,
+        )
+        from app.services.connector_outcome_effects import (
+            coerce_terminal_status_for_effect,
+            is_mutating_action,
+        )
+
+        output_refs = collect_connector_output_refs(step_rows)
+        vendor_url = primary_vendor_url(output_refs)
+        meta["step_results"] = output_refs
+        meta["connector_output_refs"] = output_refs
+        coerced_status = final_status
+        if final_status == RUN_STATUS_COMPLETED and output_refs:
+            mutating_effects = [
+                str(ref.get("outcome_effect") or "")
+                for ref in output_refs
+                if is_mutating_action(str(ref.get("invoke_action") or ""))
+            ]
+            if mutating_effects and all(
+                effect in {"already_existed", "noop", "accepted_async", "unknown"}
+                for effect in mutating_effects
+            ):
+                worst = next(
+                    (
+                        effect
+                        for effect in mutating_effects
+                        if effect in {"already_existed", "noop", "accepted_async", "unknown"}
+                    ),
+                    "unknown",
+                )
+                coerced_status = coerce_terminal_status_for_effect(
+                    status=final_status,
+                    effect=worst or "unknown",
+                    invoke_action=next(
+                        (
+                            str(ref.get("invoke_action"))
+                            for ref in output_refs
+                            if is_mutating_action(str(ref.get("invoke_action") or ""))
+                        ),
+                        None,
+                    ),
+                )
+        finalize_summary = (
+            run_error_message
+            if run_failed
+            else (
+                "; ".join(str(ref.get("summary")) for ref in output_refs if ref.get("summary"))[:2000]
+                or f"Run finished with status {coerced_status}."
+            )
+        )
         finalize_execution_outcome(
             client,
             org_id=org_id,
-            status=final_status,
+            status=coerced_status,
             source=resolved_source if resolved_source in {
                 "chat_orch", "assistant_chat", "canvas", "api", "worker", "assignment"
             } else "api",
@@ -390,14 +442,18 @@ def execute_workflow_steps(
             error_summary=run_error_message,
             verified_output=VerifiedOutputRef(
                 result_url=f"/runs/{run_id}",
+                external_url=vendor_url,
                 entity_type="workflow_run",
                 entity_id=run_id,
-                summary=(run_error_message if run_failed else f"Run finished with status {final_status}.")[
-                    :2000
-                ],
+                integration=next(
+                    (str(ref.get("integration")) for ref in output_refs if ref.get("integration")),
+                    params.get("integration"),
+                ),
+                summary=finalize_summary[:2000] if finalize_summary else None,
             ),
             metadata=meta,
         )
+        final_status = coerced_status
         if run_failed:
             try:
                 from app.services.compensation_service import compensate_failed_autonomous_run

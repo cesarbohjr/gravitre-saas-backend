@@ -260,6 +260,8 @@ def _persist_run(client: Any, event: ExecutionOutcomeEvent, status: TerminalStat
             "conversation_id",
             "already_existed",
             "outcome_effect",
+            "step_results",
+            "connector_output_refs",
         ):
             if key in meta and meta[key] is not None:
                 patch[key] = meta[key]

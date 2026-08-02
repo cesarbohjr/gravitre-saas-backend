@@ -65,12 +65,12 @@ def project_business_outcome(
         summary = str(run.get("error_message"))
 
     kind = _infer_kind(status=status, invoke_action=invoke_action, params=params, er=er)
-    evidence = _evidence(er, run_id=run_id)
+    evidence = _evidence(er, run_id=run_id, params=params)
     verification = _verification(
         er, status=status, invoke_action=invoke_action, params=params
     )
     explanation = _explanation(er, run)
-    timeline = _timeline(steps or params.get("step_results") or [])
+    timeline = _timeline(steps or params.get("step_results") or params.get("connector_output_refs") or [])
     approval = _approval(run)
     recs = _recommendations(recommendation or er.get("recommendation"))
     action = invoke_action or str(params.get("invoke_action") or params.get("invokeAction") or "")
@@ -181,11 +181,17 @@ def _infer_kind(
     return "other"
 
 
-def _evidence(er: dict[str, Any], *, run_id: str | None) -> EvidenceSection | None:
+def _evidence(
+    er: dict[str, Any],
+    *,
+    run_id: str | None,
+    params: dict[str, Any] | None = None,
+) -> EvidenceSection | None:
     links: list[OutcomeLink] = []
     result_url = str(er.get("result_url") or "").strip()
     external = str(er.get("external_url") or "").strip()
     structured = er.get("structured") if isinstance(er.get("structured"), dict) else {}
+    params = params if isinstance(params, dict) else {}
     if not external:
         external = str(structured.get("external_url") or "").strip()
     if result_url:
@@ -193,8 +199,28 @@ def _evidence(er: dict[str, Any], *, run_id: str | None) -> EvidenceSection | No
             result_url = result_url.replace("/ai?conversation=", "/ai?c=", 1)
         links.append(OutcomeLink(label="View in Gravitre", href=result_url, kind="gravitre"))
     if external.startswith("http"):
-        vendor = str(er.get("integration") or "vendor").title()
+        vendor = str(er.get("integration") or params.get("integration") or "vendor").title()
         links.append(OutcomeLink(label=f"View in {vendor}", href=external, kind="vendor"))
+    # Surface every connector deep link collected at finalize (Apollo list, HubSpot list, …).
+    step_refs = params.get("connector_output_refs") or params.get("step_results") or []
+    if isinstance(step_refs, list):
+        seen = {link.href for link in links}
+        for ref in step_refs:
+            if not isinstance(ref, dict):
+                continue
+            href = str(ref.get("external_url") or "").strip()
+            if not href.startswith("http") or href in seen:
+                continue
+            label_vendor = str(ref.get("integration") or "vendor").title()
+            step_label = str(ref.get("label") or ref.get("invoke_action") or label_vendor)
+            links.append(
+                OutcomeLink(
+                    label=f"Open: {step_label}"[:80],
+                    href=href,
+                    kind="vendor",
+                )
+            )
+            seen.add(href)
     if run_id and not any(link.href.startswith("/runs/") for link in links):
         links.append(OutcomeLink(label="View run", href=f"/runs/{run_id}", kind="gravitre"))
     entity_type = str(er.get("entity_type") or structured.get("entity_type") or "") or None
@@ -205,7 +231,7 @@ def _evidence(er: dict[str, Any], *, run_id: str | None) -> EvidenceSection | No
         links=links,
         entity_type=entity_type,
         entity_id=entity_id,
-        integration=str(er.get("integration") or "") or None,
+        integration=str(er.get("integration") or params.get("integration") or "") or None,
     )
 
 
@@ -309,21 +335,50 @@ def _explanation(er: dict[str, Any], run: dict[str, Any]) -> str | None:
 
 
 def _timeline(raw_steps: list[Any]) -> list[TimelineStep]:
+    from app.services.connector_output_refs import extract_step_output_ref
+
     steps: list[TimelineStep] = []
     for idx, row in enumerate(raw_steps):
         if not isinstance(row, dict):
             continue
+        ref = extract_step_output_ref(row) or {}
+        snap = row.get("output_snapshot") if isinstance(row.get("output_snapshot"), dict) else {}
+        evidence = str(
+            ref.get("external_url")
+            or ref.get("result_url")
+            or row.get("external_url")
+            or row.get("url")
+            or row.get("result_url")
+            or snap.get("external_url")
+            or snap.get("result_url")
+            or ""
+        ).strip() or None
+        # Prefer vendor http links for "open completed work"; keep gravitre paths too.
         steps.append(
             TimelineStep(
                 index=idx + 1,
-                label=str(row.get("label") or row.get("name") or f"Step {idx + 1}"),
-                status=str(row.get("status") or ("completed" if row.get("success") else "unknown")),
-                summary=str(row.get("summary") or row.get("error") or row.get("body") or "")[:500]
+                label=str(
+                    ref.get("label")
+                    or row.get("label")
+                    or row.get("step_name")
+                    or row.get("name")
+                    or f"Step {idx + 1}"
+                ),
+                status=str(
+                    row.get("status")
+                    or ref.get("status")
+                    or ("completed" if row.get("success") else "unknown")
+                ),
+                summary=str(
+                    ref.get("summary")
+                    or snap.get("summary")
+                    or row.get("summary")
+                    or row.get("error")
+                    or row.get("body")
+                    or ""
+                )[:500]
                 or None,
-                evidence_url=str(
-                    row.get("external_url") or row.get("url") or row.get("result_url") or ""
-                )
-                or None,
+                evidence_url=evidence,
                 agent_name=str(row.get("agentName") or row.get("agent_name") or "") or None,
             )
         )
