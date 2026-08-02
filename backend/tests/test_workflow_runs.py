@@ -41,27 +41,41 @@ def test_run_list_returns_real_data(mock_client):
     assert body["runs"][0]["workflowName"] == "sync-customers"
 
 
+@patch("app.routers.workflows._execute_workflow_with_context")
 @patch("app.routers.workflows.get_supabase_client")
-def test_auto_retry_updates_run_status(mock_client):
+def test_auto_retry_updates_run_status(mock_client, mock_execute):
     run_id = uuid4()
-    select_chain = chain_mock(data=[{"id": str(run_id), "status": "failed"}])
-    update_chain = chain_mock(data=[{"id": str(run_id), "status": "running"}])
+    workflow_id = str(uuid4())
+    new_run_id = str(uuid4())
+    select_chain = chain_mock(
+        data=[{"id": str(run_id), "status": "failed", "workflow_id": workflow_id, "parameters": {}}]
+    )
     sb = MagicMock()
 
     def _table(name: str):
         table = MagicMock()
         if name == "workflow_runs":
             table.select.return_value = select_chain
-            table.update.return_value = update_chain
         return table
 
     sb.table.side_effect = _table
     mock_client.return_value = sb
+    mock_execute.return_value = {
+        "run_id": new_run_id,
+        "status": "running",
+        "approval_required": False,
+        "steps": [],
+        "errors": [],
+    }
     authenticate(as_admin=True)
     response = client.post(f"/api/runs/{run_id}/retry", json={})
     assert response.status_code == 200
-    assert response.json()["success"] is True
-    update_chain.execute.assert_called()
+    body = response.json()
+    assert body["run_id"] == new_run_id
+    assert body["status"] == "running"
+    mock_execute.assert_called_once()
+    assert mock_execute.call_args.kwargs["workflow_id"] == workflow_id
+    assert mock_execute.call_args.kwargs["trigger_type"] == "retry"
 
 
 @patch("app.routers.workflows.get_supabase_client")

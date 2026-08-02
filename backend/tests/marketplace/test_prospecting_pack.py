@@ -36,9 +36,12 @@ def test_prospecting_enrichment_workflow_definition():
     )
 
     steps = build_msp_enrichment_workflow_steps()
-    assert len(steps) == 7
+    assert len(steps) == 10
     assert steps[0]["config"]["action"] == "apollo.lists.list"
     assert steps[1]["config"]["action"] == "apollo.contacts.search"
+    actions = [(s.get("config") or {}).get("action") for s in steps if s.get("type") == "invoke_tool"]
+    assert "apollo.lists.add" in actions
+    assert "hubspot.lists.add_contact" in actions
     assert steps[-1]["type"] == "agent"
     assert "MSP Prospects" in WORKFLOW_NAME or "Clay" in WORKFLOW_NAME
 
