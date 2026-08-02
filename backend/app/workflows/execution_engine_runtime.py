@@ -187,52 +187,27 @@ def _finalize_run(
             collect_connector_output_refs,
             primary_vendor_url,
         )
-        from app.services.connector_outcome_effects import (
-            coerce_terminal_status_for_effect,
-            is_mutating_action,
-        )
+        from app.services.list_populate_honesty import apply_connector_run_honesty
 
         output_refs = collect_connector_output_refs(step_rows)
         vendor_url = primary_vendor_url(output_refs)
-        # Downgrade empty-shell / unproven mutating writes at run level (same honesty
-        # gate chat connector uses) so COMPLETED is not sold for Apollo/HubSpot list shells.
-        coerced_status = final_status
-        if final_status == RUN_STATUS_COMPLETED and output_refs:
-            mutating_effects = [
-                str(ref.get("outcome_effect") or "")
-                for ref in output_refs
-                if is_mutating_action(str(ref.get("invoke_action") or ""))
-            ]
-            if mutating_effects and all(
-                effect in {"already_existed", "noop", "accepted_async", "unknown"}
-                for effect in mutating_effects
-            ):
-                worst = next(
-                    (
-                        effect
-                        for effect in mutating_effects
-                        if effect in {"already_existed", "noop", "accepted_async", "unknown"}
-                    ),
-                    "unknown",
-                )
-                coerced_status = coerce_terminal_status_for_effect(
-                    status=final_status,
-                    effect=worst or "unknown",
-                    invoke_action=next(
-                        (
-                            str(ref.get("invoke_action"))
-                            for ref in output_refs
-                            if is_mutating_action(str(ref.get("invoke_action") or ""))
-                        ),
-                        None,
-                    ),
-                )
+        # Unproven mutating writes + intent-scoped list populate honesty (create ≠ membership).
+        params = ctx.parameters if isinstance(ctx.parameters, dict) else {}
+        coerced_status, honesty_reason = apply_connector_run_honesty(
+            status=final_status,
+            step_rows=step_rows,
+            output_refs=output_refs,
+            parameters=params,
+            workflow_name=str(params.get("workflow_name") or wf_name or "") or None,
+            workflow_slug=str(params.get("workflow_slug") or "") or None,
+        )
 
         finalize_summary = (
             run_error_message
             if coerced_status == RUN_STATUS_FAILED
             else (
-                "; ".join(
+                honesty_reason
+                or "; ".join(
                     str(ref.get("summary"))
                     for ref in output_refs
                     if ref.get("summary")
@@ -240,6 +215,15 @@ def _finalize_run(
                 or f"Run finished with status {coerced_status}."
             )
         )
+        finalize_meta: dict[str, Any] = {
+            "path": "execution_engine_runtime",
+            "environment": ctx.environment_name,
+            "step_results": output_refs,
+            "connector_output_refs": output_refs,
+        }
+        if honesty_reason:
+            finalize_meta["list_populate_honesty_reason"] = honesty_reason
+            finalize_meta["outcome_honesty_reason"] = honesty_reason
         finalize_execution_outcome(
             ctx.client,
             org_id=ctx.org_id,
@@ -262,12 +246,7 @@ def _finalize_run(
             ),
             channel_hints=channel_hints,
             email_context=email_context,
-            metadata={
-                "path": "execution_engine_runtime",
-                "environment": ctx.environment_name,
-                "step_results": output_refs,
-                "connector_output_refs": output_refs,
-            },
+            metadata=finalize_meta,
         )
         final_status = coerced_status
         if final_status == RUN_STATUS_COMPLETED:

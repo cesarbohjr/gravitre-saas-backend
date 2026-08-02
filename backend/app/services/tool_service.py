@@ -687,7 +687,14 @@ def _exec_hubspot_lists_add_contact(ctx: ToolContext, params: dict[str, Any]) ->
         success=True,
         action="hubspot.lists.add_contact",
         connector_id=cid,
-        data={"membership": data},
+        data={
+            "membership": data,
+            "list_id": str(list_id),
+            "contact_id": str(contact_id),
+            # Membership proof for list-populate honesty (count > 0).
+            "added_count": 1,
+            "contact_count": 1,
+        },
     )
 
 

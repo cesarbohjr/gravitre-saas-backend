@@ -381,51 +381,29 @@ def execute_workflow_steps(
             collect_connector_output_refs,
             primary_vendor_url,
         )
-        from app.services.connector_outcome_effects import (
-            coerce_terminal_status_for_effect,
-            is_mutating_action,
-        )
+        from app.services.list_populate_honesty import apply_connector_run_honesty
 
         output_refs = collect_connector_output_refs(step_rows)
         vendor_url = primary_vendor_url(output_refs)
         meta["step_results"] = output_refs
         meta["connector_output_refs"] = output_refs
-        coerced_status = final_status
-        if final_status == RUN_STATUS_COMPLETED and output_refs:
-            mutating_effects = [
-                str(ref.get("outcome_effect") or "")
-                for ref in output_refs
-                if is_mutating_action(str(ref.get("invoke_action") or ""))
-            ]
-            if mutating_effects and all(
-                effect in {"already_existed", "noop", "accepted_async", "unknown"}
-                for effect in mutating_effects
-            ):
-                worst = next(
-                    (
-                        effect
-                        for effect in mutating_effects
-                        if effect in {"already_existed", "noop", "accepted_async", "unknown"}
-                    ),
-                    "unknown",
-                )
-                coerced_status = coerce_terminal_status_for_effect(
-                    status=final_status,
-                    effect=worst or "unknown",
-                    invoke_action=next(
-                        (
-                            str(ref.get("invoke_action"))
-                            for ref in output_refs
-                            if is_mutating_action(str(ref.get("invoke_action") or ""))
-                        ),
-                        None,
-                    ),
-                )
+        coerced_status, honesty_reason = apply_connector_run_honesty(
+            status=final_status,
+            step_rows=step_rows,
+            output_refs=output_refs,
+            parameters=params,
+            workflow_name=str(params.get("workflow_name") or "") or None,
+            workflow_slug=str(params.get("workflow_slug") or "") or None,
+        )
+        if honesty_reason:
+            meta["list_populate_honesty_reason"] = honesty_reason
+            meta["outcome_honesty_reason"] = honesty_reason
         finalize_summary = (
             run_error_message
             if run_failed
             else (
-                "; ".join(str(ref.get("summary")) for ref in output_refs if ref.get("summary"))[:2000]
+                honesty_reason
+                or "; ".join(str(ref.get("summary")) for ref in output_refs if ref.get("summary"))[:2000]
                 or f"Run finished with status {coerced_status}."
             )
         )

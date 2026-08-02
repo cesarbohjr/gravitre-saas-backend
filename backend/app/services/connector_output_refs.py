@@ -88,11 +88,19 @@ def extract_step_output_ref(step: dict[str, Any]) -> dict[str, Any] | None:
     ).strip() or None
     outcome_effect = str(snap.get("outcome_effect") or "").strip() or None
     already_existed = bool(snap.get("already_existed") is True)
+    added_count = snap.get("added_count")
+    if added_count is None:
+        added_count = nested.get("added_count")
+    contact_count = snap.get("contact_count")
+    if contact_count is None:
+        contact_count = nested.get("contact_count")
+    entity_ids = snap.get("entity_ids") or nested.get("entity_ids") or snap.get("contact_ids")
+    contact_id = str(snap.get("contact_id") or nested.get("contact_id") or "").strip() or None
 
     if not any((external, gravitre_url, entity_id, summary, invoke_action)):
         return None
 
-    return {
+    ref: dict[str, Any] = {
         "label": str(step.get("step_name") or step.get("name") or step.get("label") or invoke_action or "Step"),
         "status": str(step.get("status") or ("completed" if snap.get("success") else "unknown")),
         "summary": summary,
@@ -105,6 +113,15 @@ def extract_step_output_ref(step: dict[str, Any]) -> dict[str, Any] | None:
         "already_existed": already_existed,
         "success": bool(snap.get("success", str(step.get("status") or "").lower() in {"completed", "success"})),
     }
+    if added_count is not None:
+        ref["added_count"] = added_count
+    if contact_count is not None:
+        ref["contact_count"] = contact_count
+    if isinstance(entity_ids, list):
+        ref["entity_ids"] = entity_ids
+    if contact_id:
+        ref["contact_id"] = contact_id
+    return ref
 
 
 def collect_connector_output_refs(steps: list[dict[str, Any]] | None) -> list[dict[str, Any]]:

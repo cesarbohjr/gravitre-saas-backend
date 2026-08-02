@@ -381,11 +381,16 @@ def _exec_lists_add(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResul
     if not result_url:
         result_url = "https://app.apollo.io/#/contacts"
     payload = _with_result_url(data, result_url)
+    added = [str(x).strip() for x in entity_ids if str(x).strip()]
+    # Membership proof for list-populate honesty (count > 0, not create-step alone).
+    payload["entity_ids"] = added
+    payload["added_count"] = len(added)
+    payload["contact_count"] = len(added)
     names_joined = ", ".join(str(n) for n in label_names[:3])
     _emit_apollo_pack_notification(
         ctx,
         title=f"Apollo list membership: {names_joined}",
-        body=f"Added {len(entity_ids)} contact(s) to {len(label_names)} list(s)",
+        body=f"Added {len(added)} contact(s) to {len(label_names)} list(s)",
         result_url=result_url,
         action="apollo.lists.add",
     )
