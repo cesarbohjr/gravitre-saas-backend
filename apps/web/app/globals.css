@@ -39,10 +39,10 @@
   --chart-3: oklch(0.65 0.18 75);
   --chart-4: oklch(0.55 0.18 320);
   --chart-5: oklch(0.50 0.22 25);
-  /* Schedule kind colors - theme-stable purple / blue / green */
-  --schedule-workflow: oklch(0.55 0.21 300);
-  --schedule-task: oklch(0.55 0.2 250);
-  --schedule-job: oklch(0.55 0.16 158);
+  /* Schedule kind colors — distinct purple / blue / green (calendar legend) */
+  --schedule-workflow: oklch(0.52 0.24 305);
+  --schedule-task: oklch(0.52 0.2 250);
+  --schedule-job: oklch(0.52 0.17 158);
   /* Workflow builder connection lines (theme-stable; no inline hex in UI) */
   --workflow-line: var(--info);
   --workflow-line-mid: var(--schedule-task);
@@ -103,8 +103,8 @@
   --chart-3: oklch(0.75 0.15 75);
   --chart-4: oklch(0.55 0.15 200);
   --chart-5: oklch(0.55 0.22 25);
-  /* Schedule kind colors - brighter purple / blue / green for dark surfaces */
-  --schedule-workflow: oklch(0.7 0.19 300);
+  /* Schedule kind colors — brighter purple / blue / green for dark surfaces */
+  --schedule-workflow: oklch(0.72 0.22 305);
   --schedule-task: oklch(0.68 0.19 250);
   --schedule-job: oklch(0.72 0.16 158);
   --workflow-line: var(--info);

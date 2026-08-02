@@ -161,7 +161,9 @@ def _task_run_items(
         wf_id = str(run.get("workflow_id") or "")
         run_status = str(run.get("status") or "pending")
         mapped = RUN_STATUS_TO_SCHEDULED.get(run_status, "scheduled")
-        title = workflow_names.get(wf_id) or "Workflow run"
+        wf_name = workflow_names.get(wf_id) or "workflow"
+        # Prefix so blue task chips are not mistaken for purple workflow schedules.
+        title = f"Run · {wf_name}"
         subtitle_parts = [run_status.replace("_", " ")]
         if run.get("run_type"):
             subtitle_parts.append(str(run["run_type"]))

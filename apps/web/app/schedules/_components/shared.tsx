@@ -26,6 +26,11 @@ export function KindBadge({ kind, className }: { kind: ScheduleKind; className?:
         style.border,
         className,
       )}
+      style={{
+        backgroundColor: `color-mix(in oklab, ${style.color} 16%, transparent)`,
+        borderColor: `color-mix(in oklab, ${style.color} 45%, transparent)`,
+        color: style.color,
+      }}
     >
       <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: style.color }} />
       {style.label}

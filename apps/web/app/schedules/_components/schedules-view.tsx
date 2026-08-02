@@ -246,6 +246,7 @@ export function SchedulesView({
         <div className="flex flex-wrap items-center gap-2">
           {ALL_KINDS.map((kind) => {
             const active = activeKinds.has(kind)
+            const kindColor = KIND_STYLES[kind].color
             return (
               <button
                 key={kind}
@@ -253,10 +254,17 @@ export function SchedulesView({
                 onClick={() => toggleKind(kind)}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-                  active
-                    ? cn(KIND_STYLES[kind].softBg, KIND_STYLES[kind].text, KIND_STYLES[kind].border)
-                    : "border-border text-muted-foreground hover:text-foreground",
+                  !active && "border-border text-muted-foreground hover:text-foreground",
                 )}
+                style={
+                  active
+                    ? {
+                        backgroundColor: `color-mix(in oklab, ${kindColor} 16%, transparent)`,
+                        borderColor: `color-mix(in oklab, ${kindColor} 45%, transparent)`,
+                        color: kindColor,
+                      }
+                    : undefined
+                }
                 aria-pressed={active}
               >
                 <KindDot kind={kind} className={cn(!active && "opacity-40")} />
@@ -433,10 +441,12 @@ function ViewSkeleton({ view }: { view: ViewMode }) {
     )
   }
   return (
-    <div className="grid grid-cols-7 gap-px rounded-xl border border-border bg-border p-px">
-      {Array.from({ length: 42 }).map((_, i) => (
-        <Skeleton key={i} className="h-24 rounded-none bg-card" />
-      ))}
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="grid h-[32rem] grid-cols-7 grid-rows-6 gap-px bg-border sm:h-[36rem] lg:h-[40rem]">
+        {Array.from({ length: 42 }).map((_, i) => (
+          <Skeleton key={i} className="min-h-0 rounded-none bg-card" />
+        ))}
+      </div>
     </div>
   )
 }

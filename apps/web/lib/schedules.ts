@@ -94,30 +94,51 @@ export interface KindStyle {
   border: string
 }
 
+/** Resolved CSS custom property for a schedule kind (purple / blue / green). */
+export function kindColorVar(kind: ScheduleKind): string {
+  if (kind === "workflow") return "var(--schedule-workflow)"
+  if (kind === "task") return "var(--schedule-task)"
+  return "var(--schedule-job)"
+}
+
+/** Inline chip styles so calendar/gantt colors never depend on Tailwind arbitrary parsing. */
+export function kindChipInlineStyle(kind: ScheduleKind): {
+  backgroundColor: string
+  borderLeftColor: string
+  color: string
+} {
+  const color = kindColorVar(kind)
+  return {
+    backgroundColor: `color-mix(in oklab, ${color} 18%, transparent)`,
+    borderLeftColor: color,
+    color,
+  }
+}
+
 export const KIND_STYLES: Record<ScheduleKind, KindStyle> = {
   workflow: {
     label: "Workflow",
     color: "var(--schedule-workflow)",
-    solidBg: "bg-[var(--schedule-workflow)]",
-    softBg: "bg-[color-mix(in_oklab,var(--schedule-workflow)_15%,transparent)]",
-    text: "text-[var(--schedule-workflow)]",
-    border: "border-[color-mix(in_oklab,var(--schedule-workflow)_45%,transparent)]",
+    solidBg: "bg-schedule-workflow",
+    softBg: "bg-schedule-workflow/15",
+    text: "text-schedule-workflow",
+    border: "border-schedule-workflow/45",
   },
   task: {
     label: "Task",
     color: "var(--schedule-task)",
-    solidBg: "bg-[var(--schedule-task)]",
-    softBg: "bg-[color-mix(in_oklab,var(--schedule-task)_15%,transparent)]",
-    text: "text-[var(--schedule-task)]",
-    border: "border-[color-mix(in_oklab,var(--schedule-task)_45%,transparent)]",
+    solidBg: "bg-schedule-task",
+    softBg: "bg-schedule-task/15",
+    text: "text-schedule-task",
+    border: "border-schedule-task/45",
   },
   job: {
     label: "Training job",
     color: "var(--schedule-job)",
-    solidBg: "bg-[var(--schedule-job)]",
-    softBg: "bg-[color-mix(in_oklab,var(--schedule-job)_16%,transparent)]",
-    text: "text-[var(--schedule-job)]",
-    border: "border-[color-mix(in_oklab,var(--schedule-job)_45%,transparent)]",
+    solidBg: "bg-schedule-job",
+    softBg: "bg-schedule-job/15",
+    text: "text-schedule-job",
+    border: "border-schedule-job/45",
   },
 }
 
@@ -234,11 +255,12 @@ function mapRunStatus(status: string | undefined): ScheduleStatus {
 export function fromRun(run: Run): ScheduledItem {
   const started = run.started_at || run.startedAt
   const completed = run.completed_at || run.completedAt
-  const name = run.workflow_name || run.workflowName || "Task run"
+  const name = run.workflow_name || run.workflowName || "workflow"
   return {
     id: `run-${run.id}`,
     kind: "task",
-    title: name,
+    // Keep task titles distinct from purple "Workflow schedule" chips.
+    title: `Run · ${name}`,
     subtitle: run.run_type ? `${run.run_type} run` : "Run",
     status: mapRunStatus(run.status),
     startedAt: started,
@@ -307,14 +329,18 @@ export function buildOccurrences(
   const occurrences: ScheduleOccurrence[] = []
 
   for (const item of items) {
-    if (item.kind === "workflow" && (item.cron || item.occurrences?.length)) {
+    if (item.kind === "workflow" && (item.cron || item.occurrences?.length || item.runAt || item.nextRunAt)) {
       // Prefer server-projected occurrences when present; otherwise expand the
       // cron client-side across the requested window.
       const serverDates = (item.occurrences ?? [])
         .map((iso) => new Date(iso))
         .filter((d) => !Number.isNaN(d.getTime()) && d >= from && d <= to)
       const dates =
-        serverDates.length > 0 ? serverDates : item.cron ? expandCron(item.cron, from, to) : []
+        serverDates.length > 0
+          ? serverDates
+          : item.cron && item.cron !== "@once"
+            ? expandCron(item.cron, from, to)
+            : []
       for (const date of dates) {
         occurrences.push({
           key: `${item.id}-${date.getTime()}`,
@@ -323,11 +349,14 @@ export function buildOccurrences(
           projected: true,
         })
       }
-      // If cron produced nothing but we know the next run, still place it.
-      if (dates.length === 0 && item.nextRunAt) {
-        const date = new Date(item.nextRunAt)
-        if (date >= from && date <= to) {
-          occurrences.push({ key: `${item.id}-next`, item, date, projected: true })
+      // One-shot / unparseable cron: place on runAt or nextRunAt.
+      if (dates.length === 0) {
+        const stamp = item.runAt || item.nextRunAt
+        if (stamp) {
+          const date = new Date(stamp)
+          if (!Number.isNaN(date.getTime()) && date >= from && date <= to) {
+            occurrences.push({ key: `${item.id}-next`, item, date, projected: true })
+          }
         }
       }
       continue
