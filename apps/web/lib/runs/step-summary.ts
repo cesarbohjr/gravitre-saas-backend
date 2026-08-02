@@ -125,6 +125,39 @@ export function humanizeLogLine(line: string): string {
   return translated?.title ?? withoutPrefix
 }
 
+/**
+ * API / DB `logs` may be string[], a single JSON string, or a parsed object
+ * (execution engine writes one JSON blob). Never assume `.map` works.
+ */
+export function normalizeStepLogs(logs: unknown): string[] {
+  if (logs == null) return []
+  if (Array.isArray(logs)) {
+    return logs
+      .map((item) => {
+        if (typeof item === "string") return item
+        if (item == null) return ""
+        try {
+          return typeof item === "object" ? JSON.stringify(item) : String(item)
+        } catch {
+          return String(item)
+        }
+      })
+      .filter((line) => line.trim().length > 0)
+  }
+  if (typeof logs === "string") {
+    const trimmed = logs.trim()
+    return trimmed ? [trimmed] : []
+  }
+  if (typeof logs === "object") {
+    try {
+      return [JSON.stringify(logs)]
+    } catch {
+      return []
+    }
+  }
+  return [String(logs)]
+}
+
 export function humanizeConnectorAction(action: string | undefined): string | null {
   if (!action) return null
   const [vendor, ...rest] = action.split(".")

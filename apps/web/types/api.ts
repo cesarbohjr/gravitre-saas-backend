@@ -399,7 +399,8 @@ export interface RunDetailResponse {
     inputSnapshot?: Record<string, unknown> | null
     outputSnapshot?: Record<string, unknown> | null
     isRetryable?: boolean
-    logs?: string[] | null
+    /** May be string[], a JSON string, or a parsed object from older writers. */
+    logs?: string[] | string | Record<string, unknown> | null
   }>
 }
 

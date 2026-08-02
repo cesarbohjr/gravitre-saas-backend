@@ -28,6 +28,7 @@ import { useMotionPrefs } from "@/lib/animations"
 import {
   humanizeConnectorAction,
   humanizeLogLine,
+  normalizeStepLogs,
   summarizeStepError,
   summarizeStepPayload,
 } from "@/lib/runs/step-summary"
@@ -324,6 +325,7 @@ function ExecutionStepRow({
   const modelInfo = step.outputSnapshot?.modelInfo ?? step.outputSnapshot?.model_info
   const tokens = step.outputSnapshot?.tokens ?? step.outputSnapshot?.tokenCount
   const invokeMeta = useMemo(() => parseInvokeTool(step), [step])
+  const logLines = useMemo(() => normalizeStepLogs(step.logs), [step.logs])
   const errorSummary = useMemo(() => summarizeStepError(step.errorMessage), [step.errorMessage])
   const connectorActionLabel = humanizeConnectorAction(invokeMeta.action)
   const executionModeSource = useMemo(
@@ -534,14 +536,14 @@ function ExecutionStepRow({
                   </div>
                 </motion.div>
               ) : null}
-              {step.logs && step.logs.length > 0 && (
+              {logLines.length > 0 && (
                 <div className="rounded-md bg-muted/50 p-3">
                   <div className="mb-2 flex items-center gap-1.5 text-muted-foreground">
                     <TerminalSquare className="h-3 w-3" />
                     <span className="text-[10px] font-medium uppercase tracking-wider">Activity</span>
                   </div>
                   <div className="space-y-1 text-xs">
-                    {step.logs.map((log, i) => (
+                    {logLines.map((log, i) => (
                       <p key={i} className={log.startsWith("ERROR") ? "text-destructive" : "text-muted-foreground"}>
                         {humanizeLogLine(log)}
                       </p>

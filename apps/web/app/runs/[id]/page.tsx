@@ -33,7 +33,7 @@ import {
   BusinessOutcomeView,
   type BusinessOutcomeDto,
 } from "@/components/gravitre/business-outcome/business-outcome-view"
-import { summarizeStepError, humanizeLogLine } from "@/lib/runs/step-summary"
+import { summarizeStepError, humanizeLogLine, normalizeStepLogs } from "@/lib/runs/step-summary"
 import type { ApprovalBatchView, RunCompensationSummary, RunDetailResponse, RunStatus } from "@/types/api"
 
 type StepStatus = ExecutionStepView["status"]
@@ -96,9 +96,10 @@ function normalizeRunDetail(payload: RunDetailResponse, runId: string): { run: R
       const ms = new Date(completed).getTime() - new Date(started).getTime()
       duration = formatDurationMs(ms)
     }
+    const rawLogs = normalizeStepLogs(step.logs)
     const logs = [
-      ...(step.logs ?? []).map((line) => humanizeLogLine(line)),
-      ...(step.errorMessage && !(step.logs ?? []).some((line) => line.includes(step.errorMessage!))
+      ...rawLogs.map((line) => humanizeLogLine(line)),
+      ...(step.errorMessage && !rawLogs.some((line) => line.includes(step.errorMessage!))
         ? [humanizeLogLine(step.errorMessage)]
         : []),
     ].filter(Boolean)
