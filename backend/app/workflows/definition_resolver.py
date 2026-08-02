@@ -92,6 +92,97 @@ def _normalize_edges(edges: list[dict[str, Any]], nodes: list[dict[str, Any]]) -
     return _sequential_edges(nodes)
 
 
+_ENRICHMENT_CHAIN_ACTIONS = frozenset(
+    {
+        "clay.leads.push",
+        "clay.workflows.output.get",
+        "clay.crm.sync",
+        "apollo.contacts.search",
+        "apollo.people.search",
+    }
+)
+
+
+def _step_actions(steps: list[Any]) -> set[str]:
+    actions: set[str] = set()
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        config = step.get("config") if isinstance(step.get("config"), dict) else {}
+        action = str(config.get("action") or config.get("tool_action") or "").strip()
+        if action:
+            actions.add(action)
+    return actions
+
+
+def _is_enrichment_chain(steps: list[Any], nodes: list[Any]) -> bool:
+    actions = _step_actions(steps)
+    if actions & {"clay.crm.sync", "clay.leads.push"}:
+        return True
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        config = node.get("config") if isinstance(node.get("config"), dict) else {}
+        action = str(config.get("action") or config.get("tool_action") or "").strip()
+        if action in _ENRICHMENT_CHAIN_ACTIONS:
+            return True
+        blob = f"{node.get('name') or ''} {node.get('title') or ''}".lower()
+        if "clay" in blob and ("hubspot" in blob or "enrich" in blob or "sync" in blob):
+            return True
+    return False
+
+
+def _sequential_edges_from_step_order(
+    steps: list[Any],
+    nodes: list[dict[str, Any]],
+) -> list[dict[str, Any]] | None:
+    node_ids = {str(node.get("id")) for node in nodes if isinstance(node, dict) and node.get("id")}
+    ordered = [
+        str(step["id"])
+        for step in steps
+        if isinstance(step, dict) and step.get("id") and str(step["id"]) in node_ids
+    ]
+    if len(ordered) < 2:
+        return None
+    return [
+        {"from_node_id": ordered[index], "to_node_id": ordered[index + 1]}
+        for index in range(len(ordered) - 1)
+    ]
+
+
+def _repair_enrichment_graph_edges(
+    resolved: dict[str, Any],
+) -> dict[str, Any]:
+    """Force a single serial chain when Clay→HubSpot graphs have orphan roots.
+
+    Disconnected ``clay.crm.sync`` nodes otherwise run in the first parallel batch
+    with empty ``upstream_outputs`` and fail on missing records.
+    """
+    steps = resolved.get("steps") if isinstance(resolved.get("steps"), list) else []
+    graph = resolved.get("graph") if isinstance(resolved.get("graph"), dict) else {}
+    nodes = graph.get("nodes") if isinstance(graph.get("nodes"), list) else []
+    edges = graph.get("edges") if isinstance(graph.get("edges"), list) else []
+    if not steps or not nodes:
+        return resolved
+    if not _is_enrichment_chain(steps, nodes):
+        return resolved
+    normalized_edges = _normalize_edges(edges, [n for n in nodes if isinstance(n, dict)])
+    targets = {edge["to_node_id"] for edge in normalized_edges}
+    roots = [
+        str(node.get("id"))
+        for node in nodes
+        if isinstance(node, dict) and node.get("id") and str(node.get("id")) not in targets
+    ]
+    if len(roots) <= 1:
+        resolved["graph"] = {**graph, "edges": normalized_edges}
+        return resolved
+    repaired = _sequential_edges_from_step_order(steps, [n for n in nodes if isinstance(n, dict)])
+    if not repaired:
+        repaired = _sequential_edges([n for n in nodes if isinstance(n, dict)])
+    resolved["graph"] = {**graph, "edges": repaired}
+    return resolved
+
+
 def resolve_executable_definition(
     client: Any,
     org_id: str,
@@ -115,6 +206,7 @@ def resolve_executable_definition(
             if not graph_edges:
                 normalized_graph["edges"] = _normalize_edges([], normalized_graph["nodes"])
             resolved["graph"] = normalized_graph
+            return _repair_enrichment_graph_edges(resolved)
         return resolved
 
     if isinstance(graph_nodes, list) and graph_nodes:
@@ -126,7 +218,7 @@ def resolve_executable_definition(
         compiled = graph_to_definition(normalized_graph["nodes"], edges)
         resolved["schema_version"] = compiled.get("schema_version") or SCHEMA_VERSION
         resolved["steps"] = _normalize_step_types(compiled.get("steps") or [])
-        return resolved
+        return _repair_enrichment_graph_edges(resolved)
 
     db_nodes = list_workflow_nodes(client, org_id, workflow_id, environment_name)
     if not db_nodes:
@@ -141,4 +233,4 @@ def resolve_executable_definition(
     resolved["schema_version"] = compiled.get("schema_version") or SCHEMA_VERSION
     resolved["steps"] = _normalize_step_types(compiled.get("steps") or [])
     resolved["graph"] = {"nodes": normalized_nodes, "edges": edge_dicts}
-    return resolved
+    return _repair_enrichment_graph_edges(resolved)

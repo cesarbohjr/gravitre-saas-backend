@@ -27,7 +27,7 @@ describe("enrichment-workflow-setup", () => {
     ).toBe(true)
   })
 
-  it("binds Lead Enrichment Coordinator and fills instructions", () => {
+  it("binds agents, instructions, and from_step param_sources", () => {
     const nodes = [
       node({ id: "1", type: "task", name: "List Apollo contact lists" }),
       node({ id: "2", type: "task", name: "Search Apollo contacts in MSP" }),
@@ -54,5 +54,18 @@ describe("enrichment-workflow-setup", () => {
     expect(result.nodes[2].config.agent_id).toBe("agent-1")
     expect(String(result.nodes[2].config.task)).toContain("apollo.lists.add")
     expect(String(result.nodes[6].config.task)).toContain("hubspot.lists.add_contact")
+    const pushSources = result.nodes[3].config.param_sources as {
+      records?: { from_step?: string; path?: string[] }
+    }
+    expect(pushSources.records?.from_step).toBe("2")
+    expect(pushSources.records?.path).toEqual(["records"])
+    const syncSources = result.nodes[5].config.param_sources as {
+      records?: { from_step?: string }
+      crm?: string
+      crm_connector_id?: string
+    }
+    expect(syncSources.records?.from_step).toBe("5")
+    expect(syncSources.crm).toBe("hubspot")
+    expect(syncSources.crm_connector_id).toBe("$hubspot_connector_id")
   })
 })

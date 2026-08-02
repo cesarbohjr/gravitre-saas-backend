@@ -175,18 +175,75 @@ def _with_result_url(data: Any, result_url: str | None) -> dict[str, Any]:
     return {"data": data, "result_url": result_url}
 
 
+def _clay_record_from_apollo_row(row: dict[str, Any]) -> dict[str, Any] | None:
+    """Normalize an Apollo contact/person into a Clay/HubSpot-ready record dict."""
+    email = row.get("email")
+    if not email and isinstance(row.get("contact_emails"), list) and row["contact_emails"]:
+        first = row["contact_emails"][0]
+        email = first.get("email") if isinstance(first, dict) else first
+    email_text = str(email or "").strip()
+    first_name = str(row.get("first_name") or row.get("firstname") or "").strip()
+    last_name = str(row.get("last_name") or row.get("lastname") or "").strip()
+    name = str(row.get("name") or " ".join(p for p in (first_name, last_name) if p)).strip()
+    org = row.get("organization") if isinstance(row.get("organization"), dict) else {}
+    company = str(
+        row.get("organization_name")
+        or row.get("company")
+        or org.get("name")
+        or ""
+    ).strip()
+    title = str(row.get("title") or row.get("headline") or "").strip()
+    linkedin = str(
+        row.get("linkedin_url")
+        or row.get("linkedin")
+        or row.get("linkedin_uid")
+        or ""
+    ).strip()
+    phone = str(row.get("phone") or row.get("sanitized_phone") or "").strip()
+    if not email_text and not last_name and not name:
+        return None
+    record: dict[str, Any] = {}
+    if email_text:
+        record["email"] = email_text
+    if first_name:
+        record["first_name"] = first_name
+        record["firstname"] = first_name
+    if last_name:
+        record["last_name"] = last_name
+        record["lastname"] = last_name
+    if name:
+        record["name"] = name
+    if company:
+        record["company"] = company
+    if title:
+        record["title"] = title
+        record["jobtitle"] = title
+    if linkedin:
+        record["linkedin_url"] = linkedin
+    if phone:
+        record["phone"] = phone
+    cid = str(row.get("id") or row.get("contact_id") or row.get("person_id") or "").strip()
+    if cid:
+        record["apollo_id"] = cid
+    return record
+
+
 def _stamp_membership_ids(payload: dict[str, Any], rows: list[Any] | None) -> dict[str, Any]:
-    """Stamp entity_ids / primary_contact_id for workflow from_step → lists.add wiring."""
+    """Stamp entity_ids / primary_contact_id / records for workflow from_step wiring."""
     ids: list[str] = []
     primary_email: str | None = None
     first_name: str | None = None
     last_name: str | None = None
+    records: list[dict[str, Any]] = []
     for row in rows or []:
         if not isinstance(row, dict):
             continue
         cid = str(row.get("id") or row.get("contact_id") or row.get("person_id") or "").strip()
         if cid and cid not in ids:
             ids.append(cid)
+        clay_row = _clay_record_from_apollo_row(row)
+        if clay_row:
+            records.append(clay_row)
         if not primary_email:
             email = row.get("email")
             if not email and isinstance(row.get("contact_emails"), list) and row["contact_emails"]:
@@ -200,6 +257,11 @@ def _stamp_membership_ids(payload: dict[str, Any], rows: list[Any] | None) -> di
         payload["entity_ids"] = ids
         payload["contact_ids"] = ids
         payload["primary_contact_id"] = ids[0]
+    if records:
+        payload["records"] = records
+        payload["clay_records"] = records
+        payload["enriched_records"] = records
+        payload["record_count"] = len(records)
     if primary_email:
         payload["primary_email"] = primary_email
         props: dict[str, Any] = {"email": primary_email}

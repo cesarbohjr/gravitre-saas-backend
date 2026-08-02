@@ -107,12 +107,18 @@ def _agent_step(
 
 
 def build_msp_enrichment_workflow_steps() -> list[dict[str, Any]]:
-    """Ordered steps: Apollo membership → Clay enrich → HubSpot CRM + list membership."""
+    """Ordered steps: Apollo membership → Clay enrich → HubSpot CRM + list membership.
+
+    Records flow via ``from_step`` bindings (not agent-set ``$clay_records`` /
+    ``$enriched_records`` run parameters). Runtime also falls back to scanning prior
+    step outputs for those aliases so older installs keep working.
+    """
     clay_prep_task = (
         f'Using apollo.lists.list / contacts.search / people.search / lists.add results for '
         f'"{DEFAULT_APOLLO_LIST_NAME}" (or install variable APOLLO_LIST_NAME): '
-        "Extract contact records (email, name, company, title, LinkedIn URL) and prepare a "
-        "Clay-ready records batch for enrichment. Set $clay_records for the next step. "
+        "Confirm contact records (email, name, company, title, LinkedIn URL) are ready for "
+        "Clay. Downstream tool steps pull ``records`` from Apollo search outputs automatically — "
+        "do not rely on setting run parameters. "
         "Do not call apollo.lists.add or hubspot.lists.add_contact — membership is handled "
         "by dedicated tool steps."
     )
@@ -174,13 +180,26 @@ def build_msp_enrichment_workflow_steps() -> list[dict[str, Any]]:
             "Push leads to Clay",
             "clay.leads.push",
             connector="clay",
-            param_sources={"records": "$clay_records"},
+            param_sources={
+                # Prefer list members; people-search records are the empty-list fallback
+                # (resolved via runtime alias scan when contacts search returns []).
+                "records": {
+                    "from_step": "apollo_contacts_search",
+                    "path": ["records"],
+                },
+            },
         ),
         _invoke(
             "clay_outputs",
             "Pull Clay enriched outputs",
             "clay.workflows.output.get",
             connector="clay",
+            param_sources={
+                "records": {
+                    "from_step": "clay_push",
+                    "path": ["records"],
+                },
+            },
         ),
         _invoke(
             "hubspot_crm_sync",
@@ -188,7 +207,10 @@ def build_msp_enrichment_workflow_steps() -> list[dict[str, Any]]:
             "clay.crm.sync",
             connector="clay",
             param_sources={
-                "records": "$enriched_records",
+                "records": {
+                    "from_step": "clay_outputs",
+                    "path": ["records"],
+                },
                 "crm_connector_id": "$hubspot_connector_id",
                 "crm": "hubspot",
             },

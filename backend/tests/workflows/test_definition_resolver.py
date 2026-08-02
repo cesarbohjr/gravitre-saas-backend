@@ -72,3 +72,46 @@ def test_resolve_executable_definition_maps_legacy_node_types():
     resolved = resolve_executable_definition(client, "org-1", "wf-1", None, "default")
     assert resolved["graph"]["nodes"][0]["node_type"] == "source"
     assert resolved["graph"]["nodes"][1]["node_type"] == "tool"
+
+
+def test_resolve_repairs_orphaned_enrichment_crm_sync_edges():
+    """Disconnected clay.crm.sync must not run as a parallel root with empty upstream."""
+    definition = {
+        "schema_version": "v1",
+        "steps": [
+            {
+                "id": "apollo_contacts_search",
+                "name": "Search Apollo",
+                "type": "invoke_tool",
+                "config": {"action": "apollo.contacts.search"},
+            },
+            {
+                "id": "clay_push",
+                "name": "Push Clay",
+                "type": "invoke_tool",
+                "config": {"action": "clay.leads.push"},
+            },
+            {
+                "id": "hubspot_crm_sync",
+                "name": "Sync HubSpot",
+                "type": "invoke_tool",
+                "config": {"action": "clay.crm.sync"},
+            },
+        ],
+        "graph": {
+            "nodes": [
+                {"id": "apollo_contacts_search", "node_type": "connector", "name": "Search Apollo"},
+                {"id": "clay_push", "node_type": "connector", "name": "Push Clay"},
+                {"id": "hubspot_crm_sync", "node_type": "connector", "name": "Sync HubSpot"},
+            ],
+            # Only apollo → clay; crm sync is an orphan root.
+            "edges": [{"from": "apollo_contacts_search", "to": "clay_push"}],
+        },
+    }
+    resolved = resolve_executable_definition(MagicMock(), "org-1", "wf-1", definition, "production")
+    edges = {(e["from_node_id"], e["to_node_id"]) for e in resolved["graph"]["edges"]}
+    assert ("apollo_contacts_search", "clay_push") in edges
+    assert ("clay_push", "hubspot_crm_sync") in edges
+    targets = {e["to_node_id"] for e in resolved["graph"]["edges"]}
+    roots = [n["id"] for n in resolved["graph"]["nodes"] if n["id"] not in targets]
+    assert roots == ["apollo_contacts_search"]

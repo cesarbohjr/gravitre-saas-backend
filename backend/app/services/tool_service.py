@@ -4621,6 +4621,96 @@ def tool_context_from_step(context: Any) -> ToolContext:
     )
 
 
+# Dollar-param aliases that agents were told to "set" but never write as run params.
+# Prefer concrete step outputs so marketplace / canvas enrichment packs keep working.
+_DOLLAR_STEP_FALLBACKS: dict[str, list[tuple[str, list[str]]]] = {
+    "enriched_records": [
+        ("clay_outputs", ["enriched_records"]),
+        ("clay_outputs", ["records"]),
+        ("clay_push", ["records"]),
+        ("apollo_contacts_search", ["records"]),
+        ("apollo_people_search", ["records"]),
+    ],
+    "clay_records": [
+        ("apollo_contacts_search", ["records"]),
+        ("apollo_people_search", ["records"]),
+        ("clay_push", ["records"]),
+        ("prepare_clay_batch", ["records"]),
+    ],
+    "records": [
+        ("clay_outputs", ["records"]),
+        ("clay_push", ["records"]),
+        ("apollo_contacts_search", ["records"]),
+        ("apollo_people_search", ["records"]),
+    ],
+}
+
+
+def _dig_step_path(step_outputs: dict[str, Any] | None, step_id: str, path: list[str]) -> Any:
+    output = (step_outputs or {}).get(step_id) or {}
+    value: Any = output
+    for key in path:
+        if not isinstance(value, dict):
+            return None
+        value = value.get(key)
+    return value
+
+
+def _nonempty_records(value: Any) -> list[Any] | None:
+    if isinstance(value, list) and value:
+        return value
+    return None
+
+
+def _scan_step_outputs_for_records(step_outputs: dict[str, Any] | None) -> list[Any] | None:
+    """Prefer the richest non-empty records list from completed step outputs."""
+    if not step_outputs:
+        return None
+    preferred_keys = ("enriched_records", "clay_records", "records")
+    # Later steps first (dict insertion order ≈ execution order).
+    for output in reversed(list(step_outputs.values())):
+        if not isinstance(output, dict):
+            continue
+        for key in preferred_keys:
+            found = _nonempty_records(output.get(key))
+            if found:
+                return found
+        nested = output.get("data") if isinstance(output.get("data"), dict) else None
+        if nested:
+            for key in preferred_keys:
+                found = _nonempty_records(nested.get(key))
+                if found:
+                    return found
+    return None
+
+
+def _resolve_dollar_alias(
+    name: str,
+    parameters: dict[str, Any],
+    step_outputs: dict[str, Any] | None,
+) -> Any:
+    direct = parameters.get(name)
+    if direct is not None and direct != "":
+        if name.endswith("records") or name == "records":
+            nonempty = _nonempty_records(direct)
+            if nonempty is not None:
+                return nonempty
+            # Empty list → keep scanning fallbacks.
+        else:
+            return direct
+    for step_id, path in _DOLLAR_STEP_FALLBACKS.get(name, []):
+        value = _dig_step_path(step_outputs, step_id, path)
+        if name.endswith("records") or name == "records":
+            nonempty = _nonempty_records(value)
+            if nonempty is not None:
+                return nonempty
+        elif value is not None and value != "":
+            return value
+    if name.endswith("records") or name == "records":
+        return _scan_step_outputs_for_records(step_outputs)
+    return None
+
+
 def _resolve_param_source(
     spec: Any,
     parameters: dict[str, Any],
@@ -4629,15 +4719,20 @@ def _resolve_param_source(
     if isinstance(spec, dict) and spec.get("from_step"):
         step_id = str(spec["from_step"])
         path = spec.get("path") or []
-        output = (step_outputs or {}).get(step_id) or {}
-        value: Any = output
-        for key in path:
-            if not isinstance(value, dict):
-                return None
-            value = value.get(key)
+        value = _dig_step_path(step_outputs, step_id, path)
+        # Empty records from contacts search → fall through to people / push outputs.
+        path_tail = str(path[-1]).lower() if path else ""
+        if path_tail in {"records", "enriched_records", "clay_records"}:
+            nonempty = _nonempty_records(value)
+            if nonempty is not None:
+                return nonempty
+            scanned = _scan_step_outputs_for_records(step_outputs)
+            if scanned is not None:
+                return scanned
+            return value
         return value
     if isinstance(spec, str) and spec.startswith("$"):
-        return parameters.get(spec[1:])
+        return _resolve_dollar_alias(spec[1:], parameters, step_outputs)
     return spec
 
 
@@ -4667,6 +4762,14 @@ def params_for_step(
             resolved = _resolve_param_source(spec, parameters, step_outputs)
             if resolved is not None and resolved != "":
                 params[key] = resolved
+        # Safety net: clay.crm.sync / clay.leads.push with unbound records.
+        action = str(cfg.get("action") or cfg.get("tool_action") or "")
+        if action in {"clay.crm.sync", "clay.leads.push", "clay.enrichments.request", "clay.workflows.output.get"}:
+            existing = params.get("records")
+            if not _nonempty_records(existing):
+                scanned = _scan_step_outputs_for_records(step_outputs)
+                if scanned is not None:
+                    params["records"] = scanned
     if step_type == "slack_post_message":
         msg_key = cfg.get("message_input_key", "message")
         message = parameters.get(msg_key, parameters.get("message", ""))

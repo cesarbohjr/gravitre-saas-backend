@@ -1720,7 +1720,14 @@ async def execute_workflow(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     parameters = validate_parameters(body.parameters)
-    parameters = enrich_vertical_workflow_parameters(org_id, workflow_id, parameters, wf)
+    parameters = enrich_vertical_workflow_parameters(
+        org_id,
+        workflow_id,
+        parameters,
+        wf,
+        client=client,
+        environment_name=environment_name,
+    )
     schema_version = active.get("schema_version") or definition.get("schema_version") or SCHEMA_VERSION
     run_hash = compute_run_hash(definition, parameters, schema_version)
 
@@ -2019,7 +2026,14 @@ def _execute_workflow_with_context(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     parameters = validate_parameters(parameters)
-    parameters = enrich_vertical_workflow_parameters(org_id, workflow_id, parameters, wf)
+    parameters = enrich_vertical_workflow_parameters(
+        org_id,
+        workflow_id,
+        parameters,
+        wf,
+        client=client,
+        environment_name=environment_name,
+    )
     schema_version = active.get("schema_version") or definition.get("schema_version") or SCHEMA_VERSION
     run_hash = compute_run_hash(definition, parameters, schema_version)
 

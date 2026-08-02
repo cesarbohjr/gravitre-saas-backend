@@ -8,6 +8,16 @@ const ERROR_TRANSLATIONS: Array<{ pattern: RegExp; message: string; fix?: string
     fix: "Open the workflow builder, select this agent step, and choose an agent from the team.",
   },
   {
+    pattern: /clay\.crm\.sync requires records or record/i,
+    message: "HubSpot sync had no contact records to write.",
+    fix: "Ensure Apollo search / Clay push completed with contacts, then re-run. Records should flow automatically from prior steps.",
+  },
+  {
+    pattern: /clay\.leads\.push requires records/i,
+    message: "Clay push had no contact records to send.",
+    fix: "Ensure Apollo contacts search returned people, then re-run from the Clay push step.",
+  },
+  {
     pattern: /connector.*auth|unauthorized|401|403|token.*expired|reconnect/i,
     message: "The connector lost authentication and could not complete the step.",
     fix: "Reconnect the connector, then retry this step.",
@@ -125,6 +135,155 @@ export function humanizeLogLine(line: string): string {
   return translated?.title ?? withoutPrefix
 }
 
+export type StepActivityFact = {
+  label: string
+  value: string
+}
+
+export type StepActivitySummary = {
+  headline: string
+  facts: StepActivityFact[]
+  /** Original JSON / text kept for an optional raw toggle. */
+  raw: string
+  isStructured: boolean
+}
+
+function tryParseJsonObject(value: unknown): Record<string, unknown> | null {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>
+  }
+  if (typeof value !== "string") return null
+  const trimmed = value.trim()
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return null
+  try {
+    const parsed = JSON.parse(trimmed) as unknown
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
+function countKeys(value: unknown): number {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return 0
+  return Object.keys(value as object).length
+}
+
+/**
+ * Turn engine execution-log JSON into operator-readable Activity facts
+ * instead of dumping a dense blob into the run detail panel.
+ */
+export function summarizeActivityLog(raw: string): StepActivitySummary {
+  const parsed = tryParseJsonObject(raw)
+  if (!parsed) {
+    return {
+      headline: humanizeLogLine(raw),
+      facts: [],
+      raw,
+      isStructured: false,
+    }
+  }
+
+  const facts: StepActivityFact[] = []
+  const stepType = formatPrimitive(parsed.step_type) || formatPrimitive(parsed.stepType)
+  if (stepType) facts.push({ label: "Step type", value: stepType })
+
+  const duration = parsed.duration_ms ?? parsed.durationMs
+  if (typeof duration === "number" && Number.isFinite(duration)) {
+    facts.push({ label: "Duration", value: `${duration} ms` })
+  }
+  const attempts = parsed.attempts
+  if (typeof attempts === "number" && attempts > 1) {
+    facts.push({ label: "Attempts", value: String(attempts) })
+  }
+
+  const input = (parsed.input as Record<string, unknown> | undefined) || undefined
+  const config =
+    (input?.config as Record<string, unknown> | undefined) ||
+    (parsed.config as Record<string, unknown> | undefined) ||
+    undefined
+  const action =
+    formatPrimitive(config?.action) ||
+    formatPrimitive(config?.tool_action) ||
+    formatPrimitive(config?.selectedAction) ||
+    formatPrimitive(parsed.action)
+  if (action) facts.push({ label: "Action", value: humanizeConnectorAction(action) || action })
+
+  const instruction = formatPrimitive(config?.instruction) || formatPrimitive(config?.task)
+  if (instruction) {
+    facts.push({
+      label: "Instruction",
+      value: instruction.length > 160 ? `${instruction.slice(0, 157)}…` : instruction,
+    })
+  }
+
+  const upstream = (input?.upstream_outputs as Record<string, unknown> | undefined) || undefined
+  const upstreamCount = countKeys(upstream)
+  facts.push({
+    label: "Upstream inputs",
+    value: upstreamCount === 0 ? "None passed into this step" : `${upstreamCount} prior step(s)`,
+  })
+
+  const paramSources =
+    (config?.param_sources as Record<string, unknown> | undefined) ||
+    (config?.paramSources as Record<string, unknown> | undefined)
+  if (paramSources && countKeys(paramSources) > 0) {
+    const bindings = Object.entries(paramSources)
+      .slice(0, 4)
+      .map(([key, spec]) => {
+        if (spec && typeof spec === "object" && !Array.isArray(spec) && "from_step" in spec) {
+          const path = Array.isArray((spec as { path?: unknown }).path)
+            ? (spec as { path: string[] }).path.join(".")
+            : ""
+          return `${humanizeKey(key)} ← ${(spec as { from_step: string }).from_step}${path ? `.${path}` : ""}`
+        }
+        if (typeof spec === "string" && spec.startsWith("$")) {
+          return `${humanizeKey(key)} ← run param ${spec}`
+        }
+        const text = formatPrimitive(spec)
+        return text ? `${humanizeKey(key)}: ${text}` : humanizeKey(key)
+      })
+    facts.push({ label: "Bindings", value: bindings.join(" · ") })
+  }
+
+  const errorMessage =
+    formatPrimitive(parsed.error_message) ||
+    formatPrimitive(parsed.errorMessage) ||
+    formatPrimitive(parsed.error)
+  if (errorMessage) {
+    const translated = summarizeStepError(errorMessage)
+    facts.push({ label: "Error", value: translated?.title || errorMessage })
+  }
+
+  const output = parsed.output
+  if (output && typeof output === "object" && !Array.isArray(output)) {
+    const summarized = summarizeStepPayload(output as Record<string, unknown>)
+    if (summarized?.summary) {
+      facts.push({ label: "Result", value: summarized.summary })
+    }
+  } else if (output == null && !errorMessage) {
+    facts.push({ label: "Result", value: "No output recorded" })
+  }
+
+  const headline =
+    errorMessage
+      ? summarizeStepError(errorMessage)?.title || errorMessage
+      : action
+        ? `${humanizeConnectorAction(action) || action} ran`
+        : stepType
+          ? `${stepType} step`
+          : "Step activity"
+
+  return {
+    headline,
+    facts: facts.slice(0, 8),
+    raw,
+    isStructured: true,
+  }
+}
+
 /**
  * API / DB `logs` may be string[], a single JSON string, or a parsed object
  * (execution engine writes one JSON blob). Never assume `.map` works.
@@ -156,6 +315,11 @@ export function normalizeStepLogs(logs: unknown): string[] {
     }
   }
   return [String(logs)]
+}
+
+/** Prefer structured Activity cards; fall back to plain humanized lines. */
+export function summarizeStepActivity(logs: unknown): StepActivitySummary[] {
+  return normalizeStepLogs(logs).map((line) => summarizeActivityLog(line))
 }
 
 export function humanizeConnectorAction(action: string | undefined): string | null {

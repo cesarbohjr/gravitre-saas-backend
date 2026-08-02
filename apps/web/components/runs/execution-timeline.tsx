@@ -27,8 +27,7 @@ import { DataStream } from "@/components/gravitre/premium-effects"
 import { useMotionPrefs } from "@/lib/animations"
 import {
   humanizeConnectorAction,
-  humanizeLogLine,
-  normalizeStepLogs,
+  summarizeStepActivity,
   summarizeStepError,
   summarizeStepPayload,
 } from "@/lib/runs/step-summary"
@@ -325,7 +324,8 @@ function ExecutionStepRow({
   const modelInfo = step.outputSnapshot?.modelInfo ?? step.outputSnapshot?.model_info
   const tokens = step.outputSnapshot?.tokens ?? step.outputSnapshot?.tokenCount
   const invokeMeta = useMemo(() => parseInvokeTool(step), [step])
-  const logLines = useMemo(() => normalizeStepLogs(step.logs), [step.logs])
+  const activity = useMemo(() => summarizeStepActivity(step.logs), [step.logs])
+  const [showRawActivity, setShowRawActivity] = useState(false)
   const errorSummary = useMemo(() => summarizeStepError(step.errorMessage), [step.errorMessage])
   const connectorActionLabel = humanizeConnectorAction(invokeMeta.action)
   const executionModeSource = useMemo(
@@ -536,17 +536,53 @@ function ExecutionStepRow({
                   </div>
                 </motion.div>
               ) : null}
-              {logLines.length > 0 && (
+              {activity.length > 0 && (
                 <div className="rounded-md bg-muted/50 p-3">
-                  <div className="mb-2 flex items-center gap-1.5 text-muted-foreground">
-                    <TerminalSquare className="h-3 w-3" />
-                    <span className="text-[10px] font-medium uppercase tracking-wider">Activity</span>
+                  <div className="mb-2 flex items-center justify-between gap-2 text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                      <TerminalSquare className="h-3 w-3" />
+                      <span className="text-[10px] font-medium uppercase tracking-wider">Activity</span>
+                    </div>
+                    {activity.some((row) => row.isStructured) ? (
+                      <button
+                        type="button"
+                        className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/80 hover:text-foreground"
+                        onClick={() => setShowRawActivity((v) => !v)}
+                      >
+                        {showRawActivity ? "Hide raw" : "Raw data"}
+                      </button>
+                    ) : null}
                   </div>
-                  <div className="space-y-1 text-xs">
-                    {logLines.map((log, i) => (
-                      <p key={i} className={log.startsWith("ERROR") ? "text-destructive" : "text-muted-foreground"}>
-                        {humanizeLogLine(log)}
-                      </p>
+                  <div className="space-y-3 text-xs">
+                    {activity.map((row, i) => (
+                      <div key={i} className="space-y-1.5">
+                        <p
+                          className={
+                            /fail|error|required/i.test(row.headline)
+                              ? "font-medium text-destructive"
+                              : "font-medium text-foreground"
+                          }
+                        >
+                          {row.headline}
+                        </p>
+                        {row.facts.length > 0 ? (
+                          <dl className="space-y-1 text-muted-foreground">
+                            {row.facts.map((fact) => (
+                              <div key={`${fact.label}-${fact.value}`} className="grid grid-cols-[7.5rem_1fr] gap-2">
+                                <dt className="text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                                  {fact.label}
+                                </dt>
+                                <dd className="min-w-0 break-words text-foreground/90">{fact.value}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        ) : null}
+                        {showRawActivity && row.isStructured ? (
+                          <pre className="mt-2 max-h-48 overflow-auto rounded border border-border/60 bg-background/70 p-2 text-[10px] leading-relaxed text-muted-foreground">
+                            {row.raw}
+                          </pre>
+                        ) : null}
+                      </div>
                     ))}
                   </div>
                 </div>

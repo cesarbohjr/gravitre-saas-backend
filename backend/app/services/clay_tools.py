@@ -109,20 +109,41 @@ def _exec_companies_enrich(ctx: ToolContext, params: dict[str, Any]) -> Normaliz
     return NormalizedResult(success=True, action="clay.companies.enrich", connector_id=cid, data=data)
 
 
+def _normalize_records_param(params: dict[str, Any]) -> list[dict[str, Any]]:
+    records = params.get("records")
+    if isinstance(records, list) and records:
+        return [dict(r) for r in records if isinstance(r, dict)]
+    record = params.get("record") if isinstance(params.get("record"), dict) else None
+    if record:
+        return [dict(record)]
+    if isinstance(params.get("payload"), dict):
+        return [dict(params["payload"])]
+    return []
+
+
 def _exec_leads_push(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, api_key, config = _session(ctx, params)
-    records = params.get("records")
-    if not isinstance(records, list) or not records:
-        record = params.get("record") if isinstance(params.get("record"), dict) else None
-        if record:
-            records = [record]
-        elif isinstance(params.get("payload"), dict):
-            records = [params["payload"]]
-        else:
-            payload = {k: v for k, v in params.items() if k not in {"connector_id", "connectorId", "table_id", "tableId", "webhook_url", "webhookUrl"}}
-            if payload:
-                records = [payload]
-    if not isinstance(records, list) or not records:
+    records = _normalize_records_param(params)
+    if not records:
+        payload = {
+            k: v
+            for k, v in params.items()
+            if k
+            not in {
+                "connector_id",
+                "connectorId",
+                "table_id",
+                "tableId",
+                "webhook_url",
+                "webhookUrl",
+                "records",
+                "record",
+                "payload",
+            }
+        }
+        if payload:
+            records = [payload]
+    if not records:
         raise ToolValidationError("clay.leads.push requires records, record, or lead fields")
     table_id = str(params.get("table_id") or params.get("tableId") or "").strip() or None
     webhook_url = str(params.get("webhook_url") or params.get("webhookUrl") or "").strip() or None
@@ -130,21 +151,25 @@ def _exec_leads_push(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResu
         data = request_enrichment(
             api_key,
             config,
-            records=[dict(r) for r in records if isinstance(r, dict)],
+            records=records,
             table_id=table_id,
             webhook_url=webhook_url,
         )
     except ClayAPIError as exc:
         raise _handle_error(exc) from exc
-    return NormalizedResult(success=True, action="clay.leads.push", connector_id=cid, data=data)
+    # Echo records so clay.workflows.output.get / clay.crm.sync can from_step them.
+    # Clay's pull_workflow_outputs only returns connector destinations, not row payloads.
+    out = dict(data) if isinstance(data, dict) else {"result": data}
+    out["records"] = records
+    out["clay_records"] = records
+    out["enriched_records"] = records
+    out["record_count"] = len(records)
+    return NormalizedResult(success=True, action="clay.leads.push", connector_id=cid, data=out)
 
 
 def _exec_enrichments_request(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, api_key, config = _session(ctx, params)
-    records = params.get("records")
-    if not isinstance(records, list) or not records:
-        record = params.get("record")
-        records = [record] if isinstance(record, dict) else []
+    records = _normalize_records_param(params)
     if not records:
         raise ToolValidationError("clay.enrichments.request requires records or record")
     table_id = str(params.get("table_id") or params.get("tableId") or "").strip() or None
@@ -152,18 +177,32 @@ def _exec_enrichments_request(ctx: ToolContext, params: dict[str, Any]) -> Norma
         data = request_enrichment(
             api_key,
             config,
-            records=[dict(r) for r in records if isinstance(r, dict)],
+            records=records,
             table_id=table_id,
         )
     except ClayAPIError as exc:
         raise _handle_error(exc) from exc
-    return NormalizedResult(success=True, action="clay.enrichments.request", connector_id=cid, data=data)
+    out = dict(data) if isinstance(data, dict) else {"result": data}
+    out["records"] = records
+    out["record_count"] = len(records)
+    return NormalizedResult(success=True, action="clay.enrichments.request", connector_id=cid, data=out)
 
 
 def _exec_workflows_output_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, _, config = _session(ctx, params)
     data = pull_workflow_outputs(config)
-    return NormalizedResult(success=True, action="clay.workflows.output.get", connector_id=cid, data=data)
+    out = dict(data) if isinstance(data, dict) else {"result": data}
+    # Prefer upstream records (from clay.leads.push). Clay config destinations rarely include rows.
+    upstream_records = _normalize_records_param(params)
+    config_records = out.get("records") if isinstance(out.get("records"), list) else []
+    records = upstream_records or [r for r in config_records if isinstance(r, dict)]
+    if records:
+        out["records"] = records
+        out["clay_records"] = records
+        out["enriched_records"] = records
+        out["record_count"] = len(records)
+        out.setdefault("source", "upstream_records" if upstream_records else out.get("source"))
+    return NormalizedResult(success=True, action="clay.workflows.output.get", connector_id=cid, data=out)
 
 
 def _exec_crm_sync(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:

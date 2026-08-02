@@ -1,6 +1,9 @@
 /**
  * Canonical Apollo → Clay → HubSpot enrichment setup for the workflow canvas.
  * Matches marketplace MSP enrichment steps and fills agents + instructions.
+ *
+ * Also stamps ``param_sources`` with ``from_step`` wiring so runs do not depend
+ * on agents "setting" ``$clay_records`` / ``$enriched_records`` run parameters.
  */
 import type { CanvasWorkflowNode } from "@/lib/workflows/builder-persistence"
 
@@ -25,27 +28,30 @@ const APOLLO_LIST_INSTRUCTION =
 
 const APOLLO_SEARCH_INSTRUCTION =
   'Call apollo.contacts.search for the MSP Prospects list (list_name="MSP Prospects" or APOLLO_LIST_NAME). ' +
-  "Return contacts with email, name, company, title, and LinkedIn URL when available."
+  "Return contacts with email, name, company, title, and LinkedIn URL when available. " +
+  "The tool stamps a ``records`` array for Clay push / HubSpot sync."
 
 const APOLLO_POPULATE_TASK =
   'Using apollo.lists.list and apollo.contacts.search results for list "MSP Prospects" ' +
   "(or install variable APOLLO_LIST_NAME): If contact_count is 0 / contacts empty, prospect with " +
   "apollo.people.search, create Apollo contacts when needed (apollo.contacts.create), then add them via " +
   'apollo.lists.add (entity_ids + label_names=["MSP Prospects"], modality=contacts). If the list is ' +
-  "already populated, extract contact records (email, name, company, title, LinkedIn URL) and prepare a " +
-  "Clay-ready records batch for enrichment. Set $clay_records for the next step."
+  "already populated, confirm contact records are ready for Clay. Downstream connector steps read " +
+  "``records`` from Apollo search outputs automatically — do not rely on setting run parameters. " +
+  "Do not call hubspot.lists.add_contact here — membership is a dedicated step."
 
 const CLAY_PUSH_INSTRUCTION =
-  "Call clay.leads.push with records from $clay_records (Apollo contacts prepared upstream). " +
+  "Call clay.leads.push with the ``records`` array from the Apollo contacts search step. " +
   "Confirm push acceptance and any table/workbook identifiers for the pull step."
 
 const CLAY_OUTPUT_INSTRUCTION =
   "Call clay.workflows.output.get for the enrichment job started upstream. " +
-  "Normalize enriched fields into $enriched_records for HubSpot CRM sync."
+  "Pass through / normalize the upstream ``records`` array for HubSpot CRM sync."
 
 const CLAY_CRM_SYNC_INSTRUCTION =
-  "Call clay.crm.sync with records=$enriched_records, crm=hubspot, and crm_connector_id=$hubspot_connector_id. " +
-  "Create or update HubSpot contacts; pass resulting contact ids to the list-membership agent."
+  "Call clay.crm.sync with records from the Clay outputs step, crm=hubspot, and " +
+  "crm_connector_id from the active HubSpot connector. Create or update HubSpot contacts; " +
+  "pass resulting contact ids to the list-membership step."
 
 const HUBSPOT_LIST_TASK =
   'Using the HubSpot contacts created by clay.crm.sync, add each contact to the existing HubSpot static list ' +
@@ -60,6 +66,15 @@ type SetupRule = {
   instruction?: string
   task?: string
   agentHints?: readonly string[]
+  /** Logical role used to wire from_step bindings after setup. */
+  role?:
+    | "apollo_lists"
+    | "apollo_search"
+    | "apollo_populate"
+    | "clay_push"
+    | "clay_outputs"
+    | "crm_sync"
+    | "hubspot_list"
 }
 
 const RULES: SetupRule[] = [
@@ -69,6 +84,7 @@ const RULES: SetupRule[] = [
     vendor: "apollo",
     selectedAction: "lists.list",
     instruction: APOLLO_LIST_INSTRUCTION,
+    role: "apollo_lists",
   },
   {
     match: /search\s+apollo\s+contact/i,
@@ -76,12 +92,14 @@ const RULES: SetupRule[] = [
     vendor: "apollo",
     selectedAction: "contacts.search",
     instruction: APOLLO_SEARCH_INSTRUCTION,
+    role: "apollo_search",
   },
   {
-    match: /populate\s+apollo\s+list/i,
+    match: /populate\s+apollo\s+list|prepare\s+clay/i,
     kind: "agent",
     task: APOLLO_POPULATE_TASK,
     agentHints: LEAD_ENRICHMENT_AGENT_HINTS,
+    role: "apollo_populate",
   },
   {
     match: /push\s+leads\s+to\s+clay/i,
@@ -89,6 +107,7 @@ const RULES: SetupRule[] = [
     vendor: "clay",
     selectedAction: "leads.push",
     instruction: CLAY_PUSH_INSTRUCTION,
+    role: "clay_push",
   },
   {
     match: /pull\s+clay\s+enriched/i,
@@ -96,6 +115,7 @@ const RULES: SetupRule[] = [
     vendor: "clay",
     selectedAction: "workflows.output.get",
     instruction: CLAY_OUTPUT_INSTRUCTION,
+    role: "clay_outputs",
   },
   {
     match: /sync\s+enriched\s+records/i,
@@ -103,12 +123,14 @@ const RULES: SetupRule[] = [
     vendor: "clay",
     selectedAction: "crm.sync",
     instruction: CLAY_CRM_SYNC_INSTRUCTION,
+    role: "crm_sync",
   },
   {
     match: /add\s+contacts\s+to\s+hubs/i,
     kind: "agent",
     task: HUBSPOT_LIST_TASK,
     agentHints: LEAD_ENRICHMENT_AGENT_HINTS,
+    role: "hubspot_list",
   },
 ]
 
@@ -152,6 +174,90 @@ export type EnrichmentSetupResult = {
   agentName: string | null
 }
 
+function fromStep(stepId: string, path: string[]): { from_step: string; path: string[] } {
+  return { from_step: stepId, path }
+}
+
+/** Stamp durable from_step param_sources once node roles are known. */
+function wireEnrichmentParamSources(
+  nodes: CanvasWorkflowNode[],
+  roles: Map<string, SetupRule["role"]>,
+): { nodes: CanvasWorkflowNode[]; changed: boolean } {
+  const idByRole = new Map<NonNullable<SetupRule["role"]>, string>()
+  for (const node of nodes) {
+    const role = roles.get(node.id)
+    if (role) idByRole.set(role, node.id)
+  }
+  const searchId = idByRole.get("apollo_search")
+  const pushId = idByRole.get("clay_push")
+  const outputsId = idByRole.get("clay_outputs")
+  const syncId = idByRole.get("crm_sync")
+  if (!searchId && !pushId && !outputsId && !syncId) {
+    return { nodes, changed: false }
+  }
+
+  let changed = false
+  const next = nodes.map((node) => {
+    const role = roles.get(node.id)
+    if (!role) return node
+    const existing =
+      (node.config?.param_sources as Record<string, unknown> | undefined) ||
+      (node.config?.paramSources as Record<string, unknown> | undefined) ||
+      {}
+    let paramSources = { ...existing }
+    let localChanged = false
+
+    if (role === "apollo_search" && !paramSources.list_name) {
+      paramSources = { ...paramSources, list_name: "MSP Prospects" }
+      localChanged = true
+    }
+    if (role === "clay_push" && searchId) {
+      const records = paramSources.records as { from_step?: string } | string | undefined
+      if (!records || typeof records === "string" || !records.from_step) {
+        paramSources = { ...paramSources, records: fromStep(searchId, ["records"]) }
+        localChanged = true
+      }
+    }
+    if (role === "clay_outputs" && pushId) {
+      const records = paramSources.records as { from_step?: string } | string | undefined
+      if (!records || typeof records === "string" || !records.from_step) {
+        paramSources = { ...paramSources, records: fromStep(pushId, ["records"]) }
+        localChanged = true
+      }
+    }
+    if (role === "crm_sync") {
+      const nextSources = { ...paramSources }
+      const records = nextSources.records as { from_step?: string } | string | undefined
+      const recordsSource = outputsId || pushId || searchId
+      if (recordsSource && (!records || typeof records === "string" || !records.from_step)) {
+        nextSources.records = fromStep(recordsSource, ["records"])
+        localChanged = true
+      }
+      if (!nextSources.crm) {
+        nextSources.crm = "hubspot"
+        localChanged = true
+      }
+      if (!nextSources.crm_connector_id) {
+        nextSources.crm_connector_id = "$hubspot_connector_id"
+        localChanged = true
+      }
+      paramSources = nextSources
+    }
+
+    if (!localChanged) return node
+    changed = true
+    return {
+      ...node,
+      config: {
+        ...(node.config || {}),
+        param_sources: paramSources,
+        paramSources,
+      },
+    }
+  })
+  return { nodes: next, changed }
+}
+
 /** Fill missing agent bindings + instructions for Apollo/Clay/HubSpot enrichment canvases. */
 export function applyEnrichmentWorkflowSetup(
   nodes: CanvasWorkflowNode[],
@@ -173,10 +279,12 @@ export function applyEnrichmentWorkflowSetup(
   let convertedTasks = 0
   let agentName: string | null = null
   let changed = false
+  const roles = new Map<string, SetupRule["role"]>()
 
   const next = nodes.map((node) => {
     const rule = RULES.find((r) => r.match.test(node.name || ""))
     if (!rule) return node
+    if (rule.role) roles.set(node.id, rule.role)
 
     let updated: CanvasWorkflowNode = { ...node, config: { ...(node.config || {}) } }
 
@@ -202,6 +310,15 @@ export function applyEnrichmentWorkflowSetup(
       }
       const existingTask = String(updated.config?.task || updated.description || "")
       if (rule.task && existingTask.trim().length < 40) {
+        updated = {
+          ...updated,
+          description: rule.task,
+          config: { ...updated.config, task: rule.task },
+        }
+        filledInstructions += 1
+        changed = true
+      } else if (rule.task && /\$clay_records|\$enriched_records/.test(existingTask)) {
+        // Upgrade stale "set $clay_records" agent copy to from_step-aware wording.
         updated = {
           ...updated,
           description: rule.task,
@@ -257,13 +374,29 @@ export function applyEnrichmentWorkflowSetup(
       }
       filledInstructions += 1
       changed = true
+    } else if (
+      rule.instruction &&
+      /\$clay_records|\$enriched_records|\$hubspot_connector_id/.test(existingInstruction)
+    ) {
+      updated = {
+        ...updated,
+        description: rule.instruction,
+        config: {
+          ...updated.config,
+          instruction: rule.instruction,
+          instructions: rule.instruction,
+        },
+      }
+      filledInstructions += 1
+      changed = true
     }
     return updated
   })
 
+  const wired = wireEnrichmentParamSources(next, roles)
   return {
-    nodes: next,
-    changed,
+    nodes: wired.nodes,
+    changed: changed || wired.changed,
     filledInstructions,
     boundAgents,
     convertedTasks,
