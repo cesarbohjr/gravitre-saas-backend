@@ -80,9 +80,27 @@ export function toastMarketplaceInstallFailure(
     return
   }
 
+  const payload =
+    err && typeof err === "object" && "payload" in err
+      ? (err as { payload: unknown }).payload
+      : null
+  const detail = detailObject(payload)
+  const code =
+    (detail && typeof detail.code === "string" && detail.code) ||
+    (payload &&
+      typeof payload === "object" &&
+      typeof (payload as { code?: unknown }).code === "string" &&
+      String((payload as { code: string }).code)) ||
+    null
+
   const message = err instanceof Error ? err.message : "Install failed"
+  const isGenericInternal =
+    /unexpected error occurred/i.test(message) || code === "INTERNAL_ERROR"
+
   toast.error(/connect required apps/i.test(message) ? "Connect required apps first" : "Install failed", {
-    description: message,
+    description: isGenericInternal
+      ? "The install could not finish. Check Agents / Workflows for a partial install, then retry. If it keeps failing, contact support with the asset name."
+      : message,
     action: options?.blockerActionUrl
       ? {
           label: "Connect apps",

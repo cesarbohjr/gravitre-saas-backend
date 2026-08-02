@@ -1,11 +1,14 @@
 """Partner connector marketplace — submissions and registry (STA-71)."""
 from __future__ import annotations
 
+import logging
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+
+logger = logging.getLogger(__name__)
 
 from app.auth.dependencies import (
     get_current_user,
@@ -163,8 +166,10 @@ def _marketplace_http_error(exc: MarketplaceError) -> HTTPException:
         status_code = status.HTTP_400_BAD_REQUEST
     elif exc.code == "PAYMENT_REQUIRED":
         status_code = status.HTTP_402_PAYMENT_REQUIRED
+    elif exc.code in {"INSTALL_FAILED", "VALIDATION_ERROR"}:
+        status_code = status.HTTP_400_BAD_REQUEST
     detail: dict[str, Any] | str = str(exc)
-    if exc.blockers or exc.details:
+    if exc.blockers or exc.details or exc.code:
         detail = {
             "message": str(exc),
             "code": exc.code,
@@ -1893,3 +1898,18 @@ async def marketplace_asset_install(
         )
     except MarketplaceError as exc:
         raise _marketplace_http_error(exc) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001 — never return opaque INTERNAL_ERROR for installs
+        logger.exception(
+            "marketplace_asset_install_failed asset_ref=%s org_id=%s",
+            asset_ref,
+            org_id,
+        )
+        raise _marketplace_http_error(
+            MarketplaceError(
+                f"Install could not finish: {exc}",
+                code="INSTALL_FAILED",
+                details={"assetRef": asset_ref, "reason": str(exc)[:500]},
+            )
+        ) from exc

@@ -177,6 +177,80 @@ def test_install_workflow_writes_workflow_defs(mock_plan, mock_version):
     mock_version.assert_called_once()
 
 
+@patch("app.marketplace.service.create_operator")
+@patch("app.marketplace.service.ensure_active_workflow_version", return_value="version-1")
+@patch("app.marketplace.service.get_plan_for_org", return_value={"agents_limit": None, "workflows_limit": None})
+def test_install_workflow_provisions_companion_agents(mock_plan, mock_version, mock_create_operator):
+    mock_create_operator.side_effect = lambda *_a, **_k: {
+        "id": _a[2]["id"],
+        "name": _a[2]["name"],
+    }
+    asset = {
+        "id": ASSET_ID,
+        "slug": "competitive-intelligence-monitoring",
+        "asset_type": "workflow",
+        "status": "published",
+        "visibility": "public",
+        "current_version": 1,
+        "title": "Competitive Intelligence Monitoring",
+        "department": "Marketing",
+        "required_connectors": [],
+        "install_variables": [],
+        "config": {
+            "schema_version": SCHEMA_VERSION,
+            "name": "Competitive Intelligence Monitoring",
+            "description": "Automated competitive intelligence monitoring playbook.",
+            "steps": [
+                {
+                    "id": "scan",
+                    "name": "Competitive scan",
+                    "type": "agent",
+                    "metadata": {
+                        "agent_seed": "agent:competitor-research-agent",
+                        "task": "Summarize competitor moves.",
+                    },
+                },
+                {
+                    "id": "brief",
+                    "name": "Marketing brief",
+                    "type": "agent",
+                    "metadata": {
+                        "agent_seed": "agent:marketing-analyst",
+                        "task": "Translate intel into campaign actions.",
+                    },
+                },
+            ],
+        },
+    }
+    assets = _table([asset])
+    agents = _table([])
+    client = MagicMock()
+
+    def table(name):
+        if name == "marketplace_assets":
+            return assets
+        if name == "agents":
+            return agents
+        if name == "marketplace_installs":
+            return _table([])
+        return _table([])
+
+    client.table.side_effect = table
+
+    with patch("app.marketplace.service.write_audit_event"), patch(
+        "app.marketplace.service.upsert_agent_tool_permission"
+    ):
+        result = install_asset(client, "org-1", ASSET_ID, actor_id="user-1")
+
+    assert result["entities"]["entityType"] == "workflow"
+    assert len(result["entities"].get("agentIds") or []) == 2
+    assert mock_create_operator.call_count == 2
+    created_configs = [call.args[2]["config"] for call in mock_create_operator.call_args_list]
+    slugs = {str(cfg.get("marketplaceSlug") or cfg.get("slug") or "") for cfg in created_configs}
+    assert "competitor-research-agent" in slugs
+    assert "marketing-analyst" in slugs
+
+
 def test_preview_install_reports_blockers():
     asset = _published_agent_asset()
     assets = _table([asset])

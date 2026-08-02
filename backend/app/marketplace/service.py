@@ -11,6 +11,7 @@ from app.marketplace.schemas import (
     ConnectorConfigAssetConfig,
     DepartmentPackAssetConfig,
     KnowledgePackAssetConfig,
+    MarketplaceValidationError,
     RequiredConnectorRef,
     WorkflowAssetConfig,
     parse_asset_config,
@@ -505,6 +506,133 @@ def _install_ai_agent(
     }
 
 
+def _agent_seeds_from_steps(steps: list[dict[str, Any]]) -> list[str]:
+    seeds: list[str] = []
+    seen: set[str] = set()
+    for step in steps:
+        metadata = step.get("metadata") if isinstance(step.get("metadata"), dict) else {}
+        for key in ("agent_seed", "next_agent_seed"):
+            seed = metadata.get(key)
+            if not seed:
+                continue
+            text = str(seed).strip()
+            if text and text not in seen:
+                seen.add(text)
+                seeds.append(text)
+    return seeds
+
+
+def _find_org_agent_id_by_seed(client: Any, org_id: str, seed: str) -> str | None:
+    slug = seed[6:] if seed.startswith("agent:") else seed
+    try:
+        rows = (
+            client.table("agents")
+            .select("id, name, config")
+            .eq("org_id", org_id)
+            .limit(200)
+            .execute()
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("marketplace agent seed lookup failed: %s", exc)
+        return None
+    for row in rows.data or []:
+        agent_id = str(row.get("id") or "")
+        if not agent_id:
+            continue
+        config = row.get("config") if isinstance(row.get("config"), dict) else {}
+        cfg_slug = str(
+            config.get("marketplaceSlug")
+            or config.get("slug")
+            or config.get("marketplace_slug")
+            or ""
+        ).strip()
+        if cfg_slug and cfg_slug in {slug, seed}:
+            return agent_id
+        name = str(row.get("name") or "").strip().lower().replace(" ", "-")
+        if name and name == slug.lower():
+            return agent_id
+    return None
+
+
+def _catalog_agent_config_for_seed(seed: str) -> AgentAssetConfig | None:
+    """Resolve starter-agent config from seed catalog when companion agents are needed."""
+    slug = seed[6:] if seed.startswith("agent:") else seed
+    try:
+        from app.marketplace.seed_catalog import _ai_agents
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("marketplace seed catalog unavailable: %s", exc)
+        return None
+    for asset in _ai_agents():
+        if str(getattr(asset, "slug", "") or "") != slug:
+            continue
+        config = getattr(asset, "config", None) or {}
+        if not isinstance(config, dict):
+            continue
+        try:
+            return AgentAssetConfig.model_validate(config)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("marketplace companion agent config invalid slug=%s err=%s", slug, exc)
+            return None
+    return None
+
+
+def _ensure_agents_for_workflow_steps(
+    client: Any,
+    org_id: str,
+    steps: list[dict[str, Any]],
+    *,
+    actor_id: str,
+    environment_name: str,
+    parent_asset: dict[str, Any],
+) -> dict[str, str]:
+    """Create/bind org agents for ``agent_seed`` values on workflow steps."""
+    agent_ids: dict[str, str] = {}
+    parent_id = str(parent_asset.get("id") or "")
+    for seed in _agent_seeds_from_steps(steps):
+        existing = _find_org_agent_id_by_seed(client, org_id, seed)
+        if existing:
+            agent_ids[seed] = existing
+            continue
+        catalog = _catalog_agent_config_for_seed(seed)
+        slug = seed[6:] if seed.startswith("agent:") else seed
+        if catalog is None:
+            catalog = AgentAssetConfig(
+                name=slug.replace("-", " ").title(),
+                purpose=f"Supports {parent_asset.get('title') or parent_asset.get('slug') or 'marketplace'} workflows.",
+                role="Analyst",
+                department=str(parent_asset.get("department") or "Operations"),
+                systems=[],
+                capabilities=[],
+                seed_label=seed if seed.startswith("agent:") else f"agent:{slug}",
+                config={"marketplaceSlug": slug, "slug": slug},
+            )
+        else:
+            cfg = dict(catalog.config or {})
+            cfg.setdefault("marketplaceSlug", slug)
+            cfg.setdefault("slug", slug)
+            catalog = catalog.model_copy(update={"config": cfg, "seed_label": catalog.seed_label or seed})
+
+        # Stable id per parent asset + seed so reinstalls bind the same agent.
+        companion_asset = {
+            "id": parent_id or slug,
+            "slug": str(parent_asset.get("slug") or slug),
+        }
+        installed = _install_ai_agent(
+            client,
+            org_id,
+            companion_asset,
+            catalog,
+            actor_id=actor_id,
+            environment_name=environment_name,
+        )
+        agent_id = str(installed.get("agentId") or installed.get("entityId") or "")
+        if agent_id:
+            agent_ids[seed] = agent_id
+            agent_ids[f"agent:{slug}"] = agent_id
+            agent_ids[slug] = agent_id
+    return agent_ids
+
+
 def _install_workflow_entity(
     client: Any,
     org_id: str,
@@ -518,9 +646,21 @@ def _install_workflow_entity(
     workflow_label: str = "workflow",
 ) -> dict[str, Any]:
     workflow_id = marketplace_entity_id(org_id, str(asset["id"]), workflow_label)
+    resolved_agent_ids = dict(agent_ids or {})
+    if not resolved_agent_ids:
+        resolved_agent_ids.update(
+            _ensure_agents_for_workflow_steps(
+                client,
+                org_id,
+                list(config.steps),
+                actor_id=actor_id,
+                environment_name=environment_name,
+                parent_asset=asset,
+            )
+        )
     steps = _resolve_workflow_steps(
         config.steps,
-        agent_ids=agent_ids or {},
+        agent_ids=resolved_agent_ids,
         connector_ids=connector_ids or {},
     )
     definition = {"schema_version": config.schema_version or SCHEMA_VERSION, "steps": steps}
@@ -558,15 +698,40 @@ def _install_workflow_entity(
         on_conflict="id",
     ).execute()
 
-    ensure_active_workflow_version(
-        client,
-        org_id,
-        workflow_id,
-        definition,
-        environment_name=environment_name,
-        actor_id=actor_id,
-    )
-    return {"entityType": "workflow", "entityId": workflow_id, "workflowId": workflow_id}
+    try:
+        ensure_active_workflow_version(
+            client,
+            org_id,
+            workflow_id,
+            definition,
+            environment_name=environment_name,
+            actor_id=actor_id,
+        )
+    except Exception as exc:  # noqa: BLE001 — install must succeed even if versioning fails
+        logger.warning(
+            "marketplace_workflow_version_skipped workflow_id=%s err=%s",
+            workflow_id,
+            exc,
+        )
+    companion_ids = [
+        resolved_agent_ids[seed]
+        for seed in _agent_seeds_from_steps(list(config.steps))
+        if seed in resolved_agent_ids
+    ]
+    # de-dupe while preserving order
+    seen_ids: set[str] = set()
+    agent_id_list: list[str] = []
+    for aid in companion_ids:
+        if aid in seen_ids:
+            continue
+        seen_ids.add(aid)
+        agent_id_list.append(aid)
+    return {
+        "entityType": "workflow",
+        "entityId": workflow_id,
+        "workflowId": workflow_id,
+        "agentIds": agent_id_list,
+    }
 
 
 def _install_knowledge_pack(
@@ -1254,7 +1419,14 @@ def install_asset(
 
     _check_plan_limits(client, org_id, str(asset["asset_type"]))
     resolved = _resolve_asset_payload(asset, install_variables)
-    parsed = parse_asset_config(str(asset["asset_type"]), resolved["config"], publish=True)
+    try:
+        parsed = parse_asset_config(str(asset["asset_type"]), resolved["config"], publish=True)
+    except MarketplaceValidationError as exc:
+        raise MarketplaceError(
+            exc.message,
+            code="VALIDATION_ERROR",
+            details={"errors": exc.errors},
+        ) from exc
     connector_ids = {
         item["connectorType"]: _find_active_connector_id(
             client,

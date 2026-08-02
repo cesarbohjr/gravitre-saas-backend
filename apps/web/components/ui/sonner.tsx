@@ -63,13 +63,13 @@ const Toaster = ({ className, toastOptions, ...props }: ToasterProps) => {
         unstyled: true,
         classNames: {
           toast: cn(
-            "group/toast pointer-events-auto relative flex w-[min(100vw-2rem,22.5rem)] items-center gap-3",
+            "group/toast pointer-events-auto relative flex w-[min(100vw-2rem,22.5rem)] items-start gap-3",
             "rounded-2xl border border-border/70 bg-card p-4 pr-10 text-card-foreground",
             "shadow-[var(--elevation-3),var(--highlight-edge)] backdrop-blur-sm",
             callerClasses?.toast,
           ),
-          icon: cn("mr-0 shrink-0", callerClasses?.icon),
-          content: cn("flex min-w-0 flex-1 flex-col justify-center gap-0.5", callerClasses?.content),
+          icon: cn("mr-3 shrink-0 self-start", callerClasses?.icon),
+          content: cn("ml-0 flex min-w-0 flex-1 flex-col justify-center gap-0.5", callerClasses?.content),
           title: cn(
             "text-sm font-semibold tracking-tight text-foreground leading-snug",
             callerClasses?.title,
