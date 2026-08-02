@@ -4,6 +4,7 @@ import {
   getBuiltInModelGuide,
   groupBuiltInModels,
   statusLabel,
+  statusShortLabel,
   summarizeBrainHealth,
   type BuiltInModelListItem,
 } from "@/lib/built-in-model-catalog"
@@ -55,5 +56,7 @@ describe("built-in-model-catalog", () => {
     expect(health.planned).toBe(1)
     expect(health.readyPct).toBe(50)
     expect(statusLabel("trained")).toMatch(/Trained/i)
+    expect(statusShortLabel("heuristic")).toBe("Learning")
+    expect(statusShortLabel("planned")).toBe("Roadmap")
   })
 })

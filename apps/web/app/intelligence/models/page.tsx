@@ -7,7 +7,6 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
 import { BuiltInModelsBrain } from "@/components/gravitre/built-in-models-brain"
 import { PageHeader } from "@/components/gravitre/page-header"
-import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { intelligenceApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
@@ -17,7 +16,6 @@ import {
   getBuiltInModelGuide,
   type BuiltInModelListItem,
 } from "@/lib/built-in-model-catalog"
-import { cn } from "@/lib/utils"
 
 type FilterKey = "all" | "active" | "needs_data" | "roadmap"
 
@@ -41,13 +39,6 @@ function dataSufficiencyProgress(
     required,
   }
 }
-
-const FILTERS: Array<{ id: FilterKey; label: string }> = [
-  { id: "all", label: "All" },
-  { id: "active", label: "Active" },
-  { id: "needs_data", label: "Need more data" },
-  { id: "roadmap", label: "Coming later" },
-]
 
 export default function IntelligenceModelsPage() {
   const { user } = useAuth()
@@ -118,22 +109,7 @@ export default function IntelligenceModelsPage() {
           title={copy.title}
           description={copy.intro}
           icon={Brain}
-          iconColor="from-emerald-500/20 to-teal-500/20"
-          actions={
-            <div className="flex flex-wrap gap-1.5">
-              {FILTERS.map((f) => (
-                <Button
-                  key={f.id}
-                  size="sm"
-                  variant={filter === f.id ? "default" : "outline"}
-                  className={cn("h-8 text-xs", filter === f.id && "shadow-sm")}
-                  onClick={() => setFilter(f.id)}
-                >
-                  {f.label}
-                </Button>
-              ))}
-            </div>
-          }
+          iconColor="from-primary/25 to-[oklch(0.55_0.16_250)]/20"
         />
 
         <div className="px-4 pb-8 md:px-6">
@@ -142,7 +118,7 @@ export default function IntelligenceModelsPage() {
           ) : items.length === 0 ? (
             <EmptyState title={copy.emptyTitle} description={copy.emptyDescription} />
           ) : (
-            <BuiltInModelsBrain items={items} filter={filter} />
+            <BuiltInModelsBrain items={items} filter={filter} onFilterChange={setFilter} />
           )}
         </div>
       </div>

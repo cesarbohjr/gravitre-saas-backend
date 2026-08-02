@@ -329,6 +329,20 @@ export function statusLabel(status: string): string {
   return status.replace(/_/g, " ")
 }
 
+/** Compact chip copy for dense directory cards / table rows. */
+export function statusShortLabel(status: string): string {
+  const s = status.toLowerCase()
+  if (s === "trained") return "Trained"
+  if (s === "heuristic") return "Learning"
+  if (s === "disabled") return "Off"
+  if (s === "planned") return "Roadmap"
+  return status.replace(/_/g, " ")
+}
+
+export function domainLabel(domainId: BuiltInModelDomainId): string {
+  return BUILT_IN_MODEL_DOMAINS.find((d) => d.id === domainId)?.title ?? domainId
+}
+
 export type BuiltInModelListItem = {
   id: string
   status: string
