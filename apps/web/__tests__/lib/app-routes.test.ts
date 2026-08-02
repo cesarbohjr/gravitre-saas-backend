@@ -11,6 +11,10 @@ describe("APP_ROUTES", () => {
     expect(APP_ROUTES.gravitreAiChat).toBe("/ai?mode=chat")
   })
 
+  it("exposes /outcomes as the app-wide BusinessOutcome surface", () => {
+    expect(APP_ROUTES.outcomes).toBe("/outcomes")
+  })
+
   it("does not expose legacy paths in canonical routes", () => {
     const canonicalValues = Object.values(APP_ROUTES)
     expect(canonicalValues).not.toContain("/operator")

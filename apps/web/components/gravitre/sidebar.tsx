@@ -107,6 +107,12 @@ const adminNavigation: NavGroup[] = [
     group: "ACTIVITY",
     items: [
       { name: "Runs", href: "/runs", icon: "listTodo" },
+      {
+        name: "Outcomes",
+        href: APP_ROUTES.outcomes,
+        icon: "checkCircle",
+        hint: "Completed work across chat, workflows, and agents",
+      },
       { name: "Schedules", href: "/schedules", icon: "calendar" },
       { name: "Approvals", href: APP_ROUTES.approvals, icon: "clipboardCheck" },
     ],

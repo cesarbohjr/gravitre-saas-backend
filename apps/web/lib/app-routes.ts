@@ -27,6 +27,7 @@ export const APP_ROUTES = {
   connectors: "/connectors",
   workflows: "/workflows",
   runs: "/runs",
+  outcomes: "/outcomes",
   approvals: "/approvals",
   settings: "/settings",
 } as const

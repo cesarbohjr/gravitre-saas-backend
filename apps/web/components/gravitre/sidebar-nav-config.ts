@@ -88,6 +88,12 @@ export const ADMIN_SIDEBAR_NAV: SidebarNavGroup[] = [
     group: "ACTIVITY",
     items: [
       { name: "Runs", href: "/runs", icon: "listTodo" },
+      {
+        name: "Outcomes",
+        href: APP_ROUTES.outcomes,
+        icon: "checkCircle",
+        hint: "Completed work across chat, workflows, and agents",
+      },
       { name: "Schedules", href: "/schedules", icon: "calendar" },
       { name: "Approvals", href: APP_ROUTES.approvals, icon: "clipboardCheck" },
     ],
