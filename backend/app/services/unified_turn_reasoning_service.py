@@ -946,6 +946,29 @@ async def apply_unified_turn_live(
         )
         return None
 
+    # Part 3 — pack-common list create: complete approve plan beats LLM clarify
+    # (e.g. HubSpot "static vs active" when the user already said "static list").
+    if str(result.outcome_kind or "") in {
+        "clarifying_question",
+        "conversational_reply",
+        "confirmation_request",
+    }:
+        from app.services.pack_common_intent_defaults import (
+            try_pack_common_list_create_plan,
+        )
+
+        pack_plan = try_pack_common_list_create_plan(
+            message or "",
+            connected_integrations=list(result.connected_integrations or connected_integrations or []),
+        )
+        if pack_plan is not None:
+            result.outcome_kind = "connector_tool_proposal"
+            result.tool_name = pack_plan.tool_name
+            result.tool_invoke_action = pack_plan.invoke_action
+            result.tool_arguments = dict(pack_plan.args or {})
+            result.requires_write_approval = True
+            result.model = f"{result.model or 'unified_turn'}+pack_common_list_create"
+
     text_kinds = {
         "conversational_reply",
         "clarifying_question",

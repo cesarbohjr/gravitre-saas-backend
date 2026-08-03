@@ -193,6 +193,64 @@ def _apply_prospecting_list_defaults(
     return plan
 
 
+def try_pack_common_list_create_plan(
+    message: str,
+    connected_integrations: list[str] | tuple[str, ...] | None = None,
+) -> ConnectorActionPlan | None:
+    """Deterministic pack-common list-create plan (bypasses LLM static/active clarify).
+
+    Returns a complete ``ConnectorActionPlan`` when the utterance is a known
+    Apollo/HubSpot list-create intent and the vendor is connected; else None.
+    """
+    from app.services.chat_action_mapper import get_chat_action_mapper
+    from app.services.chat_connector_models import LIST_CREATE_INTENT
+
+    text = (message or "").strip()
+    if not text or not LIST_CREATE_INTENT.search(text):
+        return None
+    connected = {
+        str(c).strip().lower()
+        for c in (connected_integrations or [])
+        if str(c).strip()
+    }
+    # Prefer explicit vendor mention; else first of hubspot/apollo that is connected.
+    prefer: list[str] = []
+    if re.search(r"\bhubspot\b", text, re.I):
+        prefer.append("hubspot")
+    if re.search(r"\bapollo\b", text, re.I):
+        prefer.append("apollo")
+    if not prefer:
+        prefer = [v for v in ("hubspot", "apollo") if v in connected]
+    for vendor in prefer:
+        if connected and vendor not in connected:
+            continue
+        match = get_chat_action_mapper().match_segment(
+            text, connected_integrations=list(connected or {vendor})
+        )
+        if match is None:
+            continue
+        action = str(getattr(match.entry, "action_key", "") or "")
+        if action not in {"apollo.lists.create", "hubspot.lists.create"}:
+            continue
+        if vendor == "apollo" and action != "apollo.lists.create":
+            continue
+        if vendor == "hubspot" and action != "hubspot.lists.create":
+            continue
+        args = dict(match.args or {})
+        plan = ConnectorActionPlan(
+            tool_name=action.replace(".", "_"),
+            invoke_action=action,
+            integration=vendor,
+            kind="write",
+            label="Create contact list" if vendor == "apollo" else "Create list",
+            args=args,
+            requires_approval=True,
+            destructive=True,
+        )
+        return apply_pack_common_defaults(plan, message=text)
+    return None
+
+
 def apply_pack_common_defaults(
     plan: ConnectorActionPlan,
     *,

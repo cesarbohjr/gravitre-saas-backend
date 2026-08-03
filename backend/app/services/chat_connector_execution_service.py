@@ -389,28 +389,64 @@ class ChatConnectorExecutionService:
                         inferred_name = str(
                             planned.get("List name") or planned.get("Name") or list_hint
                         ).strip()
-                        if inferred_name and integration == "apollo":
+                        if inferred_name and integration in {"apollo", "hubspot"}:
                             from app.services.connector_action_workflows import format_write_approval_message
+                            from app.services.pack_common_intent_defaults import (
+                                apply_pack_common_defaults,
+                            )
 
                             # Wave 6–7 claim 4 — mark inferred list name so the panel can label it.
-                            plan = ConnectorActionPlan(
-                                tool_name="apollo_lists_create",
-                                invoke_action="apollo.lists.create",
-                                integration="apollo",
-                                kind="write",
-                                label="Create contact list",
-                                args={"name": inferred_name[:200], "modality": "contacts"},
-                                inferred_fields=("name",),
-                                inference_sources={"name": "message_or_default_hint"},
-                                requires_approval=True,
-                            )
+                            if integration == "apollo":
+                                plan = ConnectorActionPlan(
+                                    tool_name="apollo_lists_create",
+                                    invoke_action="apollo.lists.create",
+                                    integration="apollo",
+                                    kind="write",
+                                    label="Create contact list",
+                                    args={"name": inferred_name[:200], "modality": "contacts"},
+                                    inferred_fields=("name",),
+                                    inference_sources={"name": "message_or_default_hint"},
+                                    requires_approval=True,
+                                )
+                            else:
+                                # Part 3 — HubSpot pack-common static list (MSPs default).
+                                hs_name = inferred_name[:200]
+                                if re.fullmatch(r"msps?", hs_name, re.I):
+                                    hs_name = "MSPs"
+                                if re.match(
+                                    r"^(?:in|on|via|with|using)\s+hubspot\s*$",
+                                    hs_name,
+                                    re.I,
+                                ):
+                                    hs_name = "MSPs"
+                                plan = ConnectorActionPlan(
+                                    tool_name="hubspot_lists_create",
+                                    invoke_action="hubspot.lists.create",
+                                    integration="hubspot",
+                                    kind="write",
+                                    label="Create list",
+                                    args={
+                                        "name": hs_name,
+                                        "processing_type": "MANUAL",
+                                        "object_type_id": "0-1",
+                                    },
+                                    inferred_fields=("name", "processing_type", "object_type_id"),
+                                    inference_sources={
+                                        "name": "message_or_default_hint",
+                                        "processing_type": "pack_common_default",
+                                        "object_type_id": "pack_common_default",
+                                    },
+                                    requires_approval=True,
+                                    destructive=True,
+                                )
+                            plan = apply_pack_common_defaults(plan, message=message or "")
                             pending = {
                                 "type": "connector_action",
                                 "status": "awaiting_confirm",
                                 "params": {
                                     **ChatConnectorExecutionService.plan_to_dict(plan),
                                     "status": "awaiting_confirm",
-                                    "source": "apollo_list_create_autoplan",
+                                    "source": f"{integration}_list_create_autoplan",
                                 },
                             }
                             updated_state = {**task_state, "pending_task": pending}

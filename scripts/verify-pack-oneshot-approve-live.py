@@ -88,7 +88,15 @@ CASES: list[dict[str, Any]] = [
         "id": "ambiguous_enrich_my_list",
         "message": "Enrich my list with Clay",
         "expect_mode": "clarify_once",
-        "specific_clarify_bonus": ["which list", "list name", "which one", "Apollo list"],
+        "specific_clarify_bonus": [
+            "which list",
+            "list name",
+            "which one",
+            "Apollo list",
+            "connect",
+            "Clay",
+            "list source",
+        ],
     },
     {
         "id": "add_members_no_criteria",
@@ -266,11 +274,14 @@ def classify_first_turn(
         return "clarify_once"
     # Conversational clarify (dialogue_mode=answer but asks for a specific slot).
     if re.search(
-        r"\b(?:i need|need the|tell me|which |what (?:should|is)|missing)\b",
+        r"\b(?:i need|need the|tell me|which |what (?:should|is)|missing|"
+        r"not have enough|do not have enough|isn.?t connected|is not connected|"
+        r"connect\s+\w+\s+at)\b",
         text,
         re.I,
     ) and re.search(
-        r"\b(?:list(?:\s+name)?|criteria|contacts?|object type|deal name|ICP|filter|who)\b",
+        r"\b(?:list(?:\s+name)?|criteria|contacts?|object type|deal|ICP|filter|who|"
+        r"clay|apollo|connector)\b",
         text,
         re.I,
     ):

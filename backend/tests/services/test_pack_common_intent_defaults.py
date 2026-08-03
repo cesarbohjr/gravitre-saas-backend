@@ -96,3 +96,28 @@ def test_catalog_covers_msp_and_prospecting_actions():
     for row in rows:
         assert "msp-intelligence-pack" in row["pack_ids"]
         assert "prospecting-intelligence-pack" in row["pack_ids"]
+
+
+def test_try_pack_common_list_create_hubspot_static_msps():
+    from app.services.pack_common_intent_defaults import try_pack_common_list_create_plan
+
+    plan = try_pack_common_list_create_plan(
+        "Create HubSpot static list MSPs",
+        connected_integrations=["hubspot", "apollo"],
+    )
+    assert plan is not None
+    assert plan.invoke_action == "hubspot.lists.create"
+    assert plan.args.get("name") == "MSPs"
+    assert plan.args.get("processing_type") == "MANUAL"
+
+
+def test_try_pack_common_list_create_skips_non_list():
+    from app.services.pack_common_intent_defaults import try_pack_common_list_create_plan
+
+    assert (
+        try_pack_common_list_create_plan(
+            "Enrich my list with Clay",
+            connected_integrations=["clay", "apollo"],
+        )
+        is None
+    )
