@@ -89,6 +89,13 @@ export default function HomePage() {
               Marketplace
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
+            <Link
+              href="/features/extension"
+              className="inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-white px-4 py-2 font-medium text-zinc-800 transition-colors hover:bg-zinc-50"
+            >
+              Browser extension
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
         </div>
       </section>

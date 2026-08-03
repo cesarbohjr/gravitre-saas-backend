@@ -18,6 +18,10 @@ prev:
 
 Follow the [Quickstart](/docs/getting-started/quickstart), then connect one [Connector](/docs/guides/how-to/connectors) and run a [workflow](/docs/guides/how-to/workflows) or [Gravitre AI (Execute mode)](/docs/guides/how-to/ai-operator) task.
 
+### How do I use the browser extension?
+
+Install the Chrome extension, connect your org from the popup, enrich a supported page (LinkedIn / Gmail / Outlook / company site), approve one catalog write, then open Outcomes. Full walkthrough: [Browser extension](/docs/guides/how-to/browser-extension). Product overview: [/features/extension](/features/extension).
+
 ### What happened to Agent Swarm, Command Center, and Model Registry?
 
 | Old name | New name | Canonical route |
@@ -226,6 +230,24 @@ Production-ready vendors listed on [Connect integrations](/docs/guides/how-to/co
 ### Can partners write to my CRM via connector grants?
 
 No — federated **connector grants** allow **read-only** actions only. Writes stay inside each org's own connectors and approval policy.
+
+## Browser extension
+
+### Does the extension automate HubSpot or LinkedIn by clicking the page?
+
+No. It extracts page context for enrich, then calls **governed catalog actions** (Apollo / HubSpot, etc.). There is no DOM automation substitute for CRM writes.
+
+### Which browsers are supported?
+
+**Google Chrome** is the supported path for v1. The pack is Chromium MV3. Firefox, Safari, and mobile are out of scope.
+
+### Why does Connect need to open gravitre.app?
+
+The extension uses your existing web session (JWT + org). `/extension/connect` hands that session to the extension — there is no separate login identity.
+
+### Where do extension writes show up?
+
+**Outcomes** and **Runs**, with `source=browser_extension`, after you approve the write in the overlay. Same Module A path as other governed writes.
 
 ## Support
 

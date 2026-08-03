@@ -1,0 +1,95 @@
+---
+title: Browser extension (Chrome)
+description: Install the Gravitree Chromium extension, connect your org, enrich a page, approve a write, and see it in Outcomes.
+audience: public
+depth: mid
+tier: all
+status: published
+category: How-to Guides
+readTime: 12 min
+prev:
+  title: Approvals
+  href: /docs/guides/how-to/approvals
+next:
+  title: Monitor Runs
+  href: /docs/guides/how-to/runs
+---
+
+The **Gravitree browser extension** is a front door onto the same catalog, approvals, and Outcomes as the web app. It reads page context from supported sites and runs **governed catalog actions** — never DOM automation as a substitute for a CRM write.
+
+**Activation milestone (aha in minutes):** install → connect org → one real enrich → one approved write → see it in Outcomes.
+
+## What v1 supports
+
+| Item | Supported |
+|------|-----------|
+| Browser | **Google Chrome** (Chromium MV3). Edge/Brave may load the same pack; treat Chrome as the supported path until your org confirms otherwise. |
+| Surfaces | LinkedIn profiles (`/in/…`), Gmail, Outlook web, company sites (via toolbar / active tab) |
+| Reads | Catalog match/search (e.g. Apollo / HubSpot when connected) |
+| Writes | Propose → **approve in overlay** → catalog write; `source=browser_extension` in Outcomes |
+| Not in scope for this guide | Agentic form filling, InMail automation, clicking CRM UI, Firefox / Safari / mobile |
+
+Writes always use the server confirmation token gate — the extension cannot skip approval with a client-side flag.
+
+## Install
+
+### Option A — Chrome Web Store
+
+When a public or unlisted listing is available, open the store link from [Browser extension](/features/extension) and click **Add to Chrome**.
+
+### Option B — Load unpacked (developer / private beta)
+
+1. Get the `apps/extension` pack from your Gravitree deployment or engineering contact.
+2. Chrome → **Extensions** → enable **Developer mode**.
+3. **Load unpacked** → select the extension folder.
+4. Pin the Gravitree icon.
+
+## Connect your org
+
+1. Open the extension popup → **Connect Gravitree**.
+2. Sign in at `gravitre.app` if needed and select the org.
+3. On `/extension/connect`, authorize — the page sends your session to the extension (same JWT + org as the web app).
+
+If connect fails: confirm you opened Connect **from the extension** (so `ext_id` is present), you are signed in, and an org is selected.
+
+## First value — enrich and approve a write
+
+1. Connect **Apollo** and/or **HubSpot** under **BUILD → Connectors** (`/connectors`) in the active Environment.
+2. Open a **LinkedIn profile** (or Gmail / Outlook / a company page).
+3. Use the overlay (or popup → Enrich) — Gravitree runs catalog reads from page context.
+4. Choose a suggested write (e.g. create contact / create list) → **Approve**.
+5. Open **Outcomes** / **Runs** — the run should show `source=browser_extension` and a completed notification fanout.
+
+That sequence is the product “aha”: the write is the same governed path as chat, not a parallel automation stack.
+
+## Permissions (why we ask)
+
+| Permission | Why |
+|------------|-----|
+| Host allowlist (LinkedIn, Gmail, Outlook, Gravitree) | Overlay + API only on named hosts |
+| `activeTab` | Company-site overlay when you invoke it |
+| `storage` | Session token + org id |
+| `scripting` / `sidePanel` | Inject overlay / optional side panel |
+
+We do **not** request `debugger`, `<all_urls>`, or background crawling.
+
+## Troubleshooting
+
+| Symptom | Check |
+|---------|--------|
+| “Not signed in” | Popup → Connect Gravitree; complete `/extension/connect` |
+| Enrich empty / no suggestions | Connector connected + healthy in the same Environment |
+| Write blocked / no token | Approve only after the server returns `needs_confirmation` + token |
+| Wrong org data | Confirm `X-Org-Id` org in the web app matches the one you authorized |
+| Overlay missing on LinkedIn | Hard refresh; confirm extension enabled for the site |
+
+## Platform names (IA)
+
+If older docs mentioned **Command Center**, **Agent Swarm**, or **Apps**, use current names: **Gravitre AI**, **Multi-Agent Run**, **Connectors**. See [FAQ — renamed surfaces](/docs/faq#what-happened-to-agent-swarm-command-center-and-model-registry).
+
+## Related
+
+- [Approvals](/docs/guides/how-to/approvals)
+- [Monitor Runs](/docs/guides/how-to/runs)
+- [Connect integrations](/docs/guides/how-to/connectors)
+- Product page: [Browser extension](/features/extension)

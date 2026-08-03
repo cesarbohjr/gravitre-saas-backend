@@ -33,6 +33,16 @@ const categories = [
 
 const guides = [
   {
+    title: "Install the Chrome browser extension",
+    description:
+      "Install → connect → enrich a page → approve a write → see it in Outcomes. Same catalog governance as chat.",
+    category: "getting-started",
+    difficulty: "Beginner",
+    time: "12 min",
+    featured: true,
+    image: "/images/guide-first-agent.jpg",
+  },
+  {
     title: "Create Your First AI Agent",
     description: "Learn how to set up, configure, and deploy your first AI agent in under 10 minutes.",
     category: "getting-started",

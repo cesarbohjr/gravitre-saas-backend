@@ -4,6 +4,7 @@ import { motion } from "framer-motion"
 import {
   BarChart3,
   Bot,
+  Chrome,
   ChevronRight,
   Shield,
   Users,
@@ -12,7 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 
-const FEATURE_ICONS: LucideIcon[] = [Bot, Users, Workflow, Shield, Zap, BarChart3]
+const FEATURE_ICONS: LucideIcon[] = [Bot, Chrome, Users, Workflow, Shield, Zap, BarChart3]
 
 export function FeatureCard({
   iconIndex,

@@ -89,6 +89,11 @@ export const MARKETING_COPY = {
         "Execute tracked work, chat with context, or search records — routed to the right engine with live connector checks.",
     },
     {
+      title: "Browser extension",
+      description:
+        "Enrich LinkedIn, Gmail, Outlook, and company pages in Chrome — approve catalog writes, see them in Outcomes.",
+    },
+    {
       title: "Agents that execute",
       description:
         "Department agents with profiles, health scores, and outcomes — not just chat personas.",

@@ -16,6 +16,7 @@ export const MARKETING_GUIDE_LINKS: Record<string, string> = {
   "Conditional Logic in Workflows": "/docs/guides/how-to/workflows",
   "Data Security Best Practices": "/docs/concepts/security",
   "Scaling Agent Operations": "/docs/guides/how-to/metrics",
+  "Install the Chrome browser extension": "/docs/guides/how-to/browser-extension",
 }
 
 export const SUPPORT_CATEGORY_LINKS: Record<string, string> = {

@@ -11,6 +11,7 @@ const navLinks = [
   { href: "/features", label: "Features" },
   { href: "/features/technology", label: "Technology" },
   { href: "/features/marketplace", label: "Marketplace" },
+  { href: "/features/extension", label: "Extension" },
   { href: "/pricing", label: "Pricing" },
   { href: "/docs", label: "Docs" },
   {
@@ -302,6 +303,7 @@ export function MarketingChrome({
               <ul className="mt-4 space-y-3">
                 {[
                   { href: "/features", label: "Features" },
+                  { href: "/features/extension", label: "Browser extension" },
                   { href: "/pricing", label: "Pricing" },
                   { href: "/changelog", label: "Changelog" },
                   { href: "/roadmap", label: "Roadmap" },
