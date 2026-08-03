@@ -72,14 +72,18 @@ DOM is for **page context only**. Creates/list membership use Apollo/HubSpot cat
 
 Script: `scripts/live-extension-v1-smoke.py` → `docs/delivery/browser-extension-v1-live.json`
 
-### Close-out (UUID notify fix)
+### Close-out (UUID notify fix) — v1 CLOSED
 
 **PASS** — HubSpot `list_id` no longer written to `notifications.entity_id` (uuid column).
 
-- run_id `f693a774-2ec6-4b16-9c55-31ed4b40609a`
-- `execution_outcome_finalized` … `source=browser_extension` … `notification_emitted=True` @ ~2026-08-03T03:27:21Z
-- notification `1ff58694-f91e-4272-8d1e-7c5e767933b3` with `entity_id=f693a774-…` (run UUID) — no `invalid input syntax for type uuid` warning
-- Outcomes: https://gravitre.app/outcomes/f693a774-2ec6-4b16-9c55-31ed4b40609a
+Local pre-deploy: run `f693a774-2ec6-4b16-9c55-31ed4b40609a`, notification `1ff58694-…`
+
+**Deployed tip** `git_sha=92fe0dde466344dcbc8529fad609126a0b0e8d01`:
+
+- run_id `043a751c-c780-49e9-b39c-a5c66c98009e`
+- notification `0d937d21-4a7b-46af-94b4-832d8256a878` `entity_id` = run UUID
+- Outcomes: https://gravitre.app/outcomes/043a751c-c780-49e9-b39c-a5c66c98009e
+- Evidence: `docs/delivery/browser-extension-v1-tip-verify.json`
 
 ### Prior smoke (durable confirm gate)
 

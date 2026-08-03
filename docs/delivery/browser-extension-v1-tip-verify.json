@@ -1,0 +1,18 @@
+{
+  "probe": "extension_v1_deployed_tip",
+  "git_sha": "92fe0dde466344dcbc8529fad609126a0b0e8d01",
+  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
+  "verified_at": "2026-08-03T03:30:00Z",
+  "cases": {
+    "health_git_sha": "PASS",
+    "propose_stages_token": "PASS",
+    "confirmed_true_ignored": "PASS",
+    "confirm_write": "PASS",
+    "notification_uuid_entity_id": "PASS",
+    "enrich_linkedin": "PASS (200 on tip re-probe; earlier 500 treated as transient)"
+  },
+  "runId": "043a751c-c780-49e9-b39c-a5c66c98009e",
+  "notificationId": "0d937d21-4a7b-46af-94b4-832d8256a878",
+  "outcomesUrl": "https://gravitre.app/outcomes/043a751c-c780-49e9-b39c-a5c66c98009e",
+  "overall": "PASS"
+}
