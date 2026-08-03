@@ -94,7 +94,7 @@ def list_pack_specs() -> list[DepartmentPackSpec]:
                     "name": "HubSpot contact lookup",
                     "type": "invoke_tool",
                     "config": {
-                        "action": "hubspot.search_contacts",
+                        "action": "hubspot.contacts.search",
                         "param_sources": {"query": "$email", "limit": 5},
                     },
                     "requires_connector": "hubspot",
@@ -239,7 +239,7 @@ def list_pack_specs() -> list[DepartmentPackSpec]:
                     "type": "invoke_tool",
                     "config": {
                         "action": "zendesk.tickets.get",
-                        "param_sources": {"ticket_id": "$ticket_id"},
+                        "param_sources": {"ticket_id": "$TICKET_ID"},
                     },
                     "requires_connector": "zendesk",
                 },

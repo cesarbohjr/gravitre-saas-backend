@@ -332,9 +332,8 @@ def validate_asset_payload(
     """Validate config plus top-level marketplace asset metadata fields.
 
     Binding checks hard-fail when ``enforce_bindings`` is true (defaults to
-    ``publish``). Seed/catalog structural validation can pass
-    ``enforce_bindings=False`` so deferred non-install-ready packs stay
-    labelable without blocking CI; install still gates via install-ready.
+    ``publish``). Seed/catalog validation may still pass ``enforce_bindings=False``
+    for structural-only checks; install continues to gate via install-ready.
     """
     from app.workflows.binding_validation import assert_bindings_valid
     from app.workflows.constants import SCHEMA_VERSION as WF_SCHEMA_VERSION

@@ -73,8 +73,19 @@ def main() -> int:
         "failedSlugs": [r["slug"] for r in failed],
         "mspEnrichment": msp,
         "deferredRemediation": {
-            "note": "Slice A labels failures; full pack remediation deferred",
+            "note": (
+                "Part 2 finish (2026-08-03): former Slice A binding failures remediated "
+                "(hubspot.contacts.search rename + TICKET_ID install vars). failCount=0 means clear."
+            ),
             "failCount": len(failed),
+            "remediatedSlugs": [
+                "hubspot-lead-qualification",
+                "customer-health-monitoring",
+                "zendesk-ticket-triage",
+                "lead-routing-automation",
+                "qbr-preparation-workflow",
+                "support-operations-pack",
+            ],
         },
         "assets": rows,
     }

@@ -1,27 +1,11 @@
 {
-  "generatedAt": "2026-08-02T21:28:11.100115+00:00",
+  "generatedAt": "2026-08-03T07:16:49.638037+00:00",
   "source": "seed_catalog.list_catalog_assets",
   "total": 72,
-  "installReadyPass": 66,
-  "installReadyFail": 6,
-  "topErrorCodes": [
-    [
-      "binding.action_unknown",
-      4
-    ],
-    [
-      "binding.dollar_unresolved",
-      2
-    ]
-  ],
-  "failedSlugs": [
-    "hubspot-lead-qualification",
-    "customer-health-monitoring",
-    "zendesk-ticket-triage",
-    "lead-routing-automation",
-    "qbr-preparation-workflow",
-    "support-operations-pack"
-  ],
+  "installReadyPass": 72,
+  "installReadyFail": 0,
+  "topErrorCodes": [],
+  "failedSlugs": [],
   "mspEnrichment": {
     "slug": "msp-prospects-clay-hubspot-enrichment",
     "assetType": "workflow",
@@ -45,8 +29,16 @@
     ]
   },
   "deferredRemediation": {
-    "note": "Slice A labels failures; full pack remediation deferred",
-    "failCount": 6
+    "note": "Part 2 finish (2026-08-03): former Slice A binding failures remediated (hubspot.contacts.search rename + TICKET_ID install vars). failCount=0 means clear.",
+    "failCount": 0,
+    "remediatedSlugs": [
+      "hubspot-lead-qualification",
+      "customer-health-monitoring",
+      "zendesk-ticket-triage",
+      "lead-routing-automation",
+      "qbr-preparation-workflow",
+      "support-operations-pack"
+    ]
   },
   "assets": [
     {
@@ -233,15 +225,9 @@
     {
       "slug": "hubspot-lead-qualification",
       "assetType": "workflow",
-      "installReady": false,
+      "installReady": true,
       "hasWorkflowBindings": true,
-      "installReadyErrors": [
-        {
-          "code": "binding.action_unknown",
-          "message": "step 'lookup' action 'hubspot.search_contacts' is not in the tool catalog",
-          "stepId": "lookup"
-        }
-      ],
+      "installReadyErrors": [],
       "manualSetupRequired": [],
       "requiredConnectors": [
         {
@@ -262,15 +248,9 @@
     {
       "slug": "customer-health-monitoring",
       "assetType": "workflow",
-      "installReady": false,
+      "installReady": true,
       "hasWorkflowBindings": true,
-      "installReadyErrors": [
-        {
-          "code": "binding.action_unknown",
-          "message": "step 'accounts' action 'hubspot.search_contacts' is not in the tool catalog",
-          "stepId": "accounts"
-        }
-      ],
+      "installReadyErrors": [],
       "manualSetupRequired": [],
       "requiredConnectors": [
         {
@@ -364,16 +344,9 @@
     {
       "slug": "zendesk-ticket-triage",
       "assetType": "workflow",
-      "installReady": false,
+      "installReady": true,
       "hasWorkflowBindings": true,
-      "installReadyErrors": [
-        {
-          "code": "binding.dollar_unresolved",
-          "message": "step 'ticket_lookup' param 'ticket_id' references unresolved run/install parameter $ticket_id",
-          "stepId": "ticket_lookup",
-          "param": "ticket_id"
-        }
-      ],
+      "installReadyErrors": [],
       "manualSetupRequired": [],
       "requiredConnectors": [
         {
@@ -795,15 +768,9 @@
     {
       "slug": "lead-routing-automation",
       "assetType": "workflow",
-      "installReady": false,
+      "installReady": true,
       "hasWorkflowBindings": true,
-      "installReadyErrors": [
-        {
-          "code": "binding.action_unknown",
-          "message": "step 'lookup' action 'hubspot.search_contacts' is not in the tool catalog",
-          "stepId": "lookup"
-        }
-      ],
+      "installReadyErrors": [],
       "manualSetupRequired": [],
       "requiredConnectors": [
         {
@@ -833,15 +800,9 @@
     {
       "slug": "qbr-preparation-workflow",
       "assetType": "workflow",
-      "installReady": false,
+      "installReady": true,
       "hasWorkflowBindings": true,
-      "installReadyErrors": [
-        {
-          "code": "binding.action_unknown",
-          "message": "step 'accounts' action 'hubspot.search_contacts' is not in the tool catalog",
-          "stepId": "accounts"
-        }
-      ],
+      "installReadyErrors": [],
       "manualSetupRequired": [],
       "requiredConnectors": [
         {
@@ -1088,16 +1049,9 @@
     {
       "slug": "support-operations-pack",
       "assetType": "department_pack",
-      "installReady": false,
+      "installReady": true,
       "hasWorkflowBindings": true,
-      "installReadyErrors": [
-        {
-          "code": "binding.dollar_unresolved",
-          "message": "step 'ticket_lookup' param 'ticket_id' references unresolved run/install parameter $ticket_id",
-          "stepId": "ticket_lookup",
-          "param": "ticket_id"
-        }
-      ],
+      "installReadyErrors": [],
       "manualSetupRequired": [],
       "requiredConnectors": [
         {

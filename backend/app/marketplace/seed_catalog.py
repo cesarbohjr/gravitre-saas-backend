@@ -356,7 +356,7 @@ def _workflows() -> list[CatalogAsset]:
             "Sales",
             [HUBSPOT],
             [
-                _invoke("lookup", "HubSpot contact lookup", "hubspot.search_contacts", connector="hubspot"),
+                _invoke("lookup", "HubSpot contact lookup", "hubspot.contacts.search", connector="hubspot"),
                 _agent_step("qualify", "Qualify lead", "sales-pipeline-agent", "Score fit and recommend next step."),
             ],
         ),
@@ -376,7 +376,7 @@ def _workflows() -> list[CatalogAsset]:
             "Customer Success",
             [HUBSPOT],
             [
-                _invoke("accounts", "Pull account signals", "hubspot.search_contacts", connector="hubspot"),
+                _invoke("accounts", "Pull account signals", "hubspot.contacts.search", connector="hubspot"),
                 _agent_step("health", "Health score review", "customer-success-agent", "Flag at-risk accounts."),
             ],
         ),
@@ -468,7 +468,7 @@ def _workflows() -> list[CatalogAsset]:
                     "type": "invoke_tool",
                     "config": {
                         "action": "zendesk.tickets.get",
-                        "param_sources": {"ticket_id": "$ticket_id"},
+                        "param_sources": {"ticket_id": "$TICKET_ID"},
                     },
                     "requires_connector": "zendesk",
                 },
@@ -493,9 +493,21 @@ def _workflows() -> list[CatalogAsset]:
             build_msp_enrichment_workflow_steps(),
         ),
     ]
+    ticket_id_install_var = {
+        "key": "TICKET_ID",
+        "label": "Zendesk ticket ID",
+        "required": True,
+        "description": "Ticket to look up for triage (install/run parameter for $TICKET_ID).",
+    }
     assets: list[CatalogAsset] = []
     for slug, title, department, connectors, steps in definitions:
         is_msp_enrichment = slug == "msp-prospects-clay-hubspot-enrichment"
+        if is_msp_enrichment:
+            install_vars = list(MSP_ENRICHMENT_INSTALL_VARS)
+        elif slug == "zendesk-ticket-triage":
+            install_vars = [ticket_id_install_var]
+        else:
+            install_vars = []
         assets.append(
             CatalogAsset(
                 slug=slug,
@@ -507,7 +519,7 @@ def _workflows() -> list[CatalogAsset]:
                 tags=["workflow", "starter", department.lower().replace(" ", "-")],
                 config=_workflow(title, MSP_ENRICHMENT_DESCRIPTION if is_msp_enrichment else f"Automated {title.lower()} playbook.", steps),
                 required_connectors=connectors,
-                install_variables=MSP_ENRICHMENT_INSTALL_VARS if is_msp_enrichment else [],
+                install_variables=install_vars,
             )
         )
     return assets
@@ -912,7 +924,7 @@ def _department_packs() -> list[CatalogAsset]:
                         "connector": "zendesk",
                         "selectedAction": "tickets.get",
                         "selected_action": "tickets.get",
-                        "param_sources": {"ticket_id": "$ticket_id"},
+                        "param_sources": {"ticket_id": "$TICKET_ID"},
                     },
                     "requires_connector": "zendesk",
                 },
@@ -928,6 +940,14 @@ def _department_packs() -> list[CatalogAsset]:
             ],
         ),
         required_connectors=[ZENDESK],
+        install_variables=[
+            {
+                "key": "TICKET_ID",
+                "label": "Zendesk ticket ID",
+                "required": True,
+                "description": "Ticket to look up for triage (install/run parameter for $TICKET_ID).",
+            }
+        ],
         pack_children=[
             "ticket-triage",
             "zendesk-ticket-triage",

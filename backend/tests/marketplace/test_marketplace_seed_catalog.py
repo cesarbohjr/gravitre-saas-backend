@@ -21,8 +21,8 @@ def test_catalog_asset_counts():
     assert len(assets) == 72
 
 
-# Deferred Slice A remediation — labeled not install-ready, not restructured yet.
-_DEFERRED_BINDING_SLUGS = frozenset(
+# Formerly deferred Slice A binding failures — remediated (Part 2 finish).
+_REMEDIATED_BINDING_SLUGS = frozenset(
     {
         "hubspot-lead-qualification",
         "customer-health-monitoring",
@@ -37,15 +37,14 @@ _DEFERRED_BINDING_SLUGS = frozenset(
 @pytest.mark.parametrize("asset_slug", sorted(catalog_assets_by_slug()))
 def test_catalog_asset_validates(asset_slug: str):
     asset = catalog_assets_by_slug()[asset_slug]
-    # Structural publish schema for all assets; binding hard-fail is install/publish
-    # gate (deferred packs stay seedable until remediated).
+    # Structural publish schema + binding gate for all seeded assets.
     validated = validate_asset_payload(
         asset_type=asset.asset_type,
         config=asset.config,
         install_variables=asset.install_variables,
         required_connectors=asset.required_connectors,
         publish=True,
-        enforce_bindings=False,
+        enforce_bindings=True,
     )
     assert validated["config"]
 
@@ -66,8 +65,8 @@ def test_msp_enrichment_install_ready_bindings_pass():
     assert ready["installReadyErrors"] == []
 
 
-@pytest.mark.parametrize("asset_slug", sorted(_DEFERRED_BINDING_SLUGS))
-def test_deferred_packs_are_not_install_ready(asset_slug: str):
+@pytest.mark.parametrize("asset_slug", sorted(_REMEDIATED_BINDING_SLUGS))
+def test_remediated_packs_are_install_ready(asset_slug: str):
     from app.marketplace.install_ready import evaluate_binding_install_ready
 
     asset = catalog_assets_by_slug()[asset_slug]
@@ -79,9 +78,8 @@ def test_deferred_packs_are_not_install_ready(asset_slug: str):
             "install_variables": asset.install_variables,
         }
     )
-    assert ready["installReady"] is False
-    assert ready["installReadyErrors"]
-
+    assert ready["installReady"] is True, ready.get("installReadyErrors")
+    assert ready["installReadyErrors"] == []
 
 def test_department_pack_children_exist():
     by_slug = catalog_assets_by_slug()

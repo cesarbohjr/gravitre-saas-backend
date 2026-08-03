@@ -1,0 +1,84 @@
+{
+  "ticket": "STA-337",
+  "audited_at": "2026-08-03T07:16:00Z",
+  "method": "code_path_honesty_audit",
+  "live_pass_claimed": false,
+  "overall_verdict": "FAIL",
+  "note": "Code-path only. Do not upgrade to PASS without audit_events / live run ids after remediation.",
+  "connectors": [
+    {
+      "id": "google_ads",
+      "aliases": ["googleads", "adwords"],
+      "verdict": "PARTIAL",
+      "gaps": [
+        "pause/resume missing from MUTATING_ACTION_MARKERS → may terminal COMPLETED as read",
+        "runtime action googleads.* vs verified-output google_ads.* name skew",
+        "completed-work honesty still STA-337 gated; no live audit_events"
+      ],
+      "evidence_paths": [
+        "backend/app/connectors/action_catalog/vendor_definitions.py:228-298",
+        "backend/app/connectors/action_catalog/tool_aliases.py:12,30-47",
+        "backend/app/services/tool_service.py:3023-3139,4182-4191",
+        "backend/app/services/connector_outcome_effects.py:24-36",
+        "backend/app/marketplace/install_ready.py:12-13",
+        "backend/tests/services/test_google_ads_registry_alias.py"
+      ]
+    },
+    {
+      "id": "google_analytics",
+      "aliases": ["analytics", "ga4"],
+      "verdict": "PARTIAL",
+      "gaps": [
+        "funnels.run ignores funnel_steps and returns generic event report",
+        "completed-work honesty STA-337 gated; no live audit_events",
+        "no catalog_http profile (covered only while priority executors remain registered)"
+      ],
+      "evidence_paths": [
+        "backend/app/connectors/action_catalog/vendor_definitions.py:188-208",
+        "backend/app/connectors/action_catalog/tool_aliases.py:6",
+        "backend/app/services/tool_service.py:3806-3861,4177-4179",
+        "backend/app/services/priority_connector_tools.py:518-545,605-613",
+        "backend/app/connectors/google_analytics.py:197-213",
+        "backend/app/marketplace/install_ready.py:14-15"
+      ]
+    },
+    {
+      "id": "microsoft365",
+      "aliases": [],
+      "verdict": "PARTIAL",
+      "gaps": [
+        "microsoft365 missing from HONESTY_GATED_CONNECTORS (only outlook/microsoft)",
+        "mail.send Graph 202 often empty → weak completed-work proof",
+        "no live audit_events for completed-work honesty"
+      ],
+      "evidence_paths": [
+        "backend/app/connectors/action_catalog/vendor_definitions.py:866-905",
+        "backend/app/services/priority_connector_tools.py:187-270,565-570",
+        "backend/app/services/microsoft365_teams_tools.py:256-286",
+        "backend/app/connectors/microsoft365.py:86-106",
+        "backend/app/marketplace/install_ready.py:16-17",
+        "apps/web/lib/connectors.ts:297"
+      ]
+    },
+    {
+      "id": "outlook",
+      "aliases": [],
+      "verdict": "FAIL",
+      "gaps": [
+        "catalog+workflow schemas+verified_output overclaim send/reply",
+        "no dedicated executor and no HTTP profile",
+        "no outlook→microsoft365 tool alias (unlike microsoft_teams)",
+        "UI still lists Outlook connector entry without shipped flag"
+      ],
+      "evidence_paths": [
+        "backend/app/connectors/action_catalog/vendor_definitions.py:953-973",
+        "backend/app/connectors/action_catalog/workflow_schemas_batch_50.py:95-108",
+        "backend/app/services/connector_output_verified_batches.py:145-146,390-392",
+        "backend/app/connectors/catalog_http/executor.py:177-179",
+        "backend/app/connectors/catalog_http/profiles.py",
+        "apps/web/lib/connectors.ts:300,516-533",
+        "docs/delivery/completed-work-visibility-2026-08-02.md:15,36-38"
+      ]
+    }
+  ]
+}

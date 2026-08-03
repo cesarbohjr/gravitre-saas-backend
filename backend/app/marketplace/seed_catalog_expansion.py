@@ -169,7 +169,7 @@ def expansion_catalog_assets() -> list[CatalogAsset]:
                 "Lead Routing Automation",
                 "Route qualified leads to owners and notify the team.",
                 [
-                    _invoke("lookup", "Lookup lead", "hubspot.search_contacts", connector="hubspot"),
+                    _invoke("lookup", "Lookup lead", "hubspot.contacts.search", connector="hubspot"),
                     _invoke("notify", "Notify owner", "slack.post_message", connector="slack"),
                 ],
             ),
@@ -211,7 +211,7 @@ def expansion_catalog_assets() -> list[CatalogAsset]:
                 "QBR Preparation Workflow",
                 "Generate a QBR outline and account summary.",
                 [
-                    _invoke("accounts", "Pull account data", "hubspot.search_contacts", connector="hubspot"),
+                    _invoke("accounts", "Pull account data", "hubspot.contacts.search", connector="hubspot"),
                     _agent_step("qbr", "Draft QBR outline", "customer-success-agent", "Prepare QBR talking points."),
                 ],
             ),
