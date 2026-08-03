@@ -583,9 +583,11 @@ async def materialize_react_write_approval_turn(
     )
     from app.services.connector_session_state import load_connector_session
     from app.services.conversation_state_service import get_conversation_state_service
+    from app.services.pack_common_intent_defaults import apply_pack_common_defaults
 
     # STA-305 — ReAct plans must carry the same inference metadata as governed chat.
     plan = enrich_plan_inference_metadata(plan, message=message or "")
+    plan = apply_pack_common_defaults(plan, message=message or "")
     inference_context = ParameterInferenceContext(
         message=message or "",
         conversation_history=list((task_state or {}).get("recent_user_messages") or []),

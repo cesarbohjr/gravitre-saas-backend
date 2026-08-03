@@ -818,8 +818,10 @@ class ChatOrchestrationService:
         # STA-305 — orchestration steps must carry the same omit-name inference
         # labeling as governed chat / ReAct (parallel-path parity).
         from app.services.chat_connector_execution_service import enrich_plan_inference_metadata
+        from app.services.pack_common_intent_defaults import apply_pack_common_defaults
 
         plan = enrich_plan_inference_metadata(plan, message=goal or segment)
+        plan = apply_pack_common_defaults(plan, message=goal or segment)
         return OrchestrationStep(
             step_id=step_id,
             segment=segment,

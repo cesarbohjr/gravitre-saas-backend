@@ -1094,8 +1094,10 @@ async def apply_unified_turn_live(
             )
             from app.services.connector_session_state import load_connector_session
             from app.services.conversation_state_service import get_conversation_state_service
+            from app.services.pack_common_intent_defaults import apply_pack_common_defaults
 
             plan = enrich_plan_inference_metadata(plan, message=message or "")
+            plan = apply_pack_common_defaults(plan, message=message or "")
             plan = infer_missing_parameters(
                 plan,
                 ParameterInferenceContext(

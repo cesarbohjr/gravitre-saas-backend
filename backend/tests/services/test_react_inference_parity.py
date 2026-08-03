@@ -33,6 +33,21 @@ def test_enrich_omit_name_apollo_list_marks_inferred_fields():
     assert notes and any("MSP Prospects" in n for n in notes)
 
 
+def test_enrich_scrubs_trailing_in_apollo_false_name():
+    plan = ConnectorActionPlan(
+        tool_name="apollo_lists_create",
+        invoke_action="apollo.lists.create",
+        integration="apollo",
+        kind="write",
+        label="Create contact list",
+        args={"modality": "contacts"},
+    )
+    enriched = enrich_plan_inference_metadata(
+        plan, message="Create a contact list in Apollo"
+    )
+    assert enriched.args.get("name") == "MSP Prospects"
+
+
 def test_enrich_does_not_relabel_user_supplied_name():
     plan = ConnectorActionPlan(
         tool_name="apollo_lists_create",

@@ -99,9 +99,23 @@ def enrich_plan_inference_metadata(
         "apollo",
     )
     explicit = str(planned.get("List name") or planned.get("Name") or "").strip()
+    # Planner sometimes treats trailing "in Apollo" as the list name.
+    if explicit and re.match(
+        r"^(?:in|on|via|with|using)\s+(?:apollo(?:\.io)?|hubspot|clay|salesforce|crm)\s*$",
+        explicit,
+        re.I,
+    ):
+        explicit = ""
     if explicit and name and name.lower() == explicit.lower():
         # User supplied the name in the message — not an assumption.
         return plan
+    if name and re.match(
+        r"^(?:in|on|via|with|using)\s+(?:apollo(?:\.io)?|hubspot|clay|salesforce|crm)\s*$",
+        name,
+        re.I,
+    ):
+        name = ""
+        args.pop("name", None)
     if not name:
         inferred_name = explicit or "MSP Prospects"
         args["name"] = inferred_name[:200]
@@ -1251,6 +1265,9 @@ class ChatConnectorExecutionService:
         # message name) before schema validation, or validate_connector_plan asks
         # for "list name" and never stages awaiting_confirm.
         plan = enrich_plan_inference_metadata(plan, message=message or "")
+        from app.services.pack_common_intent_defaults import apply_pack_common_defaults
+
+        plan = apply_pack_common_defaults(plan, message=message or "")
         plan = scrub_gmail_write_plan(plan)
 
         staged_missing = missing_params_stage_patch(
