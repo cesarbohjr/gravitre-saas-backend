@@ -91,7 +91,7 @@ export const MARKETING_COPY = {
     {
       title: "Browser extension",
       description:
-        "Enrich LinkedIn, Gmail, Outlook, and company pages in Chrome — approve catalog writes, see them in Outcomes.",
+        "Enrich LinkedIn, Gmail, Outlook, and more in Chrome, Edge, or Brave — approve catalog writes, see them in Outcomes.",
     },
     {
       title: "Agents that execute",

@@ -21,5 +21,5 @@ export function extensionInstallHref(): string {
 export function extensionInstallCtaLabel(): string {
   return hasChromeWebStoreListing()
     ? "Install from Chrome Web Store"
-    : "Install guide (Chrome beta)"
+    : "Install guide (Chrome / Edge / Brave)"
 }

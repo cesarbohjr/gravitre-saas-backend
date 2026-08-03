@@ -24,8 +24,9 @@ Gravitree brings your org’s governed catalog to LinkedIn, Gmail, Outlook, and 
 - Same approval gate and Outcomes visibility as chat
 - Explicit host permissions only — no `<all_urls>`, no debugger
 
-Supported browser for the public claim: **Google Chrome**.  
-Does not automate InMail or click CRM UIs on your behalf.
+Supported browsers for the public claim: **Chrome, Edge, Brave** (same MV3 pack).  
+**Not supported:** Firefox, Safari, mobile.  
+Does not automate InMail or click CRM UIs on your behalf. No agentic multi-step form control.
 
 ### Privacy
 

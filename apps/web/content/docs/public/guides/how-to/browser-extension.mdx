@@ -1,5 +1,5 @@
 ---
-title: Browser extension (Chrome)
+title: Browser extension (Chrome, Edge, Brave)
 description: Install the Gravitree Chromium extension, connect your org, enrich a page, approve a write, and see it in Outcomes.
 audience: public
 depth: mid
@@ -23,7 +23,7 @@ The **Gravitree browser extension** is a front door onto the same catalog, appro
 
 | Item | Supported |
 |------|-----------|
-| Browser | **Google Chrome** (Chromium MV3). Edge/Brave may load the same pack; treat Chrome as the supported path until browser-parity docs say otherwise. |
+| Browser | **Chrome, Edge, and Brave** (same Chromium MV3 pack). **Not supported:** Firefox, Safari, mobile. |
 | Surfaces (v1) | LinkedIn profiles (`/in/…`), Gmail, Outlook web, company sites (via toolbar / active tab) |
 | Surfaces (v2) | Salesforce Lightning / Force hosts, Slack web (`app.slack.com`), careers / about pages (path markers + active tab) |
 | Reads | Catalog match/search (Apollo / HubSpot / Salesforce lead search / Slack user info when connected) |
@@ -37,12 +37,12 @@ Writes always use the server confirmation token gate — the extension cannot sk
 
 ### Option A — Chrome Web Store
 
-When a public or unlisted listing is available, open the store link from [Browser extension](/features/extension) and click **Add to Chrome**.
+When a public or unlisted listing is available, open the store link from [Browser extension](/features/extension) and click **Add to Chrome**. Edge/Brave users can often install from the same Chromium store listing when published.
 
 ### Option B — Load unpacked (developer / private beta)
 
 1. Get the `apps/extension` pack from your Gravitree deployment or engineering contact.
-2. Chrome → **Extensions** → enable **Developer mode**.
+2. Chrome / Edge / Brave → **Extensions** → enable **Developer mode**.
 3. **Load unpacked** → select the extension folder.
 4. Pin the Gravitree icon.
 

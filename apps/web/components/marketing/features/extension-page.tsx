@@ -76,7 +76,7 @@ export function ExtensionPage() {
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2">
               <Chrome className="h-4 w-4 text-emerald-600" />
               <span className="text-sm font-medium text-emerald-700">
-                Chrome extension · overlay and approve
+                Chrome · Edge · Brave · overlay and approve
               </span>
             </div>
             <h1 className="text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl text-balance">
@@ -105,12 +105,13 @@ export function ExtensionPage() {
                 Setup guide
               </Link>
             </div>
-            {!storeLive ? (
-              <p className="mt-4 text-sm text-zinc-500">
-                Chrome Web Store listing not published yet — use the setup guide
-                for the installable Chrome beta (load unpacked).
-              </p>
-            ) : null}
+            <p className="mt-4 text-sm text-zinc-500">
+              Supported: Chrome, Edge, Brave (same MV3 pack). Not supported:
+              Firefox, Safari, or mobile.
+              {!storeLive
+                ? " Chrome Web Store listing not published yet — use the setup guide (load unpacked)."
+                : null}
+            </p>
           </motion.div>
         </div>
       </section>

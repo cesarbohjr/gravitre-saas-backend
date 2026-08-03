@@ -20,3 +20,7 @@ After v1–v5:
 **Close the extension roadmap at v5.** Do not build v6 unless/until a named surface + operator need + security review are explicitly provided.
 
 This is a complete, legitimate outcome.
+
+## Marketing
+
+Do **not** publish copy implying “full agentic” browser control. Docs and `/features/extension` state that catalog actions are used when they exist and that agentic DOM capability was deliberately not built.
