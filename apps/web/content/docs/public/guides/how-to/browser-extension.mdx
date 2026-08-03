@@ -87,6 +87,15 @@ The overlay can list **active typed-contract workflows** and run them through th
 
 **Live example (production tip verify):** workflow *MSP NVD CVE Lookup* completed with steps `nvd.cve.get` + `cisa_kev.feed.get` — run [`139fd6cc-7d53-4dfd-ac1b-c59e902109ea`](https://gravitre.app/outcomes/139fd6cc-7d53-4dfd-ac1b-c59e902109ea).
 
+## Ask about this page (v4 overlay chat)
+
+The overlay includes a short **Ask about this page** box. It calls the **same** unified-turn / `execute_task_streaming` path as main Gravitree chat, with page context passed in as data.
+
+**Inline (quick):** fact questions grounded in the page (name, title, company).  
+**Handoff:** write intents, long threads, or multi-step work open full Gravitree chat at `/ai?c={conversationId}` (same conversation).
+
+It is **not** a second reasoning stack and **not** a place to approve complex connector plans — use Continue in Gravitree when the overlay says the request needs the full app.
+
 ## Troubleshooting
 
 | Symptom | Check |

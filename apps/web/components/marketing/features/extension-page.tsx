@@ -8,6 +8,7 @@ import {
   Chrome,
   Link2,
   ListChecks,
+  MessageSquare,
   Shield,
   Sparkles,
   Workflow,
@@ -181,6 +182,15 @@ export function ExtensionPage() {
                 No InMail spam, no clicking Salesforce/HubSpot UI for you, no
                 agentic multi-step form control. If a catalog action exists, we
                 call it.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-5">
+              <MessageSquare className="mb-3 h-6 w-6 text-emerald-600" />
+              <h3 className="font-semibold text-zinc-900">Quick chat on the page</h3>
+              <p className="mt-2 text-sm text-zinc-600">
+                Ask a short, page-contextual question in the overlay — same
+                unified-turn path as Gravitree chat. Writes and longer work hand
+                off to the full app on the same conversation thread.
               </p>
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-5">
