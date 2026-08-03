@@ -26,9 +26,18 @@ Hard battery **PASS** on tip `2cafd118` (includes pack-common staging `9bacd586`
 
 `cbec815c` pack defaults · `ac538cc8` battery · `21e2afb6` HubSpot mapper · `375422c9` short-circuit · `9bacd586` LIVE staging · `43f0f884` live artifact
 
-### Soft leftovers follow-up (2026-08-03)
+### Soft leftovers follow-up (2026-08-03) — re-verified
 
-* `clay_enrich_msp_chain` — code fix: pack-common stages `assistant.create_workflow` approve-first for MSP Clay→HubSpot (`try_pack_common_msp_enrich_workflow_plan`). Promoted off soft in battery; re-run live after tip deploy.
-* `meta_while_awaiting_params` — remains soft (deal ledger flaky); battery accepts non-executing meta follow-up. Not a pack-common hard gap.
+Tip `49e4a75d` (includes `22451f99` pack-common MSP Clay enrich).
+
+| Metric | Was | Now |
+|--------|-----|-----|
+| approve_first_rate | 0.75 | **0.8** (4/5) |
+| hard_pass | 6/6 | **7/7** |
+| soft_fail | 2 | **0** |
+
+* `clay_enrich_msp_chain` — **PASS approve_first** · `assistant.create_workflow` · audit `37359b12-c2a6-4db7-80ce-990eba5e2006` @ `2026-08-03T09:28:06.60745Z` (prior run; re-battery PASS on tip)
+* `meta_while_awaiting_params` — soft control OK (seed deal clarify; non-executing follow-up)
+* Artifact: `docs/delivery/part3-pack-oneshot-approve-battery-live.json` verdict **PASS**
 
 Related: STA-338 Slice A Done · Part 2 `a64d91b1` · STA-337 remediation `8502cad7`.

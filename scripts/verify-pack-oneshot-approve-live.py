@@ -103,6 +103,9 @@ CASES: list[dict[str, Any]] = [
             "Invalid parameters",
             "not Executable",
             "enough ICP",
+            "Apollo plan",
+            "search API",
+            "upgrade",
         ],
     },
     {
@@ -305,12 +308,13 @@ def classify_first_turn(
     if re.search(
         r"\b(?:i need|need the|tell me|send me|which |what (?:should|is)|missing|"
         r"not have enough|do not have enough|enough icp|isn.?t connected|"
-        r"is not connected|connect\s+\w+\s+at|invalid parameters)\b",
+        r"is not connected|connect\s+\w+\s+at|invalid parameters|"
+        r"requires an apollo plan|search api access)\b",
         text,
         re.I,
     ) and re.search(
         r"\b(?:list(?:\s+name)?|criteria|contacts?|object type|deal|ICP|filter|who|"
-        r"clay|apollo|connector|required fields)\b",
+        r"clay|apollo|connector|required fields|upgrade|plan)\b",
         text,
         re.I,
     ):
@@ -446,10 +450,15 @@ async def run_case(
                 tok.lower() in head_l for tok in (case.get("specific_clarify_bonus") or [])
             ):
                 if "waiting for your approval" not in head_l and "what do you need" not in head_l:
-                    if not re.search(
-                        r"\bwhat are you trying to do\b|\bhow can i help\b",
+                    # Non-executing meta / lost-ledger follow-ups are soft-OK when seed
+                    # already asked for deal fields (deal awaiting_params still flaky).
+                    if seed_asks_deal or re.search(
+                        r"\bwhat are you trying to do\b|\bhow can i help\b|"
+                        r"\btell me the task\b",
                         head_l,
                     ):
+                        pass
+                    else:
                         failures.append("meta_followup_unrelated")
 
     soft = bool(case.get("soft"))

@@ -1,16 +1,16 @@
 {
-  "started_at": "2026-08-03T04:26:53.064736+00:00",
+  "started_at": "2026-08-03T09:32:13.658642+00:00",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "slice": "part3",
   "cases": [
     {
       "id": "omit_name_apollo_list",
-      "conversation_id": "8b3b761e-a2ec-4d8a-99dc-e9923685e93f",
+      "conversation_id": "2d60da9a-08fd-43a0-9d3c-a7e41d8554f9",
       "message": "Create a contact list in Apollo",
       "expect_mode": "approve_first",
       "observed_mode": "approve_first",
       "http_status": 200,
-      "assistant_head": "I don\u2019t have enough information yet. Tell me the Apollo contact list name and I\u2019ll create it.\n\nApollo appears Connected based on the provided org context, but the required list name is missing.I can create a contact list named **MSP Prospects** in Apollo.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
+      "assistant_head": "I don\u2019t have enough information yet. Tell me the Apollo contact list name and I\u2019ll create it.I can create a contact list named **MSP Prospects** in Apollo.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
       "dialogue_modes": [
         "answer",
         "answer",
@@ -22,9 +22,9 @@
       "live_audit": null,
       "audit_events": [
         {
-          "id": "f3bbe6ea-aab6-478d-9f9f-4a969214a77e",
+          "id": "67724aa0-21d1-4d93-a975-a36880947a1f",
           "action": "unified_turn.live.fallthrough",
-          "created_at": "2026-08-03T04:26:58.899459+00:00",
+          "created_at": "2026-08-03T09:32:23.022873+00:00",
           "outcome_kind": "conversational_reply",
           "tool_name": null,
           "tool_invoke_action": null,
@@ -38,12 +38,12 @@
     },
     {
       "id": "named_apollo_list",
-      "conversation_id": "f9583667-ad0c-4a03-b444-c89544ecc5b2",
+      "conversation_id": "e25a4ce8-58a7-4f16-9e19-4a614147f157",
       "message": "Create Apollo list named Q3 MSP Targets Part3",
       "expect_mode": "approve_first",
       "observed_mode": "approve_first",
       "http_status": 200,
-      "assistant_head": "Done. Verified Apollo list is ready.\n\nApollo reported the list **Q3 MSP Targets Part3** already existed, so no duplicate was created.  \nList URL: https://app.apollo.io/#/lists/6a70014504e4d900100ce414",
+      "assistant_head": "Done. Apollo list **Q3 MSP Targets Part3** is ready.\n\nVerified from Apollo: the list already existed and is available at:\nhttps://app.apollo.io/#/lists/6a70014504e4d900100ce414",
       "dialogue_modes": [
         "answer",
         "answer"
@@ -54,9 +54,9 @@
       "live_audit": null,
       "audit_events": [
         {
-          "id": "2b9cd6a8-e327-4dab-abbd-e97d492b085d",
+          "id": "6d1c95f1-ea53-4c8c-bd49-88d16c15da60",
           "action": "unified_turn.live.fallthrough",
-          "created_at": "2026-08-03T04:27:32.071286+00:00",
+          "created_at": "2026-08-03T09:33:00.499041+00:00",
           "outcome_kind": "confirmation_request",
           "tool_name": null,
           "tool_invoke_action": null,
@@ -70,7 +70,7 @@
     },
     {
       "id": "hubspot_msps_list",
-      "conversation_id": "327baaf7-e787-45b5-b5d1-8e4be95ebee1",
+      "conversation_id": "f972d152-c96f-486c-8df0-6089b0d93449",
       "message": "Create HubSpot static list MSPs",
       "expect_mode": "approve_first",
       "observed_mode": "approve_first",
@@ -83,9 +83,9 @@
       "pending_action": "hubspot.lists.create",
       "pending_arg_name": "MSPs",
       "live_audit": {
-        "id": "b9f9aae1-f857-4bd5-9675-8e7808cfdd88",
+        "id": "11720032-d2aa-426b-bc9b-985af17e2cbf",
         "action": "unified_turn.live.completed",
-        "created_at": "2026-08-03T04:27:45.562512+00:00",
+        "created_at": "2026-08-03T09:33:18.767109+00:00",
         "outcome_kind": "connector_tool_proposal",
         "tool_name": "hubspot_lists_create",
         "tool_invoke_action": "hubspot.lists.create",
@@ -93,9 +93,9 @@
       },
       "audit_events": [
         {
-          "id": "b9f9aae1-f857-4bd5-9675-8e7808cfdd88",
+          "id": "11720032-d2aa-426b-bc9b-985af17e2cbf",
           "action": "unified_turn.live.completed",
-          "created_at": "2026-08-03T04:27:45.562512+00:00",
+          "created_at": "2026-08-03T09:33:18.767109+00:00",
           "outcome_kind": "connector_tool_proposal",
           "tool_name": "hubspot_lists_create",
           "tool_invoke_action": "hubspot.lists.create",
@@ -105,55 +105,55 @@
       "followup": null,
       "specific_clarify_hit": false,
       "soft": false,
-      "verdict": "PASS \u2014 approve_first @ 2026-08-03T04:27:45.562512+00:00 audit=b9f9aae1-f857-4bd5-9675-8e7808cfdd88 action=hubspot.lists.create"
+      "verdict": "PASS \u2014 approve_first @ 2026-08-03T09:33:18.767109+00:00 audit=11720032-d2aa-426b-bc9b-985af17e2cbf action=hubspot.lists.create"
     },
     {
       "id": "clay_enrich_msp_chain",
-      "conversation_id": "a1a4310d-4086-4ed0-9f93-c9cc397a912c",
+      "conversation_id": "c32e2466-5c3e-45e5-b59e-506e88bbe7ad",
       "message": "Enrich MSP Prospects with Clay and sync to HubSpot MSPs",
       "expect_mode": "approve_first",
-      "observed_mode": "other",
+      "observed_mode": "approve_first",
       "http_status": 200,
-      "assistant_head": "I can draft that workflow, but I need the exact goal and the sync rules.",
+      "assistant_head": "I'll create a draft workflow **MSP Prospects Clay Enrichment \u2192 HubSpot Sync** to enrich Apollo list **MSP Prospects** with Clay and sync to HubSpot list **MSPs**.\n\nReply **yes** to create it now, or tell me what to adjust (list names, filters, or sync rules).",
       "dialogue_modes": [
-        "answer"
+        "confirm"
       ],
-      "pending_status": null,
-      "pending_action": null,
+      "pending_status": "awaiting_confirm",
+      "pending_action": "assistant.create_workflow",
       "pending_arg_name": null,
       "live_audit": {
-        "id": "5c8100b8-0874-4493-a4a6-52ef9e7907b1",
+        "id": "449d470b-2d2b-4867-82d6-993ed798c29b",
         "action": "unified_turn.live.completed",
-        "created_at": "2026-08-03T04:27:51.603738+00:00",
-        "outcome_kind": "conversational_reply",
-        "tool_name": null,
-        "tool_invoke_action": null,
+        "created_at": "2026-08-03T09:33:27.870583+00:00",
+        "outcome_kind": "confirmation_request",
+        "tool_name": "assistant_create_workflow",
+        "tool_invoke_action": "assistant.create_workflow",
         "dialogue_mode": null
       },
       "audit_events": [
         {
-          "id": "5c8100b8-0874-4493-a4a6-52ef9e7907b1",
+          "id": "449d470b-2d2b-4867-82d6-993ed798c29b",
           "action": "unified_turn.live.completed",
-          "created_at": "2026-08-03T04:27:51.603738+00:00",
-          "outcome_kind": "conversational_reply",
-          "tool_name": null,
-          "tool_invoke_action": null,
+          "created_at": "2026-08-03T09:33:27.870583+00:00",
+          "outcome_kind": "confirmation_request",
+          "tool_name": "assistant_create_workflow",
+          "tool_invoke_action": "assistant.create_workflow",
           "dialogue_mode": null
         }
       ],
       "followup": null,
       "specific_clarify_hit": true,
-      "soft": true,
-      "verdict": "SOFT_FAIL \u2014 want_approve_first got=other"
+      "soft": false,
+      "verdict": "PASS \u2014 approve_first @ 2026-08-03T09:33:27.870583+00:00 audit=449d470b-2d2b-4867-82d6-993ed798c29b action=assistant.create_workflow"
     },
     {
       "id": "prospecting_icp_list",
-      "conversation_id": "72c78738-7a41-4feb-8514-5020c6d0858e",
+      "conversation_id": "6dbb0c9c-7ad5-46c4-beb6-a5ca8ecb78fb",
       "message": "Build an Apollo prospecting list from our ICP",
       "expect_mode": "approve_first",
       "observed_mode": "clarify_once",
       "http_status": 200,
-      "assistant_head": "I can\u2019t build the Apollo prospecting list yet because the ICP criteria are missing. Apollo is readable and Connected enough to list existing Apollo lists, but writing a new prospect list needs clear targeting criteria and approval.\n\nWhat I verified:\n- Apollo list read succeeded. Source: Apollo `lists.list`.\n- The existing \u201cProspecting Apollo Lead Scout\u201d workflow could not execute because the workflow runner hit an internal trigger-type constraint",
+      "assistant_head": "Invalid parameters for this Apollo action (Search companies via apollo API). Check required fields and try again.",
       "dialogue_modes": [
         "answer",
         "answer"
@@ -164,9 +164,9 @@
       "live_audit": null,
       "audit_events": [
         {
-          "id": "d3cb6594-b7e0-4763-be67-9d129d1da0e4",
+          "id": "f212a1bc-c294-40d5-bacc-78849443296a",
           "action": "unified_turn.live.fallthrough",
-          "created_at": "2026-08-03T04:27:59.746648+00:00",
+          "created_at": "2026-08-03T09:33:35.824356+00:00",
           "outcome_kind": "conversational_reply",
           "tool_name": null,
           "tool_invoke_action": null,
@@ -180,12 +180,12 @@
     },
     {
       "id": "ambiguous_enrich_my_list",
-      "conversation_id": "037ba001-735a-46f7-bc39-66a97a256685",
+      "conversation_id": "46e90ca0-f830-467d-b74b-64352dbf965d",
       "message": "Enrich my list with Clay",
       "expect_mode": "clarify_once",
       "observed_mode": "clarify_once",
       "http_status": 200,
-      "assistant_head": "Clay isn\u2019t connected here. If you want, I can do this with Apollo instead.",
+      "assistant_head": "Clay isn\u2019t Connected here. Apollo is. If you want, I can use Apollo to enrich the list instead.",
       "dialogue_modes": [
         "answer"
       ],
@@ -193,9 +193,9 @@
       "pending_action": null,
       "pending_arg_name": null,
       "live_audit": {
-        "id": "c2523b8c-feab-44d6-9073-75d7dbf9c731",
+        "id": "2ef49623-a005-400b-b2cb-9457ce5a0af9",
         "action": "unified_turn.live.completed",
-        "created_at": "2026-08-03T04:28:57.457474+00:00",
+        "created_at": "2026-08-03T09:34:19.214994+00:00",
         "outcome_kind": "conversational_reply",
         "tool_name": null,
         "tool_invoke_action": null,
@@ -203,9 +203,9 @@
       },
       "audit_events": [
         {
-          "id": "c2523b8c-feab-44d6-9073-75d7dbf9c731",
+          "id": "2ef49623-a005-400b-b2cb-9457ce5a0af9",
           "action": "unified_turn.live.completed",
-          "created_at": "2026-08-03T04:28:57.457474+00:00",
+          "created_at": "2026-08-03T09:34:19.214994+00:00",
           "outcome_kind": "conversational_reply",
           "tool_name": null,
           "tool_invoke_action": null,
@@ -215,37 +215,37 @@
       "followup": null,
       "specific_clarify_hit": true,
       "soft": false,
-      "verdict": "PASS \u2014 clarify_once @ 2026-08-03T04:28:57.457474+00:00 audit=c2523b8c-feab-44d6-9073-75d7dbf9c731"
+      "verdict": "PASS \u2014 clarify_once @ 2026-08-03T09:34:19.214994+00:00 audit=2ef49623-a005-400b-b2cb-9457ce5a0af9"
     },
     {
       "id": "add_members_no_criteria",
-      "conversation_id": "1836a363-e16f-44e9-85d2-448b2be20d08",
+      "conversation_id": "c3f9584d-827d-4a68-91b5-542959419dcd",
       "message": "Add contacts to MSP Prospects",
       "expect_mode": "clarify_once",
       "observed_mode": "clarify_once",
       "http_status": 200,
-      "assistant_head": "Which contacts should I add to **MSP Prospects**?",
+      "assistant_head": "I need the list name or the contacts to add.",
       "dialogue_modes": [
-        "clarify"
+        "answer"
       ],
       "pending_status": null,
       "pending_action": null,
       "pending_arg_name": null,
       "live_audit": {
-        "id": "b406e7e5-c1f0-4dc7-9d2e-e64eedbbb020",
+        "id": "9a4c016e-175e-4b5a-a7ce-9fab6549983d",
         "action": "unified_turn.live.completed",
-        "created_at": "2026-08-03T04:29:05.915096+00:00",
-        "outcome_kind": "clarifying_question",
+        "created_at": "2026-08-03T09:34:28.002409+00:00",
+        "outcome_kind": "conversational_reply",
         "tool_name": null,
         "tool_invoke_action": null,
         "dialogue_mode": null
       },
       "audit_events": [
         {
-          "id": "b406e7e5-c1f0-4dc7-9d2e-e64eedbbb020",
+          "id": "9a4c016e-175e-4b5a-a7ce-9fab6549983d",
           "action": "unified_turn.live.completed",
-          "created_at": "2026-08-03T04:29:05.915096+00:00",
-          "outcome_kind": "clarifying_question",
+          "created_at": "2026-08-03T09:34:28.002409+00:00",
+          "outcome_kind": "conversational_reply",
           "tool_name": null,
           "tool_invoke_action": null,
           "dialogue_mode": null
@@ -254,141 +254,60 @@
       "followup": null,
       "specific_clarify_hit": true,
       "soft": false,
-      "verdict": "PASS \u2014 clarify_once @ 2026-08-03T04:29:05.915096+00:00 audit=b406e7e5-c1f0-4dc7-9d2e-e64eedbbb020"
+      "verdict": "PASS \u2014 clarify_once @ 2026-08-03T09:34:28.002409+00:00 audit=9a4c016e-175e-4b5a-a7ce-9fab6549983d"
     },
     {
       "id": "meta_while_awaiting_params",
-      "conversation_id": "e2dc8e02-1bf7-4dd0-a0da-5f7c7e248e60",
+      "conversation_id": "751a2e7b-8678-4041-82de-12894f08aa11",
       "message": "Create a HubSpot deal",
       "expect_mode": "meta_control",
-      "observed_mode": "clarify_once",
+      "observed_mode": "approve_first",
       "http_status": 200,
-      "assistant_head": "I need the deal name and any properties you want on it.",
+      "assistant_head": "I don\u2019t have enough information yet. Tell me the deal details and I\u2019ll continue.\n\nMinimum needed:\n- Deal name\n- Amount, if known\n- Pipeline and stage, if you want it placed specifically\n- Close date, if known\n- Associated company or contact, if applicable\n\nHubSpot appears to be available in the provided context, but I will verify the connector before creating the deal.I'll run this in Hubspot: **Create deal**.\n\n- Dealname: New deal from chat\n\nRep",
       "dialogue_modes": [
-        "answer"
+        "research",
+        "research",
+        "confirm"
       ],
-      "pending_status": null,
-      "pending_action": null,
+      "pending_status": "awaiting_confirm",
+      "pending_action": "hubspot.deals.create",
       "pending_arg_name": null,
-      "live_audit": {
-        "id": "d206d717-29f7-45e3-8acf-f6794f18761d",
-        "action": "unified_turn.live.completed",
-        "created_at": "2026-08-03T04:29:17.647512+00:00",
-        "outcome_kind": "conversational_reply",
-        "tool_name": null,
-        "tool_invoke_action": null,
-        "dialogue_mode": null
-      },
+      "live_audit": null,
       "audit_events": [
         {
-          "id": "d206d717-29f7-45e3-8acf-f6794f18761d",
-          "action": "unified_turn.live.completed",
-          "created_at": "2026-08-03T04:29:17.647512+00:00",
-          "outcome_kind": "conversational_reply",
-          "tool_name": null,
-          "tool_invoke_action": null,
+          "id": "63990b39-efe7-4d6d-9d52-a7cf8cbd50f3",
+          "action": "unified_turn.live.fallthrough",
+          "created_at": "2026-08-03T09:34:40.32502+00:00",
+          "outcome_kind": "connector_tool_proposal",
+          "tool_name": "assistant_connector_status",
+          "tool_invoke_action": "assistant.connector_status",
           "dialogue_mode": null
         }
       ],
       "followup": {
-        "assistant_head": "What are you trying to do?",
+        "assistant_head": "I'm waiting for your approval to run **Create deal**.\nReply **yes** to proceed, **cancel** to abort, or tell me what to change.",
         "dialogue_modes": [
           "clarify"
         ],
-        "pending_status": null
+        "pending_status": "awaiting_confirm"
       },
       "specific_clarify_hit": true,
       "soft": true,
-      "verdict": "SOFT_FAIL \u2014 meta_followup_unrelated"
+      "verdict": "PASS \u2014 approve_first @ None audit=None action=hubspot.deals.create"
     }
   ],
-  "git_sha": "2cafd118b96f1024c52b182c4640ededf99664a4",
+  "git_sha": "49e4a75d0c7f061732f8d1e5b7fdd3eb5f004ea0",
   "summary": {
-    "hard_pass_count": 6,
-    "hard_total": 6,
-    "soft_fail_count": 2,
-    "approve_first_rate": 0.75,
+    "hard_pass_count": 7,
+    "hard_total": 7,
+    "soft_fail_count": 0,
+    "approve_first_rate": 0.8,
     "clarify_once_rate": 1.0,
-    "approve_first_ok": 3,
-    "approve_first_total": 4,
+    "approve_first_ok": 4,
+    "approve_first_total": 5,
     "clarify_once_ok": 2,
     "clarify_once_total": 2
   },
   "verdict": "PASS",
-  "finished_at": "2026-08-03T04:29:25.487898+00:00",
-  "baseline_722dab11": {
-    "hard_pass_count": 0,
-    "hard_total": 7,
-    "soft_fail_count": 1,
-    "approve_first_rate": 0.25,
-    "clarify_once_rate": 0.0,
-    "approve_first_ok": 1,
-    "approve_first_total": 4,
-    "clarify_once_ok": 0,
-    "clarify_once_total": 2
-  },
-  "comparison": {
-    "baseline_approve_first_rate": 0.25,
-    "post_fix_approve_first_rate": 0.75,
-    "baseline_clarify_once_rate": 0.0,
-    "post_fix_clarify_once_rate": 1.0,
-    "baseline_hard_pass": 0,
-    "post_fix_hard_pass": 6,
-    "tip": "2cafd118b96f1024c52b182c4640ededf99664a4",
-    "commits": [
-      "cbec815c",
-      "ac538cc8",
-      "21e2afb6",
-      "375422c9",
-      "9bacd586"
-    ]
-  },
-  "evidence_pointers": [
-    {
-      "case": "hubspot_msps_list",
-      "verdict": "PASS \u2014 approve_first @ 2026-08-03T04:27:45.562512+00:00 audit=b9f9aae1-f857-4bd5-9675-8e7808cfdd88 action=hubspot.lists.create",
-      "audit_id": "b9f9aae1-f857-4bd5-9675-8e7808cfdd88",
-      "action": "unified_turn.live.completed",
-      "created_at": "2026-08-03T04:27:45.562512+00:00",
-      "outcome_kind": "connector_tool_proposal",
-      "pending_action": "hubspot.lists.create"
-    },
-    {
-      "case": "clay_enrich_msp_chain",
-      "verdict": "SOFT_FAIL \u2014 want_approve_first got=other",
-      "audit_id": "5c8100b8-0874-4493-a4a6-52ef9e7907b1",
-      "action": "unified_turn.live.completed",
-      "created_at": "2026-08-03T04:27:51.603738+00:00",
-      "outcome_kind": "conversational_reply",
-      "pending_action": null
-    },
-    {
-      "case": "ambiguous_enrich_my_list",
-      "verdict": "PASS \u2014 clarify_once @ 2026-08-03T04:28:57.457474+00:00 audit=c2523b8c-feab-44d6-9073-75d7dbf9c731",
-      "audit_id": "c2523b8c-feab-44d6-9073-75d7dbf9c731",
-      "action": "unified_turn.live.completed",
-      "created_at": "2026-08-03T04:28:57.457474+00:00",
-      "outcome_kind": "conversational_reply",
-      "pending_action": null
-    },
-    {
-      "case": "add_members_no_criteria",
-      "verdict": "PASS \u2014 clarify_once @ 2026-08-03T04:29:05.915096+00:00 audit=b406e7e5-c1f0-4dc7-9d2e-e64eedbbb020",
-      "audit_id": "b406e7e5-c1f0-4dc7-9d2e-e64eedbbb020",
-      "action": "unified_turn.live.completed",
-      "created_at": "2026-08-03T04:29:05.915096+00:00",
-      "outcome_kind": "clarifying_question",
-      "pending_action": null
-    },
-    {
-      "case": "meta_while_awaiting_params",
-      "verdict": "SOFT_FAIL \u2014 meta_followup_unrelated",
-      "audit_id": "d206d717-29f7-45e3-8acf-f6794f18761d",
-      "action": "unified_turn.live.completed",
-      "created_at": "2026-08-03T04:29:17.647512+00:00",
-      "outcome_kind": "conversational_reply",
-      "pending_action": null
-    }
-  ],
-  "shipped_at": "2026-08-03T04:29:47.357977+00:00"
+  "finished_at": "2026-08-03T09:35:01.536847+00:00"
 }
