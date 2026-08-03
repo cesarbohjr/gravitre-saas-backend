@@ -22,6 +22,9 @@ Overlay lists active typed workflows, shows progress steps (chat plan-bar shape:
 - Outcomes DTO `source=browser_extension`, `lifecycleState=approved`
 - https://gravitre.app/outcomes/624f3fa2-8872-499e-95d1-37ce9ae6e4a2
 
-## Tip verify fix (2026-08-03)
+## Tip verify fixes (2026-08-03)
 
-First tip confirm on `2cafd118` failed with `asyncio.run() cannot be called from a running event loop` because `/api/extension/workflows/execute` was `async def` while the shared workflow engine uses `asyncio.run()` in step handlers / enqueue. Route changed to sync `def` so FastAPI runs it in a threadpool (no nested loop). Tip re-verify artifacts: `browser-extension-v3-tip-verify.json`.
+1. **Nested asyncio:** First tip confirm on `2cafd118` failed with `asyncio.run() cannot be called from a running event loop` because `/api/extension/workflows/execute` was `async def` while the shared workflow engine uses `asyncio.run()` in step handlers / enqueue. Route changed to sync `def` so FastAPI runs it in a threadpool (no nested loop).
+2. **Queued ≠ completed:** After the sync fix, tip confirm enqueued (`queued=true`) but the durable worker never drained the job (run stuck `running`, zero `workflow_steps`). Extension confirm now calls `_execute_workflow_with_context(..., force_inline=True)` — same typed engine / Module A path, inline so overlay confirm returns a finished Outcomes chain.
+
+Tip re-verify artifact: `browser-extension-v3-tip-verify.json`.

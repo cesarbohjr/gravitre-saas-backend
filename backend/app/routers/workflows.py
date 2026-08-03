@@ -1996,6 +1996,7 @@ def _execute_workflow_with_context(
     trigger_type: str,
     schedule_id: str | None = None,
     rollback_of_run_id: str | None = None,
+    force_inline: bool = False,
 ) -> dict:
     start = time.perf_counter()
     plan = get_plan_for_org(client, org_id)
@@ -2209,7 +2210,9 @@ def _execute_workflow_with_context(
         _record_workflow_run_usage(client, org_id, environment_name, plan)
         emit_execute_created(client, org_id, actor_id, run_id, workflow_id)
         emit_execute_started(client, org_id, actor_id, run_id)
-        if try_enqueue_workflow_run_sync(
+        # force_inline: skip durable queue (extension overlay needs e2e completion
+        # on the request that confirmed approval; queue accept ≠ worker drain).
+        if not force_inline and try_enqueue_workflow_run_sync(
             settings,
             client,
             org_id=org_id,

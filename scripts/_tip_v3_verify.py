@@ -75,11 +75,42 @@ print("confirm", conf.status_code)
 cj = conf.json()
 print(json.dumps(cj, indent=2)[:2000])
 assert conf.status_code == 200 and cj.get("runId"), cj
+assert not cj.get("queued"), ("expected inline completion, got queued", cj)
+assert cj.get("status") in {"completed", "succeeded"}, cj
+
+from supabase import create_client
+
+client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+run = (
+    client.table("workflow_runs")
+    .select("id,status,parameters,completed_at")
+    .eq("id", cj["runId"])
+    .single()
+    .execute()
+    .data
+)
+steps = (
+    client.table("workflow_steps")
+    .select("step_id,step_name,status")
+    .eq("run_id", cj["runId"])
+    .execute()
+    .data
+)
+params = run.get("parameters") or {}
+assert run.get("status") == "completed", run
+assert len(steps or []) >= 2, steps
+assert all(s.get("status") == "completed" for s in steps), steps
+assert params.get("source") == "browser_extension", params
+assert params.get("outcome_finalized") is True or params.get("step_results"), params
+
 out = {
     "overall": "PASS",
     "git_sha": health["git_sha"],
     "runId": cj["runId"],
-    "status": cj.get("status"),
+    "status": run.get("status"),
+    "steps": steps,
+    "source": params.get("source"),
+    "outcome_finalized": params.get("outcome_finalized"),
     "outcomesUrl": f"https://gravitre.app/outcomes/{cj['runId']}",
 }
 Path("docs/delivery/browser-extension-v3-tip-verify.json").write_text(

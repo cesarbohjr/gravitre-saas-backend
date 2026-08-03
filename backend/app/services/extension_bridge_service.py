@@ -1182,6 +1182,9 @@ def _run_confirmed_extension_workflow(
         parameters=params,
         actor_id=user_id,
         trigger_type="api",
+        # Same engine as chat/schedules; inline so overlay confirm returns a
+        # finished Outcomes chain instead of a queued run the worker may never drain.
+        force_inline=True,
     )
     run_id = str(result.get("run_id") or "") or None
     status = str(result.get("status") or "running")
