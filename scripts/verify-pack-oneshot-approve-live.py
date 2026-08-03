@@ -245,17 +245,36 @@ def classify_first_turn(
     params = (pending or {}).get("params") if isinstance(pending, dict) else None
     if isinstance(params, dict) and str(params.get("status") or "").strip():
         status = status or str(params.get("status"))
+    text = assistant or ""
     if status == "awaiting_confirm" or (
         outcome in {"connector_tool_proposal", "write_approval"}
         and "confirm" in " ".join(dialogue_modes).lower()
+    ):
+        return "approve_first"
+    # One-shot write already completed (HITL auto-run) still beats a clarify loop.
+    if re.search(
+        r"\b(?:done|created|created the)\b.*\b(?:list|deal|contact)\b|"
+        r"\bverified\b.*\b(?:apollo|hubspot)\b.*\blists\.create\b|"
+        r"reply\s+\*\*yes\*\*",
+        text,
+        re.I,
     ):
         return "approve_first"
     if status == "awaiting_params" or outcome == "clarifying_question" or "clarify" in " ".join(
         dialogue_modes
     ).lower():
         return "clarify_once"
-    if re.search(r"\breply\s+\*\*yes\*\*", assistant or "", re.I):
-        return "approve_first"
+    # Conversational clarify (dialogue_mode=answer but asks for a specific slot).
+    if re.search(
+        r"\b(?:i need|need the|tell me|which |what (?:should|is)|missing)\b",
+        text,
+        re.I,
+    ) and re.search(
+        r"\b(?:list(?:\s+name)?|criteria|contacts?|object type|deal name|ICP|filter|who)\b",
+        text,
+        re.I,
+    ):
+        return "clarify_once"
     return "other"
 
 

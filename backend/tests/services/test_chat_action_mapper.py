@@ -114,6 +114,18 @@ def test_maps_apollo_segment_create_for_msps():
     assert match.args.get("name") == "MSP Prospects"
 
 
+def test_maps_hubspot_static_list_msps():
+    match = get_chat_action_mapper().match_segment(
+        "Create HubSpot static list MSPs",
+        connected_integrations=["hubspot"],
+    )
+    assert match is not None
+    assert match.entry.action_key == "hubspot.lists.create"
+    assert match.args.get("name") == "MSPs"
+    assert match.args.get("object_type_id") == "0-1"
+    assert match.args.get("processing_type") == "MANUAL"
+
+
 def test_maps_hubspot_deal_stage_update():
     match = get_chat_action_mapper().match_segment(
         "Update those deal stages in HubSpot after approval.",

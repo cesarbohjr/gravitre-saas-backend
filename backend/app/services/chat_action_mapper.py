@@ -333,6 +333,14 @@ class ChatActionMapper:
                 score += 40.0
             elif "contacts.create" in entry.action_key:
                 score -= 40.0
+        if entry.connector_id == "hubspot" and LIST_CREATE_INTENT.search(text):
+            # Part 3 — pack-common HubSpot static list create (MSP / Prospecting).
+            if "lists.create" in entry.action_key:
+                score += 40.0
+            elif "contacts.create" in entry.action_key:
+                score -= 30.0
+            elif "companies.create" in entry.action_key:
+                score -= 30.0
             elif "lists.list" in entry.action_key or (
                 "list" in entry.action_key and "create" not in entry.action_key
             ):
@@ -567,6 +575,42 @@ class ChatActionMapper:
                 if re.fullmatch(r"msps?", cleaned, re.I):
                     cleaned = "MSP Prospects"
                 return {"name": cleaned[:200], "modality": "contacts"}
+            return None
+
+        if entry.connector_id == "hubspot" and "lists.create" in entry.action_key:
+            name = quoted[0] if quoted else None
+            if not name:
+                list_match = re.search(
+                    r"\b(?:list|group|segment)\s+(?:named|called)\s*[\"']?([^\"'.]+)",
+                    text,
+                    re.I,
+                )
+                if list_match:
+                    name = list_match.group(1).strip()
+            if not name:
+                trail = re.search(
+                    r"\b(?:static\s+)?(?:list|group|segment)\s+[\"']?([A-Za-z][\w\s.&/-]{0,60})[\"']?\s*$",
+                    text,
+                    re.I,
+                )
+                if trail:
+                    cand = trail.group(1).strip().rstrip(".,;:")
+                    if cand.lower() not in {"in", "on", "for", "with", "from", "named", "called"}:
+                        name = cand
+            if not name and (
+                re.search(r"\bmsp\b", text, re.I) or LIST_CREATE_INTENT.search(text)
+            ):
+                # Pack-common omit-name / MSP shorthand → HubSpot "MSPs"
+                name = "MSPs"
+            if name:
+                cleaned = name.strip().strip("\"'")
+                if re.fullmatch(r"msps?", cleaned, re.I):
+                    cleaned = "MSPs"
+                return {
+                    "name": cleaned[:200],
+                    "processing_type": "MANUAL",
+                    "object_type_id": "0-1",
+                }
             return None
 
         if quoted:
