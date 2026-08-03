@@ -1,0 +1,21 @@
+{
+  "overall": "PASS",
+  "git_sha": "ab5ce40b202579dd2fa609232cf156555d7ddb4e",
+  "runId": "139fd6cc-7d53-4dfd-ac1b-c59e902109ea",
+  "status": "completed",
+  "steps": [
+    {
+      "step_id": "nvd-cve",
+      "step_name": "Fetch NVD CVE",
+      "status": "completed"
+    },
+    {
+      "step_id": "cisa-kev",
+      "step_name": "Fetch CISA KEV sample",
+      "status": "completed"
+    }
+  ],
+  "source": "browser_extension",
+  "outcome_finalized": true,
+  "outcomesUrl": "https://gravitre.app/outcomes/139fd6cc-7d53-4dfd-ac1b-c59e902109ea"
+}
