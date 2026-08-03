@@ -121,3 +121,35 @@ def test_try_pack_common_list_create_skips_non_list():
         )
         is None
     )
+
+
+def test_try_pack_common_msp_enrich_workflow_approve_first():
+    from app.services.pack_common_intent_defaults import (
+        try_pack_common_msp_enrich_workflow_plan,
+    )
+
+    plan = try_pack_common_msp_enrich_workflow_plan(
+        "Enrich MSP Prospects with Clay and sync to HubSpot MSPs",
+        connected_integrations=["clay", "hubspot", "apollo"],
+    )
+    assert plan is not None
+    assert plan["type"] == "create_workflow"
+    assert plan["status"] == "awaiting_confirm"
+    assert plan["invoke_action"] == "assistant.create_workflow"
+    assert plan["apollo_list_name"] == "MSP Prospects"
+    assert plan["hubspot_list_name"] == "MSPs"
+    assert "msp-prospects-clay-hubspot-enrichment" in str(plan.get("workflow_slug"))
+
+
+def test_try_pack_common_msp_enrich_skips_ambiguous_my_list():
+    from app.services.pack_common_intent_defaults import (
+        try_pack_common_msp_enrich_workflow_plan,
+    )
+
+    assert (
+        try_pack_common_msp_enrich_workflow_plan(
+            "Enrich my list with Clay",
+            connected_integrations=["clay", "hubspot"],
+        )
+        is None
+    )

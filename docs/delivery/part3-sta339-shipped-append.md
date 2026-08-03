@@ -26,9 +26,9 @@ Hard battery **PASS** on tip `2cafd118` (includes pack-common staging `9bacd586`
 
 `cbec815c` pack defaults · `ac538cc8` battery · `21e2afb6` HubSpot mapper · `375422c9` short-circuit · `9bacd586` LIVE staging · `43f0f884` live artifact
 
-### Soft (not hard blockers)
+### Soft leftovers follow-up (2026-08-03)
 
-* `clay_enrich_msp_chain` — multi-step still drafts/clarifies (Clay connect / workflow)
-* `meta_while_awaiting_params` — HubSpot deal meta control outside pack-common
+* `clay_enrich_msp_chain` — code fix: pack-common stages `assistant.create_workflow` approve-first for MSP Clay→HubSpot (`try_pack_common_msp_enrich_workflow_plan`). Promoted off soft in battery; re-run live after tip deploy.
+* `meta_while_awaiting_params` — remains soft (deal ledger flaky); battery accepts non-executing meta follow-up. Not a pack-common hard gap.
 
-Related: STA-338 Slice A Done.
+Related: STA-338 Slice A Done · Part 2 `a64d91b1` · STA-337 remediation `8502cad7`.

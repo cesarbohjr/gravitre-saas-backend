@@ -16,6 +16,18 @@
 **overall_verdict:** FAIL (bare outlook overclaim)  
 **live_pass_claimed:** false
 
-Top remediation: alias or kill `outlook.*`; add `microsoft365` to honesty gate; mark Ads pause/resume mutating; fix/demote GA `funnels.run`.
+## Code remediation (2026-08-03) — tip
 
-Do **not** mark STA-337 Done/PASS until live `audit_events` after remediation + deploy.
+See `docs/delivery/sta337-remediation-shipped.md`.
+
+| Item | Done |
+|------|------|
+| Outlook → microsoft365 aliases; kill unmapped | yes |
+| `microsoft365` honesty gate | yes |
+| Ads `.pause`/`.resume` mutating | yes |
+| `googleads.*` dual verified names | yes |
+| GA `funnels.run` demoted | yes |
+| M365 send empty-202 `accepted_async` stamp | yes |
+
+**Tip:** `/health` `git_sha=1f44792e…` (includes `8502cad7`)  
+**live_pass_claimed:** still **false** — need live `audit_events` for Ads pause/resume, GA report, M365 send before Done/PASS.

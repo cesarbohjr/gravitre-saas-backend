@@ -11,6 +11,13 @@ import re
 from dataclasses import replace
 from typing import Any
 
+from app.marketplace.workflows.msp_enrichment_workflow import (
+    DEFAULT_APOLLO_LIST_NAME as MSP_ENRICH_APOLLO_LIST,
+    DEFAULT_HUBSPOT_LIST_NAME as MSP_ENRICH_HUBSPOT_LIST,
+    WORKFLOW_DESCRIPTION as MSP_ENRICH_DESCRIPTION,
+    WORKFLOW_NAME as MSP_ENRICH_NAME,
+    WORKFLOW_SLUG as MSP_ENRICH_SLUG,
+)
 from app.marketplace.workflows.msp_prospecting_list_workflow import (
     DEFAULT_APOLLO_LIST_NAME,
     DEFAULT_HUBSPOT_LIST_NAME,
@@ -44,6 +51,13 @@ _MSP_PACK_HINT = re.compile(
 _VENDOR_LOCATION_FALSE_NAME = re.compile(
     r"^(?:in|on|via|with|using)\s+"
     r"(?:apollo(?:\.io)?|hubspot|clay|salesforce|crm)\s*$",
+    re.I,
+)
+# Pack-common Clay → HubSpot MSP enrich (multi-step → draft workflow approve-first).
+_MSP_CLAY_HUBSPOT_ENRICH = re.compile(
+    r"\benrich\b[\s\S]{0,120}\bclay\b[\s\S]{0,120}\b(?:hubspot|sync)\b|"
+    r"\bclay\b[\s\S]{0,80}\benrich\b[\s\S]{0,80}\bhubspot\b|"
+    r"\bmsp\s+prospects\b[\s\S]{0,80}\bclay\b[\s\S]{0,80}\bhubspot\b",
     re.I,
 )
 
@@ -193,6 +207,57 @@ def _apply_prospecting_list_defaults(
     return plan
 
 
+def try_pack_common_msp_enrich_workflow_plan(
+    message: str,
+    connected_integrations: list[str] | tuple[str, ...] | None = None,
+) -> dict[str, Any] | None:
+    """Stage MSP Prospects → Clay → HubSpot MSPs as create_workflow approve-first.
+
+    Multi-step connector chains cannot approve a single clay.crm.sync (records are
+    irreducible). Prefer the seeded pack workflow draft with pack-default list names.
+    """
+    text = (message or "").strip()
+    if not text or not _MSP_CLAY_HUBSPOT_ENRICH.search(text):
+        return None
+    # "Enrich my list with Clay" without MSP/HubSpot targets stays clarify_once.
+    if _AMBIGUOUS_LIST_REF.search(text) and not re.search(
+        r"\bmsp\s+prospects\b", text, re.I
+    ):
+        return None
+    connected = {
+        str(c).strip().lower()
+        for c in (connected_integrations or [])
+        if str(c).strip()
+    }
+    # When connection inventory is known, require at least one of clay/hubspot.
+    if connected and not (connected & {"clay", "hubspot", "apollo"}):
+        return None
+    apollo_list = MSP_ENRICH_APOLLO_LIST
+    hubspot_list = MSP_ENRICH_HUBSPOT_LIST
+    if re.search(r"\bmsp\s+prospects\b", text, re.I):
+        apollo_list = "MSP Prospects"
+    if re.search(r"\bmsps\b", text, re.I):
+        hubspot_list = "MSPs"
+    goal = (
+        f"{MSP_ENRICH_DESCRIPTION} "
+        f"Apollo list: {apollo_list}. HubSpot list: {hubspot_list}."
+    )
+    return {
+        "type": "create_workflow",
+        "status": "awaiting_confirm",
+        "tool_name": "assistant_create_workflow",
+        "invoke_action": "assistant.create_workflow",
+        "workflow_goal": goal,
+        "workflow_name": MSP_ENRICH_NAME,
+        "workflow_slug": MSP_ENRICH_SLUG,
+        "apollo_list_name": apollo_list,
+        "hubspot_list_name": hubspot_list,
+        "source": "pack_common_msp_enrich",
+        "goal": goal,
+        "name": MSP_ENRICH_NAME,
+    }
+
+
 def try_pack_common_list_create_plan(
     message: str,
     connected_integrations: list[str] | tuple[str, ...] | None = None,
@@ -322,5 +387,17 @@ def pack_common_default_catalog() -> list[dict[str, Any]]:
             "invoke_action": "clay.crm.sync",
             "defaults": {"crm": "hubspot"},
             "irreducible": ["records", "record"],
+        },
+        {
+            "pack_ids": sorted(PACK_IDS),
+            "invoke_action": "assistant.create_workflow",
+            "defaults": {
+                "workflow_slug": MSP_ENRICH_SLUG,
+                "workflow_name": MSP_ENRICH_NAME,
+                "apollo_list_name": MSP_ENRICH_APOLLO_LIST,
+                "hubspot_list_name": MSP_ENRICH_HUBSPOT_LIST,
+            },
+            "irreducible": ["HUBSPOT_LIST_ID"],
+            "note": "MSP Clay→HubSpot enrich stages draft workflow (not bare clay.crm.sync)",
         },
     ]

@@ -1023,6 +1023,84 @@ async def apply_unified_turn_live(
                 "unified_outcome_kind": "connector_tool_proposal",
             }
 
+    # Part 3 soft leftover — MSP Clay→HubSpot enrich: stage create_workflow confirm
+    # (bare clay.crm.sync cannot approve-first; records are irreducible).
+    from app.services.pack_common_intent_defaults import (
+        try_pack_common_msp_enrich_workflow_plan,
+    )
+
+    enrich_plan = try_pack_common_msp_enrich_workflow_plan(
+        message or "",
+        connected_integrations=list(
+            result.connected_integrations or connected_integrations or []
+        ),
+    )
+    if enrich_plan is not None and conversation_id:
+        from app.services.conversation_state_service import get_conversation_state_service
+
+        state = get_conversation_state_service(active)
+        pending_params = dict(enrich_plan)
+        await state.update_task_state(
+            conversation_id,
+            org_id,
+            {
+                "clarified_params": pending_params,
+                "pending_task": {
+                    "type": "create_workflow",
+                    "status": "awaiting_confirm",
+                    "params": pending_params,
+                },
+                "recent_user_messages": [message or ""],
+            },
+            client=client,
+        )
+        refreshed = await state.get_task_state(
+            conversation_id, org_id, client=client
+        )
+        wf_name = str(enrich_plan.get("workflow_name") or "MSP enrichment workflow")
+        apollo_list = str(enrich_plan.get("apollo_list_name") or "MSP Prospects")
+        hubspot_list = str(enrich_plan.get("hubspot_list_name") or "MSPs")
+        confirm_message = (
+            f"I'll create a draft workflow **{wf_name}** to enrich Apollo list "
+            f"**{apollo_list}** with Clay and sync to HubSpot list **{hubspot_list}**.\n\n"
+            "Reply **yes** to create it now, or tell me what to adjust "
+            "(list names, filters, or sync rules)."
+        )
+        result.outcome_kind = "confirmation_request"
+        result.tool_name = str(enrich_plan.get("tool_name") or "assistant_create_workflow")
+        result.tool_invoke_action = str(
+            enrich_plan.get("invoke_action") or "assistant.create_workflow"
+        )
+        result.tool_arguments = {
+            "goal": enrich_plan.get("workflow_goal"),
+            "name": enrich_plan.get("workflow_name"),
+            "workflow_slug": enrich_plan.get("workflow_slug"),
+        }
+        result.requires_write_approval = True
+        result.live_served = True
+        result.model = f"{result.model or 'unified_turn'}+pack_common_msp_enrich"
+        result.user_message = confirm_message
+        emit_unified_turn_shadow_audit(
+            client=client,
+            org_id=org_id,
+            actor_id=user_id,
+            conversation_id=conversation_id,
+            result=result,
+        )
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "confirm",
+            "message": finalize_user_facing_message(
+                confirm_message, context="unified_turn_live_pack_common_msp_enrich"
+            ),
+            "task_state": refreshed,
+            "pending_task": (refreshed or {}).get("pending_task"),
+            "workflow_status": "awaiting_confirm",
+            "answer_explanation": "Unified turn live (pack-common MSP Clay enrich)",
+            "model": result.model or "unified_turn_live",
+            "unified_outcome_kind": "confirmation_request",
+        }
+
     text_kinds = {
         "conversational_reply",
         "clarifying_question",
