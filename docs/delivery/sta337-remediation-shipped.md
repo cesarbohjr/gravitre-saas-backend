@@ -19,6 +19,12 @@
 
 `pytest` STA-337/Part5 related suite: **456 passed** (install_ready, aliases, outcome_effects, action_selection_gate, workflow_schemas_batch_50, output_schema_batches, action_catalog).
 
+## Tip deploy
+
+- Code commit: `8502cad7`
+- Prod `/health` git_sha: `1f44792e48bcf8848c68fe699d17bda7745779a0` (includes STA-337; stamp `1f44792e`)
+- Verified tip includes ancestor `8502cad7` @ ~2026-08-03T09:07Z local
+
 ## Still required for honesty PASS
 
 Live tip proof with `audit_events` for:
