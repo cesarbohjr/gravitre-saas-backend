@@ -1,5 +1,5 @@
 {
-  "startedAt": "2026-08-03T08:16:43.685542+00:00",
+  "startedAt": "2026-08-03T17:42:29.843395+00:00",
   "scope": {
     "in": [
       "chrome",
@@ -54,7 +54,7 @@
       "chat_page_context": {
         "status": "PASS",
         "http": 200,
-        "conversationId": "e25f2e98-e750-450f-a52e-7d69cf4ab127",
+        "conversationId": "6d108654-0d6c-4803-8343-e6b6bd851ce5",
         "path": "execute_task_streaming",
         "answerPreview": "Casey Operator is Head of Revenue Ops at Gravitree Smoke Co."
       },
@@ -62,7 +62,7 @@
         "status": "PASS",
         "http": 200,
         "needsHandoff": true,
-        "openInGravitreeUrl": "/ai?c=e25f2e98-e750-450f-a52e-7d69cf4ab127&prompt=Create%20a%20HubSpot%20list%20for%20Casey%20Operator%20from%20this%20page."
+        "openInGravitreeUrl": "/ai?c=6d108654-0d6c-4803-8343-e6b6bd851ce5&prompt=Create%20a%20HubSpot%20list%20for%20Casey%20Operator%20from%20this%20page."
       }
     },
     "edge_load_extension": {
@@ -77,7 +77,7 @@
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 Edg/151.0.0.0",
         "V8-Version": "15.1.23.5",
         "WebKit-Version": "537.36 (@400e1a29bee558c0c1dec28b2d8b3506a7302ce3)",
-        "webSocketDebuggerUrl": "ws://127.0.0.1:9331/devtools/browser/fce27352-6e1c-44d9-af3a-aa85099a08eb"
+        "webSocketDebuggerUrl": "ws://127.0.0.1:9331/devtools/browser/f3212385-4ef4-469b-a142-7ed03da9fe16"
       },
       "error": null,
       "note": "Unpacked MV3 load via --load-extension; chrome.* APIs (Edge/Brave Chromium)."
@@ -94,13 +94,13 @@
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
         "V8-Version": "15.1.206.10",
         "WebKit-Version": "537.36 (@96e337f9f5f202e633be4c080b702279ea2a0d0)",
-        "webSocketDebuggerUrl": "ws://127.0.0.1:9332/devtools/browser/6cb1194b-c2e7-43b3-8dad-136d29d253c1"
+        "webSocketDebuggerUrl": "ws://127.0.0.1:9332/devtools/browser/6b487f31-5364-4550-ac6e-3090f63cfacc"
       },
       "error": null,
       "note": "Unpacked MV3 load via --load-extension; chrome.* APIs (Edge/Brave Chromium)."
     }
   },
-  "git_sha": "bb56894f06673d1c34dacf98481c1894c0e03efe",
+  "git_sha": "49e4a75d0c7f061732f8d1e5b7fdd3eb5f004ea0",
   "overall": "PASS",
-  "finishedAt": "2026-08-03T08:17:13.370195+00:00"
+  "finishedAt": "2026-08-03T17:42:55.680463+00:00"
 }

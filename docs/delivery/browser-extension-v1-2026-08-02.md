@@ -76,14 +76,18 @@ Script: `scripts/live-extension-v1-smoke.py` → `docs/delivery/browser-extensio
 
 **PASS** — HubSpot `list_id` no longer written to `notifications.entity_id` (uuid column).
 
-Local pre-deploy: run `f693a774-2ec6-4b16-9c55-31ed4b40609a`, notification `1ff58694-…`
+Defense in depth:
+- `extension_bridge_service` stamps `VerifiedOutputRef.entity_id = run_id`
+- `notification_emitter._resolve_entity_ref` strips non-UUID vendor ids to `external_entity_id`
 
-**Deployed tip** `git_sha=92fe0dde466344dcbc8529fad609126a0b0e8d01`:
+**Re-close on tip** `git_sha=49e4a75d0c7f061732f8d1e5b7fdd3eb5f004ea0` (2026-08-03):
 
-- run_id `043a751c-c780-49e9-b39c-a5c66c98009e`
-- notification `0d937d21-4a7b-46af-94b4-832d8256a878` `entity_id` = run UUID
-- Outcomes: https://gravitre.app/outcomes/043a751c-c780-49e9-b39c-a5c66c98009e
-- Evidence: `docs/delivery/browser-extension-v1-tip-verify.json`
+- run_id `626aba58-b46d-4dff-8781-e40fe092a849`
+- notification `60efe2ab-08e7-4ab8-8c99-051fea5a4b1c` `entity_id` = run UUID (`workflow_run`)
+- Outcomes: https://gravitre.app/outcomes/626aba58-b46d-4dff-8781-e40fe092a849
+- Evidence: `docs/delivery/browser-extension-v1-tip-verify.json` + `browser-extension-v1-live.json`
+
+Prior tip `92fe0dde…` / run `043a751c…` / notification `0d937d21…` also PASS.
 
 ### Prior smoke (durable confirm gate)
 

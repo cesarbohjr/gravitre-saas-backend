@@ -1,18 +1,22 @@
 {
   "probe": "extension_v1_deployed_tip",
-  "git_sha": "92fe0dde466344dcbc8529fad609126a0b0e8d01",
-  "base_url": "https://gravitre-saas-backend-production.up.railway.app",
-  "verified_at": "2026-08-03T03:30:00Z",
+  "git_sha": "49e4a75d0c7f061732f8d1e5b7fdd3eb5f004ea0",
+  "base_url": "https://api.gravitre.app",
+  "verified_at": "2026-08-03T17:42:04Z",
   "cases": {
-    "health_git_sha": "PASS",
+    "health_git_sha": "PASS (tip includes UUID notify fix)",
+    "org_boundary_403": "PASS",
     "propose_stages_token": "PASS",
-    "confirmed_true_ignored": "PASS",
+    "forged_token_rejected": "PASS",
     "confirm_write": "PASS",
     "notification_uuid_entity_id": "PASS",
-    "enrich_linkedin": "PASS (200 on tip re-probe; earlier 500 treated as transient)"
+    "enrich_linkedin": "PASS"
   },
-  "runId": "043a751c-c780-49e9-b39c-a5c66c98009e",
-  "notificationId": "0d937d21-4a7b-46af-94b4-832d8256a878",
-  "outcomesUrl": "https://gravitre.app/outcomes/043a751c-c780-49e9-b39c-a5c66c98009e",
-  "overall": "PASS"
+  "runId": "626aba58-b46d-4dff-8781-e40fe092a849",
+  "notificationId": "60efe2ab-08e7-4ab8-8c99-051fea5a4b1c",
+  "notificationEntityId": "626aba58-b46d-4dff-8781-e40fe092a849",
+  "notificationEntityType": "workflow_run",
+  "outcomesUrl": "https://gravitre.app/outcomes/626aba58-b46d-4dff-8781-e40fe092a849",
+  "overall": "PASS",
+  "note": "HubSpot list_id not written to notifications.entity_id — entity_id equals run UUID"
 }

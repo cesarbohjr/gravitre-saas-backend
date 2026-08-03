@@ -1,0 +1,24 @@
+{
+  "probe": "extension_v5_chromium_parity_tip",
+  "git_sha": "49e4a75d0c7f061732f8d1e5b7fdd3eb5f004ea0",
+  "verified_at": "2026-08-03T17:42:55Z",
+  "scope": {
+    "in": ["chrome", "edge", "brave"],
+    "out": ["firefox", "safari", "mobile"]
+  },
+  "cases": {
+    "api_session_v1_v4_actions": "PASS",
+    "usage_signal": "PASS",
+    "enrich_linkedin": "PASS",
+    "workflows_list": "PASS",
+    "chat_page_context": "PASS",
+    "chat_handoff": "PASS",
+    "edge_unpacked_mv3_load": "PASS",
+    "brave_unpacked_mv3_load": "PASS"
+  },
+  "conversationId": "6d108654-0d6c-4803-8343-e6b6bd851ce5",
+  "handoffUrl": "/ai?c=6d108654-0d6c-4803-8343-e6b6bd851ce5&prompt=Create%20a%20HubSpot%20list%20for%20Casey%20Operator%20from%20this%20page.",
+  "artifact": "docs/delivery/browser-extension-v5-live.json",
+  "overall": "PASS",
+  "note": "Unpacked Edge/Brave MV3 load + API v1–v4 surface on tip. CWS listing still NOT PUBLISHED."
+}
