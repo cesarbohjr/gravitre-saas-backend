@@ -1,0 +1,29 @@
+{
+  "probe": "output_preview_fidelity_phase0_phase1",
+  "date": "2026-08-03",
+  "phase0": {
+    "connector_business_outcome": true,
+    "durable_hosted_files": false,
+    "chat_web_renderable_artifacts": false,
+    "in_app_office_viewer": false,
+    "dashboard_recharts_exists": true
+  },
+  "phase1": {
+    "decision": "confirm_no_rebuild",
+    "chat_path": "ChatExecutionPanel → BusinessOutcomeView density=chat",
+    "sample_run_id": "50a34d4c-56eb-4178-aa44-242bd20c2c79",
+    "sample_source": "assistant_chat",
+    "sample_label": "Search contacts",
+    "verified_output": {
+      "summary": "No HubSpot contacts matched that request.",
+      "external_url": "https://app.apollo.io/#/contacts",
+      "result_url": "/runs/50a34d4c-56eb-4178-aa44-242bd20c2c79",
+      "integration": "apollo"
+    },
+    "verdict": "PASS — evidence substrate present; BO card is correct preview pattern"
+  },
+  "phase2_file_chip": "SKIP",
+  "phase3_live_preview": "SKIP",
+  "code_changes": false,
+  "note": "Documentation-only ship; no Railway feature redeploy required for this decision."
+}
