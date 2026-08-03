@@ -36,9 +36,9 @@ New organizations start on a trial. When the trial ends, upgrade from **Settings
 
 ## 2. Set up Environments
 
-1. Open **Settings → Environments** (`/environments`)
+1. Open **Settings → Admin → Environments** (`/environments`)
 2. Confirm default environments (for example **staging** and **production**)
-3. Note which environment is active in the top bar — workflows and Runs are scoped to it
+3. Note which environment is active in the top bar — workflows and Activity are scoped to it
 
 Use **staging** for dry-runs and template testing; switch to **production** only when connectors and approvals are ready. See [Environments](/docs/concepts/environments).
 
@@ -75,7 +75,7 @@ List my three most recent HubSpot deals and summarize next steps for each.
 
 3. Review the **action plan** — steps, suggested connectors, approval badges
 4. Approve steps that require human confirmation
-5. Read the run summary and open linked **Runs** for the timeline
+5. Read the run summary and open **Activity** (`/activity`) for the timeline
 
 See [Use Gravitre AI (Execute mode)](/docs/guides/how-to/ai-operator).
 
@@ -85,7 +85,7 @@ See [Use Gravitre AI (Execute mode)](/docs/guides/how-to/ai-operator).
 2. Filter **Workflows**, pick a template that lists your Connector as **Ready to install**
 3. Click **Install**, then open the workflow under **Workflows**
 4. Click **Run now** (or **Dry run** if available)
-5. Open **Runs** when execution completes
+5. Open **Activity** (`/activity`) when execution completes
 
 See [Install from the Marketplace](/docs/guides/how-to/marketplace).
 
@@ -98,13 +98,13 @@ See [Install from the Marketplace](/docs/guides/how-to/marketplace).
 
 See [Build and run workflows](/docs/guides/how-to/workflows).
 
-## 5. Monitor Runs and Approvals
+## 5. Monitor Activity and Approvals
 
 | Surface | Route | Use for |
 |---------|-------|---------|
-| **Runs** | `/runs` | Step timeline, outputs, errors, retry |
+| **Activity** | `/activity` | Completed work, failure alerts, run detail links |
 | **Approvals** | `/approvals` | Pending human confirmations |
-| **Metrics** | `/metrics` | Success rate trends (after a few runs) |
+| **Intelligence** | `/intelligence` | Operational health, ROI, learning signals |
 
 If a run shows **waiting for approval**, open **Approvals** or approve from run detail. Writes to external systems typically happen only after approval when policy requires it.
 
@@ -118,7 +118,7 @@ If a run shows **waiting for approval**, open **Approvals** or approve from run 
 
 - [ ] At least one Connector shows **Connected**
 - [ ] One Run reached **succeeded** (or failed with a clear, fixable error)
-- [ ] You know where **Runs** and **Approvals** live
+- [ ] You know where **Activity** and **Approvals** live
 - [ ] Active **Environment** matches where you intend to run automation
 
 ## Troubleshooting
@@ -136,5 +136,5 @@ If a run shows **waiting for approval**, open **Approvals** or approve from run 
 - [Introduction to Gravitre](/docs/concepts/introduction) — full concept map
 - [Use Gravitre AI (Chat mode)](/docs/guides/how-to/assistant) — multi-turn org Q&A
 - [GIBE — Learning](/docs/guides/how-to/org-learning) — built-in ML and org learning
-- [Monitor Runs](/docs/guides/how-to/runs) — filters, retry, debugging
+- [Activity](/activity) — completed work, failure alerts, debugging links
 - [API quickstart](/docs/api/quickstart) — automate from your stack
