@@ -946,28 +946,82 @@ async def apply_unified_turn_live(
         )
         return None
 
-    # Part 3 — pack-common list create: complete approve plan beats LLM clarify
-    # (e.g. HubSpot "static vs active" when the user already said "static list").
-    if str(result.outcome_kind or "") in {
-        "clarifying_question",
-        "conversational_reply",
-        "confirmation_request",
-    }:
-        from app.services.pack_common_intent_defaults import (
-            try_pack_common_list_create_plan,
-        )
+    # Part 3 — pack-common list create: stage awaiting_confirm directly.
+    # Beats LLM "static vs active" clarify and avoids write_plan_unavailable
+    # fallthrough when the model proposed a tool we already know how to fill.
+    from app.services.pack_common_intent_defaults import try_pack_common_list_create_plan
 
-        pack_plan = try_pack_common_list_create_plan(
-            message or "",
-            connected_integrations=list(result.connected_integrations or connected_integrations or []),
+    pack_plan = try_pack_common_list_create_plan(
+        message or "",
+        connected_integrations=list(
+            result.connected_integrations or connected_integrations or []
+        ),
+    )
+    if pack_plan is not None and conversation_id:
+        from app.services.chat_connector_execution_service import (
+            ChatConnectorExecutionService,
         )
-        if pack_plan is not None:
+        from app.services.connector_action_workflows import (
+            format_write_approval_message,
+            missing_params_stage_patch,
+        )
+        from app.services.conversation_state_service import get_conversation_state_service
+
+        pack_plan = pack_plan
+        staged_missing = missing_params_stage_patch(
+            pack_plan, message or "", task_state=task_state or {}
+        )
+        if not staged_missing:
+            state = get_conversation_state_service(active)
+            pending_params = {
+                **ChatConnectorExecutionService.plan_to_dict(pack_plan),
+                "status": "awaiting_confirm",
+                "source": "pack_common_list_create",
+            }
+            await state.update_task_state(
+                conversation_id,
+                org_id,
+                {
+                    "pending_task": {
+                        "type": "connector_action",
+                        "status": "awaiting_confirm",
+                        "params": pending_params,
+                    },
+                    "recent_user_messages": [message or ""],
+                },
+                client=client,
+            )
+            refreshed = await state.get_task_state(
+                conversation_id, org_id, client=client
+            )
             result.outcome_kind = "connector_tool_proposal"
             result.tool_name = pack_plan.tool_name
             result.tool_invoke_action = pack_plan.invoke_action
             result.tool_arguments = dict(pack_plan.args or {})
             result.requires_write_approval = True
+            result.live_served = True
             result.model = f"{result.model or 'unified_turn'}+pack_common_list_create"
+            result.user_message = format_write_approval_message(pack_plan)
+            emit_unified_turn_shadow_audit(
+                client=client,
+                org_id=org_id,
+                actor_id=user_id,
+                conversation_id=conversation_id,
+                result=result,
+            )
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "confirm",
+                "message": finalize_user_facing_message(
+                    result.user_message, context="unified_turn_live_pack_common_list"
+                ),
+                "task_state": refreshed,
+                "pending_task": (refreshed or {}).get("pending_task"),
+                "workflow_status": "awaiting_confirm",
+                "answer_explanation": "Unified turn live (pack-common list create)",
+                "model": result.model or "unified_turn_live",
+                "unified_outcome_kind": "connector_tool_proposal",
+            }
 
     text_kinds = {
         "conversational_reply",

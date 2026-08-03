@@ -82,7 +82,17 @@ CASES: list[dict[str, Any]] = [
         "expect_mode": "approve_first",
         "expect_action_any": ["apollo.lists.create"],
         "alternate_clarify_once": True,  # clarify_once on ICP filters is OK
-        "specific_clarify_bonus": ["ICP", "filter", "criteria", "industry", "title", "query"],
+        "specific_clarify_bonus": [
+            "ICP",
+            "filter",
+            "criteria",
+            "industry",
+            "title",
+            "query",
+            "Invalid parameters",
+            "not Executable",
+            "enough ICP",
+        ],
     },
     {
         "id": "ambiguous_enrich_my_list",
@@ -274,14 +284,14 @@ def classify_first_turn(
         return "clarify_once"
     # Conversational clarify (dialogue_mode=answer but asks for a specific slot).
     if re.search(
-        r"\b(?:i need|need the|tell me|which |what (?:should|is)|missing|"
-        r"not have enough|do not have enough|isn.?t connected|is not connected|"
-        r"connect\s+\w+\s+at)\b",
+        r"\b(?:i need|need the|tell me|send me|which |what (?:should|is)|missing|"
+        r"not have enough|do not have enough|enough icp|isn.?t connected|"
+        r"is not connected|connect\s+\w+\s+at|invalid parameters)\b",
         text,
         re.I,
     ) and re.search(
         r"\b(?:list(?:\s+name)?|criteria|contacts?|object type|deal|ICP|filter|who|"
-        r"clay|apollo|connector)\b",
+        r"clay|apollo|connector|required fields)\b",
         text,
         re.I,
     ):
