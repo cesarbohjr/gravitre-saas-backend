@@ -15,9 +15,13 @@ import { APP_ROUTES } from "@/lib/app-routes"
 import { cn } from "@/lib/utils"
 import type { ChatPendingTask } from "@/components/gravitre/assistant/chat-execution-panel"
 import type { BusinessOutcomeDto } from "@/components/gravitre/business-outcome/business-outcome-view"
+import {
+  countPlannedOrExecutedSteps,
+  shouldShowTaskSidePanel,
+  SIDE_PANEL_STEP_THRESHOLD,
+} from "@/lib/task-side-panel-threshold"
 
-/** Evidence-based threshold from Phase 0 (96% of chat tasks are 1–2 steps). */
-export const SIDE_PANEL_STEP_THRESHOLD = 3
+export { shouldShowTaskSidePanel, SIDE_PANEL_STEP_THRESHOLD }
 
 type TaskSidePanelProps = {
   conversationId?: string | null
@@ -25,26 +29,6 @@ type TaskSidePanelProps = {
   pendingTask?: ChatPendingTask | null
   contextExplanation?: string | null
   className?: string
-}
-
-function countPlannedOrExecutedSteps(
-  progressSteps: string[] | null | undefined,
-  pendingTask: ChatPendingTask | null | undefined,
-): number {
-  const pendingCount = Array.isArray(pendingTask?.params?.steps)
-    ? pendingTask!.params!.steps!.length
-    : 0
-  const fromProgress = (progressSteps ?? []).filter((step) =>
-    /^(Running:|Completed:|Step \d+\/\d+:)/i.test(String(step).trim()),
-  ).length
-  return Math.max(pendingCount, fromProgress)
-}
-
-export function shouldShowTaskSidePanel(
-  progressSteps: string[] | null | undefined,
-  pendingTask: ChatPendingTask | null | undefined,
-): boolean {
-  return countPlannedOrExecutedSteps(progressSteps, pendingTask) >= SIDE_PANEL_STEP_THRESHOLD
 }
 
 function ProgressChecklist({

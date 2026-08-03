@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   SIDE_PANEL_STEP_THRESHOLD,
   shouldShowTaskSidePanel,
-} from "@/components/gravitre/assistant/task-side-panel"
+} from "@/lib/task-side-panel-threshold"
 
 describe("shouldShowTaskSidePanel", () => {
   it("keeps single-step tasks inline-only", () => {
