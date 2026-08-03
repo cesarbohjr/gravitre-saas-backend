@@ -57,8 +57,9 @@ CASES: list[dict[str, Any]] = [
     {
         "id": "settings",
         "message": (
-            "Where do I find enterprise, federation, and environment controls now? "
-            "Name the primary nav item and the settings area."
+            "Product UI question only (no tools): In the Gravitre sidebar, which "
+            "primary nav item holds Enterprise, Federation, and Environments? "
+            "Reply with the hub name and that they are under Admin."
         ),
         "must_include_any": ["settings", "/settings"],
         "must_not_include_any": [],
@@ -66,10 +67,11 @@ CASES: list[dict[str, Any]] = [
     {
         "id": "intelligence",
         "message": (
-            "Where do I find operational metrics, ROI reports, and learning signals? "
-            "Name the primary hub in the sidebar."
+            "Product UI question only (no tools): In the Gravitre sidebar, which "
+            "primary hub holds operational metrics, ROI reports, and learning "
+            "signals? Reply with one hub name."
         ),
-        "must_include_any": ["intelligence", "/intelligence", "insights"],
+        "must_include_any": ["intelligence", "/intelligence"],
         "must_not_include_any": [],
     },
 ]
