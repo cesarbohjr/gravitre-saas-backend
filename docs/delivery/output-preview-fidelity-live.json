@@ -18,12 +18,25 @@
       "summary": "No HubSpot contacts matched that request.",
       "external_url": "https://app.apollo.io/#/contacts",
       "result_url": "/runs/50a34d4c-56eb-4178-aa44-242bd20c2c79",
-      "integration": "apollo"
+      "integration": "apollo",
+      "entity_type": "connector",
+      "entity_id": "30f734a2-dbdb-45aa-9112-19c6d604d451"
     },
     "verdict": "PASS — evidence substrate present; BO card is correct preview pattern"
   },
   "phase2_file_chip": "SKIP",
   "phase3_live_preview": "SKIP",
+  "live_verification": {
+    "checked_at": "2026-08-03T23:56:00Z",
+    "prod_run_status": "completed",
+    "cohort_14d_completed_with_verified_output": "20/39",
+    "chat_code_path": "PASS",
+    "activity_runs_code_path": "PASS",
+    "authenticated_ui_screenshot": "NOT RUN — gravitre.app/login gate",
+    "extension": "PASS no regression — no BusinessOutcome in extension; status text only",
+    "api_health_git_sha": "b64add73bd2f60500694177386e617bc528bdcf7",
+    "docs_tip": "e60f3128"
+  },
   "code_changes": false,
   "note": "Documentation-only ship; no Railway feature redeploy required for this decision."
 }

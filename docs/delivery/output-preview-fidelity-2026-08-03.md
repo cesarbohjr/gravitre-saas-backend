@@ -68,6 +68,24 @@ Runs with `verified_output` (Module A substrate for BO projection), including:
 | Mismatched preview mechanisms added | PASS — none |
 | Product code redeploy required | **No** — documentation-only ship |
 
+## Live verification append (2026-08-03)
+
+### Matched preview for connector outcomes
+
+| Surface | Result | Evidence |
+|---------|--------|----------|
+| Prod substrate (Module A `verified_output`) | **PASS** | Run `50a34d4c-56eb-4178-aa44-242bd20c2c79` status `completed`, label `Search contacts`, `parameters.verified_output` with Apollo `external_url` + summary + `result_url` (queried 2026-08-03) |
+| Cohort (14d completed chat/ext-ish) | **PASS** | 20/39 completed rows carry `parameters.verified_output` |
+| Chat render path | **PASS (code)** | `ChatExecutionPanel` success + failure → `BusinessOutcomeView` `density="chat"` |
+| Activity / Runs render path | **PASS (code)** | `activity/page.tsx` + `runs/[id]/page.tsx` → `density="timeline"` |
+| Authenticated UI screenshot (chat/Activity) | **NOT RUN** | Browser redirected to `https://gravitre.app/login` — needs operator session |
+| Browser extension | **PASS — no regression** | Extension has **no** `BusinessOutcome` renderer (status text only in `popup.js`); fidelity work did not touch extension. Pre-existing gap, not a regression. |
+
+### Deploy tip
+
+- Docs tip: `e60f3128` (fidelity decision) + this append commit
+- Live API `/health` `git_sha` at verify time: `b64add73…` (BusinessOutcome already on tip; docs-only fidelity ship does not require Railway tip move)
+
 ## Deploy note
 
 No application code changes. Tip deploy confirmation is the currently live Railway `/health` `git_sha` (BusinessOutcome already on tip from prior Module A work). This commit records the fidelity decision only.
