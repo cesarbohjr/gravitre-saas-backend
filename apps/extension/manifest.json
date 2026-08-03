@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Gravitree",
   "version": "0.5.0",
-  "description": "Chromium MV3 (Chrome/Edge/Brave): overlay enrichment, governed CRM actions, workflows, and lightweight chat — same Gravitree catalog, approvals, and Outcomes. Firefox/Safari/mobile out of scope.",
+  "description": "Enrich pages and approve governed CRM writes — same Gravitree catalog, approvals, and Outcomes.",
   "permissions": ["activeTab", "storage", "sidePanel", "scripting"],
   "host_permissions": [
     "https://www.linkedin.com/*",
