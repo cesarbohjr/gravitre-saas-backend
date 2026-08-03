@@ -1,0 +1,70 @@
+{
+  "manifest_version": 3,
+  "name": "Gravitree",
+  "version": "0.1.0",
+  "description": "Overlay enrichment and one-click governed CRM actions — same Gravitree catalog, approvals, and Outcomes.",
+  "permissions": ["activeTab", "storage", "sidePanel", "scripting"],
+  "host_permissions": [
+    "https://www.linkedin.com/*",
+    "https://linkedin.com/*",
+    "https://mail.google.com/*",
+    "https://outlook.office.com/*",
+    "https://outlook.live.com/*",
+    "https://outlook.office365.com/*",
+    "https://gravitre.app/*",
+    "https://*.vercel.app/*",
+    "http://localhost:3000/*",
+    "https://gravitre-saas-backend-production.up.railway.app/*",
+    "https://api.gravitre.app/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Gravitree",
+    "default_popup": "popup.html"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.linkedin.com/*",
+        "https://linkedin.com/*"
+      ],
+      "js": ["content/shared.js", "content/linkedin.js"],
+      "css": ["content/overlay.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://mail.google.com/*"],
+      "js": ["content/shared.js", "content/gmail.js"],
+      "css": ["content/overlay.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://outlook.office.com/*",
+        "https://outlook.live.com/*",
+        "https://outlook.office365.com/*"
+      ],
+      "js": ["content/shared.js", "content/outlook.js"],
+      "css": ["content/overlay.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://gravitre.app/*",
+      "https://*.vercel.app/*",
+      "http://localhost:3000/*"
+    ]
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

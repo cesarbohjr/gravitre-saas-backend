@@ -50,6 +50,7 @@ OutcomeSource = Literal[
     "api",
     "worker",
     "assignment",
+    "browser_extension",
 ]
 
 TERMINAL_STATUSES = frozenset(

@@ -126,7 +126,9 @@ async def test_get_org_context_auto_provisions_workspace():
 
 @pytest.mark.asyncio
 async def test_get_org_context_rejects_unauthorized_requested_org():
-    """Non-members must not receive org context for an org they do not belong to."""
+    """Non-member x-org-id must 403 — never silently fall back to a default org."""
+    from fastapi import HTTPException
+
     client = MagicMock()
     with patch("supabase.create_client", return_value=client):
         with patch("app.auth.dependencies.is_platform_admin", return_value=False):
@@ -134,25 +136,22 @@ async def test_get_org_context_rejects_unauthorized_requested_org():
                 "app.services.org_membership.list_member_org_ids",
                 return_value=["org-a"],
             ):
-                with patch("app.services.org_membership.load_user_primary_org_id", return_value=None):
-                    org_id = await get_org_context(
+                with pytest.raises(HTTPException) as exc_info:
+                    await get_org_context(
                         _request(org_id="org-other"),
                         {"user_id": "user-1", "email": "u@example.com"},
                         _settings(),
                     )
-    assert org_id == "org-a"
+    assert exc_info.value.status_code == 403
+    assert "Not a member" in str(exc_info.value.detail)
 
 
 @pytest.mark.asyncio
 async def test_get_org_context_does_not_fallback_to_existing_org_without_membership():
-    client = MagicMock()
-    org_chain = MagicMock()
-    org_chain.select.return_value = org_chain
-    org_chain.eq.return_value = org_chain
-    org_chain.limit.return_value = org_chain
-    org_chain.execute.return_value = MagicMock(data=[{"id": "org-other"}])
-    client.table.return_value = org_chain
+    """Explicit non-member org id fails loud even when the user has no memberships yet."""
+    from fastapi import HTTPException
 
+    client = MagicMock()
     with patch("supabase.create_client", return_value=client):
         with patch("app.auth.dependencies.is_platform_admin", return_value=False):
             with patch("app.services.org_membership.list_member_org_ids", return_value=[]):
@@ -160,10 +159,11 @@ async def test_get_org_context_does_not_fallback_to_existing_org_without_members
                     "app.services.org_membership.ensure_user_workspace",
                     return_value="org-new",
                 ) as ensure_mock:
-                    org_id = await get_org_context(
-                        _request(org_id="org-other"),
-                        {"user_id": "user-1", "email": "u@example.com"},
-                        _settings(),
-                    )
-    ensure_mock.assert_called_once()
-    assert org_id == "org-new"
+                    with pytest.raises(HTTPException) as exc_info:
+                        await get_org_context(
+                            _request(org_id="org-other"),
+                            {"user_id": "user-1", "email": "u@example.com"},
+                            _settings(),
+                        )
+    ensure_mock.assert_not_called()
+    assert exc_info.value.status_code == 403

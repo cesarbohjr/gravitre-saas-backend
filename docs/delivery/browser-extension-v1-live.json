@@ -1,0 +1,102 @@
+{
+  "startedAt": "2026-08-03T02:52:11.230916+00:00",
+  "orgId": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "actorId": "f7e32f06-49df-4e73-8962-f41c21850762",
+  "cases": {
+    "org_boundary_403": {
+      "status": "PASS",
+      "statusCode": 403,
+      "detail": "Not a member of the requested organization",
+      "path": "app.auth.dependencies.get_org_context (shared)",
+      "note": "Smoke actor is platform_admin; non-admin branch forced via is_platform_admin=False against live membership list. Platform-admin bypass still returns requested org=00000000-0000-0000-0000-000000000001."
+    },
+    "linkedin_enrich": {
+      "status": "PASS",
+      "surface": "linkedin",
+      "matchCount": 3,
+      "suggestionCount": 4,
+      "suggestions": [
+        {
+          "id": "apollo-contact-create",
+          "invokeAction": "apollo.contacts.create"
+        },
+        {
+          "id": "apollo-list-add",
+          "invokeAction": "apollo.lists.add"
+        },
+        {
+          "id": "hubspot-contact-create",
+          "invokeAction": "hubspot.contacts.create"
+        },
+        {
+          "id": "hubspot-list-create",
+          "invokeAction": "hubspot.lists.create"
+        }
+      ]
+    },
+    "propose_write_stages": {
+      "status": "PASS",
+      "responseStatus": "needs_confirmation",
+      "hasConfirmationToken": true,
+      "approvalId": "17a351fa-7ecd-4177-96b9-4b74491d91f4",
+      "invokeAction": "hubspot.lists.create"
+    },
+    "forged_token_rejected": {
+      "status": "PASS",
+      "detail": "No awaiting_confirm write found for this confirmationToken. Propose the action again from the overlay, then approve."
+    },
+    "confirm_and_write": {
+      "status": "PASS",
+      "success": true,
+      "invokeAction": "hubspot.lists.create",
+      "runId": "fca91124-2ba5-4c9f-9897-2166b8d73aee",
+      "outcomeUrl": "/runs/fca91124-2ba5-4c9f-9897-2166b8d73aee",
+      "businessOutcomeUrl": "/outcomes/fca91124-2ba5-4c9f-9897-2166b8d73aee",
+      "source": "browser_extension",
+      "error": null,
+      "dataKeys": [
+        "list",
+        "list_id",
+        "result_url"
+      ]
+    },
+    "outcomes_entry": {
+      "status": "PASS",
+      "runId": "fca91124-2ba5-4c9f-9897-2166b8d73aee",
+      "workflowRunStatus": "completed",
+      "parametersSource": "browser_extension",
+      "definitionSource": "browser_extension",
+      "moduleASource": "browser_extension",
+      "businessOutcomeDto": {
+        "id": "fca91124-2ba5-4c9f-9897-2166b8d73aee",
+        "runId": "fca91124-2ba5-4c9f-9897-2166b8d73aee",
+        "status": "completed",
+        "source": "browser_extension",
+        "lifecycleState": "presented"
+      },
+      "dtoError": null,
+      "auditActions": [
+        "workflow.execute.completed"
+      ],
+      "openUrl": "https://gravitre.app/outcomes/fca91124-2ba5-4c9f-9897-2166b8d73aee",
+      "sameShapeNote": "Projected via _project_from_run \u2014 identical DTO path as GET /api/business-outcomes"
+    },
+    "token_replay_rejected": {
+      "status": "PASS",
+      "detail": "No awaiting_confirm write found for this confirmationToken. Propose the action again from the overlay, then approve."
+    }
+  },
+  "connectedIntegrations": [
+    "ai_visibility_ui",
+    "clay",
+    "pipedrive",
+    "microsoft365",
+    "google_ads",
+    "google_search_console",
+    "gmail",
+    "apollo",
+    "hubspot"
+  ],
+  "finishedAt": "2026-08-03T02:52:36.348350+00:00",
+  "overall": "PASS"
+}

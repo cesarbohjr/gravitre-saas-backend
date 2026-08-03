@@ -137,12 +137,17 @@ async def get_org_context(
         if platform_admin:
             org_id_ctx.set(requested_org_id)
             return requested_org_id
-        if member_org_ids:
-            logger.warning(
-                "org_context_requested_not_member user_id=%s org_id=%s",
-                user_id,
-                requested_org_id,
-            )
+        # Fail loud — never silently substitute the caller's default org.
+        # Shared path: every require_org_member / get_org_context caller benefits.
+        logger.warning(
+            "org_context_requested_not_member user_id=%s org_id=%s",
+            user_id,
+            requested_org_id,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a member of the requested organization",
+        )
 
     if member_org_ids:
         primary_org_id = load_user_primary_org_id(client, user_id)

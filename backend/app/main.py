@@ -48,6 +48,7 @@ from app.routers import (
     decisions,
     execution,
     entitlements,
+    extension,
     feedback_mode,
     metrics,
     memory_promotion,
@@ -524,6 +525,7 @@ app.include_router(activity.router)
 app.include_router(onboarding.router)
 app.include_router(lite.router)
 app.include_router(entitlements.router)
+app.include_router(extension.router)
 app.include_router(environments.router)
 app.include_router(settings.router)
 app.include_router(enterprise.router)

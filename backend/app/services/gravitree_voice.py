@@ -655,6 +655,14 @@ def format_operator_message(
             if status == "cancelled":
                 return "Orchestration run cancelled"
             return "Orchestration run completed"
+        if source == "browser_extension":
+            if status == "failed":
+                return "Extension write failed"
+            if status == "cancelled":
+                return "Extension write cancelled"
+            if status == "partial_success":
+                return "Extension write finished with partial success"
+            return "Extension write completed"
         if status == "failed":
             return "Workflow run failed"
         if status == "cancelled":

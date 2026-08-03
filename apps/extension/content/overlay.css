@@ -1,0 +1,145 @@
+#gravitree-overlay-root {
+  all: initial;
+  position: fixed;
+  top: 72px;
+  right: 16px;
+  z-index: 2147483646;
+  width: min(360px, calc(100vw - 24px));
+  font-family: "Segoe UI", system-ui, sans-serif;
+  color: #0f172a;
+}
+
+#gravitree-overlay-root * {
+  box-sizing: border-box;
+}
+
+.gvt-card {
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.16);
+  padding: 14px 14px 12px;
+}
+
+.gvt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.gvt-brand {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.gvt-close {
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px;
+}
+
+.gvt-muted {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0 0 10px;
+}
+
+.gvt-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.gvt-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.gvt-value {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.gvt-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.gvt-badge.warn {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
+.gvt-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.gvt-btn {
+  appearance: none;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #0f172a;
+  color: #fff;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.gvt-btn.secondary {
+  background: #fff;
+  color: #0f172a;
+}
+
+.gvt-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.gvt-confirm {
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.gvt-confirm p {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #92400e;
+}
+
+.gvt-input {
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #0f172a;
+  background: #fff;
+}
