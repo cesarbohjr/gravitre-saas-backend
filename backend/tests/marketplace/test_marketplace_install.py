@@ -145,7 +145,7 @@ def test_install_workflow_writes_workflow_defs(mock_plan, mock_version):
                     "id": "lookup",
                     "name": "HubSpot lookup",
                     "type": "invoke_tool",
-                    "config": {"action": "hubspot.search_contacts"},
+                    "config": {"action": "hubspot.contacts.search"},
                 }
             ],
         },

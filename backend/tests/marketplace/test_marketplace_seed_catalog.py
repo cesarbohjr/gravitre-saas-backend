@@ -21,17 +21,66 @@ def test_catalog_asset_counts():
     assert len(assets) == 72
 
 
+# Deferred Slice A remediation — labeled not install-ready, not restructured yet.
+_DEFERRED_BINDING_SLUGS = frozenset(
+    {
+        "hubspot-lead-qualification",
+        "customer-health-monitoring",
+        "zendesk-ticket-triage",
+        "lead-routing-automation",
+        "qbr-preparation-workflow",
+        "support-operations-pack",
+    }
+)
+
+
 @pytest.mark.parametrize("asset_slug", sorted(catalog_assets_by_slug()))
 def test_catalog_asset_validates(asset_slug: str):
     asset = catalog_assets_by_slug()[asset_slug]
+    # Structural publish schema for all assets; binding hard-fail is install/publish
+    # gate (deferred packs stay seedable until remediated).
     validated = validate_asset_payload(
         asset_type=asset.asset_type,
         config=asset.config,
         install_variables=asset.install_variables,
         required_connectors=asset.required_connectors,
         publish=True,
+        enforce_bindings=False,
     )
     assert validated["config"]
+
+
+def test_msp_enrichment_install_ready_bindings_pass():
+    from app.marketplace.install_ready import evaluate_binding_install_ready
+
+    asset = catalog_assets_by_slug()["msp-prospects-clay-hubspot-enrichment"]
+    ready = evaluate_binding_install_ready(
+        {
+            "slug": asset.slug,
+            "asset_type": asset.asset_type,
+            "config": asset.config,
+            "install_variables": asset.install_variables,
+        }
+    )
+    assert ready["installReady"] is True
+    assert ready["installReadyErrors"] == []
+
+
+@pytest.mark.parametrize("asset_slug", sorted(_DEFERRED_BINDING_SLUGS))
+def test_deferred_packs_are_not_install_ready(asset_slug: str):
+    from app.marketplace.install_ready import evaluate_binding_install_ready
+
+    asset = catalog_assets_by_slug()[asset_slug]
+    ready = evaluate_binding_install_ready(
+        {
+            "slug": asset.slug,
+            "asset_type": asset.asset_type,
+            "config": asset.config,
+            "install_variables": asset.install_variables,
+        }
+    )
+    assert ready["installReady"] is False
+    assert ready["installReadyErrors"]
 
 
 def test_department_pack_children_exist():

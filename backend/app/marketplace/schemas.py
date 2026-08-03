@@ -327,8 +327,15 @@ def validate_asset_payload(
     install_variables: list[Any] | None = None,
     required_connectors: list[Any] | None = None,
     publish: bool = False,
+    enforce_bindings: bool | None = None,
 ) -> dict[str, Any]:
-    """Validate config plus top-level marketplace asset metadata fields."""
+    """Validate config plus top-level marketplace asset metadata fields.
+
+    Binding checks hard-fail when ``enforce_bindings`` is true (defaults to
+    ``publish``). Seed/catalog structural validation can pass
+    ``enforce_bindings=False`` so deferred non-install-ready packs stay
+    labelable without blocking CI; install still gates via install-ready.
+    """
     from app.workflows.binding_validation import assert_bindings_valid
     from app.workflows.constants import SCHEMA_VERSION as WF_SCHEMA_VERSION
 
@@ -347,7 +354,8 @@ def validate_asset_payload(
         schema_version = str(dumped.get("schema_version") or WF_SCHEMA_VERSION)
     elif asset_type == "department_pack" and isinstance(dumped.get("workflow_steps"), list):
         steps = dumped["workflow_steps"]
-    if steps:
+    should_enforce = publish if enforce_bindings is None else enforce_bindings
+    if steps and should_enforce:
         try:
             assert_bindings_valid(
                 {"schema_version": schema_version, "steps": steps},

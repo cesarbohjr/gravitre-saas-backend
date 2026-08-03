@@ -25,7 +25,7 @@ def _valid_workflow_config() -> dict:
                 "id": "lookup",
                 "name": "HubSpot lookup",
                 "type": "invoke_tool",
-                "config": {"action": "hubspot.search_contacts"},
+                "config": {"action": "hubspot.contacts.search"},
             },
             {
                 "id": "qualify",
