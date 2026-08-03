@@ -75,15 +75,39 @@ class VerifiedOutputRef:
     integration: str | None = None
 
     def as_entity_ref(self, *, run_id: str | None) -> dict[str, Any]:
+        """Build notification/activity entity_ref.
+
+        ``notifications.entity_id`` is uuid — prefer ``run_id`` when the verified
+        vendor id is not a UUID (HubSpot list_id, Apollo ints, etc.).
+        """
+        import uuid as _uuid
+
+        def _is_uuid(value: Any) -> bool:
+            text = str(value or "").strip()
+            if not text:
+                return False
+            try:
+                _uuid.UUID(text)
+                return True
+            except (TypeError, ValueError):
+                return False
+
         ref: dict[str, Any] = {}
         if self.entity_type:
             ref["entity_type"] = self.entity_type
         elif run_id:
             ref["entity_type"] = "workflow_run"
-        if self.entity_id:
-            ref["entity_id"] = self.entity_id
+
+        vendor_id = str(self.entity_id).strip() if self.entity_id else ""
+        if vendor_id and _is_uuid(vendor_id):
+            ref["entity_id"] = vendor_id
         elif run_id:
-            ref["entity_id"] = run_id
+            ref["entity_id"] = str(run_id)
+            if vendor_id:
+                ref["external_entity_id"] = vendor_id
+        elif vendor_id:
+            ref["external_entity_id"] = vendor_id
+
         if self.result_url:
             ref["result_url"] = self.result_url
         elif run_id:

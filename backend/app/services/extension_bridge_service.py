@@ -671,9 +671,10 @@ def _run_confirmed_extension_action(
                 summary=(result.error_message or f"{action} via browser extension")[:2000],
                 result_url=f"/runs/{run_id}",
                 external_url=str(data.get("external_url") or data.get("result_url") or "") or None,
-                entity_type="connector",
-                entity_id=str(data.get("entity_id") or data.get("contact_id") or data.get("list_id") or "")
-                or None,
+                # notifications.entity_id is uuid — use run_id via as_entity_ref fallback.
+                # Vendor list/contact ids stay in metadata / external_entity_id.
+                entity_type="workflow_run",
+                entity_id=run_id,
                 integration=action.split(".", 1)[0],
             ),
             metadata={
@@ -684,12 +685,17 @@ def _run_confirmed_extension_action(
                 "already_existed": already_existed,
                 "action_args": params,
                 "approval_id": approval_id,
+                "vendor_entity_id": str(
+                    data.get("entity_id") or data.get("contact_id") or data.get("list_id") or ""
+                )
+                or None,
                 "connector_output_refs": [
                     {
                         "label": action,
                         "invoke_action": action,
                         "integration": action.split(".", 1)[0],
                         "external_url": data.get("external_url") or data.get("result_url"),
+                        "entity_id": data.get("entity_id") or data.get("contact_id") or data.get("list_id"),
                         "outcome_effect": outcome_effect,
                         "success": bool(result.success),
                     }

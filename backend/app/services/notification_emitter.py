@@ -2,9 +2,22 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from typing import Any, Literal
 
 logger = logging.getLogger(__name__)
+
+
+def _is_uuid(value: Any) -> bool:
+    """True when value is a real UUID — notifications.entity_id is uuid-typed."""
+    text = str(value or "").strip()
+    if not text:
+        return False
+    try:
+        uuid.UUID(text)
+        return True
+    except (TypeError, ValueError):
+        return False
 
 NotificationEventType = Literal[
     "run_completed",
@@ -60,10 +73,28 @@ def normalize_event_type(event_type: str) -> str:
 
 
 def _resolve_entity_ref(entity_ref: dict[str, Any] | None) -> dict[str, Any]:
+    """Normalize refs for the notifications table.
+
+    ``notifications.entity_id`` is uuid. Vendor ids (HubSpot list_id ``\"19\"``,
+    Apollo contact ints, etc.) must never be written there — keep them as
+    ``external_entity_id`` / activity metadata instead.
+    """
     ref = dict(entity_ref or {})
     result_url = ref.get("result_url") or ref.get("url")
     if result_url is not None:
         ref["result_url"] = str(result_url)
+
+    raw_entity_id = ref.get("entity_id")
+    if raw_entity_id is not None and not _is_uuid(raw_entity_id):
+        vendor = str(raw_entity_id).strip()
+        if vendor:
+            ref["external_entity_id"] = str(ref.get("external_entity_id") or vendor)
+            activity = dict(ref.get("activity_metadata") or {})
+            activity.setdefault("external_entity_id", vendor)
+            ref["activity_metadata"] = activity
+        ref.pop("entity_id", None)
+    elif raw_entity_id is not None:
+        ref["entity_id"] = str(raw_entity_id).strip()
     return ref
 
 
@@ -77,6 +108,10 @@ def _insert_notification_row(
     body: str,
     entity_ref: dict[str, Any],
 ) -> str | None:
+    entity_id = entity_ref.get("entity_id")
+    if entity_id is not None and not _is_uuid(entity_id):
+        # Defense in depth — never send non-UUID to the uuid column.
+        entity_id = None
     row = {
         "org_id": org_id,
         "user_id": user_id,
@@ -85,7 +120,7 @@ def _insert_notification_row(
         "body": body[:2000],
         "url": entity_ref.get("result_url"),
         "entity_type": entity_ref.get("entity_type"),
-        "entity_id": entity_ref.get("entity_id"),
+        "entity_id": entity_id,
         "is_read": False,
         "is_archived": False,
     }

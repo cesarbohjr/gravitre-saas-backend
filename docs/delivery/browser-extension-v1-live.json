@@ -1,5 +1,5 @@
 {
-  "startedAt": "2026-08-03T02:52:11.230916+00:00",
+  "startedAt": "2026-08-03T03:27:06.458779+00:00",
   "orgId": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "actorId": "f7e32f06-49df-4e73-8962-f41c21850762",
   "cases": {
@@ -38,7 +38,7 @@
       "status": "PASS",
       "responseStatus": "needs_confirmation",
       "hasConfirmationToken": true,
-      "approvalId": "17a351fa-7ecd-4177-96b9-4b74491d91f4",
+      "approvalId": "98041c98-8972-42a2-b8fd-8754d05ee0b1",
       "invokeAction": "hubspot.lists.create"
     },
     "forged_token_rejected": {
@@ -49,9 +49,9 @@
       "status": "PASS",
       "success": true,
       "invokeAction": "hubspot.lists.create",
-      "runId": "fca91124-2ba5-4c9f-9897-2166b8d73aee",
-      "outcomeUrl": "/runs/fca91124-2ba5-4c9f-9897-2166b8d73aee",
-      "businessOutcomeUrl": "/outcomes/fca91124-2ba5-4c9f-9897-2166b8d73aee",
+      "runId": "f693a774-2ec6-4b16-9c55-31ed4b40609a",
+      "outcomeUrl": "/runs/f693a774-2ec6-4b16-9c55-31ed4b40609a",
+      "businessOutcomeUrl": "/outcomes/f693a774-2ec6-4b16-9c55-31ed4b40609a",
       "source": "browser_extension",
       "error": null,
       "dataKeys": [
@@ -62,14 +62,14 @@
     },
     "outcomes_entry": {
       "status": "PASS",
-      "runId": "fca91124-2ba5-4c9f-9897-2166b8d73aee",
+      "runId": "f693a774-2ec6-4b16-9c55-31ed4b40609a",
       "workflowRunStatus": "completed",
       "parametersSource": "browser_extension",
       "definitionSource": "browser_extension",
       "moduleASource": "browser_extension",
       "businessOutcomeDto": {
-        "id": "fca91124-2ba5-4c9f-9897-2166b8d73aee",
-        "runId": "fca91124-2ba5-4c9f-9897-2166b8d73aee",
+        "id": "f693a774-2ec6-4b16-9c55-31ed4b40609a",
+        "runId": "f693a774-2ec6-4b16-9c55-31ed4b40609a",
         "status": "completed",
         "source": "browser_extension",
         "lifecycleState": "presented"
@@ -78,25 +78,33 @@
       "auditActions": [
         "workflow.execute.completed"
       ],
-      "openUrl": "https://gravitre.app/outcomes/fca91124-2ba5-4c9f-9897-2166b8d73aee",
+      "openUrl": "https://gravitre.app/outcomes/f693a774-2ec6-4b16-9c55-31ed4b40609a",
       "sameShapeNote": "Projected via _project_from_run \u2014 identical DTO path as GET /api/business-outcomes"
     },
     "token_replay_rejected": {
       "status": "PASS",
       "detail": "No awaiting_confirm write found for this confirmationToken. Propose the action again from the overlay, then approve."
+    },
+    "notification_fanout": {
+      "status": "PASS",
+      "notificationId": "1ff58694-f91e-4272-8d1e-7c5e767933b3",
+      "entityId": "f693a774-2ec6-4b16-9c55-31ed4b40609a",
+      "entityType": "workflow_run",
+      "url": "/runs/f693a774-2ec6-4b16-9c55-31ed4b40609a",
+      "note": "entity_id must be run UUID \u2014 never HubSpot list_id int string"
     }
   },
   "connectedIntegrations": [
     "ai_visibility_ui",
     "clay",
-    "pipedrive",
     "microsoft365",
-    "google_ads",
+    "pipedrive",
+    "apollo",
     "google_search_console",
     "gmail",
-    "apollo",
+    "google_ads",
     "hubspot"
   ],
-  "finishedAt": "2026-08-03T02:52:36.348350+00:00",
+  "finishedAt": "2026-08-03T03:27:22.684486+00:00",
   "overall": "PASS"
 }

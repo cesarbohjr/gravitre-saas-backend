@@ -353,6 +353,34 @@ def main() -> int:
         "detail": replay,
     }
 
+    # Notification fanout: durable row with UUID entity_id (run_id), not HubSpot list_id
+    if run_id:
+        notifs = (
+            client.table("notifications")
+            .select("id, type, entity_id, entity_type, url, created_at")
+            .eq("org_id", ORG)
+            .eq("user_id", ACTOR)
+            .eq("entity_id", run_id)
+            .eq("type", "run_completed")
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        ).data or []
+        n = notifs[0] if notifs else None
+        evidence["cases"]["notification_fanout"] = {
+            "status": "PASS" if n and str(n.get("entity_id")) == run_id else "FAIL",
+            "notificationId": (n or {}).get("id"),
+            "entityId": (n or {}).get("entity_id"),
+            "entityType": (n or {}).get("entity_type"),
+            "url": (n or {}).get("url"),
+            "note": "entity_id must be run UUID — never HubSpot list_id int string",
+        }
+    else:
+        evidence["cases"]["notification_fanout"] = {
+            "status": "FAIL",
+            "detail": "no runId",
+        }
+
     evidence["finishedAt"] = utcnow()
     statuses = [c.get("status") for c in evidence["cases"].values()]
     evidence["overall"] = (

@@ -72,13 +72,18 @@ DOM is for **page context only**. Creates/list membership use Apollo/HubSpot cat
 
 Script: `scripts/live-extension-v1-smoke.py` → `docs/delivery/browser-extension-v1-live.json`
 
-**PASS** — LinkedIn-shaped enrich → staged `confirmationToken` → `hubspot.lists.create` → Outcomes DTO:
+### Close-out (UUID notify fix)
 
-- run_id `fca91124-2ba5-4c9f-9897-2166b8d73aee`
-- `execution_outcome_finalized` … `source=browser_extension` … `audit_written=True` @ ~2026-08-03T02:52:35Z
-- BusinessOutcome DTO `source=browser_extension`, `lifecycleState=presented`
-- Open: https://gravitre.app/outcomes/fca91124-2ba5-4c9f-9897-2166b8d73aee
-- Org boundary: shared `get_org_context` returns 403 for non-member `x-org-id` (non-admin branch)
+**PASS** — HubSpot `list_id` no longer written to `notifications.entity_id` (uuid column).
+
+- run_id `f693a774-2ec6-4b16-9c55-31ed4b40609a`
+- `execution_outcome_finalized` … `source=browser_extension` … `notification_emitted=True` @ ~2026-08-03T03:27:21Z
+- notification `1ff58694-f91e-4272-8d1e-7c5e767933b3` with `entity_id=f693a774-…` (run UUID) — no `invalid input syntax for type uuid` warning
+- Outcomes: https://gravitre.app/outcomes/f693a774-2ec6-4b16-9c55-31ed4b40609a
+
+### Prior smoke (durable confirm gate)
+
+- run_id `fca91124-2ba5-4c9f-9897-2166b8d73aee` (had notify UUID warning — fixed above)
 
 ## v2+
 
