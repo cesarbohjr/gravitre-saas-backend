@@ -1,9 +1,9 @@
 {
   "probe": "frontend_ia_chat_battery_live",
-  "started_at": "2026-08-03T18:44:21.504131+00:00",
+  "started_at": "2026-08-03T18:58:56.007266+00:00",
   "base": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "expect_sha": "a1fd09b6",
+  "expect_sha": "b64add73",
   "cases": [
     {
       "id": "activity",
@@ -17,9 +17,9 @@
         "multi-agent run as top",
         "failure alerts as a separate top"
       ],
-      "conversation_id": "6d0d6a8e-c45d-429a-9080-b5d47972037d",
+      "conversation_id": "2d30be7c-e956-4ead-bb04-670d17fab42f",
       "http_status": 200,
-      "assistant": "The primary page is **Activity**.\n\nThat\u2019s where you look for:\n- **completed workflow work** in completed work / BusinessOutcomes\n- **failure alerts** in **Activity \u2192 Failures** tab\n\nIf you want, I can also point you to the exact sidebar path for runs versus alerts.",
+      "assistant": "Open **Activity** (`/activity`) in the primary sidebar. Completed work lives there; failure alerts are under the **Failures** tab.",
       "stream_errors": [],
       "passed": true,
       "matched_include": true,
@@ -37,9 +37,9 @@
         "/intelligence/agents",
         "agent intelligence"
       ],
-      "conversation_id": "c4a98768-21c5-4700-86f4-323fbceaa6dd",
+      "conversation_id": "db23a071-4c58-47bd-943a-691dced7db73",
       "http_status": 200,
-      "assistant": "Go to the **Agents** section in the primary navigation.\n\nThat is the place to manage AI agents, multi-agent runs, and agent training for this organization.",
+      "assistant": "Open **Agents** (`/agents`). Roster, Multi-agent, and Training are tabs inside that hub \u2014 not separate top-level nav items.",
       "stream_errors": [],
       "passed": true,
       "matched_include": true,
@@ -54,14 +54,14 @@
         "/settings"
       ],
       "must_not_include_any": [],
-      "conversation_id": "7012ba63-1832-48bc-abf2-2a7edd7dbde1",
+      "conversation_id": "7741fefe-4559-44b9-89b6-a0713b449c96",
       "http_status": 200,
-      "assistant": "Control hub \u2014 under Admin.",
+      "assistant": "Open **Settings** (`/settings`). Enterprise, Federation, and Environments are under **Settings \u2192 Admin** \u2014 not separate primary sidebar items.",
       "stream_errors": [],
-      "passed": false,
-      "matched_include": false,
+      "passed": true,
+      "matched_include": true,
       "hard_bad_hits": [],
-      "verdict": "FAIL"
+      "verdict": "PASS"
     },
     {
       "id": "intelligence",
@@ -71,22 +71,22 @@
         "/intelligence"
       ],
       "must_not_include_any": [],
-      "conversation_id": "955a82df-d1d1-498a-9b27-8dfa70453578",
+      "conversation_id": "ea34d2fe-9b9d-4374-8c6a-9b41a776ecf3",
       "http_status": 200,
-      "assistant": "Insights Hub",
+      "assistant": "Open **Intelligence** (`/intelligence`). That hub covers operational health/metrics, ROI reports, learning signals, models, memory, and predictive ops.",
       "stream_errors": [],
-      "passed": false,
-      "matched_include": false,
+      "passed": true,
+      "matched_include": true,
       "hard_bad_hits": [],
-      "verdict": "FAIL"
+      "verdict": "PASS"
     }
   ],
   "health": {
-    "git_sha": "a1fd09b676522af06a8190f65d772190fb8c70de",
+    "git_sha": "b64add73bd2f60500694177386e617bc528bdcf7",
     "unified_turn_live_enabled": true
   },
-  "passed": 2,
+  "passed": 4,
   "total": 4,
-  "finished_at": "2026-08-03T18:44:55.156673+00:00",
-  "verdict": "FAIL \u2014 2/4; failed=['settings', 'intelligence']"
+  "finished_at": "2026-08-03T18:59:02.754670+00:00",
+  "verdict": "PASS \u2014 4/4 IA path answers mention consolidated hubs"
 }
