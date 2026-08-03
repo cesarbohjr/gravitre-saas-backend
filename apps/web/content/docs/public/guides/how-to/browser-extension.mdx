@@ -75,6 +75,18 @@ That sequence is the product “aha”: the write is the same governed path as c
 
 We do **not** request `debugger`, `<all_urls>`, or background crawling.
 
+## Trigger a workflow from the overlay (v3)
+
+The overlay can list **active typed-contract workflows** and run them through the same execute path as chat (plan steps → approve → Outcomes). It does **not** invent new workflow logic in the extension.
+
+1. Open the overlay on a supported page.
+2. Under **Workflows**, pick an active multi-step workflow.
+3. Review the plan steps (same shape as chat’s plan bar).
+4. **Approve & run** — confirm uses the server token; execution is the shared engine path.
+5. Open Outcomes for the run — full step chain, `source=browser_extension`.
+
+**Live example (production tip verify):** workflow *MSP NVD CVE Lookup* completed with steps `nvd.cve.get` + `cisa_kev.feed.get` — run [`139fd6cc-7d53-4dfd-ac1b-c59e902109ea`](https://gravitre.app/outcomes/139fd6cc-7d53-4dfd-ac1b-c59e902109ea).
+
 ## Troubleshooting
 
 | Symptom | Check |
@@ -84,6 +96,7 @@ We do **not** request `debugger`, `<all_urls>`, or background crawling.
 | Write blocked / no token | Approve only after the server returns `needs_confirmation` + token |
 | Wrong org data | Confirm `X-Org-Id` org in the web app matches the one you authorized |
 | Overlay missing on LinkedIn | Hard refresh; confirm extension enabled for the site |
+| Workflow stuck / conflict | Another run may be active for that workflow — open Runs, cancel or wait, retry |
 
 ## Platform names (IA)
 

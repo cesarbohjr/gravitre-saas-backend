@@ -10,6 +10,7 @@ import {
   ListChecks,
   Shield,
   Sparkles,
+  Workflow,
 } from "lucide-react"
 import {
   extensionInstallCtaLabel,
@@ -180,6 +181,23 @@ export function ExtensionPage() {
                 No InMail spam, no clicking Salesforce/HubSpot UI for you, no
                 agentic multi-step form control. If a catalog action exists, we
                 call it.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-5">
+              <Workflow className="mb-3 h-6 w-6 text-emerald-600" />
+              <h3 className="font-semibold text-zinc-900">Workflows from the overlay</h3>
+              <p className="mt-2 text-sm text-zinc-600">
+                Trigger existing typed workflows with the same plan-bar approve
+                pattern as chat — then open the Outcomes chain. Example run:{" "}
+                <a
+                  className="font-medium text-emerald-700 underline-offset-2 hover:underline"
+                  href="https://gravitre.app/outcomes/139fd6cc-7d53-4dfd-ac1b-c59e902109ea"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  NVD + CISA KEV lookup
+                </a>
+                .
               </p>
             </div>
           </div>
