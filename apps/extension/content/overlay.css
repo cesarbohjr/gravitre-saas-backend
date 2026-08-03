@@ -143,3 +143,17 @@
   color: #0f172a;
   background: #fff;
 }
+
+.gvt-chat-input {
+  width: 100%;
+  margin: 4px 0 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #0f172a;
+  background: #fff;
+  resize: vertical;
+  min-height: 52px;
+  font-family: inherit;
+}

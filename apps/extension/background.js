@@ -151,6 +151,20 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         sendResponse({ ok: true, result })
         return
       }
+      if (message?.type === "CHAT") {
+        const result = await apiFetch("/api/extension/chat", {
+          method: "POST",
+          body: {
+            message: message.message,
+            pageUrl: message.pageUrl,
+            pageContext: message.pageContext || {},
+            conversationId: message.conversationId || null,
+            environment: (await getSettings()).environment,
+          },
+        })
+        sendResponse({ ok: true, result })
+        return
+      }
       if (message?.type === "SIGN_OUT") {
         await chrome.storage.local.remove(["accessToken", "orgId", "refreshToken"])
         sendResponse({ ok: true })

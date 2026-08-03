@@ -17,7 +17,9 @@ function parseInitialMode(value: string | null): ModeId {
 function AiPageContent() {
   const searchParams = useSearchParams()
   const initialMode = parseInitialMode(searchParams.get("mode"))
-  const initialPrompt = searchParams.get("prompt")?.trim() ?? ""
+  // Prefer `prompt`; accept legacy `q` from older extension handoff URLs.
+  const initialPrompt =
+    searchParams.get("prompt")?.trim() || searchParams.get("q")?.trim() || ""
   // Prefer ?c= (canonical). Accept legacy ?conversation= so older CTAs still open the thread.
   const initialConversationId =
     searchParams.get("c")?.trim() || searchParams.get("conversation")?.trim() || null

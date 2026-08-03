@@ -11,6 +11,7 @@ from app.auth.dependencies import require_org_member
 from app.config import Settings, get_settings
 from app.services.extension_bridge_service import (
     EXTENSION_ALLOWED_ACTIONS,
+    chat_from_extension,
     connected_integrations,
     enrich_from_page_context,
     execute_extension_action,
@@ -59,6 +60,16 @@ class ExtensionWorkflowBody(BaseModel):
     parameters: dict[str, Any] = Field(default_factory=dict)
     pageUrl: str | None = None
     confirmationToken: str | None = None
+    environment: str = "production"
+
+
+class ExtensionChatBody(BaseModel):
+    """Quick page-contextual question — same unified-turn path as main chat."""
+
+    message: str
+    pageUrl: str | None = None
+    pageContext: dict[str, Any] = Field(default_factory=dict)
+    conversationId: str | None = None
     environment: str = "production"
 
 
@@ -240,6 +251,40 @@ def extension_execute_workflow(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except HTTPException:
         raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc)[:500],
+        ) from exc
+
+
+@router.post("/chat")
+async def extension_chat(
+    body: ExtensionChatBody,
+    member: Annotated[tuple, Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Lightweight overlay chat — front door onto execute_task_streaming / unified-turn.
+
+    Not a parallel reasoner. Page context is fenced as DATA. Longer / write intents
+    return needsHandoff + /ai?c= for full Gravitree chat.
+    """
+    user, org_id, _role = member
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org required")
+    try:
+        return await chat_from_extension(
+            settings=settings,
+            org_id=str(org_id),
+            user_id=str(user["user_id"]),
+            message=body.message,
+            page_url=body.pageUrl,
+            page_context=body.pageContext or {},
+            conversation_id=body.conversationId,
+            environment_name=body.environment or "production",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

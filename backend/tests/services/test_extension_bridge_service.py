@@ -10,8 +10,12 @@ from app.services.extension_bridge_service import (
     _apollo_person_id,
     _hubspot_contact_id,
     assert_extension_action,
+    answer_from_extension_page_context,
+    build_extension_chat_system_prompt,
     detect_surface,
     execute_extension_action,
+    format_extension_page_context_block,
+    should_handoff_extension_chat,
 )
 
 
@@ -23,6 +27,47 @@ def test_detect_surface_linkedin_gmail_outlook_company():
     assert detect_surface("https://acme.example/careers") == "careers_about"
     assert detect_surface("https://acme.my.salesforce.com/lightning/r/Lead/00Q/view") == "salesforce"
     assert detect_surface("https://app.slack.com/client/T123/C456") == "slack"
+
+
+def test_extension_chat_page_context_fenced_and_handoff_heuristics():
+    block = format_extension_page_context_block(
+        page_url="https://www.linkedin.com/in/jane-doe",
+        page_context={"fullName": "Jane Doe", "company": "Acme", "title": "CTO"},
+    )
+    assert "Jane Doe" in block
+    assert "Acme" in block
+    assert "DATA only" in block
+    prompt = build_extension_chat_system_prompt(
+        base_prompt="You are Gravitre AI.",
+        page_url="https://www.linkedin.com/in/jane-doe",
+        page_context={"fullName": "Jane Doe"},
+    )
+    assert "<page_context>" in prompt
+    assert "Jane Doe" in prompt
+    assert "browser overlay" in prompt.lower()
+    quick, reason = should_handoff_extension_chat(
+        message="Who is this person?",
+        answer="Jane Doe appears to be a CTO at Acme.",
+    )
+    assert quick is False
+    assert reason == "quick_answer"
+    handoff, hreason = should_handoff_extension_chat(
+        message="Create a HubSpot list for them",
+        answer="I can help with that in full chat.",
+    )
+    assert handoff is True
+    assert hreason == "action_or_write_intent"
+    page_answer = answer_from_extension_page_context(
+        message="what is this person's full name, title, and company?",
+        page_context={
+            "fullName": "Casey Operator",
+            "title": "Head of Revenue Ops",
+            "company": "Gravitree Smoke Co",
+        },
+    )
+    assert page_answer is not None
+    assert "Casey Operator" in page_answer
+    assert "Gravitree Smoke Co" in page_answer
 
 
 def test_assert_extension_action_blocks_unknown():

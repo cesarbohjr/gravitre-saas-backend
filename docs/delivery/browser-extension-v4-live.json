@@ -1,0 +1,30 @@
+{
+  "startedAt": "2026-08-03T07:38:37.515332+00:00",
+  "cases": {
+    "quick_page_context": {
+      "status": "PASS",
+      "conversationId": "a5d8df4f-c32b-4d32-90e1-3995d6bd7adf",
+      "needsHandoff": false,
+      "handoffReason": "quick_answer",
+      "answerPreview": "From this page: Casey Operator \u2014 Head of Revenue Ops at Gravitree Smoke Co.",
+      "openInGravitreeUrl": "/ai?c=a5d8df4f-c32b-4d32-90e1-3995d6bd7adf",
+      "path": "execute_task_streaming+page_context_answer",
+      "usesPageContext": true,
+      "acceptedPaths": [
+        "execute_task_streaming",
+        "execute_task_streaming+page_context_answer"
+      ]
+    },
+    "handoff": {
+      "status": "PASS",
+      "conversationId": "a5d8df4f-c32b-4d32-90e1-3995d6bd7adf",
+      "needsHandoff": true,
+      "handoffReason": "action_or_write_intent",
+      "path": "handoff_short_circuit",
+      "openInGravitreeUrl": "/ai?c=a5d8df4f-c32b-4d32-90e1-3995d6bd7adf&prompt=Create%20a%20HubSpot%20list%20for%20Casey%20Operator%20from%20this%20page.",
+      "answerPreview": "That needs full Gravitree chat for governed writes, approvals, and multi-step work. Continue in the app \u2014 same conversation thread."
+    }
+  },
+  "overall": "PASS",
+  "finishedAt": "2026-08-03T07:39:57.077246+00:00"
+}

@@ -316,10 +316,75 @@
           })
         })
 
+        // v4 — lightweight chat (same unified-turn path as main chat)
+        const chatBox = el("div", "gvt-row")
+        chatBox.appendChild(el("div", "gvt-label", "Ask about this page"))
+        const chatInput = el("textarea", "gvt-chat-input")
+        chatInput.rows = 2
+        chatInput.placeholder = "Quick question (page context included)…"
+        chatBox.appendChild(chatInput)
+        const chatReply = el("p", "gvt-muted", "")
+        chatBox.appendChild(chatReply)
+        const chatActions = el("div", "gvt-actions")
+        const askBtn = el("button", "gvt-btn", "Ask")
+        askBtn.type = "button"
+        const continueBtn = el("button", "gvt-btn secondary", "Continue in Gravitree")
+        continueBtn.type = "button"
+        continueBtn.style.display = "none"
+        let lastHandoffUrl = result.openInGravitreeUrl || "/ai"
+        let conversationId = null
+        askBtn.addEventListener("click", () => {
+          const message = (chatInput.value || "").trim()
+          if (!message) {
+            chatReply.textContent = "Type a short question first."
+            return
+          }
+          askBtn.disabled = true
+          chatReply.textContent = "Thinking…"
+          chrome.runtime.sendMessage(
+            {
+              type: "CHAT",
+              message,
+              pageUrl,
+              pageContext,
+              conversationId,
+            },
+            (chatRes) => {
+              askBtn.disabled = false
+              if (!chatRes?.ok) {
+                chatReply.textContent = chatRes?.error || "Chat failed"
+                return
+              }
+              const r = chatRes.result || {}
+              conversationId = r.conversationId || conversationId
+              chatReply.textContent = r.answer || "(no answer)"
+              if (r.openInGravitreeUrl) lastHandoffUrl = r.openInGravitreeUrl
+              if (r.needsHandoff) {
+                continueBtn.style.display = ""
+                status.textContent =
+                  "This needs full Gravitree chat — continue with the same thread."
+              } else {
+                continueBtn.style.display = ""
+              }
+            },
+          )
+        })
+        continueBtn.addEventListener("click", () => {
+          const path = lastHandoffUrl || "/ai"
+          window.open(
+            `https://gravitre.app${path.startsWith("/") ? path : `/${path}`}`,
+            "_blank",
+          )
+        })
+        chatActions.appendChild(askBtn)
+        chatActions.appendChild(continueBtn)
+        chatBox.appendChild(chatActions)
+        body.appendChild(chatBox)
+
         const openApp = el("button", "gvt-btn secondary", "Open in Gravitree")
         openApp.type = "button"
         openApp.addEventListener("click", () => {
-          const path = result.openInGravitreeUrl || "/ai"
+          const path = lastHandoffUrl || result.openInGravitreeUrl || "/ai"
           window.open(`https://gravitre.app${path.startsWith("/") ? path : `/${path}`}`, "_blank")
         })
         actions.appendChild(openApp)
