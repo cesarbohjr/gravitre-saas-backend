@@ -50,6 +50,9 @@ const surfaces = [
   "Gmail",
   "Outlook on the web",
   "Company websites (when you invoke Enrich)",
+  "Salesforce Lightning / Force hosts",
+  "Slack web (app.slack.com)",
+  "Careers / about pages (path-matched)",
 ] as const
 
 export function ExtensionPage() {
@@ -146,8 +149,10 @@ export function ExtensionPage() {
             <h2 className="text-2xl font-bold text-zinc-900">Supported surfaces</h2>
             <p className="mt-3 text-zinc-600">
               Explicit host allowlist — no silent expansion. Page context only;
-              creates and list membership use Apollo / HubSpot catalog actions
-              when those connectors are connected.
+              creates and list membership use governed catalog actions (Apollo /
+              HubSpot / Salesforce where connected). Outside-allowlist attempts
+              are recorded as usage signals for prioritization, not as new
+              permissions.
             </p>
             <ul className="mt-6 space-y-3">
               {surfaces.map((s) => (

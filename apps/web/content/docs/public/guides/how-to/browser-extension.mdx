@@ -19,15 +19,17 @@ The **Gravitree browser extension** is a front door onto the same catalog, appro
 
 **Activation milestone (aha in minutes):** install → connect org → one real enrich → one approved write → see it in Outcomes.
 
-## What v1 supports
+## What the extension supports
 
 | Item | Supported |
 |------|-----------|
-| Browser | **Google Chrome** (Chromium MV3). Edge/Brave may load the same pack; treat Chrome as the supported path until your org confirms otherwise. |
-| Surfaces | LinkedIn profiles (`/in/…`), Gmail, Outlook web, company sites (via toolbar / active tab) |
-| Reads | Catalog match/search (e.g. Apollo / HubSpot when connected) |
+| Browser | **Google Chrome** (Chromium MV3). Edge/Brave may load the same pack; treat Chrome as the supported path until browser-parity docs say otherwise. |
+| Surfaces (v1) | LinkedIn profiles (`/in/…`), Gmail, Outlook web, company sites (via toolbar / active tab) |
+| Surfaces (v2) | Salesforce Lightning / Force hosts, Slack web (`app.slack.com`), careers / about pages (path markers + active tab) |
+| Reads | Catalog match/search (Apollo / HubSpot / Salesforce lead search / Slack user info when connected) |
 | Writes | Propose → **approve in overlay** → catalog write; `source=browser_extension` in Outcomes |
-| Not in scope for this guide | Agentic form filling, InMail automation, clicking CRM UI, Firefox / Safari / mobile |
+| Usage signals | Hosts you try (including outside the allowlist) are recorded for prioritization — not silent permission expansion |
+| Not in scope | Agentic form filling, InMail automation, clicking CRM UI, Firefox / Safari / mobile |
 
 Writes always use the server confirmation token gate — the extension cannot skip approval with a client-side flag.
 
@@ -66,7 +68,7 @@ That sequence is the product “aha”: the write is the same governed path as c
 
 | Permission | Why |
 |------------|-----|
-| Host allowlist (LinkedIn, Gmail, Outlook, Gravitree) | Overlay + API only on named hosts |
+| Host allowlist (LinkedIn, Gmail, Outlook, Salesforce, Slack, Gravitree) | Overlay + API only on named hosts — each host added explicitly |
 | `activeTab` | Company-site overlay when you invoke it |
 | `storage` | Session token + org id |
 | `scripting` / `sidePanel` | Inject overlay / optional side panel |
