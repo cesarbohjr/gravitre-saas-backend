@@ -104,4 +104,5 @@ def test_build_research_progress_steps_readable():
             "internet_research": {"ran": False},
         }
     )
-    assert any("Internal Rag" in step for step in steps)
+    assert any("Searching internal knowledge" in step for step in steps)
+    assert any("Searching the web" in step for step in steps)

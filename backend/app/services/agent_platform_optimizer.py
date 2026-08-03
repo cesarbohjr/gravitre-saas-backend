@@ -279,6 +279,120 @@ def narrow_tools_for_turn(
     return compressed, stats
 
 
+# Manus-style named progress labels for assistant / registry tools.
+_FRIENDLY_TOOL_PROGRESS: dict[str, str] = {
+    "web_search": "Searching the web",
+    "search_web": "Searching the web",
+    "searchWeb": "Searching the web",
+    "knowledge_base": "Searching knowledge base",
+    "searchKnowledgeBase": "Searching knowledge base",
+    "agent_status": "Checking agent status",
+    "getAgentStatus": "Checking agent status",
+    "connector_status": "Checking connector status",
+    "getConnectorStatus": "Checking connector status",
+    "workflow_runs": "Listing workflow runs",
+    "getWorkflowRuns": "Listing workflow runs",
+    "schedules_list": "Listing schedules",
+    "listSchedules": "Listing schedules",
+    "analytics": "Loading analytics",
+    "getAnalytics": "Loading analytics",
+    "generate_document": "Generating document",
+    "generateDocument": "Generating document",
+    "run_agent_task": "Running agent task",
+    "runAgentTask": "Running agent task",
+    "create_workflow": "Creating workflow",
+    "createWorkflow": "Creating workflow",
+    "execute_workflow": "Executing workflow",
+    "executeWorkflow": "Executing workflow",
+    "create_agent": "Creating agent",
+    "createAgent": "Creating agent",
+    "dependency_impact": "Estimating dependency impact",
+    "estimateDependencyImpact": "Estimating dependency impact",
+    "code_transform": "Transforming code",
+    "codeTransform": "Transforming code",
+}
+
+
+def format_live_progress_label(
+    tool_or_action: str,
+    tool_args: dict[str, Any] | None = None,
+) -> str:
+    """Named, specific progress label from a tool/action id (never raw dotted keys alone)."""
+    key = str(tool_or_action or "").strip()
+    if not key:
+        return "Working"
+    label = _FRIENDLY_TOOL_PROGRESS.get(key)
+    if not label:
+        try:
+            from app.services.user_facing_copy_guard import humanize_catalog_action_key
+
+            label = humanize_catalog_action_key(key) or key.replace("_", " ").strip()
+        except Exception:  # noqa: BLE001
+            label = key.replace("_", " ").replace(".", " ").strip()
+    label = str(label or "Working").strip()
+    args = tool_args if isinstance(tool_args, dict) else {}
+    for field in ("query", "q", "list_name", "name", "channel", "to", "subject"):
+        raw = args.get(field)
+        if isinstance(raw, str) and raw.strip():
+            snippet = raw.strip().replace("\n", " ")
+            if len(snippet) > 48:
+                snippet = snippet[:47] + "…"
+            return f"{label}: “{snippet}”"
+    return label
+
+
+def append_named_progress_step(
+    existing: list[str] | None,
+    new_label: str,
+    *,
+    max_steps: int = 8,
+) -> list[str]:
+    """Accumulate completed + current Running: lines for the inline plan bar."""
+    label = str(new_label or "").strip() or "Working"
+    steps: list[str] = []
+    for row in existing or []:
+        text = str(row or "").strip()
+        if not text:
+            continue
+        if text.startswith("Running: "):
+            steps.append("Completed: " + text[len("Running: ") :])
+        else:
+            steps.append(text)
+    steps.append(f"Running: {label}")
+    if len(steps) > max_steps:
+        steps = steps[-max_steps:]
+    return steps
+
+
+def progress_steps_from_pending_task(pending_task: dict[str, Any] | None) -> list[str]:
+    """Named plan labels from an orchestration / connector pending task."""
+    if not isinstance(pending_task, dict):
+        return []
+    params = pending_task.get("params") if isinstance(pending_task.get("params"), dict) else {}
+    steps_raw = params.get("steps") if isinstance(params.get("steps"), list) else []
+    labels: list[str] = []
+    for row in steps_raw:
+        if not isinstance(row, dict):
+            continue
+        label = str(row.get("label") or "").strip()
+        if not label:
+            action = str(row.get("invoke_action") or row.get("action") or "").strip()
+            if action:
+                label = format_live_progress_label(action)
+        if label:
+            labels.append(label)
+    if labels:
+        total = len(labels)
+        return [f"Step {idx}/{total}: {label}" for idx, label in enumerate(labels, start=1)]
+    top = str(params.get("label") or pending_task.get("label") or "").strip()
+    action = str(params.get("invoke_action") or "").strip()
+    if top:
+        return [top]
+    if action:
+        return [format_live_progress_label(action)]
+    return []
+
+
 def build_progress_steps(
     *,
     routing_tier: str,
@@ -290,12 +404,13 @@ def build_progress_steps(
     if not names:
         names = [str(c) for c in (connected_integrations or [])[:4] if str(c).strip()]
     label = ", ".join(n.capitalize() for n in names[:4]) if names else "connected systems"
+    tier = routing_tier.replace("_", " ")
     if phase == "context":
         return [
-            f"Routing tier: {routing_tier.replace('_', ' ')}",
-            f"Reviewing {label}",
+            f"Classifying request ({tier})",
+            f"Checking {label}",
             "Loading memory and knowledge",
         ]
     if phase == "tools":
-        return [f"Preparing tools for {label}"]
-    return [f"Running {routing_tier.replace('_', ' ')} analysis"]
+        return [f"Preparing actions for {label}"]
+    return [f"Running {tier} analysis"]

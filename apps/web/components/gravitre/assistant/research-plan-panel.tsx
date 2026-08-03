@@ -29,6 +29,10 @@ function StageIcon({ status }: { status: CascadeStageProgress["status"] }) {
   }
 }
 
+function isActionProgressStep(step: string): boolean {
+  return /^(Running:|Completed:|Step \d+\/\d+:)/i.test(step.trim())
+}
+
 export function ResearchPlanPanel({
   cascade,
   progressSteps,
@@ -38,6 +42,15 @@ export function ResearchPlanPanel({
   const stages = cascade?.stage_progress ?? []
   const steps = progressSteps?.length ? progressSteps : cascade?.progress_steps ?? []
   const scope = cascade?.research_scope?.replace(/_/g, " ")
+  const actionSteps = steps.filter(isActionProgressStep)
+  const runningIdx = actionSteps.findIndex((s) => s.startsWith("Running: "))
+  const stepCounter =
+    actionSteps.length > 0
+      ? runningIdx >= 0
+        ? `Step ${runningIdx + 1} of ${actionSteps.length}`
+        : `${actionSteps.length} step${actionSteps.length === 1 ? "" : "s"}`
+      : null
+  const panelTitle = actionSteps.length > 0 ? "Progress" : "Research plan"
 
   if (!stages.length && !steps.length && !strategicPlan?.goal) return null
 
@@ -49,8 +62,13 @@ export function ResearchPlanPanel({
       )}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-medium text-muted-foreground">Research plan</p>
-        {scope ? <span className="text-[11px] capitalize text-muted-foreground">Scope: {scope}</span> : null}
+        <p className="text-xs font-medium text-muted-foreground">{panelTitle}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          {stepCounter ? (
+            <span className="text-[11px] font-medium text-foreground">{stepCounter}</span>
+          ) : null}
+          {scope ? <span className="text-[11px] capitalize text-muted-foreground">Scope: {scope}</span> : null}
+        </div>
       </div>
 
       {strategicPlan?.goal ? (
@@ -75,9 +93,21 @@ export function ResearchPlanPanel({
 
       {steps.length > 0 ? (
         <ul className="mt-2 space-y-1 border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
-          {steps.slice(0, 6).map((step) => (
-            <li key={step}>{step}</li>
-          ))}
+          {steps.slice(0, 8).map((step) => {
+            const isRunning = step.startsWith("Running: ")
+            const isDone = step.startsWith("Completed: ")
+            return (
+              <li
+                key={step}
+                className={cn(
+                  isRunning && "font-medium text-foreground",
+                  isDone && "text-muted-foreground",
+                )}
+              >
+                {step}
+              </li>
+            )
+          })}
         </ul>
       ) : null}
     </div>

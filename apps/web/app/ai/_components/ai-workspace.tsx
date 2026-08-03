@@ -72,6 +72,10 @@ import {
 } from "@/components/gravitre/assistant/research-scope-prompt"
 import { ResearchCascadePanel } from "@/components/gravitre/assistant/research-cascade-panel"
 import { ResearchPlanPanel } from "@/components/gravitre/assistant/research-plan-panel"
+import {
+  shouldShowTaskSidePanel,
+  TaskSidePanel,
+} from "@/components/gravitre/assistant/task-side-panel"
 import { ConversationSidebar } from "@/components/gravitre/assistant/conversation-sidebar"
 import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
 import { ChatThemePicker } from "@/components/gravitre/assistant/chat-theme-picker"
@@ -1834,38 +1838,49 @@ export function AiWorkspace({
             ) : null}
 
             {!showLanding ? (
-              <>
-                <ResearchScopePrompt
-                  cascade={researchCascade}
-                  onSelectScope={(scope) => void handleResearchScopeSelect(scope)}
-                  className="mb-4"
-                />
-                <ResearchPlanPanel
-                  cascade={researchCascade}
-                  progressSteps={researchProgressSteps}
-                  strategicPlan={strategicPlan}
-                  className="mb-4"
-                />
-                <ResearchCascadePanel cascade={researchCascade} className="mb-4" />
-                <ChatTranscript
-                messages={messages}
-                showWaiting={showWaitingForReply && !conversationLoading}
-                explainability={explainability}
-                contextExplanation={contextExplanation}
-                dialogueMode={dialogueMode}
-                executionResult={executionResult}
-                pendingTask={pendingTask}
-                confirmExecuting={confirmExecuting}
-                onConfirmExecution={() => void handleConfirmExecution()}
-                canApprove={canApproveWrites}
-                onEditResend={handleEditResend}
-                conversationId={activeConversationId}
-                onCopyText={(text) => void handleCopyMessageText(text)}
-                onCopyLink={(messageId) => void handleCopyMessageLink(messageId)}
-                onRegenerate={handleRegenerateAssistant}
-                onSaveQuestion={(messageId, text) => void handleSaveQuestion(messageId, text)}
-              />
-              </>
+              <div className="flex items-start gap-4">
+                <div className="min-w-0 flex-1">
+                  <ResearchScopePrompt
+                    cascade={researchCascade}
+                    onSelectScope={(scope) => void handleResearchScopeSelect(scope)}
+                    className="mb-4"
+                  />
+                  <ResearchPlanPanel
+                    cascade={researchCascade}
+                    progressSteps={researchProgressSteps}
+                    strategicPlan={strategicPlan}
+                    className="mb-4"
+                  />
+                  <ResearchCascadePanel cascade={researchCascade} className="mb-4" />
+                  <ChatTranscript
+                    messages={messages}
+                    showWaiting={showWaitingForReply && !conversationLoading}
+                    explainability={explainability}
+                    contextExplanation={contextExplanation}
+                    dialogueMode={dialogueMode}
+                    executionResult={executionResult}
+                    pendingTask={pendingTask}
+                    confirmExecuting={confirmExecuting}
+                    onConfirmExecution={() => void handleConfirmExecution()}
+                    canApprove={canApproveWrites}
+                    onEditResend={handleEditResend}
+                    conversationId={activeConversationId}
+                    onCopyText={(text) => void handleCopyMessageText(text)}
+                    onCopyLink={(messageId) => void handleCopyMessageLink(messageId)}
+                    onRegenerate={handleRegenerateAssistant}
+                    onSaveQuestion={(messageId, text) => void handleSaveQuestion(messageId, text)}
+                  />
+                </div>
+                {shouldShowTaskSidePanel(researchProgressSteps, pendingTask) ? (
+                  <TaskSidePanel
+                    conversationId={activeConversationId}
+                    progressSteps={researchProgressSteps}
+                    pendingTask={pendingTask}
+                    contextExplanation={contextExplanation}
+                    className="sticky top-2 hidden lg:flex"
+                  />
+                ) : null}
+              </div>
             ) : null}
 
             {!showLanding && !conversationLoading && threadRestoreStale ? (

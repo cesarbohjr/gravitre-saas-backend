@@ -357,21 +357,33 @@ def build_cascade_stage_progress(cascade: dict[str, Any]) -> list[dict[str, Any]
     return rows
 
 
+_STAGE_PROGRESS_VERBS: dict[str, str] = {
+    "conversation_memory": "Reading conversation memory",
+    "internal_rag": "Searching internal knowledge",
+    "knowledge_graph": "Walking knowledge graph",
+    "connectors": "Querying connected systems",
+    "intelligence_packs": "Consulting intelligence packs",
+    "internet_research": "Searching the web",
+    "reasoning": "Reasoning over findings",
+}
+
+
 def build_research_progress_steps(cascade: dict[str, Any]) -> list[str]:
-    """Human-readable cascade steps for Wave 6 SSE progress."""
+    """Human-readable cascade steps for Wave 6 SSE progress (named verbs, not stage ids)."""
     steps: list[str] = []
     for row in build_cascade_stage_progress(cascade):
-        label = str(row.get("label") or "Stage")
+        stage = str(row.get("stage") or "")
+        verb = _STAGE_PROGRESS_VERBS.get(stage) or str(row.get("label") or "Working")
         status = str(row.get("status") or "pending")
         detail = row.get("detail")
         if status == "completed":
-            steps.append(f"{label} complete" + (f" ({detail})" if detail else ""))
+            steps.append(f"{verb}" + (f" ({detail})" if detail else ""))
         elif status == "empty":
-            steps.append(f"{label} — no matches")
+            steps.append(f"{verb} — no matches")
         elif status == "skipped":
-            steps.append(f"{label} skipped" + (f" ({detail})" if detail else ""))
+            steps.append(f"{verb} skipped" + (f" ({detail})" if detail else ""))
         else:
-            steps.append(f"{label}…")
+            steps.append(f"{verb}…")
     return steps
 
 

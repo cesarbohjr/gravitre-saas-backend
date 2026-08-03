@@ -142,6 +142,7 @@ export type ChatPendingTask = {
     label?: string
     invoke_action?: string
     kind?: string
+    integration?: string
   }
   current_step?: OrchestrationStepPreview
 }

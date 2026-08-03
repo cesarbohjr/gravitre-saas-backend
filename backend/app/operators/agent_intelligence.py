@@ -2028,10 +2028,21 @@ class AgentIntelligence:
                     if isinstance(clarified, dict):
                         orch_perf = clarified.get("orchestration_perf")
                 if orchestration_turn.get("execution_result") or orchestration_turn.get("pending_task"):
+                    from app.services.agent_platform_optimizer import progress_steps_from_pending_task
+
+                    orch_progress = progress_steps_from_pending_task(
+                        orchestration_turn.get("pending_task")
+                        if isinstance(orchestration_turn.get("pending_task"), dict)
+                        else None
+                    )
                     yield sse_intelligence_metadata(
                         message_id=message_id,
                         confidence={"score": classification_confidence, "needs_clarification": False},
-                        answer_explanation="Multi-step connector orchestration",
+                        answer_explanation=(
+                            orch_progress[0]
+                            if orch_progress
+                            else "Multi-step connector orchestration"
+                        ),
                         dialogue_mode=dialogue_mode,
                         persona_key=str(persona.get("persona_key") or ""),
                         task_state=task_state,
@@ -2042,6 +2053,7 @@ class AgentIntelligence:
                         routing_tier=routing_control.tier,
                         routing=routing_sse,
                         react_perf=orch_perf if isinstance(orch_perf, dict) else None,
+                        progress_steps=orch_progress or None,
                     )
                 text_id, start_event = sse_text_start()
                 yield start_event
@@ -2551,6 +2563,7 @@ class AgentIntelligence:
         )
 
         tool_results: list[dict[str, Any]] = []
+        named_progress_steps: list[str] = list(research_steps) + list(tool_progress)
         if "knowledge_base" in tool_names:
             kb_output = knowledge_base_output_from_retrieval(
                 rag_sources,
@@ -2713,11 +2726,34 @@ class AgentIntelligence:
                 )
                 continue
             if event.kind == "tool_start" and event.tool_name:
+                from app.services.agent_platform_optimizer import (
+                    append_named_progress_step,
+                    format_live_progress_label,
+                )
+
                 call_id = event.tool_call_id or f"call-{uuid.uuid4().hex[:12]}"
                 yield sse_react_tool_start(
                     call_id=call_id,
                     registry_tool_name=event.tool_name,
                     tool_args=event.tool_args,
+                )
+                live_label = format_live_progress_label(event.tool_name, event.tool_args)
+                named_progress_steps = append_named_progress_step(
+                    named_progress_steps, live_label
+                )
+                yield sse_intelligence_metadata(
+                    message_id=message_id,
+                    confidence={"score": classification_confidence, "needs_clarification": False},
+                    answer_explanation=f"Running: {live_label}",
+                    dialogue_mode=dialogue_mode,
+                    persona_key=str(persona.get("persona_key") or ""),
+                    task_state=task_state,
+                    strategic_plan=turn_ctx.strategic_plan,
+                    effective_mode=mode_key,
+                    pipeline_tier=pipeline_tier,
+                    routing_tier=routing_control.tier,
+                    routing=routing_sse,
+                    progress_steps=named_progress_steps,
                 )
             elif event.kind == "tool_complete" and event.tool_name:
                 call_id = event.tool_call_id or f"call-{uuid.uuid4().hex[:12]}"
