@@ -46,3 +46,8 @@ Do **not** upgrade any connector to honesty PASS without fresh `audit_events` / 
 ## Status
 
 **INCONCLUSIVE for production honesty** — audit complete as backlog evidence; no live PASS.
+
+## Code remediation (2026-08-03)
+
+Items 1–6 from backlog landed in code — see [`sta337-remediation-shipped.md`](./sta337-remediation-shipped.md).  
+`live_pass_claimed` remains **false** until tip live audit_events.

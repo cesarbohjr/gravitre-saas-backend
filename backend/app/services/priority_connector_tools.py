@@ -189,15 +189,30 @@ def _exec_m365_mail_send(ctx: ToolContext, params: dict[str, Any]) -> Normalized
     to_recipients = params.get("to") or params.get("to_recipients")
     if isinstance(to_recipients, str):
         to_recipients = [to_recipients]
+    subject = str(params.get("subject") or "")
+    body = str(params.get("body") or "")
+    recipients = [str(x) for x in (to_recipients or [])]
     try:
         data = send_mail(
             token,
-            subject=str(params.get("subject") or ""),
-            body=str(params.get("body") or ""),
-            to_recipients=[str(x) for x in (to_recipients or [])],
+            subject=subject,
+            body=body,
+            to_recipients=recipients,
         )
     except Microsoft365APIError as exc:
         raise _vendor_api_error(exc, "microsoft365") from exc
+    # Graph sendMail often returns empty 202 — stamp accepted proof (STA-337).
+    if not isinstance(data, dict) or not data:
+        data = {}
+    else:
+        data = dict(data)
+    if not data.get("result_url") and not data.get("id"):
+        data.setdefault("accepted_async", True)
+        data.setdefault("outcome_effect", "accepted_async")
+        data.setdefault("status", "accepted")
+        data["result_url"] = "https://outlook.office.com/mail/"
+        data["subject"] = subject
+        data["to_recipients"] = recipients
     return NormalizedResult(success=True, action="microsoft365.mail.send", connector_id=cid, data=data)
 
 
@@ -539,12 +554,6 @@ def _analytics_realtime(token, params):
     return run_realtime_report(token, str(params.get("property_id") or ""))
 
 
-def _analytics_funnel(token, params):
-    from app.connectors.google_analytics import run_funnel_report
-
-    return run_funnel_report(token, str(params.get("property_id") or ""))
-
-
 def _alias(action: str, executor: ToolExecutor) -> dict[str, ToolExecutor]:
     from app.connectors.action_catalog.tool_aliases import registry_keys_for_catalog_tool
 
@@ -606,7 +615,6 @@ for catalog_action, fn in [
     ("google_analytics.conversions.create", _analytics_conversion),
     ("google_analytics.reports.batch", _analytics_batch),
     ("google_analytics.realtime.run", _analytics_realtime),
-    ("google_analytics.funnels.run", _analytics_funnel),
 ]:
     vendor = catalog_action.split(".", 1)[0]
     exec_fn = _google_exec(vendor, catalog_action, fn)

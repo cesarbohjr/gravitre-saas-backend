@@ -17,3 +17,11 @@ Action **selection** is not one schema-constrained mechanism across chat, agents
 Machine-readable detail: [`action-selection-confirmation-audit.json`](./action-selection-confirmation-audit.json).
 
 Related: STA-305, STA-334, Part D routing audit.
+
+## Unification slice (2026-08-03)
+
+First code slice shipped — see [`part5-action-selection-unification.md`](./part5-action-selection-unification.md).
+
+- Shared `action_selection_gate` on workflow `invoke_tool` + chat `validate_connector_plan`
+- Verdict moves audit **FRAGMENTED** → runtime **PARTIAL_UNIFIED** (choosers still multi-path; resolve+schema shared)
+- Do not claim ONE_MECHANISM yet

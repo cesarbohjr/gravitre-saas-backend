@@ -142,7 +142,7 @@ VERIFIED_OUTPUT_BATCH_05: frozenset[str] = frozenset(
         "odoo.invoices.create",
         "odoo.partners.create",
         "odoo.sales.orders.create",
-        "outlook.messages.reply",
+        # Aliased → microsoft365.mail.send executor (STA-337).
         "outlook.messages.send",
         "pagerduty.incidents.acknowledge",
         "pagerduty.incidents.add_note",
@@ -234,6 +234,11 @@ VERIFIED_OUTPUT_BATCH_09: frozenset[str] = frozenset(
         "google_ads.campaigns.pause",
         "google_ads.campaigns.resume",
         "google_ads.structure.create",
+        # Runtime stamps googleads.* (STA-337 dual-name normalize).
+        "googleads.campaigns.update_budget",
+        "googleads.campaigns.pause",
+        "googleads.campaigns.resume",
+        "googleads.structure.create",
     }
 )
 
@@ -314,7 +319,6 @@ VERIFIED_ADVANCED_OUTPUT_BATCH_09: frozenset[str] = frozenset(
         "github.pulls.merge",
         "github.releases.create",
         "gmail.watch.create",
-        "google_analytics.funnels.run",
         "google_analytics.realtime.run",
         "google_calendar.events.quick_add",
         "google_docs.documents.insert_table",
@@ -387,9 +391,8 @@ VERIFIED_ADVANCED_OUTPUT_BATCH_12: frozenset[str] = frozenset(
     {
         "odoo.partners.update",
         "odoo.sales.orders.confirm",
+        # Aliased → microsoft365.batch.mail executor (STA-337).
         "outlook.batch.send",
-        "outlook.categories.apply",
-        "outlook.rules.create",
         "pagerduty.incidents.escalate",
         "pagerduty.incidents.reassign",
         "pipedrive.deals.update_stage",

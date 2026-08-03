@@ -13,8 +13,7 @@ BATCH_50_ACTION_KEYS: tuple[str, ...] = (
     "stripe.invoices.create",
     "sendgrid.mail.send",
     "sendgrid.contacts.upsert",
-    "outlook.messages.send",
-    "outlook.messages.reply",
+    "outlook.messages.send",  # aliased → microsoft365.mail.send (STA-337)
     "microsoft365.mail.send",
     "salesforce.opportunities.create",
     "salesforce.leads.update",
@@ -93,18 +92,11 @@ WORKFLOW_SCHEMAS_BATCH_50: dict[str, ActionWorkflowSchema] = {
         optional_fields=(_opt("Contact fields", "payload", "properties"),),
     ),
     "outlook.messages.send": ActionWorkflowSchema(
-        intent_label="Send Outlook message",
+        intent_label="Send Outlook message (via Microsoft 365)",
         required_fields=(
             _req("recipient", "to"),
             _req("subject", "subject"),
             _req("body", "body"),
-        ),
-    ),
-    "outlook.messages.reply": ActionWorkflowSchema(
-        intent_label="Reply to Outlook message",
-        required_fields=(
-            _req("message id", "message_id", "id"),
-            _req("reply body", "body", "comment"),
         ),
     ),
     "microsoft365.mail.send": ActionWorkflowSchema(

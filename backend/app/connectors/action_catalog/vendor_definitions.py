@@ -204,7 +204,7 @@ VENDOR_DEFINITIONS: tuple = (
         v3=(
             action("google_analytics", "reports.batch", "Batch reports", tier="v3", kind="advanced", scope_suffix="read"),
             action("google_analytics", "realtime.run", "Realtime report", tier="v3", kind="advanced", scope_suffix="read"),
-            action("google_analytics", "funnels.run", "Funnel exploration", tier="v3", kind="advanced", scope_suffix="read"),
+            # STA-337: funnels.run demoted — stub ignored funnel_steps (not a real Funnel API).
         ),
     ),
     build_vendor(
@@ -950,6 +950,8 @@ VENDOR_DEFINITIONS: tuple = (
             action("google_calendar", "batch.events", "Batch event changes", tier="v3", kind="advanced", scope_suffix="write"),
         ),
     ),
+    # STA-337: bare outlook.* only keeps actions aliased to microsoft365 executors.
+    # Unmapped overclaims (reply/rules/categories/get/folders) removed until wired.
     build_vendor(
         "outlook",
         "Outlook",
@@ -959,16 +961,11 @@ VENDOR_DEFINITIONS: tuple = (
         department="operations",
         v1=(
             action("outlook", "messages.list", "List messages", tier="v1", kind="read", scope_suffix="mail:read", idempotent=True),
-            action("outlook", "messages.get", "Get message", tier="v1", kind="read", scope_suffix="mail:read", idempotent=True),
-            action("outlook", "folders.list", "List mail folders", tier="v1", kind="read", scope_suffix="mail:read", idempotent=True),
         ),
         v2=(
             action("outlook", "messages.send", "Send message", tier="v2", kind="write", scope_suffix="mail:send", destructive=True),
-            action("outlook", "messages.reply", "Reply to message", tier="v2", kind="write", scope_suffix="mail:send", destructive=True),
         ),
         v3=(
-            action("outlook", "rules.create", "Create inbox rule", tier="v3", kind="advanced", scope_suffix="mail:write"),
-            action("outlook", "categories.apply", "Apply categories", tier="v3", kind="advanced", scope_suffix="mail:write"),
             action("outlook", "batch.send", "Batch send messages", tier="v3", kind="advanced", scope_suffix="mail:send"),
         ),
     ),

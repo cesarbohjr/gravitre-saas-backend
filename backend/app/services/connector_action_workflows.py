@@ -53,13 +53,17 @@ def scrub_gmail_write_plan(plan: ConnectorActionPlan) -> ConnectorActionPlan:
 
 def validate_connector_plan(plan: ConnectorActionPlan, message: str) -> WorkflowCheck | None:
     """Return clarification when required parameters are missing — never invent values."""
-    from app.connectors.action_catalog.action_workflow_schema import get_workflow_schema
+    from app.services.action_selection_gate import resolve_call_time_action, schema_for_action
     from app.services.action_workflow_validation import validate_plan_against_schema
 
     plan = scrub_gmail_write_plan(plan)
-    schema = get_workflow_schema(plan.invoke_action)
+    # Part 5 — same schema lookup as workflow invoke_tool (incl. outlook→m365 aliases).
+    schema = schema_for_action(plan.invoke_action)
     if not schema:
         return None
+    resolved = resolve_call_time_action(plan.invoke_action)
+    if resolved != plan.invoke_action:
+        plan = replace(plan, invoke_action=resolved)
     return validate_plan_against_schema(plan, schema)
 
 

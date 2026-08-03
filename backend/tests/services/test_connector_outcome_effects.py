@@ -94,6 +94,12 @@ def test_business_outcome_kind_found_existing_not_created():
     assert "no net-new create" in (outcome.sections.verification.detail or "").lower()
 
 
+def test_google_ads_pause_resume_are_mutating():
+    assert is_mutating_action("googleads.campaigns.pause") is True
+    assert is_mutating_action("googleads.campaigns.resume") is True
+    assert is_mutating_action("google_ads.campaigns.pause") is True
+
+
 def test_classify_hubspot_lists_create_with_id_is_created():
     assert is_mutating_action("hubspot.lists.create") is True
     effect = classify_write_effect(

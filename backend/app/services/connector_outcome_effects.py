@@ -33,6 +33,8 @@ MUTATING_ACTION_MARKERS = (
     ".request",
     ".post",
     ".write",
+    ".pause",
+    ".resume",
 )
 
 _NOOP_MARKERS = (

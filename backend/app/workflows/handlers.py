@@ -181,21 +181,26 @@ class InvokeToolHandler(StepHandler):
         except Exception:  # noqa: BLE001
             pass
         _enforce_canvas_write_authority(context)
+        invoke_params = params_for_step(
+            "invoke_tool",
+            cfg,
+            context.parameters,
+            step_outputs=context.step_outputs,
+        )
+        # Part 5 — shared call-time resolve + schema gate (with chat write staging).
+        from app.services.action_selection_gate import gate_workflow_invoke
+
+        resolved_action = gate_workflow_invoke(action=str(action), args=invoke_params)
         result = invoke_tool(
             tool_context_from_step(context),
-            str(action),
-            params_for_step(
-                "invoke_tool",
-                cfg,
-                context.parameters,
-                step_outputs=context.step_outputs,
-            ),
+            resolved_action,
+            invoke_params,
         )
         from app.services.connector_output_refs import enrich_invoke_tool_snapshot
 
         return _truncate_output_snapshot(
             enrich_invoke_tool_snapshot(
-                action=str(action),
+                action=resolved_action,
                 data=result.to_step_output(),
                 success=bool(result.success),
             )

@@ -15,6 +15,7 @@ HONESTY_GATED_CONNECTORS: dict[str, str] = {
     "ga4": "Google Analytics completed-work honesty not yet audited (STA-337)",
     "outlook": "Outlook / Microsoft 365 completed-work honesty not yet audited (STA-337)",
     "microsoft": "Outlook / Microsoft 365 completed-work honesty not yet audited (STA-337)",
+    "microsoft365": "Outlook / Microsoft 365 completed-work honesty not yet audited (STA-337)",
 }
 
 

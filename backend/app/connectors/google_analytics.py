@@ -202,12 +202,12 @@ def run_funnel_report(
     end_date: str = "today",
     funnel_steps: list[str] | None = None,
 ) -> dict[str, Any]:
-    _ = funnel_steps
-    return run_ga4_report(
-        access_token,
-        property_id,
-        start_date=start_date,
-        end_date=end_date,
-        dimensions=["eventName"],
-        metrics=["eventCount"],
+    """STA-337: demoted — stub previously ignored funnel_steps and overclaimed funnel API.
+
+    Raises until a real GA4 Funnel Exploration request body is implemented.
+    """
+    raise GoogleAnalyticsAPIError(
+        "google_analytics.funnels.run is not implemented "
+        "(STA-337 honesty demote; use reports.run)",
+        status_code=501,
     )
