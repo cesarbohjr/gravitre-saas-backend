@@ -19,7 +19,10 @@ def test_detect_surface_linkedin_gmail_outlook_company():
     assert detect_surface("https://www.linkedin.com/in/jane-doe") == "linkedin"
     assert detect_surface("https://mail.google.com/mail/u/0/#inbox") == "gmail"
     assert detect_surface("https://outlook.office.com/mail/") == "outlook"
-    assert detect_surface("https://acme.example/about") == "company_site"
+    assert detect_surface("https://acme.example/pricing") == "company_site"
+    assert detect_surface("https://acme.example/careers") == "careers_about"
+    assert detect_surface("https://acme.my.salesforce.com/lightning/r/Lead/00Q/view") == "salesforce"
+    assert detect_surface("https://app.slack.com/client/T123/C456") == "slack"
 
 
 def test_assert_extension_action_blocks_unknown():

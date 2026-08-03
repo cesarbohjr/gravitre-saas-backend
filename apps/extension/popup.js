@@ -31,7 +31,16 @@ async function refresh() {
           if (!tab?.id) return
           const url = tab.url || ""
           const known =
-            /linkedin\.com|mail\.google\.com|outlook\.(office|live)/i.test(url)
+            /linkedin\.com|mail\.google\.com|outlook\.(office|live)|lightning\.force\.com|salesforce\.com|force\.com|app\.slack\.com/i.test(
+              url,
+            )
+          // Always record usage signal (including hosts outside allowlist).
+          chrome.runtime.sendMessage({
+            type: "USAGE_SIGNAL",
+            pageUrl: url,
+            invoked: true,
+            note: known ? "popup_enrich_allowlisted" : "popup_enrich_active_tab_or_outside",
+          })
           if (known) {
             chrome.tabs.sendMessage(tab.id, { type: "OPEN_OVERLAY" })
           } else {

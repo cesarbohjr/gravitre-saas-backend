@@ -15,7 +15,7 @@ from app.services.tool_types import ToolContext
 
 logger = get_logger(__name__)
 
-# v1 allowlist — governed catalog actions only (no DOM automation substitutes).
+# Governed catalog actions only (no DOM automation substitutes).
 EXTENSION_READ_ACTIONS = frozenset(
     {
         "apollo.people.match",
@@ -24,6 +24,8 @@ EXTENSION_READ_ACTIONS = frozenset(
         "apollo.organizations.search",
         "hubspot.contacts.search",
         "hubspot.companies.search",
+        "salesforce.leads.search",
+        "slack.users.info",
     }
 )
 EXTENSION_WRITE_ACTIONS = frozenset(
@@ -34,19 +36,77 @@ EXTENSION_WRITE_ACTIONS = frozenset(
         "hubspot.lists.create",
         "hubspot.lists.add_contact",
         "hubspot.contacts.create",
+        "salesforce.leads.create",
     }
 )
 EXTENSION_ALLOWED_ACTIONS = EXTENSION_READ_ACTIONS | EXTENSION_WRITE_ACTIONS
 
+# Explicit host → surface map. company_site / careers_about use activeTab (no fixed host).
 SURFACE_HOSTS = {
     "linkedin": ("linkedin.com", "www.linkedin.com"),
     "gmail": ("mail.google.com",),
     "outlook": ("outlook.office.com", "outlook.live.com", "outlook.office365.com"),
-    "company_site": (),  # activeTab only — no fixed host
+    "salesforce": ("lightning.force.com", "salesforce.com", "force.com"),
+    "slack": ("app.slack.com",),
+    "company_site": (),
 }
 
+# Hosts the MV3 extension is allowed to inject on (beyond activeTab). Keep in sync with manifest.
+EXTENSION_ALLOWLISTED_HOST_SUFFIXES = (
+    "linkedin.com",
+    "mail.google.com",
+    "outlook.office.com",
+    "outlook.live.com",
+    "outlook.office365.com",
+    "lightning.force.com",
+    "salesforce.com",
+    "force.com",
+    "app.slack.com",
+)
 
-def detect_surface(page_url: str | None) -> str:
+_CAREERS_ABOUT_PATH_MARKERS = (
+    "/careers",
+    "/career",
+    "/jobs",
+    "/job",
+    "/about",
+    "/about-us",
+    "/company",
+    "/team",
+)
+
+
+def detect_surface(page_url: str | None, page_context: dict[str, Any] | None = None) -> str:
+    host = ""
+    path = ""
+    text = str(page_url or "").strip().lower()
+    if "://" in text:
+        try:
+            from urllib.parse import urlparse
+
+            parsed = urlparse(text)
+            host = (parsed.hostname or "").lower()
+            path = (parsed.path or "").lower()
+        except Exception:  # noqa: BLE001
+            host = ""
+            path = ""
+    ctx = page_context or {}
+    explicit = str(ctx.get("source") or ctx.get("surface") or "").strip().lower()
+    if explicit in {"salesforce", "slack", "linkedin", "gmail", "outlook", "careers_about", "company_site"}:
+        if explicit == "company_site" and any(m in path for m in _CAREERS_ABOUT_PATH_MARKERS):
+            return "careers_about"
+        return explicit
+    for surface, hosts in SURFACE_HOSTS.items():
+        if surface == "company_site":
+            continue
+        if any(host == h or host.endswith("." + h) for h in hosts):
+            return surface
+    if any(m in path for m in _CAREERS_ABOUT_PATH_MARKERS):
+        return "careers_about"
+    return "company_site"
+
+
+def host_is_allowlisted(page_url: str | None) -> bool:
     host = ""
     text = str(page_url or "").strip().lower()
     if "://" in text:
@@ -56,12 +116,49 @@ def detect_surface(page_url: str | None) -> str:
             host = (urlparse(text).hostname or "").lower()
         except Exception:  # noqa: BLE001
             host = ""
-    for surface, hosts in SURFACE_HOSTS.items():
-        if surface == "company_site":
-            continue
-        if any(host == h or host.endswith("." + h) for h in hosts):
-            return surface
-    return "company_site"
+    if not host:
+        return False
+    return any(host == h or host.endswith("." + h) for h in EXTENSION_ALLOWLISTED_HOST_SUFFIXES)
+
+
+def record_extension_usage_signal(
+    client: Any,
+    *,
+    org_id: str,
+    user_id: str,
+    page_url: str | None,
+    surface: str | None = None,
+    invoked: bool = True,
+    note: str | None = None,
+) -> dict[str, Any]:
+    """Honest usage signal for prioritization — including non-allowlisted hosts.
+
+    Writes via existing audit path (no parallel analytics system).
+    """
+    from app.workflows.audit import write_audit_event
+
+    detected = detect_surface(page_url, {"source": surface} if surface else None)
+    allowed = host_is_allowlisted(page_url) or detected in {"company_site", "careers_about"}
+    payload = {
+        "page_url": (page_url or "")[:2000],
+        "surface": detected,
+        "surface_requested": surface,
+        "host_allowlisted": host_is_allowlisted(page_url),
+        "active_tab_eligible": detected in {"company_site", "careers_about"},
+        "invoked": bool(invoked),
+        "note": (note or "")[:500] or None,
+        "extension_version": "0.2.0",
+    }
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=user_id,
+        action="extension.usage_signal",
+        resource_type="browser_extension",
+        resource_id=org_id,
+        metadata=payload,
+    )
+    return {"ok": True, "surface": detected, "allowlisted": allowed, **payload}
 
 
 def assert_extension_action(action: str) -> str:
@@ -151,7 +248,7 @@ def enrich_from_page_context(
     connected: list[str],
 ) -> dict[str, Any]:
     """Run catalog reads against page-derived identity fields."""
-    surface = detect_surface(page_url)
+    surface = detect_surface(page_url, page_context)
     full_name = str(page_context.get("fullName") or page_context.get("name") or "").strip()
     first = str(page_context.get("firstName") or "").strip()
     last = str(page_context.get("lastName") or "").strip()
@@ -305,7 +402,12 @@ def enrich_from_page_context(
                 )
             )
 
-    if "apollo" in connected and (company or domain) and surface in {"company_site", "linkedin"}:
+    if "apollo" in connected and (company or domain) and surface in {
+        "company_site",
+        "careers_about",
+        "linkedin",
+        "salesforce",
+    }:
         org_params: dict[str, Any] = {"per_page": 5}
         if company:
             org_params["q_organization_name"] = company
@@ -322,10 +424,70 @@ def enrich_from_page_context(
             }
         )
 
+    # Salesforce web — catalog reads/writes only (no Lightning DOM automation).
+    if "salesforce" in connected and (email or company or full_name):
+        sf_params: dict[str, Any] = {"limit": 5}
+        if email:
+            sf_params["email"] = email
+        if company:
+            sf_params["company"] = company
+        result = invoke_tool(ctx, "salesforce.leads.search", sf_params)
+        matches.append(
+            {
+                "action": "salesforce.leads.search",
+                "success": bool(result.success),
+                "error": result.error_message,
+                "data": result.data if isinstance(result.data, dict) else {},
+                "confidenceLabel": "matched" if result.success else "unavailable",
+            }
+        )
+        fields: dict[str, Any] = {
+            "LastName": last or full_name or "Unknown",
+            "Company": company or "Unknown",
+        }
+        if first:
+            fields["FirstName"] = first
+        if email:
+            fields["Email"] = email
+        if title:
+            fields["Title"] = title
+        suggestions.append(
+            _suggestion(
+                sid="salesforce-lead-create",
+                label="Create Salesforce lead",
+                action="salesforce.leads.create",
+                params={"fields": fields},
+                note="Uses salesforce.leads.create — not Salesforce UI clicking.",
+            )
+        )
+
+    # Slack web — page context only; identity via catalog (Apollo/HubSpot above).
+    if surface == "slack" and "slack" in connected:
+        slack_user = str(page_context.get("slackUserId") or "").strip()
+        if slack_user:
+            result = invoke_tool(ctx, "slack.users.info", {"user": slack_user})
+            matches.append(
+                {
+                    "action": "slack.users.info",
+                    "success": bool(result.success),
+                    "error": result.error_message,
+                    "data": result.data if isinstance(result.data, dict) else {},
+                    "confidenceLabel": "matched" if result.success else "unavailable",
+                }
+            )
+
     open_in_app = "/ai"
     if full_name or company:
         q = full_name or company
         open_in_app = f"/ai?q={q}"
+
+    voice = "Enrichment from connected Gravitree connectors — approve before any write."
+    if surface == "careers_about":
+        voice = "Careers/about page — firmographic enrich via catalog, not job-board scraping."
+    elif surface == "salesforce":
+        voice = "Salesforce overlay uses governed catalog actions only — no Lightning automation."
+    elif surface == "slack":
+        voice = "Slack overlay extracts page context; writes go through Apollo/HubSpot/Salesforce catalog."
 
     return {
         "surface": surface,
@@ -343,7 +505,7 @@ def enrich_from_page_context(
         "suggestions": suggestions,
         "openInGravitreeUrl": open_in_app,
         "connectedIntegrations": connected,
-        "voiceNote": "Enrichment from connected Gravitree connectors — approve before any write.",
+        "voiceNote": voice,
     }
 
 

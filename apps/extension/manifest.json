@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Gravitree",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Overlay enrichment and one-click governed CRM actions — same Gravitree catalog, approvals, and Outcomes.",
   "permissions": ["activeTab", "storage", "sidePanel", "scripting"],
   "host_permissions": [
@@ -11,6 +11,10 @@
     "https://outlook.office.com/*",
     "https://outlook.live.com/*",
     "https://outlook.office365.com/*",
+    "https://*.lightning.force.com/*",
+    "https://*.salesforce.com/*",
+    "https://*.force.com/*",
+    "https://app.slack.com/*",
     "https://gravitre.app/*",
     "https://*.vercel.app/*",
     "http://localhost:3000/*",
@@ -51,6 +55,22 @@
         "https://outlook.office365.com/*"
       ],
       "js": ["content/shared.js", "content/outlook.js"],
+      "css": ["content/overlay.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://*.lightning.force.com/*",
+        "https://*.salesforce.com/*",
+        "https://*.force.com/*"
+      ],
+      "js": ["content/shared.js", "content/salesforce.js"],
+      "css": ["content/overlay.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://app.slack.com/*"],
+      "js": ["content/shared.js", "content/slack.js"],
       "css": ["content/overlay.css"],
       "run_at": "document_idle"
     }

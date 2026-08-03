@@ -75,6 +75,27 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         sendResponse({ ok: true, signedIn: true, session, cfg })
         return
       }
+      if (message?.type === "USAGE_SIGNAL") {
+        try {
+          const result = await apiFetch("/api/extension/usage-signal", {
+            method: "POST",
+            body: {
+              pageUrl: message.pageUrl,
+              surface: message.surface || null,
+              invoked: message.invoked !== false,
+              note: message.note || null,
+              environment: (await getSettings()).environment,
+            },
+          })
+          sendResponse({ ok: true, result })
+        } catch (err) {
+          sendResponse({
+            ok: false,
+            error: err instanceof Error ? err.message : String(err),
+          })
+        }
+        return
+      }
       if (message?.type === "ENRICH") {
         const result = await apiFetch("/api/extension/enrich", {
           method: "POST",

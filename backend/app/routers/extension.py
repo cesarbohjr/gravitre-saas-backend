@@ -14,6 +14,7 @@ from app.services.extension_bridge_service import (
     connected_integrations,
     enrich_from_page_context,
     execute_extension_action,
+    record_extension_usage_signal,
 )
 from app.services.tool_types import ToolContext
 
@@ -38,6 +39,16 @@ class ExtensionActionBody(BaseModel):
     pageUrl: str | None = None
     confirmationToken: str | None = None
     confirmed: bool = False  # ignored — never trusted
+    environment: str = "production"
+
+
+class UsageSignalBody(BaseModel):
+    """Lightweight usage signal — including hosts outside the allowlist."""
+
+    pageUrl: str | None = None
+    surface: str | None = None
+    invoked: bool = True
+    note: str | None = None
     environment: str = "production"
 
 
@@ -79,6 +90,34 @@ async def extension_session(
     }
 
 
+@router.post("/usage-signal")
+async def extension_usage_signal(
+    body: UsageSignalBody,
+    member: Annotated[tuple, Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Record which surfaces users try — including outside the host allowlist."""
+    user, org_id, _role = member
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return record_extension_usage_signal(
+            client,
+            org_id=str(org_id),
+            user_id=str(user["user_id"]),
+            page_url=body.pageUrl,
+            surface=body.surface,
+            invoked=bool(body.invoked),
+            note=body.note,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"usage signal failed: {exc}",
+        ) from exc
+
+
 @router.post("/enrich")
 async def extension_enrich(
     body: PageContextBody,
@@ -95,6 +134,18 @@ async def extension_enrich(
         user_id=user_id,
         environment=body.environment,
     )
+    try:
+        record_extension_usage_signal(
+            ctx.client,
+            org_id=str(org_id),
+            user_id=user_id,
+            page_url=body.pageUrl,
+            surface=(body.pageContext or {}).get("source"),
+            invoked=True,
+            note="enrich",
+        )
+    except Exception:  # noqa: BLE001
+        pass
     connected = connected_integrations(ctx.client, str(org_id), body.environment)
     if not connected:
         return {

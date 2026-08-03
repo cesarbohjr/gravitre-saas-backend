@@ -1,0 +1,47 @@
+{
+  "startedAt": "2026-08-03T03:38:54.702013+00:00",
+  "orgId": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "cases": {
+    "detect_careers_about": {
+      "status": "PASS",
+      "surface": "careers_about"
+    },
+    "usage_signal_outside": {
+      "status": "PASS",
+      "surface": "company_site",
+      "host_allowlisted": false
+    },
+    "careers_enrich": {
+      "status": "PASS",
+      "surface": "careers_about",
+      "matchCount": 1,
+      "suggestionCount": 0
+    },
+    "propose": {
+      "status": "PASS",
+      "approvalId": "e57c338e-c069-4efb-8967-05828257c1dd"
+    },
+    "confirm_write": {
+      "status": "PASS",
+      "runId": "4ec4829a-25f7-4f99-ab86-197b468a9cc8",
+      "source": "browser_extension",
+      "success": true,
+      "error": null
+    },
+    "outcomes": {
+      "status": "PASS",
+      "businessOutcomeDto": {
+        "id": "4ec4829a-25f7-4f99-ab86-197b468a9cc8",
+        "source": "browser_extension",
+        "status": "completed"
+      },
+      "openUrl": "https://gravitre.app/outcomes/4ec4829a-25f7-4f99-ab86-197b468a9cc8"
+    },
+    "notification": {
+      "status": "PASS",
+      "notificationId": "df7edb69-f9b4-4b5a-a9ea-bb0635ec93f9"
+    }
+  },
+  "finishedAt": "2026-08-03T03:39:05.719768+00:00",
+  "overall": "PASS"
+}

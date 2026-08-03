@@ -1,4 +1,4 @@
-/** Company website (activeTab inject) → firmographic overlay. */
+/** Company website / careers / about (activeTab inject) → firmographic overlay. */
 (function () {
   function extractCompanySite() {
     const title = document.title || ""
@@ -9,12 +9,16 @@
     } catch {
       domain = ""
     }
+    const path = (location.pathname || "").toLowerCase()
+    const careersMarkers = ["/careers", "/career", "/jobs", "/job", "/about", "/about-us", "/company", "/team"]
+    const isCareersAbout = careersMarkers.some((m) => path.includes(m))
     const company = h1 || title.split(/[-|·]/)[0].trim() || domain
     return {
       company,
       domain,
       title: h1 || title,
-      source: "company_site",
+      source: isCareersAbout ? "careers_about" : "company_site",
+      pageKind: isCareersAbout ? "careers_about" : "company_site",
     }
   }
 
