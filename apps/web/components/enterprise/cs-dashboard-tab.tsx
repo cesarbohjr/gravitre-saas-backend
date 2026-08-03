@@ -760,7 +760,7 @@ export function CsDashboardTab() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" asChild>
-              <Link href="/workflows/failure-predictions">View all</Link>
+              <Link href="/activity?tab=failures">View all</Link>
             </Button>
             <Button size="sm" disabled={!!busy} onClick={() => void scanFailures()}>
               <ShieldAlert className={cn("mr-1.5 h-4 w-4", busy === "failure-scan" && "animate-pulse")} aria-hidden />

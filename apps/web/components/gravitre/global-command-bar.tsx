@@ -56,12 +56,11 @@ const navigationItems: CommandItem[] = [
   { id: "nav-workflows", type: "navigation", title: "Workflows", subtitle: "Automation flows", icon: "automations", href: "/workflows", keywords: ["flow", "pipeline"] },
   { id: "nav-connectors", type: "navigation", title: "Connectors", subtitle: "Integrations", icon: "apps", href: "/connectors", keywords: ["api", "integration"] },
   { id: "nav-sources", type: "navigation", title: "Sources", subtitle: "Data sources", icon: "data", href: "/sources", keywords: ["data", "database"] },
-  { id: "nav-runs", type: "navigation", title: "Runs", subtitle: "Execution history", icon: "run", href: "/runs", keywords: ["execute", "history"] },
+  { id: "nav-activity", type: "navigation", title: "Activity", subtitle: "Completed work and failure alerts", icon: "run", href: "/activity", keywords: ["execute", "history", "runs", "outcomes"] },
   { id: "nav-approvals", type: "navigation", title: "Approvals", subtitle: "Pending reviews", icon: "approvals", href: "/approvals", keywords: ["review", "approve"] },
-  { id: "nav-metrics", type: "navigation", title: "Metrics", subtitle: "Monitoring", icon: "dashboard", href: "/metrics", keywords: ["monitor", "stats"] },
-  { id: "nav-audit", type: "navigation", title: "Audit Log", subtitle: "Activity history", icon: "history", href: "/audit", keywords: ["log", "history"] },
-  { id: "nav-environments", type: "navigation", title: "Environments", subtitle: "Production & staging", icon: "workspaces", href: "/environments", keywords: ["prod", "staging"] },
-  { id: "nav-settings", type: "navigation", title: "Settings", subtitle: "Configuration", icon: "settings", href: "/settings", keywords: ["config", "preferences"] },
+  { id: "nav-intelligence", type: "navigation", title: "Intelligence", subtitle: "Health, ROI, learning, models", icon: "dashboard", href: "/intelligence", keywords: ["monitor", "stats", "metrics", "insights"] },
+  { id: "nav-audit", type: "navigation", title: "Audit Log", subtitle: "Compliance export", icon: "history", href: "/audit", keywords: ["log", "history", "compliance"] },
+  { id: "nav-settings", type: "navigation", title: "Settings", subtitle: "Personal, organization, admin", icon: "settings", href: "/settings", keywords: ["config", "preferences", "enterprise", "federation", "environments"] },
 ]
 
 const aiCommands: CommandItem[] = [

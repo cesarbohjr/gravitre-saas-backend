@@ -330,7 +330,7 @@ export default function MarketplacePublisherAnalyticsPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" asChild>
-                <Link href="/marketplace/analytics/roi">{ROI_PAGE_TITLE}</Link>
+                <Link href="/intelligence/reports">{ROI_PAGE_TITLE}</Link>
               </Button>
               <Button variant="outline" size="sm" asChild>
                 <Link href="/marketplace/billing">Billing & payouts</Link>

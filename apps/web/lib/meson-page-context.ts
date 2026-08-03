@@ -43,15 +43,19 @@ export function resolveMesonPageFromPath(pathname: string): ResolvedMesonPage {
   if (path.startsWith("/workflows/failure-predictions")) {
     return { page: "failure-alerts" }
   }
+  if (path.startsWith("/activity")) {
+    return { page: "activity" }
+  }
 
   if (path.startsWith("/workflows")) return { page: "workflows" }
   if (path.startsWith("/connectors")) return { page: "connectors" }
   if (path.startsWith("/agents")) return { page: "agents" }
   if (path.startsWith("/training")) return { page: "training" }
+  if (path.startsWith("/multi-agent-run")) return { page: "agents" }
   if (path.startsWith("/intelligence")) return { page: "intelligence" }
   if (path.startsWith("/marketplace")) return { page: "marketplace" }
-  if (path.startsWith("/runs")) return { page: "runs" }
-  if (path.startsWith("/metrics")) return { page: "metrics" }
+  if (path.startsWith("/runs")) return { page: "activity" }
+  if (path.startsWith("/metrics")) return { page: "intelligence" }
   if (path === "/schedules" || path.startsWith("/schedules/")) {
     return { page: "schedules" }
   }
@@ -106,7 +110,7 @@ export function routeMesonSuggestion(
     return
   }
   if (id.includes("failure") || id.includes("alert") || label.includes("failure")) {
-    go("/workflows/failure-predictions")
+    go(`${APP_ROUTES.activity}?tab=failures`)
     return
   }
   if (id.includes("training") || label.includes("training") || id.includes("dataset") || label.includes("dataset")) {

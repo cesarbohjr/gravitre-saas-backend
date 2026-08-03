@@ -512,8 +512,17 @@ export default function MetricsPage() {
         <div className="flex-shrink-0 px-4 md:px-6 pt-4 md:pt-6 pb-4 border-b border-border">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
             <div>
+              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                Intelligence · Operational health
+              </p>
               <h1 className="text-lg md:text-xl font-semibold text-foreground">{SURFACE_COPY.pages.metrics.headline}</h1>
               <p className="text-xs md:text-sm text-muted-foreground mt-1">{SURFACE_COPY.pages.metrics.description}</p>
+              <a
+                href="/intelligence"
+                className="mt-1 inline-block text-xs text-primary underline-offset-4 hover:underline"
+              >
+                Back to Intelligence hub
+              </a>
             </div>
             <div className="flex items-center gap-2">
               <DropdownMenu>

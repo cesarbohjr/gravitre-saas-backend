@@ -6,12 +6,15 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
   ADMIN_ONLY_SETTINGS_SECTIONS,
-  FOOTER_SETTINGS_SECTIONS,
-  PRIMARY_SETTINGS_SECTIONS,
   SETTINGS_SECTIONS,
+  SETTINGS_TIER_LABELS,
   WIDE_SETTINGS_SECTIONS,
+  settingsSectionsForTier,
   type SettingsSectionId,
+  type SettingsTier,
 } from "@/lib/settings-sections"
+
+const TIER_ORDER: SettingsTier[] = ["personal", "organization", "admin"]
 
 interface SettingsShellProps {
   activeSection: SettingsSectionId
@@ -37,8 +40,12 @@ export function SettingsShell({
   const showHeader = !hideHeader
   const wide = WIDE_SETTINGS_SECTIONS.has(activeSection)
 
-  const primary = PRIMARY_SETTINGS_SECTIONS
-  const footer = FOOTER_SETTINGS_SECTIONS.filter((section) => !section.adminOnly || isAdmin)
+  const tiers = TIER_ORDER.filter((tier) => {
+    if (tier === "admin" && !isAdmin) return false
+    return settingsSectionsForTier(tier, isAdmin).length > 0
+  })
+
+  const flatNav = tiers.flatMap((tier) => settingsSectionsForTier(tier, isAdmin))
 
   return (
     <div className="relative flex h-full min-h-0 flex-col md:flex-row">
@@ -61,7 +68,7 @@ export function SettingsShell({
       {mobileMenuOpen ? (
         <div className="z-20 border-b border-border bg-card md:hidden">
           <div className="grid grid-cols-2 gap-2 p-3">
-            {[...primary, ...footer].map((section) => (
+            {flatNav.map((section) => (
               <SettingsNavItem
                 key={section.id}
                 section={section}
@@ -78,24 +85,27 @@ export function SettingsShell({
       ) : null}
 
       <aside className="relative z-30 hidden w-64 shrink-0 border-r border-border bg-card/95 p-4 backdrop-blur-sm md:block">
-        <nav className="space-y-1" aria-label="Settings sections">
-          {primary.map((section) => (
-            <SettingsNavItem
-              key={section.id}
-              section={section}
-              activeSection={activeSection}
-              onSectionChange={onSectionChange}
-            />
-          ))}
-          <div className="my-3 border-t border-border/70" />
-          {footer.map((section) => (
-            <SettingsNavItem
-              key={section.id}
-              section={section}
-              activeSection={activeSection}
-              onSectionChange={onSectionChange}
-            />
-          ))}
+        <nav className="space-y-4" aria-label="Settings sections">
+          {tiers.map((tier) => {
+            const sections = settingsSectionsForTier(tier, isAdmin)
+            return (
+              <div key={tier}>
+                <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {SETTINGS_TIER_LABELS[tier]}
+                </p>
+                <div className="space-y-1">
+                  {sections.map((section) => (
+                    <SettingsNavItem
+                      key={section.id}
+                      section={section}
+                      activeSection={activeSection}
+                      onSectionChange={onSectionChange}
+                    />
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </nav>
       </aside>
 

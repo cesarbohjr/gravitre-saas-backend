@@ -1667,6 +1667,22 @@ function SettingsContent() {
       router.replace("/settings/enterprise")
       return
     }
+    if (section === "federation") {
+      router.replace("/settings/federation")
+      return
+    }
+    if (section === "environments") {
+      router.replace("/environments")
+      return
+    }
+    if (section === "profile") {
+      router.replace("/settings/profile")
+      return
+    }
+    if (section === "organizations") {
+      router.replace("/settings/organizations")
+      return
+    }
     if (section === "billing") {
       router.replace("/settings/billing")
       return
@@ -1755,6 +1771,11 @@ function SettingsContent() {
       case "approvals":
       case "permissions":
       case "audit":
+      case "enterprise":
+      case "federation":
+      case "environments":
+      case "profile":
+      case "organizations":
         return (
           <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

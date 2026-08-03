@@ -1,7 +1,7 @@
 "use client"
 
 // Agents Page - AI Team Command Center with Premium Orb System
-import { createElement, useEffect, useMemo, useRef, useState } from "react"
+import { createElement, Suspense, useEffect, useMemo, useRef, useState } from "react"
 import useSWR, { mutate as globalMutate } from "swr"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
@@ -68,6 +68,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AgentSurfaceSwitch } from "@/components/agents/agent-surface-switch"
+import { AgentsHubTabs } from "@/components/agents/agents-hub-tabs"
 import { MesonWizard } from "@/components/gravitre/meson-wizard"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
@@ -1132,7 +1133,10 @@ export default function AgentsPage() {
 
   {/* Left - Agent Roster with Orbs */}
   <div className="relative z-10 flex-1 flex flex-col lg:border-r border-border/50 backdrop-blur-sm">
-          <div className="relative z-10 px-4 pt-4 md:px-6">
+          <div className="relative z-10 px-4 pt-4 md:px-6 space-y-3">
+            <Suspense fallback={null}>
+              <AgentsHubTabs active="roster" />
+            </Suspense>
             <AgentSurfaceSwitch surface="operate" />
           </div>
           {/* Collapse only hides overview title/stats — primary CTAs stay reachable. */}

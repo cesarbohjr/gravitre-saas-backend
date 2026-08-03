@@ -167,7 +167,7 @@ export default function MarketplaceAnalyticsPage() {
                     <p className="text-xs text-muted-foreground">{ROI_METHODOLOGY}</p>
                   </div>
                   <Button variant="outline" size="sm" asChild>
-                    <Link href="/marketplace/analytics/roi">Open ROI dashboard</Link>
+                    <Link href="/intelligence/reports">Open ROI reports</Link>
                   </Button>
                 </div>
                 {roiLoading && !roi ? (

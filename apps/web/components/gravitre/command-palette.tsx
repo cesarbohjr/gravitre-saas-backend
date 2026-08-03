@@ -278,10 +278,10 @@ export function CommandPalette({
             <span>View All Workflows</span>
           </CommandItem>
           <CommandItem
-            onSelect={() => runCommand(() => router.push("/workflows/failure-predictions"))}
+            onSelect={() => runCommand(() => router.push(`${APP_ROUTES.activity}?tab=failures`))}
           >
             <ShieldAlert className="mr-2 h-4 w-4 text-red-400" />
-            <span>Workflow Failure Alerts</span>
+            <span>Failure Alerts</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => {})}>
             <Shield className="mr-2 h-4 w-4 text-red-400" />
@@ -369,7 +369,7 @@ export function CommandPalette({
             <span>Deliverables</span>
           </CommandItem>
           <CommandItem
-            onSelect={() => runCommand(() => router.push("/runs"))}
+            onSelect={() => runCommand(() => router.push(APP_ROUTES.activity))}
           >
             <Play className="mr-2 h-4 w-4" />
             <span>Runs</span>

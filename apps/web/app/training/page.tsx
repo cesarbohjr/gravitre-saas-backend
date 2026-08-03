@@ -22,6 +22,7 @@ import type {
 } from "@/types/api"
 import { cn } from "@/lib/utils"
 import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
+import { AgentsHubTabs } from "@/components/agents/agents-hub-tabs"
 import { PageHeader, StatCard, StatsGrid } from "@/components/gravitre/page-header"
 import { TrainingOverview } from "@/components/gravitre/training-overview"
 import { SURFACE_COPY } from "@/lib/surface-copy"
@@ -410,6 +411,7 @@ function TrainingPageContent() {
   return (
     <AppShell title={SURFACE_COPY.training.title}>
       <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+        <AgentsHubTabs active="training" />
         <LearningSurfacesCallout current="agent-training" />
 
         <PageHeader

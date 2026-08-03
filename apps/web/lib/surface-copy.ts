@@ -6,10 +6,10 @@ import { APP_ROUTES } from "@/lib/app-routes"
 
 export const SURFACE_COPY = {
   insights: {
-    title: "Insights",
-    shortTitle: "Insights",
+    title: "Intelligence",
+    shortTitle: "Intelligence",
     description:
-      "What Gravitre observed, how confident it is, and why it recommended each action.",
+      "Operational health, business outcomes, learning signals, models, and memory — one hub.",
     emptyTitle: "Collecting signals",
     emptyDescription:
       "Outcome events and confidence scores appear here as agents finish work with measurable results.",
@@ -67,30 +67,45 @@ export const SURFACE_COPY = {
     description: "Three connected steps: learn from usage, fine-tune agents, deploy production models.",
   },
   hubLinks: {
-    agents: {
-      title: "Agent intelligence",
-      summary: "Health, performance, learning, and outcomes — not the live team roster.",
-      route: APP_ROUTES.intelligenceAgents,
+    operationalHealth: {
+      title: "Operational health",
+      summary: "Run throughput, reliability, and Meson operational metrics.",
+      route: "/metrics",
+    },
+    reports: {
+      title: "Business outcomes / ROI",
+      summary: "ROI metrics and department scorecards.",
+      route: APP_ROUTES.intelligenceReports,
+    },
+    learning: {
+      title: "Learning & golden signals",
+      summary: "Query, memory, and search learning — including revenue risk.",
+      route: APP_ROUTES.learning,
     },
     builtIn: {
-      title: "Built-in models",
+      title: "Model confidence / built-in",
       summary: "Org ML brain — what each model does, why train it, and data readiness.",
       route: APP_ROUTES.builtInModels,
     },
-    predictive: {
-      title: "Predictive ops",
-      summary: "SLA, deal-loss, capacity, and workflow risk by domain.",
-      route: APP_ROUTES.intelligencePredictive,
+    models: {
+      title: "Models registry",
+      summary: "Register, version, and deploy models for workflows.",
+      route: APP_ROUTES.models,
     },
     memory: {
       title: "Memory",
       summary: "Promoted memories and knowledge graph connections.",
       route: APP_ROUTES.intelligenceMemory,
     },
-    reports: {
-      title: "Reports",
-      summary: "ROI metrics and department scorecards.",
-      route: APP_ROUTES.intelligenceReports,
+    predictive: {
+      title: "Predictive ops",
+      summary: "SLA, deal-loss, capacity, and workflow risk by domain.",
+      route: APP_ROUTES.intelligencePredictive,
+    },
+    agents: {
+      title: "Agents",
+      summary: "Operate agents — health and performance live on each agent profile.",
+      route: APP_ROUTES.agents,
     },
   },
   stats: {

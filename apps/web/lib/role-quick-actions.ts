@@ -17,10 +17,10 @@ export const ROLE_QUICK_ACTIONS: Record<WelcomeRoleId, RoleQuickAction[]> = {
   ],
   marketing: [
     { label: "Campaign insights", href: APP_ROUTES.intelligence },
-    { label: "Agent profiles", href: APP_ROUTES.intelligenceAgents },
+    { label: "Agent profiles", href: APP_ROUTES.agents },
   ],
   ops: [
-    { label: "Workflow bottlenecks", href: "/workflows/failure-predictions" },
+    { label: "Workflow bottlenecks", href: `${APP_ROUTES.activity}?tab=failures` },
     { label: "Process health", href: `${APP_ROUTES.orgLearning}#process-mining` },
   ],
   hr: [
@@ -36,7 +36,7 @@ export const ROLE_QUICK_ACTIONS: Record<WelcomeRoleId, RoleQuickAction[]> = {
     { label: "Chat", href: APP_ROUTES.gravitreAi },
   ],
   engineering: [
-    { label: "Workflow runs", href: "/runs" },
-    { label: "Failure alerts", href: "/workflows/failure-predictions" },
+    { label: "Workflow activity", href: APP_ROUTES.activity },
+    { label: "Failure alerts", href: `${APP_ROUTES.activity}?tab=failures` },
   ],
 }

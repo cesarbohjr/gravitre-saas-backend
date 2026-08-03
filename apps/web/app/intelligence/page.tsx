@@ -1,6 +1,8 @@
 "use client"
 
+import { Suspense, useEffect } from "react"
 import Link from "next/link"
+import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
@@ -23,19 +25,54 @@ import {
   Brain,
   ChartLineUp,
   Cpu,
-  Robot,
+  Database,
+  Heartbeat,
   Sparkle,
 } from "@phosphor-icons/react"
 
 const LINKS = [
-  { ...SURFACE_COPY.hubLinks.agents, icon: Robot },
-  { ...SURFACE_COPY.hubLinks.builtIn, icon: Cpu },
-  { ...SURFACE_COPY.hubLinks.predictive, icon: ChartLineUp },
-  { ...SURFACE_COPY.hubLinks.memory, icon: Brain },
+  { ...SURFACE_COPY.hubLinks.operationalHealth, icon: Heartbeat },
   { ...SURFACE_COPY.hubLinks.reports, icon: ChartLineUp },
+  { ...SURFACE_COPY.hubLinks.learning, icon: Sparkle },
+  { ...SURFACE_COPY.hubLinks.builtIn, icon: Cpu },
+  { ...SURFACE_COPY.hubLinks.models, icon: Database },
+  { ...SURFACE_COPY.hubLinks.memory, icon: Brain },
+  { ...SURFACE_COPY.hubLinks.predictive, icon: ChartLineUp },
 ]
 
-export default function IntelligenceCenterPage() {
+function IntelligenceSectionRedirect() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    const section = searchParams.get("section")
+    if (section === "operational-health") {
+      router.replace("/metrics")
+      return
+    }
+    if (section === "models") {
+      router.replace(APP_ROUTES.models)
+      return
+    }
+    if (section === "reports") {
+      router.replace(APP_ROUTES.intelligenceReports)
+      return
+    }
+    if (section === "learning") {
+      router.replace(APP_ROUTES.learning)
+      return
+    }
+    if (section === "memory") {
+      router.replace(APP_ROUTES.intelligenceMemory)
+      return
+    }
+    if (section === "predictive") {
+      router.replace(APP_ROUTES.intelligencePredictive)
+    }
+  }, [router, searchParams])
+  return null
+}
+
+function IntelligenceCenterInner() {
   const { user } = useAuth()
   const copy = SURFACE_COPY.insights
   const { data: outcomes, error, mutate, isLoading } = useSWR(
@@ -95,6 +132,7 @@ export default function IntelligenceCenterPage() {
   return (
     <AppShell title={copy.title}>
       <div className="space-y-6 p-4 md:p-6">
+        <IntelligenceSectionRedirect />
         <PageHeader title={copy.title} description={copy.description} />
 
         {runtimeEntries.length > 0 ? (
@@ -256,10 +294,27 @@ export default function IntelligenceCenterPage() {
 
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" asChild>
-            <Link href={APP_ROUTES.learning}>{SURFACE_COPY.learning.title}</Link>
+            <Link href={`${APP_ROUTES.learning}#revenue-risk`}>Revenue risk</Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={APP_ROUTES.agents}>Agents hub</Link>
           </Button>
         </div>
       </div>
     </AppShell>
+  )
+}
+
+export default function IntelligenceCenterPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell title={SURFACE_COPY.insights.title}>
+          <div className="p-6 text-sm text-muted-foreground">Loading intelligence…</div>
+        </AppShell>
+      }
+    >
+      <IntelligenceCenterInner />
+    </Suspense>
   )
 }

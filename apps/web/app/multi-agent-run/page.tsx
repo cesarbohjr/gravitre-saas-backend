@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { AgentsHubTabs } from "@/components/agents/agents-hub-tabs"
 import useSWR from "swr"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
@@ -133,6 +134,7 @@ function MultiAgentRunContent() {
     <div className="relative min-h-full">
       <GridPattern className="opacity-[0.35]" />
       <div className="relative z-10 mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+        <AgentsHubTabs active="multi-agent" />
         <PageHeader
           title="Multi-Agent Run"
           description="Coordinate multiple agents on parallel subtasks, then merge their results into one recommendation."

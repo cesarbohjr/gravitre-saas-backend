@@ -1,6 +1,5 @@
 import type { IconName } from "@/lib/icons"
 import { APP_ROUTES } from "@/lib/app-routes"
-import { SURFACE_COPY } from "@/lib/surface-copy"
 
 export const SIDEBAR_SECTION_COLORS = {
   WORK: {
@@ -51,7 +50,10 @@ export interface SidebarNavGroup {
   items: SidebarNavItem[]
 }
 
-/** Admin navigation — Think → Automate → Activity → Understand → Govern */
+/**
+ * Admin navigation after IA consolidation (~14 primary items).
+ * Activity = BusinessOutcome hub; Intelligence / Settings absorb former peers.
+ */
 export const ADMIN_SIDEBAR_NAV: SidebarNavGroup[] = [
   {
     group: "WORK",
@@ -66,8 +68,12 @@ export const ADMIN_SIDEBAR_NAV: SidebarNavGroup[] = [
       },
       { name: "Home", href: APP_ROUTES.home, icon: "home" },
       { name: "Chat", href: APP_ROUTES.gravitreAi, icon: "chat", hint: "Auto-route execute, chat, and find" },
-      { name: "Agents", href: APP_ROUTES.agents, icon: "team" },
-      { name: "Multi-Agent Run", href: APP_ROUTES.multiAgentRun, icon: "network" },
+      {
+        name: "Agents",
+        href: APP_ROUTES.agents,
+        icon: "team",
+        hint: "Roster, multi-agent runs, and training",
+      },
       { name: "Assignments", href: "/assignments", icon: "clipboardList" },
       { name: "Goals", href: "/goals", icon: "target" },
     ],
@@ -77,9 +83,6 @@ export const ADMIN_SIDEBAR_NAV: SidebarNavGroup[] = [
     items: [
       { name: "Marketplace", href: APP_ROUTES.marketplace, icon: "package", emphasis: true },
       { name: "Workflows", href: APP_ROUTES.workflows, icon: "waypoints" },
-      { name: "Failure Alerts", href: "/workflows/failure-predictions", icon: "shieldAlert" },
-      { name: SURFACE_COPY.training.title, href: APP_ROUTES.training, icon: "brain" },
-      { name: SURFACE_COPY.models.title, href: APP_ROUTES.models, icon: "cpu" },
       { name: "Connectors", href: APP_ROUTES.connectors, icon: "blocks" },
       { name: "Sources", href: "/sources", icon: "database" },
     ],
@@ -87,54 +90,37 @@ export const ADMIN_SIDEBAR_NAV: SidebarNavGroup[] = [
   {
     group: "ACTIVITY",
     items: [
-      { name: "Runs", href: "/runs", icon: "listTodo" },
       {
-        name: "Outcomes",
-        href: APP_ROUTES.outcomes,
+        name: "Activity",
+        href: APP_ROUTES.activity,
         icon: "checkCircle",
-        hint: "Completed work across chat, workflows, and agents",
+        hint: "Completed work, runs, and failure alerts",
       },
-      { name: "Schedules", href: "/schedules", icon: "calendar" },
+      { name: "Schedules", href: APP_ROUTES.schedules, icon: "calendar" },
       { name: "Approvals", href: APP_ROUTES.approvals, icon: "clipboardCheck" },
     ],
   },
   {
     group: "INSIGHTS",
     items: [
-      { name: "Metrics", href: "/metrics", icon: "layoutDashboard" },
       {
-        name: SURFACE_COPY.insights.title,
+        name: "Intelligence",
         href: APP_ROUTES.intelligence,
         icon: "sparkles",
         badge: "Explain",
-        hint: "Observed outcomes, confidence, and recommendations",
+        hint: "Operational health, ROI, learning, models, and memory",
       },
-      { name: SURFACE_COPY.hubLinks.agents.title, href: APP_ROUTES.intelligenceAgents, icon: "team" },
-      { name: SURFACE_COPY.builtInModels.title, href: APP_ROUTES.builtInModels, icon: "cpu" },
-      { name: SURFACE_COPY.hubLinks.memory.title, href: APP_ROUTES.intelligenceMemory, icon: "database" },
-      { name: SURFACE_COPY.hubLinks.reports.title, href: APP_ROUTES.intelligenceReports, icon: "chartLine" },
-      {
-        name: "Revenue risk",
-        href: APP_ROUTES.revenueRisk,
-        icon: "shieldAlert",
-        hint: "Pipeline and revenue signals needing review",
-      },
-      {
-        name: SURFACE_COPY.learning.title,
-        href: APP_ROUTES.learning,
-        icon: "atom",
-        hint: "Query, memory, and search learning",
-      },
-      { name: "Audit trail", href: "/audit", icon: "history", hint: "Who did what, when — compliance and review" },
     ],
   },
   {
     group: "SETTINGS",
     items: [
-      { name: "Environments", href: "/environments", icon: "boxes" },
-      { name: "Enterprise", href: "/settings/enterprise", icon: "building" },
-      { name: "Federation", href: "/settings/federation", icon: "handshake" },
-      { name: "Settings", href: "/settings", icon: "sliders" },
+      {
+        name: "Settings",
+        href: APP_ROUTES.settings,
+        icon: "sliders",
+        hint: "Personal, organization, and admin controls",
+      },
     ],
   },
 ]
@@ -153,8 +139,8 @@ export const LITE_SIDEBAR_NAV: SidebarNavGroup[] = [
     group: "ACTIVITY",
     items: [
       { name: "Deliverables", href: "/lite/deliverables", icon: "fileText" },
-      { name: "Schedules", href: "/schedules", icon: "calendar" },
-      { name: "Approvals", href: "/approvals", icon: "clipboardCheck" },
+      { name: "Schedules", href: APP_ROUTES.schedules, icon: "calendar" },
+      { name: "Approvals", href: APP_ROUTES.approvals, icon: "clipboardCheck" },
     ],
   },
   {
@@ -164,10 +150,61 @@ export const LITE_SIDEBAR_NAV: SidebarNavGroup[] = [
 ]
 
 export function sidebarItemPath(href: string): string {
-  return href.split("#")[0]
+  return href.split("?")[0].split("#")[0]
 }
 
 export function isSidebarItemActive(pathname: string, href: string): boolean {
   const itemPath = sidebarItemPath(href)
+  if (itemPath === "/agents") {
+    return (
+      pathname === "/agents" ||
+      pathname.startsWith("/agents/") ||
+      pathname === "/multi-agent-run" ||
+      pathname.startsWith("/multi-agent-run/") ||
+      pathname === "/training" ||
+      pathname.startsWith("/training/")
+    )
+  }
+  if (itemPath === "/activity") {
+    return (
+      pathname === "/activity" ||
+      pathname.startsWith("/activity/") ||
+      pathname === "/runs" ||
+      pathname.startsWith("/runs/") ||
+      pathname === "/outcomes" ||
+      pathname.startsWith("/outcomes/") ||
+      pathname.startsWith("/workflows/failure-predictions")
+    )
+  }
+  if (itemPath === "/intelligence") {
+    return (
+      pathname === "/intelligence" ||
+      pathname.startsWith("/intelligence/") ||
+      pathname === "/metrics" ||
+      pathname.startsWith("/metrics/") ||
+      pathname === "/models" ||
+      pathname.startsWith("/models/")
+    )
+  }
+  if (itemPath === "/settings") {
+    return (
+      pathname === "/settings" ||
+      pathname.startsWith("/settings/") ||
+      pathname === "/environments" ||
+      pathname.startsWith("/environments/") ||
+      pathname === "/audit" ||
+      pathname.startsWith("/audit/")
+    )
+  }
   return pathname === itemPath || pathname.startsWith(`${itemPath}/`)
+}
+
+/** Count of primary admin sidebar destinations (excludes Getting Started when filtered). */
+export function countAdminSidebarItems(includeGettingStarted = true): number {
+  return ADMIN_SIDEBAR_NAV.reduce((sum, group) => {
+    return (
+      sum +
+      group.items.filter((item) => includeGettingStarted || item.name !== "Getting Started").length
+    )
+  }, 0)
 }
