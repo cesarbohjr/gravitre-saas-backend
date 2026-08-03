@@ -861,6 +861,17 @@ async def assistant_chat(
     if not last_user.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No user message found")
 
+    # Frontend IA consolidation — deterministic sidebar FAQ (no tool loop).
+    from app.services.frontend_ia_nav_faq import match_frontend_ia_nav_faq
+
+    ia_faq = match_frontend_ia_nav_faq(last_user)
+    if ia_faq:
+        return StreamingResponse(
+            _build_cached_stream(str(ia_faq["answer"]), [], []),
+            media_type="text/event-stream",
+            headers=_STREAM_HEADERS,
+        )
+
     # Keep department/cross-department as system guidance only.
     # Never prepend onto last_user — that string is also connector task text
     # (Slack bodies, confirm matching, param inference).
