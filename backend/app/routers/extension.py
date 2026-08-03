@@ -192,7 +192,7 @@ async def extension_list_workflows(
 
 
 @router.post("/workflows/execute")
-async def extension_execute_workflow(
+def extension_execute_workflow(
     body: ExtensionWorkflowBody,
     member: Annotated[tuple, Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -201,6 +201,10 @@ async def extension_execute_workflow(
 
     Propose (no token) → durable awaiting_confirm + progressSteps.
     Confirm (token) → ``_execute_workflow_with_context`` (typed contract + Module A).
+
+    Sync handler on purpose: workflow confirm runs the existing engine path that
+    uses asyncio.run() in step handlers. An async route would nest that call
+    inside FastAPI's event loop and fail with VALIDATION_ERROR.
     """
     user, org_id, _role = member
     if not org_id:
