@@ -1,0 +1,59 @@
+{
+  "startedAt": "2026-08-03T03:56:05.167484+00:00",
+  "workflowId": "ac093988-0c22-55d7-8283-d77a048dddf0",
+  "cases": {
+    "list_workflows": {
+      "status": "PASS",
+      "stepCount": 2,
+      "progressSteps": [
+        {
+          "index": 0,
+          "id": "nvd-cve",
+          "name": "Fetch NVD CVE",
+          "type": "invoke_tool",
+          "action": "nvd.cve.get",
+          "status": "pending"
+        },
+        {
+          "index": 1,
+          "id": "cisa-kev",
+          "name": "Fetch CISA KEV sample",
+          "type": "invoke_tool",
+          "action": "cisa_kev.feed.get",
+          "status": "pending"
+        }
+      ]
+    },
+    "propose_workflow": {
+      "status": "PASS",
+      "dialogueMode": "confirm",
+      "progressStepCount": 2,
+      "approvalId": "fed7203d-976b-4a69-988e-0a8209d0e07a"
+    },
+    "confirm_execute": {
+      "status": "PASS",
+      "runId": "624f3fa2-8872-499e-95d1-37ce9ae6e4a2",
+      "statusField": "completed",
+      "queued": false,
+      "dialogueMode": "progress",
+      "source": "browser_extension",
+      "error": null
+    },
+    "run_terminal": {
+      "status": "PASS",
+      "terminalStatus": "completed"
+    },
+    "outcomes_chain": {
+      "status": "PASS",
+      "businessOutcomeDto": {
+        "id": "624f3fa2-8872-499e-95d1-37ce9ae6e4a2",
+        "status": "completed",
+        "source": "browser_extension",
+        "lifecycleState": "approved"
+      },
+      "openUrl": "https://gravitre.app/outcomes/624f3fa2-8872-499e-95d1-37ce9ae6e4a2"
+    }
+  },
+  "finishedAt": "2026-08-03T03:56:25.201664+00:00",
+  "overall": "PASS"
+}

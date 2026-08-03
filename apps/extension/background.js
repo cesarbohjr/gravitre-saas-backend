@@ -126,6 +126,31 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         sendResponse({ ok: true, result })
         return
       }
+      if (message?.type === "LIST_WORKFLOWS") {
+        const result = await apiFetch(
+          `/api/extension/workflows?environment=${encodeURIComponent((await getSettings()).environment)}`,
+        )
+        sendResponse({ ok: true, result })
+        return
+      }
+      if (message?.type === "EXECUTE_WORKFLOW") {
+        const body = {
+          pageUrl: message.pageUrl,
+          environment: (await getSettings()).environment,
+        }
+        if (message.confirmationToken) {
+          body.confirmationToken = message.confirmationToken
+        } else {
+          body.workflowId = message.workflowId
+          body.parameters = message.parameters || {}
+        }
+        const result = await apiFetch("/api/extension/workflows/execute", {
+          method: "POST",
+          body,
+        })
+        sendResponse({ ok: true, result })
+        return
+      }
       if (message?.type === "SIGN_OUT") {
         await chrome.storage.local.remove(["accessToken", "orgId", "refreshToken"])
         sendResponse({ ok: true })

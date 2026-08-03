@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Gravitree",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Overlay enrichment and one-click governed CRM actions — same Gravitree catalog, approvals, and Outcomes.",
   "permissions": ["activeTab", "storage", "sidePanel", "scripting"],
   "host_permissions": [

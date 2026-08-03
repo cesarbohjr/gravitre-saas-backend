@@ -221,6 +221,101 @@
           actions.appendChild(btn)
         })
 
+        // v3 — lightweight workflow trigger (chat plan-bar / confirm pattern)
+        const wfBox = el("div", "gvt-row")
+        wfBox.appendChild(el("div", "gvt-label", "Workflows"))
+        const wfStatus = el("p", "gvt-muted", "Loading workflows…")
+        wfBox.appendChild(wfStatus)
+        const wfList = el("div", "gvt-actions")
+        wfBox.appendChild(wfList)
+        body.appendChild(wfBox)
+
+        chrome.runtime.sendMessage({ type: "LIST_WORKFLOWS" }, (wfRes) => {
+          if (!wfRes?.ok) {
+            wfStatus.textContent = wfRes?.error || "Could not load workflows"
+            return
+          }
+          const workflows = wfRes.result?.workflows || []
+          if (!workflows.length) {
+            wfStatus.textContent = "No active multi-step workflows."
+            return
+          }
+          wfStatus.textContent =
+            "Select a workflow — same typed-contract execute path as chat."
+          workflows.slice(0, 5).forEach((wf) => {
+            const btn = el(
+              "button",
+              "gvt-btn secondary",
+              `${wf.name} (${wf.stepCount} steps)`,
+            )
+            btn.type = "button"
+            btn.addEventListener("click", () => {
+              const plan = el("div", "gvt-confirm")
+              plan.appendChild(
+                el("p", null, `Plan: ${wf.name} — approve to run all steps.`),
+              )
+              ;(wf.progressSteps || []).forEach((step, i) => {
+                plan.appendChild(
+                  el(
+                    "div",
+                    "gvt-muted",
+                    `${i + 1}. ${step.name}${step.action ? ` · ${step.action}` : ""}`,
+                  ),
+                )
+              })
+              const row = el("div", "gvt-actions")
+              const yes = el("button", "gvt-btn", "Approve & run workflow")
+              yes.type = "button"
+              const no = el("button", "gvt-btn secondary", "Cancel")
+              no.type = "button"
+              no.addEventListener("click", () => plan.remove())
+              yes.addEventListener("click", () => {
+                yes.disabled = true
+                chrome.runtime.sendMessage(
+                  {
+                    type: "EXECUTE_WORKFLOW",
+                    workflowId: wf.id,
+                    pageUrl,
+                    parameters: {},
+                  },
+                  (pre) => {
+                    if (!pre?.ok || pre.result?.status !== "needs_confirmation") {
+                      yes.disabled = false
+                      status.textContent = pre?.error || "Could not stage workflow"
+                      return
+                    }
+                    const token = pre.result.confirmationToken
+                    chrome.runtime.sendMessage(
+                      {
+                        type: "EXECUTE_WORKFLOW",
+                        confirmationToken: token,
+                        pageUrl,
+                      },
+                      (exec) => {
+                        yes.disabled = false
+                        plan.remove()
+                        if (!exec?.ok) {
+                          status.textContent = exec?.error || "Workflow failed"
+                          return
+                        }
+                        const r = exec.result || {}
+                        status.textContent = r.runId
+                          ? `Workflow ${r.status} — Outcomes/Runs updated.`
+                          : r.error || "Workflow finished"
+                      },
+                    )
+                  },
+                )
+              })
+              row.appendChild(yes)
+              row.appendChild(no)
+              plan.appendChild(row)
+              wfBox.appendChild(plan)
+            })
+            wfList.appendChild(btn)
+          })
+        })
+
         const openApp = el("button", "gvt-btn secondary", "Open in Gravitree")
         openApp.type = "button"
         openApp.addEventListener("click", () => {

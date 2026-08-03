@@ -14,7 +14,9 @@ from app.services.extension_bridge_service import (
     connected_integrations,
     enrich_from_page_context,
     execute_extension_action,
+    list_extension_workflows,
     record_extension_usage_signal,
+    stage_extension_workflow_execute,
 )
 from app.services.tool_types import ToolContext
 
@@ -49,6 +51,14 @@ class UsageSignalBody(BaseModel):
     surface: str | None = None
     invoked: bool = True
     note: str | None = None
+    environment: str = "production"
+
+
+class ExtensionWorkflowBody(BaseModel):
+    workflowId: str
+    parameters: dict[str, Any] = Field(default_factory=dict)
+    pageUrl: str | None = None
+    confirmationToken: str | None = None
     environment: str = "production"
 
 
@@ -162,6 +172,75 @@ async def extension_enrich(
         page_context=body.pageContext or {},
         connected=connected,
     )
+
+
+@router.get("/workflows")
+async def extension_list_workflows(
+    member: Annotated[tuple, Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    environment: str = "production",
+) -> dict[str, Any]:
+    """List active typed workflows for overlay plan-bar triggering."""
+    _user, org_id, _role = member
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    workflows = list_extension_workflows(
+        client, org_id=str(org_id), environment_name=environment or "production"
+    )
+    return {"workflows": workflows, "count": len(workflows)}
+
+
+@router.post("/workflows/execute")
+async def extension_execute_workflow(
+    body: ExtensionWorkflowBody,
+    member: Annotated[tuple, Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Propose or confirm a workflow run via the same path as chat.
+
+    Propose (no token) → durable awaiting_confirm + progressSteps.
+    Confirm (token) → ``_execute_workflow_with_context`` (typed contract + Module A).
+    """
+    user, org_id, _role = member
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org required")
+    user_id = str(user["user_id"])
+    ctx = _tool_context(
+        settings=settings,
+        org_id=str(org_id),
+        user_id=user_id,
+        environment=body.environment,
+    )
+    try:
+        if body.confirmationToken:
+            return execute_extension_action(
+                ctx,
+                org_id=str(org_id),
+                user_id=user_id,
+                action=None,
+                params={},
+                page_url=body.pageUrl,
+                confirmation_token=body.confirmationToken,
+            )
+        return stage_extension_workflow_execute(
+            ctx.client,
+            org_id=str(org_id),
+            user_id=user_id,
+            workflow_id=body.workflowId,
+            parameters=body.parameters or {},
+            page_url=body.pageUrl,
+            environment_name=body.environment or "production",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc)[:500],
+        ) from exc
 
 
 @router.post("/actions/execute")

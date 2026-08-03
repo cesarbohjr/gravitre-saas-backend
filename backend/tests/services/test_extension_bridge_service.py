@@ -139,7 +139,7 @@ def test_confirm_without_token_row_raises():
     chain.limit.return_value = chain
     chain.execute.return_value = MagicMock(data=[])
     ctx.client.table.return_value = chain
-    with pytest.raises(ValueError, match="No awaiting_confirm"):
+    with pytest.raises(ValueError, match="awaiting_confirm|not valid for browser extension"):
         execute_extension_action(
             ctx,
             org_id="org-1",

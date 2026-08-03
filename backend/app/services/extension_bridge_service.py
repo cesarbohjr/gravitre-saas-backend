@@ -511,6 +511,8 @@ def enrich_from_page_context(
 
 EXTENSION_APPROVAL_TYPE = "extension_write"
 EXTENSION_GATE_TYPE = "browser_extension_write"
+EXTENSION_WORKFLOW_APPROVAL_TYPE = "extension_workflow"
+EXTENSION_WORKFLOW_GATE_TYPE = "browser_extension_workflow"
 
 
 def _stage_extension_write_confirmation(
@@ -589,7 +591,7 @@ def _load_extension_pending_confirm(
         client.table("approvals")
         .select("id, org_id, status, requested_by, type, context")
         .eq("org_id", org_id)
-        .eq("type", EXTENSION_APPROVAL_TYPE)
+        .in_("type", [EXTENSION_APPROVAL_TYPE, EXTENSION_WORKFLOW_APPROVAL_TYPE])
         .eq("status", "pending")
         .eq("requested_by", user_id)
         .contains("context", {"confirmation_token": token, "status": "awaiting_confirm"})
@@ -603,13 +605,26 @@ def _load_extension_pending_confirm(
         )
     row = dict(rows[0])
     context = row.get("context") if isinstance(row.get("context"), dict) else {}
-    if str(context.get("gate_type") or "") != EXTENSION_GATE_TYPE:
-        raise ValueError("Confirmation token is not valid for browser extension writes.")
+    gate = str(context.get("gate_type") or "")
+    if gate not in {EXTENSION_GATE_TYPE, EXTENSION_WORKFLOW_GATE_TYPE}:
+        raise ValueError("Confirmation token is not valid for browser extension.")
     if str(context.get("status") or "") != "awaiting_confirm":
         raise ValueError("This write confirmation is no longer awaiting confirm.")
+    pending_type = str(context.get("type") or "")
+    if pending_type == "execute_workflow":
+        return row, {
+            "pending_type": "execute_workflow",
+            "workflow_id": str(context.get("workflow_id") or ""),
+            "workflow_name": context.get("workflow_name"),
+            "args": dict(context.get("args") or {}) if isinstance(context.get("args"), dict) else {},
+            "page_url": context.get("page_url"),
+            "progress_steps": list(context.get("progress_steps") or []),
+            "approval_id": str(row["id"]),
+        }
     action = assert_extension_action(str(context.get("invoke_action") or ""))
     args = context.get("args") if isinstance(context.get("args"), dict) else {}
     return row, {
+        "pending_type": "connector_action",
         "invoke_action": action,
         "args": dict(args),
         "page_url": context.get("page_url"),
@@ -920,6 +935,17 @@ def execute_extension_action(
             user_id=user_id,
             prior_context=prior_context,
         )
+        if pending.get("pending_type") == "execute_workflow":
+            return _run_confirmed_extension_workflow(
+                ctx,
+                org_id=org_id,
+                user_id=user_id,
+                workflow_id=str(pending.get("workflow_id") or ""),
+                parameters=dict(pending.get("args") or {}),
+                page_url=pending.get("page_url") or page_url,
+                approval_id=str(pending["approval_id"]),
+                progress_steps=list(pending.get("progress_steps") or []),
+            )
         return _run_confirmed_extension_action(
             ctx,
             org_id=org_id,
@@ -954,3 +980,234 @@ def execute_extension_action(
         page_url=page_url,
         approval_id=None,
     )
+
+
+def _progress_steps_from_definition(definition: dict[str, Any]) -> list[dict[str, Any]]:
+    steps = definition.get("steps") if isinstance(definition, dict) else None
+    if not isinstance(steps, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for idx, step in enumerate(steps):
+        if not isinstance(step, dict):
+            continue
+        cfg = step.get("config") if isinstance(step.get("config"), dict) else {}
+        out.append(
+            {
+                "index": idx,
+                "id": step.get("id"),
+                "name": step.get("name") or step.get("id") or f"Step {idx + 1}",
+                "type": step.get("type"),
+                "action": cfg.get("action") or cfg.get("invoke_action"),
+                "status": "pending",
+            }
+        )
+    return out
+
+
+def list_extension_workflows(
+    client: Any,
+    *,
+    org_id: str,
+    environment_name: str = "production",
+    limit: int = 20,
+) -> list[dict[str, Any]]:
+    """Active typed workflows with progress-step plans for the overlay."""
+    from app.workflows.repository import get_active_workflow_version, list_workflows
+
+    rows = list_workflows(client, org_id)
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        if str(row.get("status") or "").lower() not in {"active", "published"}:
+            continue
+        wid = str(row.get("id") or "")
+        if not wid:
+            continue
+        active = get_active_workflow_version(client, org_id, wid, environment_name)
+        if not active:
+            continue
+        definition = active.get("definition") if isinstance(active.get("definition"), dict) else {}
+        steps = _progress_steps_from_definition(definition)
+        if len(steps) < 1:
+            continue
+        out.append(
+            {
+                "id": wid,
+                "name": row.get("name") or definition.get("name") or wid,
+                "stepCount": len(steps),
+                "progressSteps": steps,
+                "dialogueMode": "confirm",
+                "pendingTaskType": "execute_workflow",
+            }
+        )
+        if len(out) >= limit:
+            break
+    return out
+
+
+def stage_extension_workflow_execute(
+    client: Any,
+    *,
+    org_id: str,
+    user_id: str,
+    workflow_id: str,
+    parameters: dict[str, Any] | None,
+    page_url: str | None,
+    environment_name: str = "production",
+) -> dict[str, Any]:
+    """Stage execute_workflow awaiting_confirm — mirrors chat react_write_gate pending_task."""
+    import secrets
+
+    from app.services.approval_record_service import create_contract_approval
+    from app.workflows.repository import get_active_workflow_version, get_workflow_def
+
+    wid = str(workflow_id or "").strip()
+    if not wid:
+        raise ValueError("workflow_id is required")
+    wf = get_workflow_def(client, org_id, wid)
+    if not wf:
+        raise ValueError("Workflow not found")
+    active = get_active_workflow_version(client, org_id, wid, environment_name)
+    if not active or not isinstance(active.get("definition"), dict):
+        raise ValueError("No active workflow version")
+    definition = active["definition"]
+    progress = _progress_steps_from_definition(definition)
+    if len(progress) < 1:
+        raise ValueError("Workflow has no executable steps")
+
+    # Typed-contract floor — same validators as POST /api/workflows/execute
+    from app.workflows.policy import validate_execute_steps
+    from app.workflows.schema import validate_definition
+
+    try:
+        validate_definition(definition)
+        validate_execute_steps(definition)
+    except Exception as exc:  # noqa: BLE001
+        raise ValueError(f"Workflow failed typed-contract validation: {exc}") from exc
+
+    confirmation_token = secrets.token_urlsafe(32)
+    name = str(wf.get("name") or definition.get("name") or wid)
+    args = dict(parameters or {})
+    if page_url:
+        args.setdefault("page_url", page_url)
+        args.setdefault("extension_page_url", page_url)
+    pending = {
+        "type": "execute_workflow",
+        "status": "awaiting_confirm",
+        "gate_type": EXTENSION_WORKFLOW_GATE_TYPE,
+        "confirmation_token": confirmation_token,
+        "workflow_id": wid,
+        "workflow_name": name,
+        "invoke_action": "assistant.execute_workflow",
+        "args": args,
+        "page_url": page_url,
+        "progress_steps": progress,
+        "source": "browser_extension",
+        "dialogueMode": "confirm",
+    }
+    row = create_contract_approval(
+        client,
+        org_id=org_id,
+        title=f"Approve workflow: {name}",
+        description=(
+            f"Browser extension proposed workflow '{name}' ({len(progress)} steps). "
+            "Same awaiting_confirm gate as chat execute_workflow."
+        ),
+        approval_type=EXTENSION_WORKFLOW_APPROVAL_TYPE,
+        priority="medium",
+        status="pending",
+        requested_by=user_id,
+        context=pending,
+    )
+    if not row or not row.get("id"):
+        raise ValueError("Could not stage workflow confirmation")
+    return {
+        "status": "needs_confirmation",
+        "pendingTask": {
+            "type": "execute_workflow",
+            "status": "awaiting_confirm",
+            "params": {
+                "workflow_id": wid,
+                "workflow_name": name,
+                "invoke_action": "assistant.execute_workflow",
+                "args": args,
+            },
+        },
+        "dialogueMode": "confirm",
+        "progressSteps": progress,
+        "confirmationToken": confirmation_token,
+        "approvalId": str(row["id"]),
+        "workflowId": wid,
+        "workflowName": name,
+        "message": (
+            "Confirm this workflow run. Execution uses POST /api/workflows/execute "
+            "path (_execute_workflow_with_context) — not a parallel runner."
+        ),
+        "pageUrl": page_url,
+    }
+
+
+def _run_confirmed_extension_workflow(
+    ctx: ToolContext,
+    *,
+    org_id: str,
+    user_id: str,
+    workflow_id: str,
+    parameters: dict[str, Any],
+    page_url: str | None,
+    approval_id: str | None,
+    progress_steps: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Execute via the same _execute_workflow_with_context path chat/schedules use."""
+    from app.config import get_settings
+
+    if not workflow_id:
+        raise ValueError("workflow_id missing from staged confirmation")
+    params = dict(parameters or {})
+    params["source"] = "browser_extension"
+    if page_url:
+        params.setdefault("page_url", page_url)
+    if approval_id:
+        params["extension_approval_id"] = approval_id
+
+    # Lazy import avoids circular import at module load (same pattern as
+    # workflow_schedule_service._execute_scheduled_workflow).
+    from app.routers.workflows import _execute_workflow_with_context
+
+    result = _execute_workflow_with_context(
+        client=ctx.client,
+        settings=get_settings(),
+        org_id=org_id,
+        environment_name=ctx.environment_name or "production",
+        workflow_id=workflow_id,
+        parameters=params,
+        actor_id=user_id,
+        trigger_type="api",
+    )
+    run_id = str(result.get("run_id") or "") or None
+    status = str(result.get("status") or "running")
+    steps_out = list(progress_steps or [])
+    for step in steps_out:
+        if status in {"completed", "failed", "partial_success", "cancelled"}:
+            step["status"] = "completed" if status == "completed" else status
+        elif result.get("queued"):
+            step["status"] = "running"
+        else:
+            step["status"] = "running"
+
+    return {
+        "status": status,
+        "success": status in {"completed", "running", "pending_approval"}
+        or bool(result.get("queued")),
+        "runId": run_id,
+        "outcomeUrl": f"/runs/{run_id}" if run_id else None,
+        "businessOutcomeUrl": f"/outcomes/{run_id}" if run_id else None,
+        "approvalRequired": bool(result.get("approval_required")),
+        "queued": bool(result.get("queued")),
+        "progressSteps": steps_out,
+        "dialogueMode": "progress",
+        "pendingTaskType": "execute_workflow",
+        "workflowId": workflow_id,
+        "source": "browser_extension",
+        "data": result,
+        "error": None if status != "failed" else str(result.get("errors") or "Workflow failed"),
+    }
