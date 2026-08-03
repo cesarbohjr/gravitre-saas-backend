@@ -234,10 +234,12 @@ export function summarizeActivityLog(raw: string): StepActivitySummary {
       .slice(0, 4)
       .map(([key, spec]) => {
         if (spec && typeof spec === "object" && !Array.isArray(spec) && "from_step" in spec) {
-          const path = Array.isArray((spec as { path?: unknown }).path)
-            ? (spec as { path: string[] }).path.join(".")
+          const binding = spec as { from_step?: unknown; path?: unknown }
+          const path = Array.isArray(binding.path)
+            ? binding.path.map(String).join(".")
             : ""
-          return `${humanizeKey(key)} ← ${(spec as { from_step: string }).from_step}${path ? `.${path}` : ""}`
+          const fromStep = String(binding.from_step ?? "")
+          return `${humanizeKey(key)} ← ${fromStep}${path ? `.${path}` : ""}`
         }
         if (typeof spec === "string" && spec.startsWith("$")) {
           return `${humanizeKey(key)} ← run param ${spec}`
