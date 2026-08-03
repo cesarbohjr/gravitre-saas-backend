@@ -18,6 +18,9 @@
 - `python backend/scripts/audit_published_pack_install_ready.py` → **pass=72 fail=0**
 - Artifact: `docs/delivery/published-pack-install-ready-audit.json` (`generatedAt` 2026-08-03T…, `installReadyFail: 0`, `failedSlugs: []`)
 
-**Still needed for marketplace UI:** redeploy tip + re-seed marketplace catalog in prod so published rows pick up remediations (seed audit alone ≠ prod install surface).
+**Prod ship (2026-08-03):**
+- Commit: `a64d91b1` on `main` (ancestor of tip)
+- `/health` git_sha: `bb56894f06673d1c34dacf98481c1894c0e03efe` @ ~2026-08-03T08:02:40Z
+- `python backend/scripts/seed_marketplace.py` → `asset_count: 72`, `pack_item_count: 21`
 
-Status: **PART 2 CODE REMEDIATION COMPLETE** — label as Done for seed gate; prod reseed = follow-up deploy step.
+Status: **PART 2 SHIPPED** — seed gate + prod reseed on tip.
