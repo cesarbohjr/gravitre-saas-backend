@@ -13,23 +13,23 @@ Preview fidelity must match **what is technically renderable** and **what Gravit
 | Output type | Exists? | Format | Surface | Matched preview |
 |-------------|---------|--------|---------|-----------------|
 | Connector write BusinessOutcome | **Yes (dominant)** | DTO: summary, evidence links, verification, timeline | Chat `density=chat`, Activity, Runs | Evidence card |
-| `generate_document` | Ephemeral only | Markdown in tool payload | Artifact preview text | Not a durable file |
+| `generate_document` | **Yes (Phase 2)** | Hosted md/docx/pdf/csv/html + signed download | Chat file chips + Preview/Code | File-reference chip |
 | Artifact registry cards | Yes | Metadata + short preview | Chat fallback when no BO | Link/preview |
 | Lite deliverables | Yes (side) | JSON download | `/lite/deliverables` | Download |
 | Assignments | Yes (side) | Client `.txt` | Assignments UI | Text + download |
 | Admin / metrics CSV | Yes (ops) | CSV | Admin pages | Not assistant output |
 | CodeAct | Yes | Text `repr` preview | Artifact report kind | Text only |
-| Chat-generated chart / HTML / SVG / React | **No** | — | — | — |
+| Chat-generated chart / HTML / SVG / React | **Yes (Phase 3)** | previewHtml + Code tab (SVG charts from analytics/CodeAct; md/html docs) | Chat Preview/Code pane | Preview · Code |
 | Dashboard charts | Yes (product UI) | **recharts** | Home / metrics / CS / intelligence | Not task artifacts |
-| In-app PDF/DOCX viewer | **No** | — | DOCX is RAG ingest only | — |
+| In-app PDF/DOCX viewer | **Partial** | Download chips for generated PDF/DOCX; no full Office WYSIWYG editor | Chat file chips | Download (not Office embed) |
 
 ## Phase decisions
 
 | Phase | Decision | Rationale |
 |-------|----------|-----------|
 | **1 Confirm BusinessOutcome** | **DONE — no rebuild** | Already the correct preview for connector outcomes |
-| **2 File-reference chip** | **SKIP** | No durable hosted file generation from chat |
-| **3 Live Preview/Code** | **SKIP** | No web-renderable chat artifacts; do not add speculative sandbox |
+| **2 File-reference chip** | **BUILT** | `chat_hosted_file_service` persists md/docx/pdf/csv/html; `FileReferenceChip` in tool results + execution panel |
+| **3 Live Preview/Code** | **BUILT** | `PreviewCodePane` (Preview iframe / markdown + Code tab) for documents, analytics SVG charts, CodeAct HTML |
 
 ## Phase 1 confirmation (evidence)
 
@@ -63,8 +63,8 @@ Runs with `verified_output` (Module A substrate for BO projection), including:
 |-------|--------|
 | Phase 0 inventory reported before design | PASS — this doc + canvas |
 | Phase 1 BO path intact (code) | PASS — early-return to `BusinessOutcomeView` |
-| Phase 2 file chip built | N/A — skipped |
-| Phase 3 live render built | N/A — skipped |
+| Phase 2 file chip built | **PASS (code)** — hosted_file artifacts + e2e `hosted_files` |
+| Phase 3 live render built | **PASS (code)** — PreviewCodePane + e2e `preview_code` |
 | Mismatched preview mechanisms added | PASS — none |
 | Product code redeploy required | **No** — documentation-only ship |
 
@@ -126,3 +126,15 @@ Closed open gaps from Phase 1 / reconfirm — matched preview now covers chat ha
 - Export `resolveBusinessOutcome` for unit test
 - Extension overlay API exports `renderBusinessOutcomeCard` / `showExecuteResult` for fixture/reuse
 - v0 IA handoff prompt expanded (`frontend-ia-v0-handoff-prompt.md`)
+
+## Phase 2 + 3 implementation (2026-08-03)
+
+| Phase | Surface | Evidence |
+|-------|---------|----------|
+| 2 File chips | `generate_document` → storage bucket `chat-artifacts` (md/docx/pdf/html + csv when table present) | `backend/app/services/chat_hosted_file_service.py`; UI `file-reference-chip.tsx` |
+| 2 File chips | Analytics chart HTML hosted | `tool_analytics` attaches `hostedFiles` |
+| 3 Preview/Code | Document / chart / CodeAct | `preview-code-pane.tsx` in tool chips + `ChatExecutionPanel` |
+| E2E | Harness scenarios | `hosted_files`, `preview_code` in `e2e/execution-result-navigation.spec.ts` |
+| Config | `CHAT_ARTIFACTS_BUCKET` / `chat_artifacts_bucket` (default `chat-artifacts`), `chat_store_hosted_files` | Create private Supabase bucket in prod for signed downloads |
+
+**Honesty notes:** PDF is text-only (minimal writer, not print-quality). No Claude-style arbitrary React sandbox — Preview is sandboxed `srcDoc` HTML/SVG + markdown. Durable downloads require Supabase Storage bucket provisioning; without it, Preview/Code still works from inline `previewHtml`/`code`.

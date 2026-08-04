@@ -20,6 +20,14 @@ import {
   Play,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+  FileReferenceChipRow,
+  hostedFilesFromUnknown,
+} from "@/components/gravitre/assistant/file-reference-chip"
+import {
+  PreviewCodePane,
+  previewPropsFromToolResult,
+} from "@/components/gravitre/assistant/preview-code-pane"
 
 const toolIcons: Record<string, typeof Database> = {
   searchKnowledgeBase: Search,
@@ -292,8 +300,43 @@ function renderToolDetails(toolName: string, result: unknown) {
       <div className="space-y-1 text-zinc-300">
         <p>Generated: {String(data.title)}</p>
         {data.wordCount != null && <p>Format: Markdown, {String(data.wordCount)} words</p>}
+        <FileReferenceChipRow files={hostedFilesFromUnknown(data)} className="mt-2" />
+        <PreviewCodePane
+          {...(previewPropsFromToolResult(data) || {})}
+          title={String(data.title)}
+          className="mt-2 border-zinc-700 bg-zinc-950/40"
+        />
       </div>
     )
+  }
+
+  if (toolName === "getAnalytics" || toolName === "codeTransform") {
+    const preview = previewPropsFromToolResult(data)
+    const files = hostedFilesFromUnknown(data)
+    if (preview || files.length) {
+      return (
+        <div className="space-y-1 text-zinc-300">
+          {toolName === "getAnalytics" ? (
+            <p>
+              Runs (7d):{" "}
+              {String(
+                (data.last7Days as { totalRuns?: number } | undefined)?.totalRuns ??
+                  "—",
+              )}
+            </p>
+          ) : (
+            <p>{String(data.description || data.preview || "Transform complete")}</p>
+          )}
+          <FileReferenceChipRow files={files} className="mt-2" />
+          {preview ? (
+            <PreviewCodePane
+              {...preview}
+              className="mt-2 border-zinc-700 bg-zinc-950/40"
+            />
+          ) : null}
+        </div>
+      )
+    }
   }
 
   return (

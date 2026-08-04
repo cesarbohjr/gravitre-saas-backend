@@ -69,13 +69,26 @@ class GovernedCodeActService:
         preview = repr(result)
         if len(preview) > 500:
             preview = preview[:497] + "..."
-        return {
+        desc = (description or "").strip() or None
+        payload: dict[str, Any] = {
             "success": True,
-            "description": (description or "").strip() or None,
+            "description": desc,
             "result": result,
             "preview": preview,
             "inputKeys": sorted(data.keys()),
+            "code": (code or "").strip(),
+            "previewFormat": "code",
         }
+        try:
+            from app.services.chat_hosted_file_service import codeact_preview_html
+
+            html_preview = codeact_preview_html(desc, result, preview)
+            if html_preview:
+                payload["previewHtml"] = html_preview
+                payload["previewFormat"] = "html"
+        except Exception:  # noqa: BLE001
+            pass
+        return payload
 
 
 _service: GovernedCodeActService | None = None

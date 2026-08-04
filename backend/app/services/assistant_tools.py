@@ -438,6 +438,36 @@ def tool_analytics(
                 "successRatePercent": success_rate,
             },
         }
+        try:
+            from app.services.chat_hosted_file_service import (
+                get_chat_hosted_file_service,
+                status_breakdown_chart_html,
+            )
+
+            chart_html = status_breakdown_chart_html(
+                "Workflow runs (7d)",
+                status_counts,
+            )
+            code = (
+                "statusBreakdown = "
+                + repr(status_counts)
+                + f"\ntotalRuns = {total_runs}\nsuccessRatePercent = {success_rate!r}\n"
+            )
+            payload["previewHtml"] = chart_html
+            payload["code"] = code
+            payload["previewFormat"] = "html"
+            hosted = get_chat_hosted_file_service().persist_html_chart(
+                client,
+                settings,
+                org_id=org_id,
+                title="workflow-runs-7d",
+                preview_html=chart_html,
+                code=code,
+            )
+            payload["hostedFiles"] = hosted.get("hostedFiles") or []
+            payload["fileId"] = hosted.get("file_id")
+        except Exception as chart_exc:  # noqa: BLE001
+            logger.warning("analytics_preview_host_failed org_id=%s error=%s", org_id, str(chart_exc)[:200])
         return _cache_set(_ANALYTICS_CACHE, cache_key, payload)
     except Exception as exc:  # noqa: BLE001
         logger.warning("assistant analytics tool failed org_id=%s error=%s", org_id, str(exc))
@@ -479,12 +509,43 @@ async def tool_generate_document(org_id: str, query: str, settings: Settings) ->
         content = (result.content or "").strip()
         title_match = re.search(r"^#\s+(.+)$", content, re.MULTILINE)
         title = title_match.group(1).strip() if title_match else topic[:80]
-        return {
+        payload: dict[str, Any] = {
             "title": title,
             "format": "markdown",
             "content": content,
             "wordCount": len(content.split()),
+            "code": content,
+            "previewFormat": "markdown",
         }
+        if content:
+            try:
+                from app.services.chat_hosted_file_service import get_chat_hosted_file_service
+
+                client = get_supabase_client(settings)
+                hosted = get_chat_hosted_file_service().persist_document(
+                    client,
+                    settings,
+                    org_id=org_id,
+                    title=title,
+                    markdown=content,
+                )
+                payload.update(
+                    {
+                        "hostedFiles": hosted.get("hostedFiles") or [],
+                        "previewHtml": hosted.get("previewHtml"),
+                        "fileId": hosted.get("file_id"),
+                    }
+                )
+            except Exception as host_exc:  # noqa: BLE001
+                logger.warning(
+                    "generate_document_host_failed org_id=%s error=%s",
+                    org_id,
+                    str(host_exc)[:200],
+                )
+                from app.services.chat_hosted_file_service import markdown_to_simple_html
+
+                payload["previewHtml"] = markdown_to_simple_html(title, content)
+        return payload
     except Exception as exc:  # noqa: BLE001
         logger.warning("assistant generate_document tool failed org_id=%s error=%s", org_id, str(exc))
         return {"title": topic[:80], "format": "markdown", "content": "", "error": "document generation failed"}

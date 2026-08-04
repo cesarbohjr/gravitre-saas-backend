@@ -1,81 +1,41 @@
 {
-  "probe": "output_preview_fidelity_phase0_phase1_gap_closeout",
+  "probe": "output_preview_fidelity_phase2_phase3_built",
   "date": "2026-08-03",
-  "reconfirmed_at": "2026-08-04T00:08:57Z",
-  "gaps_closed_at": "2026-08-04T00:28:00Z",
+  "built_at": "2026-08-04T01:50:00Z",
   "phase0": {
     "connector_business_outcome": true,
-    "durable_hosted_files": false,
-    "chat_web_renderable_artifacts": false,
-    "in_app_office_viewer": false,
+    "durable_hosted_files": true,
+    "chat_web_renderable_artifacts": true,
+    "in_app_office_viewer": "partial_download_chips_only",
     "dashboard_recharts_exists": true,
-    "generate_document": "ephemeral_markdown_only",
-    "verdict": "Dominant output = BusinessOutcome evidence; skip file chip + Preview/Code"
+    "generate_document": "durable_md_docx_pdf_html_csv_when_table",
+    "verdict": "Phase 2 file chips + Phase 3 Preview/Code built on real generate_document/analytics/CodeAct outputs"
   },
   "phase1": {
     "decision": "confirm_no_rebuild",
-    "chat_path": "ChatExecutionPanel → BusinessOutcomeView density=chat",
-    "activity_path": "activity/page.tsx → BusinessOutcomeView density=timeline",
-    "live_bo_get_export": {
-      "verdict": "PASS",
-      "outcome_id": "95137db3-c760-4334-9b69-277e599351e0",
-      "projection": "business_outcome",
-      "get_export_identical": true,
-      "sections": [
-        "diff",
-        "evidence",
-        "explanation",
-        "metadata",
-        "summary",
-        "timeline",
-        "undo",
-        "verification"
-      ],
-      "title": "Send Gmail message",
-      "kind": "failed_action",
-      "checked_at": "2026-08-04T00:08:57.850288+00:00"
-    },
-    "prior_substrate_sample": {
-      "run_id": "50a34d4c-56eb-4178-aa44-242bd20c2c79",
-      "note": "Module A verified_output on operator cohort (not isolated-org BO id)"
-    },
-    "verdict": "PASS — evidence substrate + BO card is correct preview pattern"
+    "verdict": "PASS — BusinessOutcome remains matched preview for connector writes"
   },
-  "phase2_file_chip": "SKIP",
-  "phase3_live_preview": "SKIP",
-  "gap_closeout": {
-    "extension_bo_renderer": {
-      "verdict": "PASS",
-      "backend": "_project_extension_business_outcome + businessOutcome on execute/workflow response",
-      "urls": "outcomeUrl=/runs/{id}, businessOutcomeUrl=/activity",
-      "overlay": "renderBusinessOutcomeCard in apps/extension/content/shared.js",
-      "fixture_screenshot": "docs/delivery/_artifacts/extension-bo-overlay-fixture.png",
-      "pytest": "tests/services/test_extension_business_outcome_preview.py — 2 passed"
-    },
-    "chat_ui_harness": {
-      "verdict": "PASS",
-      "scenario": "business_outcome",
-      "harness": "/e2e/execution-result?scenario=business_outcome",
-      "dto_id": "run-bo-fixture",
-      "screenshot": "docs/delivery/_artifacts/bo-chat-harness-business-outcome.png",
-      "playwright": "e2e/execution-result-navigation.spec.ts business_outcome — 1 passed",
-      "vitest": "__tests__/assistant/resolve-business-outcome.test.ts — 2 passed"
-    },
-    "authenticated_prod_chat_screenshot": "NOT RUN — login gate; harness covers shared renderer"
+  "phase2_file_chip": {
+    "verdict": "BUILT",
+    "service": "backend/app/services/chat_hosted_file_service.py",
+    "ui": "apps/web/components/gravitre/assistant/file-reference-chip.tsx",
+    "formats": ["md", "docx", "pdf", "html", "csv_when_table"],
+    "bucket": "chat-artifacts",
+    "pytest": "tests/services/test_chat_hosted_file_service.py — 5 passed",
+    "e2e_scenario": "hosted_files"
   },
-  "live_verification": {
-    "checked_at": "2026-08-04T00:08:57Z",
-    "chat_code_path": "PASS",
-    "activity_runs_code_path": "PASS",
-    "bo_api_get_export": "PASS — outcome 95137db3… on tip",
-    "authenticated_ui_screenshot": "PASS (e2e harness) — prod login still NOT RUN",
-    "extension": "PASS — BusinessOutcome card in overlay + fixture screenshot",
-    "api_health_git_sha_at_bo_reconfirm": "b64add73bd2f60500694177386e617bc528bdcf7",
-    "api_health_git_sha_gap_closeout": "e40bf9fe53f103ded02e04cef20c2217f03c42e3",
-    "gap_closeout_commit": "6bfa0417",
-    "gap_closeout_commit_on_tip": true,
-    "mismatched_preview_mechanisms_added": false
+  "phase3_live_preview": {
+    "verdict": "BUILT",
+    "ui": "apps/web/components/gravitre/assistant/preview-code-pane.tsx",
+    "surfaces": ["generateDocument tool chip", "getAnalytics tool chip", "codeTransform tool chip", "ChatExecutionPanel"],
+    "preview": "sandboxed srcDoc HTML/SVG + react-markdown",
+    "code_tab": true,
+    "e2e_scenario": "preview_code",
+    "not_included": "arbitrary React component sandbox"
   },
-  "code_changes": true,
-  "note": "Gap closeout shipped in 6bfa0417; prod /health tip e40bf9fe includes that commit (ancestor). Web harness evidence is local/CI screenshots."
+  "honesty": {
+    "pdf": "minimal text PDF writer — not print-quality Office export",
+    "storage": "signed downloads require Supabase bucket chat-artifacts; Preview/Code works inline without bucket",
+    "office_viewer": "download chips only — no embedded DOCX/PDF WYSIWYG"
+  }
 }

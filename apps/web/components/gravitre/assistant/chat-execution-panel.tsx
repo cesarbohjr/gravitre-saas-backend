@@ -8,6 +8,12 @@ import {
   BusinessOutcomeView,
   type BusinessOutcomeDto,
 } from "@/components/gravitre/business-outcome/business-outcome-view"
+import {
+  FileReferenceChip,
+  FileReferenceChipRow,
+  hostedFilesFromUnknown,
+} from "@/components/gravitre/assistant/file-reference-chip"
+import { PreviewCodePane } from "@/components/gravitre/assistant/preview-code-pane"
 
 export type ChatArtifact = {
   artifact_id?: string
@@ -27,6 +33,13 @@ export type ChatArtifact = {
     runId?: string | null
     conversationId?: string | null
     goal?: string | null
+    role?: string | null
+    byteSize?: number | null
+    durable?: boolean | null
+    previewHtml?: string | null
+    code?: string | null
+    previewFormat?: string | null
+    wordCount?: number | null
   } | null
 }
 
@@ -94,6 +107,15 @@ export type ChatExecutionResult = {
     failureBridge?: PostActionFailureBridge | null
     stepBreakdown?: PostActionStepCard[] | null
     inlinePreview?: boolean
+    hostedFiles?: Array<Record<string, unknown>> | null
+    hosted_files?: Array<Record<string, unknown>> | null
+    previewHtml?: string | null
+    preview_html?: string | null
+    code?: string | null
+    content?: string | null
+    previewFormat?: string | null
+    format?: string | null
+    title?: string | null
   } | null
   what_this_means?: string | null
   recommendation?: PostActionRecommendation | null
@@ -306,47 +328,64 @@ function artifactHref(artifact: ChatArtifact): string | null {
 
 function ArtifactCards({ artifacts }: { artifacts: ChatArtifact[] }) {
   if (!artifacts.length) return null
+  const hosted = artifacts.filter((a) => a.kind === "hosted_file")
+  const other = artifacts.filter((a) => a.kind !== "hosted_file")
   return (
     <div className="mt-3 space-y-2">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Artifacts</p>
-      {artifacts.slice(0, 6).map((artifact) => {
-        const href = artifactHref(artifact)
-        const title = artifact.title || artifact.kind || "Artifact"
-        const preview = artifact.preview?.trim()
-        return (
-          <div
-            key={artifact.artifact_id || artifact.artifactId || title}
-            className="rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-xs"
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium text-foreground">{title}</span>
-              {artifact.kind ? (
-                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                  {artifact.kind}
-                </span>
-              ) : null}
-            </div>
-            {preview ? <p className="mt-1 line-clamp-3 text-muted-foreground">{preview}</p> : null}
-            {href ? (
-              <div className="mt-2 flex flex-wrap gap-2">
-                <Button asChild size="sm" variant="outline" className="h-7 text-xs">
-                  {isExternalUrl(href) ? (
-                    <a href={href} target="_blank" rel="noopener noreferrer">
-                      Open artifact
-                      <ArrowRight className="ml-1.5 h-3 w-3" />
-                    </a>
-                  ) : (
-                    <Link href={href}>
-                      Open artifact
-                      <ArrowRight className="ml-1.5 h-3 w-3" />
-                    </Link>
-                  )}
-                </Button>
+      {hosted.length ? (
+        <div className="space-y-1.5">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Files</p>
+          {hosted.slice(0, 8).map((artifact) => (
+            <FileReferenceChip
+              key={artifact.artifact_id || artifact.artifactId || artifact.title}
+              file={artifact}
+            />
+          ))}
+        </div>
+      ) : null}
+      {other.length ? (
+        <>
+          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Artifacts</p>
+          {other.slice(0, 6).map((artifact) => {
+            const href = artifactHref(artifact)
+            const title = artifact.title || artifact.kind || "Artifact"
+            const preview = artifact.preview?.trim()
+            return (
+              <div
+                key={artifact.artifact_id || artifact.artifactId || title}
+                className="rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-xs"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-foreground">{title}</span>
+                  {artifact.kind ? (
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                      {artifact.kind}
+                    </span>
+                  ) : null}
+                </div>
+                {preview ? <p className="mt-1 line-clamp-3 text-muted-foreground">{preview}</p> : null}
+                {href ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+                      {isExternalUrl(href) ? (
+                        <a href={href} target="_blank" rel="noopener noreferrer">
+                          Open artifact
+                          <ArrowRight className="ml-1.5 h-3 w-3" />
+                        </a>
+                      ) : (
+                        <Link href={href}>
+                          Open artifact
+                          <ArrowRight className="ml-1.5 h-3 w-3" />
+                        </Link>
+                      )}
+                    </Button>
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-          </div>
-        )
-      })}
+            )
+          })}
+        </>
+      ) : null}
     </div>
   )
 }
@@ -533,6 +572,38 @@ export function ChatExecutionPanel({
                 </ul>
               </div>
             ) : null}
+            {(() => {
+              const structured = executionResult.structured || {}
+              const fromStructured = hostedFilesFromUnknown(structured)
+              const previewHtml =
+                structured.previewHtml ||
+                structured.preview_html ||
+                artifacts.find((a) => a.metadata?.previewHtml)?.metadata?.previewHtml ||
+                null
+              const code =
+                structured.code ||
+                structured.content ||
+                artifacts.find((a) => a.metadata?.code)?.metadata?.code ||
+                null
+              const previewFormat =
+                structured.previewFormat ||
+                structured.format ||
+                artifacts.find((a) => a.metadata?.previewFormat)?.metadata?.previewFormat ||
+                null
+              return (
+                <>
+                  {fromStructured.length && !artifacts.some((a) => a.kind === "hosted_file") ? (
+                    <FileReferenceChipRow files={fromStructured} />
+                  ) : null}
+                  <PreviewCodePane
+                    title={structured.title || executionResult.title || "Output"}
+                    code={code}
+                    previewHtml={previewHtml}
+                    previewFormat={previewFormat}
+                  />
+                </>
+              )
+            })()}
             <ArtifactCards artifacts={artifacts} />
             {resultUrl || resolveExternalUrl(executionResult) ? (
               <div className="mt-3 flex flex-wrap gap-2">

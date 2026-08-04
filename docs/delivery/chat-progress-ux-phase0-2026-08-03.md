@@ -10,8 +10,8 @@ Streaming `ResearchPlanPanel` shows stage templates (`Routing tier: research`, `
 ### 2. BusinessOutcome artifact card — YES, already works
 `BusinessOutcomeView` (`density=chat`) renders summary + vendor/Gravitre evidence links from Module A. No rebuild for v1.
 
-### 3. File-type outputs — NO durable hosted files
-`generate_document` is ephemeral markdown preview; vendor links are URL evidence. v2 Phase 2 file-preview cards are scoped out until real file generation exists.
+### 3. File-type outputs — durable hosted files (Phase 2 BUILT 2026-08-03)
+`generate_document` now persists md/docx/pdf/html (+ csv when a markdown table is present) via `chat_hosted_file_service`. File-reference chips + Preview/Code pane ship in chat tool results / execution panel. See `docs/delivery/output-preview-fidelity-2026-08-03.md`.
 
 ### 4. Step-count telemetry (prod, 45d)
 Source: `workflow_runs` where `parameters.source` / `definition_snapshot.source` ∈ `chat_orchestration` | `assistant_chat`.
