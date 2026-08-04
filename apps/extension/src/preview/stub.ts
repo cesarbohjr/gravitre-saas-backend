@@ -10,10 +10,16 @@
 // hosts the shipped extension actually requests.
 import manifest from "../../public/manifest.json"
 
-type Scenario = "connected" | "disconnected"
+// `error` and `slow` exist so the failure and loading paths are reviewable:
+// honest failure is a requirement here, not an edge case, and a state that is
+// never looked at is a state that silently rots.
+type Scenario = "connected" | "disconnected" | "error" | "slow"
 
 const params = new URLSearchParams(location.search)
 const scenario = (params.get("scenario") as Scenario) || "connected"
+
+// `slow` holds every reply open long enough to inspect the loading states.
+const LATENCY = scenario === "slow" ? 100_000 : 350
 
 const SESSION = {
   signedIn: true,
@@ -113,7 +119,7 @@ const chromeStub = {
     sendMessage: (msg: any, cb?: (r: any) => void) => {
       // Async on purpose: the real worker round-trips to FastAPI, so replying
       // synchronously would skip every loading state we need to review.
-      const respond = (r: any) => setTimeout(() => cb?.(r), 350)
+      const respond = (r: any) => setTimeout(() => cb?.(r), LATENCY)
 
       if (msg?.type === "GET_SESSION") {
         if (scenario === "disconnected") {
@@ -123,6 +129,9 @@ const chromeStub = {
       }
 
       if (msg?.type === "ENRICH") {
+        if (scenario === "error") {
+          return respond({ ok: false, error: "Gravitre is unreachable. Check your connection and try again." })
+        }
         if (scenario === "disconnected") {
           // Mirrors the no-connector early return in extension_enrich.
           return respond({
