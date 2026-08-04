@@ -43,6 +43,15 @@ interface AppShellProps {
   title?: string
   /** Vendor key shown beside connector detail breadcrumbs. */
   breadcrumbVendor?: string
+  /**
+   * Opt into the immersive, non-scrolling main region so the page owns its own
+   * internal scroll containers (two-pane inspectors, split views).
+   *
+   * A prop rather than another `pathname === "/x"` check: the shell shouldn't
+   * accumulate per-page knowledge, and this way the behaviour is reusable.
+   * Defaults to false, so every existing page keeps document scrolling.
+   */
+  fillViewport?: boolean
 }
 
 interface BillingStatus extends BillingStatusSnapshot {
@@ -80,7 +89,7 @@ function readNavExpandedPreference(): boolean {
   return localStorage.getItem(NAV_EXPANDED_STORAGE_KEY) === "true"
 }
 
-export function AppShell({ children, title }: AppShellProps) {
+export function AppShell({ children, title, fillViewport = false }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [navExpanded, setNavExpanded] = useState(false)
   const [goalWizardOpen, setGoalWizardOpen] = useState(false)
@@ -417,7 +426,9 @@ export function AppShell({ children, title }: AppShellProps) {
               // flex rows, charts) from forcing the whole viewport wider than
               // the screen on mobile. Wide data views own their own x-scroll.
               "flex min-h-0 min-w-0 flex-1 flex-col",
-              isImmersiveChat ? "overflow-hidden pb-0" : "overflow-y-auto overflow-x-hidden pb-4",
+              isImmersiveChat || fillViewport
+                ? "overflow-hidden pb-0"
+                : "overflow-y-auto overflow-x-hidden pb-4",
             )}
           >
             {children}

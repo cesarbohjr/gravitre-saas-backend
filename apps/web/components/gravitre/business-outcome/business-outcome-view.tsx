@@ -11,10 +11,18 @@
  * DTO already carries (`status` + `sections.verification.verified`).
  */
 
-import type { ReactNode } from "react"
+import { createContext, useContext, useState, type ReactNode } from "react"
 import Link from "next/link"
-import { ArrowRight, ArrowUpRight, CheckCircle2, CircleDashed, ShieldAlert } from "lucide-react"
+import {
+  ArrowRight,
+  ArrowUpRight,
+  CheckCircle2,
+  ChevronDown,
+  CircleDashed,
+  ShieldAlert,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
 
 export type BusinessOutcomeDto = {
@@ -130,12 +138,65 @@ function isExternal(href: string): boolean {
   return href.startsWith("http://") || href.startsWith("https://")
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+/**
+ * Collapsing is opt-in per surface. Chat cards and the export preview must keep
+ * rendering every section expanded (a printed audit trail can't hide behind a
+ * disclosure), so only the `timeline` density turns this on.
+ */
+const SectionCollapseContext = createContext(false)
+
+function Section({
+  title,
+  children,
+  /** Ignored unless the surrounding density enabled collapsing. */
+  defaultOpen = true,
+  /**
+   * Short summary pinned to the trigger (e.g. "4 steps"). Collapsing must not
+   * hide *whether* a section has content — only the content itself.
+   */
+  meta,
+}: {
+  title: string
+  children: ReactNode
+  defaultOpen?: boolean
+  meta?: string
+}) {
+  const collapsible = useContext(SectionCollapseContext)
+  const [open, setOpen] = useState(defaultOpen)
+
+  if (!collapsible) {
+    return (
+      <div className="mt-3">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
+        <div className="mt-1 text-xs text-foreground/90">{children}</div>
+      </div>
+    )
+  }
+
   return (
-    <div className="mt-3">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
-      <div className="mt-1 text-xs text-foreground/90">{children}</div>
-    </div>
+    <Collapsible open={open} onOpenChange={setOpen} className="mt-2 border-t border-border/50 pt-2">
+      <CollapsibleTrigger className="group flex w-full items-center gap-1.5 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <ChevronDown
+          className={cn(
+            "h-3 w-3 shrink-0 text-muted-foreground transition-transform duration-200",
+            !open && "-rotate-90",
+          )}
+          aria-hidden
+        />
+        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground group-hover:text-foreground">
+          {title}
+        </span>
+        {meta ? (
+          <span className="ml-auto shrink-0 text-[10px] tabular-nums text-muted-foreground">{meta}</span>
+        ) : null}
+      </CollapsibleTrigger>
+      {/* collapsible-* (not accordion-*) — Radix only publishes
+          --radix-collapsible-content-height here; the accordion keyframes would
+          animate to `auto` and jump. */}
+      <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+        <div className="mt-1 text-xs text-foreground/90">{children}</div>
+      </CollapsibleContent>
+    </Collapsible>
   )
 }
 
@@ -146,8 +207,11 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
   const state: OutcomeState = failed ? "failed" : verified ? "verified" : "unproven"
   const style = STATE_STYLES[state]
   const Icon = style.icon
+  // Only the inspector surface collapses; chat and export stay fully expanded.
+  const collapsibleSections = density === "timeline"
 
   return (
+    <SectionCollapseContext.Provider value={collapsibleSections}>
     <div
       className={cn(
         // Solid card surface so the evidence receipt stays fully legible on top
@@ -172,7 +236,14 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
           {/* Header: title + glanceable verification status. Requirement #1 —
               a user should register "this really happened, here's proof" before
               reading any detail, so status is a pill up here, not buried below. */}
-          <div className="flex items-start justify-between gap-2">
+          <div
+            className={cn(
+              "flex items-start justify-between gap-2",
+              // In the inspector the card scrolls inside a fixed-height pane, so
+              // pin the identity of what you're reading to the top.
+              collapsibleSections && "sticky top-0 z-10 -mx-0.5 bg-card/95 px-0.5 py-0.5 backdrop-blur-sm",
+            )}
+          >
             <p className="min-w-0 break-words font-medium text-foreground">{outcome.title || "Outcome"}</p>
             <span
               className={cn(
@@ -228,7 +299,7 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
           ) : null}
 
           {sections.explanation ? (
-            <Section title="Explanation">
+            <Section title="Explanation" defaultOpen={false}>
               <p className="whitespace-pre-wrap">{sections.explanation}</p>
             </Section>
           ) : null}
@@ -253,7 +324,11 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
             )
             if (!entries.length) return null
             return (
-              <Section title="Execution proof">
+              <Section
+                title="Execution proof"
+                defaultOpen={false}
+                meta={`${entries.length} field${entries.length === 1 ? "" : "s"}`}
+              >
                 <dl className="space-y-1">
                   {entries.map(([key, value]) => (
                     <div key={key} className="flex gap-2">
@@ -267,7 +342,11 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
           })()}
 
           {sections.timeline?.length ? (
-            <Section title="Timeline">
+            <Section
+              title="Timeline"
+              defaultOpen={false}
+              meta={`${sections.timeline.length} step${sections.timeline.length === 1 ? "" : "s"}`}
+            >
               <ol className="space-y-2">
                 {sections.timeline.map((step) => (
                   <li key={step.index ?? step.label} className="flex gap-2">
@@ -310,7 +389,7 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
           ) : null}
 
           {sections.approval ? (
-            <Section title="Approval">
+            <Section title="Approval" defaultOpen={false} meta={sections.approval.status}>
               <p>
                 {sections.approval.status}
                 {sections.approval.required != null
@@ -321,7 +400,11 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
           ) : null}
 
           {sections.recommendations?.length ? (
-            <Section title="Recommendations">
+            <Section
+              title="Recommendations"
+              defaultOpen={false}
+              meta={`${sections.recommendations.length}`}
+            >
               {sections.recommendations.map((rec) => (
                 <div key={rec.title} className="mt-1 rounded-lg border border-border/60 bg-muted/30 px-2.5 py-2">
                   <p className="font-medium">{rec.title}</p>
@@ -340,7 +423,11 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
           ) : null}
 
           {sections.diff ? (
-            <Section title="Diff">
+            <Section
+              title="Diff"
+              defaultOpen={false}
+              meta={sections.diff.available ? "available" : "none"}
+            >
               {sections.diff.available && sections.diff.prior ? (
                 <pre className="overflow-x-auto rounded bg-muted/40 p-2 text-[10px]">
                   {JSON.stringify(sections.diff.prior, null, 2)}
@@ -352,7 +439,11 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
           ) : null}
 
           {sections.undo ? (
-            <Section title="Undo">
+            <Section
+              title="Undo"
+              defaultOpen={false}
+              meta={sections.undo.available ? "available" : "unavailable"}
+            >
               {sections.undo.available ? (
                 <p>
                   Compensating action available
@@ -374,5 +465,6 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
         </div>
       </div>
     </div>
+    </SectionCollapseContext.Provider>
   )
 }

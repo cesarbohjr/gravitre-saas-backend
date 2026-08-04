@@ -592,6 +592,86 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
     totalRunsThisWeek: 2755,
   },
 
+  // Activity → Failures tab. Spans all four severities so the collapsible
+  // severity groups and the severity filter chips have something to group and
+  // filter; an un-fixtured path returns {} and renders the empty state, which
+  // would verify nothing.
+  "/api/workflows/failure-predictions": {
+    count: 5,
+    alerts: [
+      {
+        id: "fpa_01",
+        workflowId: "wf_lead_intake",
+        stepId: "step_hubspot_upsert",
+        connectorId: "con_hubspot",
+        alertType: "connector_token_expiring",
+        severity: "critical",
+        title: "HubSpot token expires in 26 hours",
+        message:
+          "The HubSpot connector's refresh token expires before the next scheduled run of Lead intake → HubSpot. Re-authorize to avoid a failed write.",
+        confidence: 0.94,
+        status: "open",
+        predictedAt: AGO(42),
+      },
+      {
+        id: "fpa_02",
+        workflowId: "wf_lead_intake",
+        stepId: "step_apollo_enrich",
+        connectorId: "con_apollo",
+        alertType: "rate_limit_projection",
+        severity: "high",
+        title: "Apollo enrichment projected to hit rate limit",
+        message:
+          "Recent runs used 82% of the hourly Apollo quota. The next batch of 400 contacts is projected to exceed it mid-run.",
+        confidence: 0.78,
+        status: "open",
+        predictedAt: AGO(96),
+      },
+      {
+        id: "fpa_03",
+        workflowId: "wf_weekly_digest",
+        stepId: "step_send_summary",
+        connectorId: "con_slack",
+        alertType: "recent_failure_pattern",
+        severity: "high",
+        title: "Slack delivery failed twice this week",
+        message:
+          "Two of the last five Weekly digest runs failed posting to #revenue-ops. The channel may have been archived or the app removed.",
+        confidence: 0.71,
+        status: "open",
+        predictedAt: AGO(180),
+      },
+      {
+        id: "fpa_04",
+        workflowId: "wf_invoice_sync",
+        stepId: "step_quickbooks_match",
+        connectorId: "con_quickbooks",
+        alertType: "schema_drift",
+        severity: "medium",
+        title: "QuickBooks custom field renamed",
+        message:
+          "The field this step maps to (po_number) no longer appears in the connector schema. Runs will complete but leave the value empty.",
+        confidence: 0.62,
+        status: "open",
+        predictedAt: AGO(420),
+      },
+      {
+        id: "fpa_05",
+        workflowId: "wf_weekly_digest",
+        stepId: null,
+        connectorId: null,
+        alertType: "long_running_trend",
+        severity: "low",
+        title: "Runtime trending up 18% week over week",
+        message:
+          "Weekly digest is taking longer each run. Not failing yet, but worth reviewing before the dataset grows further.",
+        confidence: 0.44,
+        status: "open",
+        predictedAt: AGO(600),
+      },
+    ],
+  },
+
   // Drives the chat landing surface: buildOrgSearchChips() turns these counts
   // and names into the suggestion chips, so an empty payload here yields the
   // generic fallback chips instead of org-specific ones.
