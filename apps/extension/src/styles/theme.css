@@ -44,6 +44,13 @@
   --info: oklch(0.55 0.2 250);
   --info-foreground: oklch(0.99 0 0);
   --radius: 0.625rem;
+  /* Tile behind vendor logos. Official brand marks are fixed colours we must
+     not alter, and several are near-black (GitHub, Notion) or dark teal
+     (Zendesk) — they disappear on a dark panel. This stays light in EVERY
+     theme (deliberately not overridden in the dark blocks below) so every
+     mark keeps its contrast and all vendors are presented identically. */
+  --vendor-surface: oklch(1 0 0);
+  --vendor-surface-border: oklch(0.18 0.02 160 / 0.12);
   --elevation-1: 0 1px 2px -1px oklch(0.18 0.02 160 / 0.08), 0 1px 3px oklch(0.18 0.02 160 / 0.06);
   --elevation-2: 0 2px 4px -2px oklch(0.18 0.02 160 / 0.08), 0 4px 12px -2px oklch(0.18 0.02 160 / 0.08);
   --elevation-3: 0 8px 24px -6px oklch(0.18 0.02 160 / 0.12), 0 2px 6px -2px oklch(0.18 0.02 160 / 0.08);
@@ -144,6 +151,8 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
+  --color-vendor-surface: var(--vendor-surface);
+  --color-vendor-surface-border: var(--vendor-surface-border);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

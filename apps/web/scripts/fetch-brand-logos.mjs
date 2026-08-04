@@ -20,8 +20,102 @@ import * as simpleIcons from "simple-icons"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const webRoot = join(__dirname, "..")
+const extRoot = join(webRoot, "..", "extension")
 const outDir = join(webRoot, "public", "brand-logos")
 const manifestPath = join(webRoot, "lib", "brand-logos-manifest.json")
+
+// ---------------------------------------------------------------------------
+// Vendor logos (full-colour official marks, from theSVG.org)
+// ---------------------------------------------------------------------------
+// Simple Icons ships single-path monochrome glyphs, and several of the vendors
+// the browser extension actually detects (Slack, Salesforce, LinkedIn, Outlook,
+// Microsoft) are absent from it entirely because those companies asked to be
+// delisted. Mixing "monochrome where available, initials where not" is what the
+// extension shipped before, and it reads as unfinished.
+//
+// So the extension's connector icons come from ONE source instead: theSVG's
+// official full-colour marks. Same provenance for every vendor means one
+// consistent scheme across the popup, side panel and overlay.
+//
+// Marks are stored byte-for-byte as published — never recoloured, cropped or
+// composed — and are used nominatively to identify a real integration.
+// Trademarks remain the property of their respective owners; review each
+// brand's usage guidelines before shipping commercially.
+const THESVG_CDN = "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons"
+
+// vendorKey -> theSVG slug. Only vendors the extension can surface, to keep the
+// shipped extension bundle small.
+const VENDOR_LOGOS = {
+  hubspot: "hubspot",
+  apollo: "apollodotio",
+  salesforce: "salesforce",
+  slack: "slack",
+  linkedin: "linkedin",
+  gmail: "gmail",
+  outlook: "microsoft-outlook",
+  google: "google",
+  microsoft365: "microsoft",
+  notion: "notion",
+  pipedrive: "pipedrive",
+  zendesk: "zendesk",
+  intercom: "intercom",
+  stripe: "stripe",
+  jira: "jira",
+  asana: "asana",
+  github: "github",
+}
+
+// Emitted to both apps so the two surfaces can never drift apart.
+//
+// The web app serves them statically from /public. The extension instead keeps
+// them under src/assets so they get INLINED into the bundle: the overlay is a
+// content script running on somebody else's page, where a root-relative path
+// would resolve against the host site, and an extension:// asset URL would need
+// web_accessible_resources and could still be blocked by the host page's own
+// CSP. Inlining sidesteps all three problems.
+const VENDOR_OUT_DIRS = [
+  join(webRoot, "public", "vendor-logos"),
+  join(extRoot, "src", "assets", "vendor-logos"),
+]
+
+const VENDOR_MANIFESTS = [
+  join(webRoot, "lib", "vendor-logos-manifest.json"),
+  join(extRoot, "src", "lib", "vendor-logos-manifest.json"),
+]
+
+async function fetchVendorLogos() {
+  for (const dir of VENDOR_OUT_DIRS) await mkdir(dir, { recursive: true })
+
+  const manifest = {}
+  const failed = []
+
+  for (const [vendorKey, slug] of Object.entries(VENDOR_LOGOS)) {
+    const url = `${THESVG_CDN}/${slug}/default.svg`
+    try {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const svg = await res.text()
+      // Guard against a CDN error page being written out as a logo.
+      if (!svg.trimStart().startsWith("<svg") || svg.length < 80) {
+        throw new Error("not an SVG")
+      }
+      for (const dir of VENDOR_OUT_DIRS) {
+        await writeFile(join(dir, `${vendorKey}.svg`), svg, "utf8")
+      }
+      manifest[vendorKey] = `${vendorKey}.svg`
+    } catch (err) {
+      failed.push(`${vendorKey} (${slug}): ${err.message}`)
+    }
+  }
+
+  for (const path of VENDOR_MANIFESTS) {
+    await writeFile(path, JSON.stringify(manifest, null, 2) + "\n", "utf8")
+  }
+
+  console.log(`\nVendor logos ${Object.keys(manifest).length}/${Object.keys(VENDOR_LOGOS).length}:`, Object.keys(manifest).join(", "))
+  if (failed.length) console.error(`Vendor logo failures:\n  ${failed.join("\n  ")}`)
+  return failed.length === 0
+}
 
 // vendorKey (as resolved by lib/connectors connectorVendorKey) -> Simple Icons slug.
 // Where omitted, the slug equals the vendorKey with separators stripped.
@@ -109,6 +203,10 @@ async function main() {
   await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + "\n", "utf8")
   console.log(`Vendored ${Object.keys(manifest).length}:`, Object.keys(manifest).join(", "))
   console.log(`\nSkipped ${skipped.length} (fall back to inline/initials):`, skipped.join(", "))
+
+  // A half-written vendor set would silently ship blank icons, so fail loudly.
+  const ok = await fetchVendorLogos()
+  if (!ok) process.exit(1)
 }
 
 main().catch((err) => {

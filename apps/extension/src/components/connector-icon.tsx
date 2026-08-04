@@ -2,6 +2,7 @@ import { Building2, Linkedin, Mail, Slack, Cloud } from "lucide-react"
 
 import { cn } from "@/lib/cn"
 import type { Surface } from "@/lib/types"
+import { VendorLogo, hasVendorLogo } from "@/components/vendor-logo"
 
 /**
  * Icon language (Part E.3).
@@ -29,6 +30,13 @@ export function SurfaceIcon({
   surface: Surface
   className?: string
 }) {
+  // A detected surface IS a vendor ("LinkedIn profile", "Gmail thread"), so show
+  // that vendor's real mark. `company`/`unknown` have no vendor and keep the
+  // Lucide glyph.
+  if (hasVendorLogo(surface)) {
+    return <VendorLogo name={surface} className={cn("h-3.5 w-3.5", className)} />
+  }
+
   const Icon = SURFACE_ICONS[surface] ?? Building2
   return <Icon aria-hidden="true" className={cn("h-3.5 w-3.5", className)} />
 }
@@ -59,23 +67,64 @@ function toneFor(name: string) {
  * "Google ads". Server ids are snake_cased, and raw ids in the UI read like
  * debug output.
  */
+/**
+ * Vendors that don't survive naive capitalisation. Showing "Hubspot" or
+ * "Linkedin" next to the official mark reads as careless, and these names are
+ * the load-bearing detail on the approval card.
+ */
+const PROPER_NAMES: Record<string, string> = {
+  hubspot: "HubSpot",
+  linkedin: "LinkedIn",
+  github: "GitHub",
+  microsoft365: "Microsoft 365",
+  salesforce: "Salesforce",
+  pipedrive: "Pipedrive",
+  zendesk: "Zendesk",
+  gmail: "Gmail",
+  outlook: "Outlook",
+  jira: "Jira",
+  clickup: "ClickUp",
+  bamboohr: "BambooHR",
+  quickbooks: "QuickBooks",
+  netsuite: "NetSuite",
+  sendgrid: "SendGrid",
+  stackadapt: "StackAdapt",
+  postgresql: "PostgreSQL",
+  mongodb: "MongoDB",
+  mysql: "MySQL",
+  openai: "OpenAI",
+  xai: "xAI",
+  n8n: "n8n",
+}
+
 export function connectorLabel(name: string): string {
-  const label = String(name || "").replace(/[_-]/g, " ").trim()
-  if (!label) return "Connector"
+  const raw = String(name || "").trim()
+  if (!raw) return "Connector"
+
+  const key = raw.toLowerCase().replace(/[^a-z0-9]/g, "")
+  if (PROPER_NAMES[key]) return PROPER_NAMES[key]
+
+  const label = raw.replace(/[_-]/g, " ")
   return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
 /**
- * Monogram mark for a connector. Vendors like HubSpot and Apollo have no
- * Lucide glyph, and tracing their logos would be both inconsistent with the
- * app's Lucide set and a licensing question, so a tinted monogram carries the
- * recognition instead.
+ * Mark for a connector: the official vendor logo where we have one, and a
+ * tinted monogram otherwise.
+ *
+ * This used to be monogram-only. That made every connector look alike at a
+ * glance, which is a real problem on the approval card where the vendor is the
+ * single most important thing to read before a write goes out.
  */
 export function ConnectorIcon({
   name,
   className,
   ...rest
 }: { name: string; className?: string } & React.HTMLAttributes<HTMLSpanElement>) {
+  if (hasVendorLogo(name)) {
+    return <VendorLogo name={name} className={className} />
+  }
+
   return (
     <span
       {...rest}
@@ -114,5 +163,6 @@ export function ConnectorChip({ name }: { name: string }) {
  */
 export function vendorOf(invokeAction: string): string {
   const first = String(invokeAction || "").split(".")[0]
-  return first ? first.charAt(0).toUpperCase() + first.slice(1) : "Connector"
+  // Shares connectorLabel so the approval card says "HubSpot", not "Hubspot".
+  return first ? connectorLabel(first) : "Connector"
 }
