@@ -1,0 +1,241 @@
+{
+  "ticket": "STA-337",
+  "generated_at": "2026-08-04T00:38:50.924895+00:00",
+  "prod_tip_at_run": "b64add73bd2f60500694177386e617bc528bdcf7",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
+  "live_pass_claimed": false,
+  "connectors": {
+    "google_ads": {
+      "id": "a726bcae-9710-45fd-bec2-5667c4f22686",
+      "type": "google_ads",
+      "status": "healthy"
+    },
+    "google_analytics": null,
+    "microsoft365": {
+      "id": "bcd1645e-b099-41f8-bb78-9d6e5273cbf2",
+      "type": "microsoft365",
+      "status": "healthy"
+    }
+  },
+  "invokes": {
+    "googleads.campaigns.list": {
+      "success": true,
+      "error_code": null,
+      "error_message": "",
+      "action_stamp": "googleads.campaigns.list",
+      "data_keys": [
+        "campaigns",
+        "result_url"
+      ],
+      "result_url": "https://ads.google.com/aw/campaigns?ocid=6813067107",
+      "accepted_async": null,
+      "outcome_effect": null,
+      "entity_id": null,
+      "raw_snippet": {
+        "campaigns": [],
+        "result_url": "https://ads.google.com/aw/campaigns?ocid=6813067107"
+      },
+      "campaign_count": 0,
+      "mutate_target": null,
+      "prior_status": null
+    },
+    "microsoft365.calendar.events.create": {
+      "success": true,
+      "error_code": null,
+      "error_message": "",
+      "action_stamp": "microsoft365.calendar.events.create",
+      "data_keys": [
+        "@odata.context",
+        "@odata.etag",
+        "allowNewTimeProposals",
+        "attendees",
+        "body",
+        "bodyPreview",
+        "categories",
+        "changeKey",
+        "createdDateTime",
+        "end",
+        "hasAttachments",
+        "hideAttendees",
+        "iCalUId",
+        "id",
+        "importance",
+        "isAllDay",
+        "isCancelled",
+        "isDraft",
+        "isOnlineMeeting",
+        "isOrganizer",
+        "isReminderOn",
+        "lastModifiedDateTime",
+        "location",
+        "locations",
+        "occurrenceId",
+        "onlineMeeting",
+        "onlineMeetingProvider",
+        "onlineMeetingUrl",
+        "organizer",
+        "originalEndTimeZone",
+        "originalStartTimeZone",
+        "recurrence",
+        "reminderMinutesBeforeStart",
+        "responseRequested",
+        "responseStatus",
+        "sensitivity",
+        "seriesMasterId",
+        "showAs",
+        "start",
+        "subject",
+        "transactionId",
+        "type",
+        "uid",
+        "webLink"
+      ],
+      "result_url": null,
+      "accepted_async": null,
+      "outcome_effect": null,
+      "entity_id": "AQMkADAwATM3ZmYAZS05ZjI3LWE3ZDAtMDACLTAwCgBGAAADd42eeif2CkCHAwuoaHVtAQcAQwteiooAqHlBoQinqv8AySYAAAIBDQAAAEMLXoqKAKh5QaEIp6r-AMkmAAn05ToJAAAA",
+      "raw_snippet": {
+        "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users('outlook_14978110A2166EDD%40outlook.com')/calendar/events/$entity",
+        "@odata.etag": "W/\"QwteioqoeUGhCKeq/wDJJgAJ9Qsxmg==\"",
+        "id": "AQMkADAwATM3ZmYAZS05ZjI3LWE3ZDAtMDACLTAwCgBGAAADd42eeif2CkCHAwuoaHVtAQcAQwteiooAqHlBoQinqv8AySYAAAIBDQAAAEMLXoqKAKh5QaEIp6r-AMkmAAn05ToJAAAA",
+        "createdDateTime": "2026-08-04T00:38:59.1310082Z",
+        "lastModifiedDateTime": "2026-08-04T00:38:59.2900729Z",
+        "changeKey": "QwteioqoeUGhCKeq/wDJJgAJ9Qsxmg==",
+        "categories": [],
+        "transactionId": null,
+        "originalStartTimeZone": "UTC",
+        "originalEndTimeZone": "UTC",
+        "iCalUId": "040000008200E00074C5B7101A82E0080000000086F58CA3A923DD010000000000000000100000002FD35E13075AF441A4A8EE2C0509D3BF",
+        "uid": "040000008200E00074C5B7101A82E0080000000086F58CA3A923DD010000000000000000100000002FD35E13075AF441A4A8EE2C0509D3BF"
+      }
+    },
+    "outlook.messages.send": {
+      "success": true,
+      "error_code": null,
+      "error_message": "",
+      "action_stamp": "microsoft365.mail.send",
+      "data_keys": [
+        "accepted_async",
+        "outcome_effect",
+        "result_url",
+        "status",
+        "subject",
+        "to_recipients"
+      ],
+      "result_url": "https://outlook.office.com/mail/",
+      "accepted_async": true,
+      "outcome_effect": "accepted_async",
+      "entity_id": null,
+      "raw_snippet": {
+        "accepted_async": true,
+        "outcome_effect": "accepted_async",
+        "status": "accepted",
+        "result_url": "https://outlook.office.com/mail/",
+        "subject": "STA-337 honesty probe 0fd1330c",
+        "to_recipients": [
+          "cesar.bohorquez.jr@gmail.com"
+        ]
+      }
+    },
+    "microsoft365.mail.send": {
+      "success": true,
+      "error_code": null,
+      "error_message": "",
+      "action_stamp": "microsoft365.mail.send",
+      "data_keys": [
+        "accepted_async",
+        "outcome_effect",
+        "result_url",
+        "status",
+        "subject",
+        "to_recipients"
+      ],
+      "result_url": "https://outlook.office.com/mail/",
+      "accepted_async": true,
+      "outcome_effect": "accepted_async",
+      "entity_id": null,
+      "raw_snippet": {
+        "accepted_async": true,
+        "outcome_effect": "accepted_async",
+        "status": "accepted",
+        "result_url": "https://outlook.office.com/mail/",
+        "subject": "STA-337 M365 native send 05e46a46",
+        "to_recipients": [
+          "cesar.bohorquez.jr@gmail.com"
+        ]
+      }
+    }
+  },
+  "audits": {
+    "google_ads": [
+      {
+        "id": "40b81301-a33a-412e-982c-297c40b7891f",
+        "action": "tool.invoke.completed",
+        "created_at": "2026-08-04T00:38:56.817199+00:00",
+        "tool": "googleads.campaigns.list"
+      },
+      {
+        "id": "51c0c348-cf28-42b8-9bc0-01e19c2a8256",
+        "action": "tool.invoke.requested",
+        "created_at": "2026-08-04T00:38:55.204378+00:00",
+        "tool": "googleads.campaigns.list"
+      }
+    ],
+    "microsoft365": [
+      {
+        "id": "04783a63-fa88-4e7f-bdb4-87c2bda1b2f9",
+        "action": "tool.invoke.completed",
+        "created_at": "2026-08-04T00:39:11.236393+00:00",
+        "tool": "microsoft365.mail.send"
+      },
+      {
+        "id": "266d9739-6703-40af-9897-72b7351d8b06",
+        "action": "tool.invoke.requested",
+        "created_at": "2026-08-04T00:39:09.627452+00:00",
+        "tool": "microsoft365.mail.send"
+      },
+      {
+        "id": "3c512617-d6df-4648-a203-47c43ef53781",
+        "action": "tool.invoke.completed",
+        "created_at": "2026-08-04T00:38:59.607936+00:00",
+        "tool": "microsoft365.calendar.events.create"
+      },
+      {
+        "id": "8887501a-2ba1-4ccc-8530-072e01310c24",
+        "action": "tool.invoke.requested",
+        "created_at": "2026-08-04T00:38:57.879363+00:00",
+        "tool": "microsoft365.calendar.events.create"
+      },
+      {
+        "id": "ccf33ac7-075c-4115-ac85-691ce1250ad4",
+        "action": "tool.invoke.completed",
+        "created_at": "2026-08-04T00:39:09.178403+00:00",
+        "tool": "outlook.messages.send"
+      },
+      {
+        "id": "aab5a9c1-18b0-44ed-9f9f-7c971bb1d9f1",
+        "action": "tool.invoke.requested",
+        "created_at": "2026-08-04T00:39:00.299278+00:00",
+        "tool": "outlook.messages.send"
+      }
+    ]
+  },
+  "verdicts": {
+    "google_ads": "PARTIAL \u2014 list ok; mutate incomplete",
+    "google_analytics": "NOT RUN \u2014 no google_analytics/ga4 connector in any smoke path",
+    "microsoft365": "PASS"
+  },
+  "notes": [
+    "Ads mutate skipped \u2014 no campaign id from list or STA337_ALLOW_ADS_MUTATE=0",
+    "Prod has zero google_analytics connectors (org-wide check prior)."
+  ],
+  "mail_to": "cesar.bohorquez.jr@gmail.com",
+  "overall": {
+    "google_ads": "PARTIAL \u2014 list ok; mutate incomplete",
+    "google_analytics": "NOT RUN \u2014 no google_analytics/ga4 connector in any smoke path",
+    "microsoft365": "PASS",
+    "live_pass_claimed": false,
+    "honesty_gates_still_required_for_ga": true
+  }
+}

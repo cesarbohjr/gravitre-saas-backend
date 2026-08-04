@@ -48,14 +48,17 @@ def test_manual_setup_required_for_ga_when_required():
     assert any(m["connector"] == "google_analytics" for m in merged["manualSetupRequired"])
 
 
-def test_manual_setup_required_for_microsoft365_when_required():
+def test_microsoft365_cleared_from_honesty_gate_after_sta337_live_pass():
     asset = {
         "asset_type": "workflow",
         "config": {"schema_version": "2025.1", "steps": [{"id": "a", "name": "A", "type": "noop", "config": {}}]},
         "install_variables": [],
         "required_connectors": [
             {"connectorType": "microsoft365", "required": True, "label": "M365"},
+            {"connectorType": "google_ads", "required": True, "label": "Ads"},
         ],
     }
     merged = merge_install_ready(connector_can_install=True, asset=asset)
-    assert any(m["connector"] == "microsoft365" for m in merged["manualSetupRequired"])
+    connectors = {m["connector"] for m in merged["manualSetupRequired"]}
+    assert "microsoft365" not in connectors
+    assert "google_ads" in connectors

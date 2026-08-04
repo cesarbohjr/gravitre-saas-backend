@@ -228,6 +228,12 @@ def _exec_m365_calendar_events_create(ctx: ToolContext, params: dict[str, Any]) 
         )
     except Microsoft365APIError as exc:
         raise _vendor_api_error(exc, "microsoft365") from exc
+    if isinstance(data, dict):
+        data = dict(data)
+        if data.get("webLink") and not data.get("result_url"):
+            data["result_url"] = str(data["webLink"])
+        if data.get("id") and not data.get("entity_id"):
+            data["entity_id"] = str(data["id"])
     return NormalizedResult(success=True, action="microsoft365.calendar.events.create", connector_id=cid, data=data)
 
 

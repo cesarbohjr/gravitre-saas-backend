@@ -62,6 +62,38 @@ def test_list_campaigns_builds_fixed_query(monkeypatch):
     assert "result_url" in rows[0]
 
 
+def test_search_omits_page_size(monkeypatch):
+    """Ads API v25 rejects pageSize (PAGE_SIZE_NOT_SUPPORTED)."""
+    from app.connectors import google_ads as ads
+
+    captured: dict = {}
+
+    class _Resp:
+        status_code = 200
+        text = "{}"
+
+        def json(self):
+            return {"results": []}
+
+    class _Client:
+        def __init__(self, *a, **k):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def post(self, url, headers=None, json=None):
+            captured["json"] = json
+            return _Resp()
+
+    monkeypatch.setattr(ads.httpx, "Client", _Client)
+    ads._search("token", "1234567890", "SELECT campaign.id FROM campaign", developer_token="dev")
+    assert "pageSize" not in (captured.get("json") or {})
+
+
 def test_performance_report_rejects_injected_campaign_id():
     with pytest.raises(GoogleAdsAPIError, match="numeric"):
         performance_report(
