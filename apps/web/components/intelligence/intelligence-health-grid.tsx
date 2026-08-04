@@ -151,7 +151,7 @@ export function IntelligenceHealthGrid({ orgScopedKey }: { orgScopedKey: string 
           {domainLoading ? (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 3 }).map((_, i) => (
-                <CardSkeleton key={i} showIcon={false} lines={4} />
+                <CardSkeleton key={i} showIcon={false} lines={3} />
               ))}
             </div>
           ) : domains.length ? (
@@ -161,7 +161,9 @@ export function IntelligenceHealthGrid({ orgScopedKey }: { orgScopedKey: string 
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Domain health unavailable — insufficient_data.</p>
+            <p className="text-sm text-muted-foreground">
+              Domain health unavailable — not enough data yet.
+            </p>
           )}
         </div>
       ) : (

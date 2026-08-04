@@ -163,7 +163,7 @@ export function ExecutiveIntelligenceScorecard({ orgScopedKey }: { orgScopedKey:
                 ))}
               </ul>
             ) : (
-              <span>— insufficient_data</span>
+              <span>Not enough data yet</span>
             )}
           </CardContent>
         </Card>
@@ -183,7 +183,7 @@ export function ExecutiveIntelligenceScorecard({ orgScopedKey }: { orgScopedKey:
                 ))}
               </ul>
             ) : (
-              <span className="text-muted-foreground">— insufficient_data</span>
+              <span className="text-muted-foreground">No domains need attention</span>
             )}
           </CardContent>
         </Card>

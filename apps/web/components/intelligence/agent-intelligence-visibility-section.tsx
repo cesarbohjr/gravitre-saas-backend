@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LearningConfidenceBadge } from "@/components/intelligence/learning-confidence-badge"
 import { AdvisoryOnlyNote } from "@/components/intelligence/advisory-only-note"
+import { CardSkeleton } from "@/components/gravitre/loading-state"
 import { intelligenceApi } from "@/lib/api"
 import { formatPercent, readNumber, readString } from "@/lib/intelligence/helpers"
 import {
@@ -52,7 +53,11 @@ export function AgentIntelligenceVisibilitySection({
       ) : null}
 
       {isLoading && !profile ? (
-        <p className="text-sm text-muted-foreground">Loading agent intelligence visibility…</p>
+        <div className={`grid gap-3 ${compact ? "sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
+          {Array.from({ length: compact ? 4 : 6 }).map((_, i) => (
+            <CardSkeleton key={i} showIcon={false} showBadges={false} lines={2} />
+          ))}
+        </div>
       ) : (
         <div className={`grid gap-3 ${compact ? "sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
           <Card className="border-border/70">
@@ -117,7 +122,7 @@ export function AgentIntelligenceVisibilitySection({
                   </p>
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground">— insufficient_data</p>
+                <p className="text-sm text-muted-foreground">Not enough data yet</p>
               )}
             </CardContent>
           </Card>
@@ -136,8 +141,10 @@ export function AgentIntelligenceVisibilitySection({
                 </p>
               ) : (
                 <p className="text-muted-foreground">
-                  — insufficient_data
-                  {outcome?.events_found != null ? ` (${outcome.events_found}/${outcome.min_required ?? 5} events)` : ""}
+                  Not enough data yet
+                  {outcome?.events_found != null
+                    ? ` — ${outcome.events_found} of ${outcome.min_required ?? 5} events needed`
+                    : ""}
                 </p>
               )}
             </CardContent>

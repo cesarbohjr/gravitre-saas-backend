@@ -47,9 +47,11 @@ export function SimulationCard({
         <Badge
           variant="outline"
           className={cn(
+            // Reversibility is a risk signal: safe to undo (success) vs
+            // potentially permanent (warning — it's a caution, not a failure).
             reversible
-              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
-              : "border-rose-500/30 bg-rose-500/10 text-rose-800 dark:text-rose-300",
+              ? "border-success/30 bg-success/10 text-success"
+              : "border-warning/30 bg-warning/10 text-warning",
           )}
         >
           <ShieldCheck className="mr-1 h-3.5 w-3.5" weight="duotone" aria-hidden />

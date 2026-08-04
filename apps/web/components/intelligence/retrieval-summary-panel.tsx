@@ -14,7 +14,9 @@ export function RetrievalSummaryPanel({
   if (!summary || Object.keys(summary).length === 0) {
     return (
       <div className={className}>
-        <p className="text-xs text-muted-foreground">Retrieval summary unavailable — insufficient_data.</p>
+        <p className="text-xs text-muted-foreground">
+          Retrieval summary unavailable — not enough data yet.
+        </p>
       </div>
     )
   }

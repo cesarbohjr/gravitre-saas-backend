@@ -7,7 +7,7 @@ export function IntelligenceSparkline({
   data,
   dataKey = "value",
   className,
-  strokeClassName = "stroke-emerald-500",
+  strokeClassName = "text-primary",
 }: {
   data: Array<Record<string, number | string>>
   dataKey?: string
@@ -29,7 +29,11 @@ export function IntelligenceSparkline({
             strokeWidth={2}
             dot={false}
             isAnimationActive={false}
-            className={cn("text-emerald-500", strokeClassName)}
+            // The line paints with `currentColor`, so the color must come from a
+            // `text-*` class. The old default was `stroke-emerald-500`, which
+            // could never take effect — the hardcoded `text-emerald-500` here
+            // always won, silently ignoring any caller override.
+            className={strokeClassName}
           />
         </LineChart>
       </ResponsiveContainer>
