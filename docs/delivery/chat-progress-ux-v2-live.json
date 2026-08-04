@@ -1,18 +1,18 @@
 {
   "probe": "chat_progress_ux_v1_v2_live",
-  "checked_at": "2026-08-04T21:25:23.214438+00:00",
+  "checked_at": "2026-08-04T21:48:50.126095+00:00",
   "base_url": "https://api.gravitre.app",
   "min_commit": "1fea14ff",
   "threshold": 3,
   "health": {
     "http": 200,
-    "git_sha": "ad9ed303cede30c8b4b16d5161c0dc068e4b488e"
+    "git_sha": "45b013b8e66af6ae985ac0f8a5721c7f1b980141"
   },
   "tip_includes_progress_ux": true,
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "user_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
   "seeded_multi_step": {
-    "conversation_id": "87b000d8-7b81-49c1-aa51-1b62ec299910",
+    "conversation_id": "a9f2cc84-7efc-4b8f-ba6e-5d5f6a63bb7c",
     "step_count": 3,
     "labels": [
       "Create contact list",
@@ -27,7 +27,7 @@
   },
   "under_threshold": {
     "verdict": "PASS",
-    "conversation_id": "01675f06-b872-4789-8135-6ccaac7925b5",
+    "conversation_id": "fd168be6-5bef-4733-b059-e3dc78172542",
     "http": 200,
     "step_count": 0,
     "show_panel": false,
@@ -45,7 +45,7 @@
   },
   "multi_step": {
     "verdict": "PASS",
-    "conversation_id": "87b000d8-7b81-49c1-aa51-1b62ec299910",
+    "conversation_id": "a9f2cc84-7efc-4b8f-ba6e-5d5f6a63bb7c",
     "http": 200,
     "step_count": 3,
     "show_panel": true,

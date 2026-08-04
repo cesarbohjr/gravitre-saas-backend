@@ -60,9 +60,9 @@ Artifact: `docs/delivery/chat-progress-ux-v2-live.json` — **overall PASS**
 
 | Check | Result | Evidence |
 |-------|--------|----------|
-| Tip | **PASS** | `/health` `git_sha=ad9ed303…` includes `1fea14ff` |
-| Under-threshold | **PASS** | convo `01675f06-…` · `step_count=0` · `show_panel=false` @ `2026-08-04T21:25:23Z` |
-| Multi-step ≥3 | **PASS** | seeded orch convo `87b000d8-…` · state `awaiting_plan_confirm` · steps Create/Search/Add · `show_panel=true` |
+| Tip | **PASS** | `/health` `git_sha=45b013b8…` @ `2026-08-04T21:48:50Z` (includes `1fea14ff`; Railway + Vercel success) |
+| Under-threshold | **PASS** | convo `fd168be6-…` · `step_count=0` · `show_panel=false` |
+| Multi-step ≥3 | **PASS** | seeded orch convo `a9f2cc84-…` · state `awaiting_plan_confirm` · steps Create/Search/Add · `show_panel=true` |
 | Named labels | **PASS** | `Step 1/3: Create contact list` … (not stage-template generic) |
 | Outputs filter identity | **PASS** | `GET /api/business-outcomes` filter by `conversationId` (sample `3e0d1b83-…` → 1 row) |
 | Isolated org | | `f07e57c0-…` / user `a9f1240f-…` |
