@@ -205,14 +205,33 @@ export function ExtensionPage() {
               <h3 className="font-semibold text-zinc-900">Workflows from the overlay</h3>
               <p className="mt-2 text-sm text-zinc-600">
                 Trigger existing typed workflows with the same plan-bar approve
-                pattern as chat — then open the Outcomes chain. Example run:{" "}
+                pattern as chat — named step labels stay visible while it runs,
+                then open the Outcomes chain. Proven runs:{" "}
                 <a
                   className="font-medium text-emerald-700 underline-offset-2 hover:underline"
                   href="https://gravitre.app/outcomes/139fd6cc-7d53-4dfd-ac1b-c59e902109ea"
                   target="_blank"
                   rel="noreferrer"
                 >
-                  NVD + CISA KEV lookup
+                  NVD + CISA KEV
+                </a>
+                ,{" "}
+                <a
+                  className="font-medium text-emerald-700 underline-offset-2 hover:underline"
+                  href="https://gravitre.app/outcomes/54914197-9516-48c3-90be-703980deb6ec"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  HubSpot pipelines + deals
+                </a>
+                ,{" "}
+                <a
+                  className="font-medium text-emerald-700 underline-offset-2 hover:underline"
+                  href="https://gravitre.app/outcomes/6d314587-bafb-4b11-a78b-da6c4d5245d6"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Apollo orgs + HubSpot pipelines
                 </a>
                 .
               </p>
