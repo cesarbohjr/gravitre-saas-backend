@@ -41,8 +41,10 @@ const SHOTS = [
   },
   // Not "HubSpot": that name also appears in the always-present "available
   // connectors" catalog, so it matched even when zero connectors were loaded.
-  // "4 connected" can only come from the fixture data.
-  { name: "app-connectors", view: "connectors", wait: "4 connected", width: 1440, height: 900 },
+  // "3 connected" can only come from the fixture data — 3, not 4, because the
+  // Salesforce row is deliberately in `error` state and is excluded from the
+  // connected tally.
+  { name: "app-connectors", view: "connectors", wait: "3 connected", width: 1440, height: 900 },
 ]
 
 /**
@@ -117,6 +119,24 @@ try {
     page.on("pageerror", (e) => pageErrors.push(String(e).slice(0, 300)))
     await page.goto(`${BASE}/e2e/shots/${view}`, { waitUntil: "networkidle" })
     await page.waitForTimeout(7000)
+    // Ask the page directly what the interceptor returns. The --trace mode is
+    // blind here: the fetch patch answers before anything hits the network, so
+    // "0 /api/* requests" is expected and proves nothing.
+    const diag = await page.evaluate(async () => {
+      const out = { storedOrg: localStorage.getItem("gravitre:selectedOrg") }
+      for (const p of ["/api/organizations", "/api/connectors?org=x"]) {
+        try {
+          const r = await fetch(p)
+          out[p] = `${r.status} ${(await r.text()).slice(0, 100)}`
+        } catch (e) {
+          out[p] = `THREW ${String(e).slice(0, 100)}`
+        }
+      }
+      return out
+    })
+    console.log("diagnostics:")
+    for (const [k, v] of Object.entries(diag)) console.log(`  ${k}: ${v}`)
+
     const visible = await page.evaluate(() => document.body.innerText)
     console.log(`landed on: ${new URL(page.url()).pathname}`)
     console.log(`visible text (${visible.length} chars):`)

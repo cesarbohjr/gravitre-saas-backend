@@ -159,8 +159,11 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       {
         id: "con_hubspot",
         name: "HubSpot",
-        type: "crm",
-        vendorKey: "hubspot",
+        // `vendor` (NOT `type`) carries the vendor slug: normalizeConnector reads
+        // `model.vendor ?? model.type` and shouldShowConnectedConnectorOnHub drops
+        // any row whose slug is not a catalog vendor. A category like "crm" here
+        // silently filters every connector out, rendering "0 connected".
+        vendor: "hubspot",
         status: "connected",
         environment: "production",
         lastSync: T(3),
@@ -178,8 +181,7 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       {
         id: "con_salesforce",
         name: "Salesforce",
-        type: "crm",
-        vendorKey: "salesforce",
+        vendor: "salesforce",
         status: "error",
         environment: "production",
         lastSync: T(96),
@@ -190,6 +192,8 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
         authStatus: "active",
         requestsToday: 318,
         latency: 540,
+        // Omitting dataFlowRate renders a bare "0 MB/s" on the card.
+        dataFlowRate: "320/day",
         blockingReason: "Connected user lacks edit access on Opportunity objects.",
         recoveryAction: "Grant the connected user edit access, then re-run the blocked step.",
         usedByWorkflows: 3,
@@ -198,8 +202,7 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       {
         id: "con_zendesk",
         name: "Zendesk",
-        type: "support",
-        vendorKey: "zendesk",
+        vendor: "zendesk",
         status: "connected",
         environment: "production",
         lastSync: T(12),
@@ -217,8 +220,7 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       {
         id: "con_slack",
         name: "Slack",
-        type: "messaging",
-        vendorKey: "slack",
+        vendor: "slack",
         status: "syncing",
         environment: "production",
         lastSync: T(1),
@@ -229,8 +231,11 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
         authStatus: "active",
         requestsToday: 87,
         latency: 180,
+        dataFlowRate: "90/day",
         usedByWorkflows: 5,
-        triggeredByAgents: 0,
+        // Must be > 0: the card renders the count with no "agents" label when
+        // it is zero, leaving a stray bare "0" next to "5 workflows".
+        triggeredByAgents: 2,
       },
     ],
   },
