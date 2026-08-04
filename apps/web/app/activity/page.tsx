@@ -15,6 +15,10 @@ import {
   type BusinessOutcomeDto,
 } from "@/components/gravitre/business-outcome/business-outcome-view"
 import { HubFilterBar, HubFilterField } from "@/components/gravitre/hub-filter-bar"
+import { HubTabs, type HubTabItem } from "@/components/gravitre/hub-tabs"
+import { AutoStatusBadge } from "@/components/gravitre/status-badge"
+import { ListSkeleton } from "@/components/gravitre/loading-state"
+import { CenteredLoader } from "@/components/gravitre/gravitree-loader"
 import { FailureAlertsPanel } from "@/components/workflows/failure-alerts-panel"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { Icon } from "@/lib/icons"
 import { businessOutcomesApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { APP_ROUTES } from "@/lib/app-routes"
@@ -84,6 +89,25 @@ function ActivityPageInner() {
     outcomes[0] ||
     null
 
+  // Drives the empty state: "no matches, widen your filters" is a very
+  // different message from "nothing has run yet", and conflating them makes a
+  // filtered-out list look like a broken product.
+  const hasActiveFilters = status !== "all" || lifecycle !== "all" || integration.trim() !== ""
+
+  const resetFilters = () => {
+    setStatus("all")
+    setLifecycle("all")
+    setIntegration("")
+  }
+
+  // Surface the loaded count on the tab itself so the strip carries information
+  // rather than just switching panels. Omitted while loading so it doesn't
+  // flash a misleading 0.
+  const activityTabs: Array<HubTabItem<ActivityTab>> = [
+    { id: "all", label: "All", count: isLoading ? undefined : outcomes.length },
+    { id: "failures", label: "Failures" },
+  ]
+
   return (
     <AppShell>
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 md:px-6">
@@ -114,34 +138,7 @@ function ActivityPageInner() {
           </div>
         </header>
 
-        <div
-          className="flex flex-wrap gap-1 rounded-lg border border-border bg-muted/30 p-1"
-          role="tablist"
-          aria-label="Activity tabs"
-        >
-          {(
-            [
-              { id: "all" as const, label: "All" },
-              { id: "failures" as const, label: "Failures" },
-            ] as const
-          ).map((row) => (
-            <button
-              key={row.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === row.id}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                tab === row.id
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-              onClick={() => setTab(row.id)}
-            >
-              {row.label}
-            </button>
-          ))}
-        </div>
+        <HubTabs tabs={activityTabs} active={tab} onSelect={setTab} ariaLabel="Activity views" />
 
         {tab === "failures" ? (
           <FailureAlertsPanel />
@@ -168,10 +165,12 @@ function ActivityPageInner() {
                     <SelectValue placeholder="Lifecycle" />
                   </SelectTrigger>
                   <SelectContent>
+                    {/* Values stay exactly as the API expects them; only the
+                        labels are humanized so raw enums don't leak into the UI. */}
                     <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="COMPLETED">COMPLETED</SelectItem>
-                    <SelectItem value="partial_success">partial_success</SelectItem>
-                    <SelectItem value="failed">failed</SelectItem>
+                    <SelectItem value="COMPLETED">Completed</SelectItem>
+                    <SelectItem value="partial_success">Partial success</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
                   </SelectContent>
                 </Select>
               </HubFilterField>
@@ -197,11 +196,30 @@ function ActivityPageInner() {
                   Recent ({outcomes.length})
                 </div>
                 {isLoading ? (
-                  <p className="p-4 text-sm text-muted-foreground">Loading activity…</p>
+                  <ListSkeleton items={5} className="p-3" />
                 ) : outcomes.length === 0 ? (
-                  <p className="p-4 text-sm text-muted-foreground">
-                    No activity yet. Run a workflow or complete work in chat — results land here.
-                  </p>
+                  <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
+                    <Icon name="activity" size="lg" className="text-muted-foreground/50" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        {hasActiveFilters ? "No matching activity" : "No activity yet"}
+                      </p>
+                      <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
+                        {hasActiveFilters
+                          ? "No results for these filters. Try widening them to see more."
+                          : "Run a workflow or complete work in chat — results land here automatically."}
+                      </p>
+                    </div>
+                    {hasActiveFilters ? (
+                      <Button variant="outline" size="sm" className="h-8" onClick={resetFilters}>
+                        Clear filters
+                      </Button>
+                    ) : (
+                      <Button asChild size="sm" className="h-8">
+                        <Link href={APP_ROUTES.gravitreAi}>Start in chat</Link>
+                      </Button>
+                    )}
+                  </div>
                 ) : (
                   <ul className="divide-y divide-border">
                     {outcomes.map((outcome) => {
@@ -229,9 +247,12 @@ function ActivityPageInner() {
                               <span className="line-clamp-2 text-sm font-medium text-foreground">
                                 {outcome.title || "Untitled outcome"}
                               </span>
-                              <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">
-                                {outcome.lifecycleState || outcome.status || "—"}
-                              </span>
+                              {outcome.lifecycleState || outcome.status ? (
+                                <AutoStatusBadge
+                                  status={String(outcome.lifecycleState || outcome.status)}
+                                  className="shrink-0"
+                                />
+                              ) : null}
                             </div>
                             <p className="line-clamp-2 text-xs text-muted-foreground">
                               {outcome.sections?.summary || "No summary"}
@@ -283,7 +304,7 @@ export default function ActivityPage() {
     <Suspense
       fallback={
         <AppShell>
-          <div className="p-6 text-sm text-muted-foreground">Loading activity…</div>
+          <CenteredLoader fill="parent" label="Loading activity" />
         </AppShell>
       }
     >

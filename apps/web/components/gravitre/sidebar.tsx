@@ -115,7 +115,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
         )}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-3 md:px-2">
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-sidebar-border px-3 md:px-2">
           <Link href="/" className="flex min-w-0 flex-1 items-center" onClick={onClose}>
             {effectiveLogoUrl ? (
               <>
@@ -191,7 +191,10 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto scrollbar-on-hover py-3 px-1.5 md:px-2 xl:px-2">
+        {/* `min-h-0` is required: without it a `flex-1` child refuses to shrink
+            below its content height, so the nav overflows its track and squeezes
+            the footer instead of scrolling internally. */}
+        <nav className="min-h-0 flex-1 overflow-y-auto scrollbar-on-hover px-1.5 py-3 md:px-2 xl:px-2">
           {navigation.map((group, groupIndex) => {
             const colors = sectionColors[group.group]
             const isCollapsed = collapsedSections.includes(group.group)
@@ -327,7 +330,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-sidebar-border px-2 py-2.5 md:px-2">
+        <div className="shrink-0 border-t border-sidebar-border bg-sidebar px-2 py-2.5 md:px-2">
           <div className={cn("flex items-center justify-between", navExpanded ? "md:justify-between" : "md:justify-center")}>
             <div className="flex items-center gap-2">
               <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary shadow-sm">

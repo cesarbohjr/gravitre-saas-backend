@@ -61,29 +61,44 @@ interface AutoStatusBadgeProps {
   showIcon?: boolean
 }
 
-export function AutoStatusBadge({ status, className, showIcon = true }: AutoStatusBadgeProps) {
-  const variantMap: Record<string, BadgeVariant> = {
-    success: "success",
-    completed: "success",
-    active: "success",
-    failed: "error",
-    error: "error",
-    warning: "warning",
-    running: "info",
-    pending: "muted",
-    paused: "muted",
-    draft: "muted",
-  }
+const STATUS_VARIANTS: Record<string, BadgeVariant> = {
+  success: "success",
+  completed: "success",
+  active: "success",
+  partial_success: "warning",
+  failed: "error",
+  error: "error",
+  cancelled: "muted",
+  canceled: "muted",
+  warning: "warning",
+  running: "info",
+  queued: "info",
+  in_progress: "info",
+  pending: "muted",
+  paused: "muted",
+  draft: "muted",
+}
 
-  const variant = variantMap[status] || "default"
+/**
+ * Turns a raw API status into a human label.
+ *
+ * Backends emit a mix of casings and separators for the same concept
+ * (`COMPLETED`, `partial_success`, `in-progress`), which used to leak straight
+ * into the UI as-is. Normalizing here keeps every surface consistent.
+ */
+export function formatStatusLabel(status: string): string {
+  return status.replace(/[_-]+/g, " ").trim().toLowerCase()
+}
+
+export function AutoStatusBadge({ status, className, showIcon = true }: AutoStatusBadgeProps) {
+  // Statuses arrive in mixed casing, so normalize before mapping — otherwise
+  // "COMPLETED" misses the `completed` key and silently renders as neutral.
+  const key = status.trim().toLowerCase().replace(/[\s-]+/g, "_")
+  const variant = STATUS_VARIANTS[key] || "default"
 
   return (
-    <StatusBadge 
-      variant={variant} 
-      dot={showIcon}
-      className={className}
-    >
-      {status}
+    <StatusBadge variant={variant} dot={showIcon} className={className}>
+      {formatStatusLabel(status)}
     </StatusBadge>
   )
 }
