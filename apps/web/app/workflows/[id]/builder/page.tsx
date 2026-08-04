@@ -26,6 +26,7 @@ import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { ModelSelector, ModelInheritanceChain } from "@/components/gravitre/model-selector"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -4594,7 +4595,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         {isLoadingGraph && (
           <div className="flex-1 flex items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-4">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <Spinner size="sm" />
               <p className="text-sm text-muted-foreground">Loading workflow...</p>
             </div>
           </div>

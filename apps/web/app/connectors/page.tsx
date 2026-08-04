@@ -12,6 +12,7 @@ import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { ConnectorRecommendations } from "@/components/connectors/connector-recommendations"
 import { AvailableConnectorsStrip } from "@/components/connectors/available-connectors-strip"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { 
@@ -2935,7 +2936,7 @@ function ConnectorsPageContent() {
           )}
           {isLoading && connectors.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
-              <Loader2 className="h-8 w-8 text-muted-foreground animate-spin mb-4" />
+              <Spinner size="sm" className="mb-4" />
               <p className="text-sm text-muted-foreground">Loading connectors...</p>
             </div>
           ) : error && connectors.length === 0 ? (
@@ -3160,7 +3161,7 @@ function ConnectorsPageFallback() {
   return (
     <AppShell title={SURFACE_COPY.pages.connectors.title}>
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Spinner size="sm" />
       </div>
     </AppShell>
   )

@@ -8,6 +8,7 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import {
   ArrowLeft,
   RefreshCw,
@@ -493,7 +494,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
     return (
       <AppShell title={`Run ${id}`}>
         <div className="flex h-full items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <Spinner size="sm" />
         </div>
       </AppShell>
     )

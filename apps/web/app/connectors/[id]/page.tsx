@@ -15,6 +15,7 @@ import { connectorsApi } from "@/lib/api"
 import type { Connector, Workflow, WorkflowListResponse } from "@/types/api"
 import type { VendorActionCatalog, ConnectorActionCatalogResponse } from "@/lib/connector-actions"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
@@ -146,7 +147,7 @@ export default function ConnectorDetailPage() {
         <div className="flex flex-col items-center justify-center py-24">
           {!user || connectorLoading ? (
             <>
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
+              <Spinner size="sm" className="mb-4" />
               <p className="text-sm text-muted-foreground">Loading connector…</p>
             </>
           ) : (

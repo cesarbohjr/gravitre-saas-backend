@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
@@ -163,7 +164,7 @@ export default function AgentKnowledgePage({
     return (
       <AppShell title="Knowledge Base">
         <div className="flex h-full items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-success" />
+          <Spinner size="xs" />
         </div>
       </AppShell>
     )
