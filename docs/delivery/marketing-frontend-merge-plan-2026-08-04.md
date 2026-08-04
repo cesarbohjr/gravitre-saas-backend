@@ -10,15 +10,32 @@ regressing the extension and connector work completed on `main` in parallel.
 | Side | Ref | SHA | Commits since base |
 | --- | --- | --- | --- |
 | Cursor | `main` | `88e1bd0e` | 20 |
-| v0 | `marketing-page-assets` | `171e30c5` | 48 |
+| v0 | `marketing-page-assets` | `55764b7e` | 49 |
 | — | merge-base | `4533ffbd` | — |
 
 Both sides advanced past the base, so this is a genuine two-way merge, not a
 fast-forward. Of 265 files touched across both sides, **9 overlap**.
 
-The earlier v0 branch `v0/cesarbohorquezjr-4251-e2927faa` (`ee6f8dae`) needs no
-separate merge: it is already an **ancestor** of `marketing-page-assets`
-(`git merge-base --is-ancestor` confirms). Merging this branch carries it in.
+### All v0 branches are accounted for
+
+`marketing-page-assets` is the single v0 deliverable. Every other v0 branch on
+the remote is already an **ancestor** of it, with **zero unique commits**, so
+none needs a separate merge and none can be left behind:
+
+| v0 branch | SHA | Ancestor of `marketing-page-assets` | Unique commits |
+| --- | --- | --- | --- |
+| `v0/cesarbohorquezjr-4251-e2927faa` | `ee6f8dae` | yes | 0 |
+| `v0/cesarbohorquezjr-4251-e2927faa-2` | `ee6f8dae` | yes (same SHA) | 0 |
+| `v0/cesarbohorquezjr-4251-2184ac9b` | `f7e63782` | yes | 0 |
+| `v0/cesarbohorquezjr-4251-c0cf0a37` | `848a3464` | yes | 0 |
+
+Verified with `git merge-base --is-ancestor` and `git rev-list --count <branch>..marketing-page-assets`.
+
+Note that `ee6f8dae` is **not** an ancestor of `main`, so its work reaches `main`
+only via this merge. `f7e63782` and `848a3464` are already on `main` as well.
+
+Merging `marketing-page-assets` therefore delivers 100% of the v0 work in one
+operation. Do not merge the `v0/*` branches individually.
 
 Verification note: `remote.origin.fetch` in the v0 sandbox is pinned to an
 unrelated branch, so `refs/remotes/origin/*` is stale there and reports phantom
@@ -116,6 +133,12 @@ almost everything auto-merges. Neither side may wholesale overwrite the other.
 This plan was rehearsed in a scratch worktree and type-checked; the commands
 below are the ones that actually worked.
 
+`marketing-page-assets` is the ONLY v0 branch you need to merge. The other four
+v0/* branches on the remote (ee6f8dae, ee6f8dae-2, f7e63782, 848a3464) are all
+already ancestors of it with zero unique commits, verified via
+`git merge-base --is-ancestor`. Merging this one branch delivers 100% of the v0
+work. Do not merge them individually.
+
 STEP 1 — merge from the feature branch, so `main` stays clean until verified.
 
   git checkout marketing-page-assets
@@ -124,6 +147,8 @@ STEP 1 — merge from the feature branch, so `main` stays clean until verified.
 Expect exactly 6 conflicts: 4 in apps/extension/content/, plus
 apps/extension/sidepanel.html and
 apps/web/components/gravitre/assistant/chat-execution-panel.tsx.
+This was re-confirmed by a fresh dry-run merge at marketing-page-assets
+55764b7e against main 88e1bd0e. A different set means the branches have moved.
 
 STEP 2 — apps/extension: TAKE MAIN, DISCARD THE V0 REWRITE.
 The v0 branch replaced the raw-JS MV3 extension with a Vite+TypeScript rewrite
