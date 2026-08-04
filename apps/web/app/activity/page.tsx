@@ -50,7 +50,6 @@ function asOutcome(raw: Record<string, unknown>): BusinessOutcomeDto {
 
 function ActivityPageInner() {
   const { user } = useAuth()
-  console.log("[v0] activity user:", user ? `id=${user.id}` : "FALSY")
   const router = useRouter()
   const searchParams = useSearchParams()
   const tabParam = searchParams.get("tab")
