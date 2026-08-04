@@ -18,6 +18,7 @@ import {
   extensionInstallHref,
   hasChromeWebStoreListing,
 } from "@/lib/extension-install"
+import { ProductScreenshot } from "@/components/marketing/product-screenshot"
 
 const activationSteps = [
   {
@@ -148,6 +149,66 @@ export function ExtensionPage() {
               </motion.li>
             ))}
           </ol>
+        </div>
+      </section>
+
+      <section className="border-t border-zinc-100 py-16">
+        <div className="mx-auto max-w-5xl px-6">
+          <h2 className="text-center text-2xl font-bold text-zinc-900 sm:text-3xl">
+            Where steps 4 and 5 actually land
+          </h2>
+          <p className="mx-auto mt-3 max-w-2xl text-center text-zinc-600">
+            The overlay does not get its own approval queue or audit trail. A
+            staged write waits in the same Approvals queue as chat, and the run
+            lands in the same Activity feed — tagged with its source.
+          </p>
+          {/* Stacked, not side-by-side: these are dense product surfaces, and at
+              half of max-w-5xl the in-app text is too small to read, which turns
+              the proof into decoration. */}
+          <div className="mt-12 flex flex-col gap-14">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <h3 className="font-semibold text-zinc-900">
+                Step 4 — approve the write
+              </h3>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-600">
+                Every staged write shows the exact catalog action, its blast
+                radius, and who asked for it before anything is committed.
+              </p>
+              <ProductScreenshot
+                className="mt-5"
+                src="/product/app-approvals.png"
+                alt="Approvals queue showing three pending requests, with a HubSpot contact create selected and its recommendation, SLA, and impact detail open."
+                caption="Illustrative data — seeded demo workspace, not customer metrics"
+              />
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <h3 className="font-semibold text-zinc-900">
+                Step 5 — see it in Outcomes
+              </h3>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-600">
+                Extension runs appear with source{" "}
+                <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs text-zinc-800">
+                  browser_extension
+                </code>{" "}
+                and the same lifecycle chain as chat — planned, approved,
+                executed, verified.
+              </p>
+              <ProductScreenshot
+                className="mt-5"
+                src="/product/app-activity.png"
+                alt="Activity feed listing runs with lifecycle state and source, including a created HubSpot contact run sourced from the browser extension."
+                caption="Illustrative data — seeded demo workspace, not customer metrics"
+              />
+            </motion.div>
+          </div>
         </div>
       </section>
 
