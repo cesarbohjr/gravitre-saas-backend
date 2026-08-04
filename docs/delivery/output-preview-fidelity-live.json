@@ -71,8 +71,11 @@
     "authenticated_ui_screenshot": "PASS (e2e harness) — prod login still NOT RUN",
     "extension": "PASS — BusinessOutcome card in overlay + fixture screenshot",
     "api_health_git_sha_at_bo_reconfirm": "b64add73bd2f60500694177386e617bc528bdcf7",
+    "api_health_git_sha_gap_closeout": "e40bf9fe53f103ded02e04cef20c2217f03c42e3",
+    "gap_closeout_commit": "6bfa0417",
+    "gap_closeout_commit_on_tip": true,
     "mismatched_preview_mechanisms_added": false
   },
   "code_changes": true,
-  "note": "Gap closeout ships extension BO projection/render + e2e harness scenario. Requires tip deploy for backend/extension bridge; web harness is local/CI."
+  "note": "Gap closeout shipped in 6bfa0417; prod /health tip e40bf9fe includes that commit (ancestor). Web harness evidence is local/CI screenshots."
 }

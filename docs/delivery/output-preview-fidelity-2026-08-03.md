@@ -117,6 +117,7 @@ Closed open gaps from Phase 1 / reconfirm — matched preview now covers chat ha
 | Chat UI screenshot (login gate) | **PASS (e2e harness)** | Playwright `business_outcome` scenario — harness `/e2e/execution-result?scenario=business_outcome` renders `[data-projection=business_outcome]` id `run-bo-fixture`; screenshot `docs/delivery/_artifacts/bo-chat-harness-business-outcome.png` |
 | Unit coverage | **PASS** | `pytest tests/services/test_extension_business_outcome_preview.py` (2); vitest `resolve-business-outcome.test.ts` (2); e2e business_outcome (1) |
 | Authenticated prod chat screenshot | **NOT RUN** | Still needs operator session on gravitre.app — harness proves shared `BusinessOutcomeView` path without login |
+| Prod tip includes gap closeout | **PASS** | `/health` `git_sha=e40bf9fe…` @ `2026-08-04T00:55:17Z` — tip ancestor includes commit `6bfa0417` |
 
 ### Scope adds
 
