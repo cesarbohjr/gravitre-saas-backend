@@ -330,6 +330,22 @@ export function Overlay({
               </p>
             )}
 
+            {/* The server sends a handoff URL (e.g. /connectors) when the reason
+                there is nothing to show is a setup gap rather than a bad page.
+                Without this the voice note names a fix the user cannot reach
+                from here. */}
+            {!hasAnyData && handoffUrl.current && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => openInApp(handoffUrl.current, appBase.current)}
+                className="justify-center"
+              >
+                <span className="truncate">Set up connectors</span>
+                <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+              </Button>
+            )}
+
             {!hasAnyData && (
               <div className="py-6 text-center">
                 <p className="text-[13px] font-medium text-foreground">
