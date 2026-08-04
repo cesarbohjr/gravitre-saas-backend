@@ -23,10 +23,10 @@ import { SURFACE_COPY } from "@/lib/surface-copy"
 
 const statusStyles: Record<string, string> = {
   draft: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
-  active: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  paused: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  active: "bg-success/10 text-success border-success/20",
+  paused: "bg-warning/10 text-warning border-warning/20",
   completed: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  cancelled: "bg-red-500/10 text-red-400 border-red-500/20",
+  cancelled: "bg-destructive/10 text-destructive border-destructive/20",
 }
 
 function formatDate(value?: string | null): string {

@@ -139,8 +139,8 @@ export default function ModelProfilePage() {
         {isPlanned ? (
           <EmptyState
             iconSlot={
-              <span className="flex h-16 w-16 items-center justify-center rounded-xl bg-amber-500/10">
-                <ChartLineUp className="h-8 w-8 text-amber-600 dark:text-amber-300" weight="duotone" aria-hidden />
+              <span className="flex h-16 w-16 items-center justify-center rounded-xl bg-warning/10">
+                <ChartLineUp className="h-8 w-8 text-warning" weight="duotone" aria-hidden />
               </span>
             }
             title={`${guide.label} — not yet active`}

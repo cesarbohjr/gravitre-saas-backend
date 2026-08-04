@@ -45,9 +45,9 @@ interface DisplayMemory {
 
 const categoryConfig = {
   fact: { label: "Fact", icon: "database", color: "blue", glow: "shadow-blue-500/20" },
-  preference: { label: "Preference", icon: "heart", color: "rose", glow: "shadow-rose-500/20" },
+  preference: { label: "Preference", icon: "heart", color: "rose", glow: "shadow-destructive/20" },
   pattern: { label: "Pattern", icon: "sparkles", color: "violet", glow: "shadow-violet-500/20" },
-  rule: { label: "Rule", icon: "shield", color: "amber", glow: "shadow-amber-500/20" },
+  rule: { label: "Rule", icon: "shield", color: "amber", glow: "shadow-warning/20" },
 }
 
 function formatDate(value?: string): string {
@@ -76,7 +76,7 @@ function BrainVisualization() {
       {[0, 1, 2].map((i) => (
         <motion.div
           key={i}
-          className="absolute rounded-full border border-emerald-500/20"
+          className="absolute rounded-full border border-success/20"
           style={{
             width: 120 + i * 60,
             height: 120 + i * 60,
@@ -102,7 +102,7 @@ function BrainVisualization() {
       ))}
 
       <motion.div
-        className="relative z-10 h-24 w-24 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-2xl shadow-emerald-500/30"
+        className="relative z-10 h-24 w-24 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-2xl shadow-success/30"
         animate={{
           boxShadow: [
             "0 0 40px rgba(16, 185, 129, 0.3)",
@@ -166,19 +166,19 @@ function StatCard({ label, value, icon, color, suffix }: { label: string; value:
 
       <div className={cn(
         "h-10 w-10 rounded-xl flex items-center justify-center mb-3",
-        color === "emerald" && "bg-emerald-500/10",
+        color === "emerald" && "bg-success/10",
         color === "blue" && "bg-blue-500/10",
         color === "violet" && "bg-violet-500/10",
-        color === "amber" && "bg-amber-500/10",
+        color === "amber" && "bg-warning/10",
       )}>
         <Icon
           name={icon as IconName}
           size="sm"
           className={cn(
-            color === "emerald" && "text-emerald-400",
+            color === "emerald" && "text-success",
             color === "blue" && "text-blue-400",
             color === "violet" && "text-violet-400",
-            color === "amber" && "text-amber-400",
+            color === "amber" && "text-warning",
           )}
         />
       </div>
@@ -202,9 +202,9 @@ function MemoryCard({ memory, index, onEdit, onDelete }: {
 
   const colorClasses: Record<string, { bg: string; border: string; text: string; ring: string }> = {
     blue: { bg: "bg-blue-500/10", border: "border-blue-500/30", text: "text-blue-400", ring: "ring-blue-500/20" },
-    rose: { bg: "bg-rose-500/10", border: "border-rose-500/30", text: "text-rose-400", ring: "ring-rose-500/20" },
+    rose: { bg: "bg-destructive/10", border: "border-destructive/30", text: "text-destructive", ring: "ring-destructive/20" },
     violet: { bg: "bg-violet-500/10", border: "border-violet-500/30", text: "text-violet-400", ring: "ring-violet-500/20" },
-    amber: { bg: "bg-amber-500/10", border: "border-amber-500/30", text: "text-amber-400", ring: "ring-amber-500/20" },
+    amber: { bg: "bg-warning/10", border: "border-warning/30", text: "text-warning", ring: "ring-warning/20" },
   }
 
   const colors = colorClasses[category.color]
@@ -291,7 +291,7 @@ function MemoryCard({ memory, index, onEdit, onDelete }: {
               </Button>
             </>
           ) : (
-            <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10 text-amber-400 text-[10px] font-medium">
+            <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-warning/10 text-warning text-[10px] font-medium">
               <Icon name="lock" size="xs" />
               Protected
             </span>
@@ -592,7 +592,7 @@ export default function AgentMemoryPage({
                   placeholder="Search memories..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success"
                 />
               </div>
               <Button

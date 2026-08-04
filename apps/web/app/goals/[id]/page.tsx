@@ -105,7 +105,7 @@ export default function GoalDetailPage() {
                         className={cn(
                           "capitalize",
                           milestone.status === "completed"
-                            ? "border-emerald-500/30 text-emerald-400"
+                            ? "border-success/30 text-success"
                             : milestone.status === "in_progress"
                               ? "border-blue-500/30 text-blue-400"
                               : "border-zinc-500/30 text-zinc-400"

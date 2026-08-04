@@ -205,8 +205,8 @@ const typeIcons = {
 }
 
 const priorityConfig = {
-  high: { color: "border-l-red-500", bg: "bg-red-500/5", badge: "bg-red-500/10 text-red-400" },
-  medium: { color: "border-l-amber-500", bg: "bg-amber-500/5", badge: "bg-amber-500/10 text-amber-400" },
+  high: { color: "border-l-red-500", bg: "bg-destructive/5", badge: "bg-destructive/10 text-destructive" },
+  medium: { color: "border-l-amber-500", bg: "bg-warning/5", badge: "bg-warning/10 text-warning" },
   low: { color: "border-l-zinc-500", bg: "bg-transparent", badge: "bg-zinc-500/10 text-zinc-400" },
 }
 
@@ -253,11 +253,11 @@ function DecisionCard({
         <div className="flex items-start gap-3 mb-3">
           <div className={cn(
             "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
-            approval.priority === "high" ? "bg-red-500/10" : "bg-secondary"
+            approval.priority === "high" ? "bg-destructive/10" : "bg-secondary"
           )}>
             <TypeIcon className={cn(
               "h-5 w-5",
-              approval.priority === "high" ? "text-red-400" : "text-muted-foreground"
+              approval.priority === "high" ? "text-destructive" : "text-muted-foreground"
             )} />
           </div>
           <div className="flex-1 min-w-0">
@@ -294,22 +294,22 @@ function DecisionCard({
         {approval.aiRecommendation && (
           <div className={cn(
             "rounded-lg p-3 mb-3 border",
-            approval.aiRecommendation.action === "approve" && "bg-emerald-500/5 border-emerald-500/20",
-            approval.aiRecommendation.action === "reject" && "bg-red-500/5 border-red-500/20",
-            approval.aiRecommendation.action === "review" && "bg-amber-500/5 border-amber-500/20"
+            approval.aiRecommendation.action === "approve" && "bg-success/5 border-success/20",
+            approval.aiRecommendation.action === "reject" && "bg-destructive/5 border-destructive/20",
+            approval.aiRecommendation.action === "review" && "bg-warning/5 border-warning/20"
           )}>
             <div className="flex items-center gap-2 mb-1">
               <Sparkles className={cn(
                 "h-3.5 w-3.5",
-                approval.aiRecommendation.action === "approve" && "text-emerald-400",
-                approval.aiRecommendation.action === "reject" && "text-red-400",
-                approval.aiRecommendation.action === "review" && "text-amber-400"
+                approval.aiRecommendation.action === "approve" && "text-success",
+                approval.aiRecommendation.action === "reject" && "text-destructive",
+                approval.aiRecommendation.action === "review" && "text-warning"
               )} />
               <span className={cn(
                 "text-xs font-medium",
-                approval.aiRecommendation.action === "approve" && "text-emerald-400",
-                approval.aiRecommendation.action === "reject" && "text-red-400",
-                approval.aiRecommendation.action === "review" && "text-amber-400"
+                approval.aiRecommendation.action === "approve" && "text-success",
+                approval.aiRecommendation.action === "reject" && "text-destructive",
+                approval.aiRecommendation.action === "review" && "text-warning"
               )}>
                 AI recommends: {approval.aiRecommendation.action}
                 <span className="text-muted-foreground font-normal ml-1">
@@ -356,7 +356,7 @@ function DecisionCard({
             <Button 
               variant="outline" 
               size="sm" 
-              className="h-8 gap-1.5 text-xs flex-1 cursor-pointer hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30"
+              className="h-8 gap-1.5 text-xs flex-1 cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
               disabled={actionBusy}
               onClick={(e) => {
                 e.stopPropagation()
@@ -440,11 +440,11 @@ function DetailPanel({ approval, onApprove, onReject, onBack, isSubmitting, pend
         <div className="flex items-start gap-3 sm:gap-4">
           <div className={cn(
             "flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-lg sm:rounded-xl",
-            approval.priority === "high" ? "bg-red-500/20" : "bg-secondary"
+            approval.priority === "high" ? "bg-destructive/20" : "bg-secondary"
           )}>
             <TypeIcon className={cn(
               "h-5 w-5 sm:h-6 sm:w-6",
-              approval.priority === "high" ? "text-red-400" : "text-muted-foreground"
+              approval.priority === "high" ? "text-destructive" : "text-muted-foreground"
             )} />
           </div>
           <div className="flex-1 min-w-0">
@@ -464,30 +464,30 @@ function DetailPanel({ approval, onApprove, onReject, onBack, isSubmitting, pend
         {approval.aiRecommendation && (
           <div className={cn(
             "rounded-xl p-4 border",
-            approval.aiRecommendation.action === "approve" && "bg-emerald-500/5 border-emerald-500/20",
-            approval.aiRecommendation.action === "reject" && "bg-red-500/5 border-red-500/20",
-            approval.aiRecommendation.action === "review" && "bg-amber-500/5 border-amber-500/20"
+            approval.aiRecommendation.action === "approve" && "bg-success/5 border-success/20",
+            approval.aiRecommendation.action === "reject" && "bg-destructive/5 border-destructive/20",
+            approval.aiRecommendation.action === "review" && "bg-warning/5 border-warning/20"
           )}>
             <div className="flex items-center gap-3 mb-3">
               <div className={cn(
                 "flex h-10 w-10 items-center justify-center rounded-lg",
-                approval.aiRecommendation.action === "approve" && "bg-emerald-500/20",
-                approval.aiRecommendation.action === "reject" && "bg-red-500/20",
-                approval.aiRecommendation.action === "review" && "bg-amber-500/20"
+                approval.aiRecommendation.action === "approve" && "bg-success/20",
+                approval.aiRecommendation.action === "reject" && "bg-destructive/20",
+                approval.aiRecommendation.action === "review" && "bg-warning/20"
               )}>
                 <Bot className={cn(
                   "h-5 w-5",
-                  approval.aiRecommendation.action === "approve" && "text-emerald-400",
-                  approval.aiRecommendation.action === "reject" && "text-red-400",
-                  approval.aiRecommendation.action === "review" && "text-amber-400"
+                  approval.aiRecommendation.action === "approve" && "text-success",
+                  approval.aiRecommendation.action === "reject" && "text-destructive",
+                  approval.aiRecommendation.action === "review" && "text-warning"
                 )} />
               </div>
               <div>
                 <p className={cn(
                   "text-sm font-medium",
-                  approval.aiRecommendation.action === "approve" && "text-emerald-400",
-                  approval.aiRecommendation.action === "reject" && "text-red-400",
-                  approval.aiRecommendation.action === "review" && "text-amber-400"
+                  approval.aiRecommendation.action === "approve" && "text-success",
+                  approval.aiRecommendation.action === "reject" && "text-destructive",
+                  approval.aiRecommendation.action === "review" && "text-warning"
                 )}>
                   AI Recommendation: {approval.aiRecommendation.action.charAt(0).toUpperCase() + approval.aiRecommendation.action.slice(1)}
                 </p>
@@ -575,7 +575,7 @@ function DetailPanel({ approval, onApprove, onReject, onBack, isSubmitting, pend
           <Button 
             variant="outline" 
             size="lg" 
-            className="flex-1 gap-2 h-11 cursor-pointer hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30"
+            className="flex-1 gap-2 h-11 cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
             disabled={actionBusy}
             onClick={() => onReject(approval.id)}
           >
@@ -799,15 +799,15 @@ function ApprovalsContent() {
             {/* Quick stats */}
             <div className="flex items-center gap-2 flex-wrap">
               {queueTab === "pending" && highPriorityCount > 0 && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-500/10 border border-red-500/20">
-                  <AlertTriangle className="h-3 w-3 text-red-400" />
-                  <span className="text-xs font-medium text-red-400">{highPriorityCount} urgent</span>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-destructive/10 border border-destructive/20">
+                  <AlertTriangle className="h-3 w-3 text-destructive" />
+                  <span className="text-xs font-medium text-destructive">{highPriorityCount} urgent</span>
                 </div>
               )}
               {queueTab === "pending" && aiRecommendedCount > 0 && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                  <Sparkles className="h-3 w-3 text-emerald-400" />
-                  <span className="text-xs font-medium text-emerald-400">{aiRecommendedCount} AI-approved</span>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-success/10 border border-success/20">
+                  <Sparkles className="h-3 w-3 text-success" />
+                  <span className="text-xs font-medium text-success">{aiRecommendedCount} AI-approved</span>
                 </div>
               )}
             </div>
@@ -841,8 +841,8 @@ function ApprovalsContent() {
 
             {visibleApprovals.length === 0 && (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 mb-3">
-                  <CheckCircle2 className="h-6 w-6 text-emerald-400" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10 mb-3">
+                  <CheckCircle2 className="h-6 w-6 text-success" />
                 </div>
                 <p className="text-sm font-medium text-foreground">
                   {queueTab === "pending" ? "All caught up!" : "No past decisions yet"}

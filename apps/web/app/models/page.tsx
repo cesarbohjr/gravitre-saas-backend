@@ -65,20 +65,24 @@ import { cn } from "@/lib/utils"
 import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 
+// Lifecycle stages mapped to the semantic status vocabulary. training and
+// validating are both in-progress (info); ready/deployed both success, kept
+// distinct by opacity; draft/archived are neutral (muted). The badge label
+// carries the exact stage, so collapsing near-identical hues loses no meaning.
 const statusStyles: Record<string, string> = {
-  draft: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
-  training: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  validating: "bg-teal-500/10 text-teal-400 border-teal-500/20",
-  ready: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  deployed: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  failed: "bg-red-500/10 text-red-400 border-red-500/20",
-  archived: "bg-zinc-500/10 text-zinc-500 border-zinc-500/20",
+  draft: "bg-muted text-muted-foreground border-border",
+  training: "bg-info/10 text-info border-info/20",
+  validating: "bg-info/10 text-info border-info/20",
+  ready: "bg-success/10 text-success border-success/20",
+  deployed: "bg-success/15 text-success border-success/30",
+  failed: "bg-destructive/10 text-destructive border-destructive/20",
+  archived: "bg-muted text-muted-foreground border-border",
 }
 
 const availabilityBadge: Record<string, string> = {
-  platform: "bg-sky-500/10 text-sky-300 border-sky-500/25",
-  connected: "bg-emerald-500/10 text-emerald-400 border-emerald-500/25",
-  requires_connection: "bg-amber-500/10 text-amber-400 border-amber-500/25",
+  platform: "bg-info/10 text-info border-info/25",
+  connected: "bg-success/10 text-success border-success/25",
+  requires_connection: "bg-warning/10 text-warning border-warning/25",
 }
 
 function formatType(value: string): string {
@@ -96,7 +100,7 @@ function ModelRow({ model, index }: { model: MlModelSummary; index: number }) {
     >
       <Link
         href={`/models/${model.id}`}
-        className="group block rounded-xl border border-border/60 bg-card/40 p-4 transition-all hover:border-emerald-500/30 hover:bg-card/70 hover:shadow-sm"
+        className="group block rounded-xl border border-border/60 bg-card/40 p-4 transition-all hover:border-primary/30 hover:bg-card/70 hover:shadow-sm"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -116,7 +120,7 @@ function ModelRow({ model, index }: { model: MlModelSummary; index: number }) {
               {model.baseModel ? <span className="truncate">base: {model.baseModel}</span> : null}
               <span>v{model.currentVersion}</span>
               {model.deployedVersion != null ? (
-                <span className="text-emerald-400">live v{model.deployedVersion}</span>
+                <span className="text-success">live v{model.deployedVersion}</span>
               ) : null}
             </div>
           </div>
@@ -447,7 +451,7 @@ export default function ModelsPage() {
         <DialogContent className="flex max-h-[min(92vh,760px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
           <DialogHeader className="shrink-0 space-y-3 border-b border-border/60 px-6 pb-4 pt-6">
             <DialogTitle className="flex items-center gap-2 pr-8">
-              <Sparkles className="h-4 w-4 text-emerald-500" />
+              <Sparkles className="h-4 w-4 text-primary" />
               Register model
             </DialogTitle>
             <DialogDescription className="text-left">
@@ -458,11 +462,11 @@ export default function ModelsPage() {
               , then deploy from the model detail page.
             </DialogDescription>
             {activeTemplateLayer ? (
-              <div className="rounded-lg border border-emerald-300/80 bg-emerald-50 px-3 py-2.5 text-left text-xs dark:border-emerald-500/30 dark:bg-emerald-950/50">
-                <p className="font-semibold text-emerald-950 dark:text-emerald-100">
+              <div className="rounded-lg border border-success/30 bg-success/10 px-3 py-2.5 text-left text-xs">
+                <p className="font-semibold text-success">
                   Template: {activeTemplateLayer.title}
                 </p>
-                <p className="mt-1 leading-relaxed text-emerald-800 dark:text-emerald-200">
+                <p className="mt-1 leading-relaxed text-foreground/80">
                   Pre-filled for this stack layer — adjust name, base model, or task profile before creating.
                 </p>
               </div>
@@ -585,7 +589,7 @@ export default function ModelsPage() {
                               {option.fineTunable ? (
                                 <Badge
                                   variant="outline"
-                                  className="h-4 border-emerald-500/30 px-1 text-[9px] text-emerald-400"
+                                  className="h-4 border-success/30 px-1 text-[9px] text-success"
                                 >
                                   Fine-tunable
                                 </Badge>
@@ -604,7 +608,7 @@ export default function ModelsPage() {
                 </SelectContent>
               </Select>
               {baseModelOptions.some((o) => o.availability === "requires_connection") ? (
-                <p className="text-xs text-amber-600 dark:text-amber-400/90">
+                <p className="text-xs text-warning">
                   Platform LLMs (OpenAI, Anthropic, Google, xAI) are always selectable. Warehouse and
                   tabular bases stay in the list but are disabled until you connect the matching
                   source on{" "}

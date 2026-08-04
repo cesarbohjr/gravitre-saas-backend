@@ -252,7 +252,7 @@ export default function AgentChatPage({
   return (
     <AppShell title="Chat">
       <div className="ai-surface-shell flex h-full min-h-0 flex-col">
-        <div className="flex h-9 shrink-0 items-center gap-2 border-b border-emerald-500/10 bg-card/80 px-3 backdrop-blur-md md:px-4">
+        <div className="flex h-9 shrink-0 items-center gap-2 border-b border-success/10 bg-card/80 px-3 backdrop-blur-md md:px-4">
           {!headerCollapsed ? (
             <>
               <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -364,7 +364,7 @@ export default function AgentChatPage({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 + i * 0.05 }}
                     onClick={() => submitText(suggestion)}
-                    className="rounded-xl border border-emerald-500/15 bg-card/80 px-3 py-2.5 text-left text-xs text-muted-foreground transition-all hover:border-emerald-500/30 hover:bg-emerald-500/5 hover:text-foreground"
+                    className="rounded-xl border border-success/15 bg-card/80 px-3 py-2.5 text-left text-xs text-muted-foreground transition-all hover:border-success/30 hover:bg-success/5 hover:text-foreground"
                   >
                     {suggestion}
                   </motion.button>
@@ -390,12 +390,12 @@ export default function AgentChatPage({
           )}
         </div>
 
-        <div className="shrink-0 border-t border-emerald-500/10 bg-card/90 px-3 py-2 backdrop-blur-md md:px-5">
+        <div className="shrink-0 border-t border-success/10 bg-card/90 px-3 py-2 backdrop-blur-md md:px-5">
           <form onSubmit={onSubmit} className="mx-auto w-full max-w-[920px]">
             <div
               className={cn(
-                "flex min-h-[72px] flex-col justify-center gap-1.5 rounded-[1.25rem] border border-emerald-500/15 bg-background/90 p-2.5 shadow-sm backdrop-blur-sm focus-within:ring-2 dark:bg-card/90",
-                "focus-within:border-emerald-500/35 focus-within:ring-emerald-500/20",
+                "flex min-h-[72px] flex-col justify-center gap-1.5 rounded-[1.25rem] border border-success/15 bg-background/90 p-2.5 shadow-sm backdrop-blur-sm focus-within:ring-2 dark:bg-card/90",
+                "focus-within:border-success/35 focus-within:ring-success/20",
               )}
             >
               <textarea
@@ -435,7 +435,7 @@ export default function AgentChatPage({
                     type="submit"
                     size="icon"
                     disabled={!user || !input.trim() || isLoading}
-                    className="h-8 w-8 rounded-full bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40"
+                    className="h-8 w-8 rounded-full disabled:opacity-40"
                     aria-label="Send message"
                   >
                     <ArrowUp className="h-4 w-4" />

@@ -55,9 +55,9 @@ import {
 } from "@/components/ui/dialog"
 
 const statusConfig = {
-  connected: { color: "text-emerald-500", bg: "bg-emerald-500", icon: CheckCircle2, label: "Connected" },
+  connected: { color: "text-success", bg: "bg-emerald-500", icon: CheckCircle2, label: "Connected" },
   disconnected: { color: "text-zinc-500", bg: "bg-zinc-500", icon: WifiOff, label: "Disconnected" },
-  error: { color: "text-red-500", bg: "bg-red-500", icon: XCircle, label: "Error" },
+  error: { color: "text-destructive", bg: "bg-red-500", icon: XCircle, label: "Error" },
   syncing: { color: "text-blue-500", bg: "bg-blue-500", icon: Loader2, label: "Syncing" },
 }
 
@@ -232,8 +232,8 @@ export default function ConnectorDetailPage() {
                     <span className={cn(
                       "text-[10px] px-2 py-0.5 rounded-full font-medium",
                       connector.environment === "production" 
-                        ? "bg-emerald-500/10 text-emerald-400" 
-                        : "bg-amber-500/10 text-amber-400"
+                        ? "bg-success/10 text-success" 
+                        : "bg-warning/10 text-warning"
                     )}>
                       {connector.environment}
                     </span>
@@ -355,8 +355,8 @@ export default function ConnectorDetailPage() {
                     <p className="text-xs text-muted-foreground">Environment</p>
                     <p className="text-sm font-semibold text-foreground capitalize">{connector.environment}</p>
                   </div>
-                  <div className="h-10 w-10 rounded-full flex items-center justify-center bg-amber-500/10">
-                    <Globe className="h-5 w-5 text-amber-500" />
+                  <div className="h-10 w-10 rounded-full flex items-center justify-center bg-warning/10">
+                    <Globe className="h-5 w-5 text-warning" />
                   </div>
                 </div>
               </CardContent>
@@ -392,7 +392,7 @@ export default function ConnectorDetailPage() {
             <Card className="bg-card border-border">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Key className="h-4 w-4 text-amber-400" />
+                  <Key className="h-4 w-4 text-warning" />
                   Configuration
                 </CardTitle>
               </CardHeader>
@@ -423,7 +423,7 @@ export default function ConnectorDetailPage() {
                           className="h-7 w-7 p-0"
                           onClick={() => handleCopy(connector.config.apiKey, "API Key")}
                         >
-                          {copied === "API Key" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                          {copied === "API Key" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
                         </Button>
                       </>
                     ) : null}
@@ -442,7 +442,7 @@ export default function ConnectorDetailPage() {
                         className="h-7 w-7 p-0"
                         onClick={() => handleCopy(connector.config.webhookUrl, "Webhook URL")}
                       >
-                        {copied === "Webhook URL" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copied === "Webhook URL" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
                       </Button>
                     ) : null}
                   </div>

@@ -127,7 +127,7 @@ function formatRelativeTime(value: unknown): string | null {
 function statusBadgeClass(status: string): string {
   const normalized = status.toLowerCase()
   if (normalized.includes("fail") || normalized.includes("error") || normalized.includes("disconnect")) {
-    return "bg-red-500/10 text-red-400"
+    return "bg-destructive/10 text-destructive"
   }
   if (
     normalized.includes("auth") ||
@@ -135,7 +135,7 @@ function statusBadgeClass(status: string): string {
     normalized.includes("warn") ||
     normalized.includes("pending")
   ) {
-    return "bg-amber-500/10 text-amber-400"
+    return "bg-warning/10 text-warning"
   }
   if (
     normalized.includes("active") ||
@@ -144,7 +144,7 @@ function statusBadgeClass(status: string): string {
     normalized.includes("connected") ||
     normalized.includes("idle")
   ) {
-    return "bg-emerald-500/10 text-emerald-400"
+    return "bg-success/10 text-success"
   }
   if (normalized.includes("run")) {
     return "bg-blue-500/10 text-blue-400"
@@ -203,9 +203,9 @@ function SearchResultRow({
           ) : result.entity_type === "agent" ? (
             <Bot className="h-4 w-4 text-violet-400" />
           ) : result.entity_type === "connector" ? (
-            <Link2 className="h-4 w-4 text-emerald-400" />
+            <Link2 className="h-4 w-4 text-success" />
           ) : result.entity_type === "workflow" ? (
-            <Workflow className="h-4 w-4 text-amber-400" />
+            <Workflow className="h-4 w-4 text-warning" />
           ) : result.entity_type === "source" ? (
             <Database className="h-4 w-4 text-cyan-400" />
           ) : (
@@ -223,7 +223,7 @@ function SearchResultRow({
                 <p className="truncate text-xs text-muted-foreground mt-0.5">{secondaryLine}</p>
               ) : null}
               {result.highlight && result.highlight !== secondaryLine ? (
-                <p className="mt-1 line-clamp-1 text-xs text-emerald-400/90">{result.highlight}</p>
+                <p className="mt-1 line-clamp-1 text-xs text-success/90">{result.highlight}</p>
               ) : null}
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
@@ -340,8 +340,8 @@ function SearchTypeaheadDropdown({
                 className={cn(
                   "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
                   item.kind === "agent" && "bg-violet-500/10 text-violet-400",
-                  item.kind === "workflow" && "bg-amber-500/10 text-amber-400",
-                  item.kind === "connector" && "bg-emerald-500/10 text-emerald-400",
+                  item.kind === "workflow" && "bg-warning/10 text-warning",
+                  item.kind === "connector" && "bg-success/10 text-success",
                   item.kind === "history" && "bg-secondary text-muted-foreground",
                   item.kind === "search" && "bg-blue-500/10 text-blue-400",
                 )}
@@ -710,8 +710,8 @@ export default function ChatPage() {
           <div className="border-b border-border px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-card to-secondary/20">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 ring-1 ring-emerald-500/20 shrink-0">
-                  <Search className="h-4 w-4 md:h-5 md:w-5 text-emerald-400" />
+                <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 ring-1 ring-success/20 shrink-0">
+                  <Search className="h-4 w-4 md:h-5 md:w-5 text-success" />
                 </div>
                 <div className="min-w-0">
                   <h1 className="text-base md:text-lg font-semibold text-foreground">Universal Search</h1>
@@ -763,11 +763,11 @@ export default function ChatPage() {
                           : { duration: 3.2, repeat: Infinity, ease: "easeInOut" }
                       }
                     >
-                      <Sparkles className="h-8 w-8 text-emerald-400" />
+                      <Sparkles className="h-8 w-8 text-success" />
                     </motion.div>
                     {!reduced && (
                       <motion.div
-                        className="absolute inset-0 rounded-full border-2 border-emerald-500/30"
+                        className="absolute inset-0 rounded-full border-2 border-success/30"
                         animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
                         transition={{ duration: 3, repeat: Infinity }}
                       />
@@ -1004,7 +1004,7 @@ export default function ChatPage() {
                             className={cn(
                               "rounded-full px-1.5 py-0.5 tabular-nums",
                               entry.results_count > 0
-                                ? "bg-emerald-500/10 text-emerald-500"
+                                ? "bg-success/10 text-success"
                                 : "bg-secondary text-muted-foreground",
                             )}
                           >
@@ -1054,7 +1054,7 @@ export default function ChatPage() {
               <AlertDialogCancel disabled={isClearingHistory}>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 disabled={isClearingHistory}
-                className="bg-red-500 hover:bg-red-600"
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={(event) => {
                   event.preventDefault()
                   void handleClearHistory()

@@ -792,7 +792,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
                         </p>
                       ) : null}
                       {honesty ? (
-                        <p className="mt-1 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                        <p className="mt-1 text-[11px] font-medium text-warning">
                           {honesty}
                         </p>
                       ) : null}

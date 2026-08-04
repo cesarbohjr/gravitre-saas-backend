@@ -29,13 +29,13 @@ import {
 
 function statusClasses(status: string): string {
   if (status === "ready" || status === "completed") {
-    return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+    return "bg-success/10 text-success border-success/20"
   }
   if (status === "training" || status === "processing" || status === "queued") {
-    return "bg-blue-500/10 text-blue-400 border-blue-500/20"
+    return "bg-info/10 text-info border-info/20"
   }
   if (status === "failed") {
-    return "bg-red-500/10 text-red-400 border-red-500/20"
+    return "bg-destructive/10 text-destructive border-destructive/20"
   }
   return "bg-secondary text-muted-foreground border-border"
 }
@@ -163,7 +163,7 @@ export default function AgentKnowledgePage({
     return (
       <AppShell title="Knowledge Base">
         <div className="flex h-full items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+          <Loader2 className="h-6 w-6 animate-spin text-success" />
         </div>
       </AppShell>
     )
@@ -209,7 +209,7 @@ export default function AgentKnowledgePage({
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg shadow-success/20">
                   <Icon name="database" size="md" className="text-white" />
                 </div>
                 <div>
@@ -253,19 +253,19 @@ export default function AgentKnowledgePage({
                   <div className="flex items-center gap-3">
                     <div className={cn(
                       "h-10 w-10 rounded-lg flex items-center justify-center",
-                      stat.color === "emerald" && "bg-emerald-500/10",
+                      stat.color === "emerald" && "bg-success/10",
                       stat.color === "blue" && "bg-blue-500/10",
                       stat.color === "violet" && "bg-violet-500/10",
-                      stat.color === "amber" && "bg-amber-500/10",
+                      stat.color === "amber" && "bg-warning/10",
                     )}>
                       <Icon 
                         name={stat.icon as IconName} 
                         size="sm" 
                         className={cn(
-                          stat.color === "emerald" && "text-emerald-400",
+                          stat.color === "emerald" && "text-success",
                           stat.color === "blue" && "text-blue-400",
                           stat.color === "violet" && "text-violet-400",
-                          stat.color === "amber" && "text-amber-400",
+                          stat.color === "amber" && "text-warning",
                         )} 
                       />
                     </div>
@@ -335,7 +335,7 @@ export default function AgentKnowledgePage({
                       Add training datasets to improve {agent.name}&apos;s knowledge and capabilities.
                     </p>
                     <Link href="/training">
-                      <Button className="gap-2 bg-emerald-600 hover:bg-emerald-500">
+                      <Button className="gap-2">
                         <Icon name="add" size="sm" />
                         Add Training Data
                       </Button>
@@ -351,8 +351,8 @@ export default function AgentKnowledgePage({
                         transition={{ delay: i * 0.05 }}
                         className="group flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors"
                       >
-                        <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
-                          <Icon name="database" size="sm" className="text-emerald-400" />
+                        <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
+                          <Icon name="database" size="sm" className="text-success" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
@@ -378,7 +378,7 @@ export default function AgentKnowledgePage({
                             size="sm"
                             onClick={() => handleDeleteClick("dataset", dataset.id, dataset.name)}
                             disabled={mutatingId === dataset.id}
-                            className="text-muted-foreground hover:text-red-400"
+                            className="text-muted-foreground hover:text-destructive"
                           >
                             <Icon name="trash" size="sm" />
                           </Button>
@@ -407,7 +407,7 @@ export default function AgentKnowledgePage({
                       Add custom instructions to guide {agent.name}&apos;s behavior and responses.
                     </p>
                     <Link href="/training">
-                      <Button className="gap-2 bg-emerald-600 hover:bg-emerald-500">
+                      <Button className="gap-2">
                         <Icon name="add" size="sm" />
                         Add Instructions
                       </Button>
@@ -425,19 +425,19 @@ export default function AgentKnowledgePage({
                       >
                         <div className={cn(
                           "h-10 w-10 rounded-lg flex items-center justify-center shrink-0",
-                          instruction.is_active ? "bg-emerald-500/10" : "bg-secondary"
+                          instruction.is_active ? "bg-success/10" : "bg-secondary"
                         )}>
                           <Icon 
                             name="file" 
                             size="sm" 
-                            className={instruction.is_active ? "text-emerald-400" : "text-muted-foreground"} 
+                            className={instruction.is_active ? "text-success" : "text-muted-foreground"} 
                           />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <h4 className="font-medium text-foreground">{instruction.name}</h4>
                             {instruction.is_active && (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-medium uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-medium uppercase bg-success/10 text-success border border-success/20">
                                 Active
                               </span>
                             )}
@@ -461,7 +461,7 @@ export default function AgentKnowledgePage({
                             size="sm"
                             onClick={() => handleDeleteClick("instruction", instruction.id, instruction.name)}
                             disabled={mutatingId === instruction.id}
-                            className="text-muted-foreground hover:text-red-400"
+                            className="text-muted-foreground hover:text-destructive"
                           >
                             <Icon name="trash" size="sm" />
                           </Button>
@@ -513,7 +513,7 @@ export default function AgentKnowledgePage({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600">
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

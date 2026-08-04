@@ -58,7 +58,7 @@ function mapProfileStatus(status: AgentStatus): Agent["status"] {
 
 function toProfileAgent(api: ApiAgent): Agent {
   const gradient = api.personality?.gradient || "from-emerald-500 to-teal-500"
-  const glow = api.personality?.glow || "shadow-emerald-500/30"
+  const glow = api.personality?.glow || "shadow-success/30"
   return {
     id: api.id,
     name: api.name,
@@ -103,10 +103,10 @@ function toProfileAgent(api: ApiAgent): Agent {
 }
 
 const statusConfig = {
-  active: { label: "Active", color: "text-emerald-400", bgColor: "bg-emerald-500/10", dotColor: "bg-emerald-500" },
+  active: { label: "Active", color: "text-success", bgColor: "bg-success/10", dotColor: "bg-emerald-500" },
   training: { label: "Training", color: "text-blue-400", bgColor: "bg-blue-500/10", dotColor: "bg-blue-500" },
-  limited: { label: "Limited", color: "text-amber-400", bgColor: "bg-amber-500/10", dotColor: "bg-amber-500" },
-  error: { label: "Error", color: "text-red-400", bgColor: "bg-red-500/10", dotColor: "bg-red-500" },
+  limited: { label: "Limited", color: "text-warning", bgColor: "bg-warning/10", dotColor: "bg-amber-500" },
+  error: { label: "Error", color: "text-destructive", bgColor: "bg-destructive/10", dotColor: "bg-red-500" },
 }
 
 // Animated Avatar — shared identity treatment
@@ -127,11 +127,11 @@ function AgentOrb({ agent, apiAgent, status }: { agent: Agent; apiAgent: ApiAgen
 
       {agent.status === "active" && (
         <motion.div
-          className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-emerald-500 bg-card"
+          className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-success bg-card"
           animate={{ scale: [1, 1.1, 1] }}
           transition={{ duration: 1.5, repeat: Infinity }}
         >
-          <Icon name="activity" size="sm" className="text-emerald-400" />
+          <Icon name="activity" size="sm" className="text-success" />
         </motion.div>
       )}
 
@@ -195,12 +195,12 @@ function WorkItem({ work, index }: { work: Agent["recentWork"][0]; index: number
     >
       <div className={cn(
         "h-10 w-10 rounded-lg flex items-center justify-center shrink-0",
-        work.status === "completed" ? "bg-emerald-500/10" : "bg-amber-500/10"
+        work.status === "completed" ? "bg-success/10" : "bg-warning/10"
       )}>
         <Icon 
           name={work.status === "completed" ? "check" : "clock"} 
           size="sm" 
-          className={work.status === "completed" ? "text-emerald-400" : "text-amber-400"} 
+          className={work.status === "completed" ? "text-success" : "text-warning"} 
         />
       </div>
       
@@ -217,7 +217,7 @@ function WorkItem({ work, index }: { work: Agent["recentWork"][0]; index: number
         <div className="text-right shrink-0">
           <span className={cn(
             "text-sm font-semibold",
-            work.confidence >= 90 ? "text-emerald-400" : "text-amber-400"
+            work.confidence >= 90 ? "text-success" : "text-warning"
           )}>
             {work.confidence}%
           </span>
@@ -336,7 +336,7 @@ export default function AgentProfilePage({
                   >
                     <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-1 break-words">{agent.name}</h1>
                     <p className="text-muted-foreground mb-2">{agent.role}</p>
-                    <p className="text-sm text-emerald-400 font-medium">{agent.tagline}</p>
+                    <p className="text-sm text-success font-medium">{agent.tagline}</p>
                     <div className="mt-4 flex justify-center">
                       <AgentIdentityEditor agent={apiAgent} />
                     </div>
@@ -350,7 +350,7 @@ export default function AgentProfilePage({
                     className="flex flex-col gap-2 mt-5 w-full max-w-xs"
                   >
                     <Button 
-                      className="w-full gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 shadow-lg shadow-emerald-500/25"
+                      className="w-full gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 shadow-lg shadow-success/25"
                       onClick={() => router.push(`/agents/${agent.id}/chat`)}
                     >
                       <Icon name="chat" size="sm" />
@@ -405,21 +405,21 @@ export default function AgentProfilePage({
                       <div className="flex items-center gap-3">
                         <div className={cn(
                           "h-10 w-10 rounded-lg flex items-center justify-center",
-                          stat.color === "emerald" && "bg-emerald-500/10",
+                          stat.color === "emerald" && "bg-success/10",
                           stat.color === "blue" && "bg-blue-500/10",
                           stat.color === "violet" && "bg-violet-500/10",
-                          stat.color === "amber" && "bg-amber-500/10",
-                          stat.color === "rose" && "bg-rose-500/10",
+                          stat.color === "amber" && "bg-warning/10",
+                          stat.color === "rose" && "bg-destructive/10",
                         )}>
                           <Icon 
                             name={stat.icon as IconName}
                             size="sm" 
                             className={cn(
-                              stat.color === "emerald" && "text-emerald-400",
+                              stat.color === "emerald" && "text-success",
                               stat.color === "blue" && "text-blue-400",
                               stat.color === "violet" && "text-violet-400",
-                              stat.color === "amber" && "text-amber-400",
-                              stat.color === "rose" && "text-rose-400",
+                              stat.color === "amber" && "text-warning",
+                              stat.color === "rose" && "text-destructive",
                             )} 
                           />
                         </div>
@@ -442,10 +442,10 @@ export default function AgentProfilePage({
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <Icon name="brain" size="sm" className="text-emerald-400" />
+                      <Icon name="brain" size="sm" className="text-success" />
                       <span className="text-sm font-medium text-foreground">Training Progress</span>
                     </div>
-                    <span className="text-sm font-semibold text-emerald-400">{agent.trainingProgress}%</span>
+                    <span className="text-sm font-semibold text-success">{agent.trainingProgress}%</span>
                   </div>
                   <div className="h-2 rounded-full bg-secondary overflow-hidden">
                     <motion.div

@@ -488,7 +488,7 @@ const nodeTypeConfig: Record<NodeType, { icon: typeof Bot; color: string; label:
   source: { icon: Database, color: "bg-muted border-border text-muted-foreground", label: "Source" },
   approval: { icon: Shield, color: "bg-destructive/20 border-destructive/40 text-destructive", label: "Approval" },
   decision: { icon: GitBranch, color: "bg-violet-500/20 border-violet-500/40 text-violet-400", label: "Decision" },
-  council: { icon: Users, color: "bg-amber-500/20 border-amber-500/40 text-amber-400", label: "Agent Council" },
+  council: { icon: Users, color: "bg-warning/20 border-warning/40 text-warning", label: "Agent Council" },
   if: { icon: Split, color: "bg-sky-500/20 border-sky-500/40 text-sky-400", label: "IF" },
   switch: { icon: GitBranch, color: "bg-indigo-500/20 border-indigo-500/40 text-indigo-400", label: "Switch" },
   merge: { icon: GitMerge, color: "bg-teal-500/20 border-teal-500/40 text-teal-400", label: "Merge" },
@@ -502,14 +502,14 @@ function getNodeTypeConfig(type: string) {
 // Node state visual config
 const nodeStateConfig: Record<NodeState, { border: string; bg: string; animation: string }> = {
   idle: { border: "", bg: "", animation: "" },
-  running: { border: "border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.4)]", bg: "bg-blue-500/5", animation: "animate-pulse" },
-  success: { border: "border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]", bg: "bg-emerald-500/5", animation: "" },
-  error: { border: "border-red-500 shadow-[0_0_12px_rgba(239,68,68,0.4)]", bg: "bg-red-500/5", animation: "animate-shake" },
-waiting: { border: "border-amber-500/50", bg: "bg-amber-500/5", animation: "opacity-60" },
+  running: { border: "border-info shadow-[0_0_15px_rgba(59,130,246,0.4)]", bg: "bg-info/5", animation: "animate-pulse" },
+  success: { border: "border-success shadow-[0_0_10px_rgba(16,185,129,0.3)]", bg: "bg-success/5", animation: "" },
+  error: { border: "border-destructive shadow-[0_0_12px_rgba(239,68,68,0.4)]", bg: "bg-destructive/5", animation: "animate-shake" },
+waiting: { border: "border-warning/50", bg: "bg-warning/5", animation: "opacity-60" },
   evaluating: { border: "border-violet-500 shadow-[0_0_20px_rgba(139,92,246,0.5)]", bg: "bg-violet-500/10", animation: "animate-pulse" },
-  debating: { border: "border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.5)]", bg: "bg-amber-500/10", animation: "animate-pulse" },
-  consensus: { border: "border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]", bg: "bg-emerald-500/10", animation: "" },
-  escalated: { border: "border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)]", bg: "bg-red-500/10", animation: "" },
+  debating: { border: "border-warning shadow-[0_0_20px_rgba(245,158,11,0.5)]", bg: "bg-warning/10", animation: "animate-pulse" },
+  consensus: { border: "border-success shadow-[0_0_15px_rgba(16,185,129,0.4)]", bg: "bg-success/10", animation: "" },
+  escalated: { border: "border-destructive shadow-[0_0_15px_rgba(239,68,68,0.4)]", bg: "bg-destructive/10", animation: "" },
   }
 
 // Canvas Node Component - with mobile touch support
@@ -700,10 +700,10 @@ function CanvasNode({
         {node.state && node.state !== "idle" && (
           <div className={cn(
             "absolute -top-2 left-4 px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide",
-            node.state === "running" && "bg-blue-500 text-white",
-            node.state === "success" && "bg-emerald-500 text-white",
-            node.state === "error" && "bg-red-500 text-white",
-            node.state === "waiting" && "bg-amber-500 text-white"
+            node.state === "running" && "bg-info text-info-foreground",
+            node.state === "success" && "bg-success text-success-foreground",
+            node.state === "error" && "bg-destructive text-destructive-foreground",
+            node.state === "waiting" && "bg-warning text-warning-foreground"
           )}>
             {node.state === "running" && <Loader2 className="h-2.5 w-2.5 inline mr-1 animate-spin" />}
             {node.state}
@@ -750,7 +750,7 @@ function CanvasNode({
               if (writeKind !== "write") return null
               return (
                 <span
-                  className="mt-1 inline-flex items-center rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-medium text-amber-700 dark:text-amber-400"
+                  className="mt-1 inline-flex items-center rounded border border-warning/30 bg-warning/10 px-1.5 py-0.5 text-[9px] font-medium text-warning"
                   title="Governed write — same catalog write authority as chat; requires Decision Queue approval"
                 >
                   needs approval
@@ -766,7 +766,7 @@ function CanvasNode({
         )}
         {reliabilityMessage ? (
           <p
-            className="mb-2 line-clamp-2 rounded border border-red-500/25 bg-red-500/5 px-1.5 py-1 text-[9px] text-red-400"
+            className="mb-2 line-clamp-2 rounded border border-destructive/25 bg-destructive/5 px-1.5 py-1 text-[9px] text-destructive"
             title={reliabilityMessage}
           >
             {reliabilityMessage}
@@ -774,7 +774,7 @@ function CanvasNode({
         ) : null}
 
         {node.state === "error" && node.stepError ? (
-          <p className="mb-2 line-clamp-2 text-[10px] text-red-400" title={node.stepError}>
+          <p className="mb-2 line-clamp-2 text-[10px] text-destructive" title={node.stepError}>
             {node.stepError}
           </p>
         ) : null}
@@ -789,9 +789,9 @@ function CanvasNode({
                 <>
                   <span className={cn(
                     "px-1.5 py-0.5 rounded font-mono",
-                    action.method === "GET" && "bg-emerald-500/10 text-emerald-400",
+                    action.method === "GET" && "bg-success/10 text-success",
                     action.method === "POST" && "bg-blue-500/10 text-blue-400",
-                    action.method === "PATCH" && "bg-amber-500/10 text-amber-400"
+                    action.method === "PATCH" && "bg-warning/10 text-warning"
                   )}>
                     {action.method}
                   </span>
@@ -833,7 +833,7 @@ function CanvasNode({
     // Larger touch target on mobile
     "h-6 w-6 md:h-4 md:w-4",
     isDraggingConnection
-      ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+      ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
       : isSelected
         ? "border-info bg-info/60 hover:scale-125 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
         : "border-muted-foreground/40 bg-card hover:border-info hover:bg-info/50 hover:scale-125"
@@ -859,7 +859,7 @@ function CanvasNode({
     "absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
     "h-6 w-6 md:h-4 md:w-4",
     isDraggingConnection
-      ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+      ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
       : isSelected
         ? "border-info bg-info/60 hover:scale-125 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
         : "border-muted-foreground/40 bg-card hover:border-info hover:bg-info/50 hover:scale-125"
@@ -885,7 +885,7 @@ function CanvasNode({
     "absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
     "h-6 w-6 md:h-4 md:w-4",
     isDraggingConnection
-      ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+      ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
       : isSelected
         ? "border-info bg-info/60 hover:scale-125 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
         : "border-muted-foreground/40 bg-card hover:border-info hover:bg-info/50 hover:scale-125"
@@ -911,7 +911,7 @@ function CanvasNode({
     "absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
     "h-6 w-6 md:h-4 md:w-4",
     isDraggingConnection
-      ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+      ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
       : isSelected
         ? "border-info bg-info/60 hover:scale-125 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
         : "border-muted-foreground/40 bg-card hover:border-info hover:bg-info/50 hover:scale-125"
@@ -1036,9 +1036,9 @@ function DecisionNode({
 
         {/* AI Reasoning badge */}
         {hasReasoning && !isEvaluating && (
-          <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40">
-            <Brain className="h-3 w-3 text-emerald-400" />
-            <span className="text-[10px] font-medium text-emerald-400">
+          <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-1 rounded-full bg-success/20 border border-success/40">
+            <Brain className="h-3 w-3 text-success" />
+            <span className="text-[10px] font-medium text-success">
               {node.decisionConfig?.reasoning?.confidence}% confidence
             </span>
           </div>
@@ -1096,7 +1096,7 @@ function DecisionNode({
   className={cn(
   "absolute -top-1.5 left-1/2 -translate-x-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
   isDraggingConnection
-  ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+  ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
   : isSelected
   ? "border-violet-400 bg-violet-400/60 hover:scale-125"
   : "border-violet-400/40 bg-card hover:border-violet-400 hover:bg-violet-400/50 hover:scale-125"
@@ -1110,7 +1110,7 @@ function DecisionNode({
   className={cn(
   "absolute top-1/2 -right-1.5 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
   isDraggingConnection
-  ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+  ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
   : isSelected
   ? "border-violet-400 bg-violet-400/60 hover:scale-125"
   : "border-violet-400/40 bg-card hover:border-violet-400 hover:bg-violet-400/50 hover:scale-125"
@@ -1124,7 +1124,7 @@ function DecisionNode({
   className={cn(
   "absolute -bottom-1.5 left-1/2 -translate-x-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
   isDraggingConnection
-  ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+  ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
   : isSelected
   ? "border-violet-400 bg-violet-400/60 hover:scale-125"
   : "border-violet-400/40 bg-card hover:border-violet-400 hover:bg-violet-400/50 hover:scale-125"
@@ -1138,7 +1138,7 @@ function DecisionNode({
   className={cn(
   "absolute top-1/2 -left-1.5 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
   isDraggingConnection
-  ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+  ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
   : isSelected
   ? "border-violet-400 bg-violet-400/60 hover:scale-125"
   : "border-violet-400/40 bg-card hover:border-violet-400 hover:bg-violet-400/50 hover:scale-125"
@@ -1168,7 +1168,7 @@ function DecisionNode({
                 className={cn(
                   "px-1.5 py-0.5 rounded text-[9px] font-medium border",
                   node.decisionConfig?.reasoning?.chosenPath === path.id
-                    ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
+                    ? "bg-success/20 border-success/40 text-success"
                     : "bg-muted/50 border-border text-muted-foreground"
                 )}
               >
@@ -1253,7 +1253,7 @@ function AIReasoningPanel({
     <div className={cn(
       "rounded-lg border transition-all duration-300",
       "bg-gradient-to-br from-emerald-500/5 to-violet-500/5",
-      "border-emerald-500/20"
+      "border-success/20"
     )}>
       {/* Header - always visible */}
       <button
@@ -1261,18 +1261,18 @@ function AIReasoningPanel({
         className="w-full flex items-center justify-between p-3 hover:bg-white/5 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20">
-            <Brain className="h-4 w-4 text-emerald-400" />
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-success/20">
+            <Brain className="h-4 w-4 text-success" />
           </div>
           <div className="text-left">
-            <p className="text-xs font-medium text-emerald-400">AI Decision Made</p>
+            <p className="text-xs font-medium text-success">AI Decision Made</p>
             <p className="text-[10px] text-muted-foreground">
               {reasoning.confidence}% confidence
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-[10px] font-medium text-emerald-400">
+          <div className="px-2 py-0.5 rounded-full bg-success/20 text-[10px] font-medium text-success">
             {reasoning.chosenPath}
           </div>
           <ChevronDown className={cn(
@@ -1284,7 +1284,7 @@ function AIReasoningPanel({
 
       {/* Expanded content */}
       {isExpanded && (
-        <div className="px-3 pb-3 space-y-3 border-t border-emerald-500/10">
+        <div className="px-3 pb-3 space-y-3 border-t border-success/10">
           {/* Summary */}
           <div className="pt-3">
             <p className="text-xs text-muted-foreground">{reasoning.summary}</p>
@@ -1294,7 +1294,7 @@ function AIReasoningPanel({
           <div>
             <div className="flex items-center justify-between mb-1">
               <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Confidence</span>
-              <span className="text-xs font-mono text-emerald-400">{reasoning.confidence}%</span>
+              <span className="text-xs font-mono text-success">{reasoning.confidence}%</span>
             </div>
             <div className="h-1.5 bg-muted rounded-full overflow-hidden">
               <div 
@@ -1310,7 +1310,7 @@ function AIReasoningPanel({
             <div className="space-y-1.5">
               {reasoning.factors?.map((factor, i) => (
                 <div key={i} className="flex items-start gap-2 text-xs">
-                  <CheckCircle className="h-3.5 w-3.5 text-emerald-400 mt-0.5 shrink-0" />
+                  <CheckCircle className="h-3.5 w-3.5 text-success mt-0.5 shrink-0" />
                   <span className="text-foreground">{factor}</span>
                 </div>
               ))}
@@ -1341,7 +1341,7 @@ function AIReasoningPanel({
               <div className="flex gap-1 ml-auto">
                 <button
                   onClick={() => onFeedback(true)}
-                  className="flex items-center gap-1 px-2 py-1 rounded text-[10px] bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                  className="flex items-center gap-1 px-2 py-1 rounded text-[10px] bg-success/10 text-success hover:bg-success/20 transition-colors"
                 >
                   <ThumbsUp className="h-3 w-3" />
                   Yes
@@ -1376,14 +1376,14 @@ function DecisionSummaryToast({
 }) {
   return (
     <div className="fixed bottom-4 right-4 z-50 animate-in slide-in-from-bottom-2 fade-in">
-      <div className="flex items-start gap-3 p-4 rounded-lg bg-card border border-emerald-500/30 shadow-lg max-w-sm">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 shrink-0">
-          <Brain className="h-4 w-4 text-emerald-400" />
+      <div className="flex items-start gap-3 p-4 rounded-lg bg-card border border-success/30 shadow-lg max-w-sm">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-success/20 shrink-0">
+          <Brain className="h-4 w-4 text-success" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-foreground">AI Decision Complete</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            <span className="text-emerald-400 font-medium">{nodeName}</span> selected{" "}
+            <span className="text-success font-medium">{nodeName}</span> selected{" "}
             <span className="text-foreground font-medium">{chosenPath}</span>
           </p>
           <div className="flex items-center gap-2 mt-2">
@@ -1393,7 +1393,7 @@ function DecisionSummaryToast({
                 style={{ width: `${confidence}%` }}
               />
             </div>
-            <span className="text-[10px] text-emerald-400 font-mono">{confidence}%</span>
+            <span className="text-[10px] text-success font-mono">{confidence}%</span>
           </div>
         </div>
         <button
@@ -1514,14 +1514,14 @@ function AgentCouncilNode({
   const isEscalated = node.state === "escalated"
   
   const stateColors = {
-    idle: { ring: "border-amber-500/30", bg: "bg-amber-500/5", glow: "" },
-    debating: { ring: "border-amber-400 animate-pulse", bg: "bg-amber-500/10", glow: "shadow-[0_0_30px_rgba(245,158,11,0.3)]" },
-    consensus: { ring: "border-emerald-500", bg: "bg-emerald-500/10", glow: "shadow-[0_0_20px_rgba(16,185,129,0.3)]" },
-    escalated: { ring: "border-red-500", bg: "bg-red-500/10", glow: "shadow-[0_0_20px_rgba(239,68,68,0.3)]" },
+    idle: { ring: "border-warning/30", bg: "bg-warning/5", glow: "" },
+    debating: { ring: "border-warning animate-pulse", bg: "bg-warning/10", glow: "shadow-[0_0_30px_rgba(245,158,11,0.3)]" },
+    consensus: { ring: "border-success", bg: "bg-success/10", glow: "shadow-[0_0_20px_rgba(16,185,129,0.3)]" },
+    escalated: { ring: "border-destructive", bg: "bg-destructive/10", glow: "shadow-[0_0_20px_rgba(239,68,68,0.3)]" },
     running: { ring: "border-blue-500 animate-pulse", bg: "bg-blue-500/10", glow: "shadow-[0_0_20px_rgba(59,130,246,0.3)]" },
-    success: { ring: "border-emerald-500", bg: "bg-emerald-500/10", glow: "" },
-    error: { ring: "border-red-500", bg: "bg-red-500/10", glow: "" },
-    waiting: { ring: "border-amber-500/50", bg: "bg-amber-500/5", glow: "" },
+    success: { ring: "border-success", bg: "bg-success/10", glow: "" },
+    error: { ring: "border-destructive", bg: "bg-destructive/10", glow: "" },
+    waiting: { ring: "border-warning/50", bg: "bg-warning/5", glow: "" },
     evaluating: { ring: "border-violet-500", bg: "bg-violet-500/10", glow: "" },
   }
   const stateConfig = stateColors[node.state || "idle"]
@@ -1607,11 +1607,11 @@ function AgentCouncilNode({
         stateConfig.ring,
         stateConfig.bg,
         stateConfig.glow,
-        isSelected && "ring-2 ring-amber-400/50 ring-offset-2 ring-offset-background"
+        isSelected && "ring-2 ring-warning/50 ring-offset-2 ring-offset-background"
       )}>
         {/* Orbital ring animation */}
         <div className={cn(
-          "absolute inset-2 rounded-full border border-dashed border-amber-500/30",
+          "absolute inset-2 rounded-full border border-dashed border-warning/30",
           isDebating && "animate-spin"
         )} style={{ animationDuration: "8s" }} />
         
@@ -1619,9 +1619,9 @@ function AgentCouncilNode({
         <div className="absolute inset-0 flex items-center justify-center">
           <div className={cn(
             "w-16 h-16 rounded-full flex items-center justify-center",
-            "bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/40"
+            "bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-warning/40"
           )}>
-            <Users className="h-8 w-8 text-amber-400" />
+            <Users className="h-8 w-8 text-warning" />
           </div>
         </div>
         
@@ -1659,10 +1659,10 @@ function AgentCouncilNode({
           className={cn(
             "absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
             isDraggingConnection
-              ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+              ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
               : isSelected
-              ? "border-amber-400 bg-amber-400/60 hover:scale-125"
-              : "border-amber-400/40 bg-card hover:border-amber-400 hover:bg-amber-400/50 hover:scale-125"
+              ? "border-warning bg-warning/60 hover:scale-125"
+              : "border-warning/40 bg-card hover:border-warning hover:bg-warning/50 hover:scale-125"
           )}
           title="Drag to connect"
         />
@@ -1673,10 +1673,10 @@ function AgentCouncilNode({
           className={cn(
             "absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
             isDraggingConnection
-              ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+              ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
               : isSelected
-              ? "border-amber-400 bg-amber-400/60 hover:scale-125"
-              : "border-amber-400/40 bg-card hover:border-amber-400 hover:bg-amber-400/50 hover:scale-125"
+              ? "border-warning bg-warning/60 hover:scale-125"
+              : "border-warning/40 bg-card hover:border-warning hover:bg-warning/50 hover:scale-125"
           )}
           title="Drag to connect"
         />
@@ -1687,10 +1687,10 @@ function AgentCouncilNode({
           className={cn(
             "absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
             isDraggingConnection
-              ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+              ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
               : isSelected
-              ? "border-amber-400 bg-amber-400/60 hover:scale-125"
-              : "border-amber-400/40 bg-card hover:border-amber-400 hover:bg-amber-400/50 hover:scale-125"
+              ? "border-warning bg-warning/60 hover:scale-125"
+              : "border-warning/40 bg-card hover:border-warning hover:bg-warning/50 hover:scale-125"
           )}
           title="Drag to connect"
         />
@@ -1701,10 +1701,10 @@ function AgentCouncilNode({
           className={cn(
             "absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
             isDraggingConnection
-              ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+              ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
               : isSelected
-              ? "border-amber-400 bg-amber-400/60 hover:scale-125"
-              : "border-amber-400/40 bg-card hover:border-amber-400 hover:bg-amber-400/50 hover:scale-125"
+              ? "border-warning bg-warning/60 hover:scale-125"
+              : "border-warning/40 bg-card hover:border-warning hover:bg-warning/50 hover:scale-125"
           )}
           title="Drag to connect"
         />
@@ -1727,25 +1727,25 @@ function AgentCouncilNode({
       <div className="mt-2 text-center max-w-48">
         <div className="font-medium text-sm text-foreground">{node.name}</div>
         <div className="flex items-center justify-center gap-1 mt-0.5">
-          <Users className="h-3 w-3 text-amber-500" />
-          <span className="text-xs text-amber-500">Agent Council</span>
+          <Users className="h-3 w-3 text-warning" />
+          <span className="text-xs text-warning">Agent Council</span>
         </div>
         {node.description && (
           <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{node.description}</div>
         )}
         {/* State indicator */}
         {isDebating && (
-          <Badge variant="outline" className="mt-1 text-[10px] bg-amber-500/10 text-amber-400 border-amber-500/30">
+          <Badge variant="outline" className="mt-1 text-[10px] bg-warning/10 text-warning border-warning/30">
             Council evaluating...
           </Badge>
         )}
         {hasConsensus && (
-          <Badge variant="outline" className="mt-1 text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
+          <Badge variant="outline" className="mt-1 text-[10px] bg-success/10 text-success border-success/30">
             Consensus reached
           </Badge>
         )}
         {isEscalated && (
-          <Badge variant="outline" className="mt-1 text-[10px] bg-red-500/10 text-red-400 border-red-500/30">
+          <Badge variant="outline" className="mt-1 text-[10px] bg-destructive/10 text-destructive border-destructive/30">
             Escalated to human
           </Badge>
         )}
@@ -1760,7 +1760,7 @@ function AgentCouncilNode({
           e.stopPropagation()
           onViewDebate()
         }}
-        className="flex items-center gap-1 text-[10px] text-amber-400 hover:text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full hover:bg-amber-500/20 transition-colors"
+        className="flex items-center gap-1 text-[10px] text-warning hover:text-warning bg-warning/10 px-2 py-0.5 rounded-full hover:bg-warning/20 transition-colors"
       >
         <MessageSquare className="h-3 w-3" />
         View Debate
@@ -1830,8 +1830,8 @@ function DebateViewDialog({
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/20">
-              <Users className="h-5 w-5 text-amber-400" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-warning/20">
+              <Users className="h-5 w-5 text-warning" />
             </div>
             <div>
               <DialogTitle className="text-lg">{node.name}</DialogTitle>
@@ -1840,12 +1840,12 @@ function DebateViewDialog({
               </DialogDescription>
             </div>
             {isDebating && (
-              <Badge variant="outline" className="ml-auto bg-amber-500/10 text-amber-400 border-amber-500/30 animate-pulse">
+              <Badge variant="outline" className="ml-auto bg-warning/10 text-warning border-warning/30 animate-pulse">
                 Debating...
               </Badge>
             )}
             {hasConsensus && (
-              <Badge variant="outline" className="ml-auto bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
+              <Badge variant="outline" className="ml-auto bg-success/10 text-success border-success/30">
                 Consensus
               </Badge>
             )}
@@ -1861,16 +1861,16 @@ function DebateViewDialog({
                 <div key={idx} className="flex items-center gap-2 flex-1">
                   <div className={cn(
                     "flex items-center justify-center h-6 w-6 rounded-full text-[10px] font-medium",
-                    step.status === "complete" && "bg-emerald-500 text-white",
-                    step.status === "active" && "bg-amber-500 text-white animate-pulse",
+                    step.status === "complete" && "bg-success text-success-foreground",
+                    step.status === "active" && "bg-warning text-warning-foreground animate-pulse",
                     step.status === "pending" && "bg-secondary text-muted-foreground"
                   )}>
                     {step.status === "complete" ? <CheckCircle className="h-3.5 w-3.5" /> : idx + 1}
                   </div>
                   <span className={cn(
                     "text-[10px] truncate",
-                    step.status === "complete" && "text-emerald-400",
-                    step.status === "active" && "text-amber-400",
+                    step.status === "complete" && "text-success",
+                    step.status === "active" && "text-warning",
                     step.status === "pending" && "text-muted-foreground"
                   )}>
                     {step.step}
@@ -1878,7 +1878,7 @@ function DebateViewDialog({
                   {idx < timeline.length - 1 && (
                     <div className={cn(
                       "flex-1 h-0.5 rounded",
-                      step.status === "complete" ? "bg-emerald-500/50" : "bg-border"
+                      step.status === "complete" ? "bg-success/50" : "bg-border"
                     )} />
                   )}
                 </div>
@@ -1911,10 +1911,10 @@ function DebateViewDialog({
                             className={cn(
                               "ml-auto text-[10px]",
                               contribution.position.toLowerCase().includes("approve") 
-                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                ? "bg-success/10 text-success border-success/30"
                                 : contribution.position.toLowerCase().includes("reject")
-                                ? "bg-red-500/10 text-red-400 border-red-500/30"
-                                : "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                                ? "bg-destructive/10 text-destructive border-destructive/30"
+                                : "bg-warning/10 text-warning border-warning/30"
                             )}
                           >
                             {contribution.position}
@@ -1947,14 +1947,14 @@ function DebateViewDialog({
           {disagreements.length > 0 && (
             <div>
               <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
-                <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
+                <AlertTriangle className="h-3.5 w-3.5 text-warning" />
                 Disagreements Detected
               </h4>
               <div className="space-y-2">
                 {disagreements.map((disagreement, idx) => {
                   const conflictingAgents = disagreement.agentIds.map(id => getAgentById(id)).filter(Boolean)
                   return (
-                    <div key={idx} className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                    <div key={idx} className="p-3 rounded-lg bg-warning/5 border border-warning/20">
                       <div className="flex items-center gap-2 mb-1">
                         {conflictingAgents.map((agent, agentIdx) => (
                           <span key={agent?.id} className="text-xs font-medium text-foreground">
@@ -1962,7 +1962,7 @@ function DebateViewDialog({
                           </span>
                         ))}
                       </div>
-                      <p className="text-xs text-amber-400">{disagreement.topic}</p>
+                      <p className="text-xs text-warning">{disagreement.topic}</p>
                     </div>
                   )
                 })}
@@ -1972,11 +1972,11 @@ function DebateViewDialog({
 
           {/* Final Decision Summary */}
           {finalDecision && (
-            <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/30">
+            <div className="p-4 rounded-lg bg-success/5 border border-success/30">
               <div className="flex items-center gap-2 mb-3">
-                <CheckCircle className="h-5 w-5 text-emerald-400" />
+                <CheckCircle className="h-5 w-5 text-success" />
                 <h4 className="font-medium text-foreground">Final Decision</h4>
-                <Badge variant="outline" className="ml-auto bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
+                <Badge variant="outline" className="ml-auto bg-success/10 text-success border-success/30">
                   {finalDecision.confidence}% confidence
                 </Badge>
               </div>
@@ -1990,15 +1990,15 @@ function DebateViewDialog({
                 <div className="space-y-1 mb-3">
                   {finalDecision.keyReasons.map((reason, i) => (
                     <div key={i} className="flex items-center gap-2 text-sm text-foreground">
-                      <CheckCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                      <CheckCircle className="h-3.5 w-3.5 text-success shrink-0" />
                       {reason}
                     </div>
                   ))}
                 </div>
               )}
               {finalDecision.dissentingOpinions && finalDecision.dissentingOpinions.length > 0 && (
-                <div className="pt-3 border-t border-amber-500/20">
-                  <p className="text-xs text-amber-400 uppercase tracking-wide mb-2">Dissenting opinions:</p>
+                <div className="pt-3 border-t border-warning/20">
+                  <p className="text-xs text-warning uppercase tracking-wide mb-2">Dissenting opinions:</p>
                   {finalDecision.dissentingOpinions.map((dissent, i) => {
                     const agent = getAgentById(dissent.agentId)
                     return (
@@ -2018,7 +2018,7 @@ function DebateViewDialog({
           <div className="flex items-center gap-2 pt-4 border-t border-border">
             <Button 
               variant="default" 
-              className="flex-1 gap-2 bg-emerald-600 hover:bg-emerald-700"
+              className="flex-1 gap-2 bg-success text-success-foreground hover:bg-success/90"
               onClick={onAcceptDecision}
             >
               <CheckCircle className="h-4 w-4" />
@@ -2262,8 +2262,8 @@ function ConfigPanel({
             className={cn(
               "flex items-start gap-2 p-3 rounded-lg border text-sm",
               readiness.ready
-                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
-                : "bg-amber-500/10 border-amber-500/20 text-amber-500",
+                ? "bg-success/10 border-success/20 text-success"
+                : "bg-warning/10 border-warning/20 text-warning",
             )}
             role="status"
           >
@@ -2299,8 +2299,8 @@ node.type === "approval" && "bg-red-500",
                 <div className={cn(
                   "ml-auto flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full",
                   connectorStatus === "connected" 
-                    ? "bg-emerald-500/10 text-emerald-500" 
-                    : "bg-amber-500/10 text-amber-500"
+                    ? "bg-success/10 text-success" 
+                    : "bg-warning/10 text-warning"
                 )}>
                   <div className={cn(
                     "h-1.5 w-1.5 rounded-full",
@@ -2327,11 +2327,11 @@ node.type === "approval" && "bg-red-500",
                 </div>
                 {connectorBind.action && (
                   selectedCatalogAction?.implemented || isActionImplemented(boundVendor, boundActionId) ? (
-                    <span className="flex items-center gap-1 text-[10px] text-emerald-500">
+                    <span className="flex items-center gap-1 text-[10px] text-success">
                       <CheckCircle className="h-3 w-3" /> Ready
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1 text-[10px] text-amber-500">
+                    <span className="flex items-center gap-1 text-[10px] text-warning">
                       <AlertTriangle className="h-3 w-3" /> Check action
                     </span>
                   )
@@ -2347,9 +2347,9 @@ node.type === "approval" && "bg-red-500",
                 </p>
               )}
               {boundVendor && connectorStatus !== "connected" && (
-                <div className="flex items-start gap-1.5 mt-1 p-2 rounded bg-amber-500/10 border border-amber-500/20">
-                  <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-amber-500">
+                <div className="flex items-start gap-1.5 mt-1 p-2 rounded bg-warning/10 border border-warning/20">
+                  <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-warning">
                     {boundVendor} is not active in this org.{" "}
                     <Link href={`/connectors?type=${encodeURIComponent(boundVendor)}`} className="underline underline-offset-2">
                       Connect it
@@ -2546,7 +2546,7 @@ node.type === "approval" && "bg-red-500",
                     <span className="font-mono">{selectedCatalogAction.tool}</span>
                   </div>
                   {connectorStatus === "connected" && (
-                    <div className="flex items-center gap-1.5 text-emerald-400">
+                    <div className="flex items-center gap-1.5 text-success">
                       <CircleDot className="h-3.5 w-3.5" />
                       <span>Connected</span>
                     </div>
@@ -2734,7 +2734,7 @@ node.type === "approval" && "bg-red-500",
         className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left"
       >
         <span className="text-xs font-medium text-foreground flex items-center gap-1.5">
-          <Lightbulb className="h-3.5 w-3.5 text-amber-400" />
+          <Lightbulb className="h-3.5 w-3.5 text-warning" />
           How to set this up
         </span>
         {showDecisionHelp ? (
@@ -2948,11 +2948,11 @@ node.type === "approval" && "bg-red-500",
 
     {/* AI Reasoning Display (if available) */}
     {node.decisionConfig?.reasoning && (
-      <div className="p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+      <div className="p-3 rounded-lg bg-success/5 border border-success/20">
         <div className="flex items-center gap-2 mb-2">
-          <Brain className="h-4 w-4 text-emerald-400" />
-          <span className="text-xs font-medium text-emerald-400">AI Reasoning</span>
-          <span className="ml-auto text-[10px] text-emerald-400 bg-emerald-500/20 px-1.5 py-0.5 rounded">
+          <Brain className="h-4 w-4 text-success" />
+          <span className="text-xs font-medium text-success">AI Reasoning</span>
+          <span className="ml-auto text-[10px] text-success bg-success/20 px-1.5 py-0.5 rounded">
             {node.decisionConfig.reasoning.confidence}% confidence
           </span>
         </div>
@@ -2963,13 +2963,13 @@ node.type === "approval" && "bg-red-500",
           <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Key factors:</p>
           {node.decisionConfig.reasoning.factors?.map((factor, i) => (
             <div key={i} className="flex items-center gap-1.5 text-xs text-foreground">
-              <CheckCircle className="h-3 w-3 text-emerald-400" />
+              <CheckCircle className="h-3 w-3 text-success" />
               {factor}
             </div>
           ))}
         </div>
-        <div className="mt-2 pt-2 border-t border-emerald-500/20">
-          <span className="text-[10px] text-emerald-400">
+        <div className="mt-2 pt-2 border-t border-success/20">
+          <span className="text-[10px] text-success">
             Selected: {node.decisionConfig.reasoning.chosenPath}
           </span>
         </div>
@@ -2980,11 +2980,11 @@ node.type === "approval" && "bg-red-500",
 
   {/* Agent Council Configuration */}
   {node.type === "council" && (
-  <div className="space-y-5 pt-4 border-t border-amber-500/20">
+  <div className="space-y-5 pt-4 border-t border-warning/20">
     {/* Header */}
     <div className="flex items-center gap-2">
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20">
-        <Users className="h-4 w-4 text-amber-400" />
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning/20">
+        <Users className="h-4 w-4 text-warning" />
       </div>
       <div>
         <h4 className="text-sm font-medium text-foreground">Council Configuration</h4>
@@ -3013,7 +3013,7 @@ node.type === "approval" && "bg-red-500",
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
           Participating Agents
         </label>
-        <span className="text-[10px] text-amber-400">
+        <span className="text-[10px] text-warning">
           {node.councilConfig?.participatingAgents?.length || 0} selected
         </span>
       </div>
@@ -3048,7 +3048,7 @@ node.type === "approval" && "bg-red-500",
               className={cn(
                 "flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-all",
                 isSelected 
-                  ? "border-amber-500/50 bg-amber-500/10" 
+                  ? "border-warning/50 bg-warning/10" 
                   : "border-border bg-secondary/30 hover:bg-secondary/50"
               )}
             >
@@ -3109,7 +3109,7 @@ node.type === "approval" && "bg-red-500",
             className={cn(
               "p-2.5 rounded-lg border text-left transition-all",
               node.councilConfig?.debateMode === mode.id
-                ? "border-amber-500 bg-amber-500/10"
+                ? "border-warning bg-warning/10"
                 : "border-border bg-secondary/50 hover:border-muted-foreground"
             )}
           >
@@ -3161,7 +3161,7 @@ node.type === "approval" && "bg-red-500",
             }
             onUpdate({ councilConfig: { ...node.councilConfig, outputOptions: [...options, newOption] } })
           }}
-          className="flex items-center gap-1 text-[10px] text-amber-400 hover:text-amber-300"
+          className="flex items-center gap-1 text-[10px] text-warning hover:text-warning"
         >
           <Plus className="h-3 w-3" />
           Add option
@@ -3203,11 +3203,11 @@ node.type === "approval" && "bg-red-500",
 
     {/* Final Decision Display (if available) */}
     {node.councilConfig?.finalDecision && (
-      <div className="p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+      <div className="p-3 rounded-lg bg-success/5 border border-success/20">
         <div className="flex items-center gap-2 mb-2">
-          <CheckCircle className="h-4 w-4 text-emerald-400" />
-          <span className="text-xs font-medium text-emerald-400">Council Decision</span>
-          <span className="ml-auto text-[10px] text-emerald-400 bg-emerald-500/20 px-1.5 py-0.5 rounded">
+          <CheckCircle className="h-4 w-4 text-success" />
+          <span className="text-xs font-medium text-success">Council Decision</span>
+          <span className="ml-auto text-[10px] text-success bg-success/20 px-1.5 py-0.5 rounded">
             {node.councilConfig.finalDecision.confidence}% confidence
           </span>
         </div>
@@ -3222,15 +3222,15 @@ node.type === "approval" && "bg-red-500",
             <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Key reasons:</p>
             {node.councilConfig.finalDecision.keyReasons.map((reason, i) => (
               <div key={i} className="flex items-center gap-1.5 text-xs text-foreground">
-                <CheckCircle className="h-3 w-3 text-emerald-400" />
+                <CheckCircle className="h-3 w-3 text-success" />
                 {reason}
               </div>
             ))}
           </div>
         )}
         {node.councilConfig.finalDecision.dissentingOpinions && node.councilConfig.finalDecision.dissentingOpinions.length > 0 && (
-          <div className="mt-2 pt-2 border-t border-amber-500/20">
-            <p className="text-[10px] text-amber-400 uppercase tracking-wide mb-1">Dissenting opinions:</p>
+          <div className="mt-2 pt-2 border-t border-warning/20">
+            <p className="text-[10px] text-warning uppercase tracking-wide mb-1">Dissenting opinions:</p>
             {node.councilConfig.finalDecision.dissentingOpinions.map((dissent, i) => (
               <div key={i} className="text-xs text-muted-foreground">
                 {dissent.opinion}
@@ -4450,7 +4450,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       // Show decision toast
       toast.success(`AI Decision: ${chosenPath.label}`, {
         description: `${currentNode.name} completed with ${confidence}% confidence`,
-        icon: <Brain className="h-4 w-4 text-emerald-400" />,
+        icon: <Brain className="h-4 w-4 text-success" />,
       })
       
     } else {
@@ -4790,7 +4790,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 )}
                 <span className="hidden sm:inline">{isSaving ? "Saving..." : "Save"}</span>
                 {connectorBlockingIssues.length > 0 && (
-                  <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500/20 px-1 text-[10px] font-medium text-amber-500">
+                  <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-warning/20 px-1 text-[10px] font-medium text-warning">
                     {connectorBlockingIssues.length}
                   </span>
                 )}
@@ -5379,10 +5379,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       console.error("[v0] Error creating council node:", err)
     }
   }}
-  className="flex flex-col items-center gap-1 p-2 rounded-md hover:bg-amber-500/10 transition-colors"
+  className="flex flex-col items-center gap-1 p-2 rounded-md hover:bg-warning/10 transition-colors"
 >
-  <Users className="h-4 w-4 text-amber-400" />
-  <span className="text-[10px] text-amber-400">Council</span>
+  <Users className="h-4 w-4 text-warning" />
+  <span className="text-[10px] text-warning">Council</span>
 </button>
   <button
   onClick={() => addNode("approval", "Gate")}
@@ -5957,7 +5957,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
   {/* Drag-to-connect indicator */}
   {isDraggingConnection && (
-  <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-full px-4 py-2 shadow-lg z-50">
+  <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-success/10 border border-success/30 text-success rounded-full px-4 py-2 shadow-lg z-50">
   <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
   <span className="text-sm font-medium">Drop on a node to connect</span>
   </div>
@@ -5969,11 +5969,11 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 <div className={cn(
                   "flex items-center gap-4 px-5 py-3 rounded-xl border shadow-lg backdrop-blur-sm",
                   executionStatus === "running" && "bg-blue-500/10 border-blue-500/30",
-                  executionStatus === "completed" && "bg-emerald-500/10 border-emerald-500/30",
-                  executionStatus === "error" && "bg-red-500/10 border-red-500/30",
-                  executionStatus === "paused" && "bg-amber-500/10 border-amber-500/30",
-                  executionStatus === "waiting" && "bg-amber-500/10 border-amber-500/30",
-                  executionStatus === "cancelled" && "bg-red-500/10 border-red-500/30"
+                  executionStatus === "completed" && "bg-success/10 border-success/30",
+                  executionStatus === "error" && "bg-destructive/10 border-destructive/30",
+                  executionStatus === "paused" && "bg-warning/10 border-warning/30",
+                  executionStatus === "waiting" && "bg-warning/10 border-warning/30",
+                  executionStatus === "cancelled" && "bg-destructive/10 border-destructive/30"
                 )}>
                   {/* Status indicator */}
                   <div className="flex items-center gap-2">
@@ -5985,32 +5985,32 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                     )}
                     {executionStatus === "completed" && (
                       <>
-                        <CheckCircle className="h-5 w-5 text-emerald-400" />
-                        <span className="text-sm font-medium text-emerald-400">Completed</span>
+                        <CheckCircle className="h-5 w-5 text-success" />
+                        <span className="text-sm font-medium text-success">Completed</span>
                       </>
                     )}
                     {executionStatus === "error" && (
                       <>
-                        <AlertTriangle className="h-5 w-5 text-red-400" />
-                        <span className="text-sm font-medium text-red-400">Failed</span>
+                        <AlertTriangle className="h-5 w-5 text-destructive" />
+                        <span className="text-sm font-medium text-destructive">Failed</span>
                       </>
                     )}
                     {executionStatus === "paused" && (
                       <>
-                        <Pause className="h-5 w-5 text-amber-400" />
-                        <span className="text-sm font-medium text-amber-400">Paused</span>
+                        <Pause className="h-5 w-5 text-warning" />
+                        <span className="text-sm font-medium text-warning">Paused</span>
                       </>
                     )}
                     {executionStatus === "waiting" && (
                       <>
-                        <Shield className="h-5 w-5 text-amber-400" />
-                        <span className="text-sm font-medium text-amber-400">Awaiting approval</span>
+                        <Shield className="h-5 w-5 text-warning" />
+                        <span className="text-sm font-medium text-warning">Awaiting approval</span>
                       </>
                     )}
                     {executionStatus === "cancelled" && (
                       <>
-                        <XCircle className="h-5 w-5 text-red-400" />
-                        <span className="text-sm font-medium text-red-400">Cancelled</span>
+                        <XCircle className="h-5 w-5 text-destructive" />
+                        <span className="text-sm font-medium text-destructive">Cancelled</span>
                       </>
                     )}
                   </div>
@@ -6084,13 +6084,13 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   {executionError && (
                     <>
                       <div className="w-px h-6 bg-border" />
-                      <span className="text-xs text-red-400 max-w-[min(420px,40vw)] line-clamp-2" title={executionError}>
+                      <span className="text-xs text-destructive max-w-[min(420px,40vw)] line-clamp-2" title={executionError}>
                         {executionError}
                       </span>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 px-2 text-xs text-red-400 hover:text-red-300"
+                        className="h-7 px-2 text-xs text-destructive hover:text-destructive"
                         onClick={handleRun}
                       >
                         <RefreshCw className="h-3 w-3 mr-1" />
@@ -6104,7 +6104,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                     <>
                       <div className="w-px h-6 bg-border" />
                       <Link href={`/runs/${lastRunId}`}>
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-emerald-400 hover:text-emerald-300">
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-success hover:text-success">
                           <ExternalLink className="h-3 w-3 mr-1" />
                           View Run
                         </Button>
@@ -6490,8 +6490,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                         <Badge variant="outline" className={cn(
                           "text-[10px] py-0",
                           node.state === "running" && "border-blue-500 text-blue-500",
-                          node.state === "success" && "border-emerald-500 text-emerald-500",
-                          node.state === "error" && "border-red-500 text-red-500"
+                          node.state === "success" && "border-success text-success",
+                          node.state === "error" && "border-destructive text-destructive"
                         )}>
                           {node.state}
                         </Badge>

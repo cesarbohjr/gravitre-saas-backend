@@ -430,10 +430,10 @@ export default function WorkflowsPage() {
                 variant="outline" 
                 size="sm" 
                 onClick={() => setGoalWizardOpen(true)}
-                className="h-8 gap-2 border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/50 transition-colors"
+                className="h-8 gap-2 border-success/30 bg-success/5 hover:bg-success/10 hover:border-success/50 transition-colors"
               >
-                <Target className="h-3.5 w-3.5 text-emerald-400" />
-                <span className="hidden sm:inline text-emerald-400">Create from Goal</span>
+                <Target className="h-3.5 w-3.5 text-success" />
+                <span className="hidden sm:inline text-success">Create from Goal</span>
               </Button>
               <Button 
                 variant="outline" 
@@ -635,8 +635,8 @@ export default function WorkflowsPage() {
                   transition={{ delay: 0.3 }}
                 >
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                      <TrendingUp className="h-4 w-4 text-emerald-400" />
+                    <div className="h-8 w-8 rounded-full bg-success/10 flex items-center justify-center">
+                      <TrendingUp className="h-4 w-4 text-success" />
                     </div>
                     <span>
                       {footerSuccessRate === null ? (

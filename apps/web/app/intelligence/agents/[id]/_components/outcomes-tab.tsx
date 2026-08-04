@@ -83,9 +83,9 @@ export function OutcomesTab({
                   <div key={String(event.id ?? idx)} className="relative">
                     <span className="absolute -left-[25px] flex h-5 w-5 items-center justify-center rounded-full bg-background">
                       {positive ? (
-                        <CheckCircle weight="fill" className="h-5 w-5 text-emerald-500" aria-hidden />
+                        <CheckCircle weight="fill" className="h-5 w-5 text-success" aria-hidden />
                       ) : (
-                        <XCircle weight="fill" className="h-5 w-5 text-rose-500" aria-hidden />
+                        <XCircle weight="fill" className="h-5 w-5 text-destructive" aria-hidden />
                       )}
                     </span>
                     <p className="text-sm font-medium capitalize text-foreground">

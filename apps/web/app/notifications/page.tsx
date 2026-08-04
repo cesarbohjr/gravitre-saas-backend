@@ -34,8 +34,8 @@ import type { Notification as ApiNotification, NotificationType } from "@/types/
 const typeConfig = {
   approval_needed: {
     icon: AlertCircle,
-    color: "text-amber-500",
-    bg: "bg-amber-500/10",
+    color: "text-warning",
+    bg: "bg-warning/10",
     label: "Approval",
   },
   assignment_created: {
@@ -46,14 +46,14 @@ const typeConfig = {
   },
   run_completed: {
     icon: CheckCircle2,
-    color: "text-emerald-500",
-    bg: "bg-emerald-500/10",
+    color: "text-success",
+    bg: "bg-success/10",
     label: "Run Complete",
   },
   run_failed: {
     icon: AlertTriangle,
-    color: "text-red-500",
-    bg: "bg-red-500/10",
+    color: "text-destructive",
+    bg: "bg-destructive/10",
     label: "Run Failed",
   },
   mention: {
@@ -76,20 +76,20 @@ const typeConfig = {
   },
   agent_created: {
     icon: CheckCircle2,
-    color: "text-emerald-500",
-    bg: "bg-emerald-500/10",
+    color: "text-success",
+    bg: "bg-success/10",
     label: "Agent Created",
   },
   workflow_created: {
     icon: CheckCircle2,
-    color: "text-emerald-500",
-    bg: "bg-emerald-500/10",
+    color: "text-success",
+    bg: "bg-success/10",
     label: "Workflow Created",
   },
   task_completed: {
     icon: CheckCircle2,
-    color: "text-emerald-500",
-    bg: "bg-emerald-500/10",
+    color: "text-success",
+    bg: "bg-success/10",
     label: "Task Complete",
   },
 }

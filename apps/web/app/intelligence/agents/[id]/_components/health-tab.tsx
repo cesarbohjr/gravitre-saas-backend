@@ -11,9 +11,9 @@ export function HealthTab({ agent, enabled }: { agent: Agent; enabled: boolean }
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case "active":
-        return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+        return "bg-success/10 text-success border-success/20"
       case "degraded":
-        return "bg-amber-500/10 text-amber-500 border-amber-500/20"
+        return "bg-warning/10 text-warning border-warning/20"
       default:
         return "bg-muted text-muted-foreground border-border"
     }

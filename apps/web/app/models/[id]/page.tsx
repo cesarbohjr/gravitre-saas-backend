@@ -27,9 +27,9 @@ const statusStyles: Record<string, string> = {
   draft: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
   training: "bg-blue-500/10 text-blue-400 border-blue-500/20",
   validating: "bg-teal-500/10 text-teal-400 border-teal-500/20",
-  ready: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  deployed: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  failed: "bg-red-500/10 text-red-400 border-red-500/20",
+  ready: "bg-success/10 text-success border-success/20",
+  deployed: "bg-success/15 text-success border-success/30",
+  failed: "bg-destructive/10 text-destructive border-destructive/20",
   archived: "bg-zinc-500/10 text-zinc-500 border-zinc-500/20",
 }
 
@@ -164,7 +164,7 @@ export default function ModelDetailPage({ params }: { params: Promise<{ id: stri
             >
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Brain className="h-5 w-5 text-emerald-500" />
+                  <Brain className="h-5 w-5 text-success" />
                   <h1 className="text-2xl font-semibold tracking-tight">{model.name}</h1>
                   <Badge
                     variant="outline"

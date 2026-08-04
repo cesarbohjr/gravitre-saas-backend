@@ -210,7 +210,7 @@ function ConnectorReadinessBadges({ availability }: { availability?: ConnectorAv
           className={cn(
             "text-[9px] px-1.5 py-0.5 rounded border font-medium",
             ok
-              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
+              ? "bg-success/10 text-success border-success/20"
               : "bg-muted text-muted-foreground border-border/70",
           )}
         >
@@ -365,10 +365,10 @@ function connectorErrorMessage(err: unknown): string {
 
 const statusConfig = {
   connected: { 
-    color: "text-emerald-500", 
+    color: "text-success", 
     bg: "bg-emerald-500", 
-    ring: "ring-emerald-500/30",
-    glow: "shadow-emerald-500/20",
+    ring: "ring-success/30",
+    glow: "shadow-success/20",
     icon: CheckCircle2,
     label: "Connected" 
   },
@@ -381,10 +381,10 @@ const statusConfig = {
     label: "Disconnected" 
   },
   error: { 
-    color: "text-red-500", 
+    color: "text-destructive", 
     bg: "bg-red-500", 
-    ring: "ring-red-500/30",
-    glow: "shadow-red-500/20",
+    ring: "ring-destructive/30",
+    glow: "shadow-destructive/20",
     icon: XCircle,
     label: "Error" 
   },
@@ -480,8 +480,8 @@ function ConnectorNode({
         <div className={cn(
           "relative rounded-xl border bg-card p-3 md:p-4 transition-all duration-300 w-full md:min-w-[240px]",
           isHovered ? "border-foreground/20 shadow-lg" : "border-border",
-          connector.status === "connected" && "shadow-emerald-500/5",
-          connector.status === "error" && "shadow-red-500/5 border-red-500/30"
+          connector.status === "connected" && "shadow-success/5",
+          connector.status === "error" && "shadow-destructive/5 border-destructive/30"
         )}>
           {/* Status indicator */}
           <div className={cn(
@@ -553,7 +553,7 @@ function ConnectorNode({
           ) : null}
           {connector.availability?.discoveryLimitation ? (
             <p
-              className="mb-2 text-[11px] text-amber-700 dark:text-amber-400 text-pretty"
+              className="mb-2 text-[11px] text-warning text-pretty"
               data-testid="apollo-discovery-limitation"
             >
               {connector.availability.discoveryLimitation}
@@ -629,8 +629,8 @@ function ConnectorNode({
               <span className={cn(
                 "text-[10px] px-1.5 py-0.5 rounded",
                 connector.environment === "production" 
-                  ? "bg-emerald-500/10 text-emerald-400" 
-                  : "bg-amber-500/10 text-amber-400"
+                  ? "bg-success/10 text-success" 
+                  : "bg-warning/10 text-warning"
               )}>
                 {connector.environment}
               </span>
@@ -1334,31 +1334,31 @@ function AddConnectorModal({
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium text-foreground">{connector.type}</span>
                               {connector.certified && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-medium bg-emerald-500/10 text-emerald-400">
+                                <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-medium bg-success/10 text-success">
                                   Certified
                                 </span>
                               )}
                               {!connector.partner && isPartnerGatedConnector(connector) && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-medium bg-amber-500/10 text-amber-400">
+                                <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-medium bg-warning/10 text-warning">
                                   Partner
                                 </span>
                               )}
                               {!connector.partner && isShippedConnector(connector) && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-medium bg-emerald-500/10 text-emerald-500">
+                                <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-medium bg-success/10 text-success">
                                   Available
                                 </span>
                               )}
                               <span className={cn(
                                 "text-[9px] px-1.5 py-0.5 rounded uppercase font-medium",
                                 isPartnerGatedConnector(connector)
-                                  ? "bg-amber-500/10 text-amber-400"
+                                  ? "bg-warning/10 text-warning"
                                   : !connector.partner && !isShippedConnector(connector)
                                   ? "bg-zinc-500/10 text-zinc-400"
                                   : connector.authType === "oauth"
                                     ? "bg-blue-500/10 text-blue-400"
                                     : connector.authType === "webhook"
                                       ? "bg-violet-500/10 text-violet-400"
-                                      : "bg-amber-500/10 text-amber-400"
+                                      : "bg-warning/10 text-warning"
                               )}>
                                 {isPartnerGatedConnector(connector)
                                   ? "Request access"
@@ -1588,11 +1588,11 @@ function AddConnectorModal({
                       className={cn(
                         "flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all",
                         environment === "staging"
-                          ? "border-amber-500/50 bg-amber-500/10 text-amber-400"
+                          ? "border-warning/50 bg-warning/10 text-warning"
                           : "border-border bg-secondary text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      <Circle className={cn("h-2 w-2 inline mr-2", environment === "staging" ? "fill-amber-500 text-amber-500" : "fill-muted-foreground text-muted-foreground")} />
+                      <Circle className={cn("h-2 w-2 inline mr-2", environment === "staging" ? "fill-warning text-warning" : "fill-muted-foreground text-muted-foreground")} />
                       Staging
                     </button>
                     <button
@@ -1600,11 +1600,11 @@ function AddConnectorModal({
                       className={cn(
                         "flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all",
                         environment === "production"
-                          ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
+                          ? "border-success/50 bg-success/10 text-success"
                           : "border-border bg-secondary text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      <Circle className={cn("h-2 w-2 inline mr-2", environment === "production" ? "fill-emerald-500 text-emerald-500" : "fill-muted-foreground text-muted-foreground")} />
+                      <Circle className={cn("h-2 w-2 inline mr-2", environment === "production" ? "fill-success text-success" : "fill-muted-foreground text-muted-foreground")} />
                       Production
                     </button>
                   </div>
@@ -1659,7 +1659,7 @@ function AddConnectorModal({
                       onClick={handleCopyWebhook}
                       className="gap-1.5 shrink-0"
                     >
-                      {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                      {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
                       {copied ? "Copied" : "Copy"}
                     </Button>
                   </div>
@@ -1700,11 +1700,11 @@ function AddConnectorModal({
                       className={cn(
                         "flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all",
                         environment === "staging"
-                          ? "border-amber-500/50 bg-amber-500/10 text-amber-400"
+                          ? "border-warning/50 bg-warning/10 text-warning"
                           : "border-border bg-secondary text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      <Circle className={cn("h-2 w-2 inline mr-2", environment === "staging" ? "fill-amber-500 text-amber-500" : "fill-muted-foreground text-muted-foreground")} />
+                      <Circle className={cn("h-2 w-2 inline mr-2", environment === "staging" ? "fill-warning text-warning" : "fill-muted-foreground text-muted-foreground")} />
                       Staging
                     </button>
                     <button
@@ -1712,11 +1712,11 @@ function AddConnectorModal({
                       className={cn(
                         "flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all",
                         environment === "production"
-                          ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
+                          ? "border-success/50 bg-success/10 text-success"
                           : "border-border bg-secondary text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      <Circle className={cn("h-2 w-2 inline mr-2", environment === "production" ? "fill-emerald-500 text-emerald-500" : "fill-muted-foreground text-muted-foreground")} />
+                      <Circle className={cn("h-2 w-2 inline mr-2", environment === "production" ? "fill-success text-success" : "fill-muted-foreground text-muted-foreground")} />
                       Production
                     </button>
                   </div>
@@ -1738,7 +1738,7 @@ function AddConnectorModal({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-foreground">{selectedType}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 uppercase font-medium">API Key</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-warning/10 text-warning uppercase font-medium">API Key</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {getSelectedConnector()?.description}
@@ -1894,7 +1894,7 @@ function AddConnectorModal({
 
                 <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                      <Key className="h-4 w-4 text-amber-400" />
+                      <Key className="h-4 w-4 text-warning" />
                       {selectedType === "Zendesk"
                         ? "API token"
                         : selectedType === "GitHub"
@@ -1951,11 +1951,11 @@ function AddConnectorModal({
                       className={cn(
                         "flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all",
                         environment === "staging"
-                          ? "border-amber-500/50 bg-amber-500/10 text-amber-400"
+                          ? "border-warning/50 bg-warning/10 text-warning"
                           : "border-border bg-secondary text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      <Circle className={cn("h-2 w-2 inline mr-2", environment === "staging" ? "fill-amber-500 text-amber-500" : "fill-muted-foreground text-muted-foreground")} />
+                      <Circle className={cn("h-2 w-2 inline mr-2", environment === "staging" ? "fill-warning text-warning" : "fill-muted-foreground text-muted-foreground")} />
                       Staging
                     </button>
                     <button
@@ -1963,11 +1963,11 @@ function AddConnectorModal({
                       className={cn(
                         "flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all",
                         environment === "production"
-                          ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
+                          ? "border-success/50 bg-success/10 text-success"
                           : "border-border bg-secondary text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      <Circle className={cn("h-2 w-2 inline mr-2", environment === "production" ? "fill-emerald-500 text-emerald-500" : "fill-muted-foreground text-muted-foreground")} />
+                      <Circle className={cn("h-2 w-2 inline mr-2", environment === "production" ? "fill-success text-success" : "fill-muted-foreground text-muted-foreground")} />
                       Production
                     </button>
                   </div>
@@ -2647,9 +2647,9 @@ function ConnectorsPageContent() {
 
   const statusFilterOptions = [
     { value: "all", label: "All", color: "text-foreground" },
-    { value: "connected", label: "Connected", color: "text-emerald-400", dot: "bg-emerald-500" },
+    { value: "connected", label: "Connected", color: "text-success", dot: "bg-emerald-500" },
     { value: "syncing", label: "Syncing", color: "text-blue-400", dot: "bg-blue-500" },
-    { value: "error", label: "Error", color: "text-red-400", dot: "bg-red-500" },
+    { value: "error", label: "Error", color: "text-destructive", dot: "bg-red-500" },
     { value: "disconnected", label: "Offline", color: "text-muted-foreground", dot: "bg-muted-foreground" },
   ] as const
   const totalRequests = connectors.reduce((sum, c) => sum + (c.requestsToday || 0), 0)
@@ -2772,10 +2772,10 @@ function ConnectorsPageContent() {
                   <DropdownMenuSeparator />
                   {Object.entries(connectorCategories).map(([cat, data]) => {
                     const colorMap: Record<string, string> = {
-                      emerald: "text-emerald-400",
+                      emerald: "text-success",
                       blue: "text-blue-400",
                       violet: "text-violet-400",
-                      amber: "text-amber-400",
+                      amber: "text-warning",
                       pink: "text-pink-400",
                       cyan: "text-cyan-400",
                       orange: "text-orange-400",
@@ -2891,7 +2891,7 @@ function ConnectorsPageContent() {
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <Zap className="h-3.5 w-3.5 text-amber-500" />
+                <Zap className="h-3.5 w-3.5 text-warning" />
                 <span className="text-xs md:text-sm text-muted-foreground">
                   <span className="font-medium text-foreground">{totalRequests.toLocaleString()}</span> <span className="hidden sm:inline">requests</span> today
                 </span>
