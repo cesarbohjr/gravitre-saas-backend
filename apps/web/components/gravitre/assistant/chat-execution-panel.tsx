@@ -106,7 +106,7 @@ export type ChatExecutionResult = {
   assumption_notes?: string[] | null
 }
 
-function resolveBusinessOutcome(executionResult: ChatExecutionResult): BusinessOutcomeDto | null {
+export function resolveBusinessOutcome(executionResult: ChatExecutionResult): BusinessOutcomeDto | null {
   const candidate =
     executionResult.business_outcome ||
     executionResult.businessOutcome ||

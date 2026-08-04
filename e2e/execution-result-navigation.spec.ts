@@ -36,4 +36,21 @@ test.describe("ExecutionResult navigation buttons", () => {
     await expect(page.getByText('Created contact list "Inline summary only".')).toBeVisible()
     await expect(page.getByRole("link", { name: /View in/i })).toHaveCount(0)
   })
+
+  test("business_outcome scenario renders shared evidence card (matched preview)", async ({ page }) => {
+    await page.goto("/e2e/execution-result?scenario=business_outcome")
+    await expect(page.getByTestId("execution-result-harness")).toBeVisible()
+    const card = page.locator('[data-projection="business_outcome"]')
+    await expect(card).toBeVisible()
+    await expect(card).toHaveAttribute("data-business-outcome-id", "run-bo-fixture")
+    await expect(page.getByText(/Created contact list "MSP Prospects" in Apollo/i)).toBeVisible()
+    await expect(card.getByText(/^Verified ·/)).toBeVisible()
+    const vendor = page.getByRole("link", { name: "View in Apollo" })
+    await expect(vendor).toBeVisible()
+    await expect(vendor).toHaveAttribute("href", /app\.apollo\.io/)
+    await page.screenshot({
+      path: "docs/delivery/_artifacts/bo-chat-harness-business-outcome.png",
+      fullPage: true,
+    })
+  })
 })

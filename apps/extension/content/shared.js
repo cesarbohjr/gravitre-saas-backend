@@ -9,6 +9,70 @@
     return node
   }
 
+  /** Compact BusinessOutcome evidence — matched preview for connector writes. */
+  function renderBusinessOutcomeCard(parent, result) {
+    const bo = result?.businessOutcome
+    if (!bo || typeof bo !== "object") return false
+    const sections = bo.sections || {}
+    const card = el("div", "gvt-outcome")
+    card.appendChild(el("div", "gvt-outcome-title", bo.title || result.invokeAction || "Completed work"))
+    const summary = sections.summary || result.error || ""
+    if (summary) card.appendChild(el("p", "gvt-outcome-summary", String(summary).slice(0, 400)))
+    const ver = sections.verification
+    if (ver && typeof ver === "object") {
+      const badge = el(
+        "div",
+        ver.verified ? "gvt-outcome-verified" : "gvt-outcome-unverified",
+        ver.verified ? "Verified evidence" : "Not verified",
+      )
+      card.appendChild(badge)
+    }
+    const links = (sections.evidence && sections.evidence.links) || []
+    if (links.length) {
+      const row = el("div", "gvt-outcome-links")
+      links.slice(0, 4).forEach((link) => {
+        if (!link?.href) return
+        const a = document.createElement("a")
+        a.className = "gvt-outcome-link"
+        a.href = String(link.href).startsWith("http")
+          ? link.href
+          : `https://gravitre.app${link.href.startsWith("/") ? "" : "/"}${link.href}`
+        a.target = "_blank"
+        a.rel = "noopener noreferrer"
+        a.textContent = link.label || "Open"
+        row.appendChild(a)
+      })
+      card.appendChild(row)
+    } else if (result.runId || result.businessOutcomeUrl || result.outcomeUrl) {
+      const row = el("div", "gvt-outcome-links")
+      const href =
+        result.outcomeUrl ||
+        result.businessOutcomeUrl ||
+        `/runs/${result.runId}`
+      const a = document.createElement("a")
+      a.className = "gvt-outcome-link"
+      a.href = String(href).startsWith("http") ? href : `https://gravitre.app${href}`
+      a.target = "_blank"
+      a.rel = "noopener noreferrer"
+      a.textContent = "Open in Activity / Runs"
+      row.appendChild(a)
+      card.appendChild(row)
+    }
+    parent.appendChild(card)
+    return true
+  }
+
+  function showExecuteResult(statusEl, cardEl, result) {
+    const r = result || {}
+    if (renderBusinessOutcomeCard(cardEl, r)) {
+      statusEl.textContent = r.success ? "Done — evidence below." : r.error || "Finished with evidence."
+      return
+    }
+    statusEl.textContent = r.success
+      ? `Done — ${r.invokeAction || "action"}. Open Activity in Gravitree.`
+      : r.error || "Action did not succeed"
+  }
+
   function ensureRoot() {
     let root = document.getElementById("gravitree-overlay-root")
     if (root) return root
@@ -134,10 +198,7 @@
                     status.textContent = exec?.error || "Action failed"
                     return
                   }
-                  const r = exec.result || {}
-                  status.textContent = r.success
-                    ? `Done — ${r.invokeAction}. Open Outcomes/Runs in Gravitree.`
-                    : r.error || "Action did not succeed"
+                  showExecuteResult(status, card, exec.result || {})
                 },
               )
             }
@@ -212,9 +273,7 @@
                   showConfirm(suggestion, pre.result.params || params)
                   return
                 }
-                status.textContent = pre.result?.success
-                  ? "Done."
-                  : pre.result?.error || "Finished"
+                showExecuteResult(status, card, pre.result || {})
               },
             )
           })
@@ -254,14 +313,17 @@
               plan.appendChild(
                 el("p", null, `Plan: ${wf.name} — approve to run all steps.`),
               )
+              const stepEls = []
               ;(wf.progressSteps || []).forEach((step, i) => {
-                plan.appendChild(
-                  el(
-                    "div",
-                    "gvt-muted",
-                    `${i + 1}. ${step.name}${step.action ? ` · ${step.action}` : ""}`,
-                  ),
+                const label = step.label || step.name || `Step ${i + 1}`
+                const line = el(
+                  "div",
+                  "gvt-step gvt-step-pending",
+                  `${i + 1}. ${label}${step.action ? ` · ${step.action}` : ""}`,
                 )
+                line.dataset.stepIndex = String(i)
+                stepEls.push(line)
+                plan.appendChild(line)
               })
               const row = el("div", "gvt-actions")
               const yes = el("button", "gvt-btn", "Approve & run workflow")
@@ -271,6 +333,10 @@
               no.addEventListener("click", () => plan.remove())
               yes.addEventListener("click", () => {
                 yes.disabled = true
+                stepEls.forEach((line) => {
+                  line.className = "gvt-step gvt-step-running"
+                })
+                status.textContent = "Running workflow — named steps below…"
                 chrome.runtime.sendMessage(
                   {
                     type: "EXECUTE_WORKFLOW",
@@ -281,9 +347,21 @@
                   (pre) => {
                     if (!pre?.ok || pre.result?.status !== "needs_confirmation") {
                       yes.disabled = false
+                      stepEls.forEach((line) => {
+                        line.className = "gvt-step gvt-step-pending"
+                      })
                       status.textContent = pre?.error || "Could not stage workflow"
                       return
                     }
+                    const staged = pre.result.progressSteps || wf.progressSteps || []
+                    staged.forEach((step, i) => {
+                      if (!stepEls[i]) return
+                      const label = step.label || step.name || `Step ${i + 1}`
+                      stepEls[i].textContent = `${i + 1}. ${label}${
+                        step.action ? ` · ${step.action}` : ""
+                      }`
+                      stepEls[i].className = "gvt-step gvt-step-running"
+                    })
                     const token = pre.result.confirmationToken
                     chrome.runtime.sendMessage(
                       {
@@ -292,16 +370,39 @@
                         pageUrl,
                       },
                       (exec) => {
-                        yes.disabled = false
-                        plan.remove()
+                        yes.disabled = true
+                        yes.textContent = "Ran"
+                        no.disabled = true
                         if (!exec?.ok) {
+                          yes.disabled = false
+                          yes.textContent = "Approve & run workflow"
                           status.textContent = exec?.error || "Workflow failed"
+                          stepEls.forEach((line) => {
+                            line.className = "gvt-step gvt-step-failed"
+                          })
                           return
                         }
                         const r = exec.result || {}
-                        status.textContent = r.runId
-                          ? `Workflow ${r.status} — Outcomes/Runs updated.`
-                          : r.error || "Workflow finished"
+                        const done = r.progressSteps || staged
+                        done.forEach((step, i) => {
+                          if (!stepEls[i]) return
+                          const label = step.label || step.name || `Step ${i + 1}`
+                          const st = String(step.status || r.status || "completed")
+                          stepEls[i].textContent = `${i + 1}. ${label}${
+                            step.action ? ` · ${step.action}` : ""
+                          } — ${st}`
+                          stepEls[i].className =
+                            st === "completed" || st === "running"
+                              ? `gvt-step gvt-step-${st === "completed" ? "done" : "running"}`
+                              : "gvt-step gvt-step-failed"
+                        })
+                        if (r.runId && !renderBusinessOutcomeCard(card, r)) {
+                          status.textContent = `Workflow ${r.status} — open Activity for evidence.`
+                        } else if (!r.runId) {
+                          status.textContent = r.error || "Workflow finished"
+                        } else {
+                          status.textContent = `Workflow ${r.status} — named steps + evidence below.`
+                        }
                       },
                     )
                   },
@@ -457,5 +558,10 @@
     return {}
   }
 
-  window.__gravitreeOverlay = { renderOverlay, ensureRoot }
+  window.__gravitreeOverlay = {
+    renderOverlay,
+    ensureRoot,
+    renderBusinessOutcomeCard,
+    showExecuteResult,
+  }
 })()

@@ -55,7 +55,7 @@ Runs with `verified_output` (Module A substrate for BO projection), including:
 - No fake live preview of PDFs or Office files  
 - No new charting dependency for chat  
 - No speculative file generation just to demo chips  
-- Browser extension still uses status text (not BO card) — separate gap, not introduced by this work
+- ~~Browser extension still uses status text (not BO card)~~ — **closed** (see Gap closeout)
 
 ## Verification
 
@@ -78,8 +78,8 @@ Runs with `verified_output` (Module A substrate for BO projection), including:
 | Cohort (14d completed chat/ext-ish) | **PASS** | 20/39 completed rows carry `parameters.verified_output` |
 | Chat render path | **PASS (code)** | `ChatExecutionPanel` success + failure → `BusinessOutcomeView` `density="chat"` |
 | Activity / Runs render path | **PASS (code)** | `activity/page.tsx` + `runs/[id]/page.tsx` → `density="timeline"` |
-| Authenticated UI screenshot (chat/Activity) | **NOT RUN** | Browser redirected to `https://gravitre.app/login` — needs operator session |
-| Browser extension | **PASS — no regression** | Extension has **no** `BusinessOutcome` renderer (status text only in `popup.js`); fidelity work did not touch extension. Pre-existing gap, not a regression. |
+| Authenticated UI screenshot (chat/Activity) | **PASS (harness)** / prod login **NOT RUN** | E2E harness `business_outcome` + screenshot artifact; gravitre.app still needs operator session |
+| Browser extension | **PASS — gap closed** | Overlay renders BO evidence card when `businessOutcome` present (see Gap closeout) |
 
 ### Deploy tip
 
@@ -100,8 +100,28 @@ Re-ran Phase 0 inventory + Phase 1 live BO API check against tip `b64add73…`:
 | Phase 1 BO GET + export identity | **PASS** | Outcome `95137db3-c760-4334-9b69-277e599351e0` — `projection=business_outcome`, sections include `evidence` + `verification`, GET/export identical @ `2026-08-04T00:08:57Z` |
 | Phase 2 / Phase 3 | **SKIP** | No first-class file or web-renderable chat artifacts |
 | Chat / Activity code path | **PASS (code)** | Unchanged early-return to `BusinessOutcomeView` |
-| Extension regression | **PASS** | No BO renderer; status text only |
-| UI screenshot | **NOT RUN** | Login gate |
+| Extension BO card | **PASS** | Gap closed — see below |
+| UI screenshot | **PASS (harness)** | Login gate bypassed via `/e2e/execution-result` |
 | Canvas | Phase 0 inventory | `canvases/output-preview-fidelity-phase0.canvas.tsx` |
 
 Artifact: `docs/delivery/output-preview-fidelity-live.json`
+
+## Gap closeout (2026-08-03)
+
+Closed open gaps from Phase 1 / reconfirm — matched preview now covers chat harness UI + extension overlay.
+
+| Gap | Result | Evidence |
+|-----|--------|----------|
+| Extension BO renderer | **PASS (code + fixture)** | `apps/extension/content/shared.js` `renderBusinessOutcomeCard` / `showExecuteResult`; CSS `.gvt-outcome*`; backend projects DTO via `_project_extension_business_outcome` on confirmed action + confirmed workflow; URLs → `/runs/{id}` + `/activity` |
+| Extension visual | **PASS (fixture screenshot)** | `docs/delivery/_artifacts/extension-bo-overlay-fixture.png` via `docs/delivery/fixtures/extension-business-outcome-overlay.html` @ `2026-08-03` |
+| Chat UI screenshot (login gate) | **PASS (e2e harness)** | Playwright `business_outcome` scenario — harness `/e2e/execution-result?scenario=business_outcome` renders `[data-projection=business_outcome]` id `run-bo-fixture`; screenshot `docs/delivery/_artifacts/bo-chat-harness-business-outcome.png` |
+| Unit coverage | **PASS** | `pytest tests/services/test_extension_business_outcome_preview.py` (2); vitest `resolve-business-outcome.test.ts` (2); e2e business_outcome (1) |
+| Authenticated prod chat screenshot | **NOT RUN** | Still needs operator session on gravitre.app — harness proves shared `BusinessOutcomeView` path without login |
+
+### Scope adds
+
+- E2E harness scenario `business_outcome` in `apps/web/app/e2e/execution-result/harness.tsx`
+- Playwright assertion + artifact screenshot in `e2e/execution-result-navigation.spec.ts`
+- Export `resolveBusinessOutcome` for unit test
+- Extension overlay API exports `renderBusinessOutcomeCard` / `showExecuteResult` for fixture/reuse
+- v0 IA handoff prompt expanded (`frontend-ia-v0-handoff-prompt.md`)

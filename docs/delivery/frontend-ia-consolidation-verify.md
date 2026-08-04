@@ -24,4 +24,8 @@
 
 ## v0 visual handoff
 
-Only after this functional bar: see `docs/delivery/frontend-ia-v0-handoff-prompt.md`.
+**Handoff ready (2026-08-03)** — paste-ready prompt in [`frontend-ia-v0-handoff-prompt.md`](./frontend-ia-v0-handoff-prompt.md). Visual redesign not started in-repo.
+
+## Related: output preview fidelity gaps closed (2026-08-03)
+
+See [`output-preview-fidelity-2026-08-03.md`](./output-preview-fidelity-2026-08-03.md) Gap closeout — extension BO card + e2e harness UI evidence.

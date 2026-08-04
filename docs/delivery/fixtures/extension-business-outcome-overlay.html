@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Extension BusinessOutcome overlay fixture</title>
+    <link rel="stylesheet" href="../../../apps/extension/content/overlay.css" />
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #0f1419;
+        font-family: system-ui, sans-serif;
+      }
+      #mount {
+        padding: 24px;
+      }
+      .gvt-card {
+        position: relative;
+        max-width: 360px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="mount">
+      <div class="gvt-card">
+        <div class="gvt-brand" style="padding: 12px 14px 0">Gravitree</div>
+        <div id="status" class="gvt-status" style="padding: 8px 14px"></div>
+        <div id="result-host" style="padding: 0 14px 14px"></div>
+      </div>
+    </div>
+    <script src="../../../apps/extension/content/shared.js"></script>
+    <script>
+      const fixture = {
+        success: true,
+        invokeAction: "apollo.lists.create",
+        runId: "run-ext-fixture",
+        outcomeUrl: "/runs/run-ext-fixture",
+        businessOutcomeUrl: "/activity",
+        businessOutcome: {
+          id: "run-ext-fixture",
+          title: "apollo.lists.create",
+          projection: "business_outcome",
+          sections: {
+            summary: 'Created contact list "MSP Prospects" via browser extension.',
+            verification: {
+              verified: true,
+              method: "module_a_verified_output",
+              detail: "Vendor URL present.",
+            },
+            evidence: {
+              links: [
+                {
+                  label: "View in Apollo",
+                  href: "https://app.apollo.io/#/lists/abc123",
+                  kind: "vendor",
+                },
+                { label: "View run", href: "/runs/run-ext-fixture", kind: "gravitre" },
+              ],
+            },
+          },
+        },
+      }
+      const status = document.getElementById("status")
+      const host = document.getElementById("result-host")
+      window.__gravitreeOverlay.showExecuteResult(status, host, fixture)
+      host.setAttribute("data-testid", "extension-bo-fixture")
+    </script>
+  </body>
+</html>

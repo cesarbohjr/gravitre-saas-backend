@@ -14,6 +14,50 @@ const SCENARIOS: Record<string, ChatExecutionResult> = {
     body: 'Created contact list "MSP Prospects" (id: abc123).',
     task_label: "Create contact list",
   },
+  /** Canonical matched preview for connector writes — BusinessOutcome evidence card. */
+  business_outcome: {
+    success: true,
+    entity_type: "connector",
+    entity_id: "conn-apollo-bo",
+    integration: "apollo",
+    title: "Create contact list",
+    body: 'Created contact list "MSP Prospects".',
+    task_label: "Create contact list",
+    result_url: "/runs/run-bo-fixture",
+    business_outcome: {
+      id: "run-bo-fixture",
+      orgId: "org-fixture",
+      kind: "created_record",
+      title: "Create contact list",
+      status: "completed",
+      lifecycleState: "presented",
+      source: "assistant_chat",
+      projection: "business_outcome",
+      runId: "run-bo-fixture",
+      sections: {
+        summary: 'Created contact list "MSP Prospects" in Apollo.',
+        evidence: {
+          integration: "apollo",
+          entityType: "list",
+          entityId: "abc123",
+          links: [
+            {
+              label: "View in Apollo",
+              href: "https://app.apollo.io/#/lists/abc123",
+              kind: "vendor",
+            },
+            { label: "View run", href: "/runs/run-bo-fixture", kind: "gravitre" },
+          ],
+        },
+        verification: {
+          verified: true,
+          method: "module_a_verified_output",
+          detail: "Vendor URL present on Module A verified_output.",
+        },
+        explanation: "This list was created through a governed catalog write.",
+      },
+    },
+  },
   internal_doc: {
     success: true,
     entity_type: "connector",

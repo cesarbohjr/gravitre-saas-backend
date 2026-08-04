@@ -1,7 +1,8 @@
 {
-  "probe": "output_preview_fidelity_phase0_phase1",
+  "probe": "output_preview_fidelity_phase0_phase1_gap_closeout",
   "date": "2026-08-03",
   "reconfirmed_at": "2026-08-04T00:08:57Z",
+  "gaps_closed_at": "2026-08-04T00:28:00Z",
   "phase0": {
     "connector_business_outcome": true,
     "durable_hosted_files": false,
@@ -42,17 +43,36 @@
   },
   "phase2_file_chip": "SKIP",
   "phase3_live_preview": "SKIP",
+  "gap_closeout": {
+    "extension_bo_renderer": {
+      "verdict": "PASS",
+      "backend": "_project_extension_business_outcome + businessOutcome on execute/workflow response",
+      "urls": "outcomeUrl=/runs/{id}, businessOutcomeUrl=/activity",
+      "overlay": "renderBusinessOutcomeCard in apps/extension/content/shared.js",
+      "fixture_screenshot": "docs/delivery/_artifacts/extension-bo-overlay-fixture.png",
+      "pytest": "tests/services/test_extension_business_outcome_preview.py — 2 passed"
+    },
+    "chat_ui_harness": {
+      "verdict": "PASS",
+      "scenario": "business_outcome",
+      "harness": "/e2e/execution-result?scenario=business_outcome",
+      "dto_id": "run-bo-fixture",
+      "screenshot": "docs/delivery/_artifacts/bo-chat-harness-business-outcome.png",
+      "playwright": "e2e/execution-result-navigation.spec.ts business_outcome — 1 passed",
+      "vitest": "__tests__/assistant/resolve-business-outcome.test.ts — 2 passed"
+    },
+    "authenticated_prod_chat_screenshot": "NOT RUN — login gate; harness covers shared renderer"
+  },
   "live_verification": {
     "checked_at": "2026-08-04T00:08:57Z",
     "chat_code_path": "PASS",
     "activity_runs_code_path": "PASS",
     "bo_api_get_export": "PASS — outcome 95137db3… on tip",
-    "authenticated_ui_screenshot": "NOT RUN — gravitre.app/login gate",
-    "extension": "PASS no regression — no BusinessOutcome in extension; status text only",
-    "api_health_git_sha": "b64add73bd2f60500694177386e617bc528bdcf7",
-    "docs_tip_prior": "6e9148e7",
+    "authenticated_ui_screenshot": "PASS (e2e harness) — prod login still NOT RUN",
+    "extension": "PASS — BusinessOutcome card in overlay + fixture screenshot",
+    "api_health_git_sha_at_bo_reconfirm": "b64add73bd2f60500694177386e617bc528bdcf7",
     "mismatched_preview_mechanisms_added": false
   },
-  "code_changes": false,
-  "note": "Documentation + reconfirm only; no Railway feature redeploy required. BusinessOutcome already on tip."
+  "code_changes": true,
+  "note": "Gap closeout ships extension BO projection/render + e2e harness scenario. Requires tip deploy for backend/extension bridge; web harness is local/CI."
 }

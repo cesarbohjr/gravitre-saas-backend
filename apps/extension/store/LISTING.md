@@ -1,7 +1,10 @@
 # Chrome Web Store listing draft (Gravitree extension)
 
-**Status:** NOT PUBLISHED — blocker for store-linked marketing CTAs.  
-Set `NEXT_PUBLIC_CHROME_WEB_STORE_URL` on the web app when a real listing (or unlisted beta) URL exists.
+**Status:** SUBMITTED FOR REVIEW (2026-08-03) — not yet live; marketing CTAs still use the setup guide until Google publishes and `NEXT_PUBLIC_CHROME_WEB_STORE_URL` is set.
+
+When the listing (or unlisted beta) URL exists, set on Vercel:
+
+`NEXT_PUBLIC_CHROME_WEB_STORE_URL=https://chromewebstore.google.com/detail/gravitree/<EXTENSION_ID>`
 
 ## Listing fields
 
