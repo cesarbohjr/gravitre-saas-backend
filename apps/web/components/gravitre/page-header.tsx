@@ -18,7 +18,9 @@ export function PageHeader({
   title,
   description,
   icon: Icon,
-  iconColor = "from-blue-500/20 to-cyan-500/20",
+  // Default to the brand gradient (was off-brand blue/cyan). Consumers can
+  // still override via iconColor; cn()/twMerge keeps the last color utility.
+  iconColor = "from-primary/20 to-primary/5",
   actions,
   children,
   className,
@@ -32,7 +34,9 @@ export function PageHeader({
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ring-1 ring-white/10",
+                // ring-border is theme-aware (was ring-white/10, invisible in
+                // light mode). Consumers appending ring-* still override it.
+                "flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ring-1 ring-border",
                 iconColor
               )}
             >

@@ -3,7 +3,7 @@
 import { type ReactNode } from "react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
-import { type LucideIcon, Inbox, Search, FileQuestion, AlertCircle, Sparkles } from "lucide-react"
+import { type LucideIcon, Inbox, Search, AlertCircle, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface EmptyStateProps {
@@ -43,22 +43,25 @@ const variantIcons: Record<string, LucideIcon> = {
   ai: Sparkles,
 }
 
+// Semantic tokens rather than raw palette hues so each variant tracks the
+// theme (the fixed -500 values had no light/dark treatment). "ai" maps to the
+// brand primary; search reads as informational; error as destructive.
 const variantStyles = {
   default: {
     iconBg: "bg-secondary/80",
     iconColor: "text-muted-foreground",
   },
   search: {
-    iconBg: "bg-blue-500/10",
-    iconColor: "text-blue-500",
+    iconBg: "bg-info/10",
+    iconColor: "text-info",
   },
   error: {
-    iconBg: "bg-red-500/10",
-    iconColor: "text-red-500",
+    iconBg: "bg-destructive/10",
+    iconColor: "text-destructive",
   },
   ai: {
-    iconBg: "bg-violet-500/10",
-    iconColor: "text-violet-500",
+    iconBg: "bg-primary/10",
+    iconColor: "text-primary",
   },
 }
 
@@ -120,7 +123,7 @@ export function EmptyState({
         className={cn(
           "flex items-center justify-center rounded-xl mb-4",
           sizes.iconContainer,
-          iconSlot ? "bg-violet-500/10" : styles.iconBg
+          iconSlot ? "bg-primary/10" : styles.iconBg
         )}
       >
         {iconSlot ? iconSlot : <Icon className={cn(sizes.icon, styles.iconColor)} />}
