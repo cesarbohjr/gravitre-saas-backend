@@ -25,7 +25,10 @@ export default defineConfig({
   // served from without being rebuilt.
   base: "./",
   build: {
-    outDir: resolve(__dirname, "dist-preview"),
+    // Emit straight into the Next app's public dir: port 3000 is the only port
+    // routed out to a review browser, so the harness must be served from there.
+    // Already gitignored as build output.
+    outDir: resolve(__dirname, "../web/public/e2e/ext-harness"),
     emptyOutDir: true,
     cssCodeSplit: false,
     rollupOptions: {

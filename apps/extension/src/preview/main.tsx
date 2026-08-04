@@ -59,6 +59,21 @@ function Frame({
   )
 }
 
+/**
+ * Renders the overlay inline for review. The `[&>[role=dialog]]` overrides undo
+ * only the viewport-anchoring (`fixed`/`inset`/`max-height`) so the card's own
+ * sizing, borders and elevation are still exactly what ships.
+ */
+function OverlayFrame({ label, dark }: { label: string; dark?: boolean }) {
+  return (
+    <Frame label={label} width={380} dark={dark}>
+      <div className="[&>[role=dialog]]:static [&>[role=dialog]]:max-h-none [&>[role=dialog]]:w-full [&>[role=dialog]]:rounded-none [&>[role=dialog]]:border-0">
+        <Overlay pageUrl={PAGE_URL} pageContext={PAGE_CONTEXT} onClose={() => {}} />
+      </div>
+    </Frame>
+  )
+}
+
 function Harness() {
   return (
     <div style={{ display: "flex", gap: 28, padding: 24, alignItems: "flex-start", flexWrap: "wrap" }}>
@@ -77,13 +92,13 @@ function Harness() {
       {/* The overlay is the surface users actually spend time in, so it is
           reviewed at its real width in both themes. In the extension it lives
           in a shadow root; here it renders inline, which is fine because the
-          harness page has no competing CSS. */}
-      <Frame label="Overlay — light" width={380}>
-        <Overlay pageUrl={PAGE_URL} pageContext={PAGE_CONTEXT} onClose={() => {}} />
-      </Frame>
-      <Frame label="Overlay — dark" width={380} dark>
-        <Overlay pageUrl={PAGE_URL} pageContext={PAGE_CONTEXT} onClose={() => {}} />
-      </Frame>
+          harness page has no competing CSS.
+
+          `OverlayFrame` neutralises the overlay's own `position: fixed` (correct
+          in production, where it floats over LinkedIn) so both copies sit in the
+          page flow instead of stacking in the viewport corner. Review-only. */}
+      <OverlayFrame label="Overlay — light" />
+      <OverlayFrame label="Overlay — dark" dark />
     </div>
   )
 }
