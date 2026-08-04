@@ -42,11 +42,13 @@ export function ScopePanel({
       typeof chrome !== "undefined" && chrome.runtime?.getManifest
         ? chrome.runtime.getManifest()
         : undefined
-    const hosts = (manifest?.host_permissions ?? []).map(prettyHost)
+    const raw = (manifest?.host_permissions ?? []) as unknown[]
+    const hosts = raw.filter((h): h is string => typeof h === "string").map(prettyHost)
     const unique = Array.from(new Set(hosts))
+    const perms = (manifest?.permissions ?? []) as unknown[]
     return {
       pageHosts: unique.filter((h) => !OWN_ORIGIN.test(h)),
-      permissions: manifest?.permissions ?? [],
+      permissions: perms.filter((p): p is string => typeof p === "string"),
     }
   }, [])
 

@@ -191,9 +191,11 @@ export function Divider({ className }: { className?: string }) {
 export function Notice({
   tone = "muted",
   children,
+  className,
 }: {
   tone?: "muted" | "danger"
   children: ReactNode
+  className?: string
 }) {
   return (
     <p
@@ -201,6 +203,7 @@ export function Notice({
         "text-[12px] leading-relaxed",
         tone === "muted" && "text-muted-foreground",
         tone === "danger" && "text-destructive",
+        className,
       )}
       role={tone === "danger" ? "alert" : undefined}
     >
