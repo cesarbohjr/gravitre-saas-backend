@@ -93,23 +93,6 @@ try {
   if (!(await probe(page))) process.exit(1)
   if (probeOnly) process.exit(0)
 
-  // --trace prints every /api/* path the app actually requests, which is how to
-  // get fixture keys right instead of guessing them from source.
-  if (args.includes("--trace")) {
-    const view = only ?? "activity"
-    const seen = new Set()
-    page.on("request", (r) => {
-      const u = new URL(r.url())
-      if (u.pathname.startsWith("/api/")) seen.add(u.pathname)
-    })
-    await page.goto(`${BASE}/e2e/shots/${view}`, { waitUntil: "networkidle" })
-    await page.waitForTimeout(6000)
-    console.log(`=== /api/* requested by ${view} ===`)
-    ;[...seen].sort().forEach((s) => console.log(`  ${s}`))
-    console.log(`landed on: ${new URL(page.url()).pathname}`)
-    process.exit(0)
-  }
-
   // --debug dumps rendered text + uncaught errors for one view. textContent()
   // includes inline <script> source, which makes failures look like gibberish;
   // innerText shows only what is actually visible.
@@ -119,9 +102,10 @@ try {
     page.on("pageerror", (e) => pageErrors.push(String(e).slice(0, 300)))
     await page.goto(`${BASE}/e2e/shots/${view}`, { waitUntil: "networkidle" })
     await page.waitForTimeout(7000)
-    // Ask the page directly what the interceptor returns. The --trace mode is
-    // blind here: the fetch patch answers before anything hits the network, so
-    // "0 /api/* requests" is expected and proves nothing.
+    // Ask the page directly what the interceptor returns. Do NOT try to diagnose
+    // this by listening for Playwright request events: the harness patches
+    // window.fetch and answers from fixtures before anything reaches the
+    // network, so "0 /api/* requests" is always true and proves nothing.
     const diag = await page.evaluate(async () => {
       const out = { storedOrg: localStorage.getItem("gravitre:selectedOrg") }
       for (const p of ["/api/organizations", "/api/connectors?org=x"]) {
