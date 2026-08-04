@@ -406,6 +406,58 @@ async def test_step_confirm_executes_write(orchestration_service):
     mock_finalize.assert_awaited_once()
 
 
+@pytest.mark.asyncio
+async def test_msp_clay_try_prompt_stages_create_workflow_not_search_contacts(
+    orchestration_service,
+):
+    """AI Chat TRY chip must not invent 2× Apollo Search contacts orchestration."""
+    message = (
+        'Use Clay to enrich the existing Apollo contact list "MSP Prospects", '
+        'then add those enriched contacts to the existing HubSpot static list "MSPs".'
+    )
+    refreshed = {
+        "clarified_params": {
+            "type": "create_workflow",
+            "invoke_action": "assistant.create_workflow",
+            "source": "pack_common_msp_enrich",
+        },
+        "pending_task": {
+            "type": "create_workflow",
+            "status": "awaiting_confirm",
+            "params": {
+                "type": "create_workflow",
+                "invoke_action": "assistant.create_workflow",
+                "source": "pack_common_msp_enrich",
+            },
+        },
+    }
+    orchestration_service._state.get_task_state = AsyncMock(
+        side_effect=[
+            {"pending_task": None, "clarified_params": {}},
+            refreshed,
+        ]
+    )
+    result = await orchestration_service.process_turn(
+        org_id="org-1",
+        user_id="user-1",
+        conversation_id="conv-msp-try",
+        message=message,
+        classification={"intent": "workflow_execution"},
+        task_state={"pending_task": None},
+        connected_integrations=["apollo", "clay", "hubspot"],
+        client=MagicMock(),
+    )
+    assert result is not None
+    assert result["dialogue_mode"] == "confirm"
+    assert "draft workflow" in result["message"].lower()
+    assert "search contacts" not in result["message"].lower()
+    patch = orchestration_service._state.update_task_state.await_args.args[2]
+    pending = patch["pending_task"]
+    assert pending["type"] == "create_workflow"
+    assert pending["status"] == "awaiting_confirm"
+    assert pending["params"]["invoke_action"] == "assistant.create_workflow"
+
+
 def test_sta307_high_intent_prompt_splits_hubspot_then_slack(orchestration_service):
     """STA-307 — planner must not label both steps HubSpot for the example chip."""
     message = "Search HubSpot for high-intent leads and draft a follow-up in Slack for approval"

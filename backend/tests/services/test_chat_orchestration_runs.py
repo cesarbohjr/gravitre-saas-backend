@@ -3,10 +3,68 @@
 from unittest.mock import MagicMock, patch
 
 from app.services.chat_orchestration_runs import (
+    _chat_orch_graph_from_steps,
     finalize_orchestration_run,
     orchestration_run_fully_completed,
     resolve_orchestration_result_url,
 )
+from app.workflows.execution_engine import validate_execution_graph, build_execution_graph
+from app.workflows.execution_engine_runtime import _graph_from_run
+
+
+def test_chat_orch_graph_from_steps_is_retryable():
+    step_defs, nodes, edges = _chat_orch_graph_from_steps(
+        [
+            {
+                "step_id": "s1",
+                "label": "Search contacts",
+                "plan": {
+                    "invoke_action": "apollo.contacts.search",
+                    "args": {"list_name": "MSP Prospects"},
+                },
+            },
+            {
+                "step_id": "s2",
+                "label": "Search contacts",
+                "plan": {"invoke_action": "hubspot.contacts.search", "args": {}},
+            },
+        ]
+    )
+    assert len(step_defs) == 2
+    assert nodes[0]["config"]["tool_action"] == "apollo.contacts.search"
+    graph = build_execution_graph(nodes, edges)
+    validate_execution_graph(graph)  # must not raise Graph has no nodes
+
+
+def test_graph_from_run_synthesizes_legacy_chat_orch_steps():
+    """Legacy snapshots without graph.nodes must not crash Retry with empty graph."""
+    run = {
+        "parameters": {"source": "chat_orchestration"},
+        "definition_snapshot": {
+            "source": "chat_orchestration",
+            "steps": [
+                {"id": "s1", "name": "Search contacts", "type": "connector", "invoke_action": "apollo.contacts.search"},
+                {"id": "s2", "name": "Post Slack", "type": "connector", "invoke_action": "slack.post_message"},
+            ],
+        },
+    }
+    graph, batches = _graph_from_run(run)
+    assert len(graph.node_ids) == 2
+    assert len(batches) >= 1
+
+
+def test_graph_from_run_chat_orch_without_steps_has_clear_error():
+    from app.workflows.execution_engine import GraphValidationError
+
+    run = {
+        "parameters": {"source": "chat_orchestration"},
+        "definition_snapshot": {"source": "chat_orchestration", "steps": []},
+    }
+    try:
+        _graph_from_run(run)
+        raise AssertionError("expected GraphValidationError")
+    except GraphValidationError as exc:
+        assert "no executable graph" in str(exc).lower() or "re-run" in str(exc).lower()
 
 
 def test_prefers_run_detail_over_vendor_url():

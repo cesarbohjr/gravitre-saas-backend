@@ -921,41 +921,23 @@ async def apply_unified_turn_live(
         )
         return None
 
-    from app.services.unified_turn_classical_fallback import (
-        should_defer_unified_turn_live_to_classical,
+    # Pack-common intents must run BEFORE classical defer. The AI Chat TRY prompt
+    # contains "Apollo" / "contact list", which match message_requires_classical_tool_sse
+    # and used to fall through into a broken 2× Search-contacts orchestration.
+    from app.services.pack_common_intent_defaults import (
+        format_pack_common_msp_enrich_confirm_message,
+        try_pack_common_list_create_plan,
+        try_pack_common_msp_enrich_workflow_plan,
     )
 
-    if should_defer_unified_turn_live_to_classical(
-        mode_key=mode_key,
-        outcome_kind=str(result.outcome_kind or ""),
-        message=message,
-        classification=classification,
-    ):
-        defer_reason = (
-            "defer_connector_tool_proposal"
-            if str(result.outcome_kind or "") == "connector_tool_proposal"
-            else "defer_classical_tool_sse"
-        )
-        _mark_live_fallthrough(result, defer_reason)
-        emit_unified_turn_shadow_audit(
-            client=client,
-            org_id=org_id,
-            actor_id=user_id,
-            conversation_id=conversation_id,
-            result=result,
-        )
-        return None
+    connected_for_pack = list(
+        result.connected_integrations or connected_integrations or []
+    )
 
     # Part 3 — pack-common list create: stage awaiting_confirm directly.
-    # Beats LLM "static vs active" clarify and avoids write_plan_unavailable
-    # fallthrough when the model proposed a tool we already know how to fill.
-    from app.services.pack_common_intent_defaults import try_pack_common_list_create_plan
-
     pack_plan = try_pack_common_list_create_plan(
         message or "",
-        connected_integrations=list(
-            result.connected_integrations or connected_integrations or []
-        ),
+        connected_integrations=connected_for_pack,
     )
     if pack_plan is not None and conversation_id:
         from app.services.chat_connector_execution_service import (
@@ -967,7 +949,6 @@ async def apply_unified_turn_live(
         )
         from app.services.conversation_state_service import get_conversation_state_service
 
-        pack_plan = pack_plan
         staged_missing = missing_params_stage_patch(
             pack_plan, message or "", task_state=task_state or {}
         )
@@ -1023,17 +1004,11 @@ async def apply_unified_turn_live(
                 "unified_outcome_kind": "connector_tool_proposal",
             }
 
-    # Part 3 soft leftover — MSP Clay→HubSpot enrich: stage create_workflow confirm
+    # Part 3 — MSP Clay→HubSpot enrich: stage create_workflow confirm
     # (bare clay.crm.sync cannot approve-first; records are irreducible).
-    from app.services.pack_common_intent_defaults import (
-        try_pack_common_msp_enrich_workflow_plan,
-    )
-
     enrich_plan = try_pack_common_msp_enrich_workflow_plan(
         message or "",
-        connected_integrations=list(
-            result.connected_integrations or connected_integrations or []
-        ),
+        connected_integrations=connected_for_pack,
     )
     if enrich_plan is not None and conversation_id:
         from app.services.conversation_state_service import get_conversation_state_service
@@ -1057,15 +1032,7 @@ async def apply_unified_turn_live(
         refreshed = await state.get_task_state(
             conversation_id, org_id, client=client
         )
-        wf_name = str(enrich_plan.get("workflow_name") or "MSP enrichment workflow")
-        apollo_list = str(enrich_plan.get("apollo_list_name") or "MSP Prospects")
-        hubspot_list = str(enrich_plan.get("hubspot_list_name") or "MSPs")
-        confirm_message = (
-            f"I'll create a draft workflow **{wf_name}** to enrich Apollo list "
-            f"**{apollo_list}** with Clay and sync to HubSpot list **{hubspot_list}**.\n\n"
-            "Reply **yes** to create it now, or tell me what to adjust "
-            "(list names, filters, or sync rules)."
-        )
+        confirm_message = format_pack_common_msp_enrich_confirm_message(enrich_plan)
         result.outcome_kind = "confirmation_request"
         result.tool_name = str(enrich_plan.get("tool_name") or "assistant_create_workflow")
         result.tool_invoke_action = str(
@@ -1100,6 +1067,90 @@ async def apply_unified_turn_live(
             "model": result.model or "unified_turn_live",
             "unified_outcome_kind": "confirmation_request",
         }
+
+    from app.services.unified_turn_classical_fallback import (
+        should_defer_unified_turn_live_to_classical,
+    )
+
+    would_defer = should_defer_unified_turn_live_to_classical(
+        mode_key=mode_key,
+        outcome_kind=str(result.outcome_kind or ""),
+        message=message,
+        classification=classification,
+    )
+    # Class rule: never bare-defer a multi-step orchestration intent. Stage the
+    # plan on LIVE first (HubSpot+Slack TRY chip, etc.) — same structural order
+    # as pack-common intents. Bare fallthrough lets classical invent wrong steps.
+    if would_defer and conversation_id:
+        from app.services.chat_orchestration_service import (
+            ChatOrchestrationService,
+            get_chat_orchestration_service,
+        )
+
+        if ChatOrchestrationService.is_orchestration_intent(
+            message or "",
+            task_state or {},
+            connected_for_pack,
+        ):
+            orch_turn = await get_chat_orchestration_service(active).process_turn(
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                message=message or "",
+                classification=classification or {},
+                task_state=task_state or {},
+                connected_integrations=connected_for_pack,
+                client=client,
+                environment_name=environment_name,
+            )
+            if orch_turn and orch_turn.get("stop_pipeline"):
+                result.live_served = True
+                result.outcome_kind = "confirmation_request"
+                result.model = (
+                    f"{result.model or 'unified_turn'}+live_orchestration_before_defer"
+                )
+                result.user_message = str(orch_turn.get("message") or "")
+                emit_unified_turn_shadow_audit(
+                    client=client,
+                    org_id=org_id,
+                    actor_id=user_id,
+                    conversation_id=conversation_id,
+                    result=result,
+                )
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": str(orch_turn.get("dialogue_mode") or "confirm"),
+                    "message": finalize_user_facing_message(
+                        result.user_message,
+                        context="unified_turn_live_orchestration_before_defer",
+                    ),
+                    "task_state": orch_turn.get("task_state"),
+                    "pending_task": orch_turn.get("pending_task"),
+                    "workflow_status": orch_turn.get("workflow_status"),
+                    "answer_explanation": str(
+                        orch_turn.get("answer_explanation")
+                        or "Unified turn live (orchestration before defer)"
+                    ),
+                    "model": result.model or "unified_turn_live",
+                    "unified_outcome_kind": "confirmation_request",
+                    "execution_result": orch_turn.get("execution_result"),
+                }
+
+    if would_defer:
+        defer_reason = (
+            "defer_connector_tool_proposal"
+            if str(result.outcome_kind or "") == "connector_tool_proposal"
+            else "defer_classical_tool_sse"
+        )
+        _mark_live_fallthrough(result, defer_reason)
+        emit_unified_turn_shadow_audit(
+            client=client,
+            org_id=org_id,
+            actor_id=user_id,
+            conversation_id=conversation_id,
+            result=result,
+        )
+        return None
 
     text_kinds = {
         "conversational_reply",

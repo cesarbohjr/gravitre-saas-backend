@@ -1839,6 +1839,7 @@ export function AiWorkspace({
                 routing={routing}
                 routedTo={routedTo}
                 onSubmit={() => void submitPrompt(input)}
+                onExampleSelect={(text) => void submitPrompt(text)}
               />
             ) : null}
 

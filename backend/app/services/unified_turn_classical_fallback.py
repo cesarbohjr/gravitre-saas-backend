@@ -35,9 +35,19 @@ def message_requires_classical_tool_sse(message: str) -> bool:
     Does not include generic write phrasing (e.g. \"Send an email…\") — those
     often resolve to LIVE clarifying_question text. Connector write proposals
     still defer via outcome_kind == connector_tool_proposal.
+
+    Pack-common MSP Clay→HubSpot enrich must stay on LIVE (or classical pack
+    intercept) — the TRY prompt contains \"Apollo\" / \"contact list\" which
+    would otherwise force a broken multi-step Search-contacts orchestration.
     """
     text = (message or "").strip()
     if not text:
+        return False
+    from app.services.pack_common_intent_defaults import (
+        try_pack_common_msp_enrich_workflow_plan,
+    )
+
+    if try_pack_common_msp_enrich_workflow_plan(text) is not None:
         return False
     return any(p.search(text) for p in _MESSAGE_TOOL_SSE_PATTERNS)
 

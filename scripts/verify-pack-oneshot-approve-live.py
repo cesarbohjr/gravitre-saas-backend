@@ -91,6 +91,49 @@ CASES: list[dict[str, Any]] = [
         # Pack-common stages assistant.create_workflow awaiting_confirm (hard case).
     },
     {
+        # Exact AI_EXAMPLE_PROMPTS[0] landing TRY chip (longer wording; was regex+defer miss).
+        "id": "clay_enrich_msp_try_chip_exact",
+        "message": (
+            'Use Clay to enrich the existing Apollo contact list "MSP Prospects", '
+            'then add those enriched contacts to the existing HubSpot static list "MSPs".'
+        ),
+        "expect_mode": "approve_first",
+        "expect_action_any": ["assistant.create_workflow"],
+        "allow_workflow_proposal": True,
+        "specific_clarify_bonus": [
+            "draft workflow",
+            "MSP Prospects",
+            "MSPs",
+            "Clay",
+            "HubSpot",
+        ],
+        "reject_assistant_substrings": ["Search contacts", "2-step orchestration"],
+    },
+    {
+        # Exact AI_EXAMPLE_PROMPTS HubSpot+Slack TRY chip (SSE \\bslack\\b defer landmine).
+        "id": "hubspot_slack_try_chip_exact",
+        "message": (
+            "Search HubSpot for high-intent leads and draft a follow-up in Slack for approval"
+        ),
+        "expect_mode": "approve_first",
+        "expect_action_any": [
+            "hubspot.contacts.search",
+            "slack.post_message",
+            "assistant.create_workflow",
+        ],
+        "allow_workflow_proposal": True,
+        "alternate_clarify_once": True,
+        "specific_clarify_bonus": [
+            "orchestration",
+            "HubSpot",
+            "Slack",
+            "high-intent",
+            "follow-up",
+            "approve",
+        ],
+        "reject_assistant_substrings": ["apollo", "MSP Prospects"],
+    },
+    {
         "id": "prospecting_icp_list",
         "message": "Build an Apollo prospecting list from our ICP",
         "expect_mode": "approve_first",
@@ -413,6 +456,9 @@ async def run_case(
         if mode_observed == "clarify_once" and outcome == "clarifying_question":
             if not case.get("alternate_clarify_once"):
                 failures.append("clarifying_question_on_pack_common")
+        for bad in case.get("reject_assistant_substrings") or []:
+            if str(bad).lower() in assistant.lower():
+                failures.append(f"rejected_substring:{bad}")
     elif expect == "clarify_once":
         if mode_observed != "clarify_once":
             failures.append(f"want_clarify_once got={mode_observed}")

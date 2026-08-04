@@ -33,6 +33,8 @@ type AiLandingProps = {
   routing: boolean
   routedTo: AiEngine | null
   onSubmit: () => void
+  /** Submit a TRY prompt immediately (do not only fill the composer). */
+  onExampleSelect?: (text: string) => void
 }
 
 export function AiLanding({
@@ -43,6 +45,7 @@ export function AiLanding({
   routing,
   routedTo,
   onSubmit,
+  onExampleSelect,
 }: AiLandingProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const activeMode = useMemo(() => getModeMeta(mode), [mode])
@@ -189,6 +192,10 @@ export function AiLanding({
                 key={example.text}
                 type="button"
                 onClick={() => {
+                  if (onExampleSelect) {
+                    onExampleSelect(example.text)
+                    return
+                  }
                   onInputChange(example.text)
                   inputRef.current?.focus()
                 }}

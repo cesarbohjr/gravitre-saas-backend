@@ -54,10 +54,14 @@ _VENDOR_LOCATION_FALSE_NAME = re.compile(
     re.I,
 )
 # Pack-common Clay → HubSpot MSP enrich (multi-step → draft workflow approve-first).
+# Windows must cover the AI Chat TRY prompt wording (enrich→HubSpot is ~106 chars):
+# 'Use Clay to enrich the existing Apollo contact list "MSP Prospects", then add
+# those enriched contacts to the existing HubSpot static list "MSPs".'
 _MSP_CLAY_HUBSPOT_ENRICH = re.compile(
-    r"\benrich\b[\s\S]{0,120}\bclay\b[\s\S]{0,120}\b(?:hubspot|sync)\b|"
-    r"\bclay\b[\s\S]{0,80}\benrich\b[\s\S]{0,80}\bhubspot\b|"
-    r"\bmsp\s+prospects\b[\s\S]{0,80}\bclay\b[\s\S]{0,80}\bhubspot\b",
+    r"\benrich\b[\s\S]{0,200}\bclay\b[\s\S]{0,200}\b(?:hubspot|sync)\b|"
+    r"\bclay\b[\s\S]{0,120}\benrich\b[\s\S]{0,200}\bhubspot\b|"
+    r"\bmsp\s+prospects\b[\s\S]{0,200}\bclay\b[\s\S]{0,200}\bhubspot\b|"
+    r"\bclay\b[\s\S]{0,200}\bmsp\s+prospects\b[\s\S]{0,200}\bhubspot\b",
     re.I,
 )
 
@@ -256,6 +260,19 @@ def try_pack_common_msp_enrich_workflow_plan(
         "goal": goal,
         "name": MSP_ENRICH_NAME,
     }
+
+
+def format_pack_common_msp_enrich_confirm_message(plan: dict[str, Any]) -> str:
+    """User-facing approve-first copy for the MSP Clay→HubSpot pack workflow."""
+    wf_name = str(plan.get("workflow_name") or MSP_ENRICH_NAME)
+    apollo_list = str(plan.get("apollo_list_name") or MSP_ENRICH_APOLLO_LIST)
+    hubspot_list = str(plan.get("hubspot_list_name") or MSP_ENRICH_HUBSPOT_LIST)
+    return (
+        f"I'll create a draft workflow **{wf_name}** to enrich Apollo list "
+        f"**{apollo_list}** with Clay and sync to HubSpot list **{hubspot_list}**.\n\n"
+        "Reply **yes** to create it now, or tell me what to adjust "
+        "(list names, filters, or sync rules)."
+    )
 
 
 def try_pack_common_list_create_plan(
