@@ -1,7 +1,20 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowRight, CheckCircle2, Loader2, ShieldAlert } from "lucide-react"
+import {
+  ArrowRight,
+  ArrowUpRight,
+  BarChart3,
+  CheckCircle2,
+  Database,
+  File,
+  FileText,
+  Link2,
+  Loader2,
+  Play,
+  ShieldAlert,
+  type LucideIcon,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
@@ -304,47 +317,102 @@ function artifactHref(artifact: ChatArtifact): string | null {
   return artifact.result_url || artifact.resultUrl || null
 }
 
+/**
+ * File-type icon per artifact kind (kinds emitted by the backend artifact
+ * registry: run / link / document / record / workspace_file / report).
+ * Presentation only — chips are icon-led so a generated file reference reads
+ * as a distinctly different object from a BusinessOutcome evidence receipt.
+ */
+function artifactIcon(kind?: string): LucideIcon {
+  switch ((kind || "").toLowerCase()) {
+    case "run":
+      return Play
+    case "link":
+      return Link2
+    case "document":
+      return FileText
+    case "record":
+      return Database
+    case "report":
+      return BarChart3
+    case "workspace_file":
+    default:
+      return File
+  }
+}
+
 function ArtifactCards({ artifacts }: { artifacts: ChatArtifact[] }) {
   if (!artifacts.length) return null
   return (
-    <div className="mt-3 space-y-2">
+    <div className="mt-3 space-y-1.5">
       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Artifacts</p>
       {artifacts.slice(0, 6).map((artifact) => {
         const href = artifactHref(artifact)
         const title = artifact.title || artifact.kind || "Artifact"
         const preview = artifact.preview?.trim()
-        return (
-          <div
-            key={artifact.artifact_id || artifact.artifactId || title}
-            className="rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-xs"
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium text-foreground">{title}</span>
-              {artifact.kind ? (
-                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                  {artifact.kind}
+        const external = href ? isExternalUrl(href) : false
+        const Icon = artifactIcon(artifact.kind)
+        const OpenIcon = external ? ArrowUpRight : ArrowRight
+
+        // Compact named chip: type icon, filename, kind tag, open affordance.
+        // Flat muted surface (no border-receipt, no status accent) keeps it
+        // visually separate from the evidence card it can sit next to.
+        const inner = (
+          <>
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+              <Icon className="h-3.5 w-3.5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-2">
+                <span className="min-w-0 truncate font-medium text-foreground" title={title}>
+                  {title}
                 </span>
-              ) : null}
+                {artifact.kind ? (
+                  <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {artifact.kind}
+                  </span>
+                ) : null}
+              </span>
+              {preview ? <span className="mt-0.5 line-clamp-1 text-muted-foreground">{preview}</span> : null}
+            </span>
+            {href ? <OpenIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" /> : null}
+          </>
+        )
+
+        const chipClass =
+          "flex w-full items-center gap-2.5 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-left text-xs"
+        const key = artifact.artifact_id || artifact.artifactId || title
+
+        if (!href) {
+          return (
+            <div key={key} className={chipClass}>
+              {inner}
             </div>
-            {preview ? <p className="mt-1 line-clamp-3 text-muted-foreground">{preview}</p> : null}
-            {href ? (
-              <div className="mt-2 flex flex-wrap gap-2">
-                <Button asChild size="sm" variant="outline" className="h-7 text-xs">
-                  {isExternalUrl(href) ? (
-                    <a href={href} target="_blank" rel="noopener noreferrer">
-                      Open artifact
-                      <ArrowRight className="ml-1.5 h-3 w-3" />
-                    </a>
-                  ) : (
-                    <Link href={href}>
-                      Open artifact
-                      <ArrowRight className="ml-1.5 h-3 w-3" />
-                    </Link>
-                  )}
-                </Button>
-              </div>
-            ) : null}
-          </div>
+          )
+        }
+        // "Open artifact" preserved verbatim as the accessible label; the whole
+        // chip is the open target, matching the platform's existing link-out
+        // behavior (there is no separate document viewer to route to).
+        return external ? (
+          <a
+            key={key}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Open artifact"
+            className={cn(chipClass, "transition-colors hover:bg-muted focus-visible:bg-muted")}
+          >
+            {inner}
+          </a>
+        ) : (
+          <Link
+            key={key}
+            href={href}
+            aria-label="Open artifact"
+            className={cn(chipClass, "transition-colors hover:bg-muted focus-visible:bg-muted")}
+          >
+            {inner}
+          </Link>
         )
       })}
     </div>

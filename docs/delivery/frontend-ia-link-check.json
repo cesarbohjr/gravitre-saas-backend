@@ -1,6 +1,6 @@
 {
-  "checked_at": "2026-08-03T18:59:03.087Z",
-  "sidebar_config": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\apps\\web\\components\\gravitre\\sidebar-nav-config.ts",
+  "checked_at": "2026-08-04T03:20:32.145Z",
+  "sidebar_config": "/vercel/share/v0-project/apps/web/components/gravitre/sidebar-nav-config.ts",
   "admin_named_items": 15,
   "failures": [],
   "verdict": "PASS"

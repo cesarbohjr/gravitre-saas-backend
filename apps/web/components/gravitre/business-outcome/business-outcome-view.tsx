@@ -4,11 +4,16 @@
  * Canonical BusinessOutcome renderer.
  * Zero business logic — displays exactly what the DTO provides.
  * Shared by chat, timeline, and export preview surfaces.
+ *
+ * Presentation pass (preview-fidelity handoff, Surface 1): this file changed
+ * ONLY visually. No DTO field, no copy substance, and no link target was
+ * altered. The three status treatments below are all derived from fields the
+ * DTO already carries (`status` + `sections.verification.verified`).
  */
 
 import type { ReactNode } from "react"
 import Link from "next/link"
-import { ArrowRight, CheckCircle2, ShieldAlert } from "lucide-react"
+import { ArrowRight, ArrowUpRight, CheckCircle2, CircleDashed, ShieldAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -72,6 +77,55 @@ type Props = {
   density?: "chat" | "timeline" | "export"
 }
 
+/**
+ * Three honest presentation states, all derived from existing DTO fields:
+ * - failed:   the action did not happen (destructive).
+ * - verified: it happened AND was independently verified (success).
+ * - unproven: it happened but carries no verification proof — shown calm and
+ *             neutral rather than a false-alarm amber, matching the product's
+ *             honesty language without overstating or panicking.
+ */
+type OutcomeState = "verified" | "unproven" | "failed"
+
+const STATE_STYLES: Record<
+  OutcomeState,
+  {
+    icon: typeof CheckCircle2
+    iconClass: string
+    accent: string
+    surface: string
+    pillClass: string
+    pillLabel: string
+  }
+> = {
+  verified: {
+    icon: CheckCircle2,
+    iconClass: "text-success",
+    accent: "border-l-success",
+    surface: "border-success/25",
+    pillClass: "bg-success/10 text-success ring-1 ring-inset ring-success/20",
+    // Existing card string, reused verbatim.
+    pillLabel: "Verified",
+  },
+  unproven: {
+    icon: CircleDashed,
+    iconClass: "text-muted-foreground",
+    accent: "border-l-border",
+    surface: "border-border/80",
+    pillClass: "bg-muted text-muted-foreground ring-1 ring-inset ring-border",
+    // Existing card string, reused verbatim.
+    pillLabel: "Not verified",
+  },
+  failed: {
+    icon: ShieldAlert,
+    iconClass: "text-destructive",
+    accent: "border-l-destructive",
+    surface: "border-destructive/25",
+    pillClass: "bg-destructive/10 text-destructive ring-1 ring-inset ring-destructive/20",
+    pillLabel: "Failed",
+  },
+}
+
 function isExternal(href: string): boolean {
   return href.startsWith("http://") || href.startsWith("https://")
 }
@@ -88,37 +142,84 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 export function BusinessOutcomeView({ outcome, className, density = "chat" }: Props) {
   const sections = outcome.sections || {}
   const failed = (outcome.status || "").toLowerCase() === "failed"
-  const Icon = failed ? ShieldAlert : CheckCircle2
+  const verified = !failed && sections.verification?.verified === true
+  const state: OutcomeState = failed ? "failed" : verified ? "verified" : "unproven"
+  const style = STATE_STYLES[state]
+  const Icon = style.icon
 
   return (
     <div
       className={cn(
-        "rounded-lg border px-3.5 py-3 text-sm",
-        failed
-          ? "border-red-500/20 bg-red-500/[0.04]"
-          : "border-border/80 bg-background/70 dark:bg-card/50",
-        density === "chat" && !failed && "border-l-2 border-l-emerald-600/50 dark:border-l-emerald-400/40",
-        density === "chat" && failed && "border-l-2 border-l-red-500/50",
+        // Solid card surface so the evidence receipt stays fully legible on top
+        // of the 8 translucent mesh chat backgrounds (previously semi-transparent
+        // and washed out against them).
+        "rounded-lg border px-3.5 py-3 text-sm shadow-sm",
+        style.surface,
+        density === "export" ? "bg-background border-l-0" : "bg-card",
+        density === "chat" && "border-l-2",
+        density === "chat" && style.accent,
         density === "timeline" && "rounded-md",
-        density === "export" && "border-border bg-background border-l-0",
         className,
       )}
       data-business-outcome-id={outcome.id}
       data-projection={outcome.projection || "business_outcome"}
       data-lifecycle={outcome.lifecycleState}
+      data-outcome-state={state}
     >
       <div className="flex items-start gap-2">
-        <Icon
-          className={cn(
-            "mt-0.5 h-4 w-4 shrink-0",
-            failed ? "text-red-600" : "text-emerald-600",
-          )}
-        />
+        <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", style.iconClass)} />
         <div className="min-w-0 flex-1">
-          <p className="break-words font-medium text-foreground">{outcome.title || "Outcome"}</p>
+          {/* Header: title + glanceable verification status. Requirement #1 —
+              a user should register "this really happened, here's proof" before
+              reading any detail, so status is a pill up here, not buried below. */}
+          <div className="flex items-start justify-between gap-2">
+            <p className="min-w-0 break-words font-medium text-foreground">{outcome.title || "Outcome"}</p>
+            <span
+              className={cn(
+                "mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide",
+                style.pillClass,
+              )}
+            >
+              {style.pillLabel}
+            </span>
+          </div>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
             {[outcome.kind, outcome.status, outcome.lifecycleState].filter(Boolean).join(" · ")}
           </p>
+
+          {/* Evidence — the real vendor link. Requirement #1 elevates this to the
+              top of the body and gives external (vendor) links a filled CTA so
+              the proof is the most prominent action; internal links stay outline. */}
+          {sections.evidence?.links?.length ? (
+            <Section title="Evidence">
+              <div className="flex flex-wrap gap-2">
+                {sections.evidence.links.map((link) => {
+                  const external = isExternal(link.href)
+                  return (
+                    <Button
+                      key={`${link.href}-${link.label}`}
+                      asChild
+                      size="sm"
+                      variant={external ? "default" : "outline"}
+                      className="h-8 text-xs"
+                    >
+                      {external ? (
+                        <a href={link.href} target="_blank" rel="noopener noreferrer">
+                          {link.label}
+                          <ArrowUpRight className="ml-1.5 h-3 w-3" />
+                        </a>
+                      ) : (
+                        <Link href={link.href}>
+                          {link.label}
+                          <ArrowRight className="ml-1.5 h-3 w-3" />
+                        </Link>
+                      )}
+                    </Button>
+                  )
+                })}
+              </div>
+            </Section>
+          ) : null}
 
           {sections.summary ? (
             <Section title="Summary">
@@ -164,28 +265,6 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
               </Section>
             )
           })()}
-
-          {sections.evidence?.links?.length ? (
-            <Section title="Evidence">
-              <div className="flex flex-wrap gap-2">
-                {sections.evidence.links.map((link) => (
-                  <Button key={`${link.href}-${link.label}`} asChild size="sm" variant="outline" className="h-7 text-xs">
-                    {isExternal(link.href) ? (
-                      <a href={link.href} target="_blank" rel="noopener noreferrer">
-                        {link.label}
-                        <ArrowRight className="ml-1.5 h-3 w-3" />
-                      </a>
-                    ) : (
-                      <Link href={link.href}>
-                        {link.label}
-                        <ArrowRight className="ml-1.5 h-3 w-3" />
-                      </Link>
-                    )}
-                  </Button>
-                ))}
-              </div>
-            </Section>
-          ) : null}
 
           {sections.timeline?.length ? (
             <Section title="Timeline">
@@ -244,7 +323,7 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
           {sections.recommendations?.length ? (
             <Section title="Recommendations">
               {sections.recommendations.map((rec) => (
-                <div key={rec.title} className="mt-1 rounded-lg border border-border/60 bg-background/60 px-2.5 py-2">
+                <div key={rec.title} className="mt-1 rounded-lg border border-border/60 bg-muted/30 px-2.5 py-2">
                   <p className="font-medium">{rec.title}</p>
                   {rec.reason ? <p className="mt-0.5 text-muted-foreground">{rec.reason}</p> : null}
                   {rec.suggestedUtterance ? (
