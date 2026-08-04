@@ -94,20 +94,24 @@ export function StatCard({
   variant = "default",
   className,
 }: StatCardProps) {
+  // Semantic tokens rather than raw palette hues: the fixed `-400` value colors
+  // were tuned for dark mode and failed contrast against a 10% tint in light
+  // mode. The `--success`/`--warning`/`--info`/`--destructive` tokens already
+  // carry per-theme values.
   const variantStyles = {
     default: "bg-secondary/50",
-    success: "bg-emerald-500/10 border-emerald-500/20",
-    warning: "bg-amber-500/10 border-amber-500/20",
-    info: "bg-blue-500/10 border-blue-500/20",
-    danger: "bg-red-500/10 border-red-500/20",
+    success: "border-success/20 bg-success/10",
+    warning: "border-warning/20 bg-warning/10",
+    info: "border-info/20 bg-info/10",
+    danger: "border-destructive/20 bg-destructive/10",
   }
 
   const valueColors = {
     default: "text-foreground",
-    success: "text-emerald-400",
-    warning: "text-amber-400",
-    info: "text-blue-400",
-    danger: "text-red-400",
+    success: "text-success",
+    warning: "text-warning",
+    info: "text-info",
+    danger: "text-destructive",
   }
 
   return (

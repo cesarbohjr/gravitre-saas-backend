@@ -232,6 +232,49 @@ export function ListSkeleton({
 }
 
 // =============================================================================
+// StatsSkeleton - Placeholder for a StatsGrid of StatCards
+// =============================================================================
+
+interface StatsSkeletonProps {
+  /** Number of stat tiles. Should match the real grid to avoid layout shift. */
+  count?: number
+  /** Column count — mirrors `StatsGrid`'s `columns` prop. */
+  columns?: 2 | 3 | 4
+  className?: string
+}
+
+/**
+ * Mirrors `StatsGrid` + `StatCard` geometry (same breakpoints, gaps, padding and
+ * centered text) so swapping the skeleton for real data doesn't shift layout.
+ */
+export function StatsSkeleton({ count = 4, columns = 4, className }: StatsSkeletonProps) {
+  return (
+    <div
+      className={cn(
+        "grid gap-2 sm:gap-3",
+        columns === 2 && "grid-cols-2",
+        columns === 3 && "grid-cols-2 sm:grid-cols-3",
+        columns === 4 && "grid-cols-2 sm:grid-cols-4",
+        className
+      )}
+    >
+      {Array.from({ length: count }).map((_, i) => (
+        <motion.div
+          key={i}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.05 }}
+          className="flex flex-col items-center gap-2 rounded-lg border border-transparent bg-secondary/50 p-2 sm:p-3"
+        >
+          <Skeleton className="h-6 w-12" />
+          <Skeleton className="h-3 w-16" />
+        </motion.div>
+      ))}
+    </div>
+  )
+}
+
+// =============================================================================
 // PageSkeleton - Full page loading skeleton
 // =============================================================================
 

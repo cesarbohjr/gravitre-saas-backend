@@ -4,6 +4,7 @@ import useSWR from "swr"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LearningConfidenceBadge } from "@/components/intelligence/learning-confidence-badge"
+import { AdvisoryOnlyNote } from "@/components/intelligence/advisory-only-note"
 import { intelligenceApi } from "@/lib/api"
 import { formatPercent, readNumber, readString } from "@/lib/intelligence/helpers"
 import {
@@ -171,9 +172,7 @@ export function AgentIntelligenceVisibilitySection({
         </div>
       )}
 
-      <Badge variant="outline" className="border-amber-500/30 bg-amber-500/5 text-amber-900 dark:text-amber-200">
-        Advisory only — visibility signals do not auto-execute changes
-      </Badge>
+      <AdvisoryOnlyNote tone="visibility" />
     </section>
   )
 }

@@ -8,10 +8,16 @@ import {
   type IntelligenceExecutionMode,
 } from "@/lib/execution-mode"
 
+/**
+ * Execution mode is a health signal, so it maps onto the semantic tone tokens
+ * rather than raw palette hues: tools actually ran (success), advisory-only
+ * (informational), degraded (warning). These tokens already carry per-theme
+ * values, so the old `dark:` overrides aren't needed.
+ */
 const MODE_STYLES: Record<IntelligenceExecutionMode, string> = {
-  tools_executed: "border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300",
-  advisory_only: "border-sky-500/40 bg-sky-500/10 text-sky-900 dark:text-sky-200",
-  degraded: "border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200",
+  tools_executed: "border-success/40 bg-success/10 text-success",
+  advisory_only: "border-info/40 bg-info/10 text-info",
+  degraded: "border-warning/40 bg-warning/10 text-warning",
 }
 
 export function ExecutionModeBadge({

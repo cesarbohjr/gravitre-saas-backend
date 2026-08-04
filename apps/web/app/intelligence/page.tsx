@@ -19,7 +19,9 @@ import { HeuristicSuggestionCards } from "@/components/intelligence/heuristic-su
 import { SimulationCard } from "@/components/intelligence/simulation-card"
 import { IntelligenceTrace } from "@/components/intelligence/intelligence-trace"
 import { IntelligenceHealthGrid } from "@/components/intelligence/intelligence-health-grid"
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge, formatStatusLabel } from "@/components/gravitre/status-badge"
+import { StatsSkeleton } from "@/components/gravitre/loading-state"
+import { CenteredLoader } from "@/components/gravitre/gravitree-loader"
 import {
   ArrowRight,
   Brain,
@@ -30,14 +32,37 @@ import {
   Sparkle,
 } from "@phosphor-icons/react"
 
-const LINKS = [
-  { ...SURFACE_COPY.hubLinks.operationalHealth, icon: Heartbeat },
-  { ...SURFACE_COPY.hubLinks.reports, icon: ChartLineUp },
-  { ...SURFACE_COPY.hubLinks.learning, icon: Sparkle },
-  { ...SURFACE_COPY.hubLinks.builtIn, icon: Cpu },
-  { ...SURFACE_COPY.hubLinks.models, icon: Database },
-  { ...SURFACE_COPY.hubLinks.memory, icon: Brain },
-  { ...SURFACE_COPY.hubLinks.predictive, icon: ChartLineUp },
+/**
+ * The seven destinations answer three different questions, so they're grouped
+ * rather than dumped as one flat 7-card grid where everything competes equally:
+ * how is it performing, what models drive it, and what does it know.
+ */
+const LINK_GROUPS = [
+  {
+    heading: "Measure",
+    description: "How the system is performing right now.",
+    links: [
+      { ...SURFACE_COPY.hubLinks.operationalHealth, icon: Heartbeat },
+      { ...SURFACE_COPY.hubLinks.reports, icon: ChartLineUp },
+      { ...SURFACE_COPY.hubLinks.predictive, icon: ChartLineUp },
+    ],
+  },
+  {
+    heading: "Models",
+    description: "What drives the predictions and how they're managed.",
+    links: [
+      { ...SURFACE_COPY.hubLinks.builtIn, icon: Cpu },
+      { ...SURFACE_COPY.hubLinks.models, icon: Database },
+    ],
+  },
+  {
+    heading: "Knowledge",
+    description: "What the system has learned and retained.",
+    links: [
+      { ...SURFACE_COPY.hubLinks.learning, icon: Sparkle },
+      { ...SURFACE_COPY.hubLinks.memory, icon: Brain },
+    ],
+  },
 ]
 
 function IntelligenceSectionRedirect() {
@@ -136,45 +161,43 @@ function IntelligenceCenterInner() {
         <PageHeader title={copy.title} description={copy.description} />
 
         {runtimeEntries.length > 0 ? (
-          <section className="rounded-2xl border border-border/70 bg-card p-4 md:p-5">
+          <section className="rounded-2xl border border-border/70 bg-card p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-base font-semibold text-foreground">Model runtime honesty</h2>
+                <h2 className="text-base font-semibold text-foreground">Model runtime</h2>
                 <p className="mt-1 text-sm text-muted-foreground text-pretty">
-                  Whether each model is running a loaded artifact or a heuristic fallback — not the
-                  catalog TRAINED label alone.
+                  Whether each model is actually running a loaded artifact or falling back to a
+                  heuristic — not the catalog{" "}
+                  <span className="font-medium text-foreground">Trained</span> label alone.
                 </p>
               </div>
+              {/* Semantic tones, not raw hues: a heuristic fallback is a degraded
+                  state (warning) and a loaded artifact is the healthy one (success). */}
               <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="border-amber-500/30 bg-amber-500/5">
+                <StatusBadge variant="warning" dot>
                   {heuristicRuntimeCount} heuristic
-                </Badge>
-                <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/5">
+                </StatusBadge>
+                <StatusBadge variant="success" dot>
                   {trainedRuntimeCount} artifact-loaded
-                </Badge>
+                </StatusBadge>
               </div>
             </div>
-            <ul className="mt-3 flex flex-wrap gap-2">
+            <ul className="mt-4 flex flex-wrap gap-2">
               {runtimeEntries.map(([name, row]) => {
                 const status = readString(row?.runtime_status, "unknown")
                 const isHeuristic = status === "heuristic"
                 return (
                   <li key={name}>
-                    <Badge
-                      variant="outline"
-                      className={
-                        isHeuristic
-                          ? "border-amber-500/30 bg-amber-500/5 text-amber-950 dark:text-amber-100"
-                          : "border-sky-500/30 bg-sky-500/5"
-                      }
+                    <StatusBadge
+                      variant={isHeuristic ? "warning" : "success"}
                       title={
                         row?.artifact_loaded
                           ? "Trained artifact loaded at runtime"
                           : "Heuristic path — no trained artifact loaded"
                       }
                     >
-                      {name.replace(/_/g, " ")} · {status.replace(/_/g, " ")}
-                    </Badge>
+                      {formatStatusLabel(name)} · {formatStatusLabel(status)}
+                    </StatusBadge>
                   </li>
                 )
               })}
@@ -188,11 +211,11 @@ function IntelligenceCenterInner() {
         ) : null}
 
         {isLoading && !outcomes ? (
-          <p className="text-sm text-muted-foreground">Loading insights…</p>
+          <StatsSkeleton count={4} />
         ) : totalEvents === 0 ? (
           <EmptyState
             variant="ai"
-            iconSlot={<Sparkle className="h-8 w-8 text-violet-500" weight="duotone" aria-hidden />}
+            iconSlot={<Sparkle className="h-8 w-8 text-primary" weight="duotone" aria-hidden />}
             title={copy.emptyTitle}
             description={copy.emptyDescription}
           />
@@ -265,34 +288,56 @@ function IntelligenceCenterInner() {
           </section>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2">
-          {LINKS.map((link) => {
-            const Icon = link.icon
-            return (
-              <Link
-                key={link.route}
-                href={link.route}
-                className="group rounded-2xl border border-border/70 bg-card p-5 transition-colors hover:border-primary/30 hover:bg-card/80"
-              >
-                <div className="flex items-start gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <Icon className="h-5 w-5" weight="duotone" aria-hidden />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="font-semibold text-foreground">{link.title}</span>
-                    <p className="mt-1 text-sm text-muted-foreground text-pretty">{link.summary}</p>
-                  </span>
-                  <ArrowRight
-                    className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
-                    aria-hidden
-                  />
-                </div>
-              </Link>
-            )
-          })}
+        <div className="space-y-6 border-t border-border pt-6">
+          {LINK_GROUPS.map((group) => (
+            <section key={group.heading} aria-labelledby={`links-${group.heading}`}>
+              <div className="mb-3">
+                <h2
+                  id={`links-${group.heading}`}
+                  className="text-xs font-semibold uppercase tracking-widest text-muted-foreground"
+                >
+                  {group.heading}
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground text-pretty">{group.description}</p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {group.links.map((link) => {
+                  const LinkIcon = link.icon
+                  return (
+                    <Link
+                      key={link.route}
+                      href={link.route}
+                      className="group rounded-2xl border border-border/70 bg-card p-5 transition-colors hover:border-primary/30 hover:bg-accent/50"
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                          <LinkIcon className="h-5 w-5" weight="duotone" aria-hidden />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="font-semibold text-foreground">{link.title}</span>
+                          <p className="mt-1 text-sm text-muted-foreground text-pretty">
+                            {link.summary}
+                          </p>
+                        </span>
+                        <ArrowRight
+                          className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+                          aria-hidden
+                        />
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            </section>
+          ))}
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        {/* Deep links that aren't destinations of their own: a specific anchor
+            within Learning, and a jump across to the Agents hub. */}
+        <div className="flex flex-wrap items-center gap-2 border-t border-border pt-6">
+          <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Jump to
+          </span>
           <Button variant="outline" size="sm" asChild>
             <Link href={`${APP_ROUTES.learning}#revenue-risk`}>Revenue risk</Link>
           </Button>
@@ -310,7 +355,7 @@ export default function IntelligenceCenterPage() {
     <Suspense
       fallback={
         <AppShell title={SURFACE_COPY.insights.title}>
-          <div className="p-6 text-sm text-muted-foreground">Loading intelligence…</div>
+          <CenteredLoader fill="parent" label="Loading intelligence" />
         </AppShell>
       }
     >

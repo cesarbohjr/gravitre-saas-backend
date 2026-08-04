@@ -19,7 +19,7 @@ export function OptimizationVisibilityPanel({
   return (
     <div className={`rounded-2xl border border-border/70 bg-card p-4 md:p-5 ${className ?? ""}`}>
       <div className="flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-warning/10 text-warning">
           <Lightbulb className="h-4 w-4" weight="duotone" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
@@ -47,9 +47,9 @@ export function OptimizationVisibilityPanel({
         <p className="mt-4 text-xs text-muted-foreground">No optimization recommendations at this time.</p>
       )}
 
-      <Badge variant="outline" className="mt-4 border-amber-500/30 bg-amber-500/5 text-amber-900 dark:text-amber-200">
-        advisory_only
-      </Badge>
+      {/* The advisory-only rule is already stated in the header copy above, so
+          the trailing `advisory_only` badge here was pure repetition (and leaked
+          the raw enum). */}
     </div>
   )
 }

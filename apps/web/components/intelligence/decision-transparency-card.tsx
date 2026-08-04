@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge"
 import { ConfidenceBadge } from "@/components/intelligence/confidence-badge"
+import { AdvisoryOnlyNote } from "@/components/intelligence/advisory-only-note"
 import { LearningConfidenceBadge } from "@/components/intelligence/learning-confidence-badge"
 import { readString } from "@/lib/intelligence/helpers"
 import { freshnessLabelText } from "@/lib/intelligence/visibility-helpers"
@@ -38,7 +39,7 @@ export function DecisionTransparencyCard({
           {runtimeStatus ? (
             <Badge
               variant="outline"
-              className="border-sky-500/30 bg-sky-500/5 text-sky-900 dark:text-sky-200"
+              className="border-info/30 bg-info/5 font-normal text-info"
               title="Whether a trained artifact is loaded at runtime (not catalog TRAINED)."
             >
               {runtimeStatus === "heuristic" ? "Heuristic runtime" : runtimeStatus.replace(/_/g, " ")}
@@ -103,9 +104,7 @@ export function DecisionTransparencyCard({
         </div>
       ) : null}
 
-      <Badge variant="outline" className="mt-4 border-amber-500/30 bg-amber-500/5 text-amber-900 dark:text-amber-200">
-        Advisory only
-      </Badge>
+      <AdvisoryOnlyNote className="mt-4" />
     </article>
   )
 }

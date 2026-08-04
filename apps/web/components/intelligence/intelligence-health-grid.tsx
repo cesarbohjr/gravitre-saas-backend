@@ -3,6 +3,7 @@
 import useSWR from "swr"
 import Link from "next/link"
 import { StatCard, StatsGrid } from "@/components/gravitre/page-header"
+import { CardSkeleton, StatsSkeleton } from "@/components/gravitre/loading-state"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -100,7 +101,7 @@ export function IntelligenceHealthGrid({ orgScopedKey }: { orgScopedKey: string 
       </div>
 
       {trustLoading || maturityLoading ? (
-        <p className="text-sm text-muted-foreground">Loading intelligence health…</p>
+        <StatsSkeleton count={4} />
       ) : (
         <StatsGrid columns={4}>
           <StatCard
@@ -128,7 +129,7 @@ export function IntelligenceHealthGrid({ orgScopedKey }: { orgScopedKey: string 
       {maturityView ? (
         <div className="rounded-2xl border border-border/70 bg-card p-4 md:p-5">
           <div className="flex items-start gap-3">
-            <Sparkle className="h-5 w-5 text-violet-500" weight="duotone" aria-hidden />
+            <Sparkle className="h-5 w-5 shrink-0 text-primary" weight="duotone" aria-hidden />
             <div>
               <p className="text-sm font-medium text-foreground">
                 Level {maturityView.level} — {readString(maturityView.label, "Connected")}
@@ -148,7 +149,11 @@ export function IntelligenceHealthGrid({ orgScopedKey }: { orgScopedKey: string 
             <h3 className="text-sm font-semibold text-foreground">Domain health</h3>
           </div>
           {domainLoading ? (
-            <p className="text-sm text-muted-foreground">Loading domain health…</p>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <CardSkeleton key={i} showIcon={false} lines={4} />
+              ))}
+            </div>
           ) : domains.length ? (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {domains.slice(0, 9).map((entry) => (

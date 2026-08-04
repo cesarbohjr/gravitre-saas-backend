@@ -4,6 +4,7 @@ import { useState } from "react"
 import { CaretDown, Info } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
 import { ConfidenceBadge } from "./confidence-badge"
+import { AdvisoryOnlyNote } from "./advisory-only-note"
 
 export function RecommendationExplanation({
   summary,
@@ -54,9 +55,7 @@ export function RecommendationExplanation({
         <div className="space-y-3 border-t border-border/60 px-4 py-3 text-sm">
           <p className="leading-relaxed text-foreground text-pretty">{safeSummary}</p>
           {advisoryOnly ? (
-            <p className="rounded-lg border border-dashed border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
-              Advisory only — human approval is required before any write action executes.
-            </p>
+            <AdvisoryOnlyNote tone="full" variant="note" />
           ) : null}
           {sources && sources.length > 0 ? (
             <ul className="space-y-1 text-xs text-muted-foreground">

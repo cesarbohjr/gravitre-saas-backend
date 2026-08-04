@@ -11,50 +11,58 @@ import {
 import type { Icon } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
 
+/**
+ * Memory category is a *taxonomy*, not a health signal, so it uses the
+ * categorical `--chart-*` ramp rather than success/warning/error tones (which
+ * would wrongly imply a rule is "bad"). Risk signal is the one genuine
+ * severity case, so it keeps the destructive token.
+ *
+ * These tokens carry per-theme lightness, so the old `dark:` pairs are gone.
+ */
 const MEMORY_CATEGORY_CONFIG: Record<
   string,
   { icon: Icon; chipBg: string; iconColor: string; label: string }
 > = {
   fact: {
     icon: BookOpen,
-    chipBg: "bg-sky-500/10",
-    iconColor: "text-sky-600 dark:text-sky-400",
+    chipBg: "bg-chart-2/10",
+    iconColor: "text-chart-2",
     label: "Fact",
   },
   preference: {
     icon: UserCircle,
-    chipBg: "bg-violet-500/10",
-    iconColor: "text-violet-600 dark:text-violet-400",
+    chipBg: "bg-chart-4/10",
+    iconColor: "text-chart-4",
     label: "Preference",
   },
   pattern: {
     icon: FlowArrow,
-    chipBg: "bg-indigo-500/10",
-    iconColor: "text-indigo-600 dark:text-indigo-400",
+    chipBg: "bg-chart-1/10",
+    iconColor: "text-chart-1",
     label: "Pattern",
   },
   rule: {
     icon: ShieldWarning,
-    chipBg: "bg-amber-500/10",
-    iconColor: "text-amber-700 dark:text-amber-300",
+    chipBg: "bg-chart-3/10",
+    iconColor: "text-chart-3",
     label: "Rule",
   },
   business_rule: {
     icon: ShieldWarning,
-    chipBg: "bg-amber-500/10",
-    iconColor: "text-amber-700 dark:text-amber-300",
+    chipBg: "bg-chart-3/10",
+    iconColor: "text-chart-3",
     label: "Business rule",
   },
   campaign_learning: {
     icon: Megaphone,
-    chipBg: "bg-rose-500/10",
-    iconColor: "text-rose-600 dark:text-rose-400",
+    chipBg: "bg-chart-5/10",
+    iconColor: "text-chart-5",
     label: "Campaign learning",
   },
   risk_signal: {
     icon: ShieldWarning,
-    chipBg: "bg-red-500/10",
-    iconColor: "text-red-600 dark:text-red-400",
+    chipBg: "bg-destructive/10",
+    iconColor: "text-destructive",
     label: "Risk signal",
   },
 }

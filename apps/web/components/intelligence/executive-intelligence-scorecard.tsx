@@ -3,6 +3,7 @@
 import useSWR from "swr"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { AdvisoryOnlyNote } from "@/components/intelligence/advisory-only-note"
 import { intelligenceApi } from "@/lib/api"
 import { formatPercent, readNumber, readString } from "@/lib/intelligence/helpers"
 import {
@@ -30,7 +31,7 @@ function ScoreBar({ label, value, weight }: { label: string; value: unknown; wei
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-secondary/80">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all"
+          className="h-full rounded-full bg-primary transition-all"
           style={{ width: num != null ? `${Math.round(num * 100)}%` : "0%" }}
         />
       </div>
@@ -70,11 +71,11 @@ export function ExecutiveIntelligenceScorecard({ orgScopedKey }: { orgScopedKey:
   return (
     <section className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="relative overflow-hidden border-border/70 bg-gradient-to-br from-card via-card/95 to-emerald-500/[0.06]">
+        <Card className="relative overflow-hidden border-border/70 bg-gradient-to-br from-card via-card/95 to-primary/[0.06]">
           <CardHeader>
             <div className="flex items-start gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/20">
-                <Gauge className="h-5 w-5 text-emerald-600 dark:text-emerald-400" weight="duotone" aria-hidden />
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
+                <Gauge className="h-5 w-5 text-primary" weight="duotone" aria-hidden />
               </span>
               <div>
                 <CardTitle className="text-base">Executive intelligence score</CardTitle>
@@ -93,16 +94,14 @@ export function ExecutiveIntelligenceScorecard({ orgScopedKey }: { orgScopedKey:
                   <span
                     className={cn(
                       "text-5xl font-semibold tabular-nums tracking-tight",
-                      score != null ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground",
+                      score != null ? "text-primary" : "text-muted-foreground",
                     )}
                   >
                     {score != null ? Math.round(score * 100) : "—"}
                   </span>
                   <Badge variant="outline">{scoreLabelText(data?.score_label)}</Badge>
                 </div>
-                <Badge variant="outline" className="mt-4 border-amber-500/30 bg-amber-500/5 text-amber-900 dark:text-amber-200">
-                  advisory_only
-                </Badge>
+                <AdvisoryOnlyNote className="mt-4" />
               </>
             )}
           </CardContent>
@@ -125,7 +124,7 @@ export function ExecutiveIntelligenceScorecard({ orgScopedKey }: { orgScopedKey:
       {maturity ? (
         <div className="rounded-2xl border border-border/70 bg-card p-4">
           <div className="flex items-start gap-3">
-            <Sparkle className="h-5 w-5 text-violet-500" weight="duotone" aria-hidden />
+            <Sparkle className="h-5 w-5 shrink-0 text-primary" weight="duotone" aria-hidden />
             <div>
               <p className="text-sm font-medium text-foreground">
                 Maturity L{maturity.level} — {readString(maturity.label, "Connected")}

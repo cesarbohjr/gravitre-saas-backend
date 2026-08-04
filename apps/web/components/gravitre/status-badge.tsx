@@ -9,6 +9,8 @@ interface StatusBadgeProps {
   className?: string
   dot?: boolean
   icon?: IconName
+  /** Native tooltip, for when the short label needs a fuller explanation. */
+  title?: string
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
@@ -35,9 +37,11 @@ export function StatusBadge({
   className,
   dot = false,
   icon,
+  title,
 }: StatusBadgeProps) {
   return (
     <span
+      title={title}
       className={cn(
         "inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide",
         variantStyles[variant],
