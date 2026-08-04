@@ -55,24 +55,53 @@ function toneFor(name: string) {
 }
 
 /**
+ * Human label for a connector id: `hubspot` -> "Hubspot", `google_ads` ->
+ * "Google ads". Server ids are snake_cased, and raw ids in the UI read like
+ * debug output.
+ */
+export function connectorLabel(name: string): string {
+  const label = String(name || "").replace(/[_-]/g, " ").trim()
+  if (!label) return "Connector"
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
+/**
+ * Monogram mark for a connector. Vendors like HubSpot and Apollo have no
+ * Lucide glyph, and tracing their logos would be both inconsistent with the
+ * app's Lucide set and a licensing question, so a tinted monogram carries the
+ * recognition instead.
+ */
+export function ConnectorIcon({
+  name,
+  className,
+  ...rest
+}: { name: string; className?: string } & React.HTMLAttributes<HTMLSpanElement>) {
+  return (
+    <span
+      {...rest}
+      className={cn(
+        "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-secondary text-[9px] font-bold uppercase",
+        toneFor(name),
+        className,
+      )}
+    >
+      {connectorLabel(name).slice(0, 1)}
+    </span>
+  )
+}
+
+/**
  * A connector chip: monogram + name. Used in the popup's always-visible
  * connection status (Part A.2) so "which connectors are active" is glanceable
  * rather than a comma-joined string.
  */
 export function ConnectorChip({ name }: { name: string }) {
-  const label = name.replace(/[_-]/g, " ")
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card py-0.5 pl-0.5 pr-2">
-      <span
-        aria-hidden="true"
-        className={cn(
-          "inline-flex h-4 w-4 items-center justify-center rounded-full bg-secondary text-[9px] font-bold uppercase",
-          toneFor(name),
-        )}
-      >
-        {label.slice(0, 1)}
+      <ConnectorIcon name={name} aria-hidden="true" />
+      <span className="text-[11px] font-medium text-foreground">
+        {connectorLabel(name)}
       </span>
-      <span className="text-[11px] font-medium capitalize text-foreground">{label}</span>
     </span>
   )
 }

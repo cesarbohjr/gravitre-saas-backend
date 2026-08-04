@@ -106,7 +106,12 @@ export type SessionEnvelope = {
   cfg?: { appBase: string }
 }
 
-/** The surfaces with a registered content script, for labelling only. */
+/**
+ * Every surface the extension runs on. The first five have manifest-declared
+ * content scripts; `company` is any other page, reached on demand via
+ * activeTab injection; `unknown` is a URL we cannot act on at all (chrome://,
+ * about:, the store, etc).
+ */
 export type Surface =
   | "linkedin"
   | "gmail"
@@ -115,3 +120,27 @@ export type Surface =
   | "slack"
   | "company"
   | "unknown"
+
+/**
+ * What the content script scrapes from the host page and sends to /enrich.
+ *
+ * Field names match what the old content/*.js extractors produced, so the
+ * backend contract is unchanged. Everything except `surface` and `url` is
+ * optional because each host page exposes a different subset — the UI must
+ * render only what is actually present rather than showing empty rows.
+ */
+export type PageContext = {
+  surface: Surface
+  url: string
+  companyName?: string
+  personName?: string
+  title?: string
+  industry?: string
+  email?: string
+  emailDomain?: string
+  domain?: string
+  subject?: string
+  channel?: string
+  /** Only set for `company_site`: distinguishes a careers/about page. */
+  pageKind?: "careers_about" | "company_site"
+}

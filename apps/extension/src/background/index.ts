@@ -232,7 +232,9 @@ chrome.runtime.onMessage.addListener((message: any, _sender, sendResponse) => {
           target: { tabId: tab.id },
           files: ["content/overlay.js"],
         })
-        await chrome.tabs.sendMessage(tab.id, { type: "OPEN_OVERLAY" })
+        // No OPEN_OVERLAY message here: a freshly injected bundle opens itself
+        // on evaluation (mirroring the old content/company.js IIFE). Sending
+        // one as well would mount the card twice.
         sendResponse({ ok: true })
         return
       }

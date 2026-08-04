@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ArrowUpRight, Sparkles, X } from "lucide-react"
 
-import { BrandLoader } from "@/components/brand-loader"
-import { BrandMark } from "@/components/brand-mark"
+import { BrandLoader, BrandMark } from "@/components/brand-loader"
 import { Button, Divider, SectionLabel } from "@/components/ui"
 import { cn } from "@/lib/cn"
 import * as api from "@/lib/messaging"

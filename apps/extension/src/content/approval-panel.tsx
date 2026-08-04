@@ -163,7 +163,7 @@ export function ApprovalPanel({
 
       <div className="mt-3 flex items-center gap-2">
         <Button
-          variant={destructive ? "destructive" : "primary"}
+          variant={destructive ? "danger" : "primary"}
           size="sm"
           loading={busy}
           disabled={needsListId && !listId.trim()}

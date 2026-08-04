@@ -18,12 +18,20 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "ghost" | "danger"
   size?: "sm" | "md"
   block?: boolean
+  /**
+   * Shows an inline spinner and disables the button. Every write in this
+   * extension is a network round trip, so pending state is the norm rather
+   * than an edge case, and the button must never look clickable mid-flight.
+   */
+  loading?: boolean
 }
 
 export function Button({
   variant = "primary",
   size = "md",
   block,
+  loading,
+  disabled,
   className,
   children,
   ...rest
@@ -31,6 +39,8 @@ export function Button({
   return (
     <button
       {...rest}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       className={cn(
         "inline-flex items-center justify-center gap-1.5 rounded-md font-medium",
         "transition-[background-color,border-color,color,box-shadow] duration-150",
@@ -48,6 +58,12 @@ export function Button({
         className,
       )}
     >
+      {loading && (
+        <span
+          aria-hidden="true"
+          className="h-3 w-3 shrink-0 animate-spin rounded-full border-[1.5px] border-current border-t-transparent"
+        />
+      )}
       {children}
     </button>
   )
