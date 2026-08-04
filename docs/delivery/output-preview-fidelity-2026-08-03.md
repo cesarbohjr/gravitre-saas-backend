@@ -129,6 +129,8 @@ Closed open gaps from Phase 1 / reconfirm — matched preview now covers chat ha
 
 ## Phase 2 + 3 implementation (2026-08-03)
 
+**Ship commit:** `32a9ced3` (feature contents; message on that SHA was mistitled — this section is the source of truth).
+
 | Phase | Surface | Evidence |
 |-------|---------|----------|
 | 2 File chips | `generate_document` → storage bucket `chat-artifacts` (md/docx/pdf/html + csv when table present) | `backend/app/services/chat_hosted_file_service.py`; UI `file-reference-chip.tsx` |
