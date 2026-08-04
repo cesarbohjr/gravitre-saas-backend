@@ -16,6 +16,7 @@ import { mkdir } from "node:fs/promises"
 import { join } from "node:path"
 
 const BASE = process.env.SHOT_BASE_URL ?? "http://localhost:3000"
+const PROBE_PATH = "/e2e/shots/activity"
 const OUT = join(process.cwd(), "apps/web/public/product")
 const SCALE = 2
 
@@ -31,15 +32,23 @@ const SHOTS = [
   { name: "app-connectors", view: "connectors", wait: "HubSpot", width: 1440, height: 900 },
 ]
 
+/**
+ * Confirms we are really talking to the local dev server.
+ *
+ * Probe a real PAGE route, not a static .txt: proxy.ts's matcher only excludes
+ * svg/png/css/js/etc, so an unauthenticated .txt request is treated as a
+ * protected page and 307s to the production login URL. That looks identical to
+ * a broken sandbox bridge and sent me chasing the wrong bug.
+ */
 async function probe(page) {
-  const res = await page.goto(`${BASE}/shot-bridge-probe.txt`, { waitUntil: "domcontentloaded" })
+  const res = await page.goto(`${BASE}${PROBE_PATH}`, { waitUntil: "domcontentloaded" })
   const host = new URL(page.url()).host
-  const body = (await page.textContent("body")) ?? ""
-  const ok = host.startsWith("localhost") && body.includes("shot-bridge-probe")
-  console.log(`probe: status=${res?.status()} host=${host} ok=${ok}`)
+  const expected = new URL(BASE).host
+  const ok = res?.status() === 200 && host === expected
+  console.log(`probe: status=${res?.status()} host=${host} expected=${expected} ok=${ok}`)
   if (!ok) {
     console.error(
-      "ABORT: not reaching the local dev server (requests are escaping to another origin)."
+      `ABORT: expected ${expected} but landed on ${host} — requests are escaping to another origin.`
     )
   }
   return ok
@@ -56,6 +65,23 @@ try {
 
   if (!(await probe(page))) process.exit(1)
   if (probeOnly) process.exit(0)
+
+  // --trace prints every /api/* path the app actually requests, which is how to
+  // get fixture keys right instead of guessing them from source.
+  if (args.includes("--trace")) {
+    const view = only ?? "activity"
+    const seen = new Set()
+    page.on("request", (r) => {
+      const u = new URL(r.url())
+      if (u.pathname.startsWith("/api/")) seen.add(u.pathname)
+    })
+    await page.goto(`${BASE}/e2e/shots/${view}`, { waitUntil: "networkidle" })
+    await page.waitForTimeout(6000)
+    console.log(`=== /api/* requested by ${view} ===`)
+    ;[...seen].sort().forEach((s) => console.log(`  ${s}`))
+    console.log(`landed on: ${new URL(page.url()).pathname}`)
+    process.exit(0)
+  }
 
   await mkdir(OUT, { recursive: true })
   let failed = 0

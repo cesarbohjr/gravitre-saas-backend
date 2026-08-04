@@ -158,6 +158,22 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
     trialEndsAt: null,
     plan: "control",
   },
+  // AppShell gates the whole product on this: until welcome is completed or
+  // skipped it replaces the route with /welcome, so an un-fixtured onboarding
+  // response silently captures the onboarding flow instead of the surface.
+  "/api/onboarding": {
+    welcome_completed: true,
+    skipped: true,
+    completed_steps: ["welcome", "connect", "first_run"],
+    current_step: null,
+  },
+  // The app calls /api/auth/me (not /api/me) — keep both so either path works.
+  "/api/auth/me": {
+    user: { id: supabaseUser.id, email: supabaseUser.email, name: "Dana Whitfield" },
+    org: { id: DEMO_ORG_ID, name: "Northwind Logistics" },
+    orgs: [{ id: DEMO_ORG_ID, name: "Northwind Logistics", role: "admin" }],
+    billing: { can_access_app: true, billing_status: "active", plan: "control" },
+  },
   "/api/me": {
     user: { id: supabaseUser.id, email: supabaseUser.email, name: "Dana Whitfield" },
     org: { id: DEMO_ORG_ID, name: "Northwind Logistics" },
