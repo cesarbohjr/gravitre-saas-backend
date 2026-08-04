@@ -38,3 +38,19 @@ Path: mine `extension.usage_signal` → classify → commission security review 
 | Security review issue | [STA-340](https://linear.app/staqbot/issue/STA-340/extension-v6-agentic-dom-security-review-gated) (Backlog; blocks v6 code; not sign-off) |
 
 **Verdict unchanged:** gate remains closed. STA-340 commissions the review checklist; it does not authorize build.
+
+## Correct-scope search (2026-08-04) — CLOSE AT v5
+
+Scoping correction (not a re-run of tip usage-signal smoke): searched industry computer-use categories (legacy/no-API enterprise, government portals, vendor/MSP/supplier portals, internal admin panels) against Gravitree’s **actual** MSP pack scope, ICP/positioning, and VOC sources.
+
+| Check | Result |
+|-------|--------|
+| MSP Intelligence Pack blocked by no-API portal? | **No** — pack is Apollo/HubSpot prospecting + NVD/CISA |
+| ConnectWise / Datto | Preferences only; **have APIs** → catalog backlog, not v6 |
+| Support/sales/feature-request naming a no-API portal | **None** in repo or Linear |
+| Named v6 candidate | **None** |
+
+Full write-up: `browser-extension-v6-correct-scope-search-2026-08-04.md`  
+JSON: `browser-extension-v6-correct-scope-search.json`
+
+**Decision reaffirmed:** close extension roadmap at v5. Re-open only with new named surface + documented operator need + STA-340 sign-off. Do not re-litigate from category lists alone.

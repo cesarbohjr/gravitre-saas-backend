@@ -1,0 +1,44 @@
+{
+  "probe": "extension_v6_correct_scope_search",
+  "verified_at": "2026-08-04T08:20:00+00:00",
+  "priorMine": "docs/delivery/browser-extension-v6-surface-candidates-2026-08-04.md",
+  "scopingNote": "Prior mine was tip usage-signal smoke (catalog/allowlist territory). This pass searches non-API computer-use categories against Gravitree product + VOC evidence.",
+  "ruledOut": [
+    "CRM/marketing/mail already on extension allowlist",
+    "Any system with documented public/partner API (catalog if prioritized)",
+    "ConnectWise and Datto (msp.yaml preferences; APIs exist → catalog backlog not v6)"
+  ],
+  "categoriesSearched": [
+    "legacy_enterprise_erp_accounting_no_api",
+    "government_municipal_utility_portals",
+    "vendor_supplier_msp_insurance_distributor_portals",
+    "internal_admin_panels"
+  ],
+  "mspPackFinding": {
+    "actualScope": "Apollo/HubSpot MSP prospecting + NVD/CISA vuln intel; Ops pack Slack scaffolds",
+    "portalWorkflowBlockedByNoApi": false,
+    "namedNoApiPortal": null
+  },
+  "voc": {
+    "supportTickets": "absent_in_repo",
+    "salesNotes": "absent_in_repo",
+    "featureRequestsNamingNoApiPortal": "none",
+    "linearCustomerNeedIssues": "none_besides_STA-340_engineering_gate"
+  },
+  "namedCandidate": null,
+  "verdict": {
+    "status": "CLOSE_ROADMAP_AT_V5",
+    "summary": "Correctly scoped search found no named non-API surface with documented Gravitree operator need. Legitimate complete outcome."
+  },
+  "securityReviewIssue": {
+    "id": "STA-340",
+    "url": "https://linear.app/staqbot/issue/STA-340/extension-v6-agentic-dom-security-review-gated",
+    "note": "Dormant until a surface is named; not a build authorization"
+  },
+  "reopenRequires": [
+    "exact named host/UI",
+    "proof no governed API",
+    "documented Gravitree operator need",
+    "STA-340 sign-off"
+  ]
+}

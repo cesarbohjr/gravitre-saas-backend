@@ -45,8 +45,14 @@ Tip `49e4a75d…` · `browser-extension-v5-tip-verify.json` **PASS** · conversa
 - Security review commissioned (not signed off): [STA-340](https://linear.app/staqbot/issue/STA-340/extension-v6-agentic-dom-security-review-gated)
 - No agentic DOM code shipped
 
+### Correct-scope search (2026-08-04) — CLOSED AT v5 with confidence
+
+- Searched non-API computer-use categories × MSP pack × VOC (not catalog SaaS territory)
+- Named candidate: **none** — `browser-extension-v6-correct-scope-search-2026-08-04.md`
+- Roadmap complete at v5; STA-340 dormant until new evidence
+
 ## Open human items (not code)
 
 1. Chrome Web Store publish / unlisted beta → set `NEXT_PUBLIC_CHROME_WEB_STORE_URL`
 2. Publisher contact email verification (blocks Submit)
-3. v6: name a real non-API surface **or** keep closed; complete STA-340 before any DOM agent work
+3. v6: **closed** unless new named non-API surface + operator need appears; then STA-340 before any DOM agent work
