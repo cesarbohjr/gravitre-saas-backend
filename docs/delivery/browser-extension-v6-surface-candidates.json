@@ -1,0 +1,50 @@
+{
+  "probe": "extension_v6_surface_candidates",
+  "verified_at": "2026-08-04T07:26:00+00:00",
+  "sourceArtifact": "docs/delivery/browser-extension-v6-usage-signals.json",
+  "mineSummary": {
+    "totalRows": 24,
+    "scopeMode": "tip_plus_global",
+    "tipOrg": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+    "tipCount": 24,
+    "globalCount": 0,
+    "bucketCounts": {
+      "noise": 24
+    },
+    "possibleDomForcing": 0,
+    "catalogBacklog": 0
+  },
+  "candidates": {
+    "possible_dom_forcing": [],
+    "catalog_backlog": [],
+    "noise_examples": [
+      {
+        "host": "www.linkedin.com",
+        "note": "All tip rows used /in/v5-parity-edge-brave smoke URLs"
+      },
+      {
+        "host": "example.com",
+        "note": "v5-parity outside_allowlist smoke"
+      },
+      {
+        "host": "www.acme-example.com",
+        "note": "v2 careers_about tip fixture"
+      },
+      {
+        "host": "outside-crm.example",
+        "note": "v2_tip fixture (.example TLD)"
+      }
+    ]
+  },
+  "verdict": {
+    "status": "GATE_REMAINS_CLOSED",
+    "domForcingCandidates": 0,
+    "summary": "No real operator host requires agentic DOM. All extension.usage_signal rows in tip/prod mine are smoke/fixture noise. v6 stays closed until a named non-API surface appears in usage signals or is explicitly provided by an operator."
+  },
+  "securityReviewIssue": {
+    "id": "STA-340",
+    "url": "https://linear.app/staqbot/issue/STA-340/extension-v6-agentic-dom-security-review-gated",
+    "status": "Backlog",
+    "note": "Commissions review; does not authorize agentic DOM build"
+  }
+}

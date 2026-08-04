@@ -2,11 +2,27 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="color-scheme" content="light dark" />
-    <title>Gravitre</title>
+    <title>Gravitree</title>
+    <link rel="stylesheet" href="popup.css" />
+    <style>
+      body {
+        width: auto;
+      }
+      main {
+        max-width: 420px;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/sidepanel/main.tsx"></script>
+    <main>
+      <h1>Gravitree overlay</h1>
+      <p class="muted">
+        Overlay-and-approve only. Reads and writes use your connected catalog
+        actions and show verified evidence in Activity — not a parallel system.
+      </p>
+      <p id="status" class="muted">Checking session…</p>
+      <div id="actions" class="actions"></div>
+    </main>
+    <script src="popup.js"></script>
   </body>
 </html>

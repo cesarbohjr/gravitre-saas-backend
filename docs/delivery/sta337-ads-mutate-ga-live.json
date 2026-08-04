@@ -1,0 +1,58 @@
+{
+  "ticket": "STA-337",
+  "probe": "ads_mutate_and_ga_connect",
+  "generated_at": "2026-08-04T01:32:00Z",
+  "prod_tip_at_run_pre_ship": "e40bf9fe53f103ded02e04cef20c2217f03c42e3",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "google_ads": {
+    "verdict": "PASS",
+    "notes": [
+      "Configured customer_id was MCC 6813067107 (manager) — campaigns.list returned 0; structure.create forbidden (OPERATION_NOT_PERMITTED_FOR_CONTEXT).",
+      "Client customer 9904974542 (Gravitre AI) has campaigns; connector config updated to customer_id=9904974542.",
+      "Campaign create required containsEuPoliticalAdvertising (Ads API v25) — fixed in google_ads.create_search_campaign."
+    ],
+    "created_campaign_id": "24101584454",
+    "created_result_url": "https://ads.google.com/aw/campaigns?ocid=9904974542&campaignId=24101584454",
+    "mutates": {
+      "googleads.campaigns.resume": {
+        "success": true,
+        "audit": "tool.invoke.completed c05a8d18-34ef-4d85-81f8-24155e947118 @ 2026-08-04T01:19:47.892513Z"
+      },
+      "googleads.campaigns.pause": {
+        "success": true,
+        "status_left": "PAUSED",
+        "result_url": "https://ads.google.com/aw/campaigns?ocid=9904974542&campaignId=24101584454",
+        "audit": "tool.invoke.completed 59bdec02-1348-4cfa-8bfb-b0b8a9fb5149 @ 2026-08-04T01:19:50.275904Z"
+      }
+    }
+  },
+  "google_analytics": {
+    "verdict": "PASS",
+    "notes": [
+      "OAuth completed for connector c283f76a-deed-41d0-9f2d-2b98e9f95dd9 (tokens under oauth_tokens secret; status was pending_property until property linked).",
+      "Linked GA4 property 545453247 (Gravitre).",
+      "analytics.reports.run returned 6 daily rows for last 7 days."
+    ],
+    "connector_id": "c283f76a-deed-41d0-9f2d-2b98e9f95dd9",
+    "property_id": "545453247",
+    "oauth_audit": "connector.oauth.reconnected c283f76a-deed-41d0-9f2d-2b98e9f95dd9 @ 2026-08-04T01:26:26.927051Z",
+    "report": {
+      "success": true,
+      "row_count": 6,
+      "audit": "tool.invoke.completed 5108d086-8d45-4957-83c5-765acc0fe668 @ 2026-08-04T01:30:25.602956Z"
+    }
+  },
+  "live_pass_claimed": true,
+  "honesty_gates": {
+    "cleared": [
+      "microsoft365",
+      "outlook",
+      "microsoft",
+      "google_ads",
+      "googleads",
+      "google_analytics",
+      "ga4"
+    ],
+    "retained": []
+  }
+}

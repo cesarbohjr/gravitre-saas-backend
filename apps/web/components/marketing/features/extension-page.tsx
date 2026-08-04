@@ -56,10 +56,6 @@ const surfacesProven = [
   "Outlook on the web",
   "Company websites (when you invoke Enrich)",
   "Careers / about pages (path-matched)",
-] as const
-
-/** Host-allowlisted in the pack; not marketed as live until surface-specific Outcomes proof. */
-const surfacesComingSoon = [
   "Salesforce Lightning / Force hosts",
   "Slack web (app.slack.com)",
 ] as const
@@ -324,21 +320,12 @@ export function ExtensionPage() {
                 </li>
               ))}
             </ul>
-            <p className="mt-6 text-sm font-medium text-zinc-700">Coming soon</p>
-            <p className="mt-1 text-sm text-zinc-500">
-              Hosts are allowlisted in the extension pack; enrich → approve →
-              Outcomes on these surfaces is not yet live-proven.
+            <p className="mt-4 text-sm text-zinc-500">
+              Salesforce and Slack overlays use page context plus connected
+              catalog actions (Apollo / HubSpot today). Native Salesforce lead
+              search/create and Slack user lookup activate when those connectors
+              are connected — still catalog only, never DOM automation.
             </p>
-            <ul className="mt-3 space-y-2">
-              {surfacesComingSoon.map((s) => (
-                <li key={s} className="flex items-start gap-2 text-zinc-600">
-                  <span className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-amber-700">
-                    Soon
-                  </span>
-                  <span>{s}</span>
-                </li>
-              ))}
-            </ul>
           </div>
           <div className="space-y-4">
             <div className="rounded-2xl border border-zinc-200 bg-white p-5">
@@ -364,8 +351,18 @@ export function ExtensionPage() {
               <h3 className="font-semibold text-zinc-900">Quick chat on the page</h3>
               <p className="mt-2 text-sm text-zinc-600">
                 Ask a short, page-contextual question in the overlay — same
-                unified-turn path as Gravitree chat. Writes and longer work hand
-                off to the full app on the same conversation thread.
+                unified-turn path as Gravitree chat. Writes and multi-step work
+                hand off to the full app on the same conversation thread (where
+                the progress panel lives). Proven thread:{" "}
+                <a
+                  className="font-medium text-emerald-700 underline-offset-2 hover:underline"
+                  href="https://gravitre.app/ai?c=cc618049-0d01-481a-95f7-7b87ad045ae9"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  overlay Q → write handoff
+                </a>
+                .
               </p>
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-5">
@@ -373,14 +370,33 @@ export function ExtensionPage() {
               <h3 className="font-semibold text-zinc-900">Workflows from the overlay</h3>
               <p className="mt-2 text-sm text-zinc-600">
                 Trigger existing typed workflows with the same plan-bar approve
-                pattern as chat — then open the Outcomes chain. Example run:{" "}
+                pattern as chat — named step labels stay visible while it runs,
+                then open the Outcomes chain. Proven runs:{" "}
                 <a
                   className="font-medium text-emerald-700 underline-offset-2 hover:underline"
                   href="https://gravitre.app/outcomes/139fd6cc-7d53-4dfd-ac1b-c59e902109ea"
                   target="_blank"
                   rel="noreferrer"
                 >
-                  NVD + CISA KEV lookup
+                  NVD + CISA KEV
+                </a>
+                ,{" "}
+                <a
+                  className="font-medium text-emerald-700 underline-offset-2 hover:underline"
+                  href="https://gravitre.app/outcomes/54914197-9516-48c3-90be-703980deb6ec"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  HubSpot pipelines + deals
+                </a>
+                ,{" "}
+                <a
+                  className="font-medium text-emerald-700 underline-offset-2 hover:underline"
+                  href="https://gravitre.app/outcomes/6d314587-bafb-4b11-a78b-da6c4d5245d6"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Apollo orgs + HubSpot pipelines
                 </a>
                 .
               </p>

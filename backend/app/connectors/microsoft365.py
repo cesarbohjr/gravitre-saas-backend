@@ -16,6 +16,18 @@ class Microsoft365APIError(Exception):
         self.details = details
 
 
+def _graph_user_root(user_id: str | None = "me") -> str:
+    """Path root for the signed-in user vs a directory user id.
+
+    Personal Microsoft accounts reject `/users/me/...` with
+    TargetIdShouldNotBeMeOrWhitespace — use `/me/...` instead.
+    """
+    uid = str(user_id or "me").strip()
+    if not uid or uid.lower() == "me":
+        return "/me"
+    return f"/users/{uid}"
+
+
 def _request(
     access_token: str,
     method: str,
@@ -34,8 +46,13 @@ def _request(
             detail = response.json()
         except Exception:
             detail = response.text[:500]
+        code = ""
+        if isinstance(detail, dict):
+            err = detail.get("error") if isinstance(detail.get("error"), dict) else {}
+            code = str(err.get("code") or "")
+        suffix = f" ({code})" if code else ""
         raise Microsoft365APIError(
-            f"Microsoft Graph {response.status_code}: {path}",
+            f"Microsoft Graph {response.status_code}: {path}{suffix}",
             status_code=response.status_code,
             details=detail,
         )
@@ -45,7 +62,7 @@ def _request(
 
 
 def get_user(access_token: str, *, user_id: str = "me") -> dict[str, Any]:
-    return _request(access_token, "GET", f"/users/{user_id}")
+    return _request(access_token, "GET", _graph_user_root(user_id))
 
 
 def list_mail_messages(
@@ -61,7 +78,7 @@ def list_mail_messages(
     }
     if filter_query:
         params["$filter"] = filter_query
-    return _request(access_token, "GET", f"/users/{user_id}/messages", params=params)
+    return _request(access_token, "GET", f"{_graph_user_root(user_id)}/messages", params=params)
 
 
 def list_calendar_events(
@@ -80,7 +97,12 @@ def list_calendar_events(
         params["$filter"] = (
             f"start/dateTime ge '{start_datetime}' and end/dateTime le '{end_datetime}'"
         )
-    return _request(access_token, "GET", f"/users/{user_id}/calendar/events", params=params)
+    return _request(
+        access_token,
+        "GET",
+        f"{_graph_user_root(user_id)}/calendar/events",
+        params=params,
+    )
 
 
 def send_mail(
@@ -102,7 +124,12 @@ def send_mail(
         },
         "saveToSentItems": True,
     }
-    return _request(access_token, "POST", f"/users/{user_id}/sendMail", json_body=message)
+    return _request(
+        access_token,
+        "POST",
+        f"{_graph_user_root(user_id)}/sendMail",
+        json_body=message,
+    )
 
 
 def create_calendar_event(
@@ -122,7 +149,12 @@ def create_calendar_event(
     }
     if body:
         event["body"] = {"contentType": "Text", "content": body}
-    return _request(access_token, "POST", f"/users/{user_id}/calendar/events", json_body=event)
+    return _request(
+        access_token,
+        "POST",
+        f"{_graph_user_root(user_id)}/calendar/events",
+        json_body=event,
+    )
 
 
 def upload_drive_file(
@@ -135,9 +167,10 @@ def upload_drive_file(
 ) -> dict[str, Any]:
     if not filename:
         raise Microsoft365APIError("filename is required")
-    path = f"/users/{user_id}/drive/root:/{filename}:/content"
+    root = _graph_user_root(user_id)
+    path = f"{root}/drive/root:/{filename}:/content"
     if parent_id:
-        path = f"/users/{user_id}/drive/items/{parent_id}:/{filename}:/content"
+        path = f"{root}/drive/items/{parent_id}:/{filename}:/content"
     url = f"{GRAPH_API}{path}"
     headers = {"Authorization": f"Bearer {access_token}"}
     data = content.encode("utf-8") if isinstance(content, str) else content
@@ -164,7 +197,10 @@ def update_excel_range(
     return _request(
         access_token,
         "PATCH",
-        f"/users/{user_id}/drive/items/{item_id}/workbook/worksheets/{worksheet}/range(address='{address}')",
+        (
+            f"{_graph_user_root(user_id)}/drive/items/{item_id}/workbook/"
+            f"worksheets/{worksheet}/range(address='{address}')"
+        ),
         json_body=body,
     )
 
@@ -199,7 +235,7 @@ def batch_send_mail(
             {
                 "id": str(idx + 1),
                 "method": "POST",
-                "url": f"/users/{user_id}/sendMail",
+                "url": f"{_graph_user_root(user_id)}/sendMail",
                 "headers": {"Content-Type": "application/json"},
                 "body": msg if "message" in msg else {"message": msg},
             }

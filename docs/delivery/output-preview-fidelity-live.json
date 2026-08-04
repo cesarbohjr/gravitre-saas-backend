@@ -1,58 +1,41 @@
 {
-  "probe": "output_preview_fidelity_phase0_phase1",
+  "probe": "output_preview_fidelity_phase2_phase3_built",
   "date": "2026-08-03",
-  "reconfirmed_at": "2026-08-04T00:08:57Z",
+  "built_at": "2026-08-04T01:50:00Z",
   "phase0": {
     "connector_business_outcome": true,
-    "durable_hosted_files": false,
-    "chat_web_renderable_artifacts": false,
-    "in_app_office_viewer": false,
+    "durable_hosted_files": true,
+    "chat_web_renderable_artifacts": true,
+    "in_app_office_viewer": "partial_download_chips_only",
     "dashboard_recharts_exists": true,
-    "generate_document": "ephemeral_markdown_only",
-    "verdict": "Dominant output = BusinessOutcome evidence; skip file chip + Preview/Code"
+    "generate_document": "durable_md_docx_pdf_html_csv_when_table",
+    "verdict": "Phase 2 file chips + Phase 3 Preview/Code built on real generate_document/analytics/CodeAct outputs"
   },
   "phase1": {
     "decision": "confirm_no_rebuild",
-    "chat_path": "ChatExecutionPanel → BusinessOutcomeView density=chat",
-    "activity_path": "activity/page.tsx → BusinessOutcomeView density=timeline",
-    "live_bo_get_export": {
-      "verdict": "PASS",
-      "outcome_id": "95137db3-c760-4334-9b69-277e599351e0",
-      "projection": "business_outcome",
-      "get_export_identical": true,
-      "sections": [
-        "diff",
-        "evidence",
-        "explanation",
-        "metadata",
-        "summary",
-        "timeline",
-        "undo",
-        "verification"
-      ],
-      "title": "Send Gmail message",
-      "kind": "failed_action",
-      "checked_at": "2026-08-04T00:08:57.850288+00:00"
-    },
-    "prior_substrate_sample": {
-      "run_id": "50a34d4c-56eb-4178-aa44-242bd20c2c79",
-      "note": "Module A verified_output on operator cohort (not isolated-org BO id)"
-    },
-    "verdict": "PASS — evidence substrate + BO card is correct preview pattern"
+    "verdict": "PASS — BusinessOutcome remains matched preview for connector writes"
   },
-  "phase2_file_chip": "SKIP",
-  "phase3_live_preview": "SKIP",
-  "live_verification": {
-    "checked_at": "2026-08-04T00:08:57Z",
-    "chat_code_path": "PASS",
-    "activity_runs_code_path": "PASS",
-    "bo_api_get_export": "PASS — outcome 95137db3… on tip",
-    "authenticated_ui_screenshot": "NOT RUN — gravitre.app/login gate",
-    "extension": "PASS no regression — no BusinessOutcome in extension; status text only",
-    "api_health_git_sha": "b64add73bd2f60500694177386e617bc528bdcf7",
-    "docs_tip_prior": "6e9148e7",
-    "mismatched_preview_mechanisms_added": false
+  "phase2_file_chip": {
+    "verdict": "BUILT",
+    "service": "backend/app/services/chat_hosted_file_service.py",
+    "ui": "apps/web/components/gravitre/assistant/file-reference-chip.tsx",
+    "formats": ["md", "docx", "pdf", "html", "csv_when_table"],
+    "bucket": "chat-artifacts",
+    "pytest": "tests/services/test_chat_hosted_file_service.py — 5 passed",
+    "e2e_scenario": "hosted_files"
   },
-  "code_changes": false,
-  "note": "Documentation + reconfirm only; no Railway feature redeploy required. BusinessOutcome already on tip."
+  "phase3_live_preview": {
+    "verdict": "BUILT",
+    "ui": "apps/web/components/gravitre/assistant/preview-code-pane.tsx",
+    "surfaces": ["generateDocument tool chip", "getAnalytics tool chip", "codeTransform tool chip", "ChatExecutionPanel"],
+    "preview": "sandboxed srcDoc HTML/SVG + react-markdown",
+    "code_tab": true,
+    "e2e_scenario": "preview_code",
+    "not_included": "arbitrary React component sandbox"
+  },
+  "honesty": {
+    "pdf": "minimal text PDF writer — not print-quality Office export",
+    "storage": "signed downloads require Supabase bucket chat-artifacts; Preview/Code works inline without bucket",
+    "office_viewer": "download chips only — no embedded DOCX/PDF WYSIWYG"
+  }
 }

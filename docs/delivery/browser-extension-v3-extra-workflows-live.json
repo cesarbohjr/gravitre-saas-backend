@@ -1,0 +1,34 @@
+{
+  "workflows": {
+    "996fd48d-ff48-4716-acbc-3cd3bf540002": {
+      "name": "Ext v3 HS Pipelines Deals Proof",
+      "runId": "54914197-9516-48c3-90be-703980deb6ec",
+      "workflowStatus": "completed",
+      "progressStepLabels": [
+        "List HubSpot Pipelines:completed",
+        "List HubSpot Deals:completed"
+      ],
+      "outcomesSource": "browser_extension",
+      "outcomesStatus": "completed",
+      "openUrl": "https://gravitre.app/outcomes/54914197-9516-48c3-90be-703980deb6ec",
+      "pass": true
+    },
+    "49eb8aa5-9d9b-485c-864d-31994bda7093": {
+      "name": "Ext v3 Apollo Orgs HS Pipelines Proof",
+      "runId": "6d314587-bafb-4b11-a78b-da6c4d5245d6",
+      "workflowStatus": "completed",
+      "progressStepLabels": [
+        "Search Apollo Organizations:completed",
+        "List HubSpot Pipelines:completed"
+      ],
+      "outcomesSource": "browser_extension",
+      "outcomesStatus": "completed",
+      "openUrl": "https://gravitre.app/outcomes/6d314587-bafb-4b11-a78b-da6c4d5245d6",
+      "pass": true
+    }
+  },
+  "overall": "PASS",
+  "baselineNvdRunId": "139fd6cc-7d53-4dfd-ac1b-c59e902109ea",
+  "verifiedAt": "2026-08-04T00:47:04Z",
+  "note": "Named progressSteps returned with real labels; overlay keeps plan-bar through run."
+}

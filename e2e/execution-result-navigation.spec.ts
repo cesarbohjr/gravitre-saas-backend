@@ -36,4 +36,47 @@ test.describe("ExecutionResult navigation buttons", () => {
     await expect(page.getByText('Created contact list "Inline summary only".')).toBeVisible()
     await expect(page.getByRole("link", { name: /View in/i })).toHaveCount(0)
   })
+
+  test("hosted_files scenario renders Phase 2 file-reference chips", async ({ page }) => {
+    await page.goto("/e2e/execution-result?scenario=hosted_files")
+    await expect(page.getByTestId("execution-result-harness")).toBeVisible()
+    await expect(page.getByTestId("file-reference-chip").first()).toBeVisible()
+    await expect(page.getByText("q3-ops-brief.md")).toBeVisible()
+    await expect(page.getByText("q3-ops-brief.docx")).toBeVisible()
+    await expect(page.getByTestId("preview-code-pane")).toBeVisible()
+    await page.screenshot({
+      path: "docs/delivery/_artifacts/phase2-hosted-files-harness.png",
+      fullPage: true,
+    })
+  })
+
+  test("preview_code scenario renders Phase 3 Preview/Code pane", async ({ page }) => {
+    await page.goto("/e2e/execution-result?scenario=preview_code")
+    await expect(page.getByTestId("execution-result-harness")).toBeVisible()
+    await expect(page.getByTestId("preview-code-pane")).toBeVisible()
+    await expect(page.getByTestId("preview-code-iframe")).toBeVisible()
+    await page.getByRole("button", { name: "Code" }).click()
+    await expect(page.getByTestId("preview-code-source")).toContainText("statusBreakdown")
+    await page.screenshot({
+      path: "docs/delivery/_artifacts/phase3-preview-code-harness.png",
+      fullPage: true,
+    })
+  })
+
+  test("business_outcome scenario renders shared evidence card (matched preview)", async ({ page }) => {
+    await page.goto("/e2e/execution-result?scenario=business_outcome")
+    await expect(page.getByTestId("execution-result-harness")).toBeVisible()
+    const card = page.locator('[data-projection="business_outcome"]')
+    await expect(card).toBeVisible()
+    await expect(card).toHaveAttribute("data-business-outcome-id", "run-bo-fixture")
+    await expect(page.getByText(/Created contact list "MSP Prospects" in Apollo/i)).toBeVisible()
+    await expect(card.getByText(/^Verified ·/)).toBeVisible()
+    const vendor = page.getByRole("link", { name: "View in Apollo" })
+    await expect(vendor).toBeVisible()
+    await expect(vendor).toHaveAttribute("href", /app\.apollo\.io/)
+    await page.screenshot({
+      path: "docs/delivery/_artifacts/bo-chat-harness-business-outcome.png",
+      fullPage: true,
+    })
+  })
 })

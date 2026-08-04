@@ -8,15 +8,8 @@ from app.workflows.constants import SCHEMA_VERSION
 
 # Connectors without completed-work honesty audit (STA-337). Packs that require
 # these get an explicit manualSetupRequired label — never a silent fail.
-HONESTY_GATED_CONNECTORS: dict[str, str] = {
-    "google_ads": "Google Ads completed-work honesty not yet audited (STA-337)",
-    "googleads": "Google Ads completed-work honesty not yet audited (STA-337)",
-    "google_analytics": "Google Analytics completed-work honesty not yet audited (STA-337)",
-    "ga4": "Google Analytics completed-work honesty not yet audited (STA-337)",
-    "outlook": "Outlook / Microsoft 365 completed-work honesty not yet audited (STA-337)",
-    "microsoft": "Outlook / Microsoft 365 completed-work honesty not yet audited (STA-337)",
-    "microsoft365": "Outlook / Microsoft 365 completed-work honesty not yet audited (STA-337)",
-}
+# Cleared 2026-08-04 after live PASS: microsoft365/outlook, google_ads, google_analytics.
+HONESTY_GATED_CONNECTORS: dict[str, str] = {}
 
 
 def _extract_workflow_steps(asset: dict[str, Any]) -> tuple[list[dict[str, Any]], str]:

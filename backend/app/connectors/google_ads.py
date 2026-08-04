@@ -115,12 +115,14 @@ def _search(
         developer_token=developer_token,
         login_customer_id=login_customer_id,
     )
-    body = {"query": query, "pageSize": max(1, min(int(page_size), 1000))}
+    # Ads API search rejects pageSize (PAGE_SIZE_NOT_SUPPORTED); page is fixed server-side.
+    # Cap results client-side via page_size / caller limit.
+    want = max(1, min(int(page_size), 10000))
     rows: list[dict[str, Any]] = []
     page_token: str | None = None
     with httpx.Client(timeout=TIMEOUT_SEC) as client:
         while True:
-            payload = dict(body)
+            payload: dict[str, Any] = {"query": query}
             if page_token:
                 payload["pageToken"] = page_token
             response = client.post(
@@ -131,10 +133,10 @@ def _search(
             _raise_for_status(response, action="googleAds:search")
             data = response.json() or {}
             rows.extend(list(data.get("results") or []))
+            if len(rows) >= want:
+                return rows[:want]
             page_token = str(data.get("nextPageToken") or "").strip() or None
             if not page_token:
-                break
-            if len(rows) >= page_size:
                 break
     return rows
 
@@ -666,6 +668,8 @@ def create_search_campaign(
         "status": status_norm,
         "advertisingChannelType": "SEARCH",
         "campaignBudget": budget_rn,
+        # Required by Ads API v25+ (EU Political Ads Regulation).
+        "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
         "networkSettings": {
             "targetGoogleSearch": True,
             "targetSearchNetwork": True,

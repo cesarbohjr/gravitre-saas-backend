@@ -17,6 +17,74 @@ from app.services.tool_types import ToolContext
 
 logger = get_logger(__name__)
 
+def _extension_result_urls(run_id: str | None) -> dict[str, str | None]:
+    """Canonical deep-links after IA consolidation (Activity hub; run detail kept)."""
+    if not run_id:
+        return {"outcomeUrl": None, "businessOutcomeUrl": None}
+    return {
+        "outcomeUrl": f"/runs/{run_id}",
+        "businessOutcomeUrl": f"/activity",
+    }
+
+
+def _project_extension_business_outcome(
+    *,
+    org_id: str,
+    run_id: str | None,
+    action: str,
+    success: bool,
+    error_message: str | None,
+    data: dict[str, Any],
+    page_url: str | None,
+    outcome_effect: str | None,
+) -> dict[str, Any] | None:
+    """Compact BusinessOutcome for overlay evidence (same projector as chat)."""
+    if not run_id:
+        return None
+    try:
+        from app.services.business_outcome.projector import project_business_outcome
+
+        summary = (error_message or str(data.get("message") or f"{action} via browser extension"))[
+            :2000
+        ]
+        external = str(data.get("external_url") or data.get("result_url") or "") or None
+        er = {
+            "success": success,
+            "title": action,
+            "task_label": action,
+            "body": summary,
+            "integration": action.split(".", 1)[0],
+            "result_url": f"/runs/{run_id}",
+            "external_url": external,
+            "entity_id": run_id,
+            "entity_type": "workflow_run",
+        }
+        run = {
+            "id": run_id,
+            "status": "completed" if success else "failed",
+            "parameters": {
+                "source": "browser_extension",
+                "invoke_action": action,
+                "page_url": page_url,
+                "outcome_effect": outcome_effect,
+                "summary": summary,
+            },
+            "definition_snapshot": {"name": f"Extension: {action}", "source": "browser_extension"},
+            "error_message": None if success else error_message,
+        }
+        outcome = project_business_outcome(
+            org_id=org_id,
+            run=run,
+            execution_result=er,
+            invoke_action=action,
+            notification_emitted=True,
+        )
+        return outcome.to_dict()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("extension_business_outcome_project_failed error=%s", str(exc)[:200])
+        return None
+
+
 # Governed catalog actions only (no DOM automation substitutes).
 EXTENSION_READ_ACTIONS = frozenset(
     {
@@ -409,6 +477,7 @@ def enrich_from_page_context(
         "careers_about",
         "linkedin",
         "salesforce",
+        "slack",
     }:
         org_params: dict[str, Any] = {"per_page": 5}
         if company:
@@ -891,14 +960,26 @@ def _run_confirmed_extension_action(
             exc=exc,
         )
 
+    urls = _extension_result_urls(run_id)
+    business_outcome = _project_extension_business_outcome(
+        org_id=org_id,
+        run_id=run_id,
+        action=action,
+        success=bool(result.success),
+        error_message=result.error_message,
+        data=data if isinstance(data, dict) else {},
+        page_url=page_url,
+        outcome_effect=outcome_effect,
+    )
     return {
         "status": status,
         "invokeAction": action,
         "success": bool(result.success),
         "error": result.error_message,
         "runId": run_id,
-        "outcomeUrl": f"/runs/{run_id}" if run_id else None,
-        "businessOutcomeUrl": f"/outcomes/{run_id}" if run_id else None,
+        "outcomeUrl": urls["outcomeUrl"],
+        "businessOutcomeUrl": urls["businessOutcomeUrl"],
+        "businessOutcome": business_outcome,
         "data": data,
         "outcomeEffect": outcome_effect,
         "approvalId": approval_id,
@@ -993,11 +1074,14 @@ def _progress_steps_from_definition(definition: dict[str, Any]) -> list[dict[str
         if not isinstance(step, dict):
             continue
         cfg = step.get("config") if isinstance(step.get("config"), dict) else {}
+        name = step.get("name") or step.get("id") or f"Step {idx + 1}"
         out.append(
             {
                 "index": idx,
                 "id": step.get("id"),
-                "name": step.get("name") or step.get("id") or f"Step {idx + 1}",
+                "name": name,
+                # Same display field chat plan-bar uses (label) — overlay accepts either.
+                "label": name,
                 "type": step.get("type"),
                 "action": cfg.get("action") or cfg.get("invoke_action"),
                 "status": "pending",
@@ -1199,13 +1283,29 @@ def _run_confirmed_extension_workflow(
         else:
             step["status"] = "running"
 
+    urls = _extension_result_urls(run_id)
+    err = None if status != "failed" else str(result.get("errors") or "Workflow failed")
+    business_outcome = None
+    if run_id and status in {"completed", "failed", "partial_success"}:
+        payload = result if isinstance(result, dict) else {}
+        business_outcome = _project_extension_business_outcome(
+            org_id=org_id,
+            run_id=run_id,
+            action="assistant.execute_workflow",
+            success=status == "completed",
+            error_message=err,
+            data=payload,
+            page_url=page_url,
+            outcome_effect=None,
+        )
     return {
         "status": status,
         "success": status in {"completed", "running", "pending_approval"}
         or bool(result.get("queued")),
         "runId": run_id,
-        "outcomeUrl": f"/runs/{run_id}" if run_id else None,
-        "businessOutcomeUrl": f"/outcomes/{run_id}" if run_id else None,
+        "outcomeUrl": urls["outcomeUrl"],
+        "businessOutcomeUrl": urls["businessOutcomeUrl"],
+        "businessOutcome": business_outcome,
         "approvalRequired": bool(result.get("approval_required")),
         "queued": bool(result.get("queued")),
         "progressSteps": steps_out,
@@ -1214,7 +1314,7 @@ def _run_confirmed_extension_workflow(
         "workflowId": workflow_id,
         "source": "browser_extension",
         "data": result,
-        "error": None if status != "failed" else str(result.get("errors") or "Workflow failed"),
+        "error": err,
     }
 
 
@@ -1342,18 +1442,44 @@ def _looks_like_orchestration_instead_of_answer(answer: str, pending_task: Any) 
     )
 
 
+# Keep in sync with apps/web/lib/task-side-panel-threshold.ts (Phase 0 telemetry).
+EXTENSION_CHAT_SIDE_PANEL_STEP_THRESHOLD = 3
+
+
+def _pending_task_step_count(pending_task: Any) -> int:
+    """Count planned steps on a pending_task — same idea as countPlannedOrExecutedSteps."""
+    if pending_task is None:
+        return 0
+    params: Any = None
+    if isinstance(pending_task, dict):
+        params = pending_task.get("params")
+    else:
+        params = getattr(pending_task, "params", None)
+    if not isinstance(params, dict):
+        return 0
+    steps = params.get("steps")
+    return len(steps) if isinstance(steps, list) else 0
+
+
 def should_handoff_extension_chat(
     *,
     message: str,
     answer: str,
     tool_results: list[Any] | None = None,
+    pending_task: Any | None = None,
 ) -> tuple[bool, str]:
-    """Decide when overlay should open full Gravitree chat (same conversation)."""
+    """Decide when overlay should open full Gravitree chat (same conversation).
+
+    Multi-step work (≥ EXTENSION_CHAT_SIDE_PANEL_STEP_THRESHOLD) hands off so the
+    main-chat TaskSidePanel owns progress — overlay does not duplicate that panel.
+    """
     msg = (message or "").strip()
     if len(msg) > 400:
         return True, "longer_question"
     if _HANDOFF_ACTION_RE.search(msg):
         return True, "action_or_write_intent"
+    if _pending_task_step_count(pending_task) >= EXTENSION_CHAT_SIDE_PANEL_STEP_THRESHOLD:
+        return True, "multi_step_progress"
     for item in tool_results or []:
         name = ""
         if isinstance(item, dict):
@@ -1580,9 +1706,20 @@ async def chat_from_extension(
         message=user_msg,
         answer=answer,
         tool_results=tool_results,
+        pending_task=pending_task,
     )
-    if needs_handoff and user_msg:
+    # Re-prompt only for write intents — multi-step / approval handoffs already
+    # persisted the turn; full chat should hydrate the same transcript.
+    if needs_handoff and user_msg and handoff_reason in {
+        "action_or_write_intent",
+        "tool_write_path",
+    }:
         handoff_url = f"{handoff_url}&prompt={quote(user_msg[:500])}"
+    if needs_handoff and handoff_reason == "multi_step_progress":
+        answer = (
+            (answer + "\n\n" if answer else "")
+            + "Continue in Gravitree for the multi-step progress panel — same conversation thread."
+        ).strip()
 
     # Lightweight audit for live proof / prioritization.
     try:

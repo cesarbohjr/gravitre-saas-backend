@@ -1,0 +1,103 @@
+{
+  "startedAt": "2026-08-04T00:24:04.274422+00:00",
+  "orgId": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "connected": [
+    "ai_visibility_ui",
+    "clay",
+    "microsoft365",
+    "pipedrive",
+    "google_ads",
+    "google_search_console",
+    "apollo",
+    "gmail",
+    "hubspot"
+  ],
+  "surfaces": {
+    "salesforce": {
+      "detect": {
+        "status": "PASS",
+        "expected": "salesforce",
+        "got": "salesforce"
+      },
+      "enrich": {
+        "status": "PASS",
+        "surface": "salesforce",
+        "matchActions": [
+          "apollo.people.match",
+          "hubspot.contacts.search",
+          "apollo.organizations.search"
+        ],
+        "suggestionCount": 4,
+        "nativeSlackRead": false,
+        "nativeSalesforceRead": false
+      },
+      "propose": {
+        "status": "PASS",
+        "approvalId": "ac6dd400-1d0d-45ed-9a3d-8c4f66deadfe"
+      },
+      "confirm_write": {
+        "status": "PASS",
+        "runId": "a3919eea-ce7a-4584-8361-0ecd8ccc00d6",
+        "success": true,
+        "error": null
+      },
+      "outcomes": {
+        "status": "PASS",
+        "businessOutcomeDto": {
+          "id": "a3919eea-ce7a-4584-8361-0ecd8ccc00d6",
+          "source": "browser_extension",
+          "status": "completed"
+        },
+        "openUrl": "https://gravitre.app/outcomes/a3919eea-ce7a-4584-8361-0ecd8ccc00d6"
+      },
+      "notification": {
+        "status": "PASS",
+        "notificationId": "1bf59663-4ba7-4e60-8f92-2dcaf7d267b2"
+      }
+    },
+    "slack": {
+      "detect": {
+        "status": "PASS",
+        "expected": "slack",
+        "got": "slack"
+      },
+      "enrich": {
+        "status": "PASS",
+        "surface": "slack",
+        "matchActions": [
+          "apollo.people.match",
+          "hubspot.contacts.search",
+          "apollo.organizations.search"
+        ],
+        "suggestionCount": 4,
+        "nativeSlackRead": false,
+        "nativeSalesforceRead": false
+      },
+      "propose": {
+        "status": "PASS",
+        "approvalId": "d7023c88-40bf-4048-8fc3-41ee05792792"
+      },
+      "confirm_write": {
+        "status": "PASS",
+        "runId": "41fb7a3e-b092-4704-b6be-251c72e6b120",
+        "success": true,
+        "error": null
+      },
+      "outcomes": {
+        "status": "PASS",
+        "businessOutcomeDto": {
+          "id": "41fb7a3e-b092-4704-b6be-251c72e6b120",
+          "source": "browser_extension",
+          "status": "completed"
+        },
+        "openUrl": "https://gravitre.app/outcomes/41fb7a3e-b092-4704-b6be-251c72e6b120"
+      },
+      "notification": {
+        "status": "PASS",
+        "notificationId": "fd248e66-a676-4404-a6f2-fcb0fa98bfd6"
+      }
+    }
+  },
+  "finishedAt": "2026-08-04T00:24:36.420273+00:00",
+  "overall": "PASS"
+}

@@ -5,7 +5,9 @@ from dataclasses import replace
 from typing import Any
 from uuid import uuid4
 
-_ARTIFACT_KINDS = frozenset({"document", "record", "run", "report", "workspace_file", "link"})
+_ARTIFACT_KINDS = frozenset(
+    {"document", "record", "run", "report", "workspace_file", "link", "hosted_file"}
+)
 
 
 def _artifact_id(kind: str, seed: str) -> str:
@@ -81,9 +83,45 @@ class ArtifactRegistryService:
                     "preview": content[:280] or None,
                     "mime_type": "text/markdown",
                     "source": "generate_document",
-                    "metadata": {"wordCount": structured.get("wordCount")},
+                    "metadata": {
+                        "wordCount": structured.get("wordCount"),
+                        "previewHtml": structured.get("previewHtml") or structured.get("preview_html"),
+                        "code": structured.get("code") or content,
+                        "previewFormat": structured.get("previewFormat") or "markdown",
+                    },
                 }
             )
+
+        hosted_files = structured.get("hostedFiles") or structured.get("hosted_files") or []
+        if isinstance(hosted_files, list):
+            for row in hosted_files[:8]:
+                if not isinstance(row, dict):
+                    continue
+                filename = str(row.get("filename") or row.get("name") or "file")
+                download = str(row.get("download_url") or row.get("downloadUrl") or "").strip() or None
+                artifacts.append(
+                    {
+                        "artifact_id": _artifact_id(
+                            "hosted_file",
+                            str(row.get("id") or filename),
+                        ),
+                        "kind": "hosted_file",
+                        "title": filename,
+                        "preview": f"{row.get('mime_type') or 'file'} · {row.get('byte_size') or 0} bytes",
+                        "mime_type": row.get("mime_type") or row.get("mimeType"),
+                        "result_url": download,
+                        "source": "chat_hosted_file",
+                        "metadata": {
+                            "role": row.get("role"),
+                            "byteSize": row.get("byte_size") or row.get("byteSize"),
+                            "durable": row.get("durable"),
+                            "previewHtml": structured.get("previewHtml") or structured.get("preview_html"),
+                            "code": structured.get("code"),
+                            "previewFormat": structured.get("previewFormat")
+                            or structured.get("preview_format"),
+                        },
+                    }
+                )
 
         if result.entity_type == "connector" and result.success:
             artifacts.append(

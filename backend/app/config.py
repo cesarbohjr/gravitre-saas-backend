@@ -171,6 +171,9 @@ class Settings(BaseSettings):
     )
     rag_uploads_bucket: str = "rag-uploads"
     rag_store_raw_files: bool = True
+    # Phase 2 — durable chat artifacts (md/docx/csv/pdf/html) for file-reference chips
+    chat_artifacts_bucket: str = "chat-artifacts"
+    chat_store_hosted_files: bool = True
     blob_read_write_token: str = ""
     ml_default_classifier: str = "random_forest"
     ml_anomaly_contamination: float = 0.1

@@ -21,6 +21,12 @@ import {
   BusinessOutcomeView,
   type BusinessOutcomeDto,
 } from "@/components/gravitre/business-outcome/business-outcome-view"
+import {
+  FileReferenceChip,
+  FileReferenceChipRow,
+  hostedFilesFromUnknown,
+} from "@/components/gravitre/assistant/file-reference-chip"
+import { PreviewCodePane } from "@/components/gravitre/assistant/preview-code-pane"
 
 export type ChatArtifact = {
   artifact_id?: string
@@ -40,6 +46,13 @@ export type ChatArtifact = {
     runId?: string | null
     conversationId?: string | null
     goal?: string | null
+    role?: string | null
+    byteSize?: number | null
+    durable?: boolean | null
+    previewHtml?: string | null
+    code?: string | null
+    previewFormat?: string | null
+    wordCount?: number | null
   } | null
 }
 
@@ -107,6 +120,15 @@ export type ChatExecutionResult = {
     failureBridge?: PostActionFailureBridge | null
     stepBreakdown?: PostActionStepCard[] | null
     inlinePreview?: boolean
+    hostedFiles?: Array<Record<string, unknown>> | null
+    hosted_files?: Array<Record<string, unknown>> | null
+    previewHtml?: string | null
+    preview_html?: string | null
+    code?: string | null
+    content?: string | null
+    previewFormat?: string | null
+    format?: string | null
+    title?: string | null
   } | null
   what_this_means?: string | null
   recommendation?: PostActionRecommendation | null
@@ -119,7 +141,7 @@ export type ChatExecutionResult = {
   assumption_notes?: string[] | null
 }
 
-function resolveBusinessOutcome(executionResult: ChatExecutionResult): BusinessOutcomeDto | null {
+export function resolveBusinessOutcome(executionResult: ChatExecutionResult): BusinessOutcomeDto | null {
   const candidate =
     executionResult.business_outcome ||
     executionResult.businessOutcome ||
@@ -343,78 +365,89 @@ function artifactIcon(kind?: string): LucideIcon {
 
 function ArtifactCards({ artifacts }: { artifacts: ChatArtifact[] }) {
   if (!artifacts.length) return null
+  const hosted = artifacts.filter((a) => a.kind === "hosted_file")
+  const other = artifacts.filter((a) => a.kind !== "hosted_file")
   return (
-    <div className="mt-3 space-y-1.5">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Artifacts</p>
-      {artifacts.slice(0, 6).map((artifact) => {
-        const href = artifactHref(artifact)
-        const title = artifact.title || artifact.kind || "Artifact"
-        const preview = artifact.preview?.trim()
-        const external = href ? isExternalUrl(href) : false
-        const Icon = artifactIcon(artifact.kind)
-        const OpenIcon = external ? ArrowUpRight : ArrowRight
+    <div className="mt-3 space-y-2">
+      {hosted.length ? (
+        <div className="space-y-1.5">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Files</p>
+          {hosted.slice(0, 8).map((artifact) => (
+            <FileReferenceChip
+              key={artifact.artifact_id || artifact.artifactId || artifact.title}
+              file={artifact}
+            />
+          ))}
+        </div>
+      ) : null}
+      {other.length ? (
+        <div className="space-y-1.5">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Artifacts</p>
+          {other.slice(0, 6).map((artifact) => {
+            const href = artifactHref(artifact)
+            const title = artifact.title || artifact.kind || "Artifact"
+            const preview = artifact.preview?.trim()
+            const external = href ? isExternalUrl(href) : false
+            const Icon = artifactIcon(artifact.kind)
+            const OpenIcon = external ? ArrowUpRight : ArrowRight
 
-        // Compact named chip: type icon, filename, kind tag, open affordance.
-        // Flat muted surface (no border-receipt, no status accent) keeps it
-        // visually separate from the evidence card it can sit next to.
-        const inner = (
-          <>
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-              <Icon className="h-3.5 w-3.5" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-2">
-                <span className="min-w-0 truncate font-medium text-foreground" title={title}>
-                  {title}
+            const inner = (
+              <>
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                  <Icon className="h-3.5 w-3.5" />
                 </span>
-                {artifact.kind ? (
-                  <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                    {artifact.kind}
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className="min-w-0 truncate font-medium text-foreground" title={title}>
+                      {title}
+                    </span>
+                    {artifact.kind ? (
+                      <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                        {artifact.kind}
+                      </span>
+                    ) : null}
                   </span>
-                ) : null}
-              </span>
-              {preview ? <span className="mt-0.5 line-clamp-1 text-muted-foreground">{preview}</span> : null}
-            </span>
-            {href ? <OpenIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" /> : null}
-          </>
-        )
+                  {preview ? <span className="mt-0.5 line-clamp-1 text-muted-foreground">{preview}</span> : null}
+                </span>
+                {href ? <OpenIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" /> : null}
+              </>
+            )
 
-        const chipClass =
-          "flex w-full items-center gap-2.5 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-left text-xs"
-        const key = artifact.artifact_id || artifact.artifactId || title
+            const chipClass =
+              "flex w-full items-center gap-2.5 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-left text-xs"
+            const key = artifact.artifact_id || artifact.artifactId || title
 
-        if (!href) {
-          return (
-            <div key={key} className={chipClass}>
-              {inner}
-            </div>
-          )
-        }
-        // "Open artifact" preserved verbatim as the accessible label; the whole
-        // chip is the open target, matching the platform's existing link-out
-        // behavior (there is no separate document viewer to route to).
-        return external ? (
-          <a
-            key={key}
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Open artifact"
-            className={cn(chipClass, "transition-colors hover:bg-muted focus-visible:bg-muted")}
-          >
-            {inner}
-          </a>
-        ) : (
-          <Link
-            key={key}
-            href={href}
-            aria-label="Open artifact"
-            className={cn(chipClass, "transition-colors hover:bg-muted focus-visible:bg-muted")}
-          >
-            {inner}
-          </Link>
-        )
-      })}
+            if (!href) {
+              return (
+                <div key={key} className={chipClass}>
+                  {inner}
+                </div>
+              )
+            }
+            return external ? (
+              <a
+                key={key}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Open artifact"
+                className={cn(chipClass, "transition-colors hover:bg-muted focus-visible:bg-muted")}
+              >
+                {inner}
+              </a>
+            ) : (
+              <Link
+                key={key}
+                href={href}
+                aria-label="Open artifact"
+                className={cn(chipClass, "transition-colors hover:bg-muted focus-visible:bg-muted")}
+              >
+                {inner}
+              </Link>
+            )
+          })}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -601,6 +634,38 @@ export function ChatExecutionPanel({
                 </ul>
               </div>
             ) : null}
+            {(() => {
+              const structured = executionResult.structured || {}
+              const fromStructured = hostedFilesFromUnknown(structured)
+              const previewHtml =
+                structured.previewHtml ||
+                structured.preview_html ||
+                artifacts.find((a) => a.metadata?.previewHtml)?.metadata?.previewHtml ||
+                null
+              const code =
+                structured.code ||
+                structured.content ||
+                artifacts.find((a) => a.metadata?.code)?.metadata?.code ||
+                null
+              const previewFormat =
+                structured.previewFormat ||
+                structured.format ||
+                artifacts.find((a) => a.metadata?.previewFormat)?.metadata?.previewFormat ||
+                null
+              return (
+                <>
+                  {fromStructured.length && !artifacts.some((a) => a.kind === "hosted_file") ? (
+                    <FileReferenceChipRow files={fromStructured} />
+                  ) : null}
+                  <PreviewCodePane
+                    title={structured.title || executionResult.title || "Output"}
+                    code={code}
+                    previewHtml={previewHtml}
+                    previewFormat={previewFormat}
+                  />
+                </>
+              )
+            })()}
             <ArtifactCards artifacts={artifacts} />
             {resultUrl || resolveExternalUrl(executionResult) ? (
               <div className="mt-3 flex flex-wrap gap-2">

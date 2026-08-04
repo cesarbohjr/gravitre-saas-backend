@@ -1,0 +1,59 @@
+{
+  "startedAt": "2026-08-04T01:12:02.128070+00:00",
+  "orgId": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "cases": {
+    "overlay_quick": {
+      "status": "PASS",
+      "conversationId": "cc618049-0d01-481a-95f7-7b87ad045ae9",
+      "needsHandoff": false,
+      "path": "execute_task_streaming+page_context_answer",
+      "answerPreview": "From this page: Casey Operator \u2014 Head of Revenue Ops at Gravitree Smoke Co.",
+      "openInGravitreeUrl": "/ai?c=cc618049-0d01-481a-95f7-7b87ad045ae9"
+    },
+    "overlay_handoff": {
+      "status": "PASS",
+      "conversationId": "cc618049-0d01-481a-95f7-7b87ad045ae9",
+      "sameConversationAsQuick": true,
+      "needsHandoff": true,
+      "handoffReason": "action_or_write_intent",
+      "path": "handoff_short_circuit",
+      "openInGravitreeUrl": "/ai?c=cc618049-0d01-481a-95f7-7b87ad045ae9&prompt=Create%20a%20HubSpot%20list%20for%20Casey%20Operator%20from%20this%20page.",
+      "answerPreview": "That needs full Gravitree chat for governed writes, approvals, and multi-step work. Continue in the app \u2014 same conversation thread."
+    },
+    "transcript_both_sides": {
+      "status": "PASS",
+      "messageCount": 4,
+      "roles": [
+        "user",
+        "assistant",
+        "user",
+        "assistant"
+      ],
+      "hasQuickUser": true,
+      "hasQuickAssistant": true,
+      "hasHandoffUser": true,
+      "hasHandoffAssistant": true,
+      "preview": [
+        {
+          "role": "user",
+          "content": "Using only the overlay page context, answer in one sentence: what is this person's full name, title, and company?"
+        },
+        {
+          "role": "assistant",
+          "content": "From this page: Casey Operator \u2014 Head of Revenue Ops at Gravitree Smoke Co."
+        },
+        {
+          "role": "user",
+          "content": "Create a HubSpot list for Casey Operator from this page."
+        },
+        {
+          "role": "assistant",
+          "content": "That needs full Gravitree chat for governed writes, approvals, and multi-step work. Continue in the app \u2014 same conversation thread."
+        }
+      ],
+      "fullAppUrl": "https://gravitre.app/ai?c=cc618049-0d01-481a-95f7-7b87ad045ae9"
+    }
+  },
+  "finishedAt": "2026-08-04T01:13:52.205922+00:00",
+  "overall": "PASS"
+}
