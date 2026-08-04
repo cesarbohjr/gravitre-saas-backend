@@ -5,6 +5,14 @@
     return (node?.textContent || "").replace(/\s+/g, " ").trim()
   }
 
+  function extractRecordId() {
+    const href = String(location.href || "")
+    const m =
+      href.match(/\/lightning\/r\/(?:Lead|Contact|Account)\/([a-zA-Z0-9]{15,18})\//i) ||
+      href.match(/[?&]id=([a-zA-Z0-9]{15,18})/i)
+    return m ? m[1] : ""
+  }
+
   function extractSalesforce() {
     const fullName =
       textOf(".entityNameTitle") ||
@@ -28,6 +36,7 @@
       company,
       email,
       title,
+      salesforceRecordId: extractRecordId(),
       source: "salesforce",
     }
   }

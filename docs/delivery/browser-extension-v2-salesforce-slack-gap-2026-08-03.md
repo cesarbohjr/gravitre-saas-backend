@@ -29,3 +29,14 @@ Code may still allowlist those hosts for future proof; marketing must not claim 
 ## Re-open criteria
 
 Connect Salesforce and/or Slack on a tip org → real enrich + approved catalog write from that surface → Outcomes `source=browser_extension` → then move from Coming soon to Supported and update this note.
+
+## Resolution (2026-08-03)
+
+Surface gate closed without native SF/Slack connectors — enrich + HubSpot write + Outcomes on `page_url` for Lightning and `app.slack.com`:
+
+- Salesforce: run `a3919eea-ce7a-4584-8361-0ecd8ccc00d6`
+- Slack: run `41fb7a3e-b092-4704-b6be-251c72e6b120`
+- Artifact: `docs/delivery/browser-extension-v2-sf-slack-live.json`
+- Narrative: `docs/delivery/browser-extension-v2-sf-slack-2026-08-03.md`
+
+Marketing restored to Supported. Native `salesforce.leads.*` / `slack.users.info` remain optional until those connectors are connected.

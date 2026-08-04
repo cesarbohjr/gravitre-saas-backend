@@ -54,10 +54,6 @@ const surfacesProven = [
   "Outlook on the web",
   "Company websites (when you invoke Enrich)",
   "Careers / about pages (path-matched)",
-] as const
-
-/** Host-allowlisted in the pack; not marketed as live until surface-specific Outcomes proof. */
-const surfacesComingSoon = [
   "Salesforce Lightning / Force hosts",
   "Slack web (app.slack.com)",
 ] as const
@@ -169,21 +165,12 @@ export function ExtensionPage() {
                 </li>
               ))}
             </ul>
-            <p className="mt-6 text-sm font-medium text-zinc-700">Coming soon</p>
-            <p className="mt-1 text-sm text-zinc-500">
-              Hosts are allowlisted in the extension pack; enrich → approve →
-              Outcomes on these surfaces is not yet live-proven.
+            <p className="mt-4 text-sm text-zinc-500">
+              Salesforce and Slack overlays use page context plus connected
+              catalog actions (Apollo / HubSpot today). Native Salesforce lead
+              search/create and Slack user lookup activate when those connectors
+              are connected — still catalog only, never DOM automation.
             </p>
-            <ul className="mt-3 space-y-2">
-              {surfacesComingSoon.map((s) => (
-                <li key={s} className="flex items-start gap-2 text-zinc-600">
-                  <span className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-amber-700">
-                    Soon
-                  </span>
-                  <span>{s}</span>
-                </li>
-              ))}
-            </ul>
           </div>
           <div className="space-y-4">
             <div className="rounded-2xl border border-zinc-200 bg-white p-5">
