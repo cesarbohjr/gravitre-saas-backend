@@ -1,8 +1,13 @@
 /** Phase 5 — research plan visualization for adaptive cascade stages. */
 "use client"
 
-import { CheckCircle2, Circle, MinusCircle, SkipForward } from "lucide-react"
+import { CheckCircle2, Circle, Loader2, MinusCircle, SkipForward } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+  deriveNamedProgressSteps,
+  formatStepCounter,
+  isActionProgressStep,
+} from "@/lib/chat-progress-steps"
 import type { CascadeStageProgress, ResearchCascadePayload } from "./research-cascade-types"
 
 type ResearchPlanPanelProps = {
@@ -29,10 +34,6 @@ function StageIcon({ status }: { status: CascadeStageProgress["status"] }) {
   }
 }
 
-function isActionProgressStep(step: string): boolean {
-  return /^(Running:|Completed:|Step \d+\/\d+:)/i.test(step.trim())
-}
-
 export function ResearchPlanPanel({
   cascade,
   progressSteps,
@@ -43,13 +44,9 @@ export function ResearchPlanPanel({
   const steps = progressSteps?.length ? progressSteps : cascade?.progress_steps ?? []
   const scope = cascade?.research_scope?.replace(/_/g, " ")
   const actionSteps = steps.filter(isActionProgressStep)
-  const runningIdx = actionSteps.findIndex((s) => s.startsWith("Running: "))
-  const stepCounter =
-    actionSteps.length > 0
-      ? runningIdx >= 0
-        ? `Step ${runningIdx + 1} of ${actionSteps.length}`
-        : `${actionSteps.length} step${actionSteps.length === 1 ? "" : "s"}`
-      : null
+  // Shared derivation so a step reads identically here and in TaskSidePanel.
+  const namedSteps = deriveNamedProgressSteps(steps, null)
+  const stepCounter = formatStepCounter(namedSteps)
   const panelTitle = actionSteps.length > 0 ? "Progress" : "Research plan"
 
   if (!stages.length && !steps.length && !strategicPlan?.goal) return null
@@ -91,23 +88,38 @@ export function ResearchPlanPanel({
         </ol>
       ) : null}
 
-      {steps.length > 0 ? (
-        <ul className="mt-2 space-y-1 border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
-          {steps.slice(0, 8).map((step) => {
-            const isRunning = step.startsWith("Running: ")
-            const isDone = step.startsWith("Completed: ")
-            return (
-              <li
-                key={step}
-                className={cn(
-                  isRunning && "font-medium text-foreground",
-                  isDone && "text-muted-foreground",
-                )}
-              >
-                {step}
-              </li>
-            )
-          })}
+      {/* Named action pills. Labels come from the shared parser, so the raw
+          "Running: " / "Completed: " SSE prefixes never reach the user. */}
+      {namedSteps.length > 0 ? (
+        <ul className="mt-2 flex flex-wrap gap-1.5 border-t border-border/40 pt-2.5">
+          {namedSteps.slice(0, 8).map((step, index) => (
+            <li
+              key={`${step.label}-${index}`}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px]",
+                step.status === "current" &&
+                  "border-emerald-500/30 bg-emerald-500/5 font-medium text-foreground",
+                step.status === "done" && "border-border/50 bg-background/60 text-muted-foreground",
+                step.status === "pending" &&
+                  "border-dashed border-border/50 text-muted-foreground/70",
+              )}
+            >
+              {step.status === "done" ? (
+                <CheckCircle2
+                  className="h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400"
+                  aria-hidden
+                />
+              ) : step.status === "current" ? (
+                <Loader2
+                  className="h-3 w-3 shrink-0 animate-spin text-emerald-600 dark:text-emerald-400"
+                  aria-hidden
+                />
+              ) : (
+                <Circle className="h-2.5 w-2.5 shrink-0 text-muted-foreground/50" aria-hidden />
+              )}
+              <span className="truncate">{step.label}</span>
+            </li>
+          ))}
         </ul>
       ) : null}
     </div>
