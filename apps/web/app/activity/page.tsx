@@ -192,8 +192,10 @@ function ActivityPageInner() {
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
               <section className="rounded-lg border border-border bg-card">
+                {/* Count lives on the tab now — repeating it here read as two
+                    different numbers at a glance. */}
                 <div className="border-b border-border px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Recent ({outcomes.length})
+                  Recent
                 </div>
                 {isLoading ? (
                   <ListSkeleton items={5} className="p-3" />
@@ -285,10 +287,18 @@ function ActivityPageInner() {
                 <div className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Detail
                 </div>
-                {selected ? (
+                {isLoading ? (
+                  <ListSkeleton items={3} />
+                ) : selected ? (
                   <BusinessOutcomeView outcome={selected} density="timeline" />
                 ) : (
-                  <p className="text-sm text-muted-foreground">Select an item to inspect evidence.</p>
+                  <div className="flex flex-col items-center gap-2 py-10 text-center">
+                    <Icon name="search" size="lg" className="text-muted-foreground/50" />
+                    <p className="text-sm font-medium text-foreground">Nothing selected</p>
+                    <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
+                      Pick an item from the list to inspect its evidence and timeline.
+                    </p>
+                  </div>
                 )}
               </section>
             </div>

@@ -21,9 +21,13 @@
   --secondary-foreground: oklch(0.18 0.02 160);
   --muted: oklch(0.96 0.006 160);
   --muted-foreground: oklch(0.48 0.02 160);
-  /* Accent: electric blue (secondary accent) */
-  --accent: oklch(0.95 0.02 250);
-  --accent-foreground: oklch(0.45 0.16 250);
+  /* Accent = the interactive hover/active SURFACE token (shadcn semantics),
+     not a decorative brand color. It was electric blue (hue 250, chroma .16 on
+     the foreground), which tinted every `hover:bg-accent` / `hover:text-
+     accent-foreground` blue and fought the emerald active state. Keep it on the
+     brand-neutral ramp (hue 160); genuine blue lives in --info / --chart-2. */
+  --accent: oklch(0.95 0.012 160);
+  --accent-foreground: oklch(0.18 0.02 160);
   --destructive: oklch(0.55 0.22 25);
   --destructive-foreground: oklch(0.99 0 0);
   --border: oklch(0.91 0.01 160);
@@ -64,9 +68,9 @@
   --sidebar-foreground: oklch(0.18 0.02 160);
   --sidebar-primary: oklch(0.55 0.14 162);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.94 0.02 250);
-  --sidebar-accent-foreground: oklch(0.40 0.12 250);
-  --sidebar-border: oklch(0.91 0.008 250);
+  --sidebar-accent: oklch(0.94 0.012 160);
+  --sidebar-accent-foreground: oklch(0.18 0.02 160);
+  --sidebar-border: oklch(0.91 0.008 160);
   --sidebar-ring: oklch(0.55 0.14 162);
 }
 
