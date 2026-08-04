@@ -698,9 +698,11 @@ function AgentDetailPanel({
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.03 }}
               whileHover={{ scale: 1.05 }}
-              className="px-2.5 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/15 hover:border-blue-500/30 transition-colors cursor-default"
+              // `text-blue-400` on a 10% tint was tuned for dark mode and
+              // failed contrast in light mode; --info adapts per theme.
+              className="px-2.5 py-1 rounded-md bg-info/10 border border-info/20 hover:bg-info/15 hover:border-info/30 transition-colors cursor-default"
             >
-              <span className="text-xs text-blue-400">{perm}</span>
+              <span className="text-xs text-info">{perm}</span>
             </motion.div>
           ))}
         </div>
@@ -1252,17 +1254,17 @@ export default function AgentsPage() {
                  horizontal overflow on narrow/mobile viewports). */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
                 <motion.div 
-                  className="w-[600px] h-[600px] rounded-full border border-violet-500/10"
+                  className="w-[600px] h-[600px] rounded-full border border-chart-4/10"
                   animate={{ scale: [1, 1.05, 1], opacity: [0.3, 0.5, 0.3] }}
                   transition={{ duration: 8, repeat: Infinity }}
                 />
                 <motion.div 
-                  className="absolute w-[450px] h-[450px] rounded-full border border-blue-500/10"
+                  className="absolute w-[450px] h-[450px] rounded-full border border-chart-2/10"
                   animate={{ scale: [1.05, 1, 1.05], opacity: [0.4, 0.2, 0.4] }}
                   transition={{ duration: 6, repeat: Infinity }}
                 />
                 <motion.div 
-                  className="absolute w-[300px] h-[300px] rounded-full border border-emerald-500/10"
+                  className="absolute w-[300px] h-[300px] rounded-full border border-chart-1/10"
                   animate={{ scale: [1, 1.1, 1], opacity: [0.2, 0.4, 0.2] }}
                   transition={{ duration: 5, repeat: Infinity }}
                 />
@@ -1322,8 +1324,12 @@ export default function AgentsPage() {
                       </>
                     ) : (
                       <>
-                        <p className="text-sm text-muted-foreground">
-                          No agents yet. Create your first AI teammate.
+                        {/* Matches the search-empty branch above, which already
+                            leads with an icon, so the two states look related. */}
+                        <Bot className="mx-auto h-10 w-10 text-muted-foreground/40" />
+                        <p className="text-sm font-medium text-foreground">No agents yet</p>
+                        <p className="mx-auto max-w-xs text-sm text-muted-foreground text-pretty">
+                          Create your first AI teammate to start delegating work.
                         </p>
                         <Button onClick={() => router.push("/agents/new")} className="gap-2">
                           <Plus className="h-4 w-4" />
@@ -1378,7 +1384,11 @@ export default function AgentsPage() {
               transition={{ duration: 0.2 }}
               className="relative z-10 hidden lg:block overflow-hidden bg-card/40 backdrop-blur-xl border-t lg:border-t-0 lg:border-l border-border/50 shadow-2xl shrink-0"
             >
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-blue-500 to-emerald-500" />
+              {/* Was a full-opacity violet -> blue -> emerald rainbow strip,
+                  which read as decoration rather than as part of the product.
+                  A single brand-primary rule does the same job of capping the
+                  panel without introducing three off-palette hues. */}
+              <div className="absolute inset-x-0 top-0 h-1 bg-primary" />
               <AnimatePresence mode="wait">
                 <TooltipProvider delayDuration={200}>
                   <AgentDetailPanel

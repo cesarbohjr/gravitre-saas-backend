@@ -13,10 +13,15 @@ type AgentKnowledgeAssignmentsPanelProps = {
   agentId: string
 }
 
+/**
+ * Knowledge freshness is a health signal, so it maps onto the semantic tone
+ * tokens. The old fixed `-400` text values were tuned for dark mode and failed
+ * contrast against a 10% tint in light mode; these tokens adapt per theme.
+ */
 function freshnessClass(status?: string): string {
-  if (status === "fresh") return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-  if (status === "stale") return "bg-amber-500/10 text-amber-400 border-amber-500/20"
-  if (status === "expired") return "bg-red-500/10 text-red-400 border-red-500/20"
+  if (status === "fresh") return "border-success/20 bg-success/10 text-success"
+  if (status === "stale") return "border-warning/20 bg-warning/10 text-warning"
+  if (status === "expired") return "border-destructive/20 bg-destructive/10 text-destructive"
   return "bg-secondary text-muted-foreground border-border"
 }
 
