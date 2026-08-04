@@ -1,9 +1,9 @@
 {
   "overall": "PASS",
-  "git_sha": "bb56894f06673d1c34dacf98481c1894c0e03efe",
-  "quickConversationId": "782eb5db-bb1a-4808-bc6b-186593f8d169",
-  "handoffConversationId": "782eb5db-bb1a-4808-bc6b-186593f8d169",
+  "git_sha": "e7ab5afaaad0dcb2e37216180f846d19608e3be7",
+  "quickConversationId": "3b701377-5029-4dc4-a56a-8a3d77315aca",
+  "handoffConversationId": "3b701377-5029-4dc4-a56a-8a3d77315aca",
   "handoffReason": "action_or_write_intent",
-  "openInGravitreeUrl": "/ai?c=782eb5db-bb1a-4808-bc6b-186593f8d169&prompt=Create%20a%20HubSpot%20list%20for%20Casey%20Operator%20from%20this%20page.",
+  "openInGravitreeUrl": "/ai?c=3b701377-5029-4dc4-a56a-8a3d77315aca&prompt=Create%20a%20HubSpot%20list%20for%20Casey%20Operator%20from%20this%20page.",
   "quickAnswerPreview": "Casey Operator is Head of Revenue Ops at Gravitree Smoke Co."
 }

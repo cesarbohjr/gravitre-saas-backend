@@ -25,3 +25,7 @@ Full app: https://gravitre.app/ai?c=cc618049-0d01-481a-95f7-7b87ad045ae9
 ## Tests
 
 `pytest tests/services/test_extension_bridge_service.py` — 9 passed (includes multi_step_progress handoff).
+
+## Tip deploy
+
+Railway tip `e7ab5afa…` — `_tip_v4_verify.py` **PASS** (same conversation `3b701377-…` for quick + handoff).
