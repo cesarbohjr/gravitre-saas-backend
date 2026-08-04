@@ -47,6 +47,20 @@ Not connected → Connected → Syncing → Healthy
 
 Status appears on the Connector list and in **Metrics** / Enterprise **Integration health** summaries.
 
+Every state in that diagram is visible at a glance on the Connectors screen —
+below, two connectors are healthy, one is in **Error**, and one is mid-**sync**:
+
+<Screenshot
+  src="/product/app-connectors.png"
+  alt="The Connectors screen for Northwind Logistics in the Production environment. A summary row reads 3 connected, 2,331 requests today, and 298ms average latency, with live monitoring active. A central dial reads 3 of 4 active. Four connector cards each show throughput, latency, and request counts: HubSpot and Zendesk are Connected, Salesforce shows an Error state with a Details link, and Slack shows Syncing. Above them, a row of available self-serve integrations lists Pipedrive, Google Analytics, Google Ads, and Google Search Console."
+  route="/connectors"
+  caption="Illustrative data — seeded demo workspace, not customer metrics"
+/>
+
+Because the strict execution policy is per-environment, the `production` chip on
+each card matters: a connector that is healthy in staging but in **Error** here
+will cause production steps to be analyzed and skipped rather than executed.
+
 ## Use in workflows and agents
 
 After connection:

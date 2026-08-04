@@ -39,6 +39,17 @@ Runs show `approvalStatus`: `pending`, `approved`, `rejected`, or `not_required`
 3. Verify environment (**staging** vs **production**)
 4. **Approve** to continue the run or **Reject** with a reason (logged to **History**)
 
+<Screenshot
+  src="/product/app-approvals.png"
+  alt="The Approvals screen. A Decision Queue list on the left shows three pending requests with environment, priority, and SLA chips, each carrying an AI recommendation — approve at 94% confidence for a HubSpot contact create, review at 61% confidence for a Salesforce stage update. The detail pane on the right lists Request details: entity HubSpot contact, action hubspot.contacts.create, impact, environment Production, requester Inbound lead triage, a link to execution details, and the SLA, with Reject and Approve actions."
+  route="/approvals"
+  caption="Illustrative data — seeded demo workspace, not customer metrics"
+/>
+
+Note the AI recommendation is advisory — it carries a confidence score and its
+reasoning, but the run still waits for a human. A low-confidence item (the 61%
+Salesforce stage change above) is surfaced as **review**, not auto-approved.
+
 <Callout title="Production writes">
 Approving in production may immediately invoke vendor APIs. When unsure, reject and test the same workflow in **staging** first.
 </Callout>
