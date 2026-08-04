@@ -1,0 +1,114 @@
+{
+  "probe": "extension_v6_usage_signal_mine",
+  "verified_at": "2026-08-04T07:26:14.979668+00:00",
+  "scope": {
+    "tip_org": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+    "tip_count": 24,
+    "global_count": 0,
+    "mode": "tip_plus_global"
+  },
+  "totalRows": 24,
+  "bucketCounts": {
+    "noise": 24
+  },
+  "uniqueHosts": 5,
+  "possibleDomForcingHosts": [],
+  "catalogBacklogHosts": [],
+  "hosts": [
+    {
+      "host": "www.linkedin.com",
+      "count": 13,
+      "bucket": "noise",
+      "reason": "smoke/test/internal host or note",
+      "surfaces": {
+        "linkedin": 13
+      },
+      "topNotes": {
+        "enrich": 13
+      },
+      "orgCount": 1,
+      "sampleUrls": [
+        "https://www.linkedin.com/in/v5-parity-edge-brave",
+        "https://www.linkedin.com/in/v5-parity-edge-brave",
+        "https://www.linkedin.com/in/v5-parity-edge-brave",
+        "https://www.linkedin.com/in/v5-parity-edge-brave",
+        "https://www.linkedin.com/in/v5-parity-edge-brave"
+      ],
+      "latestAt": "2026-08-04T02:02:26.713815+00:00"
+    },
+    {
+      "host": "example.com",
+      "count": 7,
+      "bucket": "noise",
+      "reason": "smoke/test/internal host or note",
+      "surfaces": {
+        "company_site": 7
+      },
+      "topNotes": {
+        "v5-parity": 7
+      },
+      "orgCount": 1,
+      "sampleUrls": [
+        "https://example.com/not-allowlisted",
+        "https://example.com/not-allowlisted",
+        "https://example.com/not-allowlisted",
+        "https://example.com/not-allowlisted",
+        "https://example.com/not-allowlisted"
+      ],
+      "latestAt": "2026-08-04T02:02:03.289426+00:00"
+    },
+    {
+      "host": "www.acme-example.com",
+      "count": 2,
+      "bucket": "noise",
+      "reason": "smoke/test/internal host or note",
+      "surfaces": {
+        "careers_about": 2
+      },
+      "topNotes": {
+        "enrich": 2
+      },
+      "orgCount": 1,
+      "sampleUrls": [
+        "https://www.acme-example.com/careers",
+        "https://www.acme-example.com/careers"
+      ],
+      "latestAt": "2026-08-03T03:45:33.393506+00:00"
+    },
+    {
+      "host": "outside-crm.example",
+      "count": 1,
+      "bucket": "noise",
+      "reason": "smoke/test/internal host or note",
+      "surfaces": {
+        "company_site": 1
+      },
+      "topNotes": {
+        "v2_tip": 1
+      },
+      "orgCount": 1,
+      "sampleUrls": [
+        "https://outside-crm.example/x"
+      ],
+      "latestAt": "2026-08-03T03:45:02.465301+00:00"
+    },
+    {
+      "host": "totally-unknown-crm.example",
+      "count": 1,
+      "bucket": "noise",
+      "reason": "smoke/test/internal host or note",
+      "surfaces": {
+        "company_site": 1
+      },
+      "topNotes": {
+        "v2_smoke_outside_allowlist": 1
+      },
+      "orgCount": 1,
+      "sampleUrls": [
+        "https://totally-unknown-crm.example/leads/123"
+      ],
+      "latestAt": "2026-08-03T03:38:55.373147+00:00"
+    }
+  ],
+  "gateNote": "possible_dom_forcing hosts are candidates for human pick only. Zero such hosts \u21d2 v6 gate remains closed. No agentic DOM code ships from this probe."
+}

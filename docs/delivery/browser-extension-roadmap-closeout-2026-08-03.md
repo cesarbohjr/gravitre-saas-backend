@@ -39,7 +39,14 @@ Tip `49e4a75d…` · `browser-extension-v5-tip-verify.json` **PASS** · conversa
 
 `browser-extension-v6-gate-2026-08-03.md`: no named surface requiring DOM agentics + no security review → **do not build**. Legitimate complete outcome.
 
+### Surface mining (2026-08-04) — still closed
+
+- Mine: 24 tip `extension.usage_signal` rows → **0** DOM-forcing candidates (`browser-extension-v6-surface-candidates-2026-08-04.md`)
+- Security review commissioned (not signed off): [STA-340](https://linear.app/staqbot/issue/STA-340/extension-v6-agentic-dom-security-review-gated)
+- No agentic DOM code shipped
+
 ## Open human items (not code)
 
 1. Chrome Web Store publish / unlisted beta → set `NEXT_PUBLIC_CHROME_WEB_STORE_URL`
 2. Publisher contact email verification (blocks Submit)
+3. v6: name a real non-API surface **or** keep closed; complete STA-340 before any DOM agent work

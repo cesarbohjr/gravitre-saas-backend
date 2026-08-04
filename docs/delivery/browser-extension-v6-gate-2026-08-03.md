@@ -24,3 +24,17 @@ This is a complete, legitimate outcome.
 ## Marketing
 
 Do **not** publish copy implying “full agentic” browser control. Docs and `/features/extension` state that catalog actions are used when they exist and that agentic DOM capability was deliberately not built.
+
+## Surface mining (2026-08-04)
+
+Path: mine `extension.usage_signal` → classify → commission security review → **no DOM code** until human surface pick.
+
+| Item | Result |
+|------|--------|
+| Script | `scripts/mine-extension-usage-signals.py` |
+| Rows | 24 (tip org; global scan added 0) |
+| `possible_dom_forcing` | **0** (all rows smoke/fixture noise) |
+| Candidates doc | `browser-extension-v6-surface-candidates-2026-08-04.md` |
+| Security review issue | [STA-340](https://linear.app/staqbot/issue/STA-340/extension-v6-agentic-dom-security-review-gated) (Backlog; blocks v6 code; not sign-off) |
+
+**Verdict unchanged:** gate remains closed. STA-340 commissions the review checklist; it does not authorize build.
