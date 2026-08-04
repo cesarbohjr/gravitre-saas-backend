@@ -1,0 +1,242 @@
+@import "tailwindcss";
+
+/*
+ * Gravitre extension theme.
+ *
+ * Every token value here is copied verbatim from apps/web/app/globals.css so
+ * the extension and the main app cannot drift. Tokens are declared on BOTH
+ * `:root` (popup + side panel, which are ordinary documents) and `:host` (the
+ * content overlay, which renders inside a shadow root where `:root` does not
+ * match the shadow boundary).
+ *
+ * Theme resolution order, weakest to strongest:
+ *   1. light tokens
+ *   2. prefers-color-scheme: dark  — the honest default, since the overlay
+ *      floats over host pages that are themselves usually following the OS
+ *      preference (Gmail, LinkedIn, Slack and Salesforce all have dark modes).
+ *   3. an explicit .gvt-light / .gvt-dark class, which always wins so a
+ *      surface can be pinned for verification.
+ */
+
+:root,
+:host {
+  --background: oklch(0.99 0.004 160);
+  --foreground: oklch(0.18 0.02 160);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.02 160);
+  --primary: oklch(0.55 0.14 162);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.96 0.006 160);
+  --secondary-foreground: oklch(0.18 0.02 160);
+  --muted: oklch(0.96 0.006 160);
+  --muted-foreground: oklch(0.48 0.02 160);
+  --accent: oklch(0.95 0.012 160);
+  --accent-foreground: oklch(0.18 0.02 160);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.91 0.01 160);
+  --input: oklch(0.96 0.006 160);
+  --ring: oklch(0.55 0.14 162);
+  --success: oklch(0.55 0.18 145);
+  --success-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.65 0.18 75);
+  --warning-foreground: oklch(0.18 0.02 75);
+  --info: oklch(0.55 0.2 250);
+  --info-foreground: oklch(0.99 0 0);
+  --radius: 0.625rem;
+  --elevation-1: 0 1px 2px -1px oklch(0.18 0.02 160 / 0.08), 0 1px 3px oklch(0.18 0.02 160 / 0.06);
+  --elevation-2: 0 2px 4px -2px oklch(0.18 0.02 160 / 0.08), 0 4px 12px -2px oklch(0.18 0.02 160 / 0.08);
+  --elevation-3: 0 8px 24px -6px oklch(0.18 0.02 160 / 0.12), 0 2px 6px -2px oklch(0.18 0.02 160 / 0.08);
+  --elevation-4: 0 20px 48px -12px oklch(0.18 0.02 160 / 0.18), 0 8px 20px -8px oklch(0.18 0.02 160 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root,
+  :host {
+    --background: oklch(0.08 0.01 250);
+    --foreground: oklch(0.95 0 0);
+    --card: oklch(0.11 0.01 250);
+    --card-foreground: oklch(0.95 0 0);
+    --primary: oklch(0.72 0.14 162);
+    --primary-foreground: oklch(0.14 0.02 162);
+    --secondary: oklch(0.15 0.01 250);
+    --secondary-foreground: oklch(0.95 0 0);
+    --muted: oklch(0.15 0.01 250);
+    --muted-foreground: oklch(0.6 0 0);
+    --accent: oklch(0.18 0.02 250);
+    --accent-foreground: oklch(0.95 0 0);
+    --destructive: oklch(0.55 0.22 25);
+    --destructive-foreground: oklch(0.95 0 0);
+    --border: oklch(0.2 0.01 250);
+    --input: oklch(0.15 0.01 250);
+    --ring: oklch(0.72 0.14 162);
+    --success: oklch(0.65 0.18 145);
+    --success-foreground: oklch(0.15 0.02 145);
+    --warning: oklch(0.75 0.15 75);
+    --warning-foreground: oklch(0.15 0.02 75);
+    --info: oklch(0.65 0.2 250);
+    --info-foreground: oklch(0.15 0.02 250);
+    --elevation-1: 0 1px 2px oklch(0 0 0 / 0.4), inset 0 1px 0 0 oklch(1 0 0 / 0.04);
+    --elevation-2: 0 4px 12px -2px oklch(0 0 0 / 0.5), inset 0 1px 0 0 oklch(1 0 0 / 0.05);
+    --elevation-3: 0 12px 32px -8px oklch(0 0 0 / 0.6), inset 0 1px 0 0 oklch(1 0 0 / 0.06);
+    --elevation-4: 0 24px 56px -12px oklch(0 0 0 / 0.7), inset 0 1px 0 0 oklch(1 0 0 / 0.07);
+  }
+}
+
+/* Explicit pin — wins over the media query above. */
+.gvt-dark,
+:host(.gvt-dark) {
+  --background: oklch(0.08 0.01 250);
+  --foreground: oklch(0.95 0 0);
+  --card: oklch(0.11 0.01 250);
+  --card-foreground: oklch(0.95 0 0);
+  --primary: oklch(0.72 0.14 162);
+  --primary-foreground: oklch(0.14 0.02 162);
+  --secondary: oklch(0.15 0.01 250);
+  --secondary-foreground: oklch(0.95 0 0);
+  --muted: oklch(0.15 0.01 250);
+  --muted-foreground: oklch(0.6 0 0);
+  --accent: oklch(0.18 0.02 250);
+  --accent-foreground: oklch(0.95 0 0);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.95 0 0);
+  --border: oklch(0.2 0.01 250);
+  --input: oklch(0.15 0.01 250);
+  --ring: oklch(0.72 0.14 162);
+  --success: oklch(0.65 0.18 145);
+  --success-foreground: oklch(0.15 0.02 145);
+  --warning: oklch(0.75 0.15 75);
+  --warning-foreground: oklch(0.15 0.02 75);
+  --info: oklch(0.65 0.2 250);
+  --info-foreground: oklch(0.15 0.02 250);
+  --elevation-1: 0 1px 2px oklch(0 0 0 / 0.4), inset 0 1px 0 0 oklch(1 0 0 / 0.04);
+  --elevation-2: 0 4px 12px -2px oklch(0 0 0 / 0.5), inset 0 1px 0 0 oklch(1 0 0 / 0.05);
+  --elevation-3: 0 12px 32px -8px oklch(0 0 0 / 0.6), inset 0 1px 0 0 oklch(1 0 0 / 0.06);
+  --elevation-4: 0 24px 56px -12px oklch(0 0 0 / 0.7), inset 0 1px 0 0 oklch(1 0 0 / 0.07);
+}
+
+.gvt-light,
+:host(.gvt-light) {
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --shadow-elevation-1: var(--elevation-1);
+  --shadow-elevation-2: var(--elevation-2);
+  --shadow-elevation-3: var(--elevation-3);
+  --shadow-elevation-4: var(--elevation-4);
+
+  /*
+   * One UI family plus one mono family, matching the main app's two-family
+   * rule. The extension deliberately uses the platform UI stack rather than
+   * loading Geist: @font-face is ignored inside a shadow root, so webfonts in
+   * the overlay would mean mutating the host document and risking a visible
+   * reflow on someone else's page. The type scale, weights and tracking below
+   * are the app's, which is what actually reads as consistent. Note the old
+   * stack led with "Segoe UI" and so only looked right on Windows.
+   */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+/*
+ * Reset only inside our own trees. In the overlay this is scoped by the shadow
+ * boundary; in the popup it is our whole document. Either way the host page is
+ * never touched.
+ */
+:host {
+  all: initial;
+  font-family: var(--font-sans);
+  color: var(--foreground);
+}
+
+.gvt-scope {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.gvt-scope *,
+.gvt-scope *::before,
+.gvt-scope *::after {
+  box-sizing: border-box;
+}
+
+@keyframes gvt-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes gvt-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/*
+ * Part E.1 — purposeful, restrained motion. Everything is short and eased so
+ * data arriving reads as calm rather than flashy, and all of it collapses to
+ * nothing under reduced-motion.
+ */
+.gvt-animate-in {
+  animation: gvt-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.gvt-animate-row {
+  animation: gvt-row-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gvt-animate-in,
+  .gvt-animate-row {
+    animation: none;
+  }
+  .gvt-scope *,
+  .gvt-scope *::before,
+  .gvt-scope *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
