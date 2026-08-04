@@ -87,6 +87,68 @@ git status                # confirm zero remaining U entries
 2. The chat execution panel still shows a **Files** section for hosted artifacts — this is the regression that produces no error.
 3. The extension still builds via its **full** `build` script (`tsc && vite build && vite build --mode content`), and every manifest-referenced path exists in `dist/`. Running only `vite build` omits the content script.
 
+## Prompt for Cursor
+
+Paste the block below into Cursor to start the merge. It is written to be
+self-contained: it states the invariants, so Cursor does not need to infer
+intent from the diff.
+
+```text
+Merge the branch `marketing-page-assets` into `main` in this repo.
+
+Context: both branches moved since the merge-base. `main` (yours) has backend,
+docs, scripts, supabase, e2e, and browser-extension work. `marketing-page-assets`
+(v0) has an apps/web marketing redesign. Of 265 touched files only 9 overlap, so
+almost everything auto-merges. Do not let either side wholesale overwrite the
+other.
+
+Run the merge FROM the feature branch so `main` stays clean until the result is
+verified:
+
+  git checkout marketing-page-assets
+  git merge main          # ours = v0 branch, theirs = main
+
+Then apply exactly these resolutions.
+
+1) apps/extension/** and apps/extension/sidepanel.html — TAKE MAIN, DISCARD V0.
+   The v0 branch replaced the raw-JS MV3 extension with a Vite+TypeScript
+   rewrite, and in doing so DELETED content/overlay.css, content/salesforce.js,
+   content/shared.js, and content/slack.js — files you were actively editing.
+   Those four appear as delete/modify conflicts with ZERO conflict hunks: git
+   shows no text to reconcile, so a careless resolution silently erases your
+   proven Salesforce/Slack work. The v0 rewrite also has NO per-site content
+   scripts, only a generic overlay, so it is not a superset of your version.
+   Resolve by taking main's extension wholesale:
+
+     git checkout main -- apps/extension
+
+   Do not attempt to reconcile the two extension architectures in this PR.
+
+2) apps/web/components/gravitre/assistant/chat-execution-panel.tsx — HAND-MERGE.
+   Do NOT resolve with --ours or --theirs. Both sides changed this file for
+   different reasons and both changes must survive:
+     - main added a `hosted` / `other` split that renders hosted artifacts via a
+       NEW component, file-reference-chip.tsx. Because that file is an ADD, it
+       merges in cleanly and will be present in the tree.
+     - v0 restyled the flat artifact list into compact chips.
+   Keep main's hosted/other structure and its FileReferenceChip usage, and apply
+   v0's chip styling to the `other` branch only.
+   CRITICAL: if you resolve this file with --ours, FileReferenceChip stays in the
+   repo but becomes unreferenced. The Files section then disappears from the chat
+   panel with NO build error, NO type error, and NO lint error. Verify by hand
+   that FileReferenceChip is still imported and rendered when you are done.
+
+3) Everything else — accept the automatic merge. In particular take v0's
+   apps/web marketing changes and your own backend/docs/scripts/supabase/e2e
+   changes as-is; they do not overlap.
+
+Finish by confirming `git status` reports zero remaining unmerged (U) entries,
+then run the verification in the "Pre-deploy verification" section of
+docs/delivery/marketing-frontend-merge-plan-2026-08-04.md before merging to main
+and deploying. Report anything that contradicts the assumptions above instead of
+forcing the merge through.
+```
+
 ## Carried-forward open item
 
 `apps/web/lib/marketing-copy.ts` claims "60+ templates" and "6 department packs"
