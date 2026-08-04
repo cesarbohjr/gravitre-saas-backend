@@ -45,6 +45,33 @@ const SHOTS = [
   // Salesforce row is deliberately in `error` state and is excluded from the
   // connected tally.
   { name: "app-connectors", view: "connectors", wait: "3 connected", width: 1440, height: 900 },
+  // "103" is the tasks-today tally summed across the four fixture agents
+  // (34+12+57+0). A derived number like this cannot be produced by the empty
+  // state or by static chrome, so it proves the list actually hydrated.
+  { name: "app-agents", view: "agents", wait: "103", width: 1440, height: 900 },
+  // Not a workflow name: several appear in static marketing-ish copy elsewhere
+  // on the page. "98.2%" is a fixture-only successRate string, and because the
+  // page renders it verbatim it also proves the value survived normalisation
+  // with its percent sign intact.
+  { name: "app-workflows", view: "workflows", wait: "98.2%", width: 1440, height: 900 },
+  // A conversation title from the history sidebar — the part that was silently
+  // rendering "No conversations yet" until /api/conversations was fixtured.
+  //
+  // `prepare` opens that sidebar first. It defaults to closed (useState(false),
+  // no persistence), and when closed the desktop styles are `md:w-0
+  // md:overflow-hidden` — so every conversation title is present in the DOM at
+  // zero width. A naive text assertion passes while the screenshot shows no
+  // history at all; only .waitFor()'s visibility check catches it.
+  {
+    name: "app-ai",
+    view: "ai",
+    wait: "Why did the Salesforce write get blocked?",
+    width: 1440,
+    height: 900,
+    prepare: async (page) => {
+      await page.getByRole("button", { name: "Show history" }).click()
+    },
+  },
 ]
 
 /**
@@ -150,7 +177,16 @@ try {
     await page.reload({ waitUntil: "networkidle" })
 
     try {
+      // Some surfaces need an interaction before the payload is on screen.
+      if (shot.prepare) {
+        await shot.prepare(page)
+        // Sidebar/panel transitions are 300ms; let them settle before asserting
+        // visibility or the width check races the animation.
+        await page.waitForTimeout(600)
+      }
       // Proves real data rendered, rather than a spinner or empty state.
+      // .waitFor() also requires a non-zero box, which is what catches content
+      // that hydrated inside a collapsed container.
       await page.getByText(shot.wait, { exact: false }).first().waitFor({ timeout: 20_000 })
     } catch {
       const text = ((await page.textContent("body")) ?? "").replace(/\s+/g, " ").trim()
