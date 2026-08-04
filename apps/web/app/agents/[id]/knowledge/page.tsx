@@ -164,7 +164,7 @@ export default function AgentKnowledgePage({
     return (
       <AppShell title="Knowledge Base">
         <div className="flex h-full items-center justify-center">
-          <Spinner size="xs" />
+          <Spinner size="lg" />
         </div>
       </AppShell>
     )

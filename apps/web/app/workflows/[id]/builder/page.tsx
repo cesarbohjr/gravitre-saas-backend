@@ -4595,7 +4595,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         {isLoadingGraph && (
           <div className="flex-1 flex items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-4">
-              <Spinner size="sm" />
+              <Spinner size="lg" />
               <p className="text-sm text-muted-foreground">Loading workflow...</p>
             </div>
           </div>

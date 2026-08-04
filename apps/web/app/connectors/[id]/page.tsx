@@ -147,7 +147,7 @@ export default function ConnectorDetailPage() {
         <div className="flex flex-col items-center justify-center py-24">
           {!user || connectorLoading ? (
             <>
-              <Spinner size="sm" className="mb-4" />
+              <Spinner size="lg" className="mb-4" />
               <p className="text-sm text-muted-foreground">Loading connector…</p>
             </>
           ) : (

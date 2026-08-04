@@ -494,7 +494,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
     return (
       <AppShell title={`Run ${id}`}>
         <div className="flex h-full items-center justify-center">
-          <Spinner size="sm" />
+          <Spinner size="lg" />
         </div>
       </AppShell>
     )

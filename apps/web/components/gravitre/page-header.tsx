@@ -18,13 +18,16 @@ export function PageHeader({
   title,
   description,
   icon: Icon,
-  // Default to the brand gradient (was off-brand blue/cyan). Consumers can
-  // still override via iconColor; cn()/twMerge keeps the last color utility.
-  iconColor = "from-primary/20 to-primary/5",
+  iconColor,
   actions,
   children,
   className,
 }: PageHeaderProps) {
+  // Default to the brand gradient (was off-brand blue/cyan). Consumers can
+  // still override via iconColor; cn()/twMerge keeps the last color utility.
+  const usesBrandTint = iconColor === undefined
+  const tint = iconColor ?? "from-primary/15 to-primary/5"
+
   return (
     <div className={cn("p-4 sm:p-6", !className?.includes("border") && "border-b border-border", className)}>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
@@ -34,13 +37,15 @@ export function PageHeader({
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               className={cn(
-                // ring-border is theme-aware (was ring-white/10, invisible in
-                // light mode). Consumers appending ring-* still override it.
-                "flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ring-1 ring-border",
-                iconColor
+                // ring-border/60 is theme-aware (was ring-white/10, invisible
+                // in light mode). Consumers appending ring-* still override it.
+                "flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ring-1 ring-border/60",
+                tint
               )}
             >
-              <Icon className="h-5 w-5 text-foreground" />
+              {/* On the brand tint the glyph reads as branded; on a custom
+                  tint it stays neutral so it can't clash with that hue. */}
+              <Icon className={cn("h-5 w-5", usesBrandTint ? "text-primary" : "text-foreground")} />
             </motion.div>
           )}
           <div>

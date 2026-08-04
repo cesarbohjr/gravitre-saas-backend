@@ -2936,7 +2936,7 @@ function ConnectorsPageContent() {
           )}
           {isLoading && connectors.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
-              <Spinner size="sm" className="mb-4" />
+              <Spinner size="lg" className="mb-4" />
               <p className="text-sm text-muted-foreground">Loading connectors...</p>
             </div>
           ) : error && connectors.length === 0 ? (
@@ -3161,7 +3161,7 @@ function ConnectorsPageFallback() {
   return (
     <AppShell title={SURFACE_COPY.pages.connectors.title}>
       <div className="flex h-[50vh] items-center justify-center">
-        <Spinner size="sm" />
+        <Spinner size="lg" />
       </div>
     </AppShell>
   )
