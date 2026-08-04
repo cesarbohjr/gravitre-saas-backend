@@ -16,6 +16,7 @@ import {
   Lock,
 } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { SettingsShell } from "@/components/settings/settings-shell"
 import { Button } from "@/components/ui/button"
 import { GridPattern, AnimatedCounter } from "@/components/gravitre/premium-effects"
 import { federationApi } from "@/lib/api"
@@ -54,7 +55,7 @@ const fadeUp = {
 
 export default function FederationPage() {
   return (
-    <AppShell title="Federation">
+    <AppShell title="Settings">
       <Suspense fallback={null}>
         <FederationContent />
       </Suspense>
@@ -208,6 +209,7 @@ function FederationContent() {
   ]
 
   return (
+    <SettingsShell activeSection="federation" isAdmin={isAdmin} hideHeader>
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
       {/* Hero */}
       <div className="relative mb-8 overflow-hidden rounded-2xl border border-border bg-card">
@@ -487,6 +489,7 @@ function FederationContent() {
         onCreated={() => refreshAll()}
       />
     </div>
+    </SettingsShell>
   )
 }
 

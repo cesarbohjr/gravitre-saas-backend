@@ -5,6 +5,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { PageHeader } from "@/components/gravitre/page-header"
+import { SettingsShell } from "@/components/settings/settings-shell"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { fetcher } from "@/lib/fetcher"
@@ -61,7 +62,12 @@ function EnterprisePageContent() {
   }
 
   return (
-    <AppShell>
+    <AppShell title="Settings">
+      <SettingsShell
+        activeSection="enterprise"
+        isAdmin={canAccessEnterprise}
+        hideHeader
+      >
       <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-6 md:py-8">
         <PageHeader
           title="Enterprise"
@@ -132,6 +138,7 @@ function EnterprisePageContent() {
           </div>
         )}
       </div>
+      </SettingsShell>
     </AppShell>
   )
 }

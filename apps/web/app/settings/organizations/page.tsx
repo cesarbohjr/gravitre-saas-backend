@@ -25,6 +25,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/lib/auth-context"
+import { AppShell } from "@/components/gravitre/app-shell"
+import { SettingsShell } from "@/components/settings/settings-shell"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { organizationsApi } from "@/lib/api"
 import { Icon } from "@/lib/icons"
 import { EmptyState } from "@/components/gravitre/empty-state"
@@ -38,6 +41,8 @@ type Member = User & { role: string }
 
 export default function ManageOrganizationsPage() {
   const { user } = useAuth()
+  // Controls which tiers the settings rail exposes.
+  const { isAdmin } = useOrgAdmin()
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showMembersDialog, setShowMembersDialog] = useState(false)
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
@@ -173,30 +178,28 @@ export default function ManageOrganizationsPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-5xl mx-auto px-6 py-12">
-          <Card>
-            <CardHeader>
-              <CardTitle>Sign in required</CardTitle>
-              <CardDescription>Sign in to manage organizations and members.</CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
-      </div>
+      <AppShell title="Settings">
+        <SettingsShell activeSection="organizations" isAdmin={isAdmin} hideHeader>
+          <div className="px-6 py-12">
+            <Card>
+              <CardHeader>
+                <CardTitle>Sign in required</CardTitle>
+                <CardDescription>Sign in to manage organizations and members.</CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+        </SettingsShell>
+      </AppShell>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
+    <AppShell title="Settings">
+      <SettingsShell activeSection="organizations" isAdmin={isAdmin} hideHeader>
+      {/* Header. The old "Settings > Organizations" breadcrumb was the only way
+          back before; the rail now marks this section as active, so it went. */}
       <div className="border-b border-border">
-        <div className="max-w-5xl mx-auto px-6 py-6">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-            <Link href="/settings" className="hover:text-foreground transition-colors">Settings</Link>
-            <Icon name="chevronRight" size="xs" />
-            <span className="text-foreground">Organizations</span>
-          </div>
-          
+        <div className="px-6 py-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-semibold text-foreground">Organizations</h1>
@@ -261,7 +264,7 @@ export default function ManageOrganizationsPage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="px-6 py-8">
         {isLoading && (
           <Card className="mb-4">
             <CardContent className="p-6 text-sm text-muted-foreground">Loading organizations...</CardContent>
@@ -520,6 +523,7 @@ export default function ManageOrganizationsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </SettingsShell>
+    </AppShell>
   )
 }

@@ -35,6 +35,8 @@ import { toast } from "sonner"
 import { mutate as globalMutate } from "swr"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 import { CenteredLoader } from "@/components/gravitre/gravitree-loader"
+import { SettingsShell } from "@/components/settings/settings-shell"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 
 interface AuthSession {
   id: string
@@ -50,6 +52,9 @@ interface AuthSessionsResponse {
 
 export default function ProfilePage() {
   const { user, loading } = useAuth()
+  // Drives which tiers the settings rail shows; admin-only sections stay hidden
+  // for non-admins.
+  const { isAdmin } = useOrgAdmin()
   const { profile, updateProfile, setAvatarImage: setContextAvatarImage, getInitials } = useUserProfile()
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -192,15 +197,18 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <AppShell>
-        <CenteredLoader fill="parent" label="Loading profile" />
+      <AppShell title="Settings">
+        <SettingsShell activeSection="profile" isAdmin={isAdmin} hideHeader>
+          <CenteredLoader fill="parent" label="Loading profile" />
+        </SettingsShell>
       </AppShell>
     )
   }
 
   return (
-    <AppShell>
-      <div className="flex-1 overflow-auto">
+    <AppShell title="Settings">
+      <SettingsShell activeSection="profile" isAdmin={isAdmin} hideHeader>
+        <div className="flex-1 overflow-auto">
         {/* Hero Header with gradient */}
         <div className="relative overflow-hidden">
           {/* Was blue -> purple -> pink; purple and pink appear nowhere else in
@@ -672,7 +680,8 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      </SettingsShell>
     </AppShell>
   )
 }

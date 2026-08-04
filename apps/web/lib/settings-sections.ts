@@ -228,6 +228,10 @@ export const ADMIN_ONLY_SETTINGS_SECTIONS = new Set<SettingsSectionId>(
 )
 
 export const WIDE_SETTINGS_SECTIONS = new Set<SettingsSectionId>([
+  // profile (4xl hero + 3-column grid) and organizations (5xl) render their own
+  // wide layouts, so they'd be crushed by the shell's default max-w-2xl.
+  "profile",
+  "organizations",
   "billing",
   "approvals",
   "permissions",
