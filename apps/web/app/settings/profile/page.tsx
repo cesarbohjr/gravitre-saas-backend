@@ -34,6 +34,7 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { toast } from "sonner"
 import { mutate as globalMutate } from "swr"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
+import { CenteredLoader } from "@/components/gravitre/gravitree-loader"
 
 interface AuthSession {
   id: string
@@ -182,17 +183,17 @@ export default function ProfilePage() {
 
   // Activity stats
   const activityStats = [
-    { label: "Workflows Created", value: "47", icon: Zap, color: "text-blue-500" },
-    { label: "Approvals Made", value: "156", icon: Check, color: "text-emerald-500" },
-    { label: "Active Sessions", value: "3", icon: Activity, color: "text-amber-500" },
+    // Three unrelated metrics, so the categorical --chart-* ramp rather than
+    // health tones (an amber session count doesn't mean anything is wrong).
+    { label: "Workflows Created", value: "47", icon: Zap, color: "text-chart-2" },
+    { label: "Approvals Made", value: "156", icon: Check, color: "text-chart-1" },
+    { label: "Active Sessions", value: "3", icon: Activity, color: "text-chart-3" },
   ]
 
   if (loading) {
     return (
       <AppShell>
-        <div className="flex h-full items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
+        <CenteredLoader fill="parent" label="Loading profile" />
       </AppShell>
     )
   }
@@ -202,8 +203,11 @@ export default function ProfilePage() {
       <div className="flex-1 overflow-auto">
         {/* Hero Header with gradient */}
         <div className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent" />
+          {/* Was blue -> purple -> pink; purple and pink appear nowhere else in
+              the product, so the hero read as a generic template rather than
+              this app. Now a single brand-primary wash. */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
           
           {/* Animated grid pattern */}
           <div className="absolute inset-0 opacity-[0.02]" style={{
@@ -239,7 +243,7 @@ export default function ProfilePage() {
                     accept="image/*"
                     className="hidden"
                   />
-                  <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full opacity-0 group-hover:opacity-75 blur transition-all duration-500" />
+                  <div className="absolute -inset-1 rounded-full bg-primary opacity-0 blur transition-all duration-500 group-hover:opacity-60" />
                   <button 
                     type="button"
                     onClick={() => setShowAvatarModal(true)}
@@ -257,7 +261,7 @@ export default function ProfilePage() {
                     onClick={() => setShowAvatarModal(true)}
                     aria-hidden="true"
                     tabIndex={-1}
-                    className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-blue-600 hover:scale-110"
+                    className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg opacity-0 transition-all duration-300 hover:scale-110 hover:bg-primary/90 group-hover:opacity-100"
                   >
                     <Camera className="h-4 w-4" />
                   </button>
@@ -295,8 +299,8 @@ export default function ProfilePage() {
                           onClick={() => fileInputRef.current?.click()}
                           className="w-full flex items-center gap-3 p-4 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/50 transition-colors text-left"
                         >
-                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
-                            <ImagePlus className="h-5 w-5 text-blue-500" />
+                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                            <ImagePlus className="h-5 w-5 text-primary" />
                           </div>
                           <div>
                             <p className="text-sm font-medium text-foreground">Upload new photo</p>
@@ -307,14 +311,16 @@ export default function ProfilePage() {
                         {profile.avatarImage && (
                           <button
                             onClick={() => void handleRemoveAvatar()}
-                            className="w-full flex items-center gap-3 p-4 rounded-xl border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 transition-colors text-left"
+                            className="w-full flex items-center gap-3 p-4 rounded-xl border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors text-left"
                           >
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/10">
-                              <X className="h-5 w-5 text-red-500" />
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10">
+                              <X className="h-5 w-5 text-destructive" />
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-red-500">Remove photo</p>
-                              <p className="text-xs text-red-400/70">Revert to initials</p>
+                              <p className="text-sm font-medium text-destructive">Remove photo</p>
+                              {/* Was text-red-400/70 — a light tint at 70% opacity
+                                  on a light background, which failed contrast. */}
+                              <p className="text-xs text-muted-foreground">Revert to initials</p>
                             </div>
                           </button>
                         )}
@@ -328,9 +334,9 @@ export default function ProfilePage() {
                     <h1 className="text-2xl font-semibold text-foreground">
                       {profile.firstName} {profile.lastName}
                     </h1>
-                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                      <Shield className="h-3 w-3 text-emerald-500" />
-                      <span className="text-xs font-medium text-emerald-500">Verified</span>
+                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 border border-success/20">
+                      <Shield className="h-3 w-3 text-success" />
+                      <span className="text-xs font-medium text-success">Verified</span>
                     </div>
                   </div>
                   <p className="text-sm text-muted-foreground mb-3">
@@ -406,18 +412,25 @@ export default function ProfilePage() {
                 ))}
 
                 {/* Meson Insights Card */}
+                {/* Meson's sub-brand is violet everywhere else (the wizard, its
+                    launch trigger), so this card used the wrong accent —
+                    purple/pink appear nowhere else in the product. */}
                 <div className={cn(
-                  "relative overflow-hidden rounded-xl border border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-pink-500/5 p-4 transition-all duration-500 delay-500",
+                  "relative overflow-hidden rounded-xl border border-violet-500/20 bg-violet-500/5 p-4 transition-all duration-500 delay-500",
                   mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
                 )}>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
                   <div className="relative">
                     <div className="flex items-center gap-2 mb-3">
-                      <Sparkles className="h-4 w-4 text-purple-500" />
-                      <span className="text-xs font-medium text-purple-500 uppercase tracking-wider">Meson Insight</span>
+                      <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                      <span className="text-xs font-medium uppercase tracking-wider text-violet-600 dark:text-violet-400">
+                        Meson Insight
+                      </span>
                     </div>
                     <p className="text-sm text-foreground leading-relaxed">
-                      You&apos;ve approved <span className="font-semibold text-purple-500">23% more</span> workflow requests this month. Your team is becoming more autonomous!
+                      You&apos;ve approved{" "}
+                      <span className="font-semibold text-violet-600 dark:text-violet-400">23% more</span>{" "}
+                      workflow requests this month. Your team is becoming more autonomous.
                     </p>
                   </div>
                 </div>
@@ -431,8 +444,8 @@ export default function ProfilePage() {
                 {/* Personal Information */}
                 <section>
                   <div className="flex items-center gap-2 mb-6">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
-                      <User className="h-4 w-4 text-blue-500" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                      <User className="h-4 w-4 text-primary" />
                     </div>
                     <h2 className="text-sm font-semibold text-foreground">Personal Information</h2>
                   </div>
@@ -488,8 +501,8 @@ export default function ProfilePage() {
                 {/* Work Information */}
                 <section>
                   <div className="flex items-center gap-2 mb-6">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
-                      <Building2 className="h-4 w-4 text-emerald-500" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                      <Building2 className="h-4 w-4 text-primary" />
                     </div>
                     <h2 className="text-sm font-semibold text-foreground">Work Information</h2>
                   </div>
@@ -535,7 +548,7 @@ export default function ProfilePage() {
                       value={profile.timezone}
                       onChange={(e) => handleChange("timezone", e.target.value)}
                       aria-label="Timezone"
-                      className="mt-2 w-full h-11 rounded-xl border border-border bg-card px-4 text-sm text-foreground transition-all duration-200 hover:border-muted-foreground/50 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+                      className="mt-2 w-full h-11 rounded-xl border border-border bg-card px-4 text-sm text-foreground transition-all duration-200 hover:border-muted-foreground/50 focus:border-ring focus:ring-2 focus:ring-ring/20 outline-none"
                     >
                       <option value="America/Los_Angeles">Pacific Time (PT)</option>
                       <option value="America/Denver">Mountain Time (MT)</option>
@@ -551,8 +564,8 @@ export default function ProfilePage() {
                 {/* Bio */}
                 <section>
                   <div className="flex items-center gap-2 mb-6">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
-                      <Sparkles className="h-4 w-4 text-amber-500" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                      <Sparkles className="h-4 w-4 text-primary" />
                     </div>
                     <h2 className="text-sm font-semibold text-foreground">About You</h2>
                   </div>
@@ -566,7 +579,7 @@ export default function ProfilePage() {
                       className={cn(
                         "w-full h-32 rounded-xl border bg-card px-4 py-3 text-sm text-foreground resize-none transition-all duration-300 outline-none",
                         activeField === "bio" 
-                          ? "border-blue-500 ring-2 ring-blue-500/20 shadow-lg shadow-blue-500/10" 
+                          ? "border-ring ring-2 ring-ring/20 shadow-lg shadow-primary/10" 
                           : "border-border hover:border-muted-foreground/50"
                       )}
                       placeholder="Tell us a bit about yourself..."
@@ -583,8 +596,8 @@ export default function ProfilePage() {
                 {/* Security */}
                 <section>
                   <div className="flex items-center gap-2 mb-6">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/10">
-                      <Shield className="h-4 w-4 text-rose-500" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                      <Shield className="h-4 w-4 text-primary" />
                     </div>
                     <h2 className="text-sm font-semibold text-foreground">Security</h2>
                   </div>
@@ -620,8 +633,8 @@ export default function ProfilePage() {
                 <section>
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10">
-                        <Activity className="h-4 w-4 text-violet-500" />
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                        <Activity className="h-4 w-4 text-primary" />
                       </div>
                       <h2 className="text-sm font-semibold text-foreground">Active Sessions</h2>
                     </div>
@@ -638,7 +651,7 @@ export default function ProfilePage() {
                           <p className="text-xs text-muted-foreground">{session.ip} · {session.last_active}</p>
                         </div>
                         {session.current ? (
-                          <span className="text-xs text-emerald-500 font-medium">Current</span>
+                          <span className="text-xs font-medium text-success">Current</span>
                         ) : (
                           <Button
                             variant="outline"
@@ -693,12 +706,12 @@ function InputField({
       <div className={cn(
         "mt-2 relative rounded-xl border bg-card transition-all duration-300",
         isActive 
-          ? "border-blue-500 ring-2 ring-blue-500/20 shadow-lg shadow-blue-500/10" 
+          ? "border-ring ring-2 ring-ring/20 shadow-lg shadow-primary/10" 
           : "border-border hover:border-muted-foreground/50"
       )}>
         <Icon className={cn(
           "absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-200",
-          isActive ? "text-blue-500" : "text-muted-foreground"
+          isActive ? "text-primary" : "text-muted-foreground"
         )} />
         <input
           id={fieldId}

@@ -222,7 +222,10 @@ function ApprovalsContent() {
 
   return (
     <div className="relative space-y-8 p-4 md:p-6">
-      <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-sky-500/10 via-card to-violet-500/10 p-6 md:p-8">
+      {/* Each settings hero used its own two-hue gradient (this one sky ->
+          violet, team permissions emerald -> sky), so sibling pages in the same
+          section looked unrelated. Both now share one primary wash. */}
+      <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-primary/10 via-card to-primary/5 p-6 md:p-8">
         <div className="pointer-events-none absolute -right-10 -top-10 opacity-70">
           <GlowOrb size={220} color="blue" intensity={0.25} />
         </div>
@@ -236,7 +239,7 @@ function ApprovalsContent() {
         >
           <div className="max-w-xl">
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
-              <ShieldCheck className="h-3.5 w-3.5 text-sky-600" />
+              <ShieldCheck className="h-3.5 w-3.5 text-primary" />
               Governance
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
@@ -274,7 +277,7 @@ function ApprovalsContent() {
                 Define who needs approval and who can grant it.
               </p>
             </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Plus className="h-5 w-5" />
             </div>
           </div>
@@ -376,7 +379,7 @@ function ApprovalsContent() {
         >
           <div className="rounded-3xl border border-border bg-card/70 p-5 shadow-sm">
             <div className="mb-3 flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              <CheckCircle2 className="h-4 w-4 text-success" />
               <h3 className="text-sm font-semibold text-foreground">Default protection</h3>
             </div>
             <p className="text-sm leading-relaxed text-muted-foreground">
@@ -384,18 +387,21 @@ function ApprovalsContent() {
               you tighten or broaden that for specific teams.
             </p>
           </div>
-          <div className="rounded-3xl border border-border bg-gradient-to-br from-slate-900 to-slate-800 p-5 text-white shadow-sm">
+          {/* Was hardcoded slate-900 + text-white, so this card stayed dark in
+              light mode and ignored the theme. The sky-300 icon on it was the
+              lowest-contrast text in Settings. Now themed via primary. */}
+          <div className="rounded-3xl border border-primary/20 bg-primary p-5 text-primary-foreground shadow-sm">
             <div className="mb-3 flex items-center gap-2">
-              <Inbox className="h-4 w-4 text-sky-300" />
+              <Inbox className="h-4 w-4" />
               <h3 className="text-sm font-semibold">Decision Queue</h3>
             </div>
-            <p className="text-sm leading-relaxed text-white/70">
+            <p className="text-sm leading-relaxed text-primary-foreground/80">
               Review pending approvals from operators and agents in one place.
             </p>
             <Button
               asChild
               variant="secondary"
-              className="mt-4 w-full justify-between rounded-xl bg-white text-slate-900 hover:bg-white/90"
+              className="mt-4 w-full justify-between rounded-xl"
             >
               <Link href="/approvals">
                 Open Decision Queue

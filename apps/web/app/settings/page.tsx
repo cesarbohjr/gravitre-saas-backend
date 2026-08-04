@@ -1191,7 +1191,10 @@ function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
         <div className="space-y-4">
           <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-card">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/10 text-violet-500">
+              {/* Two peer rows telling apart task types, so the categorical
+                  --chart-* ramp rather than health tones (emerald here did not
+                  mean "good"). */}
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-chart-4/10 text-chart-4">
                 <Brain className="h-4 w-4" />
               </div>
               <div>
@@ -1208,7 +1211,7 @@ function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
 
           <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-card">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-chart-1/10 text-chart-1">
                 <Users className="h-4 w-4" />
               </div>
               <div>
@@ -1564,12 +1567,12 @@ function SoftUsageMeter({
       {hasLimit ? (
         <div className="h-1.5 overflow-hidden rounded-full bg-muted/80">
           <div
-            className={cn("h-full rounded-full", pct >= 90 ? "bg-amber-500" : "bg-primary/70")}
+            className={cn("h-full rounded-full", pct >= 90 ? "bg-warning" : "bg-primary/70")}
             style={{ width: `${pct}%` }}
           />
         </div>
       ) : null}
-      {note ? <p className="mt-2 text-[11px] font-medium text-amber-700 dark:text-amber-400">{note}</p> : null}
+      {note ? <p className="mt-2 text-[11px] font-medium text-warning">{note}</p> : null}
       {hint ? <p className="mt-2 text-[11px] leading-snug text-muted-foreground">{hint}</p> : null}
     </div>
   )

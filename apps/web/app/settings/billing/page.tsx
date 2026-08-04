@@ -83,7 +83,8 @@ function formatInvoiceAmount(cents: number | undefined, currency = "usd") {
   }).format(cents / 100)
 }
 
-type UsageMetricColor = "blue" | "emerald" | "purple" | "amber"
+/** Slot in the categorical --chart-* ramp, not a literal color name. */
+type UsageMetricColor = "series1" | "series2" | "series3" | "series4"
 
 type UsageMetric = {
   name: string
@@ -107,7 +108,7 @@ function emptyUsageMetrics(planCode: string): UsageMetric[] {
       used: 0,
       limit: Math.max(limits.workflowRuns || 1, 1),
       icon: Zap,
-      color: "blue",
+      color: "series1",
       unit: "runs",
     },
     {
@@ -115,7 +116,7 @@ function emptyUsageMetrics(planCode: string): UsageMetric[] {
       used: 0,
       limit: Math.max(limits.aiCredits || 1, 1),
       icon: Sparkles,
-      color: "purple",
+      color: "series2",
       unit: "credits",
       hint: "LLM tokens only — separate from Research Lookups",
     },
@@ -132,35 +133,41 @@ function coalesceLimit(...candidates: Array<number | null | undefined>): number 
   return 1
 }
 
+/**
+ * Usage metrics are a categorical series, so they ride the themeable --chart-*
+ * ramp instead of raw palette hues (one of which, purple, appeared nowhere else
+ * in the product). Keys are named for the token they resolve to rather than for
+ * a hardcoded color, so they can't drift from what actually renders.
+ */
 const colorClasses = {
-  blue: {
-    bg: "bg-blue-500/10",
-    text: "text-blue-500",
-    bar: "bg-blue-500",
-    ring: "ring-blue-500/20",
-    gradient: "from-blue-500/20 to-blue-500/5"
+  series1: {
+    bg: "bg-chart-1/10",
+    text: "text-chart-1",
+    bar: "bg-chart-1",
+    ring: "ring-chart-1/20",
+    gradient: "from-chart-1/20 to-chart-1/5",
   },
-  emerald: {
-    bg: "bg-emerald-500/10",
-    text: "text-emerald-500",
-    bar: "bg-emerald-500",
-    ring: "ring-emerald-500/20",
-    gradient: "from-emerald-500/20 to-emerald-500/5"
+  series2: {
+    bg: "bg-chart-2/10",
+    text: "text-chart-2",
+    bar: "bg-chart-2",
+    ring: "ring-chart-2/20",
+    gradient: "from-chart-2/20 to-chart-2/5",
   },
-  purple: {
-    bg: "bg-purple-500/10",
-    text: "text-purple-500",
-    bar: "bg-purple-500",
-    ring: "ring-purple-500/20",
-    gradient: "from-purple-500/20 to-purple-500/5"
+  series3: {
+    bg: "bg-chart-3/10",
+    text: "text-chart-3",
+    bar: "bg-chart-3",
+    ring: "ring-chart-3/20",
+    gradient: "from-chart-3/20 to-chart-3/5",
   },
-  amber: {
-    bg: "bg-amber-500/10",
-    text: "text-amber-500",
-    bar: "bg-amber-500",
-    ring: "ring-amber-500/20",
-    gradient: "from-amber-500/20 to-amber-500/5"
-  }
+  series4: {
+    bg: "bg-chart-4/10",
+    text: "text-chart-4",
+    bar: "bg-chart-4",
+    ring: "ring-chart-4/20",
+    gradient: "from-chart-4/20 to-chart-4/5",
+  },
 }
 
 export default function BillingPage() {
@@ -276,7 +283,7 @@ function BillingPageInner() {
           used: usageFromApi.totals.workflow_runs ?? 0,
           limit: coalesceLimit(usageFromApi.workflow_runs_included, planLimits.workflowRuns),
           icon: Zap,
-          color: "blue",
+          color: "series1",
           unit: "runs",
         },
         {
@@ -284,7 +291,7 @@ function BillingPageInner() {
           used: usageFromApi.totals.ai_tokens ?? 0,
           limit: coalesceLimit(usageFromApi.ai_credits_included, planLimits.aiCredits),
           icon: Sparkles,
-          color: "purple",
+          color: "series2",
           unit: "credits",
           hint: "LLM tokens only — separate from Research Lookups",
         },
@@ -293,7 +300,7 @@ function BillingPageInner() {
           used: usageFromApi.totals.outputs ?? 0,
           limit: coalesceLimit(usageFromApi.included_outputs, planLimits.outputs),
           icon: HardDrive,
-          color: "amber",
+          color: "series3",
           unit: "outputs",
           hint: "Delivered work units included in your plan",
           note: usageFromApi.overage_outputs
@@ -310,7 +317,7 @@ function BillingPageInner() {
                   planLimits.researchLookups,
                 ),
                 icon: Globe,
-                color: "emerald" as const,
+                color: "series4" as const,
                 unit: "lookups",
                 hint: "Live internet research calls",
                 note: usageFromApi.overage_research_lookups
@@ -521,7 +528,7 @@ function BillingPageInner() {
         
         {/* Hero Header */}
         <div className="relative z-10 overflow-hidden border-b border-border/50">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-violet-500/10" />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-chart-4/10" />
           <div className="absolute top-0 right-0 pointer-events-none">
             <GlowOrb size={280} color="emerald" intensity={0.22} />
           </div>
@@ -540,13 +547,13 @@ function BillingPageInner() {
                 <div>
                   <div className="flex items-center gap-4 mb-2">
                     <motion.div 
-                      className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-xl shadow-emerald-500/30 relative"
+                      className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-primary shadow-xl shadow-primary/30"
                       animate={{ scale: [1, 1.05, 1] }}
                       transition={{ duration: 3, repeat: Infinity }}
                     >
                       <Crown className="h-7 w-7 text-white" />
                       <motion.div 
-                        className="absolute inset-0 rounded-2xl border-2 border-emerald-400"
+                        className="absolute inset-0 rounded-2xl border-2 border-primary"
                         animate={{ scale: [1, 1.2], opacity: [0.6, 0] }}
                         transition={{ duration: 2, repeat: Infinity }}
                       />
@@ -663,7 +670,9 @@ function BillingPageInner() {
                         <div
                           className={cn(
                             "h-full rounded-full transition-all duration-700 ease-out",
-                            percentage >= 90 ? "bg-amber-500" : colors.bar,
+                            // Near-quota is a genuine health signal, so it
+                            // overrides the categorical series color.
+                            percentage >= 90 ? "bg-warning" : colors.bar,
                           )}
                           style={{
                             width: mounted ? `${Math.min(percentage, 100)}%` : "0%",
@@ -673,7 +682,7 @@ function BillingPageInner() {
                       </div>
 
                       {metric.note ? (
-                        <p className="mt-2 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                        <p className="mt-2 text-[11px] font-medium text-warning">
                           {metric.note}
                         </p>
                       ) : null}
@@ -898,8 +907,8 @@ function BillingPageInner() {
                       )}
                     >
                       <div className="flex items-center gap-4">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary group-hover:bg-emerald-500/10 transition-colors">
-                          <Check className="h-4 w-4 text-emerald-500" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary group-hover:bg-success/10 transition-colors">
+                          <Check className="h-4 w-4 text-success" />
                         </div>
                         <div>
                           <p className="text-sm font-mono text-foreground">{invoice.id}</p>
@@ -939,8 +948,8 @@ function BillingPageInner() {
             )}>
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10">
-                    <Sparkles className="h-5 w-5 text-blue-500" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                    <Sparkles className="h-5 w-5 text-primary" />
                   </div>
                   <div>
                     <p className="text-sm font-medium text-foreground">Need help with billing?</p>
