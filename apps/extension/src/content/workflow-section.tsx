@@ -112,7 +112,13 @@ export function WorkflowSection({
                         variant="primary"
                         size="sm"
                         loading={busyId === wf.id}
-                        onClick={() => onRun(wf)}
+                        // Collapse on approve, matching the single-write
+                        // approval panel. Leaving an armed "Approve & run"
+                        // under the completion banner invites a double-run.
+                        onClick={() => {
+                          setOpenId(null)
+                          onRun(wf)
+                        }}
                         className="flex-1"
                       >
                         {busyId === wf.id ? "Running…" : "Approve & run workflow"}
