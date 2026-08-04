@@ -293,8 +293,8 @@ export default function ManageOrganizationsPage() {
                         {org.name.charAt(0)}
                       </div>
                       {currentOrgId === org.id && (
-                        <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-emerald-500 flex items-center justify-center ring-2 ring-background">
-                          <Icon name="check" size="xs" className="text-white" />
+                        <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-success ring-2 ring-background">
+                          <Icon name="check" size="xs" className="text-success-foreground" />
                         </div>
                       )}
                     </div>
@@ -304,7 +304,7 @@ export default function ManageOrganizationsPage() {
                       <div className="flex items-center gap-2">
                         <h3 className="text-lg font-semibold text-foreground">{org.name}</h3>
                         {currentOrgId === org.id && (
-                          <Badge variant="secondary" className="text-xs bg-emerald-500/10 text-emerald-600 border-0">
+                          <Badge variant="secondary" className="border-0 bg-success/10 text-xs text-success">
                             Current
                           </Badge>
                         )}
@@ -331,7 +331,7 @@ export default function ManageOrganizationsPage() {
                           String(org.plan ?? "").toLowerCase() === "enterprise"
                             ? "bg-primary/10 text-primary border-primary/20" 
                             : String(org.plan ?? "").toLowerCase() === "control"
-                            ? "bg-blue-500/10 text-blue-600 border-blue-500/20"
+                            ? "bg-info/10 text-info border-info/20"
                             : "bg-secondary text-muted-foreground"
                         }`}
                       >

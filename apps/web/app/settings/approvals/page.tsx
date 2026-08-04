@@ -452,8 +452,10 @@ function ApprovalsContent() {
                     <span
                       className={cn(
                         "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                        // text-emerald-700 had no dark variant, so it was
+                        // near-unreadable on a 10% tint in dark mode.
                         policy.enabled
-                          ? "bg-emerald-500/10 text-emerald-700"
+                          ? "bg-success/10 text-success"
                           : "bg-muted text-muted-foreground",
                       )}
                     >
@@ -532,10 +534,14 @@ function ChipGroup({
               onClick={() => (exclusive ? onChange?.(option.value) : onToggle?.(option.value))}
               className={cn(
                 "rounded-full border px-3.5 py-1.5 text-sm capitalize transition-colors",
+                // Selected chips were hardcoded slate-900/white (theme-blind, so
+                // they stayed near-black in dark mode) and off-palette sky. Both
+                // selected states now use primary; exclusive stays solid so it
+                // still reads as single-choice next to the tinted multi-select.
                 selected
                   ? exclusive
-                    ? "border-slate-900 bg-slate-900 text-white"
-                    : "border-sky-600/40 bg-sky-500/10 text-foreground"
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-primary/40 bg-primary/10 text-foreground"
                   : "border-border bg-secondary/40 text-muted-foreground hover:text-foreground",
               )}
             >

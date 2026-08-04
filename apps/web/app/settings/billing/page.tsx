@@ -551,7 +551,7 @@ function BillingPageInner() {
                       animate={{ scale: [1, 1.05, 1] }}
                       transition={{ duration: 3, repeat: Infinity }}
                     >
-                      <Crown className="h-7 w-7 text-white" />
+                      <Crown className="h-7 w-7 text-primary-foreground" />
                       <motion.div 
                         className="absolute inset-0 rounded-2xl border-2 border-primary"
                         animate={{ scale: [1, 1.2], opacity: [0.6, 0] }}

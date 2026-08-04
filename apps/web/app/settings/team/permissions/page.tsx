@@ -8,8 +8,9 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { SettingsShell } from "@/components/settings/settings-shell"
 import { GlowOrb } from "@/components/gravitre/premium-effects"
 import { Button } from "@/components/ui/button"
-import { Shield, Check, X, Loader2, Users } from "lucide-react"
+import { Shield, Check, X, Users } from "lucide-react"
 import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
+import { Skeleton } from "@/components/ui/skeleton"
 import { fetcher } from "@/lib/fetcher"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { useSettingsSectionNav } from "@/lib/settings-nav"
@@ -51,7 +52,9 @@ export default function PermissionsMatrixPage() {
         hideHeader
       >
         <div className="space-y-6 p-4 md:p-6">
-          <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-emerald-500/10 via-card to-sky-500/10 p-6 md:p-8">
+          {/* Matches the approvals hero, which previously used a different
+              two-hue gradient — sibling settings pages now share one wash. */}
+          <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-primary/10 via-card to-primary/5 p-6 md:p-8">
             <div className="pointer-events-none absolute -right-8 -top-10 opacity-60">
               <GlowOrb size={200} color="emerald" intensity={0.22} />
             </div>
@@ -62,7 +65,7 @@ export default function PermissionsMatrixPage() {
             >
               <div className="max-w-xl">
                 <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
-                  <Shield className="h-3.5 w-3.5 text-emerald-600" />
+                  <Shield className="h-3.5 w-3.5 text-primary" />
                   Access control
                 </div>
                 <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
@@ -80,9 +83,25 @@ export default function PermissionsMatrixPage() {
           </div>
 
           {adminLoading || (isLoading && !data) ? (
-            <div className="flex items-center justify-center py-16 text-muted-foreground">
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Loading permissions…
+            /* Was a centered spinner, which collapsed the layout and then jumped
+               when the table arrived. This mirrors the real table's shape. */
+            <div className="overflow-hidden rounded-2xl border border-border bg-card/70 shadow-sm">
+              <div className="flex gap-4 border-b border-border bg-muted/40 px-4 py-3">
+                <Skeleton className="h-4 w-40" />
+                {roles.map((role) => (
+                  <Skeleton key={role} className="h-4 flex-1" />
+                ))}
+              </div>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 border-b border-border/60 px-4 py-3 last:border-0">
+                  <Skeleton className="h-4 w-40" />
+                  {roles.map((role) => (
+                    <div key={role} className="flex flex-1 justify-center">
+                      <Skeleton className="h-4 w-4 rounded-full" />
+                    </div>
+                  ))}
+                </div>
+              ))}
             </div>
           ) : error ? (
             <div className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
