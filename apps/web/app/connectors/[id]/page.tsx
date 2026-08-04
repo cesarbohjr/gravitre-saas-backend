@@ -228,7 +228,7 @@ export default function ConnectorDetailPage() {
                 />
                 <div>
                   <div className="flex items-center gap-2">
-                    <h1 className="text-lg font-semibold text-foreground">{connector.name}</h1>
+                    <h1 className="text-xl font-semibold text-foreground">{connector.name}</h1>
                     <span className={cn(
                       "text-[10px] px-2 py-0.5 rounded-full font-medium",
                       connector.environment === "production" 

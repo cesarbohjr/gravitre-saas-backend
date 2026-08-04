@@ -213,7 +213,7 @@ export default function AgentKnowledgePage({
                   <Icon name="database" size="md" className="text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-foreground">Knowledge Base</h1>
+                  <h1 className="text-xl font-semibold text-foreground">Knowledge Base</h1>
                   <p className="text-sm text-muted-foreground">
                     Training data and custom instructions for {agent.name}
                   </p>

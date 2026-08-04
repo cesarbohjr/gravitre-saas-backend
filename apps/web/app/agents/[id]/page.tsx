@@ -334,7 +334,7 @@ export default function AgentProfilePage({
                     transition={{ delay: 0.2 }}
                     className="mt-6 w-full"
                   >
-                    <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-1 break-words">{agent.name}</h1>
+                    <h1 className="text-xl font-semibold text-foreground mb-1 break-words">{agent.name}</h1>
                     <p className="text-muted-foreground mb-2">{agent.role}</p>
                     <p className="text-sm text-success font-medium">{agent.tagline}</p>
                     <div className="mt-4 flex justify-center">

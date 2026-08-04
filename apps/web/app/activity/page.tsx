@@ -113,7 +113,7 @@ function ActivityPageInner() {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 md:px-6">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Activity</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">Activity</h1>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
               Completed work across chat, workflows, and agents — plus predictive failure alerts.
               Same BusinessOutcome records as chat cards.

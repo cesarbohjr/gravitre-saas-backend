@@ -537,7 +537,7 @@ export default function AgentMemoryPage({
                   transition={{ delay: 0.3 }}
                   className="text-center mt-4"
                 >
-                  <h1 className="text-2xl font-bold text-foreground">{agent?.name || "Agent"}&apos;s Memory</h1>
+                  <h1 className="text-xl font-semibold text-foreground">{agent?.name || "Agent"}&apos;s Memory</h1>
                   <p className="text-sm text-muted-foreground">Everything the agent has learned</p>
                 </motion.div>
               </div>

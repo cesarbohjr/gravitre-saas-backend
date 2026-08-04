@@ -749,7 +749,7 @@ function ApprovalsContent() {
           <div className="flex-shrink-0 p-3 sm:p-4 border-b border-border">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <div>
-                <h1 className="text-base sm:text-lg font-semibold text-foreground">Decision Queue</h1>
+                <h1 className="text-xl font-semibold text-foreground">Decision Queue</h1>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {queueTab === "pending"
                     ? `${pendingApprovals.length} pending request${pendingApprovals.length !== 1 ? "s" : ""}`

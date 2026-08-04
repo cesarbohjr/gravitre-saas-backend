@@ -23,7 +23,7 @@ export default function AgentCapabilitiesPage({ params }: { params: Promise<{ id
       <div className="mx-auto max-w-3xl space-y-6 p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Capabilities</h1>
+            <h1 className="text-xl font-semibold tracking-tight">Capabilities</h1>
             <p className="text-sm text-muted-foreground">
               Learned skills, connector access, and knowledge assignments for this agent.
             </p>

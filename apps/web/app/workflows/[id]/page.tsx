@@ -137,12 +137,12 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
             {isLoading ? (
               <Skeleton className="h-8 w-64" />
             ) : error ? (
-              <h1 className="text-2xl font-semibold">Workflow unavailable</h1>
+              <h1 className="text-xl font-semibold">Workflow unavailable</h1>
             ) : (
               <>
                 <div className="flex flex-wrap items-center gap-2">
                   <Workflow className="h-5 w-5 text-muted-foreground" />
-                  <h1 className="text-2xl font-semibold tracking-tight">{workflow?.name ?? "Workflow"}</h1>
+                  <h1 className="text-xl font-semibold tracking-tight">{workflow?.name ?? "Workflow"}</h1>
                   {workflow?.status ? <AutoStatusBadge status={workflow.status} /> : null}
                   {workflow?.environment ? (
                     <EnvironmentBadge

@@ -2665,11 +2665,13 @@ function ConnectorsPageContent() {
         <div className="border-b border-border px-4 md:px-6 py-4">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-3 md:gap-4">
-              <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-violet-500/20 ring-1 ring-blue-500/20">
-                <Cable className="h-4 w-4 md:h-5 md:w-5 text-blue-400" />
+              {/* Brand gradient + theme-aware ring, matching PageHeader's icon
+                  chip. Was off-brand blue/violet with a blue ring. */}
+              <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-border">
+                <Cable className="h-4 w-4 md:h-5 md:w-5 text-foreground" />
               </div>
               <div>
-                <h1 className="text-base md:text-lg font-semibold text-foreground">{SURFACE_COPY.pages.connectors.headline}</h1>
+                <h1 className="text-xl font-semibold text-foreground">{SURFACE_COPY.pages.connectors.headline}</h1>
                 <p className="text-xs md:text-sm text-muted-foreground">{SURFACE_COPY.pages.connectors.description}</p>
               </div>
             </div>

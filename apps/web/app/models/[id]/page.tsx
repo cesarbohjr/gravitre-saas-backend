@@ -165,7 +165,7 @@ export default function ModelDetailPage({ params }: { params: Promise<{ id: stri
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <Brain className="h-5 w-5 text-success" />
-                  <h1 className="text-2xl font-semibold tracking-tight">{model.name}</h1>
+                  <h1 className="text-xl font-semibold tracking-tight">{model.name}</h1>
                   <Badge
                     variant="outline"
                     className={cn("capitalize", statusStyles[model.status] ?? statusStyles.draft)}
