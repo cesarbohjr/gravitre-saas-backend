@@ -13,7 +13,10 @@ import manifest from "../../public/manifest.json"
 // `error` and `slow` exist so the failure and loading paths are reviewable:
 // honest failure is a requirement here, not an edge case, and a state that is
 // never looked at is a state that silently rots.
-type Scenario = "connected" | "disconnected" | "error" | "slow"
+// `writefail` enriches normally but fails the write after approval — the
+// scenario where the user has already committed, so the UI must say plainly
+// that nothing was written rather than implying success.
+type Scenario = "connected" | "disconnected" | "error" | "slow" | "writefail"
 
 const params = new URLSearchParams(location.search)
 const scenario = (params.get("scenario") as Scenario) || "connected"
@@ -150,6 +153,7 @@ const chromeStub = {
       }
 
       if (msg?.type === "LIST_WORKFLOWS") {
+        if (scenario === "error") return respond({ ok: false, error: "Could not load workflows." })
         return respond({
           ok: true,
           result: { workflows: scenario === "disconnected" ? [] : WORKFLOWS, count: 2 },
@@ -159,6 +163,11 @@ const chromeStub = {
       // The write gate is two calls on ONE type: no token → staged proposal,
       // token → execution. Modelled exactly so the approval panel is exercised.
       if (msg?.type === "EXECUTE_ACTION" || msg?.type === "EXECUTE_WORKFLOW") {
+        // Fails at execution, AFTER approval: the case where the user has already
+        // committed and must be told plainly that nothing was written.
+        if ((scenario === "error" || scenario === "writefail") && msg.confirmationToken) {
+          return respond({ ok: false, error: "HubSpot rejected the write: required property 'email' is invalid." })
+        }
         if (!msg.confirmationToken) {
           return respond({
             ok: true,
@@ -182,6 +191,7 @@ const chromeStub = {
       }
 
       if (msg?.type === "CHAT") {
+        if (scenario === "error") return respond({ ok: false, error: "The assistant is unavailable right now." })
         return respond({
           ok: true,
           result: {

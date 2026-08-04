@@ -47,6 +47,8 @@ export function Overlay({
   const [result, setResult] = useState<EnrichResult | null>(null)
   const [enrichError, setEnrichError] = useState<string>()
   const [loading, setLoading] = useState(true)
+  /** Bumped to re-run the fetch effect; the only way back from a failed load. */
+  const [reloadKey, setReloadKey] = useState(0)
 
   const [workflows, setWorkflows] = useState<ExtensionWorkflow[]>([])
   const [wfLoading, setWfLoading] = useState(true)
@@ -105,7 +107,16 @@ export function Overlay({
     return () => {
       alive = false
     }
-  }, [pageUrl, pageContext])
+  }, [pageUrl, pageContext, reloadKey])
+
+  /** Re-runs enrich and the workflow list after a failed load. */
+  const retry = useCallback(() => {
+    setEnrichError(undefined)
+    setWfError(undefined)
+    setLoading(true)
+    setWfLoading(true)
+    setReloadKey((k) => k + 1)
+  }, [])
 
   // Escape closes the overlay, but only when no approval is awaiting a decision
   // — losing a staged write to a stray keypress would be worse than a click.
@@ -319,6 +330,10 @@ export function Overlay({
             <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
               {enrichError}
             </p>
+            {/* The copy above says "try again", so it has to be possible to. */}
+            <Button variant="secondary" size="sm" onClick={retry} className="mt-3">
+              Try again
+            </Button>
           </div>
         )}
 
