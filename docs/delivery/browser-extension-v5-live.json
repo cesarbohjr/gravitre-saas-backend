@@ -1,5 +1,5 @@
 {
-  "startedAt": "2026-08-03T17:42:29.843395+00:00",
+  "startedAt": "2026-08-04T02:01:59.956658+00:00",
   "scope": {
     "in": [
       "chrome",
@@ -13,94 +13,171 @@
     ]
   },
   "cases": {
-    "api_v1_v4": {
+    "api_tip_smoke": {
       "session": {
         "status": "PASS",
-        "http": 200,
-        "allowedActions": [
-          "apollo.contacts.create",
-          "apollo.contacts.search",
-          "apollo.lists.add",
-          "apollo.lists.create",
-          "apollo.organizations.search",
-          "apollo.people.match",
-          "apollo.people.search",
-          "hubspot.companies.search",
-          "hubspot.contacts.create",
-          "hubspot.contacts.search",
-          "hubspot.lists.add_contact",
-          "hubspot.lists.create",
-          "salesforce.leads.create",
-          "salesforce.leads.search",
-          "slack.users.info"
-        ]
+        "http": 200
       },
       "usage_signal": {
         "status": "PASS",
-        "http": 200,
-        "body": "{\"ok\": true, \"surface\": \"company_site\", \"allowlisted\": true, \"page_url\": \"https://example.com/not-allowlisted\", \"surface_requested\": \"outside_allowlist\", \"host_allowlisted\": false, \"active_tab_eligible\": true, \"invoked\": true, \"note\": \"v5-parity\", \"extension_version\": \"0.2.0\"}"
-      },
-      "enrich": {
-        "status": "PASS",
-        "http": 200,
-        "surface": "linkedin",
-        "suggestionCount": 4
-      },
-      "workflows_list": {
-        "status": "PASS",
-        "http": 200,
-        "count": 15
-      },
-      "chat_page_context": {
-        "status": "PASS",
-        "http": 200,
-        "conversationId": "6d108654-0d6c-4803-8343-e6b6bd851ce5",
-        "path": "execute_task_streaming",
-        "answerPreview": "Casey Operator is Head of Revenue Ops at Gravitree Smoke Co."
-      },
-      "chat_handoff": {
-        "status": "PASS",
-        "http": 200,
-        "needsHandoff": true,
-        "openInGravitreeUrl": "/ai?c=6d108654-0d6c-4803-8343-e6b6bd851ce5&prompt=Create%20a%20HubSpot%20list%20for%20Casey%20Operator%20from%20this%20page."
+        "http": 200
       }
     },
-    "edge_load_extension": {
-      "status": "PASS",
+    "edge_functional": {
       "browser": "edge",
       "binary": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
       "manifestVersion": "0.5.0",
-      "manifest_mv": 3,
       "debugVersion": {
         "Browser": "Edg/151.0.4129.59",
         "Protocol-Version": "1.3",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 Edg/151.0.0.0",
         "V8-Version": "15.1.23.5",
         "WebKit-Version": "537.36 (@400e1a29bee558c0c1dec28b2d8b3506a7302ce3)",
-        "webSocketDebuggerUrl": "ws://127.0.0.1:9331/devtools/browser/f3212385-4ef4-469b-a142-7ed03da9fe16"
+        "webSocketDebuggerUrl": "ws://127.0.0.1:9331/devtools/browser/ee1a6fa1-2606-4e5f-af3a-d8b0b81e4188"
       },
-      "error": null,
-      "note": "Unpacked MV3 load via --load-extension; chrome.* APIs (Edge/Brave Chromium)."
-    },
-    "brave_load_extension": {
+      "extensionManifest": {
+        "name": "Gravitree",
+        "version": "0.5.0"
+      },
+      "extensionTargetUrl": "chrome-extension://iegkidilloajngolbpgfkaeglblnklol/background.js",
+      "storageSeed": {
+        "status": "PASS",
+        "value": {
+          "ok": true,
+          "hasToken": true,
+          "hasOrg": true,
+          "apiBase": "https://gravitre-saas-backend-production.up.railway.app"
+        },
+        "exception": null
+      },
+      "enrich": {
+        "status": "PASS",
+        "http": 200,
+        "surface": "linkedin",
+        "suggestionCount": 4,
+        "detail": null
+      },
+      "propose_write": {
+        "status": "PASS",
+        "http": 200,
+        "approvalId": "c675c51c-d299-4a87-b838-69f4e5bfe6d9",
+        "detail": null
+      },
+      "confirm_write": {
+        "status": "PASS",
+        "http": 200,
+        "runId": "f0f9ba3c-a909-4197-b797-cbc1a237edb5",
+        "source": "browser_extension"
+      },
+      "workflows_list": {
+        "status": "PASS",
+        "http": 200,
+        "count": 20
+      },
+      "chat_page_context": {
+        "status": "PASS",
+        "http": 200,
+        "conversationId": "d7625307-c573-4bed-9788-52824ea0692c",
+        "answerPreview": "Casey Operator is Head of Revenue Ops at Gravitree Smoke Co.",
+        "detail": null
+      },
+      "chat_handoff": {
+        "status": "PASS",
+        "http": 200,
+        "needsHandoff": true,
+        "openInGravitreeUrl": "/ai?c=d7625307-c573-4bed-9788-52824ea0692c&prompt=Create%20a%20HubSpot%20list%20for%20Casey%20Operator%20from%20this%20page.",
+        "sameConversation": true
+      },
+      "overlay_visual": {
+        "status": "PASS",
+        "hasCard": true,
+        "stepCount": 2,
+        "hasOutcome": true,
+        "cardBg": "rgb(255, 255, 255)",
+        "cardDisplay": "block"
+      },
       "status": "PASS",
+      "note": "In-browser CDP: extension SW exercised enrich/approve/workflows/chat; overlay CSS+named-step markup rendered in page target."
+    },
+    "brave_functional": {
       "browser": "brave",
       "binary": "C:\\Users\\Cesar\\AppData\\Local\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
       "manifestVersion": "0.5.0",
-      "manifest_mv": 3,
       "debugVersion": {
         "Browser": "Chrome/151.0.7922.71",
         "Protocol-Version": "1.3",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
         "V8-Version": "15.1.206.10",
         "WebKit-Version": "537.36 (@96e337f9f5f202e633be4c080b702279ea2a0d0)",
-        "webSocketDebuggerUrl": "ws://127.0.0.1:9332/devtools/browser/6b487f31-5364-4550-ac6e-3090f63cfacc"
+        "webSocketDebuggerUrl": "ws://127.0.0.1:9332/devtools/browser/67764814-758a-4b11-8e50-25625eee43a8"
       },
-      "error": null,
-      "note": "Unpacked MV3 load via --load-extension; chrome.* APIs (Edge/Brave Chromium)."
+      "extensionManifest": {
+        "name": "Gravitree",
+        "version": "0.5.0"
+      },
+      "extensionTargetUrl": "chrome-extension://iegkidilloajngolbpgfkaeglblnklol/background.js",
+      "storageSeed": {
+        "status": "PASS",
+        "value": {
+          "ok": true,
+          "hasToken": true,
+          "hasOrg": true,
+          "apiBase": "https://gravitre-saas-backend-production.up.railway.app"
+        },
+        "exception": null
+      },
+      "enrich": {
+        "status": "PASS",
+        "http": 200,
+        "surface": "linkedin",
+        "suggestionCount": 4,
+        "detail": null
+      },
+      "propose_write": {
+        "status": "PASS",
+        "http": 200,
+        "approvalId": "7c2d94a2-fd9b-4d79-98c0-4008e92fce8a",
+        "detail": null
+      },
+      "confirm_write": {
+        "status": "PASS",
+        "http": 200,
+        "runId": "2abd360b-8456-40b4-9a8d-ae06127e2c0b",
+        "source": "browser_extension"
+      },
+      "workflows_list": {
+        "status": "PASS",
+        "http": 200,
+        "count": 20
+      },
+      "chat_page_context": {
+        "status": "PASS",
+        "http": 200,
+        "conversationId": "3a43c98a-53cc-4743-8562-67a4bdaaabb3",
+        "answerPreview": "Casey Operator is Head of Revenue Ops at Gravitree Smoke Co.",
+        "detail": null
+      },
+      "chat_handoff": {
+        "status": "PASS",
+        "http": 200,
+        "needsHandoff": true,
+        "openInGravitreeUrl": "/ai?c=3a43c98a-53cc-4743-8562-67a4bdaaabb3&prompt=Create%20a%20HubSpot%20list%20for%20Casey%20Operator%20from%20this%20page.",
+        "sameConversation": true
+      },
+      "overlay_visual": {
+        "status": "PASS",
+        "hasCard": true,
+        "stepCount": 2,
+        "hasOutcome": true,
+        "cardBg": "rgb(255, 255, 255)",
+        "cardDisplay": "block"
+      },
+      "status": "PASS",
+      "note": "In-browser CDP: extension SW exercised enrich/approve/workflows/chat; overlay CSS+named-step markup rendered in page target."
     }
   },
-  "git_sha": "49e4a75d0c7f061732f8d1e5b7fdd3eb5f004ea0",
+  "git_sha": "e7ab5afaaad0dcb2e37216180f846d19608e3be7",
   "overall": "PASS",
-  "finishedAt": "2026-08-03T17:42:55.680463+00:00"
+  "finishedAt": "2026-08-04T02:02:43.336998+00:00",
+  "cwsNote": "Live /features/extension still falls back to setup guide until NEXT_PUBLIC_CHROME_WEB_STORE_URL is set to a real chromewebstore.google.com URL."
 }
