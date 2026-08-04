@@ -1,42 +1,58 @@
 {
   "probe": "output_preview_fidelity_phase0_phase1",
   "date": "2026-08-03",
+  "reconfirmed_at": "2026-08-04T00:08:57Z",
   "phase0": {
     "connector_business_outcome": true,
     "durable_hosted_files": false,
     "chat_web_renderable_artifacts": false,
     "in_app_office_viewer": false,
-    "dashboard_recharts_exists": true
+    "dashboard_recharts_exists": true,
+    "generate_document": "ephemeral_markdown_only",
+    "verdict": "Dominant output = BusinessOutcome evidence; skip file chip + Preview/Code"
   },
   "phase1": {
     "decision": "confirm_no_rebuild",
     "chat_path": "ChatExecutionPanel → BusinessOutcomeView density=chat",
-    "sample_run_id": "50a34d4c-56eb-4178-aa44-242bd20c2c79",
-    "sample_source": "assistant_chat",
-    "sample_label": "Search contacts",
-    "verified_output": {
-      "summary": "No HubSpot contacts matched that request.",
-      "external_url": "https://app.apollo.io/#/contacts",
-      "result_url": "/runs/50a34d4c-56eb-4178-aa44-242bd20c2c79",
-      "integration": "apollo",
-      "entity_type": "connector",
-      "entity_id": "30f734a2-dbdb-45aa-9112-19c6d604d451"
+    "activity_path": "activity/page.tsx → BusinessOutcomeView density=timeline",
+    "live_bo_get_export": {
+      "verdict": "PASS",
+      "outcome_id": "95137db3-c760-4334-9b69-277e599351e0",
+      "projection": "business_outcome",
+      "get_export_identical": true,
+      "sections": [
+        "diff",
+        "evidence",
+        "explanation",
+        "metadata",
+        "summary",
+        "timeline",
+        "undo",
+        "verification"
+      ],
+      "title": "Send Gmail message",
+      "kind": "failed_action",
+      "checked_at": "2026-08-04T00:08:57.850288+00:00"
     },
-    "verdict": "PASS — evidence substrate present; BO card is correct preview pattern"
+    "prior_substrate_sample": {
+      "run_id": "50a34d4c-56eb-4178-aa44-242bd20c2c79",
+      "note": "Module A verified_output on operator cohort (not isolated-org BO id)"
+    },
+    "verdict": "PASS — evidence substrate + BO card is correct preview pattern"
   },
   "phase2_file_chip": "SKIP",
   "phase3_live_preview": "SKIP",
   "live_verification": {
-    "checked_at": "2026-08-03T23:56:00Z",
-    "prod_run_status": "completed",
-    "cohort_14d_completed_with_verified_output": "20/39",
+    "checked_at": "2026-08-04T00:08:57Z",
     "chat_code_path": "PASS",
     "activity_runs_code_path": "PASS",
+    "bo_api_get_export": "PASS — outcome 95137db3… on tip",
     "authenticated_ui_screenshot": "NOT RUN — gravitre.app/login gate",
     "extension": "PASS no regression — no BusinessOutcome in extension; status text only",
     "api_health_git_sha": "b64add73bd2f60500694177386e617bc528bdcf7",
-    "docs_tip": "e60f3128"
+    "docs_tip_prior": "6e9148e7",
+    "mismatched_preview_mechanisms_added": false
   },
   "code_changes": false,
-  "note": "Documentation-only ship; no Railway feature redeploy required for this decision."
+  "note": "Documentation + reconfirm only; no Railway feature redeploy required. BusinessOutcome already on tip."
 }

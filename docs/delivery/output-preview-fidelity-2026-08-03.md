@@ -89,3 +89,19 @@ Runs with `verified_output` (Module A substrate for BO projection), including:
 ## Deploy note
 
 No application code changes. Tip deploy confirmation is the currently live Railway `/health` `git_sha` (BusinessOutcome already on tip from prior Module A work). This commit records the fidelity decision only.
+
+## Reconfirm under preview-fidelity prompt (2026-08-04)
+
+Re-ran Phase 0 inventory + Phase 1 live BO API check against tip `b64add73…`:
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| Phase 0 inventory unchanged | **PASS** | Connector BO dominant; durable files **no**; chat charts/HTML **no** |
+| Phase 1 BO GET + export identity | **PASS** | Outcome `95137db3-c760-4334-9b69-277e599351e0` — `projection=business_outcome`, sections include `evidence` + `verification`, GET/export identical @ `2026-08-04T00:08:57Z` |
+| Phase 2 / Phase 3 | **SKIP** | No first-class file or web-renderable chat artifacts |
+| Chat / Activity code path | **PASS (code)** | Unchanged early-return to `BusinessOutcomeView` |
+| Extension regression | **PASS** | No BO renderer; status text only |
+| UI screenshot | **NOT RUN** | Login gate |
+| Canvas | Phase 0 inventory | `canvases/output-preview-fidelity-phase0.canvas.tsx` |
+
+Artifact: `docs/delivery/output-preview-fidelity-live.json`
