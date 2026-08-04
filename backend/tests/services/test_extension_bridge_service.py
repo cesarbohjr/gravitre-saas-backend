@@ -7,6 +7,7 @@ import pytest
 
 from app.services.extension_bridge_service import (
     EXTENSION_ALLOWED_ACTIONS,
+    EXTENSION_CHAT_SIDE_PANEL_STEP_THRESHOLD,
     _apollo_person_id,
     _hubspot_contact_id,
     assert_extension_action,
@@ -57,6 +58,22 @@ def test_extension_chat_page_context_fenced_and_handoff_heuristics():
     )
     assert handoff is True
     assert hreason == "action_or_write_intent"
+    multi, mreason = should_handoff_extension_chat(
+        message="What should we do next?",
+        answer="Here is a plan.",
+        pending_task={
+            "params": {
+                "steps": [
+                    {"label": "Step A"},
+                    {"label": "Step B"},
+                    {"label": "Step C"},
+                ]
+            }
+        },
+    )
+    assert EXTENSION_CHAT_SIDE_PANEL_STEP_THRESHOLD == 3
+    assert multi is True
+    assert mreason == "multi_step_progress"
     page_answer = answer_from_extension_page_context(
         message="what is this person's full name, title, and company?",
         page_context={

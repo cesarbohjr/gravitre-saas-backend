@@ -1442,18 +1442,44 @@ def _looks_like_orchestration_instead_of_answer(answer: str, pending_task: Any) 
     )
 
 
+# Keep in sync with apps/web/lib/task-side-panel-threshold.ts (Phase 0 telemetry).
+EXTENSION_CHAT_SIDE_PANEL_STEP_THRESHOLD = 3
+
+
+def _pending_task_step_count(pending_task: Any) -> int:
+    """Count planned steps on a pending_task — same idea as countPlannedOrExecutedSteps."""
+    if pending_task is None:
+        return 0
+    params: Any = None
+    if isinstance(pending_task, dict):
+        params = pending_task.get("params")
+    else:
+        params = getattr(pending_task, "params", None)
+    if not isinstance(params, dict):
+        return 0
+    steps = params.get("steps")
+    return len(steps) if isinstance(steps, list) else 0
+
+
 def should_handoff_extension_chat(
     *,
     message: str,
     answer: str,
     tool_results: list[Any] | None = None,
+    pending_task: Any | None = None,
 ) -> tuple[bool, str]:
-    """Decide when overlay should open full Gravitree chat (same conversation)."""
+    """Decide when overlay should open full Gravitree chat (same conversation).
+
+    Multi-step work (≥ EXTENSION_CHAT_SIDE_PANEL_STEP_THRESHOLD) hands off so the
+    main-chat TaskSidePanel owns progress — overlay does not duplicate that panel.
+    """
     msg = (message or "").strip()
     if len(msg) > 400:
         return True, "longer_question"
     if _HANDOFF_ACTION_RE.search(msg):
         return True, "action_or_write_intent"
+    if _pending_task_step_count(pending_task) >= EXTENSION_CHAT_SIDE_PANEL_STEP_THRESHOLD:
+        return True, "multi_step_progress"
     for item in tool_results or []:
         name = ""
         if isinstance(item, dict):
@@ -1680,9 +1706,20 @@ async def chat_from_extension(
         message=user_msg,
         answer=answer,
         tool_results=tool_results,
+        pending_task=pending_task,
     )
-    if needs_handoff and user_msg:
+    # Re-prompt only for write intents — multi-step / approval handoffs already
+    # persisted the turn; full chat should hydrate the same transcript.
+    if needs_handoff and user_msg and handoff_reason in {
+        "action_or_write_intent",
+        "tool_write_path",
+    }:
         handoff_url = f"{handoff_url}&prompt={quote(user_msg[:500])}"
+    if needs_handoff and handoff_reason == "multi_step_progress":
+        answer = (
+            (answer + "\n\n" if answer else "")
+            + "Continue in Gravitree for the multi-step progress panel — same conversation thread."
+        ).strip()
 
     # Lightweight audit for live proof / prioritization.
     try:

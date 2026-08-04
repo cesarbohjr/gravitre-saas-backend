@@ -92,9 +92,11 @@ The overlay can list **active typed-contract workflows** and run them through th
 The overlay includes a short **Ask about this page** box. It calls the **same** unified-turn / `execute_task_streaming` path as main Gravitree chat, with page context passed in as data.
 
 **Inline (quick):** fact questions grounded in the page (name, title, company).  
-**Handoff:** write intents, long threads, or multi-step work open full Gravitree chat at `/ai?c={conversationId}` (same conversation).
+**Handoff:** write intents, long threads, or multi-step plans (≥3 steps — same threshold as the main-chat progress panel) open full Gravitree chat at `/ai?c={conversationId}` (same conversation). The overlay does **not** duplicate that progress panel.
 
 It is **not** a second reasoning stack and **not** a place to approve complex connector plans — use Continue in Gravitree when the overlay says the request needs the full app.
+
+**Live transcript proof:** conversation [`cc618049-…`](https://gravitre.app/ai?c=cc618049-0d01-481a-95f7-7b87ad045ae9) — overlay page-context answer + write handoff stub, both persisted before opening the full app.
 
 ## Troubleshooting
 

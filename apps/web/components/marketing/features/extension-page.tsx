@@ -196,8 +196,18 @@ export function ExtensionPage() {
               <h3 className="font-semibold text-zinc-900">Quick chat on the page</h3>
               <p className="mt-2 text-sm text-zinc-600">
                 Ask a short, page-contextual question in the overlay — same
-                unified-turn path as Gravitree chat. Writes and longer work hand
-                off to the full app on the same conversation thread.
+                unified-turn path as Gravitree chat. Writes and multi-step work
+                hand off to the full app on the same conversation thread (where
+                the progress panel lives). Proven thread:{" "}
+                <a
+                  className="font-medium text-emerald-700 underline-offset-2 hover:underline"
+                  href="https://gravitre.app/ai?c=cc618049-0d01-481a-95f7-7b87ad045ae9"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  overlay Q → write handoff
+                </a>
+                .
               </p>
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-5">

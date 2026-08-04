@@ -459,19 +459,46 @@
               const r = chatRes.result || {}
               conversationId = r.conversationId || conversationId
               chatReply.textContent = r.answer || "(no answer)"
+              if (r.businessOutcome) {
+                renderBusinessOutcomeCard(card, r)
+              }
               if (r.openInGravitreeUrl) lastHandoffUrl = r.openInGravitreeUrl
+              continueBtn.style.display = ""
               if (r.needsHandoff) {
-                continueBtn.style.display = ""
-                status.textContent =
-                  "This needs full Gravitree chat — continue with the same thread."
+                const reason = String(r.handoffReason || "")
+                if (reason === "multi_step_progress") {
+                  status.textContent =
+                    "Multi-step work — continue in Gravitree for the progress panel (same thread)."
+                  continueBtn.textContent = "Open progress in Gravitree"
+                } else if (
+                  reason === "action_or_write_intent" ||
+                  reason === "tool_write_path" ||
+                  reason === "approval_required"
+                ) {
+                  status.textContent =
+                    "Writes/approvals need full Gravitree chat — same conversation thread."
+                  continueBtn.textContent = "Continue in Gravitree"
+                } else {
+                  status.textContent =
+                    "Continue in Gravitree — same conversation thread."
+                  continueBtn.textContent = "Continue in Gravitree"
+                }
               } else {
-                continueBtn.style.display = ""
+                continueBtn.textContent = "Open thread in Gravitree"
+                status.textContent =
+                  "Answered here — open the same thread in Gravitree anytime."
               }
             },
           )
         })
         continueBtn.addEventListener("click", () => {
-          const path = lastHandoffUrl || "/ai"
+          let path = lastHandoffUrl || "/ai"
+          // Prefer same conversation id even if URL omitted.
+          if (conversationId && !/[?&]c=/.test(path)) {
+            const base = path.split("?")[0] || "/ai"
+            const rest = path.includes("?") ? path.slice(path.indexOf("?") + 1) : ""
+            path = `${base}?c=${encodeURIComponent(conversationId)}${rest ? `&${rest}` : ""}`
+          }
           window.open(
             `https://gravitre.app${path.startsWith("/") ? path : `/${path}`}`,
             "_blank",
