@@ -17,13 +17,18 @@ export type Session = {
   openAppUrl: string
 }
 
+/**
+ * The identity fields the server echoed back. Values are `null` (not absent)
+ * when the page did not yield them, so the UI must treat null as "not found".
+ */
 export type Extracted = {
-  fullName?: string
-  firstName?: string
-  lastName?: string
-  title?: string
-  company?: string
-  email?: string
+  fullName?: string | null
+  firstName?: string | null
+  lastName?: string | null
+  email?: string | null
+  company?: string | null
+  domain?: string | null
+  title?: string | null
 }
 
 export type EnrichMatch = {
@@ -35,8 +40,16 @@ export type EnrichMatch = {
 }
 
 export type Suggestion = {
+  id?: string
   label: string
   invokeAction: string
+  kind?: string
+  /**
+   * Server-computed, via `invoke_action_requires_write_approval`. This is the
+   * authoritative answer to "does this need the approval gate?" — the UI must
+   * not re-derive it from the action name.
+   */
+  requiresApproval?: boolean
   params?: Record<string, unknown>
   note?: string
 }
@@ -122,25 +135,27 @@ export type Surface =
   | "unknown"
 
 /**
- * What the content script scrapes from the host page and sends to /enrich.
+ * What the content script scrapes from the host page and posts to /extension/enrich.
  *
- * Field names match what the old content/*.js extractors produced, so the
- * backend contract is unchanged. Everything except `surface` and `url` is
- * optional because each host page exposes a different subset — the UI must
- * render only what is actually present rather than showing empty rows.
+ * These key names are a WIRE CONTRACT, not a local convention:
+ * `enrich_from_page_context` reads `fullName`, `firstName`, `lastName`, `email`,
+ * `company`, `domain` and `title`, and `extension_enrich` reads `source` for
+ * the usage signal. Renaming any of them (e.g. to `personName`/`companyName`)
+ * silently returns an empty enrichment, because the server finds no identity
+ * fields to match on. Every field is optional because each host page exposes a
+ * different subset.
  */
 export type PageContext = {
-  surface: Surface
-  url: string
-  companyName?: string
-  personName?: string
-  title?: string
-  industry?: string
+  fullName?: string
+  firstName?: string
+  lastName?: string
   email?: string
-  emailDomain?: string
+  company?: string
   domain?: string
-  subject?: string
-  channel?: string
-  /** Only set for `company_site`: distinguishes a careers/about page. */
+  title?: string
+  linkedinUrl?: string
+  /** Surface id the backend records against the usage signal. */
+  source?: string
+  /** Only set on a non-declared site: flags a careers/about page. */
   pageKind?: "careers_about" | "company_site"
 }

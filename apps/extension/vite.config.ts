@@ -29,6 +29,9 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: "dist",
       emptyOutDir: !isContent,
+      // public/ (manifest.json + icons) is copied by the first build only; the
+      // content pass appends to the same dist and must not re-copy or clear it.
+      copyPublicDir: !isContent,
       minify: "esbuild",
       target: "chrome116",
       cssCodeSplit: false,

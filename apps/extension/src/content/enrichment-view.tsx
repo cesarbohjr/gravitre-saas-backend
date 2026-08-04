@@ -47,6 +47,8 @@ const FIELD_ORDER: Array<{ key: keyof Extracted; label: string }> = [
   { key: "fullName", label: "Name" },
   { key: "title", label: "Title" },
   { key: "company", label: "Company" },
+  // Returned for company sites, where it is often the only identity field.
+  { key: "domain", label: "Domain" },
   { key: "email", label: "Email" },
 ]
 

@@ -1,0 +1,82 @@
+{
+  "manifest_version": 3,
+  "name": "Gravitre",
+  "version": "0.5.0",
+  "description": "Enrich pages and approve governed CRM writes — same Gravitre catalog, approvals, and Outcomes.",
+  "permissions": ["activeTab", "storage", "sidePanel", "scripting"],
+  "host_permissions": [
+    "https://www.linkedin.com/*",
+    "https://linkedin.com/*",
+    "https://mail.google.com/*",
+    "https://outlook.office.com/*",
+    "https://outlook.live.com/*",
+    "https://outlook.office365.com/*",
+    "https://*.lightning.force.com/*",
+    "https://*.salesforce.com/*",
+    "https://*.force.com/*",
+    "https://app.slack.com/*",
+    "https://gravitre.app/*",
+    "https://*.vercel.app/*",
+    "http://localhost:3000/*",
+    "https://gravitre-saas-backend-production.up.railway.app/*",
+    "https://api.gravitre.app/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Gravitre",
+    "default_popup": "popup.html"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.linkedin.com/*", "https://linkedin.com/*"],
+      "js": ["content/overlay.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://mail.google.com/*"],
+      "js": ["content/overlay.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://outlook.office.com/*",
+        "https://outlook.live.com/*",
+        "https://outlook.office365.com/*"
+      ],
+      "js": ["content/overlay.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://*.lightning.force.com/*",
+        "https://*.salesforce.com/*",
+        "https://*.force.com/*"
+      ],
+      "js": ["content/overlay.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://app.slack.com/*"],
+      "js": ["content/overlay.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://gravitre.app/*",
+      "https://*.vercel.app/*",
+      "http://localhost:3000/*"
+    ]
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
