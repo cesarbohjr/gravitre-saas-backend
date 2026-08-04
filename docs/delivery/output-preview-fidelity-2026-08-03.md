@@ -140,3 +140,15 @@ Closed open gaps from Phase 1 / reconfirm — matched preview now covers chat ha
 | Config | `CHAT_ARTIFACTS_BUCKET` / `chat_artifacts_bucket` (default `chat-artifacts`), `chat_store_hosted_files` | Create private Supabase bucket in prod for signed downloads |
 
 **Honesty notes:** PDF is text-only (minimal writer, not print-quality). No Claude-style arbitrary React sandbox — Preview is sandboxed `srcDoc` HTML/SVG + markdown. Durable downloads require Supabase Storage bucket provisioning; without it, Preview/Code still works from inline `previewHtml`/`code`.
+
+## Production wiring + live UI proof (2026-08-04)
+
+| Item | Result | Evidence |
+|------|--------|----------|
+| Supabase bucket `chat-artifacts` | **PASS** | Migration applied on prod `smyeexlrqdpymwjmgzqu`; SQL confirms private bucket 5MB |
+| Upload + signed download | **PASS** | `scripts/verify-preview-fidelity-phase23-live.py` — 5 durable files (md/html/docx/pdf/csv) @ `2026-08-04T02:30:27Z` |
+| UI harness screenshots | **PASS** | `docs/delivery/_artifacts/phase2-hosted-files-harness.png`, `phase3-preview-code-harness.png` |
+| Railway tip includes Phase 2/3 | **TRACK** | Redeploy run [30871282856](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/30871282856) briefly reached `fa34bd94` then tip observed back on `e7ab5afa` via `/health` — re-verify after next tip settle |
+| Live chat `generate_document` on tip | **NOT RUN** until tip stably includes `32a9ced3+` | Blocked by tip drift |
+
+Artifact: `docs/delivery/output-preview-fidelity-phase23-live.json`

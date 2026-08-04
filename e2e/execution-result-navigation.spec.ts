@@ -44,6 +44,10 @@ test.describe("ExecutionResult navigation buttons", () => {
     await expect(page.getByText("q3-ops-brief.md")).toBeVisible()
     await expect(page.getByText("q3-ops-brief.docx")).toBeVisible()
     await expect(page.getByTestId("preview-code-pane")).toBeVisible()
+    await page.screenshot({
+      path: "docs/delivery/_artifacts/phase2-hosted-files-harness.png",
+      fullPage: true,
+    })
   })
 
   test("preview_code scenario renders Phase 3 Preview/Code pane", async ({ page }) => {
@@ -53,6 +57,10 @@ test.describe("ExecutionResult navigation buttons", () => {
     await expect(page.getByTestId("preview-code-iframe")).toBeVisible()
     await page.getByRole("button", { name: "Code" }).click()
     await expect(page.getByTestId("preview-code-source")).toContainText("statusBreakdown")
+    await page.screenshot({
+      path: "docs/delivery/_artifacts/phase3-preview-code-harness.png",
+      fullPage: true,
+    })
   })
 
   test("business_outcome scenario renders shared evidence card (matched preview)", async ({ page }) => {

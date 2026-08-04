@@ -1,0 +1,46 @@
+{
+  "probe": "output_preview_fidelity_phase23_prod_wiring",
+  "checked_at": "2026-08-04T06:23:24.162129+00:00",
+  "base_url": "https://api.gravitre.app",
+  "min_commit": "32a9ced3",
+  "health": {
+    "http": 200,
+    "git_sha": "e7ab5afaaad0dcb2e37216180f846d19608e3be7"
+  },
+  "tip_includes_phase23": false,
+  "storage": {
+    "verdict": "PASS",
+    "project_ref": "smyeexlrqdpymwjmgzqu",
+    "buckets_sample": [
+      "rag-uploads",
+      "chat-artifacts"
+    ],
+    "chat_artifacts_present": true,
+    "hosted_file_count": 5,
+    "roles": [
+      "markdown",
+      "html",
+      "docx",
+      "pdf",
+      "csv"
+    ],
+    "durable_count": 5,
+    "sample_download_present": true,
+    "preview_html_present": true
+  },
+  "chat_generate_document": {
+    "verdict": "NOT RUN",
+    "reason": "tip does not include Phase 2/3 commit yet",
+    "git_sha": "e7ab5afaaad0dcb2e37216180f846d19608e3be7"
+  },
+  "ui_harness": {
+    "verdict": "PASS",
+    "note": "Playwright e2e hosted_files + preview_code prove chip + Preview/Code UI",
+    "scenarios": [
+      "hosted_files",
+      "preview_code"
+    ],
+    "commit": "32a9ced3"
+  },
+  "overall": "PARTIAL"
+}
