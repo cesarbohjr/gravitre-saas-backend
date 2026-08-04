@@ -668,6 +668,8 @@ def create_search_campaign(
         "status": status_norm,
         "advertisingChannelType": "SEARCH",
         "campaignBudget": budget_rn,
+        # Required by Ads API v25+ (EU Political Ads Regulation).
+        "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
         "networkSettings": {
             "targetGoogleSearch": True,
             "targetSearchNetwork": True,

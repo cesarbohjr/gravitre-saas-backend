@@ -35,20 +35,7 @@ def test_prospecting_pack_requires_clay():
     assert clay["required"] is True
 
 
-def test_manual_setup_required_for_ga_when_required():
-    asset = {
-        "asset_type": "workflow",
-        "config": {"schema_version": "2025.1", "steps": [{"id": "a", "name": "A", "type": "noop", "config": {}}]},
-        "install_variables": [],
-        "required_connectors": [
-            {"connectorType": "google_analytics", "required": True, "label": "GA"},
-        ],
-    }
-    merged = merge_install_ready(connector_can_install=True, asset=asset)
-    assert any(m["connector"] == "google_analytics" for m in merged["manualSetupRequired"])
-
-
-def test_microsoft365_cleared_from_honesty_gate_after_sta337_live_pass():
+def test_sta337_honesty_gates_cleared_after_live_pass():
     asset = {
         "asset_type": "workflow",
         "config": {"schema_version": "2025.1", "steps": [{"id": "a", "name": "A", "type": "noop", "config": {}}]},
@@ -56,9 +43,12 @@ def test_microsoft365_cleared_from_honesty_gate_after_sta337_live_pass():
         "required_connectors": [
             {"connectorType": "microsoft365", "required": True, "label": "M365"},
             {"connectorType": "google_ads", "required": True, "label": "Ads"},
+            {"connectorType": "google_analytics", "required": True, "label": "GA"},
         ],
     }
     merged = merge_install_ready(connector_can_install=True, asset=asset)
     connectors = {m["connector"] for m in merged["manualSetupRequired"]}
     assert "microsoft365" not in connectors
-    assert "google_ads" in connectors
+    assert "google_ads" not in connectors
+    assert "google_analytics" not in connectors
+    assert merged["manualSetupRequired"] == []

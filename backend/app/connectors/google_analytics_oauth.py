@@ -162,7 +162,13 @@ def _apply_property_link(
         config["property_name"] = property_name
     if property_resource:
         config["property_resource"] = property_resource
-    client.table("connectors").update({"config": config}).eq("id", connector_id).eq("org_id", org_id).execute()
+    # Mirror GSC link_gsc_site: property link completes connect (not pending_property).
+    health = dict(config.get("health") or {}) if isinstance(config.get("health"), dict) else {}
+    health["authStatus"] = "connected"
+    config["health"] = health
+    client.table("connectors").update({"config": config, "status": "connected"}).eq(
+        "id", connector_id
+    ).eq("org_id", org_id).execute()
 
 
 def link_ga4_property(
