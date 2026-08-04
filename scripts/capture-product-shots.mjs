@@ -28,8 +28,21 @@ const only = onlyIdx !== -1 ? args[onlyIdx + 1] : null
 /** Each shot targets a real surface; `wait` is copy that proves data arrived. */
 const SHOTS = [
   { name: "app-activity", view: "activity", wait: "Northwind", width: 1440, height: 900 },
-  { name: "app-approvals", view: "approvals", wait: "Northwind", width: 1440, height: 900 },
-  { name: "app-connectors", view: "connectors", wait: "HubSpot", width: 1440, height: 900 },
+  // Not "Northwind": the approvals queue renders request titles, not the org name.
+  // ?id= deep-links a request so the detail pane is populated instead of showing
+  // a half-empty "Select a request to view details" placeholder.
+  {
+    name: "app-approvals",
+    view: "approvals",
+    query: "?id=apr_01hq9d4k2m",
+    wait: "Priya Raman",
+    width: 1440,
+    height: 900,
+  },
+  // Not "HubSpot": that name also appears in the always-present "available
+  // connectors" catalog, so it matched even when zero connectors were loaded.
+  // "4 connected" can only come from the fixture data.
+  { name: "app-connectors", view: "connectors", wait: "4 connected", width: 1440, height: 900 },
 ]
 
 /**
@@ -58,6 +71,18 @@ const browser = await chromium.launch()
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: SCALE })
 
+  // top-bar reads the org from localStorage in a useState initializer, so the
+  // value must exist before ANY page script runs or it renders the hardcoded
+  // "Acme Corp" default. The layout's own seed is too late for that first paint.
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "gravitre:selectedOrg",
+      // Must match DEMO_ORG_ID in lib/e2e-shot-fixtures.ts.
+      JSON.stringify({ id: "00000000-0000-0000-0000-000000000001", name: "Northwind Logistics" })
+    )
+    localStorage.setItem("gravitre-welcome-dismissed", "true")
+  })
+
   const errors = []
   page.on("console", (m) => {
     if (m.type() === "error") errors.push(m.text().slice(0, 160))
@@ -83,14 +108,42 @@ try {
     process.exit(0)
   }
 
+  // --debug dumps rendered text + uncaught errors for one view. textContent()
+  // includes inline <script> source, which makes failures look like gibberish;
+  // innerText shows only what is actually visible.
+  if (args.includes("--debug")) {
+    const view = only ?? "approvals"
+    const pageErrors = []
+    page.on("pageerror", (e) => pageErrors.push(String(e).slice(0, 300)))
+    await page.goto(`${BASE}/e2e/shots/${view}`, { waitUntil: "networkidle" })
+    await page.waitForTimeout(7000)
+    const visible = await page.evaluate(() => document.body.innerText)
+    console.log(`landed on: ${new URL(page.url()).pathname}`)
+    console.log(`visible text (${visible.length} chars):`)
+    console.log(visible.slice(0, 600))
+    if (pageErrors.length) {
+      console.log("page errors:")
+      pageErrors.slice(0, 5).forEach((e) => console.log(`  ${e}`))
+    }
+    if (errors.length) {
+      console.log("console errors:")
+      ;[...new Set(errors)].slice(0, 8).forEach((e) => console.log(`  ${e}`))
+    }
+    process.exit(0)
+  }
+
   await mkdir(OUT, { recursive: true })
   let failed = 0
 
   for (const shot of SHOTS) {
     if (only && shot.view !== only) continue
-    const url = `${BASE}/e2e/shots/${shot.view}`
+    const url = `${BASE}/e2e/shots/${shot.view}${shot.query ?? ""}`
     await page.setViewportSize({ width: shot.width, height: shot.height })
     await page.goto(url, { waitUntil: "networkidle" })
+    // The layout seeds gravitre:selectedOrg on first paint, but top-bar reads it
+    // in a useState initializer, so the first render can still show the "Acme
+    // Corp" default. Reload once so it hydrates from the seeded value.
+    await page.reload({ waitUntil: "networkidle" })
 
     try {
       // Proves real data rendered, rather than a spinner or empty state.

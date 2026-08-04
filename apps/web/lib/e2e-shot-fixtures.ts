@@ -151,6 +151,186 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   __supabaseUser: supabaseUser,
   __orgId: DEMO_ORG_ID,
 
+  // Shape must match the `Connector` interface in app/connectors/page.tsx.
+  // Requested as /api/connectors?org=…&live=1; the harness matches on pathname
+  // only, so the query string is irrelevant here.
+  "/api/connectors": {
+    connectors: [
+      {
+        id: "con_hubspot",
+        name: "HubSpot",
+        type: "crm",
+        vendorKey: "hubspot",
+        status: "connected",
+        environment: "production",
+        lastSync: T(3),
+        health: 99,
+        description: "Marketing, sales, and service",
+        category: "CRM",
+        authType: "oauth",
+        authStatus: "active",
+        requestsToday: 1284,
+        latency: 210,
+        dataFlowRate: "1.2k/day",
+        usedByWorkflows: 4,
+        triggeredByAgents: 2,
+      },
+      {
+        id: "con_salesforce",
+        name: "Salesforce",
+        type: "crm",
+        vendorKey: "salesforce",
+        status: "error",
+        environment: "production",
+        lastSync: T(96),
+        health: 42,
+        description: "CRM and sales automation",
+        category: "CRM",
+        authType: "oauth",
+        authStatus: "active",
+        requestsToday: 318,
+        latency: 540,
+        blockingReason: "Connected user lacks edit access on Opportunity objects.",
+        recoveryAction: "Grant the connected user edit access, then re-run the blocked step.",
+        usedByWorkflows: 3,
+        triggeredByAgents: 1,
+      },
+      {
+        id: "con_zendesk",
+        name: "Zendesk",
+        type: "support",
+        vendorKey: "zendesk",
+        status: "connected",
+        environment: "production",
+        lastSync: T(12),
+        health: 97,
+        description: "Support tickets and macros",
+        category: "Support",
+        authType: "oauth",
+        authStatus: "active",
+        requestsToday: 642,
+        latency: 260,
+        dataFlowRate: "640/day",
+        usedByWorkflows: 2,
+        triggeredByAgents: 1,
+      },
+      {
+        id: "con_slack",
+        name: "Slack",
+        type: "messaging",
+        vendorKey: "slack",
+        status: "syncing",
+        environment: "production",
+        lastSync: T(1),
+        health: 95,
+        description: "Notifications and approvals",
+        category: "Productivity",
+        authType: "oauth",
+        authStatus: "active",
+        requestsToday: 87,
+        latency: 180,
+        usedByWorkflows: 5,
+        triggeredByAgents: 0,
+      },
+    ],
+  },
+
+  // ensureSelectedOrg() resolves the active org from this list and calls
+  // purgeStaleDemoOrgFromStorage(), which DELETES the seeded gravitre:selectedOrg
+  // if its id is absent here. Without this the top bar falls back to its
+  // hardcoded "Acme Corp" default.
+  "/api/organizations": {
+    organizations: [
+      { id: DEMO_ORG_ID, name: "Northwind Logistics", slug: "northwind-logistics", role: "admin" },
+    ],
+  },
+
+  // Shape must match the `Approval` interface in app/approvals/page.tsx;
+  // normalizeApprovalsResponse drops any entry without an `id`.
+  "/api/approvals": {
+    approvals: [
+      {
+        id: "apr_01hq9d4k2m",
+        title: "Create HubSpot contact for Priya Raman",
+        description:
+          "Inbound lead from the pricing page. Gravitre matched no existing contact and prepared a create with the enriched company record.",
+        type: "workflow",
+        environment: "production",
+        requestedBy: "Inbound lead triage",
+        requestedAt: T(4),
+        priority: "high",
+        status: "pending",
+        aiRecommendation: {
+          // Whole percent: the UI renders `{confidence}%` verbatim, so 0.94 would
+          // display as "0.94% confidence".
+          action: "approve",
+          confidence: 94,
+          reason: "No duplicate contact found. Company domain verified against the enriched record.",
+        },
+        slaDeadline: T(-56),
+        slaMinutesRemaining: 56,
+        slaBreached: false,
+        context: {
+          entity: "HubSpot contact",
+          action: "hubspot.contacts.create",
+          impact: "Creates one contact and associates it with Northwind Logistics.",
+          runId: "run_01hq9d4k2m",
+        },
+      },
+      {
+        id: "apr_01hq9c8b1x",
+        title: "Update Salesforce opportunity stage to Negotiation",
+        description:
+          "Zendesk thread confirms the procurement call is booked. Gravitre prepared the stage change on opportunity 0064x.",
+        type: "workflow",
+        environment: "production",
+        requestedBy: "Deal desk sync",
+        requestedAt: T(38),
+        priority: "medium",
+        status: "pending",
+        aiRecommendation: {
+          action: "review",
+          confidence: 61,
+          reason: "Close date is unchanged while the stage advances — worth a human check.",
+        },
+        slaDeadline: T(-182),
+        slaMinutesRemaining: 182,
+        slaBreached: false,
+        context: {
+          entity: "Salesforce opportunity 0064x",
+          action: "salesforce.opportunity.update",
+          impact: "Changes StageName on one opportunity.",
+          runId: "run_01hq9c8b1x",
+        },
+      },
+      {
+        id: "apr_01hq9a2f7t",
+        title: "Grant Zendesk write scope to the support workflow",
+        description:
+          "The macro-apply step needs ticket write access. Gravitre is holding until an admin approves the scope change.",
+        type: "connector",
+        environment: "production",
+        requestedBy: "Dana Whitfield",
+        requestedAt: T(126),
+        priority: "low",
+        status: "pending",
+        aiRecommendation: {
+          action: "review",
+          confidence: 48,
+          reason: "Scope expansion is permanent until revoked. Confirm the workflow still needs it.",
+        },
+        slaDeadline: null,
+        slaMinutesRemaining: null,
+        slaBreached: false,
+        context: {
+          entity: "Zendesk connector",
+          action: "connector.scope.grant",
+          impact: "Adds tickets:write for every workflow using this connector.",
+        },
+      },
+    ],
+  },
+
   "/api/billing/status": {
     canAccessApp: true,
     billingStatus: "active",
