@@ -5,7 +5,7 @@ type PendingLike = {
   params?: {
     steps?: unknown[] | null
   } | null
-} | null
+} | null | undefined
 
 export function countPlannedOrExecutedSteps(
   progressSteps: string[] | null | undefined,
