@@ -307,16 +307,26 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
 
   // Show loading only on the first auth/billing bootstrap — not on background revalidation.
   const awaitingInitialBilling = Boolean(user) && billingLoading && billingStatusData === undefined
-  if (loading || awaitingInitialBilling) {
-    return <CenteredLoader size="lg" label="Loading workspace" fill="viewport" />
-  }
 
-  if (!user) {
-    return <CenteredLoader size="lg" label="Loading workspace" fill="viewport" />
-  }
+  // Screenshot/E2E surfaces supply auth + billing as fixtures rather than real
+  // sessions. Without this the bootstrap gates below never clear and every
+  // capture silently returns the "Loading workspace" loader instead of the
+  // product. Compiled out of production builds by the NODE_ENV check.
+  const e2eBypassBootstrap =
+    process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_PLAYWRIGHT_E2E === "1"
 
-  if (billingHardBlock && !billingError && !pathname.startsWith("/settings/billing") && !pathname.startsWith("/pricing")) {
-    return <CenteredLoader size="lg" label="Loading workspace" fill="viewport" />
+  if (!e2eBypassBootstrap) {
+    if (loading || awaitingInitialBilling) {
+      return <CenteredLoader size="lg" label="Loading workspace" fill="viewport" />
+    }
+
+    if (!user) {
+      return <CenteredLoader size="lg" label="Loading workspace" fill="viewport" />
+    }
+
+    if (billingHardBlock && !billingError && !pathname.startsWith("/settings/billing") && !pathname.startsWith("/pricing")) {
+      return <CenteredLoader size="lg" label="Loading workspace" fill="viewport" />
+    }
   }
 
   // If billing API errored, log warning but allow through (fail open)
