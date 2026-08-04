@@ -4,6 +4,9 @@
 Prospecting / MSP common intents on unified LIVE (operator org).
 Writes docs/delivery/part3-pack-oneshot-approve-battery-live.json
 
+Always soft-deletes created part3-oneshot conversations before exit so they
+do not pollute Chat AI history (STA-336 hygiene / operator org).
+
 Expect:
   expect_mode=approve_first → pending_task.status=awaiting_confirm (not awaiting_params)
   expect_mode=clarify_once → clarifying_question / awaiting_params with specific question
@@ -500,6 +503,40 @@ async def run_case(
     }
 
 
+def soft_delete_battery_conversations(sb: Any, cases: list[dict[str, Any]]) -> list[str]:
+    """Hide part3-oneshot threads from Chat AI history after the battery finishes."""
+    now = utcnow()
+    deleted: list[str] = []
+    for case in cases:
+        cid = str(case.get("conversation_id") or "").strip()
+        if not cid:
+            continue
+        try:
+            row = (
+                sb.table("conversations")
+                .select("task_state")
+                .eq("id", cid)
+                .eq("org_id", ORG)
+                .limit(1)
+                .execute()
+            )
+            prev = {}
+            if row.data and isinstance(row.data[0].get("task_state"), dict):
+                prev = dict(row.data[0]["task_state"])
+            prev["_part3_battery_cleanup"] = {
+                "soft_deleted_at": now,
+                "why": "Part 3 oneshot battery — soft-delete so Chat AI history stays clean",
+                "case_id": case.get("id"),
+            }
+            sb.table("conversations").update(
+                {"task_state": prev, "deleted_at": now, "updated_at": now}
+            ).eq("id", cid).eq("org_id", ORG).is_("deleted_at", "null").execute()
+            deleted.append(cid)
+        except Exception as exc:  # noqa: BLE001
+            case["soft_delete_error"] = str(exc)[:200]
+    return deleted
+
+
 async def main() -> int:
     env = load_env()
     for k, v in env.items():
@@ -539,18 +576,24 @@ async def main() -> int:
         "slice": "part3",
         "cases": [],
     }
+    sha = ""
 
-    async with httpx.AsyncClient() as client:
-        health = (await client.get(f"{BASE}/health", timeout=30)).json()
-        sha = str(health.get("git_sha") or "")
-        report["git_sha"] = sha
-        if EXPECT_SHA and not sha.startswith(EXPECT_SHA):
-            report["verdict"] = f"NOT RUN — tip mismatch got={sha[:12]} want={EXPECT_SHA}"
-            OUT.write_text(json.dumps(report, indent=2), encoding="utf-8")
-            return 2
+    try:
+        async with httpx.AsyncClient() as client:
+            health = (await client.get(f"{BASE}/health", timeout=30)).json()
+            sha = str(health.get("git_sha") or "")
+            report["git_sha"] = sha
+            if EXPECT_SHA and not sha.startswith(EXPECT_SHA):
+                report["verdict"] = f"NOT RUN — tip mismatch got={sha[:12]} want={EXPECT_SHA}"
+                OUT.write_text(json.dumps(report, indent=2), encoding="utf-8")
+                return 2
 
-        for case in CASES:
-            report["cases"].append(await run_case(client, sb, headers, case, started))
+            for case in CASES:
+                report["cases"].append(await run_case(client, sb, headers, case, started))
+    finally:
+        report["soft_deleted_conversation_ids"] = soft_delete_battery_conversations(
+            sb, report.get("cases") or []
+        )
 
     hard = [c for c in report["cases"] if not c.get("soft")]
     passes = [c for c in hard if str(c["verdict"]).startswith("PASS")]
@@ -578,6 +621,7 @@ async def main() -> int:
         "approve_first_total": len(approve_cases),
         "clarify_once_ok": len(clarify_ok),
         "clarify_once_total": len(clarify_expect),
+        "soft_deleted_count": len(report.get("soft_deleted_conversation_ids") or []),
     }
     report["verdict"] = (
         "PASS"

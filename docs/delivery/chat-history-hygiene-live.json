@@ -1,10 +1,10 @@
 {
   "probe": "chat_history_hygiene_live",
-  "started_at": "2026-07-31T08:34:33.771314+00:00",
+  "started_at": "2026-08-04T07:51:05.034294+00:00",
   "base_url": "https://api.gravitre.app",
   "prod_health": {
     "http": 200,
-    "git_sha": "e52a12ac4e7cf40add7588a77067081bd5692381",
+    "git_sha": "ad9ed303cede30c8b4b16d5161c0dc068e4b488e",
     "status": "ok"
   },
   "list_budget_ms": 2000,
@@ -13,9 +13,27 @@
       "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
       "actor_id": "f7e32f06-49df-4e73-8962-f41c21850762",
       "http": 200,
-      "ms": 421,
-      "visible_count": 1,
+      "ms": 506,
+      "visible_count": 19,
       "titles": [
+        "Extension: Using only the overlay page context, answer in one sentence:",
+        "Extension: Using only the overlay page context, answer in one sentence:",
+        "Extension: Using only the overlay page context, answer in one sentence:",
+        "Extension: Using only the overlay page context, answer in one sentence:",
+        "Extension: Using only the overlay page context, answer in one sentence:",
+        "Extension: Using only the overlay page context, answer in one sentence:",
+        "Extension: Using only the overlay page context, answer in one sentence:",
+        "Extension: Using only the overlay page context, answer in one sentence:",
+        "Extension: Using only the overlay page context, answer in one sentence:",
+        "Extension: Using only the overlay page context, answer in one sentence:",
+        "Extension: Using only the overlay page context, answer in one sentence:",
+        "Extension: Using only the overlay page context, answer in one sentence:",
+        "Extension: Using only the overlay page context, answer in one sentence:",
+        "Extension: Using only the overlay page context, answer in one sentence:",
+        "Extension: Using only the overlay page context, answer in one sentence:",
+        "Extension: Using only the page_context facts, answer in one sentence: w",
+        "Extension: Using only the page_context facts, answer in one sentence: w",
+        "Extension: In one sentence, who is this person and where do they work?",
         "What agents are currently active?"
       ],
       "empty_message_count_rows": 0,
@@ -29,27 +47,27 @@
       "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
       "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
       "http": 200,
-      "ms": 701,
+      "ms": 374,
       "visible_count": 100,
       "empty_message_count_rows": 0,
       "pass_no_empties": true,
       "pass_latency": true
     },
     "deferred_create": {
-      "conversation_id": "431922b0-84a6-454f-a635-e36b48b2929c",
+      "conversation_id": "8d368f3b-835b-4e52-9d08-8010ecd0a213",
       "pre_list_had_id": false,
       "chat_http": 200,
-      "chat_ms": 10460,
-      "chat_text_head": "history-hygiene-ok (431922b0)",
+      "chat_ms": 9681,
+      "chat_text_head": "history-hygiene-ok (8d368f3b)",
       "post_list_http": 200,
-      "post_list_ms": 394,
+      "post_list_ms": 1061,
       "listed_after_chat": true,
       "listed_message_count": 2,
       "db_row": {
-        "id": "431922b0-84a6-454f-a635-e36b48b2929c",
+        "id": "8d368f3b-835b-4e52-9d08-8010ecd0a213",
         "message_count": 2,
         "deleted_at": null,
-        "title": "Reply with exactly: history-hygiene-ok (431922b0)"
+        "title": "Reply with exactly: history-hygiene-ok (8d368f3b)"
       },
       "db_message_rows": 2,
       "pass_not_listed_before_send": true,
@@ -58,5 +76,5 @@
     }
   },
   "verdict": "PASS",
-  "finished_at": "2026-07-31T08:34:46.738065+00:00"
+  "finished_at": "2026-08-04T07:51:18.565226+00:00"
 }

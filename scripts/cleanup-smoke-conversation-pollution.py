@@ -40,13 +40,16 @@ TITLE_SQL = """(
   OR c.title ILIKE 'gravitre-%'
   OR c.title ILIKE 'CanvasGovProbe%'
   OR c.title ILIKE 'PartD-%'
+  OR c.title ILIKE 'part3-%'
+  OR c.title ILIKE '%oneshot%'
+  OR c.title ILIKE '%STA-339%'
   OR c.title ILIKE '%spotcheck%'
   OR c.title ILIKE 'STA322%'
   OR c.title ILIKE 'STA305%'
   OR c.title ILIKE '%High-intent execution-link%'
   OR c.title ILIKE '%Routing Wave Live%'
   OR c.title ILIKE '%Isolated guard verify%'
-  OR c.title ~* '(perf-audit|retrieval-ab|wave67|STA-307|Workflow E2E|gravitre-(react|wave67|flake|planforce|retrieval)|claim[34]|spotcheck)'
+  OR c.title ~* '(perf-audit|retrieval-ab|wave67|STA-307|Workflow E2E|gravitre-(react|wave67|flake|planforce|retrieval)|claim[34]|spotcheck|part3-oneshot|part3-|oneshot|STA-339)'
 )"""
 
 
@@ -127,7 +130,8 @@ def _fetch_candidates(client) -> list[dict]:
         r"(perf-audit|retrieval-ab|wave67|STA-307|Workflow E2E|"
         r"gravitre-(react|wave67|flake|planforce|retrieval)|claim[34]|spotcheck|"
         r"CanvasGovProbe|High-intent execution-link|Routing Wave Live|"
-        r"Isolated guard verify|PartD-|STA322|STA305)",
+        r"Isolated guard verify|PartD-|STA322|STA305|"
+        r"part3-oneshot|part3-|oneshot|STA-339)",
         re.I,
     )
 
@@ -250,7 +254,8 @@ def main() -> int:
     import re
 
     title_re = re.compile(
-        r"(perf-audit|retrieval-ab|wave67|STA-307|Workflow E2E|gravitre-|spotcheck|claim[34])",
+        r"(perf-audit|retrieval-ab|wave67|STA-307|Workflow E2E|gravitre-|spotcheck|claim[34]|"
+        r"part3-oneshot|part3-|oneshot|STA-339)",
         re.I,
     )
     residual_pattern = [r for r in remaining if title_re.search(str(r.get("title") or ""))]

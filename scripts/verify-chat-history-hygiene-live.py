@@ -49,7 +49,8 @@ TITLE_RE = re.compile(
     r"(perf-audit|retrieval-ab|wave67|STA-307|Workflow E2E|"
     r"gravitre-(react|wave67|flake|planforce|retrieval)|claim[34]|spotcheck|"
     r"CanvasGovProbe|High-intent execution-link|Routing Wave Live|"
-    r"Isolated guard verify|PartD-|STA322|STA305)",
+    r"Isolated guard verify|PartD-|STA322|STA305|"
+    r"part3-oneshot|part3-|oneshot|STA-339)",
     re.I,
 )
 
