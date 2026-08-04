@@ -53,6 +53,17 @@ When a public or unlisted listing is available, open the store link from [Browse
 2. Sign in at `gravitre.app` if needed and select the org.
 3. On `/extension/connect`, authorize — the page sends your session to the extension (same JWT + org as the web app).
 
+<Screenshot
+  src="/product/extension-popup.png"
+  alt="Extension popup with a green Connected badge, the authorized org id org_7f3c9a21b4e8, an Admin role chip, three active connectors (HubSpot, Apollo, Slack), and buttons to enrich the current LinkedIn page, open the side panel, or expand What Gravitre can see."
+  route="Extension popup"
+  caption="Illustrative data — seeded demo workspace, not customer metrics"
+/>
+
+A connected popup shows the **org id you authorized** and your role, plus the
+connectors currently active for it. Check the org id here before enriching —
+it is the org every read and write will be attributed to.
+
 If connect fails: confirm you opened Connect **from the extension** (so `ext_id` is present), you are signed in, and an org is selected.
 
 ## First value — enrich and approve a write
@@ -63,7 +74,43 @@ If connect fails: confirm you opened Connect **from the extension** (so `ext_id`
 4. Choose a suggested write (e.g. create contact / create list) → **Approve**.
 5. Open **Outcomes** / **Runs** — the run should show `source=browser_extension` and a completed notification fanout.
 
+The overlay separates what it **read from the page** from what each **connector
+returned**, so a missing result is legible rather than mysterious — below,
+Apollo matched but HubSpot came back `unavailable` with the reason.
+
+<Screenshot
+  src="/product/extension-overlay-enrich.png"
+  alt="Extension overlay on a LinkedIn profile. A Read from this page table lists name, title, company, domain, and email. Connector lookups show Apollo matched via apollo.people.match and HubSpot unavailable via hubspot.contacts.search with the reason no contact with that email. Suggested writes offer Create HubSpot contact and Log a note, followed by workflows and an Ask about this page box."
+  route="linkedin.com/in/… — Gravitre overlay"
+  caption="Illustrative data — seeded demo workspace, not customer metrics"
+/>
+
+Choosing a suggested write does **not** write anything yet. The overlay first
+shows the exact field-by-field payload and the catalog action it will call, and
+the footer stays pinned to **Writes need approval**:
+
+<Screenshot
+  src="/product/extension-approval.png"
+  alt="The same overlay with a Confirm this write panel open. It names the target connector HubSpot and the action hubspot.contact.create, lists the data to be written as email, firstname, lastname, company, and jobtitle, notes that the contact was not found in HubSpot so this creates a new record, states that it runs with catalog_write_authority and is recorded in Outcomes, and offers Approve and run or Cancel."
+  route="linkedin.com/in/… — confirm write"
+  caption="Illustrative data — seeded demo workspace, not customer metrics"
+/>
+
 That sequence is the product “aha”: the write is the same governed path as chat, not a parallel automation stack.
+
+## Optional — the side panel
+
+If you would rather keep Gravitre docked than open the overlay on top of the
+page, use **Open side panel** in the popup. It targets the **current tab** only
+and runs the same governed catalog path — it is a different placement, not a
+different engine.
+
+<Screenshot
+  src="/product/extension-sidepanel.png"
+  alt="Gravitre side panel docked beside a browser tab. A Current tab card names LinkedIn with the profile URL and an Enrich this page button. Below, a Workspace section shows the org id and Admin role, three active connectors, and a collapsed What Gravitre can see panel."
+  route="Extension side panel"
+  caption="Illustrative data — seeded demo workspace, not customer metrics"
+/>
 
 ## Permissions (why we ask)
 
@@ -76,6 +123,16 @@ That sequence is the product “aha”: the write is the same governed path as c
 
 We do **not** request `debugger`, `<all_urls>`, or background crawling.
 
+You can audit this yourself at any time — the popup's **What Gravitre can see**
+panel lists the exact hosts and restates the read and write limits:
+
+<Screenshot
+  src="/product/extension-scope.png"
+  alt="Extension popup with the What Gravitre can see panel expanded. An Only these sites list shows linkedin.com, mail.google.com, outlook.office.com, outlook.live.com, outlook.office365.com, lightning.force.com, salesforce.com, force.com, and app.slack.com. Text below explains that nothing is read until the overlay is opened and only on the current tab, that other tabs are never read, that nothing is written without explicit approval, and that writes are limited to five approved catalog actions."
+  route="Extension popup — permission scope"
+  caption="Illustrative data — seeded demo workspace, not customer metrics"
+/>
+
 ## Trigger a workflow from the overlay (v3)
 
 The overlay can list **active typed-contract workflows** and run them through the same execute path as chat (plan steps → approve → Outcomes). It does **not** invent new workflow logic in the extension.
@@ -85,6 +142,16 @@ The overlay can list **active typed-contract workflows** and run them through th
 3. Review the plan steps (same shape as chat’s plan bar).
 4. **Approve & run** — confirm uses the server token; execution is the shared engine path.
 5. Open Outcomes for the run — full step chain, `source=browser_extension`.
+
+Expanding a workflow shows every step and the catalog action behind it before
+you approve, so “3 steps” is auditable rather than opaque:
+
+<Screenshot
+  src="/product/extension-workflow.png"
+  alt="Extension overlay with the Inbound lead triage workflow expanded to three numbered steps: enrich contact via apollo.person.enrich, create CRM record via hubspot.contact.create, and notify #sales via slack.message.post. A note says approving runs every step and each write is recorded in Outcomes, with Approve and run workflow or Cancel actions. A second workflow, Draft QBR summary, is listed as two steps."
+  route="linkedin.com/in/… — workflow plan"
+  caption="Illustrative data — seeded demo workspace, not customer metrics"
+/>
 
 **Live example (production tip verify):** workflow *MSP NVD CVE Lookup* completed with steps `nvd.cve.get` + `cisa_kev.feed.get` — run [`139fd6cc-7d53-4dfd-ac1b-c59e902109ea`](https://gravitre.app/outcomes/139fd6cc-7d53-4dfd-ac1b-c59e902109ea).
 
