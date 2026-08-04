@@ -6,8 +6,11 @@ Evidence: `docs/delivery/browser-extension-v2-tip-verify.json`, run `75279569-â€
 
 ## Updates
 
-- Setup guide surface table + host allowlist permissions (Salesforce, Slack, careers/about)
+- Setup guide surface table + host allowlist permissions (careers/about proven; Salesforce/Slack noted)
 - Marketing `/features/extension` surface list + usage-signal honesty
 - FAQ install blurb includes v2 surfaces
 
-Claims still omit overlay workflows, overlay chat, and Edge/Brave until those version docs land.
+## Correction (2026-08-03 STEP 0)
+
+Salesforce / Slack were marketed as supported without surface-specific Outcomes proof.  
+See `docs/delivery/browser-extension-v2-salesforce-slack-gap-2026-08-03.md` â€” public copy now labels them **Coming soon**.

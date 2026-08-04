@@ -25,8 +25,9 @@ The **Gravitree browser extension** is a front door onto the same catalog, appro
 |------|-----------|
 | Browser | **Chrome, Edge, and Brave** (same Chromium MV3 pack). **Not supported:** Firefox, Safari, mobile. |
 | Surfaces (v1) | LinkedIn profiles (`/in/…`), Gmail, Outlook web, company sites (via toolbar / active tab) |
-| Surfaces (v2) | Salesforce Lightning / Force hosts, Slack web (`app.slack.com`), careers / about pages (path markers + active tab) |
-| Reads | Catalog match/search (Apollo / HubSpot / Salesforce lead search / Slack user info when connected) |
+| Surfaces (v2, proven) | Careers / about pages (path markers + active tab) — enrich + approved write + Outcomes |
+| Surfaces (coming soon) | Salesforce Lightning / Force hosts, Slack web (`app.slack.com`) — hosts allowlisted; not live-proven yet |
+| Reads | Catalog match/search (Apollo / HubSpot when connected; Salesforce / Slack reads when those connectors ship surface proof) |
 | Writes | Propose → **approve in overlay** → catalog write; `source=browser_extension` in Outcomes |
 | Usage signals | Hosts you try (including outside the allowlist) are recorded for prioritization — not silent permission expansion |
 | Not in scope | Agentic form filling, InMail automation, clicking CRM UI, Firefox / Safari / mobile |
@@ -68,7 +69,7 @@ That sequence is the product “aha”: the write is the same governed path as c
 
 | Permission | Why |
 |------------|-----|
-| Host allowlist (LinkedIn, Gmail, Outlook, Salesforce, Slack, Gravitree) | Overlay + API only on named hosts — each host added explicitly |
+| Host allowlist (LinkedIn, Gmail, Outlook, Gravitree; Salesforce / Slack hosts reserved) | Overlay + API only on named hosts — Salesforce / Slack listed as coming soon until Outcomes-proven |
 | `activeTab` | Company-site overlay when you invoke it |
 | `storage` | Session token + org id |
 | `scripting` / `sidePanel` | Inject overlay / optional side panel |

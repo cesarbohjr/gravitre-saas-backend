@@ -47,14 +47,19 @@ const activationSteps = [
   },
 ] as const
 
-const surfaces = [
+/** Proven with enrich + approved write + Outcomes (v1 / v2 gate). */
+const surfacesProven = [
   "LinkedIn profiles",
   "Gmail",
   "Outlook on the web",
   "Company websites (when you invoke Enrich)",
+  "Careers / about pages (path-matched)",
+] as const
+
+/** Host-allowlisted in the pack; not marketed as live until surface-specific Outcomes proof. */
+const surfacesComingSoon = [
   "Salesforce Lightning / Force hosts",
   "Slack web (app.slack.com)",
-  "Careers / about pages (path-matched)",
 ] as const
 
 export function ExtensionPage() {
@@ -153,14 +158,28 @@ export function ExtensionPage() {
             <p className="mt-3 text-zinc-600">
               Explicit host allowlist — no silent expansion. Page context only;
               creates and list membership use governed catalog actions (Apollo /
-              HubSpot / Salesforce where connected). Outside-allowlist attempts
-              are recorded as usage signals for prioritization, not as new
-              permissions.
+              HubSpot where connected). Outside-allowlist attempts are recorded
+              as usage signals for prioritization, not as new permissions.
             </p>
             <ul className="mt-6 space-y-3">
-              {surfaces.map((s) => (
+              {surfacesProven.map((s) => (
                 <li key={s} className="flex items-start gap-2 text-zinc-800">
                   <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+                  <span>{s}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-6 text-sm font-medium text-zinc-700">Coming soon</p>
+            <p className="mt-1 text-sm text-zinc-500">
+              Hosts are allowlisted in the extension pack; enrich → approve →
+              Outcomes on these surfaces is not yet live-proven.
+            </p>
+            <ul className="mt-3 space-y-2">
+              {surfacesComingSoon.map((s) => (
+                <li key={s} className="flex items-start gap-2 text-zinc-600">
+                  <span className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-amber-700">
+                    Soon
+                  </span>
                   <span>{s}</span>
                 </li>
               ))}
