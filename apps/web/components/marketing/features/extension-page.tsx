@@ -19,6 +19,7 @@ import {
   hasChromeWebStoreListing,
 } from "@/lib/extension-install"
 import { ProductScreenshot } from "@/components/marketing/product-screenshot"
+import { BrowserFrame } from "@/components/marketing/browser-frame"
 
 const activationSteps = [
   {
@@ -120,6 +121,27 @@ export function ExtensionPage() {
             </p>
           </motion.div>
         </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="relative mx-auto mt-14 max-w-3xl px-6"
+        >
+          <BrowserFrame
+            url="linkedin.com/in/…"
+            tabTitle="LinkedIn"
+            placement="popup"
+            priority
+            panel={{
+              src: "/product/extension-popup.png",
+              alt: "Gravitree extension popup showing a connected org session, three active connectors (HubSpot, Apollo, Slack), and an Enrich this LinkedIn page button.",
+              width: 720,
+              height: 714,
+            }}
+            caption="Real extension UI, seeded demo workspace — not customer data. Page behind it is a neutral placeholder."
+          />
+        </motion.div>
       </section>
 
       <section className="border-t border-zinc-100 py-16">
@@ -155,9 +177,80 @@ export function ExtensionPage() {
       <section className="border-t border-zinc-100 py-16">
         <div className="mx-auto max-w-5xl px-6">
           <h2 className="text-center text-2xl font-bold text-zinc-900 sm:text-3xl">
-            Where steps 4 and 5 actually land
+            Steps 3 and 4, on the page
           </h2>
           <p className="mx-auto mt-3 max-w-2xl text-center text-zinc-600">
+            The overlay opens beside whatever you are already looking at. You
+            never leave the tab to enrich, and you never leave it to approve.
+          </p>
+          <div className="mt-12 grid gap-10 lg:grid-cols-2">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <h3 className="font-semibold text-zinc-900">
+                Step 3 — enrich from page context
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+                Catalog reads run against the tab you are on. Nothing is read
+                until you open the overlay.
+              </p>
+              <BrowserFrame
+                className="mt-5"
+                url="linkedin.com/in/…"
+                tabTitle="LinkedIn"
+                panel={{
+                  src: "/product/extension-overlay-enrich.png",
+                  alt: "Gravitree overlay panel open on a LinkedIn profile, showing enriched company and contact fields pulled from catalog reads.",
+                  width: 760,
+                  height: 1802,
+                }}
+                caption="Real extension UI, seeded demo data — not a real contact. Page behind it is a neutral placeholder."
+              />
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.05 }}
+            >
+              <h3 className="font-semibold text-zinc-900">
+                Step 4 — confirm the write
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+                The overlay names the exact catalog action before anything is
+                committed. One confirmation, in the same panel.
+              </p>
+              <BrowserFrame
+                className="mt-5"
+                url="linkedin.com/in/…"
+                tabTitle="LinkedIn"
+                // The confirm block is at the end of this panel — anchor to
+                // the bottom so the actual approval is what you see.
+                panelAlign="bottom"
+                panel={{
+                  src: "/product/extension-approval.png",
+                  alt: "Gravitree overlay panel showing a staged HubSpot contact create awaiting confirmation, with the catalog action and target fields listed.",
+                  width: 760,
+                  height: 2358,
+                }}
+                caption="Real extension UI, seeded demo data — not a real contact. Page behind it is a neutral placeholder."
+              />
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-zinc-100 py-16">
+        <div className="mx-auto max-w-5xl px-6">
+          <p className="text-center text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            Supporting proof
+          </p>
+          <h2 className="mt-2 text-center text-xl font-bold text-zinc-900">
+            No separate queue, no separate audit trail
+          </h2>
+          <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-zinc-600">
             The overlay does not get its own approval queue or audit trail. A
             staged write waits in the same Approvals queue as chat, and the run
             lands in the same Activity feed — tagged with its source.
@@ -171,12 +264,13 @@ export function ExtensionPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <h3 className="font-semibold text-zinc-900">
-                Step 4 — approve the write
+              <h3 className="text-sm font-semibold text-zinc-900">
+                Step 4, in the app — the shared Approvals queue
               </h3>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-600">
-                Every staged write shows the exact catalog action, its blast
-                radius, and who asked for it before anything is committed.
+                The same confirmation you just saw in the overlay also appears
+                here, with the exact catalog action, its blast radius, and who
+                asked for it.
               </p>
               <ProductScreenshot
                 className="mt-5"
@@ -190,8 +284,8 @@ export function ExtensionPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <h3 className="font-semibold text-zinc-900">
-                Step 5 — see it in Outcomes
+              <h3 className="text-sm font-semibold text-zinc-900">
+                Step 5, in the app — see it in Outcomes
               </h3>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-600">
                 Extension runs appear with source{" "}
