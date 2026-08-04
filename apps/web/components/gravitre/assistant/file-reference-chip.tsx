@@ -50,20 +50,23 @@ export function FileReferenceChip({
 }) {
   const filename =
     ("filename" in file && file.filename) ||
-    file.title ||
+    ("title" in file && file.title) ||
     "Download"
   const mime =
     ("mime_type" in file && (file.mime_type || file.mimeType)) ||
     ("mimeType" in file ? file.mimeType : null) ||
     null
+  const metadata = "metadata" in file ? file.metadata : undefined
   const role =
     ("role" in file && file.role) ||
-    (file.metadata && "role" in file.metadata ? String(file.metadata.role || "") : "") ||
+    (metadata && typeof metadata === "object" && "role" in metadata
+      ? String((metadata as { role?: unknown }).role || "")
+      : "") ||
     undefined
   const bytes =
     ("byte_size" in file && (file.byte_size ?? file.byteSize)) ||
-    (file.metadata && "byteSize" in (file.metadata || {})
-      ? Number((file.metadata as { byteSize?: number }).byteSize)
+    (metadata && typeof metadata === "object" && "byteSize" in metadata
+      ? Number((metadata as { byteSize?: number }).byteSize)
       : undefined)
   const href =
     ("download_url" in file && (file.download_url || file.downloadUrl)) ||
