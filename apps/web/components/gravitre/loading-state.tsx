@@ -18,10 +18,13 @@ interface LoadingSpinnerProps {
   className?: string
 }
 
+// Page/section loading has room, so bias upward: the brand mark needs enough
+// pixels for the gooey filter to resolve into two distinct bars. The previous
+// map topped out at "md" (48px), so every variant rendered a smear.
 const spinnerSizes = {
-  sm: "xs",
-  md: "sm",
-  lg: "md",
+  sm: "sm",
+  md: "md",
+  lg: "lg",
 } as const
 
 const containerSizes = {

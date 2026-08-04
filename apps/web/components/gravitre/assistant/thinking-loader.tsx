@@ -26,6 +26,13 @@ export function GravitreThinkingLoader({
   // Filter ids must be valid CSS/SVG identifiers (React's useId contains ":").
   const filterId = `gravitre-goo-${rawId.replace(/[^a-zA-Z0-9_-]/g, "")}`
 
+  // The gooey blur is authored in viewBox units tuned for a 72px render. Below
+  // that, the 20-unit gap between the two bars is only a couple of device px,
+  // so a fixed stdDeviation of 8 fuses them into an illegible smear. Scale the
+  // blur down with the render size, clamped at 1 so 72px and larger stay
+  // pixel-identical to what already ships in route transitions.
+  const blur = (8 * Math.min(1, size / 72)).toFixed(2)
+
   return (
     <span
       role="status"
@@ -51,7 +58,7 @@ export function GravitreThinkingLoader({
       >
         <defs>
           <filter id={filterId}>
-            <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="b" />
+            <feGaussianBlur in="SourceGraphic" stdDeviation={blur} result="b" />
             <feColorMatrix
               in="b"
               type="matrix"
