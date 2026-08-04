@@ -103,5 +103,58 @@ function Harness() {
   )
 }
 
+/**
+ * Marketing capture mode: `?shot=<surface>&dark=1`.
+ *
+ * Renders exactly one surface at its real device width with no harness label or
+ * padding, so a full-page screenshot is the product surface and nothing else.
+ * This exists so marketing uses real screenshots of the shipping UI instead of
+ * redrawn mockups that drift from what users actually get.
+ */
+function Shot({ surface, dark }: { surface: string; dark: boolean }) {
+  const width = surface === "popup" ? 360 : surface === "sidepanel" ? 400 : 380
+  const isOverlay = surface.startsWith("overlay")
+
+  return (
+    <div
+      className={dark ? "gvt-dark" : undefined}
+      style={{
+        width,
+        // Matches the harness frame so the captured edge looks intentional
+        // rather than clipped.
+        border: "1px solid",
+        borderColor: dark ? "#22303f" : "#e2e8f0",
+        borderRadius: 12,
+        overflow: "hidden",
+        background: dark ? "#0b0f14" : "#ffffff",
+      }}
+    >
+      {surface === "popup" ? (
+        <PopupApp />
+      ) : surface === "sidepanel" ? (
+        <SidePanelApp />
+      ) : isOverlay ? (
+        <div className="[&>[role=dialog]]:static [&>[role=dialog]]:max-h-none [&>[role=dialog]]:w-full [&>[role=dialog]]:rounded-none [&>[role=dialog]]:border-0">
+          <Overlay pageUrl={PAGE_URL} pageContext={PAGE_CONTEXT} onClose={() => {}} />
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 const el = document.getElementById("root")
-if (el) createRoot(el).render(<Harness />)
+const q = new URLSearchParams(location.search)
+const shot = q.get("shot")
+
+if (el) {
+  if (shot) {
+    // Collapse the page to the surface itself so a full-page capture has no
+    // surrounding whitespace to crop.
+    document.documentElement.style.background = "transparent"
+    document.body.style.cssText = "margin:0;padding:0;display:inline-block;background:transparent"
+    el.style.cssText = "display:inline-block"
+    createRoot(el).render(<Shot surface={shot} dark={q.get("dark") === "1"} />)
+  } else {
+    createRoot(el).render(<Harness />)
+  }
+}
