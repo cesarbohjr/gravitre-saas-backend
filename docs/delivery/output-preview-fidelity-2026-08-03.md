@@ -148,7 +148,7 @@ Closed open gaps from Phase 1 / reconfirm — matched preview now covers chat ha
 | Supabase bucket `chat-artifacts` | **PASS** | Migration applied on prod `smyeexlrqdpymwjmgzqu`; SQL confirms private bucket 5MB |
 | Upload + signed download | **PASS** | `scripts/verify-preview-fidelity-phase23-live.py` — 5 durable files (md/html/docx/pdf/csv) @ `2026-08-04T02:30:27Z` |
 | UI harness screenshots | **PASS** | `docs/delivery/_artifacts/phase2-hosted-files-harness.png`, `phase3-preview-code-harness.png` |
-| Railway tip includes Phase 2/3 | **TRACK** | Redeploy run [30871282856](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/30871282856) briefly reached `fa34bd94` then tip observed back on `e7ab5afa` via `/health` — re-verify after next tip settle |
-| Live chat `generate_document` on tip | **NOT RUN** until tip stably includes `32a9ced3+` | Blocked by tip drift |
+| Railway tip includes Phase 2/3 | **PASS** | `/health` `git_sha=e432a8b5…` @ `2026-08-04T07:18:36Z` (ancestor of `32a9ced3`) |
+| Live chat `generate_document` on tip | **PASS** | Isolated org `f07e57c0…` — SSE includes `hostedFiles` + `previewHtml` via `generateDocument` @ `2026-08-04T07:18:36Z` |
 
-Artifact: `docs/delivery/output-preview-fidelity-phase23-live.json`
+Artifact: `docs/delivery/output-preview-fidelity-phase23-live.json` — **overall PASS**

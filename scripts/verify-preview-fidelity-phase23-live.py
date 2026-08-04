@@ -23,6 +23,10 @@ BACKEND = REPO / "backend"
 sys.path.insert(0, str(BACKEND))
 sys.path.insert(0, str(REPO / "scripts"))
 
+import time
+
+import jwt
+
 from isolated_conversation_org import (  # noqa: E402
     mark_smoke_run,
     resolve_isolated_conversation_actor,
@@ -191,21 +195,50 @@ def main() -> int:
         }
     else:
         try:
-            org_id, user_id, token = resolve_isolated_conversation_actor()
-            headers = smoke_http_headers(token, org_id)
+            from supabase import create_client
+
+            env = load_env()
+            sb = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
+            org_id, user_id, email = resolve_isolated_conversation_actor(env, sb)
+            url = env["SUPABASE_URL"].rstrip("/")
+            token = jwt.encode(
+                {
+                    "sub": user_id,
+                    "email": email,
+                    "aud": "authenticated",
+                    "iss": f"{url}/auth/v1",
+                    "iat": int(time.time()),
+                    "exp": int(time.time()) + 7200,
+                    "role": "authenticated",
+                },
+                env["SUPABASE_JWT_SECRET"],
+                algorithm="HS256",
+            )
+            headers = {
+                **smoke_http_headers(),
+                "Authorization": f"Bearer {token}",
+                "X-Org-Id": org_id,
+                "X-Environment": "production",
+                "Accept": "text/event-stream",
+            }
+            import uuid
+
+            probe = (
+                "Use the generate_document tool to create a short markdown brief "
+                "titled Phase23 Live Proof with exactly two bullets and a two-row "
+                "markdown table."
+            )
             body = {
-                "message": (
-                    "Generate a short markdown document titled Phase23 Live Proof "
-                    "with a bullet list and a small markdown table of two rows."
-                ),
+                "messages": [{"role": "user", "parts": [{"type": "text", "text": probe}]}],
+                "org_id": org_id,
                 "mode": "reasoning",
+                "conversation_id": str(uuid.uuid4()),
             }
             with httpx.Client(timeout=180.0) as client:
                 resp = client.post(f"{BASE}/api/assistant/chat", headers=headers, json=body)
                 raw = resp.text
             parsed = parse_sse(raw) if "data:" in raw[:200] or "\ndata:" in raw else {}
             tools = parsed.get("tools") or []
-            # Non-SSE JSON fallback
             payload: dict[str, Any] = {}
             if resp.headers.get("content-type", "").startswith("application/json"):
                 try:
@@ -219,6 +252,11 @@ def main() -> int:
             gen_roles: list[Any] = []
             for t in tools if isinstance(tools, list) else []:
                 out = t.get("output") or t.get("result") or t.get("data") or {}
+                if isinstance(out, str):
+                    try:
+                        out = json.loads(out)
+                    except json.JSONDecodeError:
+                        out = {}
                 if isinstance(out, dict) and (out.get("hostedFiles") or out.get("previewHtml")):
                     has_hosted = has_hosted or bool(out.get("hostedFiles"))
                     has_preview = has_preview or bool(out.get("previewHtml"))
@@ -234,6 +272,8 @@ def main() -> int:
                 "content_type": resp.headers.get("content-type"),
                 "tool_count": len(tools) if isinstance(tools, list) else 0,
             }
+            if chat["verdict"] == "FAIL":
+                chat["raw_snippet"] = raw[:600]
         except Exception as exc:  # noqa: BLE001
             chat = {"verdict": "FAIL", "error": str(exc)[:500]}
 

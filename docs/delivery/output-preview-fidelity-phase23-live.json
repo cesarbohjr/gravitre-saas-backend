@@ -1,13 +1,13 @@
 {
   "probe": "output_preview_fidelity_phase23_prod_wiring",
-  "checked_at": "2026-08-04T06:23:24.162129+00:00",
+  "checked_at": "2026-08-04T07:18:36.486691+00:00",
   "base_url": "https://api.gravitre.app",
   "min_commit": "32a9ced3",
   "health": {
     "http": 200,
-    "git_sha": "e7ab5afaaad0dcb2e37216180f846d19608e3be7"
+    "git_sha": "e432a8b5c490f4e990f1925f08d59ff22cfe2678"
   },
-  "tip_includes_phase23": false,
+  "tip_includes_phase23": true,
   "storage": {
     "verdict": "PASS",
     "project_ref": "smyeexlrqdpymwjmgzqu",
@@ -29,9 +29,15 @@
     "preview_html_present": true
   },
   "chat_generate_document": {
-    "verdict": "NOT RUN",
-    "reason": "tip does not include Phase 2/3 commit yet",
-    "git_sha": "e7ab5afaaad0dcb2e37216180f846d19608e3be7"
+    "verdict": "PASS",
+    "http": 200,
+    "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+    "user_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+    "has_hosted_files": true,
+    "has_preview_html": true,
+    "hosted_roles": [],
+    "content_type": "text/event-stream; charset=utf-8",
+    "tool_count": 2
   },
   "ui_harness": {
     "verdict": "PASS",
@@ -42,5 +48,5 @@
     ],
     "commit": "32a9ced3"
   },
-  "overall": "PARTIAL"
+  "overall": "PASS"
 }
