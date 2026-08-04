@@ -20,6 +20,15 @@ export interface ProductScreenshotProps {
   caption: string
   /** Set on the first shot above the fold only. */
   priority?: boolean
+  /**
+   * Window-chrome label. When provided, the shot is framed as an app window
+   * with a title pill — the treatment the hand-built mockups on /features used
+   * before real captures replaced them, kept so those sections still read as
+   * "a screen" rather than a bare inline image.
+   */
+  chromeLabel?: string
+  /** Soft colour wash behind the frame. Matches each section's accent. */
+  glowClassName?: string
   className?: string
 }
 
@@ -28,20 +37,53 @@ export function ProductScreenshot({
   alt,
   caption,
   priority = false,
+  chromeLabel,
+  glowClassName,
   className,
 }: ProductScreenshotProps) {
+  const image = (
+    <Image
+      src={src}
+      alt={alt}
+      width={2880}
+      height={1800}
+      priority={priority}
+      sizes="(min-width: 1024px) 960px, 100vw"
+      className="h-auto w-full"
+    />
+  )
+
   return (
     <figure className={cn("flex flex-col gap-3", className)}>
-      <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-        <Image
-          src={src}
-          alt={alt}
-          width={2880}
-          height={1800}
-          priority={priority}
-          sizes="(min-width: 1024px) 960px, 100vw"
-          className="h-auto w-full"
-        />
+      <div className="relative">
+        {glowClassName ? (
+          <div
+            aria-hidden="true"
+            className={cn("absolute -inset-4 rounded-3xl blur-2xl", glowClassName)}
+          />
+        ) : null}
+
+        {chromeLabel ? (
+          <div className="relative overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-2xl">
+            <div className="flex items-center gap-2 border-b border-zinc-200 bg-zinc-50 px-4 py-3">
+              <div className="flex gap-1.5">
+                <span className="h-3 w-3 rounded-full bg-red-400" />
+                <span className="h-3 w-3 rounded-full bg-amber-400" />
+                <span className="h-3 w-3 rounded-full bg-emerald-400" />
+              </div>
+              <div className="flex flex-1 justify-center">
+                <div className="rounded-md bg-zinc-100 px-3 py-1 text-[10px] text-zinc-500">
+                  {chromeLabel}
+                </div>
+              </div>
+            </div>
+            {image}
+          </div>
+        ) : (
+          <div className="relative overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+            {image}
+          </div>
+        )}
       </div>
       <figcaption className="text-[10px] uppercase tracking-wide text-amber-600">
         {caption}
