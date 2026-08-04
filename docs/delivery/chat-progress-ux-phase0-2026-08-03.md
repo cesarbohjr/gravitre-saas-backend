@@ -28,3 +28,42 @@ Recorded-steps histogram: 1→16, 2→8, 3→0, 4–6→1, 7+→0.
 **Auto-show side panel when planned/executed step count ≥ 3.**
 
 Rationale: clear gap between 1–2 step majority (96% of recorded chat tasks) and the 4+ multi-step tail; zero observations at exactly 3.
+
+## Ship (code)
+
+| Piece | Location |
+|-------|----------|
+| Named `Running:` / `Completed:` labels (v1) | `agent_platform_optimizer.format_live_progress_label` + SSE `progressSteps` |
+| Threshold helper | `apps/web/lib/task-side-panel-threshold.ts` (`SIDE_PANEL_STEP_THRESHOLD = 3`) |
+| Side panel Progress / Outputs / Context (v2) | `apps/web/components/gravitre/assistant/task-side-panel.tsx` |
+| Wire-up | `apps/web/app/ai/_components/ai-workspace.tsx` |
+| Feature commit | `1fea14ff` |
+
+## Live verification append (v1 + v2)
+
+Script: `scripts/verify-chat-progress-ux-v2-live.py`  
+Artifact: `docs/delivery/chat-progress-ux-v2-live.json`  
+UI harness: `/e2e/task-side-panel?mode=on|off` + `e2e/task-side-panel.spec.ts`  
+Screenshot: `docs/delivery/_artifacts/task-side-panel-harness.png`
+
+| Check | Expected |
+|-------|----------|
+| Tip includes `1fea14ff` | `/health` `git_sha` ancestor |
+| Under-threshold chat | `show_panel=false` (inline-only) |
+| Multi-step chat (≥3 named/pending steps) | `show_panel=true` + named labels not stage-template generic |
+| Outputs identity | Panel list = `GET /api/business-outcomes` filtered by `conversationId` |
+| UI harness on/off | Playwright PASS |
+
+### Live evidence (2026-08-04)
+
+Artifact: `docs/delivery/chat-progress-ux-v2-live.json` — **overall PASS**
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| Tip | **PASS** | `/health` `git_sha=ad9ed303…` includes `1fea14ff` |
+| Under-threshold | **PASS** | convo `01675f06-…` · `step_count=0` · `show_panel=false` @ `2026-08-04T21:25:23Z` |
+| Multi-step ≥3 | **PASS** | seeded orch convo `87b000d8-…` · state `awaiting_plan_confirm` · steps Create/Search/Add · `show_panel=true` |
+| Named labels | **PASS** | `Step 1/3: Create contact list` … (not stage-template generic) |
+| Outputs filter identity | **PASS** | `GET /api/business-outcomes` filter by `conversationId` (sample `3e0d1b83-…` → 1 row) |
+| Isolated org | | `f07e57c0-…` / user `a9f1240f-…` |
+| UI harness | **PASS** | Playwright `e2e/task-side-panel.spec.ts` (on + off) · `docs/delivery/_artifacts/task-side-panel-harness.png` |

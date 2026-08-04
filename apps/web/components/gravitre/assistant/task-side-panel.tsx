@@ -140,6 +140,8 @@ export function TaskSidePanel({
         className,
       )}
       aria-label="Task progress panel"
+      data-testid="task-side-panel"
+      data-step-count={stepCount}
     >
       <div>
         <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
