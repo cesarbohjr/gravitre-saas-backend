@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation"
 
 import ActivityPage from "@/app/activity/page"
+import ApprovalsPage from "@/app/approvals/page"
+import ConnectorsPage from "@/app/connectors/page"
+import { ShotAuthProvider } from "../shot-auth"
 
 /**
  * Renders one real product surface for screenshot capture. Add a view here
@@ -9,6 +12,8 @@ import ActivityPage from "@/app/activity/page"
  */
 const VIEWS: Record<string, React.ComponentType> = {
   activity: ActivityPage,
+  approvals: ApprovalsPage,
+  connectors: ConnectorsPage,
 }
 
 export default async function ShotView({
@@ -19,5 +24,9 @@ export default async function ShotView({
   const { view } = await params
   const Surface = VIEWS[view]
   if (!Surface) notFound()
-  return <Surface />
+  return (
+    <ShotAuthProvider>
+      <Surface />
+    </ShotAuthProvider>
+  )
 }

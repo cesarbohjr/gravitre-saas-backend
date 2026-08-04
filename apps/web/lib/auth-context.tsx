@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback, type React
 import { hasSupabasePublicEnv, supabaseClient } from "@/lib/supabaseClient"
 import type { User, Session } from "@supabase/supabase-js"
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null
   session: Session | null
   loading: boolean
@@ -12,7 +12,12 @@ interface AuthContextType {
   refreshSession: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+/**
+ * Exported so the screenshot harness (app/e2e/shots) can supply a fixed signed-in
+ * user without a live Supabase session. Application code should use `useAuth`;
+ * nothing outside the harness should provide this context directly.
+ */
+export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const AUTH_INIT_TIMEOUT_MS = 5000
 // supabase-js getUser()/getSession() can hang indefinitely during a concurrent
 // token refresh or a network stall. Since every apiFetch awaits getAccessToken
