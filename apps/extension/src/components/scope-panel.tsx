@@ -19,7 +19,10 @@ function prettyHost(pattern: string): string {
     .replace(/^\*:\/\//, "")
     .replace(/^https?:\/\//, "")
     .replace(/\/\*$/, "")
+    // "*.linkedin.com" and "www.linkedin.com" are the same site to a reader;
+    // collapse both so the list stays scannable rather than listing near-dupes.
     .replace(/^\*\./, "")
+    .replace(/^www\./, "")
 }
 
 /** Gravitre's own origins are plumbing, not a page the user is browsing. */

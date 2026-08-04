@@ -10,3 +10,6 @@ node_modules/
 .env.vercel.production
 .DS_Store
 .vercel
+
+# Extension visual-review harness (build output, not source)
+public/e2e/ext-harness/
