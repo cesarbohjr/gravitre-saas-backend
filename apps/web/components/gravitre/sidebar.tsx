@@ -200,7 +200,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
               <div key={group.group} className="mb-0.5">
                 {/* Section Divider */}
                 {groupIndex > 0 && (
-                  <div className="mx-2 mb-2 mt-1.5 h-px bg-border/40" />
+                  <div className="mx-2 mb-2 mt-2 h-px bg-sidebar-border" />
                 )}
 
                 {/* Section Header — labels when nav expanded (desktop) or mobile drawer */}
@@ -211,7 +211,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
                     navExpanded ? "md:flex" : "md:hidden",
                   )}
                 >
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 group-hover:text-muted-foreground/70 transition-colors">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground transition-colors group-hover:text-foreground">
                     {group.group}
                   </span>
                   <Icon
@@ -224,7 +224,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
                   />
                 </button>
                 <div className="flex w-full items-center justify-between px-2 py-1 md:hidden">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                     {group.group}
                   </span>
                 </div>
@@ -262,7 +262,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
                                         colors.activeBorder,
                                       )
                                     : cn(
-                                        "text-muted-foreground/70 hover:text-foreground hover:bg-sidebar-accent/50",
+                                        "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
                                         navExpanded && "md:border-l-2 md:border-l-transparent md:-ml-px md:pl-[9px]",
                                       ),
                                 )}
@@ -274,7 +274,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
                                   className={cn(
                                     "shrink-0 transition-colors md:h-5 md:w-5",
                                     navExpanded && "md:h-4 md:w-4",
-                                    isActive ? colors.activeIcon : "text-muted-foreground/40 group-hover:text-muted-foreground/70",
+                                    isActive ? colors.activeIcon : "text-muted-foreground/70 group-hover:text-foreground",
                                   )}
                                 />
                                 <span className={cn("flex-1 truncate", navExpanded ? "md:inline" : "md:hidden")}>
@@ -286,7 +286,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
                                       "rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
                                       navExpanded ? "md:inline" : "md:hidden",
                                       isActive
-                                        ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20"
+                                        ? "bg-primary/15 text-primary ring-1 ring-primary/20"
                                         : "bg-muted/60 text-muted-foreground/70",
                                     )}
                                   >
@@ -330,8 +330,8 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
         <div className="border-t border-sidebar-border px-2 py-2.5 md:px-2">
           <div className={cn("flex items-center justify-between", navExpanded ? "md:justify-between" : "md:justify-center")}>
             <div className="flex items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-sm">
-                <Icon name="shield" size="xs" className="text-white" />
+              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary shadow-sm">
+                <Icon name="shield" size="xs" className="text-primary-foreground" />
               </div>
               <div className={cn("flex flex-col", navExpanded ? "md:flex" : "md:hidden")}>
                 <span className="text-[11px] font-medium text-foreground">Gravitre</span>
@@ -342,7 +342,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleNavExpan
               <TooltipTrigger asChild>
                 <div
                   className={cn(
-                    "flex h-2 w-2 cursor-help rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]",
+                    "flex h-2 w-2 cursor-help rounded-full bg-success",
                     navExpanded ? "md:flex" : "md:hidden",
                   )}
                 />

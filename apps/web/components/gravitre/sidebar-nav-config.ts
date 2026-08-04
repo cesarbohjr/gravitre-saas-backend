@@ -1,37 +1,31 @@
 import type { IconName } from "@/lib/icons"
 import { APP_ROUTES } from "@/lib/app-routes"
 
+/**
+ * Sidebar sections share a single brand accent (`--primary`) plus neutrals.
+ *
+ * Sections used to each carry their own hue (emerald / blue / amber / rose /
+ * zinc), which made the rail read as decoration rather than wayfinding and
+ * blew past a 3-5 color system. Grouping is now communicated structurally —
+ * uppercase section labels, dividers, and spacing — so the accent is reserved
+ * for the one thing that matters: which item is active.
+ *
+ * The per-section map is retained so callers can keep passing `colors`, and so
+ * a section can opt into a different treatment later without touching links.
+ */
+const SIDEBAR_ACCENT = {
+  accent: "text-primary",
+  activeBg: "bg-primary/10",
+  activeBorder: "border-l-primary",
+  activeIcon: "text-primary",
+} as const
+
 export const SIDEBAR_SECTION_COLORS = {
-  WORK: {
-    accent: "text-emerald-500",
-    activeBg: "bg-emerald-500/8",
-    activeBorder: "border-l-emerald-500",
-    activeIcon: "text-emerald-500",
-  },
-  BUILD: {
-    accent: "text-blue-500",
-    activeBg: "bg-blue-500/8",
-    activeBorder: "border-l-blue-500",
-    activeIcon: "text-blue-500",
-  },
-  ACTIVITY: {
-    accent: "text-amber-500",
-    activeBg: "bg-amber-500/8",
-    activeBorder: "border-l-amber-500",
-    activeIcon: "text-amber-500",
-  },
-  INSIGHTS: {
-    accent: "text-rose-500",
-    activeBg: "bg-rose-500/8",
-    activeBorder: "border-l-rose-500",
-    activeIcon: "text-rose-500",
-  },
-  SETTINGS: {
-    accent: "text-zinc-500",
-    activeBg: "bg-zinc-500/8",
-    activeBorder: "border-l-zinc-400",
-    activeIcon: "text-zinc-400",
-  },
+  WORK: SIDEBAR_ACCENT,
+  BUILD: SIDEBAR_ACCENT,
+  ACTIVITY: SIDEBAR_ACCENT,
+  INSIGHTS: SIDEBAR_ACCENT,
+  SETTINGS: SIDEBAR_ACCENT,
 } as const
 
 export type SidebarSectionKey = keyof typeof SIDEBAR_SECTION_COLORS

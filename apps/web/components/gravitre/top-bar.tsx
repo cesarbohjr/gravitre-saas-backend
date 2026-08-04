@@ -275,7 +275,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                   className={cn(
                     "px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-200",
                     mode === "lite"
-                      ? "bg-emerald-500/10 text-emerald-500 shadow-sm border border-emerald-500/20"
+                      ? "border border-primary/20 bg-primary/10 text-primary shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -300,26 +300,27 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
           {/* User Avatar */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-accent group relative p-0" aria-label="Account menu">
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full opacity-0 group-hover:opacity-50 blur transition-opacity duration-300" />
-                <UserAccountAvatar useCurrentUser size="sm" className="relative ring-2 ring-background" />
+              <Button variant="ghost" size="icon" className="group relative h-8 w-8 rounded-full p-0 hover:bg-accent" aria-label="Account menu">
+                <UserAccountAvatar
+                  useCurrentUser
+                  size="sm"
+                  className="relative ring-1 ring-border transition-colors group-hover:ring-primary/40"
+                />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] sm:w-72 max-w-72 p-0 overflow-hidden">
               {/* Profile header with gradient */}
-              <div className="relative px-4 py-5 border-b border-border overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/5 to-transparent" />
-                <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+              <div className="relative overflow-hidden border-b border-border bg-muted/40 px-4 py-5">
                 <div className="relative flex items-center gap-3">
                   <div className="relative">
                     <UserAccountAvatar useCurrentUser size="xl" />
-                    <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-background" />
+                    <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-success ring-2 ring-background" />
                   </div>
                   <div className="flex flex-col">
                     <span className="text-sm font-semibold text-foreground">{userName}</span>
                     <span className="text-xs text-muted-foreground">{userEmail}</span>
                     <span className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-success" />
                       Active now
                     </span>
                   </div>
@@ -351,8 +352,8 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
               <div className="p-1.5">
                 <DropdownMenuItem className="gap-3 cursor-pointer rounded-lg px-3 py-2.5 transition-colors" asChild>
                   <Link href="/settings/profile">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
-                      <Icon name="user" size="sm" className="text-blue-500" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                      <Icon name="user" size="sm" className="text-primary" />
                     </div>
                     <div>
                       <p className="text-sm font-medium">Edit Profile</p>
@@ -384,14 +385,14 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                 </DropdownMenuItem>
                 <DropdownMenuItem className="gap-3 cursor-pointer rounded-lg px-3 py-2.5 transition-colors" asChild>
                   <Link href="/settings/billing">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
-                      <Icon name="billing" size="sm" className="text-emerald-500" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary">
+                      <Icon name="billing" size="sm" className="text-muted-foreground" />
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium">Billing</p>
                       <p className="text-[10px] text-muted-foreground">{currentPlan.name} Plan</p>
                     </div>
-                    <span className="text-xs font-medium text-emerald-500">{planPriceLabel}</span>
+                    <span className="text-xs font-medium text-primary">{planPriceLabel}</span>
                   </Link>
                 </DropdownMenuItem>
               </div>
