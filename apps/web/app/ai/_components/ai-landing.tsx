@@ -62,31 +62,16 @@ export function AiLanding({
       transition={{ duration: 0.45, ease: "easeOut" }}
       className="relative z-10 mx-auto flex w-full max-w-[920px] flex-col px-2 py-6 md:px-4"
     >
-      <section className="relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-card/90 via-card/60 to-emerald-500/8 p-6 shadow-sm sm:p-8">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-emerald-500/12 blur-3xl"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -bottom-24 -left-16 h-48 w-48 rounded-full bg-violet-500/10 blur-3xl"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute right-1/4 top-1/2 h-32 w-32 -translate-y-1/2 rounded-full bg-blue-500/8 blur-2xl"
-        />
-
-        <div className="relative text-center">
-          <div className="mx-auto mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-            <motion.span
-              animate={{ opacity: [0.45, 1, 0.45] }}
-              transition={{ duration: 2.4, repeat: Infinity }}
-              className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500"
-            />
-            <Lightning className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" weight="fill" aria-hidden />
+      {/* Calm operator surface: neutral card, single restrained emerald accent.
+          No blurred gradient orbs — they read as decoration and the composer is
+          the only thing that should pull focus here. */}
+      <section className="relative rounded-2xl border border-border/70 bg-card/60 p-6 shadow-sm sm:p-8">
+        <div className="text-center">
+          <div className="mx-auto mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/5 px-3 py-1 text-xs font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+            <Lightning className="h-3.5 w-3.5" weight="fill" aria-hidden />
             One surface, three modes
           </div>
-          <h1 className="text-balance bg-gradient-to-br from-foreground via-foreground to-emerald-700/80 bg-clip-text text-3xl font-semibold tracking-tight text-transparent dark:to-emerald-300/90 md:text-4xl">
+          <h1 className="text-balance text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
             What do you want to get done?
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-pretty text-sm leading-relaxed text-muted-foreground md:text-base">
@@ -98,8 +83,8 @@ export function AiLanding({
         <div className="relative mt-8">
           <div
             className={cn(
-              "rounded-2xl border border-emerald-500/15 bg-background/80 p-2 shadow-md backdrop-blur-sm transition-all",
-              "focus-within:border-emerald-500/40 focus-within:shadow-emerald-500/10 focus-within:ring-2 focus-within:ring-emerald-500/20",
+              "rounded-2xl border border-border/70 bg-background/80 p-2 shadow-sm transition-colors",
+              "focus-within:border-emerald-500/40 focus-within:ring-2 focus-within:ring-emerald-500/15",
             )}
           >
             <textarea
@@ -118,7 +103,7 @@ export function AiLanding({
                       ? "Ask a question or start a conversation…"
                       : "Ask, delegate, or search — results appear here…"
               }
-              className="w-full min-h-[88px] resize-none bg-transparent px-3 py-4 text-center text-sm text-foreground outline-none placeholder:text-muted-foreground/70"
+              className="w-full min-h-[88px] resize-none bg-transparent px-3 py-3 text-left text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/70"
             />
             <div className="flex items-center justify-end gap-3 px-2 pb-1">
               <VoiceInputButton
@@ -134,8 +119,8 @@ export function AiLanding({
                 onClick={onSubmit}
                 disabled={!input.trim() || routing}
                 className={cn(
-                  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-primary-foreground shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-40",
-                  "bg-gradient-to-br from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 dark:from-emerald-500 dark:to-emerald-400",
+                  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-primary-foreground shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+                  "bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400",
                 )}
                 aria-label="Submit"
               >

@@ -72,6 +72,7 @@ import {
 } from "@/components/gravitre/assistant/research-scope-prompt"
 import { ResearchCascadePanel } from "@/components/gravitre/assistant/research-cascade-panel"
 import { ResearchPlanPanel } from "@/components/gravitre/assistant/research-plan-panel"
+import { hostedFilesFromUnknown } from "@/components/gravitre/assistant/file-reference-chip"
 import {
   shouldShowTaskSidePanel,
   TaskSidePanel,
@@ -287,6 +288,22 @@ export function AiWorkspace({
   const [connectedFileAttachments, setConnectedFileAttachments] = useState<ConnectedFileAttachment[]>([])
 
   const activeMode = useMemo(() => getModeMeta(mode), [mode])
+
+  /**
+   * Hosted files for the task side panel's Outputs section. Reuses the existing
+   * executionResult payload — no new fetch. Scoped to the active conversation
+   * when the result declares one, so files from a prior task cannot leak into
+   * the current panel.
+   */
+  const taskPanelHostedFiles = useMemo(() => {
+    const structured = executionResult?.structured
+    if (!structured) return []
+    const resultConversationId = String(structured.conversationId || "").trim()
+    if (resultConversationId && resultConversationId !== String(activeConversationId || "")) {
+      return []
+    }
+    return hostedFilesFromUnknown(structured)
+  }, [executionResult, activeConversationId])
 
   const [historySearch, setHistorySearch] = useState("")
   const deferredHistorySearch = useDeferredValue(historySearch.trim())
@@ -1877,6 +1894,7 @@ export function AiWorkspace({
                     progressSteps={researchProgressSteps}
                     pendingTask={pendingTask}
                     contextExplanation={contextExplanation}
+                    hostedFiles={taskPanelHostedFiles}
                     className="sticky top-2 hidden lg:flex"
                   />
                 ) : null}

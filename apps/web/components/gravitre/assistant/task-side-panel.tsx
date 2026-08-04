@@ -1,20 +1,37 @@
 /**
- * Progress UX v2 — Cowork-style persistent side panel.
- * Appears only when planned/executed steps ≥ SIDE_PANEL_STEP_THRESHOLD (Phase 0 telemetry).
- * Reuses BusinessOutcome list + existing progressSteps / pendingTask — no new stores.
+ * Progress UX v2 — persistent task side panel for multi-step Chat work.
+ *
+ * Appears only when planned/executed steps >= SIDE_PANEL_STEP_THRESHOLD (Phase 0
+ * telemetry: 96% of recorded chat tasks are 1-2 steps). The panel is ADDITIVE —
+ * it never replaces the inline BusinessOutcome card in the transcript.
+ *
+ * Data sources (no new stores):
+ *   Progress — SSE progressSteps / pendingTask.params.steps via deriveNamedProgressSteps
+ *   Outputs  — businessOutcomesApi filtered by conversationId (same as Activity) + hosted files
+ *   Context  — contextExplanation + pendingTask connector/action params
  */
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
-import { CheckCircle2, Circle, ExternalLink, Loader2 } from "lucide-react"
+import { CaretDown, CheckCircle, Circle, ArrowSquareOut } from "@phosphor-icons/react"
+import { Loader2 } from "lucide-react"
 import { businessOutcomesApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { cn } from "@/lib/utils"
 import type { ChatPendingTask } from "@/components/gravitre/assistant/chat-execution-panel"
 import type { BusinessOutcomeDto } from "@/components/gravitre/business-outcome/business-outcome-view"
+import {
+  FileReferenceChip,
+  type HostedFileRef,
+} from "@/components/gravitre/assistant/file-reference-chip"
+import {
+  deriveNamedProgressSteps,
+  formatStepCounter,
+  type NamedProgressStep,
+} from "@/lib/chat-progress-steps"
 import {
   countPlannedOrExecutedSteps,
   shouldShowTaskSidePanel,
@@ -28,72 +45,101 @@ type TaskSidePanelProps = {
   progressSteps?: string[] | null
   pendingTask?: ChatPendingTask | null
   contextExplanation?: string | null
+  /** Hosted files produced by this task, if any. Rendered in Outputs. */
+  hostedFiles?: HostedFileRef[]
   className?: string
 }
 
-function ProgressChecklist({
-  progressSteps,
-  pendingTask,
+/** Collapsible section shell. Sections stay open by default. */
+function PanelSection({
+  title,
+  meta,
+  action,
+  children,
 }: {
-  progressSteps?: string[] | null
-  pendingTask?: ChatPendingTask | null
+  title: string
+  meta?: string | null
+  action?: React.ReactNode
+  children: React.ReactNode
 }) {
-  const items = useMemo(() => {
-    const fromProgress = (progressSteps ?? [])
-      .map((raw) => String(raw).trim())
-      .filter(Boolean)
-      .map((text) => {
-        if (text.startsWith("Completed: ")) {
-          return { text: text.slice("Completed: ".length), status: "done" as const }
-        }
-        if (text.startsWith("Running: ")) {
-          return { text: text.slice("Running: ".length), status: "current" as const }
-        }
-        if (/^Step \d+\/\d+:/i.test(text)) {
-          return { text, status: "pending" as const }
-        }
-        return { text, status: "pending" as const }
-      })
-    if (fromProgress.length > 0) return fromProgress
+  const [open, setOpen] = useState(true)
+  const sectionId = `task-panel-${title.toLowerCase()}`
 
-    const steps = pendingTask?.params?.steps
-    if (!Array.isArray(steps)) return []
-    const currentIdx = Number(pendingTask?.params?.current_step_index ?? -1)
-    return steps.map((step, index) => {
-      const label = String(step.label || `Step ${index + 1}`).trim()
-      const status =
-        currentIdx >= 0 && index < currentIdx
-          ? ("done" as const)
-          : currentIdx >= 0 && index === currentIdx
-            ? ("current" as const)
-            : ("pending" as const)
-      return { text: label, status }
-    })
-  }, [progressSteps, pendingTask])
+  return (
+    <section className="rounded-lg border border-border/60 bg-background/40">
+      <div className="flex items-center gap-1.5 px-3 py-2.5">
+        <button
+          type="button"
+          onClick={() => setOpen((prev) => !prev)}
+          aria-expanded={open}
+          aria-controls={sectionId}
+          className="group -ml-1 flex min-w-0 flex-1 items-center gap-1.5 rounded px-1 py-0.5 text-left transition-colors hover:bg-muted/50"
+        >
+          <CaretDown
+            className={cn(
+              "h-3 w-3 shrink-0 text-muted-foreground transition-transform",
+              !open && "-rotate-90",
+            )}
+            weight="bold"
+            aria-hidden
+          />
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {title}
+          </span>
+          {meta ? (
+            <span className="ml-auto truncate text-[11px] tabular-nums text-muted-foreground/80">
+              {meta}
+            </span>
+          ) : null}
+        </button>
+        {action}
+      </div>
+      {open ? (
+        <div id={sectionId} className="px-3 pb-3">
+          {children}
+        </div>
+      ) : null}
+    </section>
+  )
+}
 
-  if (items.length === 0) {
+function ProgressChecklist({ steps }: { steps: NamedProgressStep[] }) {
+  if (steps.length === 0) {
     return <p className="text-xs text-muted-foreground">No steps yet for this task.</p>
   }
 
   return (
-    <ol className="space-y-1.5">
-      {items.map((item, index) => (
-        <li key={`${item.text}-${index}`} className="flex items-start gap-2 text-xs">
-          {item.status === "done" ? (
-            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" aria-hidden />
-          ) : item.status === "current" ? (
-            <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin text-primary" aria-hidden />
-          ) : (
-            <Circle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-          )}
+    <ol className="space-y-2">
+      {steps.map((step, index) => (
+        <li key={`${step.label}-${index}`} className="flex items-start gap-2 text-xs">
+          <span className="mt-px flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden>
+            {step.status === "done" ? (
+              <CheckCircle
+                className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400"
+                weight="fill"
+              />
+            ) : step.status === "current" ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600 dark:text-emerald-400" />
+            ) : (
+              <Circle className="h-3 w-3 text-muted-foreground/50" weight="bold" />
+            )}
+          </span>
           <span
             className={cn(
-              item.status === "current" && "font-medium text-foreground",
-              item.status === "done" && "text-muted-foreground",
-              item.status === "pending" && "text-muted-foreground",
+              "min-w-0 leading-relaxed",
+              step.status === "current" && "font-medium text-foreground",
+              step.status === "done" && "text-muted-foreground",
+              step.status === "pending" && "text-muted-foreground/70",
             )}
           >
-            {item.text}
+            {step.label}
+          </span>
+          <span className="sr-only">
+            {step.status === "done"
+              ? "(completed)"
+              : step.status === "current"
+                ? "(in progress)"
+                : "(pending)"}
           </span>
         </li>
       ))}
@@ -106,10 +152,17 @@ export function TaskSidePanel({
   progressSteps,
   pendingTask,
   contextExplanation,
+  hostedFiles,
   className,
 }: TaskSidePanelProps) {
   const { user } = useAuth()
   const stepCount = countPlannedOrExecutedSteps(progressSteps, pendingTask)
+
+  const steps = useMemo(
+    () => deriveNamedProgressSteps(progressSteps, pendingTask),
+    [progressSteps, pendingTask],
+  )
+  const stepCounter = formatStepCounter(steps) ?? `${stepCount} steps`
 
   const { data } = useSWR(
     user && conversationId ? ["task-side-panel-outcomes", conversationId] : null,
@@ -122,6 +175,9 @@ export function TaskSidePanel({
     if (!conversationId) return []
     return rows.filter((row) => String(row.conversationId || "") === conversationId)
   }, [data, conversationId])
+
+  const files = hostedFiles ?? []
+  const outputCount = taskOutcomes.length + files.length
 
   const contextBits = useMemo(() => {
     const bits: string[] = []
@@ -136,77 +192,75 @@ export function TaskSidePanel({
   return (
     <aside
       className={cn(
-        "flex w-full flex-col gap-4 rounded-xl border border-border/70 bg-card/50 p-4 lg:w-72 lg:shrink-0",
+        "flex w-full flex-col gap-2 rounded-xl border border-border/70 bg-card/50 p-2 lg:w-[19rem] lg:shrink-0",
         className,
       )}
       aria-label="Task progress panel"
       data-testid="task-side-panel"
       data-step-count={stepCount}
     >
-      <div>
-        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-          Progress
-        </p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {stepCount} step{stepCount === 1 ? "" : "s"} · multi-step task
-        </p>
-        <div className="mt-3">
-          <ProgressChecklist progressSteps={progressSteps} pendingTask={pendingTask} />
-        </div>
-      </div>
+      <PanelSection title="Progress" meta={stepCounter}>
+        <ProgressChecklist steps={steps} />
+      </PanelSection>
 
-      <div className="border-t border-border/50 pt-3">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Outputs
-          </p>
+      <PanelSection
+        title="Outputs"
+        meta={outputCount > 0 ? String(outputCount) : null}
+        action={
           <Link
             href={APP_ROUTES.activity}
-            className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+            className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
           >
             Activity
-            <ExternalLink className="h-3 w-3" aria-hidden />
+            <ArrowSquareOut className="h-3 w-3" aria-hidden />
           </Link>
-        </div>
-        {taskOutcomes.length === 0 ? (
-          <p className="text-xs text-muted-foreground">
-            Outputs for this task appear here and on the Activity page when available.
+        }
+      >
+        {outputCount === 0 ? (
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Outputs for this task appear here and on the Activity page.
           </p>
         ) : (
-          <ul className="space-y-2">
+          <div className="space-y-2">
             {taskOutcomes.slice(0, 5).map((outcome) => (
-              <li key={outcome.id}>
-                <Link
-                  href={APP_ROUTES.activity}
-                  className="block rounded-md border border-border/50 px-2.5 py-2 text-xs hover:bg-muted/40"
-                >
-                  <p className="font-medium text-foreground line-clamp-2">{outcome.title}</p>
-                  {outcome.sections?.summary ? (
-                    <p className="mt-0.5 line-clamp-2 text-muted-foreground">
-                      {outcome.sections.summary}
-                    </p>
-                  ) : null}
-                </Link>
+              <Link
+                key={outcome.id}
+                href={APP_ROUTES.activity}
+                className="block rounded-lg border border-border/50 bg-background/60 px-2.5 py-2 text-xs transition-colors hover:border-border hover:bg-muted/40"
+              >
+                <p className="line-clamp-2 font-medium text-foreground">{outcome.title}</p>
+                {outcome.sections?.summary ? (
+                  <p className="mt-0.5 line-clamp-2 leading-relaxed text-muted-foreground">
+                    {outcome.sections.summary}
+                  </p>
+                ) : null}
+              </Link>
+            ))}
+            {files.map((file) => (
+              <FileReferenceChip
+                key={file.id || file.filename || file.download_url || JSON.stringify(file)}
+                file={file}
+              />
+            ))}
+          </div>
+        )}
+      </PanelSection>
+
+      <PanelSection title="Context">
+        {contextBits.length === 0 ? (
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Connectors and tools appear here as they run.
+          </p>
+        ) : (
+          <ul className="space-y-1.5">
+            {contextBits.map((bit) => (
+              <li key={bit} className="text-xs leading-relaxed text-muted-foreground">
+                {bit}
               </li>
             ))}
           </ul>
         )}
-      </div>
-
-      <div className="border-t border-border/50 pt-3">
-        <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-          Context
-        </p>
-        {contextBits.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Conversation context loads as tools run.</p>
-        ) : (
-          <ul className="space-y-1.5 text-xs text-muted-foreground">
-            {contextBits.map((bit) => (
-              <li key={bit}>{bit}</li>
-            ))}
-          </ul>
-        )}
-      </div>
+      </PanelSection>
     </aside>
   )
 }
