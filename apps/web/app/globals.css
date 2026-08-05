@@ -441,11 +441,11 @@
   }
 
   /* ============================================================
-     Chat window surface (handoff 5a/5b) + canvas pattern themes.
-     Shell chrome uses warm stone / near-black (`--chat-surface`).
-     The scrollable canvas paints over `--background` with a tile +
-     scrim so bubbles separate cleanly (not a creamy black wash).
-     Pattern tiles bake ~0.08–0.15 alpha
+     Chat window surface + canvas pattern themes.
+     Header/composer chrome shares the app `--background` (clean sage /
+     deep brand base) — the old warm stone #e9e7e3 read as a muddy grey
+     band against the lightened canvas. Canvas still adds tile + scrim
+     so bubbles separate. Pattern tiles bake ~0.08–0.15 alpha
      (scripts/bake-chat-pattern-alpha.mjs).
 
      Two canvas layers (both below content):
@@ -455,17 +455,17 @@
      `background-attachment: local` keeps both scrolling on iOS Safari.
      ============================================================ */
   .ai-chat-surface {
-    --chat-surface: #e9e7e3;
-    --chat-surface-border: #dcd9d4;
-    --chat-surface-muted: #a19a91;
+    --chat-surface: var(--background);
+    --chat-surface-border: var(--border);
+    --chat-surface-muted: var(--muted-foreground);
     background-color: var(--chat-surface);
-    color: #1c1917;
+    color: var(--foreground);
   }
   .dark .ai-chat-surface {
-    --chat-surface: #1c1c1c;
-    --chat-surface-border: #2a2a2a;
-    --chat-surface-muted: #7a7a78;
-    color: #f2f2f0;
+    --chat-surface: var(--background);
+    --chat-surface-border: var(--border);
+    --chat-surface-muted: var(--muted-foreground);
+    color: var(--foreground);
   }
 
   .ai-chat-canvas {
