@@ -1,0 +1,17 @@
+{
+  "phase": 3,
+  "items": ["F10"],
+  "date": "2026-08-05",
+  "pytest": {
+    "files": [
+      "tests/services/test_unified_turn_fallthrough_enum.py",
+      "tests/services/test_routing_nl_variance_battery.py"
+    ],
+    "result": "33 passed"
+  },
+  "artifacts": {
+    "enum": "backend/app/services/unified_turn_fallthrough.py",
+    "mark_gate": "_mark_live_fallthrough → assert_known_fallthrough_reason",
+    "nl_battery": "tests/services/test_routing_nl_variance_battery.py (C1/C2 + withhold + G1)"
+  }
+}

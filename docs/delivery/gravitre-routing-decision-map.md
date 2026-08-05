@@ -304,7 +304,7 @@ Ranked by severity × breadth × structural fix value.
 | 7 | F7 | OPEN | Agent jobs / webhooks outside map | Medium | Non-chat | Phase 5 |
 | 8 | F8 | OPEN | Catalog schema quality | High for new connectors | 687 actions | Phase 4 |
 | 9 | F9 | **OUT OF SCOPE** this program | Gravitree naming debt | Brand | Cross-cutting | Separate PR series |
-| 10 | F10 | OPEN | Exhaustive fallthrough / pattern CI | Medium | LIVE | Phase 3 |
+| 10 | F10 | **CLOSED (Phase 3)** — `unified_turn_fallthrough.py` enum + AST CI; defer pattern ± matrix; NL variance + withhold-fabrication battery | Exhaustive fallthrough / pattern CI | Medium | LIVE | Enum + CI batteries |
 
 ### Sequenced closure plan (recommended)
 

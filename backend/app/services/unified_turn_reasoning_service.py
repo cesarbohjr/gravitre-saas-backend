@@ -688,8 +688,10 @@ def _mark_live_fallthrough(
     result: UnifiedTurnShadowResult,
     reason: str,
 ) -> UnifiedTurnShadowResult:
+    from app.services.unified_turn_fallthrough import assert_known_fallthrough_reason
+
     result.live_served = False
-    result.fallthrough_reason = reason
+    result.fallthrough_reason = assert_known_fallthrough_reason(reason)
     return result
 
 
