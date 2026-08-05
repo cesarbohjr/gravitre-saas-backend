@@ -118,6 +118,15 @@ export function startOfCalendarGrid(d: Date): Date {
   return start
 }
 
+/** First day (Monday) of the week containing `d`. */
+export function startOfWeek(d: Date): Date {
+  const weekday = (d.getDay() + 6) % 7 // 0 = Monday
+  const start = new Date(d)
+  start.setDate(d.getDate() - weekday)
+  start.setHours(0, 0, 0, 0)
+  return start
+}
+
 export function addDays(d: Date, days: number): Date {
   const next = new Date(d)
   next.setDate(next.getDate() + days)

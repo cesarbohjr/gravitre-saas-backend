@@ -45,6 +45,7 @@ import {
   startOfMonth,
 } from "./shared"
 import { CalendarView } from "./calendar-view"
+import { MobileAgenda } from "./mobile-agenda"
 import { GanttView } from "./gantt-view"
 import { ListView } from "./list-view"
 import { ScheduleItemDialog } from "./schedule-item-dialog"
@@ -178,122 +179,134 @@ export function SchedulesView({
 
   return (
     <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        {/* View switcher */}
-        <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-card p-1">
-          {VIEWS.map((v) => {
-            const Icon = v.icon
-            const active = view === v.id
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setView(v.id)}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-                aria-pressed={active}
+      {/* Toolbar — one panel so the month, the view switcher and the type
+          filters read as a single control surface instead of three cards. */}
+      <div className="space-y-3 rounded-2xl border border-border bg-card p-3 sm:p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          {/* Month nav (calendar + gantt) */}
+          {view !== "list" ? (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 shrink-0 rounded-full sm:h-9 sm:w-9"
+                onClick={() => setMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
+                aria-label="Previous month"
               >
-                <Icon className="h-4 w-4" />
-                {v.label}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Month nav (calendar + gantt) */}
-        {view !== "list" && (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
-              aria-label="Previous month"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="min-w-[9rem] text-center text-sm font-semibold text-foreground">
-              {monthLabel}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
-              aria-label="Next month"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8"
-              onClick={() => setMonth(startOfMonth(new Date()))}
-            >
-              Today
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* Filter chips */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2">
-        <div className="flex flex-wrap items-center gap-2">
-          {ALL_KINDS.map((kind) => {
-            const active = activeKinds.has(kind)
-            const kindColor = KIND_STYLES[kind].color
-            return (
-              <button
-                key={kind}
-                type="button"
-                onClick={() => toggleKind(kind)}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-                  !active && "border-border text-muted-foreground hover:text-foreground",
-                )}
-                style={
-                  active
-                    ? {
-                        backgroundColor: `color-mix(in oklab, ${kindColor} 16%, transparent)`,
-                        borderColor: `color-mix(in oklab, ${kindColor} 45%, transparent)`,
-                        color: kindColor,
-                      }
-                    : undefined
-                }
-                aria-pressed={active}
+                <ChevronLeft className="h-5 w-5 sm:h-4 sm:w-4" />
+              </Button>
+              <h2 className="min-w-0 flex-1 text-lg font-semibold tracking-tight text-foreground lg:min-w-[11rem] lg:text-xl">
+                {monthLabel}
+              </h2>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 shrink-0 rounded-full sm:h-9 sm:w-9"
+                onClick={() => setMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
+                aria-label="Next month"
               >
-                <KindDot kind={kind} className={cn(!active && "opacity-40")} />
-                {KIND_STYLES[kind].label}
-                <span className="opacity-70">{counts[kind]}</span>
-              </button>
-            )
-          })}
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {workflowOptions && workflowOptions.length > 0 && (
-            <Select
-              value={workflowId ?? "all"}
-              onValueChange={(v) => onWorkflowChange?.(v === "all" ? undefined : v)}
-            >
-              <SelectTrigger className="h-8 w-[200px] text-xs" aria-label="Filter by workflow">
-                <SelectValue placeholder="All workflows" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All workflows</SelectItem>
-                {workflowOptions.map((w) => (
-                  <SelectItem key={w.id} value={w.id}>
-                    {w.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <ChevronRight className="h-5 w-5 sm:h-4 sm:w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-10 shrink-0 rounded-full px-4 sm:h-9"
+                onClick={() => setMonth(startOfMonth(new Date()))}
+              >
+                Today
+              </Button>
+            </div>
+          ) : (
+            <h2 className="text-lg font-semibold tracking-tight text-foreground lg:text-xl">
+              All schedules
+            </h2>
           )}
-          <ScheduleLegend className="hidden sm:flex" />
+
+          {/* View switcher — full width on phones so the targets stay tappable */}
+          <div className="grid grid-cols-3 gap-1 rounded-full border border-border bg-muted/50 p-1 lg:inline-flex lg:w-auto">
+            {VIEWS.map((v) => {
+              const Icon = v.icon
+              const active = view === v.id
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => setView(v.id)}
+                  className={cn(
+                    "inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium transition-colors sm:py-1.5",
+                    active
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                  aria-pressed={active}
+                >
+                  <Icon className="h-4 w-4" />
+                  {v.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Type filters + workflow scope */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {ALL_KINDS.map((kind) => {
+              const active = activeKinds.has(kind)
+              const kindColor = KIND_STYLES[kind].color
+              return (
+                <button
+                  key={kind}
+                  type="button"
+                  onClick={() => toggleKind(kind)}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                    !active && "border-border text-muted-foreground hover:text-foreground",
+                  )}
+                  style={
+                    active
+                      ? {
+                          backgroundColor: `color-mix(in oklab, ${kindColor} 16%, transparent)`,
+                          borderColor: `color-mix(in oklab, ${kindColor} 45%, transparent)`,
+                          color: kindColor,
+                        }
+                      : undefined
+                  }
+                  aria-pressed={active}
+                >
+                  <KindDot kind={kind} className={cn(!active && "opacity-40")} />
+                  {KIND_STYLES[kind].label}
+                  <span className="rounded-full bg-foreground/10 px-1.5 text-[10px] font-semibold tabular-nums">
+                    {counts[kind]}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
+            {workflowOptions && workflowOptions.length > 0 && (
+              <Select
+                value={workflowId ?? "all"}
+                onValueChange={(v) => onWorkflowChange?.(v === "all" ? undefined : v)}
+              >
+                <SelectTrigger
+                  className="h-10 w-full rounded-full text-xs sm:h-9 sm:w-[200px]"
+                  aria-label="Filter by workflow"
+                >
+                  <SelectValue placeholder="All workflows" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All workflows</SelectItem>
+                  {workflowOptions.map((w) => (
+                    <SelectItem key={w.id} value={w.id}>
+                      {w.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <ScheduleLegend className="hidden lg:flex" />
+          </div>
         </div>
       </div>
 
@@ -310,16 +323,30 @@ export function SchedulesView({
             transition={{ duration: 0.22, ease: "easeOut" }}
           >
             {view === "calendar" && (
-              <CalendarView
-                month={month}
-                occurrences={occurrences}
-                selectedId={selectedOccurrence?.item.id}
-                onSelect={handleSelect}
-                onOpen={handleOpen}
-                onMoveRequest={(occurrence, targetDate) =>
-                  setPendingMove({ occurrence, targetDate })
-                }
-              />
+              <>
+                {/* Phones get a week strip + agenda timeline; a 7-column month
+                    grid is unreadable below ~700px. */}
+                <div className="md:hidden">
+                  <MobileAgenda
+                    month={month}
+                    occurrences={occurrences}
+                    onOpen={handleOpen}
+                    onMonthChange={setMonth}
+                  />
+                </div>
+                <div className="hidden md:block">
+                  <CalendarView
+                    month={month}
+                    occurrences={occurrences}
+                    selectedId={selectedOccurrence?.item.id}
+                    onSelect={handleSelect}
+                    onOpen={handleOpen}
+                    onMoveRequest={(occurrence, targetDate) =>
+                      setPendingMove({ occurrence, targetDate })
+                    }
+                  />
+                </div>
+              </>
             )}
             {view === "gantt" && (
               <>
@@ -350,7 +377,8 @@ export function SchedulesView({
       )}
 
       <p className="px-1 text-xs text-muted-foreground">
-        Tip: click an item to reschedule or edit, or drag it to another day for a quick move.
+        Tip: tap an item to reschedule or edit
+        <span className="hidden md:inline">, or drag it to another day for a quick move</span>.
       </p>
 
       <ScheduleItemDialog
@@ -441,12 +469,28 @@ function ViewSkeleton({ view }: { view: ViewMode }) {
     )
   }
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
-      <div className="grid h-[32rem] grid-cols-7 grid-rows-6 gap-px bg-border sm:h-[36rem] lg:h-[40rem]">
-        {Array.from({ length: 42 }).map((_, i) => (
-          <Skeleton key={i} className="min-h-0 rounded-none bg-card" />
-        ))}
+    <>
+      {/* Mobile: week strip + agenda */}
+      <div className="space-y-4 md:hidden">
+        <Skeleton className="h-28 rounded-2xl" />
+        <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-start gap-3">
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-4 w-4 rounded-full" />
+              <Skeleton className="h-16 flex-1 rounded-xl" />
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
+      {/* Desktop: day cards */}
+      <div className="hidden rounded-2xl border border-border bg-muted/30 p-3 md:block">
+        <div className="grid h-[34rem] grid-cols-7 grid-rows-6 gap-2 lg:h-[42rem]">
+          {Array.from({ length: 42 }).map((_, i) => (
+            <Skeleton key={i} className="min-h-0 rounded-xl bg-card" />
+          ))}
+        </div>
+      </div>
+    </>
   )
 }
