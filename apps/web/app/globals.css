@@ -480,12 +480,15 @@
     background-attachment: local, local;
   }
 
-  /* Dark keeps a black scrim: on the near-black canvas the scrim's job is to
-     deepen rather than lighten, and a green tint would lift it toward the
-     cards it needs to sit behind. Set on `.ai-chat-canvas` (not the per-
-     department rules) so every tile variant inherits it. */
+  /* Dark inverts the light-mode goal: here the scrim must DEEPEN the canvas so
+     the lighter `--card` bubbles lift off it. At 0.1 black the canvas landed
+     ~oklch(0.07) against cards at 0.11 — only a 0.04 gap, so bubbles read flat.
+     Going deeper widens that separation, and a near-black green tint pulls the
+     canvas off the blue hue-250 base toward the brand hue so it matches the
+     light canvas. Set on `.ai-chat-canvas` rather than the per-department
+     rules so every tile variant inherits it. */
   .dark .ai-chat-canvas {
-    --chat-bg-scrim: rgb(0 0 0 / 0.1);
+    --chat-bg-scrim: rgb(0 10 6 / 0.28);
   }
 
   @media (max-width: 480px) {
