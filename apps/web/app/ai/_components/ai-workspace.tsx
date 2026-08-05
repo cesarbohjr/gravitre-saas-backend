@@ -1690,7 +1690,14 @@ export function AiWorkspace({
         onRename={(id, title) => void handleRenameConversation(id, title)}
         onBulkDelete={(ids) => void handleBulkDeleteConversations(ids)}
         isOpen={sidebarOpen}
-        onToggle={() => setSidebarOpen((open) => !open)}
+        onToggle={() => {
+          setSidebarOpen((open) => {
+            const next = !open
+            // Overlay viewports cannot host both drawers — Activity is also fixed.
+            if (next) setActivityRailOpen(false)
+            return next
+          })
+        }}
         isLoading={showConversationsSkeleton}
         loadError={showConversationsError ? conversationsError : undefined}
         onRetry={() => void mutateConversations()}
@@ -1705,7 +1712,13 @@ export function AiWorkspace({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setSidebarOpen((open) => !open)}
+              onClick={() => {
+                setSidebarOpen((open) => {
+                  const next = !open
+                  if (next) setActivityRailOpen(false)
+                  return next
+                })
+              }}
               className={cn(TOUCH_ICON_BUTTON, "shrink-0 text-[color:var(--chat-surface-muted)]")}
               aria-label={sidebarOpen ? "Hide history" : "Show history"}
             >
@@ -1770,7 +1783,13 @@ export function AiWorkspace({
                   "hidden shrink-0 text-muted-foreground sm:inline-flex",
                 )}
                 aria-label={activityRailOpen ? "Hide activity panel" : "Show activity panel"}
-                onClick={() => setActivityRailOpen((open) => !open)}
+                onClick={() => {
+                  setActivityRailOpen((open) => {
+                    const next = !open
+                    if (next) setSidebarOpen(false)
+                    return next
+                  })
+                }}
               >
                 <PanelRight className={cn(activityRailOpen && "text-primary")} />
               </Button>
@@ -1792,7 +1811,15 @@ export function AiWorkspace({
                     <a href="/ai/help/control">How control works</a>
                   </DropdownMenuItem>
                   {!showLanding ? (
-                    <DropdownMenuItem onClick={() => setActivityRailOpen((open) => !open)}>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setActivityRailOpen((open) => {
+                          const next = !open
+                          if (next) setSidebarOpen(false)
+                          return next
+                        })
+                      }}
+                    >
                       {activityRailOpen ? "Hide activity" : "Show activity"}
                     </DropdownMenuItem>
                   ) : null}

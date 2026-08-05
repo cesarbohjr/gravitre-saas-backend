@@ -270,9 +270,15 @@ export function ConversationSidebar({
       {isOpen && <div className="fixed inset-0 z-30 bg-black/40 md:hidden backdrop-blur-sm" onClick={onToggle} />}
 
       <aside
+        aria-hidden={!isOpen}
         className={cn(
-          "fixed md:static inset-y-0 left-0 z-50 flex h-full w-72 min-h-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-300",
-          isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0 md:w-0 md:border-0 md:overflow-hidden",
+          // Keep closed panels fully inert: a prior regression left a ghost
+          // "Select items" drawer visible when the Activity rail opened because
+          // closed state only used w-0/translate without opacity/pointer-events.
+          "fixed inset-y-0 left-0 z-50 flex h-full w-72 min-h-0 min-w-0 flex-col isolate overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width,transform,opacity,border-color] duration-300 ease-in-out md:static",
+          isOpen
+            ? "translate-x-0 opacity-100"
+            : "-translate-x-full max-md:pointer-events-none opacity-100 md:translate-x-0 md:w-0 md:max-w-0 md:border-0 md:opacity-0 md:pointer-events-none",
         )}
       >
         {/* Header */}
