@@ -68,16 +68,17 @@ export function AiLanding({
       {/* Calm operator surface: neutral card, single restrained emerald accent.
           No blurred gradient orbs — they read as decoration and the composer is
           the only thing that should pull focus here. */}
-      <section className="relative rounded-2xl border border-border/70 bg-card/60 p-6 shadow-sm sm:p-8">
+      {/* Shape of AI — Initial CTA / Open input over the patterned chat surface */}
+      <section className="relative p-4 sm:p-6">
         <div className="text-center">
-          <div className="mx-auto mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/5 px-3 py-1 text-xs font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+          <div className="mx-auto mb-5 inline-flex items-center gap-2 rounded-full border border-[#16a374]/30 bg-white/70 px-3 py-1 text-xs font-medium uppercase tracking-wider text-[#16a374] dark:bg-[#262626]/80">
             <Lightning className="h-3.5 w-3.5" weight="fill" aria-hidden />
             One surface, three modes
           </div>
-          <h1 className="text-balance text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
+          <h1 className="text-balance text-3xl font-semibold tracking-tight text-[#1c1917] md:text-4xl dark:text-[#f2f2f0]">
             What do you want to get done?
           </h1>
-          <p className="mx-auto mt-3 max-w-xl text-pretty text-sm leading-relaxed text-muted-foreground md:text-base">
+          <p className="mx-auto mt-3 max-w-xl text-pretty text-sm leading-relaxed text-[color:var(--chat-surface-muted,#57534e)] md:text-base">
             Ask a question, delegate a task, or search your workspace. In Auto mode, Gravitre routes
             your intent to the right engine automatically.
           </p>
@@ -86,8 +87,8 @@ export function AiLanding({
         <div className="relative mt-8">
           <div
             className={cn(
-              "rounded-2xl border border-border/70 bg-background/80 p-2 shadow-sm transition-colors",
-              "focus-within:border-emerald-500/40 focus-within:ring-2 focus-within:ring-emerald-500/15",
+              "rounded-[10px] border border-[color:var(--chat-surface-border,#dcd9d4)] bg-white p-2 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-colors dark:bg-[#262626]",
+              "focus-within:border-[#16a374]/50 focus-within:ring-2 focus-within:ring-[#16a374]/15",
             )}
           >
             <textarea
@@ -122,8 +123,8 @@ export function AiLanding({
                 onClick={onSubmit}
                 disabled={!input.trim() || routing}
                 className={cn(
-                  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-primary-foreground shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40",
-                  "bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400",
+                  "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white shadow-sm transition-opacity disabled:cursor-not-allowed disabled:opacity-40",
+                  "bg-[#16a374] hover:opacity-90",
                 )}
                 aria-label="Submit"
               >
@@ -183,7 +184,7 @@ export function AiLanding({
 
       {!routing ? (
         <div className="mt-6">
-          <p className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-emerald-700/70 dark:text-emerald-400/70">
+          <p className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-[#16a374]">
             Try
           </p>
           <div className="flex flex-wrap justify-center gap-2">
@@ -199,7 +200,7 @@ export function AiLanding({
                   onInputChange(example.text)
                   inputRef.current?.focus()
                 }}
-                className="group inline-flex items-center gap-2 rounded-xl border border-border/70 bg-card/70 px-3 py-2 text-left text-xs text-muted-foreground shadow-sm transition-all hover:border-emerald-500/30 hover:bg-emerald-500/5 hover:text-foreground hover:shadow-emerald-500/5"
+                className="group inline-flex items-center gap-2 rounded-[10px] border border-[color:var(--chat-surface-border,#dcd9d4)] bg-white/85 px-3 py-2 text-left text-xs text-[color:var(--chat-surface-muted,#57534e)] shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:border-[#16a374]/40 hover:text-[#1c1917] dark:bg-[#262626]"
               >
                 <ModeIconBadge modeId={example.hint} className="h-3.5 w-3.5 transition-colors group-hover:text-emerald-600 dark:group-hover:text-emerald-400" />
                 <span className="max-w-[15rem] truncate">{example.text}</span>

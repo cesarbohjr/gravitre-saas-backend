@@ -5,7 +5,6 @@ import Link from "next/link"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { motion } from "framer-motion"
-import Image from "next/image"
 import {
   BookmarkPlus,
   Copy,
@@ -79,64 +78,20 @@ function extractToolInvocations(message: UIMessage): ToolInvocation[] {
 }
 
 /**
- * Bare platform mark — deliberately no bubble, border or background. Gravitre is
- * the platform voice rather than another participant in the thread, so the mark
- * sits directly on the canvas (the user avatar keeps its shell).
- *
- * The box is h-9/w-9 (36px) to match `USER_AVATAR_SIZE_CLASSES.md`, the size the
- * user avatar renders at on the opposite side of the thread, so both sides of the
- * conversation carry equal visual weight and no message row shifts.
+ * Shape of AI — Identifiers / Avatar: a stable brand mark so the platform
+ * voice is recognizable at a glance (handoff 5a/5b ≈ glyph in brand circle).
  */
-function GravitreAvatarShell({
-  children,
-  className,
-}: {
-  children: ReactNode
-  className?: string
-}) {
+function GravitreAvatar({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex h-9 w-9 shrink-0 items-center justify-center text-foreground",
+        "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#3f5b52] text-[12px] font-bold leading-none text-white dark:bg-[#7fd8ae] dark:text-[#0a2e1f]",
         className,
       )}
+      aria-hidden
     >
-      {children}
+      ≈
     </div>
-  )
-}
-
-function GravitreAvatar() {
-  return (
-    <GravitreAvatarShell>
-      {/* gravitre-mark-*.png are the icon files with their transparent padding
-          cropped off (scripts/trim-icon-padding.mjs). The originals sit on a
-          square canvas whose ink fills only ~49% of the width, so rendering them
-          in a 36px box produced a ~16px glyph that looked far smaller than the
-          36px user avatar. Cropped, `w-9` is 36px of actual mark.
-
-          The mark is wider than it is tall, so width is the matching dimension
-          and height follows the aspect ratio via object-contain.
-
-          Without a pale shell behind it the mark also has to invert per theme.
-          Both variants render and CSS picks one, so there is no
-          hydration-sensitive theme read on first paint. */}
-      <Image
-        src="/images/gravitre-mark-black.png"
-        alt="Gravitre"
-        width={1053}
-        height={614}
-        className="w-9 object-contain dark:hidden"
-      />
-      <Image
-        src="/images/gravitre-mark-white.png"
-        alt=""
-        aria-hidden
-        width={1030}
-        height={572}
-        className="hidden w-9 object-contain dark:block"
-      />
-    </GravitreAvatarShell>
   )
 }
 
@@ -254,7 +209,7 @@ export function ChatTranscript({
             <div key={message.id || `msg-${sourceIndex}`} className="contents">
             {showDay && dayLabel ? (
               <div className="flex justify-center py-1">
-                <span className="rounded-full bg-background px-2.5 py-0.5 text-[10px] text-muted-foreground">
+                <span className="rounded-full bg-[color:var(--chat-surface,#e9e7e3)] px-2.5 py-0.5 text-[10px] text-[color:var(--chat-surface-muted,#a19a91)] dark:bg-[color:var(--chat-surface,#1c1c1c)]">
                   {dayLabel}
                 </span>
               </div>
@@ -266,16 +221,16 @@ export function ChatTranscript({
               id={`msg-${message.id}`}
               data-message-id={message.id}
               className={cn(
-                "group/msg flex gap-2.5",
+                "group/msg flex gap-2",
                 isUser ? "flex-row-reverse" : "flex-row",
               )}
             >
               {isUser ? (
                 <UserAccountAvatar
                   useCurrentUser
-                  size="md"
-                  className="hidden sm:flex"
-                  fallbackClassName="bg-primary text-[9px] text-primary-foreground"
+                  size="sm"
+                  className="hidden h-6 w-6 sm:flex"
+                  fallbackClassName="bg-[#3f5b52] text-[9px] text-white dark:bg-[#7fd8ae] dark:text-[#0a2e1f]"
                 />
               ) : (
                 resolvedAvatar
@@ -444,17 +399,20 @@ export function ChatTranscript({
         })}
 
         {showWaiting ? (
-          <div className="flex gap-2.5">
+          <div className="flex gap-2">
             {assistantAvatar ? (
               resolvedAvatar
             ) : (
-              <GravitreAvatarShell>
+              <div
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#3f5b52] text-white dark:bg-[#7fd8ae] dark:text-[#0a2e1f]"
+                title={resolvedWaiting}
+              >
                 <GravitreThinkingLoader
-                  size={36}
-                  className="text-foreground"
+                  size={14}
+                  className="text-current"
                   title={resolvedWaiting}
                 />
-              </GravitreAvatarShell>
+              </div>
             )}
             <div className="flex min-w-0 max-w-[min(720px,90%)] flex-col items-start">
               <p className={CHAT_ROLE_LABEL_CLASS}>{assistantLabel}</p>

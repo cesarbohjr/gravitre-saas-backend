@@ -1698,26 +1698,26 @@ export function AiWorkspace({
         onSearchQueryChange={setHistorySearch}
       />
 
-      <div className="ai-surface-shell flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="shrink-0 border-b border-border bg-background">
+      <div className="ai-surface-shell ai-chat-surface flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="shrink-0 border-b border-[color:var(--chat-surface-border)] bg-[color:var(--chat-surface)]">
           {/* Primary header — handoff 5a/5b (desktop) / 4* top row (mobile) */}
-          <div className="flex h-12 items-center gap-2 px-3 sm:h-11 sm:gap-2.5 sm:px-3.5">
+          <div className="flex h-12 items-center gap-2.5 px-3.5 sm:h-[46px]">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setSidebarOpen((open) => !open)}
-              className={cn(TOUCH_ICON_BUTTON, "shrink-0 text-muted-foreground")}
+              className={cn(TOUCH_ICON_BUTTON, "shrink-0 text-[color:var(--chat-surface-muted)]")}
               aria-label={sidebarOpen ? "Hide history" : "Show history"}
             >
               {sidebarOpen ? <PanelLeftClose /> : <PanelLeft />}
             </Button>
 
             <div className="min-w-0 shrink">
-              <p className="truncate text-[15px] font-bold text-foreground sm:text-sm">Chat</p>
+              <p className="truncate text-[15px] font-bold sm:text-sm">Chat</p>
             </div>
 
-            <span className="hidden shrink-0 text-[9px] font-medium uppercase tracking-[0.08em] text-muted-foreground md:inline">
-              {activeMode.badge.replace(/ · /g, " · ")}
+            <span className="hidden shrink-0 text-[9px] font-medium uppercase tracking-[0.08em] text-[color:var(--chat-surface-muted)] md:inline">
+              Answer · Search · Execute
             </span>
 
             <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5">
@@ -1731,7 +1731,7 @@ export function AiWorkspace({
                 href="/ai/help/control"
                 className={cn(
                   TOUCH_ICON_BUTTON,
-                  "hidden items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-muted hover:text-foreground sm:inline-flex",
+                  "hidden items-center justify-center rounded-full border border-[color:var(--chat-surface-border)] text-[color:var(--chat-surface-muted)] hover:bg-black/[0.03] hover:text-foreground sm:inline-flex dark:hover:bg-white/[0.04]",
                 )}
                 title="How Gravitre keeps you in control"
                 aria-label="How Gravitre keeps you in control"
@@ -1805,8 +1805,8 @@ export function AiWorkspace({
             </div>
           </div>
 
-          {/* Mobile session chips — handoff 4* second row */}
-          <div className="flex items-center gap-1.5 overflow-x-auto border-t border-border px-3 py-2 sm:hidden">
+          {/* Mobile session chips — handoff 4* second row (Modes / Tuners) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto border-t border-[color:var(--chat-surface-border)] px-3 py-2 sm:hidden">
             <ChatSessionControls
               department={selectedDepartment}
               onDepartmentChange={(value) => {
@@ -1997,7 +1997,7 @@ export function AiWorkspace({
         </div>
 
         {showComposer ? (
-        <div className="shrink-0 border-t border-emerald-500/10 bg-card/90 px-3 py-2 backdrop-blur-md md:px-5">
+        <div className="shrink-0 border-t border-[color:var(--chat-surface-border)] bg-[color:var(--chat-surface)] px-4 py-3 md:px-5">
           <div className="mx-auto w-full max-w-[920px]">
             {!showLanding && messages.length === 0 && inlineTurns.length === 0 && !isChatBusy ? (
               <div className="mb-3 flex flex-wrap justify-center gap-2">
@@ -2006,7 +2006,7 @@ export function AiWorkspace({
                     key={example.text}
                     type="button"
                     onClick={() => void submitPrompt(example.text)}
-                    className="rounded-full border border-border/70 bg-card/80 px-3 py-1.5 text-center text-xs text-muted-foreground transition-all hover:border-emerald-500/30 hover:bg-emerald-500/5 hover:text-foreground"
+                    className="rounded-full border border-[color:var(--chat-surface-border)] bg-white/80 px-3 py-1.5 text-center text-xs text-[color:var(--chat-surface-muted)] transition-all hover:border-[#16a374]/40 hover:text-foreground dark:bg-[#262626]"
                   >
                     {example.text}
                   </button>
@@ -2019,42 +2019,38 @@ export function AiWorkspace({
                 void submitPrompt(input)
               }}
             >
-              <div
-                className={cn(
-                  "flex min-h-[72px] flex-col justify-center gap-1.5 rounded-[1.25rem] border border-emerald-500/15 bg-background/90 p-2.5 shadow-sm backdrop-blur-sm focus-within:ring-2 dark:bg-card/90",
-                  "focus-within:border-emerald-500/35 focus-within:ring-emerald-500/20",
-                )}
-              >
-                {connectedFileAttachments.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5 px-2 pt-1">
-                    {connectedFileAttachments.map((file) => (
-                      <span
-                        key={`${file.vendor}-${file.file_id}`}
-                        className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1 text-xs"
-                        title={
-                          file.web_link
-                            ? `${file.name} — stays in your connected account (read-only for this chat)`
-                            : file.name
+              {connectedFileAttachments.length > 0 ? (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {connectedFileAttachments.map((file) => (
+                    <span
+                      key={`${file.vendor}-${file.file_id}`}
+                      className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[#16a374]/25 bg-white px-2.5 py-1 text-xs dark:bg-[#262626]"
+                      title={
+                        file.web_link
+                          ? `${file.name} — stays in your connected account (read-only for this chat)`
+                          : file.name
+                      }
+                    >
+                      <FolderOpen className="h-3 w-3 shrink-0 text-[#16a374]" />
+                      <span className="truncate">{file.name}</span>
+                      <button
+                        type="button"
+                        className="text-[color:var(--chat-surface-muted)] hover:text-foreground"
+                        aria-label={`Remove ${file.name}`}
+                        onClick={() =>
+                          setConnectedFileAttachments((prev) =>
+                            prev.filter((f) => !(f.vendor === file.vendor && f.file_id === file.file_id)),
+                          )
                         }
                       >
-                        <FolderOpen className="h-3 w-3 shrink-0 text-emerald-700 dark:text-emerald-400" />
-                        <span className="truncate">{file.name}</span>
-                        <button
-                          type="button"
-                          className="text-muted-foreground hover:text-foreground"
-                          aria-label={`Remove ${file.name}`}
-                          onClick={() =>
-                            setConnectedFileAttachments((prev) =>
-                              prev.filter((f) => !(f.vendor === file.vendor && f.file_id === file.file_id)),
-                            )
-                          }
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              {/* Handoff composer row — open input + attachments + send (Shape of AI: Open input / Attachments) */}
+              <div className="flex items-end gap-2.5">
                 <textarea
                   ref={inputRef}
                   value={input}
@@ -2063,49 +2059,60 @@ export function AiWorkspace({
                   rows={1}
                   disabled={routing}
                   placeholder="Ask, delegate, or search…"
-                  className={cn("max-h-[160px] min-h-[44px] flex-1 resize-none bg-transparent px-2 outline-none placeholder:text-muted-foreground/70", CHAT_COMPOSER_CLASS)}
+                  className={cn(
+                    "max-h-[120px] min-h-[40px] flex-1 resize-none rounded-lg border border-[color:var(--chat-surface-border)] bg-white px-3 py-2.5 outline-none placeholder:text-[color:var(--chat-surface-muted)] focus:border-[#16a374]/50 dark:bg-[#262626] dark:text-[#f2f2f0]",
+                    CHAT_COMPOSER_CLASS,
+                  )}
                   onInput={(event) => {
                     const target = event.target as HTMLTextAreaElement
-                    target.style.height = "44px"
-                    target.style.height = `${Math.min(Math.max(target.scrollHeight, 44), 160)}px`
+                    target.style.height = "40px"
+                    target.style.height = `${Math.min(Math.max(target.scrollHeight, 40), 120)}px`
                   }}
                 />
-                <div className="flex shrink-0 items-center justify-end gap-2 px-1">
-                  {isChatBusy ? (
-                    <Button variant="outline" size="sm" className="h-8" onClick={() => stop()}>
-                      <Square className="mr-1 h-3 w-3" />
-                      Stop
-                    </Button>
-                  ) : null}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-1.5 text-xs"
-                    disabled={routing || isChatBusy}
-                    title="Browse connected cloud files (read-only — not uploaded to Gravitre)"
-                    onClick={() => setConnectedFilePickerOpen(true)}
-                  >
-                    <FolderOpen className="h-3.5 w-3.5" />
-                    Browse files
+                {isChatBusy ? (
+                  <Button variant="outline" size="sm" className="h-10 shrink-0" onClick={() => stop()}>
+                    <Square className="mr-1 h-3 w-3" />
+                    Stop
                   </Button>
-                  <VoiceInputButton
-                    value={input}
-                    onChange={setInput}
-                    disabled={routing || isChatBusy}
-                    onError={(message) => {
-                      if (message) toast.error(message)
-                    }}
-                  />
-                  <button
-                    type="submit"
-                    disabled={(!input.trim() && connectedFileAttachments.length === 0) || routing || isChatBusy}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-500 text-primary-foreground shadow-sm transition-all hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-40 dark:from-emerald-500 dark:to-emerald-400"
-                    aria-label="Send"
-                  >
-                    <ArrowUp className="h-4 w-4" />
-                  </button>
-                </div>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="hidden h-10 shrink-0 gap-1.5 rounded-lg border-[color:var(--chat-surface-border)] bg-white text-xs text-[color:var(--chat-surface-muted)] hover:text-foreground sm:inline-flex dark:bg-[#262626]"
+                  disabled={routing || isChatBusy}
+                  title="Browse connected cloud files (read-only — not uploaded to Gravitre)"
+                  onClick={() => setConnectedFilePickerOpen(true)}
+                >
+                  <FolderOpen className="h-3.5 w-3.5" />
+                  Browse files
+                </Button>
+                <button
+                  type="button"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[color:var(--chat-surface-border)] bg-white text-[color:var(--chat-surface-muted)] sm:hidden dark:bg-[#262626]"
+                  disabled={routing || isChatBusy}
+                  title="Browse files"
+                  aria-label="Browse files"
+                  onClick={() => setConnectedFilePickerOpen(true)}
+                >
+                  <FolderOpen className="h-4 w-4" />
+                </button>
+                <VoiceInputButton
+                  value={input}
+                  onChange={setInput}
+                  disabled={routing || isChatBusy}
+                  onError={(message) => {
+                    if (message) toast.error(message)
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={(!input.trim() && connectedFileAttachments.length === 0) || routing || isChatBusy}
+                  className="inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center self-center rounded-full bg-[#16a374] text-white shadow-sm transition-opacity hover:opacity-90 disabled:opacity-40 sm:h-8 sm:w-8"
+                  aria-label="Send"
+                >
+                  <ArrowUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                </button>
               </div>
             </form>
           </div>

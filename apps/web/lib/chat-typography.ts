@@ -1,22 +1,20 @@
 /** Shared typography tokens for every in-product chat surface.
- *  Direction A — Operator Console: transcript panels, not consumer bubbles.
+ *  Handoff 5a/5b — warm stone canvas, compact rounded bubbles, brand green send.
  */
 
 export const CHAT_ROLE_LABEL_CLASS =
-  "mb-1 px-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground"
+  "mb-1 px-0.5 text-[9px] font-medium uppercase tracking-[0.08em] text-[color:var(--chat-surface-muted,#a19a91)]"
 
 export const CHAT_BUBBLE_BASE_CLASS =
-  "w-full rounded-[1.15rem] px-4 py-3 text-[15px] leading-relaxed"
+  "max-w-full rounded-[10px] px-3 py-2 text-[13px] leading-relaxed sm:text-[14px]"
 
-// Solid emerald so the user's own words read as the brand voice; a hairline
-// inner ring keeps the edge crisp over any background theme.
+// Handoff user bubble — solid #16a374.
 export const CHAT_USER_BUBBLE_CLASS =
-  "rounded-tr-sm bg-emerald-600 text-white shadow-sm ring-1 ring-inset ring-emerald-400/20 dark:bg-emerald-600"
+  "bg-[#16a374] text-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
 
-// Opaque card fill + defined border/shadow so assistant text stays legible
-// even over the textured background themes at every breakpoint.
+// Handoff assistant bubble — white / dark card over patterned canvas.
 export const CHAT_ASSISTANT_BUBBLE_CLASS =
-  "rounded-tl-sm border border-border/70 bg-card text-foreground shadow-sm ring-1 ring-black/[0.02] dark:ring-white/[0.04]"
+  "border border-[#ececea] bg-white text-[#1c1917] shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-[#3a3a3a] dark:bg-[#292929] dark:text-[#e9e9e6]"
 
 export const CHAT_BODY_TEXT_CLASS = "text-[14px] leading-relaxed"
 

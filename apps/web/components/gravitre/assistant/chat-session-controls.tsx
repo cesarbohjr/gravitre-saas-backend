@@ -55,7 +55,7 @@ function ChipTrigger({
   return (
     <DropdownMenuTrigger
       className={cn(
-        "inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-border bg-background px-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground sm:h-7 sm:rounded-md sm:text-[11px]",
+        "inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-[color:var(--chat-surface-border,#dcd9d4)] bg-transparent px-2.5 text-[11px] font-medium text-[color:var(--chat-surface-muted,#57534e)] transition-colors hover:bg-black/[0.03] data-[state=open]:bg-black/[0.04] sm:h-7 sm:rounded-md sm:text-[11px]",
         className,
       )}
       aria-label={ariaLabel}
@@ -86,14 +86,14 @@ export function ChatSessionControls({
       <DropdownMenu>
         <DropdownMenuTrigger
           className={cn(
-            "hidden h-8 max-w-[min(100%,22rem)] shrink-0 items-center gap-1.5 truncate rounded-md border border-border bg-background px-2.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground sm:inline-flex",
+            "hidden h-8 max-w-[min(100%,22rem)] shrink-0 items-center gap-1.5 truncate rounded-md border border-[color:var(--chat-surface-border,#d8d5d0)] bg-transparent px-2.5 text-[11px] text-[color:var(--chat-surface-muted,#57534e)] transition-colors hover:bg-black/[0.03] data-[state=open]:bg-black/[0.04] sm:inline-flex dark:hover:bg-white/[0.04]",
           )}
           aria-label={`Session: ${dept}, ${personaLabel}, ${speedLabel}`}
         >
           <span className="truncate">
             {dept} · {personaLabel}
           </span>
-          <span className="shrink-0 border-l border-border pl-1.5 font-semibold uppercase tracking-wide text-primary">
+          <span className="shrink-0 border-l border-[color:var(--chat-surface-border,#d8d5d0)] pl-1.5 font-bold uppercase tracking-wide text-[#3f5b52] dark:text-[#7fd8ae]">
             {speedLabel}
           </span>
           <ChevronDown className="h-3 w-3 shrink-0 opacity-60" aria-hidden />
@@ -169,7 +169,7 @@ export function ChatSessionControls({
             "h-8 shrink-0 rounded-full border px-2.5 text-[11px] font-bold uppercase tracking-wide",
             chatMode === "deep"
               ? "border-info/30 bg-info/10 text-info"
-              : "border-primary/25 bg-primary/5 text-primary",
+              : "border-[#cdeee1] bg-transparent font-bold text-[#16a374] dark:border-[#1f4b3a]",
           )}
           title={
             chatMode === "deep"

@@ -428,33 +428,38 @@
   }
 
   /* ============================================================
-     Chat canvas background themes (selectable, behind /ai).
-     Department icon-pattern tiles only — the gradient / mesh washes
-     were removed. Tiles are seamless PNGs with the design-specified
-     0.08 opacity pre-baked into their alpha channel (see
-     scripts/bake-chat-pattern-alpha.mjs), so they can render as a
-     plain background-image without an overlay layer that would sit
-     on top of message content.
+     Chat window surface (handoff 5a/5b) + canvas pattern themes.
+     Warm stone / near-black fill matches the design mock — not the
+     global app --background. Pattern tiles bake ~0.08–0.15 alpha
+     (scripts/bake-chat-pattern-alpha.mjs).
 
-     Two background layers stack here, both below content:
-       1. the department tile (`--chat-bg-tile`)
-       2. a flat 10% black scrim that deepens the canvas so message
-          bubbles separate from it instead of competing.
-     The scrim is a background layer rather than a child element, so
-     it can never paint over a message. Theme rules below only swap
-     `--chat-bg-tile`; sizing/repeat/scrim live here once.
-
-     `background-attachment: local` (never `fixed`) keeps both layers
-     scrolling with the canvas on iOS Safari.
-     Selected via `data-chat-bg="<id>"`; light/dark tiles swap on the
-     `.dark` root class.
+     Layers (all below content):
+       1. department tile (`--chat-bg-tile`)
+       2. light grey scrim (`--chat-bg-scrim`) — kept subtle so the
+          canvas reads as lighter grey, not a muddy dark wash.
      ============================================================ */
-  .ai-chat-canvas {
+  .ai-chat-surface {
+    --chat-surface: #e9e7e3;
+    --chat-surface-border: #dcd9d4;
+    --chat-surface-muted: #a19a91;
     --chat-bg-tile: none;
-    --chat-bg-scrim: rgb(0 0 0 / 0.1);
-    background-color: var(--background);
+    /* Was 10% black; two steps lighter → soft grey lift, not darken. */
+    --chat-bg-scrim: rgb(255 255 255 / 0.22);
+    background-color: var(--chat-surface);
+    color: #1c1917;
+  }
+  .dark .ai-chat-surface {
+    --chat-surface: #1c1c1c;
+    --chat-surface-border: #2a2a2a;
+    --chat-surface-muted: #7a7a78;
+    --chat-bg-scrim: rgb(255 255 255 / 0.04);
+    color: #f2f2f0;
+  }
+
+  .ai-chat-canvas {
+    background-color: var(--chat-surface, var(--background));
     background-image: var(--chat-bg-tile),
-      linear-gradient(var(--chat-bg-scrim), var(--chat-bg-scrim));
+      linear-gradient(var(--chat-bg-scrim, transparent), var(--chat-bg-scrim, transparent));
     background-repeat: repeat, no-repeat;
     /* Desktop tile size per the handoff; mobile narrows below. */
     background-size: 234px 234px, 100% 100%;
@@ -507,13 +512,16 @@
     --chat-bg-tile: none;
   }
 
-  .ai-surface-shell {
+  .ai-surface-shell:not(.ai-chat-surface) {
     background: linear-gradient(
       180deg,
       color-mix(in oklch, var(--primary) 4%, var(--background)) 0%,
       var(--background) 40%,
       color-mix(in oklch, var(--info) 3%, var(--background)) 100%
     );
+  }
+  .ai-surface-shell.ai-chat-surface {
+    background: var(--chat-surface);
   }
 }
 
