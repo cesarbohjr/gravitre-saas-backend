@@ -79,9 +79,11 @@ function extractToolInvocations(message: UIMessage): ToolInvocation[] {
 /**
  * Bare platform mark — deliberately no bubble, border or background. Gravitre is
  * the platform voice rather than another participant in the thread, so the mark
- * sits directly on the canvas (the user avatar keeps its shell). Footprint stays
- * h-9/w-9 to match the previous circle so message rows don't shift; the visible
- * glyph grows from 20px to 32px.
+ * sits directly on the canvas (the user avatar keeps its shell).
+ *
+ * The box is h-9/w-9 (36px) to match `USER_AVATAR_SIZE_CLASSES.md`, the size the
+ * user avatar renders at on the opposite side of the thread, so both sides of the
+ * conversation carry equal visual weight and no message row shifts.
  */
 function GravitreAvatarShell({
   children,
@@ -105,23 +107,32 @@ function GravitreAvatarShell({
 function GravitreAvatar() {
   return (
     <GravitreAvatarShell>
-      {/* Without a pale shell behind it the mark has to invert per theme. Both
-          variants render and CSS picks one, so there's no hydration-sensitive
-          theme read on first paint. */}
+      {/* gravitre-mark-*.png are the icon files with their transparent padding
+          cropped off (scripts/trim-icon-padding.mjs). The originals sit on a
+          square canvas whose ink fills only ~49% of the width, so rendering them
+          in a 36px box produced a ~16px glyph that looked far smaller than the
+          36px user avatar. Cropped, `w-9` is 36px of actual mark.
+
+          The mark is wider than it is tall, so width is the matching dimension
+          and height follows the aspect ratio via object-contain.
+
+          Without a pale shell behind it the mark also has to invert per theme.
+          Both variants render and CSS picks one, so there is no
+          hydration-sensitive theme read on first paint. */}
       <Image
-        src="/images/gravitre-icon-black.png"
+        src="/images/gravitre-mark-black.png"
         alt="Gravitre"
-        width={32}
-        height={32}
-        className="h-8 w-8 object-contain dark:hidden"
+        width={1053}
+        height={614}
+        className="w-9 object-contain dark:hidden"
       />
       <Image
-        src="/images/gravitre-icon-white.png"
+        src="/images/gravitre-mark-white.png"
         alt=""
         aria-hidden
-        width={32}
-        height={32}
-        className="hidden h-8 w-8 object-contain dark:block"
+        width={1030}
+        height={572}
+        className="hidden w-9 object-contain dark:block"
       />
     </GravitreAvatarShell>
   )
@@ -418,7 +429,7 @@ export function ChatTranscript({
             ) : (
               <GravitreAvatarShell>
                 <GravitreThinkingLoader
-                  size={32}
+                  size={36}
                   className="text-foreground"
                   title={resolvedWaiting}
                 />
