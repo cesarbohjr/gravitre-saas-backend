@@ -311,9 +311,14 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
   // Screenshot/E2E surfaces supply auth + billing as fixtures rather than real
   // sessions. Without this the bootstrap gates below never clear and every
   // capture silently returns the "Loading workspace" loader instead of the
-  // product. Compiled out of production builds by the NODE_ENV check.
+  // product. Match /e2e/shots layout (allowed in non-production without the
+  // PLAYWRIGHT_E2E flag) so a plain `next dev` capture isn't stuck behind
+  // billing SWR while HTML still SSR'd. Never active in production builds.
   const e2eBypassBootstrap =
-    process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_PLAYWRIGHT_E2E === "1"
+    process.env.NODE_ENV !== "production" &&
+    (process.env.NEXT_PUBLIC_PLAYWRIGHT_E2E === "1" ||
+      process.env.PLAYWRIGHT_E2E === "1" ||
+      pathname.startsWith("/e2e/"))
 
   if (!e2eBypassBootstrap) {
     if (loading || awaitingInitialBilling) {

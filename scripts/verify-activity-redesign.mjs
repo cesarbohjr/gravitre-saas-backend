@@ -5,13 +5,21 @@
  * visual: at lg+ the document must not scroll, and the list + detail panes must
  * each scroll internally instead. Screenshots alone can't prove that, so this
  * asserts scrollHeight directly and captures PNGs for the visual review.
+ *
+ * Run against a local `next dev` (apps/web). /e2e/shots is allowed in
+ * non-production without PLAYWRIGHT_E2E; AppShell also bypasses billing
+ * bootstrap on /e2e/* so list fixtures can hydrate. Do not use this script to
+ * debug product /activity while logged out — that path needs a real session.
  */
 
 import { chromium } from "@playwright/test"
 import { mkdir } from "node:fs/promises"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 
 const BASE = process.env.BASE_URL ?? "http://127.0.0.1:3000"
-const OUT = "/tmp/agent-browser"
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
+const OUT = process.env.OUT_DIR ?? join(REPO_ROOT, "docs", "delivery", "_artifacts", "activity-redesign")
 
 const DESKTOP = { width: 1440, height: 900 }
 const PREVIEW = { width: 845, height: 841 }
