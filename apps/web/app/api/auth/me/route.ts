@@ -24,6 +24,8 @@ async function fallbackMeFromSupabase(user: {
       email: user.email ?? null,
       full_name: null,
       avatar_url: null,
+      job_title: null,
+      department: null,
       role: orgContext.organizations[0]?.role ?? null,
       created_at: user.created_at ?? null,
       updated_at: null,

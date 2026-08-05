@@ -766,6 +766,16 @@ function NotificationSettings() {
   )
 }
 
+type TeamEditMember = {
+  id?: string
+  name: string
+  email: string
+  role: string
+  avatarUrl?: string | null
+  jobTitle?: string | null
+  department?: string | null
+}
+
 function TeamSettings({
   members,
   onUpdate,
@@ -776,11 +786,13 @@ function TeamSettings({
   isAdmin: boolean
 }) {
   const [inviteDialog, setInviteDialog] = useState(false)
-  const [editDialog, setEditDialog] = useState<{name: string; email: string; role: string} | null>(null)
+  const [editDialog, setEditDialog] = useState<TeamEditMember | null>(null)
+  const [editRole, setEditRole] = useState("member")
   const [inviteEmail, setInviteEmail] = useState("")
   const [inviteRole, setInviteRole] = useState("member")
   const [isInviting, setIsInviting] = useState(false)
   const [isRemoving, setIsRemoving] = useState<string | null>(null)
+  const [isSavingRole, setIsSavingRole] = useState(false)
 
   const handleInvite = async () => {
     if (!isAdmin) return
@@ -816,6 +828,40 @@ function TeamSettings({
     }
   }
 
+  const openEditDialog = (member: User) => {
+    const role = member.role ?? "member"
+    setEditRole(role)
+    setEditDialog({
+      id: member.id,
+      name: member.full_name ?? member.email,
+      email: member.email,
+      role,
+      avatarUrl: member.avatar_url,
+      jobTitle: member.job_title,
+      department: member.department,
+    })
+  }
+
+  const handleSaveRole = async () => {
+    if (!isAdmin || !editDialog) return
+    setIsSavingRole(true)
+    try {
+      await settingsApi.updateMember({
+        id: editDialog.id,
+        email: editDialog.email,
+        role: editRole,
+      })
+      toast.success("Member role updated")
+      setEditDialog(null)
+      await onUpdate()
+    } catch (err) {
+      console.error("[v0] Failed to update member role:", err)
+      toast.error("Failed to update member role")
+    } finally {
+      setIsSavingRole(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <AdaptiveDataView className="rounded-lg border border-border overflow-hidden">
@@ -828,7 +874,9 @@ function TeamSettings({
             </tr>
           </thead>
           <tbody>
-            {members.map((member) => (
+            {members.map((member) => {
+              const titleLine = [member.job_title, member.department].filter(Boolean).join(" · ")
+              return (
               <tr key={member.id ?? member.email} className="border-b border-border last:border-0">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
@@ -841,6 +889,9 @@ function TeamSettings({
                     <div>
                       <p className="text-sm font-medium text-foreground">{member.full_name ?? member.email}</p>
                       <p className="text-xs text-muted-foreground">{member.email}</p>
+                      {titleLine ? (
+                        <p className="text-[11px] text-muted-foreground/80">{titleLine}</p>
+                      ) : null}
                     </div>
                   </div>
                 </td>
@@ -856,14 +907,15 @@ function TeamSettings({
                     variant="ghost"
                     size="sm"
                     className="h-7 text-xs"
-                    onClick={() => setEditDialog({ name: member.full_name ?? "", email: member.email, role: member.role ?? "member" })}
+                    onClick={() => openEditDialog(member)}
                     disabled={!isAdmin}
                   >
                     Edit
                   </Button>
                 </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
       </AdaptiveDataView>
@@ -917,24 +969,40 @@ function TeamSettings({
         <DialogContent className="bg-card border-border">
           <DialogHeader>
             <DialogTitle>Edit Team Member</DialogTitle>
-            <DialogDescription>Update role or remove {editDialog?.name} from the team.</DialogDescription>
+            <DialogDescription>
+              Update role or remove {editDialog?.name || "this member"} from the team. Title and
+              department come from their profile.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground">
-                {editDialog?.name.split(" ").map(s => s[0]).join("").toUpperCase().slice(0, 2)}
-              </div>
-              <div>
-                <p className="font-medium text-foreground">{editDialog?.name}</p>
-                <p className="text-xs text-muted-foreground">{editDialog?.email}</p>
+              <UserAccountAvatar
+                name={editDialog?.name}
+                email={editDialog?.email}
+                avatarUrl={editDialog?.avatarUrl}
+                size="md"
+              />
+              <div className="min-w-0">
+                <p className="font-medium text-foreground truncate">{editDialog?.name || "Team member"}</p>
+                <p className="text-xs text-muted-foreground truncate">{editDialog?.email}</p>
+                {[editDialog?.jobTitle, editDialog?.department].filter(Boolean).length > 0 ? (
+                  <p className="mt-0.5 text-[11px] text-muted-foreground/90">
+                    {[editDialog?.jobTitle, editDialog?.department].filter(Boolean).join(" · ")}
+                  </p>
+                ) : (
+                  <p className="mt-0.5 text-[11px] text-muted-foreground/70">
+                    No title or department on profile yet
+                  </p>
+                )}
               </div>
             </div>
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground uppercase">Role</label>
-              <select 
-                defaultValue={editDialog?.role}
+              <select
+                value={editRole}
+                onChange={(event) => setEditRole(event.target.value)}
                 className="w-full h-9 rounded-md border border-border bg-secondary px-3 text-sm text-foreground"
-                disabled={!isAdmin}
+                disabled={!isAdmin || isSavingRole}
               >
                 <option value="member">Member</option>
                 <option value="admin">Admin</option>
@@ -945,7 +1013,7 @@ function TeamSettings({
             <Button
               variant="destructive"
               size="sm"
-              disabled={!isAdmin || !editDialog || !members.find((m) => m.email === editDialog.email)}
+              disabled={!isAdmin || !editDialog || !members.find((m) => m.email === editDialog.email) || isSavingRole}
               onClick={() => {
                 const member = members.find((m) => m.email === editDialog?.email)
                 if (member?.id) {
@@ -956,8 +1024,13 @@ function TeamSettings({
               {isRemoving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
               Remove from Team
             </Button>
-            <Button variant="outline" onClick={() => setEditDialog(null)}>Cancel</Button>
-            <Button onClick={() => setEditDialog(null)}>Save Changes</Button>
+            <Button variant="outline" onClick={() => setEditDialog(null)} disabled={isSavingRole}>
+              Cancel
+            </Button>
+            <Button onClick={() => void handleSaveRole()} disabled={!isAdmin || isSavingRole}>
+              {isSavingRole ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Save Changes
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

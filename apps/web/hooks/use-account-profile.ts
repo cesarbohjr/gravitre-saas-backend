@@ -48,6 +48,8 @@ export function useAccountProfile() {
       displayName,
       email: serverUser?.email || user?.email || profile.email,
       avatarUrl,
+      jobTitle: (serverUser?.job_title || profile.jobTitle || "").trim(),
+      department: (serverUser?.department || profile.department || "").trim(),
       initials,
       isLoading: Boolean(user) && isLoading,
       refresh: mutate,

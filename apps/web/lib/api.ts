@@ -2379,6 +2379,8 @@ export const settingsApi = {
   listTeamMembers: () => fetcher<{ team: User[] }>(apiUrl("/api/settings/team")),
   inviteMember: (email: string, role?: string) =>
     postJson<{ member: User }>(apiUrl("/api/settings/team"), { email, role }),
+  updateMember: (data: { id?: string; email?: string; role?: string; full_name?: string }) =>
+    patchJson<{ member: User }>(apiUrl("/api/settings/team"), data),
   removeMember: async (userId: string) => {
     const response = await apiFetch(apiUrl("/api/settings/team"), {
       method: "DELETE",

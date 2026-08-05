@@ -91,7 +91,11 @@ export default function ProfilePage() {
       const fullName = `${profile.firstName} ${profile.lastName}`.trim()
       await authApi.updateProfile({
         full_name: fullName || undefined,
+        job_title: profile.jobTitle.trim() || undefined,
+        department: profile.department.trim() || undefined,
       })
+      await globalMutate("account-profile-me")
+      await globalMutate("/api/auth/me")
       setSaved(true)
       toast.success("Profile updated")
       setTimeout(() => setSaved(false), 3000)

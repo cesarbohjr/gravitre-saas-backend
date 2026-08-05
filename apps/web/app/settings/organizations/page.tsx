@@ -488,6 +488,11 @@ export default function ManageOrganizationsPage() {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{member.full_name || member.email || member.id}</p>
                       <p className="truncate text-xs text-muted-foreground">{member.email ?? member.id}</p>
+                      {[member.job_title, member.department].filter(Boolean).length > 0 ? (
+                        <p className="truncate text-[11px] text-muted-foreground/80">
+                          {[member.job_title, member.department].filter(Boolean).join(" · ")}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

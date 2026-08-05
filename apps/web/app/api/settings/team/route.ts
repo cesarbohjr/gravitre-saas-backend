@@ -30,55 +30,73 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: membersError.message }, { status: 500 })
     }
 
-    const userIds = Array.from(new Set((members ?? []).map((member) => member.user_id).filter(Boolean)))
-    let usersById: Record<string, { email?: string | null; full_name?: string | null; avatar_url?: string | null }> = {}
-    if (userIds.length > 0) {
+    // organization_members.user_id stores the auth UID; public.users links via auth_user_id.
+    const authUserIds = Array.from(
+      new Set((members ?? []).map((member) => member.user_id).filter(Boolean)),
+    )
+    type TeamUserRow = {
+      id: string
+      auth_user_id?: string | null
+      email?: string | null
+      full_name?: string | null
+      avatar_url?: string | null
+      job_title?: string | null
+      department?: string | null
+    }
+    let usersByAuthId: Record<string, TeamUserRow> = {}
+    if (authUserIds.length > 0) {
       const { data: users } = await supabase
         .from("users")
-        .select("id, email, full_name, avatar_url")
-        .in("id", userIds)
-      usersById = Object.fromEntries(
-        (users ?? []).map((user) => [
-          user.id,
-          {
-            email: user.email ?? null,
-            full_name: user.full_name ?? null,
-            avatar_url: user.avatar_url ?? null,
-          },
-        ])
+        .select("id, auth_user_id, email, full_name, avatar_url, job_title, department")
+        .in("auth_user_id", authUserIds)
+      usersByAuthId = Object.fromEntries(
+        (users ?? [])
+          .filter((user) => user.auth_user_id)
+          .map((user) => [String(user.auth_user_id), user as TeamUserRow]),
       )
     }
 
     let team = (members ?? []).map((member) => {
-      const base = snakeToCamel<Record<string, unknown>>(member)
-      const user = usersById[String(member.user_id)] ?? {}
+      const authUserId = String(member.user_id)
+      const user = usersByAuthId[authUserId]
       return {
-        ...base,
-        email: user.email ?? null,
-        name: user.full_name ?? null,
-        full_name: user.full_name ?? null,
-        avatar_url: user.avatar_url ?? null,
+        // Prefer public.users.id so PATCH/DELETE against /api/settings/team keep working.
+        id: user?.id ?? member.id,
+        membershipId: member.id,
+        orgId,
+        userId: authUserId,
+        role: normalizeUserRole(member.role),
+        createdAt: member.created_at ?? null,
+        email: user?.email ?? null,
+        name: user?.full_name ?? null,
+        full_name: user?.full_name ?? null,
+        avatar_url: user?.avatar_url ?? null,
+        job_title: user?.job_title ?? null,
+        department: user?.department ?? null,
       }
     })
 
     if (team.length === 0) {
       const { data: orgUsers } = await supabase
         .from("users")
-        .select("id, email, full_name, avatar_url, role, created_at")
+        .select("id, auth_user_id, email, full_name, avatar_url, job_title, department, role, created_at")
         .eq("org_id", orgId)
         .order("created_at", { ascending: false })
         .limit(20)
 
       team = (orgUsers ?? []).map((user) => ({
         id: user.id,
+        membershipId: null,
         orgId,
-        userId: user.id,
-        role: user.role ?? "member",
+        userId: user.auth_user_id ?? user.id,
+        role: normalizeUserRole(user.role),
         createdAt: user.created_at ?? null,
         email: user.email ?? null,
         name: user.full_name ?? null,
         full_name: user.full_name ?? null,
         avatar_url: user.avatar_url ?? null,
+        job_title: user.job_title ?? null,
+        department: user.department ?? null,
       }))
     }
 
@@ -177,11 +195,21 @@ export async function PATCH(request: NextRequest) {
     query = id ? query.eq("id", id) : query.eq("email", email ?? "")
 
     const { data, error } = await query
-      .select("id, org_id, email, full_name, role, status, created_at, updated_at")
+      .select("id, org_id, auth_user_id, email, full_name, avatar_url, job_title, department, role, status, created_at, updated_at")
       .single()
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    // Keep organization_members.role in sync when role changes — that is the
+    // membership source of truth used by GET /api/settings/team.
+    if (updates.role !== undefined && data?.auth_user_id) {
+      await supabase
+        .from("organization_members")
+        .update({ role: updates.role })
+        .eq("org_id", orgId)
+        .eq("user_id", data.auth_user_id)
     }
 
     return NextResponse.json({ member: snakeToCamel<Record<string, unknown>>(data) })

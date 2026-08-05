@@ -454,21 +454,28 @@ async def list_organization_members(
     )
     members: list[dict] = []
     for row in membership_rows.data or []:
-        user_id = str(row["user_id"])
+        # organization_members.user_id is the auth UID; public.users links via auth_user_id.
+        auth_user_id = str(row["user_id"])
         user_resp = (
             client.table("users")
-            .select("id, email, full_name, avatar_url, created_at, updated_at")
-            .eq("id", user_id)
+            .select(
+                "id, auth_user_id, email, full_name, avatar_url, "
+                "job_title, department, created_at, updated_at"
+            )
+            .eq("auth_user_id", auth_user_id)
             .limit(1)
             .execute()
         )
         user = (user_resp.data or [{}])[0]
         members.append(
             {
-                "id": user_id,
+                "id": str(user.get("id") or auth_user_id),
+                "user_id": auth_user_id,
                 "email": user.get("email"),
                 "full_name": user.get("full_name"),
                 "avatar_url": user.get("avatar_url"),
+                "job_title": user.get("job_title"),
+                "department": user.get("department"),
                 "created_at": user.get("created_at"),
                 "updated_at": user.get("updated_at"),
                 "role": row.get("role") or "member",

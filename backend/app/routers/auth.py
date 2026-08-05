@@ -117,21 +117,35 @@ def _load_billing_summary(client, org_id: str | None) -> dict:
 
 
 def _resolve_user_row(client, auth_user_id: str) -> dict:
-    try:
-        user_resp = (
-            client.table("users")
-            .select("id, org_id, email, full_name, avatar_url, role, created_at, updated_at")
-            .eq("auth_user_id", auth_user_id)
-            .limit(1)
-            .execute()
-        )
-    except Exception as exc:  # noqa: BLE001
-        if _is_missing_error(exc):
+    selects = (
+        "id, org_id, email, full_name, avatar_url, job_title, department, "
+        "role, created_at, updated_at",
+        # Pre-migration fallback until job_title/department columns exist.
+        "id, org_id, email, full_name, avatar_url, role, created_at, updated_at",
+    )
+    last_exc: Exception | None = None
+    for select_cols in selects:
+        try:
+            user_resp = (
+                client.table("users")
+                .select(select_cols)
+                .eq("auth_user_id", auth_user_id)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:  # noqa: BLE001
+            last_exc = exc
+            if _is_missing_error(exc):
+                continue
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+        if getattr(user_resp, "error", None) and _is_missing_error(user_resp.error):
+            continue
+        if not user_resp.data:
             return {}
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-    if not user_resp.data:
-        return {}
-    return dict(user_resp.data[0])
+        return dict(user_resp.data[0])
+    if last_exc and not _is_missing_error(last_exc):
+        raise HTTPException(status_code=500, detail=str(last_exc)) from last_exc
+    return {}
 
 
 @router.get("/me")
@@ -167,6 +181,8 @@ async def me(
         "email": user_row.get("email") or current_user.get("email"),
         "full_name": user_row.get("full_name"),
         "avatar_url": user_row.get("avatar_url"),
+        "job_title": user_row.get("job_title"),
+        "department": user_row.get("department"),
         "role": user_row.get("role") or role,
         "created_at": user_row.get("created_at"),
         "updated_at": user_row.get("updated_at"),
@@ -209,11 +225,21 @@ async def update_me(
     if not payload:
         return {"id": current_user["user_id"], "email": current_user.get("email")}
 
+    # Only persist columns that exist on public.users. Phone/location/timezone/bio
+    # remain client-local until they get dedicated columns.
+    allowed = {"full_name", "avatar_url", "job_title", "department"}
+    db_payload = {k: v for k, v in payload.items() if k in allowed}
+    if not db_payload:
+        return {"id": current_user["user_id"], "email": current_user.get("email"), **payload}
+
     update_resp = (
         client.table("users")
-        .update(payload)
+        .update(db_payload)
         .eq("auth_user_id", current_user["user_id"])
-        .select("id, email, full_name, avatar_url, role, created_at, updated_at")
+        .select(
+            "id, email, full_name, avatar_url, job_title, department, "
+            "role, created_at, updated_at"
+        )
         .limit(1)
         .execute()
     )

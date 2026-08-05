@@ -24,15 +24,15 @@ interface UserProfileContextType {
 }
 
 const defaultProfile: UserProfile = {
-  firstName: "John",
-  lastName: "Doe",
-  email: "john@acmecorp.com",
-  phone: "+1 (555) 123-4567",
-  jobTitle: "Operations Manager",
-  department: "Operations",
-  location: "San Francisco, CA",
-  timezone: "America/Los_Angeles",
-  bio: "Operations manager focused on workflow automation and AI-driven process optimization.",
+  firstName: "",
+  lastName: "",
+  email: "",
+  phone: "",
+  jobTitle: "",
+  department: "",
+  location: "",
+  timezone: "",
+  bio: "",
   avatarImage: null,
 }
 

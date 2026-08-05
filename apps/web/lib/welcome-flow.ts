@@ -90,6 +90,15 @@ export type WelcomeDraft = {
   role: WelcomeRoleId | null
   skippedConnect: boolean
   selectedConnector: string | null
+  jobTitle?: string
+  department?: string
+}
+
+/** Default department label when a welcome role is chosen. */
+export function departmentFromWelcomeRole(role: WelcomeRoleId | null): string {
+  if (!role) return ""
+  const match = WELCOME_ROLES.find((entry) => entry.id === role)
+  return match?.label ?? ""
 }
 
 export function readWelcomeDraft(): WelcomeDraft | null {
@@ -107,6 +116,8 @@ export function readWelcomeDraft(): WelcomeDraft | null {
         WELCOME_CONNECTORS.some((entry) => entry.type === parsed.selectedConnector)
           ? parsed.selectedConnector
           : null,
+      jobTitle: typeof parsed.jobTitle === "string" ? parsed.jobTitle : "",
+      department: typeof parsed.department === "string" ? parsed.department : "",
     }
   } catch {
     return null

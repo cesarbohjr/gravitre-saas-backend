@@ -11,7 +11,9 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
-import { approvalsApi } from "@/lib/api"
+import { approvalsApi, settingsApi } from "@/lib/api"
+import type { User as ApiUser } from "@/types/api"
+import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { ApprovalSlaCountdown } from "@/components/approvals/sla-countdown"
 import { toast } from "sonner"
@@ -52,6 +54,10 @@ interface Approval {
   type: "workflow" | "connector" | "config" | "access"
   environment: "production" | "staging"
   requestedBy: string
+  requestedByEmail?: string | null
+  requestedByAvatarUrl?: string | null
+  requestedByJobTitle?: string | null
+  requestedByDepartment?: string | null
   requestedAt: string
   reviewedBy?: string | null
   reviewedAt?: string | null
@@ -71,6 +77,62 @@ interface Approval {
     impact?: string
     runId?: string
   }
+}
+
+type TeamIdentity = {
+  name: string
+  email?: string | null
+  avatarUrl?: string | null
+  jobTitle?: string | null
+  department?: string | null
+}
+
+function resolveRequesterIdentity(
+  approval: Approval,
+  team: ApiUser[],
+): TeamIdentity {
+  const emailHint = (approval.requestedByEmail || "").trim().toLowerCase()
+  const nameHint = approval.requestedBy.trim().toLowerCase()
+  const match =
+    team.find((member) => (member.email || "").toLowerCase() === emailHint) ||
+    team.find((member) => (member.full_name || "").trim().toLowerCase() === nameHint) ||
+    team.find((member) =>
+      nameHint.length > 1 && (member.full_name || "").toLowerCase().includes(nameHint),
+    )
+
+  return {
+    name: match?.full_name || approval.requestedBy,
+    email: match?.email || approval.requestedByEmail || null,
+    avatarUrl: match?.avatar_url || approval.requestedByAvatarUrl || null,
+    jobTitle: match?.job_title || approval.requestedByJobTitle || null,
+    department: match?.department || approval.requestedByDepartment || null,
+  }
+}
+
+function RequesterIdentity({
+  identity,
+  compact = false,
+}: {
+  identity: TeamIdentity
+  compact?: boolean
+}) {
+  const subtitle = [identity.jobTitle, identity.department].filter(Boolean).join(" · ")
+  return (
+    <span className={cn("inline-flex items-center gap-2", compact ? "align-middle" : "")}>
+      <UserAccountAvatar
+        name={identity.name}
+        email={identity.email}
+        avatarUrl={identity.avatarUrl}
+        size="xs"
+      />
+      <span className="min-w-0">
+        <span className="text-foreground">{identity.name}</span>
+        {subtitle ? (
+          <span className="ml-1 text-[11px] text-muted-foreground">· {subtitle}</span>
+        ) : null}
+      </span>
+    </span>
+  )
 }
 
 function formatRelativeTime(value: string): string {
@@ -132,6 +194,36 @@ function normalizeApproval(input: Record<string, unknown>): Approval {
           "system",
       ),
     ),
+    requestedByEmail: (() => {
+      const raw = String(
+        input.requestedByEmail ?? input.requested_by_email ?? input.requested_by ?? "",
+      ).trim()
+      return raw.includes("@") ? raw : null
+    })(),
+    requestedByAvatarUrl: (() => {
+      const raw = String(
+        input.requestedByAvatarUrl ??
+          input.requested_by_avatar_url ??
+          input.avatar_url ??
+          "",
+      ).trim()
+      return raw || null
+    })(),
+    requestedByJobTitle: (() => {
+      const raw = String(
+        input.requestedByJobTitle ?? input.requested_by_job_title ?? input.job_title ?? "",
+      ).trim()
+      return raw || null
+    })(),
+    requestedByDepartment: (() => {
+      const raw = String(
+        input.requestedByDepartment ??
+          input.requested_by_department ??
+          input.department ??
+          "",
+      ).trim()
+      return raw || null
+    })(),
     requestedAt: formatRelativeTime(String(input.requestedAt ?? input.requested_at ?? "recently")),
     reviewedBy: (() => {
       const raw = String(
@@ -220,6 +312,7 @@ function DecisionCard({
   isSubmitting,
   pendingActionId,
   readOnly = false,
+  teamMembers = [],
 }: { 
   approval: Approval
   isSelected: boolean
@@ -229,10 +322,12 @@ function DecisionCard({
   isSubmitting?: boolean
   pendingActionId?: string | null
   readOnly?: boolean
+  teamMembers?: ApiUser[]
 }) {
   const TypeIcon = typeIcons[approval.type]
   const config = priorityConfig[approval.priority]
   const actionBusy = Boolean(isSubmitting && pendingActionId === approval.id)
+  const requester = resolveRequesterIdentity(approval, teamMembers)
 
   return (
     <motion.div
@@ -325,10 +420,10 @@ function DecisionCard({
 
         {/* Context */}
         <div className="text-xs text-muted-foreground mb-3 space-y-1">
-          <div>
-            <span>Requested by </span>
-            <span className="text-foreground">{approval.requestedBy}</span>
-            <span className="mx-1">&middot;</span>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>Requested by</span>
+            <RequesterIdentity identity={requester} compact />
+            <span className="mx-0.5">&middot;</span>
             <span>{approval.requestedAt}</span>
           </div>
           {approval.status !== "pending" && (
@@ -399,13 +494,22 @@ function DecisionCard({
 }
 
 // Detail Panel Component
-function DetailPanel({ approval, onApprove, onReject, onBack, isSubmitting, pendingActionId }: { 
+function DetailPanel({
+  approval,
+  onApprove,
+  onReject,
+  onBack,
+  isSubmitting,
+  pendingActionId,
+  teamMembers = [],
+}: {
   approval: Approval | null
   onApprove: (id: string) => void
   onReject: (id: string) => void
   onBack?: () => void
   isSubmitting?: boolean
   pendingActionId?: string | null
+  teamMembers?: ApiUser[]
 }) {
   if (!approval) {
     return (
@@ -420,6 +524,7 @@ function DetailPanel({ approval, onApprove, onReject, onBack, isSubmitting, pend
 
   const TypeIcon = typeIcons[approval.type]
   const config = priorityConfig[approval.priority]
+  const requester = resolveRequesterIdentity(approval, teamMembers)
   const actionBusy = Boolean(isSubmitting && pendingActionId === approval.id)
 
   return (
@@ -526,9 +631,9 @@ function DetailPanel({ approval, onApprove, onReject, onBack, isSubmitting, pend
               <span className="text-sm text-muted-foreground">Environment</span>
               <EnvironmentBadge environment={approval.environment} />
             </div>
-            <div className="flex items-center justify-between py-2">
-              <span className="text-sm text-muted-foreground">Requested by</span>
-              <span className="text-sm font-medium text-foreground">{approval.requestedBy}</span>
+            <div className="flex items-center justify-between gap-3 py-2">
+              <span className="text-sm text-muted-foreground shrink-0">Requested by</span>
+              <RequesterIdentity identity={requester} />
             </div>
             {approval.reviewedBy ? (
               <div className="flex items-center justify-between py-2 border-t border-border/50">
@@ -626,6 +731,12 @@ function ApprovalsContent() {
       onError: (err) => console.error("[v0] Approvals fetch error:", err),
     },
   )
+  const { data: teamPayload } = useSWR(
+    user ? "/api/settings/team" : null,
+    () => settingsApi.listTeamMembers(),
+    { revalidateOnFocus: false, dedupingInterval: 60_000 },
+  )
+  const teamMembers = teamPayload?.team ?? []
 
   const approvals = normalizeApprovalsResponse(data)
   const pendingApprovals = approvals.filter((a) => a.status === "pending")
@@ -835,6 +946,7 @@ function ApprovalsContent() {
                   isSubmitting={isSubmitting}
                   pendingActionId={pendingActionId}
                   readOnly={queueTab === "history"}
+                  teamMembers={teamMembers}
                 />
               ))}
             </AnimatePresence>
@@ -866,6 +978,7 @@ function ApprovalsContent() {
             onBack={() => setSelectedId(null)}
             isSubmitting={isSubmitting}
             pendingActionId={pendingActionId}
+            teamMembers={teamMembers}
           />
         </div>
       </div>

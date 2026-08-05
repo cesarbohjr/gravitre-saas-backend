@@ -17,11 +17,12 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
-import { onboardingApi } from "@/lib/api"
+import { authApi, onboardingApi } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import {
   clearWelcomeDraft,
+  departmentFromWelcomeRole,
   markWelcomeCompletedLocal,
   readWelcomeDraft,
   WELCOME_CONNECTORS,
@@ -49,6 +50,8 @@ export default function WelcomePage() {
   const [hydrated, setHydrated] = useState(false)
   const [stepIndex, setStepIndex] = useState(0)
   const [role, setRole] = useState<WelcomeRoleId | null>(null)
+  const [jobTitle, setJobTitle] = useState("")
+  const [department, setDepartment] = useState("")
   const [skippedConnect, setSkippedConnect] = useState(false)
   const [selectedConnector, setSelectedConnector] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -60,6 +63,8 @@ export default function WelcomePage() {
     if (draft) {
       setStepIndex(draft.stepIndex)
       setRole(draft.role)
+      setJobTitle(draft.jobTitle ?? "")
+      setDepartment(draft.department ?? "")
       setSkippedConnect(draft.skippedConnect)
       setSelectedConnector(draft.selectedConnector)
     }
@@ -73,8 +78,10 @@ export default function WelcomePage() {
       role,
       skippedConnect,
       selectedConnector,
+      jobTitle,
+      department,
     })
-  }, [hydrated, stepIndex, role, skippedConnect, selectedConnector])
+  }, [hydrated, stepIndex, role, skippedConnect, selectedConnector, jobTitle, department])
 
   useEffect(() => {
     if (loading || user) return
@@ -91,10 +98,21 @@ export default function WelcomePage() {
     [selectedConnector],
   )
 
+  async function persistProfileIdentity() {
+    const title = jobTitle.trim()
+    const dept = department.trim() || departmentFromWelcomeRole(role)
+    if (!title && !dept) return
+    await authApi.updateProfile({
+      job_title: title || undefined,
+      department: dept || undefined,
+    })
+  }
+
   async function skipEntireWelcome() {
     setSubmitting(true)
     try {
       const roleToSave = role ?? DEFAULT_SKIP_ROLE
+      await persistProfileIdentity()
       await onboardingApi.welcomeComplete(roleToSave, true)
       clearWelcomeDraft()
       markWelcomeCompletedLocal()
@@ -111,6 +129,7 @@ export default function WelcomePage() {
     const roleToSave = role ?? DEFAULT_SKIP_ROLE
     setSubmitting(true)
     try {
+      await persistProfileIdentity()
       await onboardingApi.welcomeComplete(roleToSave, skippedOptional)
       clearWelcomeDraft()
       markWelcomeCompletedLocal()
@@ -191,7 +210,10 @@ export default function WelcomePage() {
                   <button
                     key={entry.id}
                     type="button"
-                    onClick={() => setRole(entry.id)}
+                    onClick={() => {
+                      setRole(entry.id)
+                      if (!department.trim()) setDepartment(entry.label)
+                    }}
                     className={cn(
                       "rounded-xl border p-3 text-left transition-colors",
                       role === entry.id
@@ -203,6 +225,32 @@ export default function WelcomePage() {
                     <p className="mt-1 text-xs text-muted-foreground">{entry.description}</p>
                   </button>
                 ))}
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <label className="space-y-1.5 text-left">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Job title
+                  </span>
+                  <input
+                    type="text"
+                    value={jobTitle}
+                    onChange={(event) => setJobTitle(event.target.value)}
+                    placeholder="e.g. Operations Manager"
+                    className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-emerald-500/50"
+                  />
+                </label>
+                <label className="space-y-1.5 text-left">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Department
+                  </span>
+                  <input
+                    type="text"
+                    value={department}
+                    onChange={(event) => setDepartment(event.target.value)}
+                    placeholder="e.g. Operations"
+                    className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-emerald-500/50"
+                  />
+                </label>
               </div>
             </StepShell>
           )}
