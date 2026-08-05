@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
-import { RADIUS, TYPE } from "@/lib/design-system"
 import { type LucideIcon } from "lucide-react"
 
 interface PageHeaderProps {
@@ -13,13 +12,6 @@ interface PageHeaderProps {
   actions?: React.ReactNode
   children?: React.ReactNode
   className?: string
-  /**
-   * Small caps label above the title, e.g. "Gravitre Marketplace".
-   * Renders with the single canonical eyebrow tracking value.
-   */
-  eyebrow?: string
-  /** Inline node beside the eyebrow, typically a count pill. */
-  eyebrowAccessory?: React.ReactNode
 }
 
 export function PageHeader({
@@ -30,8 +22,6 @@ export function PageHeader({
   actions,
   children,
   className,
-  eyebrow,
-  eyebrowAccessory,
 }: PageHeaderProps) {
   // Default to the brand gradient (was off-brand blue/cyan). Consumers can
   // still override via iconColor; cn()/twMerge keeps the last color utility.
@@ -58,15 +48,11 @@ export function PageHeader({
               <Icon className={cn("h-5 w-5", usesBrandTint ? "text-primary" : "text-foreground")} />
             </motion.div>
           )}
-          <div className="min-w-0 space-y-1">
-            {eyebrow || eyebrowAccessory ? (
-              <div className="flex flex-wrap items-center gap-2">
-                {eyebrow ? <p className={TYPE.eyebrow}>{eyebrow}</p> : null}
-                {eyebrowAccessory}
-              </div>
-            ) : null}
-            <h1 className={TYPE.pageTitle}>{title}</h1>
-            {description && <p className={TYPE.pageLead}>{description}</p>}
+          <div>
+            <h1 className="text-xl font-semibold text-foreground">{title}</h1>
+            {description && (
+              <p className="text-sm text-muted-foreground">{description}</p>
+            )}
           </div>
         </div>
         {actions && (
@@ -142,16 +128,17 @@ export function StatCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "p-2 sm:p-3 text-center border border-transparent",
-        RADIUS.tile,
+        "rounded-lg p-2 sm:p-3 text-center border border-transparent",
         variantStyles[variant],
         className
       )}
     >
-      <div className={cn("text-lg sm:text-xl font-semibold tabular-nums", valueColors[variant])}>
+      <div className={cn("text-lg sm:text-xl font-semibold", valueColors[variant])}>
         {value}
       </div>
-      <div className={TYPE.metricLabel}>{label}</div>
+      <div className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wider">
+        {label}
+      </div>
     </motion.div>
   )
 }

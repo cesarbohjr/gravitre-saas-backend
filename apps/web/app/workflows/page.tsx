@@ -22,19 +22,15 @@ import {
 } from "@/components/gravitre/premium-effects"
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/lib/icons"
-import { Blocks, Edit, Workflow, Activity, Zap, Clock, TrendingUp, LayoutGrid, Rows3 } from "lucide-react"
+import { Blocks, Edit, Workflow, Activity, Zap, Clock, TrendingUp } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { SegmentedControl } from "@/components/gravitre/filter-chip"
-import { INTERACTION, RADIUS } from "@/lib/design-system"
-import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { MesonWizard } from "@/components/gravitre/meson-wizard"
@@ -191,12 +187,6 @@ const columns = [
   },
 ]
 
-/** Options for the grid/table switcher, declared once outside render. */
-const VIEW_MODES = [
-  { id: "grid" as const, label: "Grid", icon: LayoutGrid },
-  { id: "table" as const, label: "Table", icon: Rows3 },
-] as const
-
 type WorkflowStatsPayload = {
   overallSuccessRate?: number
   totalRunsThisWeek?: number
@@ -343,15 +333,15 @@ export default function WorkflowsPage() {
         {/* Header */}
         <div className="relative z-10">
           <PageHeader
-            eyebrow="Automation"
             title={SURFACE_COPY.pages.workflows.title}
             description={SURFACE_COPY.pages.workflows.description}
             icon={Workflow}
+            iconColor="from-blue-500/20 to-cyan-500/20"
             actions={
             <>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn("gap-2", RADIUS.control)}>
+                  <Button variant="outline" size="sm" className="h-8 gap-2">
                     <Icon name="filter" size="sm" />
                     <span className="hidden sm:inline">Filter</span>
                     {activeFiltersCount > 0 && (
@@ -423,47 +413,43 @@ export default function WorkflowsPage() {
                   {activeFiltersCount > 0 && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onSelect={() => {
+                      <button
+                        onClick={() => {
                           setStatusFilter([])
                           setEnvFilter([])
                         }}
-                        className="text-xs text-muted-foreground"
+                        className="w-full px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground text-left"
                       >
                         Clear all filters
-                      </DropdownMenuItem>
+                      </button>
                     </>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
-              {/* Secondary actions share one neutral outline treatment. They
-                  were previously tinted success-green and violet, which read as
-                  three competing primary actions and pulled violet in from
-                  outside the palette. */}
-              <Button
-                variant="outline"
-                size="sm"
+              <Button 
+                variant="outline" 
+                size="sm" 
                 onClick={() => setGoalWizardOpen(true)}
-                className={cn("gap-2", RADIUS.control)}
+                className="h-8 gap-2 border-success/30 bg-success/5 hover:bg-success/10 hover:border-success/50 transition-colors"
               >
-                <Target className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Create from Goal</span>
+                <Target className="h-3.5 w-3.5 text-success" />
+                <span className="hidden sm:inline text-success">Create from Goal</span>
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
+              <Button 
+                variant="outline" 
+                size="sm" 
                 onClick={() => setMesonWizardOpen(true)}
-                className={cn("gap-2", RADIUS.control)}
+                className="h-8 gap-2 border-violet-500/30 bg-transparent hover:bg-violet-500/10 hover:border-violet-500/50 transition-colors"
               >
-                <Blocks className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Build with Meson</span>
+                <Blocks className="h-3.5 w-3.5 text-violet-400" />
+                <span className="hidden sm:inline text-violet-400">Build with Meson</span>
               </Button>
-              <Button size="sm" className={cn("gap-2", RADIUS.control)} asChild>
-                <Link href="/workflows/new/builder">
+              <Link href="/workflows/new/builder">
+                <Button size="sm" className="h-8 gap-2">
                   <Icon name="add" size="sm" />
                   <span className="hidden sm:inline">New Workflow</span>
-                </Link>
-              </Button>
+                </Button>
+              </Link>
             </>
           }
         >
@@ -479,13 +465,7 @@ export default function WorkflowsPage() {
         {/* Live activity banner */}
         {runningCount > 0 && (
           <motion.div 
-            className={cn(
-              "relative z-10 mx-4 mb-4 border border-info/20 bg-info/5 px-4 py-3 backdrop-blur-sm md:mx-6",
-              // Was a from-blue-500 via-cyan-500 gradient with a raw
-              // blue border. Uses the info token so the banner matches the
-              // "Running" StatCard it reports on.
-              RADIUS.card,
-            )}
+            className="relative z-10 mx-4 md:mx-6 mb-4 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-500/10 via-cyan-500/10 to-blue-500/10 border border-blue-500/20 backdrop-blur-sm"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
           >
@@ -503,19 +483,19 @@ export default function WorkflowsPage() {
               </div>
               <div className="hidden sm:flex items-center gap-4">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Activity className="h-3.5 w-3.5 text-info" />
+                  <Activity className="h-3.5 w-3.5 text-blue-400" />
                   <span><AnimatedCounter value={3247} duration={1.5} /> records/min</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Clock className="h-3.5 w-3.5 text-info" />
+                  <Clock className="h-3.5 w-3.5 text-cyan-400" />
                   <span>Avg 1.2s latency</span>
                 </div>
               </div>
             </div>
             {/* Progress bar */}
-            <div className="mt-3 h-1 overflow-hidden rounded-full bg-info/10">
+            <div className="mt-3 h-1 rounded-full bg-blue-500/10 overflow-hidden">
               <motion.div 
-                className="h-full rounded-full bg-info"
+                className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full"
                 initial={{ width: "0%" }}
                 animate={{ width: ["0%", "100%", "0%"] }}
                 transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
@@ -564,23 +544,34 @@ export default function WorkflowsPage() {
                 placeholder="Search workflows..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className={cn(
-                  "h-9 w-full border border-border bg-secondary/50 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground",
-                  // Uses the shared ring token instead of a raw blue-500 focus
-                  // ring, so keyboard focus looks identical to every other input.
-                  RADIUS.control,
-                  INTERACTION,
-                )}
+                className="w-full h-9 rounded-lg border border-border bg-secondary/50 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50"
               />
             </div>
             
-            <SegmentedControl
-              options={VIEW_MODES}
-              value={viewMode}
-              onChange={setViewMode}
-              ariaLabel="Switch workflow layout"
-              className="shrink-0 bg-secondary/50"
-            />
+            <div className="flex items-center gap-1 p-1 rounded-lg bg-secondary/50 border border-border shrink-0">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  viewMode === "grid" 
+                    ? "bg-card text-foreground shadow-sm" 
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon name="grid" size="sm" />
+                Grid
+              </button>
+              <button
+                onClick={() => setViewMode("table")}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  viewMode === "table" 
+                    ? "bg-card text-foreground shadow-sm" 
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon name="rows" size="sm" />
+                Table
+              </button>
+            </div>
           </div>
 
           {/* Freshness + result count */}
@@ -660,8 +651,8 @@ export default function WorkflowsPage() {
                   </div>
                   <div className="w-px h-6 bg-border" />
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-info/10">
-                      <Zap className="h-4 w-4 text-info" />
+                    <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center">
+                      <Zap className="h-4 w-4 text-blue-400" />
                     </div>
                     <span>
                       <AnimatedCounter value={footerRunsThisWeek} duration={1.5} /> runs this week
@@ -676,7 +667,7 @@ export default function WorkflowsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
-                className={cn("overflow-hidden border border-border bg-card/50 backdrop-blur-sm", RADIUS.card)}
+                className="rounded-xl border border-border bg-card/50 backdrop-blur-sm overflow-hidden"
               >
                 <DataTable
                   columns={columns}

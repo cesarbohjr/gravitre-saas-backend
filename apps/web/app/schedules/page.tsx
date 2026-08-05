@@ -4,10 +4,7 @@ import { useCallback, useMemo, useState } from "react"
 import useSWR from "swr"
 
 import { AppShell } from "@/components/gravitre/app-shell"
-import { PageHeader } from "@/components/gravitre/page-header"
 import { Button } from "@/components/ui/button"
-import { RADIUS } from "@/lib/design-system"
-import { cn } from "@/lib/utils"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { RefreshCw, CalendarClock, Plus } from "lucide-react"
 import { useSchedules } from "@/lib/use-schedules"
@@ -53,33 +50,36 @@ export default function SchedulesPage() {
   return (
     <AppShell title="Schedules">
       <div className="mx-auto max-w-7xl p-4 sm:p-6">
-        {/* Shared PageHeader rather than a bespoke title block, so the type
-            scale, icon tile and action row match every other hub page. */}
-        <PageHeader
-          className="mb-5 border-0 p-0"
-          eyebrow="Operations"
-          title="Schedules"
-          description="All workflow schedules, task runs and training jobs across your organization."
-          icon={CalendarClock}
-          actions={
-            <>
-              <Button size="sm" className={cn("gap-2", RADIUS.control)} onClick={() => setCreateOpen(true)}>
-                <Plus className="h-3.5 w-3.5" />
-                New schedule
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn("gap-2", RADIUS.control)}
-                onClick={refresh}
-                disabled={isLoading}
-              >
-                <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
-                Refresh
-              </Button>
-            </>
-          }
-        />
+        {/* Header */}
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <CalendarClock className="h-5 w-5" />
+            </span>
+            <div>
+              <h1 className="text-xl font-semibold text-foreground">Schedules</h1>
+              <p className="text-sm text-pretty text-muted-foreground">
+                All workflow schedules, task runs and training jobs across your organization.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" className="h-8 gap-2" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-3.5 w-3.5" />
+              New schedule
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-2"
+              onClick={refresh}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
+        </div>
 
         {error && items.length === 0 ? (
           <WorkSectionErrorCard

@@ -14,7 +14,6 @@ import Link from "next/link"
 import { useId, useRef, type KeyboardEvent } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
-import { INTERACTION, MOTION, RADIUS } from "@/lib/design-system"
 
 export interface HubTabItem<T extends string = string> {
   id: T
@@ -72,11 +71,7 @@ export function HubTabs<T extends string>({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-1 border border-border bg-muted/30 p-1",
-        // Pill, matching FilterChip / SegmentedControl / Button. Previously
-        // rounded-lg, which read as a different control family sitting inches
-        // from the pill-shaped filters on the same toolbar.
-        RADIUS.control,
+        "flex flex-wrap items-center gap-1 rounded-lg border border-border bg-muted/30 p-1",
         className,
       )}
       role="tablist"
@@ -92,8 +87,12 @@ export function HubTabs<T extends string>({
             {selected ? (
               <motion.span
                 layoutId={indicatorLayoutId}
-                className={cn("absolute inset-0 bg-background shadow-sm", RADIUS.control)}
-                transition={reduceMotion ? { duration: 0 } : MOTION.spring}
+                className="absolute inset-0 rounded-md bg-background shadow-sm"
+                transition={
+                  reduceMotion
+                    ? { duration: 0 }
+                    : { type: "spring", stiffness: 400, damping: 32 }
+                }
                 aria-hidden
               />
             ) : null}
@@ -112,10 +111,9 @@ export function HubTabs<T extends string>({
         )
 
         const classes = cn(
-          "relative inline-flex items-center gap-1.5 text-sm font-medium",
-          RADIUS.control,
+          "relative inline-flex items-center gap-1.5 rounded-md text-sm font-medium transition-colors",
           size === "sm" ? "px-2.5 py-1" : "px-3 py-1.5",
-          INTERACTION,
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
           selected
             ? "text-foreground"
             : "text-muted-foreground hover:bg-background/60 hover:text-foreground",

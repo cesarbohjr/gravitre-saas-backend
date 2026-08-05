@@ -174,8 +174,7 @@ export function GlobalCommandBar() {
       {/* Trigger Button - Premium */}
       <motion.button
         onClick={() => setIsOpen(true)}
-        aria-label="Search or run a command"
-        className="group relative flex h-11 items-center justify-center gap-2 overflow-hidden rounded-xl border border-border/60 bg-secondary/50 px-3 text-sm text-muted-foreground backdrop-blur-sm transition-all hover:border-primary/30 hover:bg-secondary/80 hover:text-foreground hover:shadow-lg hover:shadow-primary/5 sm:h-8 sm:px-3.5"
+        className="group relative flex items-center gap-2 rounded-xl border border-border/60 bg-secondary/50 px-3.5 py-2 text-sm text-muted-foreground transition-all hover:border-primary/30 hover:bg-secondary/80 hover:text-foreground hover:shadow-lg hover:shadow-primary/5 backdrop-blur-sm overflow-hidden"
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
@@ -185,16 +184,7 @@ export function GlobalCommandBar() {
           className="relative z-10 flex items-center gap-2"
         >
           <div className="relative">
-            <Icon
-              name="search"
-              size="lg"
-              className="transition-colors group-hover:text-primary sm:hidden"
-            />
-            <Icon
-              name="search"
-              size="sm"
-              className="hidden transition-colors group-hover:text-primary sm:block"
-            />
+            <Icon name="search" size="sm" className="transition-colors group-hover:text-primary" />
             <div className="absolute inset-0 blur-sm group-hover:bg-primary/30 transition-all opacity-0 group-hover:opacity-100" />
           </div>
           <span className="hidden lg:inline font-medium">Search or command...</span>

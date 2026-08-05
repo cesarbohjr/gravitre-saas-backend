@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/tooltip"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
-import { INTERACTION, RADIUS, TYPE } from "@/lib/design-system"
 import { type DemoAssignment } from "@/lib/demo-assignments"
 import {
   ASSIGNMENTS_REFRESH_KEY,
@@ -35,11 +34,8 @@ import {
   PieChart, 
   Headphones,
   RefreshCw,
-  LayoutGrid,
-  Rows3,
   type LucideIcon 
 } from "lucide-react"
-import { SegmentedControl } from "@/components/gravitre/filter-chip"
 
 type Assignment = DemoAssignment
 
@@ -183,14 +179,7 @@ function AssignmentCard({
           onNavigate()
         }
       }}
-      className={cn(
-        "group relative cursor-pointer overflow-hidden border border-border bg-card/80 p-4 backdrop-blur-sm transition-all hover:border-muted-foreground/30 hover:shadow-lg sm:p-5",
-        // One card radius everywhere. Was rounded-xl -> sm:rounded-2xl, which
-        // meant cards changed shape at the breakpoint while sibling surfaces
-        // on the same page did not.
-        RADIUS.card,
-        INTERACTION,
-      )}
+      className="group relative overflow-hidden rounded-xl sm:rounded-2xl border border-border bg-card/80 backdrop-blur-sm p-4 sm:p-5 cursor-pointer transition-all hover:border-muted-foreground/30 hover:shadow-xl hover:shadow-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {/* Status indicator line */}
       <div className={cn(
@@ -304,7 +293,7 @@ function AssignmentListSkeleton() {
   return (
     <div className="grid grid-cols-1 gap-4">
       {Array.from({ length: 4 }).map((_, index) => (
-        <div key={index} className={cn("border border-border bg-card/50 p-5", RADIUS.card)}>
+        <div key={index} className="rounded-xl border border-border bg-card/50 p-5">
           <div className="flex items-start gap-4">
             <Skeleton className="h-12 w-12 shrink-0 rounded-xl" />
             <div className="flex-1 space-y-3">
@@ -362,8 +351,7 @@ function StatCard({ stat, index }: { stat: AssignmentStat; index: number }) {
       transition={{ delay: index * 0.08, duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
       whileHover={{ y: -2, transition: { duration: 0.15 } }}
       className={cn(
-        "relative overflow-hidden border p-5 transition-colors",
-        RADIUS.card,
+        "relative overflow-hidden rounded-2xl border p-5 transition-colors",
         "border-border bg-card/50 hover:bg-secondary/30",
         stat.color === "blue" && stat.value > 0 && "border-blue-500/20",
         stat.color === "violet" && stat.value > 0 && "border-violet-500/20",
@@ -439,11 +427,7 @@ function AssignmentFilterTabs({
     <div
       role="tablist"
       aria-label="Filter assignments by status"
-      className={cn(
-        "flex items-center gap-1 overflow-x-auto bg-secondary/50 p-1 scrollbar-none",
-        // Pill container, matching HubTabs / SegmentedControl / FilterChip.
-        RADIUS.control,
-      )}
+      className="flex items-center gap-1 overflow-x-auto rounded-xl bg-secondary/50 p-1 scrollbar-none"
     >
       {options.map((option) => {
         const isActive = value === option.id
@@ -489,12 +473,6 @@ function AssignmentFilterTabs({
     </div>
   )
 }
-
-/** Options for the list/board switcher, declared once outside render. */
-const ASSIGNMENT_VIEW_MODES = [
-  { id: "list" as const, label: "List view", icon: Rows3 },
-  { id: "kanban" as const, label: "Board view", icon: LayoutGrid },
-] as const
 
 export default function AssignmentsPage() {
   const router = useRouter()
@@ -626,29 +604,26 @@ export default function AssignmentsPage() {
           <div className="relative px-4 sm:px-8 py-4 sm:py-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 sm:mb-6">
               <div className="flex items-center gap-3 sm:gap-4">
-                {/* Icon tile matches PageHeader's: same 10x10 box, RADIUS.tile
-                    and brand tint, instead of a bespoke 14x14 emerald gradient
-                    with a hardcoded rgba glow that sat outside the palette. */}
-                <div
-                  className={cn(
-                    "flex h-10 w-10 shrink-0 items-center justify-center bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-border/60",
-                    RADIUS.tile,
-                  )}
+                <motion.div 
+                  className="h-10 w-10 sm:h-14 sm:w-14 rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center ring-1 ring-emerald-500/20"
+                  animate={{ 
+                    boxShadow: ["0 0 20px rgba(16, 185, 129, 0.1)", "0 0 40px rgba(16, 185, 129, 0.2)", "0 0 20px rgba(16, 185, 129, 0.1)"]
+                  }}
+                  transition={{ duration: 3, repeat: Infinity }}
                 >
-                  <Icon name="tasks" size="lg" className="text-primary" />
-                </div>
-                <div className="min-w-0 space-y-1">
-                  <p className={TYPE.eyebrow}>Work</p>
+                  <Icon name="tasks" size="lg" className="text-emerald-400" />
+                </motion.div>
+                <div>
                   <div className="flex items-center gap-2 sm:gap-3">
-                    <h1 className={TYPE.pageTitle}>{SURFACE_COPY.pages.assignments.title}</h1>
+                    <h1 className="text-lg sm:text-2xl font-bold text-foreground">{SURFACE_COPY.pages.assignments.title}</h1>
                     <ActivityPulse />
                   </div>
-                  <p className={cn(TYPE.pageLead, "hidden sm:block")}>{SURFACE_COPY.pages.assignments.description}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">{SURFACE_COPY.pages.assignments.description}</p>
                 </div>
               </div>
               
-              <Button
-                className={cn("w-full gap-2 shadow-sm sm:w-auto", RADIUS.control)}
+              <Button 
+                className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 shadow-lg shadow-emerald-500/25 w-full sm:w-auto"
                 onClick={openNewAssignment}
               >
                 <Icon name="add" size="sm" />
@@ -676,14 +651,32 @@ export default function AssignmentsPage() {
                 <Icon name="filter" size="sm" />
                 <span className="hidden sm:inline">Filter</span>
               </Button>
-              <SegmentedControl
-                options={ASSIGNMENT_VIEW_MODES}
-                value={viewMode}
-                onChange={setViewMode}
-                ariaLabel="Assignment view mode"
-                iconOnly
-                className="bg-secondary/50"
-              />
+              <div className="flex items-center p-1 rounded-lg bg-secondary/50" role="group" aria-label="Assignment view mode">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  aria-label="List view"
+                  aria-pressed={viewMode === "list"}
+                  className={cn(
+                    "p-2 rounded-md transition-all",
+                    viewMode === "list" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Icon name="rows" size="sm" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("kanban")}
+                  aria-label="Board view"
+                  aria-pressed={viewMode === "kanban"}
+                  className={cn(
+                    "p-2 rounded-md transition-all",
+                    viewMode === "kanban" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Icon name="grid" size="sm" />
+                </button>
+              </div>
             </div>
           </div>
 

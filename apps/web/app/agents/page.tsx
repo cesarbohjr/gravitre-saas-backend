@@ -67,7 +67,6 @@ import {
   type LucideIcon
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { RADIUS, TYPE } from "@/lib/design-system"
 import { AgentSurfaceSwitch } from "@/components/agents/agent-surface-switch"
 import { AgentsHubTabs } from "@/components/agents/agents-hub-tabs"
 import { MesonWizard } from "@/components/gravitre/meson-wizard"
@@ -360,8 +359,7 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
       whileHover={reduced ? undefined : { scale: 1.02, y: -3 }}
       whileTap={reduced ? undefined : { scale: 0.98 }}
       className={cn(
-        "relative group flex w-[168px] sm:w-[184px] shrink-0 snap-center flex-col items-center border border-transparent px-3 py-4 text-left transition-[colors,box-shadow] duration-200",
-        RADIUS.card,
+        "relative group flex w-[168px] sm:w-[184px] shrink-0 snap-center flex-col items-center rounded-2xl border border-transparent px-3 py-4 text-left transition-[colors,box-shadow] duration-200",
         isSelected
           ? "border-primary/30 bg-card/70 shadow-lg z-10"
           : "hover:border-border/60 hover:bg-card/40 hover:shadow-xl hover:shadow-black/20",
@@ -406,7 +404,7 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
         ) : null}
 
         {Boolean(agent.config?.marketplaceAssetId) ? (
-          <span className="absolute -bottom-1 left-1/2 z-20 -translate-x-1/2 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-primary shadow-sm">
+          <span className="absolute -bottom-1 left-1/2 z-20 -translate-x-1/2 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary shadow-sm">
             Marketplace
           </span>
         ) : null}
@@ -486,7 +484,7 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
             size="sm"
             pulse={isLive}
           />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.14em]">{status.label}</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider">{status.label}</span>
         </div>
 
         {(agent.knowledgeDocCount ?? 0) > 0 ? (
@@ -542,8 +540,8 @@ function AgentDetailPanel({
             <AgentIdentityAvatar agent={agent} size="lg" />
             <div>
               <div className="flex items-center gap-2">
-                <h2 className={TYPE.sectionTitle}>{agent.name}</h2>
-                <span className={cn("rounded-full bg-secondary px-2 py-0.5", TYPE.metricLabel)}>
+                <h2 className="text-xl font-semibold text-foreground">{agent.name}</h2>
+                <span className="px-2 py-0.5 rounded-full bg-secondary text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
                   {agent.department}
                 </span>
               </div>
@@ -641,7 +639,7 @@ function AgentDetailPanel({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-border">
         <div className="bg-card p-3 sm:p-4 text-center">
           <div className="text-xl sm:text-2xl font-semibold text-foreground">{agent.stats.tasksToday}</div>
-          <div className={TYPE.metricLabel}>Tasks Today</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Tasks Today</div>
         </div>
         <div className="bg-card p-4 text-center">
           <div className={cn(
@@ -652,21 +650,21 @@ function AgentDetailPanel({
           )}>
             {shouldShowSuccessRate(agent) ? `${agent.stats.successRate}%` : "—"}
           </div>
-          <div className={TYPE.metricLabel}>Success Rate</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Success Rate</div>
         </div>
         <div className="bg-card p-4 text-center">
           <div className="text-2xl font-semibold text-foreground">{agent.stats.avgResponseTime}</div>
-          <div className={TYPE.metricLabel}>Avg Response</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Avg Response</div>
         </div>
         <div className="bg-card p-4 text-center">
           <div className="text-2xl font-semibold text-foreground">{agent.stats.workflowsUsing}</div>
-          <div className={TYPE.metricLabel}>Workflows</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Workflows</div>
         </div>
       </div>
 
       {/* Capabilities */}
       <div className="p-6 border-b border-border">
-        <h3 className={cn(TYPE.eyebrow, "mb-3 block")}>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
           Capabilities
         </h3>
         <div className="flex flex-wrap gap-2">
@@ -689,7 +687,7 @@ function AgentDetailPanel({
 
       {/* Connected Systems */}
       <div className="p-6 border-b border-border">
-        <h3 className={cn(TYPE.eyebrow, "mb-3 block")}>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
           Connected Systems
         </h3>
         <div className="flex flex-wrap gap-2">
@@ -712,7 +710,7 @@ function AgentDetailPanel({
 
       {/* Last Activity */}
       <div className="p-6 flex-1">
-        <h3 className={cn(TYPE.eyebrow, "mb-3 block")}>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
           Recent Activity
         </h3>
         <div className={cn(
@@ -801,7 +799,7 @@ function AgentPreviewSheet({
           <div className="flex flex-wrap items-center gap-2">
             <span
               className={cn(
-                "rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]",
+                "rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
                 agent.status === "error"
                   ? "border-destructive/30 bg-destructive/10 text-destructive"
                   : agent.status === "processing"
@@ -827,22 +825,22 @@ function AgentPreviewSheet({
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded-lg border border-border bg-card/60 px-2 py-3 text-center">
               <div className="text-lg font-semibold text-foreground">{agent.stats.tasksToday}</div>
-              <div className={TYPE.metricLabel}>Tasks</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Tasks</div>
             </div>
             <div className="rounded-lg border border-border bg-card/60 px-2 py-3 text-center">
               <div className="text-lg font-semibold text-foreground">
                 {shouldShowSuccessRate(agent) ? `${agent.stats.successRate}%` : "—"}
               </div>
-              <div className={TYPE.metricLabel}>Success</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Success</div>
             </div>
             <div className="rounded-lg border border-border bg-card/60 px-2 py-3 text-center">
               <div className="text-lg font-semibold text-foreground">{agent.stats.workflowsUsing}</div>
-              <div className={TYPE.metricLabel}>Flows</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Flows</div>
             </div>
           </div>
 
           <div className="rounded-lg border border-border bg-muted/30 p-3">
-            <p className={TYPE.eyebrow}>Recent activity</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Recent activity</p>
             {recentTasks.length > 0 ? (
               <ul className="mt-2 space-y-2">
                 {recentTasks.slice(0, 3).map((task) => (
@@ -1146,10 +1144,10 @@ export default function AgentsPage() {
           {/* Collapse only hides overview title/stats — primary CTAs stay reachable. */}
           {!headerCollapsed ? (
             <PageHeader
-              eyebrow="AI Team"
               title={SURFACE_COPY.pages.agents.rosterTitle}
               description={SURFACE_COPY.pages.agents.description}
               icon={Brain}
+              iconColor="from-violet-500/20 to-purple-500/20"
               actions={rosterActions}
             >
               <StatsGrid columns={3}>
