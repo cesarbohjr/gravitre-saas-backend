@@ -171,7 +171,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-10 gap-2 px-2.5 text-sm font-medium hover:bg-accent sm:h-8 sm:px-2 sm:text-xs"
+                className="h-11 gap-2 px-2.5 text-sm font-medium hover:bg-accent sm:h-8 sm:px-2 sm:text-xs"
                 aria-label={`Organization: ${org}. Switch organization`}
               >
                 <Icon name="company" size="md" className="text-muted-foreground sm:hidden" />
@@ -322,7 +322,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
           {/* User Avatar */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="group relative h-10 w-10 rounded-full p-0 hover:bg-accent sm:h-8 sm:w-8" aria-label="Account menu">
+              <Button variant="ghost" size="icon" className="group relative h-11 w-11 rounded-full p-0 hover:bg-accent sm:h-8 sm:w-8" aria-label="Account menu">
                 <UserAccountAvatar
                   useCurrentUser
                   size="md"

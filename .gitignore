@@ -63,4 +63,6 @@ backend/*.txt
 apps/web/*.txt
 build.txt
 tests_list.txt
+# Screenshots from scripts/verify-topbar-touch-targets.mjs
+.playwright-out/
 .vercel
