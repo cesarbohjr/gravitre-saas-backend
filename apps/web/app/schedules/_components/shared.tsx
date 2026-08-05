@@ -56,13 +56,21 @@ export function statusLabel(status: ScheduleStatus) {
   return STATUS_LABELS[status]
 }
 
-/** Legend explaining the color coding. */
+/** Legend explaining the color coding. Prefer nowrap + parent overflow-x-auto. */
 export function ScheduleLegend({ className }: { className?: string }) {
   const kinds: ScheduleKind[] = ["workflow", "task", "job"]
   return (
-    <div className={cn("flex flex-wrap items-center gap-x-4 gap-y-2", className)}>
+    <div
+      className={cn(
+        "flex shrink-0 flex-nowrap items-center gap-x-4 gap-y-2",
+        className,
+      )}
+    >
       {kinds.map((kind) => (
-        <span key={kind} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+        <span
+          key={kind}
+          className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground"
+        >
           <KindDot kind={kind} />
           {KIND_STYLES[kind].label}
         </span>

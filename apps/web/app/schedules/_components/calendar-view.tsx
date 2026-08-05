@@ -61,8 +61,15 @@ export function CalendarView({
         ))}
       </div>
 
-      {/* Fixed outer height + equal 6 rows — cells do not grow with chip count. */}
-      <div className="grid h-[34rem] grid-cols-7 grid-rows-6 gap-2 lg:h-[42rem]">
+      {/* Fixed 6×7 board — empty months keep the same footprint as busy ones. */}
+      <div
+        className="grid grid-cols-7 gap-2"
+        style={{
+          gridTemplateRows: "repeat(6, minmax(6.75rem, 1fr))",
+          minHeight: "42rem",
+          height: "42rem",
+        }}
+      >
         {days.map((day, idx) => {
           const inMonth = day.getMonth() === month.getMonth()
           const isWeekend = idx % 7 > 4
@@ -97,7 +104,7 @@ export function CalendarView({
                 setDropDayKey(null)
               }}
               className={cn(
-                "flex min-h-0 flex-col overflow-hidden rounded-xl border p-2 transition-colors",
+                "flex h-full min-h-[6.75rem] flex-col overflow-hidden rounded-xl border p-2 transition-colors",
                 inMonth
                   ? isWeekend
                     ? "border-border/60 bg-card/70"

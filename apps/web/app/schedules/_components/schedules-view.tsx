@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select"
 import {
   CalendarDays,
+  CalendarRange,
   ChevronLeft,
   ChevronRight,
   GanttChartSquare,
@@ -40,11 +41,15 @@ import {
 import {
   KindDot,
   ScheduleLegend,
+  addDays,
   endOfMonth,
   startOfCalendarGrid,
   startOfMonth,
+  startOfWeek,
 } from "./shared"
 import { CalendarView } from "./calendar-view"
+import { WeekView } from "./week-view"
+import { DayView } from "./day-view"
 import { MobileAgenda } from "./mobile-agenda"
 import { GanttView } from "./gantt-view"
 import { ListView } from "./list-view"
@@ -53,11 +58,18 @@ import { moveScheduledItem } from "@/lib/schedules/actions"
 import { scheduleMoveDescription } from "@/lib/schedules/actions"
 
 type ViewMode = "calendar" | "gantt" | "list"
+type CalendarScope = "month" | "week" | "day"
 
 const VIEWS: { id: ViewMode; label: string; icon: typeof CalendarDays }[] = [
   { id: "calendar", label: "Calendar", icon: CalendarDays },
   { id: "gantt", label: "Gantt", icon: GanttChartSquare },
   { id: "list", label: "List", icon: ListIcon },
+]
+
+const CALENDAR_SCOPES: { id: CalendarScope; label: string }[] = [
+  { id: "month", label: "Month" },
+  { id: "week", label: "Week" },
+  { id: "day", label: "Day" },
 ]
 
 const ALL_KINDS: ScheduleKind[] = ["workflow", "task", "job"]
@@ -88,7 +100,12 @@ export function SchedulesView({
   onRefresh,
 }: SchedulesViewProps) {
   const [view, setView] = useState<ViewMode>("calendar")
-  const [month, setMonth] = useState(() => startOfMonth(new Date()))
+  const [calendarScope, setCalendarScope] = useState<CalendarScope>("month")
+  const [focusDate, setFocusDate] = useState(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  })
   const [activeKinds, setActiveKinds] = useState<Set<ScheduleKind>>(new Set(ALL_KINDS))
   const [selectedOccurrence, setSelectedOccurrence] = useState<ScheduleOccurrence | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -99,13 +116,14 @@ export function SchedulesView({
   const [isMoving, setIsMoving] = useState(false)
   const reduceMotion = useReducedMotion()
 
+  const month = useMemo(() => startOfMonth(focusDate), [focusDate])
+
   const filteredItems = useMemo(
     () => items.filter((item) => activeKinds.has(item.kind)),
     [items, activeKinds],
   )
 
-  // Calendar grid spans 6 weeks; gantt spans the month. Use the wider window
-  // (calendar grid) for occurrence expansion so both views are covered.
+  // Visible fetch window — month grid (6 weeks) covers week/day; gantt uses month.
   const rangeStart = useMemo(() => startOfCalendarGrid(month), [month])
   const rangeEnd = useMemo(() => {
     const end = new Date(rangeStart)
@@ -132,6 +150,51 @@ export function SchedulesView({
 
   const monthStart = startOfMonth(month)
   const monthEnd = endOfMonth(month)
+
+  const shiftFocus = (direction: -1 | 1) => {
+    setFocusDate((current) => {
+      if (view === "calendar" && calendarScope === "week") {
+        return addDays(current, direction * 7)
+      }
+      if (view === "calendar" && calendarScope === "day") {
+        return addDays(current, direction)
+      }
+      return new Date(current.getFullYear(), current.getMonth() + direction, 1)
+    })
+  }
+
+  const goToday = () => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    setFocusDate(d)
+  }
+
+  const periodLabel = useMemo(() => {
+    if (view === "calendar" && calendarScope === "week") {
+      const start = startOfWeek(focusDate)
+      const end = addDays(start, 6)
+      const sameMonth = start.getMonth() === end.getMonth()
+      const startLabel = start.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+      })
+      const endLabel = end.toLocaleDateString(undefined, {
+        month: sameMonth ? undefined : "short",
+        day: "numeric",
+        year: "numeric",
+      })
+      return `${startLabel} – ${endLabel}`
+    }
+    if (view === "calendar" && calendarScope === "day") {
+      return focusDate.toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    }
+    return focusDate.toLocaleString(undefined, { month: "long", year: "numeric" })
+  }, [view, calendarScope, focusDate])
 
   const handleSelect = (target: ScheduledItem | ScheduleOccurrence) => {
     const occurrence = toOccurrence(target)
@@ -170,7 +233,6 @@ export function SchedulesView({
     })
   }
 
-  const monthLabel = month.toLocaleString(undefined, { month: "long", year: "numeric" })
   const counts = useMemo(() => {
     const c: Record<ScheduleKind, number> = { workflow: 0, task: 0, job: 0 }
     for (const item of filteredItems) c[item.kind] += 1
@@ -183,27 +245,39 @@ export function SchedulesView({
           filters read as a single control surface instead of three cards. */}
       <div className="space-y-3 rounded-2xl border border-border bg-card p-3 sm:p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          {/* Month nav (calendar + gantt) */}
+          {/* Period nav (calendar + gantt) */}
           {view !== "list" ? (
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <Button
                 variant="outline"
                 size="icon"
                 className="h-10 w-10 shrink-0 rounded-full sm:h-9 sm:w-9"
-                onClick={() => setMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
-                aria-label="Previous month"
+                onClick={() => shiftFocus(-1)}
+                aria-label={
+                  view === "calendar" && calendarScope === "day"
+                    ? "Previous day"
+                    : view === "calendar" && calendarScope === "week"
+                      ? "Previous week"
+                      : "Previous month"
+                }
               >
                 <ChevronLeft className="h-5 w-5 sm:h-4 sm:w-4" />
               </Button>
-              <h2 className="min-w-0 flex-1 text-lg font-semibold tracking-tight text-foreground lg:min-w-[11rem] lg:text-xl">
-                {monthLabel}
+              <h2 className="min-w-0 flex-1 truncate text-lg font-semibold tracking-tight text-foreground lg:min-w-[11rem] lg:text-xl">
+                {periodLabel}
               </h2>
               <Button
                 variant="outline"
                 size="icon"
                 className="h-10 w-10 shrink-0 rounded-full sm:h-9 sm:w-9"
-                onClick={() => setMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
-                aria-label="Next month"
+                onClick={() => shiftFocus(1)}
+                aria-label={
+                  view === "calendar" && calendarScope === "day"
+                    ? "Next day"
+                    : view === "calendar" && calendarScope === "week"
+                      ? "Next week"
+                      : "Next month"
+                }
               >
                 <ChevronRight className="h-5 w-5 sm:h-4 sm:w-4" />
               </Button>
@@ -211,7 +285,7 @@ export function SchedulesView({
                 variant="ghost"
                 size="sm"
                 className="h-10 shrink-0 rounded-full px-4 sm:h-9"
-                onClick={() => setMonth(startOfMonth(new Date()))}
+                onClick={goToday}
               >
                 Today
               </Button>
@@ -222,34 +296,62 @@ export function SchedulesView({
             </h2>
           )}
 
-          {/* View switcher — full width on phones so the targets stay tappable */}
-          <div className="grid grid-cols-3 gap-1 rounded-full border border-border bg-muted/50 p-1 lg:inline-flex lg:w-auto">
-            {VIEWS.map((v) => {
-              const Icon = v.icon
-              const active = view === v.id
-              return (
-                <button
-                  key={v.id}
-                  type="button"
-                  onClick={() => setView(v.id)}
-                  className={cn(
-                    "inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium transition-colors sm:py-1.5",
-                    active
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                  aria-pressed={active}
-                >
-                  <Icon className="h-4 w-4" />
-                  {v.label}
-                </button>
-              )
-            })}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+            {/* Month / Week / Day — only when Calendar is active */}
+            {view === "calendar" ? (
+              <div className="inline-flex gap-1 rounded-full border border-border bg-muted/50 p-1">
+                {CALENDAR_SCOPES.map((scope) => {
+                  const active = calendarScope === scope.id
+                  return (
+                    <button
+                      key={scope.id}
+                      type="button"
+                      onClick={() => setCalendarScope(scope.id)}
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition-colors sm:text-sm",
+                        active
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                      aria-pressed={active}
+                    >
+                      {scope.id === "week" ? <CalendarRange className="h-3.5 w-3.5" /> : null}
+                      {scope.label}
+                    </button>
+                  )
+                })}
+              </div>
+            ) : null}
+
+            {/* View switcher — full width on phones so the targets stay tappable */}
+            <div className="grid grid-cols-3 gap-1 rounded-full border border-border bg-muted/50 p-1 lg:inline-flex lg:w-auto">
+              {VIEWS.map((v) => {
+                const Icon = v.icon
+                const active = view === v.id
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => setView(v.id)}
+                    className={cn(
+                      "inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium transition-colors sm:py-1.5",
+                      active
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                    aria-pressed={active}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {v.label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
 
-        {/* Type filters + workflow scope */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-3">
+        {/* Type filters + workflow scope + legend (scrollable so Training job never clips) */}
+        <div className="flex flex-col gap-3 border-t border-border/70 pt-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             {ALL_KINDS.map((kind) => {
               const active = activeKinds.has(kind)
@@ -283,14 +385,14 @@ export function SchedulesView({
               )
             })}
           </div>
-          <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
+          <div className="flex min-w-0 items-center gap-3 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:thin] xl:max-w-[50%] xl:justify-end">
             {workflowOptions && workflowOptions.length > 0 && (
               <Select
                 value={workflowId ?? "all"}
                 onValueChange={(v) => onWorkflowChange?.(v === "all" ? undefined : v)}
               >
                 <SelectTrigger
-                  className="h-10 w-full rounded-full text-xs sm:h-9 sm:w-[200px]"
+                  className="h-10 w-[180px] shrink-0 rounded-full text-xs sm:h-9 sm:w-[200px]"
                   aria-label="Filter by workflow"
                 >
                   <SelectValue placeholder="All workflows" />
@@ -305,7 +407,7 @@ export function SchedulesView({
                 </SelectContent>
               </Select>
             )}
-            <ScheduleLegend className="hidden lg:flex" />
+            <ScheduleLegend />
           </div>
         </div>
       </div>
@@ -316,7 +418,7 @@ export function SchedulesView({
       ) : (
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
-            key={view}
+            key={`${view}:${calendarScope}`}
             initial={reduceMotion ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
@@ -324,27 +426,58 @@ export function SchedulesView({
           >
             {view === "calendar" && (
               <>
-                {/* Phones get a week strip + agenda timeline; a 7-column month
-                    grid is unreadable below ~700px. */}
+                {/* Phones: week strip + agenda (month/week) or day timeline. */}
                 <div className="md:hidden">
-                  <MobileAgenda
-                    month={month}
-                    occurrences={occurrences}
-                    onOpen={handleOpen}
-                    onMonthChange={setMonth}
-                  />
+                  {calendarScope === "day" ? (
+                    <DayView
+                      focusDate={focusDate}
+                      occurrences={occurrences}
+                      selectedId={selectedOccurrence?.item.id}
+                      onSelect={handleSelect}
+                      onOpen={handleOpen}
+                    />
+                  ) : (
+                    <MobileAgenda
+                      month={month}
+                      occurrences={occurrences}
+                      onOpen={handleOpen}
+                      onMonthChange={(nextMonth) => {
+                        setFocusDate(nextMonth)
+                      }}
+                    />
+                  )}
                 </div>
                 <div className="hidden md:block">
-                  <CalendarView
-                    month={month}
-                    occurrences={occurrences}
-                    selectedId={selectedOccurrence?.item.id}
-                    onSelect={handleSelect}
-                    onOpen={handleOpen}
-                    onMoveRequest={(occurrence, targetDate) =>
-                      setPendingMove({ occurrence, targetDate })
-                    }
-                  />
+                  {calendarScope === "month" ? (
+                    <CalendarView
+                      month={month}
+                      occurrences={occurrences}
+                      selectedId={selectedOccurrence?.item.id}
+                      onSelect={handleSelect}
+                      onOpen={handleOpen}
+                      onMoveRequest={(occurrence, targetDate) =>
+                        setPendingMove({ occurrence, targetDate })
+                      }
+                    />
+                  ) : null}
+                  {calendarScope === "week" ? (
+                    <WeekView
+                      focusDate={focusDate}
+                      occurrences={occurrences}
+                      selectedId={selectedOccurrence?.item.id}
+                      onSelect={handleSelect}
+                      onOpen={handleOpen}
+                    />
+                  ) : null}
+                  {calendarScope === "day" ? (
+                    <DayView
+                      focusDate={focusDate}
+                      occurrences={occurrences}
+                      selectedId={selectedOccurrence?.item.id}
+                      onSelect={handleSelect}
+                      onOpen={handleOpen}
+                    />
+                  ) : null}
                 </div>
               </>
             )}
@@ -483,11 +616,18 @@ function ViewSkeleton({ view }: { view: ViewMode }) {
           ))}
         </div>
       </div>
-      {/* Desktop: day cards */}
+      {/* Desktop: fixed-height month board */}
       <div className="hidden rounded-2xl border border-border bg-muted/30 p-3 md:block">
-        <div className="grid h-[34rem] grid-cols-7 grid-rows-6 gap-2 lg:h-[42rem]">
+        <div
+          className="grid grid-cols-7 gap-2"
+          style={{
+            gridTemplateRows: "repeat(6, minmax(6.75rem, 1fr))",
+            minHeight: "42rem",
+            height: "42rem",
+          }}
+        >
           {Array.from({ length: 42 }).map((_, i) => (
-            <Skeleton key={i} className="min-h-0 rounded-xl bg-card" />
+            <Skeleton key={i} className="h-full min-h-[6.75rem] rounded-xl bg-card" />
           ))}
         </div>
       </div>
