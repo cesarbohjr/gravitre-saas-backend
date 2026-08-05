@@ -533,9 +533,9 @@ Direct fixes after G.5.7. Status uses the standing map bar.
 | 2 | MSP TRY clarify≠confirm CI | **CLOSED (stale test, not F1 regression)** | Orchestration uses `require_pack_install=True`; MagicMock pack absent → **clarify is correct**. Also multi-step false-positive on Sheet→HubSpot (“then … HubSpot”) without pack-risk. Fixes: pack-installed mock + pack-absent clarify test; `retrieve_plan_gate.multi_step_guess` requires pack-risk anchors. Full backend pytest: **4386 passed, 3 skipped**. |
 | 3 | F6 HubSpot follow-up | **CLOSED** | Cause ≠ wrong-endpoint: HubSpot/Apollo membership eventual consistency. Fix: retry/backoff + HubSpot settle read. Live tip `798f792d`: both `follow_up_membership_confirmed` — Apollo `6a73b9a772eb1c0010817dc8`, HubSpot list `43` (`f6-collection-population-verify-live.json`). Standing CI: `test_f6_hubspot_follow_up_membership.py`. |
 | 4 | A5d progressive + write governance | **CLOSED** | Gap: write short-circuit. Live tip `798f792d`: `progressive_disclosure=true` (4001 B), Apollo write “Reply **yes**”, path `execute_task_streaming` — conv `8a7d3e74…` / `3acf82a1…` (`a5d-extension-progressive-live.json`). |
-| CI | Backend pytest + dep audit | **GREEN on tip `798f792d`** | Actions: Backend (pytest) **success**, Dependency audit **success**. Local full suite **4386 passed, 3 skipped**. Web lint had one remaining `read-aloud-button` refs-during-render error (fixed in follow-up). |
+| CI | Full CI workflow | **GREEN on tip `ce6db384`** | Actions run [31053173670](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/31053173670): Backend pytest, Dependency audit, Web lint/typecheck/build, Integration Smoke — all **success**. Local full suite **4386 passed, 3 skipped**. |
 
-**Live tip:** `/health` `git_sha=798f792d…` (ok).
+**Live tip:** `/health` `git_sha=ce6db384…` (ok). F6/A5d live probes also PASS on prior tip `798f792d` (same routing/verify code).
 
 ---
 
@@ -588,3 +588,4 @@ NL variance + withhold assertions also live in CI via `test_routing_nl_variance_
 | 2026-08-05 | **G.5 FINAL** — Phase 4.1–4.3 closed (embed re-test keep 40; enrichment decline; compression defer). Schema-augmentation research thread complete. |
 | 2026-08-05 | **G.5.7 operational re-verify** — tip `97b2e319`; progressive+MiniLM+enrichment-off CONFIRMED; F6 HubSpot + tip CI green GAP. |
 | 2026-08-05 | **G.5.8 gap closure** — Monday F4-class; MSP stale-test CI; HubSpot ILS retry; A5d write short-circuit removed; full pytest 4386 passed. |
+| 2026-08-05 | **G.5.8 tip `ce6db384`** — full CI green (pytest+audit+web); F6 both vendors + A5d progressive/governance live PASS. |
