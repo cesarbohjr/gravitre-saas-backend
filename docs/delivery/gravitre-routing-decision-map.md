@@ -517,6 +517,8 @@ Historical (pre–when/why, local embed): keyword wall 840 / embed wall 487 (`un
 
 Reproduce: `cd backend && set PYTHONPATH=. && python ../scripts/probe-g5-phase4-schema-augmentation.py`
 
+**Live tip verification (post-deploy):** `/health` `git_sha=63d95eec…` @ 2026-08-05; `unified_turn_embed_min_catalog_tools=40`; `email_intent` live TTFT `retrieval=embedding_narrow_tools_for_turn`, `narrow_tools_ms=61`, `model_ttft_ms=565`, wall≈1297 (`docs/delivery/unified-turn-task-ttft-g5-p4-tip-63d95eec.json`).
+
 ---
 
 ## Appendix — Code anchors
