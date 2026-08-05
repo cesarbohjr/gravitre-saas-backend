@@ -944,10 +944,13 @@ function MesonBuildButton({
                 >
                   <Sparkles className="h-4 w-4 text-violet-400" />
                 </motion.span>
-                <span className="hidden bg-gradient-to-r from-violet-300 via-fuchsia-300 to-indigo-300 bg-clip-text font-medium text-transparent sm:inline">
+                {/* The 300-weight tints only have contrast on a dark surface. On
+                    bg-card/95 in light mode the label was effectively invisible, so
+                    the ramp darkens to 600 there and keeps the 300s under `dark:`. */}
+                <span className="hidden bg-gradient-to-r from-violet-600 via-fuchsia-600 to-indigo-600 bg-clip-text font-medium text-transparent dark:from-violet-300 dark:via-fuchsia-300 dark:to-indigo-300 sm:inline">
                   Build with Meson
                 </span>
-                <span className="bg-gradient-to-r from-violet-300 via-fuchsia-300 to-indigo-300 bg-clip-text text-sm font-medium text-transparent sm:hidden">
+                <span className="bg-gradient-to-r from-violet-600 via-fuchsia-600 to-indigo-600 bg-clip-text text-sm font-medium text-transparent dark:from-violet-300 dark:via-fuchsia-300 dark:to-indigo-300 sm:hidden">
                   Meson
                 </span>
               </Button>
