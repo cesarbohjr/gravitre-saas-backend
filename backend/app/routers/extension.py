@@ -266,8 +266,9 @@ async def extension_chat(
 ) -> dict[str, Any]:
     """Lightweight overlay chat — front door onto execute_task_streaming / unified-turn.
 
-    Not a parallel reasoner. Page context is fenced as DATA. Longer / write intents
-    return needsHandoff + /ai?c= for full Gravitree chat.
+    Not a parallel reasoner. Page context is fenced as DATA. Write intents run the
+    same LIVE progressive + write-authority path as A1; overlay may still return
+    needsHandoff + /ai?c= for full-chat UX after the governed turn.
     """
     user, org_id, _role = member
     if not org_id:

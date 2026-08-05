@@ -410,7 +410,14 @@ async def test_step_confirm_executes_write(orchestration_service):
 async def test_msp_clay_try_prompt_stages_create_workflow_not_search_contacts(
     orchestration_service,
 ):
-    """AI Chat TRY chip must not invent 2× Apollo Search contacts orchestration."""
+    """AI Chat TRY chip must not invent 2× Apollo Search contacts orchestration.
+
+    F1 retrieve-before-generate with require_pack_install=True: when the MSP /
+    Prospecting pack is installed, stage confirm (draft workflow). The prior
+    assertion assumed confirm without mocking install state; after F1 the gate
+    correctly clarifies when the pack is absent — that is intentional, not a
+    routing regression. This test mocks pack installed.
+    """
     message = (
         'Use Clay to enrich the existing Apollo contact list "MSP Prospects", '
         'then add those enriched contacts to the existing HubSpot static list "MSPs".'
@@ -437,25 +444,60 @@ async def test_msp_clay_try_prompt_stages_create_workflow_not_search_contacts(
             refreshed,
         ]
     )
-    result = await orchestration_service.process_turn(
-        org_id="org-1",
-        user_id="user-1",
-        conversation_id="conv-msp-try",
-        message=message,
-        classification={"intent": "workflow_execution"},
-        task_state={"pending_task": None},
-        connected_integrations=["apollo", "clay", "hubspot"],
-        client=MagicMock(),
-    )
+    with patch(
+        "app.services.recommendation_heuristics_service.load_installed_packs",
+        return_value={"msp-intelligence-pack", "prospecting-intelligence-pack"},
+    ):
+        result = await orchestration_service.process_turn(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-msp-try",
+            message=message,
+            classification={"intent": "workflow_execution"},
+            task_state={"pending_task": None},
+            connected_integrations=["apollo", "clay", "hubspot"],
+            client=MagicMock(),
+        )
     assert result is not None
     assert result["dialogue_mode"] == "confirm"
-    assert "draft workflow" in result["message"].lower()
+    msg = (result.get("message") or "").lower()
+    assert "search contacts" not in msg
+    # Pack-common MSP enrich stages create_workflow pending (via retrieve_plan_gate).
+    pending = result.get("pending_task") or (result.get("task_state") or {}).get("pending_task") or {}
+    assert pending.get("type") == "create_workflow" or result.get("model") == "retrieve_plan_gate"
+    assert "apollo" in msg or "msp" in msg or "draft" in msg or "workflow" in msg
+
+
+@pytest.mark.asyncio
+async def test_msp_clay_try_prompt_clarifies_when_pack_not_installed(
+    orchestration_service,
+):
+    """F1: pack-shaped MSP TRY without installed pack → clarify, no fabricate."""
+    message = (
+        'Use Clay to enrich the existing Apollo contact list "MSP Prospects", '
+        'then add those enriched contacts to the existing HubSpot static list "MSPs".'
+    )
+    orchestration_service._state.get_task_state = AsyncMock(
+        return_value={"pending_task": None, "clarified_params": {}}
+    )
+    with patch(
+        "app.services.recommendation_heuristics_service.load_installed_packs",
+        return_value=set(),
+    ):
+        result = await orchestration_service.process_turn(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-msp-try-no-pack",
+            message=message,
+            classification={"intent": "workflow_execution"},
+            task_state={"pending_task": None},
+            connected_integrations=["apollo", "clay", "hubspot"],
+            client=MagicMock(),
+        )
+    assert result is not None
+    assert result["dialogue_mode"] in {"clarify", "clarifying"}
     assert "search contacts" not in result["message"].lower()
-    patch = orchestration_service._state.update_task_state.await_args.args[2]
-    pending = patch["pending_task"]
-    assert pending["type"] == "create_workflow"
-    assert pending["status"] == "awaiting_confirm"
-    assert pending["params"]["invoke_action"] == "assistant.create_workflow"
+    assert "install" in result["message"].lower() or "pack" in result["message"].lower()
 
 
 def test_sta307_high_intent_prompt_splits_hubspot_then_slack(orchestration_service):

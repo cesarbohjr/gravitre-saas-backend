@@ -59,6 +59,7 @@ OBJECT_ALIASES: dict[str, tuple[str, ...]] = {
     # Prefer explicit tasks key so ClickUp tasks.* beats spaces.list (F4).
     "tasks": ("task", "tasks", "follow-up", "follow up", "follow-up task"),
     "items": ("item", "items"),
+    "automations": ("automation", "automations", "workflow rule", "workflow rules"),
     "spaces": ("space", "spaces"),
     "messages": ("message", "messages", "notify", "notification", "alert", "summary"),
     "files": ("file", "files", "folder", "folders", "document", "documents"),
@@ -70,15 +71,25 @@ OBJECT_ALIASES: dict[str, tuple[str, ...]] = {
     "structure": ("campaign structure", "ad group structure", "funnel", "search campaign structure"),
 }
 
+# Cross-vendor work-item synonyms (Monday items ≡ Asana/ClickUp tasks).
+# These MUST NOT appear in _OBJECT_CONFUSABLES — they share intent.
+_OBJECT_SYNONYMS: dict[str, frozenset[str]] = {
+    "tasks": frozenset({"items"}),
+    "items": frozenset({"tasks"}),
+}
+
 # Resources that must not steal each other's noun hits (catalog-wide F4 class fix).
 _OBJECT_CONFUSABLES: dict[str, frozenset[str]] = {
     "issues": frozenset({"pulls", "actions"}),
     "pulls": frozenset({"issues"}),
-    "tasks": frozenset({"spaces", "lists", "members", "items"}),
-    "spaces": frozenset({"tasks"}),
+    # spaces/lists/members/automations/boards — not work-item synonyms
+    "tasks": frozenset({"spaces", "lists", "members", "automations", "boards"}),
+    "spaces": frozenset({"tasks", "items"}),
     "contacts": frozenset({"leads"}),
     "leads": frozenset({"contacts"}),
-    "items": frozenset({"tasks"}),
+    "items": frozenset({"spaces", "lists", "members", "automations", "boards"}),
+    "automations": frozenset({"items", "tasks", "boards", "spaces"}),
+    "boards": frozenset({"items", "tasks", "automations"}),
 }
 
 
@@ -296,22 +307,32 @@ class ChatActionMapper:
         suffix = entry.action_key.split(".", 1)[-1]
         resource = _entry_resource_key(entry)
         msg_objects = _message_object_keys(text)
+        # Expand message nouns with cross-vendor work-item synonyms (task↔item).
+        expanded_objects = set(msg_objects)
+        for msg_obj in list(msg_objects):
+            expanded_objects |= _OBJECT_SYNONYMS.get(msg_obj, frozenset())
         # F4 structural: weight message nouns against entry resource; veto confusables.
         if msg_objects:
-            if resource in msg_objects or any(
-                obj_key in suffix or resource in obj_key for obj_key in msg_objects
+            if resource in expanded_objects or any(
+                obj_key in suffix or resource in obj_key for obj_key in expanded_objects
             ):
                 score += 22.0
             else:
                 for msg_obj in msg_objects:
                     confusable = _OBJECT_CONFUSABLES.get(msg_obj, frozenset())
+                    # Never veto a synonym work-item (task↔item) as confusable.
+                    synonyms = _OBJECT_SYNONYMS.get(msg_obj, frozenset())
+                    if resource in synonyms:
+                        continue
                     if resource in confusable or any(
                         c in suffix for c in confusable
                     ):
                         score -= 36.0
                         break
         for obj_key, obj_aliases in OBJECT_ALIASES.items():
-            if obj_key in suffix or resource in obj_key:
+            if obj_key in suffix or resource in obj_key or resource in _OBJECT_SYNONYMS.get(
+                obj_key, frozenset()
+            ):
                 if any(alias in text for alias in obj_aliases):
                     score += 8.0
         for phrase in entry.chat_phrases[:6]:

@@ -139,12 +139,19 @@ def retrieve_plan_or_none(
 
     # 4) Ambiguous pack-shaped enrich/list phrasing — clarify, never fabricate.
     # Only fire on enrich/sync + vague list refs (TRY-chip invent class), not
-    # every casual "the list" mention.
+    # every casual "the list" mention — and not concrete multi-connector
+    # orchestrations (e.g. Google Sheet → HubSpot contact) that name real tools.
     pack_shaped_ambiguous = bool(_AMBIGUOUS_LIST_REF.search(text)) and bool(
         re.search(r"\b(?:enrich|clay|sync|apollo|hubspot|msp)\b", text, re.I)
     )
-    multi_step_guess = bool(_AMBIGUOUS_MULTI_STEP.search(text)) and len(text) >= 24 and (
-        not _has_concrete_tool_anchors(text)
+    pack_risk_signal = bool(
+        re.search(r"\b(?:enrich|clay|apollo|msp|prospecting)\b", text, re.I)
+    )
+    multi_step_guess = (
+        pack_risk_signal
+        and bool(_AMBIGUOUS_MULTI_STEP.search(text))
+        and len(text) >= 24
+        and (not _has_concrete_tool_anchors(text))
     )
     if pack_shaped_ambiguous or multi_step_guess:
         return RetrievedPlan(
@@ -167,11 +174,26 @@ def _has_concrete_tool_anchors(text: str) -> bool:
     lower = text.lower()
     vendors = sum(
         1
-        for v in ("apollo", "hubspot", "clay", "slack", "gmail", "salesforce")
+        for v in (
+            "apollo",
+            "hubspot",
+            "clay",
+            "slack",
+            "gmail",
+            "salesforce",
+            "asana",
+            "monday",
+            "google",
+            "drive",
+            "sheet",
+        )
         if v in lower
     )
     return vendors >= 2 and bool(
-        re.search(r"\b(?:list|segment|deal|contact|issue|task)\b", lower)
+        re.search(
+            r"\b(?:list|segment|deal|contact|issue|task|item|sheet|rows?|file|doc)\b",
+            lower,
+        )
     )
 
 

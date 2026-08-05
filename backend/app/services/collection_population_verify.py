@@ -8,6 +8,7 @@ rate-limited follow-up → accepted_async / partial per effect honesty.
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -158,38 +159,59 @@ def _follow_up_membership_count(
         if action.startswith("hubspot.") and ctx is not None:
             from app.services.tool_service import invoke_tool
 
-            try:
-                out = invoke_tool(
-                    ctx,
-                    "hubspot.lists.get",
-                    {"list_id": list_id},
-                )
-                payload = out.data if isinstance(getattr(out, "data", None), dict) else {}
-                size = payload.get("size")
-                if size is None:
-                    size = payload.get("membershipCount")
-                if size is None:
-                    size = payload.get("contact_count")
-                if size is None:
-                    size = payload.get("member_count")
-                meta = payload.get("meta")
-                if size is None and isinstance(meta, dict):
-                    size = meta.get("size")
-                if size is None and isinstance(payload.get("list"), dict):
-                    list_obj = payload["list"]
-                    size = list_obj.get("size") or list_obj.get("membershipCount")
+            # HubSpot ILS membership index is eventually consistent after add —
+            # retry briefly so F6 verify does not false-fail as empty.
+            last_err: Exception | None = None
+            for attempt in range(4):
+                try:
+                    out = invoke_tool(
+                        ctx,
+                        "hubspot.lists.get",
+                        {"list_id": list_id},
+                    )
+                    payload = out.data if isinstance(getattr(out, "data", None), dict) else {}
+                    size = payload.get("size")
                     if size is None:
-                        addl = list_obj.get("additionalProperties")
-                        if isinstance(addl, dict):
-                            size = addl.get("hs_list_size")
-                if size is None:
-                    members = payload.get("memberships") or payload.get("results") or []
-                    if isinstance(members, list) and members:
-                        size = len(members)
-                if size is not None:
-                    return max(0, int(size))
-            except Exception as exc:  # noqa: BLE001
-                logger.info("hubspot list follow-up failed list_id=%s err=%s", list_id, exc)
+                        size = payload.get("membershipCount")
+                    if size is None:
+                        size = payload.get("contact_count")
+                    if size is None:
+                        size = payload.get("member_count")
+                    meta = payload.get("meta")
+                    if size is None and isinstance(meta, dict):
+                        size = meta.get("size")
+                    if size is None and isinstance(payload.get("list"), dict):
+                        list_obj = payload["list"]
+                        size = list_obj.get("size") or list_obj.get("membershipCount")
+                        if size is None:
+                            addl = list_obj.get("additionalProperties")
+                            if isinstance(addl, dict):
+                                size = addl.get("hs_list_size")
+                    if size is None:
+                        members = payload.get("memberships") or payload.get("results") or []
+                        if isinstance(members, list) and members:
+                            size = len(members)
+                    if size is not None and int(size) > 0:
+                        return max(0, int(size))
+                    # size 0 / missing — wait and retry (eventual consistency)
+                    if attempt < 3:
+                        time.sleep(1.5 * (attempt + 1))
+                        continue
+                    if size is not None:
+                        return max(0, int(size))
+                except Exception as exc:  # noqa: BLE001
+                    last_err = exc
+                    if attempt < 3:
+                        time.sleep(1.5 * (attempt + 1))
+                        continue
+                    logger.info(
+                        "hubspot list follow-up failed list_id=%s err=%s", list_id, last_err
+                    )
+                    return -1
+            if last_err is not None:
+                logger.info(
+                    "hubspot list follow-up failed list_id=%s err=%s", list_id, last_err
+                )
                 return -1
 
         if action.startswith("apollo.") and ctx is not None:

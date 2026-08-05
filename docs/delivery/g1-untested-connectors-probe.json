@@ -1,0 +1,105 @@
+{
+  "correct": 11,
+  "n": 11,
+  "rows": [
+    {
+      "vendor": "asana",
+      "message": "create a task in Asana called Follow up with Acme",
+      "expected": "asana.tasks.create",
+      "tool": "asana.tasks.create",
+      "score": 76.0,
+      "correct": true,
+      "hit": true
+    },
+    {
+      "vendor": "clickup",
+      "message": "list my open ClickUp tasks",
+      "expected": "clickup.tasks.list",
+      "tool": "clickup.tasks.list",
+      "score": 66.0,
+      "correct": true,
+      "hit": true
+    },
+    {
+      "vendor": "github",
+      "message": "search GitHub issues mentioning billing",
+      "expected": "github.issues.list",
+      "tool": "github.issues.list",
+      "score": 58.0,
+      "correct": true,
+      "hit": true
+    },
+    {
+      "vendor": "notion",
+      "message": "create a Notion page titled Q3 plan",
+      "expected": "notion.pages.create",
+      "tool": "notion.pages.create",
+      "score": 22.0,
+      "correct": true,
+      "hit": true
+    },
+    {
+      "vendor": "airtable",
+      "message": "find records in Airtable for Acme",
+      "expected": "airtable.records.list",
+      "tool": "airtable.records.list",
+      "score": 34.0,
+      "correct": true,
+      "hit": true
+    },
+    {
+      "vendor": "monday_item",
+      "message": "create a Monday.com item for onboarding",
+      "expected": "monday.items.create",
+      "tool": "monday.items.create",
+      "score": 52.0,
+      "correct": true,
+      "hit": true
+    },
+    {
+      "vendor": "monday_task",
+      "message": "Create a task in Monday called \"Follow up\"",
+      "expected": "monday.items.create",
+      "tool": "monday.items.create",
+      "score": 60.0,
+      "correct": true,
+      "hit": true
+    },
+    {
+      "vendor": "linear",
+      "message": "create a Linear issue titled Fix login",
+      "expected": null,
+      "tool": null,
+      "score": null,
+      "correct": true,
+      "hit": false
+    },
+    {
+      "vendor": "zendesk",
+      "message": "list open Zendesk tickets",
+      "expected": "zendesk.tickets.list",
+      "tool": "zendesk.tickets.list",
+      "score": 58.0,
+      "correct": true,
+      "hit": true
+    },
+    {
+      "vendor": "salesforce",
+      "message": "find Salesforce contacts named Sarah",
+      "expected": "salesforce.contacts.search",
+      "tool": "salesforce.contacts.search",
+      "score": 66.0,
+      "correct": true,
+      "hit": true
+    },
+    {
+      "vendor": "intercom",
+      "message": "search Intercom conversations about refund",
+      "expected": "intercom.conversations.list",
+      "tool": "intercom.conversations.list",
+      "score": 28.0,
+      "correct": true,
+      "hit": true
+    }
+  ]
+}

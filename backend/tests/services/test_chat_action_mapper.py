@@ -14,6 +14,26 @@ def test_maps_monday_task_create():
     assert match.args.get("item_name")
 
 
+def test_monday_task_does_not_map_to_automations_trigger():
+    """F4 class: work-item noun must not lose to automations.* sibling."""
+    match = get_chat_action_mapper().match_segment(
+        'Create a task in Monday called "Follow up"',
+        connected_integrations=["monday"],
+    )
+    assert match is not None
+    assert match.entry.action_key == "monday.items.create"
+    assert "automations" not in match.entry.action_key
+
+
+def test_monday_item_create_phrasing():
+    match = get_chat_action_mapper().match_segment(
+        "create a Monday.com item for onboarding",
+        connected_integrations=["monday"],
+    )
+    assert match is not None
+    assert match.entry.action_key == "monday.items.create"
+
+
 def test_maps_slack_notify():
     match = get_chat_action_mapper().match_segment(
         'Post "Weekly summary" to #sales in Slack',

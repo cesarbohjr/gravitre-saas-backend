@@ -519,25 +519,23 @@ Reproduce: `cd backend && set PYTHONPATH=. && python ../scripts/probe-g5-phase4-
 
 **Live tip verification (post-deploy):** `/health` `git_sha=63d95eec…` @ 2026-08-05; `unified_turn_embed_min_catalog_tools=40`; `email_intent` live TTFT `retrieval=embedding_narrow_tools_for_turn`, `narrow_tools_ms=61`, `model_ttft_ms=565`, wall≈1297 (`docs/delivery/unified-turn-task-ttft-g5-p4-tip-63d95eec.json`).
 
-### G.5.7 Operational re-verification (2026-08-05) — tip `97b2e319`
+### G.5.7 Operational re-verification (2026-08-05) — tip `97b2e319` (diagnosis)
 
-Diagnosis-only pass. Status labels below use the standing map bar: **CONFIRMED** = fresh code/live/test evidence today; **UNKNOWN** = not re-proven this pass; **GAP** = reported-closed but failed or drifted today.
+Diagnosis-only pass (pre-fix). Gaps found: Monday F4-class mapper, MSP CI clarify≠confirm, F6 HubSpot follow-up empty, A5d live probe UNKNOWN.
 
-| # | Technique / check | Status | Fresh evidence (2026-08-05) |
-|---|-------------------|--------|-----------------------------|
-| P1 | Live tip + deploy-health | **CONFIRMED** | Pre-stamp `/health` `63d95eec`; stamp push `97b2e319` → `/health` updated to `97b2e319…` (deploy-health still tracks tip). Frontend: `gravitre.app/login` **200** (Vercel); exact frontend `git_sha` header **UNKNOWN** (not exposed). |
-| 2.1 | Enriched examples+tags | **CONFIRMED declined/inert** | Source `ENRICHMENT_ENABLED=False`; sample n=18 present; enrichment helpers no-op when flag off. |
-| 2.2 | Aggressive schema compression | **CONFIRMED not live-wired** | `compress_tool_definition_aggressive` only in optimizer + unit test; live path uses `compress_tool_definitions` then progressive stubs. Fresh progressive probe avg **24.71%** bytes cut (`g5-progressive-schemas-probe.json`). |
-| 2.3 | Progressive disclosure (Tool Search family) | **CONFIRMED live A1/A2** | Live TTFT: `progressive_disclosure=true`, payloads ~4KB stubs; **governance:** `deals_status` blocked with `progressive_gate_blocked=full_schema_not_loaded` + user text citing `search_catalog_tools` (`unified-turn-task-ttft-g5-audit-reverify.json` @ tip pre-stamp `63d95eec`, same code as `97b2e319`). Unit: `test_write_using_only_stub_is_rejected_until_full_schema_loaded` PASS. A5d: **CONFIRMED wired** via `extension_bridge_service` → `execute_task_streaming` (same LIVE path); dedicated live extension probe **UNKNOWN** this pass. |
-| 2.4 | Code Mode / code-exec+MCP | **CONFIRMED still declined** | No implementation outside research docs; grep finds disposition text only. |
-| 2.5 | BFCL withhold battery | **CONFIRMED tests green locally; CI suite red overall** | Local `test_routing_nl_variance_battery.py` + progressive/G.5 guards **26 passed**. Standing inclusion: CI runs `python -m pytest -q` (full backend). Tip `0b7877a5` CI **Backend pytest FAILED** on unrelated monday/MSP e2e (not withhold). Withhold standing gate exists but **full CI is not green**. |
-| 2.6 | Local MiniLM embed | **CONFIRMED live** | Fresh TTFT: `embed_query_method=local`, `embed_query_provider=local`, `embed_query_model=all-MiniLM-L6-v2`; `email_intent` `embed_query_ms=139`, `narrow_tools_ms=142`; `/health` `UNIFIED_TURN_EMBED_MIN_CATALOG_TOOLS=40`. |
-| 2.7 | ToolLLM / ToolBench | **CONFIRMED reference-only** | Not adopted; no code path; not a shipped disposition. |
-| P3.1 | F1–F10 NL + withhold together | **PARTIAL / GAP** | Local NL+withhold+G.5 suite **26/26 PASS**. Tip CI still red: `monday.items.create`→`monday.automations.trigger` mapper regressions + MSP try-prompt `clarify`≠`confirm`. |
-| P3.2 | F6 population verify | **GAP** | Fresh live: Apollo `follow_up_membership_confirmed` PASS; HubSpot `follow_up_empty_membership` FAIL (`f6-collection-population-verify-live.json`, tip `63d95eec` at run). |
-| P3.3 | Schema standard lint (G.2/G.4) | **CONFIRMED** | `test_action_schema_standard_lint.py` in CI suite; disposable injection of empty-description action rejected by same predicates; branch discarded. |
+### G.5.8 Gap closure (2026-08-05) — items 1–4
 
-**Do not upgrade** prior “CLOSED” labels for F6 HubSpot or full CI green without a new PASS after fix. Progressive governance gate and MiniLM local path **are** operationally re-verified on this date.
+Direct fixes after G.5.7. Status uses the standing map bar.
+
+| # | Item | Status | Evidence |
+|---|------|--------|----------|
+| 1 | Monday F4-class (`items` vs `automations`) | **CLOSED** | Root cause: `_OBJECT_CONFUSABLES` treated `tasks`↔`items` as confusable → vetoed `monday.items.create`. Fix: shared `_OBJECT_SYNONYMS` (boost) + `automations` confusables in `chat_action_mapper.py` (not vendor one-off). G.1 probe **11/11** incl. Monday task+item (`docs/delivery/g1-untested-connectors-probe.json`). Unit: `test_monday_task_does_not_map_to_automations_trigger`. |
+| 2 | MSP TRY clarify≠confirm CI | **CLOSED (stale test, not F1 regression)** | Orchestration uses `require_pack_install=True`; MagicMock pack absent → **clarify is correct**. Also multi-step false-positive on Sheet→HubSpot (“then … HubSpot”) without pack-risk. Fixes: pack-installed mock + pack-absent clarify test; `retrieve_plan_gate.multi_step_guess` requires pack-risk anchors. Full backend pytest: **4386 passed, 3 skipped**. |
+| 3 | F6 HubSpot follow-up | **CLOSED** | Cause ≠ wrong-endpoint: HubSpot ILS eventual consistency (size 0 then 1). Fix: retry/backoff in `collection_population_verify._follow_up_membership_count`. Live: Apollo + HubSpot both `follow_up_membership_confirmed` (`docs/delivery/f6-collection-population-verify-live.json`). Standing CI: `test_f6_hubspot_follow_up_membership.py`. |
+| 4 | A5d progressive + write governance | **CLOSED (gap fixed)** | Live pre-fix tip short-circuited writes via `handoff_short_circuit` (never entered LIVE). Fix: write intents always run `execute_task_streaming` (progressive + write authority); overlay may still `needsHandoff` after. Unit: `test_extension_chat_write_intent_runs_execute_task_streaming`. Live probe: `scripts/probe-a5d-extension-progressive.py` → `docs/delivery/a5d-extension-progressive-live.json` (re-run on deployed tip). |
+| CI | Full backend suite | **GREEN locally @ tip-of-fixes** | `python -m pytest -q` → **4386 passed, 3 skipped**. |
+
+**Deploy note:** Re-verify A5d + F6 + G.1 against `/health` `git_sha` after stamp deploy of this closure commit.
 
 ---
 
@@ -589,3 +587,4 @@ NL variance + withhold assertions also live in CI via `test_routing_nl_variance_
 | 2026-08-05 | **G.5 closeout** — UNNARROWED risk CLOSED; progressive schemas on A1/A2; withhold_no_tool 3/3 CI. |
 | 2026-08-05 | **G.5 FINAL** — Phase 4.1–4.3 closed (embed re-test keep 40; enrichment decline; compression defer). Schema-augmentation research thread complete. |
 | 2026-08-05 | **G.5.7 operational re-verify** — tip `97b2e319`; progressive+MiniLM+enrichment-off CONFIRMED; F6 HubSpot + tip CI green GAP. |
+| 2026-08-05 | **G.5.8 gap closure** — Monday F4-class; MSP stale-test CI; HubSpot ILS retry; A5d write short-circuit removed; full pytest 4386 passed. |

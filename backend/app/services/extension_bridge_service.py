@@ -1570,11 +1570,15 @@ async def chat_from_extension(
         raise RuntimeError("could not ensure conversation")
 
     handoff_url = f"/ai?c={quote(conv_id)}"
+    # Write/long intents still enter execute_task_streaming so progressive stubs +
+    # catalog_write_authority match A1/A2. Overlay UI may hand off after the turn
+    # (needsHandoff) — never skip the LIVE governance path with a static message.
     early_handoff, early_reason = should_handoff_extension_chat(
         message=user_msg, answer="", tool_results=None
     )
-    # Clear write/long intents never run connector plans in the overlay — hand off.
-    if early_handoff and early_reason in {"action_or_write_intent", "longer_question"}:
+    if early_handoff and early_reason == "longer_question":
+        # Very long prompts stay in full chat for UX; still no connector short-circuit
+        # for action_or_write_intent (that path must run LIVE governance).
         answer = (
             "That needs full Gravitree chat for governed writes, approvals, and "
             "multi-step work. Continue in the app — same conversation thread."

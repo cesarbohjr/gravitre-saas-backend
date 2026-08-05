@@ -48,7 +48,19 @@ async def test_search_google_grounding_parses_chunks():
     response.usage_metadata.prompt_token_count = 100
     response.usage_metadata.candidates_token_count = 50
 
-    with patch("app.services.web_research_google._build_genai_client") as mock_client:
+    fake_types = MagicMock()
+    fake_types.GenerateContentConfig = MagicMock(return_value=MagicMock())
+    fake_types.Tool = MagicMock(return_value=MagicMock())
+    fake_types.GoogleSearch = MagicMock(return_value=MagicMock())
+
+    with patch("app.services.web_research_google._build_genai_client") as mock_client, patch.dict(
+        "sys.modules",
+        {
+            "google": MagicMock(),
+            "google.genai": MagicMock(types=fake_types),
+            "google.genai.types": fake_types,
+        },
+    ):
         mock_client.return_value.models.generate_content.return_value = response
         payload = await search_google_grounding("latest AI news", settings=_settings())
 
@@ -60,5 +72,9 @@ async def test_search_google_grounding_parses_chunks():
 
 @pytest.mark.asyncio
 async def test_search_google_grounding_not_configured():
-    with pytest.raises(GoogleGroundingNotConfiguredError):
-        await search_google_grounding("query", settings=_settings(gemini_api_key=""))
+    with patch(
+        "app.services.web_research_google._build_genai_client",
+        side_effect=GoogleGroundingNotConfiguredError("missing credentials"),
+    ):
+        with pytest.raises(GoogleGroundingNotConfiguredError):
+            await search_google_grounding("query", settings=_settings(gemini_api_key=""))

@@ -1,14 +1,14 @@
 {
-  "started_at": "2026-08-05T20:16:51.477234+00:00",
+  "started_at": "2026-08-05T21:19:17.831308+00:00",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "requirement": "forced_re_read_follow_up_membership_confirmed",
-  "live_health_git_sha": "63d95eecb5539002f85ad1a5063f6bb6208480ea",
+  "live_health_git_sha": "97b2e319699bf6e63c41457205a5519bcb304d62",
   "apollo": {
     "vendor": "apollo",
     "connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
-    "list_name": "F6-FollowUp-65afdf90",
-    "list_id": "6a739a3b4b00e3001cbc24bb",
-    "entity_id": "6a739a41a2f12d000cd44aac",
+    "list_name": "F6-FollowUp-2298e8d3",
+    "list_id": "6a73a8dec87eab00144869ab",
+    "entity_id": "6a73a8e5abcb2b00185f9a7c",
     "create_success": true,
     "add_success": true,
     "add_error": null,
@@ -51,8 +51,8 @@
   "hubspot": {
     "vendor": "hubspot",
     "connector_id": "547cdda5-2637-4a2b-b087-d5ea89486575",
-    "list_name": "F6-HS-65afdf90",
-    "list_id": "36",
+    "list_name": "F6-HS-2298e8d3",
+    "list_id": "37",
     "contact_id": "270287894506",
     "create_success": true,
     "add_success": true,
@@ -70,15 +70,15 @@
       "size"
     ],
     "population_verify": {
-      "verified": false,
-      "effect": "unknown",
-      "membership_count": 0,
-      "detail": "follow_up_empty_membership",
+      "verified": true,
+      "effect": "created",
+      "membership_count": 1,
+      "detail": "follow_up_membership_confirmed",
       "follow_up_attempted": true
     },
-    "pass": false
+    "pass": true
   },
-  "finished_at": "2026-08-05T20:17:44.753303+00:00",
-  "pass": false,
-  "verdict": "FAIL \u2014 see vendor pass flags / population_verify.detail"
+  "finished_at": "2026-08-05T21:20:10.305543+00:00",
+  "pass": true,
+  "verdict": "VERIFIED \u2014 both vendors follow_up_membership_confirmed with non-empty re-read"
 }

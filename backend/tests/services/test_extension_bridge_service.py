@@ -1,7 +1,7 @@
 """Browser extension bridge — allowlist, surfaces, durable write confirm gate."""
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -13,6 +13,7 @@ from app.services.extension_bridge_service import (
     assert_extension_action,
     answer_from_extension_page_context,
     build_extension_chat_system_prompt,
+    chat_from_extension,
     detect_surface,
     execute_extension_action,
     format_extension_page_context_block,
@@ -90,6 +91,54 @@ def test_extension_chat_page_context_fenced_and_handoff_heuristics():
 def test_assert_extension_action_blocks_unknown():
     with pytest.raises(ValueError, match="not allowed"):
         assert_extension_action("linkedin.messages.send")
+
+
+@pytest.mark.asyncio
+async def test_extension_chat_write_intent_runs_execute_task_streaming():
+    """Write intents must not short-circuit before LIVE progressive / write authority."""
+    from app.operators.stream_events import AssistantStreamComplete
+
+    async def _stream(**_kwargs):
+        yield AssistantStreamComplete(
+            full_content="Reply **yes** to create the Apollo list.",
+            tool_results=[],
+            react_result=None,
+            model="test",
+            pending_task={"status": "awaiting_confirm", "params": {"steps": [{"label": "create"}]}},
+            message_id="msg-1",
+        )
+
+    settings = MagicMock()
+    conv_svc = MagicMock()
+    conv_svc.ensure_owned_conversation = AsyncMock(return_value="conv-write-1")
+    intel = MagicMock()
+    intel.execute_task_streaming = _stream
+
+    with (
+        patch("app.config.get_settings", return_value=settings),
+        patch(
+            "app.services.conversation_state_service.get_conversation_state_service",
+            return_value=conv_svc,
+        ),
+        patch("app.operators.agent_intelligence.get_agent_intelligence", return_value=intel),
+        patch("app.routers.assistant._persist_conversation_turn"),
+        patch("app.workflows.audit.write_audit_event"),
+        patch("app.workflows.repository.get_supabase_client", return_value=MagicMock()),
+    ):
+        out = await chat_from_extension(
+            settings=settings,
+            org_id="org-1",
+            user_id="user-1",
+            message="Create an Apollo contact list named a5d-gate",
+            page_context={"url": "https://example.com", "title": "probe"},
+            conversation_id="conv-write-1",
+        )
+
+    assert out["path"] == "execute_task_streaming"
+    assert out["path"] != "handoff_short_circuit"
+    assert out["needsHandoff"] is True
+    assert "yes" in (out.get("answer") or "").lower()
+    assert out["conversationId"] == "conv-write-1"
 
 
 def test_v1_allowlist_includes_apollo_hubspot_core():
