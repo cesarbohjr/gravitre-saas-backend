@@ -28,6 +28,15 @@ VENDOR_DEFINITIONS: tuple = (
         v1=(
             action("salesforce", "leads.get", "Get lead", tier="v1", kind="read", scope_suffix="leads:read", idempotent=True),
             action("salesforce", "leads.search", "Search leads", tier="v1", kind="read", scope_suffix="leads:read", idempotent=True),
+            action(
+                "salesforce",
+                "contacts.search",
+                "Search contacts when the user asks for Salesforce contacts (not leads)",
+                tier="v1",
+                kind="read",
+                scope_suffix="contacts:read",
+                idempotent=True,
+            ),
             action("salesforce", "accounts.get", "Get account", tier="v1", kind="read", scope_suffix="accounts:read", idempotent=True),
             action("salesforce", "opportunities.get", "Get opportunity", tier="v1", kind="read", scope_suffix="opportunities:read", idempotent=True),
             action("salesforce", "query", "Run SOQL query", tier="v1", kind="read", scope_suffix="query:read", idempotent=True),
@@ -1066,6 +1075,15 @@ VENDOR_DEFINITIONS: tuple = (
         v1=(
             action("github", "pulls.list", "List pull requests", tier="v1", kind="read", scope_suffix="pulls:read", idempotent=True),
             action("github", "issues.get", "Get issue", tier="v1", kind="read", scope_suffix="issues:read", idempotent=True),
+            action(
+                "github",
+                "issues.list",
+                "List issues when the user asks for GitHub issues (not pull requests)",
+                tier="v1",
+                kind="read",
+                scope_suffix="issues:read",
+                idempotent=True,
+            ),
             action("github", "repos.get", "Get repository", tier="v1", kind="read", scope_suffix="repos:read", idempotent=True),
             action("github", "actions.runs.list", "List workflow runs", tier="v1", kind="read", scope_suffix="actions:read", idempotent=True),
         ),
@@ -1082,7 +1100,6 @@ VENDOR_DEFINITIONS: tuple = (
             action("github", "releases.create", "Create release", tier="v3", kind="advanced", scope_suffix="releases:write"),
         ),
         v4=(
-            action("github", "issues.list", "List issues", tier="v4", kind="advanced", scope_suffix="issues:read", idempotent=True),
             action("github", "pulls.get", "Get pull request", tier="v4", kind="advanced", scope_suffix="pulls:read", idempotent=True),
             action("github", "pulls.close", "Close pull request", tier="v4", kind="advanced", scope_suffix="pulls:write", destructive=True, requires_approval=True),
         ),
@@ -1258,6 +1275,15 @@ VENDOR_DEFINITIONS: tuple = (
         department="operations",
         v1=(
             action("clickup", "tasks.get", "Get task", tier="v1", kind="read", scope_suffix="tasks:read", idempotent=True),
+            action(
+                "clickup",
+                "tasks.list",
+                "List tasks when the user asks for ClickUp tasks (not spaces or folders)",
+                tier="v1",
+                kind="read",
+                scope_suffix="tasks:read",
+                idempotent=True,
+            ),
             action("clickup", "lists.get", "Get list", tier="v1", kind="read", scope_suffix="lists:read", idempotent=True),
             action("clickup", "spaces.list", "List spaces", tier="v1", kind="read", scope_suffix="spaces:read", idempotent=True),
         ),

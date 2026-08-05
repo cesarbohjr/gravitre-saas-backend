@@ -111,6 +111,32 @@ def list_spaces(access_token: str, *, team_id: str | None = None) -> dict[str, A
     return data if isinstance(data, dict) else {"spaces": data}
 
 
+def list_tasks(
+    access_token: str,
+    *,
+    team_id: str | None = None,
+    list_id: str | None = None,
+    include_closed: bool = False,
+) -> dict[str, Any]:
+    """List ClickUp tasks for a team (or a specific list when list_id is set)."""
+    if list_id:
+        data = _request(
+            "GET",
+            f"/list/{list_id}/task",
+            access_token,
+            params={"include_closed": str(bool(include_closed)).lower()},
+        )
+        return data if isinstance(data, dict) else {"tasks": data}
+    tid = resolve_team_id(access_token, team_id)
+    data = _request(
+        "GET",
+        f"/team/{tid}/task",
+        access_token,
+        params={"include_closed": str(bool(include_closed)).lower()},
+    )
+    return data if isinstance(data, dict) else {"tasks": data}
+
+
 def create_task(access_token: str, list_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     data = _request("POST", f"/list/{list_id}/task", access_token, json_body=payload)
     return data if isinstance(data, dict) else {"task": data}

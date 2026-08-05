@@ -1207,6 +1207,37 @@ def _exec_salesforce_leads_search(ctx: ToolContext, params: dict[str, Any]) -> N
     )
 
 
+def _exec_salesforce_contacts_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.salesforce import search_contacts
+
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    soql = params.get("soql")
+    if soql and not isinstance(soql, str):
+        raise ToolValidationError("salesforce.contacts.search soql must be a string")
+    name = params.get("name") or params.get("query") or params.get("q")
+    if not soql and not any(params.get(k) for k in ("email",)) and not name:
+        raise ToolValidationError(
+            "salesforce.contacts.search requires soql, email, or name/query"
+        )
+    try:
+        data = search_contacts(
+            instance_url,
+            token,
+            soql=str(soql) if soql else None,
+            email=params.get("email"),
+            name=str(name) if name else None,
+            limit=int(params.get("limit") or 25),
+        )
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.contacts.search",
+        connector_id=cid,
+        data={"results": data},
+    )
+
+
 def _exec_salesforce_query(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     """Arbitrary SOQL via Salesforce /query — Phase 1 Batch 1 read primitive."""
     cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
@@ -4101,6 +4132,7 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "salesforce.tasks.create": _exec_salesforce_tasks_create,
     "salesforce.leads.create": _exec_salesforce_leads_create,
     "salesforce.leads.search": _exec_salesforce_leads_search,
+    "salesforce.contacts.search": _exec_salesforce_contacts_search,
     "salesforce.query": _exec_salesforce_query,
     "salesforce.opportunities.get": _exec_salesforce_opportunities_get,
     "salesforce.opportunities.update": _exec_salesforce_opportunities_update,

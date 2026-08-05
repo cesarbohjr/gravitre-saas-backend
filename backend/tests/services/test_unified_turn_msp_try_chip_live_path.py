@@ -104,4 +104,8 @@ async def test_apply_unified_turn_live_try_chip_stages_draft_workflow_confirm():
     assert expected.split("\n")[0] in (out.get("message") or "")
     pending = (out.get("pending_task") or {}).get("params") or {}
     assert pending.get("invoke_action") == "assistant.create_workflow"
-    assert pending.get("source") == "pack_common_msp_enrich"
+    # F1 retrieve-before-generate stages via retrieve_plan_gate (same pack plan).
+    assert pending.get("source") in {
+        "pack_common_msp_enrich",
+        "retrieve_plan_gate_msp_enrich",
+    }

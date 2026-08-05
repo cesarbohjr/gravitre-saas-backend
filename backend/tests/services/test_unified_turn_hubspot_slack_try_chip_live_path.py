@@ -17,13 +17,20 @@ HS_SLACK_TRY = (
 )
 
 
-def test_hubspot_slack_try_chip_hits_classical_sse_defer_patterns():
-    """Document the known exposure: \\bslack\\b matches SSE bag (must not bare-defer)."""
-    assert message_requires_classical_tool_sse(HS_SLACK_TRY) is True
+def test_hubspot_slack_try_chip_no_longer_bare_slack_keyword_defer():
+    """F2: bare \\bslack\\b removed — defer via LIVE needs_tool_sse / orch intent."""
+    assert message_requires_classical_tool_sse(HS_SLACK_TRY) is False
+    assert not should_defer_unified_turn_live_to_classical(
+        mode_key="fast",
+        outcome_kind="conversational_reply",
+        message=HS_SLACK_TRY,
+        needs_tool_sse=False,
+    )
     assert should_defer_unified_turn_live_to_classical(
         mode_key="fast",
         outcome_kind="conversational_reply",
         message=HS_SLACK_TRY,
+        needs_tool_sse=True,
     )
 
 

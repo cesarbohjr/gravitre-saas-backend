@@ -31,12 +31,18 @@ SOURCE_PACK_DEFAULT = "pack_common_default"
 
 # Messages that imply pack-default list names without naming them.
 _OMIT_NAME_LIST_CREATE = re.compile(
-    r"\b(create|new|add|make)\s+(?:(?:a|an)\s+)?(?:[\w.-]+\s+){0,3}"
-    r"(?:contact\s+|static\s+)?(?:list|group|segment)\b",
+    r"(?:"
+    r"\b(?:create|new|add|make|build|start|(?:set|spin)\s+up)\s+(?:(?:a|an)\s+)?"
+    r"(?:[\w.-]+\s+){0,3}(?:contact\s+|static\s+)?(?:list|group|segment)\b"
+    r"|"
+    r"\b(?:i\s+)?(?:want|need)\s+(?:(?:a|an)\s+)?(?:[\w.-]+\s+){0,4}"
+    r"(?:contact\s+|static\s+)?(?:list|group|segment)\b"
+    r")",
     re.I,
 )
+# F3 RISK-80-NAME-CAP: raise capture bound so long quoted list names still match.
 _NAMED_LIST = re.compile(
-    r"(?:named|called|name(?:d)?\s*[:=]?\s*)[\"']?([A-Za-z0-9][\w\s.&/-]{0,80})[\"']?",
+    r"(?:named|called|name(?:d)?\s*[:=]?\s*)[\"']?([A-Za-z0-9][\w\s.&/-]{0,150})[\"']?",
     re.I,
 )
 _AMBIGUOUS_LIST_REF = re.compile(
@@ -306,8 +312,10 @@ def try_pack_common_list_create_plan(
     for vendor in prefer:
         if connected and vendor not in connected:
             continue
+        # Bare "create list" has no vendor token — inject vendor so mapper can score.
+        scoped = text if re.search(rf"\b{re.escape(vendor)}\b", text, re.I) else f"{text} in {vendor}"
         match = get_chat_action_mapper().match_segment(
-            text, connected_integrations=list(connected or {vendor})
+            scoped, connected_integrations=[vendor]
         )
         if match is None:
             continue

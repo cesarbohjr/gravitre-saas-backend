@@ -1,0 +1,48 @@
+{
+  "phase": 1,
+  "items": ["F1", "F2", "F3", "F4"],
+  "date": "2026-08-05",
+  "evidence_class": "unit_probe_and_pytest",
+  "probes": {
+    "C2_list_create": {"target": "8/8", "result": "8/8", "script": "scripts/probe-routing-decision-map.py"},
+    "C1_msp_enrich": {"result": "7/8 HIT (1 soft outreach-list MISS → clarify path via F1 when pack-shaped)"},
+    "G1_untouched_connectors": {
+      "asana": "HIT asana_tasks_create",
+      "clickup": "HIT clickup_tasks_list (was spaces_list)",
+      "github": "HIT github_issues_list (was pulls_list)",
+      "notion": "HIT notion_pages_create",
+      "airtable": "HIT airtable_records_list",
+      "monday": "HIT monday_items_create",
+      "linear": "MISS (no chat-executable linear matrix entry — catalog gap, not wrong-tool)",
+      "zendesk": "HIT zendesk_tickets_list",
+      "salesforce": "HIT salesforce_contacts_search (was leads_search)",
+      "intercom": "HIT intercom_conversations_list"
+    },
+    "F2_bare_vendor_defer": {
+      "apollo_bare": false,
+      "slack_bare": false,
+      "contact_list_bare": false,
+      "knowledge_base_bare": false,
+      "connectors_connected_probe": true,
+      "needs_tool_sse_drives_defer": true
+    }
+  },
+  "pytest": {
+    "files": [
+      "tests/services/test_retrieve_plan_gate.py",
+      "tests/services/test_unified_turn_classical_fallback.py",
+      "tests/services/test_unified_turn_hubspot_slack_try_chip_live_path.py",
+      "tests/services/test_unified_turn_msp_try_chip_live_path.py",
+      "tests/services/test_pack_common_intent_defaults.py"
+    ],
+    "result": "35 passed"
+  },
+  "code_anchors": {
+    "F1": "backend/app/services/retrieve_plan_gate.py",
+    "F2": "backend/app/services/unified_turn_classical_fallback.py (needs_tool_sse)",
+    "F3": "backend/app/services/chat_connector_models.py LIST_CREATE_INTENT",
+    "F4": "backend/app/services/chat_action_mapper.py _OBJECT_CONFUSABLES + vendor actions"
+  },
+  "deploy_git_sha": "PENDING_PUSH",
+  "note": "Production live re-verify required after Railway tip advances — unit evidence is not prod PASS."
+}

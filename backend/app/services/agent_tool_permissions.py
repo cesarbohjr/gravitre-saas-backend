@@ -53,6 +53,7 @@ _BUILTIN_ACTION_SCOPES: dict[str, list[str]] = {
     "salesforce.tasks.create": ["salesforce:tasks:write", "salesforce:*"],
     "salesforce.leads.create": ["salesforce:leads:write", "salesforce:*"],
     "salesforce.leads.search": ["salesforce:leads:read", "salesforce:*"],
+    "salesforce.contacts.search": ["salesforce:contacts:read", "salesforce:*"],
     "salesforce.query": ["salesforce:query:read", "salesforce:leads:read", "salesforce:*"],
     "salesforce.opportunities.get": ["salesforce:opportunities:read", "salesforce:*"],
     "salesforce.opportunities.update": ["salesforce:opportunities:write", "salesforce:*"],

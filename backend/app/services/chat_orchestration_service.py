@@ -551,6 +551,46 @@ class ChatOrchestrationService:
             }
 
         if pending_type != "connector_orchestration":
+            # F1: retrieve-before-generate — never invent orch steps when a pack /
+            # installed workflow plan (or ambiguous clarify) applies.
+            from app.services.retrieve_plan_gate import (
+                retrieve_plan_or_none,
+                stage_retrieved_plan_turn,
+            )
+
+            retrieved = retrieve_plan_or_none(
+                message,
+                org_id=org_id,
+                connected_integrations=connected_integrations,
+                client=client,
+                require_pack_install=False,
+            )
+            if retrieved is not None:
+                if retrieved.block_fabrication and retrieved.kind == "clarify":
+                    return await stage_retrieved_plan_turn(
+                        retrieved,
+                        org_id=org_id,
+                        conversation_id=conversation_id,
+                        message=message,
+                        task_state=task_state,
+                        client=client,
+                        settings=self.settings,
+                    )
+                if retrieved.kind in {
+                    "pack_common_msp_enrich",
+                    "pack_common_list_create",
+                    "installed_workflow",
+                }:
+                    return await stage_retrieved_plan_turn(
+                        retrieved,
+                        org_id=org_id,
+                        conversation_id=conversation_id,
+                        message=message,
+                        task_state=task_state,
+                        client=client,
+                        settings=self.settings,
+                    )
+
             steps = await self._build_plan(message, connected_integrations, org_id, user_id, classification)
             if len(steps) < 2:
                 return None

@@ -68,6 +68,8 @@ class UnifiedTurnShadowResult:
     latency_breakdown: dict[str, Any] = field(default_factory=dict)
     # R1: why LIVE returned None (intentional tool defer vs error). Empty when served.
     fallthrough_reason: str | None = None
+    # F2: structured defer signal from LIVE reasoning (not bare vendor keyword match).
+    needs_tool_sse: bool = False
     # Org connector inventory snapshot at turn time (audit/debug).
     connected_integrations: list[str] = field(default_factory=list)
     qa_force_tool: str | None = None
@@ -592,6 +594,7 @@ async def run_unified_turn_shadow(
                 settings=active,
             )
         result.outcome_kind = "connector_tool_proposal"
+        result.needs_tool_sse = True
         result.tool_name = tool_name
         result.tool_invoke_action = invoke or None
         result.tool_arguments = args
@@ -897,6 +900,51 @@ async def apply_unified_turn_live(
         )
         return None
 
+    # F1 hard gate: retrieve-before-generate (pack-common / installed workflow /
+    # ambiguous clarify). Runs before shadow + orch so classical never invents
+    # steps when a retrieved plan exists.
+    if conversation_id:
+        from app.services.retrieve_plan_gate import (
+            retrieve_plan_or_none,
+            stage_retrieved_plan_turn,
+        )
+
+        retrieved = retrieve_plan_or_none(
+            message or "",
+            org_id=org_id,
+            connected_integrations=list(connected_integrations or []),
+            client=client,
+            require_pack_install=False,  # F5 enables install gate
+        )
+        if retrieved is not None:
+            staged = await stage_retrieved_plan_turn(
+                retrieved,
+                org_id=org_id,
+                conversation_id=conversation_id,
+                message=message or "",
+                task_state=task_state,
+                client=client,
+                settings=active,
+            )
+            audit = UnifiedTurnShadowResult(
+                outcome_kind=str(  # type: ignore[arg-type]
+                    staged.get("unified_outcome_kind") or "confirmation_request"
+                ),
+                user_message=str(staged.get("message") or ""),
+                live_served=True,
+                model="retrieve_plan_gate",
+                connected_integrations=list(connected_integrations or []),
+                needs_tool_sse=False,
+            )
+            emit_unified_turn_shadow_audit(
+                client=client,
+                org_id=org_id,
+                actor_id=user_id,
+                conversation_id=conversation_id,
+                result=audit,
+            )
+            return staged
+
     result = await run_unified_turn_shadow(
         org_id=org_id,
         user_id=user_id,
@@ -1071,12 +1119,37 @@ async def apply_unified_turn_live(
     from app.services.unified_turn_classical_fallback import (
         should_defer_unified_turn_live_to_classical,
     )
+    from app.services.chat_orchestration_service import ChatOrchestrationService
+
+    # F2: structured needs_tool_sse — orch / tool-shaped turns set the flag even
+    # when the model returned conversational text (no bare apollo/slack keyword).
+    if not result.needs_tool_sse and ChatOrchestrationService.is_orchestration_intent(
+        message or "",
+        task_state or {},
+        list(result.connected_integrations or connected_integrations or []),
+    ):
+        result.needs_tool_sse = True
+    if (
+        not result.needs_tool_sse
+        and isinstance(classification, dict)
+        and classification.get("requires_action")
+        and result.outcome_kind
+        in {"conversational_reply", "clarifying_question", "knowledge_boundary"}
+    ):
+        # Probe/tool SSE path when classical classifiers already flagged action.
+        from app.services.unified_turn_classical_fallback import (
+            message_requires_classical_tool_sse,
+        )
+
+        if message_requires_classical_tool_sse(message or ""):
+            result.needs_tool_sse = True
 
     would_defer = should_defer_unified_turn_live_to_classical(
         mode_key=mode_key,
         outcome_kind=str(result.outcome_kind or ""),
         message=message,
         classification=classification,
+        needs_tool_sse=bool(result.needs_tool_sse),
     )
     # Class rule: never bare-defer a multi-step orchestration intent. Stage the
     # plan on LIVE first (HubSpot+Slack TRY chip, etc.) — same structural order
