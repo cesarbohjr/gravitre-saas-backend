@@ -2,9 +2,9 @@
 
 import { useState } from "react"
 import useSWR from "swr"
+import { TrendingUp } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { liteApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { OutcomeMethodologyCallout } from "@/components/outcome/outcome-methodology-callout"
@@ -13,109 +13,117 @@ import {
   OPERATIONAL_SUCCESS_RATE_LABEL,
   OPERATIONAL_TASKS_COMPLETED_LABEL,
 } from "@/lib/outcome-labels"
+import { LitePageShell } from "@/components/gravitre/lite-page-shell"
+import { HubTabs } from "@/components/gravitre/hub-tabs"
+import { StatsGrid, StatCard } from "@/components/gravitre/page-header"
+
+type RangeId = "7d" | "30d" | "90d"
+
+const RANGE_TABS: { id: RangeId; label: string }[] = [
+  { id: "7d", label: "7d" },
+  { id: "30d", label: "30d" },
+  { id: "90d", label: "90d" },
+]
 
 export default function LiteResultsPage() {
   const { user, loading } = useAuth()
-  const [range, setRange] = useState("30d")
+  const [range, setRange] = useState<RangeId>("30d")
   const { data, isLoading } = useSWR(
     user ? ["lite-results", user.id, range] : null,
     () => liteApi.getResults(range),
-    { revalidateOnFocus: false, refreshInterval: 20000 }
+    { revalidateOnFocus: false, refreshInterval: 20000 },
   )
 
-  if (loading || isLoading) {
-    return <div className="p-8 text-sm text-muted-foreground">Loading results...</div>
-  }
-  if (!user) {
-    return <div className="p-8 text-sm text-muted-foreground">Sign in required.</div>
+  if (!loading && !isLoading && !user) {
+    return (
+      <LitePageShell title="Results" description="Sign in to continue." icon={TrendingUp}>
+        <p className="text-sm text-muted-foreground">Sign in required.</p>
+      </LitePageShell>
+    )
   }
 
   const summary = data?.summary
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-background/95 backdrop-blur sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-6 py-6">
-          <h1 className="text-2xl font-bold text-foreground">Results</h1>
-          <p className="text-muted-foreground text-sm">Track your AI team&apos;s performance</p>
-          <div className="flex gap-2 mt-4">
-            {["7d", "30d", "90d"].map((option) => (
-              <Button
-                key={option}
-                variant={range === option ? "default" : "outline"}
-                size="sm"
-                onClick={() => setRange(option)}
-              >
-                {option}
-              </Button>
-            ))}
-          </div>
-        </div>
+    <LitePageShell
+      title="Results"
+      description="Track your AI team's performance."
+      icon={TrendingUp}
+      loading={loading || isLoading}
+      loadingLabel="Loading results"
+      headerChildren={
+        <HubTabs
+          tabs={RANGE_TABS}
+          active={range}
+          onSelect={setRange}
+          ariaLabel="Results time range"
+          size="sm"
+        />
+      }
+    >
+      <OutcomeMethodologyCallout variant="operational" />
+
+      <StatsGrid columns={4}>
+        <StatCard
+          label={OPERATIONAL_TASKS_COMPLETED_LABEL}
+          value={summary?.tasks_completed ?? 0}
+        />
+        <StatCard
+          label={OPERATIONAL_SUCCESS_RATE_LABEL}
+          value={`${summary?.success_rate ?? 0}%`}
+          variant="success"
+        />
+        <StatCard
+          label="Avg completion (hrs)"
+          value={summary?.avg_completion_time_hours ?? 0}
+          variant="info"
+        />
+        <StatCard
+          label="Workflows used"
+          value={summary?.by_workflow.length ?? 0}
+        />
+      </StatsGrid>
+
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Results by Workflow
+        </h2>
+        <MetricProvenanceBadge kind="operational" />
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        {(summary?.by_workflow ?? []).map((item) => (
+          <Card key={item.workflow_name} className="border-border/50 p-4">
+            <div className="flex items-center justify-between">
+              <p className="font-medium">{item.workflow_name}</p>
+              <Badge variant="outline">{item.count}</Badge>
+            </div>
+          </Card>
+        ))}
+        {!summary?.by_workflow?.length ? (
+          <Card className="p-6 text-sm text-muted-foreground md:col-span-2">
+            No workflow results in this range.
+          </Card>
+        ) : null}
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        <OutcomeMethodologyCallout variant="operational" className="mb-6" />
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-          {[
-            { label: OPERATIONAL_TASKS_COMPLETED_LABEL, value: summary?.tasks_completed ?? 0, kind: "operational" as const },
-            { label: OPERATIONAL_SUCCESS_RATE_LABEL, value: `${summary?.success_rate ?? 0}%`, kind: "operational" as const },
-            { label: "Avg completion (hrs, operational)", value: summary?.avg_completion_time_hours ?? 0, kind: "operational" as const },
-            { label: "Workflows used", value: summary?.by_workflow.length ?? 0, kind: "operational" as const },
-          ].map((stat) => (
-            <Card 
-              key={stat.label}
-              className="p-5 border-border/50"
-            >
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">{stat.label}</p>
-                <MetricProvenanceBadge kind={stat.kind} />
+      <div>
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Recent Tasks
+        </h2>
+        <div className="space-y-2">
+          {(data?.recent ?? []).map((task) => (
+            <Card key={task.id} className="border-border/50 p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">{task.workflow_name}</p>
+                <Badge variant="outline">{task.status}</Badge>
               </div>
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-3xl font-bold text-foreground">{stat.value}</p>
-                </div>
-              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {task.input_summary || "No summary"}
+              </p>
             </Card>
           ))}
         </div>
-
-        {/* Recent Results Timeline */}
-        <div>
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-6">
-            Results by Workflow
-          </h2>
-
-          <div className="grid md:grid-cols-2 gap-3">
-            {(summary?.by_workflow ?? []).map((item) => (
-              <Card key={item.workflow_name} className="p-4 border-border/50">
-                <div className="flex items-center justify-between">
-                  <p className="font-medium">{item.workflow_name}</p>
-                  <Badge variant="outline">{item.count}</Badge>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-10">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-            Recent Tasks
-          </h2>
-          <div className="space-y-2">
-            {(data?.recent ?? []).map((task) => (
-              <Card key={task.id} className="p-3 border-border/50">
-                <div className="flex items-center justify-between">
-                  <p className="font-medium text-sm">{task.workflow_name}</p>
-                  <Badge variant="outline">{task.status}</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">{task.input_summary || "No summary"}</p>
-              </Card>
-            ))}
-          </div>
-        </div>
       </div>
-    </div>
+    </LitePageShell>
   )
 }

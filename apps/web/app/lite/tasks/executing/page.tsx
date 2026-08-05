@@ -23,6 +23,7 @@ import {
   Users,
   CheckCircle2
 } from "lucide-react"
+import { AppShell } from "@/components/gravitre/app-shell"
 
 const executionSteps = [
   { id: 1, title: "Understanding Task", description: "Analyzing your request", duration: 2000 },
@@ -91,7 +92,8 @@ export default function ExecutingPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 sm:p-6">
+    <AppShell title="Executing">
+    <div className="flex min-h-full items-center justify-center bg-background p-4 sm:p-6">
       <div className={cn(
         "max-w-2xl w-full transition-all duration-700",
         mounted ? "opacity-100 scale-100" : "opacity-0 scale-95"
@@ -412,5 +414,6 @@ export default function ExecutingPage() {
         }
       `}</style>
     </div>
+    </AppShell>
   )
 }
