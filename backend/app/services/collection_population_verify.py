@@ -160,54 +160,81 @@ def _follow_up_membership_count(
             from app.services.tool_service import invoke_tool
 
             # HubSpot ILS membership index is eventually consistent after add —
-            # retry briefly so F6 verify does not false-fail as empty.
+            # live F6 showed size=0 for ~10s then size=1 on a later get. Retry
+            # with longer backoff so verify does not false-fail as empty.
             last_err: Exception | None = None
-            for attempt in range(4):
+            last_size: int | None = None
+            # Live F6: membership can stay 0 across ~30s then appear on the next get.
+            backoff_s = (3.0, 5.0, 8.0, 10.0, 12.0, 15.0, 20.0)
+            get_params: dict[str, Any] = {"list_id": list_id}
+            cid = getattr(ctx, "connector_id", None)
+            if cid:
+                get_params["connector_id"] = cid
+
+            def _hubspot_size(payload: dict[str, Any]) -> int | None:
+                size = payload.get("size")
+                if size is None:
+                    size = payload.get("membershipCount")
+                if size is None:
+                    size = payload.get("contact_count")
+                if size is None:
+                    size = payload.get("member_count")
+                meta = payload.get("meta")
+                if size is None and isinstance(meta, dict):
+                    size = meta.get("size")
+                if size is None and isinstance(payload.get("list"), dict):
+                    list_obj = payload["list"]
+                    size = list_obj.get("size") or list_obj.get("membershipCount")
+                    if size is None:
+                        addl = list_obj.get("additionalProperties")
+                        if isinstance(addl, dict):
+                            size = addl.get("hs_list_size")
+                members = payload.get("memberships") or payload.get("results") or []
+                if isinstance(members, list) and members:
+                    member_n = len(members)
+                    if size is None or int(size or 0) < member_n:
+                        size = member_n
+                if size is None:
+                    return None
+                return max(0, int(size))
+
+            for attempt, delay in enumerate(backoff_s):
                 try:
                     out = invoke_tool(
                         ctx,
                         "hubspot.lists.get",
-                        {"list_id": list_id},
+                        get_params,
                     )
                     payload = out.data if isinstance(getattr(out, "data", None), dict) else {}
-                    size = payload.get("size")
-                    if size is None:
-                        size = payload.get("membershipCount")
-                    if size is None:
-                        size = payload.get("contact_count")
-                    if size is None:
-                        size = payload.get("member_count")
-                    meta = payload.get("meta")
-                    if size is None and isinstance(meta, dict):
-                        size = meta.get("size")
-                    if size is None and isinstance(payload.get("list"), dict):
-                        list_obj = payload["list"]
-                        size = list_obj.get("size") or list_obj.get("membershipCount")
-                        if size is None:
-                            addl = list_obj.get("additionalProperties")
-                            if isinstance(addl, dict):
-                                size = addl.get("hs_list_size")
-                    if size is None:
-                        members = payload.get("memberships") or payload.get("results") or []
-                        if isinstance(members, list) and members:
-                            size = len(members)
-                    if size is not None and int(size) > 0:
-                        return max(0, int(size))
-                    # size 0 / missing — wait and retry (eventual consistency)
-                    if attempt < 3:
-                        time.sleep(1.5 * (attempt + 1))
-                        continue
+                    size = _hubspot_size(payload)
                     if size is not None:
-                        return max(0, int(size))
+                        last_size = size
+                        if last_size > 0:
+                            return last_size
+                    # size 0 / missing — wait and retry (eventual consistency)
+                    if attempt < len(backoff_s) - 1:
+                        time.sleep(delay)
+                    continue
                 except Exception as exc:  # noqa: BLE001
                     last_err = exc
-                    if attempt < 3:
-                        time.sleep(1.5 * (attempt + 1))
-                        continue
-                    logger.info(
-                        "hubspot list follow-up failed list_id=%s err=%s", list_id, last_err
-                    )
-                    return -1
+                    if attempt < len(backoff_s) - 1:
+                        time.sleep(delay)
+                    continue
+            # Final settle read — live F6 saw first non-zero on the get immediately
+            # after the retry loop returned empty.
+            try:
+                time.sleep(8.0)
+                out = invoke_tool(ctx, "hubspot.lists.get", get_params)
+                payload = out.data if isinstance(getattr(out, "data", None), dict) else {}
+                size = _hubspot_size(payload)
+                if size is not None:
+                    last_size = size
+                    if last_size > 0:
+                        return last_size
+            except Exception as exc:  # noqa: BLE001
+                last_err = exc
+            if last_size is not None:
+                return last_size
             if last_err is not None:
                 logger.info(
                     "hubspot list follow-up failed list_id=%s err=%s", list_id, last_err
@@ -217,23 +244,50 @@ def _follow_up_membership_count(
         if action.startswith("apollo.") and ctx is not None:
             from app.services.tool_service import invoke_tool
 
-            try:
-                # apollo.lists.list with list_id uses contacts.search by label
-                # (GET /labels alone never returns membership — F6 empty-body root cause).
-                out = invoke_tool(
-                    ctx,
-                    "apollo.lists.list",
-                    {"list_id": list_id},
-                )
-                payload = out.data if isinstance(getattr(out, "data", None), dict) else {}
-                for key in ("contact_count", "contacts_count", "member_count", "count"):
-                    if payload.get(key) is not None:
-                        return max(0, int(payload.get(key) or 0))
-                contacts = payload.get("contacts") or payload.get("people") or []
-                if isinstance(contacts, list):
-                    return len(contacts)
-            except Exception as exc:  # noqa: BLE001
-                logger.info("apollo list follow-up failed list_id=%s err=%s", list_id, exc)
+            # Apollo label/search membership can lag the add the same way HubSpot ILS
+            # does — retry before declaring empty.
+            last_err: Exception | None = None
+            last_size: int | None = None
+            backoff_s = (2.0, 3.0, 5.0, 8.0, 8.0)
+            list_params: dict[str, Any] = {"list_id": list_id}
+            cid = getattr(ctx, "connector_id", None)
+            if cid:
+                list_params["connector_id"] = cid
+            for attempt, delay in enumerate(backoff_s):
+                try:
+                    # apollo.lists.list with list_id uses contacts.search by label
+                    # (GET /labels alone never returns membership — F6 empty-body root cause).
+                    out = invoke_tool(
+                        ctx,
+                        "apollo.lists.list",
+                        list_params,
+                    )
+                    payload = out.data if isinstance(getattr(out, "data", None), dict) else {}
+                    size: int | None = None
+                    for key in ("contact_count", "contacts_count", "member_count", "count"):
+                        if payload.get(key) is not None:
+                            size = max(0, int(payload.get(key) or 0))
+                            break
+                    if size is None:
+                        contacts = payload.get("contacts") or payload.get("people") or []
+                        if isinstance(contacts, list):
+                            size = len(contacts)
+                    if size is not None:
+                        last_size = size
+                        if last_size > 0:
+                            return last_size
+                    if attempt < len(backoff_s) - 1:
+                        time.sleep(delay)
+                    continue
+                except Exception as exc:  # noqa: BLE001
+                    last_err = exc
+                    if attempt < len(backoff_s) - 1:
+                        time.sleep(delay)
+                    continue
+            if last_size is not None:
+                return last_size
+            if last_err is not None:
+                logger.info("apollo list follow-up failed list_id=%s err=%s", list_id, last_err)
                 return -1
     except Exception as exc:  # noqa: BLE001
         logger.info("collection population follow-up skipped action=%s err=%s", action, exc)

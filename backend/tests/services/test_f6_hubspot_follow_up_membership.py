@@ -73,3 +73,34 @@ def test_hubspot_follow_up_empty_after_retries_stays_unverified():
 
     assert result.verified is False
     assert result.detail == "follow_up_empty_membership"
+
+
+def test_apollo_follow_up_membership_retries_until_non_empty():
+    calls = {"n": 0}
+
+    def fake_invoke(_ctx, action, params):
+        assert action == "apollo.lists.list"
+        calls["n"] += 1
+        n = 0 if calls["n"] < 3 else 1
+        return SimpleNamespace(
+            success=True,
+            data={"list_id": "lab1", "contact_count": n, "contacts": [{"id": "c1"}] if n else []},
+        )
+
+    with patch("app.services.tool_service.invoke_tool", side_effect=fake_invoke), patch(
+        "app.services.collection_population_verify.time.sleep", return_value=None
+    ):
+        result = verify_collection_population(
+            invoke_action="apollo.lists.add",
+            result_data={"list_id": "lab1", "success": True},
+            client=MagicMock(),
+            org_id="org",
+            settings=MagicMock(),
+            environment_name="test",
+            ctx=MagicMock(),
+        )
+
+    assert result.follow_up_attempted is True
+    assert result.verified is True
+    assert result.detail == "follow_up_membership_confirmed"
+    assert calls["n"] >= 2

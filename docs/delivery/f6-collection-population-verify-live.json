@@ -1,14 +1,14 @@
 {
-  "started_at": "2026-08-05T21:19:17.831308+00:00",
+  "started_at": "2026-08-05T22:03:14.003023+00:00",
   "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
   "requirement": "forced_re_read_follow_up_membership_confirmed",
-  "live_health_git_sha": "97b2e319699bf6e63c41457205a5519bcb304d62",
+  "live_health_git_sha": "8bde611392f34757443989cba7434914c55dcb27",
   "apollo": {
     "vendor": "apollo",
     "connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
-    "list_name": "F6-FollowUp-2298e8d3",
-    "list_id": "6a73a8dec87eab00144869ab",
-    "entity_id": "6a73a8e5abcb2b00185f9a7c",
+    "list_name": "F6-FollowUp-917ce520",
+    "list_id": "6a73b32afaa7f90020558cfe",
+    "entity_id": "6a73b330c01404001ce45897",
     "create_success": true,
     "add_success": true,
     "add_error": null,
@@ -51,8 +51,8 @@
   "hubspot": {
     "vendor": "hubspot",
     "connector_id": "547cdda5-2637-4a2b-b087-d5ea89486575",
-    "list_name": "F6-HS-2298e8d3",
-    "list_id": "37",
+    "list_name": "F6-HS-917ce520",
+    "list_id": "41",
     "contact_id": "270287894506",
     "create_success": true,
     "add_success": true,
@@ -78,7 +78,7 @@
     },
     "pass": true
   },
-  "finished_at": "2026-08-05T21:20:10.305543+00:00",
+  "finished_at": "2026-08-05T22:04:03.712606+00:00",
   "pass": true,
   "verdict": "VERIFIED \u2014 both vendors follow_up_membership_confirmed with non-empty re-read"
 }

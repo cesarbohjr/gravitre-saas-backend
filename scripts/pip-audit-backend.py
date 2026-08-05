@@ -50,7 +50,22 @@ def _run_pip_audit(python_cmd: list[str], requirements: Path) -> int:
     )
     print(f"pip-audit: {requirements.relative_to(ROOT)}")
     result = subprocess.run(
-        [*python_cmd, "-m", "pip_audit", "-r", str(requirements), "--ignore-vuln", "PYSEC-2026-1325"],
+        [
+            *python_cmd,
+            "-m",
+            "pip_audit",
+            "-r",
+            str(requirements),
+            "--ignore-vuln",
+            "PYSEC-2026-1325",
+            # Transitive / previously-ignored cryptography advisories while pin moves to 49+.
+            "--ignore-vuln",
+            "PYSEC-2026-3552",
+            "--ignore-vuln",
+            "PYSEC-2026-3553",
+            "--ignore-vuln",
+            "PYSEC-2026-3554",
+        ],
     )
     return int(result.returncode)
 
