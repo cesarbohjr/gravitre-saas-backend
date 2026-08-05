@@ -429,93 +429,68 @@
 
   /* ============================================================
      Chat canvas background themes (selectable, behind /ai).
-     Soft multi-point mesh washes only — brand token colors, no
-     grids / dots / hatch / lattice. `background-attachment: local`
-     (never `fixed`) so washes scroll with the canvas on iOS Safari.
-     Selected via `data-chat-bg="<id>"`; "mesh" is the default.
+     Department icon-pattern tiles only — the gradient / mesh washes
+     were removed. Tiles are seamless PNGs with the design-specified
+     0.15 opacity pre-baked into their alpha channel (see
+     scripts/bake-chat-pattern-alpha.mjs), so they can render as a
+     plain background-image without an overlay layer that would sit
+     on top of message content. `background-attachment: local`
+     (never `fixed`) keeps the tile scrolling with the canvas on iOS
+     Safari. Selected via `data-chat-bg="<id>"`; light/dark variants
+     swap on the `.dark` root class.
      ============================================================ */
   .ai-chat-canvas {
     background-color: var(--background);
+    background-repeat: repeat;
+    /* Desktop tile size per the handoff; mobile narrows below. */
+    background-size: 234px 234px;
+    background-attachment: local;
   }
 
-  /* Mesh (default): emerald + blue + violet multi-point wash */
+  @media (max-width: 480px) {
+    .ai-chat-canvas {
+      background-size: 180px 180px;
+    }
+  }
+
+  /* Marketing (default): megaphone / target / growth curve */
   .ai-chat-canvas,
-  .ai-chat-canvas[data-chat-bg="mesh"] {
-    background-image:
-      radial-gradient(ellipse 80% 70% at 16% 10%, color-mix(in oklch, var(--primary) 18%, transparent), transparent 58%),
-      radial-gradient(ellipse 75% 65% at 84% 88%, color-mix(in oklch, var(--info) 16%, transparent), transparent 55%),
-      radial-gradient(ellipse 60% 55% at 55% 35%, color-mix(in oklch, var(--chart-4) 12%, transparent), transparent 52%);
-    background-size: 100% 100%, 100% 100%, 100% 100%;
-    background-attachment: local, local, local;
+  .ai-chat-canvas[data-chat-bg="marketing"] {
+    background-image: url("/patterns/gw-mkt-light.png");
+  }
+  .dark .ai-chat-canvas,
+  .dark .ai-chat-canvas[data-chat-bg="marketing"] {
+    background-image: url("/patterns/gw-mkt-dark.png");
   }
 
-  /* Signal: cooler primary + info wash, no pattern overlay */
-  .ai-chat-canvas[data-chat-bg="signal"] {
-    background-image:
-      radial-gradient(ellipse 85% 70% at 14% -5%, color-mix(in oklch, var(--primary) 16%, transparent), transparent 55%),
-      radial-gradient(ellipse 80% 70% at 92% 105%, color-mix(in oklch, var(--info) 14%, transparent), transparent 52%),
-      radial-gradient(ellipse 50% 45% at 48% 42%, color-mix(in oklch, var(--accent) 10%, transparent), transparent 50%);
-    background-size: 100% 100%, 100% 100%, 100% 100%;
-    background-attachment: local, local, local;
+  /* Sales: pipeline / handshake / deal flow */
+  .ai-chat-canvas[data-chat-bg="sales"] {
+    background-image: url("/patterns/gw-sales-light.png");
+  }
+  .dark .ai-chat-canvas[data-chat-bg="sales"] {
+    background-image: url("/patterns/gw-sales-dark.png");
+  }
+
+  /* Developers: terminal / branch / build */
+  .ai-chat-canvas[data-chat-bg="developers"] {
+    background-image: url("/patterns/gw-dev-light.png");
+  }
+  .dark .ai-chat-canvas[data-chat-bg="developers"] {
+    background-image: url("/patterns/gw-dev-dark.png");
+  }
+
+  /* Operations: workflow / gear / monitoring */
+  .ai-chat-canvas[data-chat-bg="operations"] {
+    background-image: url("/patterns/gw-ops-light.png");
+  }
+  .dark .ai-chat-canvas[data-chat-bg="operations"] {
+    background-image: url("/patterns/gw-ops-dark.png");
   }
 
   /* Plain: clean, distraction-free */
-  .ai-chat-canvas[data-chat-bg="plain"] {
+  .ai-chat-canvas[data-chat-bg="plain"],
+  .dark .ai-chat-canvas[data-chat-bg="plain"] {
     background-image: none;
-  }
-
-  /* Aurora: icy blue → lavender → deep cool bloom */
-  .ai-chat-canvas[data-chat-bg="aurora"] {
-    background-image:
-      radial-gradient(ellipse 90% 75% at 6% 4%, color-mix(in oklch, var(--accent) 22%, transparent), transparent 50%),
-      radial-gradient(ellipse 70% 60% at 68% 18%, color-mix(in oklch, var(--info) 18%, transparent), transparent 52%),
-      radial-gradient(ellipse 85% 80% at 96% 96%, color-mix(in oklch, var(--chart-4) 20%, transparent), transparent 55%),
-      linear-gradient(145deg, transparent 35%, color-mix(in oklch, var(--info) 6%, transparent) 100%);
-    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%;
-    background-attachment: local, local, local, local;
-  }
-
-  /* Bloom: mint → sky → mauve → peach */
-  .ai-chat-canvas[data-chat-bg="bloom"] {
-    background-image:
-      radial-gradient(ellipse 70% 60% at 8% 10%, color-mix(in oklch, var(--primary) 16%, transparent), transparent 50%),
-      radial-gradient(ellipse 65% 55% at 38% 18%, color-mix(in oklch, var(--info) 15%, transparent), transparent 52%),
-      radial-gradient(ellipse 60% 55% at 48% 58%, color-mix(in oklch, var(--chart-4) 16%, transparent), transparent 50%),
-      radial-gradient(ellipse 75% 70% at 94% 52%, color-mix(in oklch, var(--chart-5) 15%, transparent), transparent 55%),
-      radial-gradient(ellipse 55% 50% at 78% 88%, color-mix(in oklch, var(--chart-3) 10%, transparent), transparent 48%);
-    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
-    background-attachment: local, local, local, local, local;
-  }
-
-  /* Dusk: cream → soft periwinkle */
-  .ai-chat-canvas[data-chat-bg="dusk"] {
-    background-image:
-      radial-gradient(ellipse 80% 65% at 12% 8%, color-mix(in oklch, var(--chart-3) 14%, transparent), transparent 50%),
-      radial-gradient(ellipse 70% 60% at 52% 38%, color-mix(in oklch, var(--accent) 14%, transparent), transparent 52%),
-      radial-gradient(ellipse 85% 75% at 90% 90%, color-mix(in oklch, var(--info) 18%, transparent), transparent 55%),
-      radial-gradient(ellipse 50% 45% at 70% 55%, color-mix(in oklch, var(--chart-4) 10%, transparent), transparent 48%);
-    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%;
-    background-attachment: local, local, local, local;
-  }
-
-  /* Tide: soft emerald sea wash */
-  .ai-chat-canvas[data-chat-bg="tide"] {
-    background-image:
-      radial-gradient(ellipse 90% 70% at 22% 85%, color-mix(in oklch, var(--primary) 18%, transparent), transparent 55%),
-      radial-gradient(ellipse 70% 60% at 82% 12%, color-mix(in oklch, var(--info) 12%, transparent), transparent 50%),
-      radial-gradient(ellipse 60% 55% at 48% 42%, color-mix(in oklch, var(--chart-1) 12%, transparent), transparent 52%);
-    background-size: 100% 100%, 100% 100%, 100% 100%;
-    background-attachment: local, local, local;
-  }
-
-  /* Ember: warm amber + coral haze */
-  .ai-chat-canvas[data-chat-bg="ember"] {
-    background-image:
-      radial-gradient(ellipse 75% 65% at 18% 22%, color-mix(in oklch, var(--chart-3) 16%, transparent), transparent 52%),
-      radial-gradient(ellipse 80% 70% at 88% 72%, color-mix(in oklch, var(--chart-5) 15%, transparent), transparent 55%),
-      radial-gradient(ellipse 55% 50% at 42% 88%, color-mix(in oklch, var(--primary) 10%, transparent), transparent 48%);
-    background-size: 100% 100%, 100% 100%, 100% 100%;
-    background-attachment: local, local, local;
   }
 
   .ai-surface-shell {

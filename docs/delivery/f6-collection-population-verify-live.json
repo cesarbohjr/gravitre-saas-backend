@@ -1,0 +1,46 @@
+{
+  "started_at": "2026-08-05T09:28:33.560601+00:00",
+  "finished_at": "2026-08-05T09:32:30Z",
+  "live_health_git_sha": "882eed34af252f1a8ad106e35e2158432b78d9dd",
+  "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "connector_id": "30f734a2-dbdb-45aa-9112-19c6d604d451",
+  "run_id": "2a532154-f638-47bc-ac6f-b3eb11b0876f",
+  "list_id": "6a7302268958060010fbfe76",
+  "list_name": "F6-FollowUp-4d1c3635",
+  "entity_id": "6a73022b8958060010fbff1a",
+  "before_vendor": {
+    "membership_count": 0,
+    "note": "New Apollo label created empty; lists.list returns empty payload keys"
+  },
+  "add_success": true,
+  "add_error": null,
+  "after_vendor_write_response": {
+    "added_count": 1,
+    "contact_count": 1,
+    "labels_cached_count": 0,
+    "entity_ids": ["6a73022b8958060010fbff1a"],
+    "result_url": "https://app.apollo.io/#/contacts"
+  },
+  "population_verify_production_path": {
+    "verified": true,
+    "effect": "created",
+    "membership_count": 1,
+    "detail": "write_response_membership_proof",
+    "follow_up_attempted": false,
+    "note": "apollo.lists.add stamps entity_ids/added_count/contact_count on the write payload; verify accepts that as membership proof without vendor re-read"
+  },
+  "population_verify_forced_follow_up": {
+    "list_id": "6a73012b33e2a50010db7feb",
+    "note": "Separate probe: stripped entity_ids/counts from write payload so verify must call apollo.lists.list",
+    "verified": false,
+    "effect": "unknown",
+    "membership_count": 0,
+    "detail": "follow_up_empty_membership",
+    "follow_up_attempted": true,
+    "gap": "apollo.lists.list follow-up returns success with empty body; HubSpot path calls hubspot.lists.get which is not registered in tool_service (ToolNotFoundError)"
+  },
+  "coerced_status": "completed",
+  "pass_write": true,
+  "pass_follow_up_re_read": false,
+  "verdict": "PARTIAL — real Apollo membership write confirmed (run_id + before 0 → write contact_count=1). collection_population_verify production path PASS via write_response_membership_proof. Forced vendor re-read follow-up runs but does not confirm population (Apollo list read empty; HubSpot lists.get missing)."
+}

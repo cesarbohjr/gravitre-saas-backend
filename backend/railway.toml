@@ -9,17 +9,26 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
-# Limit auto-deploy to backend service files (Root Directory = backend).
-# Include app/** and stamp — prior tip skips reported "no watched paths" despite
-# app/services changes; stamp remains the explicit force-deploy lever.
+# Limit auto-deploy to backend service files.
+# IMPORTANT (2026-08-05): Railway GitHub status reported "No deployment needed -
+# watched paths not modified" for commits that clearly changed backend/app/**
+# when patterns were only `app/**`. Evaluate BOTH Root-Directory-relative and
+# repo-root-relative globs; keep the stamp as an explicit force-deploy lever.
 watchPatterns = [
   "app/**",
   "app/**/*.py",
+  "backend/app/**",
+  "backend/app/**/*.py",
   "requirements*.txt",
+  "backend/requirements*.txt",
   "Dockerfile",
+  "backend/Dockerfile",
   "railway.toml",
+  "backend/railway.toml",
   "pyproject.toml",
+  "backend/pyproject.toml",
   ".railway-deploy-stamp",
+  "backend/.railway-deploy-stamp",
 ]
 
 # Deploy gate: canvas Module C + meson edit path (2026-07-25).

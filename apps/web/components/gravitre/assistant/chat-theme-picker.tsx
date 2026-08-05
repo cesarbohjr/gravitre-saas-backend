@@ -15,9 +15,17 @@ import {
 /**
  * Compact swatch picker for the chat canvas background. Lives in the /ai
  * toolbar. Purely presentational preference — selection is persisted by the
- * parent via useChatBackground(). Each swatch mirrors the real token-driven
- * mesh wash so the preview reads true in both light and dark.
+ * parent via useChatBackground(). Each swatch previews the real department tile
+ * over the canvas surface color, using the light or dark asset to match the
+ * active app theme. Tile alpha is pre-baked, so the swatch scales the tile down
+ * rather than re-applying opacity.
  */
+/**
+ * Tile size inside a swatch. Smaller than the 234px canvas tile so a couple of
+ * icons read at swatch scale instead of one cropped glyph.
+ */
+const SWATCH_TILE_PX = 96
+
 export function ChatThemePicker({
   value,
   onChange,
@@ -46,7 +54,7 @@ export function ChatThemePicker({
           <p className="text-[13px] font-semibold text-foreground">Chat background</p>
           <span className="text-[11px] text-muted-foreground">{active?.label}</span>
         </div>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           {CHAT_BACKGROUND_THEMES.map((theme) => {
             const isActive = theme.id === value
             return (
@@ -55,22 +63,45 @@ export function ChatThemePicker({
                 type="button"
                 onClick={() => onChange(theme.id)}
                 className={cn(
-                  "group relative flex aspect-square items-end justify-start overflow-hidden rounded-lg border p-1.5 text-left transition-all",
+                  "group relative flex aspect-square items-end justify-start overflow-hidden rounded-lg border bg-background p-1.5 text-left transition-all",
                   isActive
                     ? "border-emerald-500 ring-2 ring-emerald-500/30"
                     : "border-border hover:border-emerald-500/40",
                 )}
-                style={{ background: theme.swatch }}
                 aria-label={theme.label}
                 aria-pressed={isActive}
                 title={theme.description}
               >
+                {theme.tile ? (
+                  <>
+                    {/* Both variants render; CSS picks one so the preview matches
+                        the active theme without a hydration-sensitive JS read. */}
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 dark:hidden"
+                      style={{
+                        backgroundImage: `url(/patterns/${theme.tile.light})`,
+                        backgroundSize: `${SWATCH_TILE_PX}px ${SWATCH_TILE_PX}px`,
+                        backgroundRepeat: "repeat",
+                      }}
+                    />
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 hidden dark:block"
+                      style={{
+                        backgroundImage: `url(/patterns/${theme.tile.dark})`,
+                        backgroundSize: `${SWATCH_TILE_PX}px ${SWATCH_TILE_PX}px`,
+                        backgroundRepeat: "repeat",
+                      }}
+                    />
+                  </>
+                ) : null}
                 {isActive ? (
                   <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
                     <Check className="h-2.5 w-2.5" strokeWidth={3} />
                   </span>
                 ) : null}
-                <span className="rounded bg-background/80 px-1 text-[9px] font-medium leading-tight text-foreground backdrop-blur-sm">
+                <span className="relative rounded bg-background/80 px-1 text-[9px] font-medium leading-tight text-foreground backdrop-blur-sm">
                   {theme.label}
                 </span>
               </button>

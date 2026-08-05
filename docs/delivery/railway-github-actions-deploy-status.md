@@ -2,6 +2,25 @@
 
 Updated: 2026-08-05
 
+## Fix (2026-08-05b) — watchPatterns false skip + CLI redeploy of stale tip
+
+Root cause of Phase 1 health stuck on `554403df` through a full wait + forced
+redeploy (CI run [30988877306](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/30988877306)):
+
+1. **Railway GitHub watchPatterns false negative (recurring)** — commit
+   `cb62f2d9` changed many `backend/app/**` files, but Railway status was
+   `No deployment needed - watched paths not modified`. Same skip for
+   `218b5d2e` / `5e198066`. Only `882eed34` deployed because it touched
+   `.railway-deploy-stamp`. **Fix:** broaden `backend/railway.toml`
+   `watchPatterns` to both Root-Directory-relative (`app/**`) and
+   repo-root-relative (`backend/app/**`) globs; keep the stamp lever.
+2. **GraphQL force → CLI redeploy of the live tip (mechanism gap)** — force
+   path hit `GraphQL deploy failed (HTTP Error 403 …)` then fell back to
+   `railway redeploy`, which rebuilds the *currently running* deployment
+   (`554403df`), not `--commit-sha`. Wait cycle then timed out on the same
+   stale SHA. **Fix:** refuse CLI redeploy fallback when a tip SHA is pinned;
+   fail the gate instead of claiming a force-deploy.
+
 ## Fix (2026-08-05) — tip lag + fake tip
 
 Two failures pinned prod on stale SHAs while `main` advanced:
