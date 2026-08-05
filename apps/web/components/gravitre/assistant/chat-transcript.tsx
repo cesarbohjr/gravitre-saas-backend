@@ -76,7 +76,13 @@ function extractToolInvocations(message: UIMessage): ToolInvocation[] {
   return invocations
 }
 
-/** Light circular shell — black mark on pale ground (high contrast in chat). */
+/**
+ * Bare platform mark — deliberately no bubble, border or background. Gravitre is
+ * the platform voice rather than another participant in the thread, so the mark
+ * sits directly on the canvas (the user avatar keeps its shell). Footprint stays
+ * h-9/w-9 to match the previous circle so message rows don't shift; the visible
+ * glyph grows from 20px to 32px.
+ */
 function GravitreAvatarShell({
   children,
   className,
@@ -87,7 +93,7 @@ function GravitreAvatarShell({
   return (
     <div
       className={cn(
-        "flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-zinc-200/80 bg-zinc-100 text-zinc-950 shadow-none",
+        "flex h-9 w-9 shrink-0 items-center justify-center text-foreground",
         className,
       )}
     >
@@ -99,12 +105,23 @@ function GravitreAvatarShell({
 function GravitreAvatar() {
   return (
     <GravitreAvatarShell>
+      {/* Without a pale shell behind it the mark has to invert per theme. Both
+          variants render and CSS picks one, so there's no hydration-sensitive
+          theme read on first paint. */}
       <Image
         src="/images/gravitre-icon-black.png"
         alt="Gravitre"
-        width={20}
-        height={20}
-        className="h-5 w-5 object-contain"
+        width={32}
+        height={32}
+        className="h-8 w-8 object-contain dark:hidden"
+      />
+      <Image
+        src="/images/gravitre-icon-white.png"
+        alt=""
+        aria-hidden
+        width={32}
+        height={32}
+        className="hidden h-8 w-8 object-contain dark:block"
       />
     </GravitreAvatarShell>
   )
@@ -401,8 +418,8 @@ export function ChatTranscript({
             ) : (
               <GravitreAvatarShell>
                 <GravitreThinkingLoader
-                  size={22}
-                  className="text-zinc-950"
+                  size={32}
+                  className="text-foreground"
                   title={resolvedWaiting}
                 />
               </GravitreAvatarShell>
