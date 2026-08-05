@@ -451,8 +451,9 @@
 
      Two background layers stack here, both below content:
        1. the department tile (`--chat-bg-tile`)
-       2. a flat 10% black scrim that deepens the canvas so message
-          bubbles separate from it instead of competing.
+       2. a flat scrim that offsets the canvas from `--background` so
+          message bubbles separate from it instead of competing. It is
+          light and brand-tinted in light mode, black in dark.
      The scrim is a background layer rather than a child element, so
      it can never paint over a message. Theme rules below only swap
      `--chat-bg-tile`; sizing/repeat/scrim live here once.
@@ -464,7 +465,12 @@
      ============================================================ */
   .ai-chat-canvas {
     --chat-bg-tile: none;
-    --chat-bg-scrim: rgb(0 0 0 / 0.1);
+    /* Pure black at 0.1 over the warm-tinted `--background` composited to about
+       rgb(225 227 225) — a muddy creamy grey-brown. Lowering the alpha and
+       tinting the scrim toward the brand green lands near rgb(240 243 240): a
+       clean, light sage that still sits ~15 levels below the white assistant
+       bubbles, so they keep reading as raised against it. */
+    --chat-bg-scrim: rgb(18 46 36 / 0.045);
     background-color: var(--background);
     background-image: var(--chat-bg-tile),
       linear-gradient(var(--chat-bg-scrim), var(--chat-bg-scrim));
@@ -472,6 +478,14 @@
     /* Desktop tile size per the handoff; mobile narrows below. */
     background-size: 234px 234px, 100% 100%;
     background-attachment: local, local;
+  }
+
+  /* Dark keeps a black scrim: on the near-black canvas the scrim's job is to
+     deepen rather than lighten, and a green tint would lift it toward the
+     cards it needs to sit behind. Set on `.ai-chat-canvas` (not the per-
+     department rules) so every tile variant inherits it. */
+  .dark .ai-chat-canvas {
+    --chat-bg-scrim: rgb(0 0 0 / 0.1);
   }
 
   @media (max-width: 480px) {
