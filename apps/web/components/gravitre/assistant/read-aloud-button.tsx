@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useRef } from "react"
 import { Volume2, Square } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useSpeechSynthesis } from "@/hooks/use-speech-synthesis"
@@ -10,6 +11,13 @@ type ReadAloudButtonProps = {
   text: string
   className?: string
   compact?: boolean
+  /**
+   * Reports this message's speaking state upward so the assistant avatar can
+   * show its "speaking" waveform. The hook already keeps only one utterance
+   * active at a time, but it does that with a module-level variable that does not
+   * trigger re-renders, so the state has to be surfaced through React.
+   */
+  onSpeakingChange?: (messageId: string, isSpeaking: boolean) => void
 }
 
 /**
@@ -20,11 +28,21 @@ export function ReadAloudButton({
   text,
   className,
   compact = false,
+  onSpeakingChange,
 }: ReadAloudButtonProps) {
   const { isSupported, isSpeaking, toggle } = useSpeechSynthesis({
     messageId,
     text,
   })
+
+  // Kept in an effect rather than called from `toggle` because speech also ends
+  // on its own (utterance `onend`/`onerror`, or another message taking over), and
+  // those paths never run through this button's click handler.
+  const report = useRef(onSpeakingChange)
+  report.current = onSpeakingChange
+  useEffect(() => {
+    report.current?.(messageId, isSpeaking)
+  }, [isSpeaking, messageId])
 
   const speakable = textForSpeech(text)
   if (!isSupported || !speakable) return null
