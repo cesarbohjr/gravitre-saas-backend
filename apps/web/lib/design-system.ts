@@ -74,6 +74,15 @@ export const MOTION = {
   spring: { type: "spring" as const, stiffness: 400, damping: 32 },
 } as const
 
+/**
+ * Icon-only button sizing for app chrome (top bar, page toolbars).
+ *
+ * A 32px square holding a 16px glyph is comfortable with a mouse but sits under
+ * the 44px touch-target guidance and reads as visually tiny on a phone — so the
+ * larger step is the mobile default and desktop opts back down.
+ */
+export const TOUCH_ICON_BUTTON = "h-11 w-11 sm:h-8 sm:w-8 [&_svg]:size-5 sm:[&_svg]:size-4"
+
 /** Canonical hover/focus transition for interactive surfaces. */
 export const INTERACTION =
   "transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
