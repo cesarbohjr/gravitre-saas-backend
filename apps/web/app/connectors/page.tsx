@@ -1570,7 +1570,7 @@ function AddConnectorModal({
                     </div>
                     <Button
                       variant="outline"
-                      className="min-w-[8.5rem] rounded-xl"
+                      className="min-w-[8.5rem]"
                       onClick={() => setOauthStatus("idle")}
                     >
                       Try again
@@ -2693,7 +2693,10 @@ function ConnectorsPageContent() {
                     key={status.value}
                     onClick={() => setStatusFilter(status.value)}
                     className={cn(
-                      "flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all border",
+                      // rounded-full to match the lg+ desktop pills above: this is the
+                      // same filter control at a smaller breakpoint, so it must not
+                      // change shape.
+                      "flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border",
                       statusFilter === status.value
                         ? "bg-card shadow-sm text-foreground border-border"
                         : "text-muted-foreground border-transparent hover:text-foreground",

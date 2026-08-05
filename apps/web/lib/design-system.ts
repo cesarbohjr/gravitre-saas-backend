@@ -45,12 +45,33 @@ export const TYPE = {
 /**
  * Radius roles. The audit found `rounded-lg`, `rounded-xl`, `rounded-2xl`,
  * `rounded-3xl` and `rounded-full` all used for surfaces of the same rank.
- * Interactive controls are pill-shaped (the marketplace baseline); containers
- * step up with their size.
+ *
+ * The hierarchy is shape-by-role, and it splits "controls" in two:
+ *
+ *   - Click targets are pills: button, badge, chip, tab trigger.
+ *   - Text fields are rounded rectangles: input, textarea, select trigger.
+ *     A pill wastes horizontal padding and reads oddly at wide widths, so
+ *     `field` is deliberately NOT `control`.
+ *   - Containers step up with their size: tile -> card -> panel.
+ *
+ * These are enforced in the primitives (components/ui/button.tsx, badge.tsx,
+ * tabs.tsx, input.tsx, textarea.tsx, select.tsx), so ordinary call sites should
+ * pass no radius at all. Reach for these tokens only for a bespoke element that
+ * isn't already a primitive — a hand-rolled anchor styled as a chip, say.
+ *
+ * Two traps that produced the original mix of pills and rectangles:
+ *   1. A convention that relies on each page opting in will drift. Only 6 of
+ *      ~175 files with buttons ever imported this file, so ~97% of the app kept
+ *      the primitive's default shape. Shape belongs in the primitive.
+ *   2. Never re-declare a radius in a `cva` size variant. cva appends variant
+ *      classes after the base, so the variant silently wins — that is exactly
+ *      how `sm`/`lg` buttons stayed square while `default` ones were pills.
  */
 export const RADIUS = {
-  /** Buttons, chips, inputs, selects — anything you click or type into. */
+  /** Click targets: buttons, chips, badges, tab triggers. */
   control: "rounded-full",
+  /** Text entry: input, textarea, select trigger. Intentionally not a pill. */
+  field: "rounded-md",
   /** Cards and list rows. */
   card: "rounded-xl",
   /** Panels and toolbars that contain cards. */

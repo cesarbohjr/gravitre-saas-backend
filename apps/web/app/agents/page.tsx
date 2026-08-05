@@ -900,7 +900,7 @@ function MesonBuildButton({
             <div
               aria-hidden
               className={cn(
-                "pointer-events-none absolute -inset-px rounded-lg bg-gradient-to-r from-violet-500/60 via-fuchsia-500/40 to-indigo-500/60 opacity-60 blur-[2px] transition-opacity duration-300",
+                "pointer-events-none absolute -inset-px rounded-full bg-gradient-to-r from-violet-500/60 via-fuchsia-500/40 to-indigo-500/60 opacity-60 blur-[2px] transition-opacity duration-300",
                 "group-hover:opacity-100 group-focus-within:opacity-100",
                 isOpen && "opacity-100",
               )}
@@ -909,7 +909,7 @@ function MesonBuildButton({
               whileHover={reduced ? undefined : { scale: 1.02 }}
               whileTap={reduced ? undefined : { scale: 0.98 }}
               className={cn(
-                "relative rounded-lg bg-gradient-to-r from-violet-500/50 via-fuchsia-500/30 to-indigo-500/50 p-px shadow-lg shadow-violet-500/15",
+                "relative rounded-full bg-gradient-to-r from-violet-500/50 via-fuchsia-500/30 to-indigo-500/50 p-px shadow-lg shadow-violet-500/15",
                 isOpen && "shadow-violet-500/25",
               )}
             >
@@ -921,7 +921,11 @@ function MesonBuildButton({
                 aria-haspopup="dialog"
                 aria-label="Build with Meson"
                 className={cn(
-                  "relative gap-2 rounded-[7px] border-0 bg-card/95 px-3 hover:bg-violet-500/10",
+                  // No radius here: the Button base owns the pill shape, and the
+                  // gradient border + glow wrappers above are rounded-full to
+                  // match. The old rounded-[7px] was hand-tuned to sit inside a
+                  // rounded-lg wrapper and left this control square-ish.
+                  "relative gap-2 border-0 bg-card/95 px-3 hover:bg-violet-500/10",
                   isOpen && "bg-violet-500/15",
                 )}
               >
@@ -940,10 +944,13 @@ function MesonBuildButton({
                 >
                   <Sparkles className="h-4 w-4 text-violet-400" />
                 </motion.span>
-                <span className="hidden bg-gradient-to-r from-violet-300 via-fuchsia-300 to-indigo-300 bg-clip-text font-medium text-transparent sm:inline">
+                {/* The 300-weight tints only have contrast on a dark surface. On
+                    bg-card/95 in light mode the label was effectively invisible, so
+                    the ramp darkens to 600 there and keeps the 300s under `dark:`. */}
+                <span className="hidden bg-gradient-to-r from-violet-600 via-fuchsia-600 to-indigo-600 bg-clip-text font-medium text-transparent dark:from-violet-300 dark:via-fuchsia-300 dark:to-indigo-300 sm:inline">
                   Build with Meson
                 </span>
-                <span className="bg-gradient-to-r from-violet-300 via-fuchsia-300 to-indigo-300 bg-clip-text text-sm font-medium text-transparent sm:hidden">
+                <span className="bg-gradient-to-r from-violet-600 via-fuchsia-600 to-indigo-600 bg-clip-text text-sm font-medium text-transparent dark:from-violet-300 dark:via-fuchsia-300 dark:to-indigo-300 sm:hidden">
                   Meson
                 </span>
               </Button>

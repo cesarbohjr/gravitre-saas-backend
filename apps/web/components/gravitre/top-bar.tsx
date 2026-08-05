@@ -286,13 +286,13 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
 
           {/* Admin/Lite Mode Toggle */}
           {!compact ? (
-          <div className="hidden sm:flex items-center gap-0.5 p-0.5 rounded-lg bg-secondary/50 border border-border/50">
+          <div className="hidden sm:flex items-center gap-0.5 p-0.5 rounded-full bg-secondary/50 border border-border/50">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   onClick={() => switchMode("admin")}
                   className={cn(
-                    "px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-200",
+                    "px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-200",
                     mode === "admin"
                       ? "bg-background text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
@@ -310,7 +310,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                 <button
                   onClick={() => switchMode("lite")}
                   className={cn(
-                    "px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-200",
+                    "px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-200",
                     mode === "lite"
                       ? "bg-background text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"

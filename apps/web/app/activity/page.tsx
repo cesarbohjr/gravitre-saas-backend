@@ -40,6 +40,7 @@ import { businessOutcomesApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { cn } from "@/lib/utils"
+import { INTERACTION, MOTION, RADIUS, TYPE } from "@/lib/design-system"
 import { ExternalLink, RefreshCw, X } from "lucide-react"
 
 type ActivityTab = "all" | "failures"
@@ -151,9 +152,45 @@ function ActivityPageInner() {
           there is no vertical budget for split panes, so the page scrolls
           normally and the panes stack. */}
       <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-3 px-4 py-4 md:px-6 lg:h-full lg:min-h-0 lg:overflow-hidden">
-        <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-            <h1 className="text-lg font-semibold tracking-tight text-foreground">Activity</h1>
+        {/* Icon tile + eyebrow + title matches the assignments / marketplace
+            header baseline. The supporting lead is deliberately omitted: this
+            layout is viewport-locked, and a paragraph here costs the list pane
+            a row of vertical budget on short screens. */}
+        <header className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div
+              className={cn(
+                "hidden h-10 w-10 shrink-0 items-center justify-center border border-primary/20 bg-primary/10 sm:flex",
+                RADIUS.tile,
+              )}
+            >
+              <Icon name="activity" size="md" className="text-primary" />
+            </div>
+            <div className="min-w-0 space-y-0.5">
+              <p className={TYPE.eyebrow}>Execution log</p>
+              <div className="flex items-center gap-2">
+                <h1 className={TYPE.pageTitle}>Activity</h1>
+                {/* Reads as "this surface is live" — the list revalidates on
+                    focus, so a static header would understate that. */}
+                <AnimatePresence>
+                  {isValidating ? (
+                    <motion.span
+                      initial={reduceMotion ? false : { opacity: 0, scale: 0.6 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: MOTION.fast }}
+                      className="relative flex h-2 w-2"
+                      aria-hidden
+                    >
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/70" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                    </motion.span>
+                  ) : null}
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
             <HubTabs
               tabs={activityTabs}
               active={tab}
@@ -161,13 +198,11 @@ function ActivityPageInner() {
               ariaLabel="Activity views"
               size="sm"
             />
-          </div>
-          <div className="flex items-center gap-2">
             {tab === "all" ? (
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 gap-1.5"
+                className={cn("h-8 gap-1.5", RADIUS.control)}
                 onClick={() => mutate()}
                 disabled={isValidating}
               >
@@ -175,7 +210,7 @@ function ActivityPageInner() {
                 Refresh
               </Button>
             ) : null}
-            <Button asChild variant="outline" size="sm" className="h-8">
+            <Button asChild variant="outline" size="sm" className={cn("h-8", RADIUS.control)}>
               <Link href={APP_ROUTES.audit}>Export audit</Link>
             </Button>
           </div>
@@ -229,13 +264,13 @@ function ActivityPageInner() {
                     initial={reduceMotion ? false : { opacity: 0, scale: 0.94 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.94 }}
-                    transition={{ duration: 0.15 }}
+                    transition={{ duration: MOTION.fast }}
                     className="ml-auto"
                   >
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 gap-1.5 text-xs text-muted-foreground"
+                      className={cn("h-8 gap-1.5 text-xs text-muted-foreground", RADIUS.control)}
                       onClick={resetFilters}
                     >
                       {activeFilterCount} filter{activeFilterCount === 1 ? "" : "s"}
@@ -248,24 +283,55 @@ function ActivityPageInner() {
             </HubFilterBar>
 
             {error ? (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+              <div
+                className={cn(
+                  "flex items-center gap-2 border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive",
+                  RADIUS.card,
+                )}
+              >
+                <Icon name="shieldAlert" size="sm" className="shrink-0" />
                 Could not load activity. Refresh and try again.
               </div>
             ) : null}
 
             <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row lg:gap-4">
-              <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card lg:w-[380px] lg:shrink-0">
+              <section
+                className={cn(
+                  "flex min-h-0 flex-col overflow-hidden border border-border bg-card shadow-sm lg:w-[380px] lg:shrink-0",
+                  RADIUS.panel,
+                )}
+              >
                 {/* Count lives on the tab now — repeating it here read as two
                     different numbers at a glance. */}
-                <div className="shrink-0 border-b border-border bg-card/95 px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground backdrop-blur">
+                <div
+                  className={cn(
+                    "shrink-0 border-b border-border bg-gradient-to-b from-muted/40 to-card/95 px-3 py-2 backdrop-blur",
+                    TYPE.eyebrow,
+                  )}
+                >
                   Recent
                 </div>
-                <div className="min-h-0 flex-1 lg:overflow-y-auto">
+                {/* `relative` anchors the scroll-fade overlay below. */}
+                <div className="relative min-h-0 flex-1">
+                  {/* Signals more rows below the fold without adding chrome.
+                      pointer-events-none so it can never eat a row click. */}
+                  <div
+                    className="pointer-events-none absolute inset-x-0 bottom-0 z-10 hidden h-8 bg-gradient-to-t from-card to-transparent lg:block"
+                    aria-hidden
+                  />
+                  <div className="min-h-0 h-full lg:overflow-y-auto">
                   {isLoading ? (
                     <ListSkeleton items={5} className="p-3" />
                   ) : outcomes.length === 0 ? (
                     <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
-                      <Icon name="activity" size="lg" className="text-muted-foreground/50" />
+                      <div
+                        className={cn(
+                          "flex h-11 w-11 items-center justify-center border border-border bg-muted/50",
+                          RADIUS.tile,
+                        )}
+                      >
+                        <Icon name="activity" size="md" className="text-muted-foreground" />
+                      </div>
                       <div>
                         <p className="text-sm font-medium text-foreground">
                           {hasActiveFilters ? "No matching activity" : "No activity yet"}
@@ -308,7 +374,7 @@ function ActivityPageInner() {
                               : null
                         return (
                           <li key={id} role="presentation">
-                            <button
+                            <motion.button
                               type="button"
                               id={`activity-row-${id}`}
                               role="option"
@@ -318,10 +384,21 @@ function ActivityPageInner() {
                                 rowRefs.current[index] = node
                               }}
                               onKeyDown={(event) => handleListKeyDown(event, index)}
+                              /* Staggered reveal, capped at 12 rows: past that the
+                                 last row would wait long enough to feel like a
+                                 stall rather than a flourish. */
+                              initial={reduceMotion ? false : { opacity: 0, y: 4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{
+                                duration: MOTION.base,
+                                delay: reduceMotion ? 0 : Math.min(index, 12) * MOTION.stagger,
+                              }}
                               className={cn(
-                                "relative flex w-full flex-col gap-1 py-3 pl-4 pr-3 text-left transition-colors",
+                                "group relative flex w-full flex-col gap-1 py-3 pl-4 pr-3 text-left transition-colors duration-150",
                                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-                                active ? "bg-muted/60" : "hover:bg-muted/40",
+                                active
+                                  ? "bg-gradient-to-r from-primary/[0.07] to-transparent"
+                                  : "hover:bg-gradient-to-r hover:from-muted/60 hover:to-transparent",
                               )}
                               onClick={() => setSelectedId(id)}
                             >
@@ -369,18 +446,47 @@ function ActivityPageInner() {
                                   </Link>
                                 ) : null}
                               </div>
-                            </button>
+                            </motion.button>
                           </li>
                         )
                       })}
                     </ul>
                   )}
+                  </div>
                 </div>
               </section>
 
-              <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card">
-                <div className="shrink-0 border-b border-border px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Detail
+              <section
+                className={cn(
+                  "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border border-border bg-card shadow-sm",
+                  RADIUS.panel,
+                )}
+              >
+                {/* The pane header now names what is selected instead of saying
+                    "Detail" over an unlabelled card, and carries the jump to the
+                    underlying run — so the list -> outcome -> run trace is one
+                    continuous path rather than a hunt inside the body copy. */}
+                <div
+                  className={cn(
+                    "flex shrink-0 items-center justify-between gap-3 border-b border-border bg-gradient-to-b from-muted/40 to-card/95 px-3 py-2 backdrop-blur",
+                  )}
+                >
+                  <span className={cn(TYPE.eyebrow, "truncate")}>
+                    {selected?.title || "Detail"}
+                  </span>
+                  {selected?.runId ? (
+                    <Link
+                      href={`/runs/${selected.runId}`}
+                      className={cn(
+                        "inline-flex shrink-0 items-center gap-1 px-2 py-0.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground",
+                        RADIUS.control,
+                        INTERACTION,
+                      )}
+                    >
+                      Open run
+                      <ExternalLink className="h-3 w-3" />
+                    </Link>
+                  ) : null}
                 </div>
                 <div className="min-h-0 flex-1 p-3 lg:overflow-y-auto md:p-4">
                   {isLoading ? (
@@ -394,14 +500,21 @@ function ActivityPageInner() {
                         initial={reduceMotion ? false : { opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
-                        transition={{ duration: 0.18 }}
+                        transition={{ duration: MOTION.base }}
                       >
                         <BusinessOutcomeView outcome={selected} density="timeline" />
                       </motion.div>
                     </AnimatePresence>
                   ) : (
-                    <div className="flex flex-col items-center gap-2 py-10 text-center">
-                      <Icon name="search" size="lg" className="text-muted-foreground/50" />
+                    <div className="flex flex-col items-center gap-3 py-10 text-center">
+                      <div
+                        className={cn(
+                          "flex h-11 w-11 items-center justify-center border border-border bg-muted/50",
+                          RADIUS.tile,
+                        )}
+                      >
+                        <Icon name="search" size="md" className="text-muted-foreground" />
+                      </div>
                       <p className="text-sm font-medium text-foreground">Nothing selected</p>
                       <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
                         Pick an item from the list to inspect its evidence and timeline.
