@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { TOUCH_ICON_BUTTON } from "@/lib/design-system"
 import { notificationsApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import type { Notification as ApiNotification, NotificationType } from "@/types/api"
@@ -431,16 +432,16 @@ export function NotificationCenter() {
       <Button 
         variant="ghost" 
         size="icon" 
-        className="h-8 w-8 hover:bg-accent relative group"
+        className={cn("relative group hover:bg-accent", TOUCH_ICON_BUTTON)}
         onClick={() => setIsOpen(!isOpen)}
         aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
         aria-expanded={isOpen}
       >
-        <Bell className="h-4 w-4 text-muted-foreground transition-transform group-hover:rotate-12" />
+        <Bell className="text-muted-foreground transition-transform group-hover:rotate-12" />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+          <span className="absolute right-1.5 top-1.5 flex h-2.5 w-2.5 sm:right-1 sm:top-1 sm:h-2 sm:w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+            <span className="relative inline-flex h-full w-full rounded-full bg-primary" />
           </span>
         )}
       </Button>
