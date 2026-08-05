@@ -39,7 +39,9 @@ export function ReadAloudButton({
   // on its own (utterance `onend`/`onerror`, or another message taking over), and
   // those paths never run through this button's click handler.
   const report = useRef(onSpeakingChange)
-  report.current = onSpeakingChange
+  useEffect(() => {
+    report.current = onSpeakingChange
+  }, [onSpeakingChange])
   useEffect(() => {
     report.current?.(messageId, isSpeaking)
   }, [isSpeaking, messageId])

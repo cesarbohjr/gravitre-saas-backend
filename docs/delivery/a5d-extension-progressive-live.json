@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-08-05T21:42:57.594488+00:00",
-  "live_health_git_sha": "f586c1feac904304a2bdc581d9cd376855db5d58",
+  "generated_at": "2026-08-05T22:18:57.297553+00:00",
+  "live_health_git_sha": "798f792de7abab3b11a3c864b7b4eea580a83be5",
   "endpoint": "/api/extension/chat",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "probes": [
     {
       "id": "ext_email_stubs",
       "http": 200,
-      "wall_ms": 6921,
-      "conversation_id": "40a3dc42-d9a3-46e2-8948-67875503de59",
+      "wall_ms": 7138,
+      "conversation_id": "8a7d3e74-14c0-4194-bcad-3d64c1a81886",
       "response_path": "execute_task_streaming",
       "needs_handoff": true,
       "handoff_reason": "action_or_write_intent",
@@ -17,7 +17,7 @@
       "progressive_disclosure": true,
       "tools_payload_bytes": 4001,
       "progressive_gate_blocked": null,
-      "progressive_loaded_count": null,
+      "progressive_loaded_count": 4,
       "retrieval_method": "embedding_narrow_tools_for_turn",
       "embed_query_method": "local",
       "outcome_kind": "confirmation_request",
@@ -29,8 +29,8 @@
     {
       "id": "ext_apollo_write_gate",
       "http": 200,
-      "wall_ms": 3422,
-      "conversation_id": "f795d1cc-0ff3-4d96-9df7-05b302a1508b",
+      "wall_ms": 3718,
+      "conversation_id": "3acf82a1-2c1a-47be-b4b5-83b1a08c810e",
       "response_path": "execute_task_streaming",
       "needs_handoff": true,
       "handoff_reason": "action_or_write_intent",
@@ -43,7 +43,7 @@
       "retrieval_method": null,
       "embed_query_method": null,
       "outcome_kind": "connector_tool_proposal",
-      "assistant_preview": "I can create a contact list named **a5d-prog-b42b33** in Apollo.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
+      "assistant_preview": "I can create a contact list named **a5d-prog-f707b0** in Apollo.\n\nReply **yes** to approve and create it, or say what to change (name, modality, or follow-up criteria to populate it).",
       "not_short_circuit": true,
       "write_governance_signal": true,
       "progressive_ok": false
