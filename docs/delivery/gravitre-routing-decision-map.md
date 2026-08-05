@@ -416,7 +416,7 @@ Gravitre catalog size (**689** actions as of Phase 4; was 687 at initial audit) 
 
 | Entry (Part A) | Tool schemas to the model? | Narrowing applied? | Pattern |
 |----------------|----------------------------|--------------------|---------|
-| A1/A2 Main chat + TRY (LIVE path) | Yes — unified-turn shadow | **YES** — `embed_narrow_tools_for_turn` / `keyword_narrow_tools_for_turn` → `max_tools` (~32); embedding for task turns when catalog ≥ `unified_turn_embed_min_catalog_tools` (default 40) | Narrow-then-attach full schemas |
+| A1/A2 Main chat + TRY (LIVE path) | Yes — unified-turn shadow | **YES** — `embed_narrow_tools_for_turn` / `keyword_narrow_tools_for_turn` → `max_tools` (~32); embedding for task turns when catalog ≥ `unified_turn_embed_min_catalog_tools` (default 40). **Prod uses in-process MiniLM** (`unified_turn_tool_embed_local`, model `all-MiniLM-L6-v2`) — not remote OpenAI query embed | Narrow-then-attach stubs (progressive) |
 | A1/A2 Classical ReAct fallthrough | Yes — ReAct loop | **YES** — `react_engine` → `narrow_tools_for_turn` + `compress_tool_definitions` | Same family |
 | A5d Extension chat | Yes — same `execute_task_streaming` | **YES** — same as A1 | Same family |
 | A3 Workflow canvas / schedule / webhook-triggered workflow | No LLM tool dump — typed steps from definition | N/A (retrieve plan, not tool-calling) | Not applicable |
@@ -502,14 +502,14 @@ BFCL V4 scores tool-calling accuracy **including declining when no right tool ex
 | **4.2 Enriched fields (examples + tags)** | **CLOSED — Decline catalog-wide** | G.1 8/10 correct both arms; `delta_correct=0` |
 | **4.3 Schema compression** | **CLOSED — Defer** standing aggressive step | +9.4% vs current compress; progressive stubs already smaller |
 
-**4.1 comparable A/B** (`email_intent`, 70-tool class, post–F8 when/why 100%, local MiniLM, progressive on) — artifact `docs/delivery/g5-phase4-schema-augmentation-probe.json`:
+**4.1 comparable A/B** (`email_intent`, 70-tool class, progressive on) — artifact `docs/delivery/g5-phase4-schema-augmentation-probe.json`:
 
 | Path | `narrow_tools_ms` | `model_ttft_ms` | wall_ms | payload B |
 |------|------------------:|----------------:|--------:|----------:|
 | Keyword | 7 | 3076 | 4117 | 3755 |
-| Embedding (local, warm) | 9 | **1373** | **1768** | 3773 |
+| Embedding (local MiniLM, warm) | 9 | **1373** | **1768** | 3773 |
 
-Historical (pre–when/why, local embed): keyword wall 840 / embed wall 487 (`unified-turn-embed-query-local-fix-2026-07-24.md`). Post–Phase-4 schemas: embedding still wins end-to-end wall; **no threshold change** — keep `UNIFIED_TURN_EMBED_MIN_CATALOG_TOOLS=40` (do not raise back to 200).
+**Attribution (do not conflate):** The embedding path becoming competitive vs keyword is explained by the **embedding infrastructure change** (remote OpenAI query embed ~427ms → in-process SentenceTransformer `all-MiniLM-L6-v2`, shipped 2026-07-25 — see `unified-turn-embed-query-local-fix-2026-07-24.md`). Phase-4/F8 when/why schema quality is a separate lever that may affect **candidate accuracy**, not why `narrow_tools_ms` / wall got faster. **Prod confirmation (not harness-only):** live tip `63d95eec` `email_intent` audit breakdown has `embed_query_method=local`, `embed_query_provider=local`, `embed_query_model=all-MiniLM-L6-v2`, `embed_query_ms=57`, `narrow_tools_ms=61` (`docs/delivery/unified-turn-task-ttft-g5-p4-tip-63d95eec.json`). Threshold: keep `UNIFIED_TURN_EMBED_MIN_CATALOG_TOOLS=40` (do not raise back to 200).
 
 **4.2 G.1 untested-connector probe** (10 vendors): baseline correct **8/10**, enriched correct **8/10** (`delta_correct=0`). Scores rose on hits but Linear still MISS and Intercom still `conversations.list` vs expected `search`. Sample of 18 actions kept under `action_retrieval_enrichment.py` with `ENRICHMENT_ENABLED=False` by default — **no catalog-wide examples/tags maintenance**.
 
