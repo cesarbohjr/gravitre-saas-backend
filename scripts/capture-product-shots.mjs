@@ -75,6 +75,27 @@ const SHOTS = [
 ]
 
 /**
+ * CSS that hides the Next.js/Turbopack dev overlay, which otherwise bakes a red
+ * "N Issues" badge into the bottom-left of every marketing screenshot.
+ *
+ * Hide the `nextjs-portal` host rather than clicking the toast or removing the
+ * node. Clicking is actively dangerous here: the toast's first descendant
+ * button EXPANDS the full-screen error panel instead of dismissing it, which
+ * silently replaced an entire screenshot with a stack trace while every text
+ * assertion still passed. Removing the node is also discouraged, since that
+ * portal hosts dev overlay styles (see verify-chat-backgrounds.mjs).
+ *
+ * The underlying warning comes from the harness's own bootstrap <script> in
+ * app/e2e/shots/layout.tsx — dev-only scaffolding that never ships to users, so
+ * it is suppressed here rather than restructured.
+ */
+const HIDE_DEV_OVERLAY = `
+  nextjs-portal,
+  [data-nextjs-toast],
+  [data-nextjs-dev-tools-button] { display: none !important; }
+`
+
+/**
  * Confirms we are really talking to the local dev server.
  *
  * Probe a real PAGE route, not a static .txt: proxy.ts's matcher only excludes
@@ -197,6 +218,10 @@ try {
     }
 
     await page.waitForTimeout(700)
+    // Last thing before the shutter: the overlay can appear late, after the data
+    // assertion above has already passed. addStyleTag is per-document, so it has
+    // to be re-applied after each navigation rather than set up once.
+    await page.addStyleTag({ content: HIDE_DEV_OVERLAY }).catch(() => {})
     await page.screenshot({ path: join(OUT, `${shot.name}.png`) })
     console.log(`ok   ${shot.name}.png`)
   }
