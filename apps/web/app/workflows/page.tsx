@@ -33,7 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { SegmentedControl } from "@/components/gravitre/filter-chip"
-import { RADIUS } from "@/lib/design-system"
+import { INTERACTION, RADIUS } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -479,7 +479,13 @@ export default function WorkflowsPage() {
         {/* Live activity banner */}
         {runningCount > 0 && (
           <motion.div 
-            className="relative z-10 mx-4 md:mx-6 mb-4 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-500/10 via-cyan-500/10 to-blue-500/10 border border-blue-500/20 backdrop-blur-sm"
+            className={cn(
+              "relative z-10 mx-4 mb-4 border border-info/20 bg-info/5 px-4 py-3 backdrop-blur-sm md:mx-6",
+              // Was a from-blue-500 via-cyan-500 gradient with a raw
+              // blue border. Uses the info token so the banner matches the
+              // "Running" StatCard it reports on.
+              RADIUS.card,
+            )}
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
           >
@@ -497,19 +503,19 @@ export default function WorkflowsPage() {
               </div>
               <div className="hidden sm:flex items-center gap-4">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Activity className="h-3.5 w-3.5 text-blue-400" />
+                  <Activity className="h-3.5 w-3.5 text-info" />
                   <span><AnimatedCounter value={3247} duration={1.5} /> records/min</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Clock className="h-3.5 w-3.5 text-cyan-400" />
+                  <Clock className="h-3.5 w-3.5 text-info" />
                   <span>Avg 1.2s latency</span>
                 </div>
               </div>
             </div>
             {/* Progress bar */}
-            <div className="mt-3 h-1 rounded-full bg-blue-500/10 overflow-hidden">
+            <div className="mt-3 h-1 overflow-hidden rounded-full bg-info/10">
               <motion.div 
-                className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full"
+                className="h-full rounded-full bg-info"
                 initial={{ width: "0%" }}
                 animate={{ width: ["0%", "100%", "0%"] }}
                 transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
@@ -558,7 +564,13 @@ export default function WorkflowsPage() {
                 placeholder="Search workflows..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-9 rounded-lg border border-border bg-secondary/50 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50"
+                className={cn(
+                  "h-9 w-full border border-border bg-secondary/50 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground",
+                  // Uses the shared ring token instead of a raw blue-500 focus
+                  // ring, so keyboard focus looks identical to every other input.
+                  RADIUS.control,
+                  INTERACTION,
+                )}
               />
             </div>
             
@@ -648,8 +660,8 @@ export default function WorkflowsPage() {
                   </div>
                   <div className="w-px h-6 bg-border" />
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center">
-                      <Zap className="h-4 w-4 text-blue-400" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-info/10">
+                      <Zap className="h-4 w-4 text-info" />
                     </div>
                     <span>
                       <AnimatedCounter value={footerRunsThisWeek} duration={1.5} /> runs this week
@@ -664,7 +676,7 @@ export default function WorkflowsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
-                className="rounded-xl border border-border bg-card/50 backdrop-blur-sm overflow-hidden"
+                className={cn("overflow-hidden border border-border bg-card/50 backdrop-blur-sm", RADIUS.card)}
               >
                 <DataTable
                   columns={columns}

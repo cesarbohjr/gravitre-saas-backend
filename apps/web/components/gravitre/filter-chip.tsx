@@ -71,6 +71,11 @@ export interface SegmentedControlProps<T extends string> {
   /** Accessible name, e.g. "Filter by price". */
   ariaLabel: string
   className?: string
+  /**
+   * Render icons only, using each option's label as its accessible name.
+   * For compact toolbars where the icons are self-evident (list vs board).
+   */
+  iconOnly?: boolean
 }
 
 export function SegmentedControl<T extends string>({
@@ -79,6 +84,7 @@ export function SegmentedControl<T extends string>({
   onChange,
   ariaLabel,
   className,
+  iconOnly = false,
 }: SegmentedControlProps<T>) {
   const layoutId = useId()
   const reduceMotion = useReducedMotion()
@@ -97,9 +103,13 @@ export function SegmentedControl<T extends string>({
             key={option.id}
             type="button"
             aria-pressed={active}
+            // In icon-only mode the visible text is dropped, so the label has
+            // to carry the accessible name instead.
+            aria-label={iconOnly ? option.label : undefined}
             onClick={() => onChange(option.id)}
             className={cn(
-              "relative inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium",
+              "relative inline-flex items-center justify-center gap-1.5 text-xs font-medium",
+              iconOnly ? "p-2" : "px-3 py-1",
               RADIUS.control,
               INTERACTION,
               active ? "text-primary" : "text-muted-foreground hover:text-foreground",
@@ -114,7 +124,7 @@ export function SegmentedControl<T extends string>({
               />
             ) : null}
             {Icon ? <Icon className="relative z-10 h-3.5 w-3.5" aria-hidden /> : null}
-            <span className="relative z-10">{option.label}</span>
+            {!iconOnly ? <span className="relative z-10">{option.label}</span> : null}
           </button>
         )
       })}

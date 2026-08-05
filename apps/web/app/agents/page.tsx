@@ -360,7 +360,8 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
       whileHover={reduced ? undefined : { scale: 1.02, y: -3 }}
       whileTap={reduced ? undefined : { scale: 0.98 }}
       className={cn(
-        "relative group flex w-[168px] sm:w-[184px] shrink-0 snap-center flex-col items-center rounded-2xl border border-transparent px-3 py-4 text-left transition-[colors,box-shadow] duration-200",
+        "relative group flex w-[168px] sm:w-[184px] shrink-0 snap-center flex-col items-center border border-transparent px-3 py-4 text-left transition-[colors,box-shadow] duration-200",
+        RADIUS.card,
         isSelected
           ? "border-primary/30 bg-card/70 shadow-lg z-10"
           : "hover:border-border/60 hover:bg-card/40 hover:shadow-xl hover:shadow-black/20",
@@ -800,7 +801,7 @@ function AgentPreviewSheet({
           <div className="flex flex-wrap items-center gap-2">
             <span
               className={cn(
-                "rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                "rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]",
                 agent.status === "error"
                   ? "border-destructive/30 bg-destructive/10 text-destructive"
                   : agent.status === "processing"

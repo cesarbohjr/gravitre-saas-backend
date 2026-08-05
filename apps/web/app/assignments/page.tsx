@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/tooltip"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
-import { RADIUS, TYPE } from "@/lib/design-system"
+import { INTERACTION, RADIUS, TYPE } from "@/lib/design-system"
 import { type DemoAssignment } from "@/lib/demo-assignments"
 import {
   ASSIGNMENTS_REFRESH_KEY,
@@ -35,8 +35,11 @@ import {
   PieChart, 
   Headphones,
   RefreshCw,
+  LayoutGrid,
+  Rows3,
   type LucideIcon 
 } from "lucide-react"
+import { SegmentedControl } from "@/components/gravitre/filter-chip"
 
 type Assignment = DemoAssignment
 
@@ -180,7 +183,14 @@ function AssignmentCard({
           onNavigate()
         }
       }}
-      className="group relative overflow-hidden rounded-xl sm:rounded-2xl border border-border bg-card/80 backdrop-blur-sm p-4 sm:p-5 cursor-pointer transition-all hover:border-muted-foreground/30 hover:shadow-xl hover:shadow-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className={cn(
+        "group relative cursor-pointer overflow-hidden border border-border bg-card/80 p-4 backdrop-blur-sm transition-all hover:border-muted-foreground/30 hover:shadow-lg sm:p-5",
+        // One card radius everywhere. Was rounded-xl -> sm:rounded-2xl, which
+        // meant cards changed shape at the breakpoint while sibling surfaces
+        // on the same page did not.
+        RADIUS.card,
+        INTERACTION,
+      )}
     >
       {/* Status indicator line */}
       <div className={cn(
@@ -294,7 +304,7 @@ function AssignmentListSkeleton() {
   return (
     <div className="grid grid-cols-1 gap-4">
       {Array.from({ length: 4 }).map((_, index) => (
-        <div key={index} className="rounded-xl border border-border bg-card/50 p-5">
+        <div key={index} className={cn("border border-border bg-card/50 p-5", RADIUS.card)}>
           <div className="flex items-start gap-4">
             <Skeleton className="h-12 w-12 shrink-0 rounded-xl" />
             <div className="flex-1 space-y-3">
@@ -352,7 +362,8 @@ function StatCard({ stat, index }: { stat: AssignmentStat; index: number }) {
       transition={{ delay: index * 0.08, duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
       whileHover={{ y: -2, transition: { duration: 0.15 } }}
       className={cn(
-        "relative overflow-hidden rounded-2xl border p-5 transition-colors",
+        "relative overflow-hidden border p-5 transition-colors",
+        RADIUS.card,
         "border-border bg-card/50 hover:bg-secondary/30",
         stat.color === "blue" && stat.value > 0 && "border-blue-500/20",
         stat.color === "violet" && stat.value > 0 && "border-violet-500/20",
@@ -478,6 +489,12 @@ function AssignmentFilterTabs({
     </div>
   )
 }
+
+/** Options for the list/board switcher, declared once outside render. */
+const ASSIGNMENT_VIEW_MODES = [
+  { id: "list" as const, label: "List view", icon: Rows3 },
+  { id: "kanban" as const, label: "Board view", icon: LayoutGrid },
+] as const
 
 export default function AssignmentsPage() {
   const router = useRouter()
@@ -659,32 +676,14 @@ export default function AssignmentsPage() {
                 <Icon name="filter" size="sm" />
                 <span className="hidden sm:inline">Filter</span>
               </Button>
-              <div className="flex items-center p-1 rounded-lg bg-secondary/50" role="group" aria-label="Assignment view mode">
-                <button
-                  type="button"
-                  onClick={() => setViewMode("list")}
-                  aria-label="List view"
-                  aria-pressed={viewMode === "list"}
-                  className={cn(
-                    "p-2 rounded-md transition-all",
-                    viewMode === "list" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <Icon name="rows" size="sm" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode("kanban")}
-                  aria-label="Board view"
-                  aria-pressed={viewMode === "kanban"}
-                  className={cn(
-                    "p-2 rounded-md transition-all",
-                    viewMode === "kanban" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <Icon name="grid" size="sm" />
-                </button>
-              </div>
+              <SegmentedControl
+                options={ASSIGNMENT_VIEW_MODES}
+                value={viewMode}
+                onChange={setViewMode}
+                ariaLabel="Assignment view mode"
+                iconOnly
+                className="bg-secondary/50"
+              />
             </div>
           </div>
 
