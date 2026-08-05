@@ -21,6 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { GridPattern } from "@/components/gravitre/premium-effects"
+import { FilterChip, SegmentedControl } from "@/components/gravitre/filter-chip"
+import { RADIUS, TYPE } from "@/lib/design-system"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
@@ -208,7 +210,8 @@ function AssetCard({
       whileHover={reduceMotion ? undefined : { y: -3 }}
       transition={{ duration: 0.35, delay: reduceMotion ? 0 : index * 0.04 }}
       className={cn(
-        "group relative flex h-full flex-col overflow-hidden rounded-3xl border bg-gradient-to-br from-card via-card to-muted/20 p-5 shadow-sm transition-shadow hover:shadow-lg",
+        "group relative flex h-full flex-col overflow-hidden border bg-gradient-to-br from-card via-card to-muted/20 p-5 shadow-sm transition-shadow hover:shadow-lg",
+        RADIUS.card,
         asset.installed ? "border-success/30" : "border-border/80 hover:border-primary/30",
       )}
     >
@@ -228,7 +231,7 @@ function AssetCard({
             size="md"
           />
           <div className="min-w-0">
-            <h3 className="font-semibold leading-tight tracking-tight">{asset.title}</h3>
+            <h3 className={TYPE.cardTitle}>{asset.title}</h3>
             <p className="text-xs capitalize text-muted-foreground">
               {(asset.department ?? asset.assetType).replace(/_/g, " ")}
             </p>
@@ -551,18 +554,14 @@ function MarketplaceAssetsContent() {
             <div className="relative flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div className="max-w-2xl space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                    Gravitre Marketplace
-                  </p>
+                  <p className={TYPE.eyebrow}>Gravitre Marketplace</p>
                   <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                     <Package className="h-3 w-3" aria-hidden />
                     {categories?.totalAssets ?? 0} packs
                   </span>
                 </div>
-                <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-                  Install packs into your workspace
-                </h1>
-                <p className="text-sm text-muted-foreground">
+                <h1 className={TYPE.pageTitle}>Install packs into your workspace</h1>
+                <p className={TYPE.pageLead}>
                   One click provisions agents, workflows, and knowledge — then we notify you with deep links
                   to open them.
                 </p>
@@ -621,64 +620,26 @@ function MarketplaceAssetsContent() {
                     </SelectGroup>
                   </SelectContent>
                 </Select>
-                <div
-                  role="group"
-                  aria-label="Filter by price"
-                  className="inline-flex items-center gap-0.5 rounded-full border p-0.5"
-                >
-                  {PRICE_FILTERS.map((filter) => (
-                    <button
-                      key={filter.id}
-                      type="button"
-                      aria-pressed={priceFilter === filter.id}
-                      onClick={() => setPriceFilter(filter.id)}
-                      className={cn(
-                        "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                        priceFilter === filter.id
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {filter.label}
-                    </button>
-                  ))}
-                </div>
+                <SegmentedControl
+                  options={PRICE_FILTERS}
+                  value={priceFilter}
+                  onChange={setPriceFilter}
+                  ariaLabel="Filter by price"
+                />
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 border-t border-border/50 pt-3">
-              {TYPE_FILTERS.map((filter) => {
-                const isActive = typeFilter === filter.id
-                const count = filter.id === "all" ? categories?.totalAssets : typeCounts.get(filter.id)
-                const Icon = "icon" in filter ? filter.icon : null
-                return (
-                  <button
-                    key={filter.id}
-                    type="button"
-                    aria-pressed={isActive}
-                    onClick={() => setTypeFilter(filter.id)}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
-                      isActive
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-border bg-background/60 text-muted-foreground hover:border-foreground/30 hover:text-foreground",
-                    )}
-                  >
-                    {Icon ? <Icon className="h-3.5 w-3.5" aria-hidden /> : null}
-                    {filter.label}
-                    {typeof count === "number" ? (
-                      <span
-                        className={cn(
-                          "tabular-nums text-xs",
-                          isActive ? "text-background/70" : "text-muted-foreground/70",
-                        )}
-                      >
-                        {count}
-                      </span>
-                    ) : null}
-                  </button>
-                )
-              })}
+              {TYPE_FILTERS.map((filter) => (
+                <FilterChip
+                  key={filter.id}
+                  label={filter.label}
+                  active={typeFilter === filter.id}
+                  onClick={() => setTypeFilter(filter.id)}
+                  icon={"icon" in filter ? filter.icon : undefined}
+                  count={filter.id === "all" ? categories?.totalAssets : typeCounts.get(filter.id)}
+                />
+              ))}
             </div>
           </div>
 
