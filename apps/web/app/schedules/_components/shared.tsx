@@ -3,6 +3,17 @@
 import { cn } from "@/lib/utils"
 import { KIND_STYLES, STATUS_LABELS, type ScheduleKind, type ScheduleStatus } from "@/lib/schedules"
 
+/**
+ * Fixed desktop board height shared by Calendar (month/week/day), Gantt, and List
+ * so toggling modes never resizes the Schedules page chrome.
+ */
+export const SCHEDULE_BOARD_HEIGHT = "42rem"
+
+export const scheduleBoardStyle = {
+  height: SCHEDULE_BOARD_HEIGHT,
+  minHeight: SCHEDULE_BOARD_HEIGHT,
+} as const
+
 /** A small color dot representing an item kind, using Gravitre brand tokens. */
 export function KindDot({ kind, className }: { kind: ScheduleKind; className?: string }) {
   return (

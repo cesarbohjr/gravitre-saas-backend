@@ -3,7 +3,7 @@
 import { useMemo } from "react"
 import { cn } from "@/lib/utils"
 import { kindColorVar, type ScheduleOccurrence } from "@/lib/schedules"
-import { formatTime, isSameDay } from "./shared"
+import { formatTime, isSameDay, scheduleBoardStyle } from "./shared"
 
 const START_HOUR = 0
 const END_HOUR = 24
@@ -46,8 +46,11 @@ export function DayView({
       : null
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card">
-      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
+    <div
+      className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card"
+      style={scheduleBoardStyle}
+    >
+      <div className="flex shrink-0 items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
         <div>
           <p className="text-sm font-semibold text-foreground">
             {focusDate.toLocaleDateString(undefined, {
@@ -65,7 +68,7 @@ export function DayView({
         </div>
       </div>
 
-      <div className="max-h-[42rem] overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="relative flex" style={{ minHeight: gridHeight, height: gridHeight }}>
           {/* Time gutter */}
           <div className="w-16 shrink-0 border-r border-border bg-muted/20">

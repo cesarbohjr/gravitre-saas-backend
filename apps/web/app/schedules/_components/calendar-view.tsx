@@ -4,7 +4,13 @@ import { useMemo, useState } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { kindColorVar, type ScheduleOccurrence } from "@/lib/schedules"
-import { addDays, formatTime, isSameDay, startOfCalendarGrid } from "./shared"
+import {
+  addDays,
+  formatTime,
+  isSameDay,
+  scheduleBoardStyle,
+  startOfCalendarGrid,
+} from "./shared"
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 /** Always 6 weeks × 7 days so the grid never changes height with content or month length. */
@@ -46,8 +52,11 @@ export function CalendarView({
   const today = new Date()
 
   return (
-    <div className="rounded-2xl border border-border bg-muted/30 p-2 sm:p-3">
-      <div className="mb-2 grid grid-cols-7 gap-2">
+    <div
+      className="flex flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 p-2 sm:p-3"
+      style={scheduleBoardStyle}
+    >
+      <div className="mb-2 grid shrink-0 grid-cols-7 gap-2">
         {WEEKDAYS.map((day, idx) => (
           <div
             key={day}
@@ -63,12 +72,8 @@ export function CalendarView({
 
       {/* Fixed 6×7 board — empty months keep the same footprint as busy ones. */}
       <div
-        className="grid grid-cols-7 gap-2"
-        style={{
-          gridTemplateRows: "repeat(6, minmax(6.75rem, 1fr))",
-          minHeight: "42rem",
-          height: "42rem",
-        }}
+        className="grid min-h-0 flex-1 grid-cols-7 gap-2"
+        style={{ gridTemplateRows: "repeat(6, minmax(0, 1fr))" }}
       >
         {days.map((day, idx) => {
           const inMonth = day.getMonth() === month.getMonth()
@@ -104,7 +109,7 @@ export function CalendarView({
                 setDropDayKey(null)
               }}
               className={cn(
-                "flex h-full min-h-[6.75rem] flex-col overflow-hidden rounded-xl border p-2 transition-colors",
+                "flex h-full min-h-0 flex-col overflow-hidden rounded-xl border p-2 transition-colors",
                 inMonth
                   ? isWeekend
                     ? "border-border/60 bg-card/70"

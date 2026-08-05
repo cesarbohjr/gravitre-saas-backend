@@ -4,7 +4,7 @@ import { useMemo } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { KIND_STYLES, type ScheduledItem, type ScheduleOccurrence } from "@/lib/schedules"
-import { KindDot, isSameDay } from "./shared"
+import { KindDot, isSameDay, scheduleBoardStyle } from "./shared"
 
 /** A contiguous run of days an item is scheduled, rendered as one bar. */
 interface GanttSegment {
@@ -116,11 +116,17 @@ export function GanttView({
   const todayOffset = dayOffset(rangeStart, today)
   const showToday = todayOffset >= 0 && todayOffset < days.length
 
-  if (rows.length === 0) return null
-
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
-      <div className="overflow-x-auto">
+    <div
+      className="flex flex-col overflow-hidden rounded-xl border border-border bg-card"
+      style={scheduleBoardStyle}
+    >
+      {rows.length === 0 ? (
+        <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
+          No scheduled items this month.
+        </div>
+      ) : (
+      <div className="min-h-0 flex-1 overflow-auto">
         <div style={{ minWidth: RAIL_WIDTH + days.length * COL_WIDTH }}>
           {/* Header: day columns */}
           <div className="flex border-b border-border bg-muted/40">
@@ -237,6 +243,7 @@ export function GanttView({
           })}
         </div>
       </div>
+      )}
     </div>
   )
 }

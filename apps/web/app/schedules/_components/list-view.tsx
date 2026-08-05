@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { CalendarClock, History } from "lucide-react"
 import { KIND_STYLES, type ScheduledItem } from "@/lib/schedules"
-import { KindBadge, formatDateTime, statusLabel, statusVariant } from "./shared"
+import { KindBadge, formatDateTime, scheduleBoardStyle, statusLabel, statusVariant } from "./shared"
 
 export function ListView({
   items,
@@ -20,16 +20,24 @@ export function ListView({
 }) {
   const reduceMotion = useReducedMotion()
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
+    <div
+      className="flex flex-col overflow-hidden rounded-xl border border-border bg-card"
+      style={scheduleBoardStyle}
+    >
       {/* Header */}
-      <div className="hidden border-b border-border bg-muted/40 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground md:grid md:grid-cols-[1.6fr_0.8fr_1fr_1fr_0.7fr] md:gap-4">
+      <div className="hidden shrink-0 border-b border-border bg-muted/40 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground md:grid md:grid-cols-[1.6fr_0.8fr_1fr_1fr_0.7fr] md:gap-4">
         <span>Item</span>
         <span>Type</span>
         <span>Next run</span>
         <span>Last run</span>
         <span>Status</span>
       </div>
-      <ul className="divide-y divide-border">
+      <ul className="min-h-0 flex-1 divide-y divide-border overflow-y-auto">
+        {items.length === 0 ? (
+          <li className="flex h-full min-h-[12rem] items-center justify-center px-6 py-12 text-center text-sm text-muted-foreground">
+            No scheduled items match the current filters.
+          </li>
+        ) : null}
         {items.map((item, index) => {
           const selected = item.id === selectedId
           return (

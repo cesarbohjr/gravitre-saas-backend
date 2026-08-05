@@ -4,7 +4,7 @@ import { useMemo } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { kindColorVar, type ScheduleOccurrence } from "@/lib/schedules"
-import { addDays, formatTime, isSameDay, startOfWeek } from "./shared"
+import { addDays, formatTime, isSameDay, scheduleBoardStyle, startOfWeek } from "./shared"
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
@@ -34,8 +34,11 @@ export function WeekView({
   const today = new Date()
 
   return (
-    <div className="rounded-2xl border border-border bg-muted/30 p-2 sm:p-3">
-      <div className="mb-2 grid grid-cols-7 gap-2">
+    <div
+      className="flex flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 p-2 sm:p-3"
+      style={scheduleBoardStyle}
+    >
+      <div className="mb-2 grid shrink-0 grid-cols-7 gap-2">
         {days.map((day, idx) => (
           <div
             key={WEEKDAYS[idx]}
@@ -60,12 +63,8 @@ export function WeekView({
       </div>
 
       <div
-        className="grid grid-cols-7 gap-2"
-        style={{
-          gridTemplateRows: "minmax(28rem, 1fr)",
-          minHeight: "28rem",
-          height: "32rem",
-        }}
+        className="grid min-h-0 flex-1 grid-cols-7 gap-2"
+        style={{ gridTemplateRows: "minmax(0, 1fr)" }}
       >
         {days.map((day, idx) => {
           const dayOccurrences = occurrences

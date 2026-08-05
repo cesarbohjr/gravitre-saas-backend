@@ -43,6 +43,7 @@ import {
   ScheduleLegend,
   addDays,
   endOfMonth,
+  scheduleBoardStyle,
   startOfCalendarGrid,
   startOfMonth,
   startOfWeek,
@@ -482,20 +483,16 @@ export function SchedulesView({
               </>
             )}
             {view === "gantt" && (
-              <>
-                <GanttView
-                  rangeStart={monthStart}
-                  rangeEnd={monthEnd}
-                  occurrences={occurrences.filter(
-                    (o) => o.date >= monthStart && o.date <= monthEnd,
-                  )}
-                  selectedId={selectedOccurrence?.item.id}
-                  onSelect={handleSelect}
-                  onOpen={handleOpen}
-                />
-                {occurrences.filter((o) => o.date >= monthStart && o.date <= monthEnd).length ===
-                  0 && <EmptyRange label="No scheduled items this month." />}
-              </>
+              <GanttView
+                rangeStart={monthStart}
+                rangeEnd={monthEnd}
+                occurrences={occurrences.filter(
+                  (o) => o.date >= monthStart && o.date <= monthEnd,
+                )}
+                selectedId={selectedOccurrence?.item.id}
+                onSelect={handleSelect}
+                onOpen={handleOpen}
+              />
             )}
             {view === "list" && (
               <ListView
@@ -566,18 +563,13 @@ function toOccurrence(target: ScheduledItem | ScheduleOccurrence): ScheduleOccur
   }
 }
 
-function EmptyRange({ label }: { label: string }) {
-  return (
-    <div className="rounded-xl border border-dashed border-border bg-card py-12 text-center text-sm text-muted-foreground">
-      {label}
-    </div>
-  )
-}
-
 function ViewSkeleton({ view }: { view: ViewMode }) {
   if (view === "list") {
     return (
-      <div className="space-y-2 rounded-xl border border-border bg-card p-3">
+      <div
+        className="flex flex-col space-y-2 overflow-hidden rounded-xl border border-border bg-card p-3"
+        style={scheduleBoardStyle}
+      >
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="flex items-center gap-3">
             <Skeleton className="h-2.5 w-2.5 rounded-full" />
@@ -591,7 +583,10 @@ function ViewSkeleton({ view }: { view: ViewMode }) {
   }
   if (view === "gantt") {
     return (
-      <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+      <div
+        className="flex flex-col space-y-3 overflow-hidden rounded-xl border border-border bg-card p-4"
+        style={scheduleBoardStyle}
+      >
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="flex items-center gap-3">
             <Skeleton className="h-4 w-40" />
@@ -616,18 +611,17 @@ function ViewSkeleton({ view }: { view: ViewMode }) {
           ))}
         </div>
       </div>
-      {/* Desktop: fixed-height month board */}
-      <div className="hidden rounded-2xl border border-border bg-muted/30 p-3 md:block">
+      {/* Desktop: fixed-height board matching live month/week/day */}
+      <div
+        className="hidden overflow-hidden rounded-2xl border border-border bg-muted/30 p-3 md:block"
+        style={scheduleBoardStyle}
+      >
         <div
-          className="grid grid-cols-7 gap-2"
-          style={{
-            gridTemplateRows: "repeat(6, minmax(6.75rem, 1fr))",
-            minHeight: "42rem",
-            height: "42rem",
-          }}
+          className="grid h-full grid-cols-7 gap-2"
+          style={{ gridTemplateRows: "repeat(6, minmax(0, 1fr))" }}
         >
           {Array.from({ length: 42 }).map((_, i) => (
-            <Skeleton key={i} className="h-full min-h-[6.75rem] rounded-xl bg-card" />
+            <Skeleton key={i} className="h-full min-h-0 rounded-xl bg-card" />
           ))}
         </div>
       </div>
