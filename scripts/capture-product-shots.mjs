@@ -54,6 +54,10 @@ const SHOTS = [
   // page renders it verbatim it also proves the value survived normalisation
   // with its percent sign intact.
   { name: "app-workflows", view: "workflows", wait: "98.2%", width: 1440, height: 900 },
+  // The orchestration builder canvas. "Data Validator" is a node name from the
+  // builder's `initialNodes` seed, so it can only appear once the canvas itself
+  // has painted — the page chrome and the loading skeleton never print it.
+  { name: "app-builder", view: "builder", wait: "Data Validator", width: 1440, height: 900 },
   // A conversation title from the history sidebar — the part that was silently
   // rendering "No conversations yet" until /api/conversations was fixtured.
   //
