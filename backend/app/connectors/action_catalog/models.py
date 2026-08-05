@@ -69,6 +69,9 @@ class ActionSpec:
             description=self.description,
             explicit_schema=self.input_schema,
         )
+        # MCP-style hints derived from the SAME kind/destructive fields (not a
+        # parallel marking system) — principle 6 of the schema standard.
+        read_only_hint = self.kind == "read" and not self.destructive
         payload: dict[str, Any] = {
             "id": self.id.split(".", 1)[-1] if self.id.startswith(f"{vendor}.") else self.id,
             "tool": tool_key,
@@ -81,6 +84,8 @@ class ActionSpec:
             "idempotent": self.idempotent,
             "destructive": self.destructive,
             "requiresApproval": self.requires_approval,
+            "readOnlyHint": read_only_hint,
+            "destructiveHint": bool(self.destructive),
             "implemented": implemented,
             "inputSchema": schema,
             "compensatingAction": self.compensating_action,

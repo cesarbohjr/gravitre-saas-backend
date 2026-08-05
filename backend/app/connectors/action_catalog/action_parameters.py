@@ -713,6 +713,40 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
         },
         "required": ["subject"],
     },
+    # F8 / Phase 1 high-risk additions
+    "github.issues.list": {
+        "type": "object",
+        "properties": {
+            "repo": {"type": "string", "description": "owner/repo"},
+            "state": {"type": "string", "enum": ["open", "closed", "all"], "default": "open"},
+            "query": {"type": "string", "description": "Optional search keywords."},
+            "limit": {"type": "integer", "default": 25},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
+    "clickup.tasks.list": {
+        "type": "object",
+        "properties": {
+            "list_id": {"type": "string", "description": "Optional ClickUp list id."},
+            "team_id": {"type": "string", "description": "Optional ClickUp team/workspace id."},
+            "include_closed": {"type": "boolean", "default": False},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
+    "salesforce.contacts.search": {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "description": "Contact name fragment."},
+            "email": {"type": "string"},
+            "query": {"type": "string", "description": "Alias for name."},
+            "soql": {"type": "string", "description": "Optional full SOQL override."},
+            "limit": {"type": "integer", "default": 25},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
 }
 
 

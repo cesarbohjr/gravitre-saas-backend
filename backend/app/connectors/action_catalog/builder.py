@@ -36,6 +36,13 @@ def action(
     supports_diff: bool | None = None,
 ) -> ActionSpec:
     desc = description or f"{name} via {vendor} API"
+    # G.2 / F8 — every action needs a when/why cue for tool selection accuracy.
+    _when_why = ("use when", "use this", "prefer when", "for when", "when you need")
+    if not any(cue in desc.lower() for cue in _when_why):
+        desc = f"{desc}. Use when you need to {name.lower()} via {vendor}."
+    # Writes are mutating by default (closes the unmarked-write gap class).
+    if kind == "write" and not destructive:
+        destructive = True
     # Default compensating_action / supports_diff from catalog_reversal seed when unset,
     # so ActionSpec always carries the BusinessOutcome Diff/Undo answer.
     tool_id = f"{vendor}.{suffix}"

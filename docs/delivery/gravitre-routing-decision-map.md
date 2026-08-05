@@ -301,8 +301,8 @@ Ranked by severity × breadth × structural fix value.
 | 4 | F4 | **CLOSED (Phase 1)** — object-noun scoring + confusable veto; github issues / clickup tasks / SF contacts correct; G.1 9/10 HIT (linear catalog gap) | Mapper wrong-tool class | High | 77-vendor mapper | Noun-weighted scoring |
 | 5 | F5 | **CLOSED (Phase 2)** — `require_pack_install=True` on retrieve gate + classical MSP intercept; missing pack → honest clarify + Marketplace CTA | Pack-common ignores pack install | Medium–High | MSP/Prospecting | Install gate |
 | 6 | F6 | **CLOSED (Phase 2)** — `collection_population_verify.py` follow-up / membership proof; chat + extension + existing workflow honesty; empty → partial_success / accepted_async | Write completion without membership verify | Medium | Writes/lists | Population verify |
-| 7 | F7 | OPEN | Agent jobs / webhooks outside map | Medium | Non-chat | Phase 5 |
-| 8 | F8 | OPEN | Catalog schema quality | High for new connectors | 687 actions | Phase 4 |
+| 7 | F7 | **CLOSED (Phase 5)** — see `routing-map-phase5-f7-traces.md`; webhooks not NL-routed; agent_jobs ModelRouter text named exception | Agent jobs / webhooks outside map | Medium | Non-chat | Traced contracts |
+| 8 | F8 | **CLOSED (Phase 4)** — schema standard doc + CI lint; when/why on 100% catalog via builder; write→destructive; MCP hints derived; id aliases | Catalog schema quality | High for new connectors | 689 actions | Standard + lint |
 | 9 | F9 | **OUT OF SCOPE** this program | Gravitree naming debt | Brand | Cross-cutting | Separate PR series |
 | 10 | F10 | **CLOSED (Phase 3)** — `unified_turn_fallthrough.py` enum + AST CI; defer pattern ± matrix; NL variance + withhold-fabrication battery | Exhaustive fallthrough / pattern CI | Medium | LIVE | Enum + CI batteries |
 
