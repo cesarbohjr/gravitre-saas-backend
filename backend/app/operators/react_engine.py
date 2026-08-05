@@ -718,13 +718,18 @@ class ReActEngine:
         tools: list[dict[str, Any]],
         model: str,
     ) -> Any:
+        from app.services.narrowed_tools import assert_tools_narrowed
+
+        # G5 standing guard — refuse unnarrowed full-registry attaches.
+        assert_tools_narrowed(tools, where="react_engine._chat_with_tools")
         client = self.router._openai
         if client is None:
             raise RuntimeError("OPENAI_API_KEY is not configured")
+        openai_tools = list(tools) if tools else []
         kwargs: dict[str, Any] = {
             "model": model,
             "messages": messages,
-            "tools": tools,
+            "tools": openai_tools,
             "tool_choice": "auto",
         }
         if _supports_custom_temperature(model):

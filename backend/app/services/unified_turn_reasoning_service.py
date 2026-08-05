@@ -211,6 +211,7 @@ async def _complete_unified_turn_stream(
 
 def _stable_tool_list(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Stable ordering so OpenAI automatic prefix caching can hit across turns."""
+    from app.services.narrowed_tools import NarrowedTools, mark_narrowed
 
     def _name(tool: dict[str, Any]) -> str:
         fn = tool.get("function")
@@ -218,7 +219,14 @@ def _stable_tool_list(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
             return str(fn.get("name") or "")
         return str(tool.get("name") or "")
 
-    return sorted(tools, key=_name)
+    ordered = sorted(tools, key=_name)
+    if isinstance(tools, NarrowedTools) or getattr(tools, "gravitre_narrowed", False):
+        return mark_narrowed(
+            ordered,
+            stats=getattr(tools, "stats", None),
+            source=str(getattr(tools, "source", "") or "narrow_tools_for_turn"),
+        )
+    return ordered
 
 
 def _history_to_messages(
@@ -350,6 +358,42 @@ async def run_unified_turn_shadow(
     visible = _stable_tool_list(list(visible or []))
     t_after_narrow = time.perf_counter()
 
+    # G.5.2 progressive disclosure — stubs + search_catalog_tools (A1/A2).
+    # Candidate set stays the narrowed list; full schemas load on demand.
+    from app.services.narrowed_tools import assert_tools_narrowed, mark_narrowed
+    from app.services.progressive_tool_schemas import (
+        SEARCH_CATALOG_TOOLS_NAME,
+        apply_progressive_disclosure,
+        execute_search_catalog_tools,
+        gate_deferred_tool_call,
+        is_search_catalog_tools,
+        payload_bytes,
+    )
+
+    progressive_on = bool(getattr(active, "unified_turn_progressive_schemas", True))
+    full_by_name: dict[str, dict[str, Any]] = {}
+    loaded_names: set[str] = set()
+    full_narrowed_bytes = payload_bytes(list(visible or []))
+    attach_tools = visible
+    if progressive_on and visible:
+        attach_tools, full_by_name, loaded_names = apply_progressive_disclosure(
+            list(visible), loaded_names=set()
+        )
+        tool_stats = {
+            **(tool_stats or {}),
+            **(getattr(attach_tools, "stats", None) or {}),
+            "progressiveDisclosure": True,
+            "fullNarrowedPayloadBytes": full_narrowed_bytes,
+            "progressivePayloadBytes": payload_bytes(list(attach_tools)),
+        }
+    else:
+        attach_tools = mark_narrowed(
+            list(visible or []),
+            stats=tool_stats,
+            source=str((tool_stats or {}).get("retrievalMethod") or "narrow_tools_for_turn"),
+        )
+        tool_stats = {**(tool_stats or {}), "progressiveDisclosure": False}
+
     pending_block = build_unified_turn_pending_context(
         task_state,
         last_assistant_message=_last_assistant_snippet(conversation_history),
@@ -385,20 +429,28 @@ async def run_unified_turn_shadow(
     if intent_hint:
         user_parts.append(intent_hint)
     # Explicit tool inventory note for knowledge-boundary honesty.
-    if visible:
+    if attach_tools:
         names = sorted(
             {
                 str(t.get("function", {}).get("name") or t.get("name") or "")
-                for t in visible
+                for t in attach_tools
                 if isinstance(t, dict)
             }
         )
-        names = [n for n in names if n][:40]
-        user_parts.append(
-            "AVAILABLE TOOLS THIS TURN (schemas attached as functions; "
-            "you have NO other live data sources):\n- "
-            + "\n- ".join(names)
-        )
+        names = [n for n in names if n and n != SEARCH_CATALOG_TOOLS_NAME][:40]
+        if progressive_on:
+            user_parts.append(
+                "AVAILABLE TOOLS THIS TURN (stubs: name + description only; "
+                f"call {SEARCH_CATALOG_TOOLS_NAME} to load full parameters before "
+                "invoking a connector tool; you have NO other live data sources):\n- "
+                + "\n- ".join(names)
+            )
+        else:
+            user_parts.append(
+                "AVAILABLE TOOLS THIS TURN (schemas attached as functions; "
+                "you have NO other live data sources):\n- "
+                + "\n- ".join(names)
+            )
     else:
         user_parts.append(
             "AVAILABLE TOOLS THIS TURN: none. Do not invent metrics, run counts, "
@@ -412,7 +464,7 @@ async def run_unified_turn_shadow(
     messages.append({"role": "user", "content": user_content})
     t_after_prompt = time.perf_counter()
 
-    tools_payload_bytes = len(json.dumps(visible, separators=(",", ":")).encode("utf-8"))
+    tools_payload_bytes = payload_bytes(list(attach_tools or []))
     messages_chars = sum(len(str(m.get("content") or "")) for m in messages)
     system_prompt_chars = len(system or "")
     # Hypothetical full-catalog payload for the same connected set (not sent).
@@ -424,14 +476,7 @@ async def run_unified_turn_shadow(
     if openai_client is None:
         return UnifiedTurnShadowResult(outcome_kind="error", error="openai_client_unavailable")
 
-    kwargs: dict[str, Any] = {
-        "model": model,
-        "messages": messages,
-        "tools": visible,
-        "tool_choice": "auto",
-    }
-    if _supports_custom_temperature(model):
-        kwargs["temperature"] = 0.2
+    assert_tools_narrowed(attach_tools, where="unified_turn_reasoning_service.attach")
 
     retrieval_method = str(
         (tool_stats or {}).get("retrievalMethod")
@@ -445,10 +490,20 @@ async def run_unified_turn_shadow(
         "pre_model_ms": int((t_after_prompt - wall_start) * 1000),
         "tools_payload_bytes": tools_payload_bytes,
         "full_catalog_payload_bytes": full_catalog_bytes,
+        "full_narrowed_payload_bytes": full_narrowed_bytes,
+        "progressive_disclosure": progressive_on,
         "system_prompt_chars": system_prompt_chars,
         "messages_chars": messages_chars,
         "total_tools": len(all_tools),
-        "visible_tools": len(visible),
+        "visible_tools": len(
+            [
+                t
+                for t in (attach_tools or [])
+                if str((t.get("function") or {}).get("name") or "") != SEARCH_CATALOG_TOOLS_NAME
+            ]
+        )
+        if progressive_on
+        else len(visible),
         "max_tools_cap": max_tools,
         "retrieval_method": retrieval_method,
         "embedding_tool_retrieval": embedding_used,
@@ -481,18 +536,87 @@ async def run_unified_turn_shadow(
         **(tool_stats or {}),
         "toolsPayloadBytes": tools_payload_bytes,
         "fullCatalogPayloadBytes": full_catalog_bytes,
+        "fullNarrowedPayloadBytes": full_narrowed_bytes,
         "turnShapeHint": shape_label,
     }
 
+    completion = None
+    content = ""
+    tool_calls: list[Any] = []
     try:
         model_start = time.perf_counter()
         breakdown["openai_create_schedule_ms"] = int((model_start - t_after_prompt) * 1000)
-        completion = await _complete_unified_turn_stream(
-            openai_client,
-            kwargs=kwargs,
-            wall_start=wall_start,
-            model_start=model_start,
-        )
+        # Up to 2 rounds: search_catalog_tools may load full schemas then continue.
+        for prog_round in range(2):
+            kwargs: dict[str, Any] = {
+                "model": model,
+                "messages": messages,
+                "tools": list(attach_tools),
+                "tool_choice": "auto",
+            }
+            if _supports_custom_temperature(model):
+                kwargs["temperature"] = 0.2
+            assert_tools_narrowed(attach_tools, where=f"unified_turn.round_{prog_round}")
+            completion = await _complete_unified_turn_stream(
+                openai_client,
+                kwargs=kwargs,
+                wall_start=wall_start,
+                model_start=model_start if prog_round == 0 else time.perf_counter(),
+            )
+            content = completion.content
+            tool_calls = list(completion.tool_calls or [])
+            if (
+                progressive_on
+                and tool_calls
+                and is_search_catalog_tools(str(tool_calls[0].function.name or ""))
+            ):
+                args: dict[str, Any] = {}
+                try:
+                    parsed = json.loads(tool_calls[0].function.arguments or "{}")
+                    if isinstance(parsed, dict):
+                        args = parsed
+                except json.JSONDecodeError:
+                    args = {}
+                loaded_names, search_result = execute_search_catalog_tools(
+                    args, full_by_name=full_by_name, loaded_names=loaded_names
+                )
+                attach_tools, full_by_name, loaded_names = apply_progressive_disclosure(
+                    list(visible), loaded_names=loaded_names
+                )
+                tool_stats = {
+                    **(tool_stats or {}),
+                    **(getattr(attach_tools, "stats", None) or {}),
+                    "progressiveSearchRounds": prog_round + 1,
+                    "progressiveLoaded": sorted(loaded_names),
+                }
+                breakdown["progressive_payload_bytes"] = payload_bytes(list(attach_tools))
+                breakdown["progressive_loaded_count"] = len(loaded_names)
+                # Feed search result back into the conversation for the next round.
+                messages.append(
+                    {
+                        "role": "assistant",
+                        "content": content or None,
+                        "tool_calls": [
+                            {
+                                "id": getattr(tool_calls[0], "id", None) or "search_1",
+                                "type": "function",
+                                "function": {
+                                    "name": SEARCH_CATALOG_TOOLS_NAME,
+                                    "arguments": tool_calls[0].function.arguments or "{}",
+                                },
+                            }
+                        ],
+                    }
+                )
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": getattr(tool_calls[0], "id", None) or "search_1",
+                        "content": json.dumps(search_result),
+                    }
+                )
+                continue
+            break
     except Exception as exc:  # noqa: BLE001
         logger.warning("unified_turn_shadow model call failed: %s", exc)
         breakdown["error"] = str(exc)[:200]
@@ -505,8 +629,16 @@ async def run_unified_turn_shadow(
             latency_breakdown=breakdown,
         )
 
-    content = completion.content
-    tool_calls = completion.tool_calls
+    if completion is None:
+        return UnifiedTurnShadowResult(
+            outcome_kind="error",
+            error="no_model_completion",
+            latency_ms=int((time.perf_counter() - wall_start) * 1000),
+            tool_stats=tool_stats,
+            model=model,
+            latency_breakdown=breakdown,
+        )
+
     latency_ms = completion.latency_ms
     breakdown["model_ttft_ms"] = completion.model_ttft_ms
     breakdown["model_total_ms"] = completion.model_total_ms
@@ -552,6 +684,9 @@ async def run_unified_turn_shadow(
             result.qa_force_tool = forced
             if tool_calls:
                 result.qa_overrode_model_tool = str(tool_calls[0].function.name or "")
+            # QA force loads the schema so progressive gate does not block fixtures.
+            if tool_name:
+                loaded_names.add(tool_name)
         else:
             tc = tool_calls[0]
             tool_name = str(tc.function.name or "")
@@ -562,6 +697,29 @@ async def run_unified_turn_shadow(
                     args = parsed
             except json.JSONDecodeError:
                 args = {}
+            if is_search_catalog_tools(tool_name):
+                # Exhausted progressive rounds without a connector tool.
+                result.outcome_kind = "clarifying_question"
+                result.user_message = (
+                    "I loaded catalog schemas but still need a specific action. "
+                    "Which connector action should I take?"
+                )
+                return result
+            if progressive_on and full_by_name:
+                allowed, gate_reason = gate_deferred_tool_call(
+                    tool_name,
+                    loaded_names=loaded_names,
+                    full_by_name=full_by_name,
+                )
+                if not allowed:
+                    result.outcome_kind = "clarifying_question"
+                    result.user_message = (
+                        f"I need the full schema for `{tool_name}` before I can run it "
+                        f"(progressive disclosure: {gate_reason}). "
+                        f"Ask me again and I'll load parameters via {SEARCH_CATALOG_TOOLS_NAME} first."
+                    )
+                    breakdown["progressive_gate_blocked"] = gate_reason
+                    return result
             spec = registry._specs.get(tool_name)  # noqa: SLF001
             invoke = str(getattr(spec, "invoke_action", "") or "") if spec else ""
         from app.services.chat_write_intent import evaluate_connector_tool_proposal
@@ -582,6 +740,7 @@ async def run_unified_turn_shadow(
         invoke = review.invoke_action or invoke
         args = review.tool_arguments or args
         spec = registry._specs.get(tool_name)  # noqa: SLF001
+        # HARD: write authority AFTER full schema load / selection (unchanged gate).
         requires_write, *_ = tool_requires_user_write_approval(tool_name, registry)
         requires_user_approval = False
         if requires_write and client is not None:

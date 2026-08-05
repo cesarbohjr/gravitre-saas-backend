@@ -144,12 +144,15 @@ def embed_narrow_tools_for_turn(
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Semantic top-k tool selection; falls back to keyword narrow on failure."""
     if not tools:
-        return [], {
+        from app.services.narrowed_tools import mark_narrowed
+
+        empty_stats = {
             "totalTools": 0,
             "visibleTools": 0,
             "retrievalMethod": "embedding_narrow_tools_for_turn",
             "embeddingToolRetrieval": True,
         }
+        return mark_narrowed([], stats=empty_stats, source="embedding_narrow_tools_for_turn"), empty_stats
 
     try:
         from app.rag.tool_retrieval_embedding import embed_tool_retrieval_query_timed
@@ -262,7 +265,11 @@ def embed_narrow_tools_for_turn(
             "embed_narrow_total_ms": narrow_total_ms,
             **tool_partial,
         }
-        return visible, stats
+        from app.services.narrowed_tools import mark_narrowed
+
+        return mark_narrowed(
+            visible, stats=stats, source="embedding_narrow_tools_for_turn"
+        ), stats
     except Exception as exc:  # noqa: BLE001
         logger.warning("embed_narrow_tools_for_turn failed; keyword fallback: %s", exc)
         visible, stats = narrow_tools_for_turn(
@@ -280,7 +287,11 @@ def embed_narrow_tools_for_turn(
             "embeddingToolRetrieval": False,
             "embeddingFallbackReason": str(exc)[:240],
         }
-        return visible, stats
+        from app.services.narrowed_tools import mark_narrowed
+
+        return mark_narrowed(
+            visible, stats=stats, source="keyword_narrow_tools_for_turn"
+        ), stats
 
 
 def warm_tool_document_embeddings(*, settings: Settings | None = None) -> int:

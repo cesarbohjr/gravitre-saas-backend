@@ -169,6 +169,15 @@ class Settings(BaseSettings):
             "unified_turn_qa_hooks_enabled",
         ),
     )
+    # G.5.2 — progressive schema loading on A1/A2 (stubs + search_catalog_tools).
+    # Candidate narrowing unchanged; full input_schema loaded on demand.
+    unified_turn_progressive_schemas: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "UNIFIED_TURN_PROGRESSIVE_SCHEMAS",
+            "unified_turn_progressive_schemas",
+        ),
+    )
     rag_uploads_bucket: str = "rag-uploads"
     rag_store_raw_files: bool = True
     # Phase 2 — durable chat artifacts (md/docx/csv/pdf/html) for file-reference chips

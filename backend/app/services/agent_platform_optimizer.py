@@ -276,7 +276,9 @@ def narrow_tools_for_turn(
         "actionRequired": action_required,
         "compressed": True,
     }
-    return compressed, stats
+    from app.services.narrowed_tools import mark_narrowed
+
+    return mark_narrowed(compressed, stats=stats, source="narrow_tools_for_turn"), stats
 
 
 # Manus-style named progress labels for assistant / registry tools.

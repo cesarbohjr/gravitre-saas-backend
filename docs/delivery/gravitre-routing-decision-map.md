@@ -395,9 +395,94 @@ Adopt as checklist for every new/changed `ActionSpec`:
 
 ## G.4 Standing process gap
 
-**CONFIRMED:** No document in-repo was found that enforces the seven principles above as a required connector-addition checklist (`**/docs/**/*schema*standard*` empty; quality lint not enforced on descriptions).
+**CLOSED (Phase 4, 2026-08-05):** Standard published at `docs/engineering/connector-action-schema-standard.md` with CI lint `backend/tests/connectors/test_action_schema_standard_lint.py`. G.3 baseline numbers above remain the pre-Phase-4 snapshot; post-fix when/why coverage is 100% of catalog via builder enforcement (see `routing-map-phase4-f8-evidence.json`).
 
-**Recommendation:** Adopt **G.2** as `docs/engineering/connector-action-schema-standard.md` (follow-up PR) and wire a CI lint. Until then, connector NL quality depends on the author.
+---
+
+## G.5 Advanced schema augmentation — progressive disclosure beyond base JSON Schema
+
+**Research grounding (2025–2026 production techniques):** At catalog scale past ~494 tools, full schema dumps degrade tool-selection accuracy. Three shipped approaches converge on **progressive disclosure** (lightweight metadata first; full detail only when relevant):
+
+| Technique | Source | Mechanism | Reported token effect |
+|-----------|--------|-----------|------------------------|
+| Tool Search Tool | Anthropic, 2025-11-24 | Tools marked `defer_loading:true`; a search tool substitutes; keyword search loads 3–5 full defs (~3K tokens) on demand | ~85% reduction |
+| Code Mode | Cloudflare, 2026-02-20 | Typed SDK; model writes code against API surface instead of N callable tool defs | ~99.9% input reduction |
+| Code execution + MCP | Anthropic, 2025-11-04 | Servers presented as filesystem-like discoverable API | ~150K → ~2K (98.7%) |
+| BFCL (now V4) | Berkeley Function Calling Leaderboard | Cross-vendor accuracy yardstick, including **correctly withholds** when no right tool exists | Eval shape, not a compression technique |
+
+Gravitre catalog size (**689** actions as of Phase 4; was 687 at initial audit) is past the measured overflow band — progressive disclosure is a real risk domain, not hypothetical.
+
+### G.5.1 Is progressive disclosure applied on every Part A entry point?
+
+| Entry (Part A) | Tool schemas to the model? | Narrowing applied? | Pattern |
+|----------------|----------------------------|--------------------|---------|
+| A1/A2 Main chat + TRY (LIVE path) | Yes — unified-turn shadow | **YES** — `embed_narrow_tools_for_turn` / `keyword_narrow_tools_for_turn` → `max_tools` (~32); embedding for task turns when catalog ≥ `unified_turn_embed_min_catalog_tools` (default 40) | Narrow-then-attach full schemas |
+| A1/A2 Classical ReAct fallthrough | Yes — ReAct loop | **YES** — `react_engine` → `narrow_tools_for_turn` + `compress_tool_definitions` | Same family |
+| A5d Extension chat | Yes — same `execute_task_streaming` | **YES** — same as A1 | Same family |
+| A3 Workflow canvas / schedule / webhook-triggered workflow | No LLM tool dump — typed steps from definition | N/A (retrieve plan, not tool-calling) | Not applicable |
+| A5a–c Extension enrich / workflow execute / one-shot action | Direct invoke or staged workflow | N/A — no multi-hundred tool prompt | Not applicable |
+| A4 Agent jobs (ModelRouter worker) | ReAct via `AgentIntelligence.execute_task` (not `ModelRouter.complete`+tools) | **CONFIRMED YES** — `react_engine._react_loop` → `narrow_tools_for_turn` (cap 28) before `_chat_with_tools`; `tool_query` now passed from job path | Standing CI: `test_g5_unnarrowed_tool_attach_guard.py` |
+| A6 Inbound product webhooks (HubSpot/SF/PD) | No NL tool calling | N/A | not NL-routed (Phase 5) |
+| Pack-common / `ChatActionMapper` | Deterministic regex/score — not OpenAI tool-defs | Different mechanism (matrix scoring) | Can invent wrong tools without LLM schema dump (F4 class) |
+
+**Verdict (2026-08-05 closeout):** Narrowing is **CONFIRMED** on A1/A2/A5d LIVE, classical ReAct, and **A4 agent jobs** (same `narrow_tools_for_turn` in ReAct). Progressive schema loading (`defer_loading` family) is **SHIPPED on A1/A2** via `unified_turn_progressive_schemas` + `search_catalog_tools` (`progressive_tool_schemas.py`). A5d extension chat shares LIVE `execute_task_streaming` — inherits A1 progressive once LIVE serves that path. Typed workflows / direct invokes remain N/A.
+
+**Named risk G5-RISK-UNNARROWED-FALLTHROUGH — CLOSED:** Agent jobs already narrowed (evidence: `test_agent_job_react_path_narrows_under_cap`). Standing guard `NarrowedTools` + `assert_tools_narrowed` in `react_engine._chat_with_tools` and unified-turn attach; static AST CI forbids new `chat.completions.create(tools=)` sites outside allowlist. Salesforce `salesforce_update_record` visibility no longer pins solely to `leads.update` (wrong-action class, F6 rigor).
+
+### G.5.2 Architectural comparison: Gravitre narrowing vs Anthropic Tool Search
+
+| Dimension | Gravitre today | Anthropic Tool Search Tool |
+|-----------|----------------|----------------------------|
+| Selection | Keyword score (+ optional embedding top-k) **before** the reasoning call | Model (or search tool) selects which defs to load **during** the turn |
+| What is sent | Full schemas for the entire narrowed set (≤ `max_tools`) every turn | Lightweight stubs / deferred tools + search; full defs for 3–5 hits on demand |
+| Failure mode | Wrong tools in the top-k still fully described → model can call them | Deferred tools invisible until searched → lower accidental selection |
+| Catalog access | Soft-capped: tools outside top-k are invisible that turn | Full library remains searchable |
+| Implementation | `agent_platform_optimizer.narrow_tools_for_turn`, `unified_turn_tool_retrieval.embed_narrow_tools_for_turn` | `defer_loading` + dedicated search tool |
+
+**Resemblance:** **Partial / keyword-narrow family** — same goal (don’t send 689 schemas), different mechanics. Gravitre is **narrow-then-send-all-narrowed**, not **defer-until-needed**.
+
+**Meaningful upgrade — SHIPPED (A1/A2):** 
+
+1. Keyword/embedding remain the **candidate generator** (unchanged).
+2. Attach **name + one-line stub** + `search_catalog_tools`; full `input_schema` loads on search (flag `UNIFIED_TURN_PROGRESSIVE_SCHEMAS`, default on).
+3. Write-authority **after** full schema load — CI `test_write_using_only_stub_is_rejected_until_full_schema_loaded`.
+4. Before/after payload probe: `docs/delivery/g5-progressive-schemas-probe.json` (same TTFT probe set).
+
+### G.5.3 Cloudflare Code Mode — feasibility vs governance-first fit
+
+**Pattern:** Replace N tool definitions with a typed SDK; model writes code that calls the SDK.
+
+| Governance requirement | Code Mode impact |
+|------------------------|------------------|
+| Inspectable action boundary per call (`vendor.resource.verb`) | **At risk** — authority moves into generated code paths; harder to gate each invoke as one catalog action |
+| `catalog_write_authority` / approve-first writes | **Complicated** — need a sandboxed SDK that only exposes pre-authorized actions, or a re-parse of emitted calls back into ActionSpecs (second planner) |
+| Audit `tool.invoke.*` + BusinessOutcome verified-output | **Preservable only if** every SDK call maps 1:1 to `invoke_tool` with the same finalize path |
+| Population verify / effect honesty (F6) | Same — only if SDK bottoms out in existing executors |
+
+**Recommendation:** **Explicitly decline as default architecture** for Gravitre’s governed connector surface. Reason: write-authority and approve-first need a **clear, inspectable action id per call**; Code Mode optimizes for token compression in open-ended coding agents, not for dual-path LIVE/classical governance. A **limited feasibility spike** is acceptable only for read-only research/sandbox surfaces that never hit mutating `invoke_tool` — not for chat/TRY/extension writes.
+
+### G.5.4 BFCL evaluation shape — “correctly withholds”
+
+BFCL V4 scores tool-calling accuracy **including declining when no right tool exists**. That is exactly the TRY-chip failure class (classical fabricated a plan instead of retrieving or clarifying).
+
+| Status | Evidence |
+|--------|----------|
+| **CLOSED** | All three `withhold_no_tool` categories in `test_routing_nl_variance_battery.py` + combined pass-rate gate |
+| Cat 1 | `test_withhold_fabrication_on_ambiguous_enrich` — F1 clarify / `block_fabrication` |
+| Cat 2 | `test_withhold_no_matching_action_connected_vendor` — no invented wiki/pages tool |
+| Cat 3 | `test_withhold_explicit_advise_only_mentions_vendor` — mapper `ADVISE_ONLY_NO_TOOL` → zero tool; pack-common withheld |
+| Pass rate | `test_withhold_no_tool_combined_pass_rate` asserts **3/3 = 100%** |
+
+### G.5.5 Disposition summary
+
+| Technique | Resembles Gravitre today? | Disposition |
+|-----------|---------------------------|-------------|
+| Anthropic Tool Search / `defer_loading` | **Shipped** on A1/A2 progressive stubs + `search_catalog_tools` | **CLOSED** — evidence in progressive CI + payload probe; A5d inherits LIVE path |
+| Cloudflare Code Mode | No | **Decline** for governed writes; optional read-only spike only |
+| Anthropic code-exec + MCP filesystem | No | **Decline** as primary chat architecture (same governance boundary issue); MCP connector *servers* remain fine as catalog-backed tools |
+| BFCL “correctly withholds” | **Shipped** 3-category battery | **CLOSED** — `withhold_no_tool` 3/3 CI |
+| Current keyword/embedding narrow | Native | **Keep** as candidate generator under progressive stubs |
+| G5-RISK-UNNARROWED-FALLTHROUGH | Was UNKNOWN for A4 | **CLOSED** — agent jobs narrow; standing NarrowedTools CI guard |
 
 ---
 
@@ -418,6 +503,10 @@ Adopt as checklist for every new/changed `ActionSpec`:
 | Effect honesty | `backend/app/services/connector_outcome_effects.py` |
 | Outcomes UI | `apps/web/components/gravitre/business-outcome/business-outcome-view.tsx` |
 | Catalog models | `backend/app/connectors/action_catalog/models.py` |
+| Tool narrowing (keyword) | `backend/app/services/agent_platform_optimizer.py` → `narrow_tools_for_turn` |
+| Tool narrowing (embedding) | `backend/app/services/unified_turn_tool_retrieval.py` → `embed_narrow_tools_for_turn` |
+| Schema standard | `docs/engineering/connector-action-schema-standard.md` |
+| Withhold battery | `backend/tests/services/test_routing_nl_variance_battery.py` |
 
 ## Appendix — Probe reproducibility
 
@@ -427,7 +516,7 @@ set PYTHONPATH=.
 python ../scripts/probe-routing-decision-map.py
 ```
 
-Promote assertions into CI when the variance battery lands; keep this script as the quick local repro.
+NL variance + withhold assertions also live in CI via `test_routing_nl_variance_battery.py`.
 
 ---
 
@@ -436,3 +525,6 @@ Promote assertions into CI when the variance battery lands; keep this script as 
 | Date | Change |
 |------|--------|
 | 2026-08-05 | Initial standing map Parts A–G from code traces + unit NL/schema probe. Diagnosis only. |
+| 2026-08-05 | Phases 1–5 closure updates in Part F; G.4 standard adopted. |
+| 2026-08-05 | **G.5** added — progressive disclosure vs Tool Search / Code Mode / BFCL withhold; entry-point narrowing inventory. |
+| 2026-08-05 | **G.5 closeout** — UNNARROWED risk CLOSED; progressive schemas on A1/A2; withhold_no_tool 3/3 CI. |

@@ -20,6 +20,19 @@ WRITE_VERBS = re.compile(
     r"\b(create|update|post|send|write|close|log|notify|message|assign|enroll|add|share|upload|delete|remove|draft|compose)\b",
     re.I,
 )
+# G.5 / BFCL category 3 — explicit advise-only must never select a tool (even with vendor names).
+ADVISE_ONLY_NO_TOOL = re.compile(
+    r"(?is)("
+    r"don'?t\s+take\s+any\s+action|"
+    r"do\s+not\s+take\s+any\s+action|"
+    r"don'?t\s+call\s+any\s+tools?|"
+    r"do\s+not\s+call\s+any\s+tools?|"
+    r"just\s+advise\s+me|"
+    r"advice\s+only|"
+    r"no\s+tools?\b.*\bjust\s+(advise|tell|explain)|"
+    r"\bwithout\s+(calling|using|invoking)\s+(any\s+)?tools?"
+    r")"
+)
 QUOTED = re.compile(r'["\']([^"\']{1,500})["\']')
 EMAIL = re.compile(r"\b[\w.+-]+@[\w.-]+\.\w+\b")
 SLACK_CHANNEL = re.compile(r"(#[\w-]+|<#[^>]+>|@\w+)")
@@ -111,6 +124,8 @@ class ChatActionMapper:
     ) -> ActionMatch | None:
         text = message.strip()
         if not text:
+            return None
+        if ADVISE_ONLY_NO_TOOL.search(text):
             return None
         entries = chat_executable_entries(connected_integrations=connected_integrations)
         if not entries:

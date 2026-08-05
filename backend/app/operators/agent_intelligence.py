@@ -1149,6 +1149,8 @@ class AgentIntelligence:
             model=model,
             connected_integrations=list(connected),
             permitted_tools=resolved_plan.permitted_tools,
+            # Prefer short task text for keyword narrow (same as streaming path).
+            tool_query=task_text or task_prompt,
             max_iterations=max_iterations or int(params.get("max_react_iterations") or 10),
             audit_resource_type="workflow_run" if run_id else "agent_job",
             audit_resource_id=task_id or run_id or agent_id,

@@ -924,8 +924,23 @@ class ToolRegistry:
                 continue
             invoke_action = spec.invoke_action
             if spec.name == "salesforce_update_record":
-                invoke_action = "salesforce.leads.update"
-            if not self._action_implemented(spec, invoke_action):
+                # Visibility must not pin solely to leads.update — execute-time
+                # remaps by object type (contacts/accounts/opportunities/leads).
+                # Wrong single-action gate was the F6-style "wrong endpoint" class.
+                sf_candidates = (
+                    "salesforce.leads.update",
+                    "salesforce.contacts.update",
+                    "salesforce.accounts.update",
+                    "salesforce.opportunities.update",
+                    str(spec.invoke_action or ""),
+                )
+                if not any(
+                    self._action_implemented(spec, candidate)
+                    for candidate in sf_candidates
+                    if candidate
+                ):
+                    continue
+            elif not self._action_implemented(spec, invoke_action):
                 continue
             tools.append(spec.to_openai_tool())
         return tools
