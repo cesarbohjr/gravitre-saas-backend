@@ -72,7 +72,9 @@ export function HubTabs<T extends string>({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-1 border border-border bg-muted/30 p-1",
+        // inline-flex + w-fit: hug the triggers. A block-level flex track
+        // stretches full-width on Agents and reads as a wide lozenge.
+        "inline-flex w-fit max-w-full flex-wrap items-center gap-1 border border-border bg-muted/30 p-1",
         // Pill, matching FilterChip / SegmentedControl / Button. Previously
         // rounded-lg, which read as a different control family sitting inches
         // from the pill-shaped filters on the same toolbar.
