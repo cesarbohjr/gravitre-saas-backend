@@ -1,0 +1,427 @@
+{
+  "generated_at": "2026-08-05T15:10:24.098226+00:00",
+  "git_sha_local": "6e07d96c39fd",
+  "catalog_tools_loaded": 70,
+  "phase_4_1_embedding_vs_keyword": {
+    "probe": "email_intent",
+    "catalog_size_class": 70,
+    "when_why_context": "post_phase4_f8_100pct_descriptions",
+    "warm_tool_docs": 721,
+    "warm_error": null,
+    "keyword": {
+      "narrow_tools_ms": 13,
+      "model_ttft_ms": 2103,
+      "wall_ms": 3125,
+      "wall_ms_proxy": 13,
+      "payload_bytes": 8315,
+      "visible": 25,
+      "email_tool_in_top_k": true,
+      "top_tools": [
+        "assistant_agent_status",
+        "assistant_connector_status",
+        "assistant_workflow_runs",
+        "assistant_schedules_list",
+        "assistant_analytics",
+        "assistant_generate_document",
+        "assistant_run_agent_task",
+        "assistant_create_workflow"
+      ],
+      "stats": {
+        "retrievalMethod": null,
+        "visibleTools": 25,
+        "totalTools": 70
+      }
+    },
+    "embedding_cold": {
+      "narrow_tools_ms": 42,
+      "wall_ms_proxy": 43,
+      "embed_query_ms": 35,
+      "embed_query_method": "local",
+      "payload_bytes": 7063,
+      "email_tool_in_top_k": true,
+      "top_tools": [
+        "assistant_agent_status",
+        "assistant_connector_status",
+        "assistant_workflow_runs",
+        "assistant_schedules_list",
+        "assistant_analytics",
+        "assistant_generate_document",
+        "assistant_run_agent_task",
+        "assistant_create_workflow"
+      ],
+      "retrievalMethod": "embedding_narrow_tools_for_turn",
+      "fallback": null
+    },
+    "embedding_warm": {
+      "narrow_tools_ms": 5,
+      "model_ttft_ms": 788,
+      "wall_ms": 1002,
+      "wall_ms_proxy": 6,
+      "embed_query_ms": 0,
+      "embed_query_method": "local",
+      "payload_bytes": 7063,
+      "email_tool_in_top_k": true,
+      "top_tools": [
+        "assistant_agent_status",
+        "assistant_connector_status",
+        "assistant_workflow_runs",
+        "assistant_schedules_list",
+        "assistant_analytics",
+        "assistant_generate_document",
+        "assistant_run_agent_task",
+        "assistant_create_workflow"
+      ],
+      "retrievalMethod": "embedding_narrow_tools_for_turn",
+      "cache_hits": 12,
+      "cache_misses": 0
+    },
+    "shadow_ab_comparable": {
+      "keyword_shadow": {
+        "outcome_kind": "clarifying_question",
+        "error": null,
+        "narrow_tools_ms": 12,
+        "model_ttft_ms": 2103,
+        "wall_ms": 3125,
+        "pre_model_ms": 26,
+        "tools_payload_bytes": 3755,
+        "embedding_tool_retrieval": false,
+        "retrieval_method": "keyword_narrow_tools_for_turn",
+        "embed_query_ms": null,
+        "embed_query_method": null,
+        "visible_tools": 16,
+        "progressive_disclosure": true
+      },
+      "embedding_shadow": {
+        "outcome_kind": "clarifying_question",
+        "error": null,
+        "narrow_tools_ms": 8,
+        "model_ttft_ms": 788,
+        "wall_ms": 1002,
+        "pre_model_ms": 12,
+        "tools_payload_bytes": 3773,
+        "embedding_tool_retrieval": true,
+        "retrieval_method": "embedding_narrow_tools_for_turn",
+        "embed_query_ms": 0,
+        "embed_query_method": "local",
+        "visible_tools": 16,
+        "progressive_disclosure": true
+      }
+    },
+    "comparable_table": {
+      "format": "matches unified-turn-embed-query-local-fix-2026-07-24.md",
+      "keyword": {
+        "narrow_tools_ms": 12,
+        "model_ttft_ms": 2103,
+        "wall_ms": 3125,
+        "payload_bytes": 3755
+      },
+      "embedding_local_warm": {
+        "narrow_tools_ms": 8,
+        "model_ttft_ms": 788,
+        "wall_ms": 1002,
+        "payload_bytes": 3773,
+        "embed_query_ms": 0
+      }
+    },
+    "historical_reference": {
+      "keyword_wall_ms": 840,
+      "embedding_remote_wall_ms": 1269,
+      "embedding_local_wall_ms": 487,
+      "embedding_local_narrow_ms": 24,
+      "keyword_narrow_ms": 1,
+      "source": "unified-turn-embed-query-local-fix-2026-07-24.md"
+    },
+    "threshold_recommendation": "keep_embed_min_40",
+    "threshold_note": "Post-Phase-4 when/why: embedding wall 1002ms beats keyword 3125ms on email_intent @ 70 tools \u2014 KEEP UNIFIED_TURN_EMBED_MIN_CATALOG_TOOLS=40.",
+    "current_default_embed_min": 40
+  },
+  "phase_4_2_enrichment": {
+    "sample_action_count": 18,
+    "sample_actions": [
+      "airtable.records.list",
+      "apollo.lists.create",
+      "asana.tasks.create",
+      "clickup.spaces.list",
+      "clickup.tasks.list",
+      "github.issues.list",
+      "github.pulls.list",
+      "gmail.messages.send",
+      "hubspot.contacts.search",
+      "hubspot.lists.create",
+      "intercom.conversations.search",
+      "linear.issues.create",
+      "monday.items.create",
+      "notion.pages.create",
+      "salesforce.contacts.search",
+      "salesforce.leads.search",
+      "slack.chat.postMessage",
+      "zendesk.tickets.list"
+    ],
+    "baseline_no_enrichment": {
+      "hits": 9,
+      "correct": 8,
+      "n": 10,
+      "rows": [
+        {
+          "vendor": "asana",
+          "message": "create a task in Asana called Follow up with Acme",
+          "expected": "asana.tasks.create",
+          "hit": true,
+          "tool": "asana.tasks.create",
+          "score": 76.0,
+          "correct": true
+        },
+        {
+          "vendor": "clickup",
+          "message": "list my open ClickUp tasks",
+          "expected": "clickup.tasks.list",
+          "hit": true,
+          "tool": "clickup.tasks.list",
+          "score": 66.0,
+          "correct": true
+        },
+        {
+          "vendor": "github",
+          "message": "search GitHub issues mentioning billing",
+          "expected": "github.issues.list",
+          "hit": true,
+          "tool": "github.issues.list",
+          "score": 58.0,
+          "correct": true
+        },
+        {
+          "vendor": "notion",
+          "message": "create a Notion page titled Q3 plan",
+          "expected": "notion.pages.create",
+          "hit": true,
+          "tool": "notion.pages.create",
+          "score": 22.0,
+          "correct": true
+        },
+        {
+          "vendor": "airtable",
+          "message": "find records in Airtable for Acme",
+          "expected": "airtable.records.list",
+          "hit": true,
+          "tool": "airtable.records.list",
+          "score": 34.0,
+          "correct": true
+        },
+        {
+          "vendor": "monday",
+          "message": "create a Monday.com item for onboarding",
+          "expected": "monday.items.create",
+          "hit": true,
+          "tool": "monday.items.create",
+          "score": 52.0,
+          "correct": true
+        },
+        {
+          "vendor": "linear",
+          "message": "create a Linear issue titled Fix login",
+          "expected": "linear.issues.create",
+          "hit": false,
+          "tool": null,
+          "score": null,
+          "correct": false
+        },
+        {
+          "vendor": "zendesk",
+          "message": "list open Zendesk tickets",
+          "expected": "zendesk.tickets.list",
+          "hit": true,
+          "tool": "zendesk.tickets.list",
+          "score": 58.0,
+          "correct": true
+        },
+        {
+          "vendor": "salesforce",
+          "message": "find Salesforce contacts named Sarah",
+          "expected": "salesforce.contacts.search",
+          "hit": true,
+          "tool": "salesforce.contacts.search",
+          "score": 66.0,
+          "correct": true
+        },
+        {
+          "vendor": "intercom",
+          "message": "search Intercom conversations about refund",
+          "expected": "intercom.conversations.search",
+          "hit": true,
+          "tool": "intercom.conversations.list",
+          "score": 28.0,
+          "correct": false
+        }
+      ]
+    },
+    "with_enrichment": {
+      "hits": 9,
+      "correct": 8,
+      "n": 10,
+      "rows": [
+        {
+          "vendor": "asana",
+          "message": "create a task in Asana called Follow up with Acme",
+          "expected": "asana.tasks.create",
+          "hit": true,
+          "tool": "asana.tasks.create",
+          "score": 96.0,
+          "correct": true
+        },
+        {
+          "vendor": "clickup",
+          "message": "list my open ClickUp tasks",
+          "expected": "clickup.tasks.list",
+          "hit": true,
+          "tool": "clickup.tasks.list",
+          "score": 81.0,
+          "correct": true
+        },
+        {
+          "vendor": "github",
+          "message": "search GitHub issues mentioning billing",
+          "expected": "github.issues.list",
+          "hit": true,
+          "tool": "github.issues.list",
+          "score": 74.0,
+          "correct": true
+        },
+        {
+          "vendor": "notion",
+          "message": "create a Notion page titled Q3 plan",
+          "expected": "notion.pages.create",
+          "hit": true,
+          "tool": "notion.pages.create",
+          "score": 35.0,
+          "correct": true
+        },
+        {
+          "vendor": "airtable",
+          "message": "find records in Airtable for Acme",
+          "expected": "airtable.records.list",
+          "hit": true,
+          "tool": "airtable.records.list",
+          "score": 47.0,
+          "correct": true
+        },
+        {
+          "vendor": "monday",
+          "message": "create a Monday.com item for onboarding",
+          "expected": "monday.items.create",
+          "hit": true,
+          "tool": "monday.items.create",
+          "score": 71.0,
+          "correct": true
+        },
+        {
+          "vendor": "linear",
+          "message": "create a Linear issue titled Fix login",
+          "expected": "linear.issues.create",
+          "hit": false,
+          "tool": null,
+          "score": null,
+          "correct": false
+        },
+        {
+          "vendor": "zendesk",
+          "message": "list open Zendesk tickets",
+          "expected": "zendesk.tickets.list",
+          "hit": true,
+          "tool": "zendesk.tickets.list",
+          "score": 78.0,
+          "correct": true
+        },
+        {
+          "vendor": "salesforce",
+          "message": "find Salesforce contacts named Sarah",
+          "expected": "salesforce.contacts.search",
+          "hit": true,
+          "tool": "salesforce.contacts.search",
+          "score": 79.0,
+          "correct": true
+        },
+        {
+          "vendor": "intercom",
+          "message": "search Intercom conversations about refund",
+          "expected": "intercom.conversations.search",
+          "hit": true,
+          "tool": "intercom.conversations.list",
+          "score": 28.0,
+          "correct": false
+        }
+      ]
+    },
+    "delta_correct": 0,
+    "recommendation": "decline_catalog_wide",
+    "effort_estimate": "none \u2014 sample kept for documentation; no catalog-wide maintenance burden"
+  },
+  "phase_4_3_compression": {
+    "narrowed_visible": 25,
+    "narrow_stats": {
+      "totalTools": 70,
+      "visibleTools": 25,
+      "retrievalMethod": null
+    },
+    "token_table": {
+      "raw_narrowed_no_extra_compress": {
+        "tokens_est": 2943,
+        "bytes": 11790,
+        "n": 25
+      },
+      "current_compress": {
+        "tokens_est": 2070,
+        "bytes": 8315,
+        "n": 25
+      },
+      "aggressive_compress_preserve_when_why": {
+        "tokens_est": 1875,
+        "bytes": 7536,
+        "n": 25
+      },
+      "progressive_stubs_plus_search": {
+        "tokens_est": 1448,
+        "bytes": 5795,
+        "n": 26
+      }
+    },
+    "savings_aggressive_vs_current_pct": 9.4,
+    "progressive_already_smaller_than_current": true,
+    "when_why_cues_in_narrowed": {
+      "before": 13,
+      "after_aggressive": 13
+    },
+    "nl_battery": {
+      "c1_msp_hits": 7,
+      "c1_n": 7,
+      "c2_list_hits": 8,
+      "c2_n": 8,
+      "withhold": {
+        "cat1_ambiguous_clarify": true,
+        "cat2_no_wrong_github_wiki": true,
+        "cat3_advise_only_no_tool": true
+      },
+      "note": "Mapper/pack batteries do not consume OpenAI tool schemas; accuracy here confirms compression does not regress NL routing. Schema token effect is the primary compression metric."
+    },
+    "recommendation": "defer_optional_full_schema_load_compress",
+    "recommendation_note": "Phase 2 progressive stubs already reduce attach payload far below current compressed full schemas (1448 vs 2070 est tokens). Aggressive extra cut on full schemas is 9.4% vs current \u2014 relevant mainly when search_catalog_tools loads full defs, not for stub attach."
+  },
+  "dispositions": {
+    "4.1_embedding_retest": {
+      "status": "CLOSED",
+      "decision": "keep_embed_min_40",
+      "evidence": "g5-phase4-schema-augmentation-probe.json#phase_4_1"
+    },
+    "4.2_enriched_fields": {
+      "status": "CLOSED",
+      "decision": "decline_catalog_wide",
+      "delta_correct": 0,
+      "evidence": "g5-phase4-schema-augmentation-probe.json#phase_4_2"
+    },
+    "4.3_schema_compression": {
+      "status": "CLOSED",
+      "decision": "defer_optional_full_schema_load_compress",
+      "savings_pct": 9.4,
+      "evidence": "g5-phase4-schema-augmentation-probe.json#phase_4_3"
+    }
+  }
+}

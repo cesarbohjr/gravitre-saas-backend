@@ -317,6 +317,32 @@ class ChatActionMapper:
         for phrase in entry.chat_phrases[:6]:
             if phrase in text:
                 score += 6.0
+        # G.5 Phase 4.2: optional synthetic examples + tags (sample catalog only).
+        try:
+            from app.connectors.action_catalog.action_retrieval_enrichment import (
+                enrichment_for_action,
+            )
+
+            enrich = enrichment_for_action(entry.registry_key) or enrichment_for_action(
+                entry.action_key
+            )
+            if enrich:
+                for tag in (enrich.get("tags") or [])[:8]:
+                    tag_l = str(tag).lower().strip()
+                    if tag_l and tag_l in text:
+                        score += 3.0
+                for example in (enrich.get("examples") or [])[:2]:
+                    ex = str(example).lower().strip()
+                    if not ex:
+                        continue
+                    # Soft overlap: share ≥3 significant tokens with the example.
+                    ex_tokens = {t for t in re.findall(r"[a-z0-9]+", ex) if len(t) > 2}
+                    msg_tokens = {t for t in re.findall(r"[a-z0-9]+", text) if len(t) > 2}
+                    overlap = len(ex_tokens & msg_tokens)
+                    if overlap >= 3:
+                        score += 4.0 + min(4.0, float(overlap - 2))
+        except Exception:  # noqa: BLE001
+            pass
         if ".search" in entry.action_key and READ_VERBS.search(text):
             score += 18.0
         if ".list" in entry.action_key and READ_VERBS.search(text):

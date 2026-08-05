@@ -180,8 +180,68 @@ def compress_tool_definition(tool: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+_BOILERPLATE_RE = re.compile(
+    r"\b(?:via\s+[\w.\-]+\s+api|this (?:tool|action) (?:allows|enables|lets) you to|"
+    r"use this (?:tool|action) to)\b[^.]*\.?",
+    re.I,
+)
+
+
+def _preserve_when_why_core(desc: str, *, max_chars: int = 96) -> str:
+    """Keep when/why clarity; drop redundant boilerplate for G.5 Phase 4.3."""
+    text = " ".join(str(desc or "").split()).strip()
+    if not text:
+        return text
+    text = _BOILERPLATE_RE.sub("", text)
+    text = re.sub(r"\s{2,}", " ", text).strip(" .")
+    # Prefer the clause that carries when/why cues.
+    lower = text.lower()
+    cue_idx = -1
+    for cue in ("when ", "use this", "use to", "prefer ", "for when"):
+        i = lower.find(cue)
+        if i >= 0 and (cue_idx < 0 or i < cue_idx):
+            cue_idx = i
+    if cue_idx > 12:
+        # Keep a short lead-in + the when/why clause.
+        lead = text[: min(40, cue_idx)].rsplit(" ", 1)[0]
+        rest = text[cue_idx:]
+        text = f"{lead}. {rest}".strip(". ")
+    if len(text) > max_chars:
+        text = text[: max_chars - 1].rstrip() + "…"
+    return text
+
+
+def compress_tool_definition_aggressive(tool: dict[str, Any]) -> dict[str, Any]:
+    """Extra-verbose cut beyond current compress — preserves when/why cues.
+
+    Measurement / optional standing step (G.5 Phase 4.3). Does not replace the
+    default path until evidence recommends adoption.
+    """
+    out = compress_tool_definition(tool)
+    fn = out.get("function")
+    if not isinstance(fn, dict):
+        return out
+    fn["description"] = _preserve_when_why_core(str(fn.get("description") or ""))
+    # Drop duplicated top-level keys that restatement of parameters already covers.
+    params = fn.get("parameters")
+    if isinstance(params, dict):
+        slim = compress_tool_parameters(params)
+        # Aggressive: keep required names only as a hint list when props are large.
+        props = slim.get("properties") if isinstance(slim.get("properties"), dict) else {}
+        if len(props) > 6:
+            required = slim.get("required") if isinstance(slim.get("required"), list) else []
+            keep = set(str(r) for r in required) | set(list(props.keys())[:4])
+            slim["properties"] = {k: props[k] for k in props if k in keep}
+        fn["parameters"] = slim
+    return out
+
+
 def compress_tool_definitions(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [compress_tool_definition(tool) for tool in tools]
+
+
+def compress_tool_definitions_aggressive(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [compress_tool_definition_aggressive(tool) for tool in tools]
 
 
 def narrow_tools_for_turn(

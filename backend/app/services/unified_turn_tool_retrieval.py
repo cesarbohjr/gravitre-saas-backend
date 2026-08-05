@@ -34,7 +34,7 @@ _CACHE_LOCK = threading.Lock()
 _TOOL_EMBED_CACHE: dict[str, list[float]] = {}
 
 
-def _tool_document(tool: dict[str, Any]) -> str:
+def _tool_document(tool: dict[str, Any], *, use_enrichment: bool = True) -> str:
     fn = tool.get("function") if isinstance(tool.get("function"), dict) else {}
     name = str(fn.get("name") or tool.get("name") or "")
     desc = str(fn.get("description") or tool.get("description") or "")
@@ -43,6 +43,25 @@ def _tool_document(tool: dict[str, Any]) -> str:
     parts = [name.replace("_", " "), integration, desc]
     if invoke:
         parts.append(invoke.replace(".", " "))
+    if use_enrichment:
+        try:
+            from app.connectors.action_catalog.action_retrieval_enrichment import (
+                enrichment_document_suffix,
+            )
+
+            suffix = enrichment_document_suffix(invoke or name.replace("_", "."))
+            # Also try dotted id from function name (hubspot_contacts_search → hubspot.contacts.search)
+            if not suffix and "_" in name:
+                approx = name.replace("_", ".", 1).replace("_", ".")
+                # Better: vendor_rest → vendor.rest with remaining underscores → dots
+                bits = name.split("_")
+                if len(bits) >= 3:
+                    approx = bits[0] + "." + ".".join(bits[1:])
+                suffix = enrichment_document_suffix(approx)
+            if suffix:
+                parts.append(suffix)
+        except Exception:  # noqa: BLE001
+            pass
     return " | ".join(p.strip() for p in parts if p and str(p).strip())
 
 

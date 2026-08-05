@@ -483,6 +483,39 @@ BFCL V4 scores tool-calling accuracy **including declining when no right tool ex
 | BFCL “correctly withholds” | **Shipped** 3-category battery | **CLOSED** — `withhold_no_tool` 3/3 CI |
 | Current keyword/embedding narrow | Native | **Keep** as candidate generator under progressive stubs |
 | G5-RISK-UNNARROWED-FALLTHROUGH | Was UNKNOWN for A4 | **CLOSED** — agent jobs narrow; standing NarrowedTools CI guard |
+| Embedding vs keyword re-test (post when/why) | Native A/B | **CLOSED** — keep `UNIFIED_TURN_EMBED_MIN_CATALOG_TOOLS=40` |
+| Synthetic examples + tags enrichment | Sample-only eval | **CLOSED / Decline** catalog-wide (`delta_correct=0`) |
+| Schema compression (verbosity lever) | Partial (current compress + progressive) | **CLOSED / Defer** aggressive extra cut (9.4%; redundant with progressive stubs) |
+
+### G.5.6 Phase 4.1–4.3 final closeout (2026-08-05) — schema-augmentation research COMPLETE
+
+**All original G.5 findings are now accounted for** across Phases 1–3 (prior prompt) and 4.1–4.3 (this closeout). Nothing left unaddressed.
+
+| Finding | Status | Evidence |
+|---------|--------|----------|
+| Tool Search / `defer_loading` progressive schemas | **SHIPPED** A1/A2 | `progressive_tool_schemas.py`; `docs/delivery/g5-progressive-schemas-probe.json` |
+| BFCL withhold (3 categories) | **CLOSED** | `test_routing_nl_variance_battery.py` 3/3 |
+| Cloudflare Code Mode | **Decline** | G.5.3 governance |
+| Anthropic code-exec + MCP filesystem | **Decline** | G.5.3 / G.5.5 |
+| G5-RISK-UNNARROWED-FALLTHROUGH | **CLOSED** | NarrowedTools CI + agent-job narrow |
+| **4.1 Embedding re-test post–Phase-4 when/why** | **CLOSED — KEEP embed_min=40** | See table below |
+| **4.2 Enriched fields (examples + tags)** | **CLOSED — Decline catalog-wide** | G.1 8/10 correct both arms; `delta_correct=0` |
+| **4.3 Schema compression** | **CLOSED — Defer** standing aggressive step | +9.4% vs current compress; progressive stubs already smaller |
+
+**4.1 comparable A/B** (`email_intent`, 70-tool class, post–F8 when/why 100%, local MiniLM, progressive on) — artifact `docs/delivery/g5-phase4-schema-augmentation-probe.json`:
+
+| Path | `narrow_tools_ms` | `model_ttft_ms` | wall_ms | payload B |
+|------|------------------:|----------------:|--------:|----------:|
+| Keyword | 7 | 3076 | 4117 | 3755 |
+| Embedding (local, warm) | 9 | **1373** | **1768** | 3773 |
+
+Historical (pre–when/why, local embed): keyword wall 840 / embed wall 487 (`unified-turn-embed-query-local-fix-2026-07-24.md`). Post–Phase-4 schemas: embedding still wins end-to-end wall; **no threshold change** — keep `UNIFIED_TURN_EMBED_MIN_CATALOG_TOOLS=40` (do not raise back to 200).
+
+**4.2 G.1 untested-connector probe** (10 vendors): baseline correct **8/10**, enriched correct **8/10** (`delta_correct=0`). Scores rose on hits but Linear still MISS and Intercom still `conversations.list` vs expected `search`. Sample of 18 actions kept under `action_retrieval_enrichment.py` with `ENRICHMENT_ENABLED=False` by default — **no catalog-wide examples/tags maintenance**.
+
+**4.3 token estimate (narrowed email_intent set):** raw 2943 → current compress 2070 → aggressive(+when/why preserved) 1875 → progressive stubs 1448. Aggressive saves **9.4%** vs current; progressive already dominates. Withhold/NL battery shape green on shipping path. Helper `compress_tool_definition_aggressive` retained for optional full-schema load path only — **not** wired as a standing attach step.
+
+Reproduce: `cd backend && set PYTHONPATH=. && python ../scripts/probe-g5-phase4-schema-augmentation.py`
 
 ---
 
@@ -505,6 +538,10 @@ BFCL V4 scores tool-calling accuracy **including declining when no right tool ex
 | Catalog models | `backend/app/connectors/action_catalog/models.py` |
 | Tool narrowing (keyword) | `backend/app/services/agent_platform_optimizer.py` → `narrow_tools_for_turn` |
 | Tool narrowing (embedding) | `backend/app/services/unified_turn_tool_retrieval.py` → `embed_narrow_tools_for_turn` |
+| Progressive schemas | `backend/app/services/progressive_tool_schemas.py` |
+| Retrieval enrichment sample (off by default) | `backend/app/connectors/action_catalog/action_retrieval_enrichment.py` |
+| Aggressive schema compress (optional) | `backend/app/services/agent_platform_optimizer.py` → `compress_tool_definition_aggressive` |
+| G.5 Phase 4 probe | `scripts/probe-g5-phase4-schema-augmentation.py` → `docs/delivery/g5-phase4-schema-augmentation-probe.json` |
 | Schema standard | `docs/engineering/connector-action-schema-standard.md` |
 | Withhold battery | `backend/tests/services/test_routing_nl_variance_battery.py` |
 
@@ -528,3 +565,4 @@ NL variance + withhold assertions also live in CI via `test_routing_nl_variance_
 | 2026-08-05 | Phases 1–5 closure updates in Part F; G.4 standard adopted. |
 | 2026-08-05 | **G.5** added — progressive disclosure vs Tool Search / Code Mode / BFCL withhold; entry-point narrowing inventory. |
 | 2026-08-05 | **G.5 closeout** — UNNARROWED risk CLOSED; progressive schemas on A1/A2; withhold_no_tool 3/3 CI. |
+| 2026-08-05 | **G.5 FINAL** — Phase 4.1–4.3 closed (embed re-test keep 40; enrichment decline; compression defer). Schema-augmentation research thread complete. |
