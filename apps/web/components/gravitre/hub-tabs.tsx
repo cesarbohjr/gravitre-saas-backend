@@ -11,7 +11,8 @@
  */
 
 import Link from "next/link"
-import { useRef, type KeyboardEvent } from "react"
+import { useId, useRef, type KeyboardEvent } from "react"
+import { motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
 
 export interface HubTabItem<T extends string = string> {
@@ -30,6 +31,8 @@ export interface HubTabsProps<T extends string> {
   /** Accessible name for the tablist, e.g. "Activity views". */
   ariaLabel: string
   className?: string
+  /** `sm` tightens padding for dense header rows. */
+  size?: "sm" | "default"
 }
 
 export function HubTabs<T extends string>({
@@ -38,8 +41,13 @@ export function HubTabs<T extends string>({
   onSelect,
   ariaLabel,
   className,
+  size = "default",
 }: HubTabsProps<T>) {
   const refs = useRef<Array<HTMLElement | null>>([])
+  // Scopes the shared-layout pill to this instance, so two tab strips on one
+  // page can't animate into each other.
+  const indicatorLayoutId = useId()
+  const reduceMotion = useReducedMotion()
 
   // `role="tablist"` promises arrow-key navigation to screen reader and
   // keyboard users; without this the strip is a tab trap where only clicking
@@ -73,11 +81,26 @@ export function HubTabs<T extends string>({
         const selected = tab.id === active
         const content = (
           <>
-            {tab.label}
+            {/* The active pill is a single shared element that slides between
+                tabs, so switching panels reads as one continuous movement
+                instead of two independent color flips. */}
+            {selected ? (
+              <motion.span
+                layoutId={indicatorLayoutId}
+                className="absolute inset-0 rounded-md bg-background shadow-sm"
+                transition={
+                  reduceMotion
+                    ? { duration: 0 }
+                    : { type: "spring", stiffness: 400, damping: 32 }
+                }
+                aria-hidden
+              />
+            ) : null}
+            <span className="relative z-10">{tab.label}</span>
             {typeof tab.count === "number" ? (
               <span
                 className={cn(
-                  "rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+                  "relative z-10 rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
                   selected ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
                 )}
               >
@@ -88,10 +111,11 @@ export function HubTabs<T extends string>({
         )
 
         const classes = cn(
-          "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+          "relative inline-flex items-center gap-1.5 rounded-md text-sm font-medium transition-colors",
+          size === "sm" ? "px-2.5 py-1" : "px-3 py-1.5",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
           selected
-            ? "bg-background text-foreground shadow-sm"
+            ? "text-foreground"
             : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
         )
 
