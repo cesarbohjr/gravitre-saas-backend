@@ -1,6 +1,21 @@
 # Railway GitHub Actions vs prod deploy status
 
-Updated: 2026-08-01
+Updated: 2026-08-05
+
+## Fix (2026-08-05) — tip lag + fake tip
+
+Two failures pinned prod on stale SHAs while `main` advanced:
+
+1. **CI-gated Railway workflow** — `workflow_run` required full CI `success`. Web /
+   Lighthouse / pip-audit failures **skipped** the backend deploy gate even when
+   `backend/` changed. **Fix:** trigger on `push` to `main` with `backend/**` paths
+   (no full-CI green requirement).
+2. **Fake tip via `GIT_SHA`** — force path ran `railway variables set GIT_SHA=…`.
+   `/health` can report that override while `RAILWAY_GIT_COMMIT_SHA` (real image)
+   stayed old. **Fix:** never set `GIT_SHA` on force; delete override before wait;
+   GraphQL redeploy only.
+
+## Updated: 2026-08-01
 
 ## Symptom
 
