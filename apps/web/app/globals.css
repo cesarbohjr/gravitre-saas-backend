@@ -442,22 +442,22 @@
 
   /* ============================================================
      Chat window surface (handoff 5a/5b) + canvas pattern themes.
-     Warm stone / near-black fill matches the design mock — not the
-     global app --background. Pattern tiles bake ~0.08–0.15 alpha
+     Shell chrome uses warm stone / near-black (`--chat-surface`).
+     The scrollable canvas paints over `--background` with a tile +
+     scrim so bubbles separate cleanly (not a creamy black wash).
+     Pattern tiles bake ~0.08–0.15 alpha
      (scripts/bake-chat-pattern-alpha.mjs).
 
-     Layers (all below content):
+     Two canvas layers (both below content):
        1. department tile (`--chat-bg-tile`)
-       2. light grey scrim (`--chat-bg-scrim`) — kept subtle so the
-          canvas reads as lighter grey, not a muddy dark wash.
+       2. flat scrim — light brand-green tint in light mode; deeper
+          near-black green in dark so cards lift off the canvas.
+     `background-attachment: local` keeps both scrolling on iOS Safari.
      ============================================================ */
   .ai-chat-surface {
     --chat-surface: #e9e7e3;
     --chat-surface-border: #dcd9d4;
     --chat-surface-muted: #a19a91;
-    --chat-bg-tile: none;
-    /* Was 10% black; two steps lighter → soft grey lift, not darken. */
-    --chat-bg-scrim: rgb(255 255 255 / 0.22);
     background-color: var(--chat-surface);
     color: #1c1917;
   }
@@ -465,18 +465,26 @@
     --chat-surface: #1c1c1c;
     --chat-surface-border: #2a2a2a;
     --chat-surface-muted: #7a7a78;
-    --chat-bg-scrim: rgb(255 255 255 / 0.04);
     color: #f2f2f0;
   }
 
   .ai-chat-canvas {
-    background-color: var(--chat-surface, var(--background));
+    --chat-bg-tile: none;
+    /* Pure black at 0.1 over warm `--background` composited to ~rgb(225 227 225)
+       (muddy cream). Lower alpha + brand-green tint → ~rgb(240 243 240) sage. */
+    --chat-bg-scrim: rgb(18 46 36 / 0.045);
+    background-color: var(--background);
     background-image: var(--chat-bg-tile),
       linear-gradient(var(--chat-bg-scrim, transparent), var(--chat-bg-scrim, transparent));
     background-repeat: repeat, no-repeat;
     /* Desktop tile size per the handoff; mobile narrows below. */
     background-size: 234px 234px, 100% 100%;
     background-attachment: local, local;
+  }
+
+  /* Dark: deepen the canvas so lighter `--card` bubbles lift off it. */
+  .dark .ai-chat-canvas {
+    --chat-bg-scrim: rgb(0 10 6 / 0.28);
   }
 
   @media (max-width: 480px) {
