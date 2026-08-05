@@ -26,7 +26,8 @@
       "membership_proof_created": true,
       "empty_membership_partial_success": true
     },
-    "live_write_verify": "PENDING after tip cb62f2d9+phase2 advances"
+    "live_write_verify": "PARTIAL — unit proof for membership_proof→created and empty→partial_success; vendor follow-up read needs connected Apollo/HubSpot live write (not run this pass)"
   },
-  "phase1_deploy_note": "CI run 30988877306 waiting on Railway auto-deploy; tip was still 554403df at Phase 2 land — stamp bumped."
+  "prod_tip_at_phase2": "882eed34af252f1a8ad106e35e2158432b78d9dd @ https://api.gravitre.app/health (includes Phase 1 parent cb62f2d9)",
+  "phase1_deploy_note": "Phase 1 CI run 30988877306 failed wait gate; Phase 2 tip 882eed34 is live and contains F1–F6 code."
 }
